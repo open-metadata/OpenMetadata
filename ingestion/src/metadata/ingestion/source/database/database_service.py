@@ -15,6 +15,7 @@ Base class for ingesting database services
 import traceback
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, List, Optional, Set, Tuple, cast  # noqa: UP035
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 from sqlalchemy.engine import Inspector
@@ -88,6 +89,7 @@ class DataModelLink(BaseModel):
 
     table_entity: Table
     datamodel: DataModel
+    upstream_table_ids: dict[str, UUID] = Field(default_factory=dict)
 
 
 class DatabaseServiceTopology(ServiceTopology):

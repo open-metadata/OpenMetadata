@@ -529,8 +529,8 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
         )
       }
       open={open}
-      // this popupClassName class is used to identify the dropdown in the playwright tests
-      popupClassName="async-tree-select-list-dropdown"
+      // async-tree-select-list-dropdown identifies the dropdown in playwright; the rest let long titles ellipsize
+      popupClassName="async-tree-select-list-dropdown tw:[&_.ant-select-tree-treenode]:w-full tw:[&_.ant-select-tree-node-content-wrapper]:min-w-0 tw:[&_.ant-select-tree-node-content-wrapper]:flex-1"
       showCheckedStrategy={TreeSelect.SHOW_ALL}
       style={{ width: '100%' }}
       switcherIcon={

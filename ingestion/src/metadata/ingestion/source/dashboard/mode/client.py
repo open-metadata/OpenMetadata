@@ -15,6 +15,7 @@ REST Auth & Client for Mode
 import json
 import traceback
 from base64 import b64encode
+from functools import lru_cache
 from typing import TYPE_CHECKING, Any, Optional, cast
 
 if TYPE_CHECKING:
@@ -46,6 +47,7 @@ DESCRIPTION = "description"
 LINKS = "_links"
 SHARE = "share"
 HREF = "href"
+CREATOR = "creator"
 
 
 def _report_key(report: dict[str, Any]) -> str:
@@ -201,6 +203,20 @@ class ModeApiClient:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching all data sources: {exc}")
 
+        return None
+
+    @lru_cache(maxsize=512)  # noqa: B019 - one client per workflow; creators repeat across reports
+    def get_user_email(self, username: str) -> str | None:
+        """Email of a Mode user; None when Mode withholds it or the lookup fails."""
+        try:
+            response = cast("dict[str, Any]", self.client.get(f"/{username}"))
+            email = response.get("email") if response else None
+            if not email:
+                logger.debug("Mode did not return an email for user [%s]", username)
+            return email  # noqa: TRY300
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.warning("Error fetching Mode user [%s]: %s", username, exc)
         return None
 
     def get_workspace(self, workspace_name: str) -> Optional[dict]:  # noqa: UP045

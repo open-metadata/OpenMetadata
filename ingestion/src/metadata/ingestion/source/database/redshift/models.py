@@ -19,6 +19,8 @@ from typing import Dict, FrozenSet, List, Optional, Tuple  # noqa: UP035
 
 from pydantic import BaseModel
 
+from metadata.generated.schema.entity.data.table import TableType
+
 TableName = str
 SchemaName = str
 
@@ -49,6 +51,14 @@ class RedshiftStoredProcedure(BaseModel):
     name: str
     owner: Optional[str] = None  # noqa: UP045
     definition: str
+
+
+class RedshiftDatashareTable(BaseModel):
+    """Table of a datashare database, as listed by SVV_ALL_TABLES."""
+
+    name: str
+    table_type: TableType
+    remarks: str | None = None
 
 
 class RedshiftTableChangeQueryRegex(BaseModel):
