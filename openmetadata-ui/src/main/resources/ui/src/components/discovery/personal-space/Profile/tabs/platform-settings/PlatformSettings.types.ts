@@ -65,8 +65,15 @@ export interface PlatformSettingsPage {
   component?: ComponentType<PlatformSettingsPageProps>;
 }
 
-/** A page a downstream build adds through `PLATFORM_SETTINGS_PAGES`. */
-export type PlatformSettingsPageContribution = PlatformSettingsPage &
+/**
+ * A page a downstream build adds through `PLATFORM_SETTINGS_PAGES`. View-only:
+ * edit and item routes resolve through the built-in maps, so they are not part
+ * of the contract (ADR:2026-10-12-platform-settings-pages-extension-point).
+ */
+export type PlatformSettingsPageContribution = Pick<
+  PlatformSettingsPage,
+  'id' | 'icon' | 'titleKey' | 'descriptionKey' | 'isBeta' | 'isVisible'
+> &
   Required<Pick<PlatformSettingsPage, 'component'>>;
 
 /** Shared by every platform-settings page: report back to the panel. */

@@ -373,6 +373,20 @@ describe('PlatformSettingsPanel', () => {
       );
     });
 
+    it('hides a contribution whose isVisible rejects the auth provider', () => {
+      mockContributions = [
+        {
+          ...(mockContributions[0] as object),
+          isVisible: () => false,
+        },
+      ];
+      renderPanel();
+
+      expect(
+        screen.queryByTestId('platform-settings-card-ingestion-runner')
+      ).not.toBeInTheDocument();
+    });
+
     it('renders the contributed component with its own header', () => {
       mockSubPath = 'ingestion-runner';
       renderPanel();

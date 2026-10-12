@@ -41,6 +41,7 @@ import LoginSettingsForm from './LoginSettingsForm';
 import { PLATFORM_SETTINGS_HASH_TAB } from './PlatformSettings.constants';
 import type {
   PlatformSettingsFormProps,
+  PlatformSettingsPage,
   PlatformSettingsPageContribution,
   PlatformSettingsPageId,
   PlatformSettingsPageProps,
@@ -126,12 +127,12 @@ const PlatformSettingsPanel = ({
   const { getContributions } = useApplicationsProvider();
   // Downstream builds (e.g. Collate) contribute extra pages; each gets a card
   // after the built-in ones and renders its own `component`.
-  const pages = useMemo(
+  const pages = useMemo<PlatformSettingsPage[]>(
     () => [
       ...getVisiblePlatformSettingsPages(authProvider),
       ...getContributions<PlatformSettingsPageContribution>(
         EXTENSION_POINTS.PLATFORM_SETTINGS_PAGES
-      ),
+      ).filter((page) => !page.isVisible || page.isVisible(authProvider)),
     ],
     [authProvider, getContributions]
   );
