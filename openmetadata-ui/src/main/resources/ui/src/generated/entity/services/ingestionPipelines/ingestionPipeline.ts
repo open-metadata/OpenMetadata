@@ -470,6 +470,11 @@ export interface OpenMetadataConnection {
      */
     tableFilterPattern?: FilterPattern;
     /**
+     * Connect and read timeout in seconds for ingestion API requests. If omitted, requests use
+     * the existing client behavior without a timeout.
+     */
+    timeout?: number;
+    /**
      * Service Type
      */
     type?: OpenmetadataType;
@@ -5073,6 +5078,13 @@ export interface ConfigObject {
      */
     supportsElasticSearchReindexingExtraction?: boolean;
     /**
+     * Connect and read timeout in seconds for ingestion API requests. If omitted, requests use
+     * the existing client behavior without a timeout.
+     *
+     * Connection Time Limit Between OM and Dagster Graphql API in second
+     */
+    timeout?: number;
+    /**
      * service type of the data source.
      */
     databaseServiceName?: string[];
@@ -5179,10 +5191,6 @@ export interface ConfigObject {
      * only need 'schema/table', set this to 2.
      */
     stripAssetKeyPrefixLength?: number;
-    /**
-     * Connection Time Limit Between OM and Dagster Graphql API in second
-     */
-    timeout?: number;
     /**
      * We support username/password or client certificate authentication
      */

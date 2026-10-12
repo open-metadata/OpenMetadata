@@ -54,6 +54,11 @@
       "type": "string",
       "default": "http://localhost:8585/api"
     },
+    "timeout": {
+      "description": "Connect and read timeout in seconds for ingestion API requests. If omitted, requests use the existing client behavior without a timeout.",
+      "type": "integer",
+      "minimum": 1
+    },
     "authProvider": {
       "description": "OpenMetadata Server Authentication Provider.",
       "$ref": "#/definitions/authProvider"

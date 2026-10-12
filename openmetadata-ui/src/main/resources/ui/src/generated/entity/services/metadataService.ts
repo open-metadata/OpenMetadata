@@ -383,6 +383,11 @@ export interface Connection {
      */
     supportsElasticSearchReindexingExtraction?: boolean;
     /**
+     * Connect and read timeout in seconds for ingestion API requests. If omitted, requests use
+     * the existing client behavior without a timeout.
+     */
+    timeout?: number;
+    /**
      * Flag to verify SSL Certificate for OpenMetadata Server.
      */
     verifySSL?:           VerifySSL;
