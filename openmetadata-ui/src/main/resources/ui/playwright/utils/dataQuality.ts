@@ -46,6 +46,16 @@ export const selectTestType = async (page: Page, label: string) => {
 };
 
 /**
+ * The test case drawer's Form Hint panel titles its doc with the active
+ * field's label.
+ */
+export const expectFormHint = async (page: Page, heading: string) => {
+  await expect(
+    page.getByRole('note').getByRole('heading', { name: heading, exact: true })
+  ).toBeVisible();
+};
+
+/**
  * Escape must target an open picker: otherwise it bubbles to the parent drawer.
  */
 export const dismissTagSuggestions = async (page: Page) => {
@@ -221,15 +231,11 @@ export const clickEditTestCaseButton = async (
   page: Page,
   testCaseName: string
 ) => {
-  const testCaseDoc = page.waitForResponse(
-    '/locales/en-US/OpenMetadata/TestCaseForm.md'
-  );
   const testDefinitionResponse = page.waitForResponse(
     '/api/v1/dataQuality/testDefinitions/*'
   );
   await page.getByTestId(`action-dropdown-${testCaseName}`).click();
   await page.getByTestId(`edit-${testCaseName}`).click();
-  await testCaseDoc;
   await testDefinitionResponse;
 };
 
