@@ -70,9 +70,8 @@
   .profiler-settings-drawer-content {
     flex: 1;
     overflow-y: auto;
-    padding-top: @padding-lg;
-    padding-right: @padding-sm;
-    padding-bottom: @padding-lg;
+    // The slideout content owns the gutters; nested padding narrows the form.
+    padding: 0;
 
     .delete-btn {
       &.ant-btn-icon-only {
@@ -83,7 +82,7 @@
   }
 
   .profiler-settings-form {
-    padding-right: @padding-sm;
+    padding-right: 0;
   }
 }
 

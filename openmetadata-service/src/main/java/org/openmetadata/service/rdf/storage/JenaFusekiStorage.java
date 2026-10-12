@@ -1654,7 +1654,8 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   @Override
   public List<String> getAllGraphs() {
     throwIfCircuitOpen("getAllGraphs");
-    String query = "SELECT DISTINCT ?g WHERE { GRAPH ?g { ?s ?p ?o } }";
+    // An empty GRAPH pattern lists graph names from the index instead of matching every quad.
+    String query = "SELECT ?g WHERE { GRAPH ?g { } }";
     List<String> graphs = new ArrayList<>();
 
     try (QueryExecution qexec = connection.query(query)) {

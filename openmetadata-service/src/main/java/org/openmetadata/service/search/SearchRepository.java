@@ -2912,6 +2912,9 @@ public class SearchRepository {
 
   public void propagateGlossaryTags(
       String entityType, String glossaryFQN, ChangeDescription changeDescription) {
+    if (!SettingsCache.isGlossaryTagPropagationEnabled()) {
+      return;
+    }
     Map<String, Object> fieldData = new HashMap<>();
     if (changeDescription != null && entityType.equalsIgnoreCase(Entity.GLOSSARY_TERM)) {
       for (FieldChange field : changeDescription.getFieldsAdded()) {

@@ -165,7 +165,7 @@ const DataObservabilityTab = (props: TableProfilerProps) => {
   return (
     <TableProfilerProvider {...props}>
       <div
-        className="data-observability-tab-container tw:bg-surface"
+        className="data-observability-tab-container"
         data-testid="table-profiler-container"
         id="profilerDetails">
         <div className="tw:flex tw:items-center tw:justify-between">

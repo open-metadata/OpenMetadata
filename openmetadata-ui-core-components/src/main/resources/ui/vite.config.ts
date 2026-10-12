@@ -122,6 +122,11 @@ export default defineConfig({
           return `${chunkInfo.name}.[format].js`;
         },
         chunkFileNames: `[name].[format].js`,
+        // One output file per source module. Consumers bundle ui-core with their own
+        // chunking; a single shared chunk can't be split, so every component or
+        // icon any route used would load on every route.
+        preserveModules: true,
+        preserveModulesRoot: 'src',
         globals: {
           react: 'React',
           'react-dom': 'ReactDOM',

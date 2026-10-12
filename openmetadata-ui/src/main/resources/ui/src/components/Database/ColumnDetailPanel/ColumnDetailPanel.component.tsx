@@ -11,14 +11,19 @@
  *  limitations under the License.
  */
 
-import { Button, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Button,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import {
   ChevronDown,
   ChevronRight,
   ChevronUp,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
-import { Card, Drawer, Space, Tooltip } from 'antd';
+import { Card, Drawer } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isString } from 'lodash';
@@ -692,7 +697,13 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     }
 
     return (
-      <Space className="tw:w-full" direction="vertical" size="large">
+      <Box
+        inline
+        align="stretch"
+        className="layout-space tw:w-full"
+        direction="col"
+        gap={6}
+        itemClassName="layout-space-item">
         {renderDescriptionBlock()}
 
         {renderKeyProfileMetrics()}
@@ -717,7 +728,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           tags={classificationTags}
           onTagsUpdate={handleTagsUpdate}
         />
-      </Space>
+      </Box>
     );
   };
 
@@ -868,9 +879,11 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
 
     return (
       <Tooltip
+        arrow
+        excludeTriggerFromTabOrder
         placement="bottom"
         title={getDataTypeDisplay(activeColumn)}
-        trigger="hover">
+        triggerClassName="tw:inline-flex">
         <div
           className="tw:max-w-60 tw:flex tw:items-center tw:justify-center tw:overflow-hidden
                   tw:text-ellipsis data-type-chip
@@ -915,10 +928,12 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
               <div className="tw:flex tw:flex-col tw:min-w-0 tw:overflow-hidden">
                 <div className="tw:flex tw:items-center tw:gap-2 tw:min-w-0 tw:overflow-hidden">
                   <Tooltip
-                    mouseEnterDelay={0.5}
-                    placement="topLeft"
+                    arrow
+                    excludeTriggerFromTabOrder
+                    delay={500}
+                    placement="top left"
                     title={getEntityName(activeColumn)}
-                    trigger="hover">
+                    triggerClassName="tw:block tw:min-w-0">
                     <Typography
                       ellipsis
                       className="entity-title-link"

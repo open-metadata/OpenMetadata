@@ -56,14 +56,14 @@ export const ALERT_AI_FORM_CLASS_NAMES = {
   removeButton:
     'tw:h-9 tw:w-9 tw:min-w-[36px] tw:shrink-0 tw:p-0 tw:hover:text-error-600 tw:hover:*:data-icon:text-error-600 tw:focus:text-error-600 tw:focus:*:data-icon:text-error-600',
   ruleArgumentsField: 'tw:mr-12 tw:w-auto',
-  ruleControlField: 'tw:w-full tw:max-w-[463px]',
-  ruleControlGroup: 'tw:w-full tw:max-w-[536px]',
+  ruleControlField: 'tw:w-full',
+  ruleControlGroup: 'tw:w-full',
   ruleControlGroupFull: 'tw:w-full',
   ruleControlRow: 'tw:w-full tw:items-end',
   sectionCard: 'tw:rounded-lg tw:bg-secondary tw:px-4 tw:py-3',
   sectionHeader: 'tw:gap-0.5',
   sectionRequiredMarker: 'tw:ml-0.5 tw:text-error-primary',
-  sectionRoot: 'tw:gap-1.5',
+  sectionRoot: 'tw:w-full tw:items-stretch tw:gap-1.5',
   teamUserHint: 'tw:mt-1 tw:text-sm tw:text-fg-error-secondary',
   teamUserSelectDropdown:
     'tw:absolute tw:z-50 tw:mt-1 tw:w-full tw:rounded-xl tw:border tw:border-secondary tw:bg-overlay-surface tw:p-2 tw:shadow-lg',

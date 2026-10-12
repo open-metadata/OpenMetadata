@@ -25,8 +25,8 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Tabs, Typography } from '@openmetadata/ui-core-components';
-import { Alert, Button, Card, Form, Input, Select, Space, Spin } from 'antd';
+import { Box, Tabs, Typography } from '@openmetadata/ui-core-components';
+import { Alert, Button, Card, Form, Input, Select, Spin } from 'antd';
 import { AxiosError } from 'axios';
 import { FC, lazy, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -1031,9 +1031,12 @@ const TaskFormSettingsPage = () => {
                     </Typography>
                   ) : null}
                 </div>
-                <Space
-                  className="task-form-settings-hero__actions"
-                  size="middle">
+                <Box
+                  inline
+                  align="center"
+                  className="layout-space layout-space-horizontal task-form-settings-hero__actions"
+                  gap={4}
+                  itemClassName="layout-space-item">
                   <Button
                     data-testid="task-form-cancel-button"
                     onClick={handleDiscardChanges}>
@@ -1046,7 +1049,7 @@ const TaskFormSettingsPage = () => {
                     type="primary">
                     {t('label.save')}
                   </Button>
-                </Space>
+                </Box>
               </div>
 
               <div className="task-form-settings-config-grid">
