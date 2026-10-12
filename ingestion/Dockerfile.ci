@@ -1,3 +1,7 @@
+FROM golang:1.26.9-bookworm AS patched_flightsql
+COPY ingestion/scripts/patch_adbc_flightsql.sh /tmp/patch_adbc_flightsql.sh
+RUN bash /tmp/patch_adbc_flightsql.sh build
+
 FROM mysql:8.3 AS mysql
 
 FROM apache/airflow:3.3.2-python3.12
@@ -60,8 +64,9 @@ RUN dpkg --configure -a \
        libpam0g libpam-modules libpam-modules-bin libpam-runtime \
        curl libcurl4 libcurl3-gnutls libmariadb3 wget \
        perl perl-base perl-modules-5.36 libperl5.36 libnss3 linux-libc-dev \
+  # DockerOperator uses docker-py; the Airflow base's Go CLI is unused.
   && apt-get -qq purge -y \
-       'imagemagick*' 'libmagick*' 'graphicsmagick*' \
+       'imagemagick*' 'libmagick*' 'graphicsmagick*' docker-ce-cli \
   && apt-get -qq autoremove -y --purge \
   && rm -rf /var/lib/apt/lists/*
 COPY --from=mysql /usr/bin/mysqldump /usr/bin/mysqldump
@@ -177,6 +182,13 @@ EXPOSE 8080
 # can leave stale 0.2.6 `upath` module files in site-packages that cause import
 # errors at runtime. Force-remove the stale registration then pin to the required version.
 RUN pip uninstall upath -y && pip install "universal-pathlib==0.3.10"
+# Patched 0.83.0 cannot resolve our schema references yet. Keep 0.64.0 for generation,
+# then remove the CVE-2026-107377 build tool from the runtime image.
+RUN pip uninstall -y datamodel-code-generator
+
+COPY --from=patched_flightsql --chown=airflow:0 /tmp/libadbc_driver_flightsql.so /tmp/libadbc_driver_flightsql.so
+COPY --chown=airflow:0 ingestion/scripts/patch_adbc_flightsql.sh /tmp/patch_adbc_flightsql.sh
+RUN bash /tmp/patch_adbc_flightsql.sh install && rm -f /tmp/patch_adbc_flightsql.sh
 
 
 # Strip spaCy's bundled test fixture, which scanners misreport as an installed black.

@@ -1,3 +1,7 @@
+FROM golang:1.26.9-bookworm AS patched_flightsql
+COPY ingestion/scripts/patch_adbc_flightsql.sh /tmp/patch_adbc_flightsql.sh
+RUN bash /tmp/patch_adbc_flightsql.sh build
+
 FROM python:3.12-slim-trixie
 
 # The -slim base ships without curl/gnupg/ca-certificates, so bootstrap them
@@ -175,6 +179,10 @@ RUN [ $(uname -m) = "x86_64" ] \
 # while authenticating connection with the airflow, psycopg2 solves this error
 RUN pip uninstall psycopg2-binary -y
 RUN pip install psycopg2 mysqlclient==2.1.1
+
+COPY --from=patched_flightsql --chown=openmetadata:openmetadata /tmp/libadbc_driver_flightsql.so /tmp/libadbc_driver_flightsql.so
+COPY --chown=openmetadata:openmetadata ingestion/scripts/patch_adbc_flightsql.sh /tmp/patch_adbc_flightsql.sh
+RUN bash /tmp/patch_adbc_flightsql.sh install && rm -f /tmp/patch_adbc_flightsql.sh
 
 # Drop build-only packages that leaked into the runtime image. libmariadb-dev
 # and libmariadb-dev-compat are only needed to compile mysqlclient (done above);

@@ -1,3 +1,7 @@
+FROM golang:1.26.9-bookworm AS patched_flightsql
+COPY ingestion/scripts/patch_adbc_flightsql.sh /tmp/patch_adbc_flightsql.sh
+RUN bash /tmp/patch_adbc_flightsql.sh build
+
 FROM mysql:8.3 AS mysql
 
 FROM apache/airflow:3.3.2-python3.12
@@ -151,6 +155,10 @@ RUN pip freeze | grep "apache-airflow-providers" | grep --invert-match -E "docke
 # while authenticating connection with the airflow, psycopg2 solves this error
 RUN pip uninstall psycopg2-binary -y
 RUN pip install psycopg2 mysqlclient==2.1.1
+
+COPY --from=patched_flightsql --chown=airflow:0 /tmp/libadbc_driver_flightsql.so /tmp/libadbc_driver_flightsql.so
+COPY --chown=airflow:0 ingestion/scripts/patch_adbc_flightsql.sh /tmp/patch_adbc_flightsql.sh
+RUN bash /tmp/patch_adbc_flightsql.sh install && rm -f /tmp/patch_adbc_flightsql.sh
 
 
 # Strip spaCy's bundled test fixture, which scanners misreport as an installed black.
