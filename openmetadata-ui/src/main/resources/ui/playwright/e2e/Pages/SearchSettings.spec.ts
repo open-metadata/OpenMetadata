@@ -28,6 +28,7 @@ import {
   mockEntitySearchSettings,
   openMatchingFieldsPanel,
   restoreDefaultSearchSettings,
+  selectSettingOption,
   setSliderValue,
 } from '../../utils/searchSettingUtils';
 import { settingClick } from '../../utils/sidebar';
@@ -264,18 +265,15 @@ test.describe('Search Settings', () => {
 
       // Match Type
       const matchTypeSelect = page.getByTestId('match-type-select');
-      await matchTypeSelect.click();
-      await page.getByRole('option', { name: 'Fuzzy Match' }).click();
+      await selectSettingOption(page, matchTypeSelect, 'Fuzzy Match');
 
       // Score Mode
       const scoreModeSelect = page.getByTestId('score-mode-select');
-      await scoreModeSelect.click();
-      await page.getByRole('option', { name: 'Max' }).click();
+      await selectSettingOption(page, scoreModeSelect, 'Max');
 
       // Boost Mode
       const boostModeSelect = page.getByTestId('boost-mode-select');
-      await boostModeSelect.click();
-      await page.getByRole('option', { name: 'Replace' }).click();
+      await selectSettingOption(page, boostModeSelect, 'Replace');
 
       // Save
       await page.getByTestId('save-btn').click();
@@ -807,8 +805,7 @@ test.describe('Search Settings', () => {
       );
 
       const matchTypeSelect = page.getByTestId('match-type-select');
-      await matchTypeSelect.click();
-      await page.getByRole('option', { name: 'Exact Match' }).click();
+      await selectSettingOption(page, matchTypeSelect, 'Exact Match');
 
       const saveSettings = page.waitForResponse(
         (response) =>

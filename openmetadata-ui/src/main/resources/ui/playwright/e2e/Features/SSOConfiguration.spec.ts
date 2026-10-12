@@ -810,7 +810,9 @@ test.describe('SSO Configuration Tests', () => {
         .click();
       await expect(selectedRoles).toHaveCount(1);
 
-      // Remove the selected role via its remove button
+      // Remove the selected role via its remove button; the open list hides
+      // the chips from the accessibility tree, so close it first.
+      await field.getByRole('combobox').press('Escape');
       await selectedRoles.getByRole('button').click();
       await expect(selectedRoles).toHaveCount(0);
 
