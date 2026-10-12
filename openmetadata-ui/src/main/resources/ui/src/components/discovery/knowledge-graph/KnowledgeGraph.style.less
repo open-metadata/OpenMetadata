@@ -312,47 +312,14 @@
     }
   }
 
+  // Position the Lineage-style Card (elevated, hosts the zoom/fit/refresh row)
+  // at the canvas's bottom-right. Card owns the surface, border and spacing;
+  // the only responsibility left here is where it floats.
   .knowledge-graph-action-buttons {
     position: absolute;
     bottom: var(--om-space-16);
     right: var(--om-space-16);
     z-index: var(--om-z-1001);
-    display: inline-flex;
-    align-items: center;
-    gap: var(--om-space-4);
-    padding: 0 var(--om-space-4);
-    background: var(--tw-background-color-surface);
-    border-radius: var(--om-radius-sm);
-    border: var(--om-space-1) solid var(--tw-border-color-primary);
-
-    .kg-control-btn {
-      width: var(--om-space-32);
-      height: var(--om-space-32);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: transparent;
-      border: none;
-      cursor: pointer;
-      padding: 0;
-      color: var(--tw-text-color-tertiary);
-      transition: background-color var(--om-duration-150) ease;
-      border-radius: var(--om-radius-sm);
-
-      &:hover {
-        background-color: var(--tw-background-color-secondary);
-      }
-
-      &:focus-visible {
-        outline: var(--om-space-2) solid var(--tw-border-color-brand);
-        outline-offset: calc(-1 * var(--om-space-2));
-      }
-
-      svg {
-        width: var(--om-space-14);
-        height: var(--om-space-14);
-      }
-    }
   }
 }
 
