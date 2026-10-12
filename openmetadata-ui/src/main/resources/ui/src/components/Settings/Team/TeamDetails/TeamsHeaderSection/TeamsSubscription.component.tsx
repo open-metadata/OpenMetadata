@@ -11,19 +11,12 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  ButtonUtility,
-  SimpleModal,
-  Tooltip,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Box, SimpleModal, Typography } from '@openmetadata/ui-core-components';
 import { Form, Input, Select } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import { NO_DATA_PLACEHOLDER } from '../../../../../constants/constants';
 import {
   SUBSCRIPTION_WEBHOOK,
@@ -32,6 +25,7 @@ import {
 import { Webhook } from '../../../../../generated/type/profile';
 import { getWebhookIcon } from '../../../../../utils/TeamUtils';
 import { DrawerPopupContainerProvider } from '../../../../common/DrawerPopupContainerProvider/DrawerPopupContainerProvider';
+import { EditIconButton } from '../../../../common/IconButtons/EditIconButton';
 
 import { SubscriptionWebhook, TeamsSubscriptionProps } from '../team.interface';
 import './teams-subscription.less';
@@ -151,42 +145,34 @@ const TeamsSubscription = ({
           {`${t('label.subscription')}`}
         </Typography>
         {!editSubscription && !isEmpty(subscription) && hasEditPermission && (
-          <Tooltip
-            arrow
+          <EditIconButton
+            newLook
+            data-testid="edit-team-subscription"
+            size="small"
             title={t('label.edit-entity', {
               entity: t('label.subscription'),
-            })}>
-            <ButtonUtility
-              color="secondary"
-              data-testid="edit-team-subscription"
-              icon={EditIcon}
-              size="xs"
-              onClick={(e) => {
-                // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
-                e.stopPropagation();
-                setEditSubscription(true);
-              }}
-            />
-          </Tooltip>
+            })}
+            onClick={(e) => {
+              // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
+              e.stopPropagation();
+              setEditSubscription(true);
+            }}
+          />
         )}
         {isEmpty(subscription) && hasEditPermission && (
-          <Tooltip
-            arrow
+          <EditIconButton
+            newLook
+            data-testid="edit-team-subscription"
+            size="small"
             title={t('label.edit-entity', {
               entity: t('label.subscription'),
-            })}>
-            <ButtonUtility
-              color="secondary"
-              data-testid="edit-team-subscription"
-              icon={EditIcon}
-              size="xs"
-              onClick={(e) => {
-                // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
-                e.stopPropagation();
-                setEditSubscription(true);
-              }}
-            />
-          </Tooltip>
+            })}
+            onClick={(e) => {
+              // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
+              e.stopPropagation();
+              setEditSubscription(true);
+            }}
+          />
         )}
       </div>
 
