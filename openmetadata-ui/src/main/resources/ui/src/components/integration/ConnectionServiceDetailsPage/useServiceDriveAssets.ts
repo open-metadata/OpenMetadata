@@ -13,7 +13,6 @@
 import { AxiosError } from 'axios';
 import { PagingWithoutTotal } from 'Models';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import { pagingObject } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { File } from '../../../generated/entity/data/file';
@@ -24,6 +23,7 @@ import { useTableFilters } from '../../../hooks/useTableFilters';
 import { getDriveAssets } from '../../../rest/driveAPI';
 import { commonTableFields } from '../../../utils/DatasetDetailsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 
 type DriveAssetType = EntityType.FILE | EntityType.SPREADSHEET;
 

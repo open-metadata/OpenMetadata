@@ -90,6 +90,7 @@ import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import Loader from '../../common/Loader/Loader';
 import TestConnection from '../../common/TestConnection/TestConnection';
+import DataModelTable from '../../Dashboard/DataModel/DataModels/DataModelsTable';
 import { useEntityExportModalProvider } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
@@ -101,7 +102,6 @@ import {
   getServiceCategoryBreadcrumb,
 } from './connectionsBreadcrumb.utils';
 import { fetchServiceChildren } from './connectionServiceChildren.utils';
-import DataModelTable from '../../Dashboard/DataModel/DataModels/DataModelsTable';
 import DataAssetHeaderDetailsRow from './DataAssetHeaderDetailsRow/DataAssetHeaderDetailsRow';
 import DataAssetsTab from './DataAssetsTab';
 import {
