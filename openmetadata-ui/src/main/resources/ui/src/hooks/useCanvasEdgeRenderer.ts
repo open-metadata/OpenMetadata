@@ -140,18 +140,12 @@ const drawEdgeArrow = (
 
 const getPathPaint = (
   style: ReturnType<typeof computeEdgeStyle>,
-  weight: number,
   colors: LineageEdgeColors,
   isPathHighlightActive: boolean,
   isPathHighlighted: boolean
 ) => {
-  const strokeWidth =
-    weight > 1
-      ? Math.max(
-          style.strokeWidth,
-          Math.min(7, style.strokeWidth + Math.log2(weight + 1))
-        )
-      : style.strokeWidth;
+  // A rollup keeps the base stroke; its count badge carries the weight.
+  const strokeWidth = style.strokeWidth;
   if (!isPathHighlightActive) {
     return { ...style, strokeWidth };
   }
@@ -173,16 +167,16 @@ const drawRollupLabel = (
   stroke: string,
   opacity: number
 ) => {
-  const paddingX = 6;
+  const paddingX = 7;
   const labelHeight = 18;
   ctx.save();
-  ctx.font = '600 11px Inter, sans-serif';
+  ctx.font = '500 11px Inter, sans-serif';
   const labelWidth = ctx.measureText(label).width + paddingX * 2;
   const x = pathData.edgeCenterX - labelWidth / 2;
   const y = pathData.edgeCenterY - labelHeight / 2;
   ctx.globalAlpha = opacity;
   ctx.fillStyle = colors.labelBackground;
-  ctx.strokeStyle = stroke;
+  ctx.strokeStyle = colors.labelBorder ?? stroke;
   ctx.lineWidth = 1;
   ctx.beginPath();
   if (typeof ctx.roundRect === 'function') {
@@ -331,7 +325,6 @@ export function useCanvasEdgeRenderer({
       const isPathHighlighted = pathHighlightedEdgeIds?.has(edge.id) ?? false;
       const paint = getPathPaint(
         style,
-        weight,
         colors,
         isPathHighlightActive,
         isPathHighlighted

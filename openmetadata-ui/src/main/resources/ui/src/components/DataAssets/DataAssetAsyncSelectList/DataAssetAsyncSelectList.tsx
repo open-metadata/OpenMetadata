@@ -58,7 +58,7 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [selected, setSelected] = useState<DataAssetOption[]>([]);
 
-  const { options, loadOptions, handleSearchChange, handleScroll } =
+  const { options, isLoading, loadOptions, handleSearchChange, handleScroll } =
     useAsyncDataAssetOptions({
       isOpen,
       searchIndex,
@@ -171,6 +171,7 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
       data-testid="asset-select-list"
       filterOption={() => true}
       id={id}
+      isLoading={isLoading}
       items={items}
       multiple={multiple}
       placeholder={placeholder}

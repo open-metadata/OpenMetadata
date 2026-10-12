@@ -28,6 +28,8 @@ export interface AddLineageSelection {
 
 export interface AddLineagePopoverProps {
   request?: LineageEditRequest;
+  /** Display name of the node the lineage is added to. */
+  nodeName?: string;
   excludeEntityId?: string;
   onClose: () => void;
   onSubmit: (selection: AddLineageSelection) => Promise<boolean>;

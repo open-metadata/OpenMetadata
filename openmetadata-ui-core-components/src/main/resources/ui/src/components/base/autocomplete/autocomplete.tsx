@@ -8,8 +8,10 @@ import {
   SelectEmptyState,
   sizes,
 } from '@/components/base/select/select';
+import { Skeleton } from '@/components/base/skeleton/skeleton';
 import { Typography } from '@/components/foundations/typography';
 import { useResizeObserver } from '@/hooks/use-resize-observer';
+import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
 import { Search } from '../../../icons';
@@ -120,6 +122,8 @@ export interface AutocompleteProps
   multiple?: boolean;
   allowsCreation?: boolean;
   hideDropdown?: boolean;
+  /** Shows a loading state instead of "No data found" while async results load. */
+  isLoading?: boolean;
 }
 
 const renderChipIcon = (item: SelectItemType) => {
@@ -387,11 +391,13 @@ export const AutocompleteBase = ({
   maxVisibleItems,
   allowsCreation = false,
   hideDropdown = false,
+  isLoading = false,
   name: _name,
   className: _className,
   ...props
 }: AutocompleteProps) => {
   const { contains } = useFilter({ sensitivity: 'base' });
+  const { t } = useCoreTranslation();
 
   const [internalSelected, setInternalSelected] = useState<SelectItemType[]>(
     resolveSelectedItems(selectedItems)
@@ -572,7 +578,20 @@ export const AutocompleteBase = ({
         isVirtualized && 'tw:max-h-80 tw:overflow-y-auto tw:py-1'
       )}
       ref={listBoxRef}
-      renderEmptyState={() => <SelectEmptyState />}
+      renderEmptyState={() =>
+        isLoading ? (
+          <div
+            aria-label={t('label.loading')}
+            className="tw:flex tw:flex-col tw:gap-2 tw:px-4 tw:py-3"
+            role="status">
+            <Skeleton variant="text" width="80%" />
+            <Skeleton variant="text" width="60%" />
+            <Skeleton variant="text" width="70%" />
+          </div>
+        ) : (
+          <SelectEmptyState />
+        )
+      }
       selectionMode="multiple"
       onScroll={isVirtualized ? handleScroll : undefined}>
       {visibleChildren}

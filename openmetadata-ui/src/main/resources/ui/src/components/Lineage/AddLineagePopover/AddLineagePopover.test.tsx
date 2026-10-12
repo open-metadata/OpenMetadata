@@ -101,6 +101,7 @@ describe('AddLineagePopover', () => {
     render(
       <AddLineagePopover
         {...baseProps}
+        nodeName="customers"
         request={{ nodeId: 'n1', direction, columnFqn, triggerRef }}
       />
     );
@@ -117,7 +118,7 @@ describe('AddLineagePopover', () => {
     expect(screen.getByText('label.add-upstream')).toBeInTheDocument();
   });
 
-  it('searches the chosen type, excludes the current entity and submits on pick', async () => {
+  it('searches the chosen type, excludes the current entity and submits on Add', async () => {
     open();
     await pickType(user);
     await searchEntity(user, 'ord');
@@ -131,11 +132,36 @@ describe('AddLineagePopover', () => {
 
     await user.click(await screen.findByRole('option', { name: /orders/ }));
 
+    expect(baseProps.onSubmit).not.toHaveBeenCalled();
+
+    await user.click(screen.getByTestId('add-lineage-submit'));
+
     await waitFor(() =>
       expect(baseProps.onSubmit).toHaveBeenCalledWith({
         entity: { id: 'b', type: 'table', fullyQualifiedName: 's.d.sc.orders' },
       })
     );
+  });
+
+  it('keeps Add disabled until an asset is picked', async () => {
+    open();
+
+    expect(screen.getByTestId('add-lineage-submit')).toBeDisabled();
+
+    await pickType(user);
+
+    expect(screen.getByTestId('add-lineage-submit')).toBeDisabled();
+  });
+
+  it('previews the new edge with the current node on the matching side', async () => {
+    open(LineageDirection.Upstream);
+    await pickType(user);
+    await searchEntity(user, 'ord');
+    await user.click(await screen.findByRole('option', { name: /orders/ }));
+
+    const preview = screen.getByTestId('add-lineage-preview');
+
+    expect(preview.textContent).toMatch(/orders.*customers/);
   });
 
   it('shows an error toast when the search fails', async () => {
@@ -192,6 +218,10 @@ describe('AddLineagePopover', () => {
     await openColumnSelect(user);
     await user.click(await screen.findByRole('option', { name: 'id' }));
 
+    expect(baseProps.onSubmit).not.toHaveBeenCalled();
+
+    await user.click(screen.getByTestId('add-lineage-submit'));
+
     await waitFor(() =>
       expect(baseProps.onSubmit).toHaveBeenCalledWith({
         entity: { id: 'b', type: 'table', fullyQualifiedName: 's.d.sc.orders' },
@@ -213,7 +243,8 @@ describe('AddLineagePopover', () => {
     await pickType(user);
     await searchEntity(user, 'ord');
     await user.click(await screen.findByRole('option', { name: /orders/ }));
-    await user.click(screen.getByRole('combobox'));
+    await user.click(screen.getByTestId('add-lineage-submit'));
+    await user.click(screen.getByTestId('add-lineage-submit'));
 
     expect(baseProps.onSubmit).toHaveBeenCalledTimes(1);
 

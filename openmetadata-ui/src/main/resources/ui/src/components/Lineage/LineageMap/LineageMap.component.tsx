@@ -2048,14 +2048,16 @@ const LineageMapCanvas = ({
     [createLineageEdge, lineageEditRequest]
   );
 
-  const currentEditEntityId = useMemo(
-    () =>
-      getRealEntityRef(
-        nodesRef.current.find((node) => node.id === lineageEditRequest?.nodeId)
-          ?.data.sceneNode
-      )?.id,
-    [lineageEditRequest]
-  );
+  const { currentEditEntityId, currentEditNodeName } = useMemo(() => {
+    const editNode = nodesRef.current.find(
+      (node) => node.id === lineageEditRequest?.nodeId
+    );
+
+    return {
+      currentEditEntityId: getRealEntityRef(editNode?.data.sceneNode)?.id,
+      currentEditNodeName: getEntityName(editNode?.data.node),
+    };
+  }, [lineageEditRequest]);
 
   const handlePaneClick = useCallback(() => {
     setSelectedEdge(undefined);
@@ -2238,6 +2240,7 @@ const LineageMapCanvas = ({
       />
       <AddLineagePopover
         excludeEntityId={currentEditEntityId}
+        nodeName={currentEditNodeName}
         request={lineageEditRequest}
         onClose={closeLineageEditRequest}
         onSubmit={handleAddLineageSubmit}

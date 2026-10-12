@@ -150,24 +150,20 @@
 }
 
 .full-screen-lineage {
+  // top / left / width / height come from useFullScreenBounds.
   position: fixed;
-  top: var(--ant-navbar-height);
-  left: var(--om-space-84);
-  width: calc(100% - var(--om-space-84));
+  display: flex;
+  flex-direction: column;
+  padding-bottom: var(--om-space-16);
 
-  &.sidebar-collapsed {
-    left: calc(72px + var(--om-space-20));
-    width: calc(100% - 72px - var(--om-space-36));
-  }
-
-  &.sidebar-expanded {
-    left: calc(228px + var(--om-space-20));
-    width: calc(100% - 228px - var(--om-space-36));
+  // The lineage view's wrapper, ahead of the overlays, takes the full height.
+  > :first-child {
+    flex: 1;
+    min-height: 0;
   }
 
   .lineage-card {
-    // Navbar - breadcrumb - bottom spacing
-    height: calc(100vh - var(--ant-navbar-height) - 20px);
+    height: 100%;
   }
 
   .entity-panel-container {

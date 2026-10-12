@@ -62,11 +62,11 @@ import {
   EntityReference,
   LineageDetails,
 } from '../../../generated/type/entityLineage';
-import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import {
   LineagePlatformView,
   LineageTimeRange,
 } from '../../../hooks/lineage/types';
+import { useFullScreenBounds } from '../../../hooks/lineage/useFullScreenBounds';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useDomainStore } from '../../../hooks/useDomainStore';
@@ -471,7 +471,6 @@ export const Lineage = ({
   const { isTourOpen, isTourPage, tourMockDatasetData } = useTourProvider();
   const { appPreferences } = useApplicationStore();
   const { activeDomain, isDomainRestricted } = useDomainStore();
-  const { preferences } = useCurrentUserPreferences();
   const defaultLineageConfig = appPreferences?.lineageConfig as LineageSettings;
   const isLineageSettingsLoaded = !isUndefined(defaultLineageConfig);
   const [reactFlowInstance, setReactFlowInstance] =
@@ -549,6 +548,8 @@ export const Lineage = ({
   );
   const queryParams = new URLSearchParams(location.search);
   const isFullScreen = queryParams.get(FULLSCREEN_QUERY_PARAM_KEY) === 'true';
+  const { ref: fullScreenRef, bounds: fullScreenBounds } =
+    useFullScreenBounds(isFullScreen);
   const { showModal } = useEntityExportModalProvider();
   const [dqHighlightedEdges, setDqHighlightedEdges] = useState<Set<string>>();
 
@@ -2254,9 +2255,9 @@ export const Lineage = ({
       <div
         className={classNames('lineage-root', {
           'full-screen-lineage': isFullScreen,
-          'sidebar-collapsed': isFullScreen && preferences?.isSidebarCollapsed,
-          'sidebar-expanded': isFullScreen && !preferences?.isSidebarCollapsed,
-        })}>
+        })}
+        ref={fullScreenRef}
+        style={fullScreenBounds}>
         {children}
         <LineageOverlays handlers={overlayHandlers} />
       </div>

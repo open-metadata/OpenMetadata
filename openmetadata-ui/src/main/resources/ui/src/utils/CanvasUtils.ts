@@ -271,10 +271,6 @@ const getNodeAnchorY = (node: Node, isColumnLineage: boolean) => {
   );
 };
 
-// Classic lineage nodes draw a 20px handle box centred on their left edge and
-// edges end on its outer side; scene map nodes draw none.
-const getTargetHandleInset = (node: Node) => (node.data?.sceneNode ? 0 : 10);
-
 function getEntityLineageCoordinates(
   sourceNode: Node,
   targetNode: Node,
@@ -283,7 +279,7 @@ function getEntityLineageCoordinates(
   return {
     sourceX: sourceNode.position.x + (sourceNode.width ?? 0),
     sourceY: getNodeAnchorY(sourceNode, isColumnLineage),
-    targetX: targetNode.position.x - getTargetHandleInset(targetNode),
+    targetX: targetNode.position.x,
     targetY: getNodeAnchorY(targetNode, isColumnLineage),
   };
 }

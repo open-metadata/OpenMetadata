@@ -242,7 +242,7 @@ describe('CanvasUtils', () => {
         expect(result).toEqual({
           sourceX: 400,
           sourceY: 50,
-          targetX: 490,
+          targetX: 500,
           targetY: 50,
         });
       });
@@ -259,7 +259,7 @@ describe('CanvasUtils', () => {
         expect(result).not.toBeNull();
         expect(result?.sourceX).toBe(500);
         expect(result?.sourceY).toBe(250); // 200 + min(58, 100/2)
-        expect(result?.targetX).toBe(590);
+        expect(result?.targetX).toBe(600);
         expect(result?.targetY).toBe(350); // 300 + min(58, 100/2)
       });
     });
@@ -409,7 +409,7 @@ describe('CanvasUtils', () => {
 
         expect(result).not.toBeNull();
         expect(result?.sourceX).toBe(400);
-        expect(result?.targetX).toBe(490);
+        expect(result?.targetX).toBe(500);
       });
     });
 
@@ -459,20 +459,6 @@ describe('CanvasUtils', () => {
         expect(result?.sourceY).toBe(158); // 100 + min(58, 150/2)
         expect(result?.targetY).toBe(158); // 100 + min(58, 200/2)
       });
-    });
-  });
-
-  describe('scene map nodes', () => {
-    it('ends node edges at the node border when the target draws no handle', () => {
-      const edge = createMockEdge('edge1', 'node1', 'node2', false);
-      const sourceNode = createMockNode('node1');
-      const targetNode = createMockNode('node2');
-      targetNode.position = { x: 500, y: 0 };
-      targetNode.data = { ...targetNode.data, sceneNode: { id: 'node2' } };
-
-      const result = getEdgeCoordinates(edge, sourceNode, targetNode);
-
-      expect(result?.targetX).toBe(500);
     });
   });
 

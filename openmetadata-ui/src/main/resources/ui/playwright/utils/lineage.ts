@@ -606,6 +606,7 @@ export const addLineageViaMenu = async (
       .locator(`[role="listbox"]:visible [data-key="${columnFqn}"]`)
       .click();
   }
+  await popover.getByTestId('add-lineage-submit').click();
   const lineageResponse = await lineageMutation;
   expect(lineageResponse.ok()).toBeTruthy();
   await expect(popover).not.toBeVisible();

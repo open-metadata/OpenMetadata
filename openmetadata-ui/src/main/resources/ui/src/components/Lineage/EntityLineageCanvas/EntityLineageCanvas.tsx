@@ -162,11 +162,11 @@ const EntityLineageCanvas = ({
     []
   );
 
+  const editNode = nodes.find((node) => node.id === editRequest?.nodeId);
+
   const handleAddLineageSubmit = useCallback(
     async ({ entity: picked, columnFqn }: AddLineageSelection) => {
-      const current = toEdgeEntity(
-        nodes.find((node) => node.id === editRequest?.nodeId)
-      );
+      const current = toEdgeEntity(editNode);
       if (!editRequest || !current) {
         return false;
       }
@@ -194,7 +194,7 @@ const EntityLineageCanvas = ({
         setIsCreatingEdge(false);
       }
     },
-    [editRequest, nodes, refetchLineage, setIsCreatingEdge]
+    [editNode, editRequest, refetchLineage, setIsCreatingEdge]
   );
 
   const confirmNodeDelete = useCallback(async () => {
@@ -273,10 +273,8 @@ const EntityLineageCanvas = ({
         onConfirm={confirmNodeDelete}
       />
       <AddLineagePopover
-        excludeEntityId={
-          toEdgeEntity(nodes.find((node) => node.id === editRequest?.nodeId))
-            ?.id
-        }
+        excludeEntityId={toEdgeEntity(editNode)?.id}
+        nodeName={getEntityName(editNode?.data?.node)}
         request={editRequest}
         onClose={() => setEditRequest(undefined)}
         onSubmit={handleAddLineageSubmit}

@@ -943,3 +943,22 @@
 .react-flow__edge :hover {
   stroke: var(--tw-color-fg-brand-primary);
 }
+
+// Asset lineage handles and their expand / collapse controls appear only while
+// the node is hovered, focused or selected, so idle cards stay clean.
+.react-flow__node {
+  .lineage-node-handle,
+  .lineage-node-handle-expand-all {
+    opacity: 0;
+    transition: opacity var(--om-duration-150) ease;
+  }
+
+  &:hover,
+  &:focus-within,
+  &.selected {
+    .lineage-node-handle,
+    .lineage-node-handle-expand-all {
+      opacity: 1;
+    }
+  }
+}
