@@ -43,7 +43,7 @@ class RdfInsightsServiceTest {
 
   private static RdfRepository mockRepo(String response) {
     RdfRepository repo = mock(RdfRepository.class);
-    when(repo.executeSparqlQuery(anyString(), anyString())).thenReturn(response);
+    when(repo.executeAssertedSparqlQuery(anyString(), anyString())).thenReturn(response);
     return repo;
   }
 
@@ -89,7 +89,7 @@ class RdfInsightsServiceTest {
   @DisplayName("findLineagePath delegates BFS to LineagePathFinder and returns a resolved path")
   void findLineagePathDelegatesToFinder() {
     RdfRepository repo = mock(RdfRepository.class);
-    when(repo.executeSparqlQuery(anyString(), anyString()))
+    when(repo.executeAssertedSparqlQuery(anyString(), anyString()))
         .thenAnswer(
             inv -> {
               String sparql = inv.getArgument(0);
@@ -187,7 +187,7 @@ class RdfInsightsServiceTest {
 
   private static void assertContentType(RdfRepository repo) {
     ArgumentCaptor<String> contentType = ArgumentCaptor.forClass(String.class);
-    verify(repo).executeSparqlQuery(anyString(), contentType.capture());
+    verify(repo).executeAssertedSparqlQuery(anyString(), contentType.capture());
     assertEquals(SPARQL_JSON, contentType.getValue());
   }
 }

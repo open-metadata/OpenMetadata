@@ -45,6 +45,7 @@ import {
   saveGlossaryFormExpectingError,
 } from '../../../utils/glossaryForm';
 import { sidebarClick } from '../../../utils/sidebar';
+import { clickUntilVisible } from '../../../utils/waitHelpers';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',
@@ -230,10 +231,12 @@ test.describe('Glossary Advanced Operations', () => {
       ).toBeVisible();
 
       // Click edit owner
-      await page
-        .getByTestId('glossary-right-panel-owner-link')
-        .getByTestId('edit-owner')
-        .click();
+      await clickUntilVisible(
+        page
+          .getByTestId('glossary-right-panel-owner-link')
+          .getByTestId('edit-owner'),
+        page.getByTestId('clear-all-button')
+      );
       await waitForAllLoadersToDisappear(page);
 
       // Clear existing owner
@@ -313,7 +316,10 @@ test.describe('Glossary Advanced Operations', () => {
       ).toBeVisible();
 
       // Click edit reviewer
-      await page.click('[data-testid="edit-reviewer-button"]');
+      await clickUntilVisible(
+        page.getByTestId('edit-reviewer-button'),
+        page.getByTestId('clear-all-button')
+      );
       await waitForAllLoadersToDisappear(page);
 
       // Clear existing reviewer
@@ -945,7 +951,10 @@ test.describe('Glossary Advanced Operations', () => {
       ).toBeVisible();
 
       // Click edit owner button
-      await page.getByTestId('edit-owner').click();
+      await clickUntilVisible(
+        page.getByTestId('edit-owner'),
+        page.getByTestId('clear-all-button')
+      );
       await waitForAllLoadersToDisappear(page);
 
       // Clear all owners
@@ -1011,7 +1020,10 @@ test.describe('Glossary Advanced Operations', () => {
       ).toBeVisible();
 
       // Click edit reviewer button
-      await page.getByTestId('edit-reviewer-button').click();
+      await clickUntilVisible(
+        page.getByTestId('edit-reviewer-button'),
+        page.getByTestId('clear-all-button')
+      );
       await waitForAllLoadersToDisappear(page);
 
       // Clear all reviewers

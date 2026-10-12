@@ -125,7 +125,7 @@ pickEntityMatrix(__filename, entities, [TableClass]).forEach((EntityClass) => {
     });
 
     test('Tier Add, Update and Remove', async ({ page }) => {
-      await entity.tier(page, 'Tier1', COMMON_TIER_TAG[0].name);
+      await entity.tier(page, 'Tier1', COMMON_TIER_TAG[1].name);
     });
 
     test('Update description', async ({ page }) => {

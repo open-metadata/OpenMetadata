@@ -72,7 +72,7 @@ export const FrequentlyJoinedTables = ({
           to={getEntityDetailsPath(EntityType.TABLE, table.fullyQualifiedName)}>
           <Typography
             className="frequently-joint-name"
-            ellipsis={{ tooltip: true }}>
+            ellipsis={{ tooltip: true, excludeTriggerFromTabOrder: true }}>
             {table.name}
           </Typography>
         </Link>

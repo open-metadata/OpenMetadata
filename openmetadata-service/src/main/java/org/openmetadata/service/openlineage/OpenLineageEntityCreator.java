@@ -79,7 +79,7 @@ public class OpenLineageEntityCreator {
    */
   @FunctionalInterface
   public interface CreateAuthorization {
-    void authorize(String entityType, EntityInterface entity);
+    void authorize(String entityType, EntityInterface<?> entity);
   }
 
   /** Without a caller there is nobody to authorize a create against, so nothing is created. */
@@ -222,7 +222,7 @@ public class OpenLineageEntityCreator {
    * A soft-deleted entity still owns its name, so creating a new one would collide with it. Asking
    * for a restore is the only way the lineage can land on it.
    */
-  private static <T extends EntityInterface> T requireNotDeleted(String entityType, T entity) {
+  private static <T extends EntityInterface<?>> T requireNotDeleted(String entityType, T entity) {
     if (entity != null && Boolean.TRUE.equals(entity.getDeleted())) {
       throw new IllegalArgumentException(
           String.format(
@@ -248,7 +248,7 @@ public class OpenLineageEntityCreator {
       return createdBy;
     }
 
-    <T extends EntityInterface> T findOrCreate(
+    <T extends EntityInterface<?>> T findOrCreate(
         String entityType, String fqn, Supplier<T> newEntity) {
       EntityRepository<T> repository = repository(entityType);
       T existing = requireNotDeleted(entityType, repository.findByNameOrNull(fqn, Include.ALL));
@@ -260,7 +260,7 @@ public class OpenLineageEntityCreator {
      * on the unique name, and the winner's row is the one both events should use; it is not this
      * run's to take back.
      */
-    private <T extends EntityInterface> T create(
+    private <T extends EntityInterface<?>> T create(
         EntityRepository<T> repository, String fqn, T entity) {
       createAuthorization.authorize(repository.getEntityType(), entity);
       T result;
@@ -330,7 +330,7 @@ public class OpenLineageEntityCreator {
   }
 
   @SuppressWarnings("unchecked")
-  private static <T extends EntityInterface> EntityRepository<T> repository(String entityType) {
+  private static <T extends EntityInterface<?>> EntityRepository<T> repository(String entityType) {
     return (EntityRepository<T>) Entity.getEntityRepository(entityType);
   }
 }

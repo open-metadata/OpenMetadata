@@ -16,7 +16,6 @@ import {
   Key01,
   Lock01,
 } from '@openmetadata/ui-core-components/icons';
-import { Col, Row } from 'antd';
 import { TFunction } from 'i18next';
 import { first, last, noop, startCase } from 'lodash';
 import {
@@ -87,7 +86,6 @@ const AUTH_FIELD_NAMES = new Set([
 const NESTED_FOCUS_FIELDS = new Set([
   'connectionOptions',
   'connectionArguments',
-  'sampleDataStorageConfig',
   'policyAgentConfig',
 ]);
 const LINEAGE_FIELDS = new Set(['useAccessHistory', 'accessHistoryChunkSize']);
@@ -965,11 +963,11 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
   }
 
   return (
-    <Row
+    <div
       className={focusedMode ? 'service-doc-panel-focused' : undefined}
       data-testid="service-requirements">
-      <Col span={24}>{docsPanel}</Col>
-    </Row>
+      {docsPanel}
+    </div>
   );
 };
 

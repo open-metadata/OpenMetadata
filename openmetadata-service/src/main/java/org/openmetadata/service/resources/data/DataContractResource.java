@@ -420,7 +420,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
         Entity.getEntityRepository(entityType)
             .getAllowedFields()
             .contains(Entity.FIELD_DATA_PRODUCTS);
-    EntityInterface entity =
+    EntityInterface<?> entity =
         Entity.getEntity(
             entityType, entityId, supportsDataProducts ? "dataProducts" : "", Include.NON_DELETED);
     DataContract dataContract = repository.getEffectiveDataContract(entity);
@@ -1003,7 +1003,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
     // Get the effective contract (with inherited properties from data products) for validation
-    EntityInterface entity =
+    EntityInterface<?> entity =
         Entity.getEntity(
             dataContract.getEntity().getType(),
             dataContract.getEntity().getId(),
@@ -1052,7 +1052,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
         new OperationContext(entityType, MetadataOperation.EDIT_ALL),
         getResourceContextById(entityId));
 
-    EntityInterface entity = Entity.getEntity(entityType, entityId, "*", Include.NON_DELETED);
+    EntityInterface<?> entity = Entity.getEntity(entityType, entityId, "*", Include.NON_DELETED);
     return repository
         .validateEntityContract(entity, securityContext.getUserPrincipal().getName())
         .orElseThrow(

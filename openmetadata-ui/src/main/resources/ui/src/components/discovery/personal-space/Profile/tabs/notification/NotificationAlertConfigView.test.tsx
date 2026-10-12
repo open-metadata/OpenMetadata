@@ -73,6 +73,12 @@ jest.mock(
   })
 );
 
+// Asking the server what the sources support is tested with the hook itself.
+jest.mock('../../../../../../hooks/useAlertSelection', () => ({
+  AlertSelectionProvider: ({ children }: { children: unknown }) => children,
+  useAlertSelection: jest.fn().mockReturnValue({ support: {} }),
+}));
+
 jest.mock('../../../../../../utils/AlertsClassBase', () => ({
   __esModule: true,
   default: {

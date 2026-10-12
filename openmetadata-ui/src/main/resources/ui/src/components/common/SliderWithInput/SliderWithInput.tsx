@@ -11,10 +11,12 @@
  *  limitations under the License.
  */
 
-import { CloseOutlined } from '@ant-design/icons';
-import { Button, Col, InputNumber, Row, Slider, Tooltip } from 'antd';
+import { Box, ButtonUtility, Tooltip } from '@openmetadata/ui-core-components';
+import { XClose } from '@openmetadata/ui-core-components/icons';
+import { InputNumber, Slider } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { percentageFormatter } from '../../../utils/ChartUtils';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { SliderWithInputProps } from './SliderWithInput.interface';
 const SliderWithInput = ({
   value,
@@ -25,8 +27,12 @@ const SliderWithInput = ({
   const { t } = useTranslation();
 
   return (
-    <Row className={className} data-testid="percentage-input" gutter={20}>
-      <Col flex="auto">
+    <Box
+      className={`layout-row ${className}`}
+      data-testid="percentage-input"
+      style={getLayoutGutter(20)}
+      wrap="wrap">
+      <Box className="layout-column tw:block" style={{ flex: 'auto' }}>
         <Slider
           marks={{
             [min]: `${min}%`,
@@ -38,8 +44,8 @@ const SliderWithInput = ({
           value={value}
           onChange={onChange}
         />
-      </Col>
-      <Col className="w-32">
+      </Box>
+      <Box className="layout-column tw:block w-32">
         <div className="flex items-center gap-2">
           <InputNumber
             data-testid="slider-input"
@@ -50,18 +56,18 @@ const SliderWithInput = ({
             value={value}
             onChange={onChange}
           />
-          <Tooltip title={t('label.clear')}>
-            <Button
-              className="p-0"
+          <Tooltip arrow title={t('label.clear')}>
+            <ButtonUtility
+              color="tertiary"
               data-testid="clear-slider-input"
-              type="text"
-              onClick={() => onChange(null)}>
-              <CloseOutlined />
-            </Button>
+              icon={XClose}
+              size="xs"
+              onClick={() => onChange(null)}
+            />
           </Tooltip>
         </div>
-      </Col>
-    </Row>
+      </Box>
+    </Box>
   );
 };
 

@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Popover } from 'antd';
+import { HoverCard, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import {
@@ -23,11 +22,9 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation } from 'react-router-dom';
 import { ClientErrors } from '../../../enums/Axios.enum';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
@@ -47,7 +44,6 @@ interface Props extends HTMLAttributes<HTMLDivElement> {
   entityType: string;
   entityFQN: string;
   extraInfo?: React.ReactNode;
-  defaultOpen?: boolean;
 }
 
 export const PopoverContent: React.FC<{
@@ -147,44 +143,18 @@ const EntityPopOverCard: FC<Props> = ({
   entityType,
   entityFQN,
   extraInfo,
-  defaultOpen = false,
-}) => {
-  const [open, setOpen] = useState(defaultOpen);
-  const { pathname } = useLocation();
-  const lastPathname = useRef(pathname);
-
-  // rc-trigger hides the popup only on mouseleave. When the trigger unmounts
-  // under the cursor -- a feed refetch, a resolved task, a route change -- that
-  // event never fires and the portal is left floating over whatever renders
-  // next. Closing on navigation bounds how long a stale popup can survive.
-  // The first run is skipped so `defaultOpen` still opens the popup on mount.
-  useEffect(() => {
-    if (lastPathname.current === pathname) {
-      return;
-    }
-
-    lastPathname.current = pathname;
-    setOpen(false);
-  }, [pathname]);
-
-  return (
-    <Popover
-      align={{ targetOffset: [0, 10] }}
-      content={
-        <PopoverContent
-          entityFQN={entityFQN}
-          entityType={entityType}
-          extraInfo={extraInfo}
-        />
-      }
-      open={open}
-      overlayClassName="entity-popover-card"
-      trigger="hover"
-      zIndex={9999}
-      onOpenChange={setOpen}>
-      {children as ReactNode}
-    </Popover>
-  );
-};
+}) => (
+  <HoverCard
+    className="entity-popover-card"
+    content={
+      <PopoverContent
+        entityFQN={entityFQN}
+        entityType={entityType}
+        extraInfo={extraInfo}
+      />
+    }>
+    {children as ReactNode}
+  </HoverCard>
+);
 
 export default EntityPopOverCard;

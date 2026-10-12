@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Form } from 'antd';
+import { Card, Typography } from '@openmetadata/ui-core-components';
+import { Button, Form } from 'antd';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as RightIcon } from '../../../assets/svg/right-arrow.svg';

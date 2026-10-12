@@ -243,7 +243,7 @@ test('uses shared dark interaction and feedback recipes', () => {
     '--color-bg-primary_hover': '--alpha(theme(--color-white) / 6%)',
     '--color-bg-secondary_hover': '--alpha(theme(--color-white) / 6%)',
     '--color-bg-active': '--alpha(theme(--color-white) / 10%)',
-    '--color-bg-brand-primary': '--alpha(theme(--color-brand-500) / 16%)',
+    '--color-bg-brand-primary': '--alpha(theme(--color-brand-500) / 14%)',
     '--color-bg-error-primary': '--alpha(theme(--color-error-500) / 16%)',
     '--color-bg-warning-primary': '--alpha(theme(--color-warning-500) / 16%)',
     '--color-bg-success-primary': '--alpha(theme(--color-success-500) / 16%)',

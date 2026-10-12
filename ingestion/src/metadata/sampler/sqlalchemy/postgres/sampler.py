@@ -16,10 +16,9 @@ from sqlalchemy import Table as SqaTable
 from sqlalchemy import func
 from sqlalchemy.orm import Query
 
-from metadata.generated.schema.type.basic import ProfileSampleType
+from metadata.generated.schema.type.basic import ProfileSampleType, SamplingMethodType
 from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.sampler.sqlalchemy.sampler import SQASampler
-from metadata.sampler.sqlalchemy.snowflake.sampler import SamplingMethodType
 
 
 class PostgresSampler(SQASampler):

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 
 const mockOnSave = jest.fn();
 
@@ -22,6 +22,7 @@ let mockCurrentUser: { name?: string; displayName?: string } = {
 
 let mockEditorContent = '';
 const mockClearEditor = jest.fn();
+const mockSetEditorContent = jest.fn();
 
 jest.mock('hooks/useApplicationStore', () => ({
   useApplicationStore: () => ({ currentUser: mockCurrentUser }),
@@ -63,6 +64,7 @@ jest.mock(
           useImperativeHandle(ref, () => ({
             getEditorContent: () => mockEditorContent,
             clearEditorContent: mockClearEditor,
+            setEditorContent: mockSetEditorContent,
           }));
 
           return (
@@ -191,6 +193,32 @@ describe('InboxCommentComposer', () => {
     fireEvent.click(screen.getByTestId('feed-editor'));
 
     expect(mockOnSave).toHaveBeenCalledWith('hello');
+  });
+
+  // A refused comment comes back to the editor rather than vanishing with it.
+  it('puts the draft back when the save fails', async () => {
+    mockOnSave.mockRejectedValueOnce(new Error('refused'));
+    render(<InboxCommentComposer onSave={mockOnSave} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('feed-editor'));
+    });
+
+    expect(mockSetEditorContent).toHaveBeenCalledWith(
+      expect.stringContaining('hello')
+    );
+    expect(screen.getByTestId('send-button')).toBeEnabled();
+  });
+
+  it('leaves the editor empty when the save succeeds', async () => {
+    mockOnSave.mockResolvedValueOnce(undefined);
+    render(<InboxCommentComposer onSave={mockOnSave} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('feed-editor'));
+    });
+
+    expect(mockSetEditorContent).not.toHaveBeenCalled();
   });
 
   it('passes the default placeholder to the editor', () => {

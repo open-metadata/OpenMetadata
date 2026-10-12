@@ -12,12 +12,15 @@
  */
 import Icon from '@ant-design/icons';
 import {
+  Box,
   ButtonGroup,
   ButtonGroupItem,
+  Grid,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Col, Row, Space } from 'antd';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
+
 import { isEmpty, isUndefined } from 'lodash';
 import { ReactNode, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -69,17 +72,17 @@ export const ListView = <T extends object = Record<string, unknown>>({
     }
 
     return (
-      <Row gutter={[16, 16]}>
+      <Grid className="layout-row layout-grid" style={getLayoutGutter(16, 16)}>
         {(tableProps.dataSource ?? []).map((dataSource) =>
           cardRenderer(dataSource)
         )}
-      </Row>
+      </Grid>
     );
   }, [tableProps, cardRenderer]);
 
   return (
-    <Row gutter={[16, 16]}>
-      <Col span={10}>
+    <Grid className="layout-row layout-grid" style={getLayoutGutter(16, 16)}>
+      <Grid.Item className="layout-column" span={10}>
         <Searchbar
           removeMargin
           placeholder={t('label.search-entity', {
@@ -88,9 +91,14 @@ export const ListView = <T extends object = Record<string, unknown>>({
           searchValue={search}
           onSearch={onSearch}
         />
-      </Col>
-      <Col className="text-right" span={14}>
-        <Space align="center">
+      </Grid.Item>
+      <Grid.Item className="layout-column text-right" span={14}>
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal"
+          gap={2}
+          itemClassName="layout-space-item">
           {!isUndefined(handleDeletedSwitchChange) && (
             <span className="flex-center gap-2">
               <Toggle
@@ -125,9 +133,9 @@ export const ListView = <T extends object = Record<string, unknown>>({
               </ButtonGroupItem>
             ))}
           </ButtonGroup>
-        </Space>
-      </Col>
-      <Col span={24}>
+        </Box>
+      </Grid.Item>
+      <Grid.Item className="layout-column" span={24}>
         {currentView === ListViewOptions.TABLE ? (
           <Table
             customPaginationProps={customPaginationProps}
@@ -142,14 +150,14 @@ export const ListView = <T extends object = Record<string, unknown>>({
         ) : (
           cardRender
         )}
-      </Col>
+      </Grid.Item>
       {currentView !== ListViewOptions.TABLE && (
-        <Col span={24}>
+        <Grid.Item className="layout-column" span={24}>
           {customPaginationProps.showPagination && (
             <NextPrevious {...customPaginationProps} />
           )}
-        </Col>
+        </Grid.Item>
       )}
-    </Row>
+    </Grid>
   );
 };

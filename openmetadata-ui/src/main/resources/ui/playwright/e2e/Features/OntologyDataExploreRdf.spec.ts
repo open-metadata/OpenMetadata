@@ -19,6 +19,11 @@ import {
 } from '../../../src/generated/api/data/createTable';
 import { Table } from '../../../src/generated/entity/data/table';
 import { EntityReference } from '../../../src/generated/entity/type';
+import {
+  ACTION_TIMEOUT,
+  EXTENDED_TEST_TIMEOUT,
+  LONG_ACTION_TIMEOUT,
+} from '../../constant/common';
 import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/base';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
@@ -430,7 +435,7 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
               foreignTerm,
               foreignFixture.glossary.responseData.fullyQualifiedName
             ),
-          { timeout: 120_000 }
+          { timeout: LONG_ACTION_TIMEOUT }
         )
         .toBe(1);
       await expect
@@ -448,7 +453,7 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
                 foreignFixture.glossary.responseData.fullyQualifiedName
               ),
             ]),
-          { timeout: 120_000 }
+          { timeout: LONG_ACTION_TIMEOUT }
         )
         .toEqual([PRIMARY_ASSET_COUNT, 1]);
       await expect
@@ -485,7 +490,7 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
               total: graph?.paging.total ?? 0,
             };
           },
-          { timeout: 120_000 }
+          { timeout: LONG_ACTION_TIMEOUT }
         )
         .toEqual({
           hasHierarchyContext: true,
@@ -533,7 +538,7 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
               ) ?? false
             );
           },
-          { timeout: 30_000 }
+          { timeout: ACTION_TIMEOUT }
         )
         .toBe(true);
       await fixture.expectRelationProjected(
@@ -548,7 +553,7 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
   });
 
   test.afterAll(async ({ browser }) => {
-    test.setTimeout(120_000);
+    test.setTimeout(EXTENDED_TEST_TIMEOUT);
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
     try {
