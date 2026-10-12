@@ -174,7 +174,10 @@ test.describe(
       workflowName,
     }) => {
       await redirectToHomePage(page);
-      const { tokenInput } = await openSinkTokenInput(page, workflowName);
+      const { sidebar, tokenInput } = await openSinkTokenInput(
+        page,
+        workflowName
+      );
 
       await expect(tokenInput).toHaveValue(SECRET_MASK);
 
@@ -182,7 +185,9 @@ test.describe(
 
       await expect(tokenInput).toHaveValue('');
 
-      await tokenInput.blur();
+      // The sidebar keeps focus inside itself, so leave the field for another
+      // field of the sidebar, as a user does.
+      await sidebar.getByTestId('base-path-input').locator('input').focus();
 
       await expect(tokenInput).toHaveValue(SECRET_MASK);
 
