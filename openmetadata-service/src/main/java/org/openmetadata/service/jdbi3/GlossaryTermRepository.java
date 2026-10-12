@@ -1938,6 +1938,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         tempList.add(tagLabel);
         // Apply Tags to Entities
         entityRepository.applyTags(getUniqueTags(tempList), asset.getFullyQualifiedName());
+        invalidateCacheAfterTagMutation(asset.getEntityReference());
 
         searchRepository.updateEntity(ref);
         RdfUpdater.updateEntity(asset);
@@ -1952,6 +1953,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       // list.
       daoCollection.tagUsageDAO().deleteTagsByTarget(term.getFullyQualifiedName());
       applyTags(getUniqueTags(glossary.getTags()), term.getFullyQualifiedName());
+      invalidateCacheAfterTagMutation(term.getEntityReference());
 
       searchRepository.updateEntity(term.getEntityReference());
       RdfUpdater.updateEntity(term);
@@ -2012,6 +2014,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       List<TagLabel> columnTags = new ArrayList<>(listOrEmpty(targetColumn.getTags()));
       columnTags.add(tagLabel);
       applyTags(getUniqueTags(columnTags), columnFqn);
+      invalidateCacheAfterTagMutation(table.getEntityReference());
       searchRepository.updateEntity(table.getEntityReference());
       RdfUpdater.updateEntity(table);
     }
@@ -2215,6 +2218,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
             .tagUsageDAO()
             .deleteTagsByTagAndTargetEntity(
                 term.getFullyQualifiedName(), asset.getFullyQualifiedName());
+        invalidateCacheAfterTagMutation(asset.getEntityReference());
       }
       success.add(new BulkResponse().withRequest(ref));
       result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
@@ -2255,6 +2259,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       daoCollection
           .tagUsageDAO()
           .deleteTagsByTagAndTargetEntity(term.getFullyQualifiedName(), columnFqn);
+      invalidateCacheAfterTagMutation(table.getEntityReference());
     }
     success.add(new BulkResponse().withRequest(columnRef));
     result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,12 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  ConfigSourceMode,
+  SettingSource,
+  SettingType,
+} from '../../../../../../generated/system/settingsSourceResponse';
 
-@import '../../../styles/variables.less';
-
-.form-card-section-container {
-  background-color: @grey-6;
-  .ant-card-body {
-    padding: var(--om-space-20);
-  }
-}
+/** A setting whose `managedPaths` the deployment configuration owns (ENV mode). */
+export const deploymentOwnedSource = (
+  configType: SettingType,
+  managedPaths: string[]
+): SettingSource => ({
+  configType,
+  source: ConfigSourceMode.Env,
+  sourceVariable: 'CONFIG_SOURCE',
+  editable: false,
+  managedPaths,
+});

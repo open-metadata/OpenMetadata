@@ -121,7 +121,9 @@ describe('ResizablePanels', () => {
       'overflow-y-auto'
     );
     expect(
-      container.querySelector('.ant-card.h-full.overflow-y-auto')
+      container.querySelector(
+        '.resizable-first-panel > .h-full.overflow-y-auto'
+      )
     ).toBeInTheDocument();
   });
 });

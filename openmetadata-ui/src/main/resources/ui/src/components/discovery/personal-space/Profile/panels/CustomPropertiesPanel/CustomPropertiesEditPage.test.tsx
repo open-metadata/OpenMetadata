@@ -415,7 +415,10 @@ describe('CustomPropertiesEditPage', () => {
         mockEntityType.fullyQualifiedName,
         mockStringProperty.name,
         {
-          displayName: mockStringProperty.displayName,
+          // displayName is left unchanged, so getCustomPropertyChanges treats it
+          // as a no-op (undefined) and updateCustomPropertyByName omits it from
+          // the patch — preventing an empty/inadvertent displayName write.
+          displayName: undefined,
           description: mockStringProperty.description,
           customPropertyConfig: undefined,
         }
