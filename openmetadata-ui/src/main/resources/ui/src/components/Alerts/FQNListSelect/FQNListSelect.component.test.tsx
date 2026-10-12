@@ -63,7 +63,7 @@ describe('FQNListSelect', () => {
     expect(screen.getByTestId('saved-value')).toHaveTextContent(
       '["service.schema"]'
     );
-    expect(screen.getByTestId('fqn-tag-service.schema')).toHaveTextContent(
+    expect(screen.getByTestId('autocomplete-selected-item')).toHaveTextContent(
       'service.schema'
     );
   });
@@ -120,14 +120,36 @@ describe('FQNListSelect', () => {
       />
     );
 
-    const removeButton = screen.getByRole('button', { name: 'label.remove' });
+    const removeButton = screen.getByRole('button', {
+      name: 'label.remove-entity',
+    });
 
     expect(removeButton).toBeDisabled();
 
     await user.click(removeButton);
 
     expect(onChange).not.toHaveBeenCalled();
-    expect(screen.getByTestId('fqn-tag-service.schema.table')).toBeVisible();
+    expect(screen.getByTestId('autocomplete-selected-item')).toBeVisible();
+  });
+
+  it('removes a long selected FQN with the keyboard', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const longFqn = 'service.database.schema.' + 'long_table_name_'.repeat(20);
+    const onChange = jest.fn();
+    render(
+      <FQNListSelect
+        api={api}
+        placeholder="FQN"
+        searchIndex={SearchIndex.TABLE}
+        value={[longFqn]}
+        onChange={onChange}
+      />
+    );
+
+    await user.click(screen.getByRole('combobox', { name: 'FQN' }));
+    await user.keyboard('{ArrowLeft}{Backspace}');
+
+    expect(onChange).toHaveBeenCalledWith([]);
   });
 });
 

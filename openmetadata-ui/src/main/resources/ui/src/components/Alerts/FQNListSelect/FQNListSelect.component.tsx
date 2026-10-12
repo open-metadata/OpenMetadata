@@ -13,15 +13,12 @@
 
 import {
   Autocomplete,
-  BadgeWithButton,
   Box,
   SelectItemType,
-  Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { debounce, uniqBy } from 'lodash';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { SearchIndex } from '../../../enums/search.enum';
 import { NameSearch } from '../../../utils/Alerts/AlertSourceSearch';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -56,7 +53,6 @@ const FQNListSelect = ({
   hint,
   className,
 }: FQNListSelectProps) => {
-  const { t } = useTranslation();
   const [wildcards, setWildcards] = useState<string[]>([]);
   const [items, setItems] = useState<SelectItemType[]>([]);
   const [loading, setLoading] = useState(false);
@@ -129,22 +125,6 @@ const FQNListSelect = ({
         isInvalid={Boolean(hint)}
         items={items}
         placeholder={placeholder}
-        renderTag={(item, onRemove) => (
-          <BadgeWithButton
-            buttonLabel={t('label.remove')}
-            color="gray"
-            data-testid={'fqn-tag-' + item.id}
-            isDisabled={isDisabled}
-            size="sm"
-            title={item.label}
-            onButtonClick={onRemove}
-            onMouseDown={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-            }}>
-            <Typography className="break-all">{item.label}</Typography>
-          </BadgeWithButton>
-        )}
         selectedItems={selectedItems}
         onItemCleared={(key) =>
           onChange?.(value.filter((id) => id !== String(key)))

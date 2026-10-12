@@ -143,7 +143,7 @@ export const ClassicAlertRuleSection = ({
                         className="layout-column"
                         key={argument}
                         span={12}>
-                        <Box className="tw:[&_label]:sr-only">
+                        <Box className="tw:[&_label]:sr-only" direction="col">
                           {argument === 'fqnList' ? (
                             <FQNListSelect
                               api={search.byName}

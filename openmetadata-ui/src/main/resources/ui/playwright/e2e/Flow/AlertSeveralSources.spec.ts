@@ -152,6 +152,7 @@ test.describe('Alerts with several sources', () => {
     });
     expect(created.ok()).toBeTruthy();
     const contract: DataContract = await created.json();
+    let alertId: string | undefined;
     // Contract names are read from the database; table names from the search index.
     await waitForSearchIndexed(
       apiContext,
@@ -194,7 +195,71 @@ test.describe('Alerts with several sources', () => {
           exact: true,
         })
       ).toBeVisible();
+
+      await found
+        .getByRole('option', {
+          name: table.entityResponseData.fullyQualifiedName,
+          exact: true,
+        })
+        .click();
+      const field = page.getByTestId('fqn-list-select');
+      await names.click();
+      await expect(found).toBeVisible();
+
+      await expect
+        .poll(async () => {
+          const fieldBounds = await field.boundingBox();
+          const rowBounds = await page.getByTestId('filter-0').boundingBox();
+          const popupBounds = await found.boundingBox();
+
+          return Boolean(
+            fieldBounds &&
+              rowBounds &&
+              popupBounds &&
+              fieldBounds.x + fieldBounds.width <=
+                rowBounds.x + rowBounds.width &&
+              Math.abs(popupBounds.width - fieldBounds.width) < 1
+          );
+        })
+        .toBe(true);
+      await expect(
+        field.getByTitle(table.entityResponseData.fullyQualifiedName)
+      ).toBeVisible();
+      await page.setViewportSize({ width: 1024, height: 768 });
+      await expect
+        .poll(async () => {
+          const fieldBounds = await field.boundingBox();
+          const chipBounds = await field
+            .getByTitle(table.entityResponseData.fullyQualifiedName)
+            .boundingBox();
+
+          return Boolean(
+            fieldBounds &&
+              chipBounds &&
+              chipBounds.x + chipBounds.width <=
+                fieldBounds.x + fieldBounds.width
+          );
+        })
+        .toBe(true);
+      await page.keyboard.press('Escape');
+      await page.getByTestId('add-destination-button').click();
+      await addInternalDestination({
+        page,
+        destinationNumber: 0,
+        category: 'Admins',
+        type: 'Email',
+      });
+      const alertDetails = await saveAlertAndVerifyResponse(page);
+      alertId = alertDetails.id;
+      expect(alertDetails.input.filters).toMatchObject([
+        {
+          arguments: [{ input: [table.entityResponseData.fullyQualifiedName] }],
+        },
+      ]);
     } finally {
+      if (alertId) {
+        await apiContext.delete(`/api/v1/events/subscriptions/${alertId}`);
+      }
       await apiContext.delete(
         `/api/v1/dataContracts/${contract.id}?hardDelete=true&recursive=true`
       );

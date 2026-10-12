@@ -37,6 +37,20 @@ const renderAutocomplete = (onItemInserted: (id: unknown) => void) =>
   );
 
 describe('Autocomplete – selection commit', () => {
+  it('provides a named remove button and the full selected label', () => {
+    const label = 'service.database.schema.' + 'long_table_name_'.repeat(20);
+    render(
+      <Autocomplete items={[]} selectedItems={[{ id: label, label }]}>
+        {(item) => (
+          <Autocomplete.Item id={item.id}>{item.label}</Autocomplete.Item>
+        )}
+      </Autocomplete>
+    );
+
+    expect(screen.getByRole('button', { name: /remove/i })).toBeVisible();
+    expect(screen.getByTitle(label)).toHaveTextContent(label);
+  });
+
   it('inserts the focused option on Enter', async () => {
     const onItemInserted = vi.fn();
     renderAutocomplete(onItemInserted);
