@@ -20,7 +20,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { XClose } from '@openmetadata/ui-core-components/icons';
 import { TFunction } from 'i18next';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconTimeOut } from '../../../../assets/svg/ic-time-out.svg';
 import { ReactComponent as IconTimeOutButton } from '../../../../assets/svg/ic-timeout-button.svg';
@@ -124,6 +124,52 @@ const resolveShowGateCard = (
   gateStep: TestConnectionStep | undefined,
   isFailed: boolean
 ): boolean => Boolean(gateStep) && !isFailed;
+
+// A test that times out or errors before any step runs has no step log, so the
+// failure action gets the text the dialog shows instead.
+const resolveFailureDetails = (
+  rawLog: string,
+  errorMessage: TestConnectionModalProps['errorMessage'],
+  timeoutMessage: string | undefined
+): string =>
+  rawLog ||
+  [errorMessage?.description, errorMessage?.subDescription, timeoutMessage]
+    .filter(Boolean)
+    .join('\n');
+
+// The action shows for any finished test that did not fully pass.
+const resolveFailureAction = ({
+  isTestingConnection,
+  isSuccessful,
+  isConnectionTimeout,
+  rawLog,
+  errorMessage,
+  timeoutMessage,
+  renderFailureAction,
+  onClose,
+}: {
+  isTestingConnection: boolean;
+  isSuccessful: boolean;
+  isConnectionTimeout: boolean;
+  rawLog: string;
+  errorMessage: TestConnectionModalProps['errorMessage'];
+  timeoutMessage: string;
+  renderFailureAction: TestConnectionModalProps['renderFailureAction'];
+  onClose: () => void;
+}): ReactNode => {
+  if (isTestingConnection || isSuccessful || !renderFailureAction) {
+    return undefined;
+  }
+
+  return renderFailureAction(
+    resolveFailureDetails(
+      rawLog,
+      errorMessage,
+      isConnectionTimeout ? timeoutMessage : undefined
+    ),
+    onClose
+  );
+};
 
 const resolveShowRemediationCard = (
   isComplete: boolean,
@@ -288,21 +334,16 @@ const TestConnectionModal = ({
   };
 
   const message = getConnectionTimeoutMessage(t, serviceType, hostIp);
-  // A test that times out or errors before any step runs has no step log, so
-  // the action gets the text the dialog shows instead.
-  const failureDetails =
-    rawLog ||
-    [
-      errorMessage?.description,
-      errorMessage?.subDescription,
-      isConnectionTimeout ? message : undefined,
-    ]
-      .filter(Boolean)
-      .join('\n');
-  const failureAction =
-    isTestingConnection || isSuccessful
-      ? undefined
-      : renderFailureAction?.(failureDetails, onConfirm);
+  const failureAction = resolveFailureAction({
+    isTestingConnection,
+    isSuccessful,
+    isConnectionTimeout,
+    rawLog,
+    errorMessage,
+    timeoutMessage: message,
+    renderFailureAction,
+    onClose: onConfirm,
+  });
   const gateDescription = resolveGateDescription(t, gateStep, gateResult);
   const showGateCard = resolveShowGateCard(gateStep, isFailed);
   const showRemediationCard = resolveShowRemediationCard(isComplete, isFailed);
