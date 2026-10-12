@@ -12,7 +12,8 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Card, Select, Space } from 'antd';
+import { Box } from '@openmetadata/ui-core-components';
+import { Button, Card, Select } from 'antd';
 import { isArray, isNil, toLower } from 'lodash';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -102,7 +103,13 @@ const RolesCard = ({
         title={t('label.role-plural')}>
         <div className="mb-4">
           {isRolesEdit ? (
-            <Space className="w-full" direction="vertical">
+            <Box
+              inline
+              align="stretch"
+              className="layout-space w-full"
+              direction="col"
+              gap={2}
+              itemClassName="layout-space-item">
               <Select
                 showSearch
                 aria-label="Select roles"
@@ -135,7 +142,7 @@ const RolesCard = ({
                   onClick={handleRolesChange}
                 />
               </div>
-            </Space>
+            </Box>
           ) : (
             <RolesElement userData={userData} />
           )}

@@ -54,7 +54,7 @@ public final class IntakeFormValidator {
    *
    * @throws IllegalArgumentException if any intake-form required field is unset.
    */
-  public static void validate(EntityInterface entity, String entityType) {
+  public static void validate(EntityInterface<?> entity, String entityType) {
     IntakeForm form = loadIntakeForm(entityType);
     if (form == null) return;
 
@@ -69,7 +69,7 @@ public final class IntakeFormValidator {
   }
 
   private static List<String> checkIntakeFormRequiredFields(
-      EntityInterface entity, IntakeForm form) {
+      EntityInterface<?> entity, IntakeForm form) {
     List<String> missing = new ArrayList<>();
     for (IntakeFormField field : IntakeFormUtil.getEffectiveFormFields(form)) {
       if (!Boolean.TRUE.equals(field.getRequired())) continue;
@@ -96,7 +96,7 @@ public final class IntakeFormValidator {
     return described;
   }
 
-  private static boolean isFieldSet(EntityInterface entity, IntakeFormField field) {
+  private static boolean isFieldSet(EntityInterface<?> entity, IntakeFormField field) {
     boolean isCustomProperty =
         IntakeFormField.FieldKind.CUSTOM_PROPERTY.equals(field.getFieldKind())
             || field.getFieldPath().startsWith(EXTENSION_PREFIX);
@@ -106,7 +106,7 @@ public final class IntakeFormValidator {
     return isNativeFieldSet(entity, field.getFieldPath());
   }
 
-  private static boolean isNativeFieldSet(EntityInterface entity, String fieldName) {
+  private static boolean isNativeFieldSet(EntityInterface<?> entity, String fieldName) {
     try {
       JsonNode node = MAPPER.valueToTree(entity);
       return hasMeaningfulValue(node.get(fieldName));
@@ -116,7 +116,7 @@ public final class IntakeFormValidator {
     }
   }
 
-  private static boolean isExtensionFieldSet(EntityInterface entity, String path) {
+  private static boolean isExtensionFieldSet(EntityInterface<?> entity, String path) {
     String propertyName =
         path.startsWith(EXTENSION_PREFIX) ? path.substring(EXTENSION_PREFIX.length()) : path;
     Object ext = entity.getExtension();

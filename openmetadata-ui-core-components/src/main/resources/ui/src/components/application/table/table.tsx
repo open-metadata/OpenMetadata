@@ -156,7 +156,7 @@ const TableCardRoot = ({
       <div
         {...props}
         className={cx(
-          'tw:overflow-hidden tw:rounded-xl tw:bg-surface tw:shadow-card tw:outline-1 tw:outline-subtle',
+          'tw:overflow-hidden tw:rounded-xl tw:bg-surface tw:shadow-card tw:outline-1 tw:-outline-offset-1 tw:outline-subtle',
           className
         )}>
         {children}

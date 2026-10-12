@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -30,7 +30,7 @@ const ExpandableBannerText = ({
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const [hasOverflow, setHasOverflow] = useState(false);
-  const textRef = useRef<HTMLSpanElement>(null);
+  const textRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     setExpanded(false);
@@ -60,24 +60,26 @@ const ExpandableBannerText = ({
   }, [expanded, text]);
 
   return (
-    <p
+    // A div, not a p: Typography wraps a p in .prose, and the wrapper, not
+    // this flex item, would then have to shrink for the text to truncate.
+    <Typography
+      as="div"
       className={classNames(
-        'tw:!mb-0 tw:min-w-0 tw:break-all tw:text-xs tw:leading-normal tw:text-secondary',
+        'tw:min-w-0 tw:break-all',
         expanded ? 'tw:block' : 'tw:flex tw:items-baseline tw:gap-1',
         className
       )}
-      data-testid={dataTestId}>
-      <span
-        className={classNames(
-          'tw:text-xs tw:leading-normal tw:text-secondary',
-          {
-            'tw:min-w-0 tw:flex-1 tw:truncate': !expanded,
-          }
-        )}
+      color="secondary"
+      data-testid={dataTestId}
+      size="text-xs">
+      <Typography
+        className={classNames({
+          'tw:min-w-0 tw:flex-1 tw:truncate': !expanded,
+        })}
         data-testid={`${dataTestId}-content`}
         ref={textRef}>
         {text}
-      </span>
+      </Typography>
       {!expanded && hasOverflow && (
         <Button
           className="tw:inline-flex tw:h-auto tw:shrink-0 tw:p-0 tw:align-baseline tw:text-xs"
@@ -96,7 +98,7 @@ const ExpandableBannerText = ({
           {t('label.less-lowercase')}
         </Button>
       )}
-    </p>
+    </Typography>
   );
 };
 

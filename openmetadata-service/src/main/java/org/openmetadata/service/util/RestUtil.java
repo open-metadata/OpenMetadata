@@ -166,8 +166,9 @@ public final class RestUtil {
           Response.status(status).header(CHANGE_CUSTOM_HEADER, changeType.value()).entity(entity);
 
       // Add ETag header if entity implements EntityInterface
-      if (entity != null && entity instanceof org.openmetadata.schema.EntityInterface) {
-        EntityETag.addETagHeader(responseBuilder, (org.openmetadata.schema.EntityInterface) entity);
+      if (entity != null && entity instanceof org.openmetadata.schema.EntityInterface<?>) {
+        EntityETag.addETagHeader(
+            responseBuilder, (org.openmetadata.schema.EntityInterface<?>) entity);
       }
 
       return responseBuilder.build();

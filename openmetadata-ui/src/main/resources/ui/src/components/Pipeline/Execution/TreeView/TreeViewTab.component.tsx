@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Card, Col, Empty, Row } from 'antd';
+import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
+import { Card, Empty } from 'antd';
 import Tree from 'antd/lib/tree';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
@@ -22,6 +22,7 @@ import {
   PipelineStatus,
   Task,
 } from '../../../../generated/entity/data/pipeline';
+import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getTreeData, getTreeViewData } from '../../../../utils/executionUtils';
 import './tree-view-tab.less';
@@ -55,25 +56,26 @@ const TreeViewTab = ({
 
   return (
     <Card>
-      <Row
-        align="middle"
-        className="m-b-lg m-t-md"
-        gutter={16}
-        justify="center">
-        <Col>
+      <Box
+        align="center"
+        className="layout-row m-b-lg m-t-md"
+        justify="center"
+        style={{ ...getLayoutGutter(16) }}
+        wrap="wrap">
+        <Box className="layout-column tw:block">
           <ArrowSvg className="cursor-pointer" />
-        </Col>
-        <Col>
+        </Box>
+        <Box className="layout-column tw:block">
           <Typography className="p-b-0 m-b-0 font-medium">
             {`${formatDateTime(startTime)} ${t(
               'label.to-lowercase'
             )} ${formatDateTime(endTime)}`}
           </Typography>
-        </Col>
-        <Col>
+        </Box>
+        <Box className="layout-column tw:block">
           <ArrowSvg className=" cursor-pointer transform-180" />
-        </Col>
-      </Row>
+        </Box>
+      </Box>
 
       {isEmpty(viewData) ? (
         <Empty
@@ -81,8 +83,8 @@ const TreeViewTab = ({
           description={t('message.no-execution-runs-found')}
         />
       ) : (
-        <Row className="w-full">
-          <Col span={12}>
+        <Grid className="layout-row layout-grid w-full">
+          <Grid.Item className="layout-column" span={12}>
             <Tree
               defaultExpandAll
               showIcon
@@ -90,8 +92,8 @@ const TreeViewTab = ({
               switcherIcon={<></>}
               treeData={treeLabelList}
             />
-          </Col>
-          <Col span={12}>
+          </Grid.Item>
+          <Grid.Item className="layout-column" span={12}>
             <Tree
               defaultExpandAll
               showIcon
@@ -99,8 +101,8 @@ const TreeViewTab = ({
               switcherIcon={<></>}
               treeData={treeDataList}
             />
-          </Col>
-        </Row>
+          </Grid.Item>
+        </Grid>
       )}
     </Card>
   );

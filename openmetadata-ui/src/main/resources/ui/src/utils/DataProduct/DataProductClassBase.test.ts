@@ -12,6 +12,7 @@
  */
 
 import { EntityFields } from '../../enums/AdvancedSearch.enum';
+import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import dataProductClassBase, {
   DataProductClassBase,
 } from './DataProductClassBase';
@@ -77,6 +78,14 @@ describe('DataProductClassBase', () => {
       expect(instance.getListingExtraColumns()).toBe(
         instance.getListingExtraColumns()
       );
+    });
+  });
+
+  describe('getCommonWidgetList', () => {
+    it('lets the Custom Properties widget be added back to the layout', () => {
+      expect(
+        instance.getCommonWidgetList().map((w) => w.fullyQualifiedName)
+      ).toContain(DetailPageWidgetKeys.CUSTOM_PROPERTIES);
     });
   });
 

@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge, Typography } from '@openmetadata/ui-core-components';
-import { Col, Row } from 'antd';
+import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
+
 import { isEmpty } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -43,7 +44,10 @@ const Chip = ({
   );
 
   const getChipElement = (item: EntityReference) => (
-    <Col data-testid="tag-chip" key={item.name}>
+    <Box
+      className="layout-column tw:block"
+      data-testid="tag-chip"
+      key={item.name}>
       <Link
         className="chip-tag-link"
         data-testid={`${item.name}-link`}
@@ -61,7 +65,7 @@ const Chip = ({
           {getEntityName(item)}
         </Typography>
       </Link>
-    </Col>
+    </Box>
   );
 
   useEffect(() => {
@@ -79,11 +83,11 @@ const Chip = ({
   }
 
   return (
-    <Row
-      wrap
-      className="align-middle d-flex flex-col flex-start justify-center chip-container"
+    <Box
+      className="layout-row align-middle d-flex flex-col flex-start justify-center chip-container"
       data-testid="chip-container"
-      gutter={[20, 0]}>
+      style={getLayoutGutter(20)}
+      wrap="wrap">
       {(isExpanded ? data : data.slice(0, USER_DATA_SIZE)).map(getChipElement)}
       {hasMoreElement && (
         <Badge
@@ -98,7 +102,7 @@ const Chip = ({
             : `+${listLength - USER_DATA_SIZE} more`}
         </Badge>
       )}
-    </Row>
+    </Box>
   );
 };
 

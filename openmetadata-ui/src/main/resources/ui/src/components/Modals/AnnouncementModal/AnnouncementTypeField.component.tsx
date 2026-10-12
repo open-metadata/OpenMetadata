@@ -24,6 +24,7 @@ import {
   AnnouncementType,
 } from '../../../generated/entity/feed/announcement';
 import {
+  AnnouncementTypeConfig,
   ANNOUNCEMENT_COLORS,
   ANNOUNCEMENT_COLOR_LABEL_KEYS,
   ANNOUNCEMENT_SURFACE_CLASSES,
@@ -43,9 +44,60 @@ interface AnnouncementColorSelectProps {
 }
 
 // The chips stay neutral whatever the type: the choice is shown by fill, not by
-// colour, so a Critical chip does not shout while the form is still a draft.
+// the type's own colour, so a Critical chip does not shout while the form is
+// still a draft.
 const CHIP_CLASS = 'tw:cursor-pointer';
-const SELECTED_CHIP_CLASS = 'tw:bg-tertiary tw:text-primary';
+
+/**
+ * One chip. Resting is the neutral `modern` badge the design draws — white
+ * surface, hairline edge; selected swaps to the brand `color` badge, which
+ * carries the same `rounded-md` shape and `sm` padding, so only the fill and
+ * the label colour move. Written as four returns rather than two spread props
+ * because `modern` is typed to `gray` alone: it has no other colour to take.
+ */
+const TypeChip = ({
+  icon,
+  isSelected,
+  label,
+}: {
+  /** Custom has no fixed icon of its own to preview — its colour is still to
+      be picked — so it falls back to the dot the frame draws. */
+  icon?: AnnouncementTypeConfig['icon'];
+  isSelected: boolean;
+  label: string;
+}) => {
+  if (icon) {
+    return isSelected ? (
+      <BadgeWithIcon
+        className={CHIP_CLASS}
+        color="brand"
+        iconLeading={icon}
+        size="sm"
+        type="color">
+        {label}
+      </BadgeWithIcon>
+    ) : (
+      <BadgeWithIcon
+        className={CHIP_CLASS}
+        color="gray"
+        iconLeading={icon}
+        size="sm"
+        type="modern">
+        {label}
+      </BadgeWithIcon>
+    );
+  }
+
+  return isSelected ? (
+    <BadgeWithDot className={CHIP_CLASS} color="brand" size="sm" type="color">
+      {label}
+    </BadgeWithDot>
+  ) : (
+    <BadgeWithDot className={CHIP_CLASS} color="gray" size="sm" type="modern">
+      {label}
+    </BadgeWithDot>
+  );
+};
 
 /**
  * One of five mutually exclusive types, so a radio group rather than a row of
@@ -68,10 +120,7 @@ export const AnnouncementTypeSelect = ({
       onChange={(next) => onChange(next as AnnouncementType)}>
       {ANNOUNCEMENT_TYPE_ORDER.map((type) => {
         const { icon, labelKey } = ANNOUNCEMENT_TYPE_CONFIG[type];
-        const className = classNames(
-          CHIP_CLASS,
-          value === type && SELECTED_CHIP_CLASS
-        );
+        const isSelected = value === type;
 
         return (
           <RadioButton
@@ -90,26 +139,11 @@ export const AnnouncementTypeSelect = ({
             indicatorClassName="tw:hidden"
             key={type}
             label={
-              /* Custom has no fixed icon of its own to preview — its colour is
-                 still to be picked — so it takes a dot, as the frame draws it. */
-              type === AnnouncementType.Custom ? (
-                <BadgeWithDot
-                  className={className}
-                  color="gray"
-                  size="sm"
-                  type="modern">
-                  {t(labelKey)}
-                </BadgeWithDot>
-              ) : (
-                <BadgeWithIcon
-                  className={className}
-                  color="gray"
-                  iconLeading={icon}
-                  size="sm"
-                  type="modern">
-                  {t(labelKey)}
-                </BadgeWithIcon>
-              )
+              <TypeChip
+                icon={type === AnnouncementType.Custom ? undefined : icon}
+                isSelected={isSelected}
+                label={t(labelKey)}
+              />
             }
             value={type}
           />

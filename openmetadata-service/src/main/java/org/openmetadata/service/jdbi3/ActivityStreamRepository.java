@@ -126,7 +126,7 @@ public class ActivityStreamRepository {
       String domain,
       int days,
       int limit) {
-    EntityInterface entity = Entity.getEntityByName(entityType, fqn, "", null);
+    EntityInterface<?> entity = Entity.getEntityByName(entityType, fqn, "", null);
     return getEntityActivityById(securityContext, entityType, entity.getId(), domain, days, limit);
   }
 
@@ -224,7 +224,7 @@ public class ActivityStreamRepository {
    * @param entity The entity that changed (for extracting domains)
    * @return The created ActivityEvent
    */
-  public ActivityEvent createFromChangeEvent(ChangeEvent changeEvent, EntityInterface entity) {
+  public ActivityEvent createFromChangeEvent(ChangeEvent changeEvent, EntityInterface<?> entity) {
     if (changeEvent == null || entity == null) {
       return null;
     }
@@ -244,7 +244,7 @@ public class ActivityStreamRepository {
    * @return List of created ActivityEvents (one per significant field change)
    */
   public List<ActivityEvent> createFieldEventsFromChangeEvent(
-      ChangeEvent changeEvent, EntityInterface entity) {
+      ChangeEvent changeEvent, EntityInterface<?> entity) {
     List<ActivityEvent> events = new ArrayList<>();
 
     if (changeEvent == null || entity == null) {
@@ -760,7 +760,7 @@ public class ActivityStreamRepository {
   // ========== Private Helper Methods ==========
 
   private ActivityEvent convertChangeEventToActivityEvent(
-      ChangeEvent changeEvent, EntityInterface entity) {
+      ChangeEvent changeEvent, EntityInterface<?> entity) {
     ActivityEventType eventType = mapChangeEventType(changeEvent.getEventType());
     if (eventType == null) {
       return null;
@@ -771,7 +771,7 @@ public class ActivityStreamRepository {
 
   private ActivityEvent buildActivityEvent(
       ChangeEvent changeEvent,
-      EntityInterface entity,
+      EntityInterface<?> entity,
       ActivityEventType eventType,
       FieldChange fieldChange) {
 

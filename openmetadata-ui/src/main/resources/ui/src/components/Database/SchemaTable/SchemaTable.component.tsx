@@ -13,11 +13,14 @@
 
 import {
   Button as CoreButton,
+  ButtonUtility,
   Dropdown,
+  Grid,
   Label,
+  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Col, Row, Select, TableProps, Tooltip } from 'antd';
+import { Button, Select } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { groupBy, isEmpty, isEqual, isUndefined, omit } from 'lodash';
@@ -29,8 +32,6 @@ import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconSortIndicator } from '../../../assets/svg/ic-down-up-arrow.svg';
 import { ReactComponent as IconSort } from '../../../assets/svg/ic-sort-both.svg';
 import {
-  DE_ACTIVE_COLOR,
-  ICON_DIMENSION,
   INITIAL_PAGING_VALUE,
   NO_DATA_PLACEHOLDER,
   PAGE_SIZE_LARGE,
@@ -46,6 +47,7 @@ import {
   TABLE_COLUMNS_KEYS,
 } from '../../../constants/TableKeys.constants';
 import { EntityType } from '../../../enums/entity.enum';
+import { DefaultColumnOrder } from '../../../generated/api/configuration/appConfiguration';
 import {
   Column,
   Constraint,
@@ -55,6 +57,7 @@ import { TestSummary } from '../../../generated/tests/testCase';
 import { TagSource } from '../../../generated/type/schema';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { usePaging } from '../../../hooks/paging/usePaging';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { useSub } from '../../../hooks/usePubSub';
@@ -67,6 +70,7 @@ import {
 } from '../../../rest/tableAPI';
 import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
 import { Suggestion, SuggestionType } from '../../../types/taskSuggestion';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { getBulkEditButton } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import { getFrequentlyJoinedColumns } from '../../../utils/EntityColumnUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -100,6 +104,7 @@ import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.inte
 import {
   ColumnsType,
   ExpandableConfig,
+  TableProps,
 } from '../../common/Table/Table.interface';
 import Table from '../../common/Table/TableV2';
 import TestCaseStatusSummaryIndicator from '../../common/TestCaseStatusSummaryIndicator/TestCaseStatusSummaryIndicator.component';
@@ -124,7 +129,16 @@ const SchemaTable = () => {
   const [testCaseSummary, setTestCaseSummary] = useState<TestSummary>();
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [editColumn, setEditColumn] = useState<Column>();
-  const [sortBy, setSortBy] = useState<'name' | 'ordinalPosition'>('name');
+  const defaultColumnOrder = useApplicationStore(
+    (state) => state.appPreferences.defaultColumnOrder
+  );
+  // The tenant default only picks the starting order; the Sort menu still
+  // changes it for this view without saving.
+  const [sortBy, setSortBy] = useState<'name' | 'ordinalPosition'>(() =>
+    defaultColumnOrder === DefaultColumnOrder.SourceOrder
+      ? 'ordinalPosition'
+      : 'name'
+  );
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [activeTagFilter, setActiveTagFilter] = useState<{
     tags: string[];
@@ -695,23 +709,15 @@ const SchemaTable = () => {
             </div>
             <div className="d-flex items-center">
               {editDisplayNamePermission && (
-                <Tooltip placement="top" title={t('label.edit')}>
-                  <Button
-                    className="cursor-pointer hover-cell-icon flex-center"
+                <Tooltip arrow placement="top" title={t('label.edit')}>
+                  <ButtonUtility
+                    className="hover-cell-icon"
+                    color="tertiary"
                     data-testid="edit-displayName-button"
-                    style={{
-                      color: DE_ACTIVE_COLOR,
-                      padding: 0,
-                      border: 'none',
-                      background: 'transparent',
-                      width: '24px',
-                      height: '24px',
-                    }}
-                    onClick={() => handleEditDisplayNameClick(record)}>
-                    <IconEdit
-                      style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
-                    />
-                  </Button>
+                    icon={IconEdit}
+                    size="xs"
+                    onClick={() => handleEditDisplayNameClick(record)}
+                  />
                 </Tooltip>
               )}
               {record.fullyQualifiedName && (
@@ -970,8 +976,10 @@ const SchemaTable = () => {
   );
 
   return (
-    <Row gutter={[0, 16]}>
-      <Col id="schemaDetails" span={24}>
+    <Grid
+      className="layout-row layout-grid"
+      style={{ ...getLayoutGutter(0, 16) }}>
+      <Grid.Item className="layout-column" id="schemaDetails" span={24}>
         <Table
           className="align-table-filter-left"
           columns={columns}
@@ -1029,7 +1037,7 @@ const SchemaTable = () => {
           staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
           onChange={handleColumnFilterChange}
         />
-      </Col>
+      </Grid.Item>
       {editColumn && (
         <EntityAttachmentProvider
           entityFqn={editColumn.fullyQualifiedName}
@@ -1058,7 +1066,7 @@ const SchemaTable = () => {
           onSave={handleEditColumnData}
         />
       )}
-    </Row>
+    </Grid>
   );
 };
 

@@ -69,7 +69,7 @@ public class WebhookSinkProvider implements SinkProvider {
   }
 
   @Override
-  public SinkResult write(SinkContext context, EntityInterface entity) {
+  public SinkResult write(SinkContext context, EntityInterface<?> entity) {
     try {
       String payload = serializeEntity(entity, context.getOutputFormat());
       return executeWithRetry(
@@ -113,11 +113,11 @@ public class WebhookSinkProvider implements SinkProvider {
   }
 
   @Override
-  public SinkResult writeBatch(SinkContext context, List<EntityInterface> entities) {
+  public SinkResult writeBatch(SinkContext context, List<EntityInterface<?>> entities) {
     List<String> synced = new ArrayList<>();
     List<SinkResult.SinkError> errors = new ArrayList<>();
 
-    for (EntityInterface entity : entities) {
+    for (EntityInterface<?> entity : entities) {
       try {
         String payload = serializeEntity(entity, context.getOutputFormat());
         SinkResult result =
@@ -269,7 +269,7 @@ public class WebhookSinkProvider implements SinkProvider {
     }
   }
 
-  private String serializeEntity(EntityInterface entity, String format) {
+  private String serializeEntity(EntityInterface<?> entity, String format) {
     if ("yaml".equalsIgnoreCase(format)) {
       try {
         return YAML_MAPPER.writeValueAsString(entity);

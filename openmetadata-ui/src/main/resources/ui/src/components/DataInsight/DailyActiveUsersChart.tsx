@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
+import { Grid } from '@openmetadata/ui-core-components';
 import { LineChart } from '@openmetadata/ui-core-components/charts';
-import { Card, Col, Row } from 'antd';
+import { Card } from 'antd';
 import { AxiosError } from 'axios';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -25,6 +26,7 @@ import { DataInsightChartType } from '../../generated/dataInsight/dataInsightCha
 import { DailyActiveUsers } from '../../generated/dataInsight/type/dailyActiveUsers';
 import { ChartFilter } from '../../interface/data-insight.interface';
 import { getAggregateChartData } from '../../rest/DataInsightAPI';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
 import {
   getDataInsightTooltip,
   HIDDEN_CHART_LEGEND,
@@ -100,8 +102,10 @@ const DailyActiveUsersChart: FC<Props> = ({ chartFilter, selectedDays }) => {
         />
       }>
       {dailyActiveUsers.length ? (
-        <Row gutter={DI_STRUCTURE.rowContainerGutter}>
-          <Col span={DI_STRUCTURE.leftContainerSpan}>
+        <Grid className="layout-row layout-grid" style={getLayoutGutter(32)}>
+          <Grid.Item
+            className="layout-column"
+            span={DI_STRUCTURE.leftContainerSpan}>
             <LineChart
               ariaLabel={t('label.daily-active-users-on-the-platform')}
               data={data}
@@ -111,8 +115,10 @@ const DailyActiveUsersChart: FC<Props> = ({ chartFilter, selectedDays }) => {
               tooltip={tooltip}
               xKey="timestamp"
             />
-          </Col>
-          <Col span={DI_STRUCTURE.rightContainerSpan}>
+          </Grid.Item>
+          <Grid.Item
+            className="layout-column"
+            span={DI_STRUCTURE.rightContainerSpan}>
             <CustomStatistic
               changeInValue={relativePercentage}
               duration={selectedDays}
@@ -121,8 +127,8 @@ const DailyActiveUsersChart: FC<Props> = ({ chartFilter, selectedDays }) => {
               })}
               value={total}
             />
-          </Col>
-        </Row>
+          </Grid.Item>
+        </Grid>
       ) : (
         <EmptyGraphPlaceholder />
       )}

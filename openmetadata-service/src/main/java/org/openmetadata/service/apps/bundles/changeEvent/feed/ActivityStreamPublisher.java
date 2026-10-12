@@ -97,7 +97,7 @@ public class ActivityStreamPublisher implements Destination<ChangeEvent> {
       }
 
       // Get the entity to extract domains
-      EntityInterface entity = getEntityFromChangeEvent(changeEvent);
+      EntityInterface<?> entity = getEntityFromChangeEvent(changeEvent);
       if (entity == null) {
         LOG.debug(
             "Could not get entity for change event: {} {}",
@@ -133,15 +133,15 @@ public class ActivityStreamPublisher implements Destination<ChangeEvent> {
     }
   }
 
-  private EntityInterface getEntityFromChangeEvent(ChangeEvent changeEvent) {
+  private EntityInterface<?> getEntityFromChangeEvent(ChangeEvent changeEvent) {
     try {
       Object entityObj = changeEvent.getEntity();
-      if (entityObj instanceof EntityInterface entityInterface) {
+      if (entityObj instanceof EntityInterface<?> entityInterface) {
         return entityInterface;
       }
 
       if (entityObj != null) {
-        Class<? extends EntityInterface> entityClass =
+        Class<? extends EntityInterface<?>> entityClass =
             Entity.getEntityClassFromType(changeEvent.getEntityType());
         if (entityClass != null) {
           return entityObj instanceof String entityJson

@@ -10,8 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { SkeletonParagraph, Toggle } from '@openmetadata/ui-core-components';
-import { Button, Card, Col, Row, Space } from 'antd';
+import {
+  Box,
+  Grid,
+  SkeletonParagraph,
+  Toggle,
+} from '@openmetadata/ui-core-components';
+import { Button, Card } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, uniqueId } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -37,6 +42,7 @@ import LimitWrapper from '../../hoc/LimitWrapper';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getApplicationList } from '../../rest/applicationAPI';
 import { isCacheWarmupApplication } from '../../utils/ApplicationUtils';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
@@ -116,20 +122,20 @@ const ApplicationPage = () => {
   const errorPlaceHolder = useMemo(() => {
     if (showDisabled) {
       return (
-        <Col className="mt-24 text-center" span={24}>
+        <Grid.Item className="layout-column mt-24 text-center" span={24}>
           <ErrorPlaceHolder heading={t('label.application-plural')} />
-        </Col>
+        </Grid.Item>
       );
     }
 
     return (
-      <Col className="mt-24 text-center" span={24}>
+      <Grid.Item className="layout-column mt-24 text-center" span={24}>
         <ErrorPlaceHolder
           heading={t('label.application-plural')}
           type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
           <div>{t('message.no-installed-applications-found')}</div>
         </ErrorPlaceHolder>
-      </Col>
+      </Grid.Item>
     );
   }, [showDisabled]);
 
@@ -150,11 +156,13 @@ const ApplicationPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.application-plural')}>
-      <Row gutter={[0, 16]}>
-        <Col span={24}>
+      <Grid
+        className="layout-row layout-grid"
+        style={{ ...getLayoutGutter(0, 16) }}>
+        <Grid.Item className="layout-column" span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
-        </Col>
-        <Col span={16}>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={16}>
           <PageHeader
             data={{
               header: translateWithNestedKeys(
@@ -165,9 +173,14 @@ const ApplicationPage = () => {
             }}
             learningPageId={LEARNING_PAGE_IDS.AUTOMATIONS}
           />
-        </Col>
-        <Col className="d-flex justify-end" span={8}>
-          <Space size="middle">
+        </Grid.Item>
+        <Grid.Item className="layout-column d-flex justify-end" span={8}>
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal"
+            gap={4}
+            itemClassName="layout-space-item">
             <div className="flex-center gap-2">
               <Toggle
                 data-testid="show-disabled"
@@ -186,25 +199,31 @@ const ApplicationPage = () => {
                 })}
               </Button>
             </LimitWrapper>
-          </Space>
-        </Col>
-      </Row>
-      <Row className="m-t-lg" gutter={[20, 20]}>
+          </Box>
+        </Grid.Item>
+      </Grid>
+      <Grid
+        className="layout-row layout-grid m-t-lg"
+        style={{ ...getLayoutGutter(20, 20) }}>
         {isLoading &&
           [1, 2, 3, 4].map((key) => (
-            <Col key={key} lg={8} md={12} sm={24} xl={6}>
+            <Grid.Item
+              className="layout-column tw:col-span-24 tw:min-[576px]:col-span-24 tw:min-[768px]:col-span-12 tw:min-[992px]:col-span-8 tw:min-[1200px]:col-span-6"
+              key={key}>
               <Card>
                 <SkeletonParagraph />
               </Card>
-            </Col>
+            </Grid.Item>
           ))}
 
         {isEmpty(applicationData) && !isLoading && errorPlaceHolder}
 
         {!isLoading && (
           <>
-            <Col span={24}>
-              <Row className="applications-card-container" gutter={[20, 20]}>
+            <Grid.Item className="layout-column" span={24}>
+              <Grid
+                className="layout-row layout-grid applications-card-container"
+                style={{ ...getLayoutGutter(20, 20) }}>
                 {applicationData?.map((item) => {
                   const disabledReason =
                     item.enabled === false &&
@@ -213,12 +232,9 @@ const ApplicationPage = () => {
                       : undefined;
 
                   return (
-                    <Col
-                      key={item.fullyQualifiedName}
-                      lg={8}
-                      md={12}
-                      sm={24}
-                      xl={6}>
+                    <Grid.Item
+                      className="layout-column tw:col-span-24 tw:min-[576px]:col-span-24 tw:min-[768px]:col-span-12 tw:min-[992px]:col-span-8 tw:min-[1200px]:col-span-6"
+                      key={item.fullyQualifiedName}>
                       <ApplicationCard
                         appName={item.fullyQualifiedName ?? ''}
                         deleted={item.deleted}
@@ -231,12 +247,12 @@ const ApplicationPage = () => {
                         title={getEntityName(item)}
                         onClick={() => viewAppDetails(item)}
                       />
-                    </Col>
+                    </Grid.Item>
                   );
                 })}
-              </Row>
-            </Col>
-            <Col span={24}>
+              </Grid>
+            </Grid.Item>
+            <Grid.Item className="layout-column" span={24}>
               {showPagination && (
                 <NextPrevious
                   currentPage={currentPage}
@@ -247,10 +263,10 @@ const ApplicationPage = () => {
                   onShowSizeChange={handlePageSizeChange}
                 />
               )}
-            </Col>
+            </Grid.Item>
           </>
         )}
-      </Row>
+      </Grid>
     </PageLayoutV1>
   );
 };

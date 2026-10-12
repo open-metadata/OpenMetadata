@@ -175,10 +175,12 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
     Typography: jest.requireActual('@openmetadata/ui-core-components')
       .Typography,
     Badge: jest.requireActual('@openmetadata/ui-core-components').Badge,
     Box: MockBox,
+    Button: jest.requireActual('@openmetadata/ui-core-components').Button,
     EmptyPlaceholder: MockEmptyPlaceholder,
     Skeleton: MockSkeleton,
     Table: MockTable,
@@ -214,8 +216,10 @@ jest.mock(
   })
 );
 
+const mockNavigate = jest.fn();
+
 jest.mock('react-router-dom', () => ({
-  useNavigate: jest.fn().mockReturnValue(jest.fn()),
+  useNavigate: () => mockNavigate,
 }));
 
 jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
@@ -424,6 +428,18 @@ describe('TestSuite Pipeline component', () => {
     ).toBeInTheDocument();
     expect(screen.getByTestId('test-cases-info-tooltip-icon')).toHaveClass(
       'tw:size-3'
+    );
+  });
+
+  it('should navigate to the add pipeline page on add pipeline button press', async () => {
+    await act(async () => {
+      render(<TestSuitePipelineTab testSuite={mockTestSuite} />);
+    });
+
+    fireEvent.click(screen.getByTestId('add-pipeline-button'));
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      expect.objectContaining({ search: undefined })
     );
   });
 });

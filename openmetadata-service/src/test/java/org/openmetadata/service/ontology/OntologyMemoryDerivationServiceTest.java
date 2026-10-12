@@ -38,13 +38,13 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.utils.ResultList;
@@ -102,7 +102,7 @@ class OntologyMemoryDerivationServiceTest {
   void batchSkipsMemoriesThatStoppedBeingEligibleAndDerivesFromTheRest() throws IOException {
     final ContextMemory drafted = stored(memory(MemoryVisibility.ENTITY));
     final ContextMemory archived = stored(memory(MemoryVisibility.ENTITY));
-    archived.setEntityStatus(EntityStatus.ARCHIVED);
+    archived.setEntityStatus(ContextMemoryStatus.ARCHIVED);
     final ContextMemory eligible = stored(memory(MemoryVisibility.ENTITY));
     final UUID deletedId = UUID.randomUUID();
     when(memories.get(isNull(), eq(deletedId), isNull(), eq(Include.NON_DELETED), eq(false)))
@@ -163,7 +163,7 @@ class OntologyMemoryDerivationServiceTest {
   void requireEligibleRejectsRestrictedInactiveAndDerivedMemories() {
     final ContextMemory restricted = memory(MemoryVisibility.PRIVATE);
     final ContextMemory archived = memory(MemoryVisibility.ENTITY);
-    archived.setEntityStatus(EntityStatus.ARCHIVED);
+    archived.setEntityStatus(ContextMemoryStatus.ARCHIVED);
     final ContextMemory derived = memory(MemoryVisibility.PUBLIC);
     derived.setDerivedEntities(
         List.of(new EntityReference().withId(UUID.randomUUID()).withType(Entity.GLOSSARY_TERM)));
@@ -171,8 +171,11 @@ class OntologyMemoryDerivationServiceTest {
     assertThrows(
         BadRequestException.class,
         () -> OntologyMemoryDerivationService.requireEligible(List.of(restricted), "bob"));
-    for (EntityStatus status :
-        List.of(EntityStatus.ARCHIVED, EntityStatus.DEPRECATED, EntityStatus.REJECTED)) {
+    for (ContextMemoryStatus status :
+        List.of(
+            ContextMemoryStatus.ARCHIVED,
+            ContextMemoryStatus.DEPRECATED,
+            ContextMemoryStatus.REJECTED)) {
       archived.setEntityStatus(status);
       assertThrows(
           BadRequestException.class,
@@ -251,7 +254,7 @@ class OntologyMemoryDerivationServiceTest {
         .withQuestion("What is a churned customer?")
         .withAnswer("A customer who cancelled every subscription.")
         .withOwners(List.of(new EntityReference().withType("user").withName("alice")))
-        .withEntityStatus(EntityStatus.APPROVED)
+        .withEntityStatus(ContextMemoryStatus.APPROVED)
         .withShareConfig(new MemoryShareConfig().withVisibility(visibility));
   }
 }

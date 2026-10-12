@@ -138,7 +138,8 @@ export const CustomPropertyCard = ({
   return (
     <Card
       className={styles.card}
-      data-testid={`custom-property-${property.name}-card`}>
+      data-testid={`custom-property-${property.name}-card`}
+      variant="elevated">
       <Box
         className="tw:h-full"
         data-testid={property.name}

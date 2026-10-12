@@ -12,8 +12,12 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Badge, Typography } from '@openmetadata/ui-core-components';
-import { Space, Tooltip } from 'antd';
+import {
+  Badge,
+  Box,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { isString } from 'lodash';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import React from 'react';
@@ -78,11 +82,12 @@ export const tagRender = (customTagProps: CustomTagProps) => {
       type="color"
       onMouseDown={onPreventMouseDown}>
       <Tooltip
-        className="cursor-pointer"
-        mouseEnterDelay={1.5}
-        placement="topLeft"
+        arrow
+        excludeTriggerFromTabOrder
+        delay={1500}
+        placement="top left"
         title={getTagTooltip(label as string)}
-        trigger="hover">
+        triggerClassName="tw:inline-flex cursor-pointer">
         <Typography
           as="p"
           className="m-0 d-inline-block break-all whitespace-normal">
@@ -135,9 +140,14 @@ export const fetchGlossaryList = async (
 
 export const TagListItemRenderer = (props: EntityReference) => {
   return (
-    <Space>
+    <Box
+      inline
+      align="center"
+      className="layout-space layout-space-horizontal"
+      gap={2}
+      itemClassName="layout-space-item">
       <ClassificationIcon className="d-block'" height={22} width={16} />
       <Typography>{getEntityName(props)}</Typography>
-    </Space>
+    </Box>
   );
 };
