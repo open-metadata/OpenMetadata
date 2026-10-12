@@ -51,7 +51,7 @@ import {
   MarkdownToHTMLConverter,
 } from '../../../../../utils/FeedUtilsPure';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
-import { formatActivityTime } from '../inbox.utils';
+import { formatActivityTime, INBOX_MESSAGE_CLASS } from '../inbox.utils';
 import { useFeedDeleteAccess } from '../useFeedDeleteAccess';
 import AuthorPopover from './AuthorPopover';
 import InboxCommentComposer from './InboxCommentComposer';
@@ -250,7 +250,7 @@ const ReplyRow = ({
           </Box>
         ) : (
           <RichTextEditorPreviewerV1
-            className="inbox-feed-message tw:text-sm"
+            className={classNames(INBOX_MESSAGE_CLASS, 'tw:text-sm')}
             markdown={getFrontEndFormat(reply.message)}
           />
         )}

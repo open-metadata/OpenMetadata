@@ -82,6 +82,7 @@ import {
   getActivityKindType,
   getFeedSortTimestamp,
   INBOX_ENTITY_ICON_CLASS,
+  INBOX_MESSAGE_CLASS,
   isSameLocalDay,
   sendReaction,
 } from '../inbox.utils';
@@ -583,7 +584,10 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
           ) : (
             // A message reads on the recessed surface of a change's Before.
             <RichTextEditorPreviewerV1
-              className="inbox-feed-message tw:rounded-lg tw:bg-utility-gray-blue-50 tw:px-3.5 tw:py-3 tw:text-sm"
+              className={classNames(
+                INBOX_MESSAGE_CLASS,
+                'tw:rounded-lg tw:bg-utility-gray-blue-50 tw:px-3.5 tw:py-3 tw:text-sm'
+              )}
               markdown={message}
             />
           )}

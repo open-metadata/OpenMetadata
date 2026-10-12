@@ -352,6 +352,12 @@ export enum ActivityGrouping {
 // everything without one (lifecycle events, conversations).
 // An asset's 16px icon beside text: the design system's 1.3 stroke, not the
 // heavier 1.5 the shared entity icons draw with, so it matches the type.
+// A message's links and @mentions read as the card's asset link does: brand
+// blue that follows dark mode, not the editor's fixed primary color. `!`: the
+// editor's own link rule is more specific.
+export const INBOX_MESSAGE_CLASS =
+  'inbox-feed-message tw:[&_a]:text-brand-secondary!';
+
 export const INBOX_ENTITY_ICON_CLASS =
   'tw:flex tw:shrink-0 tw:items-center tw:[&_img]:size-4 tw:[&_svg]:size-4 tw:[&_svg]:[stroke-width:1.3]';
 
