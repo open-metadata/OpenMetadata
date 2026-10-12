@@ -50,6 +50,17 @@ public class CacheInvalidationPubSub {
    */
   public static final String TYPE_PERSONA_CONTEXT = "personaContext";
 
+  /**
+   * Non-entity invalidation type telling peers to drop every cached user authorization context
+   * (e.g. a domain rename changes the FQN {@code hasDomain()} matches on without writing any user).
+   */
+  public static final String TYPE_USER_CONTEXTS = "userContexts";
+
+  /** Whether {@code type} is a non-entity signal rather than an entity write. */
+  public static boolean isSignal(String type) {
+    return TYPE_PERSONA_CONTEXT.equals(type) || TYPE_USER_CONTEXTS.equals(type);
+  }
+
   private final CacheConfig.Redis redisConfig;
   @Getter private final String instanceId;
   private final AtomicBoolean running = new AtomicBoolean(false);

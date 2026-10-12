@@ -125,7 +125,7 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
               // Non-entity signals ride this channel too (a persona context rebuild mutates no
               // entity). Evicting entity caches for them would bump a write epoch and force a
               // needless reload of an entity that did not change.
-              if (!CacheInvalidationPubSub.TYPE_PERSONA_CONTEXT.equals(msg.type())) {
+              if (!CacheInvalidationPubSub.isSignal(msg.type())) {
                 org.openmetadata.service.jdbi3.EntityRepository.onRemoteCacheInvalidate(
                     msg.type(), msg.id(), msg.fqn());
                 if (msg.id() != null && cachedReadBundle != null) {

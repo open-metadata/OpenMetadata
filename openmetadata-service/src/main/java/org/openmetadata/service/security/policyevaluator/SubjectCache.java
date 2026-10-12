@@ -36,6 +36,8 @@ import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.cache.CacheBundle;
+import org.openmetadata.service.cache.CacheInvalidationPubSub;
 import org.openmetadata.service.cache.Invalidatable;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -124,7 +126,8 @@ public class SubjectCache {
       (type, id, fqn) -> {
         if (Entity.TEAM.equals(type) || Entity.ROLE.equals(type) || Entity.POLICY.equals(type)) {
           invalidateAll();
-        } else if (Entity.PERSONA.equals(type)) {
+        } else if (Entity.PERSONA.equals(type)
+            || CacheInvalidationPubSub.TYPE_USER_CONTEXTS.equals(type)) {
           invalidateAllUserContexts();
         } else if (Entity.USER.equals(type) && fqn != null) {
           invalidateUserByFqn(fqn);
@@ -214,6 +217,15 @@ public class SubjectCache {
       userNames.add(user.getName());
     }
     userNames.forEach(SubjectCache::invalidateUserContext);
+  }
+
+  /** Drops every user context on this pod and, through Redis pub/sub, on its peers. */
+  public static void invalidateAllUserContextsEverywhere() {
+    invalidateAllUserContexts();
+    CacheInvalidationPubSub pubsub = CacheBundle.getCacheInvalidationPubSub();
+    if (pubsub != null) {
+      pubsub.publish(CacheInvalidationPubSub.TYPE_USER_CONTEXTS, null, null, "invalidate");
+    }
   }
 
   public static void invalidateAllUserContexts() {

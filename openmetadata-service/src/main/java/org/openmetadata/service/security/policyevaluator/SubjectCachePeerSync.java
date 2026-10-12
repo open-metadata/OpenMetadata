@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.security.policyevaluator;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import io.dropwizard.lifecycle.Managed;
 import java.util.HashMap;
 import java.util.List;
@@ -35,12 +37,15 @@ import org.openmetadata.service.util.FullyQualifiedName;
  * Applies user, team, role and policy writes served by other pods to this pod's authorization
  * caches when no Redis pub/sub carries them (e.g. a domain added to a user through pod A reaches
  * pod B within one poll instead of after the 15-minute user context TTL).
+ * ADR:2026-10-12-auth-caches-follow-peer-writes-by-polling-when-redis-is-off
  */
 @Slf4j
 public class SubjectCachePeerSync implements Managed {
   static final long POLL_INTERVAL_MS = 5_000;
   // Rescans this far behind the last poll so a late commit or a skewed writer clock is not missed
   static final long OVERLAP_MS = 60_000;
+  // An entry evicted early only risks re-evicting a row or missing one rename; the TTL covers both
+  static final int MAX_TRACKED_ROWS = 10_000;
 
   record WatchedTable(String entityType, EntityDAO<?> dao) {}
 
@@ -49,9 +54,15 @@ public class SubjectCachePeerSync implements Managed {
   private final List<Invalidatable> invalidators;
   private final Runnable onDomainRename;
   private final LongSupplier clock;
-  private final Map<String, Long> seenVersions = new HashMap<>();
+  private final Cache<String, Long> seenVersions =
+      CacheBuilder.newBuilder()
+          .maximumSize(MAX_TRACKED_ROWS)
+          .expireAfterWrite(2 * OVERLAP_MS, TimeUnit.MILLISECONDS)
+          .build();
+  private final Cache<String, String> domainNames =
+      CacheBuilder.newBuilder().maximumSize(MAX_TRACKED_ROWS).build();
+  // One entry per watched table type, so it cannot grow with the catalog
   private final Map<String, Integer> rowCounts = new HashMap<>();
-  private final Map<String, String> domainNames = new HashMap<>();
   private long watermark;
   private ScheduledExecutorService scheduler;
 
@@ -112,7 +123,6 @@ public class SubjectCachePeerSync implements Managed {
     }
     evictOnDomainRenames();
     watermark = pollStart;
-    seenVersions.values().removeIf(version -> version < pollStart - 2 * OVERLAP_MS);
   }
 
   private void syncSafely() {
@@ -129,7 +139,9 @@ public class SubjectCachePeerSync implements Managed {
     for (String row : rows) {
       String[] idVersionName = row.split("\\|", 3);
       Long version = Long.valueOf(idVersionName[1]);
-      Long seen = seenVersions.put(table.entityType() + idVersionName[0], version);
+      String key = table.entityType() + idVersionName[0];
+      Long seen = seenVersions.getIfPresent(key);
+      seenVersions.put(key, version);
       if (!Objects.equals(seen, version)) {
         evict(
             table.entityType(),
@@ -166,7 +178,8 @@ public class SubjectCachePeerSync implements Managed {
   /** Records the domain's name and returns whether it differs from the one seen before. */
   private boolean rememberDomainName(String row) {
     String[] idVersionName = row.split("\\|", 3);
-    String previous = domainNames.put(idVersionName[0], idVersionName[2]);
+    String previous = domainNames.getIfPresent(idVersionName[0]);
+    domainNames.put(idVersionName[0], idVersionName[2]);
     return previous != null && !previous.equals(idVersionName[2]);
   }
 
