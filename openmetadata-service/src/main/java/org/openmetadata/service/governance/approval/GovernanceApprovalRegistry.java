@@ -56,7 +56,10 @@ public final class GovernanceApprovalRegistry {
   private static final long RECHECK_MILLIS = 5_000L;
 
   private record Snapshot(
-      String epoch, long checkedAt, Map<String, List<GatingRule>> rulesByEntityType) {}
+      String epoch,
+      long checkedAt,
+      Map<String, List<GatingRule>> rulesByEntityType,
+      List<String> enforcedEntityTypes) {}
 
   private static final AtomicReference<Snapshot> SNAPSHOT = new AtomicReference<>();
 
@@ -91,14 +94,15 @@ public final class GovernanceApprovalRegistry {
   }
 
   /**
-   * Entity types an active Enforce-mode workflow targets, sorted. A workflow's entity filter can
-   * still leave a given asset of the type ungated.
+   * Entity types an Enforce-mode workflow targets, sorted. A suspended workflow counts: it holds no
+   * new edit, but the requests it already holds stay open until it resumes. A workflow's entity
+   * filter can still leave a given asset of the type ungated.
    */
-  public static List<String> gatedEntityTypes() {
+  public static List<String> enforcedEntityTypes() {
     if (Entity.getCollectionDAO() == null) {
       return List.of();
     }
-    return currentSnapshot().rulesByEntityType().keySet().stream().sorted().toList();
+    return currentSnapshot().enforcedEntityTypes();
   }
 
   /**
@@ -146,21 +150,39 @@ public final class GovernanceApprovalRegistry {
       String epoch = Entity.getCollectionDAO().changeRequestDAO().workflowDefinitionEpoch();
       snapshot =
           snapshot != null && snapshot.epoch().equals(epoch)
-              ? new Snapshot(epoch, now, snapshot.rulesByEntityType())
-              : new Snapshot(epoch, now, compute());
+              ? new Snapshot(
+                  epoch, now, snapshot.rulesByEntityType(), snapshot.enforcedEntityTypes())
+              : compute(epoch, now);
       SNAPSHOT.set(snapshot);
     }
     return snapshot;
   }
 
-  private static Map<String, List<GatingRule>> compute() {
+  private static Snapshot compute(String epoch, long now) {
+    List<WorkflowDefinition> definitions = listWorkflowDefinitions();
+    return new Snapshot(epoch, now, rulesOf(definitions), enforcedEntityTypesOf(definitions));
+  }
+
+  private static Map<String, List<GatingRule>> rulesOf(List<WorkflowDefinition> definitions) {
     Map<String, List<GatingRule>> rules = new HashMap<>();
-    listWorkflowDefinitions().stream()
+    definitions.stream()
         .sorted(Comparator.comparing(WorkflowDefinition::getName))
         .forEach(definition -> addRules(definition, rules));
     Map<String, List<GatingRule>> frozen = new HashMap<>();
     rules.forEach((entityType, list) -> frozen.put(entityType, List.copyOf(list)));
     return Map.copyOf(frozen);
+  }
+
+  private static List<String> enforcedEntityTypesOf(List<WorkflowDefinition> definitions) {
+    return definitions.stream()
+        .filter(GovernanceApprovalRegistry::holdsChanges)
+        .flatMap(
+            definition ->
+                targetEntityTypes(JsonUtils.valueToTree(definition.getTrigger()).path("config"))
+                    .stream())
+        .distinct()
+        .sorted()
+        .toList();
   }
 
   @SuppressWarnings("unchecked")

@@ -250,7 +250,7 @@ class GovernanceApprovalRegistryTest {
   }
 
   @Test
-  void gatedEntityTypesAreTheSortedTargetsOfActiveEnforceWorkflows() {
+  void enforcedEntityTypesAreTheSortedTargetsOfEnforceWorkflowsSuspendedOrNot() {
     String defaultMode =
         "{\"type\":\"eventBasedEntity\",\"config\":{\"approvalMode\":\"Default\",\"entityTypes\":[\"topic\"]}}";
     List<WorkflowDefinition> stored =
@@ -261,24 +261,25 @@ class GovernanceApprovalRegistryTest {
             workflow(defaultMode).withName("wf4"));
 
     assertEquals(
-        List.of("dashboard", "glossary", "table"), gatedEntityTypesFromStored(stored));
+        List.of("dashboard", "glossary", "pipeline", "table"),
+        enforcedEntityTypesFromStored(stored));
   }
 
   @Test
   void noEntityTypeIsGatedWithoutAnEnforceWorkflow() {
-    assertTrue(gatedEntityTypesFromStored(List.of()).isEmpty());
+    assertTrue(enforcedEntityTypesFromStored(List.of()).isEmpty());
   }
 
   @Test
   void noEntityTypeIsGatedBeforeTheServerWiresItsDaos() {
     try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
       entity.when(Entity::getCollectionDAO).thenReturn(null);
-      assertTrue(GovernanceApprovalRegistry.gatedEntityTypes().isEmpty());
+      assertTrue(GovernanceApprovalRegistry.enforcedEntityTypes().isEmpty());
     }
   }
 
   @SuppressWarnings({"rawtypes", "unchecked"})
-  private static List<String> gatedEntityTypesFromStored(List<WorkflowDefinition> stored) {
+  private static List<String> enforcedEntityTypesFromStored(List<WorkflowDefinition> stored) {
     CollectionDAO collectionDAO = mock(CollectionDAO.class);
     GovernanceDAOs.ChangeRequestDAO changeRequestDAO = mock(GovernanceDAOs.ChangeRequestDAO.class);
     EntityRepository workflowRepository = mock(EntityRepository.class);
@@ -291,7 +292,7 @@ class GovernanceApprovalRegistryTest {
           .when(() -> Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION))
           .thenReturn(workflowRepository);
       GovernanceApprovalRegistry.invalidate();
-      return GovernanceApprovalRegistry.gatedEntityTypes();
+      return GovernanceApprovalRegistry.enforcedEntityTypes();
     } finally {
       GovernanceApprovalRegistry.invalidate();
     }

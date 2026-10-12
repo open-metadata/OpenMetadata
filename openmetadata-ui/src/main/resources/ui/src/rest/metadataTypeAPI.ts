@@ -89,7 +89,7 @@ export const getWorkflowTriggerFields =
     return response.data;
   };
 
-/** Entity types whose edits an active Enforce-mode workflow holds for approval. */
+/** Entity types an Enforce-mode workflow targets, suspended or not. */
 export const getApprovalEnforcedEntityTypes = async (): Promise<string[]> => {
   const response = await APIClient.get<string[]>(
     '/metadata/types/workflows/approvalEnforcedEntityTypes'

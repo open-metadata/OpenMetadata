@@ -171,7 +171,7 @@ class ChangeRequestResourceIT {
   }
 
   @Test
-  void enforcedEntityTypesListAnActiveEnforceWorkflowUntilItIsSuspended(TestNamespace ns) {
+  void enforcedEntityTypesListAnEnforceWorkflowWhileSuspendedUntilItIsDeleted(TestNamespace ns) {
     // The filter excludes every stored procedure, so no concurrent test's edit is held.
     String holdsNothing = JsonUtils.pojoToJson(Map.of(Entity.STORED_PROCEDURE, "{\"==\":[1,1]}"));
     WorkflowDefinition workflow =
@@ -179,7 +179,11 @@ class ChangeRequestResourceIT {
 
     assertTrue(enforcedEntityTypes(SdkClients.user2Client()).contains(Entity.STORED_PROCEDURE));
 
+    // A suspended workflow's requests stay open until it resumes, so its type stays listed.
     suspendWorkflow(workflow);
+    assertTrue(enforcedEntityTypes(SdkClients.user2Client()).contains(Entity.STORED_PROCEDURE));
+
+    SdkClients.adminClient().workflowDefinitions().delete(workflow.getId().toString());
     assertFalse(enforcedEntityTypes(SdkClients.user2Client()).contains(Entity.STORED_PROCEDURE));
   }
 

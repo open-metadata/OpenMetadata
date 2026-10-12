@@ -15,8 +15,9 @@ import type { ApprovalEnforcedEntityTypesStore } from '../interface/store.interf
 import { getApprovalEnforcedEntityTypes } from '../rest/metadataTypeAPI';
 
 /**
- * Entity types an active Enforce-mode workflow gates, read once and shared by every asset page.
- * A workflow saved or deleted in this session invalidates them, so the next reader reads again.
+ * Entity types an Enforce-mode workflow targets, read once and shared by every asset page. A
+ * suspended workflow still counts, since the requests it holds stay open. A workflow saved or
+ * deleted in this session invalidates them, so the next reader reads again.
  */
 export const useApprovalEnforcedEntityTypesStore =
   create<ApprovalEnforcedEntityTypesStore>((set, get) => ({

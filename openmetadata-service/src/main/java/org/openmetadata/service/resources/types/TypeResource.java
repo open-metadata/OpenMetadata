@@ -175,9 +175,10 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
       operationId = "getApprovalEnforcedEntityTypes",
       summary = "Get entity types whose edits are held for approval",
       description =
-          "Get the entity types targeted by an active governance workflow whose eventBasedEntity "
+          "Get the entity types targeted by a governance workflow whose eventBasedEntity "
               + "trigger runs in Enforce approval mode. Edits to the fields such a workflow watches "
-              + "are held as change requests until a reviewer approves them.",
+              + "are held as change requests until a reviewer approves them. A suspended workflow "
+              + "counts, since the requests it holds stay open until it resumes.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -190,7 +191,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   public List<String> getApprovalEnforcedEntityTypes() {
     // Not authorized beyond authentication: anyone whose edit can be held needs to know it can,
     // and a held edit's 202 response reveals the same entity type anyway.
-    return GovernanceApprovalRegistry.gatedEntityTypes();
+    return GovernanceApprovalRegistry.enforcedEntityTypes();
   }
 
   @GET
