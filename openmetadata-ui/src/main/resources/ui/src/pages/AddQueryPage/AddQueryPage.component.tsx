@@ -10,7 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Form, FormProps, Space, Tooltip, Typography } from 'antd';
+
+import {
+  Box,
+  Button as CoreButton,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Button, Form, FormProps } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { filter, isEmpty } from 'lodash';
@@ -232,13 +239,11 @@ const AddQueryPage = () => {
           <div>
             <TitleBreadcrumb titleLinks={titleBreadcrumb} />
             <div className="m-t-md">
-              <Typography.Paragraph
-                className="text-base"
-                data-testid="form-title">
+              <Typography as="p" className="text-base" data-testid="form-title">
                 {t('label.add-new-entity', {
                   entity: t('label.query'),
                 })}
-              </Typography.Paragraph>
+              </Typography>
               <Form
                 data-testid="query-form"
                 form={form}
@@ -283,7 +288,12 @@ const AddQueryPage = () => {
                   />
                 </Form.Item>
                 <Form.Item>
-                  <Space className="w-full justify-end" size={16}>
+                  <Box
+                    inline
+                    align="center"
+                    className="layout-space layout-space-horizontal w-full justify-end"
+                    gap={4}
+                    itemClassName="layout-space-item">
                     <Button
                       data-testid="cancel-btn"
                       type="default"
@@ -291,21 +301,21 @@ const AddQueryPage = () => {
                       {t('label.cancel')}
                     </Button>
                     <Tooltip
+                      arrow
+                      isDisabled={permissions.query?.Create}
                       placement="top"
-                      title={
-                        !permissions.query?.Create &&
-                        t(NO_PERMISSION_FOR_ACTION)
-                      }>
-                      <Button
+                      title={t(NO_PERMISSION_FOR_ACTION)}>
+                      <CoreButton
+                        color="primary"
                         data-testid="save-btn"
-                        disabled={!permissions.query?.Create}
-                        htmlType="submit"
-                        loading={isSaving}
-                        type="primary">
+                        isDisabled={!permissions.query?.Create}
+                        isLoading={isSaving}
+                        size="sm"
+                        type="submit">
                         {t('label.save')}
-                      </Button>
+                      </CoreButton>
                     </Tooltip>
-                  </Space>
+                  </Box>
                 </Form.Item>
               </Form>
             </div>
@@ -318,14 +328,12 @@ const AddQueryPage = () => {
       secondPanel={{
         children: (
           <>
-            <Typography.Paragraph className="text-base font-medium">
+            <Typography as="p" className="text-base font-medium">
               {t('label.add-entity', {
                 entity: t('label.query'),
               })}
-            </Typography.Paragraph>
-            <Typography.Text>
-              {t('message.add-query-helper-message')}
-            </Typography.Text>
+            </Typography>
+            <Typography>{t('message.add-query-helper-message')}</Typography>
           </>
         ),
         className: 'content-resizable-panel-container',

@@ -70,7 +70,6 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityStatusBadgeConfig } from '../../../utils/EntityStatusUtils';
 import { pruneEmptyChildren } from '../../../utils/TablePureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import AlertBar from '../../AlertBar/AlertBar';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
@@ -79,6 +78,7 @@ import ContractQualityCard from '../ContractQualityCard/ContractQualityCard.comp
 import ContractSchemaTable from '../ContractSchemaTable/ContractSchemaTable.component';
 import ContractSemantics from '../ContractSemantics/ContractSemantics.component';
 import ContractSLA from '../ContractSLACard/ContractSLA.component';
+import ContractStatusAlert from '../ContractStatusAlert/ContractStatusAlert';
 import ContractViewSwitchTab from '../ContractViewSwitchTab/ContractViewSwitchTab.component';
 import ContractYaml from '../ContractYaml/ContractYaml.component';
 import './contract-detail.less';
@@ -750,11 +750,8 @@ const ContractDetail: React.FC<{
             <div className="contract-detail-container">
               {showContractStatusAlert && (
                 <div className="contract-card-items">
-                  <AlertBar
-                    defaultExpand
-                    className="h-full"
+                  <ContractStatusAlert
                     message={latestContractResults?.result ?? ''}
-                    type="error"
                   />
                 </div>
               )}

@@ -25,7 +25,9 @@ export const hasExternalDestination = (
       EXTERNAL_DESTINATION_TYPES.includes(type ?? '')
   );
 
-export const getTestableExternalDestinations = (destinations: Destination[]) =>
+export const getTestableExternalDestinations = (
+  destinations: Destination[] = []
+) =>
   destinations.filter(
     ({ category, config }) =>
       category === SubscriptionCategory.External && !isEmpty(config)

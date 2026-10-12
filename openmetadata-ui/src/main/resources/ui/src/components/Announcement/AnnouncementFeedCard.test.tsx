@@ -29,10 +29,6 @@ jest.mock('./AnnouncementFeedCardBody.component', () =>
     ))
 );
 
-jest.mock('../ActivityFeed/Shared/AnnouncementBadge', () => {
-  return jest.fn().mockReturnValue(<p>AnnouncementBadge</p>);
-});
-
 jest.mock('../common/ProfilePicture/ProfilePicture', () => {
   return jest.fn().mockReturnValue(<p>ProfilePicture</p>);
 });
@@ -52,8 +48,11 @@ describe('Test AnnouncementFeedCard Component', () => {
   it('should render AnnouncementFeedCard component', () => {
     render(<AnnouncementFeedCard {...mockProps} />);
 
-    expect(screen.getByText('AnnouncementBadge')).toBeInTheDocument();
     expect(screen.getByText('AnnouncementFeedCardBody')).toBeInTheDocument();
+    // the card surface is tinted by the announcement's type
+    expect(screen.getByTestId('announcement-card')).toHaveClass(
+      'tw:bg-utility-blue-50'
+    );
   });
 
   it('should trigger onConfirmation', () => {

@@ -75,9 +75,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
       Row: ({ children, id }: { children?: React.ReactNode; id?: string }) => (
         <tr data-rowid={id}>{children}</tr>
       ),
-      Cell: ({ children }: { children?: React.ReactNode }) => (
-        <td>{children}</td>
-      ),
+      Cell: ({
+        children,
+        className,
+      }: {
+        children?: React.ReactNode;
+        className?: string;
+      }) => <td className={className}>{children}</td>,
     }
   );
 
@@ -269,6 +273,27 @@ describe('IncidentManagerTable', () => {
 
     expect(screen.getAllByTestId('skeleton').length).toBeGreaterThan(0);
     expect(screen.queryByTestId('empty-placeholder')).not.toBeInTheDocument();
+  });
+
+  // Layout cannot be measured here, so these pin the classes that keep the
+  // columns sized: an unbreakable test case name used to widen its column
+  // across the table, and the Assignee column collapsed, stacking "No
+  // Assignee" one letter per line, once every row was unassigned.
+  it('should hold the name column at its width and let a long name wrap inside it', () => {
+    renderTable();
+
+    const nameLink = screen.getByTestId('test-case-test_case_1');
+
+    expect(nameLink).toHaveClass('tw:wrap-anywhere');
+    expect(nameLink.closest('td')).toHaveClass('tw:w-72', 'tw:min-w-72');
+  });
+
+  it('should keep the assignee on one line', () => {
+    renderTable();
+
+    for (const assignee of screen.getAllByTestId('assignee')) {
+      expect(assignee.closest('td')).toHaveClass('tw:whitespace-nowrap');
+    }
   });
 
   it('should render NextPrevious when showPagination is true', () => {

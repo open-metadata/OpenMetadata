@@ -33,6 +33,8 @@ export interface UserSelectDropdownProps {
   multiple?: MultipleUserTeam;
   label?: string;
   previewSelected?: boolean;
+  /** Hide the Teams tab so only the Users list shows. Defaults to true. */
+  showTeamsTab?: boolean;
   listHeight?: number;
   tooltipText?: string;
   overlayClassName?: string;

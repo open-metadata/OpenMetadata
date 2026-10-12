@@ -18,16 +18,6 @@ export const CRUMB = {
   ACTION: 'action',
 } as const;
 
-export const getTableColumns = (
-  t: (key: string) => string
-): { id: string; name: string; width?: number }[] => [
-  { id: 'name', name: t('label.name') },
-  { id: 'type', name: t('label.type') },
-  { id: 'config', name: t('label.config') },
-  { id: 'description', name: t('label.description') },
-  { id: 'actions', name: t('label.action-plural') },
-];
-
 export const GROUP_DATABASE_STORAGE = 'DATABASE & STORAGE';
 export const GROUP_DASHBOARDS_REPORTING = 'DASHBOARDS & REPORTING';
 export const GROUP_PIPELINES_ML = 'PIPELINES & ML';

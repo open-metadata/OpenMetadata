@@ -81,7 +81,7 @@ jobs:
             // for these same-org repos, so untrusted fork PRs can never drive the
             // privileged token at arbitrary repositories or probe private issues.
             const CLOSING_KEYWORDS = '(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)';
-            const ALLOWED_CROSS_REPOS = new Set(['openmetadata-collate']);
+            const ALLOWED_CROSS_REPOS = new Set(['openmetadata-collate', 'ai-platform']);
             const TRUSTED_ASSOCIATIONS = new Set(['OWNER', 'MEMBER', 'COLLABORATOR']);
 
             const PR_LINKS_QUERY = `

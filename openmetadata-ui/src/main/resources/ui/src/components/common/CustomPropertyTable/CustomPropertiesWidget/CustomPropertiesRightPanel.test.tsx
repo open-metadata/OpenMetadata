@@ -38,7 +38,6 @@ const renderPanel = (hasEditPermissions = true, viewAllPath?: string) =>
       hasEditPermissions={hasEditPermissions}
       properties={properties}
       viewAllPath={viewAllPath}
-      onExtensionUpdate={jest.fn()}
       onValueSave={jest.fn()}
     />,
     { wrapper: MemoryRouter }
@@ -60,7 +59,6 @@ const renderWidget = (
         propertyLayout: [],
         ...widgetSettings,
       }}
-      onExtensionUpdate={jest.fn()}
       onValueSave={jest.fn()}
     />,
     { wrapper: MemoryRouter }

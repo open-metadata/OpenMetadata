@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Card, Tooltip, Typography } from 'antd';
+import { Tooltip, Typography } from '@openmetadata/ui-core-components';
+import { Card } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 
@@ -74,12 +75,12 @@ const AccessTokenRevokeModal = ({
               </span>
             </div>
             <div className="flex flex-col gap-2">
-              <Typography.Text className="scim-modal-delete-title text-md">
+              <Typography className="scim-modal-delete-title text-md">
                 {t('message.delete-scim-token')}
-              </Typography.Text>
-              <Typography.Text className="scim-modal-delete-desc text-sm">
+              </Typography>
+              <Typography className="scim-modal-delete-desc text-sm">
                 {t('message.are-you-sure-to-delete-scim-token')}
-              </Typography.Text>
+              </Typography>
             </div>
           </div>
         ) : (
@@ -346,7 +347,15 @@ const AccessTokenCard: FC<MockProps> = ({
   }
 
   if (disabled) {
-    return <Tooltip title="Upgrade to use this feature">{tokenCard}</Tooltip>;
+    return (
+      <Tooltip
+        arrow
+        excludeTriggerFromTabOrder
+        title="Upgrade to use this feature"
+        triggerClassName="tw:inline-flex">
+        {tokenCard}
+      </Tooltip>
+    );
   }
 
   return tokenCard;

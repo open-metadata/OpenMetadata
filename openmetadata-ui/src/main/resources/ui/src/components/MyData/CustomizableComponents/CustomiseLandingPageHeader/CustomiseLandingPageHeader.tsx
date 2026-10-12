@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
-import { Button, Typography } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import {
@@ -96,34 +95,25 @@ const CustomiseHeaderButton = ({
   hidden ? null : (
     <Button
       className="customise-header-btn"
+      color="secondary"
       data-testid="customise-header-btn"
-      icon={
-        <Icon
-          component={FilterIcon}
-          style={{ fontSize: '16px', color: 'white' }}
-        />
-      }
-      onClick={onClick}
+      iconLeading={<FilterIcon style={{ fontSize: '16px', color: 'white' }} />}
+      onPress={onClick}
     />
   );
 
 interface LandingPageRecentlyViewedProps {
   isPreviewHeader: boolean;
   onHomePage: boolean;
-  showAnnouncements: boolean;
 }
 
 const LandingPageRecentlyViewed = ({
   isPreviewHeader,
   onHomePage,
-  showAnnouncements,
 }: LandingPageRecentlyViewedProps) =>
   isPreviewHeader ? null : (
     <Suspense fallback={null}>
-      <RecentlyViewedCarousel
-        disabled={!onHomePage}
-        showAnnouncements={showAnnouncements}
-      />
+      <RecentlyViewedCarousel disabled={!onHomePage} />
     </Suspense>
   );
 
@@ -292,11 +282,11 @@ const CustomiseLandingPageHeader = ({
             className={classNames('d-flex items-center gap-4 mb-5', {
               'justify-center': !showAnnouncements,
             })}>
-            <Typography.Text className="welcome-user">
+            <Typography className="welcome-user">
               {t('label.welcome', {
                 name: currentUser?.displayName || currentUser?.name,
               })}
-            </Typography.Text>
+            </Typography>
             <CustomiseHeaderButton
               hidden={hideCustomiseButton}
               onClick={handleOpenCustomiseHomeModal}
@@ -311,7 +301,6 @@ const CustomiseLandingPageHeader = ({
             </div>
             <LandingPageRecentlyViewed
               isPreviewHeader={isPreviewHeader}
-              showAnnouncements={showAnnouncements}
               onHomePage={onHomePage}
             />
           </div>

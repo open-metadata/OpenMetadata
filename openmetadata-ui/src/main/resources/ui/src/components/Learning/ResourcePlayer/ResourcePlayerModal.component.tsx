@@ -33,12 +33,14 @@ import { useTranslation } from 'react-i18next';
 import { PAGE_IDS, ResourceType } from '../../../constants/Learning.constants';
 import type { LearningResource } from '../../../rest/learningResourceAPI';
 import { getLearningResourceById } from '../../../rest/learningResourceAPI';
+import { getDurationUnitLabelKey } from '../../../utils/platform/learning.utils';
 import {
   CATEGORY_BADGE_COLORS,
   LEARNING_CATEGORIES,
   ResourceCategory,
 } from '../Learning.interface';
 import { ArticleViewer } from './ArticleViewer.component';
+import { PdfViewer } from './PdfViewer';
 import { ResourcePlayerModalProps } from './ResourcePlayerModal.interface';
 import { StorylaneTour } from './StorylaneTour.component';
 import { VideoPlayer } from './VideoPlayer.component';
@@ -54,16 +56,12 @@ const FULLSCREEN_PLAYER_CLASS = [
 const getFormattedDuration = (
   resource: LearningResource,
   t: TFunction
-): string | null => {
-  const durationUnitLabel =
-    resource.resourceType === 'Article'
-      ? t('label.min-read')
-      : t('label.min-watch');
-
-  return resource.estimatedDuration
-    ? `${Math.floor(resource.estimatedDuration / 60)} ${durationUnitLabel}`
+): string | null =>
+  resource.estimatedDuration
+    ? `${Math.floor(resource.estimatedDuration / 60)} ${t(
+        getDurationUnitLabelKey(resource.resourceType)
+      )}`
     : null;
-};
 
 const getFormattedDate = (resource: LearningResource): string | null =>
   resource.updatedAt
@@ -288,6 +286,8 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
         return <StorylaneTour resource={displayResource} />;
       case ResourceType.Article:
         return <ArticleViewer resource={displayResource} />;
+      case ResourceType.PDF:
+        return <PdfViewer resource={displayResource} />;
       default:
         return (
           <Typography as="span" className="tw:p-4" size="text-sm">

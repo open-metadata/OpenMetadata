@@ -35,6 +35,7 @@ const Tour = ({ steps }: { steps: TourSteps[] }) => {
   const navigate = useNavigate();
 
   const handleModalSubmit = () => {
+    updateIsTourOpen(false);
     updateTourPage(CurrentTourPageType.MY_DATA_PAGE);
     navigate('/');
   };

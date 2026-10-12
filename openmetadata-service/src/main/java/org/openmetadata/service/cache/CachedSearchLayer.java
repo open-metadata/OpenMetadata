@@ -40,6 +40,11 @@ import org.openmetadata.schema.search.SearchRequest;
  */
 @Slf4j
 public final class CachedSearchLayer {
+  public enum Operation {
+    QUERY,
+    ENTITY_TYPE_COUNTS
+  }
+
   private final CacheProvider cache;
   private final String keyPrefix;
   private final int ttlSeconds;
@@ -104,12 +109,20 @@ public final class CachedSearchLayer {
    */
   public String loadOrCompute(
       SearchRequest request, String principalName, Supplier<String> supplier) {
+    return loadOrCompute(request, principalName, Operation.QUERY, supplier);
+  }
+
+  public String loadOrCompute(
+      SearchRequest request, String principalName, Operation operation, Supplier<String> supplier) {
     if (!enabled()) {
       return supplier.get();
     }
     String key;
     try {
       key = buildKey(request, principalName);
+      if (operation == Operation.ENTITY_TYPE_COUNTS) {
+        key += ":entityTypeCounts";
+      }
     } catch (Exception e) {
       LOG.debug("Search cache key build failed; falling through to compute", e);
       return supplier.get();

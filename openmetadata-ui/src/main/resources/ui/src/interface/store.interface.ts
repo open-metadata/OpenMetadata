@@ -16,6 +16,7 @@ import type {
 } from '../components/Auth/AuthProviders/AuthProvider.interface';
 import type { InlineAlertProps } from '../components/common/InlineAlert/InlineAlert.interface';
 import type { EntityUnion } from '../components/Explore/ExplorePage.interface';
+import type { DefaultColumnOrder } from '../generated/api/configuration/appConfiguration';
 import type { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import type { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
 import type { LineageSettings } from '../generated/configuration/lineageSettings';
@@ -30,6 +31,8 @@ import type { ExploreSearchIndex } from './discovery/explore.interface';
 export interface AppPreferences {
   lineageConfig?: LineageSettings;
   searchConfig?: SearchSettings;
+  /** Tenant default for table schema views; unset means alphabetical. */
+  defaultColumnOrder?: DefaultColumnOrder;
 }
 
 export interface ApplicationStore
@@ -40,6 +43,7 @@ export interface ApplicationStore
   isApplicationLoading: boolean;
   setApplicationLoading: (loading: boolean) => void;
   isAuthenticating: boolean;
+  setIsAuthenticating: (authenticating: boolean) => void;
   userProfilePics: Record<string, User>;
   cachedEntityData: Record<string, EntityUnion>;
   selectedPersona?: EntityReference;

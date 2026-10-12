@@ -93,6 +93,7 @@ jobs:
               - 'openmetadata-ui/src/main/resources/ui/package.json'
               - 'openmetadata-ui/src/main/resources/ui/yarn.lock'
               - 'openmetadata-ui/src/main/resources/ui/vite.config.ts'
+              - 'openmetadata-ui/src/main/resources/ui/vite/**'
               - 'openmetadata-ui/src/main/resources/ui/postcss.config.js'
               - 'openmetadata-ui/src/main/resources/ui/babel.config.json'
               - 'openmetadata-ui/src/main/resources/ui/tsconfig.json'

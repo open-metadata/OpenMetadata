@@ -67,6 +67,7 @@ import { Domain } from '../domain/Domain';
 import { GlossaryTerm } from '../glossary/GlossaryTerm';
 import { TagClass } from '../tag/TagClass';
 import { EntityTypeEndpoint } from './Entity.interface';
+import type { ParentNode } from './ParentChain';
 
 export class EntityClass {
   type = '';
@@ -78,6 +79,15 @@ export class EntityClass {
   childrenSelectorId2?: string;
   endpoint: EntityTypeEndpoint;
   cleanupUser?: (apiContext: APIRequestContext) => Promise<void>;
+  sharedInfraKey?: string;
+  /**
+   * Entity path of the top-most parent this entity created (see
+   * ParentResolver). Undefined when every parent is shared or borrowed.
+   * Kept as a string so it survives get()/set() across processes.
+   */
+  ownedRootPath?: string;
+  // In-memory only: the parent override this entity created, reset on delete.
+  protected ownedParent?: ParentNode;
 
   customPropertyValue: Record<
     string,
@@ -98,6 +108,44 @@ export class EntityClass {
 
   public set(_data: unknown) {
     // handle in parent component
+  }
+
+  /**
+   * Remove the owned parent chain if this entity created one, else just the
+   * leaf. `leafPath` is the leaf's entity path without a query string.
+   */
+  protected async deleteOwnedOrLeaf(
+    apiContext: APIRequestContext,
+    leafPath: string,
+    hardDelete = true
+  ) {
+    const response = await deleteFixtureEntity(
+      apiContext,
+      `${
+        this.ownedRootPath ?? leafPath
+      }?recursive=true&hardDelete=${hardDelete}`
+    );
+    // A file-level beforeAll can run again in the same worker after afterAll;
+    // the next create() must re-create what this delete just removed.
+    if (this.ownedRootPath && hardDelete) {
+      this.forgetOwnership();
+    }
+
+    return response;
+  }
+
+  protected adoptOwnership(resolved: {
+    ownedRootPath?: string;
+    ownedOverride?: ParentNode;
+  }) {
+    this.ownedRootPath = resolved.ownedRootPath;
+    this.ownedParent = resolved.ownedOverride;
+  }
+
+  protected forgetOwnership() {
+    this.ownedParent?.forget();
+    this.ownedParent = undefined;
+    this.ownedRootPath = undefined;
   }
 
   async visitEntityPage(_: Page) {

@@ -17,6 +17,7 @@ import { RDG_ACTIVE_CELL_SELECTOR } from '../../constant/bulkImportExport';
 import { SERVICE_TYPE } from '../../constant/service';
 import { Domain } from '../../support/domain/Domain';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
+import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
@@ -46,6 +47,7 @@ import {
   fillRowDetails,
   fillTagDetails,
   pressKeyXTimes,
+  previewBulkImportChanges,
   saveBulkImport,
   validateImportStatus,
 } from '../../utils/importUtils';
@@ -182,7 +184,10 @@ test.describe('Bulk Edit Entity', () => {
   test('Database service', async ({ page }) => {
     test.slow(true);
 
-    const table = new TableClass();
+    // Bulk-edit mutates the database/schema (owners, tags, tier) —
+    // must own the parent chain so concurrent tests do not see the
+    // shared-parent ownership propagate into their schema lists.
+    const table = new TableClass({ service: new DatabaseServiceClass() });
 
     const { apiContext, afterAction } = await getApiContext(page);
     await table.create(apiContext);
@@ -273,7 +278,9 @@ test.describe('Bulk Edit Entity', () => {
         page.getByTestId(user2.responseData?.['displayName'])
       ).toBeVisible();
 
-      // Verify Tags
+      // Verify Tags — service/database/schema pages don't render the
+      // right-panel KnowledgePanel.Tags, so a bare getByRole matches
+      // the single inline Sensitive tag on those pages.
       await expect(
         page.getByRole('link', {
           name: 'Sensitive',
@@ -307,7 +314,10 @@ test.describe('Bulk Edit Entity', () => {
 
   test('Database', async ({ page }) => {
     test.slow(true);
-    const table = new TableClass();
+    // Bulk-edit mutates the database/schema (owners, tags, tier) —
+    // must own the parent chain so concurrent tests do not see the
+    // shared-parent ownership propagate into their schema lists.
+    const table = new TableClass({ service: new DatabaseServiceClass() });
 
     const { apiContext, afterAction } = await getApiContext(page);
     await table.create(apiContext);
@@ -412,7 +422,9 @@ test.describe('Bulk Edit Entity', () => {
 
       await page.locator('loader').waitFor({ state: 'hidden' });
 
-      // Verify Tags
+      // Verify Tags — service/database/schema pages don't render the
+      // right-panel KnowledgePanel.Tags, so a bare getByRole matches
+      // the single inline Sensitive tag on those pages.
       await expect(
         page.getByRole('link', {
           name: 'Sensitive',
@@ -446,7 +458,10 @@ test.describe('Bulk Edit Entity', () => {
 
   test('Database Schema', async ({ page }) => {
     test.slow(true);
-    const table = new TableClass();
+    // Bulk-edit mutates the database/schema (owners, tags, tier) —
+    // must own the parent chain so concurrent tests do not see the
+    // shared-parent ownership propagate into their schema lists.
+    const table = new TableClass({ service: new DatabaseServiceClass() });
 
     const { apiContext, afterAction } = await getApiContext(page);
     await table.create(apiContext);
@@ -556,7 +571,9 @@ test.describe('Bulk Edit Entity', () => {
         page.getByTestId(user2.responseData?.['displayName'])
       ).toBeVisible();
 
-      // Verify Tags
+      // Verify Tags — service/database/schema pages don't render the
+      // right-panel KnowledgePanel.Tags, so a bare getByRole matches
+      // the single inline Sensitive tag on those pages.
       await expect(
         page.getByRole('link', {
           name: 'Sensitive',
@@ -586,10 +603,10 @@ test.describe('Bulk Edit Entity', () => {
     await afterAction();
   });
 
-  test('Table', { tag: '@quarantine' }, async ({ page }) => {
+  test('Table', async ({ page }) => {
     test.slow(true);
 
-    const tableEntity = new TableClass();
+    const tableEntity = new TableClass({ service: new DatabaseServiceClass() });
 
     const { apiContext, afterAction } = await getApiContext(page);
     await tableEntity.create(apiContext);
@@ -636,14 +653,13 @@ test.describe('Bulk Edit Entity', () => {
         .press('ArrowRight', { delay: 100 });
       await fillGlossaryTermDetails(page, columnDetails1.glossary);
 
-      // Reverse traves to first cell to fill the details
-      await page.click(RDG_ACTIVE_CELL_SELECTOR);
-      await page
-        .locator(RDG_ACTIVE_CELL_SELECTOR)
-        .press('ArrowDown', { delay: 100 });
+      // Closing the picker commits the term. Clicking this cell again would
+      // reopen it, and its focus trap swallows outside clicks — Next included.
+      await expect(page.locator(RDG_ACTIVE_CELL_SELECTOR)).toHaveClass(
+        /rdg-cell-edited/
+      );
 
-      // eslint-disable-next-line playwright/no-force-option -- button obscured by data grid overlay
-      await page.click('[type="button"] >> text="Next"', { force: true });
+      await previewBulkImportChanges(page, 'tables');
       await validateImportStatus(page, {
         passed: '1',
         processed: '1',
@@ -657,7 +673,8 @@ test.describe('Bulk Edit Entity', () => {
         getCellByName(page, 'Playwright Table column')
       ).toBeVisible();
 
-      // Verify Tags
+      // This table owns its service, so it is the only Sensitive-tagged
+      // asset on the page and the bare role/name locator resolves once.
       await expect(
         page.getByRole('link', {
           name: 'Sensitive',

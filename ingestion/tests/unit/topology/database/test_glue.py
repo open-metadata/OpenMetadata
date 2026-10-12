@@ -1357,6 +1357,51 @@ class TestGlueYieldTableExtension:
 
 LINEAGE_TABLE_FQN = "glue_source.118146679784.default.events"
 LINEAGE_CONTAINER_FQN = "s3_local.bucket.events"
+LINEAGE_CONTAINER_PATH = "s3://bucket/events"
+
+
+class _ContainerIndex:
+    """The container search as the server runs it, an exact match on fullPath."""
+
+    def __init__(self, *containers: Container):
+        self._containers = {container.fullPath: container for container in containers}
+        self.searched_paths: list[str] = []
+
+    def search(self, full_path: str, **_) -> list[Container] | None:
+        self.searched_paths.append(full_path)
+        container = self._containers.get(full_path)
+        return [container] if container else None
+
+
+def _container_at(full_path: str, columns: list[Column] | None = None) -> Container:
+    """A container recorded the way the S3 connector writes it."""
+    return Container(
+        id=uuid4(),
+        name="events",
+        fullPath=full_path,
+        service=EntityReference(id=uuid4(), type="storageService"),
+        dataModel=ContainerDataModel(isPartitioned=True, columns=columns or []),
+    )
+
+
+def _events_table(columns: list[Column] | None = None) -> Table:
+    return Table(
+        id=uuid4(),
+        name="events",
+        fullyQualifiedName=LINEAGE_TABLE_FQN,
+        columns=columns or [_table_column("event_id")],
+    )
+
+
+def _lineage_requests(glue_source, index: _ContainerIndex, table: Table):
+    """Run the lineage step with only the two searches stubbed, and return the requests and the stub."""
+    with patch.object(glue_source, "metadata") as metadata:
+        metadata.es_search_container_by_path.side_effect = index.search
+        metadata.es_search_from_fqn.side_effect = lambda *, fqn_search_string, **_: (
+            [table] if fqn_search_string == LINEAGE_TABLE_FQN else None
+        )
+        requests = [either.right for either in glue_source.yield_external_table_lineage()]
+    return requests, metadata
 
 
 def _table_column(name: str) -> Column:
@@ -1389,17 +1434,9 @@ class TestGlueExternalTableColumnLineage:
 
     @staticmethod
     def _emit(glue_source, container_columns, table_columns):
-        container = Container(
-            id=uuid4(),
-            name="events",
-            service=EntityReference(id=uuid4(), type="storageService"),
-            dataModel=ContainerDataModel(isPartitioned=True, columns=container_columns),
-        )
-        table = Table(id=uuid4(), name="events", fullyQualifiedName=LINEAGE_TABLE_FQN, columns=table_columns)
-        with patch.object(glue_source, "metadata") as metadata:
-            metadata.es_search_container_by_path.return_value = [container]
-            metadata.es_search_from_fqn.return_value = [table]
-            return [either.right for either in glue_source.yield_external_table_lineage()]
+        index = _ContainerIndex(_container_at(LINEAGE_CONTAINER_PATH, container_columns))
+        requests, _ = _lineage_requests(glue_source, index, _events_table(table_columns))
+        return requests
 
     @staticmethod
     def _column_edges(request) -> set[tuple[str, str]]:
@@ -1410,7 +1447,7 @@ class TestGlueExternalTableColumnLineage:
 
     def _edges_for(self, glue_source, container_columns, table_column_names) -> set[tuple[str, str]]:
         glue_source.external_location_map[(MOCK_DATABASE.name.root, MOCK_DATABASE_SCHEMA.name.root, "events")] = (
-            "s3://bucket/events"
+            LINEAGE_CONTAINER_PATH
         )
         [request] = self._emit(glue_source, container_columns, [_table_column(name) for name in table_column_names])
         return self._column_edges(request)
@@ -1488,3 +1525,98 @@ class TestGlueExternalTableColumnLineage:
 
         assert (request.edge.fromEntity.type, request.edge.toEntity.type) == ("container", "table")
         assert self._column_edges(request) == {_edge("event_id"), _edge("dt")}
+
+
+class TestGlueExternalTableContainerMatch:
+    """Glue usually reports a table location with a trailing separator (s3://bucket/events/), while
+    the S3 connector records the container without one, and the container search is an exact
+    match, so the edge was never emitted.
+
+    Each test sends a Glue table through yield_table, which records its location, and reads the
+    lineage the source emits against containers recorded the way the S3 connector writes them.
+    """
+
+    @staticmethod
+    def _ingest(glue_source, location: str):
+        glue_source.context.get().__dict__["table_data"] = GlueTable(
+            Name="events",
+            TableType="EXTERNAL_TABLE",
+            StorageDescriptor=StorageDetails(
+                Columns=[GlueColumn(Name="event_id", Type="string")],
+                Location=location,
+            ),
+        )
+        with patch("metadata.ingestion.source.database.glue.metadata.fqn") as mock_fqn:
+            mock_fqn.build = mock_fqn_build
+            return next(glue_source.yield_table(("events", TableType.External))).right
+
+    @staticmethod
+    def _lineage(glue_source, *containers: Container):
+        requests, _ = _lineage_requests(glue_source, _ContainerIndex(*containers), _events_table())
+        return requests
+
+    @pytest.mark.parametrize(
+        "location",
+        ["s3://bucket/events/", "s3://bucket/events", "s3a://bucket/events/", "S3A://bucket/events"],
+    )
+    def test_equivalent_locations_resolve_the_same_container(self, glue_source, location):
+        events = _container_at("s3://bucket/events")
+        self._ingest(glue_source, location)
+
+        [request] = self._lineage(glue_source, events, _container_at("s3://bucket"))
+
+        assert request.edge.fromEntity.id == events.id
+        assert request.edge.toEntity.type == "table"
+
+    def test_a_bucket_root_location_resolves_the_bucket_container(self, glue_source):
+        bucket = _container_at("s3://bucket")
+        self._ingest(glue_source, "s3://bucket/")
+
+        [request] = self._lineage(glue_source, bucket, _container_at("s3://bucket/events"))
+
+        assert request.edge.fromEntity.id == bucket.id
+
+    def test_prefix_similar_or_parent_containers_do_not_match(self, glue_source):
+        self._ingest(glue_source, "s3://bucket/events/")
+
+        requests = self._lineage(
+            glue_source,
+            _container_at("s3://bucket/events_archive"),
+            _container_at("s3://bucket/event"),
+            _container_at("s3://bucket"),
+            _container_at("s3://other/events"),
+        )
+
+        assert requests == []
+
+    def test_a_container_recorded_with_a_trailing_slash_still_matches(self, glue_source):
+        events = _container_at("s3://bucket/events/")
+        self._ingest(glue_source, "s3://bucket/events")
+
+        [request] = self._lineage(glue_source, events)
+
+        assert request.edge.fromEntity.id == events.id
+
+    def test_a_container_without_its_table_gets_no_edge(self, glue_source):
+        """The table search only finds the events table, so a location recorded for any other
+        table leaves the edge without its target."""
+        glue_source.external_location_map[(MOCK_DATABASE.name.root, MOCK_DATABASE_SCHEMA.name.root, "orders")] = (
+            "s3://bucket/events/"
+        )
+
+        assert self._lineage(glue_source, _container_at("s3://bucket/events")) == []
+
+    def test_no_container_means_no_table_search(self, glue_source):
+        self._ingest(glue_source, "s3://bucket/events/")
+        index = _ContainerIndex()
+
+        requests, metadata = _lineage_requests(glue_source, index, _events_table())
+
+        assert requests == []
+        assert index.searched_paths == ["s3://bucket/events", "s3://bucket/events/"]
+        metadata.es_search_from_fqn.assert_not_called()
+
+    def test_the_location_path_is_sent_as_glue_reported_it(self, glue_source):
+        table_request = self._ingest(glue_source, "s3a://bucket/events/")
+
+        assert table_request.locationPath == "s3a://bucket/events/"

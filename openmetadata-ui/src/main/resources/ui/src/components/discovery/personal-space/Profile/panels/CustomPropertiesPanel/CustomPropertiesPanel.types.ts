@@ -39,14 +39,6 @@ export interface AddCustomPropertyFormValues {
   columns?: FormSelectItem[];
 }
 
-export interface EditCustomPropertyFormValues {
-  displayName?: string;
-  description: string;
-  enumConfig?: FormSelectItem[];
-  multiSelect?: boolean;
-  entityReferenceConfig?: FormSelectItem[];
-}
-
 export interface DescriptionFormFieldProps<T extends { description: string }> {
   form: UseFormReturn<T>;
   descriptionKey: number;

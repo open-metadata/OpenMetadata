@@ -44,8 +44,10 @@ export const CustomPropertyEditModal = ({
   });
 
   return (
+    // Above antd drawers (z-index 1000), e.g. the column detail panel.
     <ModalOverlay
       isOpen
+      className="tw:z-1100"
       isDismissable={!isSaving}
       onOpenChange={(isOpen) => !isOpen && onCancel()}>
       <Modal>

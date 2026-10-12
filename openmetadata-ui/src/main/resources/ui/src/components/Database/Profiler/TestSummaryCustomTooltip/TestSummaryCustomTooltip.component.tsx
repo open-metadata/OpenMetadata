@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Owner, Typography } from '@openmetadata/ui-core-components';
-import { Card, Divider } from 'antd';
+import { Divider, Owner, Typography } from '@openmetadata/ui-core-components';
+import { Card } from 'antd';
 import entries from 'lodash/entries';
 import isNumber from 'lodash/isNumber';
 import isUndefined from 'lodash/isUndefined';
@@ -150,7 +150,7 @@ const TestSummaryCustomTooltip = (props: TestSummaryCustomTooltipProps) => {
       onMouseLeave={onMouseLeave}>
       <div className="test-summary-tooltip-container">
         <div className="tooltip-date-time">{formattedDateTime}</div>
-        <Divider className="tooltip-separator" />
+        <Divider dashed className="tw:my-2" />
         <ul data-testid="test-summary-tooltip-container">
           <li className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
             <Typography as="span" className="flex items-center text-grey-muted">

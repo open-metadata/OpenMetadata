@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Form, Space, Typography } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Button, Card, Form } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { trim } from 'lodash';
@@ -166,12 +167,10 @@ const EditRulePage = () => {
       pageTitle={t('label.edit-entity', { entity: t('label.rule') })}>
       <Card className="m-x-auto w-800">
         <TitleBreadcrumb className="m-b-md" titleLinks={breadcrumb} />
-        <Typography.Paragraph
-          className="text-base"
-          data-testid="edit-rule-title">
+        <Typography as="p" className="text-base" data-testid="edit-rule-title">
           {t('label.edit-entity', { entity: t('label.rule') })}{' '}
           {`"${ruleName}"`}
-        </Typography.Paragraph>
+        </Typography>
         <Form
           data-testid="rule-form"
           id="rule-form"
@@ -189,7 +188,12 @@ const EditRulePage = () => {
             ruleData={ruleData}
             setRuleData={setRuleData}
           />
-          <Space align="center" className="w-full justify-end">
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal w-full justify-end"
+            gap={2}
+            itemClassName="layout-space-item">
             <Button data-testid="cancel-btn" type="link" onClick={handleBack}>
               {t('label.cancel')}
             </Button>
@@ -200,7 +204,7 @@ const EditRulePage = () => {
               type="primary">
               {t('label.save')}
             </Button>
-          </Space>
+          </Box>
         </Form>
       </Card>
     </PageLayoutV1>

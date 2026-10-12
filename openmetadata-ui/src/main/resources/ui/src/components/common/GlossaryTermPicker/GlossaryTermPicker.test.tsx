@@ -30,8 +30,10 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   },
 }));
 
+const mockFetchTree = jest.fn();
+
 jest.mock('./useGlossaryTreeData', () => ({
-  useGlossaryTreeData: () => jest.fn(),
+  useGlossaryTreeData: () => mockFetchTree,
 }));
 
 const APPLIED_TERM: TagLabel = {
@@ -61,6 +63,67 @@ const emit = (
 describe('GlossaryTermPicker', () => {
   beforeEach(() => {
     mockTreeSelect.mockClear();
+    mockFetchTree.mockReset();
+  });
+
+  // `total` is the server's count, but the row counts what the user can see,
+  // and the tree keeps only the newest page's total — so drops must accumulate.
+  it('counts only the terms that survive excludeFqns', async () => {
+    const node = (id: string) => ({ id, label: id, value: id });
+    mockFetchTree
+      .mockResolvedValueOnce({
+        nodes: [node('g.a'), node('g.b')],
+        hasMore: true,
+        total: 137,
+        nextCursor: 'c1',
+      })
+      .mockResolvedValueOnce({
+        nodes: [node('g.c'), node('g.d')],
+        hasMore: true,
+        total: 137,
+        nextCursor: 'c2',
+      });
+
+    render(<GlossaryTermPicker excludeFqns={['g.a', 'g.c']} />);
+
+    const first = await lastProps().fetchData({ parentId: 'g' });
+    const second = await lastProps().fetchData({ parentId: 'g', after: 'c1' });
+
+    expect(first.nodes.map((n: TreeSelectNode<unknown>) => n.id)).toEqual([
+      'g.b',
+    ]);
+    expect(first.total).toBe(136);
+    expect(second.total).toBe(135);
+  });
+
+  // Callers pass an inline array, so a per-identity memo would rebuild the
+  // exclude set every render and wipe the tally between pages.
+  it('keeps the pruned tally across re-renders', async () => {
+    const node = (id: string) => ({ id, label: id, value: id });
+    mockFetchTree
+      .mockResolvedValueOnce({
+        nodes: [node('g.a'), node('g.b')],
+        hasMore: true,
+        total: 137,
+        nextCursor: 'c1',
+      })
+      .mockResolvedValueOnce({
+        nodes: [node('g.c'), node('g.d')],
+        hasMore: true,
+        total: 137,
+        nextCursor: 'c2',
+      });
+
+    const { rerender } = render(
+      <GlossaryTermPicker excludeFqns={['g.a', 'g.c']} />
+    );
+    await lastProps().fetchData({ parentId: 'g' });
+
+    // A fresh inline array with the same contents, as a parent re-render gives.
+    rerender(<GlossaryTermPicker excludeFqns={['g.a', 'g.c']} />);
+    const second = await lastProps().fetchData({ parentId: 'g', after: 'c1' });
+
+    expect(second.total).toBe(135);
   });
 
   it('seeds the tree with the glossary labels only', () => {

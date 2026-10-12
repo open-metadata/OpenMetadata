@@ -47,7 +47,7 @@ class TagAndTierSourcesStepTest {
 
   @Test
   void classificationTagsOnly_populateClassificationBucketOnly() {
-    EntityInterface entity =
+    EntityInterface<?> entity =
         entityWithTags(
             List.of(classificationTag("PII.Sensitive"), classificationTag("Tier.Tier1")));
 
@@ -59,7 +59,7 @@ class TagAndTierSourcesStepTest {
 
   @Test
   void glossaryTagsOnly_populateGlossaryBucketOnly() {
-    EntityInterface entity =
+    EntityInterface<?> entity =
         entityWithTags(List.of(glossaryTag("Business.Customer"), glossaryTag("Business.Revenue")));
 
     Map<String, Object> snapshot = run(entity);
@@ -70,7 +70,7 @@ class TagAndTierSourcesStepTest {
 
   @Test
   void mixedTags_splitBySource() {
-    EntityInterface entity =
+    EntityInterface<?> entity =
         entityWithTags(
             List.of(
                 classificationTag("PII.Sensitive"),
@@ -86,7 +86,7 @@ class TagAndTierSourcesStepTest {
 
   @Test
   void emptyTags_emitEmptyLists() {
-    EntityInterface entity = entityWithTags(List.of());
+    EntityInterface<?> entity = entityWithTags(List.of());
 
     Map<String, Object> snapshot = run(entity);
 
@@ -96,7 +96,7 @@ class TagAndTierSourcesStepTest {
 
   @Test
   void nullTags_emitEmptyLists_andDoesNotThrow() {
-    EntityInterface entity = entityWithTags(null);
+    EntityInterface<?> entity = entityWithTags(null);
 
     Map<String, Object> snapshot = run(entity);
 
@@ -106,7 +106,7 @@ class TagAndTierSourcesStepTest {
 
   @Test
   void existingTagAndTierSourceCounts_areStillEmitted() {
-    EntityInterface entity =
+    EntityInterface<?> entity =
         entityWithTags(
             List.of(classificationTag("PII.Sensitive"), classificationTag("Tier.Tier1")));
 
@@ -118,7 +118,7 @@ class TagAndTierSourcesStepTest {
     assertTrue(((Map<?, ?>) snapshot.get(TIER_SOURCES)).containsKey("Manual"));
   }
 
-  private Map<String, Object> run(EntityInterface entity) {
+  private Map<String, Object> run(EntityInterface<?> entity) {
     Map<String, Object> entityMap = new HashMap<>();
     EnrichmentTarget target =
         new EnrichmentTarget(
@@ -139,8 +139,8 @@ class TagAndTierSourcesStepTest {
     return entityMap;
   }
 
-  private static EntityInterface entityWithTags(List<TagLabel> tags) {
-    EntityInterface entity = mock(EntityInterface.class);
+  private static EntityInterface<?> entityWithTags(List<TagLabel> tags) {
+    EntityInterface<?> entity = mock(EntityInterface.class);
     when(entity.getTags()).thenReturn(tags);
     return entity;
   }

@@ -13,16 +13,12 @@
 
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
-  Badge,
-  Button,
-  Card,
-  Col,
+  Box,
   Divider,
-  Row,
-  Space,
-  Table,
+  Grid,
   Typography,
-} from 'antd';
+} from '@openmetadata/ui-core-components';
+import { Badge, Button, Card, Table } from 'antd';
 import { capitalize, isEmpty, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -34,6 +30,7 @@ import {
   getAppRunFailureLogs,
   getEntityStatsData,
 } from '../../../../utils/ApplicationUtils';
+import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 import { formatDateTimeWithTimezone } from '../../../../utils/date-time/DateTimeUtils';
 import AppBadge from '../../../common/Badge/Badge.component';
 import LogViewerModal from '../../../common/LogViewerModal/LogViewerModal.component';
@@ -116,9 +113,17 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
           }`}
           size="small"
           title={title}>
-          <Row gutter={[16, 8]}>
-            <Col span={24}>
-              <Space wrap direction="horizontal" size={0}>
+          <Grid
+            className="layout-row layout-grid"
+            style={{ ...getLayoutGutter(16, 8) }}>
+            <Grid.Item className="layout-column" span={24}>
+              <Box
+                inline
+                align="center"
+                className="layout-space layout-space-horizontal"
+                gap={0}
+                itemClassName="layout-space-item"
+                wrap="wrap">
                 {showStatus && (
                   <>
                     <div className="flex">
@@ -126,7 +131,12 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                         'label.status'
                       )}:`}</span>
 
-                      <Space align="center" className="m-l-xs" size={8}>
+                      <Box
+                        inline
+                        align="center"
+                        className="layout-space layout-space-horizontal m-l-xs"
+                        gap={2}
+                        itemClassName="layout-space-item">
                         <Icon
                           component={
                             STATUS_ICON[status as keyof typeof STATUS_ICON]
@@ -134,9 +144,12 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                           style={ICON_DIMENSION}
                         />
                         <span>{capitalize(status)}</span>
-                      </Space>
+                      </Box>
                     </div>
-                    <Divider type="vertical" />
+                    <Divider
+                      className="tw:mx-2 tw:h-[0.9em] tw:self-center"
+                      orientation="vertical"
+                    />
                   </>
                 )}
                 <div className="flex">
@@ -144,7 +157,12 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                     'label.index-states'
                   )}:`}</span>
                   <span className="m-l-xs">
-                    <Space size={8}>
+                    <Box
+                      inline
+                      align="center"
+                      className="layout-space layout-space-horizontal"
+                      gap={2}
+                      itemClassName="layout-space-item">
                       <Badge
                         showZero
                         className="request-badge running"
@@ -187,7 +205,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                             })}: ${stepStats.warningRecords}`}
                           />
                         )}
-                    </Space>
+                    </Box>
                   </span>
                 </div>
                 {(() => {
@@ -207,7 +225,10 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
 
                   return (
                     <>
-                      <Divider type="vertical" />
+                      <Divider
+                        className="tw:mx-2 tw:h-[0.9em] tw:self-center"
+                        orientation="vertical"
+                      />
                       <div className="flex">
                         <span className="text-grey-muted">{`${t(
                           latencyLabelKey ?? 'label.latency'
@@ -227,7 +248,10 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                 })()}
                 {showStatus && (
                   <>
-                    <Divider type="vertical" />
+                    <Divider
+                      className="tw:mx-2 tw:h-[0.9em] tw:self-center"
+                      orientation="vertical"
+                    />
                     <div className="flex">
                       <span className="text-grey-muted">{`${t(
                         'label.last-updated'
@@ -240,9 +264,9 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                     </div>
                   </>
                 )}
-              </Space>
-            </Col>
-          </Row>
+              </Box>
+            </Grid.Item>
+          </Grid>
         </Card>
       );
     },
@@ -264,11 +288,11 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
           {
             title: (
               <div className="d-flex items-center">
-                <Typography.Text>
+                <Typography>
                   {t('label.entity-record-plural', {
                     entity: t('label.total'),
                   })}{' '}
-                </Typography.Text>
+                </Typography>
                 <AppBadge
                   className="entity-stats total m-l-sm"
                   label={entityTotalJobStatsData.totalRecords}
@@ -278,17 +302,17 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
             dataIndex: 'totalRecords',
             key: 'totalRecords',
             render: (text: string) => (
-              <Typography.Text className="text-primary">{text}</Typography.Text>
+              <Typography className="text-primary">{text}</Typography>
             ),
           },
           {
             title: (
               <div className="d-flex items-center">
-                <Typography.Text>
+                <Typography>
                   {t('label.entity-record-plural', {
                     entity: t('label.success'),
                   })}{' '}
-                </Typography.Text>
+                </Typography>
                 <AppBadge
                   className="entity-stats success m-l-sm"
                   label={entityTotalJobStatsData.successRecords}
@@ -298,17 +322,17 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
             dataIndex: 'successRecords',
             key: 'successRecords',
             render: (text: string) => (
-              <Typography.Text className="text-success">{text}</Typography.Text>
+              <Typography className="text-success">{text}</Typography>
             ),
           },
           {
             title: (
               <div className="d-flex items-center">
-                <Typography.Text>
+                <Typography>
                   {t('label.entity-record-plural', {
                     entity: t('label.failed'),
                   })}{' '}
-                </Typography.Text>
+                </Typography>
                 <AppBadge
                   className="entity-stats failure m-l-sm"
                   label={entityTotalJobStatsData.failedRecords}
@@ -318,7 +342,9 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
             dataIndex: 'failedRecords',
             key: 'failedRecords',
             render: (text: string) => (
-              <Typography.Text className="text-failure">{text}</Typography.Text>
+              <Typography className="text-failure tw:text-primary">
+                {text}
+              </Typography>
             ),
           },
           ...(successContext?.stats?.vectorStats?.totalRecords
@@ -328,10 +354,10 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                   dataIndex: 'vectorEmbeddings',
                   key: 'vectorEmbeddings',
                   render: (value: number | null) => (
-                    <Typography.Text
+                    <Typography
                       className={value !== null ? 'text-primary' : ''}>
                       {value !== null ? value : '-'}
-                    </Typography.Text>
+                    </Typography>
                   ),
                 },
               ]
@@ -341,9 +367,11 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
             dataIndex: 'readerAvgMs',
             key: 'readerAvgMs',
             render: (value: string) => (
-              <Typography.Text data-testid="entity-reader-avg">
+              <Typography
+                className="tw:text-primary"
+                data-testid="entity-reader-avg">
                 {value}
-              </Typography.Text>
+              </Typography>
             ),
           },
           {
@@ -351,9 +379,11 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
             dataIndex: 'processAvgMs',
             key: 'processAvgMs',
             render: (value: string) => (
-              <Typography.Text data-testid="entity-process-avg">
+              <Typography
+                className="tw:text-primary"
+                data-testid="entity-process-avg">
                 {value}
-              </Typography.Text>
+              </Typography>
             ),
           },
           {
@@ -361,9 +391,11 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
             dataIndex: 'sinkAvgMs',
             key: 'sinkAvgMs',
             render: (value: string) => (
-              <Typography.Text data-testid="entity-sink-avg">
+              <Typography
+                className="tw:text-primary"
+                data-testid="entity-sink-avg">
                 {value}
-              </Typography.Text>
+              </Typography>
             ),
           },
           ...(successContext?.stats?.vectorStats?.totalRecords
@@ -373,9 +405,11 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                   dataIndex: 'vectorAvgMs',
                   key: 'vectorAvgMs',
                   render: (value: string) => (
-                    <Typography.Text data-testid="entity-vector-avg">
+                    <Typography
+                      className="tw:text-primary"
+                      data-testid="entity-vector-avg">
                       {value}
-                    </Typography.Text>
+                    </Typography>
                   ),
                 },
               ]
@@ -444,17 +478,19 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
         dataIndex: 'name',
         key: 'name',
         render: (text: string) => (
-          <Typography.Text className="font-medium">{text}</Typography.Text>
+          <Typography className="font-medium tw:text-primary">
+            {text}
+          </Typography>
         ),
       },
       {
         title: (
           <div className="d-flex items-center">
-            <Typography.Text>
+            <Typography>
               {t('label.entity-record-plural', {
                 entity: t('label.processed'),
               })}{' '}
-            </Typography.Text>
+            </Typography>
             <AppBadge
               className="entity-stats total m-l-sm"
               label={toString(totalProcessed)}
@@ -464,17 +500,17 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
         dataIndex: 'processedRecords',
         key: 'processedRecords',
         render: (text: number) => (
-          <Typography.Text className="text-primary">{text}</Typography.Text>
+          <Typography className="text-primary">{text}</Typography>
         ),
       },
       {
         title: (
           <div className="d-flex items-center">
-            <Typography.Text>
+            <Typography>
               {t('label.entity-record-plural', {
                 entity: t('label.success'),
               })}{' '}
-            </Typography.Text>
+            </Typography>
             <AppBadge
               className="entity-stats success m-l-sm"
               label={toString(totalSuccess)}
@@ -484,17 +520,17 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
         dataIndex: 'successRecords',
         key: 'successRecords',
         render: (text: number) => (
-          <Typography.Text className="text-success">{text}</Typography.Text>
+          <Typography className="text-success">{text}</Typography>
         ),
       },
       {
         title: (
           <div className="d-flex items-center">
-            <Typography.Text>
+            <Typography>
               {t('label.entity-record-plural', {
                 entity: t('label.failed'),
               })}{' '}
-            </Typography.Text>
+            </Typography>
             <AppBadge
               className="entity-stats failure m-l-sm"
               label={toString(totalFailed)}
@@ -504,14 +540,18 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
         dataIndex: 'failedRecords',
         key: 'failedRecords',
         render: (text: number) => (
-          <Typography.Text className="text-failure">{text}</Typography.Text>
+          <Typography className="text-failure tw:text-primary">
+            {text}
+          </Typography>
         ),
       },
       {
         title: t('label.partition-plural'),
         dataIndex: 'partitions',
         key: 'partitions',
-        render: (text: string) => <Typography.Text>{text}</Typography.Text>,
+        render: (text: string) => (
+          <Typography className="tw:text-primary">{text}</Typography>
+        ),
       },
     ];
   }, [serverStatsData]);
@@ -529,7 +569,12 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
         data-testid="server-stats-card"
         size="small"
         title={
-          <Space>
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal"
+            gap={2}
+            itemClassName="layout-space-item">
             <span>{t('label.server-stat-plural')}</span>
             {serverCount && (
               <Badge
@@ -538,7 +583,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                 title={`${serverCount} ${t('label.server')}(s)`}
               />
             )}
-          </Space>
+          </Box>
         }>
         <Table
           columns={serverStatsColumns}
@@ -562,11 +607,11 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
 
   const renderStatCol = (stats: StepStats | undefined, labelKey: string) =>
     stats ? (
-      <Col span={6}>
+      <Grid.Item className="layout-column" span={6}>
         {statsRender(stats, t(labelKey), {
           showStatus: false,
         })}
-      </Col>
+      </Grid.Item>
     ) : null;
 
   const renderEntityStats = (entityStats?: { [key: string]: StepStats }) =>
@@ -577,7 +622,9 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
       {renderOverallStats(successContext?.stats?.jobStats)}
       {renderOverallStats(failureContext?.stats?.jobStats)}
 
-      <Row className="m-t-md" gutter={[16, 16]}>
+      <Grid
+        className="layout-row layout-grid m-t-md"
+        style={getLayoutGutter(16, 16)}>
         {renderStatCol(
           successContext?.stats?.readerStats,
           'label.reader-stat-plural'
@@ -613,7 +660,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
           failureContext?.stats?.vectorStats,
           'label.vector-stat-plural'
         )}
-      </Row>
+      </Grid>
 
       {serverStatsRenderer()}
 

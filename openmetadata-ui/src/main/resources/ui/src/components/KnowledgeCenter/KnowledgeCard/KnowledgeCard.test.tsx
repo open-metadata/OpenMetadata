@@ -142,8 +142,8 @@ jest.mock('../../../components/common/DeleteModal/DeleteModal', () =>
     .mockReturnValue(<div data-testid="delete-widget-modal">DeleteModal</div>)
 );
 
-jest.mock('../../../utils/StringUtils', () => ({
-  ...jest.requireActual('../../../utils/StringUtils'),
+jest.mock('../../../utils/RichTextStringUtils', () => ({
+  ...jest.requireActual('../../../utils/RichTextStringUtils'),
   stripMarkdown: jest.fn().mockImplementation((text: string) => text),
 }));
 

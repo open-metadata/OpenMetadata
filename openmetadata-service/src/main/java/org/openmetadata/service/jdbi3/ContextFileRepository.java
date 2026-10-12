@@ -276,6 +276,7 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
           "extractionStats", original.getExtractionStats(), updated.getExtractionStats(), true);
       recordChange("extractedText", original.getExtractedText(), updated.getExtractedText());
       recordChange("pageCount", original.getPageCount(), updated.getPageCount());
+      recordChange("shareConfig", original.getShareConfig(), updated.getShareConfig(), true);
       updateFolder();
     }
 
@@ -336,6 +337,25 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
   public ContextFileContent getContentById(String id) {
     UUID contentId = parseUuid(id);
     return contentId == null ? null : contentRepository.getById(contentId);
+  }
+
+  /**
+   * Whether any live document is a view of this stored asset. A file can reach the Context Center
+   * from somewhere that has its own copy of the blob — a chat attachment — and that owner needs to
+   * know whether deleting its copy would take a document's content with it.
+   */
+  public boolean existsForAsset(String assetId) {
+    return assetId != null && contextFileDAO.countByAssetId(assetId) > 0;
+  }
+
+  /** The live documents that are views of this stored asset. */
+  public List<ContextFile> findByAsset(String assetId) {
+    if (assetId == null) {
+      return List.of();
+    }
+    return contextFileDAO.findByAssetId(assetId).stream()
+        .map(json -> JsonUtils.readValue(json, ContextFile.class))
+        .toList();
   }
 
   public List<ContextFile> listByExtractedSourceHash(String sourceHash, UUID excludeId) {

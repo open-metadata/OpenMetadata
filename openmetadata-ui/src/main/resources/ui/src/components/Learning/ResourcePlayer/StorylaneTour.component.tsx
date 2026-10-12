@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Spin } from 'antd';
 import React, { useCallback, useState } from 'react';
 import { LearningResource } from '../../../rest/learningResourceAPI';
+import Loader from '../../common/Loader/Loader';
 import './storylane-tour.less';
 
 interface StorylaneTourProps {
@@ -32,7 +32,7 @@ export const StorylaneTour: React.FC<StorylaneTourProps> = ({ resource }) => {
       <div className="storylane-tour-container">
         {isLoading && (
           <div className="storylane-tour-loading">
-            <Spin size="large" />
+            <Loader />
           </div>
         )}
         {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- onLoad hides spinner */}

@@ -237,6 +237,11 @@ public class LdapAuthServletHandler implements AuthServeletHandler {
     }
   }
 
+  @Override
+  public void close() {
+    authenticator.close();
+  }
+
   private LoginRequest parseLoginRequest(HttpServletRequest req) throws IOException {
     if ("POST".equalsIgnoreCase(req.getMethod())) {
       StringBuilder sb = new StringBuilder();
@@ -285,7 +290,8 @@ public class LdapAuthServletHandler implements AuthServeletHandler {
       String previousRefreshToken,
       String updatedRefreshToken) {
     Optional<UserSession> completedSession =
-        sessionService.completeRefresh(session, updatedRefreshToken, null);
+        sessionService.completeRefresh(
+            session, updatedRefreshToken, SessionService.ProviderTokenUpdate.NONE);
     if (completedSession.isEmpty() || completedSession.get().getStatus() != SessionStatus.ACTIVE) {
       deleteOrphanedRefreshToken(previousRefreshToken, updatedRefreshToken);
       sessionService.revokeSession(req, resp);

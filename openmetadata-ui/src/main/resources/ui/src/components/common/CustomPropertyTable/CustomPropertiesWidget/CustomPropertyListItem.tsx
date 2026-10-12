@@ -34,6 +34,7 @@ export const CustomPropertyListItem = ({
   itemRef,
   property,
   value,
+  valueContent,
   hasEditPermissions,
   onValueSave,
 }: CustomPropertyListItemProps) => {
@@ -53,7 +54,7 @@ export const CustomPropertyListItem = ({
   const handleSave = async (updatedValue: unknown) => {
     setIsSaving(true);
     try {
-      await onValueSave(property, updatedValue);
+      await onValueSave?.(property, updatedValue);
       setIsEditing(false);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -63,7 +64,7 @@ export const CustomPropertyListItem = ({
   };
 
   const renderAction = () => {
-    if (!hasEditPermissions) {
+    if (!hasEditPermissions || !onValueSave) {
       return null;
     }
 
@@ -105,14 +106,22 @@ export const CustomPropertyListItem = ({
           data-testid="property-name">
           {propertyLabel}
         </span>
-        <span
-          className={classNames('tw:line-clamp-2 tw:break-words tw:text-xs', {
-            'tw:text-tertiary': isEmptyValue,
-            'tw:font-semibold tw:text-primary': !isEmptyValue,
-          })}
-          data-testid="property-value">
-          {summary}
-        </span>
+        {valueContent ? (
+          <div
+            className="tw:min-w-0 tw:break-words tw:text-xs tw:text-primary"
+            data-testid="property-value">
+            {valueContent}
+          </div>
+        ) : (
+          <span
+            className={classNames('tw:line-clamp-2 tw:break-words tw:text-xs', {
+              'tw:text-tertiary': isEmptyValue,
+              'tw:font-semibold tw:text-primary': !isEmptyValue,
+            })}
+            data-testid="property-value">
+            {summary}
+          </span>
+        )}
       </div>
       <Box align="center" className="tw:ml-auto tw:shrink-0" gap={1}>
         <Badge color={meta.color} size="sm" type="color">

@@ -31,7 +31,7 @@ const test = base.extend<{ adminPage: Page; restrictedUserPage: Page }>({
   adminPage: async ({ browser }, use) => {
     const page = await browser.newPage();
     try {
-      await adminUser.login(page);
+      await adminUser.signIn(page);
       await use(page);
     } finally {
       await page.close();
@@ -40,7 +40,7 @@ const test = base.extend<{ adminPage: Page; restrictedUserPage: Page }>({
   restrictedUserPage: async ({ browser }, use) => {
     const page = await browser.newPage();
     try {
-      await restrictedUser.login(page);
+      await restrictedUser.signIn(page);
       await use(page);
     } finally {
       await page.close();

@@ -13,6 +13,7 @@
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
+import { ENUM_CONFIG_MAX_VISIBLE_VALUES } from '../../../../../../constants/CustomProperty.constants';
 import type { Type } from '../../../../../../generated/entity/type';
 import type { CustomProperty } from '../../../../../../generated/type/customProperty';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
@@ -81,6 +82,7 @@ jest.mock('../../../../../../constants/CustomProperty.constants', () => ({
     { value: 'table', label: 'Table' },
     { value: 'pipeline', label: 'Pipeline' },
   ],
+  ENUM_CONFIG_MAX_VISIBLE_VALUES: 20,
   PROPERTY_TYPES_WITH_ENTITY_REFERENCE: ['entity-reference-list'],
 }));
 
@@ -190,8 +192,15 @@ jest.mock('@openmetadata/ui-core-components', () => {
     HintText: ({ children }: { children?: ReactNode }) => (
       <span data-testid="hint-text">{children}</span>
     ),
-    getField: ({ props }: { props?: { 'data-testid'?: string } }) => (
-      <div data-testid={props?.['data-testid'] ?? 'field'} />
+    getField: ({
+      props,
+    }: {
+      props?: { 'data-testid'?: string; maxVisibleItems?: number };
+    }) => (
+      <div
+        data-max-visible-items={props?.maxVisibleItems}
+        data-testid={props?.['data-testid'] ?? 'field'}
+      />
     ),
     FieldTypes: {
       TEXT: 'TEXT',
@@ -318,6 +327,24 @@ describe('CustomPropertiesEditPage', () => {
     expect(
       screen.getByTestId('edit-custom-property-multi-select')
     ).toBeInTheDocument();
+  });
+
+  it('caps the enum value tags it renders, so large enums stay responsive', () => {
+    render(
+      <CustomPropertiesEditPage
+        entityType={mockEntityType as unknown as Type}
+        property={mockEnumProperty as unknown as CustomProperty}
+        onCancel={mockOnCancel}
+        onSuccess={mockOnSuccess}
+      />
+    );
+
+    expect(
+      screen.getByTestId('edit-custom-property-enum-config')
+    ).toHaveAttribute(
+      'data-max-visible-items',
+      String(ENUM_CONFIG_MAX_VISIBLE_VALUES)
+    );
   });
 
   it('does not render enum config fields for non-enum property type', () => {

@@ -10,7 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Col, Row, Skeleton, Space } from 'antd';
+import { Box, Grid, Skeleton } from '@openmetadata/ui-core-components';
+import { Card } from 'antd';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
+
+const CONTENT_ROW_WIDTHS = ['90%', '85%', '80%', '88%', '75%', '70%'];
 
 /**
  * Above-the-fold placeholder for an entity detail page while the initial table-fetch is
@@ -22,65 +26,100 @@ import { Card, Col, Row, Skeleton, Space } from 'antd';
  *    placeholder), not a centered spinner.
  *  - The skeleton's vertical rhythm roughly matches the real header so swapping in the real
  *    {@code DataAssetsHeader} doesn't shift content below.
- *  - Cheap: pure antd `Skeleton`, no images / SVGs / theme tokens. The cost we pay for the
+ *  - Cheap: pure core `Skeleton`, no images / SVGs / theme tokens. The cost we pay for the
  *    perception win is one extra render of placeholder shapes.
  */
 export const TableDetailsPageSkeleton = () => {
   return (
-    <Row
-      className="entity-details-page-container"
+    <Grid
+      className="layout-row layout-grid entity-details-page-container"
       data-testid="loader"
-      gutter={[0, 12]}>
-      <Col className="p-x-lg p-t-md" span={24}>
-        <Skeleton
-          active
-          paragraph={{ rows: 1, width: ['30%'] }}
-          title={{ width: '15%' }}
-        />
-      </Col>
-      <Col className="p-x-lg" span={24}>
+      style={{ ...getLayoutGutter(0, 12) }}>
+      <Grid.Item className="layout-column p-x-lg p-t-md" span={24}>
+        <div className="tw:flex tw:flex-col tw:gap-6">
+          <Skeleton height={16} width="15%" />
+          <Skeleton height={16} width="30%" />
+        </div>
+      </Grid.Item>
+      <Grid.Item className="layout-column p-x-lg" span={24}>
         <Card className="data-asset-header-skeleton">
-          <Row align="middle" gutter={16} justify="space-between">
-            <Col flex="auto">
-              <Space direction="vertical" size={8} style={{ width: '100%' }}>
-                <Skeleton.Avatar active shape="square" size="large" />
+          <Box
+            align="center"
+            className="layout-row"
+            justify="between"
+            style={{ ...getLayoutGutter(16) }}
+            wrap="wrap">
+            <Box className="layout-column tw:block" style={{ flex: 'auto' }}>
+              <Box
+                inline
+                align="stretch"
+                className="layout-space"
+                direction="col"
+                gap={2}
+                itemClassName="layout-space-item"
+                style={{ width: '100%' }}>
+                <Skeleton height={40} variant="rounded" width={40} />
+                <div className="tw:flex tw:flex-col tw:gap-6">
+                  <Skeleton height={16} width="40%" />
+                  <Skeleton height={16} width="60%" />
+                </div>
+              </Box>
+            </Box>
+            <Box
+              className="layout-column tw:block"
+              style={{ flex: '0 0 240px' }}>
+              <Box
+                inline
+                align="center"
+                className="layout-space layout-space-horizontal"
+                gap={2}
+                itemClassName="layout-space-item">
                 <Skeleton
-                  active
-                  paragraph={{ rows: 1, width: ['60%'] }}
-                  title={{ width: '40%' }}
+                  className="tw:rounded-full"
+                  height={36}
+                  variant="rounded"
+                  width={72}
                 />
-              </Space>
-            </Col>
-            <Col flex="240px">
-              <Space>
-                <Skeleton.Button active shape="round" size="small" />
-                <Skeleton.Button active shape="round" size="small" />
-                <Skeleton.Button active shape="round" size="small" />
-              </Space>
-            </Col>
-          </Row>
+                <Skeleton
+                  className="tw:rounded-full"
+                  height={36}
+                  variant="rounded"
+                  width={72}
+                />
+                <Skeleton
+                  className="tw:rounded-full"
+                  height={36}
+                  variant="rounded"
+                  width={72}
+                />
+              </Box>
+            </Box>
+          </Box>
         </Card>
-      </Col>
-      <Col className="p-x-lg" span={24}>
-        <Space size={24}>
+      </Grid.Item>
+      <Grid.Item className="layout-column p-x-lg" span={24}>
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal"
+          gap={6}
+          itemClassName="layout-space-item">
           {[0, 1, 2, 3, 4].map((i) => (
-            <Skeleton.Button active key={i} size="small" />
+            <Skeleton height={36} key={i} variant="rounded" width={72} />
           ))}
-        </Space>
-      </Col>
-      <Col className="p-x-lg" span={24}>
+        </Box>
+      </Grid.Item>
+      <Grid.Item className="layout-column p-x-lg" span={24}>
         <Card>
-          <Skeleton
-            active
-            paragraph={{
-              rows: 6,
-              width: ['90%', '85%', '80%', '88%', '75%', '70%'],
-            }}
-            title={{ width: '20%' }}
-          />
+          <div className="tw:flex tw:flex-col tw:gap-4">
+            <Skeleton className="tw:mb-2" height={16} width="20%" />
+            {CONTENT_ROW_WIDTHS.map((width) => (
+              <Skeleton height={16} key={width} width={width} />
+            ))}
+          </div>
         </Card>
-      </Col>
-    </Row>
+      </Grid.Item>
+    </Grid>
   );
 };
 

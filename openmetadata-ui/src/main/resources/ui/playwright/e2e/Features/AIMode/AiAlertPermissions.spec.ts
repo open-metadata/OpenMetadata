@@ -59,7 +59,7 @@ const alerts = {
 const openAiPageAs = async (browser: Browser, user: UserClass) => {
   const page = await browser.newPage();
   await enableAiAppMode(page);
-  await user.login(page);
+  await user.signIn(page);
 
   return page;
 };

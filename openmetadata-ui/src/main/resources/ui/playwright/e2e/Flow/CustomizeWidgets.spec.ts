@@ -142,7 +142,7 @@ const test = base.extend<WidgetTestFixtures>({
     void persona;
 
     const page = await browser.newPage();
-    await testUser.login(page);
+    await testUser.signIn(page);
     await use(page);
     await page.close();
   },
@@ -487,13 +487,12 @@ test('KPI Widget', async ({ page, persona, kpiIds }) => {
 
     await expect(kpiWidgetContent).toBeVisible();
 
-    const kpiChart = widget.locator('.recharts-responsive-container');
+    const kpiChart = widget.getByTestId('kpi-widget-chart');
     await expect(kpiChart).toBeVisible();
-    await expect(
-      kpiChart.locator('.recharts-area').filter({
-        has: page.locator(`[fill="url(#gradient-${kpi.name})"]`),
-      })
-    ).toBeVisible();
+    // ECharts labels its root `role="img"` with `<chart title>. <series names>`,
+    // so the KPI being named there proves it was plotted (axis and grid lines
+    // are also svg paths, which makes a path count vacuous).
+    await expect(kpiChart.getByRole('img', { name: kpi.name })).toBeVisible();
   });
 
   await test.step('Test widget customization', async () => {

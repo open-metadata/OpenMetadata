@@ -16,12 +16,9 @@ import { CustomPropertiesWidgetSettings } from './CustomPropertiesWidget.interfa
 export interface CustomPropertiesRightPanelProps {
   properties: CustomProperty[];
   extension?: Record<string, unknown>;
-  versionDataKeys?: string[];
   widgetSettings?: CustomPropertiesWidgetSettings;
   /** Link to the Custom Properties tab, set when the widget hides properties. */
   viewAllPath?: string;
   hasEditPermissions: boolean;
-  isVersionView?: boolean;
-  onExtensionUpdate: (extension?: Record<string, unknown>) => Promise<void>;
   onValueSave: (property: CustomProperty, value: unknown) => Promise<void>;
 }

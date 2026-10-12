@@ -178,8 +178,15 @@
     <slack.version>1.29.2</slack.version>
     <spotless.version>2.41.1</spotless.version>
     <picocli.version>4.7.6</picocli.version>
-    <logback-core.version>1.5.36</logback-core.version>
-    <logback-classic.version>1.5.36</logback-classic.version>
+    <!-- CVE-2026-70410: unsafe reflection in AvaticaUtils#instantiatePlugin, fixed in 1.29.0.
+         Pulled transitively via calcite-core; 1.42.0 (latest) still declares 1.28.0. -->
+    <avatica.version>1.29.0</avatica.version>
+    <!-- 1.5.38 clears CVE-2026-13006 (code execution via Janino conditional config, fixed in 1.5.37).
+         Do not move to 1.6.x yet: it removed PatternLayout.DEFAULT_CONVERTER_MAP, which Dropwizard's
+         LogbackAccessRequestLayout (5.0.0 through 5.0.2) reads in its static initializer, so text
+         request logging fails with NoSuchFieldError. -->
+    <logback-core.version>1.5.38</logback-core.version>
+    <logback-classic.version>1.5.38</logback-classic.version>
     <jsonpath.version>2.9.0</jsonpath.version>
     <everit.version>1.14.4</everit.version>
     <json-patch.version>1.13</json-patch.version>
@@ -257,7 +264,8 @@
            is the last 1.2.x GA, no backport), and reactor-netty 1.3.x requires Netty 4.2.x — see
            the netty-bom pin below, raised to 4.2.x in lockstep so 1.3.x's Netty 4.2 APIs resolve.
            Pin -core alongside -http so a path that reaches -core directly cannot drag the 1.2 line
-           back in. This mirrors ai-platform's ADR-0018, which moves the same three together. -->
+           back in. This mirrors ADR:ai-platform/2026-08-27-transitive-only-cves-are-fixed-by-an-explicit-override,
+           which moves the same three together. -->
       <dependency>
         <groupId>io.projectreactor.netty</groupId>
         <artifactId>reactor-netty-core</artifactId>
@@ -284,14 +292,14 @@
         <version>${angus-mail.version}</version>
       </dependency>
       <!-- CVE-2026-43869 + CVE-2026-45112 (unbounded read) + CVE-2026-48586 (zlib data
-           amplification): pin to 0.24.0, the first release carrying all three fixes. No Jena
-           release ships a fixed libthrift yet (6.1.0 still pulls 0.22.0), so this pin cannot be
-           retired by upgrading Jena. Excluding libthrift breaks RDF tests — Jena's ModelFactory
-           statically references TException. -->
+           amplification) needed 0.24.0; CVE-2026-82458 needs 0.25.0. No Jena release ships a
+           fixed libthrift yet (6.1.0 still pulls 0.22.0), so this pin cannot be retired by
+           upgrading Jena. Excluding libthrift breaks RDF tests — Jena's ModelFactory
+           statically references TException, and 0.25.0 still carries it. -->
       <dependency>
         <groupId>org.apache.thrift</groupId>
         <artifactId>libthrift</artifactId>
-        <version>0.24.0</version>
+        <version>0.25.0</version>
       </dependency>
       <dependency>
         <groupId>org.antlr</groupId>
@@ -460,6 +468,11 @@
         <groupId>ch.qos.logback.access</groupId>
         <artifactId>logback-access-common</artifactId>
         <version>2.0.7</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.calcite.avatica</groupId>
+        <artifactId>avatica-core</artifactId>
+        <version>${avatica.version}</version>
       </dependency>
       <dependency>
         <groupId>io.dropwizard</groupId>

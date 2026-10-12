@@ -21,31 +21,35 @@ import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import {
   createOrFetch,
-  deleteFixtureEntity,
   okJson,
   withNotFoundRetry,
 } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { visitEntityPageByFqn } from '../../utils/entity';
+import type { ApiCollectionClass } from './ApiCollectionClass';
 import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
 import { EntityClass } from './EntityClass';
+import { resolveParents } from './ParentResolver';
+import { ApiServiceClass } from './service/ApiServiceClass';
+
+/**
+ * Without a parent the endpoint sits in the shard's shared API service →
+ * collection chain. Pass the deepest parent the test needs to own:
+ *   - `service` — own service page, unique service name, or service-level
+ *     cascade;
+ *   - `collection` — mutates the collection or asserts on its endpoint
+ *     listing.
+ * Levels below the one passed are created fresh and deleted with the endpoint.
+ */
+export type ApiEndpointClassOptions = {
+  name?: string;
+  service?: ApiServiceClass;
+  collection?: ApiCollectionClass;
+  sharedInfraKey?: string;
+};
 
 export class ApiEndpointClass extends EntityClass {
-  private readonly serviceName: string;
-  private readonly apiCollectionName: string;
-  service: {
-    name: string;
-    displayName: string;
-    serviceType: string;
-    connection: {
-      config: {
-        type: string;
-        openAPISchemaConnection: {
-          openAPISchemaURL: string;
-        };
-      };
-    };
-  };
+  service: ApiServiceClass['entity'];
 
   apiCollection: {
     name: string;
@@ -53,7 +57,6 @@ export class ApiEndpointClass extends EntityClass {
     service: string;
   };
 
-  private readonly apiEndpointName: string;
   private readonly fqn: string;
 
   children: Field[];
@@ -78,35 +81,30 @@ export class ApiEndpointClass extends EntityClass {
   apiCollectionResponseData: APIEndpoint = {} as APIEndpoint;
   entityResponseData: APIEndpoint = {} as APIEndpoint;
 
-  constructor(name?: string, apiEndpointName?: string) {
+  private readonly parentOverrides: Pick<
+    ApiEndpointClassOptions,
+    'service' | 'collection'
+  >;
+
+  constructor(options: ApiEndpointClassOptions = {}) {
     super(EntityTypeEndpoint.API_ENDPOINT);
-
-    this.serviceName = name ?? `pw-api-service-${uuid()}`;
-    this.apiCollectionName = `pw-api-collection-${uuid()}`;
-
-    this.service = {
-      name: this.serviceName,
-      displayName: this.serviceName,
-      serviceType: 'Rest',
-      connection: {
-        config: {
-          type: 'Rest',
-          openAPISchemaConnection: {
-            openAPISchemaURL:
-              'https://sandbox-beta.open-metadata.org/swagger.json',
-          },
-        },
-      },
+    this.sharedInfraKey = options.sharedInfraKey;
+    this.parentOverrides = {
+      service: options.service,
+      collection: options.collection,
     };
 
+    // Placeholder parent names until create() binds the resolved chain.
+    this.service = options.service?.entity ?? new ApiServiceClass().entity;
+    const apiCollectionName = `pw-api-collection-${uuid()}`;
     this.apiCollection = {
-      name: this.apiCollectionName,
-      displayName: this.apiCollectionName,
+      name: apiCollectionName,
+      displayName: apiCollectionName,
       service: this.service.name,
     };
 
-    this.apiEndpointName = apiEndpointName ?? `pw-api-endpoint-${uuid()}`;
-    this.fqn = `${this.service.name}.${this.apiCollection.name}.${this.apiEndpointName}.requestSchema`;
+    const apiEndpointName = options.name ?? `pw-api-endpoint-${uuid()}`;
+    this.fqn = `${this.service.name}.${this.apiCollection.name}.${apiEndpointName}.requestSchema`;
 
     this.children = [
       {
@@ -153,11 +151,11 @@ export class ApiEndpointClass extends EntityClass {
     ];
 
     this.entity = {
-      name: this.apiEndpointName,
-      displayName: this.apiEndpointName,
+      name: apiEndpointName,
+      displayName: apiEndpointName,
       apiCollection: `${this.service.name}.${this.apiCollection.name}`,
       endpointURL: 'https://sandbox-beta.open-metadata.org/swagger.json',
-      description: `Description for ${this.apiEndpointName}`,
+      description: `Description for ${apiEndpointName}`,
       requestSchema: {
         schemaType: 'JSON',
         schemaFields: this.children,
@@ -218,19 +216,19 @@ export class ApiEndpointClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    this.serviceResponseData = await createOrFetch(apiContext, {
-      label: 'ApiEndpointClass.create service',
-      createPath: '/api/v1/services/apiServices',
-      fqnSegments: [this.service.name],
-      data: this.service,
-    });
+    const { parents, ownedRootPath, ownedOverride } = await resolveParents(
+      apiContext,
+      'api',
+      this.parentOverrides,
+      this.sharedInfraKey
+    );
+    const service = parents.service as ResponseDataType;
+    const collection = parents.collection as ResponseDataType;
 
-    this.apiCollectionResponseData = await createOrFetch(apiContext, {
-      label: 'ApiEndpointClass.create apiCollection',
-      createPath: '/api/v1/apiCollections',
-      fqnSegments: [this.service.name, this.apiCollection.name],
-      data: this.apiCollection,
-    });
+    this.adoptOwnership({ ownedRootPath, ownedOverride });
+    this.bindParentNames(service, collection);
+    this.serviceResponseData = service;
+    this.apiCollectionResponseData = collection as unknown as APIEndpoint;
 
     this.entityResponseData = await createOrFetch(apiContext, {
       label: 'ApiEndpointClass.create apiEndpoint',
@@ -252,6 +250,19 @@ export class ApiEndpointClass extends EntityClass {
       apiCollection: this.apiCollectionResponseData,
       entity: this.entityResponseData,
     };
+  }
+
+  private bindParentNames(
+    service: ResponseDataType,
+    collection: ResponseDataType
+  ) {
+    this.service = { ...this.service, name: service.name };
+    this.apiCollection = {
+      ...this.apiCollection,
+      name: collection.name,
+      service: service.name,
+    };
+    this.entity.apiCollection = collection.fullyQualifiedName;
   }
 
   async patch({
@@ -285,6 +296,7 @@ export class ApiEndpointClass extends EntityClass {
       service: this.serviceResponseData,
       entity: this.entityResponseData,
       apiCollection: this.apiCollectionResponseData,
+      ownedRootPath: this.ownedRootPath,
     };
   }
 
@@ -292,10 +304,17 @@ export class ApiEndpointClass extends EntityClass {
     entity: APIEndpoint;
     service: ResponseDataType;
     apiCollection: APIEndpoint;
+    ownedRootPath?: string;
   }): void {
     this.entityResponseData = data.entity;
     this.serviceResponseData = data.service;
     this.apiCollectionResponseData = data.apiCollection;
+    this.ownedRootPath = data.ownedRootPath;
+    this.entity.name = data.entity.name;
+    this.bindParentNames(
+      data.service,
+      data.apiCollection as unknown as ResponseDataType
+    );
   }
 
   async visitEntityPage(page: Page) {
@@ -307,17 +326,11 @@ export class ApiEndpointClass extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext) {
-    const serviceResponse = await deleteFixtureEntity(
+    await this.deleteOwnedOrLeaf(
       apiContext,
-      `/api/v1/services/apiServices/name/${encodeURIComponent(
-        this.serviceResponseData?.fullyQualifiedName ?? ''
-      )}?recursive=true&hardDelete=true`
+      `/api/v1/apiEndpoints/${this.entityResponseData?.id}`
     );
 
-    return {
-      service: serviceResponse.body,
-      entity: this.entityResponseData,
-      apiCollection: this.apiCollectionResponseData,
-    };
+    return { entity: this.entityResponseData };
   }
 }

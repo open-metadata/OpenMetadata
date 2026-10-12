@@ -312,7 +312,7 @@ test.describe.serial('Default persona setting and removal flow', () => {
     const userContext = await browser.newContext({ storageState: undefined });
     const userPage = await userContext.newPage();
 
-    await user1.login(userPage);
+    await user1.signIn(userPage);
 
     test.slow(true);
 
@@ -891,7 +891,6 @@ test.describe('Curated Assets – Description filter', () => {
           .getByTestId('KnowledgePanel.CuratedAssets')
           .locator('.entity-list-item-title')
           .filter({ hasText: tableName })
-          .first()
       ).toBeVisible();
     });
   });

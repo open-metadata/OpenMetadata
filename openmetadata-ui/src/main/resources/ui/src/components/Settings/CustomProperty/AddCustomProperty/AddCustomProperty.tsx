@@ -13,13 +13,14 @@
 
 import {
   Badge,
+  Box,
   Button as CoreButton,
   SelectItemType,
   SlideoutMenu,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Col, Form, FormInstance, Row } from 'antd';
+import { Button, Form, FormInstance } from 'antd';
 import { AxiosError } from 'axios';
 import { ReactComponent as ColumnIcon } from '../../../../assets/svg/entity/column.svg';
 
@@ -76,10 +77,9 @@ interface AddCustomPropertyProps {
 }
 
 /**
- * Column names reserved for internal use by the table-type custom property
- * editor: this is the grid edit controller's rowIdKey (see EditTableTypePropertyModal
- * ROW_ID_KEY). Allowing it as a user-defined column would collide with the internal
- * row identifier and silently overwrite/strip user data on save.
+ * Column name the earlier table-type custom property editor used as its
+ * internal row key and stripped on save. It stays reserved so a user column
+ * never takes that name and loses its data to an older client.
  */
 const RESERVED_TABLE_COLUMN_NAMES = ['__row_id__'];
 
@@ -617,16 +617,16 @@ const AddCustomProperty = ({
       {generateFormFields(conditionalTypeFields)}
       {generateFormFields([descriptionField])}
       {isUndefined(open) && (
-        <Row justify="end">
-          <Col>
+        <Box className="layout-row" justify="end" wrap="wrap">
+          <Box className="layout-column tw:block">
             <Button
               data-testid="back-button"
               type="link"
               onClick={handleCancel}>
               {t('label.back')}
             </Button>
-          </Col>
-          <Col>
+          </Box>
+          <Box className="layout-column tw:block">
             <Button
               data-testid="create-button"
               htmlType="submit"
@@ -634,8 +634,8 @@ const AddCustomProperty = ({
               type="primary">
               {t('label.create')}
             </Button>
-          </Col>
-        </Row>
+          </Box>
+        </Box>
       )}
     </Form>
   );

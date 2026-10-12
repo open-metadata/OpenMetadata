@@ -8,36 +8,55 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.function.Predicate;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 import org.openmetadata.schema.api.data.CreateEntityProfile;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.AnnouncementStatus;
 import org.openmetadata.schema.type.Column;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.RegexMode;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository.IncidentDateField;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class ListFilter extends Filter<ListFilter> {
+  /** The severity filter value for incidents with no severity. */
+  public static final String NO_INCIDENT_SEVERITY = "none";
+
   public static final String NULL_PARAM = "null";
 
   // Sort metadata is kept off the queryParams map on purpose: ListCountCache hashes queryParams, so
   // holding these as fields keeps the sorted and unsorted listings on a single count-cache entry.
   private String sortField;
   private String sortOrder;
+  private String entityTableName;
 
   private static final String TASK_STATUS_GROUP_OPEN = "open";
   private static final String TASK_STATUS_GROUP_ACTIVE = "active";
-  private static final String ANNOUNCEMENT_TABLE = "announcement_entity";
   private static final String TASK_STATUS_GROUP_CLOSED = "closed";
   private static final String ONTOLOGY_AXIOM_TABLE = "ontology_axiom_entity";
   private static final String ONTOLOGY_CHANGE_SET_TABLE = "ontology_change_set_entity";
+  // An fqnHash joins one MD5 hex digest per FQN segment.
+  private static final int FQN_HASH_SEGMENT_LENGTH = 32;
+  private static final String FQN_HASH_COLUMN = "fqnHash";
+  private static final String DOMAIN_RELATION_ALIAS = "dr";
+  // Where a test case's table inherits its domain from, the table itself first.
+  private static final List<TestCaseAncestor> TEST_CASE_DOMAIN_ANCESTORS =
+      List.of(
+          new TestCaseAncestor(Entity.TABLE, "table_entity", FQN_HASH_COLUMN, 4),
+          new TestCaseAncestor(
+              Entity.DATABASE_SCHEMA, "database_schema_entity", FQN_HASH_COLUMN, 3),
+          new TestCaseAncestor(Entity.DATABASE, "database_entity", FQN_HASH_COLUMN, 2),
+          new TestCaseAncestor(Entity.DATABASE_SERVICE, "dbservice_entity", "nameHash", 1));
 
   public ListFilter() {
     this(Include.NON_DELETED);
@@ -45,6 +64,11 @@ public class ListFilter extends Filter<ListFilter> {
 
   public ListFilter(Include include) {
     this.include = include;
+  }
+
+  public String getConditionForEntity(String tableName) {
+    entityTableName = tableName;
+    return getCondition();
   }
 
   public String getSortField() {
@@ -94,8 +118,13 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getTestCaseResolutionStatusType());
     conditions.add(getTestDefinitionCondition());
     conditions.add(getTestCaseOwnerCondition());
+    conditions.add(getTestCaseUnownedCondition());
+    conditions.add(getIncidentListDateRangeCondition());
     conditions.add(getIncidentAssigneeCondition());
+    conditions.add(getIncidentSeverityCondition());
+    conditions.add(getIncidentListSeverityCondition());
     conditions.add(getIncidentDomainCondition());
+    conditions.add(getIncidentListDomainCondition());
     conditions.add(getIncidentDateRangeCondition());
     conditions.add(getDirectoryCondition(tableName));
     conditions.add(getSpreadsheetCondition(tableName));
@@ -110,8 +139,10 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getApiCollectionCondition(tableName));
     conditions.add(getWorkflowDefinitionIdCondition());
     conditions.add(getEntityLinkCondition());
-    conditions.add(getActiveCondition(tableName));
+    conditions.add(getActiveCondition());
     conditions.add(getAnnouncementTypeCondition());
+    conditions.add(getAnnouncementStatusCondition());
+    conditions.add(getSystemAnnouncementCondition());
     conditions.add(getAgentTypeCondition());
     conditions.add(getProviderCondition(tableName));
     conditions.add(getExcludeProviderCondition(tableName));
@@ -125,7 +156,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getTaskAboutServiceCondition());
     conditions.add(getTaskAccessTypeCondition());
     conditions.add(getTaskCreatedAtRangeCondition(tableName));
-    conditions.add(getDarSearchCondition());
+    conditions.add(getTaskSearchCondition());
     conditions.add(getEntityStatusCondition(tableName));
     conditions.add(getServerIdCondition());
     conditions.add(getNameFilterCondition());
@@ -133,8 +164,10 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getSourceEntityCondition());
     conditions.add(getPrimaryEntityCondition());
     conditions.add(getFolderCondition());
+    conditions.add(getAssetCondition());
     conditions.add(getGlossaryIdCondition(tableName));
     conditions.add(getOntologyChangeSetStateCondition(tableName));
+    conditions.add(getMemorySourcedChangeSetCondition(tableName));
     String condition = addCondition(conditions);
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
@@ -149,12 +182,37 @@ public class ListFilter extends Filter<ListFilter> {
     return condition;
   }
 
+  /** Matches any of the comma-separated states, each bound as its own parameter. */
   private String getOntologyChangeSetStateCondition(String tableName) {
     String state = queryParams.get("state");
     String condition = "";
     if (!nullOrEmpty(state) && tableMatches(tableName, ONTOLOGY_CHANGE_SET_TABLE)) {
-      queryParams.put("ontologyChangeSetStateParam", state);
-      condition = qualifyColumn(tableName, "state") + " = :ontologyChangeSetStateParam";
+      String[] states = state.split(",");
+      List<String> placeholders = new ArrayList<>(states.length);
+      for (int index = 0; index < states.length; index++) {
+        String param = "ontologyChangeSetStateParam" + index;
+        queryParams.put(param, states[index]);
+        placeholders.add(":" + param);
+      }
+      condition =
+          qualifyColumn(tableName, "state") + " IN (" + String.join(", ", placeholders) + ")";
+    }
+    return condition;
+  }
+
+  /** Keeps only Studio drafts proposed from context memories (changeSet --DERIVED_FROM--> memory). */
+  private String getMemorySourcedChangeSetCondition(String tableName) {
+    String condition = "";
+    if (Boolean.parseBoolean(queryParams.get("memorySourced"))
+        && tableMatches(tableName, ONTOLOGY_CHANGE_SET_TABLE)) {
+      condition =
+          String.format(
+              "%s IN (SELECT entity_relationship.fromId FROM entity_relationship "
+                  + "WHERE entity_relationship.fromEntity = 'ontologyChangeSet' "
+                  + "AND entity_relationship.toEntity = 'contextMemory' "
+                  + "AND entity_relationship.relation = %d "
+                  + "AND entity_relationship.deleted = FALSE)",
+              qualifyColumn(tableName, "id"), Relationship.DERIVED_FROM.ordinal());
     }
     return condition;
   }
@@ -164,7 +222,8 @@ public class ListFilter extends Filter<ListFilter> {
   }
 
   private static boolean tableMatches(String tableName, String expectedTable) {
-    return !nullOrEmpty(tableName) && tableName.contains(expectedTable);
+    // EntityDAO's default list and count paths omit the table name when building conditions.
+    return nullOrEmpty(tableName) || tableName.contains(expectedTable);
   }
 
   public ResourceContext getResourceContext(String entityType) {
@@ -253,6 +312,22 @@ public class ListFilter extends Filter<ListFilter> {
               Relationship.APPLIED_TO.ordinal());
     }
     return result;
+  }
+
+  /**
+   * Documents by the stored asset they are a view of. A chat attachment is one such asset, and this
+   * is how a link to it finds the document to open.
+   */
+  public String getAssetCondition() {
+    String assetId = queryParams.get("assetId");
+    if (nullOrEmpty(assetId)) {
+      return "";
+    }
+    queryParams.put("assetIdParam", assetId);
+    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+      return "JSON_UNQUOTE(JSON_EXTRACT(json, '$.assetId')) = :assetIdParam";
+    }
+    return "json->>'assetId' = :assetIdParam";
   }
 
   public String getFolderCondition() {
@@ -430,9 +505,30 @@ public class ListFilter extends Filter<ListFilter> {
     return entityLinkStr == null ? "" : "entityLink = :entityLink";
   }
 
-  private String getActiveCondition(String tableName) {
+  /**
+   * Both announcement conditions key off their query parameter alone rather than the table name:
+   * the generic list and count paths call {@link Filter#getCondition()}, which passes a null table
+   * name, so a name-based guard silently drops the predicate. Only {@code AnnouncementResource}
+   * sets these parameters, and {@code startTime}/{@code endTime} exist only on that table.
+   */
+  /**
+   * Whether any condition in this filter is derived from the wall clock rather than from stored
+   * state. {@code announcementStatus} and {@code active} both compare an announcement's window
+   * against {@code System.currentTimeMillis()}, so the same query returns different rows as
+   * announcements cross their start and end times — with no write to invalidate a cached count.
+   *
+   * <p>{@link org.openmetadata.service.cache.ListCountCache} hashes only {@code queryParams}, so
+   * such a count would be computed once and reused indefinitely; its TTL is refreshed by any write
+   * to the same entity type, and its invalidation hooks only fire on create/delete/restore. These
+   * filters therefore have to skip the cache rather than populate it.
+   */
+  public boolean isTimeDependent() {
+    return queryParams.containsKey("announcementStatus") || queryParams.containsKey("active");
+  }
+
+  private String getActiveCondition() {
     String active = queryParams.get("active");
-    if (active == null || !ANNOUNCEMENT_TABLE.equals(tableName)) {
+    if (active == null) {
       return "";
     }
 
@@ -450,6 +546,43 @@ public class ListFilter extends Filter<ListFilter> {
     return announcementType == null ? "" : "type = :announcementType";
   }
 
+  /** A system announcement is one with no entityLink; only AnnouncementResource sets this. */
+  private String getSystemAnnouncementCondition() {
+    String systemAnnouncement = queryParams.get("systemAnnouncement");
+    String condition = "";
+    if (systemAnnouncement != null) {
+      condition =
+          Boolean.parseBoolean(systemAnnouncement)
+              ? "entityLink IS NULL"
+              : "entityLink IS NOT NULL";
+    }
+    return condition;
+  }
+
+  /**
+   * An announcement's stored {@code status} is only a snapshot of its last write, so the generated
+   * {@code status} column still reads {@code Active} once the window has closed. Deriving the
+   * status from the window instead keeps the filter honest, and both {@code startTime} and {@code
+   * endTime} are indexed.
+   *
+   * <p>Read from {@code announcementStatus} rather than {@code status} so the generic status
+   * condition, which other resources share, keeps matching the column it means.
+   */
+  private String getAnnouncementStatusCondition() {
+    String status = queryParams.get("announcementStatus");
+    if (status == null) {
+      return "";
+    }
+
+    long now = System.currentTimeMillis();
+
+    return switch (AnnouncementStatus.fromValue(status)) {
+      case Active -> String.format("(startTime <= %d AND endTime >= %d)", now, now);
+      case Expired -> String.format("endTime < %d", now);
+      case Scheduled -> String.format("startTime > %d", now);
+    };
+  }
+
   private String getEntityStatusCondition(String tableName) {
     String entityStatus = queryParams.get("entityStatus");
     if (entityStatus == null || entityStatus.trim().isEmpty()) {
@@ -457,7 +590,16 @@ public class ListFilter extends Filter<ListFilter> {
     }
 
     Set<String> validStatuses =
-        Arrays.stream(EntityStatus.values()).map(EntityStatus::value).collect(Collectors.toSet());
+        Entity.getEntityTypesWithLifecycleStage().stream()
+            .map(Entity::getEntityRepository)
+            .filter(
+                repository ->
+                    repository
+                        .getDao()
+                        .getTableName()
+                        .equals(entityTableName == null ? tableName : entityTableName))
+            .flatMap(repository -> repository.getEntityLifecycle().stageCodes().stream())
+            .collect(Collectors.toSet());
     List<String> statusValues =
         Arrays.stream(entityStatus.split(","))
             .map(String::trim)
@@ -466,7 +608,7 @@ public class ListFilter extends Filter<ListFilter> {
             .toList();
 
     if (statusValues.isEmpty()) {
-      return "";
+      return "1 = 0";
     }
 
     List<String> bindParams = new ArrayList<>();
@@ -626,6 +768,36 @@ public class ListFilter extends Filter<ListFilter> {
     return result;
   }
 
+  // Scopes the test_case_resolution_status_time_series listing to the test cases with no direct
+  // user or team owner, which is what the owner dimension's "No Owner" incident group holds;
+  // testCaseUnowned is only set by TestCaseResolutionStatusResource#list.
+  private String getTestCaseUnownedCondition() {
+    String result = "";
+    if (Boolean.parseBoolean(queryParams.get("testCaseUnowned"))) {
+      result =
+          String.format(
+              "entityFQNHash IN (SELECT uotc.fqnHash FROM test_case uotc WHERE NOT EXISTS ("
+                  + "SELECT 1 FROM entity_relationship uoer WHERE uoer.toId = uotc.id "
+                  + "AND uoer.fromEntity IN ('%s', '%s') AND uoer.toEntity = '%s' "
+                  + "AND uoer.relation = %d))",
+              Entity.USER, Entity.TEAM, Entity.TEST_CASE, Relationship.OWNS.ordinal());
+    }
+    return result;
+  }
+
+  // The flat listing's take on getIncidentDateRangeCondition: the range applies to the incident a
+  // record belongs to, so a drill-down from a group lists the incidents that group counted.
+  private String getIncidentListDateRangeCondition() {
+    String column = "tli." + getIncidentDateColumn(queryParams.get("incidentListDateField"));
+    String clauses =
+        getIncidentDateClauses(
+            column, queryParams.get("incidentListStartTs"), queryParams.get("incidentListEndTs"));
+    return clauses.isEmpty()
+        ? ""
+        : String.format(
+            "stateId IN (SELECT tli.stateId FROM test_case_incident tli WHERE %s)", clauses);
+  }
+
   // The incident grouping query (TestCaseResolutionStatusRepository#listIncidentGroups) reduces
   // test_case_resolution_status_time_series records to one latest row per stateId in a CTE
   // aliased {@code i} (createdAt/updatedAt are the chain's first/last record timestamps) and
@@ -637,51 +809,159 @@ public class ListFilter extends Filter<ListFilter> {
     return nullOrEmpty(assignee) ? "" : "assignee = :incidentAssignee";
   }
 
-  private String getIncidentDomainCondition() {
-    String domainId = queryParams.get("incidentDomainId");
-    String result = "";
-    if (!nullOrEmpty(domainId)) {
-      result =
-          String.format(
-              "EXISTS (SELECT 1 FROM entity_relationship dr WHERE dr.fromId = :incidentDomainId "
-                  + "AND dr.fromEntity = 'domain' AND dr.relation = %d "
-                  + "AND dr.toId = tc.id AND dr.toEntity = 'testCase')",
-              Relationship.HAS.ordinal());
+  // An incident's severity as it stands, from the groups' incident summary column; the flat
+  // listing reads the same value off the status record itself. Both take comma-separated
+  // severities, with NO_INCIDENT_SEVERITY standing for an incident that has none.
+  private String getIncidentSeverityCondition() {
+    return incidentSeverityCondition("incidentSeverity", "severity");
+  }
+
+  private String getIncidentListSeverityCondition() {
+    String severity =
+        Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+            ? "JSON_UNQUOTE(JSON_EXTRACT(json, '$.severity'))"
+            : "json->>'severity'";
+    return incidentSeverityCondition("incidentListSeverity", severity);
+  }
+
+  private String incidentSeverityCondition(String param, String severity) {
+    String value = queryParams.get(param);
+    return nullOrEmpty(value)
+        ? ""
+        : "(" + String.join(" OR ", severityAlternatives(param, severity, value)) + ")";
+  }
+
+  private List<String> severityAlternatives(String param, String severity, String value) {
+    List<String> values = Arrays.stream(value.split(",")).map(String::trim).toList();
+    String graded =
+        values.stream()
+            .filter(severityValue -> !NO_INCIDENT_SEVERITY.equals(severityValue))
+            .collect(Collectors.joining(","));
+    List<String> alternatives = new ArrayList<>();
+    if (!graded.isEmpty()) {
+      alternatives.add(
+          String.format("%s IN (%s)", severity, buildIndexedBindParams(param, graded)));
     }
-    return result;
+    if (values.contains(NO_INCIDENT_SEVERITY)) {
+      alternatives.add(severity + " IS NULL");
+    }
+    return alternatives;
+  }
+
+  private String getIncidentDomainCondition() {
+    return nullOrEmpty(queryParams.get("incidentDomainId"))
+        ? ""
+        : testCaseInDomainCondition("tc", "incidentDomainId");
+  }
+
+  // The flat listing's take on getIncidentDomainCondition, so a drill-down from a group in a
+  // domain lists the incidents that group counted.
+  private String getIncidentListDomainCondition() {
+    return nullOrEmpty(queryParams.get("incidentListDomainId"))
+        ? ""
+        : "entityFQNHash IN (SELECT dtc.fqnHash FROM test_case dtc WHERE "
+            + testCaseInDomainCondition("dtc", "incidentListDomainId")
+            + ")";
+  }
+
+  // A test case is in the domain it has itself or, as is usual, the one its table has — which the
+  // table may in turn inherit from its schema, database or service. Inherited domains are resolved
+  // at read time and leave no relationship on the entity that inherits them, and a level inherits
+  // only when it has no domain of its own: the nearest level with one decides.
+  private static String testCaseInDomainCondition(String testCaseAlias, String domainParam) {
+    String inDomain = " AND " + DOMAIN_RELATION_ALIAS + ".fromId = :" + domainParam;
+    List<UnaryOperator<String>> levels = testCaseDomainLevels(testCaseAlias);
+    return IntStream.range(0, levels.size())
+        .mapToObj(i -> nearestDomainLevel(levels.subList(0, i), levels.get(i), inDomain))
+        .collect(Collectors.joining(" OR ", "(", ")"));
+  }
+
+  private static String nearestDomainLevel(
+      List<UnaryOperator<String>> nearer, UnaryOperator<String> level, String inDomain) {
+    return Stream.concat(
+            nearer.stream().map(nearerLevel -> "NOT " + nearerLevel.apply("")),
+            Stream.of(level.apply(inDomain)))
+        .collect(Collectors.joining(" AND ", "(", ")"));
+  }
+
+  // Each level, nearest first, as a domain-relationship EXISTS narrowed by the filter it is given.
+  private static List<UnaryOperator<String>> testCaseDomainLevels(String testCaseAlias) {
+    return Stream.concat(
+            Stream.<UnaryOperator<String>>of(filter -> ownDomainExists(testCaseAlias, filter)),
+            TEST_CASE_DOMAIN_ANCESTORS.stream()
+                .map(ancestor -> filter -> ancestor.domainExists(testCaseAlias, filter)))
+        .toList();
+  }
+
+  private static String ownDomainExists(String testCaseAlias, String filter) {
+    return String.format(
+        "EXISTS (SELECT 1 FROM entity_relationship %s WHERE %s.toId = %s.id "
+            + "AND %s.toEntity = '%s' AND %s.fromEntity = '%s' AND %s.relation = %d%s)",
+        DOMAIN_RELATION_ALIAS,
+        DOMAIN_RELATION_ALIAS,
+        testCaseAlias,
+        DOMAIN_RELATION_ALIAS,
+        Entity.TEST_CASE,
+        DOMAIN_RELATION_ALIAS,
+        Entity.DOMAIN,
+        DOMAIN_RELATION_ALIAS,
+        Relationship.HAS.ordinal(),
+        filter);
+  }
+
+  // An ancestor of a test case found by its hash column, which holds the leading fqnDepth hashed
+  // segments of the test case's fqnHash.
+  private record TestCaseAncestor(
+      String entityType, String tableName, String hashColumn, int fqnDepth) {
+
+    String domainExists(String testCaseAlias, String filter) {
+      return String.format(
+          "EXISTS (SELECT 1 FROM %s da INNER JOIN entity_relationship %s "
+              + "ON %s.toId = da.id AND %s.toEntity = '%s' "
+              + "WHERE da.%s = LEFT(%s.fqnHash, %d) "
+              + "AND %s.fromEntity = '%s' AND %s.relation = %d%s)",
+          tableName,
+          DOMAIN_RELATION_ALIAS,
+          DOMAIN_RELATION_ALIAS,
+          DOMAIN_RELATION_ALIAS,
+          entityType,
+          hashColumn,
+          testCaseAlias,
+          fqnHashPrefixLength(),
+          DOMAIN_RELATION_ALIAS,
+          Entity.DOMAIN,
+          DOMAIN_RELATION_ALIAS,
+          Relationship.HAS.ordinal(),
+          filter);
+    }
+
+    private int fqnHashPrefixLength() {
+      return fqnDepth * FQN_HASH_SEGMENT_LENGTH + (fqnDepth - 1) * Entity.SEPARATOR.length();
+    }
   }
 
   private String getIncidentDateRangeCondition() {
-    String start = queryParams.get("incidentStartTs");
-    String end = queryParams.get("incidentEndTs");
+    return getIncidentDateClauses(
+        "i." + getIncidentDateColumn(queryParams.get("incidentDateField")),
+        queryParams.get("incidentStartTs"),
+        queryParams.get("incidentEndTs"));
+  }
+
+  private static String getIncidentDateClauses(String column, String start, String end) {
     List<String> clauses = new ArrayList<>();
-    if (!nullOrEmpty(start) || !nullOrEmpty(end)) {
-      String column = getIncidentDateColumn(queryParams.get("incidentDateField"));
-      if (!nullOrEmpty(start)) {
-        clauses.add(String.format("%s >= %s", column, Long.parseLong(start)));
-      }
-      if (!nullOrEmpty(end)) {
-        clauses.add(String.format("%s <= %s", column, Long.parseLong(end)));
-      }
+    if (!nullOrEmpty(start)) {
+      clauses.add(String.format("%s >= %s", column, Long.parseLong(start)));
+    }
+    if (!nullOrEmpty(end)) {
+      clauses.add(String.format("%s <= %s", column, Long.parseLong(end)));
     }
     return String.join(" AND ", clauses);
   }
 
-  private String getIncidentDateColumn(String dateField) {
-    String defaulted =
-        dateField == null
-            ? TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_CREATED_AT
-            : dateField;
-    return switch (defaulted) {
-      case TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_CREATED_AT -> "i.createdAt";
-      case TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_UPDATED_AT -> "i.updatedAt";
-      default -> throw new IllegalArgumentException(
-          String.format(
-              "Invalid dateField '%s'. Must be one of [%s, %s]",
-              dateField,
-              TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_CREATED_AT,
-              TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_UPDATED_AT));
-    };
+  private static String getIncidentDateColumn(String dateField) {
+    return dateField == null
+        ? IncidentDateField.CREATED_AT.value()
+        : IncidentDateField.fromValue(dateField).value();
   }
 
   public String getIncludeCondition(String tableName) {
@@ -1233,15 +1513,15 @@ public class ListFilter extends Filter<ListFilter> {
   }
 
   private String getFqnPrefixCondition(String tableName, String fqnPrefix, String paramName) {
-    String prefix = FullyQualifiedName.buildHash(fqnPrefix) + Entity.SEPARATOR;
+    String hash = FullyQualifiedName.buildHash(fqnPrefix);
+    String prefix = hash + Entity.SEPARATOR;
     queryParams.put(paramName + "Hash", prefix + "%");
-    // Companion bind for "exclude descendants below the immediate level" — used by listings
-    // that need direct children only (e.g. ContainerDAO root listings, ContainerRepository
-    // listChildren). fqnHash uses fixed-width MD5 segments joined by '.', so a fqnHash that
-    // matches `<prefix>.%.%` has at least two segments below the prefix and is therefore not
-    // a direct child. Always bound — most queries don't reference it; the cost is one map
-    // entry. Avoids threading an extra param through every listing site.
-    queryParams.put(paramName + "HashChild", prefix + "%.%");
+    // Companion bind for "direct children of this prefix only" — used by listings that need
+    // the immediate level (e.g. ContainerDAO root listings). Matched against the generated
+    // `parentFqnHash` column, so the depth test is an indexed equality rather than a
+    // negated LIKE the planner can't use. Always bound — most queries don't reference it;
+    // the cost is one map entry. Avoids threading an extra param through every listing site.
+    queryParams.put(paramName + "HashExact", hash);
     return tableName == null
         ? String.format("fqnHash LIKE :%s", paramName + "Hash")
         : String.format("%s.fqnHash LIKE :%s", tableName, paramName + "Hash");
@@ -1418,6 +1698,16 @@ public class ListFilter extends Filter<ListFilter> {
     return escapeBackslashAndApostrophe(regexEscaped);
   }
 
+  /**
+   * Escape a value that travels as a LIKE <em>bind</em> parameter: only the LIKE metacharacters
+   * and the escape character itself need escaping. Apostrophes stay as typed — {@link #escape}
+   * doubles them for literal interpolation, which would make a bound search for "it's" match
+   * nothing.
+   */
+  public static String escapeLikeBindValue(String value) {
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+  }
+
   public static String escape(String name) {
     // Escape string to be using in LIKE clause
     // "'" is used for indicated start and end of the string. Use "''" to escape it.
@@ -1538,34 +1828,33 @@ public class ListFilter extends Filter<ListFilter> {
   }
 
   /**
-   * Free-text search across DAR-relevant fields. Used by the {@code q} query param on
-   * {@code /v1/tasks/dataAccessRequests}. Database-only — DARs are not indexed into Elasticsearch.
-   * Matches against task name, displayName, the DAR payload.reason, and the about-entity FQN /
-   * displayName.
+   * Free-text search across task fields. Used by the {@code q} query param on the task list
+   * endpoints ({@code /v1/tasks/dataAccessRequests} and the user-scoped {@code /assigned},
+   * {@code /visible}, {@code /owned}, {@code /created} lists). Database-only — tasks are not
+   * indexed into Elasticsearch. Matches against task name, displayName, the request reason in the
+   * payload, and the about-entity FQN / displayName.
    */
-  private String getDarSearchCondition() {
-    String search = queryParams.get("darSearch");
+  private String getTaskSearchCondition() {
+    String search = queryParams.get("taskSearch");
     if (nullOrEmpty(search)) {
       return "";
     }
-    // escape() handles `'` and `_`, but leaves `%` alone (callers like
-    // getCategoryPrefixCondition want trailing `%` as a wildcard). For free-text search the
-    // anchor wildcards we add below are the only ones allowed; escape `%` inside the user
-    // input so callers can't probe rows via `q=%` or smuggle wildcards into the middle.
-    String escaped = "%" + escape(search.trim()).replace("%", "\\%") + "%";
-    queryParams.put("darSearchParam", escaped);
+    // The anchor wildcards added here are the only ones allowed: `%` and `_` in the input are
+    // escaped so callers can't probe rows via `q=%` or smuggle wildcards into the middle.
+    String escaped = "%" + escapeLikeBindValue(search.trim()) + "%";
+    queryParams.put("taskSearchParam", escaped);
     if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
-      return "(LOWER(name) LIKE LOWER(:darSearchParam) "
-          + "OR LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.displayName')), '')) LIKE LOWER(:darSearchParam) "
-          + "OR LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.payload.reason')), '')) LIKE LOWER(:darSearchParam) "
-          + "OR LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.about.displayName')), '')) LIKE LOWER(:darSearchParam) "
-          + "OR LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.about.fullyQualifiedName')), '')) LIKE LOWER(:darSearchParam))";
+      return "(LOWER(name) LIKE LOWER(:taskSearchParam) "
+          + "OR LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.displayName')), '')) LIKE LOWER(:taskSearchParam) "
+          + "OR LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.payload.reason')), '')) LIKE LOWER(:taskSearchParam) "
+          + "OR LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.about.displayName')), '')) LIKE LOWER(:taskSearchParam) "
+          + "OR LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.about.fullyQualifiedName')), '')) LIKE LOWER(:taskSearchParam))";
     }
-    return "(LOWER(name) LIKE LOWER(:darSearchParam) "
-        + "OR LOWER(COALESCE(json->>'displayName', '')) LIKE LOWER(:darSearchParam) "
-        + "OR LOWER(COALESCE(json->'payload'->>'reason', '')) LIKE LOWER(:darSearchParam) "
-        + "OR LOWER(COALESCE(json->'about'->>'displayName', '')) LIKE LOWER(:darSearchParam) "
-        + "OR LOWER(COALESCE(json->'about'->>'fullyQualifiedName', '')) LIKE LOWER(:darSearchParam))";
+    return "(LOWER(name) LIKE LOWER(:taskSearchParam) "
+        + "OR LOWER(COALESCE(json->>'displayName', '')) LIKE LOWER(:taskSearchParam) "
+        + "OR LOWER(COALESCE(json->'payload'->>'reason', '')) LIKE LOWER(:taskSearchParam) "
+        + "OR LOWER(COALESCE(json->'about'->>'displayName', '')) LIKE LOWER(:taskSearchParam) "
+        + "OR LOWER(COALESCE(json->'about'->>'fullyQualifiedName', '')) LIKE LOWER(:taskSearchParam))";
   }
 
   /**

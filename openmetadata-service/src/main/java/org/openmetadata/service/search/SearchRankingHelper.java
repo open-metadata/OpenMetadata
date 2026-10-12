@@ -2,7 +2,10 @@ package org.openmetadata.service.search;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.search.SearchConstants.DEFAULT_SORT_FIELD;
+import static org.openmetadata.service.search.SearchConstants.DEFAULT_SORT_ORDER;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonValue;
 import java.io.IOException;
@@ -23,6 +26,7 @@ import org.openmetadata.schema.api.search.RankingSignals;
 import org.openmetadata.schema.api.search.RankingStage;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.search.StopWordsByLanguage;
+import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.utils.JsonUtils;
 
 public final class SearchRankingHelper {
@@ -61,6 +65,11 @@ public final class SearchRankingHelper {
    */
   public static int identityProbeSize() {
     return IDENTITY_PROBE_SIZE;
+  }
+
+  /** Source fields required by both result and count identity probes. */
+  public static List<String> identityFields() {
+    return IDENTITY_FIELDS;
   }
 
   /**
@@ -715,9 +724,9 @@ public final class SearchRankingHelper {
    * exactly, runs it again without the fuzzy stages. Shared by the Elasticsearch and OpenSearch
    * managers, whose response and request-builder types differ but whose control flow does not.
    *
-   * <p>A first page costs one round-trip unless the query turns out to name an entity, which pays a
-   * second. Deeper pages and cursor pages cannot judge from what they return, so they pay a probe
-   * plus the page itself.
+   * <p>A first page sorted by relevance can double as the probe when its projection contains
+   * identifiers. Other projections, sorts, deeper pages and cursor pages use a private probe;
+   * response formatting must never change which documents match.
    */
   public static <R> R searchWithIdentifierPrecision(
       String query,
@@ -726,6 +735,49 @@ public final class SearchRankingHelper {
       SearchPass<R> pass,
       Function<R, Stream<String>> identifiersOf)
       throws IOException {
+    return searchWithIdentifierPrecision(
+        new PrecisionSearch(query, searchSettings, window, true), pass, identifiersOf);
+  }
+
+  public static <R> R searchWithIdentifierPrecision(
+      SearchRequest request,
+      SearchSettings settings,
+      SearchPass<R> pass,
+      Function<R, Stream<String>> identifiersOf)
+      throws IOException {
+    SearchWindow window =
+        new SearchWindow(
+            request.getFrom() == null ? 0 : request.getFrom(),
+            request.getSize() == null ? 0 : request.getSize(),
+            !nullOrEmpty(request.getSearchAfter()));
+    return searchWithIdentifierPrecision(
+        new PrecisionSearch(request.getQuery(), settings, window, canReuseAsProbe(request)),
+        pass,
+        identifiersOf);
+  }
+
+  private static boolean canReuseAsProbe(SearchRequest request) {
+    return !Boolean.FALSE.equals(request.getFetchSource())
+        && listOrEmpty(request.getExcludeSourceFields()).stream()
+            .noneMatch(
+                field ->
+                    IDENTITY_FIELDS.contains(field) || field.contains("*") || field.contains("?"))
+        && (nullOrEmpty(request.getIncludeSourceFields())
+            || request.getIncludeSourceFields().containsAll(IDENTITY_FIELDS))
+        && (nullOrEmpty(request.getSortFieldParam())
+            || DEFAULT_SORT_FIELD.equals(request.getSortFieldParam()))
+        && (nullOrEmpty(request.getSortOrder())
+            || DEFAULT_SORT_ORDER.equalsIgnoreCase(request.getSortOrder()));
+  }
+
+  private record PrecisionSearch(
+      String query, SearchSettings settings, SearchWindow window, boolean reusable) {}
+
+  private static <R> R searchWithIdentifierPrecision(
+      PrecisionSearch search, SearchPass<R> pass, Function<R, Stream<String>> identifiersOf)
+      throws IOException {
+    SearchSettings searchSettings = search.settings();
+    SearchWindow window = search.window();
     if (!hasPrunableFuzzyStage(searchSettings)) {
       return pass.run(searchSettings, window);
     }
@@ -733,13 +785,16 @@ public final class SearchRankingHelper {
     // top,
     // so its window is no more the top of the ranking than a from=15 window is.
     boolean requestedWindowIsTheProbe =
-        !window.cursorPaged() && window.from() == 0 && window.size() >= IDENTITY_PROBE_SIZE;
+        search.reusable()
+            && !window.cursorPaged()
+            && window.from() == 0
+            && window.size() >= IDENTITY_PROBE_SIZE;
     R requestedWindow = requestedWindowIsTheProbe ? pass.run(searchSettings, window) : null;
     R probe =
         requestedWindowIsTheProbe
             ? requestedWindow
             : pass.run(searchSettings, SearchWindow.probe());
-    if (isExactIdentifierLookup(query, identifiersOf.apply(probe))) {
+    if (isExactIdentifierLookup(search.query(), identifiersOf.apply(probe))) {
       return pass.run(withoutFuzzyStages(searchSettings), window);
     }
     return requestedWindowIsTheProbe ? requestedWindow : pass.run(searchSettings, window);
@@ -752,10 +807,41 @@ public final class SearchRankingHelper {
    *     carries {@code from=0} while pointing anywhere in the ranking, so it must never be mistaken
    *     for the top, and the probe must run without the cursor to read the actual top.
    */
-  public record SearchWindow(int from, int size, boolean cursorPaged) {
-    public static SearchWindow probe() {
-      return new SearchWindow(0, IDENTITY_PROBE_SIZE, false);
+  public record SearchWindow(int from, int size, boolean cursorPaged, boolean identityProbe) {
+    public SearchWindow(int from, int size, boolean cursorPaged) {
+      this(from, size, cursorPaged, false);
     }
+
+    public static SearchWindow probe() {
+      return new SearchWindow(0, IDENTITY_PROBE_SIZE, false, true);
+    }
+  }
+
+  /** The private probe must see identifiers regardless of the caller's projection or sort order. */
+  public static SearchRequest windowed(SearchRequest request, SearchWindow window) {
+    if (!window.identityProbe()
+        && Integer.valueOf(window.from()).equals(request.getFrom())
+        && Integer.valueOf(window.size()).equals(request.getSize())
+        && (window.cursorPaged() || nullOrEmpty(request.getSearchAfter()))) {
+      return request;
+    }
+    SearchRequest copy =
+        JsonUtils.deepCopy(request, SearchRequest.class)
+            .withFrom(window.from())
+            .withSize(window.size());
+    if (!window.cursorPaged()) {
+      copy.withSearchAfter(List.of());
+    }
+    if (window.identityProbe()) {
+      copy.withFetchSource(true)
+          .withIncludeSourceFields(IDENTITY_FIELDS)
+          .withExcludeSourceFields(List.of())
+          .withIncludeAggregations(false)
+          .withExplain(false)
+          .withSortFieldParam(DEFAULT_SORT_FIELD)
+          .withSortOrder(DEFAULT_SORT_ORDER);
+    }
+    return copy;
   }
 
   /**
@@ -786,6 +872,17 @@ public final class SearchRankingHelper {
       }
     }
     return identifiers.stream();
+  }
+
+  /** Jackson counterpart for the engine-neutral count aggregation response. */
+  public static Stream<String> identifiersFrom(JsonNode hitSource) {
+    if (hitSource == null) {
+      return Stream.empty();
+    }
+    return IDENTITY_FIELDS.stream()
+        .map(hitSource::path)
+        .filter(JsonNode::isTextual)
+        .map(JsonNode::textValue);
   }
 
   private static boolean rankingHasPrunableFuzzyStage(RankingConfiguration ranking) {

@@ -91,6 +91,12 @@ p {
   border-radius: @border-rad-base;
   color: @error-color;
   background-color: @error-light-color;
+
+  // The light error-600 on a salmon tint reads too dim on dark surfaces.
+  .dark-mode & {
+    color: var(--om-color-text-error);
+    background-color: var(--om-color-bg-error);
+  }
 }
 
 .page-container {
@@ -678,12 +684,10 @@ a[href].link-text-grey,
 /* Diff style */
 
 .diff-added {
-  // background: @success-background-color;
   width: fit-content;
-  color: @success-color;
 
   * {
-    color: @success-color;
+    color: var(--tw-color-utility-success-700);
   }
 }
 
@@ -696,7 +700,7 @@ a[href].link-text-grey,
   font-weight: var(--om-font-weight-regular);
   line-height: 20px;
   width: fit-content;
-  color: var(--om-legacy-color-027a48);
+  color: var(--tw-color-utility-success-700);
 }
 
 .diff-removed-new,
@@ -709,9 +713,9 @@ a[href].link-text-grey,
   width: fit-content;
   text-decoration: line-through;
   text-decoration-thickness: 1.5px;
-  text-decoration-color: var(--om-color-error-400);
+  text-decoration-color: var(--tw-color-utility-error-700);
   text-decoration-skip-ink: auto;
-  color: var(--om-color-error-400);
+  color: var(--tw-color-utility-error-700);
 }
 
 .diff-normal-new {
@@ -725,8 +729,7 @@ a[href].link-text-grey,
 
 .diff-normal-new strong {
   font-weight: var(--om-font-weight-semibold);
-  color: var(--om-color-black);
-  /* Adjust color if needed */
+  color: var(--tw-color-text-primary);
 }
 
 .clamp-text-2 {
@@ -817,7 +820,7 @@ a[href].link-text-grey,
 }
 
 // Dark-mode bridge for fixed-hex legacy LESS palette vars.
-// Each var in variables.less is `@x: var(--om-x, #originalHex)`, so light
+// Each var in variables.less has a project token and original color fallback, so light
 // mode resolves to the exact original hex (no drift) while dark mode picks up
 // the semantic/utility override below. This themes every consumer of these
 // legacy vars app-wide without per-file edits. Utility tokens auto-invert under
@@ -904,6 +907,15 @@ a[href].link-text-grey,
   --tw-outline-color-brand_alt: var(--om-color-brand-300);
   --tw-ring-color-brand: var(--om-color-brand-300);
   --tw-ring-color-brand_alt: var(--om-color-brand-300);
+  // Status text: the configured error / warning / success colours are injected
+  // the same way, as light -600 shades, and stayed below AA on dark surfaces.
+  // Text only; the solid fills keep the configured colour.
+  --tw-color-text-error-primary: var(--om-color-text-error);
+  --tw-text-color-error-primary: var(--om-color-text-error);
+  --tw-color-text-warning-primary: var(--om-color-text-warning);
+  --tw-text-color-warning-primary: var(--om-color-text-warning);
+  --tw-color-text-success-primary: var(--om-color-text-success);
+  --tw-text-color-success-primary: var(--om-color-text-success);
 }
 
 // Legacy Ant links: `.text-link-color` uses `@primary-color`
@@ -921,7 +933,8 @@ a[href].link-text-grey,
 // fonts.less at 0,1,1) aren't caught by the base-specificity `:where(.dark-mode) a`.
 // Retint them in dark at a higher specificity that wins regardless of load order.
 .dark-mode a.ant-typography,
-.dark-mode .ant-typography a {
+.dark-mode .ant-typography a,
+.dark-mode .prose-typography a {
   color: var(--om-color-link);
 }
 
@@ -929,6 +942,12 @@ a[href].link-text-grey,
 // static near-black that vanishes on dark surfaces. The variable can't take a
 // var() (antd runs shade() on it), so retint the class in dark only.
 .dark-mode .ant-typography.ant-typography-secondary {
+  color: var(--om-color-text-tertiary);
+}
+
+// "No description" and other muted placeholders use @text-grey-muted, a fixed
+// #757575 that falls below AA on dark surfaces; retint the class in dark only.
+.dark-mode .text-grey-muted {
   color: var(--om-color-text-tertiary);
 }
 
@@ -1091,7 +1110,8 @@ a[href].link-text-grey,
     flex-wrap: wrap;
 
     &:hover {
-      .ant-typography {
+      .ant-typography,
+      > * {
         color: @primary-color;
       }
     }
@@ -1140,9 +1160,7 @@ a[href].link-text-grey,
   .policies-list-table,
   .roles-list-table,
   .list-table,
-  .kpi-table,
-  .custom-properties-card,
-  .entity-custom-properties-table {
+  .kpi-table {
     margin-right: var(--om-space-64);
   }
 }

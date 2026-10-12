@@ -51,80 +51,32 @@ describe('useDataInsightChartColors', () => {
     document.documentElement.removeAttribute('style');
   });
 
-  it('resolves chart colors again when the active theme changes', () => {
+  it('resolves the progress color again when the active theme changes', () => {
     document.documentElement.style.setProperty(
-      '--om-color-border-secondary',
+      '--om-color-brand-200',
       '#112233'
-    );
-    document.documentElement.style.setProperty(
-      '--om-color-text-tertiary',
-      '#223344'
     );
 
     const { result } = renderHook(() => useDataInsightChartColors(), {
       wrapper: TestThemeProvider,
     });
 
-    expect(result.current.grid).toBe('#112233');
-    expect(result.current.axis).toBe('#223344');
+    expect(result.current).toEqual({ progress: '#112233' });
 
     act(() => {
       document.documentElement.style.setProperty(
-        '--om-color-border-secondary',
+        '--om-color-brand-200',
         '#aabbcc'
-      );
-      document.documentElement.style.setProperty(
-        '--om-color-text-tertiary',
-        '#bbccdd'
       );
       setActiveTheme('dark');
     });
 
-    expect(result.current.grid).toBe('#aabbcc');
-    expect(result.current.axis).toBe('#bbccdd');
-  });
-
-  it('resolves semantic surfaces and categorical palettes for chart consumers', () => {
-    document.documentElement.style.setProperty(
-      '--om-color-bg-primary',
-      '#123456'
-    );
-    document.documentElement.style.setProperty(
-      '--om-color-text-disabled',
-      '#234567'
-    );
-    document.documentElement.style.setProperty(
-      '--om-color-brand-200',
-      '#345678'
-    );
-    document.documentElement.style.setProperty(
-      '--om-color-warning-400',
-      '#456789'
-    );
-    document.documentElement.style.setProperty(
-      '--om-color-purple-50',
-      '#56789a'
-    );
-    document.documentElement.style.setProperty(
-      '--om-color-violet-500',
-      '#6789ab'
-    );
-
-    const { result } = renderHook(() => useDataInsightChartColors(), {
-      wrapper: TestThemeProvider,
-    });
-
-    expect(result.current.activeDotBorder).toBe('#123456');
-    expect(result.current.inactive).toBe('#234567');
-    expect(result.current.progress).toBe('#345678');
-    expect(result.current.dataInsightSeries[0]).toBe('#456789');
-    expect(result.current.kpiBackgrounds[0]).toBe('#56789a');
-    expect(result.current.kpiSeries[0]).toBe('#6789ab');
+    expect(result.current.progress).toBe('#aabbcc');
   });
 
   it('resolves chart colors again when brand colors change', () => {
     document.documentElement.style.setProperty(
-      '--om-color-text-tertiary',
+      '--om-color-brand-200',
       '#112233'
     );
 
@@ -132,17 +84,17 @@ describe('useDataInsightChartColors', () => {
       wrapper: TestThemeProvider,
     });
 
-    expect(result.current.axis).toBe('#112233');
+    expect(result.current.progress).toBe('#112233');
 
     act(() => {
       document.documentElement.style.setProperty(
-        '--om-color-text-tertiary',
+        '--om-color-brand-200',
         '#aabbcc'
       );
       activeBrandColors = { primaryColor: '#123456' };
       rerender();
     });
 
-    expect(result.current.axis).toBe('#aabbcc');
+    expect(result.current.progress).toBe('#aabbcc');
   });
 });

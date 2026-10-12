@@ -12,11 +12,9 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
-import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import {
   createOrFetch,
-  deleteFixtureEntity,
   okJson,
   withNotFoundRetry,
 } from '../../utils/apiResponse';
@@ -32,8 +30,8 @@ import {
   removeOwner,
   updateOwner,
   visitEntityPage,
+  visitEntityPageByFqn,
 } from '../../utils/entity';
-import { visitServiceDetailsPage } from '../../utils/service';
 import { Domain } from '../domain/Domain';
 import {
   EntityTypeEndpoint,
@@ -41,27 +39,26 @@ import {
   ResponseDataWithServiceType,
 } from './Entity.interface';
 import { EntityClass } from './EntityClass';
+import type { ParentNode, ParentSnapshot } from './ParentChain';
+import { parentDeletePath } from './ParentChain';
+import { resolveParents } from './ParentResolver';
+import { DatabaseServiceClass } from './service/DatabaseServiceClass';
 
-export class DatabaseClass extends EntityClass {
-  service = {
-    name: `pw-database-service-${uuid()}`,
-    serviceType: 'Mysql',
-    connection: {
-      config: {
-        type: 'Mysql',
-        scheme: 'mysql+pymysql',
-        username: 'username',
-        authType: {
-          password: 'password',
-        },
-        hostPort: 'mysql:3306',
-        supportsMetadataExtraction: true,
-        supportsDBTExtraction: true,
-        supportsProfiler: true,
-        supportsQueryComment: true,
-      },
-    },
-  };
+/**
+ * Without `service` the database sits in the shard's shared database
+ * service. Pass a DatabaseServiceClass when the test visits, mutates or
+ * asserts on the service itself.
+ */
+export type DatabaseClassOptions = {
+  name?: string;
+  service?: DatabaseServiceClass;
+  sharedInfraKey?: string;
+};
+
+export class DatabaseClass extends EntityClass implements ParentNode {
+  readonly parentLevel = 'database' as const;
+  private readonly serviceOverride?: DatabaseServiceClass;
+  service = new DatabaseServiceClass().entity;
   entity = {
     name: `pw-database-${uuid()}`,
     service: this.service.name,
@@ -131,26 +128,58 @@ export class DatabaseClass extends EntityClass {
   tableResponseData: ResponseDataWithServiceType =
     {} as ResponseDataWithServiceType;
 
-  constructor(name?: string) {
+  constructor(options: DatabaseClassOptions = {}) {
     super(EntityTypeEndpoint.Database);
-    this.service.name = name ?? this.service.name;
     this.type = 'Database';
     this.serviceType = ServiceTypes.DATABASE_SERVICES;
+    this.serviceOverride = options.service;
+    this.sharedInfraKey = options.sharedInfraKey;
+    if (options.service) {
+      this.service = options.service.entity;
+    }
+    if (options.name) {
+      this.entity.name = options.name;
+    }
+    this.bindServiceName(this.service.name);
   }
 
-  async create(apiContext: APIRequestContext) {
-    const service = await createOrFetch(apiContext, {
-      label: 'DatabaseClass.create service',
-      createPath: '/api/v1/services/databaseServices',
-      fqnSegments: [this.service.name],
-      data: this.service,
-    });
+  private bindServiceName(serviceName: string) {
+    this.service = { ...this.service, name: serviceName };
+    this.entity.service = serviceName;
+    this.schema.database = `${serviceName}.${this.entity.name}`;
+    this.table.databaseSchema = `${serviceName}.${this.entity.name}.${this.schema.name}`;
+  }
+
+  /**
+   * Creates the database alone. As a test's parent override it must not seed
+   * its fixture schema and table: the resolver creates the levels below it.
+   */
+  async createAsParent(apiContext: APIRequestContext) {
+    const { parents, ownedRootPath, ownedOverride } = await resolveParents(
+      apiContext,
+      'database',
+      { service: this.serviceOverride },
+      this.sharedInfraKey,
+      'service'
+    );
+    const service = parents.service as ResponseDataType;
+    this.adoptOwnership({ ownedRootPath, ownedOverride });
+    this.bindServiceName(service.name);
+
     const entity = await createOrFetch(apiContext, {
       label: 'DatabaseClass.create database',
       createPath: '/api/v1/databases',
       fqnSegments: [this.service.name, this.entity.name],
       data: this.entity,
     });
+    this.serviceResponseData = service;
+    this.entityResponseData = entity;
+
+    return { service, entity };
+  }
+
+  async create(apiContext: APIRequestContext) {
+    const { service, entity } = await this.createAsParent(apiContext);
     const schema = await createOrFetch(apiContext, {
       label: 'DatabaseClass.create schema',
       createPath: '/api/v1/databaseSchemas',
@@ -169,8 +198,6 @@ export class DatabaseClass extends EntityClass {
       data: this.table,
     });
 
-    this.serviceResponseData = service;
-    this.entityResponseData = entity;
     this.schemaResponseData = schema;
     this.tableResponseData = table;
 
@@ -210,6 +237,7 @@ export class DatabaseClass extends EntityClass {
       entity: this.entityResponseData,
       schema: this.schemaResponseData,
       table: this.tableResponseData,
+      ownedRootPath: this.ownedRootPath,
     };
   }
 
@@ -218,42 +246,60 @@ export class DatabaseClass extends EntityClass {
     service: ResponseDataType;
     schema: ResponseDataWithServiceType;
     table: ResponseDataWithServiceType;
+    ownedRootPath?: string;
   }): void {
     this.entityResponseData = data.entity;
     this.serviceResponseData = data.service;
     this.schemaResponseData = data.schema;
     this.tableResponseData = data.table;
+    this.ownedRootPath = data.ownedRootPath;
+    this.entity.name = data.entity.name;
+    this.schema.name = data.schema.name;
+    this.table.name = data.table.name;
+    this.bindServiceName(data.service.name);
   }
 
-  async visitEntityPage(page: Page) {
-    await visitServiceDetailsPage(
-      page,
-      {
-        name: this.service.name,
-        type: SERVICE_TYPE.Database,
-      },
-      false
-    );
+  isCreated() {
+    return Boolean(this.entityResponseData?.id);
+  }
 
-    const databaseResponse = page.waitForResponse(
-      `/api/v1/databases/name/*${this.entity.name}?**`
+  forget() {
+    this.entityResponseData = {} as typeof this.entityResponseData;
+    this.forgetOwnership();
+  }
+
+  parentSnapshot(): ParentSnapshot {
+    return {
+      service: this.serviceResponseData,
+      database: this.entityResponseData,
+    };
+  }
+
+  rootDeletePath() {
+    return this.ownedRootPath ?? this.databasePath();
+  }
+
+  private databasePath() {
+    return parentDeletePath(
+      'databases',
+      this.entityResponseData?.fullyQualifiedName ?? ''
     );
-    await page.getByTestId(this.entity.name).click();
-    await databaseResponse;
+  }
+
+  // FQN navigation: the shared service page paginates its databases, so
+  // clicking through it can miss this one.
+  async visitEntityPage(page: Page) {
+    await visitEntityPageByFqn({
+      page,
+      endpoint: EntityTypeEndpoint.Database,
+      fqn: this.entityResponseData?.fullyQualifiedName ?? '',
+    });
   }
 
   async delete(apiContext: APIRequestContext) {
-    const serviceResponse = await deleteFixtureEntity(
-      apiContext,
-      `/api/v1/services/databaseServices/name/${encodeURIComponent(
-        this.serviceResponseData?.['fullyQualifiedName']
-      )}?recursive=true&hardDelete=true`
-    );
+    await this.deleteOwnedOrLeaf(apiContext, this.databasePath());
 
-    return {
-      service: serviceResponse.body,
-      entity: this.entityResponseData,
-    };
+    return { entity: this.entityResponseData };
   }
 
   async verifyOwnerChangeInDetailsPage(page: Page, owner: string) {
@@ -278,7 +324,9 @@ export class DatabaseClass extends EntityClass {
       .getByTestId('owner-label')
       .getByTestId('owner-link')
       .getByTestId(owner);
-    const tableTab = page.getByRole('menuitem', { name: 'Tables' });
+    const tableTab = page
+      .getByTestId('explore-left-panel')
+      .getByRole('tab', { name: 'Tables' });
 
     await waitForSearchResult(page, searchTerm, ownerLink, tableTab, {
       owners: [owner],
@@ -289,7 +337,9 @@ export class DatabaseClass extends EntityClass {
   async verifyDomainChangeInES(page: Page, domains: Domain['responseData'][]) {
     const searchTerm = this.tableResponseData?.['fullyQualifiedName'];
     const entityCard = page.getByTestId(`table-data-card_${searchTerm}`);
-    const tableTab = page.getByRole('menuitem', { name: 'Tables' });
+    const tableTab = page
+      .getByTestId('explore-left-panel')
+      .getByRole('tab', { name: 'Tables' });
 
     for (const domain of domains) {
       const domainLink = entityCard
