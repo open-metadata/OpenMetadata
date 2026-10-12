@@ -326,11 +326,12 @@ test.describe('AI Profile Team Detail', () => {
       // and `onSelectionChange` returns early. The option looks clicked, but
       // no chip is added and Save stays disabled. Enter never leaves the
       // input, so it cannot trip the guard.
-      // ArrowDown highlights the list's *first* option, so require the
-      // filtered list to hold exactly the target before pressing it.
+      // ArrowDown highlights the list's *first* option, so wait for the list
+      // to have narrowed to the typed name before pressing it, rather than
+      // acting on the unfiltered list still on screen.
       const options = page.getByRole('option');
+      await expect(options.filter({ hasText: name })).toHaveCount(1);
       await expect(options).toHaveCount(1);
-      await expect(options).toContainText(name);
       await combobox.press('ArrowDown');
       await combobox.press('Enter');
 

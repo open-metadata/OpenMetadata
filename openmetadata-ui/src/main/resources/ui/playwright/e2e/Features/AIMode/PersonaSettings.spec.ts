@@ -593,13 +593,14 @@ test.describe(
         // that ref for a microtask, so a click whose actionability scroll
         // blurs the input is silently ignored and Save stays disabled.
         //
-        // ArrowDown highlights the list's *first* option, so require the
-        // filtered list to hold exactly the target before pressing it —
-        // otherwise a name that also prefixes another user would commit the
-        // wrong one, and the Save assertion below would still pass.
+        // ArrowDown highlights the list's *first* option, so wait for the
+        // list to actually be the filtered one before pressing it. The
+        // response landing is not enough: React still has to re-render, and
+        // until it does the listbox is the 25-row unfiltered page that
+        // `onFocus` fetched, whose first row is some other user.
         const options = page.getByRole('option');
+        await expect(options.filter({ hasText: userName })).toHaveCount(1);
         await expect(options).toHaveCount(1);
-        await expect(options).toContainText(userName);
         await picker.press('ArrowDown');
         await picker.press('Enter');
 
