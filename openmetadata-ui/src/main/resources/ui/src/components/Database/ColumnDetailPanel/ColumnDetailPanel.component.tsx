@@ -14,6 +14,7 @@
 import {
   Box,
   Button,
+  Card,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -23,7 +24,7 @@ import {
   ChevronUp,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
-import { Card, Drawer } from 'antd';
+import { Drawer } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isString } from 'lodash';
@@ -1073,7 +1074,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
       onClose={onClose}>
       <div className="column-detail-panel-container">
         <div className="tw:flex tw:gap-2 tw:h-full">
-          <Card bordered={false} className="summary-panel-container">
+          <Card className="summary-panel-container" variant="ghost">
             <Card
               className="tw:h-full tw:overflow-y-auto tw:max-h-full"
               style={{ width: '100%' }}>

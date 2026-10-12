@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Grid, Skeleton } from '@openmetadata/ui-core-components';
-import { Card } from 'antd';
+import { Card, Grid, Skeleton } from '@openmetadata/ui-core-components';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
 
 /**
