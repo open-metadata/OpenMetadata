@@ -45,7 +45,7 @@ const SettingItemCard = ({
       onClick={handleOnClick}>
       <Card.Content className="tw:flex tw:items-center tw:gap-4">
         <div className="setting-card-icon">
-          <SettingIcon className="tw:size-3.5 tw:shrink-0" />
+          <SettingIcon className="tw:size-[90px] tw:shrink-0" />
           {Boolean(data?.isBeta) && (
             <Badge className="service-beta-tag" count={t('label.beta')} />
           )}
