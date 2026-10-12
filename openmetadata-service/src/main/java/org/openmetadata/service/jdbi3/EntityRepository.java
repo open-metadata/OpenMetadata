@@ -3858,6 +3858,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     deferOrInvalidateRedisL2(entityType, id, fqn);
   }
 
+  /**
+   * Call after a direct {@code tag_usage} write commits. Bulk tag and glossary operations bypass
+   * {@code EntityUpdater}, so they must evict the asset before reindexing; column writes pass the
+   * parent table reference.
+   */
   protected static void invalidateCacheAfterTagMutation(EntityReference entityReference) {
     String type = entityReference.getType();
     UUID id = entityReference.getId();
@@ -6906,7 +6911,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       return null;
     }
 
-    // Uncached entity types skip Redis invalidation on writes, so their tags must bypass Redis too.
+    // Tag-cache eligibility must match Redis invalidation; uncached types read fresh tags instead.
     var cachedTagUsageDao =
         isCacheableEntityType(entityType) ? CacheBundle.getCachedTagUsageDao() : null;
     boolean propagationEnabled = SettingsCache.isGlossaryTagPropagationEnabled();
