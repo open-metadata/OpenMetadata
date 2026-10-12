@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 import { Button, Typography } from '@openmetadata/ui-core-components';
+import {
+  ChevronLeft,
+  ChevronRight,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as LeftIcon } from '../../../assets/svg/left-arrow.svg';
-import { ReactComponent as RightIcon } from '../../../assets/svg/right-arrow.svg';
 
 export interface ContractFormStepProps {
   title: ReactNode;
@@ -75,7 +77,7 @@ export const ContractFormStep = ({
             <Button
               className="contract-prev-button tw:font-semibold"
               color="secondary"
-              iconLeading={LeftIcon}
+              iconLeading={ChevronLeft}
               size="md"
               onPress={onPrev}>
               {prevLabel ?? t('label.previous')}
@@ -85,7 +87,7 @@ export const ContractFormStep = ({
             <Button
               className="contract-next-button tw:font-semibold"
               color="primary"
-              iconTrailing={RightIcon}
+              iconTrailing={ChevronRight}
               size="md"
               onPress={onNext}>
               {nextLabel ?? t('label.next')}
