@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, render, screen } from '@testing-library/react';
-import { ModalProps } from 'antd';
 import { CustomiseHomeModalSelectedKey } from '../../../../enums/CustomizablePage.enum';
 import { Document } from '../../../../generated/entity/docStore/document';
 import { getAllKnowledgePanels } from '../../../../rest/DocStoreAPI';
@@ -36,16 +35,6 @@ jest.mock('../AllWidgetsContent/AllWidgetsContent', () => ({
     </ul>
   ),
 }));
-
-jest.mock('antd', () => {
-  const antd = jest.requireActual('antd');
-
-  return {
-    ...antd,
-    Modal: ({ children, open }: ModalProps) =>
-      open ? <div>{children}</div> : null,
-  };
-});
 
 const asDoc = (fullyQualifiedName: string, index: number) =>
   ({
