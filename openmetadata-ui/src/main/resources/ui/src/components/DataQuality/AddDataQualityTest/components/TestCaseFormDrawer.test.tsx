@@ -264,6 +264,24 @@ jest.mock(
     }
 );
 
+// The real panel fetches the entity, its permissions and lineage; only what
+// the drawer hands it matters here.
+jest.mock(
+  '../../../Explore/EntitySummaryPanel/EntitySummaryPanel.component',
+  () =>
+    function MockEntitySummaryPanel({
+      entityDetails,
+    }: {
+      entityDetails: { details: { fullyQualifiedName?: string } };
+    }) {
+      return (
+        <div data-testid="entity-summary-panel">
+          {entityDetails.details.fullyQualifiedName}
+        </div>
+      );
+    }
+);
+
 const mockCreateTestCase = createTestCase as jest.Mock;
 const mockAddIngestionPipeline = addIngestionPipeline as jest.Mock;
 const mockDeployIngestionPipelineById =
@@ -642,6 +660,34 @@ describe('TestCaseFormDrawer', () => {
       expect(await screen.findByLabelText(/test type/i)).toHaveValue(
         'my_test_type'
       );
+    });
+
+    it('shows the selected table summary under the hint once a table is selected', async () => {
+      renderDrawer();
+
+      await screen.findByTestId('test-case-form-body');
+
+      expect(
+        screen.queryByTestId('entity-summary-panel')
+      ).not.toBeInTheDocument();
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('emit-context-pipeline'));
+      });
+
+      expect(
+        await screen.findByTestId('entity-summary-panel')
+      ).toHaveTextContent('service.db.schema.table');
+
+      await act(async () => {
+        fireEvent.click(
+          screen.getByRole('switch', { name: 'label.show-hint' })
+        );
+      });
+
+      expect(
+        screen.queryByTestId('entity-summary-panel')
+      ).not.toBeInTheDocument();
     });
 
     it('shows the field doc in the panel on focus', async () => {

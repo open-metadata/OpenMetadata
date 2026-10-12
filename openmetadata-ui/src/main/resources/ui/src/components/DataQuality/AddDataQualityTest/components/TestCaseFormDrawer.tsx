@@ -20,16 +20,26 @@ import {
 import { Lightbulb05 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { TFunction } from 'i18next';
-import { isEmpty } from 'lodash';
-import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { isEmpty, isUndefined, noop } from 'lodash';
+import {
+  FC,
+  lazy,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../../constants/Schedular.constants';
 import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
+import { EntityType } from '../../../../enums/entity.enum';
 import { TestCase } from '../../../../generated/tests/testCase';
 import { TestDefinition } from '../../../../generated/tests/testDefinition';
+import { TableSearchSource } from '../../../../interface/search.interface';
 import testCaseClassBase from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
 import {
   addIngestionPipeline,
@@ -48,6 +58,7 @@ import { createScrollToErrorHandler } from '../../../../utils/formPureUtils';
 import { omitInapplicableDimensionParams } from '../../../../utils/observability/data-quality/testCaseThreshold.utils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
+import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import { useFormDrawerWithHook } from '../../../common/atoms/drawer/useFormDrawer';
 import Loader from '../../../common/Loader/Loader';
 import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
@@ -66,6 +77,13 @@ import {
   normalizeFormValuesForPayload,
   transformTestCaseFormData,
 } from './transformTestCaseFormData';
+
+const EntitySummaryPanel = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../../../Explore/EntitySummaryPanel/EntitySummaryPanel.component')
+  )
+);
 
 const getResolvedDrawerWidth = (
   width: number | string | undefined,
@@ -87,6 +105,16 @@ const getIsEditPrefilling = (
   editPrefilledId: string | undefined,
   testCaseId: string | undefined
 ): boolean => isEditMode && open && editPrefilledId !== testCaseId;
+
+const getSelectedTableSearchSource = (
+  selectedTableData: TestCaseFormContext['selectedTableData']
+): TableSearchSource | undefined =>
+  isUndefined(selectedTableData)
+    ? undefined
+    : ({
+        ...selectedTableData,
+        entityType: EntityType.TABLE,
+      } as TableSearchSource);
 
 const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   open,
@@ -376,6 +404,16 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
 
   const closeDrawerRef = useRef<() => void>(() => undefined);
 
+  // Memoized: the summary panel derives its permission lookup from this
+  // object's identity, so a fresh object per render would redo that work.
+  const selectedTableDetails = useMemo(() => {
+    const details = getSelectedTableSearchSource(
+      formContext?.selectedTableData
+    );
+
+    return details ? { details } : undefined;
+  }, [formContext?.selectedTableData]);
+
   const formBody = (
     <HookForm
       emptyFieldDoc={
@@ -410,14 +448,24 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
       // since it, not the drawer body, is what scrolls.
       formClassName="drawer-form-content tw:px-4 tw:py-6 tw:md:px-6"
       renderFieldDoc={(markdown) => (
-        // Render the full field doc without the "see more" toggle — the
-        // column scrolls, so the whole hint is reachable without it.
-        <div className="form-hint-doc">
-          <RichTextEditorPreviewerV1
-            enableSeeMoreVariant={false}
-            markdown={monospaceParameterNames(markdown)}
-          />
-        </div>
+        <>
+          {/* Render the full field doc without the "see more" toggle — the
+              column scrolls, so the whole hint is reachable without it. */}
+          <div className="form-hint-doc">
+            <RichTextEditorPreviewerV1
+              enableSeeMoreVariant={false}
+              markdown={monospaceParameterNames(markdown)}
+            />
+          </div>
+          {selectedTableDetails && (
+            <div className="tw:mt-4" data-testid="selected-table-summary">
+              <EntitySummaryPanel
+                entityDetails={selectedTableDetails}
+                handleClosePanel={noop}
+              />
+            </div>
+          )}
+        </>
       )}
       showFieldDocs={showDocPanel && showHint}
       onSubmit={form.handleSubmit(
