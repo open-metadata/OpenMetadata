@@ -10,7 +10,8 @@
 The DQ Bulk Edit grid is opened from the test case list, which is served by
 `GET /v1/dataQuality/testCases/search/list`. Its export (`/name/{name}/export` and `/exportAsync`)
 had to honour the same filters (`testCaseStatus`, `testCaseType`, `entityFQN`/`entityLink`, `tags`,
-`tier`, `owner`) plus `limit`/`offset`. The database `ListFilter` supports similar parameter names
+`tier`, `owner`, `q`, `testPlatforms`, `dataQualityDimension`, `serviceName`, `dataProductFqn`,
+`startTimestamp`/`endTimestamp`) plus `limit`/`offset`. The database `ListFilter` supports similar parameter names
 but not the same meaning: its owner condition sees only owners set on the test case itself, while
 the search document carries the owners a test case inherits from its table. Exporting through
 `ListFilter` would hand the grid rows that differ from the list the user filtered.

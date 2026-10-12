@@ -2272,6 +2272,12 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             || exportArgs.getTags() != null
             || exportArgs.getTier() != null
             || exportArgs.getOwnerIds() != null
+            || exportArgs.getQ() != null
+            || exportArgs.getTestPlatforms() != null
+            || exportArgs.getDataQualityDimension() != null
+            || exportArgs.getServiceName() != null
+            || exportArgs.getDataProductFqn() != null
+            || exportArgs.getStartTimestamp() != null
             || exportArgs.getLimit() != null
             || (exportArgs.getOffset() != null && exportArgs.getOffset() > 0));
   }
@@ -2284,7 +2290,17 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             .addQueryParam("testCaseType", exportArgs.getTestCaseType())
             .addQueryParam("tags", exportArgs.getTags())
             .addQueryParam("tier", exportArgs.getTier())
-            .addQueryParam("owners", exportArgs.getOwnerIds());
+            .addQueryParam("owners", exportArgs.getOwnerIds())
+            .addQueryParam("q", exportArgs.getQ())
+            .addQueryParam("testPlatforms", exportArgs.getTestPlatforms())
+            .addQueryParam("dataQualityDimension", exportArgs.getDataQualityDimension())
+            .addQueryParam("serviceName", exportArgs.getServiceName())
+            .addQueryParam("dataProductFqn", exportArgs.getDataProductFqn());
+    if (exportArgs.getStartTimestamp() != null) {
+      filter
+          .addQueryParam("startTimestamp", exportArgs.getStartTimestamp().toString())
+          .addQueryParam("endTimestamp", exportArgs.getEndTimestamp().toString());
+    }
     addExportScope(name, exportArgs.getEntityFQN(), filter);
 
     int offset = exportArgs.getOffset() == null ? 0 : exportArgs.getOffset();
@@ -2293,7 +2309,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             ? Integer.MAX_VALUE
             : (int) Math.min((long) offset + exportArgs.getLimit(), Integer.MAX_VALUE);
     List<UUID> matchingIds =
-        resolveMatchingTestCaseIds(filter.getCondition(TEST_CASE), null, List.of(), maxMatches);
+        resolveMatchingTestCaseIds(
+            filter.getCondition(TEST_CASE), exportArgs.getQ(), List.of(), maxMatches);
     if (offset >= matchingIds.size()) {
       return List.of();
     }

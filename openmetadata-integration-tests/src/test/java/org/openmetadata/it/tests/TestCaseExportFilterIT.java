@@ -88,6 +88,20 @@ public class TestCaseExportFilterIT {
         Set.of(failedColumn.getName()),
         exportedNames(tableFqn, "entityFQN=" + encode(tableFqn + ".id"), all));
 
+    assertEquals(
+        Set.of(successTable.getName()),
+        exportedNames(tableFqn, "q=" + encode(successTable.getName()), all));
+    assertEquals(
+        all, exportedNames(tableFqn, "serviceName=" + encode(table.getService().getName()), all));
+    assertEquals(Set.of(), exportedNames(tableFqn, "serviceName=no_such_service", all));
+    assertEquals(Set.of(), exportedNames(tableFqn, "testPlatforms=dbt", all));
+    long now = System.currentTimeMillis();
+    assertEquals(
+        all,
+        exportedNames(
+            tableFqn, "startTimestamp=" + (now - 3_600_000) + "&endTimestamp=" + now, all));
+    assertEquals(Set.of(), exportedNames(tableFqn, "startTimestamp=0&endTimestamp=1", all));
+
     Set<String> firstPage = exportedNames(tableFqn, "limit=2&offset=0", all);
     Set<String> secondPage = exportedNames(tableFqn, "limit=2&offset=2", all);
     assertEquals(2, firstPage.size());
@@ -128,6 +142,7 @@ public class TestCaseExportFilterIT {
       assertBadRequest(exportPath(tableFqn, endpoint, "testCaseType=view"));
       assertBadRequest(exportPath(tableFqn, endpoint, "limit=0"));
       assertBadRequest(exportPath(tableFqn, endpoint, "offset=-1"));
+      assertBadRequest(exportPath(tableFqn, endpoint, "startTimestamp=1"));
       assertBadRequest(
           exportPath(
               tableFqn,

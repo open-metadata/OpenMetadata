@@ -1485,6 +1485,46 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     @QueryParam("owner")
     private String owner;
 
+    @Parameter(
+        description = "Search text, as on the test case list",
+        schema = @Schema(type = "string"))
+    @QueryParam("q")
+    private String q;
+
+    @Parameter(
+        description = "Filter by test platform (e.g. OpenMetadata, dbt), comma separated",
+        schema = @Schema(type = "string"))
+    @QueryParam("testPlatforms")
+    private String testPlatforms;
+
+    @Parameter(
+        description = "Filter by data quality dimension name",
+        schema = @Schema(type = "string"))
+    @QueryParam("dataQualityDimension")
+    private String dataQualityDimension;
+
+    @Parameter(description = "Filter by service name", schema = @Schema(type = "string"))
+    @QueryParam("serviceName")
+    private String serviceName;
+
+    @Parameter(description = "Filter by data product FQN", schema = @Schema(type = "string"))
+    @QueryParam("dataProductFqn")
+    private String dataProductFqn;
+
+    @Parameter(
+        description =
+            "Filter (inclusive) by last execution timestamp in milliseconds. Must be used with endTimestamp",
+        schema = @Schema(type = "long"))
+    @QueryParam("startTimestamp")
+    private Long startTimestamp;
+
+    @Parameter(
+        description =
+            "Filter (inclusive) by last execution timestamp in milliseconds. Must be used with startTimestamp",
+        schema = @Schema(type = "long"))
+    @QueryParam("endTimestamp")
+    private Long endTimestamp;
+
     // Range-checked in toExportArgs rather than with @Min: the sync endpoint produces text/plain,
     // which the bean-validation error body cannot be written as, turning a 400 into a 500.
     @Parameter(description = "Maximum number of test cases to export (>= 1). Omit to export all")
@@ -1503,6 +1543,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       if (offset < 0) {
         throw new IllegalArgumentException("offset must be greater than or equal to 0");
       }
+      validateTimestamps(startTimestamp, endTimestamp);
       if (!nullOrEmpty(entityFQN) && !nullOrEmpty(entityLink)) {
         throw new IllegalArgumentException("Use either entityFQN or entityLink, not both");
       }
@@ -1517,6 +1558,13 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           .setTags(emptyToNull(tags))
           .setTier(emptyToNull(tier))
           .setOwnerIds(resolveUserOrTeamIds(owner, true))
+          .setQ(emptyToNull(q))
+          .setTestPlatforms(emptyToNull(testPlatforms))
+          .setDataQualityDimension(emptyToNull(dataQualityDimension))
+          .setServiceName(emptyToNull(serviceName))
+          .setDataProductFqn(emptyToNull(dataProductFqn))
+          .setStartTimestamp(startTimestamp)
+          .setEndTimestamp(endTimestamp)
           .setLimit(limit)
           .setOffset(offset);
     }

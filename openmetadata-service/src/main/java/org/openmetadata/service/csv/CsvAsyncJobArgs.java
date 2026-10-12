@@ -118,6 +118,13 @@ public class CsvAsyncJobArgs {
     private String tags;
     private String tier;
     private String ownerIds;
+    private String q;
+    private String testPlatforms;
+    private String dataQualityDimension;
+    private String serviceName;
+    private String dataProductFqn;
+    private Long startTimestamp;
+    private Long endTimestamp;
     private Integer limit;
     private Integer offset;
   }
