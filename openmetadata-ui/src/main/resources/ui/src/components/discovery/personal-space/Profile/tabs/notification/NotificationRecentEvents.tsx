@@ -271,7 +271,9 @@ function NotificationRecentEvents({
                           </Box>
                         </Tooltip>
                         <Typography size="text-sm">
-                          {isEmpty(typedEvent.data) ? t('label.unreadable-event') : changeEventData.id}
+                          {isEmpty(typedEvent.data)
+                            ? t('label.unreadable-event')
+                            : changeEventData.id}
                         </Typography>
                       </Box>
                       <Typography className="tw:text-tertiary!" size="text-sm">

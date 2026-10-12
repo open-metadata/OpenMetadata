@@ -107,7 +107,9 @@ const EventHeader = ({ typedEvent }: { typedEvent: TypedEvent }) => {
           {startCase(changeEventData.entityType)}
         </span>
         <span className="tw:text-sm tw:font-normal tw:text-primary">
-          {isEmpty(typedEvent.data) ? t('label.unreadable-event') : changeEventData.id}
+          {isEmpty(typedEvent.data)
+            ? t('label.unreadable-event')
+            : changeEventData.id}
         </span>
       </Box>
       <span className="tw:text-sm tw:font-normal tw:text-tertiary">
