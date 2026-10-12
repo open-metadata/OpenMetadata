@@ -12,16 +12,15 @@
  */
 
 /*
- * Design-token sources:
- *   - Colours   → --tw-* mirrors from core-components globals.css (dark-mode safe).
- *   - Spacing   → --om-space-N (pins to the Tailwind 4px scale; a hardcoded px
- *                 fails token-audit as an error).
- *   - Shadows   → --om-shadow-* (composed rgba from the Untitled shadow ramp).
- *   - Radius / font-size / font-weight → raw numeric literals so the file no
- *                 longer threads one more alias layer. Values match the Untitled
- *                 ramp (--radius-sm/md/lg = 4/6/8px, text-xs = 12px); custom
- *                 off-ramp sizes (10px card, 11 / 11.5 / 13 / 15 px text) are
- *                 called out inline. token-audit treats these as warnings.
+ * Every token here resolves against core-components globals.css:
+ *   - Colours → --tw-* mirrors (dark-mode safe).
+ *   - Shadows → --shadow-* ramp.
+ *   - Radius  → --radius-* ramp (fallback to the px literal where no ramp step matches).
+ *   - Spacing → calc(var(--spacing) * N) — var(--spacing) is 4px, Tailwind's base.
+ *   - Font sizes → --text-* ramp (xs = 12px); card off-ramp values (10 / 11 / 11.5 / 13 / 15 px)
+ *     are inlined with a note because they sit between the standard steps on
+ *     purpose so cards read a half-step lighter than body copy at canvas zoom.
+ * No --om-* aliases: this file consumes the core design system directly.
  */
 
 .knowledge-graph-custom-node {
@@ -30,10 +29,10 @@
   justify-content: center;
   position: relative;
   user-select: none;
-  box-shadow: var(--om-shadow-xs);
-  border-radius: 10px; /* custom card radius — sits between radius-lg (8) and radius-xl (12) */
+  box-shadow: var(--shadow-xs);
+  border-radius: 10px; /* custom card radius — between radius-lg (8) and radius-xl (12) */
   background-color: var(--tw-background-color-surface);
-  border: var(--om-space-1) solid var(--tw-border-color-primary);
+  border: 1px solid var(--tw-border-color-primary);
   box-sizing: border-box;
   width: 100%;
   height: 100%;
@@ -43,9 +42,9 @@
 
   .kg-node-select {
     width: 100%;
-    min-height: var(--om-space-48);
+    min-height: calc(var(--spacing) * 12); /* 48px */
     height: auto;
-    padding: var(--om-space-8) var(--om-space-12);
+    padding: calc(var(--spacing) * 2) calc(var(--spacing) * 3); /* 8px 12px */
     border-radius: 10px;
     box-shadow: none;
     white-space: normal;
@@ -56,20 +55,20 @@
 
   &.kg-node-group {
     justify-content: flex-start;
-    box-shadow: var(--om-shadow-sm);
+    box-shadow: var(--shadow-sm);
     // Stacked-card illusion: two offset outlined rectangles behind the main
     // card suggest "there are more members here" without rendering them.
     &::before,
     &::after {
       content: '';
       position: absolute;
-      inset: calc(-1 * var(--om-space-4)) var(--om-space-4) 0;
-      border: var(--om-space-1) solid var(--tw-border-color-secondary);
+      inset: calc(var(--spacing) * -1) var(--spacing) 0; /* -4px 4px 0 */
+      border: 1px solid var(--tw-border-color-secondary);
       border-radius: 10px;
       z-index: -1;
     }
     &::after {
-      inset: calc(-1 * var(--om-space-8)) var(--om-space-8) 0;
+      inset: calc(var(--spacing) * -2) calc(var(--spacing) * 2) 0; /* -8px 8px 0 */
     }
   }
 
@@ -77,8 +76,8 @@
   // it reads as the centre of the graph at any zoom.
   &.kg-node-root {
     border-color: var(--tw-color-fg-brand-primary);
-    box-shadow: 0 0 0 var(--om-space-4) var(--tw-color-utility-brand-100),
-      var(--om-shadow-md);
+    box-shadow: 0 0 0 var(--spacing) var(--tw-color-utility-brand-100),
+      var(--shadow-md);
   }
   &.kg-node-gap {
     border-color: var(--tw-color-fg-warning-primary);
@@ -89,7 +88,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--om-space-8);
+    gap: calc(var(--spacing) * 2); /* 8px */
     width: 100%;
     min-width: 0;
   }
@@ -97,15 +96,14 @@
   .node-icon {
     display: flex;
     flex-shrink: 0;
-    width: var(--om-space-28);
-    height: var(--om-space-28);
+    width: calc(var(--spacing) * 7); /* 28px */
+    height: calc(var(--spacing) * 7);
     color: var(--tw-text-color-tertiary);
   }
 
-  // Card typography is 13 / 11 / 11.5 / 15 px — these sit between the Untitled
-  // text ramp steps (xs=12, sm=14) on purpose so cards read a half-step
-  // lighter than body copy at canvas zoom. Font weights: 500 = medium, 600 =
-  // semibold on the Tailwind scale.
+  // Card typography is 13 / 11 / 11.5 / 15 px — between the Untitled text ramp
+  // steps (xs = 12, sm = 14) on purpose so cards read a half-step lighter than
+  // body copy at canvas zoom. 500 = medium, 600 = semibold on the Tailwind scale.
   .kg-node-name {
     display: block;
     font-size: 13px;
@@ -136,7 +134,7 @@
 
   .kg-node-member {
     display: block;
-    font-size: 12px; /* text-xs */
+    font-size: var(--text-xs); /* 12px */
     line-height: 1.625;
     color: var(--tw-text-color-secondary);
   }
@@ -152,21 +150,21 @@
   }
 
   &.kg-node-root .node-icon {
-    width: var(--om-space-32);
-    height: var(--om-space-32);
+    width: calc(var(--spacing) * 8); /* 32px */
+    height: calc(var(--spacing) * 8);
   }
 
   .asset-type-tag {
-    padding: var(--om-space-2) var(--om-space-4);
-    border-radius: 4px; /* radius-sm */
-    border-width: var(--om-space-1);
+    padding: calc(var(--spacing) / 2) var(--spacing); /* 2px 4px */
+    border-radius: var(--radius-sm);
+    border-width: 1px;
     border-style: solid;
     border-color: var(--tw-border-color-primary);
     white-space: nowrap;
   }
 
   &.highlighted {
-    box-shadow: var(--om-shadow-md);
+    box-shadow: var(--shadow-md);
     border-color: var(--tw-border-color-brand);
   }
 
@@ -177,8 +175,8 @@
   }
 
   &:focus-visible {
-    outline: var(--om-space-2) solid var(--tw-border-color-brand);
-    outline-offset: var(--om-space-2);
+    outline: calc(var(--spacing) / 2) solid var(--tw-border-color-brand); /* 2px */
+    outline-offset: calc(var(--spacing) / 2);
   }
 
   @media (prefers-reduced-motion: reduce) {

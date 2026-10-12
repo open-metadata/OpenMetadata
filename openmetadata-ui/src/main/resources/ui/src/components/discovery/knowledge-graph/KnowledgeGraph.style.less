@@ -12,24 +12,21 @@
  */
 
 /*
- * Design-token sources:
- *   - Colours   → --tw-* mirrors from core-components globals.css (dark-mode safe).
- *   - Spacing   → --om-space-N (pins to the Tailwind 4px scale; hardcoded px
- *                 fails token-audit as an error).
- *   - Shadows   → --om-shadow-* (composed rgba from the Untitled shadow ramp).
- *   - Radius / font-size / font-weight / z-index / letter-spacing / line-height
- *                 → raw literals so the file no longer threads one more alias
- *                 layer. Values match the Untitled ramp (--radius-sm/md/lg =
- *                 4/6/8 px, text-xs = 12 px) where applicable; custom values
- *                 (11 px micro-label, 290 px tooltip cap) are called out
- *                 inline. token-audit treats these as warnings.
+ * Every token here resolves against core-components globals.css:
+ *   - Colours → --tw-* mirrors (dark-mode safe).
+ *   - Shadows → --shadow-* ramp.
+ *   - Radius  → --radius-* ramp.
+ *   - Spacing → calc(var(--spacing) * N) — var(--spacing) is 4px, Tailwind's base.
+ *   - Font sizes → --text-* ramp; a few custom values (11 px drawer micro-label,
+ *     290 px tooltip cap) are inlined with a note.
+ * No --om-* aliases: this file consumes the core design system directly.
  */
 
 @import (reference) '../../../styles/variables.less';
 
 .knowledge-graph-container {
   height: @asset-details-tab-pane-height;
-  min-height: calc(var(--om-space-40) * 14);
+  min-height: calc(var(--spacing) * 140); /* 40 × 14 */
   position: relative;
   display: grid;
   // Row 2 must be `minmax(0, 1fr)` so the ReflexContainer stage inside
@@ -103,8 +100,8 @@
   }
 
   .kg-find {
-    flex: 1 1 calc(var(--om-space-40) * 5);
-    min-width: ~'min(calc(var(--om-space-40) * 3.25), 100%)';
+    flex: 1 1 calc(var(--spacing) * 50); /* 200px */
+    min-width: ~'min(calc(var(--spacing) * 32.5), 100%)'; /* 130px */
     max-width: 100%;
   }
 
@@ -116,7 +113,7 @@
 
   .knowledge-graph-body {
     flex: 1;
-    min-height: calc(var(--om-space-40) * 8);
+    min-height: calc(var(--spacing) * 80); /* 320px */
     min-width: 0;
     position: relative;
     overflow: hidden;
@@ -126,10 +123,10 @@
     // the border-secondary token so it flips with the theme.
     background-image: radial-gradient(
       circle,
-      var(--tw-border-color-secondary) var(--om-space-1),
-      transparent var(--om-space-1)
+      var(--tw-border-color-secondary) 1px,
+      transparent 1px
     );
-    background-size: var(--om-space-24) var(--om-space-24);
+    background-size: calc(var(--spacing) * 6) calc(var(--spacing) * 6); /* 24px */
   }
 
   .knowledge-graph-canvas {
@@ -151,7 +148,7 @@
   // Design: the direct band is a tinted brand surface, the extended band a
   // neutral dashed outline; labels sit in the band's top padding.
   .kg-band {
-    stroke-width: var(--om-space-1);
+    stroke-width: 1px;
   }
 
   .kg-band-direct {
@@ -203,9 +200,9 @@
 
   .kg-details-tabs [role='tablist'] {
     background: var(--tw-background-color-secondary);
-    border-radius: 6px; /* radius-md */
-    padding: var(--om-space-2);
-    gap: var(--om-space-2);
+    border-radius: var(--radius-md);
+    padding: calc(var(--spacing) / 2); /* 2px */
+    gap: calc(var(--spacing) / 2);
   }
 
   .kg-details-table {
@@ -223,7 +220,7 @@
   }
 
   &.kg-details-open .knowledge-graph-body {
-    min-height: calc(var(--om-space-40) * 4);
+    min-height: calc(var(--spacing) * 40); /* 160px */
   }
 
   .knowledge-graph-loading {
@@ -237,12 +234,12 @@
 
   .kg-empty-hint {
     position: absolute;
-    top: var(--om-space-16);
-    left: var(--om-space-16);
-    right: var(--om-space-16);
+    top: calc(var(--spacing) * 4); /* 16px */
+    left: calc(var(--spacing) * 4);
+    right: calc(var(--spacing) * 4);
     display: flex;
     align-items: center;
-    gap: var(--om-space-8);
+    gap: calc(var(--spacing) * 2); /* 8px */
     flex-wrap: wrap;
   }
 
@@ -258,14 +255,15 @@
     height: 100%;
     overflow: hidden;
     background: var(--tw-background-color-surface);
-    border-left: var(--om-space-1) solid var(--tw-border-color-secondary);
+    border-left: 1px solid var(--tw-border-color-secondary);
     z-index: 10;
   }
 
   .kg-inspector-header {
     flex-shrink: 0;
-    padding: var(--om-space-14) var(--om-space-14) var(--om-space-12);
-    border-bottom: var(--om-space-1) solid var(--tw-border-color-secondary);
+    padding: calc(var(--spacing) * 3.5) calc(var(--spacing) * 3.5)
+      calc(var(--spacing) * 3); /* 14px 14px 12px */
+    border-bottom: 1px solid var(--tw-border-color-secondary);
   }
 
   .kg-inspector-body {
@@ -273,46 +271,46 @@
     min-height: 0;
     overflow: auto;
     overscroll-behavior: contain;
-    padding: var(--om-space-14);
-    gap: var(--om-space-14);
+    padding: calc(var(--spacing) * 3.5); /* 14px */
+    gap: calc(var(--spacing) * 3.5);
   }
 
   .kg-inspector-tile {
     display: grid;
     place-items: center;
     flex-shrink: 0;
-    border-radius: 6px; /* radius-md */
-    border: var(--om-space-1) solid;
+    border-radius: var(--radius-md);
+    border: 1px solid;
   }
 
   .kg-inspector-tile-md {
-    width: var(--om-space-32);
-    height: var(--om-space-32);
+    width: calc(var(--spacing) * 8); /* 32px */
+    height: calc(var(--spacing) * 8);
   }
 
   .kg-inspector-tile-sm {
-    width: var(--om-space-26);
-    height: var(--om-space-26);
-    border-radius: 4px; /* radius-sm */
+    width: calc(var(--spacing) * 6.5); /* 26px */
+    height: calc(var(--spacing) * 6.5);
+    border-radius: var(--radius-sm);
   }
 
   .kg-inspector-statement {
-    padding: var(--om-space-12);
+    padding: calc(var(--spacing) * 3); /* 12px */
     background: var(--tw-background-color-secondary);
-    border: var(--om-space-1) solid var(--tw-border-color-secondary);
-    border-radius: 8px; /* radius-lg */
+    border: 1px solid var(--tw-border-color-secondary);
+    border-radius: var(--radius-lg);
   }
 
   .kg-inspector-dot {
-    width: var(--om-space-7);
-    height: var(--om-space-7);
+    width: calc(var(--spacing) * 1.75); /* 7px */
+    height: calc(var(--spacing) * 1.75);
     flex-shrink: 0;
-    border-radius: 9999px; /* radius-full */
+    border-radius: var(--radius-full);
   }
 
-  // Micro-label at 11 px / semibold with wide tracking, used for the
-  // "Relationships" / "Members" section titles inside the drawer. 11 px sits
-  // one step below text-xs on purpose.
+  // Micro-label at 11 px / semibold with wide tracking for the drawer section
+  // titles ("Relationships", "Members"). 11 px sits one step below text-xs on
+  // purpose so the label reads as supporting text rather than body copy.
   .kg-inspector-section-title {
     font-size: 11px;
     font-weight: 600;
@@ -322,13 +320,13 @@
   }
 
   .kg-inspector-row {
-    padding: var(--om-space-6) var(--om-space-8);
+    padding: calc(var(--spacing) * 1.5) calc(var(--spacing) * 2); /* 6px 8px */
   }
 
   // 352 px side panel: `min(352px, 36%)` so it compresses on narrow viewports
   // instead of pushing the canvas out of the grid.
   .kg-stage:has(.kg-inspector) {
-    grid-template-columns: ~'minmax(0, 1fr) min(calc(var(--om-space-44) * 8), 36%)';
+    grid-template-columns: ~'minmax(0, 1fr) min(calc(var(--spacing) * 88), 36%)';
 
     .kg-stage-main {
       grid-column: 1;
@@ -338,9 +336,9 @@
 
   .kg-inspector-actions {
     flex-shrink: 0;
-    padding: var(--om-space-12) var(--om-space-14);
+    padding: calc(var(--spacing) * 3) calc(var(--spacing) * 3.5); /* 12px 14px */
     background: var(--tw-background-color-surface);
-    border-top: var(--om-space-1) solid var(--tw-border-color-secondary);
+    border-top: 1px solid var(--tw-border-color-secondary);
 
     > * {
       flex: 1;
@@ -354,7 +352,7 @@
     // the inspector always reaches its max-height.
     .kg-stage:has(.kg-inspector) {
       grid-template-columns: minmax(0, 1fr);
-      grid-template-rows: minmax(calc(var(--om-space-40) * 4), 1fr) auto auto;
+      grid-template-rows: minmax(calc(var(--spacing) * 40), 1fr) auto auto; /* 160px min canvas */
       overflow: auto;
     }
 
@@ -363,7 +361,7 @@
       grid-row: 3;
       max-height: 40vh;
       border-left: 0;
-      border-top: var(--om-space-1) solid var(--tw-border-color-secondary);
+      border-top: 1px solid var(--tw-border-color-secondary);
     }
   }
 
@@ -372,8 +370,8 @@
   // the only responsibility left here is where it floats.
   .knowledge-graph-action-buttons {
     position: absolute;
-    bottom: var(--om-space-16);
-    right: var(--om-space-16);
+    bottom: calc(var(--spacing) * 4); /* 16px */
+    right: calc(var(--spacing) * 4);
     z-index: 1001;
   }
 }
@@ -383,7 +381,7 @@
   flex-direction: column;
   position: fixed;
   inset: 0;
-  padding: var(--om-space-16);
+  padding: calc(var(--spacing) * 4); /* 16px */
   background: var(--tw-background-color-primary);
   // Keep `overflow: auto` as a short-viewport safety net: once the toolbar +
   // canvas floor + drawer min stack past the viewport, the page can still
@@ -411,17 +409,17 @@
   z-index: 1500;
   pointer-events: none;
   background: var(--tw-background-color-surface);
-  border: var(--om-space-1) solid var(--tw-border-color-primary);
-  border-radius: 6px; /* radius-md */
-  padding: var(--om-space-6) var(--om-space-10);
-  box-shadow: var(--om-shadow-lg);
-  max-width: 290px;
-  font-size: 12px; /* text-xs */
+  border: 1px solid var(--tw-border-color-primary);
+  border-radius: var(--radius-md);
+  padding: calc(var(--spacing) * 1.5) calc(var(--spacing) * 2.5); /* 6px 10px */
+  box-shadow: var(--shadow-lg);
+  max-width: 290px; /* custom cap, no ramp step */
+  font-size: var(--text-xs); /* 12px */
   line-height: 1.5;
 
   &__direction {
     color: var(--tw-text-color-tertiary);
-    margin-bottom: var(--om-space-4);
+    margin-bottom: var(--spacing); /* 4px */
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
