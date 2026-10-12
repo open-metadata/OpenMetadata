@@ -46,8 +46,6 @@ const databaseSchemaLoaders: Partial<
     loadConnectionSchema('connections/database/datalakeConnection.json'),
   [DatabaseServiceType.Db2]: () =>
     loadConnectionSchema('connections/database/db2Connection.json'),
-  [DatabaseServiceType.DeltaLake]: () =>
-    loadConnectionSchema('connections/database/deltaLakeConnection.json'),
   [DatabaseServiceType.Doris]: () =>
     loadConnectionSchema('connections/database/dorisConnection.json'),
   [DatabaseServiceType.StarRocks]: () =>

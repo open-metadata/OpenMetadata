@@ -311,26 +311,6 @@ describe('ConnectionConfigForm schema rendering', () => {
     }
   );
 
-  it('keeps DeltaLake configuration source as a full-width schema choice', async () => {
-    const { container } = await renderConnectionSchema('DeltaLake');
-    const field = getRequiredElement(
-      container,
-      '[data-field-name="configSource"]'
-    );
-
-    expect(field).toHaveClass('connection-section-wide-property');
-    expect(
-      field.querySelector(
-        ':scope > .core-one-of-field .core-one-of-field-select'
-      )
-    ).toBeInTheDocument();
-    expect(
-      field.querySelector(
-        ':scope > .core-one-of-field > .core-one-of-field-tabs'
-      )
-    ).not.toBeInTheDocument();
-  });
-
   it('organizes BigQuery GCP credentials without dumping default plumbing fields', async () => {
     const { container } = await renderConnectionSchema('BigQuery');
     const connectionSection = getRequiredElement(
