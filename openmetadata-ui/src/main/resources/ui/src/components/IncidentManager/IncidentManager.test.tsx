@@ -459,7 +459,7 @@ describe('IncidentManagerPage', () => {
 
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
     expect(require('react-router-dom').useNavigate()).toHaveBeenCalledWith(
-      { search: 'testCaseFQN=test_case_1' },
+      { search: 'testCaseFQN=test_case_1&currentPage=1' },
       { replace: true }
     );
   });
@@ -527,7 +527,7 @@ describe('IncidentManagerPage', () => {
     });
 
     expect(navigate).toHaveBeenCalledWith(
-      { search: 'assignee=user1' },
+      { search: 'assignee=user1&currentPage=1' },
       { replace: true }
     );
     expect(screen.queryByTestId('select-owner-tabs')).not.toBeInTheDocument();
@@ -557,7 +557,7 @@ describe('IncidentManagerPage', () => {
     });
 
     expect(navigate).toHaveBeenCalledWith(
-      { search: 'testCaseResolutionStatusType=Assigned' },
+      { search: 'testCaseResolutionStatusType=Assigned&currentPage=1' },
       { replace: true }
     );
     expect(screen.queryByTestId('select-owner-tabs')).not.toBeInTheDocument();
@@ -715,7 +715,7 @@ describe('IncidentManagerPage', () => {
     });
 
     expect(navigate).toHaveBeenCalledWith(
-      { search: 'dateField=updatedAt' },
+      { search: 'dateField=updatedAt&currentPage=1' },
       { replace: true }
     );
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
