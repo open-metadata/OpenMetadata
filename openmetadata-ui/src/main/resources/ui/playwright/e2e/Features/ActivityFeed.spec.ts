@@ -473,7 +473,7 @@ test.describe('FeedWidget on landing page', () => {
     await expect(seededCard).toBeVisible();
     await seededCard.click();
 
-    const drawer = page.locator('.activity-feed-drawer');
+    const drawer = page.getByTestId('activity-feed-drawer');
 
     await expect(drawer).toBeVisible();
 

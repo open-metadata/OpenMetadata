@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
+import { Grid } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from './common/layout.utils';
+
 import { get } from 'lodash';
 import { lazy, Suspense } from 'react';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
@@ -145,11 +147,13 @@ export const getContainerDetailPageTabs = ({
             ),
             key: EntityTabs.CHILDREN,
             children: (
-              <Row className="p-md" gutter={[0, 16]}>
-                <Col span={24}>
+              <Grid
+                className="layout-row layout-grid p-md"
+                style={{ ...getLayoutGutter(0, 16) }}>
+                <Grid.Item className="layout-column" span={24}>
                   <ContainerChildren />
-                </Col>
-              </Row>
+                </Grid.Item>
+              </Grid>
             ),
           },
         ]),

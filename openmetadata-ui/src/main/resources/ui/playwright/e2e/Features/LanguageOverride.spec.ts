@@ -39,9 +39,8 @@ test.describe('Language Override Tests', () => {
       .waitFor({ state: 'visible' });
     await germanLocalePage.getByTestId('language-selector-button').click();
     await germanLocalePage
-      .locator('.ant-dropdown:not(.ant-dropdown-hidden)')
-      .waitFor({ state: 'visible' });
-    await germanLocalePage.getByText('English - EN').click();
+      .getByRole('menuitem', { name: 'English - EN' })
+      .click();
 
     // navigate(0) triggers a full page reload when language changes
     await germanLocalePage.waitForLoadState('domcontentloaded');

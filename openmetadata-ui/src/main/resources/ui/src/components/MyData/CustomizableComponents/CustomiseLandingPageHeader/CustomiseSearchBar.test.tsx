@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useTourProvider } from '../../../../context/TourProvider/TourProvider';
 import { EntityTabs } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
@@ -163,7 +163,25 @@ describe('CustomiseSearchBar', () => {
 
     const nlpButton = screen.getByTestId('nlp-suggestions-button');
 
-    expect(nlpButton).toHaveClass('active');
+    expect(nlpButton).toHaveAttribute('aria-pressed', 'true');
+    expect(nlpButton).toHaveAccessibleName(
+      'message.natural-language-search-active'
+    );
+  });
+
+  it('should show inactive state when NLP is enabled but not active', () => {
+    mockUseSearchStore.mockReturnValue({
+      isNLPEnabled: true,
+      isNLPActive: false,
+      setNLPActive: jest.fn(),
+    });
+
+    render(<CustomiseSearchBar />);
+
+    const nlpButton = screen.getByTestId('nlp-suggestions-button');
+
+    expect(nlpButton).toHaveAttribute('aria-pressed', 'false');
+    expect(nlpButton).toHaveAccessibleName('label.use-natural-language-search');
   });
 
   it('should toggle NLP state when NLP button is clicked', () => {
@@ -200,6 +218,47 @@ describe('CustomiseSearchBar', () => {
 
     expect(mockAddToRecentSearched).toHaveBeenCalledWith('test search');
     expect(mockNavigate).toHaveBeenCalled();
+  });
+
+  it('should open suggestions while typing and close them when cleared', async () => {
+    mockUseCustomLocation.mockReturnValue({
+      pathname: '/my-data',
+      search: '',
+      state: undefined,
+      key: '',
+      hash: '',
+    });
+
+    render(<CustomiseSearchBar />);
+
+    const searchInput = screen.getByTestId('searchBox');
+    fireEvent.change(searchInput, { target: { value: 'orders' } });
+
+    expect(
+      await screen.findByTestId('customise-search-popover')
+    ).toContainElement(await screen.findByTestId('suggestions'));
+
+    fireEvent.change(searchInput, { target: { value: '' } });
+
+    await waitFor(() =>
+      expect(screen.queryByTestId('suggestions')).not.toBeInTheDocument()
+    );
+  });
+
+  it('should not open suggestions on focus when the input is empty', () => {
+    render(<CustomiseSearchBar />);
+
+    fireEvent.focus(screen.getByTestId('searchBox'));
+
+    expect(
+      screen.queryByTestId('customise-search-popover')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should disable the search input when disabled', () => {
+    render(<CustomiseSearchBar disabled />);
+
+    expect(screen.getByTestId('searchBox')).toBeDisabled();
   });
 
   it('should initialize with search value from URL query params', () => {
