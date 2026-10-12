@@ -43,6 +43,7 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ActivityEventType;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.type.ReactionType;
@@ -581,12 +582,8 @@ public class ActivityResourceIT {
     }
   }
 
-  // Regression for the "Last 30 days" default-preset under-fetch (issue #31911).
-  // The preset's calendar-aligned startTs (start of the UTC day of now-30d) can
-  // be up to ~24h earlier than now - 30d, the relative `days` bound the server
-  // hard-caps at @Max(30). An event in the [startTs, now-30d) gap is inside the
-  // user's window but `days=30` alone drops it; the absolute `startTs` param
-  // must override `days` and fetch it.
+  // A window starting at the start of the day 30 days ago reaches up to ~24h past
+  // now - 30d, which `days=30` cannot express; startTs must fetch that gap.
   @Test
   void test_listActivityEvents_startTsOverridesDaysToFetchCalendarAlignedGap(TestNamespace ns)
       throws Exception {
@@ -635,6 +632,44 @@ public class ActivityResourceIT {
     assertFalse(
         daysOnly.getData().stream().anyMatch(e -> gapEvent.getId().equals(e.getId())),
         "days=30 alone must not reach the gap event older than now-30d");
+  }
+
+  // Mentions are bounded by when the mention was made, which the server stamps, so a
+  // mention cannot be placed in the past gap. Instead a startTs after the item must
+  // exclude it on each scoped feed, which fails if startTs is ignored for `days`.
+  @Test
+  void test_scopedFeedsUseStartTsAsLowerBound(TestNamespace ns) throws Exception {
+    Domain domain = createDomain(ns, "start-ts-scoped-domain");
+    User admin = getAdminUser();
+    Table table =
+        createTableInDomain(
+            ns, "start-ts-scoped-table", domain, List.of(admin.getEntityReference()));
+    addTableFollower(table.getId(), admin.getId());
+    ActivityEvent activity =
+        createTestActivityEventWithAbout(
+            table, "<#E::table::" + table.getFullyQualifiedName() + ">", domain);
+    addActivityReply(
+        SdkClients.adminClient(),
+        activity.getId(),
+        "<#E::user::" + SharedEntities.get().USER2.getName() + "> please review");
+
+    long hour = 60 * 60 * 1000L;
+    long before = System.currentTimeMillis() - hour;
+    long after = System.currentTimeMillis() + hour;
+    Map<String, OpenMetadataClient> feeds =
+        Map.of(
+            "/mentions", SdkClients.user2Client(),
+            "/my-feed", SdkClients.adminClient(),
+            "/following", SdkClients.adminClient());
+
+    for (Map.Entry<String, OpenMetadataClient> feed : feeds.entrySet()) {
+      assertTrue(
+          feedIdsSince(feed.getValue(), feed.getKey(), before).contains(activity.getId()),
+          feed.getKey() + " must return the item when startTs is before it");
+      assertFalse(
+          feedIdsSince(feed.getValue(), feed.getKey(), after).contains(activity.getId()),
+          feed.getKey() + " must drop the item when startTs is after it");
+    }
   }
 
   // ==================== Entity Activity Tests ====================
@@ -1542,6 +1577,29 @@ public class ActivityResourceIT {
             .getHttpClient()
             .executeForString(HttpMethod.GET, ACTIVITY_PATH, null, builder.build());
     return MAPPER.readValue(response, ActivityEventList.class);
+  }
+
+  private List<UUID> feedIdsSince(OpenMetadataClient client, String feed, long startTs)
+      throws Exception {
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("days", "30")
+            .queryParam("limit", "200")
+            .queryParam("startTs", String.valueOf(startTs))
+            .build();
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, ACTIVITY_PATH + feed, null, options);
+    return MAPPER.readValue(response, ActivityEventList.class).getData().stream()
+        .map(ActivityEvent::getId)
+        .toList();
+  }
+
+  private static void addTableFollower(UUID tableId, UUID userId) throws Exception {
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.PUT, "/v1/tables/" + tableId + "/followers", userId, ChangeEvent.class);
   }
 
   private ActivityEventList listActivityEventsWithActorFilter(
