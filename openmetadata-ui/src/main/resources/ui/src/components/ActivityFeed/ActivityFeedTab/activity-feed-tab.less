@@ -143,24 +143,6 @@
     }
   }
 
-  .activity-feed-card-message {
-    padding: var(--om-space-20);
-    background-color: var(--om-color-bg-surface);
-    width: inherit;
-    margin-top: var(--om-space-2);
-    border: 0.5px solid @grey-15;
-
-    // Same message-well treatment as FeedCardBody's .hide-thread in dark.
-    .dark-mode & {
-      background-color: transparent;
-    }
-
-    .ant-card-body {
-      padding: 0;
-      border-radius: var(--om-radius-lg);
-    }
-  }
-
   .activity-feed-card-message-right-panel {
     background: var(--om-legacy-color-239-244-250-0-25);
     margin-top: var(--om-space-10);
@@ -190,15 +172,6 @@
       border: none;
       background: var(--om-legacy-color-239-244-250-0-25);
 
-      .ant-card-body {
-        margin: 0;
-        margin-top: calc(-1 * var(--om-space-8));
-        margin-bottom: calc(-1 * var(--om-space-6));
-        border: none;
-        padding: 0;
-        background: var(--om-legacy-color-239-244-250-0-25);
-      }
-
       .activity-feed-comment-text {
         word-wrap: break-word;
         white-space: normal;
@@ -227,10 +200,7 @@
   }
 }
 
-// The landing-page feed widget lays out its own card body through a descendant
-// `.ant-card-body` rule (feed-widget.less, widget-wrapper.less) that also
-// reached this card's body while it was an antd Card. Mirror it so widget
-// cards keep their compact, unpadded layout.
+// Widget feed cards keep their compact, unpadded body layout.
 .feed-widget-container,
 .widget-wrapper-container {
   .activity-feed-card-new .activity-feed-card-new-body {

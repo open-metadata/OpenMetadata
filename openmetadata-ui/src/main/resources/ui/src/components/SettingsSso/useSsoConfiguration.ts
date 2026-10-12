@@ -107,7 +107,7 @@ export const useSsoConfiguration = ({
   onProviderSelect,
   selectedProvider,
   securityConfig,
-  scrollContainer = '.ant-card',
+  scrollContainer = '.resizable-first-panel > .overflow-y-auto',
   errorSelector = '.field-error.has-error, .ant-form-item-explain-error',
 }: UseSsoConfigurationOptions) => {
   const { t } = useTranslation();
