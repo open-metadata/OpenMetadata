@@ -15,6 +15,7 @@ import {
   Box,
   Button,
   Card,
+  CloseButton,
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -23,11 +24,9 @@ import { Affix } from 'antd';
 import { CookieStorage } from 'cookie-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CloseIcon } from '../../../assets/svg/close.svg';
 import { ReactComponent as StarGithubIcon } from '../../../assets/svg/ic-star-github.svg';
 import { ReactComponent as StarIcon } from '../../../assets/svg/ic-start-filled-github.svg';
 import {
-  BLACK_COLOR,
   STAR_OMD_USER,
   TWO_MINUTE_IN_MILLISECOND,
   VERSION,
@@ -152,14 +151,11 @@ const GithubStarCard = () => {
                 {t('label.star-us-on-github')}
               </Typography>
             </Box>
-            <Button
+            <CloseButton
               className="tw:-mt-1"
-              color="tertiary"
               data-testid="close-github-star-popup-card"
-              iconLeading={
-                <CloseIcon color={BLACK_COLOR} height={12} width={12} />
-              }
-              onClick={handleClosePopup}
+              size="xs"
+              onPress={handleClosePopup}
             />
           </Box>
 
