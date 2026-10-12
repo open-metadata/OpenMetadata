@@ -1703,6 +1703,7 @@
     "kg-presentation": "Представление",
     "kg-range": "Область значений",
     "kg-relationship-labels": "Подписи связей",
+    "kg-resize-details": "Перетащите, чтобы изменить размер панели сведений",
     "kg-returned-counts": "Сущности: {{nodes}} · Связи: {{edges}}",
     "kg-selected-entity": "Выбранная сущность",
     "kg-show-more": "Показать ещё {{count}} из {{total}}",

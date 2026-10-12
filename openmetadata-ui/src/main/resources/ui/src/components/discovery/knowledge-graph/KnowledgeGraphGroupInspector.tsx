@@ -23,7 +23,7 @@ import { GraphNode, KnowledgeGraphG6Edge } from './KnowledgeGraph.interface';
 import { getRelationStyle } from './KnowledgeGraph.relations';
 import {
   entityTile,
-  InspectorRow,
+  InspectorRelationshipRow,
   InspectorSection,
   InspectorStatement,
 } from './KnowledgeGraphInspectorParts';
@@ -122,16 +122,26 @@ const KnowledgeGraphGroupInspector = ({
             const relationship = bundle?.data.members?.find(
               (edge) => edge.from === member.id || edge.to === member.id
             );
+            const memberIsSubject = relationship?.from === member.id;
+            const otherId = memberIsSubject
+              ? relationship?.to
+              : relationship?.from;
+            // When the bundle edge or the other endpoint is missing from the
+            // nodes map, fall back to the anchor's label (the group bundle's
+            // other side is always the anchor entity) so the row still reads
+            // as a complete triple instead of showing a dangling arrow.
+            const otherLabel =
+              nodes.get(otherId ?? '')?.label ?? node.label ?? otherId ?? '';
+            const subject = memberIsSubject ? member.label : otherLabel;
+            const object = memberIsSubject ? otherLabel : member.label;
 
             return (
-              <InspectorRow
-                detail={
-                  (relationship?.from === member.id ? '← ' : '→ ') +
-                  presentation?.predicate
-                }
+              <InspectorRelationshipRow
                 isDisabled={!relationship?.id}
                 key={member.id}
-                name={member.label}
+                object={object}
+                predicate={presentation?.predicate ?? ''}
+                subject={subject}
                 tile={entityTile(member.type, 'sm')}
                 onPress={() => {
                   if (relationship?.id) {

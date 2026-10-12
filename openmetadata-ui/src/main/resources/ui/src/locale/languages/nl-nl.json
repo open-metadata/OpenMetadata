@@ -1703,6 +1703,7 @@
     "kg-presentation": "Weergave",
     "kg-range": "Bereik",
     "kg-relationship-labels": "Relatielabels",
+    "kg-resize-details": "Sleep om de grootte van het detailvenster te wijzigen",
     "kg-returned-counts": "{{nodes}} entiteiten · {{edges}} relaties",
     "kg-selected-entity": "Geselecteerde entiteit",
     "kg-show-more": "Nog {{count}} van {{total}} tonen",

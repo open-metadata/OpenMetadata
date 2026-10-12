@@ -33,6 +33,7 @@ import {
   isGraphColumnNode,
 } from '../../../utils/discovery/knowledge-graph/knowledgeGraphNavigation.utils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import { SearchSourceDetails } from '../../Explore/EntitySummaryPanel/EntitySummaryPanel.interface';
 import { getNodeTypeLabel } from './GraphElements/CustomNode';
 import {
@@ -45,7 +46,7 @@ import {
   entityTile,
   InspectorGapNote,
   InspectorIdentityCard,
-  InspectorRow,
+  InspectorRelationshipRow,
   InspectorSection,
   relationTile,
 } from './KnowledgeGraphInspectorParts';
@@ -57,14 +58,6 @@ const EntitySummaryPanel = withSuspenseFallback(
       import('../../Explore/EntitySummaryPanel/EntitySummaryPanel.component')
   )
 );
-
-const edgeArrow = (derived: boolean, outgoing: boolean) => {
-  if (derived) {
-    return '— ';
-  }
-
-  return outgoing ? '→ ' : '← ';
-};
 
 const getInspectorSubtitle = (
   t: (key: string, options?: Record<string, unknown>) => string,
@@ -188,16 +181,16 @@ const RelationshipsSection = ({
       {previewSlice.map((edge) => {
         const otherId = edge.source === node.id ? edge.target : edge.source;
         const other = nodeMap.get(otherId);
-        const arrow = edgeArrow(
-          Boolean(edge.data.derivation),
-          edge.source === node.id
-        );
+        const outgoing = edge.source === node.id;
+        const subject = outgoing ? node.label : other?.label ?? otherId;
+        const object = outgoing ? other?.label ?? otherId : node.label;
 
         return (
-          <InspectorRow
-            detail={arrow + String(edge.data?.label ?? '')}
+          <InspectorRelationshipRow
             key={edge.id}
-            name={other?.label ?? otherId}
+            object={object}
+            predicate={String(edge.data?.label ?? '')}
+            subject={subject}
             tile={entityTile(other?.type ?? node.type, 'sm')}
             onPress={() =>
               onSelectionChange({ kind: 'edge', id: String(edge.id) })
@@ -355,9 +348,14 @@ const GraphNodeInspector = ({
           showUnmappedCTA={canShowGapNotes && coverage === 'unmapped'}
         />
         {bodyDescription && (
-          <Typography className="tw:text-tertiary" size="text-xs">
-            {bodyDescription}
-          </Typography>
+          <div className="kg-inspector-description tw:text-xs tw:text-tertiary">
+            <RichTextEditorPreviewerNew
+              clampByLines
+              enableSeeMoreVariant
+              markdown={bodyDescription}
+              maxLineLength="6"
+            />
+          </div>
         )}
         {node.ontologyProperty && (
           <OntologyDetails property={node.ontologyProperty} />

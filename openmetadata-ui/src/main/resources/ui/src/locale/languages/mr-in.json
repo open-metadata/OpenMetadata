@@ -1703,6 +1703,7 @@
     "kg-presentation": "सादरीकरण",
     "kg-range": "मूल्य श्रेणी",
     "kg-relationship-labels": "संबंधांची लेबले",
+    "kg-resize-details": "तपशील पॅनेलचा आकार बदलण्यासाठी ओढा",
     "kg-returned-counts": "{{nodes}} घटक · {{edges}} संबंध",
     "kg-selected-entity": "निवडलेला घटक",
     "kg-show-more": "{{total}} पैकी आणखी {{count}} दाखवा",
