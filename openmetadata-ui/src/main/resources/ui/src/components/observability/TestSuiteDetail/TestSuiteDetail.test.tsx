@@ -166,11 +166,7 @@ jest.mock('components/common/EntityDescription/Description', () => ({
 
 jest.mock('components/Database/Profiler/DataQualityTab/DataQualityTab', () => ({
   __esModule: true,
-  default: ({ editVariant }: any) => (
-    <div data-edit-variant={editVariant} data-testid="data-quality-tab">
-      data-quality-tab
-    </div>
-  ),
+  default: () => <div data-testid="data-quality-tab">data-quality-tab</div>,
 }));
 
 jest.mock(
@@ -279,10 +275,6 @@ describe('TestSuiteDetail', () => {
     expect(screen.getByTestId('tabs')).toBeInTheDocument();
     expect(screen.getByTestId('description-v1')).toBeInTheDocument();
     expect(screen.getByTestId('data-quality-tab')).toBeInTheDocument();
-    expect(screen.getByTestId('data-quality-tab')).toHaveAttribute(
-      'data-edit-variant',
-      'modal'
-    );
   });
 
   it('should keep the detail header card on the shell header band', () => {

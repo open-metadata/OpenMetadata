@@ -14,28 +14,22 @@ import {
   Box,
   EmptyPlaceholder,
   HookForm,
+  Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Lightbulb05 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { TFunction } from 'i18next';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../../constants/Schedular.constants';
-import {
-  OPEN_METADATA,
-  TEST_CASE_FORM,
-} from '../../../../constants/service-guide.constant';
 import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
-import { EntityType as EntityTypeEnum } from '../../../../enums/entity.enum';
-import { ServiceCategory } from '../../../../enums/service.enum';
 import { TestCase } from '../../../../generated/tests/testCase';
 import { TestDefinition } from '../../../../generated/tests/testDefinition';
-import { TableSearchSource } from '../../../../interface/search.interface';
 import testCaseClassBase from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
 import {
   addIngestionPipeline,
@@ -48,18 +42,15 @@ import {
 } from '../../../../rest/testAPI';
 import { createUpdatedTestCasePatch } from '../../../../utils/DataQuality/DataQualityPureUtils';
 import { monospaceParameterNames } from '../../../../utils/DataQuality/FormHintDocUtils';
-import { getDefaultTestCaseFormVariant } from '../../../../utils/DataQuality/TestCaseFormVariantUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { submitAndClose } from '../../../../utils/FormDrawerUtils';
 import { createScrollToErrorHandler } from '../../../../utils/formPureUtils';
 import { omitInapplicableDimensionParams } from '../../../../utils/observability/data-quality/testCaseThreshold.utils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
-import { AiFormModal } from '../../../common/atoms/drawer/AiFormModal';
 import { useFormDrawerWithHook } from '../../../common/atoms/drawer/useFormDrawer';
 import Loader from '../../../common/Loader/Loader';
 import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
-import ServiceDocPanel from '../../../common/ServiceDocPanel/ServiceDocPanel';
 import { TestCaseFormType } from '../AddDataQualityTest.interface';
 import TestCaseFormBody from './TestCaseFormBody';
 import {
@@ -81,9 +72,6 @@ const getResolvedDrawerWidth = (
   showDocPanel: boolean
 ): number | string => width ?? (showDocPanel ? '80vw' : '52vw');
 
-const getDrawerContentWrapperClassName = (showDocPanel: boolean): string =>
-  `drawer-content-wrapper${showDocPanel ? '' : ' no-doc-panel'}`;
-
 const getDefaultDrawerTitle = (
   isEditMode: boolean,
   testCase: TestCase | undefined,
@@ -100,16 +88,6 @@ const getIsEditPrefilling = (
   testCaseId: string | undefined
 ): boolean => isEditMode && open && editPrefilledId !== testCaseId;
 
-const getSelectedTableSearchSource = (
-  selectedTableData: TestCaseFormContext['selectedTableData']
-): TableSearchSource | undefined =>
-  isUndefined(selectedTableData)
-    ? undefined
-    : ({
-        ...selectedTableData,
-        entityType: EntityTypeEnum.TABLE,
-      } as TableSearchSource);
-
 const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   open,
   onClose,
@@ -118,11 +96,10 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   table,
   testSuite,
   testLevel,
-  variant = getDefaultTestCaseFormVariant(),
   title,
   headerActions,
   width,
-  showDocPanel = variant === 'drawer',
+  showDocPanel = true,
   testCase,
   showOnlyParameter = false,
   onUpdate,
@@ -159,7 +136,6 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   });
 
   const [errorMessage, setErrorMessage] = useState<string>('');
-  const [activeField, setActiveField] = useState<string>('');
   const [formContext, setFormContext] = useState<TestCaseFormContext>();
   const [showHint, setShowHint] = useState<boolean>(true);
   const [editDefinition, setEditDefinition] = useState<TestDefinition>();
@@ -204,14 +180,6 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
       cancelled = true;
     };
   }, [testCase, open, form]);
-
-  const handleActiveFieldChange = useCallback(
-    (fieldId: string) => {
-      setActiveField(fieldId);
-      onActiveFieldChange?.(fieldId);
-    },
-    [onActiveFieldChange]
-  );
 
   const createTestCasePipeline = useCallback(
     async (values: FormValues, created: TestCase) => {
@@ -361,17 +329,6 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
     [isEditMode, handleEditSubmit, handleCreateSubmit, t]
   );
 
-  const serviceDocPanel = (
-    <ServiceDocPanel
-      activeField={activeField}
-      selectedEntity={getSelectedTableSearchSource(
-        formContext?.selectedTableData
-      )}
-      serviceName={TEST_CASE_FORM}
-      serviceType={OPEN_METADATA as ServiceCategory}
-    />
-  );
-
   const testCaseFormBody = (
     <TestCaseFormBody
       editDefinition={editDefinition}
@@ -381,23 +338,14 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
       showOnlyParameter={showOnlyParameter}
       table={table}
       testSuite={testSuite}
-      onActiveFieldChange={handleActiveFieldChange}
+      onActiveFieldChange={onActiveFieldChange}
       onContextChange={setFormContext}
       onErrorDismiss={handleErrorDismiss}
     />
   );
 
-  const isModalVariant = variant === 'modal';
-
-  const docPanel = showDocPanel ? (
-    <div className="drawer-doc-panel service-doc-panel markdown-parser">
-      {serviceDocPanel}
-    </div>
-  ) : null;
-
-  // Without the doc panel the form spans the full drawer, so drop the drawer
-  // width to roughly the form's original 65% column and let it fill (see the
-  // .no-doc-panel grid override in TestCaseFormV1.less).
+  // Without the hint the form spans the full drawer, so drop the drawer width
+  // to roughly the form's original 65% column and let it fill.
   const resolvedWidth = getResolvedDrawerWidth(width, showDocPanel);
 
   const scrollToError = useMemo(
@@ -430,17 +378,76 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
 
   const formBody = (
     <HookForm
+      emptyFieldDoc={
+        // width="100%" is required: EmptyPlaceholder's 300px default is
+        // wider than the hint column's 260px minimum and would overflow
+        // once the column shrinks on a narrow viewport.
+        <EmptyPlaceholder
+          description={t('message.form-hint-empty-state')}
+          icon={Lightbulb05}
+          title={t('label.no-entity-selected', {
+            entity: t('label.field'),
+          })}
+          width="100%"
+        />
+      }
+      fieldDocDisplay="panel"
+      fieldDocHeader={
+        <Box align="center" className="tw:gap-2" direction="row">
+          <Lightbulb05 aria-hidden className="tw:size-4 tw:text-secondary" />
+          <Typography
+            className="tw:text-secondary"
+            size="text-sm"
+            weight="medium">
+            {t('label.form-hint')}
+          </Typography>
+        </Box>
+      }
       form={form}
+      // The drawer body's own padding is zeroed (see `body` below) so the
+      // hint column runs edge to edge; the form column carries it instead.
+      // `drawer-form-content` marks this column as the scroll-to-error target,
+      // since it, not the drawer body, is what scrolls.
+      formClassName="drawer-form-content tw:px-4 tw:py-6 tw:md:px-6"
+      renderFieldDoc={(markdown) => (
+        // Render the full field doc without the "see more" toggle — the
+        // column scrolls, so the whole hint is reachable without it.
+        <div className="form-hint-doc">
+          <RichTextEditorPreviewerV1
+            enableSeeMoreVariant={false}
+            markdown={monospaceParameterNames(markdown)}
+          />
+        </div>
+      )}
+      showFieldDocs={showDocPanel && showHint}
       onSubmit={form.handleSubmit(
         (data) =>
           submitAndClose(data, handleSubmit, () => closeDrawerRef.current()),
         () => scrollToError()
       )}>
-      <div className={getDrawerContentWrapperClassName(showDocPanel)}>
-        <div className="drawer-form-content">{gatedFormBody}</div>
-        {docPanel}
-      </div>
+      {gatedFormBody}
     </HookForm>
+  );
+
+  // pr-10 keeps the toggle clear of the header's absolutely-positioned close
+  // button.
+  const hintToggle = (
+    <Box align="center" className="tw:gap-2 tw:pr-10" direction="row">
+      <Lightbulb05 aria-hidden className="tw:size-4 tw:text-secondary" />
+      <Typography
+        className="tw:whitespace-nowrap tw:text-secondary"
+        size="text-sm"
+        weight="medium">
+        {t('label.show-hint')}
+      </Typography>
+      <Toggle
+        aria-label={t('label.show-hint')}
+        data-testid="show-hint-toggle"
+        isSelected={showHint}
+        size="sm"
+        onChange={setShowHint}
+      />
+    </Box>
   );
 
   // Every dismissal path (cancel, X, Escape, backdrop, programmatic close)
@@ -464,7 +471,18 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
       title: resolvedTitle,
       hookForm: form,
       form: formBody,
-      headerActions,
+      headerActions: showDocPanel ? (
+        <>
+          {headerActions}
+          {hintToggle}
+        </>
+      ) : (
+        headerActions
+      ),
+      // Each panel column scrolls on its own, so the body must not pad, gap
+      // or stack them. tailwind-merge drops the SlideoutMenu.Content defaults
+      // these conflict with (`px-4 md:px-6`, `gap-6`, `flex-col`).
+      body: { className: 'tw:flex-row tw:gap-0 tw:px-0 tw:md:px-0' },
       width: resolvedWidth,
       submitLabel: isEditMode ? t('label.update') : t('label.create'),
       submitTestId: 'create-btn',
@@ -477,83 +495,12 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   closeDrawerRef.current = closeDrawer;
 
   useEffect(() => {
-    if (isModalVariant) {
-      return;
-    }
     if (open) {
       openDrawer();
     } else if (isOpen) {
       closeDrawer();
     }
-  }, [isModalVariant, open, isOpen, openDrawer, closeDrawer]);
-
-  if (isModalVariant) {
-    return (
-      <AiFormModal
-        headerActions={headerActions}
-        hintOpen={showHint}
-        isSubmitting={form.formState.isSubmitting}
-        open={open}
-        submitLabel={isEditMode ? t('label.update') : undefined}
-        subtitle={t('message.page-sub-header-for-data-quality')}
-        title={resolvedTitle}
-        onClose={handleDrawerDismiss}
-        onHintToggle={setShowHint}
-        onSubmit={form.handleSubmit(
-          (data) => submitAndClose(data, handleSubmit, handleDrawerDismiss),
-          () => scrollToError()
-        )}>
-        <HookForm
-          emptyFieldDoc={
-            // width="100%" is required: EmptyPlaceholder's 300px default is
-            // wider than the hint column's 260px minimum and would overflow
-            // once the column shrinks on a narrow viewport.
-            <EmptyPlaceholder
-              description={t('message.form-hint-empty-state')}
-              icon={Lightbulb05}
-              title={t('label.no-entity-selected', {
-                entity: t('label.field'),
-              })}
-              width="100%"
-            />
-          }
-          fieldDocDisplay="panel"
-          fieldDocHeader={
-            <Box align="center" className="tw:gap-2" direction="row">
-              <Lightbulb05 className="tw:size-4 tw:text-secondary" />
-              <Typography
-                className="tw:text-secondary"
-                size="text-sm"
-                weight="medium">
-                {t('label.form-hint')}
-              </Typography>
-            </Box>
-          }
-          form={form}
-          // min-w-193 (772px) overrides HookForm's 380px default: this form's
-          // test-level cards need ~574px before they clip, so a lower floor
-          // lets the hint steal room the form cannot spare.
-          formClassName="tw:min-w-193 tw:px-7 tw:pt-6 tw:pb-7"
-          renderFieldDoc={(markdown) => (
-            // Render the full field doc without the "see more" toggle — the
-            // column scrolls, so the whole hint is reachable without it.
-            <div className="form-hint-doc">
-              <RichTextEditorPreviewerV1
-                enableSeeMoreVariant={false}
-                markdown={monospaceParameterNames(markdown)}
-              />
-            </div>
-          )}
-          showFieldDocs={showHint}
-          onSubmit={form.handleSubmit(
-            (data) => submitAndClose(data, handleSubmit, handleDrawerDismiss),
-            () => scrollToError()
-          )}>
-          {gatedFormBody}
-        </HookForm>
-      </AiFormModal>
-    );
-  }
+  }, [open, isOpen, openDrawer, closeDrawer]);
 
   return formDrawer;
 };

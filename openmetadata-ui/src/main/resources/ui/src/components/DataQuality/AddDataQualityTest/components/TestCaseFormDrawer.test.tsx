@@ -252,14 +252,6 @@ jest.mock('./TestCaseFormBody', () =>
     )
 );
 
-jest.mock('../../../common/ServiceDocPanel/ServiceDocPanel', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="service-doc-panel">doc-panel</div>
-    ))
-);
-
 // RichTextEditorPreviewerV1 wraps a lazy BlockEditor (TipTap) that does not
 // render its content synchronously in jsdom. Mock it to render the markdown as
 // plain text so the field-doc assertion inspects the real doc string
@@ -416,21 +408,29 @@ describe('TestCaseFormDrawer', () => {
     expect(onFormSubmit).not.toHaveBeenCalled();
   });
 
-  it('should render the doc panel in classic variant', async () => {
-    renderDrawer({ variant: 'drawer' });
-
-    expect(await screen.findByTestId('service-doc-panel')).toBeInTheDocument();
-  });
-
-  it('should not render the service doc panel in ai variant', async () => {
-    renderDrawer({ variant: 'modal' });
+  it('should render the Show Hint toggle in the drawer header', async () => {
+    renderDrawer();
 
     expect(
-      await screen.findByTestId('test-case-form-body')
-    ).toBeInTheDocument();
-    // The AI variant replaces the ServiceDocPanel hint with the per-field
-    // documentation panel (gated by the Show Hint toggle).
-    expect(screen.queryByTestId('service-doc-panel')).not.toBeInTheDocument();
+      await screen.findByRole('switch', { name: 'label.show-hint' })
+    ).toBeChecked();
+  });
+
+  it('should render neither the Show Hint toggle nor field docs when showDocPanel is false', async () => {
+    renderDrawer({ showDocPanel: false });
+
+    const testType = await screen.findByLabelText(/test type/i);
+
+    await act(async () => {
+      testType.focus();
+    });
+
+    expect(
+      screen.queryByRole('switch', { name: 'label.show-hint' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/kind of validation to run/i)
+    ).not.toBeInTheDocument();
   });
 
   it('should call addIngestionPipeline and deployIngestionPipelineById when canCreatePipeline is true', async () => {
@@ -555,106 +555,9 @@ describe('TestCaseFormDrawer', () => {
     ).resolves.not.toThrow();
   });
 
-  describe('ai variant', () => {
-    it('should render a centered modal (role=dialog) instead of the slideout drawer when open', async () => {
-      renderDrawer({ variant: 'modal' });
-
-      expect(await screen.findByRole('dialog')).toBeInTheDocument();
-      expect(
-        await screen.findByTestId('test-case-form-body')
-      ).toBeInTheDocument();
-      // The AI modal exposes the same footer test ids as the classic drawer so
-      // the shared submit helpers drive either variant.
-      expect(screen.getByTestId('create-btn')).toBeInTheDocument();
-      expect(screen.getByTestId('cancel-btn')).toBeInTheDocument();
-      // But not the slideout drawer chrome.
-      expect(screen.queryByTestId('drawer-title')).not.toBeInTheDocument();
-    });
-
-    it('should render the default ai header title', async () => {
-      renderDrawer({ variant: 'modal' });
-
-      await screen.findByRole('dialog');
-
-      expect(screen.getByText('label.add-entity')).toBeInTheDocument();
-    });
-
-    it('should call onClose exactly once when the cancel button is clicked', async () => {
-      const onClose = jest.fn();
-      renderDrawer({ variant: 'modal', onClose });
-
-      await screen.findByRole('dialog');
-
-      await act(async () => {
-        fireEvent.click(screen.getByRole('button', { name: 'label.cancel' }));
-      });
-
-      expect(onClose).toHaveBeenCalledTimes(1);
-    });
-
-    it('should call onClose exactly once when the X close button is clicked', async () => {
-      const onClose = jest.fn();
-      renderDrawer({ variant: 'modal', onClose });
-
-      await screen.findByRole('dialog');
-
-      await act(async () => {
-        fireEvent.click(screen.getByRole('button', { name: 'label.close' }));
-      });
-
-      expect(onClose).toHaveBeenCalledTimes(1);
-    });
-
-    it('should create the test case and call onClose once on a successful submit', async () => {
-      const onFormSubmit = jest.fn();
-      const onClose = jest.fn();
-      renderDrawer({ variant: 'modal', onFormSubmit, onClose });
-
-      await screen.findByRole('dialog');
-
-      const submitBtn = screen.getByRole('button', { name: 'label.create' });
-
-      await act(async () => {
-        fireEvent.click(submitBtn);
-      });
-
-      await waitFor(() => {
-        expect(mockCreateTestCase).toHaveBeenCalledWith({
-          name: 'transformed-test-case',
-        });
-      });
-
-      await waitFor(() => {
-        expect(onFormSubmit).toHaveBeenCalled();
-      });
-
-      await waitFor(() => {
-        expect(onClose).toHaveBeenCalledTimes(1);
-      });
-    });
-
-    it('should keep the modal open and show the inline error when createTestCase rejects', async () => {
-      mockCreateTestCase.mockRejectedValueOnce({
-        response: { data: { message: 'boom' } },
-      });
-      const onClose = jest.fn();
-      renderDrawer({ variant: 'modal', onClose });
-
-      await screen.findByRole('dialog');
-
-      await act(async () => {
-        fireEvent.click(screen.getByRole('button', { name: 'label.create' }));
-      });
-
-      await waitFor(() => {
-        expect(screen.getByTestId('form-error')).toHaveTextContent('boom');
-      });
-
-      expect(onClose).not.toHaveBeenCalled();
-    });
-
+  describe('form hint', () => {
     it('gates the field doc panel behind the Show Hint toggle', async () => {
-      renderDrawer({ variant: 'modal' });
+      renderDrawer();
 
       const testType = await screen.findByLabelText(/test type/i);
 
@@ -680,7 +583,7 @@ describe('TestCaseFormDrawer', () => {
     });
 
     it('opens on the first field doc rather than an empty panel', async () => {
-      renderDrawer({ variant: 'modal' });
+      renderDrawer();
 
       // Nothing has focus yet on open, so the panel would otherwise advertise
       // that hints exist while showing none.
@@ -691,7 +594,7 @@ describe('TestCaseFormDrawer', () => {
     });
 
     it('keeps the last doc when focus leaves the documented fields', async () => {
-      renderDrawer({ variant: 'modal' });
+      renderDrawer();
 
       const testType = await screen.findByLabelText(/test type/i);
 
@@ -719,7 +622,7 @@ describe('TestCaseFormDrawer', () => {
     });
 
     it('keeps entered form values when the hint is toggled', async () => {
-      renderDrawer({ variant: 'modal' });
+      renderDrawer();
 
       // Test Type is the one genuinely hook-form-bound field the mocked body
       // renders; the other inputs are controlled with a no-op onChange.
@@ -741,8 +644,8 @@ describe('TestCaseFormDrawer', () => {
       );
     });
 
-    it('shows the field doc in the AI variant panel on focus', async () => {
-      renderDrawer({ variant: 'modal' });
+    it('shows the field doc in the panel on focus', async () => {
+      renderDrawer();
 
       const testType = await screen.findByLabelText(/test type/i);
 
@@ -754,20 +657,6 @@ describe('TestCaseFormDrawer', () => {
         await screen.findByText(/kind of validation to run/i)
       ).toBeInTheDocument();
     });
-  });
-
-  it('does not show the field doc in the classic variant on focus', async () => {
-    renderDrawer({ variant: 'drawer' });
-
-    const testType = await screen.findByLabelText(/test type/i);
-
-    await act(async () => {
-      testType.focus();
-    });
-
-    expect(
-      screen.queryByText(/kind of validation to run/i)
-    ).not.toBeInTheDocument();
   });
 
   describe('edit mode', () => {

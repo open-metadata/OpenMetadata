@@ -160,9 +160,10 @@ describe('formUtils', () => {
           scrollTo: mockScrollTo,
         };
 
-        mockQuerySelector
-          .mockReturnValueOnce(mockErrorElement)
-          .mockReturnValueOnce(mockContainer);
+        mockQuerySelector.mockReturnValueOnce({
+          ...mockErrorElement,
+          closest: jest.fn().mockReturnValue(mockContainer),
+        });
 
         const handler = createScrollToErrorHandler();
         handler();
@@ -184,9 +185,10 @@ describe('formUtils', () => {
           scrollTo: mockScrollTo,
         };
 
-        mockQuerySelector
-          .mockReturnValueOnce(mockErrorElement)
-          .mockReturnValueOnce(mockContainer);
+        mockQuerySelector.mockReturnValueOnce({
+          ...mockErrorElement,
+          closest: jest.fn().mockReturnValue(mockContainer),
+        });
 
         const handler = createScrollToErrorHandler();
         handler();
@@ -208,9 +210,10 @@ describe('formUtils', () => {
           scrollTo: mockScrollTo,
         };
 
-        mockQuerySelector
-          .mockReturnValueOnce(mockErrorElement)
-          .mockReturnValueOnce(mockContainer);
+        mockQuerySelector.mockReturnValueOnce({
+          ...mockErrorElement,
+          closest: jest.fn().mockReturnValue(mockContainer),
+        });
 
         const handler = createScrollToErrorHandler({ behavior: 'auto' });
         handler();
@@ -230,9 +233,10 @@ describe('formUtils', () => {
           scrollIntoView: mockScrollIntoView,
         };
 
-        mockQuerySelector
-          .mockReturnValueOnce(mockErrorElement)
-          .mockReturnValueOnce(null); // container not found
+        mockQuerySelector.mockReturnValueOnce({
+          ...mockErrorElement,
+          closest: jest.fn().mockReturnValue(null),
+        });
 
         const handler = createScrollToErrorHandler();
         handler();
@@ -251,9 +255,10 @@ describe('formUtils', () => {
           scrollIntoView: mockScrollIntoView,
         };
 
-        mockQuerySelector
-          .mockReturnValueOnce(mockErrorElement)
-          .mockReturnValueOnce(null);
+        mockQuerySelector.mockReturnValueOnce({
+          ...mockErrorElement,
+          closest: jest.fn().mockReturnValue(null),
+        });
 
         const handler = createScrollToErrorHandler({ behavior: 'auto' });
         handler();
@@ -297,9 +302,8 @@ describe('formUtils', () => {
           scrollIntoView: mockScrollIntoView,
         };
 
-        mockQuerySelector
-          .mockReturnValueOnce(mockErrorElement)
-          .mockReturnValueOnce(null);
+        const closest = jest.fn().mockReturnValue(null);
+        mockQuerySelector.mockReturnValueOnce({ ...mockErrorElement, closest });
 
         const handler = createScrollToErrorHandler({
           scrollContainer: '.my-container',
@@ -307,7 +311,7 @@ describe('formUtils', () => {
         handler();
         jest.advanceTimersByTime(100);
 
-        expect(mockQuerySelector).toHaveBeenCalledWith('.my-container');
+        expect(closest).toHaveBeenCalledWith('.my-container');
       });
 
       it('applies custom offset in scroll calculation', () => {
@@ -320,9 +324,10 @@ describe('formUtils', () => {
           scrollTo: mockScrollTo,
         };
 
-        mockQuerySelector
-          .mockReturnValueOnce(mockErrorElement)
-          .mockReturnValueOnce(mockContainer);
+        mockQuerySelector.mockReturnValueOnce({
+          ...mockErrorElement,
+          closest: jest.fn().mockReturnValue(mockContainer),
+        });
 
         const handler = createScrollToErrorHandler({ offsetTop: 200 });
         handler();
@@ -340,9 +345,10 @@ describe('formUtils', () => {
           scrollIntoView: mockScrollIntoView,
         };
 
-        mockQuerySelector
-          .mockReturnValueOnce(mockErrorElement)
-          .mockReturnValueOnce(null);
+        mockQuerySelector.mockReturnValueOnce({
+          ...mockErrorElement,
+          closest: jest.fn().mockReturnValue(null),
+        });
 
         const handler = createScrollToErrorHandler({ delay: 300 });
         handler();
@@ -368,9 +374,8 @@ describe('formUtils', () => {
           scrollTo: mockScrollTo,
         };
 
-        mockQuerySelector
-          .mockReturnValueOnce(mockErrorElement)
-          .mockReturnValueOnce(mockDrawerBody);
+        const closest = jest.fn().mockReturnValue(mockDrawerBody);
+        mockQuerySelector.mockReturnValueOnce({ ...mockErrorElement, closest });
 
         const handler = createScrollToErrorHandler({
           scrollContainer: '.ant-drawer-body',
@@ -378,10 +383,7 @@ describe('formUtils', () => {
         handler();
         jest.advanceTimersByTime(100);
 
-        expect(mockQuerySelector).toHaveBeenNthCalledWith(
-          2,
-          '.ant-drawer-body'
-        );
+        expect(closest).toHaveBeenCalledWith('.ant-drawer-body');
         expect(mockScrollTo).toHaveBeenCalledWith({
           top: 570, // 150 + 600 - 80 - 100
           behavior: 'smooth',
@@ -398,22 +400,47 @@ describe('formUtils', () => {
           scrollTo: mockScrollTo,
         };
 
-        mockQuerySelector
-          .mockReturnValueOnce(mockErrorElement)
-          .mockReturnValueOnce(mockDrawerContent);
+        const closest = jest.fn().mockReturnValue(mockDrawerContent);
+        mockQuerySelector.mockReturnValueOnce({ ...mockErrorElement, closest });
 
         const handler = createScrollToErrorHandler(); // uses default .drawer-form-content
         handler();
         jest.advanceTimersByTime(100);
 
-        expect(mockQuerySelector).toHaveBeenNthCalledWith(
-          2,
-          '.drawer-form-content'
-        );
+        expect(closest).toHaveBeenCalledWith('.drawer-form-content');
         expect(mockScrollTo).toHaveBeenCalledWith({
           top: 380, // 200 + 400 - 120 - 100
           behavior: 'smooth',
         });
+      });
+
+      it('scrolls the container holding the error when drawer-form-content is nested', () => {
+        // The drawer body always carries the class; the form column that
+        // actually scrolls carries it too.
+        document.body.innerHTML = `
+          <div class="drawer-form-content" id="drawer-body">
+            <form class="drawer-form-content" id="form-column">
+              <input aria-invalid="true" />
+            </form>
+          </div>`;
+        const drawerBody = document.getElementById(
+          'drawer-body'
+        ) as HTMLElement;
+        const formColumn = document.getElementById(
+          'form-column'
+        ) as HTMLElement;
+        drawerBody.scrollTo = jest.fn();
+        formColumn.scrollTo = mockScrollTo;
+
+        createScrollToErrorHandler({
+          errorSelector: '[aria-invalid="true"]',
+        })();
+        jest.advanceTimersByTime(100);
+
+        expect(mockScrollTo).toHaveBeenCalled();
+        expect(drawerBody.scrollTo).not.toHaveBeenCalled();
+
+        document.body.innerHTML = '';
       });
     });
 
@@ -422,9 +449,10 @@ describe('formUtils', () => {
         const mockErrorElement = { getBoundingClientRect: null };
         const mockContainer = { scrollTo: mockScrollTo };
 
-        mockQuerySelector
-          .mockReturnValueOnce(mockErrorElement)
-          .mockReturnValueOnce(mockContainer);
+        mockQuerySelector.mockReturnValueOnce({
+          ...mockErrorElement,
+          closest: jest.fn().mockReturnValue(mockContainer),
+        });
 
         const handler = createScrollToErrorHandler();
 
@@ -444,9 +472,10 @@ describe('formUtils', () => {
           scrollTo: mockScrollTo,
         };
 
-        mockQuerySelector
-          .mockReturnValueOnce(mockErrorElement)
-          .mockReturnValueOnce(mockContainer);
+        mockQuerySelector.mockReturnValueOnce({
+          ...mockErrorElement,
+          closest: jest.fn().mockReturnValue(mockContainer),
+        });
 
         const handler = createScrollToErrorHandler({ offsetTop: 0 });
         handler();
@@ -468,9 +497,10 @@ describe('formUtils', () => {
           scrollTo: mockScrollTo,
         };
 
-        mockQuerySelector
-          .mockReturnValueOnce(mockErrorElement)
-          .mockReturnValueOnce(mockContainer);
+        mockQuerySelector.mockReturnValueOnce({
+          ...mockErrorElement,
+          closest: jest.fn().mockReturnValue(mockContainer),
+        });
 
         const handler = createScrollToErrorHandler({ offsetTop: 1000 });
         handler();
