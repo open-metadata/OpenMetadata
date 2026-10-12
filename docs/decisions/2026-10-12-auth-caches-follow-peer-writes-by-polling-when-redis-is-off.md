@@ -1,4 +1,4 @@
-# Without Redis, each pod applies other pods' auth writes by polling entity tables every 5 s with a 60 s overlap
+# Only when Redis is off, each pod applies other pods' auth writes by polling entity tables every 5 s with a 60 s overlap; with Redis, pub/sub alone does it
 
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-12 (initial)
@@ -18,7 +18,8 @@ L2-cached).
 
 ## Decision
 
-- When `CacheBundle.getCacheInvalidationPubSub()` is null, `SubjectCachePeerSync` runs on every pod.
+- Only when Redis is off (`CacheBundle.getCacheInvalidationPubSub()` is null) does `SubjectCachePeerSync`
+  run, on every pod; with Redis it never starts and pub/sub stays the only channel.
   Every **5 s** it lists rows of `user_entity`, `team_entity`, `role_entity`, `policy_entity` and
   `domain_entity` whose `updatedAt` is later than the previous poll minus **60 s**, and evicts them
   through `EntityRepository.onRemoteCacheInvalidate` and `SubjectCache.invalidator()`, the same pair
