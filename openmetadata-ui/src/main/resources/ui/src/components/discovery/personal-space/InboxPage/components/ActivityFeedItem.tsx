@@ -311,8 +311,8 @@ const RepliesToggle = ({
           {replyFaces.map(({ id, author }) => (
             <ProfilePicture
               borderless
-              // A white edge parts the overlapping faces.
-              className="tw:outline-2 tw:outline-bg-primary"
+              // An edge of the card's surface parts the overlapping faces.
+              className="tw:outline-2 tw:outline-bg-surface"
               displayName={author?.displayName}
               key={id}
               name={author?.name ?? ''}
@@ -530,9 +530,12 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
                 size="md"
               />
             </AuthorPopover>
+            {/* Glyph and ring take the card's surface, so the badge reads as
+                cut out of it: white in light, and dark on the fill dark mode
+                pales, where a white glyph would wash out. */}
             <span
               className={classNames(
-                'tw:absolute tw:-right-1 tw:-bottom-1 tw:flex tw:size-5 tw:items-center tw:justify-center tw:rounded-full tw:text-white tw:outline-2 tw:outline-bg-primary',
+                'tw:absolute tw:-right-1 tw:-bottom-1 tw:flex tw:size-5 tw:items-center tw:justify-center tw:rounded-full tw:text-bg-surface tw:outline-2 tw:outline-bg-surface',
                 kindClassName
               )}
               data-testid="activity-kind-badge">
