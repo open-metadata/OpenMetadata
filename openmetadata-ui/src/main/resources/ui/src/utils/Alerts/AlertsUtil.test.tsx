@@ -925,9 +925,8 @@ describe('getChangeEventDataFromTypedEvent', () => {
       mockTypedEventEmptyDataSuccessful
     );
 
-    expect(() => result).not.toThrow();
     expect(result.changeEventData).toStrictEqual({
-      id: `unreadable-${mockTypedEventEmptyDataSuccessful.timestamp}`,
+      id: `unreadable-${mockTypedEventEmptyDataSuccessful.status}-${mockTypedEventEmptyDataSuccessful.timestamp}`,
       timestamp: mockTypedEventEmptyDataSuccessful.timestamp,
     });
     expect(result.changeEventDataToDisplay).toStrictEqual({
@@ -947,9 +946,8 @@ describe('getChangeEventDataFromTypedEvent', () => {
       mockTypedEventEmptyDataFailed
     );
 
-    expect(() => result).not.toThrow();
     expect(result.changeEventData).toStrictEqual({
-      id: `unreadable-${mockTypedEventEmptyDataFailed.timestamp}`,
+      id: `unreadable-${mockTypedEventEmptyDataFailed.status}-${mockTypedEventEmptyDataFailed.timestamp}`,
       timestamp: mockTypedEventEmptyDataFailed.timestamp,
     });
     expect(result.changeEventDataToDisplay).toStrictEqual({
@@ -969,9 +967,8 @@ describe('getChangeEventDataFromTypedEvent', () => {
       mockTypedEventEmptyDataUnprocessed
     );
 
-    expect(() => result).not.toThrow();
     expect(result.changeEventData).toStrictEqual({
-      id: `unreadable-${mockTypedEventEmptyDataUnprocessed.timestamp}`,
+      id: `unreadable-${mockTypedEventEmptyDataUnprocessed.status}-${mockTypedEventEmptyDataUnprocessed.timestamp}`,
       timestamp: mockTypedEventEmptyDataUnprocessed.timestamp,
     });
     expect(result.changeEventDataToDisplay).toStrictEqual({

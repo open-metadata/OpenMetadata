@@ -216,10 +216,18 @@ describe('NotificationRecentEvents', () => {
     });
 
     // The unreadable row degrades gracefully into a header carrying the
-    // fallback id `unreadable-<timestamp>`.
+    // fallback id `unreadable-<status>-<timestamp>`.
     expect(
-      await screen.findByTestId('event-collapse-unreadable-1700000000001')
+      await screen.findByTestId(
+        'event-collapse-unreadable-failed-1700000000001'
+      )
     ).toBeInTheDocument();
+
+    // The header shows a translated label, not the synthetic fallback id.
+    expect(screen.getByText('label.unreadable-event')).toBeInTheDocument();
+    expect(
+      screen.queryByText('unreadable-failed-1700000000001')
+    ).not.toBeInTheDocument();
 
     // No global 500 fallback is rendered.
     expect(screen.queryByText('500')).not.toBeInTheDocument();

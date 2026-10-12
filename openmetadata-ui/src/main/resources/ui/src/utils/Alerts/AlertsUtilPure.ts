@@ -319,7 +319,9 @@ export const getChangeEventDataFromTypedEvent = (
   const outer = typedEvent.data[0];
 
   if (!outer) {
-    const fallbackId = `unreadable-${typedEvent.timestamp}`;
+    // Status is part of the id so a failed and a successful unreadable row
+    // sharing a timestamp still get distinct React keys.
+    const fallbackId = `unreadable-${typedEvent.status}-${typedEvent.timestamp}`;
 
     return {
       changeEventData: {

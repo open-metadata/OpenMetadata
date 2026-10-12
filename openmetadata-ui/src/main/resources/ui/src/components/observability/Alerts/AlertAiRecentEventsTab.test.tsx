@@ -230,22 +230,30 @@ describe('AlertAiRecentEventsTab', () => {
     ).toBeInTheDocument();
 
     // The unreadable row degrades gracefully: a header keyed by the
-    // fallback id `unreadable-<timestamp>`, with no detail fields.
+    // fallback id `unreadable-<status>-<timestamp>`, with no detail fields.
     expect(
-      screen.getByTestId('event-collapse-unreadable-1700000000001')
+      screen.getByTestId('event-collapse-unreadable-failed-1700000000001')
     ).toBeInTheDocument();
+
+    // The header shows a translated label, not the synthetic fallback id.
+    expect(screen.getByText('label.unreadable-event')).toBeInTheDocument();
+    expect(
+      screen.queryByText('unreadable-failed-1700000000001')
+    ).not.toBeInTheDocument();
 
     // No global 500 fallback is rendered.
     expect(screen.queryByText('500')).not.toBeInTheDocument();
 
     // Expanding the unreadable row shows no event-data fields.
     fireEvent.click(
-      await screen.findByTestId('event-collapse-unreadable-1700000000001')
+      await screen.findByTestId(
+        'event-collapse-unreadable-failed-1700000000001'
+      )
     );
 
     expect(
       screen
-        .getByTestId('event-details-unreadable-1700000000001')
+        .getByTestId('event-details-unreadable-failed-1700000000001')
         .querySelector('[data-testid="event-data-entityId"]')
     ).not.toBeInTheDocument();
   });
