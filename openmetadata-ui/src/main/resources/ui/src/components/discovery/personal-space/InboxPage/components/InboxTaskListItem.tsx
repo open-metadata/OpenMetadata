@@ -75,7 +75,7 @@ const TaskCardMeta: React.FC<{ task: Task }> = ({ task }) => {
           className="tw:ml-auto tw:shrink-0 tw:gap-1"
           data-testid="inbox-task-comment-count">
           <MessageDotsCircle
-            className="tw:text-fg-quaternary"
+            className="tw:text-quaternary"
             height={14}
             width={14}
           />

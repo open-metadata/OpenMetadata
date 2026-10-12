@@ -155,7 +155,7 @@ const TaskDetailSummary: React.FC<TaskDetailSummaryProps> = ({
           return (
             <Box align="center" gap={2} key={row.key}>
               <Icon
-                className="tw:shrink-0 tw:text-fg-quaternary"
+                className="tw:shrink-0 tw:text-quaternary"
                 height={16}
                 width={16}
               />

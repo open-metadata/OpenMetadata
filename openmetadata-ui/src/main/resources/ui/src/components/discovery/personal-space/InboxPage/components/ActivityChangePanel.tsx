@@ -167,7 +167,7 @@ const ActivityChangePanel = ({ change }: { change: ActivityChange }) => {
               'tw:absolute tw:top-1/2 tw:left-1/2 tw:flex tw:size-6 tw:-translate-1/2 tw:items-center tw:justify-center',
               'tw:rounded-full tw:border tw:border-secondary tw:bg-primary tw:shadow-xs'
             )}>
-            <ArrowRight className="tw:size-3.5 tw:text-fg-quaternary" />
+            <ArrowRight className="tw:size-3.5 tw:text-quaternary" />
           </span>
         )}
         {showAfter && (
