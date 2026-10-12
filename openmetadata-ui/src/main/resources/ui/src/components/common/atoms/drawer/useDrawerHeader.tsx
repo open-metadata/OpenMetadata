@@ -28,13 +28,12 @@ export const useDrawerHeader = (config: DrawerHeaderConfig = {}) => {
 
   const drawerHeader = useMemo(
     () => (
-      // Flex row so actions sit beside the title; top spacing as a margin so
-      // the close button centres on the row. A caller's className brings its
-      // own padding instead (a margin above a bordered header leaves a gap).
+      // Flex row keeps actions beside the title; the top margin (not padding)
+      // centres the close button on it. A caller's className overrides these.
       <SlideoutMenu.Header
         className={classNames(
-          'tw:flex tw:items-center tw:gap-4',
-          className ?? 'tw:mt-6 tw:pt-0'
+          'tw:flex tw:items-center tw:gap-4 tw:mt-6 tw:pt-0',
+          className
         )}
         onClose={showCloseButton ? onClose : undefined}>
         <div className="tw:flex tw:items-center tw:gap-2 tw:flex-1">

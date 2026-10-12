@@ -27,12 +27,12 @@ describe('useDrawerHeader', () => {
     expect(header).toContainElement(screen.getByText('action'));
   });
 
-  it("keeps a caller's own header padding without adding the margin", () => {
-    render(<Header className="tw:py-5!" title="Title" />);
+  it("lets a caller's className override the default spacing", () => {
+    render(<Header className="tw:mt-0 tw:py-5!" title="Title" />);
 
     const header = screen.getByRole('banner');
 
-    expect(header).toHaveClass('tw:flex', 'tw:py-5!');
+    expect(header).toHaveClass('tw:flex', 'tw:mt-0', 'tw:py-5!');
     expect(header).not.toHaveClass('tw:mt-6');
   });
 });
