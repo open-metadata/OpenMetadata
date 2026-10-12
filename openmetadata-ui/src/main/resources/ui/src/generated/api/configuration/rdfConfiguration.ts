@@ -47,8 +47,7 @@ export interface RDFConfiguration {
      */
     bulkRelationshipSourceBatchSize?: number;
     /**
-     * Cache bounded in-memory inference models for better query performance. Cached models
-     * expire after 60 seconds.
+     * [DEPRECATED: ignored] OpenMetadata no longer builds in-memory inference models.
      */
     cacheInferredTriples?: boolean;
     /**
@@ -60,9 +59,8 @@ export interface RDFConfiguration {
      */
     dataset?: string;
     /**
-     * Default reasoning level for SPARQL queries when inference is enabled. CUSTOM provides
-     * OpenMetadata-specific inference rules including transitive lineage traversal and inverse
-     * relationships.
+     * [DEPRECATED: ignored] SPARQL queries use no inference unless they request 'custom', which
+     * reads materialized rule output.
      */
     defaultInferenceLevel?: ReasoningLevel;
     /**
@@ -88,13 +86,13 @@ export interface RDFConfiguration {
      */
     gzipRequests?: boolean;
     /**
-     * Enable inference/reasoning on SPARQL queries. When enabled, SPARQL queries will use the
-     * inference engine to derive additional triples based on the reasoning level.
+     * [DEPRECATED: ignored] OpenMetadata no longer runs reasoners in its own process. Use
+     * materializedInferenceEnabled for rule-based inference inside the RDF store.
      */
     inferenceEnabled?: boolean;
     /**
-     * Use durable per-rule inferred named graphs produced inside the RDF store instead of
-     * building an in-memory Jena inference model for CUSTOM inference queries.
+     * Materialize inference rules into durable per-rule named graphs inside the RDF store, so
+     * SPARQL queries can request 'custom' inference. Requires FUSEKI storage.
      */
     materializedInferenceEnabled?: boolean;
     /**
@@ -107,8 +105,7 @@ export interface RDFConfiguration {
      */
     maxAppendPayloadBytes?: number;
     /**
-     * Maximum RDF store size for in-process inference. Queries requesting inference fall back
-     * to direct SPARQL execution when the store exceeds this limit.
+     * [DEPRECATED: ignored] OpenMetadata no longer builds in-memory inference models.
      */
     maxInMemoryInferenceTriples?: number;
     /**
@@ -165,9 +162,8 @@ export interface RDFConfiguration {
 }
 
 /**
- * Default reasoning level for SPARQL queries when inference is enabled. CUSTOM provides
- * OpenMetadata-specific inference rules including transitive lineage traversal and inverse
- * relationships.
+ * [DEPRECATED: ignored] SPARQL queries use no inference unless they request 'custom', which
+ * reads materialized rule output.
  *
  * Level of reasoning/inference to apply to SPARQL queries
  */

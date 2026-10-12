@@ -113,7 +113,7 @@ class CentralityComputationTest {
     @DisplayName("Empty graph: returns 0 nodes, no SPARQL UPDATE")
     void emptyGraph() {
       RdfRepository repo = mock(RdfRepository.class);
-      when(repo.executeSparqlQuery(anyString(), anyString()))
+      when(repo.executeAssertedSparqlQuery(anyString(), anyString()))
           .thenReturn("{\"results\":{\"bindings\":[]}}");
       CentralityComputation comp = new CentralityComputation(repo);
 
@@ -135,7 +135,7 @@ class CentralityComputationTest {
               + "{\"from\":{\"value\":\"urn:b\"},\"to\":{\"value\":\"urn:c\"},\"predicate\":{\"value\":\"prov:wasDerivedFrom\"}},"
               + "{\"from\":{\"value\":\"urn:c\"},\"to\":{\"value\":\"urn:a\"},\"predicate\":{\"value\":\"prov:wasDerivedFrom\"}}"
               + "]}}";
-      when(repo.executeSparqlQuery(anyString(), anyString())).thenReturn(body);
+      when(repo.executeAssertedSparqlQuery(anyString(), anyString())).thenReturn(body);
 
       CentralityComputation comp = new CentralityComputation(repo);
       CentralityComputation.Result r = comp.computeAndPersist("table");
@@ -173,7 +173,7 @@ class CentralityComputationTest {
                 "\"},\"to\":{\"value\":\"urn:hub\"},\"predicate\":{\"value\":\"prov:wasDerivedFrom\"}}");
       }
       body.append("]}}");
-      when(repo.executeSparqlQuery(anyString(), anyString())).thenReturn(body.toString());
+      when(repo.executeAssertedSparqlQuery(anyString(), anyString())).thenReturn(body.toString());
 
       CentralityComputation comp = new CentralityComputation(repo);
       comp.computeAndPersist("table");
@@ -196,7 +196,7 @@ class CentralityComputationTest {
 
       org.junit.jupiter.api.Assertions.assertThrows(
           IllegalArgumentException.class, () -> comp.computeAndPersist("table OR 1=1"));
-      verify(repo, never()).executeSparqlQuery(anyString(), anyString());
+      verify(repo, never()).executeAssertedSparqlQuery(anyString(), anyString());
       verify(repo, never()).executeSparqlUpdate(anyString());
     }
 
@@ -204,7 +204,7 @@ class CentralityComputationTest {
     @DisplayName("Repository SPARQL throws → empty result, no update attempted")
     void repositoryThrows() {
       RdfRepository repo = mock(RdfRepository.class);
-      when(repo.executeSparqlQuery(anyString(), anyString()))
+      when(repo.executeAssertedSparqlQuery(anyString(), anyString()))
           .thenThrow(new RuntimeException("Fuseki unreachable"));
       CentralityComputation comp = new CentralityComputation(repo);
 
@@ -217,7 +217,7 @@ class CentralityComputationTest {
     @DisplayName("Persisted graph URI uses lowercase entityType")
     void graphUriLowercase() {
       RdfRepository repo = mock(RdfRepository.class);
-      when(repo.executeSparqlQuery(anyString(), anyString()))
+      when(repo.executeAssertedSparqlQuery(anyString(), anyString()))
           .thenReturn(
               "{\"results\":{\"bindings\":["
                   + "{\"from\":{\"value\":\"urn:a\"},\"to\":{\"value\":\"urn:b\"},\"predicate\":{\"value\":\"prov:wasDerivedFrom\"}}"

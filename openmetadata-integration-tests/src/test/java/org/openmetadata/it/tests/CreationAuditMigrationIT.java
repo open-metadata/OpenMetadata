@@ -102,6 +102,22 @@ class CreationAuditMigrationIT {
         "re-running the backfill must not move an already-populated createdAt");
   }
 
+  /** The id cursor reads every row, deleted or not, so a soft-deleted table is backfilled too. */
+  @Test
+  void backfillReachesSoftDeletedEntities(TestNamespace ns) throws Exception {
+    Table table = createTableWithVersionHistory(ns, "creation-audit-deleted");
+    SdkClients.adminClient().tables().delete(table.getId().toString());
+    long expectedCreatedAt = oldestVersionUpdatedAt(table.getId());
+
+    stripCreationAudit(table.getId());
+    runBackfill();
+
+    assertEquals(
+        expectedCreatedAt,
+        readCreatedAt(table.getId()),
+        "a soft-deleted table must still get createdAt from its oldest version");
+  }
+
   /**
    * The suite's bootstrap ran the real migration workflow, so this step already recorded its
    * marker. A later re-run of 2.1.0, which any change to a v210 helper triggers, must skip it.

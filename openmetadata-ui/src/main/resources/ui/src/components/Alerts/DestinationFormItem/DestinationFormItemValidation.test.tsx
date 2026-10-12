@@ -19,6 +19,10 @@ import {
   SubscriptionType,
   Type,
 } from '../../../generated/events/eventSubscription';
+import {
+  AlertSelection,
+  AlertSelectionProvider,
+} from '../../../hooks/useAlertSelection';
 import { testAlertDestination } from '../../../rest/alertsAPI';
 import DestinationFormItemFormBridge, {
   DestinationFormFields,
@@ -57,12 +61,14 @@ interface ValidationHarnessProps {
   initialValues?: Partial<DestinationFormFields>;
   isRequired?: boolean;
   onFinish: jest.Mock;
+  selection?: AlertSelection;
 }
 
 function ValidationHarness({
   initialValues,
   isRequired,
   onFinish,
+  selection,
 }: ValidationHarnessProps) {
   const [values, setValues] = useState<Partial<DestinationFormFields>>(
     initialValues ?? {}
@@ -70,7 +76,7 @@ function ValidationHarness({
   const [isBlocked, setIsBlocked] = useState(false);
   const [validationError, setValidationError] = useState('');
 
-  return (
+  const form = (
     <>
       <DestinationFormItemFormBridge
         isRequired={isRequired}
@@ -98,6 +104,12 @@ function ValidationHarness({
       </output>
     </>
   );
+
+  return selection ? (
+    <AlertSelectionProvider value={selection}>{form}</AlertSelectionProvider>
+  ) : (
+    form
+  );
 }
 
 function ParentFormFocusHarness() {
@@ -118,11 +130,24 @@ function ParentFormFocusHarness() {
 function ParentFormDestinationChangeHarness() {
   const [values, setValues] = useState<Partial<DestinationFormFields>>({
     destinations: OAUTH_DESTINATION_VALUES.destinations,
-    resources: ['table'],
   });
 
   return <DestinationFormItemFormBridge values={values} onChange={setValues} />;
 }
+
+// The page provides the chosen sources; the destination form holds only its own fields.
+const TABLE_SELECTION = {
+  sources: ['table'],
+  support: {},
+  capabilities: { loading: false },
+  loading: false,
+  search: {
+    indexes: [],
+    containerEntities: [],
+    byName: jest.fn(),
+    byId: jest.fn(),
+  },
+} as AlertSelection;
 
 function UnconfiguredEmailDestinationHarness() {
   const [values, setValues] = useState<Partial<DestinationFormFields>>({
@@ -133,10 +158,13 @@ function UnconfiguredEmailDestinationHarness() {
         type: SubscriptionType.Email,
       },
     ],
-    resources: ['table'],
   });
 
-  return <DestinationFormItemFormBridge values={values} onChange={setValues} />;
+  return (
+    <AlertSelectionProvider value={TABLE_SELECTION}>
+      <DestinationFormItemFormBridge values={values} onChange={setValues} />
+    </AlertSelectionProvider>
+  );
 }
 
 describe('DestinationFormItem validation', () => {
@@ -328,8 +356,8 @@ describe('DestinationFormItem validation', () => {
               type: SubscriptionType.Email,
             },
           ],
-          resources: ['table'],
         }}
+        selection={TABLE_SELECTION}
         onFinish={onFinish}
       />
     );
@@ -366,8 +394,8 @@ describe('DestinationFormItem validation', () => {
               type: SubscriptionType.Email,
             },
           ],
-          resources: ['table'],
         }}
+        selection={TABLE_SELECTION}
         onFinish={onFinish}
       />
     );
@@ -400,10 +428,7 @@ describe('DestinationFormItem validation', () => {
   it('clears the stale minimum destination count error when a destination is added', async () => {
     const onFinish = jest.fn();
     render(
-      <ValidationHarness
-        initialValues={{ resources: ['table'] }}
-        onFinish={onFinish}
-      />
+      <ValidationHarness selection={TABLE_SELECTION} onFinish={onFinish} />
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));

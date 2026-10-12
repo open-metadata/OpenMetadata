@@ -14,6 +14,7 @@
 import {
   Box,
   Button,
+  DatePicker,
   Dialog,
   FeaturedIcon,
   FormField,
@@ -23,19 +24,18 @@ import {
   Label,
   Modal,
   ModalOverlay,
+  parseDate,
+  TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
-import {
-  Announcement02,
-  Calendar,
-} from '@openmetadata/ui-core-components/icons';
+import { Announcement02 } from '@openmetadata/ui-core-components/icons';
+import { useRef } from 'react';
 import { UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { AnnouncementType } from '../../../generated/entity/feed/announcement';
 import { CUSTOM_TYPE_NAME_MAX_LENGTH } from '../../../utils/AnnouncementsUtils';
 import { isDescriptionContentEmpty } from '../../../utils/BlockEditorPureUtils';
-import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
-import { fromDateInputValue, toDateInputValue } from './announcementFormUtils';
+import { fromCalendarValue, toCalendarDay } from './announcementFormUtils';
 import { AnnouncementFormValues } from './AnnouncementModal.interface';
 import {
   AnnouncementColorSelect,
@@ -55,72 +55,6 @@ interface AnnouncementFormProps {
 }
 
 /**
- * A native date input rather than a component: core's `Input` is a react-aria
- * TextField, which has no `date` type, and its `DatePicker` is typed against
- * `@internationalized/date` from the design system's own node_modules, so the
- * `DateValue` it expects is a different type identity from the one this app
- * resolves. The native control is localized, keyboard-accessible and needs
- * neither a cast nor a dependency.
- *
- * The frame puts the calendar on the left. The native picker indicator is
- * stretched invisibly over the whole control instead of hidden, so a click
- * anywhere still opens the picker rather than only on the icon.
- */
-// Kept as whole literals so Tailwind still sees each class.
-const DATE_INPUT_CLASS = [
-  'tw:relative tw:w-full tw:rounded-lg tw:bg-primary tw:py-2 tw:pr-3 tw:pl-9',
-  'tw:text-sm tw:text-primary tw:shadow-xs',
-  'tw:outline-1 tw:-outline-offset-1 tw:outline-primary',
-  'tw:focus-visible:outline-2 tw:focus-visible:outline-brand',
-  'tw:[&::-webkit-calendar-picker-indicator]:absolute',
-  'tw:[&::-webkit-calendar-picker-indicator]:inset-0',
-  'tw:[&::-webkit-calendar-picker-indicator]:size-full',
-  'tw:[&::-webkit-calendar-picker-indicator]:cursor-pointer',
-  'tw:[&::-webkit-calendar-picker-indicator]:opacity-0',
-].join(' ');
-
-const DateField = ({
-  boundary = 'start',
-  id,
-  label,
-  value,
-  onChange,
-}: {
-  /** `end` anchors the value to 23:59:59.999 so the chosen day is included. */
-  boundary?: 'start' | 'end';
-  id: string;
-  label: string;
-  value?: number | null;
-  onChange: (value: number | null) => void;
-}) => (
-  <Box className="tw:min-w-0 tw:flex-1 tw:gap-1.5" direction="col">
-    <Label isRequired htmlFor={id}>
-      {label}
-    </Label>
-    <div className="tw:relative">
-      {/* `z-1` because the input below is itself positioned (it has to be, so
-          the picker indicator can stretch over it) and carries an opaque
-          background — at `z-index: auto` paint order is DOM order, so the
-          input would cover this icon. `pointer-events-none` keeps the click
-          falling through to the indicator. */}
-      <Calendar
-        aria-hidden
-        className="tw:pointer-events-none tw:absolute tw:top-1/2 tw:left-3 tw:z-1 tw:size-4 tw:-translate-y-1/2 tw:text-fg-quaternary"
-      />
-      <input
-        aria-label={label}
-        className={DATE_INPUT_CLASS}
-        data-testid={id}
-        id={id}
-        type="date"
-        value={toDateInputValue(value)}
-        onChange={(e) => onChange(fromDateInputValue(e.target.value, boundary))}
-      />
-    </div>
-  </Box>
-);
-
-/**
  * The error line under a field that is not an `Input` — an `Input` takes the
  * message as its own `hint`, which also wires `aria-describedby` to it. Core's
  * `HintText` is the same element either way, so the two read alike.
@@ -137,6 +71,76 @@ const FieldError = ({
       {message}
     </HintText>
   ) : null;
+
+/**
+ * The design system's `DatePicker` in its `input` trigger variant: a
+ * field-shaped control with a leading calendar icon, opening a popover with a
+ * calendar, a typable date field and a Today preset. The `input` shape is what
+ * the design calls for here — these two sit in a labelled column between Title
+ * and Description, so they have to line up with those fields rather than read
+ * as a pair of loose buttons.
+ *
+ * The epoch-millis bridge crosses as a `yyyy-MM-dd` string and is rebuilt with
+ * core's own `parseDate`. The app and the design system each resolve their own
+ * `@internationalized/date`, so a `DateValue` built here is a different type
+ * from the one this prop expects; a plain day string has no such identity.
+ */
+const DateField = ({
+  boundary = 'start',
+  error,
+  id,
+  label,
+  value,
+  onChange,
+}: {
+  /** `end` anchors the value to 23:59:59.999 so the chosen day is included. */
+  boundary?: 'start' | 'end';
+  error?: string;
+  id: string;
+  label: string;
+  value?: number | null;
+  onChange: (value: number | null) => void;
+}) => {
+  // What the field held when the popover opened. Core's `DatePicker` commits
+  // every day click straight through `onChange`, so without restoring this a
+  // mis-click survives dismissing the popover and gets submitted.
+  const valueOnOpen = useRef<number | null>(value ?? null);
+  // Apply is the only confirming exit. Cancel, Escape and an outside click all
+  // leave through `onOpenChange(false)` — and react-aria calls `onCancel` for
+  // the button alone — so the revert hangs off the close, not off Cancel.
+  const wasApplied = useRef(false);
+
+  return (
+    <Box className="tw:min-w-0 tw:flex-1 tw:gap-1.5" direction="col">
+      <Label isRequired htmlFor={id}>
+        {label}
+      </Label>
+      <DatePicker
+        aria-label={label}
+        data-testid={id}
+        id={id}
+        isInvalid={Boolean(error)}
+        triggerVariant="input"
+        value={value == null ? null : parseDate(toCalendarDay(value))}
+        onApply={() => {
+          wasApplied.current = true;
+        }}
+        onChange={(selected) =>
+          onChange(fromCalendarValue(selected?.toString() ?? null, boundary))
+        }
+        onOpenChange={(isOpen) => {
+          if (isOpen) {
+            valueOnOpen.current = value ?? null;
+            wasApplied.current = false;
+          } else if (!wasApplied.current) {
+            onChange(valueOnOpen.current);
+          }
+        }}
+      />
+      <FieldError message={error} testId={`${id}-error`} />
+    </Box>
+  );
+};
 
 const TITLE_MIN_LENGTH = 5;
 const TITLE_MAX_LENGTH = 124;
@@ -303,9 +307,7 @@ const AnnouncementForm = ({
                     id="title"
                     isInvalid={Boolean(fieldState.error)}
                     label={t('label.title')}
-                    placeholder={t('label.enter-entity', {
-                      entity: t('label.title'),
-                    })}
+                    placeholder={t('message.enter-title-here')}
                     value={field.value}
                     onChange={field.onChange}
                   />
@@ -320,12 +322,24 @@ const AnnouncementForm = ({
                     validate: (value) =>
                       value != null || requiredMessage(t('label.start-date')),
                   }}>
-                  {({ field }) => (
+                  {({ field, fieldState }) => (
                     <DateField
+                      error={fieldState.error?.message}
                       id="startTime"
                       label={t('label.start-date')}
                       value={field.value}
-                      onChange={field.onChange}
+                      onChange={(next) => {
+                        field.onChange(next);
+                        // Moving the start can invalidate an end that was fine
+                        // against the old one — but only re-judge an end that
+                        // exists. A blanket `deps` would also fire the end's
+                        // required rule the moment a start is picked, printing
+                        // "End Date is required" under a field the user has
+                        // not reached yet.
+                        if (form.getValues('endTime') != null) {
+                          form.trigger('endTime');
+                        }
+                      }}
                     />
                   )}
                 </FormField>
@@ -334,12 +348,26 @@ const AnnouncementForm = ({
                   control={form.control}
                   name="endTime"
                   rules={{
-                    validate: (value) =>
-                      value != null || requiredMessage(t('label.end-date')),
+                    // The ordering rule lives on the field the user can fix.
+                    // Both modals still refuse an inverted window on submit,
+                    // but that arrives as a toast after the fact; stated here
+                    // it keeps submit disabled and names the problem in place.
+                    validate: (value, { startTime }) => {
+                      if (value == null) {
+                        return requiredMessage(t('label.end-date'));
+                      }
+
+                      return (
+                        startTime == null ||
+                        value > startTime ||
+                        t('message.announcement-invalid-start-time')
+                      );
+                    },
                   }}>
-                  {({ field }) => (
+                  {({ field, fieldState }) => (
                     <DateField
                       boundary="end"
+                      error={fieldState.error?.message}
                       id="endTime"
                       label={t('label.end-date')}
                       value={field.value}
@@ -353,32 +381,33 @@ const AnnouncementForm = ({
                 control={form.control}
                 name="description"
                 rules={{
-                  // The editor emits markup even when blank, so emptiness is
-                  // judged on content rather than on the raw string.
+                  // Judged on content, not on the raw string: an announcement
+                  // written before this field was a `TextArea` can still hold
+                  // the block editor's empty `<p></p>`, which is not a
+                  // description.
                   validate: (value) =>
                     !isDescriptionContentEmpty(value) ||
                     requiredMessage(t('label.description')),
                 }}>
                 {({ field, fieldState }) => (
-                  <Box className="tw:gap-1.5" direction="col">
-                    <Label isRequired>{t('label.description')}</Label>
-                    {/* The block editor, not core's DESCRIPTION field: that one
-                        renders a plain TextArea, and an announcement's
-                        description is markdown that the banner and drawer both
-                        render through RichTextEditorPreviewerV1. */}
-                    <RichTextEditor
-                      data-testid="description"
-                      initialValue={field.value}
-                      placeHolder={t('label.enter-entity-description', {
-                        entity: t('label.announcement'),
-                      })}
-                      onTextChange={field.onChange}
-                    />
-                    <FieldError
-                      message={fieldState.error?.message}
-                      testId="description-error"
-                    />
-                  </Box>
+                  // Core's `TextArea`, not the block editor: the announcement
+                  // body is a short notice, and this keeps the field's label,
+                  // placeholder, hint and invalid border identical to the Title
+                  // input above it. `description` stays a markdown field on the
+                  // wire — plain text is valid markdown, so the banner and the
+                  // drawer keep rendering it through RichTextEditorPreviewerV1.
+                  <TextArea
+                    isRequired
+                    autoSize={{ minRows: 5, maxRows: 12 }}
+                    data-testid="description"
+                    hint={fieldState.error?.message}
+                    id="description"
+                    isInvalid={Boolean(fieldState.error)}
+                    label={t('label.description')}
+                    placeholder={t('message.enter-a-description')}
+                    value={field.value}
+                    onChange={field.onChange}
+                  />
                 )}
               </FormField>
             </HookForm>

@@ -5,7 +5,7 @@
   "description": "A `Role` is a collection of `Policies` that provides access control. A user or a team can be assigned one or multiple roles that provide privileges to a user and members of a team to perform the job function.",
   "javaType": "org.openmetadata.schema.entity.teams.Role",
   "javaInterfaces": [
-    "org.openmetadata.schema.EntityInterface",
+    "org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>",
     "org.openmetadata.schema.CreationAudited"
   ],
   "type": "object",

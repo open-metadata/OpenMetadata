@@ -27,8 +27,10 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeAll;
@@ -126,6 +128,39 @@ class ConversationResourceIT {
 
     deleteConversation(conversation.getId());
     assertThrows(ApiException.class, () -> getConversation(conversation.getId()));
+  }
+
+  @Test
+  void testListingIncludesFieldConversationsOnRequest(TestNamespace ns) throws Exception {
+    Table table = createTestTable(ns, "fields");
+    String about = entityLink(table);
+    String columnAbout =
+        "<#E::table::"
+            + table.getFullyQualifiedName()
+            + "::columns::"
+            + table.getColumns().getFirst().getName()
+            + ">";
+    Conversation onTable = createConversation(about, "About the table");
+    Conversation onColumn = createConversation(columnAbout, "About a column");
+
+    assertEquals(
+        List.of(onTable.getId()),
+        listConversations(about, 10, null, null, null).getData().stream()
+            .map(Conversation::getId)
+            .toList(),
+        "Without includeFields the link matches exactly");
+    // Both may share a millisecond, so the order is the id's, not the creation's.
+    assertEquals(
+        Set.of(onColumn.getId(), onTable.getId()),
+        listConversationsWithFields(about).getData().stream()
+            .map(Conversation::getId)
+            .collect(Collectors.toSet()));
+    assertEquals(
+        List.of(onColumn.getId()),
+        listConversationsWithFields(columnAbout).getData().stream()
+            .map(Conversation::getId)
+            .toList(),
+        "A field link does not widen to its entity");
   }
 
   @Test
@@ -617,6 +652,19 @@ class ConversationResourceIT {
         client
             .getHttpClient()
             .executeForString(HttpMethod.GET, CONVERSATIONS_PATH, null, options.build());
+    return MAPPER.readValue(json, ConversationList.class);
+  }
+
+  private static ConversationList listConversationsWithFields(String about) throws Exception {
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("entityLink", about)
+            .queryParam("includeFields", "true")
+            .build();
+    String json =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, CONVERSATIONS_PATH, null, options);
     return MAPPER.readValue(json, ConversationList.class);
   }
 

@@ -644,7 +644,7 @@ export const verifyEntityTypeFilterInTagAssets = async (
   assets: EntityClass[]
 ) => {
   await page.getByTestId('asset-filter-button').click();
-  await page.getByRole('menuitem', { name: 'Entity Type' }).click();
+  await page.getByRole('menuitemcheckbox', { name: 'Entity Type' }).click();
   await expect(page.getByRole('button', { name: 'Entity Type' })).toBeVisible();
   await page.getByRole('button', { name: 'Entity Type' }).click();
   const entityTypeMenu = page.getByTestId('drop-down-menu');

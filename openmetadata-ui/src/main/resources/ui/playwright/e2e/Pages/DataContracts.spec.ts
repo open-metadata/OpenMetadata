@@ -70,6 +70,7 @@ import {
   importOMViaDropdown,
   navigateToContractTab,
   openContractActionsDropdown,
+  reloadContractPage,
   saveAndTriggerDataContractValidation,
   saveContractAndWait,
   saveSecurityAndSLADetails,
@@ -399,9 +400,7 @@ test.describe('Data Contracts', () => {
         await triggerContractValidation(page, contractId);
         await toastPromise;
 
-        await page.reload();
-
-        await waitForAllLoadersToDisappear(page);
+        await reloadContractPage(page);
 
         await expect(
           page.getByTestId('contract-status-card-item-semantics-status')
@@ -1200,9 +1199,7 @@ test.describe('Data Contracts', () => {
     await triggerContractValidation(page, contractId1104);
     await toastPromise;
 
-    await page.reload();
-
-    await waitForAllLoadersToDisappear(page);
+    await reloadContractPage(page);
 
     await expect(
       page.getByTestId('contract-status-card-item-semantics-status')
@@ -1394,9 +1391,7 @@ test.describe('Data Contracts', () => {
     await triggerContractValidation(page, contractId1289);
     await toastPromise;
 
-    await page.reload();
-
-    await waitForAllLoadersToDisappear(page);
+    await reloadContractPage(page);
 
     await expect(
       page.getByTestId('contract-status-card-item-semantics-status')
@@ -1558,9 +1553,7 @@ test.describe('Data Contracts', () => {
 
     await page.getByTestId('contract-run-now-button').click();
 
-    await page.reload();
-
-    await waitForAllLoadersToDisappear(page);
+    await reloadContractPage(page);
 
     await expect(
       page.getByTestId('contract-status-card-item-schema-status')

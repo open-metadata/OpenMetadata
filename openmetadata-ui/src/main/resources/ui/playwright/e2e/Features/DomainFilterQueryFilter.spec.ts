@@ -27,7 +27,6 @@ import {
   getApiContext,
   redirectToExplorePage,
   redirectToHomePage,
-  waitForAntdPopupToSettle,
 } from '../../utils/common';
 import {
   assignDomainToEntity,
@@ -825,11 +824,8 @@ const searchInDropdown = async (page: Page, searchText: string) => {
   await aggregation;
 };
 
-// The quick-filter menu is an antd dropdown that is still growing into place
-// when Playwright decides the item is stable, so the item slides out from under
-// the pointer between mousedown and mouseup and Chrome retargets the click to
-// the menu `<ul>` — the selection is silently dropped and the filter trigger
-// never renders. Wait out the enter animation before picking an item.
+// The core menu can still cover the next filter during its exit animation.
+// Wait for it to leave before pressing the selected filter's trigger.
 const selectQuickFilter = async (
   page: Page,
   menuItem: RegExp,
@@ -838,10 +834,9 @@ const selectQuickFilter = async (
   await page
     .getByTestId('asset-filter-button')
     .click({ timeout: ACTION_TIMEOUT });
-  await waitForAntdPopupToSettle(page);
-  await page
-    .getByRole('menuitem', { name: menuItem })
-    .click({ timeout: ACTION_TIMEOUT });
+  const item = page.getByRole('menuitemcheckbox', { name: menuItem });
+  await item.click({ timeout: ACTION_TIMEOUT });
+  await expect(item).not.toBeVisible();
   await expect(page.getByTestId(dropdownTestId)).toBeVisible();
 };
 

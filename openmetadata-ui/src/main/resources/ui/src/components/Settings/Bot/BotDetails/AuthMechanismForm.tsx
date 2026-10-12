@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Form, FormProps, Select, Space } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Button, Form, FormProps, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { FC, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VALIDATION_MESSAGES } from '../../../../constants/constants';
+import { ClientErrors } from '../../../../enums/Axios.enum';
 import {
   PersonalAccessToken,
   TokenType,
@@ -29,11 +30,40 @@ import {
 } from '../../../../generated/entity/teams/user';
 import { ScimConfiguration } from '../../../../generated/scim/scimConfiguration';
 import { SettingType } from '../../../../generated/settings/settings';
-import { updateSettingsConfig } from '../../../../rest/settingConfigAPI';
+import {
+  patchSettingsConfig,
+  updateSettingsConfig,
+} from '../../../../rest/settingConfigAPI';
 import { getJWTTokenExpiryOptions } from '../../../../utils/BotsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 
 const { Option } = Select;
+
+const DEFAULT_SCIM_CONFIGURATION: ScimConfiguration = {
+  enabled: true,
+  identityProvider: 'default',
+};
+
+/**
+ * Patches only `enabled`, so the other SCIM fields an operator configured survive. A server whose
+ * configuration file has no SCIM section stores nothing until the first write, and a patch needs a
+ * stored value, so that case creates the setting instead.
+ */
+const enableScimProvisioning = async () => {
+  try {
+    await patchSettingsConfig(SettingType.ScimConfiguration, [
+      { op: 'add', path: '/enabled', value: true },
+    ]);
+  } catch (error) {
+    if ((error as AxiosError)?.response?.status !== ClientErrors.NOT_FOUND) {
+      throw error;
+    }
+    await updateSettingsConfig({
+      config_type: SettingType.ScimConfiguration,
+      config_value: DEFAULT_SCIM_CONFIGURATION,
+    });
+  }
+};
 
 interface Props {
   isUpdating: boolean;
@@ -94,18 +124,9 @@ const AuthMechanismForm: FC<Props> = ({
   }, [isBot, authenticationMechanism]);
 
   const handleGenerateSCIMToken = useCallback(async () => {
-    // Update SCIM configuration when generating token for SCIM bot
     if (isSCIMBot) {
       try {
-        const scimConfig: ScimConfiguration = {
-          enabled: true,
-          identityProvider: 'default',
-        };
-
-        await updateSettingsConfig({
-          config_type: SettingType.ScimConfiguration,
-          config_value: scimConfig,
-        });
+        await enableScimProvisioning();
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
@@ -172,7 +193,12 @@ const AuthMechanismForm: FC<Props> = ({
         </Select>
       </Form.Item>
 
-      <Space className="w-full justify-end" size={4}>
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal w-full justify-end"
+        gap={1}
+        itemClassName="layout-space-item">
         {!isEmpty(authenticationMechanism) && (
           <Button data-testid="cancel-edit" type="link" onClick={onCancel}>
             {t('label.cancel')}
@@ -186,7 +212,7 @@ const AuthMechanismForm: FC<Props> = ({
           type="primary">
           {t('label.generate')}
         </Button>
-      </Space>
+      </Box>
     </Form>
   );
 };

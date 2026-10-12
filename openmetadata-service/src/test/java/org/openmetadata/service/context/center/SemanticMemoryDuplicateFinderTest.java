@@ -25,10 +25,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.search.SearchRequest;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.llm.LLMCompletionClient;
@@ -54,7 +54,7 @@ class SemanticMemoryDuplicateFinderTest {
         .withQuestion(question)
         .withAnswer(answer)
         .withSourceType(ContextMemorySourceType.FILE_EXTRACTION)
-        .withEntityStatus(EntityStatus.APPROVED)
+        .withEntityStatus(ContextMemoryStatus.APPROVED)
         .withShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.ENTITY));
   }
 

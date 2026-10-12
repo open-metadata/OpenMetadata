@@ -72,6 +72,7 @@ def _make_source_and_dag(task_names=None):
     source.connection = MagicMock()
     source.connection.api_version = "v1"
     source.metadata = MagicMock()
+    source.get_tag_by_fqn.return_value = None
     source.source_config = MagicMock()
     source.source_config.includeTags = True
 
@@ -818,11 +819,7 @@ class TestBuildTasks:
 
 
 class TestYieldPipeline:
-    @patch(
-        "metadata.ingestion.source.pipeline.airflow.api.source.get_tag_labels",
-        return_value=[],
-    )
-    def test_yields_create_pipeline_request(self, _mock_tags):
+    def test_yields_create_pipeline_request(self):
         source, dag = _make_source_and_dag()
         results = list(AirflowApiSource.yield_pipeline(source, dag))
 
@@ -834,11 +831,7 @@ class TestYieldPipeline:
         assert len(request.tasks) == 2
         assert request.tasks[0].name == "task_1"
 
-    @patch(
-        "metadata.ingestion.source.pipeline.airflow.api.source.get_tag_labels",
-        return_value=[],
-    )
-    def test_yields_error_on_exception(self, _mock_tags):
+    def test_yields_error_on_exception(self):
         source, dag = _make_source_and_dag()
         # Break the service name to trigger a validation error
         source.context.get.return_value.pipeline_service = None
@@ -953,11 +946,7 @@ class TestGetOwners:
 
 
 class TestYieldPipelineOwners:
-    @patch(
-        "metadata.ingestion.source.pipeline.airflow.api.source.get_tag_labels",
-        return_value=[],
-    )
-    def test_owners_propagated_to_request(self, _mock_tags):
+    def test_owners_propagated_to_request(self):
         source, dag = _make_source_and_dag()
         dag.owners = ["airflow_admin"]
         admin_ref = _make_entity_ref("airflow_admin")
@@ -969,11 +958,7 @@ class TestYieldPipelineOwners:
         assert results[0].right.owners is not None
         assert len(results[0].right.owners.root) == 1
 
-    @patch(
-        "metadata.ingestion.source.pipeline.airflow.api.source.get_tag_labels",
-        return_value=[],
-    )
-    def test_no_owners_sets_none(self, _mock_tags):
+    def test_no_owners_sets_none(self):
         source, dag = _make_source_and_dag()
         dag.owners = None
         source.get_owners = lambda owners: None
@@ -982,11 +967,7 @@ class TestYieldPipelineOwners:
         assert len(results) == 1
         assert results[0].right.owners is None
 
-    @patch(
-        "metadata.ingestion.source.pipeline.airflow.api.source.get_tag_labels",
-        return_value=[],
-    )
-    def test_empty_owners_sets_none(self, _mock_tags):
+    def test_empty_owners_sets_none(self):
         source, dag = _make_source_and_dag()
         dag.owners = []
         source.get_owners = lambda owners: None

@@ -41,12 +41,9 @@
  */
 
 import {
-  Button,
-  Dropdown,
   EmptyPlaceholder,
   PaginationCardWithControls,
   Table as UntitledTable,
-  Typography,
 } from '@openmetadata/ui-core-components';
 import {
   ChevronDown,
@@ -77,7 +74,6 @@ import {
 } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { twMerge } from 'tailwind-merge';
-import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column-customize.svg';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import {
   getCustomizeColumnDetails,
@@ -90,7 +86,7 @@ import NextPrevious from '../NextPrevious/NextPrevious';
 import Searchbar, {
   SearchBarProps,
 } from '../SearchBarComponent/SearchBar.component';
-import DraggableMenuItemV2 from './DraggableMenu/DraggableMenuItemV2.component';
+import ColumnCustomizeDropdown from './ColumnCustomizeDropdown/ColumnCustomizeDropdown';
 import type {
   ColumnsType,
   ColumnType,
@@ -108,6 +104,7 @@ import type {
   AriaSelection,
   AriaSortDescriptor,
   FlatRow,
+  TableV2ExtensionProps,
 } from './TableV2.interface';
 import {
   flattenTreeRows,
@@ -161,7 +158,8 @@ type TableV2Props<T extends object> = Omit<
   TableComponentProps<T>,
   UnsupportedProps | 'customPaginationProps' | 'pagination'
 > &
-  PaginationContract<T>;
+  PaginationContract<T> &
+  TableV2ExtensionProps<T>;
 
 const DEFAULT_PAGE_SIZE = 10;
 const DEFAULT_INDENT_PX = 12;
@@ -609,98 +607,20 @@ const recordMatchesActiveFilters = <T,>(
       : true;
   });
 
-interface ColumnCustomizeDropdownProps {
-  columnDropdownSelections: string[];
-  dropdownColumnList: TableColumnDropdownList[];
-  onBulkAction: () => void;
-  onMoveItem: (updatedList: TableColumnDropdownList[]) => void;
-  onSelect: (key: string, selected: boolean) => void;
-}
-
-/** The "customize columns" dropdown hung off the toolbar's filter row. */
-const ColumnCustomizeDropdown = ({
-  columnDropdownSelections,
-  dropdownColumnList,
-  onBulkAction,
-  onMoveItem,
-  onSelect,
-}: ColumnCustomizeDropdownProps) => {
-  const { t } = useTranslation();
-  const allSelected =
-    dropdownColumnList.length === columnDropdownSelections.length;
-
-  return (
-    <Dropdown.Root>
-      <Button
-        color="tertiary"
-        data-testid="column-dropdown"
-        iconLeading={ColumnIcon}
-        size="sm"
-        title={t('label.show-or-hide-column-plural')}>
-        {t('label.customize')}
-      </Button>
-      <Dropdown.Popover>
-        <Dropdown.Menu>
-          <Dropdown.SectionHeader className="tw:px-3 tw:py-1.5  tw:flex tw:justify-between tw:items-center">
-            <Typography
-              className="tw:text-tertiary"
-              data-testid="column-dropdown-title"
-              weight="medium">
-              {t('label.column')}
-            </Typography>
-            <Button
-              color="link-color"
-              data-testid="column-dropdown-action-button"
-              size="xs"
-              onClick={onBulkAction}>
-              {allSelected ? t('label.hide-all') : t('label.view-all')}
-            </Button>
-          </Dropdown.SectionHeader>
-
-          <Dropdown.Separator />
-          <Dropdown.Section>
-            {dropdownColumnList.map((item, index) => (
-              <DraggableMenuItemV2
-                currentItem={item}
-                index={index}
-                itemList={dropdownColumnList}
-                key={item.value}
-                selectedOptions={columnDropdownSelections}
-                onMoveItem={onMoveItem}
-                onSelect={onSelect}
-              />
-            ))}
-          </Dropdown.Section>
-        </Dropdown.Menu>
-      </Dropdown.Popover>
-    </Dropdown.Root>
-  );
-};
-
 interface TableToolbarProps {
-  columnDropdownSelections: string[];
-  dropdownColumnList: TableColumnDropdownList[];
+  columnCustomize: ReactNode;
   extraTableFilters?: ReactNode;
   extraTableFiltersClassName?: string;
-  isCustomizeColumnEnable: boolean;
-  onBulkColumnAction: () => void;
-  onMoveColumnItem: (updatedList: TableColumnDropdownList[]) => void;
   onSearch: (value: string) => void;
-  onSelectColumnItem: (key: string, selected: boolean) => void;
   searchProps?: SearchBarProps;
 }
 
 /** Search box and extra/customize-column filters row above the table. */
 const TableToolbar = ({
-  columnDropdownSelections,
-  dropdownColumnList,
+  columnCustomize,
   extraTableFilters,
   extraTableFiltersClassName,
-  isCustomizeColumnEnable,
-  onBulkColumnAction,
-  onMoveColumnItem,
   onSearch,
-  onSelectColumnItem,
   searchProps,
 }: TableToolbarProps) => {
   const { t } = useTranslation();
@@ -719,7 +639,7 @@ const TableToolbar = ({
           />
         </div>
       )}
-      {(extraTableFilters || isCustomizeColumnEnable) && (
+      {(extraTableFilters || columnCustomize) && (
         <div
           className={classNames(
             // min-w-0: else the row takes min-content width and overflows the clip.
@@ -728,18 +648,73 @@ const TableToolbar = ({
           )}
           style={{ flex: 1 }}>
           {extraTableFilters}
-          {isCustomizeColumnEnable && (
-            <ColumnCustomizeDropdown
-              columnDropdownSelections={columnDropdownSelections}
-              dropdownColumnList={dropdownColumnList}
-              onBulkAction={onBulkColumnAction}
-              onMoveItem={onMoveColumnItem}
-              onSelect={onSelectColumnItem}
-            />
-          )}
+          {columnCustomize}
         </div>
       )}
     </div>
+  );
+};
+
+type TableToolbarSectionProps = TableToolbarProps &
+  Pick<TableV2ExtensionProps<object>, 'renderToolbar'>;
+
+/** The toolbar band: the call site's own `renderToolbar`, else the default row. */
+const TableToolbarSection = ({
+  renderToolbar,
+  ...toolbarProps
+}: TableToolbarSectionProps) => {
+  if (renderToolbar) {
+    return (
+      <div data-testid="table-toolbar">
+        {renderToolbar(toolbarProps.columnCustomize)}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={classNames('p-x-md', {
+        'p-y-md':
+          toolbarProps.searchProps ||
+          toolbarProps.extraTableFilters ||
+          toolbarProps.columnCustomize,
+      })}
+      data-testid="table-toolbar">
+      <TableToolbar {...toolbarProps} />
+    </div>
+  );
+};
+
+/**
+ * A record drawn as one cell across every column, the selection column
+ * included — so the row must also drop its selection cell.
+ */
+const buildFullWidthRow = <T extends object>(
+  content: ReactNode,
+  flatRow: FlatRow<T>,
+  rowId: string,
+  columnCount: number,
+  hasSelectionCell: boolean,
+  className?: string
+) => {
+  if (content === null || content === undefined) {
+    return null;
+  }
+
+  return (
+    <UntitledTable.Row
+      hideSelectionCell
+      className={className}
+      data-level={flatRow.depth}
+      data-row-key={flatRow.rowKey}
+      id={rowId}
+      key={rowId}>
+      <UntitledTable.Cell
+        className="tw:p-0"
+        colSpan={columnCount + (hasSelectionCell ? 1 : 0)}>
+        {content}
+      </UntitledTable.Cell>
+    </UntitledTable.Row>
   );
 };
 
@@ -898,6 +873,9 @@ const TableV2 = <T extends object>(
     dragAndDropHooks,
     'data-testid': dataTestId,
     scroll,
+    renderToolbar,
+    fullWidthRowRender,
+    'aria-label': ariaLabel = 'data-table',
     ...rest
   }: TableV2Props<T>,
   ref: Ref<HTMLDivElement> | null | undefined
@@ -1771,25 +1749,24 @@ const TableV2 = <T extends object>(
         rest.containerClassName
       )}
       ref={ref}>
-      <div
-        className={classNames('p-x-md', {
-          'p-y-md':
-            searchProps || rest.extraTableFilters || isCustomizeColumnEnable,
-        })}
-        data-testid="table-toolbar">
-        <TableToolbar
-          columnDropdownSelections={columnDropdownSelections}
-          dropdownColumnList={dropdownColumnList}
-          extraTableFilters={rest.extraTableFilters}
-          extraTableFiltersClassName={rest.extraTableFiltersClassName}
-          isCustomizeColumnEnable={isCustomizeColumnEnable}
-          searchProps={searchProps}
-          onBulkColumnAction={handleBulkColumnAction}
-          onMoveColumnItem={handleMoveItem}
-          onSearch={handleSearchAction}
-          onSelectColumnItem={handleColumnItemSelect}
-        />
-      </div>
+      <TableToolbarSection
+        columnCustomize={
+          isCustomizeColumnEnable ? (
+            <ColumnCustomizeDropdown
+              columnDropdownSelections={columnDropdownSelections}
+              dropdownColumnList={dropdownColumnList}
+              onBulkAction={handleBulkColumnAction}
+              onMoveItem={handleMoveItem}
+              onSelect={handleColumnItemSelect}
+            />
+          ) : null
+        }
+        extraTableFilters={rest.extraTableFilters}
+        extraTableFiltersClassName={rest.extraTableFiltersClassName}
+        renderToolbar={renderToolbar}
+        searchProps={searchProps}
+        onSearch={handleSearchAction}
+      />
 
       <div
         // `tw:relative` anchors the loading overlay below. Without it the
@@ -1822,7 +1799,7 @@ const TableV2 = <T extends object>(
           );
           const tableContent = (
             <UntitledTable
-              aria-label="data-table"
+              aria-label={ariaLabel}
               // AntD sticks the header only when the call site asks for it —
               // via `sticky`, or `scroll.y`, which gives the body its own
               // scroll container. Sticking it unconditionally put a
@@ -2077,6 +2054,21 @@ const TableV2 = <T extends object>(
                   // This is the boundary between the two, narrowed once.
                   const rowHandlers = (rest.onRow?.(record, actualIndex) ??
                     {}) as RowInteractionProps;
+                  const rowClassName =
+                    typeof rest.rowClassName === 'function'
+                      ? rest.rowClassName(record, actualIndex, depth)
+                      : rest.rowClassName;
+                  const fullWidthRow = buildFullWidthRow(
+                    fullWidthRowRender?.(record),
+                    flatRow,
+                    rowIds[flatIndex],
+                    propsColumns.length,
+                    selectionMode !== 'none',
+                    rowClassName
+                  );
+                  if (fullWidthRow) {
+                    return [fullWidthRow];
+                  }
                   const isExpanded = expandedKeys.has(rowKey);
                   const detailRow = buildExpandedDetailRow(
                     rest.expandable,
@@ -2089,9 +2081,7 @@ const TableV2 = <T extends object>(
                     <UntitledTable.Row
                       className={classNames(
                         'tw:group tw:transition-colors tw:hover:bg-secondary tw:data-[selected]:bg-secondary',
-                        typeof rest.rowClassName === 'function'
-                          ? rest.rowClassName(record, actualIndex, depth)
-                          : rest.rowClassName
+                        rowClassName
                       )}
                       data-level={depth}
                       data-row-key={rowKey}
