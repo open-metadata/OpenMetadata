@@ -29,14 +29,26 @@ export const ActivityColumnTagsUpdated: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    viewBox="0 0 12 12"
+    viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <g stroke="currentColor">
-      <path d="M10.454 5.405c.112-.272.112-.574.112-1.18V2.49c0-.93 0-1.396-.289-1.685s-.754-.29-1.685-.29H6.857c-.606 0-.908 0-1.18.113-.273.113-.487.327-.915.755L2.047 4.098C1.06 5.086.567 5.58.567 6.193S1.06 7.3 2.047 8.287l.748.748c.987.987 1.481 1.48 2.094 1.48" />
-      <path d="M8.191 2.766h.125m-.25 0a.25.25 0 1 0 .5 0 .25.25 0 0 0-.5 0m1.74 6.174H8.89m0 0h-.917m.917 0v.917m0-.917v-.917" />
-      <circle cx={8.889} cy={8.939} r={2.545} />
-    </g>
+    <path
+      d="M16.496 9.133c.164-.397.164-.839.164-1.722v-2.53c0-1.358 0-2.037-.422-2.46C15.817 2 15.138 2 13.78 2h-2.531c-.883 0-1.325 0-1.722.164-.397.165-.709.477-1.333 1.101l-3.96 3.961c-1.441 1.44-2.161 2.16-2.161 3.055s.72 1.615 2.16 3.055l1.091 1.09c1.44 1.441 2.16 2.161 3.055 2.161"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+    <path
+      d="M13.195 5.283h.182m-.364 0a.365.365 0 1 0 .73 0 .365.365 0 0 0-.73 0m2.541 9.006h-1.338m0 0H12.88m1.337 0v1.337m0-1.337V12.95"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+    <circle
+      cx={14.212}
+      cy={14.288}
+      r={3.712}
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
   </svg>
 );
 ActivityColumnTagsUpdated.displayName = 'ActivityColumnTagsUpdated';

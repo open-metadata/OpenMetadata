@@ -29,14 +29,22 @@ export const ActivityAssetSoftDeleted: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    viewBox="0 0 12 12"
+    viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <g stroke="currentColor">
-      <path d="m9.233 2.604-.184 2.98m-6.686-2.98.277 4.59c.071 1.176.107 1.764.4 2.187.146.209.333.385.55.518.308.188.688.244 1.292.26M1.676 2.603h8.243m-2.264 0-.313-.645c-.208-.428-.311-.643-.49-.776a1 1 0 0 0-.126-.08C6.527 1 6.289 1 5.813 1c-.488 0-.732 0-.933.107a1 1 0 0 0-.128.082c-.181.14-.282.361-.485.805l-.277.609" />
-      <circle cx={8.238} cy={8.915} r={2.085} />
-      <path d="M7.469 8.914h1.538" />
-    </g>
+    <path
+      d="m15.173 4.566-.294 4.767M4.184 4.566l.443 7.345c.113 1.882.17 2.822.64 3.498.232.335.532.617.88.83.491.3 1.1.39 2.066.417M3.082 4.564H16.27m-3.623 0-.5-1.031c-.332-.686-.498-1.029-.785-1.242a1.5 1.5 0 0 0-.201-.126C10.844 2 10.463 2 9.7 2c-.78 0-1.171 0-1.494.172q-.107.057-.204.13c-.29.223-.451.578-.775 1.289l-.444.973"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+    <circle
+      cx={13.578}
+      cy={14.664}
+      r={3.336}
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+    <path d="M12.352 14.662h2.46" stroke="currentColor" strokeWidth={1.3} />
   </svg>
 );
 ActivityAssetSoftDeleted.displayName = 'ActivityAssetSoftDeleted';
