@@ -18,10 +18,10 @@ import {
 import {
   annotateGraphCoverage,
   buildGraphPresentation,
-  filterGraphPresentation,
   getGroupMemberLabelKey,
   getMappingCoverage,
   getSharedMemberType,
+  relabelGraphNodes,
   restrictToEntityLevel,
 } from './knowledgeGraphPresentation.utils';
 
@@ -218,60 +218,31 @@ it('reports missing mappings only within a complete returned neighborhood', () =
   ).toBe('unmapped');
 });
 
-it('filters confirmed gaps while retaining the selected entity and metadata context', () => {
-  const data: GraphData = {
-    ...graph,
-    nodes: [...graph.nodes, { id: 'owner', label: 'Steward', type: 'user' }],
-    edges: [...graph.edges, { from: 'root', to: 'owner', label: 'Owned by' }],
-  };
-  const coverage = getMappingCoverage(
-    data,
-    new Set([
-      'root',
-      ...graph.nodes
-        .filter((node) => node.type === 'column')
-        .map((node) => node.id),
-    ])
-  );
-  const result = filterGraphPresentation(data, 'root', coverage, 'unmapped');
+it('relabels every node without filtering or reordering', () => {
+  const result = relabelGraphNodes(graph);
 
-  expect(result?.nodes.some((node) => node.id === 'root')).toBe(true);
-  expect(result?.nodes.some((node) => node.id === 'owner')).toBe(true);
-  expect(result?.nodes.some((node) => node.id === 'c0')).toBe(false);
-  expect(result?.nodes.filter((node) => node.type === 'column')).toHaveLength(
-    299
+  expect(result?.nodes).toHaveLength(graph.nodes.length);
+  expect(result?.edges).toBe(graph.edges);
+  expect(result?.nodes.every((node) => typeof node.label === 'string')).toBe(
+    true
   );
-  expect(
-    result?.edges.every(
-      (edge) =>
-        result.nodes.some((node) => node.id === edge.from) &&
-        result.nodes.some((node) => node.id === edge.to)
-    )
-  ).toBe(true);
 });
 
-it('highlights gaps within a group without changing positions or losing statements', () => {
+it('annotates the root with the aggregated coverage of its members', () => {
   const grouped = buildGraphPresentation(graph, graph, 'root', 'balanced', []);
   const annotated = annotateGraphCoverage(
     grouped.data,
     getMappingCoverage(graph),
-    'root',
-    true
+    'root'
   );
 
   expect(
-    annotated.nodes.find((node) => node.presentation?.members)?.presentation
-      ?.coverage
+    annotated.nodes.find((node) => node.id === 'root')?.presentation?.coverage
   ).toBe('unmapped');
   expect(annotated.nodes.map((node) => node.presentation?.position)).toEqual(
     grouped.data.nodes.map((node) => node.presentation?.position)
   );
   expect(annotated.edges).toBe(grouped.data.edges);
-  expect(
-    annotated.edges
-      .flatMap((edge) => edge.members ?? [edge])
-      .every((edge) => edge.id)
-  ).toBe(true);
 });
 
 it('bundles columns around a collapsed parent branch and prefers containment over shared mappings', () => {

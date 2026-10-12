@@ -197,41 +197,28 @@ export const restrictToEntityLevel = (
   };
 };
 
-export const filterGraphPresentation = (
-  data: GraphData | null,
-  rootId: string,
-  coverage: Map<string, MappingCoverage>,
-  coverageMode: string
-): GraphData | null => {
+export const relabelGraphNodes = (data: GraphData | null): GraphData | null => {
   if (!data) {
     return null;
   }
-  const matchesCoverage = (node: GraphNode) =>
-    node.id === rootId ||
-    !isCoverageNode(node) ||
-    !['mapped', 'unmapped'].includes(coverageMode) ||
-    coverage.get(node.id) === coverageMode;
-  const nodes = data.nodes.filter(matchesCoverage);
-  const visible = new Set(nodes.map((node) => node.id));
 
   return {
     ...data,
-    nodes: nodes.map((node) => ({ ...node, label: getGraphNodeLabel(node) })),
-    edges: data.edges.filter(
-      (edge) => visible.has(edge.from) && visible.has(edge.to)
-    ),
+    nodes: data.nodes.map((node) => ({
+      ...node,
+      label: getGraphNodeLabel(node),
+    })),
   };
 };
 
 export const annotateGraphCoverage = (
   data: GraphData,
   coverage: Map<string, MappingCoverage>,
-  rootId: string,
-  highlight: boolean
+  rootId: string
 ): GraphData => ({
   ...data,
   nodes: data.nodes.map((node) => {
-    if (!node.presentation || (!highlight && node.id !== rootId)) {
+    if (!node.presentation || node.id !== rootId) {
       return node;
     }
     const members = node.presentation.members ?? [node];

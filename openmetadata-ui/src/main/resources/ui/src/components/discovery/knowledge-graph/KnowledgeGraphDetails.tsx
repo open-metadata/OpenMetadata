@@ -616,10 +616,6 @@ const KnowledgeGraphDetails = ({
                   </Box>
                 </Button>
               ))}
-              {/* Designer removed the Every entity / Highlight gaps dropdown
-                  (5.d): its semantics live in the Gaps subtabs now. The
-                  coverageMode state still rides along for the canvas highlight
-                  behaviour until B lands and the state can be dropped. */}
             </Box>
           )}
           {view.error ? (

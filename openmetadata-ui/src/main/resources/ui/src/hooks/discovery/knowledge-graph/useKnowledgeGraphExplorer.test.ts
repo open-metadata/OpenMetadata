@@ -150,7 +150,6 @@ const renderExplorer = () => {
         mode: 'knowledge-graph',
         filters: { entityTypes: [], relationshipTypes: [] },
         refresh: 0,
-        coverageMode: 'all',
         presentation: 'balanced',
         expanded: [],
       }),

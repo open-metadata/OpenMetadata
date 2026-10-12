@@ -31,9 +31,9 @@ import { addDeclaredOntologyProperties } from '../../../utils/discovery/knowledg
 import {
   annotateGraphCoverage,
   buildGraphPresentation,
-  filterGraphPresentation,
   getGraphDistances,
   getMappingCoverage,
+  relabelGraphNodes,
   restrictToEntityLevel,
   sentenceCaseGraphLabels,
 } from '../../../utils/discovery/knowledge-graph/knowledgeGraphPresentation.utils';
@@ -50,7 +50,6 @@ interface ExplorerOptions {
   mode: KnowledgeGraphMode;
   filters: KnowledgeGraphFilters;
   refresh: number;
-  coverageMode: string;
   presentation: KnowledgeGraphPresentation;
   expanded: string[];
   focusedNodeId?: string;
@@ -83,7 +82,6 @@ export const useKnowledgeGraphExplorer = ({
   mode,
   filters,
   refresh,
-  coverageMode,
   presentation,
   expanded,
   focusedNodeId,
@@ -196,8 +194,8 @@ export const useKnowledgeGraphExplorer = ({
     return getMappingCoverage(allData, inspectedIds);
   }, [allData, rootId, result.appliedQuery?.depth]);
   const displayData = useMemo(
-    () => filterGraphPresentation(filteredData, rootId, coverage, coverageMode),
-    [filteredData, rootId, coverage, coverageMode]
+    () => relabelGraphNodes(filteredData),
+    [filteredData]
   );
   const presented = useMemo(() => {
     if (!displayData || !allData) {
@@ -213,18 +211,8 @@ export const useKnowledgeGraphExplorer = ({
     );
 
     return {
-      data: annotateGraphCoverage(
-        graph.data,
-        coverage,
-        rootId,
-        coverageMode === 'highlight'
-      ),
-      unfiltered: annotateGraphCoverage(
-        graph.unfiltered,
-        coverage,
-        rootId,
-        coverageMode === 'highlight'
-      ),
+      data: annotateGraphCoverage(graph.data, coverage, rootId),
+      unfiltered: annotateGraphCoverage(graph.unfiltered, coverage, rootId),
     };
   }, [
     displayData,
@@ -234,7 +222,6 @@ export const useKnowledgeGraphExplorer = ({
     expanded,
     focusedNodeId,
     coverage,
-    coverageMode,
   ]);
   const scene = useMemo(() => {
     const original = transformToG6Format(displayData);

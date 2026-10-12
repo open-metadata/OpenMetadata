@@ -195,7 +195,6 @@ export interface KnowledgeGraphDetailsControl {
 }
 
 export interface KnowledgeGraphToolbarProps {
-  hasFilters?: boolean;
   selectedLevel: KnowledgeGraphLevel;
   layout: KnowledgeGraphLayout;
   labelMode: KnowledgeGraphLabelMode;
@@ -213,7 +212,6 @@ export interface KnowledgeGraphToolbarProps {
   viewport: { isFullscreen: boolean; onFullscreen: () => void };
   onPresentationChange: (presentation: KnowledgeGraphPresentation) => void;
   onToggleBands: () => void;
-  onClearFilters: () => void;
   onFindNode: (nodeId: string) => void;
   onLevelChange: (level: KnowledgeGraphLevel) => void;
   onLayoutChange: (layout: KnowledgeGraphLayout) => void;

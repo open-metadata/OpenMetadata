@@ -99,10 +99,10 @@ const getGraphViewState = (
   };
 };
 
-const hasGraphFilters = (filters: KnowledgeGraphFilters, coverage: string) =>
+const hasGraphFilters = (filters: KnowledgeGraphFilters) =>
   [filters.entityTypes, filters.relationshipTypes].some(
     (items) => items.length > 0
-  ) || coverage !== 'all';
+  );
 
 const getGraphStatus = (
   view: ReturnType<typeof getGraphViewState>,
@@ -165,13 +165,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     label: string;
     edgeIds: string[];
   } | null>(null);
-  const [coverageMode, setCoverageMode] = useState<
-    'all' | 'mapped' | 'unmapped' | 'highlight'
-  >('all');
-  const clearFilters = () => {
-    setFilters(EMPTY_FILTERS);
-    setCoverageMode('all');
-  };
+  const clearFilters = () => setFilters(EMPTY_FILTERS);
   const [refresh, setRefresh] = useState(0);
   const {
     result,
@@ -193,7 +187,6 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     mode,
     filters,
     refresh,
-    coverageMode,
     presentation,
     expanded,
     focusedNodeId: selectedNodeId(selection),
@@ -249,7 +242,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
       canvas.selectNode(id);
     }
   };
-  const hasFilters = hasGraphFilters(filters, coverageMode);
+  const hasFilters = hasGraphFilters(filters);
   useEffect(() => {
     setSelection(null);
     setExpanded([]);
@@ -513,7 +506,6 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
               <KnowledgeGraphToolbar
                 filterOptions={result.unfiltered?.filterOptions}
                 filters={filters}
-                hasFilters={hasFilters}
                 labelMode={labelMode}
                 layout={layout}
                 mode={mode}
@@ -527,7 +519,6 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
                 selectedLevel={selectedLevel}
                 showBands={showBands}
                 viewport={{ isFullscreen, onFullscreen: handleFullscreen }}
-                onClearFilters={clearFilters}
                 onExportCsv={handleExportCsv}
                 onExportJsonLd={() => handleExport('jsonld')}
                 onExportPng={handleExportPng}
