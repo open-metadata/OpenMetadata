@@ -152,6 +152,23 @@ test(
         .getByRole('dialog', ADD_TEST_CASES_DIALOG)
         .getByTestId('submit');
       await expect(submit).toBeInViewport();
+      const cancel = page
+        .getByRole('dialog', ADD_TEST_CASES_DIALOG)
+        .getByTestId('cancel');
+      await expect
+        .poll(async () => {
+          const cancelBounds = await cancel.boundingBox();
+          const submitBounds = await submit.boundingBox();
+
+          return cancelBounds && submitBounds
+            ? Math.abs(
+                cancelBounds.y +
+                  cancelBounds.height / 2 -
+                  (submitBounds.y + submitBounds.height / 2)
+              )
+            : Number.POSITIVE_INFINITY;
+        })
+        .toBeLessThan(1);
       expect(
         await submit.evaluate((button) => {
           for (
