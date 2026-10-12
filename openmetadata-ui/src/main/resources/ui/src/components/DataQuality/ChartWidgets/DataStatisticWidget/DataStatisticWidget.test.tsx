@@ -18,6 +18,7 @@ import { DataStatisticWidgetProps } from '../../DataQuality.interface';
 import DataStatisticWidget from './DataStatisticWidget.component';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
   Skeleton: ({
     width,
     height,
