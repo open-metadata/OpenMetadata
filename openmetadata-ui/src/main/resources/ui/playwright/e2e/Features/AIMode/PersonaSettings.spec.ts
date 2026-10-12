@@ -359,14 +359,25 @@ const saveLayoutAndReload = async (
   // until that GET lands `getPage` returns the empty fallback, so the patch is
   // non-empty and Save renders *enabled* — a caller asserting it is disabled
   // samples that pre-hydration frame and fails with "Received: enabled".
-  const layoutLoaded = page
-    .waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/docStore') &&
-        response.request().method() === 'GET',
-      { timeout: 30_000 }
-    )
-    .catch(() => null);
+  //
+  // Scoped to this persona's own document, taken from the save response, so a
+  // docStore GET for anything else cannot satisfy the wait. No `.catch()`
+  // either: if the refetch never happens that is the failure, and it should
+  // surface here rather than as an "enabled" Save button several lines later.
+  const { fullyQualifiedName: documentFqn } = (await response.json()) as {
+    fullyQualifiedName?: string;
+  };
+
+  // Without an FQN the predicate would silently widen to any docStore GET,
+  // which is the bug this scoping exists to prevent.
+  expect(documentFqn, 'layout save response carried no FQN').toBeTruthy();
+
+  const layoutPath = `/api/v1/docStore/name/${documentFqn}`;
+  const layoutLoaded = waitForResponseWithStatus(
+    page,
+    (res) => res.url().includes(layoutPath) && res.request().method() === 'GET',
+    200
+  );
   await page.reload();
   await layoutLoaded;
 };
