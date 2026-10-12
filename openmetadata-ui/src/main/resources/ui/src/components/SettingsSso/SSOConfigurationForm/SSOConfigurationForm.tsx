@@ -36,6 +36,7 @@ import {
   createFormKeyDownHandler,
   getProviderDisplayName,
   getProviderIcon,
+  ProviderIcon,
 } from '../../../utils/SSOUtils';
 import DescriptionFieldTemplate from '../../common/Form/JSONSchema/JSONSchemaTemplate/DescriptionFieldTemplate';
 import { FieldErrorTemplate } from '../../common/Form/JSONSchema/JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
@@ -43,6 +44,7 @@ import LdapRoleMappingWidget from '../../common/Form/JSONSchema/JsonSchemaWidget
 import SelectWidget from '../../common/Form/JSONSchema/JsonSchemaWidgets/SelectWidget';
 import InlineAlert from '../../common/InlineAlert/InlineAlert';
 import Loader from '../../common/Loader/Loader';
+import SsoProviderIcon from '../SsoProviderIcon/SsoProviderIcon';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import { UnsavedChangesModal } from '../../Modals/UnsavedChangesModal/UnsavedChangesModal.component';
 import ProviderSelector from '../ProviderSelector/ProviderSelector';
@@ -456,11 +458,10 @@ const SSOConfigurationFormRJSF = ({
         <div className="flex align-items-center gap-2 flex items-center">
           <div className="provider-icon-container">
             {getProviderIcon(currentProvider) && (
-              <img
+              <SsoProviderIcon
                 alt={getProviderDisplayName(currentProvider)}
-                height={22}
-                src={getProviderIcon(currentProvider) as string}
-                width={22}
+                icon={getProviderIcon(currentProvider) as ProviderIcon}
+                size={22}
               />
             )}
           </div>
