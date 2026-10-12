@@ -83,6 +83,7 @@ import {
   getFeedSortTimestamp,
   INBOX_ENTITY_ICON_CLASS,
   INBOX_MESSAGE_CLASS,
+  INBOX_RECESSED_SURFACE_CLASS,
   isSameLocalDay,
   sendReaction,
 } from '../inbox.utils';
@@ -505,7 +506,7 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
 
   return (
     <Box
-      className="tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:pb-4 tw:shadow-xs tw:transition-colors tw:hover:border-primary"
+      className="tw:rounded-xl tw:border tw:border-subtle tw:bg-surface tw:pb-4 tw:shadow-xs tw:transition-colors tw:hover:border-primary"
       data-testid="activity-feed-item"
       direction="col"
       gap={4}>
@@ -586,7 +587,8 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
             <RichTextEditorPreviewerV1
               className={classNames(
                 INBOX_MESSAGE_CLASS,
-                'tw:rounded-lg tw:bg-utility-gray-blue-50 tw:px-3.5 tw:py-3 tw:text-sm'
+                INBOX_RECESSED_SURFACE_CLASS,
+                'tw:rounded-lg tw:px-3.5 tw:py-3 tw:text-sm'
               )}
               markdown={message}
             />

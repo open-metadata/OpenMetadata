@@ -348,19 +348,25 @@ export enum ActivityGrouping {
   User = 'user',
 }
 
-// The Type filter's options: the change panel's field labels, plus Other for
-// everything without one (lifecycle events, conversations).
-// An asset's 16px icon beside text: the design system's 1.3 stroke, not the
-// heavier 1.5 the shared entity icons draw with, so it matches the type.
+// The recessed surface a card's message and a change's Before sit on: the
+// design's gray-blue in light; in dark the page's own well, as AI Analytics
+// sets its chart previews into their cards.
+export const INBOX_RECESSED_SURFACE_CLASS =
+  'tw:bg-utility-gray-blue-50 tw:dark:bg-primary';
+
 // A message's links and @mentions read as the card's asset link does: brand
 // blue that follows dark mode, not the editor's fixed primary color. `!`: the
 // editor's own link rule is more specific.
 export const INBOX_MESSAGE_CLASS =
   'inbox-feed-message tw:[&_a]:text-brand-secondary!';
 
+// An asset's 16px icon beside text: the design system's 1.3 stroke, not the
+// heavier 1.5 the shared entity icons draw with, so it matches the type.
 export const INBOX_ENTITY_ICON_CLASS =
   'tw:flex tw:shrink-0 tw:items-center tw:[&_img]:size-4 tw:[&_svg]:size-4 tw:[&_svg]:[stroke-width:1.3]';
 
+// The Type filter's options: the change panel's field labels, plus Other for
+// everything without one (lifecycle events, conversations).
 export const ACTIVITY_TYPE_OTHER = 'label.other';
 export const ACTIVITY_TYPE_KEYS = [
   ...new Set(compact(Object.values(CHANGE_LABEL_KEY))),
