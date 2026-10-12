@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
+import { Box } from '@openmetadata/ui-core-components';
 import {
   BarChart,
   type ChartSeries,
   type ChartTooltipRenderProps,
   type ChartYAxisProps,
 } from '@openmetadata/ui-core-components/charts';
-import { Col, Row } from 'antd';
+
 import { useMemo } from 'react';
 import { PROFILER_CHART_DATA_SIZE } from '../../../constants/profiler.constant';
 import { axisTickFormatter, tooltipFormatter } from '../../../utils/ChartUtils';
@@ -78,14 +79,18 @@ const CustomBarChart = ({
 
   if (data.length === 0) {
     return (
-      <Row align="middle" className="h-full w-full" justify="center">
-        <Col>
+      <Box
+        align="center"
+        className="layout-row h-full w-full"
+        justify="center"
+        wrap="wrap">
+        <Box className="layout-column tw:block">
           <ErrorPlaceHolder
             className="mt-0-important"
             placeholderText={noDataPlaceholderText}
           />
-        </Col>
-      </Row>
+        </Box>
+      </Box>
     );
   }
 

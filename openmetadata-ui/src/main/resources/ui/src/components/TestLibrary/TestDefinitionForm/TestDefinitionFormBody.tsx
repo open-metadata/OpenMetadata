@@ -378,7 +378,7 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
 
   return (
     <div
-      className="new-form-style tw:flex tw:flex-col tw:gap-5"
+      className="new-form-style tw:relative tw:flex tw:flex-col tw:gap-5"
       data-testid="test-definition-form-body"
       ref={formBodyRef}
       onFocusCapture={handleFocus}>

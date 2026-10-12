@@ -63,10 +63,19 @@ describe('getEditFormValues', () => {
       { id: 'unknownType', label: 'unknownType' },
     ]);
   });
+
+  it('seeds an empty displayName for a property that has none', () => {
+    // displayName is optional on AddCustomProperty; properties routinely
+    // exist without it. The form seeds '' so the field is editable, but
+    // getCustomPropertyChanges must treat an unchanged '' as a no-op (below).
+    expect(getEditFormValues(stringProperty).displayName).toBe('');
+  });
 });
 
 describe('getCustomPropertyChanges', () => {
   it('builds an enum config with de-duplicated values', () => {
+    // displayName 'Priority' is unchanged from enumProperty, so it is a no-op
+    // and is left out of the changes (see the displayName describe block below).
     expect(
       getCustomPropertyChanges(enumProperty, {
         displayName: 'Priority',
@@ -79,7 +88,6 @@ describe('getCustomPropertyChanges', () => {
         ],
       })
     ).toEqual({
-      displayName: 'Priority',
       description: 'How urgent',
       customPropertyConfig: {
         config: { multiSelect: true, values: ['High', 'Medium'] },
@@ -115,5 +123,50 @@ describe('getCustomPropertyChanges', () => {
         description: 'Owner',
       }).customPropertyConfig
     ).toBeUndefined();
+  });
+});
+
+describe('getCustomPropertyChanges displayName no-op', () => {
+  // `getEditFormValues` seeds displayName as `property.displayName ?? ''`, so a
+  // property without a displayName reads back as ''. Returning that '' would
+  // make updateCustomPropertyByName emit an `add /displayName ""` op and
+  // silently persist an empty displayName on an unrelated edit. An unchanged
+  // displayName must therefore be emitted as `undefined` (omitted by omitBy).
+  it('emits undefined when an unchanged property had no displayName (seeded as "")', () => {
+    const changes = getCustomPropertyChanges(stringProperty, {
+      displayName: '', // unchanged: property has no displayName, seeded as ''
+      description: 'Owner',
+    });
+
+    expect(changes.displayName).toBeUndefined();
+  });
+
+  it('emits undefined when an unchanged property had a displayName', () => {
+    const changes = getCustomPropertyChanges(enumProperty, {
+      displayName: 'Priority', // unchanged
+      description: 'How urgent',
+      enumConfig: [{ id: 'High', label: 'High' }],
+    });
+
+    expect(changes.displayName).toBeUndefined();
+  });
+
+  it('emits the new value when displayName changes from "" to a value', () => {
+    const changes = getCustomPropertyChanges(stringProperty, {
+      displayName: 'Owner', // changed from undefined (seeded as '')
+      description: 'Owner',
+    });
+
+    expect(changes.displayName).toBe('Owner');
+  });
+
+  it('emits the new value when displayName changes between two values', () => {
+    const changes = getCustomPropertyChanges(enumProperty, {
+      displayName: 'Priority Level', // changed from 'Priority'
+      description: 'How urgent',
+      enumConfig: [{ id: 'High', label: 'High' }],
+    });
+
+    expect(changes.displayName).toBe('Priority Level');
   });
 });

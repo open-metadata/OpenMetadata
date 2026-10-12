@@ -301,6 +301,10 @@ plugins: dict[str, set[str]] = {
         # Its SA-1.x call sites are adapted at runtime by
         # metadata.ingestion.source.database.db2.utils.patch_ibmi_dialect
     },
+    "databend": {
+        "databend-driver==0.33.7",
+        "databend-sqlalchemy==0.5.5",
+    },
     "databricks": {
         VERSIONS["databricks-sqlalchemy"],
         VERSIONS["databricks-sdk"],
@@ -492,7 +496,7 @@ plugins: dict[str, set[str]] = {
 dev = {
     "ruff~=0.15.12",
     "uvloop==0.21.0",
-    "datamodel-code-generator==0.64.0",
+    "datamodel-code-generator==0.83.0",
     "boto3-stubs",
     "mypy-boto3-glue",
     "google-api-python-client-stubs",
@@ -588,6 +592,7 @@ test = {
     *plugins["datalake-gcs"],
     *plugins["pgspider"],
     *plugins["clickhouse"],
+    *plugins["databend"],
     *plugins["dagster"],
     *plugins["oracle"],
     *plugins["mssql"],

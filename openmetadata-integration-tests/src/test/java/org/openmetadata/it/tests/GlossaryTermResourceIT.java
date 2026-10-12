@@ -72,6 +72,9 @@ import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.cache.CacheBundle;
+import org.openmetadata.service.resources.settings.SettingsCache;
 
 /**
  * Integration tests for GlossaryTerm entity operations.
@@ -3512,6 +3515,14 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     OpenMetadataClient client = SdkClients.adminClient();
     GlossaryTerm term = createGlossaryTermForBulk(ns, "dr_false");
     Table table = createTableTaggedWithTerm(ns, term, "dr_false");
+    var tagCache = CacheBundle.getCachedTagUsageDao();
+    if (tagCache != null) {
+      tagCache.putTags(
+          Entity.TABLE,
+          table.getId(),
+          JsonUtils.pojoToJson(table.getTags()),
+          SettingsCache.isGlossaryTagPropagationEnabled());
+    }
 
     AddGlossaryToAssetsRequest realRemove =
         new AddGlossaryToAssetsRequest()
@@ -3552,6 +3563,36 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     assertFalse(
         tableHasTag(client, table.getId(), term.getFullyQualifiedName()),
         "Glossary tag should NOT be applied to table on dryRun=true add");
+  }
+
+  @Test
+  void test_bulkAddGlossaryToAssets_dryRunFalse_updatesCachedTable(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    GlossaryTerm term = createGlossaryTermForBulk(ns, "add_cached");
+    Table table = createBareTable(ns, "add_cached");
+    var tagCache = CacheBundle.getCachedTagUsageDao();
+    if (tagCache != null) {
+      tagCache.putTags(
+          Entity.TABLE,
+          table.getId(),
+          JsonUtils.pojoToJson(List.of()),
+          SettingsCache.isGlossaryTagPropagationEnabled());
+    }
+
+    AddGlossaryToAssetsRequest request =
+        new AddGlossaryToAssetsRequest()
+            .withDryRun(false)
+            .withAssets(List.of(table.getEntityReference()));
+    client
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/glossaryTerms/" + term.getId() + "/assets/add",
+            request,
+            BulkOperationResult.class);
+
+    assertTrue(tableHasTag(client, table.getId(), term.getFullyQualifiedName()));
   }
 
   @Test
@@ -3711,6 +3752,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   @Test
   void test_bulkRemoveGlossaryFromAssets_columnAsset_authorizedUser_succeeds(TestNamespace ns)
       throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
     GlossaryTerm term = createGlossaryTermForBulk(ns, "authz_col_ok");
     Table table = createTableWithColumnTaggedWithTerm(ns, term, "authz_col_ok");
     // A column is surfaced as a tableColumn asset but is edited through its table, so a user with
@@ -3722,6 +3764,9 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
         putAssets(term.getId(), "remove", columnAssetBody(table), token);
 
     assertAuthorizedBulkSuccess(response);
+    assertFalse(
+        columnHasTag(admin, table.getId(), "id", term.getFullyQualifiedName()),
+        "Glossary term must be removed from the column when the caller is authorized");
   }
 
   @Test

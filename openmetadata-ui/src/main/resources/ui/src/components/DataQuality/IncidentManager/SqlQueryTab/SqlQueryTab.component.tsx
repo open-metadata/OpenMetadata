@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row } from 'antd';
+import { Grid } from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
 import { lazy, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { ChangeDescription } from '../../../../generated/tests/testCase';
+import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
@@ -78,35 +80,37 @@ const SqlQueryTab = () => {
   }
 
   return (
-    <Row className="sql-query-tab p-md" gutter={[16, 16]}>
+    <Grid
+      className="layout-row layout-grid sql-query-tab p-md"
+      style={{ ...getLayoutGutter(16, 16) }}>
       {permissions.query?.Create && !isVersionPage && (
-        <Col className="d-flex justify-end" span={24}>
+        <Grid.Item className="layout-column d-flex justify-end" span={24}>
           <Button
             data-testid="add-to-table-button"
             type="primary"
             onClick={() => setIsOpen(true)}>
             {t('label.add-to-table')}
           </Button>
-        </Col>
+        </Grid.Item>
       )}
-      <Col span={24}>
+      <Grid.Item className="layout-column" span={24}>
         {isVersionPage ? (
           versionDiffInspectionQuery
         ) : (
           <QueryViewer sqlQuery={testCase?.inspectionQuery ?? ''} />
         )}
-      </Col>
+      </Grid.Item>
       {isOpen && (
-        <Col span={24}>
+        <Grid.Item className="layout-column" span={24}>
           <AddSqlQueryFormModal
             open={isOpen}
             onCancel={() => {
               setIsOpen(false);
             }}
           />
-        </Col>
+        </Grid.Item>
       )}
-    </Row>
+    </Grid>
   );
 };
 

@@ -11,8 +11,14 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Badge, Toggle, Typography } from '@openmetadata/ui-core-components';
-import { Col, Collapse, InputNumber, Row, Select } from 'antd';
+import {
+  Badge,
+  Box,
+  Grid,
+  Toggle,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Collapse, InputNumber, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, omit, startCase } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
@@ -49,6 +55,7 @@ import {
   restoreSettingsConfig,
   updateSettingsConfig,
 } from '../../../rest/settingConfigAPI';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
 import {
   boostModeOptions,
@@ -704,13 +711,17 @@ const EntitySearchSettings = () => {
         className="ranking-settings-card"
         data-testid={stageTestId}
         key={stageKey}>
-        <Row align="middle" className="m-b-xs" gutter={[12, 12]}>
-          <Col flex="auto">
+        <Box
+          align="center"
+          className="layout-row m-b-xs"
+          style={getLayoutGutter(12, 12)}
+          wrap="wrap">
+          <Box className="layout-column tw:block" style={{ flex: 'auto' }}>
             <Typography className="ranking-stage-title">
               {stageName ? startCase(stageName) : t('label.no-data')}
             </Typography>
-          </Col>
-          <Col className="ranking-number-control">
+          </Box>
+          <Box className="layout-column tw:block ranking-number-control">
             <Typography className="text-xs font-normal" color="secondary">
               {t('label.weight')}
             </Typography>
@@ -724,29 +735,31 @@ const EntitySearchSettings = () => {
                 )
               }
             />
-          </Col>
-        </Row>
+          </Box>
+        </Box>
         {stage.purpose && (
           <Typography as="p" className="ranking-stage-purpose">
             {stage.purpose}
           </Typography>
         )}
-        <Row className="ranking-stage-meta" gutter={[12, 12]}>
-          <Col span={12}>
+        <Grid
+          className="layout-row layout-grid ranking-stage-meta"
+          style={getLayoutGutter(12, 12)}>
+          <Grid.Item className="layout-column" span={12}>
             <Typography className="text-xs font-normal" color="secondary">
               {t('label.match-type')}
             </Typography>
             <Typography as="p" className="ranking-stage-value">
               {matchType}
             </Typography>
-          </Col>
-          <Col span={12}>
+          </Grid.Item>
+          <Grid.Item className="layout-column" span={12}>
             <Typography className="text-xs font-normal" color="secondary">
               {t('label.field-plural')}
             </Typography>
             {renderRankingFields(stage.fields)}
-          </Col>
-        </Row>
+          </Grid.Item>
+        </Grid>
       </div>
     );
   };
@@ -767,8 +780,10 @@ const EntitySearchSettings = () => {
     return (
       <div className="ranking-configuration" data-testid="ranking-settings">
         <div className="ranking-settings-card">
-          <Row align="middle" gutter={[12, 12]}>
-            <Col span={16}>
+          <Grid
+            className="layout-row layout-grid tw:items-center"
+            style={getLayoutGutter(12, 12)}>
+            <Grid.Item className="layout-column" span={16}>
               <Typography className="text-xs font-normal" color="secondary">
                 {t('label.algorithm')}
               </Typography>
@@ -777,8 +792,10 @@ const EntitySearchSettings = () => {
                   ? startCase(ranking.algorithm)
                   : t('label.no-data')}
               </Typography>
-            </Col>
-            <Col className="ranking-enabled-control" span={8}>
+            </Grid.Item>
+            <Grid.Item
+              className="layout-column ranking-enabled-control"
+              span={8}>
               <Typography className="text-xs font-normal" color="secondary">
                 {t('label.enabled')}
               </Typography>
@@ -788,8 +805,8 @@ const EntitySearchSettings = () => {
                 size="sm"
                 onChange={handleRankingEnabledChange}
               />
-            </Col>
-          </Row>
+            </Grid.Item>
+          </Grid>
         </div>
 
         {(ranking.stages ?? []).map(renderRankingStage)}
@@ -804,8 +821,10 @@ const EntitySearchSettings = () => {
             <Typography as="p" className="m-b-sm" color="secondary">
               {t('message.search-ranking-signals-explanation')}
             </Typography>
-            <Row gutter={[12, 12]}>
-              <Col span={12}>
+            <Grid
+              className="layout-row layout-grid"
+              style={getLayoutGutter(12, 12)}>
+              <Grid.Item className="layout-column" span={12}>
                 <Typography className="text-xs font-normal" color="secondary">
                   {t('label.boost-mode')}
                 </Typography>
@@ -816,8 +835,8 @@ const EntitySearchSettings = () => {
                   value={signals.boostMode}
                   onChange={handleRankingSignalBoostModeChange}
                 />
-              </Col>
-              <Col span={12}>
+              </Grid.Item>
+              <Grid.Item className="layout-column" span={12}>
                 <Typography className="text-xs font-normal" color="secondary">
                   {t('label.score-mode')}
                 </Typography>
@@ -828,8 +847,10 @@ const EntitySearchSettings = () => {
                   value={signals.scoreMode}
                   onChange={handleRankingSignalScoreModeChange}
                 />
-              </Col>
-              <Col className="ranking-number-control" span={12}>
+              </Grid.Item>
+              <Grid.Item
+                className="layout-column ranking-number-control"
+                span={12}>
                 <Typography className="text-xs font-normal" color="secondary">
                   {t('label.max')}
                 </Typography>
@@ -843,14 +864,14 @@ const EntitySearchSettings = () => {
                     )
                   }
                 />
-              </Col>
-              <Col span={12}>
+              </Grid.Item>
+              <Grid.Item className="layout-column" span={12}>
                 <Typography className="text-xs font-normal" color="secondary">
                   {t('label.field-plural')}
                 </Typography>
                 {renderRankingFields(signals.fields)}
-              </Col>
-            </Row>
+              </Grid.Item>
+            </Grid>
           </div>
         )}
       </div>
@@ -862,14 +883,14 @@ const EntitySearchSettings = () => {
       className="entity-search-settings"
       mainContainerClassName="p-t-0"
       pageTitle={t('label.search')}>
-      <Row
-        className="entity-search-settings-header bg-white m-b-lg p-box m-0"
+      <Grid
+        className="layout-row layout-grid entity-search-settings-header bg-white m-b-lg p-box m-0"
         data-testid="entity-search-settings-header"
-        gutter={[0, 16]}>
-        <Col span={24}>
+        style={getLayoutGutter(0, 16)}>
+        <Grid.Item className="layout-column" span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
-        </Col>
-        <Col className="flex items-center gap-4" span={24}>
+        </Grid.Item>
+        <Grid.Item className="layout-column flex items-center gap-4" span={24}>
           <Icon className="entity-icon" component={entityData?.icon} />
           <div
             className="page-header-container"
@@ -889,12 +910,17 @@ const EntitySearchSettings = () => {
               {entityData?.description}
             </Typography>
           </div>
-        </Col>
-      </Row>
-      <Row
-        className="d-flex gap-5 items-start entity-search-settings-content m-x-0"
-        gutter={0}>
-        <Col className="d-flex flex-column settings-left-panel" span={8}>
+        </Grid.Item>
+      </Grid>
+      <Box
+        className="layout-row d-flex gap-5 items-start entity-search-settings-content m-x-0"
+        wrap="wrap">
+        <Box
+          className="layout-column d-flex flex-column settings-left-panel"
+          style={{
+            maxWidth: '33.33333333333333%',
+            flex: '0 0 33.33333333333333%',
+          }}>
           <Collapse
             accordion
             activeKey={activeKey}
@@ -922,7 +948,10 @@ const EntitySearchSettings = () => {
               }
               key="1">
               <div className="bg-white configuration-container">
-                <Row className="p-y-xs " data-testid="field-configurations">
+                <Box
+                  className="layout-row p-y-xs"
+                  data-testid="field-configurations"
+                  wrap="wrap">
                   {entitySearchFields.map(
                     (
                       field: {
@@ -932,7 +961,10 @@ const EntitySearchSettings = () => {
                       },
                       index: number
                     ) => (
-                      <Col className="m-b-sm" key={field.fieldName} span={24}>
+                      <Box
+                        className="layout-column tw:block m-b-sm"
+                        key={field.fieldName}
+                        style={{ maxWidth: '100%', flex: '0 0 100%' }}>
                         <FieldConfiguration
                           entityFields={entityFields}
                           field={field}
@@ -945,11 +977,11 @@ const EntitySearchSettings = () => {
                           onHighlightFieldsChange={handleHighlightFieldsChange}
                           onMatchTypeChange={handleMatchTypeChange}
                         />
-                      </Col>
+                      </Box>
                     )
                   )}
                   {/* Score Mode and Boost Mode Section */}
-                  <Col className="flex flex-col w-full">
+                  <Box className="layout-column flex flex-col w-full">
                     <div className="p-y-xs p-x-sm border-radius-card m-b-sm bg-white config-section-content">
                       <Typography
                         className="text-xs font-normal"
@@ -984,8 +1016,8 @@ const EntitySearchSettings = () => {
                         }
                       />
                     </div>
-                  </Col>
-                </Row>
+                  </Box>
+                </Box>
               </div>
             </Collapse.Panel>
             <Collapse.Panel
@@ -1029,10 +1061,10 @@ const EntitySearchSettings = () => {
               </div>
             </Collapse.Panel>
           </Collapse>
-        </Col>
-        <Col
-          className="bg-white border-radius-card p-box h-full d-flex flex-column preview-section"
-          span={16}>
+        </Box>
+        <Box
+          className="layout-column bg-white border-radius-card p-box h-full d-flex flex-column preview-section"
+          style={{ maxWidth: '66.66666666666666%' }}>
           <SearchPreview
             disabledSave={!searchSettings.isUpdated || isSaving}
             handleRestoreDefaults={handleRestoreDefaults}
@@ -1040,8 +1072,8 @@ const EntitySearchSettings = () => {
             isSaving={isSaving}
             searchConfig={previewSearchConfig}
           />
-        </Col>
-      </Row>
+        </Box>
+      </Box>
 
       <FieldValueBoostModal
         entityOptions={fieldValueBoostOptions ?? []}

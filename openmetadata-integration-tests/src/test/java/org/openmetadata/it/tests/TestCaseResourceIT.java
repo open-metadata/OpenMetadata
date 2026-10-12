@@ -40,6 +40,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
+import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.classification.CreateClassification;
@@ -54,6 +55,7 @@ import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestSuite;
@@ -80,6 +82,7 @@ import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.resources.dqtests.TestCaseResource;
+import org.openmetadata.service.security.mask.PIIMasker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -3093,6 +3096,54 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     assertThrows(
         org.openmetadata.sdk.exceptions.OpenMetadataException.class,
         () -> client.testCases().getFailedRowsSample(testCase.getId().toString()));
+  }
+
+  @Test
+  void test_failedRowsSampleMasksPiiColumnsNamedWithDifferentCase(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+    Table withPii = client.tables().get(table.getId().toString(), "columns,tags");
+    withPii
+        .getColumns()
+        .get(1)
+        .setTags(
+            List.of(
+                new TagLabel()
+                    .withTagFQN(PIIMasker.SENSITIVE_PII_TAG)
+                    .withSource(TagLabel.TagSource.CLASSIFICATION)));
+    client.tables().update(withPii.getId().toString(), withPii);
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("pii_failed_rows_case"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+    client
+        .testCaseResults()
+        .create(
+            testCase.getFullyQualifiedName(),
+            new org.openmetadata.schema.api.tests.CreateTestCaseResult()
+                .withTimestamp(System.currentTimeMillis())
+                .withTestCaseStatus(org.openmetadata.schema.tests.type.TestCaseStatus.Failed)
+                .withResult("Row count mismatch"));
+    // Failed-row samples validate column names ignoring case, so "NAME" is accepted for "name".
+    client
+        .testCases()
+        .addFailedRowsSample(
+            testCase.getId().toString(),
+            new org.openmetadata.schema.type.TableData()
+                .withColumns(List.of("ID", "NAME"))
+                .withRows(List.of(List.of("1", "Alice"))));
+    User reader = UserTestFactory.createUser(ns, "pii_failed_rows_reader");
+    OpenMetadataClient readerClient =
+        SdkClients.createClient(reader.getEmail(), reader.getEmail(), new String[] {});
+
+    org.openmetadata.schema.type.TableData masked =
+        readerClient.testCases().getFailedRowsSample(testCase.getId().toString());
+
+    assertEquals(List.of("ID", "NAME [MASKED]"), masked.getColumns());
+    assertEquals(List.of("1", PIIMasker.MASKED_VALUE), masked.getRows().getFirst());
   }
 
   private Table createTableWithName(TestNamespace ns, String nameSuffix) {

@@ -80,27 +80,9 @@ jest.mock('../constants/SSO.constant', () => ({
       callback: 'http://localhost:8585/callback',
     },
   },
-  PROVIDER_FIELD_MAPPINGS: {
-    ldap: ['samlConfiguration', 'oidcConfiguration', 'enableSelfSignup'],
-    saml: [
-      'ldapConfiguration',
-      'oidcConfiguration',
-      'tokenValidationAlgorithm',
-      'enableSelfSignup',
-    ],
-    google: [
-      'ldapConfiguration',
-      'samlConfiguration',
-      'oidcConfiguration',
-      'enableSelfSignup',
-    ],
-    azure: [
-      'ldapConfiguration',
-      'samlConfiguration',
-      'oidcConfiguration',
-      'enableSelfSignup',
-    ],
-  },
+  // The real mapping, so the cleanup tests fail if it ever drops a field the admin set again.
+  PROVIDER_FIELD_MAPPINGS: jest.requireActual('../constants/SSO.constant')
+    .PROVIDER_FIELD_MAPPINGS,
   PROVIDERS_WITHOUT_BOT_PRINCIPALS: ['google', 'auth0', 'basic', 'aws-cognito'],
 }));
 
@@ -746,7 +728,61 @@ describe('SSOUtils', () => {
       expect(trustStoreConfig?.trustAllConfig).toBeUndefined();
     });
 
-    it('should set default boolean values for enableSelfSignup', () => {
+    it.each([
+      [AuthProvider.Google, ClientType.Confidential],
+      [AuthProvider.Google, ClientType.Public],
+      [AuthProvider.Azure, ClientType.Confidential],
+      [AuthProvider.Okta, ClientType.Confidential],
+      [AuthProvider.Auth0, ClientType.Public],
+      [AuthProvider.AwsCognito, ClientType.Confidential],
+      [AuthProvider.CustomOidc, ClientType.Confidential],
+      [AuthProvider.Saml, ClientType.Public],
+      [AuthProvider.LDAP, ClientType.Public],
+    ])(
+      'should keep enableSelfSignup turned off for %s (%s client)',
+      (provider, clientType) => {
+        const data = getDefaultsForProvider(provider, clientType);
+        data.authenticationConfiguration.enableSelfSignup = false;
+
+        const result = cleanupProviderSpecificFields(data, provider);
+
+        expect(result?.authenticationConfiguration.enableSelfSignup).toBe(
+          false
+        );
+      }
+    );
+
+    it('should keep enableSelfSignup turned on when the admin chose it', () => {
+      const data = getDefaultsForProvider(
+        AuthProvider.Okta,
+        ClientType.Confidential
+      );
+      data.authenticationConfiguration.enableSelfSignup = true;
+
+      const result = cleanupProviderSpecificFields(data, AuthProvider.Okta);
+
+      expect(result?.authenticationConfiguration.enableSelfSignup).toBe(true);
+    });
+
+    it('should not add enableSelfSignup when the configuration has none', () => {
+      const data = getDefaultsForProvider(
+        AuthProvider.Google,
+        ClientType.Confidential
+      );
+      delete (
+        data.authenticationConfiguration as Partial<
+          FormData['authenticationConfiguration']
+        >
+      ).enableSelfSignup;
+
+      const result = cleanupProviderSpecificFields(data, AuthProvider.Google);
+
+      expect(result?.authenticationConfiguration).not.toHaveProperty(
+        'enableSelfSignup'
+      );
+    });
+
+    it('should keep enableSelfSignup and default the authorizer booleans', () => {
       const data: FormData = {
         authenticationConfiguration: {
           provider: 'google',
@@ -773,9 +809,7 @@ describe('SSOUtils', () => {
 
       const result = cleanupProviderSpecificFields(data, 'google');
 
-      expect(
-        result?.authenticationConfiguration.enableSelfSignup
-      ).toBeDefined();
+      expect(result?.authenticationConfiguration.enableSelfSignup).toBe(true);
       expect(
         result?.authorizerConfiguration.enforcePrincipalDomain
       ).toBeDefined();

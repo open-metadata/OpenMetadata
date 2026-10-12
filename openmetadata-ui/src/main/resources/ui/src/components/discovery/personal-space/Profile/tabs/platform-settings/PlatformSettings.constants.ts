@@ -17,6 +17,7 @@ import {
   Dataflow02,
   DataQuality,
   FileCheck02,
+  GlossaryTerm,
   HeartRounded,
   Link01,
   Lock01,
@@ -24,6 +25,7 @@ import {
   RunProfiler,
   Search,
   SwitchHorizontal01,
+  Table,
 } from '@openmetadata/ui-core-components/icons';
 import { startCase } from 'lodash';
 import { ENTITY_PATH } from '../../../../../../constants/constants';
@@ -33,6 +35,12 @@ import type { PlatformSettingsPage } from './PlatformSettings.types';
 export const PLATFORM_SETTINGS_HASH_TAB = 'platform-settings';
 
 export const PLATFORM_SETTINGS_PAGES: PlatformSettingsPage[] = [
+  {
+    id: 'glossary',
+    icon: GlossaryTerm,
+    titleKey: 'label.glossary',
+    descriptionKey: 'message.glossary-tag-propagation-description',
+  },
   {
     id: 'theme',
     icon: Customize,
@@ -128,4 +136,17 @@ export const PLATFORM_SETTINGS_PAGES: PlatformSettingsPage[] = [
     hasEditView: true,
     hasFieldHints: false,
   },
+  {
+    id: 'table-schema',
+    icon: Table,
+    titleKey: 'label.table-and-schema',
+    descriptionKey: 'message.table-and-schema-settings-description',
+    hasEditView: true,
+    hasFieldHints: false,
+  },
 ];
+
+/** The fields of each deployment-backed setting that its page shows. */
+export const BRAND_URL_FIELDS = ['openMetadataUrl'] as const;
+
+export const APP_MODE_FIELDS = ['defaultAppMode'] as const;
