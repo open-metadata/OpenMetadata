@@ -38,6 +38,29 @@ def _is_column_unique(column: dict, columns: list[Column]) -> bool:
     return False
 
 
+def resolve_column_names(column_names: list[str], columns: list[Column]) -> list[str] | None:
+    """
+    Map column names reported by the source to the names stored for the table.
+
+    Sources with case-insensitive identifiers can report a name in a different case than the
+    column was created with (MySQL keeps a foreign key's referenced column as written in the
+    FK definition), while the server matches column names case-sensitively. An exact match
+    wins, then a single case-insensitive match. Returns None if any name matches no column
+    or several.
+    """
+    stored_names = [model_str(col.name) for col in columns or []]
+    resolved = []
+    for name in column_names:
+        if name in stored_names:
+            resolved.append(name)
+            continue
+        case_insensitive_matches = [stored for stored in stored_names if stored.lower() == name.lower()]
+        if len(case_insensitive_matches) != 1:
+            return None
+        resolved.append(case_insensitive_matches[0])
+    return resolved
+
+
 def get_relationship_type(column: dict, referred_table_columns: list[Column], columns: list[Column]) -> str:
     """
     Determine the type of relationship (one-to-one, one-to-many, etc.)

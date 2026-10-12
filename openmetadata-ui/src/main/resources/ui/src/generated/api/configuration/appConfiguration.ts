@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 /**
- * App-wide UI configuration. Seeded from yaml/env on first boot; DB-backed and
- * admin-mutable at runtime afterwards (yaml is ignored once a DB row exists).
+ * App-wide UI configuration. It exists both in the server configuration (yaml/env) and in
+ * the database, and configSource.app (APP_CONFIG_SOURCE, default DB) decides which one
+ * wins. In DB mode the stored value wins, and the server configuration only fills values
+ * the stored setting lacks.
  */
 export interface AppConfiguration {
     /**
