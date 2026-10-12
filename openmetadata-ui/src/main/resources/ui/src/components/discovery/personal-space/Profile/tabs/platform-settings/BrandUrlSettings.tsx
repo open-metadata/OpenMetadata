@@ -11,14 +11,18 @@
  *  limitations under the License.
  */
 
+import { Box } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 import { OpenMetadataBaseURLConfiguration } from '../../../../../../generated/configuration/openMetadataBaseUrlConfiguration';
 import { SettingType } from '../../../../../../generated/settings/settings';
 import { getSettingsConfigFromConfigType } from '../../../../../../rest/settingConfigAPI';
+import SettingsSourceBanner from '../../../../../platform/settings/SettingsSourceBanner/SettingsSourceBanner';
 import SettingsSection, { ReadOnlyRow } from '../../components/SettingsSection';
+import { BRAND_URL_FIELDS } from './PlatformSettings.constants';
 import type { PlatformSettingsPageProps } from './PlatformSettings.types';
 import { SettingsSkeleton } from './SettingsFormLayout';
 import SettingValue from './SettingValue';
+import { useDeploymentManagedFields } from './useDeploymentManagedFields';
 import { useEditHeaderAction } from './useEditHeaderAction';
 import { useSettingsFetch } from './useSettingsFetch';
 
@@ -32,24 +36,50 @@ export const fetchBrandUrlConfig = async () => {
 
 const BrandUrlSettings = (props: PlatformSettingsPageProps) => {
   const { t } = useTranslation();
-  const { data: config, isLoading } = useSettingsFetch(fetchBrandUrlConfig);
-  useEditHeaderAction('brand-url', isLoading, props);
+  const {
+    data: config,
+    isLoading,
+    reload,
+  } = useSettingsFetch(fetchBrandUrlConfig);
+  const {
+    sources,
+    isLoading: isSourceLoading,
+    refetch: refetchSources,
+    isFullyManaged,
+  } = useDeploymentManagedFields(
+    SettingType.OpenMetadataBaseURLConfiguration,
+    BRAND_URL_FIELDS
+  );
+  useEditHeaderAction(
+    'brand-url',
+    isLoading || isSourceLoading,
+    props,
+    undefined,
+    !isFullyManaged
+  );
 
   if (isLoading) {
     return <SettingsSkeleton rows={1} />;
   }
 
   return (
-    <SettingsSection testId="brand-url-settings" title={t('label.general')}>
-      <ReadOnlyRow
-        description={t('message.om-url-configuration-message')}
-        title={t('label.brand-name-url')}>
-        <SettingValue
-          testId="open-metadata-url"
-          value={config?.openMetadataUrl}
-        />
-      </ReadOnlyRow>
-    </SettingsSection>
+    <Box direction="col" gap={4}>
+      <SettingsSourceBanner
+        sources={sources}
+        onAdopted={reload}
+        onRefetch={refetchSources}
+      />
+      <SettingsSection testId="brand-url-settings" title={t('label.general')}>
+        <ReadOnlyRow
+          description={t('message.om-url-configuration-message')}
+          title={t('label.brand-name-url')}>
+          <SettingValue
+            testId="open-metadata-url"
+            value={config?.openMetadataUrl}
+          />
+        </ReadOnlyRow>
+      </SettingsSection>
+    </Box>
   );
 };
 

@@ -307,8 +307,15 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
   ObjectFieldTemplateProps
 > = (props: ObjectFieldTemplateProps) => {
   const { t } = useTranslation();
-  const { formContext, idSchema, title, onAddClick, schema, properties } =
-    props;
+  const {
+    disabled,
+    formContext,
+    idSchema,
+    title,
+    onAddClick,
+    schema,
+    properties,
+  } = props;
 
   const { advancedProperties, normalProperties } = properties.reduce(
     (propertyMap, currentProperty) => {
@@ -385,6 +392,7 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
           {schema.additionalProperties && (
             <Button
               data-testid={`add-item-${title}`}
+              disabled={disabled}
               icon={
                 <Plus
                   className="tw:size-3 tw:shrink-0"

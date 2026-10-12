@@ -119,6 +119,8 @@ const SSOConfigurationFormRJSF = ({
   selectedProvider,
   hideBorder = false,
   securityConfig,
+  managedPaths,
+  isReadOnly = false,
 }: SSOConfigurationFormProps) => {
   const { t } = useTranslation();
   const [activeField, setActiveField] = useState<string>('');
@@ -147,6 +149,8 @@ const SSOConfigurationFormRJSF = ({
     fieldErrorsRef,
     schema,
     uiSchema,
+    canChangeProvider,
+    canUploadSamlMetadata,
     customValidate,
     canTestLogin,
     isSaveGatedOnTestLogin,
@@ -168,6 +172,8 @@ const SSOConfigurationFormRJSF = ({
     onProviderSelect,
     selectedProvider,
     securityConfig,
+    managedPaths,
+    isReadOnly,
   });
 
   const customFields: RegistryFieldsType = {
@@ -228,7 +234,7 @@ const SSOConfigurationFormRJSF = ({
     ) : null;
 
   const renderFormActions = () =>
-    isEditMode ? (
+    isEditMode && !isReadOnly ? (
       <>
         {renderConfigAlerts()}
         <div className="form-actions-bottom">
@@ -292,9 +298,11 @@ const SSOConfigurationFormRJSF = ({
   }
 
   const isSamlProvider = currentProvider === AuthProvider.Saml;
+  const showSamlUpload =
+    isEditMode && showForm && isSamlProvider && canUploadSamlMetadata;
 
   const renderSamlUpload = () =>
-    isEditMode && showForm && isSamlProvider ? (
+    showSamlUpload ? (
       <div className="m-b-md">
         {metadataUploadStatus === null && (
           <Upload.Dragger
@@ -355,6 +363,7 @@ const SSOConfigurationFormRJSF = ({
         noHtml5Validate
         className="rjsf no-header"
         customValidate={customValidate}
+        disabled={isReadOnly}
         fields={customFields}
         formContext={{
           clearFieldError: handleClearFieldError,
@@ -459,7 +468,7 @@ const SSOConfigurationFormRJSF = ({
             {getProviderDisplayName(currentProvider)} {t('label.set-up')}
           </Typography>
         </div>
-        {hasExistingConfig && onChangeProvider && (
+        {hasExistingConfig && onChangeProvider && canChangeProvider && (
           <Button
             data-testid="change-provider-button"
             type="link"
