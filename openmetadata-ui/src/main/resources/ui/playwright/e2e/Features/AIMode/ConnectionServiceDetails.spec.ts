@@ -468,7 +468,8 @@ test.describe(
             page,
             (response) =>
               response.request().method() === 'GET' &&
-              response.url().includes('/api/v1/drives/files?'),
+              response.url().includes('/api/v1/drives/files?') &&
+              !response.url().includes('limit=0'),
             200
           );
           await filesTab.click();
@@ -486,7 +487,8 @@ test.describe(
             page,
             (response) =>
               response.request().method() === 'GET' &&
-              response.url().includes('/api/v1/drives/spreadsheets?'),
+              response.url().includes('/api/v1/drives/spreadsheets?') &&
+              !response.url().includes('limit=0'),
             200
           );
           await spreadsheetsTab.click();

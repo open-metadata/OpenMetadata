@@ -125,6 +125,8 @@ interface DetailsTab {
 // OSS built-in tabs. A plugin (e.g. Collate's summary/insights/agents) contributes the rest via
 // SERVICE_DETAILS_TABS with its own `order`; sorting the merged list ascending is what lets a
 // contribution land before or after these without either side knowing about the other.
+// Built-ins own these slots and their keys are stable deep links:
+// ADR:2026-10-12-ai-mode-service-tab-orders-and-keys
 const DATA_ASSETS_TAB_ORDER = 40;
 const FILES_TAB_ORDER = 42;
 const SPREADSHEETS_TAB_ORDER = 44;
