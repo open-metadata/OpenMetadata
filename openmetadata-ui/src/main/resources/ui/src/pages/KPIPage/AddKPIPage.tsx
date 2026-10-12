@@ -278,6 +278,7 @@ const AddKPIPage = () => {
                         )}
                         <NumberInput
                           aria-label={t('label.metric-value')}
+                          className="tw:w-24 tw:shrink-0"
                           inputDataTestId="metric-number-input"
                           isInvalid={!!fieldState.error}
                           maxValue={
