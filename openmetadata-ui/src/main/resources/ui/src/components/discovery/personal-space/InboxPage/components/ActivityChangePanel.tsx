@@ -31,22 +31,16 @@ interface ChangeColumnProps {
   isText: boolean;
 }
 
-// A description reads as the existing text and the one suggested in its place;
-// tags, owners and domains as what was there before and after.
-const COLUMN_TITLE_KEY = {
-  text: { before: 'label.existing', after: 'label.suggested' },
-  values: { before: 'label.before', after: 'label.after' },
-};
-
-// What was there sits on a subtle surface; what replaced it on the panel's
-// own. Both titles read alike. The padding leaves room for the arrow on the
-// rule between them.
+// What was there sits on a subtle surface; what replaced it, in light, on the
+// panel's own. In dark both sides share the well: two surfaces side by side
+// there read as a mismatch rather than a before and after. Both titles read
+// alike. The padding leaves room for the arrow on the rule between them.
 const COLUMN_TONE_CLASS: Record<ChangeTone, string> = {
   error: classNames(
     INBOX_RECESSED_SURFACE_CLASS,
     'tw:pt-3 tw:pr-4.5 tw:pb-3.5 tw:pl-3.5'
   ),
-  success: 'tw:pt-3 tw:pr-3.5 tw:pb-3.5 tw:pl-5.5',
+  success: 'tw:pt-3 tw:pr-3.5 tw:pb-3.5 tw:pl-5.5 tw:dark:bg-primary',
 };
 
 // Two values can read the same (two owners sharing a display name), so each
@@ -140,7 +134,6 @@ const ChangeHeader = ({
 const ActivityChangePanel = ({ change }: { change: ActivityChange }) => {
   const { t } = useTranslation();
   const { labelKey, before, after, isText, unchanged = [] } = change;
-  const titleKey = COLUMN_TITLE_KEY[isText ? 'text' : 'values'];
   // Kept values belong to both sides, so either shows when there are any.
   const showBefore = before.length > 0 || unchanged.length > 0;
   const showAfter = after.length > 0 || unchanged.length > 0;
@@ -162,7 +155,7 @@ const ActivityChangePanel = ({ change }: { change: ActivityChange }) => {
           <ChangeColumn
             isText={isText}
             kept={unchanged}
-            title={t(titleKey.before)}
+            title={t('label.existing')}
             tone="error"
             values={before}
           />
@@ -181,7 +174,7 @@ const ActivityChangePanel = ({ change }: { change: ActivityChange }) => {
           <ChangeColumn
             isText={isText}
             kept={unchanged}
-            title={t(titleKey.after)}
+            title={t('label.suggested')}
             tone="success"
             values={after}
           />

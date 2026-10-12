@@ -61,10 +61,10 @@ describe('ActivityChangePanel', () => {
     );
 
     expect(screen.getByTestId('activity-change-error')).toHaveTextContent(
-      'label.before− Ram'
+      'label.existing− Ram'
     );
     expect(screen.getByTestId('activity-change-success')).toHaveTextContent(
-      'label.after+ Data Platform team'
+      'label.suggested+ Data Platform team'
     );
     expect(screen.getByText('−1')).toBeInTheDocument();
   });
@@ -84,16 +84,16 @@ describe('ActivityChangePanel', () => {
     );
 
     expect(screen.getByTestId('activity-change-error')).toHaveTextContent(
-      'label.beforePII.Email'
+      'label.existingPII.Email'
     );
     expect(screen.getByTestId('activity-change-success')).toHaveTextContent(
-      'label.afterPII.Email+ PII.Sensitive'
+      'label.suggestedPII.Email+ PII.Sensitive'
     );
     expect(screen.getByText('+1')).toBeInTheDocument();
     expect(screen.queryByText('−0')).not.toBeInTheDocument();
   });
 
-  // A description reads as the existing text and the one suggested in its place.
+  // Every change, text or values, reads as what exists and what is suggested.
   it('names a description change Existing and Suggested', () => {
     render(
       <ActivityChangePanel
