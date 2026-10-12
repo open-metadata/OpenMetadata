@@ -2435,7 +2435,6 @@
         "openmetadata-ui/src/main/resources/ui/playwright/support/glossary/Glossary.ts"
       ],
       "specs": [
-        "playwright/e2e/Features/AIMode/InboxTaskMatrix.spec.ts",
         "playwright/e2e/Features/AdvancedSearch.spec.ts",
         "playwright/e2e/Features/BulkEditEntity.spec.ts",
         "playwright/e2e/Features/BulkEditImportPermissions.spec.ts",
@@ -2512,7 +2511,6 @@
         "openmetadata-ui/src/main/resources/ui/playwright/support/glossary/GlossaryTerm.ts"
       ],
       "specs": [
-        "playwright/e2e/Features/AIMode/InboxTaskMatrix.spec.ts",
         "playwright/e2e/Features/AdvancedSearch.spec.ts",
         "playwright/e2e/Features/BulkEditEntity.spec.ts",
         "playwright/e2e/Features/BulkEditImportPermissions.spec.ts",
@@ -10169,7 +10167,6 @@
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/InboxPage/components/TaskDetailPanel.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/AIMode/InboxTaskMatrix.spec.ts",
         "playwright/e2e/Features/AIMode/InboxTasks.spec.ts"
       ]
     },
