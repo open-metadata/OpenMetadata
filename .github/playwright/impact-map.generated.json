@@ -8124,6 +8124,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/SearchSettings/FieldValueBoostModal/FieldValueBoostModal.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/SearchSettings.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/SearchSettings/GlobalSettingsItem/GlobalSettingsItem.tsx"
       ],
       "specs": [
