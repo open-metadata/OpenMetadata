@@ -56,7 +56,7 @@ test('the suppressions baseline matches its recorded state exactly', () => {
     // core assignee/schema-field selectors in the task and incident specs
     // remove three more. The merged baseline retains independent locator
     // fixes from both branches.
-    'om-playwright/no-positional-locator': 591,
+    'om-playwright/no-positional-locator': 589,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 1,
     'playwright/no-wait-for-selector': 14,
