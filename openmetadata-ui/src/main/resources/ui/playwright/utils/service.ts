@@ -18,6 +18,7 @@ import { waitForResponseWithStatus } from './waitHelpers';
 // The child-asset list the AI-mode service details page reads, by service category.
 const SERVICE_CHILD_LIST_PATHS: Record<string, string> = {
   databaseServices: 'databases',
+  dashboardServices: 'dashboards',
   storageServices: 'containers',
   driveServices: 'drives/directories',
 };
