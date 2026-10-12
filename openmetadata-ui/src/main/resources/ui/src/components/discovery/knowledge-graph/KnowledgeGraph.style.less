@@ -11,6 +11,20 @@
  *  limitations under the License.
  */
 
+/*
+ * Design-token sources:
+ *   - Colours   → --tw-* mirrors from core-components globals.css (dark-mode safe).
+ *   - Spacing   → --om-space-N (pins to the Tailwind 4px scale; hardcoded px
+ *                 fails token-audit as an error).
+ *   - Shadows   → --om-shadow-* (composed rgba from the Untitled shadow ramp).
+ *   - Radius / font-size / font-weight / z-index / letter-spacing / line-height
+ *                 → raw literals so the file no longer threads one more alias
+ *                 layer. Values match the Untitled ramp (--radius-sm/md/lg =
+ *                 4/6/8 px, text-xs = 12 px) where applicable; custom values
+ *                 (11 px micro-label, 290 px tooltip cap) are called out
+ *                 inline. token-audit treats these as warnings.
+ */
+
 @import (reference) '../../../styles/variables.less';
 
 .knowledge-graph-container {
@@ -108,6 +122,8 @@
     overflow: hidden;
     isolation: isolate;
     background-color: var(--tw-background-color-primary);
+    // 24px dotted grid so the canvas reads as an infinite plane; dot colour is
+    // the border-secondary token so it flips with the theme.
     background-image: radial-gradient(
       circle,
       var(--tw-border-color-secondary) var(--om-space-1),
@@ -151,8 +167,8 @@
 
   // Font size is a scaled SVG attribute, so the label tracks the zoom.
   .kg-band-label {
-    font-weight: var(--om-font-weight-semibold);
-    letter-spacing: var(--om-letter-spacing-wide);
+    font-weight: 600;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
   }
 
@@ -187,7 +203,7 @@
 
   .kg-details-tabs [role='tablist'] {
     background: var(--tw-background-color-secondary);
-    border-radius: var(--om-radius-md);
+    border-radius: 6px; /* radius-md */
     padding: var(--om-space-2);
     gap: var(--om-space-2);
   }
@@ -202,7 +218,7 @@
 
     th span {
       text-transform: uppercase;
-      letter-spacing: var(--om-letter-spacing-wide);
+      letter-spacing: 0.08em;
     }
   }
 
@@ -243,7 +259,7 @@
     overflow: hidden;
     background: var(--tw-background-color-surface);
     border-left: var(--om-space-1) solid var(--tw-border-color-secondary);
-    z-index: var(--om-z-10);
+    z-index: 10;
   }
 
   .kg-inspector-header {
@@ -265,7 +281,7 @@
     display: grid;
     place-items: center;
     flex-shrink: 0;
-    border-radius: var(--om-radius-md);
+    border-radius: 6px; /* radius-md */
     border: var(--om-space-1) solid;
   }
 
@@ -277,27 +293,30 @@
   .kg-inspector-tile-sm {
     width: var(--om-space-26);
     height: var(--om-space-26);
-    border-radius: var(--om-radius-sm);
+    border-radius: 4px; /* radius-sm */
   }
 
   .kg-inspector-statement {
     padding: var(--om-space-12);
     background: var(--tw-background-color-secondary);
     border: var(--om-space-1) solid var(--tw-border-color-secondary);
-    border-radius: var(--om-radius-lg);
+    border-radius: 8px; /* radius-lg */
   }
 
   .kg-inspector-dot {
     width: var(--om-space-7);
     height: var(--om-space-7);
     flex-shrink: 0;
-    border-radius: var(--om-radius-full);
+    border-radius: 9999px; /* radius-full */
   }
 
+  // Micro-label at 11 px / semibold with wide tracking, used for the
+  // "Relationships" / "Members" section titles inside the drawer. 11 px sits
+  // one step below text-xs on purpose.
   .kg-inspector-section-title {
-    font-size: var(--om-font-size-11);
-    font-weight: var(--om-font-weight-semibold);
-    letter-spacing: var(--om-letter-spacing-wide);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--tw-text-color-quaternary);
   }
@@ -306,6 +325,8 @@
     padding: var(--om-space-6) var(--om-space-8);
   }
 
+  // 352 px side panel: `min(352px, 36%)` so it compresses on narrow viewports
+  // instead of pushing the canvas out of the grid.
   .kg-stage:has(.kg-inspector) {
     grid-template-columns: ~'minmax(0, 1fr) min(calc(var(--om-space-44) * 8), 36%)';
 
@@ -353,7 +374,7 @@
     position: absolute;
     bottom: var(--om-space-16);
     right: var(--om-space-16);
-    z-index: var(--om-z-1001);
+    z-index: 1001;
   }
 }
 
@@ -369,7 +390,7 @@
   // scroll to reach the drawer footer. The canvas row uses `minmax(0, 1fr)`
   // so this fallback only kicks in on genuinely tight viewports.
   overflow: auto;
-  z-index: var(--om-z-900);
+  z-index: 900;
 
   .knowledge-graph-container {
     flex: 1 1 0;
@@ -383,17 +404,20 @@
   }
 }
 
+// Edge tooltips float above Antd overlays (z-index 1500 > 1001) and above the
+// inspector; the 290 px cap keeps long predicate strings from spilling across
+// the canvas.
 .kg-edge-tooltip {
-  z-index: var(--om-z-1500);
+  z-index: 1500;
   pointer-events: none;
   background: var(--tw-background-color-surface);
   border: var(--om-space-1) solid var(--tw-border-color-primary);
-  border-radius: var(--om-radius-md);
+  border-radius: 6px; /* radius-md */
   padding: var(--om-space-6) var(--om-space-10);
   box-shadow: var(--om-shadow-lg);
-  max-width: var(--om-space-290);
-  font-size: var(--om-font-size-xs);
-  line-height: var(--om-line-height-normal);
+  max-width: 290px;
+  font-size: 12px; /* text-xs */
+  line-height: 1.5;
 
   &__direction {
     color: var(--tw-text-color-tertiary);
@@ -405,7 +429,7 @@
 
   &__label {
     color: var(--tw-text-color-primary);
-    font-weight: var(--om-font-weight-medium);
+    font-weight: 500;
     word-break: break-word;
   }
 }

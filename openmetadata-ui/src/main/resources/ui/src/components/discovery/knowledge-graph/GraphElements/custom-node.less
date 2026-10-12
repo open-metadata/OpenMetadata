@@ -11,6 +11,19 @@
  *  limitations under the License.
  */
 
+/*
+ * Design-token sources:
+ *   - Colours   → --tw-* mirrors from core-components globals.css (dark-mode safe).
+ *   - Spacing   → --om-space-N (pins to the Tailwind 4px scale; a hardcoded px
+ *                 fails token-audit as an error).
+ *   - Shadows   → --om-shadow-* (composed rgba from the Untitled shadow ramp).
+ *   - Radius / font-size / font-weight → raw numeric literals so the file no
+ *                 longer threads one more alias layer. Values match the Untitled
+ *                 ramp (--radius-sm/md/lg = 4/6/8px, text-xs = 12px); custom
+ *                 off-ramp sizes (10px card, 11 / 11.5 / 13 / 15 px text) are
+ *                 called out inline. token-audit treats these as warnings.
+ */
+
 .knowledge-graph-custom-node {
   display: flex;
   align-items: stretch;
@@ -18,7 +31,7 @@
   position: relative;
   user-select: none;
   box-shadow: var(--om-shadow-xs);
-  border-radius: var(--om-radius-10);
+  border-radius: 10px; /* custom card radius — sits between radius-lg (8) and radius-xl (12) */
   background-color: var(--tw-background-color-surface);
   border: var(--om-space-1) solid var(--tw-border-color-primary);
   box-sizing: border-box;
@@ -26,15 +39,14 @@
   height: 100%;
   cursor: pointer;
   touch-action: none;
-  transition: opacity var(--om-duration-150) ease,
-    box-shadow var(--om-duration-150) ease;
+  transition: opacity 150ms ease, box-shadow 150ms ease;
 
   .kg-node-select {
     width: 100%;
     min-height: var(--om-space-48);
     height: auto;
     padding: var(--om-space-8) var(--om-space-12);
-    border-radius: var(--om-radius-10);
+    border-radius: 10px;
     box-shadow: none;
     white-space: normal;
     > [data-text] {
@@ -45,13 +57,15 @@
   &.kg-node-group {
     justify-content: flex-start;
     box-shadow: var(--om-shadow-sm);
+    // Stacked-card illusion: two offset outlined rectangles behind the main
+    // card suggest "there are more members here" without rendering them.
     &::before,
     &::after {
       content: '';
       position: absolute;
       inset: calc(-1 * var(--om-space-4)) var(--om-space-4) 0;
       border: var(--om-space-1) solid var(--tw-border-color-secondary);
-      border-radius: var(--om-radius-10);
+      border-radius: 10px;
       z-index: -1;
     }
     &::after {
@@ -88,51 +102,53 @@
     color: var(--tw-text-color-tertiary);
   }
 
-  // Design typography: 13.5/11 on cards, 15.5 on the subject; the closest
-  // tokens are used so the cards stop reading a step heavier than the design.
+  // Card typography is 13 / 11 / 11.5 / 15 px — these sit between the Untitled
+  // text ramp steps (xs=12, sm=14) on purpose so cards read a half-step
+  // lighter than body copy at canvas zoom. Font weights: 500 = medium, 600 =
+  // semibold on the Tailwind scale.
   .kg-node-name {
     display: block;
-    font-size: var(--om-font-size-13);
-    font-weight: var(--om-font-weight-semibold);
-    line-height: var(--om-line-height-tight);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.25;
     color: var(--tw-text-color-primary);
   }
 
   .kg-node-type {
     display: block;
-    font-size: var(--om-font-size-11);
-    font-weight: var(--om-font-weight-medium);
-    line-height: var(--om-line-height-snug);
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.375;
     color: var(--tw-text-color-tertiary);
   }
 
   .kg-node-count {
     flex-shrink: 0;
-    font-size: var(--om-font-size-11);
-    font-weight: var(--om-font-weight-semibold);
-    line-height: var(--om-line-height-normal);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.5;
   }
 
   .kg-node-note {
-    font-size: var(--om-font-size-11_5);
-    font-weight: var(--om-font-weight-semibold);
+    font-size: 11.5px;
+    font-weight: 600;
   }
 
   .kg-node-member {
     display: block;
-    font-size: var(--om-font-size-xs);
-    line-height: var(--om-line-height-relaxed);
+    font-size: 12px; /* text-xs */
+    line-height: 1.625;
     color: var(--tw-text-color-secondary);
   }
 
   .kg-node-more {
-    font-size: var(--om-font-size-11);
-    font-weight: var(--om-font-weight-medium);
+    font-size: 11px;
+    font-weight: 500;
     color: var(--tw-text-color-quaternary);
   }
 
   &.kg-node-root .kg-node-name {
-    font-size: var(--om-font-size-15);
+    font-size: 15px;
   }
 
   &.kg-node-root .node-icon {
@@ -142,7 +158,7 @@
 
   .asset-type-tag {
     padding: var(--om-space-2) var(--om-space-4);
-    border-radius: var(--om-radius-sm);
+    border-radius: 4px; /* radius-sm */
     border-width: var(--om-space-1);
     border-style: solid;
     border-color: var(--tw-border-color-primary);
