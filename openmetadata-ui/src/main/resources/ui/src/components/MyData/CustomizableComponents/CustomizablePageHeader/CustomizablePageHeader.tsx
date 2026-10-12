@@ -11,15 +11,21 @@
  *  limitations under the License.
  */
 import {
-  CloseOutlined,
-  PlusOutlined,
-  RedoOutlined,
-  SaveOutlined,
-} from '@ant-design/icons';
-import { Box, Typography } from '@openmetadata/ui-core-components';
-import { Button, Card } from 'antd';
+  Box,
+  Breadcrumbs,
+  Button,
+  ButtonUtility,
+  Card,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
+  Minimize01,
+  Plus,
+  RefreshCcw01,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
 import { kebabCase } from 'lodash';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, type Key } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { PersonaCustomizePageFqn } from '../../../../constants/Customize.constants';
@@ -31,6 +37,10 @@ import { getPersonaDetailsPath } from '../../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import { UnsavedChangesModal } from '../../../Modals/UnsavedChangesModal/UnsavedChangesModal.component';
 import './customizable-page-header.less';
+import {
+  CUSTOMIZE_CHROME_BACK_ID,
+  useCustomizePageChrome,
+} from './CustomizePageChrome.context';
 
 export const CustomizablePageHeader = ({
   disableSave,
@@ -50,8 +60,11 @@ export const CustomizablePageHeader = ({
   const { pageFqn } = useRequiredParams<{ pageFqn: string }>();
   const { currentPageType } = useCustomizeStore();
   const navigate = useNavigate();
+  const chrome = useCustomizePageChrome();
   const [saving, setSaving] = useState(false);
   const [resetModalOpen, setResetModalOpen] = useState(false);
+  // Crumb id the user tried to leave to while there were unsaved changes.
+  const [pendingExit, setPendingExit] = useState<string>();
 
   const showWidgetActions =
     currentPageType === PageType.LandingPage ||
@@ -59,26 +72,32 @@ export const CustomizablePageHeader = ({
 
   const isLandingPage =
     currentPageType === PageType.LandingPage ||
-    currentPageType === PersonaCustomizePageFqn.Homepage;
+    (currentPageType as string) === PersonaCustomizePageFqn.Homepage;
   const isNavigationPage = pageFqn === PersonaCustomizePageFqn.Navigation;
   const isAppLayoutPage = pageFqn === PersonaCustomizePageFqn.AppLayout;
 
-  // Navigate to an explicit URL (not navigate(-1)) so the parent's
-  // NavigationBlocker can intercept the pushState and reliably land on the
-  // persona page on Discard. navigate(-1) goes through popstate, whose
-  // history.go(-N) discard path stalls on the same URL when extra guard
-  // entries pile up from re-renders.
-  const handleClose = useCallback(() => {
-    navigate(getPersonaDetailsPath(personaFqn));
-  }, [navigate, personaFqn]);
+  // Persona settings leave via a hash change, which NavigationBlocker lets
+  // through, so the unsaved-changes prompt has to be raised here instead.
+  const requestExit = useCallback(
+    (id: string) => {
+      if (!chrome) {
+        navigate(getPersonaDetailsPath(personaFqn));
 
-  const handleOpenResetModal = useCallback(() => {
-    setResetModalOpen(true);
-  }, []);
+        return;
+      }
+      if (disableSave) {
+        chrome.onNavigate(id);
+      } else {
+        setPendingExit(id);
+      }
+    },
+    [chrome, disableSave, navigate, personaFqn]
+  );
 
-  const handleCloseResetModal = useCallback(() => {
-    setResetModalOpen(false);
-  }, []);
+  const handleClose = useCallback(
+    () => requestExit(CUSTOMIZE_CHROME_BACK_ID),
+    [requestExit]
+  );
 
   const handleSave = useCallback(async () => {
     setSaving(true);
@@ -91,14 +110,31 @@ export const CustomizablePageHeader = ({
     setResetModalOpen(false);
   }, [onReset]);
 
+  const handleDiscardExit = useCallback(() => {
+    if (pendingExit) {
+      chrome?.onNavigate(pendingExit);
+    }
+    setPendingExit(undefined);
+  }, [chrome, pendingExit]);
+
+  const handleSaveAndExit = useCallback(async () => {
+    try {
+      await handleSave();
+      handleDiscardExit();
+    } catch {
+      // onSave already surfaced the error; stay on the page.
+      setSaving(false);
+      setPendingExit(undefined);
+    }
+  }, [handleSave, handleDiscardExit]);
+
+  const pageEntityLabel = isLandingPage
+    ? t('label.home-page')
+    : t(`label.${kebabCase(currentPageType as string)}`);
+
   const i18Values = useMemo(
-    () => ({
-      persona: personaName,
-      entity: isLandingPage
-        ? t('label.home-page')
-        : t(`label.${kebabCase(currentPageType as string)}`),
-    }),
-    [personaName, isLandingPage]
+    () => ({ persona: personaName, entity: pageEntityLabel }),
+    [personaName, pageEntityLabel]
   );
 
   const subTitle = useMemo(() => {
@@ -113,72 +149,104 @@ export const CustomizablePageHeader = ({
     return 'message.customize-entity-landing-page-header-for-persona';
   }, [isNavigationPage, isAppLayoutPage, isLandingPage]);
 
+  const personaLink = chrome ? (
+    <Button
+      className="tw:inline"
+      color="link-color"
+      data-testid="customize-persona-link"
+      onPress={handleClose}
+    />
+  ) : (
+    <Link to={getPersonaDetailsPath(personaFqn)} />
+  );
+
   return (
-    <Card
-      className="customize-page-header m-b-lg"
-      data-testid="customize-landing-page-header">
-      <div className="d-flex items-center justify-between">
-        <div>
-          <Typography
-            as="h5"
-            className="m-0"
-            data-testid="customize-page-title"
-            size="text-md"
-            weight="semibold">
-            {t('label.customize-entity', {
-              entity: isLandingPage
-                ? t('label.home-page')
-                : t(`label.${kebabCase(currentPageType as string)}`),
-            })}
-          </Typography>
-          <Typography as="p" className="m-0">
-            <Transi18next
-              i18nKey={subTitle}
-              renderElement={<Link to={getPersonaDetailsPath(personaFqn)} />}
-              values={i18Values}
+    <>
+      {/* Breadcrumbs and card form one block so parent layouts (flex gap vs
+          none) can't space them differently across customize pages. */}
+      <Box direction="col" gap={3}>
+        {chrome && (
+          <Box
+            align="center"
+            data-testid="customize-page-breadcrumbs"
+            direction="row"
+            justify="between">
+            <Breadcrumbs
+              divider="chevron"
+              items={chrome.breadcrumbs}
+              size="xs"
+              type="text"
+              onAction={(id: Key) => requestExit(String(id))}
             />
-          </Typography>
-        </div>
-        <Box
-          inline
-          align="center"
-          className="layout-space layout-space-horizontal"
-          gap={2}
-          itemClassName="layout-space-item">
-          {showWidgetActions && (
-            <Button
-              data-testid="add-widget-button"
-              icon={<PlusOutlined />}
-              type="primary"
-              onClick={onAddWidget}>
-              {t('label.add-widget-plural')}
-            </Button>
-          )}
-          <Button
-            data-testid="reset-button"
-            disabled={saving}
-            icon={<RedoOutlined />}
-            onClick={handleOpenResetModal}>
-            {t('label.reset')}
-          </Button>
-          <Button
-            data-testid="save-button"
-            disabled={disableSave}
-            icon={<SaveOutlined />}
-            loading={saving}
-            type="primary"
-            onClick={handleSave}>
-            {t('label.save')}
-          </Button>
-          <Button
-            className="landing-page-cancel-button"
-            data-testid="cancel-button"
-            disabled={saving}
-            icon={<CloseOutlined />}
-            onClick={handleClose}
-          />
-        </Box>
-      </div>
+            <ButtonUtility
+              aria-label={t('label.close')}
+              color="tertiary"
+              data-testid="customize-minimize-button"
+              icon={Minimize01}
+              size="sm"
+              onPress={handleClose}
+            />
+          </Box>
+        )}
+        <Card
+          className="customize-page-header m-b-lg tw:p-6"
+          data-testid="customize-landing-page-header">
+          <Box align="center" direction="row" justify="between">
+            <Box direction="col" gap={1}>
+              <Typography
+                as="h5"
+                className="tw:m-0 tw:text-primary"
+                data-testid="customize-page-title"
+                size="text-md"
+                weight="semibold">
+                {t('label.customize-entity', { entity: pageEntityLabel })}
+              </Typography>
+              <Typography as="p" className="tw:m-0 tw:text-tertiary">
+                <Transi18next
+                  i18nKey={subTitle}
+                  renderElement={personaLink}
+                  values={i18Values}
+                />
+              </Typography>
+            </Box>
+            <Box align="center" direction="row" gap={2}>
+              {showWidgetActions && onAddWidget && (
+                <Button
+                  color="primary"
+                  data-testid="add-widget-button"
+                  iconLeading={<Plus />}
+                  onPress={onAddWidget}>
+                  {t('label.add-widget-plural')}
+                </Button>
+              )}
+              <Button
+                color="secondary"
+                data-testid="reset-button"
+                iconLeading={<RefreshCcw01 />}
+                isDisabled={saving}
+                onPress={() => setResetModalOpen(true)}>
+                {t('label.reset')}
+              </Button>
+              <Button
+                color="primary"
+                data-testid="save-button"
+                isDisabled={disableSave}
+                isLoading={saving}
+                onPress={handleSave}>
+                {t('label.save')}
+              </Button>
+              <ButtonUtility
+                aria-label={t('label.cancel')}
+                color="tertiary"
+                data-testid="cancel-button"
+                icon={XClose}
+                isDisabled={saving}
+                onPress={handleClose}
+              />
+            </Box>
+          </Box>
+        </Card>
+      </Box>
 
       <UnsavedChangesModal
         description={t('message.reset-layout-confirmation')}
@@ -187,10 +255,17 @@ export const CustomizablePageHeader = ({
         open={resetModalOpen}
         saveText={t('label.reset')}
         title={t('label.reset-default-layout')}
-        onCancel={handleCloseResetModal}
-        onDiscard={handleCloseResetModal}
+        onCancel={() => setResetModalOpen(false)}
+        onDiscard={() => setResetModalOpen(false)}
         onSave={handleResetConfirm}
       />
-    </Card>
+      <UnsavedChangesModal
+        loading={saving}
+        open={Boolean(pendingExit)}
+        onCancel={() => setPendingExit(undefined)}
+        onDiscard={handleDiscardExit}
+        onSave={handleSaveAndExit}
+      />
+    </>
   );
 };

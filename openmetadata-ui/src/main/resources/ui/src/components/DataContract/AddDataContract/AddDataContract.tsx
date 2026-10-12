@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Tabs, Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, RadioChangeEvent } from 'antd';
+import { Card, Tabs, Typography } from '@openmetadata/ui-core-components';
+import { Button, RadioChangeEvent } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -577,11 +577,13 @@ const AddDataContract: React.FC<{
     if (mode === DataContractMode.YAML) {
       return (
         <Card>
-          <SchemaEditor
-            mode={{ name: CSMode.YAML }}
-            value={yaml}
-            onChange={setYaml}
-          />
+          <Card.Content>
+            <SchemaEditor
+              mode={{ name: CSMode.YAML }}
+              value={yaml}
+              onChange={setYaml}
+            />
+          </Card.Content>
         </Card>
       );
     }
@@ -613,11 +615,9 @@ const AddDataContract: React.FC<{
   }, [mode, items, handleTabChange, activeTab, visitedTabs, yaml]);
 
   return (
-    <Card
-      className="add-contract-card"
-      data-testid="add-contract-card"
-      title={cardTitle}>
-      {cardContent}
+    <Card className="add-contract-card" data-testid="add-contract-card">
+      <Card.Header title={cardTitle} />
+      <Card.Content>{cardContent}</Card.Content>
     </Card>
   );
 };

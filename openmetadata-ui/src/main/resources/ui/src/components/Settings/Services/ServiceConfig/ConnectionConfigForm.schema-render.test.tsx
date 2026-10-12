@@ -601,4 +601,43 @@ describe('ConnectionConfigForm schema rendering', () => {
       field.querySelector('.core-one-of-field-tabs')
     ).not.toBeInTheDocument();
   });
+
+  it('switches Microsoft Fabric between client secret and certificate credentials', async () => {
+    const { container } = await renderConnectionSchema('MicrosoftFabric');
+
+    expect(screen.getByTestId('auth-select-field')).toBeInTheDocument();
+    expect(
+      container.querySelector('[data-field-name="clientSecret"]')
+    ).toBeInTheDocument();
+    expect(
+      container.querySelector('[data-field-name="certificate"]')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('auth-method-1'));
+
+    expect(
+      container.querySelector('[data-field-name="clientSecret"]')
+    ).not.toBeInTheDocument();
+
+    ['certificate', 'privateKey'].forEach((fieldName) => {
+      const field = getRequiredElement(
+        container,
+        `[data-field-name="${fieldName}"]`
+      );
+
+      expect(
+        within(field).getByTestId('credential-file-dropzone')
+      ).toBeInTheDocument();
+      expect(within(field).getByRole('textbox')).toBeInTheDocument();
+    });
+
+    const passphrase = getRequiredElement(
+      container,
+      '[data-field-name="privateKeyPassphrase"]'
+    );
+
+    expect(
+      within(passphrase).queryByTestId('credential-file-dropzone')
+    ).not.toBeInTheDocument();
+  });
 });

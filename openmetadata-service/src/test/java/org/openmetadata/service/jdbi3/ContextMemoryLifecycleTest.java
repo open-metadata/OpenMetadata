@@ -75,6 +75,31 @@ class ContextMemoryLifecycleTest {
     assertEquals("Anchor table was deleted", updated.getStatusReason());
   }
 
+  @Test
+  void draftingAConflictKeepsItsExistingReviewReason() {
+    ContextMemory original =
+        memory(ContextMemoryStatus.UNPROCESSED).withStatusReason("contradicts: threshold differs");
+    ContextMemory updated = copyOf(original).withEntityStatus(ContextMemoryStatus.DRAFT);
+
+    ContextMemoryLifecycle.applyUpdate(original, updated, NO_LOOKUP);
+
+    assertEquals(original.getStatusReason(), updated.getStatusReason());
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ContextMemoryStatus.class,
+      names = {"APPROVED", "REJECTED", "UNPROCESSED"})
+  void leavingDraftClearsTheOldReviewReason(ContextMemoryStatus status) {
+    ContextMemory original =
+        memory(ContextMemoryStatus.DRAFT).withStatusReason("contradicts: threshold differs");
+    ContextMemory updated = copyOf(original).withEntityStatus(status);
+
+    ContextMemoryLifecycle.applyUpdate(original, updated, NO_LOOKUP);
+
+    assertNull(updated.getStatusReason());
+  }
+
   @ParameterizedTest
   @EnumSource(
       value = ContextMemoryStatus.class,
@@ -199,6 +224,62 @@ class ContextMemoryLifecycleTest {
     assertThrows(
         BadRequestException.class,
         () -> ContextMemoryLifecycle.applyCreate(memory(status), RESOLVE));
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ContextMemoryStatus.class,
+      names = {"UNPROCESSED", "DRAFT", "REJECTED"})
+  void becomingApprovedRecordsTheReview(ContextMemoryStatus from) {
+    ContextMemory original = memory(from).withUpdatedAt(100L);
+    ContextMemory updated =
+        copyOf(original).withEntityStatus(ContextMemoryStatus.APPROVED).withUpdatedAt(200L);
+
+    ContextMemoryLifecycle.applyUpdate(original, updated, NO_LOOKUP);
+
+    assertEquals(200L, updated.getLastReviewedAt());
+  }
+
+  @Test
+  void aReviewTimeTheCallerSuppliesIsKept() {
+    ContextMemory original = memory(ContextMemoryStatus.UNPROCESSED).withUpdatedAt(100L);
+    ContextMemory updated =
+        copyOf(original)
+            .withEntityStatus(ContextMemoryStatus.APPROVED)
+            .withLastReviewedAt(150L)
+            .withUpdatedAt(200L);
+
+    ContextMemoryLifecycle.applyUpdate(original, updated, NO_LOOKUP);
+
+    assertEquals(150L, updated.getLastReviewedAt());
+  }
+
+  @Test
+  void returningToReviewKeepsTheLastReviewAndTheNewReason() {
+    ContextMemory original =
+        memory(ContextMemoryStatus.APPROVED).withLastReviewedAt(100L).withUpdatedAt(100L);
+    ContextMemory updated =
+        copyOf(original)
+            .withEntityStatus(ContextMemoryStatus.DRAFT)
+            .withStatusReason("contradicted by a newer memory")
+            .withUpdatedAt(200L);
+
+    ContextMemoryLifecycle.applyUpdate(original, updated, NO_LOOKUP);
+
+    assertEquals(100L, updated.getLastReviewedAt());
+    assertEquals("contradicted by a newer memory", updated.getStatusReason());
+  }
+
+  @Test
+  void creatingAnApprovedMemoryRecordsTheReview() {
+    ContextMemory approved = memory(ContextMemoryStatus.APPROVED).withUpdatedAt(300L);
+    ContextMemory pending = memory(ContextMemoryStatus.UNPROCESSED).withUpdatedAt(300L);
+
+    ContextMemoryLifecycle.applyCreate(approved, RESOLVE);
+    ContextMemoryLifecycle.applyCreate(pending, RESOLVE);
+
+    assertEquals(300L, approved.getLastReviewedAt());
+    assertNull(pending.getLastReviewedAt());
   }
 
   private static ContextMemory memory(ContextMemoryStatus status) {

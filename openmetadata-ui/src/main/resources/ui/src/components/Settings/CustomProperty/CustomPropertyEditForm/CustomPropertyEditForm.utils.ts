@@ -106,8 +106,19 @@ export const getCustomPropertyChanges = (
     };
   }
 
+  // `getEditFormValues` seeds displayName with `property.displayName ?? ''`,
+  // so an unchanged field reads back as '' for properties without a display
+  // name. Returning that '' would make `updateCustomPropertyByName` emit an
+  // `add /displayName ""` op — silently persisting an empty displayName on an
+  // unrelated edit. Treat an unchanged displayName as a no-op (undefined),
+  // the same way `updateCustomPropertyByName` treats any undefined change.
+  const displayName =
+    values.displayName === (property.displayName ?? '')
+      ? undefined
+      : values.displayName;
+
   return {
-    displayName: values.displayName,
+    displayName,
     description: values.description,
     customPropertyConfig,
   };

@@ -34,7 +34,6 @@ import {
   toastNotification,
   uuid,
   visitGlossaryPage,
-  waitForAntdModalToSettle,
 } from '../../utils/common';
 import { openPlaceholderWidgetPicker } from '../../utils/customizeDetails';
 import {
@@ -367,8 +366,6 @@ test.describe(
       const addButton = adminPage
         .getByRole('dialog')
         .getByRole('button', { name: 'Add' });
-      await adminPage.locator('.ant-modal').waitFor({ state: 'visible' });
-      await waitForAntdModalToSettle(adminPage);
       await expect(addButton).toBeEnabled();
       await addButton.click();
 
