@@ -127,7 +127,6 @@ const LeftSidebar = () => {
           className="tw:flex tw:justify-center"
           data-testid={item.dataTestId}>
           <NavItemButton
-            className="tw:size-11 tw:[&>svg]:size-7"
             current={selectedKeys.includes(item.key)}
             href={item.redirect_url}
             icon={item.icon}
@@ -168,7 +167,7 @@ const LeftSidebar = () => {
             setCollapsedMenuKey(isOpen ? item.key : undefined)
           }>
           <span
-            className="tw:flex tw:justify-center"
+            className="tw:flex tw:h-10 tw:items-center tw:justify-center"
             role="presentation"
             onMouseEnter={() => {
               cancelHoverClose();
