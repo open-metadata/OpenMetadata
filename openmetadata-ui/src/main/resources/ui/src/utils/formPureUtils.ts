@@ -95,10 +95,8 @@ export const createScrollToErrorHandler = (
     setTimeout(() => {
       const firstError = document.querySelector(errorSelector);
       if (firstError) {
-        // The nearest matching ancestor, not the first match in the document:
-        // drawers nest `.drawer-form-content` (the drawer body always carries
-        // it, and a form can add its own inner scroller), and the outer one
-        // may not scroll at all.
+        // Nearest ancestor, not the first match: drawers can nest
+        // `.drawer-form-content`, and the outer one may not scroll.
         const scrollableContainer = firstError.closest(scrollContainer);
         if (scrollableContainer) {
           const errorRect = firstError.getBoundingClientRect();

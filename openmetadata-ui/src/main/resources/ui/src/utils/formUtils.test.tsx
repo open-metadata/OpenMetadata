@@ -415,8 +415,7 @@ describe('formUtils', () => {
       });
 
       it('scrolls the container holding the error when drawer-form-content is nested', () => {
-        // The drawer body always carries the class; the form column that
-        // actually scrolls carries it too.
+        // Outer drawer body and inner scrolling column both carry the class.
         document.body.innerHTML = `
           <div class="drawer-form-content" id="drawer-body">
             <form class="drawer-form-content" id="form-column">

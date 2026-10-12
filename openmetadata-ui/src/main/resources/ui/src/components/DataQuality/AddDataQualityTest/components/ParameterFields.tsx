@@ -130,8 +130,7 @@ const ParamArrayField: React.FC<ParamArrayFieldProps> = ({
               // must not repeat it. Validation is still enforced via `rules`.
               required: false,
               rules: rowRequired ? { required: rowRequired } : undefined,
-              // Surface the selected test definition's doc in the Form Hint
-              // on focus.
+              // Show the selected test definition's doc in the Form Hint.
               doc: testDefinitionDoc ?? data.description,
               placeholder: t('message.enter-a-field', { field: label }),
               id: `testCaseFormV1_params_${data.name}_${index}_value`,

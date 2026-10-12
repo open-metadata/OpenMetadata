@@ -264,8 +264,7 @@ jest.mock(
     }
 );
 
-// The real panel fetches the entity, its permissions and lineage; only what
-// the drawer hands it matters here.
+// The real panel fetches entity data; only what the drawer passes matters.
 jest.mock(
   '../../../Explore/EntitySummaryPanel/EntitySummaryPanel.component',
   () =>
@@ -667,7 +666,6 @@ describe('TestCaseFormDrawer', () => {
 
       await screen.findByTestId('test-case-form-body');
 
-      // A table is selected, but focus has not been on the table field.
       await act(async () => {
         fireEvent.click(screen.getByTestId('emit-context-pipeline'));
       });
@@ -676,7 +674,6 @@ describe('TestCaseFormDrawer', () => {
         screen.queryByTestId('entity-summary-panel')
       ).not.toBeInTheDocument();
 
-      // Picking the table reports the selected entity as the active field.
       await act(async () => {
         emitActiveFieldFn?.('root/selected-entity');
       });
@@ -684,12 +681,10 @@ describe('TestCaseFormDrawer', () => {
       expect(
         await screen.findByTestId('entity-summary-panel')
       ).toHaveTextContent('service.db.schema.table');
-      // The summary replaces the hint text rather than sitting under it.
       expect(
         screen.queryByText(/kind of validation to run/i)
       ).not.toBeInTheDocument();
 
-      // Moving on to Select Test Type leaves only its own hint.
       await act(async () => {
         emitActiveFieldFn?.('root/testType');
       });
@@ -701,8 +696,6 @@ describe('TestCaseFormDrawer', () => {
         screen.getByText(/kind of validation to run/i)
       ).toBeInTheDocument();
 
-      // Back on the table field the summary returns, and Show Hint off
-      // hides it with the rest of the hint.
       await act(async () => {
         emitActiveFieldFn?.('root/table');
       });

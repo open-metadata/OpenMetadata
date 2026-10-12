@@ -13,5 +13,4 @@
 
 // Active-field ids the form reports through `onActiveFieldChange`.
 export const ROOT_TABLE_PATH = 'root/table';
-// Reported once a table is picked, so the hint can show that table.
 export const ROOT_SELECTED_ENTITY_PATH = 'root/selected-entity';

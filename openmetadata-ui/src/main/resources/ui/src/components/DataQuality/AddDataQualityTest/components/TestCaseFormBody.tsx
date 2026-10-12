@@ -655,10 +655,8 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     [testCase?.Create, getEntityPermissionByFqn, t]
   );
 
-  // Report the focused or clicked field to the doc panel. Rendered controls
-  // carry `root/<fieldName>` ids. A select holding a value hides its input, so
-  // a click there takes no focus while the core hint panel still switches on
-  // pointer-down; fall back to the id inside the clicked field's doc wrapper.
+  // Report the focused or clicked field (`root/<fieldName>` ids). A select
+  // holding a value hides its input, so fall back to the id in its wrapper.
   const handleFieldActivation = useCallback(
     (event: React.SyntheticEvent<HTMLDivElement>) => {
       const target = event.target as HTMLElement;
@@ -1222,7 +1220,6 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
 
   const selectedTableField = {
     name: 'selectedTable',
-    // Doubles as the Form Hint heading, above the selected table's summary.
     label: t(
       selectedTableFqn ? 'label.selected-entity' : 'label.select-entity',
       {

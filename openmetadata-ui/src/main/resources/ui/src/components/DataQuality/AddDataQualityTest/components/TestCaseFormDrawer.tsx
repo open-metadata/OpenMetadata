@@ -180,8 +180,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [formContext, setFormContext] = useState<TestCaseFormContext>();
   const [showHint, setShowHint] = useState<boolean>(true);
-  // The selected table's summary belongs to the Select Table hint only; once
-  // another field is focused, its hint shows on its own.
+  // The selected table's summary shows only with the Select Table hint.
   const [isTableFieldActive, setIsTableFieldActive] = useState(false);
   const [editDefinition, setEditDefinition] = useState<TestDefinition>();
   // Id of the test case whose edit prefill has finished. Until this matches the
@@ -399,10 +398,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
     />
   );
 
-  // Without the hint the form spans the full drawer, so narrow the drawer
-  // rather than stretching the form across 80vw: 52vw (the form's original
-  // 65% column) when there is no hint at all, and a little wider than the
-  // hinted form column when the user switches Show Hint off.
+  // Without the hint, narrow the drawer instead of stretching the form.
   const resolvedWidth = getResolvedDrawerWidth(width, showDocPanel, showHint);
 
   const scrollToError = useMemo(
@@ -445,8 +441,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
     </>
   );
 
-  // Memoized: the summary panel derives its permission lookup from this
-  // object's identity, so a fresh object per render would redo that work.
+  // Stable identity: the summary panel's permission lookup depends on it.
   const selectedTableDetails = useMemo(() => {
     const details = getSelectedTableSearchSource(
       formContext?.selectedTableData
@@ -477,15 +472,10 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
         </Box>
       }
       form={form}
-      // The drawer body's own padding is zeroed (see `body` below) so the
-      // hint column runs edge to edge; the form column carries it instead.
-      // `drawer-form-content` marks this column as the scroll-to-error target,
-      // since it, not the drawer body, is what scrolls.
+      // Carries the padding zeroed on the body (see `body`); this column, not
+      // the body, scrolls, so it is the scroll-to-error target.
       formClassName="drawer-form-content tw:px-4 tw:py-6 tw:md:px-6"
       renderFieldDoc={(markdown) =>
-        // Once a table is picked, the Select Table hint gives way to that
-        // table's summary; the generic "how to pick a table" text only helps
-        // while nothing is selected.
         isTableFieldActive && selectedTableDetails ? (
           <div className="tw:mt-3" data-testid="selected-table-summary">
             <EntitySummaryPanel
@@ -514,8 +504,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
     </HookForm>
   );
 
-  // pr-10 keeps the toggle clear of the header's absolutely-positioned close
-  // button.
+  // pr-10 clears the header's absolutely positioned close button.
   const hintToggle = (
     <Box align="center" className="tw:gap-2 tw:pr-10" direction="row">
       {renderHintLabel(t('label.show-hint'))}
@@ -556,9 +545,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
           {showDocPanel && hintToggle}
         </>
       ),
-      // Each panel column scrolls on its own, so the body must not pad, gap
-      // or stack them. tailwind-merge drops the SlideoutMenu.Content defaults
-      // these conflict with (`px-4 md:px-6`, `gap-6`, `flex-col`).
+      // Columns scroll on their own: drop Content's padding, gap and stacking.
       body: { className: 'tw:flex-row tw:gap-0 tw:px-0 tw:md:px-0' },
       width: resolvedWidth,
       submitLabel: isEditMode ? t('label.update') : t('label.create'),

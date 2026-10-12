@@ -300,16 +300,13 @@ describe('TestCaseFormBody', () => {
       render(<Wrapper />);
     });
 
-    // A select holding a value hides its input, so a click there moves no
-    // focus; the pointer-down alone must report the field.
+    // A select holding a value takes no focus on click.
     await act(async () => {
       fireEvent.pointerDown(await screen.findByTestId('selectedTable'));
     });
 
     expect(onActiveFieldChange).toHaveBeenLastCalledWith('root/table');
 
-    // Tabbing back onto a Test Level card must move the active field off the
-    // table too, or the drawer keeps the table summary under that hint.
     await act(async () => {
       screen.getAllByRole('radio')[0].focus();
     });
