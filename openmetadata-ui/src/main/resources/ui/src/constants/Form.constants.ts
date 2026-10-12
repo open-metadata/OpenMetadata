@@ -16,7 +16,7 @@ import { Rule } from 'antd/lib/form';
 import i18n from '../utils/i18next/LocalUtil';
 import { ENTITY_NAME_REGEX } from './regex.constants';
 
-export const NAME_FIELD_RULES: Rule[] = [
+export const NAME_FIELD_RULES = [
   {
     required: true,
     message: i18n.t('label.field-required', {
@@ -36,7 +36,7 @@ export const NAME_FIELD_RULES: Rule[] = [
     pattern: ENTITY_NAME_REGEX,
     message: i18n.t('message.entity-name-validation'),
   },
-];
+] satisfies Rule[];
 
 export const DISPLAY_NAME_FIELD_RULES: Rule[] = [
   {
@@ -49,3 +49,13 @@ export const DISPLAY_NAME_FIELD_RULES: Rule[] = [
     }),
   },
 ];
+
+export const NAME_FIELD_VALIDATION = {
+  required: NAME_FIELD_RULES[0].message as string,
+  minLength: { value: 1, message: NAME_FIELD_RULES[1].message as string },
+  maxLength: { value: 128, message: NAME_FIELD_RULES[1].message as string },
+  pattern: {
+    value: ENTITY_NAME_REGEX,
+    message: NAME_FIELD_RULES[2].message as string,
+  },
+};

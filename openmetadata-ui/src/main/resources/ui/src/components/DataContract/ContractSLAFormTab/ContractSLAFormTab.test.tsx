@@ -143,7 +143,7 @@ describe('ContractSLAFormTab', () => {
     it('should have proper validation rules for numeric fields', () => {
       render(<ContractSLAFormTab {...commonProps} />);
 
-      // Verify InputNumber components are rendered with proper constraints
+      // Verify NumberInput components are rendered with proper constraints
       const refreshFrequencyInput = screen.getByTestId(
         'refresh-frequency-interval-input'
       );
@@ -154,39 +154,31 @@ describe('ContractSLAFormTab', () => {
       expect(maxLatencyInput).toBeInTheDocument();
       expect(retentionPeriodInput).toBeInTheDocument();
 
-      // Check that these are proper InputNumber components
-      expect(
-        refreshFrequencyInput.closest('.ant-input-number')
-      ).toBeInTheDocument();
-      expect(maxLatencyInput.closest('.ant-input-number')).toBeInTheDocument();
-      expect(
-        retentionPeriodInput.closest('.ant-input-number')
-      ).toBeInTheDocument();
+      // Check that these are proper NumberInput components
+      expect(refreshFrequencyInput).toHaveAttribute('type', 'number');
+      expect(maxLatencyInput).toHaveAttribute('type', 'number');
+      expect(retentionPeriodInput).toHaveAttribute('type', 'number');
     });
 
     it('should have validation rules configured for minimum values', () => {
       render(<ContractSLAFormTab {...commonProps} />);
 
-      // Verify InputNumber components are rendered which have built-in numeric validation
+      // Verify NumberInput components are rendered which have built-in numeric validation
       const refreshFrequencyInput = screen.getByTestId(
         'refresh-frequency-interval-input'
       );
       const maxLatencyInput = screen.getByTestId('max-latency-value-input');
       const retentionPeriodInput = screen.getByTestId('retention-period-input');
 
-      // InputNumber components should be present
+      // NumberInput components should be present
       expect(refreshFrequencyInput).toBeInTheDocument();
       expect(maxLatencyInput).toBeInTheDocument();
       expect(retentionPeriodInput).toBeInTheDocument();
 
-      // They should be InputNumber components (not regular Input)
-      expect(
-        refreshFrequencyInput.closest('.ant-input-number')
-      ).toBeInTheDocument();
-      expect(maxLatencyInput.closest('.ant-input-number')).toBeInTheDocument();
-      expect(
-        retentionPeriodInput.closest('.ant-input-number')
-      ).toBeInTheDocument();
+      // They should be NumberInput components (not regular Input)
+      expect(refreshFrequencyInput).toHaveAttribute('type', 'number');
+      expect(maxLatencyInput).toHaveAttribute('type', 'number');
+      expect(retentionPeriodInput).toHaveAttribute('type', 'number');
     });
 
     it('should have form validation rules for required fields', () => {
@@ -205,15 +197,15 @@ describe('ContractSLAFormTab', () => {
       expect(screen.getByTestId('retention-period-input')).toBeInTheDocument();
     });
 
-    it('should configure InputNumber with appropriate constraints', () => {
+    it('should configure NumberInput with appropriate constraints', () => {
       render(<ContractSLAFormTab {...commonProps} />);
 
       const refreshFrequencyInput = screen.getByTestId(
         'refresh-frequency-interval-input'
       );
 
-      // InputNumber should have numeric input type behavior
-      expect(refreshFrequencyInput).toHaveAttribute('role', 'spinbutton');
+      // NumberInput should have numeric input type behavior
+      expect(refreshFrequencyInput).toHaveAttribute('type', 'number');
     });
   });
 
@@ -291,7 +283,7 @@ describe('ContractSLAFormTab', () => {
       render(<ContractSLAFormTab {...commonProps} />);
 
       // Component implements conditional logic that checks for >= 0 values
-      // This is verified by the presence of InputNumber components which handle this validation
+      // This is verified by the presence of NumberInput components which handle this validation
       expect(
         screen.getByTestId('refresh-frequency-interval-input')
       ).toBeInTheDocument();
@@ -366,10 +358,10 @@ describe('ContractSLAFormTab', () => {
   });
 
   describe('Edge Cases and Boundary Conditions', () => {
-    it('should render InputNumber components that handle numeric validation', () => {
+    it('should render NumberInput components that handle numeric validation', () => {
       render(<ContractSLAFormTab {...commonProps} />);
 
-      // InputNumber components provide built-in validation for numeric inputs
+      // NumberInput components provide built-in validation for numeric inputs
       const intervalInput = screen.getByTestId(
         'refresh-frequency-interval-input'
       );
@@ -380,10 +372,10 @@ describe('ContractSLAFormTab', () => {
       expect(maxLatencyInput).toBeInTheDocument();
       expect(retentionInput).toBeInTheDocument();
 
-      // These should be InputNumber components
-      expect(intervalInput.closest('.ant-input-number')).toBeInTheDocument();
-      expect(maxLatencyInput.closest('.ant-input-number')).toBeInTheDocument();
-      expect(retentionInput.closest('.ant-input-number')).toBeInTheDocument();
+      // These should be NumberInput components
+      expect(intervalInput).toHaveAttribute('type', 'number');
+      expect(maxLatencyInput).toHaveAttribute('type', 'number');
+      expect(retentionInput).toHaveAttribute('type', 'number');
     });
 
     it('should handle form reset after initial values are set', () => {

@@ -97,6 +97,7 @@ jest.mock('../../../SchemaEditor/SchemaEditor', () => {
     .mockImplementation(({ onChange }: { onChange: (v: string) => void }) => (
       <button
         data-testid="schema-editor"
+        type="button"
         onClick={() => onChange('select 1 from table')}>
         sql editor
       </button>
@@ -288,8 +289,7 @@ describe('ProfilerSettingsModal partitioning round-trip', () => {
   });
 
   it('should preserve partitioning when only the SQL query is edited', async () => {
-    // The SQL editor sits outside any `<Form>`, so editing it never reaches the
-    // form's `onValuesChange` -- the path that masked the bug for fields that do.
+    // Editing SQL must preserve the partitioning loaded from the server.
     const payload = await renderAndSave(mockTableProfilerConfig, () => {
       fireEvent.click(screen.getByTestId('schema-editor'));
     });
@@ -405,7 +405,7 @@ describe('ProfilerSettingsModal profile-sample round-trip', () => {
       'aria-valuemin',
       '1'
     );
-    expect(screen.getByRole('slider')).toHaveAttribute('aria-valuemin', '1');
+    expect(screen.getByRole('slider')).toHaveAttribute('min', '1');
   });
 
   it('should clamp a typed 0 percentage up to 1 on blur', async () => {

@@ -13,10 +13,18 @@
 
 import { PlusOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Box, Toggle } from '@openmetadata/ui-core-components';
-import { Button, Form, FormProps, Input, Radio, Select } from 'antd';
+import {
+  Box,
+  FormField,
+  FormItemLabel,
+  HintText,
+  HookForm,
+  RadioButton,
+  RadioGroup,
+  Toggle,
+} from '@openmetadata/ui-core-components';
+import { Button, Input, Select } from 'antd';
 import { AxiosError } from 'axios';
-import { TFunction } from 'i18next';
 import {
   compact,
   debounce,
@@ -27,13 +35,11 @@ import {
   uniqBy,
 } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useForm, UseFormReturn, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { ReactComponent as IconSync } from '../../../../assets/svg/ic-sync.svg';
-import {
-  AGGREGATE_PAGE_SIZE_LARGE,
-  VALIDATION_MESSAGES,
-} from '../../../../constants/constants';
+import { AGGREGATE_PAGE_SIZE_LARGE } from '../../../../constants/constants';
 import {
   EMAIL_REG_EX,
   passwordRegex,
@@ -44,101 +50,104 @@ import {
   AuthType,
   CreatePasswordType,
 } from '../../../../generated/api/teams/createUser';
+import { JWTTokenExpiry } from '../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../generated/entity/type';
 import { AuthProvider } from '../../../../generated/settings/settings';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useDomainStore } from '../../../../hooks/useDomainStore';
-import {
-  FieldProp,
-  FieldTypes,
-  FormItemLayout,
-} from '../../../../interface/FormUtils.interface';
 import { generateRandomPwd } from '../../../../rest/auth-API';
 import { getAllPersonas } from '../../../../rest/PersonaAPI';
 import { searchRoles } from '../../../../rest/rolesAPIV1';
 import { getJWTTokenExpiryOptions } from '../../../../utils/BotsUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getEntityReferenceListFromEntities } from '../../../../utils/EntityReferenceUtils';
-import { getField } from '../../../../utils/formUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { AsyncSelect } from '../../../common/AsyncSelect/AsyncSelect';
 import { AsyncSelectListProps } from '../../../common/AsyncSelect/AsyncSelectList.interface';
 import CopyToClipboardButton from '../../../common/CopyToClipboardButton/CopyToClipboardButton';
 import { DomainLabel } from '../../../common/DomainLabel/DomainLabel.component';
+import DomainSelect from '../../../common/DomainSelect/DomainSelect';
+import { DomainSelectTrigger } from '../../../common/DomainSelect/DomainSelectTrigger';
 import InlineAlert from '../../../common/InlineAlert/InlineAlert';
 import Loader from '../../../common/Loader/Loader';
+import RichTextEditor from '../../../common/RichTextEditor/RichTextEditor';
 import TeamsSelectable from '../../Team/TeamsSelectable/TeamsSelectable';
 import { CreateUserFormData, CreateUserProps } from './CreateUser.interface';
 
-// Pure builder for the domains FieldProp - no hook/prop dependency beyond its
-// arguments, so it lives at module scope.
-const buildDomainsField = (
-  activeDomainEntityRef: EntityReference | undefined,
-  t: TFunction
-): FieldProp => ({
-  name: 'domains',
-  id: 'root/domains',
-  required: false,
-  label: t('label.domain-plural') as string,
-  type: FieldTypes.DOMAIN_SELECT,
-  props: {
-    selectedDomain: activeDomainEntityRef ? [activeDomainEntityRef] : undefined,
-    multiple: true,
-    children: (
-      <Button
-        data-testid="add-domain"
-        icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
-        size="small"
-        type="primary"
-      />
-    ),
-  },
-  formItemLayout: FormItemLayout.HORIZONTAL,
-  formItemProps: {
-    valuePropName: 'selectedDomain',
-    trigger: 'onUpdate',
-    initialValue: activeDomainEntityRef ? [activeDomainEntityRef] : undefined,
-  },
-});
+type CreateUserValues = Omit<
+  CreateUserFormData,
+  'name' | 'domains' | 'teams' | 'personas'
+> & {
+  domains: EntityReference[];
+  teams: EntityReference[];
+  personas: string[];
+  passwordGenerator: CreatePasswordGenerator;
+  generatedPassword?: string;
+  tokenExpiry?: JWTTokenExpiry;
+};
 
 interface BotFieldsProps {
+  form: UseFormReturn<CreateUserValues>;
   isAdminUser: boolean;
 }
 
-const BotFields = ({ isAdminUser }: BotFieldsProps) => {
+const BotFields = ({ form, isAdminUser }: BotFieldsProps) => {
   const { t } = useTranslation();
 
   return (
     <>
-      <Form.Item
-        label={t('label.token-expiration')}
+      <FormField
+        control={form.control}
         name="tokenExpiry"
-        rules={[
-          {
-            required: true,
-          },
-        ]}>
-        <Select
-          className="w-full"
-          data-testid="token-expiry"
-          placeholder={t('message.select-token-expiration')}>
-          {getJWTTokenExpiryOptions()}
-        </Select>
-      </Form.Item>
+        rules={{
+          required: t('label.field-required', {
+            field: t('label.token-expiration'),
+          }),
+        }}>
+        {({ field, fieldState }) => (
+          <Box direction="col" gap={2}>
+            <FormItemLabel required label={t('label.token-expiration')} />
+            <Select
+              {...field}
+              aria-label={t('label.token-expiration')}
+              className="w-full"
+              data-testid="token-expiry"
+              placeholder={t('message.select-token-expiration')}>
+              {getJWTTokenExpiryOptions()}
+            </Select>
+            {fieldState.error && (
+              <HintText isInvalid>{fieldState.error.message}</HintText>
+            )}
+          </Box>
+        )}
+      </FormField>
       {isAdminUser && (
-        <Form.Item
-          label={t('label.allow-impersonation')}
-          name="allowImpersonation"
-          tooltip={t('message.allow-impersonation-help')}
-          valuePropName="isSelected">
-          <Toggle data-testid="allow-impersonation" />
-        </Form.Item>
+        <FormField control={form.control} name="allowImpersonation">
+          {({ field, fieldState }) => (
+            <Box direction="col" gap={2}>
+              <FormItemLabel
+                label={t('label.allow-impersonation')}
+                required={false}
+                tooltip={t('message.allow-impersonation-help')}
+              />
+              <Toggle
+                data-testid="allow-impersonation"
+                isSelected={!!field.value}
+                onChange={field.onChange}
+              />
+              {fieldState.error && (
+                <HintText isInvalid>{fieldState.error.message}</HintText>
+              )}
+            </Box>
+          )}
+        </FormField>
       )}
     </>
   );
 };
 
 interface PasswordConfigSectionProps {
+  form: UseFormReturn<CreateUserValues>;
   generatedPassword?: string;
   isAuthProviderBasic: boolean;
   isPasswordGenerating: boolean;
@@ -148,10 +157,10 @@ interface PasswordConfigSectionProps {
 }
 
 const PasswordConfigSection = ({
+  form,
   generatedPassword,
   isAuthProviderBasic,
   isPasswordGenerating,
-  password,
   passwordGenerator,
   onGeneratePassword,
 }: PasswordConfigSectionProps) => {
@@ -163,115 +172,171 @@ const PasswordConfigSection = ({
 
   return (
     <>
-      <Form.Item name="passwordGenerator">
-        <Radio.Group>
-          <Radio value={CreatePasswordGenerator.AutomaticGenerate}>
-            {t('label.automatically-generate')}
-          </Radio>
-          <Radio value={CreatePasswordGenerator.CreatePassword}>
-            {t('label.password-type', {
-              type: t('label.create'),
-            })}
-          </Radio>
-        </Radio.Group>
-      </Form.Item>
+      <FormField control={form.control} name="passwordGenerator">
+        {({ field, fieldState }) => (
+          <Box direction="col" gap={2}>
+            <RadioGroup
+              {...field}
+              aria-label={t('label.password-type', {
+                type: t('label.create'),
+              })}>
+              <RadioButton
+                label={<>{t('label.automatically-generate')}</>}
+                value={CreatePasswordGenerator.AutomaticGenerate}
+              />
+              <RadioButton
+                label={
+                  <>
+                    {t('label.password-type', {
+                      type: t('label.create'),
+                    })}
+                  </>
+                }
+                value={CreatePasswordGenerator.CreatePassword}
+              />
+            </RadioGroup>
+            {fieldState.error && (
+              <HintText isInvalid>{fieldState.error.message}</HintText>
+            )}
+          </Box>
+        )}
+      </FormField>
 
       {passwordGenerator === CreatePasswordGenerator.CreatePassword ? (
         <div className="m-t-sm">
-          <Form.Item
-            label={t('label.password')}
+          <FormField
+            control={form.control}
             name="password"
-            rules={[
-              {
-                required: true,
-              },
-              {
-                pattern: passwordRegex,
+            rules={{
+              required: t('label.field-required', {
+                field: t('label.password'),
+              }),
+              pattern: {
+                value: passwordRegex,
                 message: t('message.password-error-message'),
               },
-            ]}>
-            <Input.Password
-              autoComplete="off"
-              name="password"
-              placeholder={t('label.password-type', {
-                type: t('label.enter'),
-              })}
-            />
-          </Form.Item>
+            }}>
+            {({ field, fieldState }) => (
+              <Box direction="col" gap={2}>
+                <FormItemLabel required label={t('label.password')} />
+                <Input.Password
+                  {...field}
+                  aria-label={t('label.password')}
+                  autoComplete="off"
+                  name="password"
+                  placeholder={t('label.password-type', {
+                    type: t('label.enter'),
+                  })}
+                />
+                {fieldState.error && (
+                  <HintText isInvalid>{fieldState.error.message}</HintText>
+                )}
+              </Box>
+            )}
+          </FormField>
 
-          <Form.Item
-            label={t('label.password-type', {
-              type: t('label.confirm'),
-            })}
+          <FormField
+            control={form.control}
             name="confirmPassword"
-            rules={[
-              {
-                validator: (_, value) => {
-                  if (value !== password) {
-                    return Promise.reject(t('label.password-not-match'));
-                  }
-
-                  return Promise.resolve();
-                },
-              },
-            ]}>
-            <Input.Password
-              autoComplete="off"
-              name="confirmPassword"
-              placeholder={t('label.password-type', {
-                type: t('label.confirm'),
-              })}
-            />
-          </Form.Item>
+            rules={{
+              deps: ['password'],
+              validate: (value) =>
+                value === form.getValues('password') ||
+                t('label.password-not-match'),
+            }}>
+            {({ field, fieldState }) => (
+              <Box direction="col" gap={2}>
+                <FormItemLabel
+                  required
+                  label={t('label.password-type', {
+                    type: t('label.confirm'),
+                  })}
+                />
+                <Input.Password
+                  {...field}
+                  aria-label={t('label.password-type', {
+                    type: t('label.confirm'),
+                  })}
+                  autoComplete="off"
+                  name="confirmPassword"
+                  placeholder={t('label.password-type', {
+                    type: t('label.confirm'),
+                  })}
+                />
+                {fieldState.error && (
+                  <HintText isInvalid>{fieldState.error.message}</HintText>
+                )}
+              </Box>
+            )}
+          </FormField>
         </div>
       ) : (
         <div className="m-t-sm">
-          <Form.Item
-            label={t('label.password-type', {
-              type: t('label.generate'),
-            })}
+          <FormField
+            control={form.control}
             name="generatedPassword"
-            rules={[
-              {
-                required: true,
-              },
-            ]}>
-            <Input.Password
-              readOnly
-              addonAfter={
-                <div className="flex-center w-16">
-                  <div
-                    className="w-8 h-7 flex-center cursor-pointer"
-                    data-testid="password-generator"
-                    role="button"
-                    tabIndex={0}
-                    onClick={onGeneratePassword}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        onGeneratePassword();
-                      }
-                    }}>
-                    {isPasswordGenerating ? (
-                      <Loader size="small" type="default" />
-                    ) : (
-                      <Icon
-                        className="align-middle"
-                        component={IconSync}
-                        style={{ fontSize: '16px' }}
-                      />
-                    )}
-                  </div>
+            rules={{
+              required: t('label.field-required', {
+                field: t('label.password-type', {
+                  type: t('label.generate'),
+                }),
+              }),
+            }}>
+            {({ field, fieldState }) => (
+              <Box direction="col" gap={2}>
+                <FormItemLabel
+                  required
+                  label={t('label.password-type', {
+                    type: t('label.generate'),
+                  })}
+                />
+                <Input.Password
+                  {...field}
+                  readOnly
+                  addonAfter={
+                    <div className="flex-center w-16">
+                      <div
+                        className="w-8 h-7 flex-center cursor-pointer"
+                        data-testid="password-generator"
+                        role="button"
+                        tabIndex={0}
+                        onClick={onGeneratePassword}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            onGeneratePassword();
+                          }
+                        }}>
+                        {isPasswordGenerating ? (
+                          <Loader size="small" type="default" />
+                        ) : (
+                          <Icon
+                            className="align-middle"
+                            component={IconSync}
+                            style={{ fontSize: '16px' }}
+                          />
+                        )}
+                      </div>
 
-                  <div className="w-8 h-7 flex-center">
-                    <CopyToClipboardButton copyText={generatedPassword ?? ''} />
-                  </div>
-                </div>
-              }
-              autoComplete="off"
-              name="generatedPassword"
-              value={generatedPassword}
-            />
-          </Form.Item>
+                      <div className="w-8 h-7 flex-center">
+                        <CopyToClipboardButton
+                          copyText={generatedPassword ?? ''}
+                        />
+                      </div>
+                    </div>
+                  }
+                  aria-label={t('label.password-type', {
+                    type: t('label.generate'),
+                  })}
+                  autoComplete="off"
+                  name="generatedPassword"
+                  value={generatedPassword}
+                />
+                {fieldState.error && (
+                  <HintText isInvalid>{fieldState.error.message}</HintText>
+                )}
+              </Box>
+            )}
+          </FormField>
         </div>
       )}
     </>
@@ -279,6 +344,7 @@ const PasswordConfigSection = ({
 };
 
 interface TeamRolePersonaFieldsProps {
+  form: UseFormReturn<CreateUserValues>;
   debouncedFetchRoleOptions: (searchText?: string) => void;
   fetchPersonaOptions: AsyncSelectListProps['api'];
   isRolesLoading: boolean;
@@ -287,6 +353,7 @@ interface TeamRolePersonaFieldsProps {
 }
 
 const TeamRolePersonaFields = ({
+  form,
   debouncedFetchRoleOptions,
   fetchPersonaOptions,
   isRolesLoading,
@@ -297,47 +364,84 @@ const TeamRolePersonaFields = ({
 
   return (
     <>
-      <Form.Item label={t('label.team-plural')} name="teams">
-        <TeamsSelectable onSelectionChange={onTeamsSelectionChange} />
-      </Form.Item>
-      <Form.Item label={t('label.role-plural')} name="roles">
-        <Select
-          showSearch
-          data-testid="roles-dropdown"
-          disabled={isRolesLoading && isEmpty(roleOptions)}
-          filterOption={false}
-          getPopupContainer={(triggerNode) => triggerNode.parentElement}
-          loading={isRolesLoading}
-          mode="multiple"
-          options={roleOptions}
-          placeholder={t('label.please-select-entity', {
-            entity: t('label.role-plural'),
-          })}
-          onSearch={debouncedFetchRoleOptions}
-        />
-      </Form.Item>
-      <Form.Item label={t('label.persona-plural')} name="personas">
-        <AsyncSelect
-          enableInfiniteScroll
-          showSearch
-          api={fetchPersonaOptions}
-          data-testid="personas-dropdown"
-          filterOption={(input, option) => {
-            const label = String(option?.label ?? option?.value ?? '');
+      <FormField control={form.control} name="teams">
+        {({ field, fieldState }) => (
+          <Box direction="col" gap={2}>
+            <FormItemLabel label={t('label.team-plural')} required={false} />
+            <TeamsSelectable
+              selectedTeams={field.value}
+              onSelectionChange={(teams) => {
+                field.onChange(teams);
+                onTeamsSelectionChange(teams);
+              }}
+            />
+            {fieldState.error && (
+              <HintText isInvalid>{fieldState.error.message}</HintText>
+            )}
+          </Box>
+        )}
+      </FormField>
+      <FormField control={form.control} name="roles">
+        {({ field, fieldState }) => (
+          <Box direction="col" gap={2}>
+            <FormItemLabel label={t('label.role-plural')} required={false} />
+            <Select
+              {...field}
+              showSearch
+              aria-label={t('label.role-plural')}
+              data-testid="roles-dropdown"
+              disabled={isRolesLoading && isEmpty(roleOptions)}
+              filterOption={false}
+              getPopupContainer={(triggerNode) => triggerNode.parentElement}
+              loading={isRolesLoading}
+              mode="multiple"
+              options={roleOptions}
+              placeholder={t('label.please-select-entity', {
+                entity: t('label.role-plural'),
+              })}
+              onSearch={debouncedFetchRoleOptions}
+            />
+            {fieldState.error && (
+              <HintText isInvalid>{fieldState.error.message}</HintText>
+            )}
+          </Box>
+        )}
+      </FormField>
+      <FormField control={form.control} name="personas">
+        {({ field, fieldState }) => (
+          <Box direction="col" gap={2}>
+            <FormItemLabel label={t('label.persona-plural')} required={false} />
+            <AsyncSelect
+              {...field}
+              enableInfiniteScroll
+              showSearch
+              api={fetchPersonaOptions}
+              aria-label={t('label.persona-plural')}
+              data-testid="personas-dropdown"
+              filterOption={(input, option) => {
+                const label = String(option?.label ?? option?.value ?? '');
 
-            return !input || label.toLowerCase().includes(input.toLowerCase());
-          }}
-          mode="multiple"
-          placeholder={t('label.please-select-entity', {
-            entity: t('label.persona-plural'),
-          })}
-        />
-      </Form.Item>
+                return (
+                  !input || label.toLowerCase().includes(input.toLowerCase())
+                );
+              }}
+              mode="multiple"
+              placeholder={t('label.please-select-entity', {
+                entity: t('label.persona-plural'),
+              })}
+            />
+            {fieldState.error && (
+              <HintText isInvalid>{fieldState.error.message}</HintText>
+            )}
+          </Box>
+        )}
+      </FormField>
     </>
   );
 };
 
 interface AdminOnlyFieldsProps {
+  form: UseFormReturn<CreateUserValues>;
   debouncedFetchRoleOptions: (searchText?: string) => void;
   fetchPersonaOptions: AsyncSelectListProps['api'];
   generatedPassword?: string;
@@ -355,6 +459,7 @@ interface AdminOnlyFieldsProps {
 }
 
 const AdminOnlyFields = ({
+  form,
   debouncedFetchRoleOptions,
   fetchPersonaOptions,
   generatedPassword,
@@ -375,6 +480,7 @@ const AdminOnlyFields = ({
   return (
     <>
       <PasswordConfigSection
+        form={form}
         generatedPassword={generatedPassword}
         isAuthProviderBasic={isAuthProviderBasic}
         isPasswordGenerating={isPasswordGenerating}
@@ -386,13 +492,14 @@ const AdminOnlyFields = ({
         <TeamRolePersonaFields
           debouncedFetchRoleOptions={debouncedFetchRoleOptions}
           fetchPersonaOptions={fetchPersonaOptions}
+          form={form}
           isRolesLoading={isRolesLoading}
           roleOptions={roleOptions}
           onTeamsSelectionChange={onTeamsSelectionChange}
         />
       )}
 
-      <Form.Item>
+      <div>
         <Box
           inline
           align="center"
@@ -406,34 +513,57 @@ const AdminOnlyFields = ({
             onChange={onToggleAdmin}
           />
         </Box>
-      </Form.Item>
+      </div>
     </>
   );
 };
 
-interface DomainSectionProps {
-  domainsField: FieldProp;
-  selectedDomain: EntityReference[];
-}
-
 const DomainSection = ({
-  domainsField,
+  form,
   selectedDomain,
-}: DomainSectionProps) => (
-  <div className="m-t-xs">
-    {getField(domainsField)}
-    {selectedDomain && selectedDomain.length > 0 && (
-      <DomainLabel
-        multiple
-        domains={selectedDomain}
-        entityFqn=""
-        entityId=""
-        entityType={EntityType.USER}
-        hasPermission={false}
-      />
-    )}
-  </div>
-);
+}: {
+  form: UseFormReturn<CreateUserValues>;
+  selectedDomain: EntityReference[];
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <Box direction="col" gap={2}>
+      <FormItemLabel label={t('label.domain-plural')} />
+      <FormField control={form.control} name="domains">
+        {({ field }) => (
+          <DomainSelect
+            hasPermission
+            multiple
+            renderTrigger={({ toggle }) => (
+              <DomainSelectTrigger toggle={toggle}>
+                <Button
+                  data-testid="add-domain"
+                  icon={<PlusOutlined />}
+                  size="small"
+                  type="primary"
+                />
+              </DomainSelectTrigger>
+            )}
+            selectedDomain={field.value}
+            triggerVariant="button"
+            onUpdate={field.onChange}
+          />
+        )}
+      </FormField>
+      {selectedDomain.length > 0 && (
+        <DomainLabel
+          multiple
+          domains={selectedDomain}
+          entityFqn=""
+          entityId=""
+          entityType={EntityType.USER}
+          hasPermission={false}
+        />
+      )}
+    </Box>
+  );
+};
 
 const CreateUser = ({
   isLoading,
@@ -447,7 +577,7 @@ const CreateUser = ({
     state?: { isAdminPage: boolean };
   } = useLocation();
   const { t } = useTranslation();
-  const [form] = Form.useForm();
+
   const isAdminPage = Boolean(state?.isAdminPage);
   const { authConfig, currentUser, inlineAlertDetails } = useApplicationStore();
   const isAdminUser = Boolean(currentUser?.isAdmin);
@@ -462,13 +592,22 @@ const CreateUser = ({
   const [isRolesLoading, setIsRolesLoading] = useState(false);
   const [isPasswordGenerating, setIsPasswordGenerating] = useState(false);
   const { activeDomainEntityRef } = useDomainStore();
-  const watchedDomains = Form.useWatch<EntityReference[]>('domains', form);
+  const form = useForm<CreateUserValues>({
+    mode: 'onChange',
+    defaultValues: {
+      email: '',
+      displayName: '',
+      description: '',
+      roles: [],
+      teams: [],
+      personas: [],
+      domains:
+        !forceBot && activeDomainEntityRef ? [activeDomainEntityRef] : [],
+      passwordGenerator: CreatePasswordGenerator.AutomaticGenerate,
+    },
+  });
+  const watchedDomains = useWatch({ control: form.control, name: 'domains' });
   const selectedDomain = watchedDomains ?? [];
-
-  const domainsField: FieldProp = useMemo(
-    () => buildDomainsField(activeDomainEntityRef, t),
-    [activeDomainEntityRef, t]
-  );
 
   const isAuthProviderBasic = useMemo(
     () =>
@@ -477,8 +616,11 @@ const CreateUser = ({
     [authConfig]
   );
 
-  const selectedRoles = Form.useWatch('roles', form);
-  const selectedPersonas = Form.useWatch('personas', form);
+  const selectedRoles = useWatch({ control: form.control, name: 'roles' });
+  const selectedPersonas = useWatch({
+    control: form.control,
+    name: 'personas',
+  });
 
   const fetchRoleOptions = useCallback(
     async (searchText = '') => {
@@ -544,16 +686,22 @@ const CreateUser = ({
     }
   };
 
-  const generatedPassword = Form.useWatch('generatedPassword', form);
-  const passwordGenerator = Form.useWatch('passwordGenerator', form);
-  const password = Form.useWatch('password', form);
+  const generatedPassword = useWatch({
+    control: form.control,
+    name: 'generatedPassword',
+  });
+  const passwordGenerator = useWatch({
+    control: form.control,
+    name: 'passwordGenerator',
+  });
+  const password = useWatch({ control: form.control, name: 'password' });
 
   const generateRandomPassword = async () => {
     setIsPasswordGenerating(true);
     try {
       const password = await generateRandomPwd();
       setTimeout(() => {
-        form.setFieldsValue({ generatedPassword: password });
+        form.setValue('generatedPassword', password, { shouldValidate: true });
       }, 500);
     } catch (err) {
       showErrorToast(err as AxiosError);
@@ -565,7 +713,7 @@ const CreateUser = ({
   /**
    * Form submit handler
    */
-  const handleSave: FormProps['onFinish'] = (values) => {
+  const handleSave = (values: CreateUserValues) => {
     const isPasswordGenerated =
       passwordGenerator === CreatePasswordGenerator.AutomaticGenerate;
     const validTeam = compact(selectedTeams).map((team) => team.id);
@@ -623,21 +771,6 @@ const CreateUser = ({
     onSave(userProfile);
   };
 
-  const descriptionField: FieldProp = useMemo(
-    () => ({
-      name: 'description',
-      required: false,
-      label: t('label.description'),
-      id: 'root/description',
-      type: FieldTypes.DESCRIPTION,
-      props: {
-        'data-testid': 'description',
-        initialValue: '',
-      },
-    }),
-    []
-  );
-
   useEffect(() => {
     generateRandomPassword();
   }, []);
@@ -665,49 +798,76 @@ const CreateUser = ({
   }, []);
 
   return (
-    <Form
+    <HookForm
+      className="tw:flex tw:flex-col tw:gap-4"
       form={form}
       id="create-user-bot-form"
-      initialValues={{
-        passwordGenerator: CreatePasswordGenerator.AutomaticGenerate,
-      }}
-      layout="vertical"
-      validateMessages={VALIDATION_MESSAGES}
-      onFinish={handleSave}>
-      <Form.Item
-        label={t('label.email')}
+      onSubmit={form.handleSubmit(handleSave)}>
+      <FormField
+        control={form.control}
         name="email"
-        rules={[
-          {
-            pattern: EMAIL_REG_EX,
-            required: true,
-            type: 'email',
+        rules={{
+          required: t('message.field-text-is-invalid', {
+            fieldText: t('label.email'),
+          }),
+          pattern: {
+            value: EMAIL_REG_EX,
             message: t('message.field-text-is-invalid', {
               fieldText: t('label.email'),
             }),
           },
-        ]}>
-        <Input
-          data-testid="email"
-          name="email"
-          placeholder={t('label.email')}
-        />
-      </Form.Item>
-      <Form.Item label={t('label.display-name')} name="displayName">
-        <Input
-          data-testid="displayName"
-          name="displayName"
-          placeholder={t('label.display-name')}
-        />
-      </Form.Item>
-      {forceBot && <BotFields isAdminUser={isAdminUser} />}
-
-      {getField(descriptionField)}
-
+        }}>
+        {({ field, fieldState }) => (
+          <Box direction="col" gap={2}>
+            <FormItemLabel required label={t('label.email')} />
+            <Input
+              {...field}
+              aria-label={t('label.email')}
+              data-testid="email"
+              name="email"
+              placeholder={t('label.email')}
+            />
+            {fieldState.error && (
+              <HintText isInvalid>{fieldState.error.message}</HintText>
+            )}
+          </Box>
+        )}
+      </FormField>
+      <FormField control={form.control} name="displayName">
+        {({ field, fieldState }) => (
+          <Box direction="col" gap={2}>
+            <FormItemLabel label={t('label.display-name')} required={false} />
+            <Input
+              {...field}
+              aria-label={t('label.display-name')}
+              data-testid="displayName"
+              name="displayName"
+              placeholder={t('label.display-name')}
+            />
+            {fieldState.error && (
+              <HintText isInvalid>{fieldState.error.message}</HintText>
+            )}
+          </Box>
+        )}
+      </FormField>
+      {forceBot && <BotFields form={form} isAdminUser={isAdminUser} />}
+      <FormField control={form.control} name="description">
+        {({ field }) => (
+          <Box direction="col" gap={2}>
+            <FormItemLabel label={t('label.description')} />
+            <RichTextEditor
+              data-testid="description"
+              initialValue=""
+              onTextChange={field.onChange}
+            />
+          </Box>
+        )}
+      </FormField>
       {!forceBot && (
         <AdminOnlyFields
           debouncedFetchRoleOptions={debouncedFetchRoleOptions}
           fetchPersonaOptions={fetchPersonaOptions}
+          form={form}
           generatedPassword={generatedPassword}
           isAdmin={isAdmin}
           isAdminPage={isAdminPage}
@@ -722,17 +882,10 @@ const CreateUser = ({
           onToggleAdmin={onToggleAdmin}
         />
       )}
-
-      {!isBot && (
-        <DomainSection
-          domainsField={domainsField}
-          selectedDomain={selectedDomain}
-        />
-      )}
+      {!isBot && <DomainSection form={form} selectedDomain={selectedDomain} />}
       {!isUndefined(inlineAlertDetails) && (
         <InlineAlert alertClassName="m-b-xs" {...inlineAlertDetails} />
       )}
-
       <Box
         inline
         align="center"
@@ -751,7 +904,7 @@ const CreateUser = ({
           {t('label.create')}
         </Button>
       </Box>
-    </Form>
+    </HookForm>
   );
 };
 

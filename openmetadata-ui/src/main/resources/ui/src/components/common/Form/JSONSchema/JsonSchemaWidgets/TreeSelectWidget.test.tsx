@@ -54,7 +54,7 @@ describe('Test TreeSelectWidget Component', () => {
 
     const treeSelectInput = await findByRole(
       screen.getByTestId('tree-select-widget'),
-      'combobox'
+      'textbox'
     );
 
     expect(treeSelectInput).toBeDisabled();
@@ -85,11 +85,13 @@ describe('Test TreeSelectWidget Component', () => {
 
     const treeSelectInput = await findByRole(
       screen.getByTestId('tree-select-widget'),
-      'combobox'
+      'textbox'
     );
 
     await act(async () => {
-      userEvent.click(treeSelectInput);
+      await userEvent
+        .setup({ advanceTimers: jest.advanceTimersByTime })
+        .click(treeSelectInput);
     });
 
     await waitFor(() => screen.getByText('Table'));
@@ -111,17 +113,19 @@ describe('Test TreeSelectWidget Component', () => {
 
     const treeSelectInput = await findByRole(
       screen.getByTestId('tree-select-widget'),
-      'combobox'
+      'textbox'
     );
 
     await act(async () => {
-      userEvent.click(treeSelectInput);
+      await userEvent
+        .setup({ advanceTimers: jest.advanceTimersByTime })
+        .click(treeSelectInput);
     });
 
-    await waitFor(() => screen.getByText('All'));
+    await waitFor(() => screen.getByText('label.all'));
 
     await act(async () => {
-      fireEvent.click(screen.getByText('All'));
+      fireEvent.click(screen.getByText('label.all'));
     });
 
     expect(mockOnChange).toHaveBeenCalledWith(['all']);
@@ -143,16 +147,18 @@ describe('Test TreeSelectWidget Component', () => {
 
     const treeSelectInput = await findByRole(
       screen.getByTestId('tree-select-widget'),
-      'combobox'
+      'textbox'
     );
 
     await act(async () => {
-      userEvent.click(treeSelectInput);
+      await userEvent
+        .setup({ advanceTimers: jest.advanceTimersByTime })
+        .click(treeSelectInput);
     });
 
     await waitFor(() => screen.getByText('Table'));
 
-    expect(screen.getAllByText('All')).toHaveLength(1);
+    expect(screen.getAllByText('label.all')).toHaveLength(1);
   });
 
   it('Should expand "all" into individual enum values when expandAllValue is true', async () => {
@@ -176,17 +182,19 @@ describe('Test TreeSelectWidget Component', () => {
 
     const treeSelectInput = await findByRole(
       screen.getByTestId('tree-select-widget'),
-      'combobox'
+      'textbox'
     );
 
     await act(async () => {
-      userEvent.click(treeSelectInput);
+      await userEvent
+        .setup({ advanceTimers: jest.advanceTimersByTime })
+        .click(treeSelectInput);
     });
 
-    await waitFor(() => screen.getByText('All'));
+    await waitFor(() => screen.getByText('label.all'));
 
     await act(async () => {
-      fireEvent.click(screen.getByText('All'));
+      fireEvent.click(screen.getByText('label.all'));
     });
 
     expect(mockOnChange).toHaveBeenCalledWith([

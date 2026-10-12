@@ -10,13 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons/lib/components/Icon';
+import { TreeSelect } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
-import { TreeSelect } from 'antd';
 import { startCase } from 'lodash';
-import { FC, ReactNode, useCallback, useMemo } from 'react';
-import { ReactComponent as ArrowIcon } from '../../../../../assets/svg/ic-arrow-down.svg';
-import { TEXT_BODY_COLOR } from '../../../../../constants/constants';
+import { FC, useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import {
+  getTreeSelectValue,
+  getTreeSelectValues,
+  toTreeSelectNodes,
+} from '../../../../../utils/TreeSelect.utils';
 
 const ALL_VALUE = 'all';
 
@@ -26,78 +29,53 @@ const TreeSelectWidget: FC<WidgetProps> = ({
   onChange,
   ...rest
 }) => {
+  const { t } = useTranslation();
   const treeData = useMemo(
-    () => [
-      {
-        title: 'All',
-        value: ALL_VALUE,
-        key: ALL_VALUE,
-        children: rest.options.enumOptions
-          ?.filter((node) => node.value !== ALL_VALUE)
-          .map((node) => ({
-            title: startCase(node.label),
-            value: node.value,
-            key: node.value,
-          })),
-      },
-    ],
-    [rest.options.enumOptions]
+    () =>
+      toTreeSelectNodes([
+        {
+          label: t('label.all'),
+          value: ALL_VALUE,
+          children: rest.options.enumOptions
+            ?.filter((node) => node.value !== ALL_VALUE)
+            .map((node) => ({
+              label: startCase(node.label),
+              value: node.value,
+            })),
+        },
+      ]),
+    [rest.options.enumOptions, t]
   );
-
-  // When `expandAllValue` is set on the schema, the synthetic "all" parent
-  // node is a UI-only convenience: the backend enum does not include "all",
-  // so we expand it back into the full list of enum values before submit.
-  // Without this, selecting "All" would persist a value that violates the
-  // schema (e.g. MetadataExporterApp eventTypes).
-  const shouldExpandAll = Boolean(rest.schema.expandAllValue);
-
-  const handleChange = useCallback(
-    (value: unknown) => {
-      if (
-        shouldExpandAll &&
-        Array.isArray(value) &&
-        value.includes(ALL_VALUE)
-      ) {
-        const expanded =
-          rest.options.enumOptions?.map((option) => option.value) ?? [];
-        onChange(expanded);
-
-        return;
-      }
-
-      onChange(value);
-    },
-    [onChange, shouldExpandAll, rest.options.enumOptions]
-  );
+  const fetchData = useCallback(async () => ({ nodes: treeData }), [treeData]);
 
   return (
     <TreeSelect
-      allowClear
+      cascadeSelection
       multiple
-      showSearch
-      treeCheckable
-      treeDefaultExpandAll
+      searchable
+      aria-label={rest.label || rest.name || rest.id}
       data-testid="tree-select-widget"
-      disabled={rest.disabled}
-      open={rest.readonly ? false : undefined}
-      showCheckedStrategy={TreeSelect.SHOW_PARENT}
-      style={{
-        width: '100%',
-      }}
-      switcherIcon={
-        <Icon
-          component={ArrowIcon}
-          data-testid="expand-icon"
-          style={{ fontSize: '10px', color: TEXT_BODY_COLOR }}
-        />
-      }
-      treeData={treeData}
+      defaultExpandedKeys={['all']}
+      disabled={rest.disabled || rest.readonly}
+      fetchData={fetchData}
+      placeholder={rest.placeholder}
+      selectedDisplayStrategy="parent"
+      value={getTreeSelectValue(treeData, rest.value)}
       onBlur={() => onBlur(rest.id, rest.value)}
-      onChange={handleChange}
+      onChange={(selection) => {
+        const values = getTreeSelectValues(selection);
+        // Some schemas expose All only as a UI convenience; never persist it
+        // when the backend enum requires the individual values instead.
+        onChange(
+          rest.schema.expandAllValue && values.includes(ALL_VALUE)
+            ? rest.options.enumOptions
+                ?.filter((option) => option.value !== ALL_VALUE)
+                .map((option) => option.value) ?? []
+            : values
+        );
+      }}
       onFocus={() => onFocus(rest.id, rest.value)}
-      {...rest}>
-      {rest.children as ReactNode}
-    </TreeSelect>
+    />
   );
 };
 

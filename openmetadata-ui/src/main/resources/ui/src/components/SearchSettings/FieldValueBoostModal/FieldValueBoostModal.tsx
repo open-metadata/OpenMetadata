@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Form, Input, Modal, Select, Slider } from 'antd';
+import { Slider, Typography } from '@openmetadata/ui-core-components';
+import { Form, Input, Modal, Select } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -156,12 +156,14 @@ const FieldValueBoostModal: React.FC<FieldValueBoostModalProps> = ({
           </div>
           <div className="m-b-lg" data-testid="field-boost-slider">
             <Slider
-              max={100}
-              min={0}
+              aria-label={t('label.value')}
+              maxValue={100}
+              minValue={0}
               step={0.1}
-              tooltip={{ open: false }}
               value={factor}
-              onChange={handleFactorChange}
+              onChange={(value) =>
+                handleFactorChange(Array.isArray(value) ? value[0] : value)
+              }
             />
           </div>
         </Form.Item>

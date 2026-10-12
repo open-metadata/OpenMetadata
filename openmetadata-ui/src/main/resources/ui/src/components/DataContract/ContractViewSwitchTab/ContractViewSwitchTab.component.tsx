@@ -10,53 +10,40 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Radio, RadioChangeEvent } from 'antd';
-import { ReactComponent as BookOutline } from '../../../assets/svg/bookoutline.svg';
-import { ReactComponent as CodeOutline } from '../../../assets/svg/codeOutline.svg';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { ButtonGroup, ButtonGroupItem } from '@openmetadata/ui-core-components';
+import { BookOpen01, Code01 } from '@openmetadata/ui-core-components/icons';
+import { useTranslation } from 'react-i18next';
 import { DataContractMode } from '../../../constants/DataContract.constants';
-import './contract-view-switch-tab.less';
-
 const ContractViewSwitchTab = ({
   mode,
   handleModeChange,
 }: {
   mode: DataContractMode;
-  handleModeChange: (e: RadioChangeEvent) => void;
+  handleModeChange: (mode: DataContractMode) => void;
 }) => {
+  const { t } = useTranslation();
+
   return (
-    <Radio.Group
-      className="contract-mode-radio-group"
-      optionType="button"
-      options={[
-        {
-          label: (
-            <BookOutline
-              className="align-middle"
-              color={DE_ACTIVE_COLOR}
-              data-testid="contract-view-switch-tab-ui"
-              height={20}
-              width={20}
-            />
-          ),
-          value: DataContractMode.UI,
-        },
-        {
-          label: (
-            <CodeOutline
-              className="align-middle"
-              color={DE_ACTIVE_COLOR}
-              data-testid="contract-view-switch-tab-yaml"
-              height={20}
-              width={20}
-            />
-          ),
-          value: DataContractMode.YAML,
-        },
-      ]}
-      value={mode}
-      onChange={handleModeChange}
-    />
+    <ButtonGroup
+      disallowEmptySelection
+      aria-label={t('label.view')}
+      selectedKeys={new Set([mode])}
+      onSelectionChange={(keys) =>
+        handleModeChange([...keys][0] as DataContractMode)
+      }>
+      <ButtonGroupItem
+        aria-label={t('label.user-interface')}
+        data-testid="contract-view-switch-tab-ui"
+        iconLeading={BookOpen01}
+        id={DataContractMode.UI}
+      />
+      <ButtonGroupItem
+        aria-label={t('label.code')}
+        data-testid="contract-view-switch-tab-yaml"
+        iconLeading={Code01}
+        id={DataContractMode.YAML}
+      />
+    </ButtonGroup>
   );
 };
 

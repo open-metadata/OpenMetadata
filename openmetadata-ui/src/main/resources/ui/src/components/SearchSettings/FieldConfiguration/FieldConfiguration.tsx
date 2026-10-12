@@ -19,12 +19,13 @@ import {
   Badge,
   Box,
   Divider,
+  Slider,
   Toggle,
   Tooltip,
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Select, Slider } from 'antd';
+import { Button, Select } from 'antd';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as Delete } from '../../../assets/svg/delete-colored.svg';
@@ -209,12 +210,14 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
             </div>
             <div data-testid="field-weight-slider">
               <Slider
-                max={100}
-                min={0}
+                aria-label={t('label.value')}
+                maxValue={100}
+                minValue={0}
                 step={0.1}
-                tooltip={{ open: false }}
                 value={fieldWeight}
-                onChange={handleWeightChange}
+                onChange={(value) =>
+                  handleWeightChange(Array.isArray(value) ? value[0] : value)
+                }
               />
             </div>
             <Divider className="tw:my-6" />

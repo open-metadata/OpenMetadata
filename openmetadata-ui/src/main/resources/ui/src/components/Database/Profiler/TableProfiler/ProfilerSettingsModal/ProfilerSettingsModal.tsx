@@ -16,14 +16,25 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Box,
   Button as CoreButton,
+  FormField,
+  FormItemLabel,
   Grid,
+  HintText,
+  HookForm,
+  NumberInput,
   SlideoutMenu,
   Toggle,
+  TreeSelect,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Input, InputNumber, Select, TreeSelect } from 'antd';
-import Form from 'antd/lib/form';
-import { FormProps, List } from 'antd/lib/form/Form';
+import { Button, Input, Select } from 'antd';
+import { useFieldArray, useForm, useWatch } from 'react-hook-form';
+import {
+  getTreeSelectValue,
+  getTreeSelectValues,
+  toTreeSelectNodes,
+} from '../../../../../utils/TreeSelect.utils';
+
 import { getLayoutGutter } from '../../../../../utils/common/layout.utils';
 
 import { AxiosError } from 'axios';
@@ -45,7 +56,6 @@ import {
   INTERVAL_TYPE_OPTIONS,
   INTERVAL_UNIT_OPTIONS,
   MIN_PROFILE_SAMPLE,
-  PROFILER_MODAL_LABEL_STYLE,
   PROFILE_SAMPLE_OPTIONS,
   SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL,
   TIME_BASED_PARTITION,
@@ -85,6 +95,25 @@ const SchemaEditor = withSuspenseFallback(
 const getPopupContainer = (triggerNode: HTMLElement) =>
   triggerNode.parentElement ?? document.body;
 
+type ProfilerFormValues = Pick<
+  ProfilerForm,
+  | 'enablePartitioning'
+  | 'partitionColumnName'
+  | 'partitionIntervalType'
+  | 'partitionIntegerRangeStart'
+  | 'partitionIntegerRangeEnd'
+  | 'partitionInterval'
+  | 'partitionIntervalUnit'
+  | 'profileSampleType'
+  | 'profileSamplePercentage'
+  | 'profileSampleRows'
+  | 'includeColumns'
+> & {
+  sampleDataCount?: number;
+  // RHF needs object rows; saving unwraps them to the API's string list.
+  partitionValues: { value: string }[];
+};
+
 const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   tableId,
   columns,
@@ -92,7 +121,24 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   onVisibilityChange,
 }) => {
   const { t } = useTranslation();
-  const [form] = Form.useForm<ProfilerForm>();
+  const form = useForm<ProfilerFormValues>({
+    mode: 'onChange',
+    defaultValues: {
+      profileSampleType: ProfileSampleType.Percentage,
+      profileSamplePercentage: 100,
+      sampleDataCount: 50,
+      includeColumns: DEFAULT_INCLUDE_PROFILE,
+      partitionValues: [{ value: '' }],
+    },
+  });
+  const includeFields = useFieldArray({
+    control: form.control,
+    name: 'includeColumns',
+  });
+  const partitionFields = useFieldArray({
+    control: form.control,
+    name: 'partitionValues',
+  });
 
   const [isLoading, setIsLoading] = useState(false);
   const [isDataLoading, setIsDataLoading] = useState(true);
@@ -151,10 +197,18 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       },
     ];
 
-    return metricsOptions;
+    return toTreeSelectNodes(metricsOptions);
   }, [columns]);
 
-  const partitionIntervalType = Form.useWatch(['partitionIntervalType'], form);
+  const fetchMetrics = useCallback(
+    async () => ({ nodes: metricsOptions }),
+    [metricsOptions]
+  );
+
+  const partitionIntervalType = useWatch({
+    control: form.control,
+    name: 'partitionIntervalType',
+  });
 
   const partitionColumnOptions = useMemo(() => {
     const partitionColumnOptions = columns.reduce((result, column) => {
@@ -193,7 +247,8 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
     const profileSampleType = staticConfig?.profileSampleType;
 
     const applyProfileSampleFields = () => {
-      form.setFieldsValue({
+      form.reset({
+        ...form.getValues(),
         profileSampleType,
         profileSamplePercentage:
           !isNil(profileSample) &&
@@ -222,7 +277,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
 
         return col;
       });
-      form.setFieldsValue({ includeColumns: includeColValue });
+      form.reset({ ...form.getValues(), includeColumns: includeColValue });
       handleStateChange({
         includeCol: includeColValue,
       });
@@ -237,8 +292,12 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
         enablePartition: partitioning.enablePartitioning || false,
       });
 
-      form.setFieldsValue({
+      form.reset({
+        ...form.getValues(),
         ...partitioning,
+        partitionValues: partitioning.partitionValues?.map((value) => ({
+          value,
+        })) ?? [{ value: '' }],
       });
     };
 
@@ -249,7 +308,8 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       selectedProfileSampleType: profileSampleType,
       sampleDataCount,
     });
-    form.setFieldsValue({
+    form.reset({
+      ...form.getValues(),
       sampleDataCount: sampleDataCount ?? initialState.sampleDataCount,
     });
 
@@ -282,8 +342,10 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
     }
   };
 
-  const getIncludesColumns = () => {
-    const includeCols = state.includeCol.filter(
+  const getIncludesColumns = (
+    columns: ProfilerFormValues['includeColumns']
+  ) => {
+    const includeCols = columns.filter(
       ({ columnName }) => !isUndefined(columnName)
     );
 
@@ -302,15 +364,15 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
     });
   };
 
-  const handleSave: FormProps['onFinish'] = useCallback(
-    async (data: ProfilerForm) => {
+  const handleSave = useCallback(
+    async (data: ProfilerFormValues) => {
       const buildPartitioning = (): TableProfilerConfig['partitioning'] => {
         if (!state.enablePartition) {
           return undefined;
         }
 
         // Read straight from the form: the loaded config is pushed into the
-        // form with `setFieldsValue`, which never fires `onValuesChange`, so
+        // form with a reset, which never fires input callbacks, so
         // any state copy is stale until the user edits a partition field.
         const partitionData = pick(
           data,
@@ -327,16 +389,17 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
           ...partitionData,
           partitionValues:
             data.partitionIntervalType === PartitionIntervalTypes.ColumnValue
-              ? partitionData.partitionValues?.filter(
-                  (value) => !isEmpty(value)
-                )
+              ? partitionData.partitionValues
+                  ?.map((item) => item.value)
+                  .filter((value) => !isEmpty(value))
               : undefined,
           enablePartitioning: state.enablePartition,
         };
       };
 
       const buildProfileConfig = (): TableProfilerConfig => {
-        const { excludeCol, sqlQuery, includeCol } = state;
+        const { excludeCol, sqlQuery } = state;
+        const includeCol = data.includeColumns;
         const {
           profileSamplePercentage,
           profileSampleRows,
@@ -366,7 +429,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                 }
               : undefined,
           includeColumns: !isEqual(includeCol, DEFAULT_INCLUDE_PROFILE)
-            ? getIncludesColumns()
+            ? getIncludesColumns(includeCol)
             : undefined,
           partitioning: buildPartitioning(),
           sampleDataCount,
@@ -400,7 +463,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
         setIsLoading(false);
       }
     },
-    [state, getIncludesColumns]
+    [state, getIncludesColumns, onVisibilityChange, t, tableId]
   );
 
   const handleCancel = useCallback(() => {
@@ -431,31 +494,17 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
     });
   }, []);
 
-  const handleIncludeColumnsProfiler = useCallback(
-    (changedValues: Partial<ProfilerForm>, data: ProfilerForm) => {
-      const { partitionIntervalType, enablePartitioning } = changedValues;
-      if (partitionIntervalType || !isNil(enablePartitioning)) {
-        form.setFieldsValue({
-          partitionColumnName: undefined,
-          partitionIntegerRangeStart: undefined,
-          partitionIntegerRangeEnd: undefined,
-          partitionIntervalUnit: undefined,
-          partitionInterval: undefined,
-          partitionValues: [''],
-        });
-      }
-      if (!isNil(enablePartitioning)) {
-        form.setFieldsValue({
-          partitionIntervalType: undefined,
-        });
-      }
-
-      handleStateChange({
-        includeCol: data.includeColumns,
-      });
-    },
-    []
-  );
+  const resetPartitionFields = (resetType: boolean) => {
+    form.setValue('partitionColumnName', undefined);
+    form.setValue('partitionIntegerRangeStart', undefined);
+    form.setValue('partitionIntegerRangeEnd', undefined);
+    form.setValue('partitionIntervalUnit', undefined);
+    form.setValue('partitionInterval', undefined);
+    partitionFields.replace([{ value: '' }]);
+    if (resetType) {
+      form.setValue('partitionIntervalType', undefined);
+    }
+  };
 
   const handleChange =
     (field: keyof ProfilerSettingModalState) =>
@@ -502,7 +551,11 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       <Loader />
     </div>
   ) : (
-    <div className="profiler-settings-drawer-content new-form-style">
+    <HookForm
+      className="profiler-settings-drawer-content new-form-style"
+      form={form}
+      id="profiler-setting-form"
+      onSubmit={form.handleSubmit(handleSave)}>
       <Grid
         className="layout-row layout-grid"
         style={{ ...getLayoutGutter(16, 16) }}>
@@ -510,84 +563,124 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
           className="layout-column"
           data-testid="profile-sample-container"
           span={24}>
-          <Form<ProfilerForm>
-            className="profiler-settings-form new-form-style"
-            data-testid="configure-ingestion-container"
-            form={form}
-            initialValues={{
-              profileSampleType: state?.selectedProfileSampleType,
-              profileSamplePercentage: state?.profileSample || 100,
-              sampleDataCount: state?.sampleDataCount,
-            }}
-            layout="vertical">
-            <Form.Item
-              label={t('label.profile-sample-type', {
-                type: '',
-              })}
-              name="profileSampleType">
-              <Select
-                allowClear
-                // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the first field when the settings modal opens
-                autoFocus
-                className="w-full"
-                data-testid="profile-sample"
-                getPopupContainer={getPopupContainer}
-                options={PROFILE_SAMPLE_OPTIONS}
-                placeholder={t('label.please-select-entity', {
-                  entity: t('label.profile-sample-type', {
-                    type: '',
-                  }),
-                })}
-                onChange={handleProfileSampleType}
-              />
-            </Form.Item>
-
+          <div>
+            <FormField control={form.control} name="profileSampleType">
+              {({ field, fieldState }) => (
+                <Box className="tw:w-full" direction="col" gap={2}>
+                  <FormItemLabel
+                    label={t('label.profile-sample-type', {
+                      type: '',
+                    })}
+                  />
+                  <Select
+                    allowClear
+                    aria-label={t('label.profile-sample-type', {
+                      type: '',
+                    })}
+                    // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the initial settings field
+                    autoFocus={visible}
+                    {...field}
+                    className="w-full"
+                    data-testid="profile-sample"
+                    getPopupContainer={getPopupContainer}
+                    options={PROFILE_SAMPLE_OPTIONS}
+                    placeholder={t('label.please-select-entity', {
+                      entity: t('label.profile-sample-type', {
+                        type: '',
+                      }),
+                    })}
+                    status={fieldState.error ? 'error' : undefined}
+                    onChange={(value) => {
+                      field.onChange(value);
+                      handleProfileSampleType(value);
+                    }}
+                  />
+                  {fieldState.error && (
+                    <HintText isInvalid>{fieldState.error.message}</HintText>
+                  )}
+                </Box>
+              )}
+            </FormField>
             {state?.selectedProfileSampleType ===
               ProfileSampleType.Percentage && (
-              <Form.Item
-                label={t('label.profile-sample-type', {
-                  type: t('label.value'),
-                })}
-                name="profileSamplePercentage">
-                <SliderWithInput
-                  className="p-x-xs"
-                  min={MIN_PROFILE_SAMPLE}
-                  value={state?.profileSample}
-                  onChange={handleProfileSample}
-                />
-              </Form.Item>
+              <FormField control={form.control} name="profileSamplePercentage">
+                {({ field, fieldState }) => (
+                  <Box className="tw:w-full" direction="col" gap={2}>
+                    <FormItemLabel
+                      label={t('label.profile-sample-type', {
+                        type: t('label.value'),
+                      })}
+                    />
+                    <SliderWithInput
+                      aria-label={t('label.profile-sample-type', {
+                        type: t('label.value'),
+                      })}
+                      {...field}
+                      className="p-x-xs"
+                      min={MIN_PROFILE_SAMPLE}
+                      onChange={(value) => {
+                        field.onChange(value);
+                        handleProfileSample(value);
+                      }}
+                    />
+                    {fieldState.error && (
+                      <HintText isInvalid>{fieldState.error.message}</HintText>
+                    )}
+                  </Box>
+                )}
+              </FormField>
             )}
-
             {state?.selectedProfileSampleType === ProfileSampleType.Rows && (
-              <Form.Item
-                label={t('label.profile-sample-type', {
-                  type: t('label.value'),
-                })}
-                name="profileSampleRows">
-                <InputNumber
-                  className="w-full"
-                  data-testid="metric-number-input"
-                  min={MIN_PROFILE_SAMPLE}
-                  placeholder={t('label.please-enter-value', {
-                    name: t('label.row-count-lowercase'),
-                  })}
-                />
-              </Form.Item>
+              <FormField control={form.control} name="profileSampleRows">
+                {({ field, fieldState }) => (
+                  <Box className="tw:w-full" direction="col" gap={2}>
+                    <FormItemLabel
+                      label={t('label.profile-sample-type', {
+                        type: t('label.value'),
+                      })}
+                    />
+                    <NumberInput
+                      aria-label={t('label.profile-sample-type', {
+                        type: t('label.value'),
+                      })}
+                      {...field}
+                      className="w-full"
+                      inputDataTestId="metric-number-input"
+                      isInvalid={!!fieldState.error}
+                      minValue={MIN_PROFILE_SAMPLE}
+                      placeholder={t('label.please-enter-value', {
+                        name: t('label.row-count-lowercase'),
+                      })}
+                    />
+                    {fieldState.error && (
+                      <HintText isInvalid>{fieldState.error.message}</HintText>
+                    )}
+                  </Box>
+                )}
+              </FormField>
             )}
-            <Form.Item
-              className="m-b-0"
-              label={t('label.sample-data-count')}
-              name="sampleDataCount">
-              <InputNumber
-                className="w-full"
-                data-testid="sample-data-count-input"
-                min={0}
-                placeholder={t('label.please-enter-value', {
-                  name: t('label.sample-data-count-lowercase'),
-                })}
-              />
-            </Form.Item>
-          </Form>
+            <FormField control={form.control} name="sampleDataCount">
+              {({ field, fieldState }) => (
+                <Box className="m-b-0" direction="col" gap={2}>
+                  <FormItemLabel label={t('label.sample-data-count')} />
+                  <NumberInput
+                    aria-label={t('label.sample-data-count')}
+                    {...field}
+                    className="w-full"
+                    inputDataTestId="sample-data-count-input"
+                    isInvalid={!!fieldState.error}
+                    minValue={0}
+                    placeholder={t('label.please-enter-value', {
+                      name: t('label.sample-data-count-lowercase'),
+                    })}
+                  />
+                  {fieldState.error && (
+                    <HintText isInvalid>{fieldState.error.message}</HintText>
+                  )}
+                </Box>
+              )}
+            </FormField>
+          </div>
         </Grid.Item>
         <Grid.Item
           className="layout-column"
@@ -630,51 +723,41 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
         </Grid.Item>
 
         <Grid.Item className="layout-column" span={24}>
-          <Form<ProfilerForm>
-            autoComplete="off"
-            className="new-form-style"
-            form={form}
-            id="profiler-setting-form"
-            initialValues={{
-              includeColumns: state?.includeCol,
-              partitionData: [''],
-              ...state?.data?.partitioning,
-            }}
-            layout="vertical"
-            name="includeColumnsProfiler"
-            onFinish={handleSave}
-            onValuesChange={handleIncludeColumnsProfiler}>
-            <List name="includeColumns">
-              {(fields, { add, remove }) => (
-                <>
-                  <div className="d-flex items-center m-b-xss">
-                    <p className="w-form-label text-xs m-r-xs">
-                      {`${t('label.include')}:`}
-                    </p>
-                    <Button
-                      className="include-columns-add-button flex-center"
-                      icon={<PlusOutlined />}
-                      size="small"
-                      type="primary"
-                      onClick={() => add({ metrics: ['all'] })}
-                    />
-                  </div>
-                  <div
-                    className={classNames({
-                      'h-max-40 overflow-y-auto': state?.includeCol.length > 1,
-                    })}
-                    data-testid="include-column-container">
-                    {fields.map(({ key, name, ...restField }) => (
-                      <Grid
-                        className="layout-row layout-grid"
-                        key={key}
-                        style={{ ...getLayoutGutter(16) }}>
-                        <Grid.Item className="layout-column" span={12}>
-                          <Form.Item
+          <div>
+            <>
+              <div className="d-flex items-center m-b-xss">
+                <p className="w-form-label text-xs m-r-xs">
+                  {`${t('label.include')}:`}
+                </p>
+                <Button
+                  className="include-columns-add-button flex-center"
+                  icon={<PlusOutlined />}
+                  size="small"
+                  type="primary"
+                  onClick={() => includeFields.append({ metrics: ['all'] })}
+                />
+              </div>
+              <div
+                className={classNames({
+                  'h-max-40 overflow-y-auto': includeFields.fields.length > 1,
+                })}
+                data-testid="include-column-container">
+                {includeFields.fields.map(({ id }, name) => (
+                  <Grid
+                    className="layout-row layout-grid"
+                    key={id}
+                    style={{ ...getLayoutGutter(16) }}>
+                    <Grid.Item className="layout-column" span={12}>
+                      <FormField
+                        control={form.control}
+                        name={`includeColumns.${name}.columnName`}>
+                        {({ field, fieldState }) => (
+                          <Box
                             className="w-full m-b-md"
-                            {...restField}
-                            name={[name, 'columnName']}>
+                            direction="col"
+                            gap={2}>
                             <Select
+                              {...field}
                               allowClear
                               showSearch
                               className="w-full"
@@ -685,43 +768,72 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                                 'label.select-column-plural-to-include'
                               )}
                               size="middle"
+                              status={fieldState.error ? 'error' : undefined}
+                              onChange={(value) => {
+                                field.onChange(value);
+                              }}
                             />
-                          </Form.Item>
-                        </Grid.Item>
-                        <Grid.Item className="layout-column flex" span={12}>
-                          <Form.Item
+                            {fieldState.error && (
+                              <HintText isInvalid>
+                                {fieldState.error.message}
+                              </HintText>
+                            )}
+                          </Box>
+                        )}
+                      </FormField>
+                    </Grid.Item>
+                    <Grid.Item className="layout-column flex" span={12}>
+                      <FormField
+                        control={form.control}
+                        name={`includeColumns.${name}.metrics`}>
+                        {({ field, fieldState }) => (
+                          <Box
                             className="w-full m-b-md"
-                            {...restField}
-                            name={[name, 'metrics']}>
+                            direction="col"
+                            gap={2}>
                             <TreeSelect
-                              treeCheckable
-                              className="w-full"
-                              getPopupContainer={getPopupContainer}
-                              maxTagCount={2}
+                              cascadeSelection
+                              multiple
+                              searchable
+                              aria-label={t('label.metric-type')}
+                              fetchData={fetchMetrics}
+                              maxVisibleItems={2}
                               placeholder={t('label.please-select')}
-                              showCheckedStrategy="SHOW_PARENT"
-                              treeData={metricsOptions}
+                              selectedDisplayStrategy="parent"
+                              value={getTreeSelectValue(
+                                metricsOptions,
+                                field.value
+                              )}
+                              onBlur={field.onBlur}
+                              onChange={(selection) =>
+                                field.onChange(getTreeSelectValues(selection))
+                              }
                             />
-                          </Form.Item>
-                          <Button
-                            className="delete-btn"
-                            icon={
-                              <Icon
-                                className="align-middle"
-                                component={IconDelete}
-                                style={{ fontSize: '16px' }}
-                              />
-                            }
-                            type="text"
-                            onClick={() => remove(name)}
+                            {fieldState.error && (
+                              <HintText isInvalid>
+                                {fieldState.error.message}
+                              </HintText>
+                            )}
+                          </Box>
+                        )}
+                      </FormField>
+                      <Button
+                        className="delete-btn"
+                        icon={
+                          <Icon
+                            className="align-middle"
+                            component={IconDelete}
+                            style={{ fontSize: '16px' }}
                           />
-                        </Grid.Item>
-                      </Grid>
-                    ))}
-                  </div>
-                </>
-              )}
-            </List>
+                        }
+                        type="text"
+                        onClick={() => includeFields.remove(name)}
+                      />
+                    </Grid.Item>
+                  </Grid>
+                ))}
+              </div>
+            </>
             <Grid
               className="layout-row layout-grid"
               style={{ ...getLayoutGutter(16, 16) }}>
@@ -733,287 +845,413 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                   gap={3}
                   itemClassName="layout-space-item">
                   <p>{t('label.enable-partition')}</p>
-                  <Form.Item className="m-b-0" name="enablePartitioning">
-                    <Toggle
-                      data-testid="enable-partition-switch"
-                      isSelected={state?.enablePartition}
-                      size="sm"
-                      onChange={handleEnablePartition}
-                    />
-                  </Form.Item>
+                  <FormField control={form.control} name="enablePartitioning">
+                    {({ field, fieldState }) => (
+                      <Box className="m-b-0" direction="col" gap={2}>
+                        <Toggle
+                          aria-label={t('label.enable-partition')}
+                          data-testid="enable-partition-switch"
+                          isSelected={!!field.value}
+                          size="sm"
+                          onChange={(value) => {
+                            field.onChange(value);
+                            handleEnablePartition(value);
+                            resetPartitionFields(true);
+                          }}
+                        />
+                        {fieldState.error && (
+                          <HintText isInvalid>
+                            {fieldState.error.message}
+                          </HintText>
+                        )}
+                      </Box>
+                    )}
+                  </FormField>
                 </Box>
               </Grid.Item>
               <Grid.Item className="layout-column" span={12}>
-                <Form.Item
-                  className="m-b-0"
-                  label={
-                    <span className="text-xs">{t('label.interval-type')}</span>
-                  }
-                  labelCol={PROFILER_MODAL_LABEL_STYLE}
+                <FormField
+                  control={form.control}
                   name="partitionIntervalType"
-                  rules={[
-                    {
-                      required: state?.enablePartition,
+                  rules={{
+                    required: {
+                      value: !!state.enablePartition,
                       message: t('message.field-text-is-required', {
                         fieldText: t('label.interval-type'),
                       }),
                     },
-                  ]}>
-                  <Select
-                    allowClear
-                    className="w-full"
-                    data-testid="interval-type"
-                    disabled={!state?.enablePartition}
-                    getPopupContainer={getPopupContainer}
-                    options={INTERVAL_TYPE_OPTIONS}
-                    placeholder={t('message.select-interval-type')}
-                    size="middle"
-                  />
-                </Form.Item>
+                  }}>
+                  {({ field, fieldState }) => (
+                    <Box className="m-b-0" direction="col" gap={2}>
+                      <FormItemLabel
+                        label={
+                          <span className="text-xs">
+                            {t('label.interval-type')}
+                          </span>
+                        }
+                        required={state.enablePartition}
+                      />
+                      <Select
+                        aria-label={t('label.interval-type')}
+                        {...field}
+                        allowClear
+                        className="w-full"
+                        data-testid="interval-type"
+                        disabled={!state?.enablePartition}
+                        getPopupContainer={getPopupContainer}
+                        options={INTERVAL_TYPE_OPTIONS}
+                        placeholder={t('message.select-interval-type')}
+                        size="middle"
+                        status={fieldState.error ? 'error' : undefined}
+                        onChange={(value) => {
+                          field.onChange(value);
+                          resetPartitionFields(false);
+                        }}
+                      />
+                      {fieldState.error && (
+                        <HintText isInvalid>
+                          {fieldState.error.message}
+                        </HintText>
+                      )}
+                    </Box>
+                  )}
+                </FormField>
               </Grid.Item>
               <Grid.Item className="layout-column" span={12}>
-                <Form.Item
-                  className="m-b-0"
-                  label={
-                    <span className="text-xs">
-                      {t('label.column-entity', {
-                        entity: t('label.name'),
-                      })}
-                    </span>
-                  }
-                  labelCol={PROFILER_MODAL_LABEL_STYLE}
+                <FormField
+                  control={form.control}
                   name="partitionColumnName"
-                  rules={[
-                    {
-                      required: state?.enablePartition,
+                  rules={{
+                    required: {
+                      value: !!state.enablePartition,
                       message: t('message.field-text-is-required', {
                         fieldText: t('label.column-entity', {
                           entity: t('label.name'),
                         }),
                       }),
                     },
-                  ]}>
-                  <Select
-                    allowClear
-                    showSearch
-                    className="w-full"
-                    data-testid="column-name"
-                    disabled={!state?.enablePartition}
-                    getPopupContainer={getPopupContainer}
-                    options={partitionColumnOptions}
-                    placeholder={t('message.select-column-name')}
-                    size="middle"
-                  />
-                </Form.Item>
+                  }}>
+                  {({ field, fieldState }) => (
+                    <Box className="m-b-0" direction="col" gap={2}>
+                      <FormItemLabel
+                        label={
+                          <span className="text-xs">
+                            {t('label.column-entity', {
+                              entity: t('label.name'),
+                            })}
+                          </span>
+                        }
+                        required={state.enablePartition}
+                      />
+                      <Select
+                        aria-label={t('label.column-entity', {
+                          entity: t('label.name'),
+                        })}
+                        {...field}
+                        allowClear
+                        showSearch
+                        className="w-full"
+                        data-testid="column-name"
+                        disabled={!state?.enablePartition}
+                        getPopupContainer={getPopupContainer}
+                        options={partitionColumnOptions}
+                        placeholder={t('message.select-column-name')}
+                        size="middle"
+                        status={fieldState.error ? 'error' : undefined}
+                        onChange={(value) => {
+                          field.onChange(value);
+                        }}
+                      />
+                      {fieldState.error && (
+                        <HintText isInvalid>
+                          {fieldState.error.message}
+                        </HintText>
+                      )}
+                    </Box>
+                  )}
+                </FormField>
               </Grid.Item>
               {partitionIntervalType &&
               TIME_BASED_PARTITION.includes(partitionIntervalType) ? (
                 <>
                   <Grid.Item className="layout-column" span={12}>
-                    <Form.Item
-                      className="m-b-0"
-                      label={
-                        <span className="text-xs">{t('label.interval')}</span>
-                      }
-                      labelCol={PROFILER_MODAL_LABEL_STYLE}
+                    <FormField
+                      control={form.control}
                       name="partitionInterval"
-                      rules={[
-                        {
-                          required: state?.enablePartition,
+                      rules={{
+                        required: {
+                          value: !!state.enablePartition,
                           message: t('message.field-text-is-required', {
                             fieldText: t('label.interval'),
                           }),
                         },
-                      ]}>
-                      <InputNumber
-                        className="w-full"
-                        data-testid="interval-required"
-                        disabled={!state?.enablePartition}
-                        placeholder={t('message.enter-interval')}
-                        size="middle"
-                      />
-                    </Form.Item>
+                      }}>
+                      {({ field, fieldState }) => (
+                        <Box className="m-b-0" direction="col" gap={2}>
+                          <FormItemLabel
+                            label={
+                              <span className="text-xs">
+                                {t('label.interval')}
+                              </span>
+                            }
+                            required={state.enablePartition}
+                          />
+                          <NumberInput
+                            aria-label={t('label.interval')}
+                            {...field}
+                            className="w-full"
+                            inputDataTestId="interval-required"
+                            isDisabled={!state?.enablePartition}
+                            isInvalid={!!fieldState.error}
+                            placeholder={t('message.enter-interval')}
+                          />
+                          {fieldState.error && (
+                            <HintText isInvalid>
+                              {fieldState.error.message}
+                            </HintText>
+                          )}
+                        </Box>
+                      )}
+                    </FormField>
                   </Grid.Item>
                   <Grid.Item className="layout-column" span={12}>
-                    <Form.Item
-                      className="m-b-0"
-                      label={
-                        <span className="text-xs">
-                          {t('label.interval-unit')}
-                        </span>
-                      }
-                      labelCol={PROFILER_MODAL_LABEL_STYLE}
+                    <FormField
+                      control={form.control}
                       name="partitionIntervalUnit"
-                      rules={[
-                        {
-                          required: state?.enablePartition,
+                      rules={{
+                        required: {
+                          value: !!state.enablePartition,
                           message: t('message.field-text-is-required', {
                             fieldText: t('label.interval-unit'),
                           }),
                         },
-                      ]}>
-                      <Select
-                        allowClear
-                        className="w-full"
-                        data-testid="select-interval-unit"
-                        disabled={!state?.enablePartition}
-                        getPopupContainer={getPopupContainer}
-                        options={INTERVAL_UNIT_OPTIONS}
-                        placeholder={t('message.select-interval-unit')}
-                        size="middle"
-                      />
-                    </Form.Item>
+                      }}>
+                      {({ field, fieldState }) => (
+                        <Box className="m-b-0" direction="col" gap={2}>
+                          <FormItemLabel
+                            label={
+                              <span className="text-xs">
+                                {t('label.interval-unit')}
+                              </span>
+                            }
+                            required={state.enablePartition}
+                          />
+                          <Select
+                            aria-label={t('label.interval-unit')}
+                            {...field}
+                            allowClear
+                            className="w-full"
+                            data-testid="select-interval-unit"
+                            disabled={!state?.enablePartition}
+                            getPopupContainer={getPopupContainer}
+                            options={INTERVAL_UNIT_OPTIONS}
+                            placeholder={t('message.select-interval-unit')}
+                            size="middle"
+                            status={fieldState.error ? 'error' : undefined}
+                            onChange={(value) => {
+                              field.onChange(value);
+                            }}
+                          />
+                          {fieldState.error && (
+                            <HintText isInvalid>
+                              {fieldState.error.message}
+                            </HintText>
+                          )}
+                        </Box>
+                      )}
+                    </FormField>
                   </Grid.Item>
                 </>
               ) : null}
               {PartitionIntervalTypes.IntegerRange === partitionIntervalType ? (
                 <>
                   <Grid.Item className="layout-column" span={12}>
-                    <Form.Item
-                      className="m-b-0"
-                      label={
-                        <span className="text-xs">
-                          {t('label.start-entity', {
-                            entity: t('label.range'),
-                          })}
-                        </span>
-                      }
-                      labelCol={PROFILER_MODAL_LABEL_STYLE}
+                    <FormField
+                      control={form.control}
                       name="partitionIntegerRangeStart"
-                      rules={[
-                        {
-                          required: state?.enablePartition,
+                      rules={{
+                        required: {
+                          value: !!state.enablePartition,
                           message: t('message.field-text-is-required', {
                             fieldText: t('label.start-entity', {
                               entity: t('label.range'),
                             }),
                           }),
                         },
-                      ]}>
-                      <InputNumber
-                        className="w-full"
-                        data-testid="start-range"
-                        disabled={!state?.enablePartition}
-                        placeholder={t('message.enter-a-field', {
-                          field: t('label.start-entity', {
-                            entity: t('label.range'),
-                          }),
-                        })}
-                        size="middle"
-                      />
-                    </Form.Item>
+                      }}>
+                      {({ field, fieldState }) => (
+                        <Box className="m-b-0" direction="col" gap={2}>
+                          <FormItemLabel
+                            label={
+                              <span className="text-xs">
+                                {t('label.start-entity', {
+                                  entity: t('label.range'),
+                                })}
+                              </span>
+                            }
+                            required={state.enablePartition}
+                          />
+                          <NumberInput
+                            aria-label={t('label.start-entity', {
+                              entity: t('label.range'),
+                            })}
+                            {...field}
+                            className="w-full"
+                            inputDataTestId="start-range"
+                            isDisabled={!state?.enablePartition}
+                            isInvalid={!!fieldState.error}
+                            placeholder={t('message.enter-a-field', {
+                              field: t('label.start-entity', {
+                                entity: t('label.range'),
+                              }),
+                            })}
+                          />
+                          {fieldState.error && (
+                            <HintText isInvalid>
+                              {fieldState.error.message}
+                            </HintText>
+                          )}
+                        </Box>
+                      )}
+                    </FormField>
                   </Grid.Item>
                   <Grid.Item className="layout-column" span={12}>
-                    <Form.Item
-                      className="m-b-0"
-                      label={
-                        <span className="text-xs">
-                          {t('label.end-entity', {
-                            entity: t('label.range'),
-                          })}
-                        </span>
-                      }
-                      labelCol={PROFILER_MODAL_LABEL_STYLE}
+                    <FormField
+                      control={form.control}
                       name="partitionIntegerRangeEnd"
-                      rules={[
-                        {
-                          required: state?.enablePartition,
+                      rules={{
+                        required: {
+                          value: !!state.enablePartition,
                           message: t('message.field-text-is-required', {
                             fieldText: t('label.end-entity', {
                               entity: t('label.range'),
                             }),
                           }),
                         },
-                      ]}>
-                      <InputNumber
-                        className="w-full"
-                        data-testid="end-range"
-                        disabled={!state?.enablePartition}
-                        placeholder={t('message.enter-a-field', {
-                          field: t('label.end-entity', {
-                            entity: t('label.range'),
-                          }),
-                        })}
-                        size="middle"
-                      />
-                    </Form.Item>
+                      }}>
+                      {({ field, fieldState }) => (
+                        <Box className="m-b-0" direction="col" gap={2}>
+                          <FormItemLabel
+                            label={
+                              <span className="text-xs">
+                                {t('label.end-entity', {
+                                  entity: t('label.range'),
+                                })}
+                              </span>
+                            }
+                            required={state.enablePartition}
+                          />
+                          <NumberInput
+                            aria-label={t('label.end-entity', {
+                              entity: t('label.range'),
+                            })}
+                            {...field}
+                            className="w-full"
+                            inputDataTestId="end-range"
+                            isDisabled={!state?.enablePartition}
+                            isInvalid={!!fieldState.error}
+                            placeholder={t('message.enter-a-field', {
+                              field: t('label.end-entity', {
+                                entity: t('label.range'),
+                              }),
+                            })}
+                          />
+                          {fieldState.error && (
+                            <HintText isInvalid>
+                              {fieldState.error.message}
+                            </HintText>
+                          )}
+                        </Box>
+                      )}
+                    </FormField>
                   </Grid.Item>
                 </>
               ) : null}
 
               {PartitionIntervalTypes.ColumnValue === partitionIntervalType ? (
                 <Grid.Item className="layout-column" span={24}>
-                  <List name="partitionValues">
-                    {(fields, { add, remove }) => (
-                      <>
-                        <div className="flex items-center m-b-xs">
-                          <p className="w-form-label text-xs m-r-sm">
-                            {`${t('label.value')}:`}
-                          </p>
-                          <Button
-                            className="include-columns-add-button flex-center"
-                            icon={<PlusOutlined />}
-                            size="small"
-                            type="primary"
-                            onClick={() => add()}
-                          />
-                        </div>
+                  <>
+                    <div className="flex items-center m-b-xs">
+                      <p className="w-form-label text-xs m-r-sm">
+                        {`${t('label.value')}:`}
+                      </p>
+                      <Button
+                        className="include-columns-add-button flex-center"
+                        icon={<PlusOutlined />}
+                        size="small"
+                        type="primary"
+                        onClick={() => partitionFields.append({ value: '' })}
+                      />
+                    </div>
 
-                        {fields.map(({ key, name, ...restField }) => (
-                          <Grid
-                            className="layout-row layout-grid"
-                            key={key}
-                            style={{ ...getLayoutGutter(16) }}>
-                            <Grid.Item className="layout-column flex" span={24}>
-                              <Form.Item
+                    {partitionFields.fields.map(({ id }, name) => (
+                      <Grid
+                        className="layout-row layout-grid"
+                        key={id}
+                        style={{ ...getLayoutGutter(16) }}>
+                        <Grid.Item className="layout-column flex" span={24}>
+                          <FormField
+                            control={form.control}
+                            name={`partitionValues.${name}.value`}
+                            rules={{
+                              required: {
+                                value: !!state.enablePartition,
+                                message: t('message.field-text-is-required', {
+                                  fieldText: t('label.value'),
+                                }),
+                              },
+                            }}>
+                            {({ field, fieldState }) => (
+                              <Box
                                 className="w-full m-b-md"
-                                {...restField}
-                                name={name}
-                                rules={[
-                                  {
-                                    required: state?.enablePartition,
-                                    message: t(
-                                      'message.field-text-is-required',
-                                      {
-                                        fieldText: t('label.value'),
-                                      }
-                                    ),
-                                  },
-                                ]}>
+                                direction="col"
+                                gap={2}>
                                 <Input
+                                  {...field}
                                   className="w-full"
                                   data-testid="partition-value"
                                   disabled={!state?.enablePartition}
                                   placeholder={t('message.enter-a-field', {
                                     field: t('label.value'),
                                   })}
+                                  status={
+                                    fieldState.error ? 'error' : undefined
+                                  }
+                                  onChange={(value) => {
+                                    field.onChange(value);
+                                  }}
                                 />
-                              </Form.Item>
-                              <Button
-                                className="delete-btn"
-                                icon={
-                                  <Icon
-                                    className="align-middle"
-                                    component={IconDelete}
-                                    style={{ fontSize: '16px' }}
-                                  />
-                                }
-                                type="text"
-                                onClick={() => remove(name)}
+                                {fieldState.error && (
+                                  <HintText isInvalid>
+                                    {fieldState.error.message}
+                                  </HintText>
+                                )}
+                              </Box>
+                            )}
+                          </FormField>
+                          <Button
+                            className="delete-btn"
+                            icon={
+                              <Icon
+                                className="align-middle"
+                                component={IconDelete}
+                                style={{ fontSize: '16px' }}
                               />
-                            </Grid.Item>
-                          </Grid>
-                        ))}
-                      </>
-                    )}
-                  </List>
+                            }
+                            type="text"
+                            onClick={() => partitionFields.remove(name)}
+                          />
+                        </Grid.Item>
+                      </Grid>
+                    ))}
+                  </>
                 </Grid.Item>
               ) : null}
             </Grid>
-          </Form>
+          </div>
         </Grid.Item>
       </Grid>
-    </div>
+    </HookForm>
   );
 
   return (

@@ -11,35 +11,26 @@
  *  limitations under the License.
  */
 
-import { Alert } from '@openmetadata/ui-core-components';
-import { TreeSelect } from 'antd';
+import {
+  Alert,
+  TreeSelect,
+  TreeSelectNode,
+} from '@openmetadata/ui-core-components';
+
 import { AxiosError } from 'axios';
 
 import { isEmpty } from 'lodash';
-import { BaseSelectRef } from 'rc-select';
-import { forwardRef, useEffect, useMemo, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TeamHierarchy } from '../../../../generated/entity/teams/teamHierarchy';
 import { getTeamsHierarchy } from '../../../../rest/teamsAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import i18n from '../../../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import { TagRenderer } from '../../../common/TagRenderer/TagRenderer';
 import { TeamsSelectableProps } from './TeamsSelectable.interface';
 import { buildTeamsSelectableTree } from './TeamsSelectable.utils';
 
-const renderMaxTagPlaceholder = (
-  count: number,
-  t: ReturnType<typeof useTranslation>['t']
-) => (
-  <span className="max-tag-text">
-    {t('label.plus-count-more', {
-      count,
-    })}
-  </span>
-);
-
-const TeamsSelectableNew = forwardRef<BaseSelectRef, TeamsSelectableProps>(
+const TeamsSelectableNew = forwardRef<HTMLDivElement, TeamsSelectableProps>(
   (
     {
       showTeamsAlert,
@@ -60,7 +51,13 @@ const TeamsSelectableNew = forwardRef<BaseSelectRef, TeamsSelectableProps>(
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const { t } = useTranslation();
 
-    const onChange = (newValue: { label: string; value: string }[]) => {
+    const onChange = (value: TreeSelectNode | TreeSelectNode[] | null) => {
+      const newValue: TreeSelectNode[] = [];
+      if (Array.isArray(value)) {
+        newValue.push(...value);
+      } else if (value) {
+        newValue.push(value);
+      }
       onSelectionChange &&
         onSelectionChange(
           newValue.map((val) => ({
@@ -88,51 +85,41 @@ const TeamsSelectableNew = forwardRef<BaseSelectRef, TeamsSelectableProps>(
       loadOptions();
     }, []);
 
-    const showLeafIcon = false;
-
     const teamsTree = useMemo(
       () => buildTeamsSelectableTree(teams, filterJoinable),
       [teams, filterJoinable]
     );
 
+    const fetchData = useCallback(
+      async () => ({ nodes: teamsTree }),
+      [teamsTree]
+    );
+
     const selectedTeamsInternal = useMemo(() => {
       return selectedTeams?.map((selectedTeam) => ({
+        id: selectedTeam.id,
         label: getEntityName(selectedTeam),
         value: selectedTeam.id,
       }));
     }, [selectedTeams]);
 
     return (
-      <>
+      <div ref={ref}>
         <TreeSelect
-          allowClear
-          labelInValue
           multiple
-          showSearch
-          treeDefaultExpandAll
+          searchable
           data-testid="team-select"
-          dropdownMatchSelectWidth={false}
-          dropdownStyle={{ maxHeight: 300, overflow: 'auto' }}
-          getPopupContainer={(trigger) => trigger.parentElement}
-          loading={isLoading}
-          maxTagCount={maxValueCount}
-          maxTagPlaceholder={(omittedValues) =>
-            renderMaxTagPlaceholder(omittedValues.length, t)
-          }
-          open={open}
+          fetchData={fetchData}
+          isLoading={isLoading}
+          isOpen={open}
+          maxVisibleItems={maxValueCount}
           placeholder={placeholder}
-          placement="bottomLeft"
-          popupClassName="teams-custom-dropdown-class"
-          ref={ref}
-          showCheckedStrategy={TreeSelect.SHOW_CHILD}
-          style={{ width: '100%' }}
-          tagRender={TagRenderer}
-          treeData={teamsTree}
-          treeLine={{ showLeafIcon }}
-          treeNodeFilterProp="title"
+          popoverClassName="teams-custom-dropdown-class"
+          showCheckbox={false}
+          showIcon={false}
           value={selectedTeamsInternal}
           onChange={onChange}
-          onDropdownVisibleChange={handleDropdownChange}
+          onOpenChange={handleDropdownChange}
         />
         {noTeam && (
           <Alert
@@ -144,7 +131,7 @@ const TeamsSelectableNew = forwardRef<BaseSelectRef, TeamsSelectableProps>(
             variant="brand"
           />
         )}
-      </>
+      </div>
     );
   }
 );

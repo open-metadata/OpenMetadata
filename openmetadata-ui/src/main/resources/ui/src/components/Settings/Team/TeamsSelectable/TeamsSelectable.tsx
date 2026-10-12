@@ -11,12 +11,16 @@
  *  limitations under the License.
  */
 
-import { Alert } from '@openmetadata/ui-core-components';
-import { TreeSelect } from 'antd';
+import {
+  Alert,
+  TreeSelect,
+  TreeSelectNode,
+} from '@openmetadata/ui-core-components';
+
 import { AxiosError } from 'axios';
 
 import { isEmpty } from 'lodash';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TeamHierarchy } from '../../../../generated/entity/teams/teamHierarchy';
 import { EntityReference } from '../../../../generated/entity/type';
@@ -41,7 +45,13 @@ const TeamsSelectable = ({
   const [teams, setTeams] = useState<Array<TeamHierarchy>>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const { t } = useTranslation();
-  const onChange = (newValue: { label: string; value: string }[]) => {
+  const onChange = (value: TreeSelectNode | TreeSelectNode[] | null) => {
+    const newValue: TreeSelectNode[] = [];
+    if (Array.isArray(value)) {
+      newValue.push(...value);
+    } else if (value) {
+      newValue.push(value);
+    }
     onSelectionChange &&
       onSelectionChange(
         newValue.map(
@@ -78,15 +88,19 @@ const TeamsSelectable = ({
     loadOptions();
   }, []);
 
-  const showLeafIcon = false;
-
   const teamsTree = useMemo(
     () => buildTeamsSelectableTree(teams, filterJoinable),
     [teams, filterJoinable]
   );
 
+  const fetchData = useCallback(
+    async () => ({ nodes: teamsTree }),
+    [teamsTree]
+  );
+
   const selectedTeamsInternal = useMemo(() => {
     return selectedTeams?.map((selectedTeam) => ({
+      id: selectedTeam.id,
       label: getEntityName(selectedTeam),
       value: selectedTeam.id,
     }));
@@ -95,22 +109,15 @@ const TeamsSelectable = ({
   return (
     <>
       <TreeSelect
-        allowClear
-        labelInValue
         multiple
-        showSearch
-        treeDefaultExpandAll
+        searchable
         data-testid="team-select"
-        dropdownStyle={{ maxHeight: 300, overflow: 'auto' }}
-        getPopupContainer={(triggerNode) => triggerNode.parentElement}
-        loading={isLoading}
-        maxTagCount={maxValueCount}
+        fetchData={fetchData}
+        isLoading={isLoading}
+        maxVisibleItems={maxValueCount}
         placeholder={placeholder}
-        showCheckedStrategy={TreeSelect.SHOW_CHILD}
-        style={{ width: '100%' }}
-        treeData={teamsTree}
-        treeLine={{ showLeafIcon }}
-        treeNodeFilterProp="title"
+        showCheckbox={false}
+        showIcon={false}
         value={selectedTeamsInternal}
         onChange={onChange}
       />

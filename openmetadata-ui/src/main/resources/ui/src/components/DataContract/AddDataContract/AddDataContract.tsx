@@ -12,7 +12,7 @@
  */
 
 import { Card, Tabs, Typography } from '@openmetadata/ui-core-components';
-import { Button, RadioChangeEvent } from 'antd';
+import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -530,8 +530,8 @@ const AddDataContract: React.FC<{
     currentTabInfo,
   ]);
 
-  const handleModeChange = useCallback((e: RadioChangeEvent) => {
-    setMode(e.target.value);
+  const handleModeChange = useCallback((mode: DataContractMode) => {
+    setMode(mode);
   }, []);
 
   const cardTitle = useMemo(() => {

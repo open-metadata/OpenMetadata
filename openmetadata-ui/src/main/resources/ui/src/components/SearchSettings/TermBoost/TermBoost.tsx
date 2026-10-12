@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
-import { Box, Divider, Typography } from '@openmetadata/ui-core-components';
-import { Button, Slider } from 'antd';
+import {
+  Box,
+  Divider,
+  Slider,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { ComponentProps, useEffect, useState } from 'react';
@@ -163,12 +168,14 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
           </div>
           <div data-testid="term-boost-slider">
             <Slider
-              max={100}
-              min={0}
+              aria-label={t('label.value')}
+              maxValue={100}
+              minValue={0}
               step={0.1}
-              tooltip={{ open: false }}
               value={termBoostData.boost}
-              onChange={handleBoostChange}
+              onChange={(value) =>
+                handleBoostChange(Array.isArray(value) ? value[0] : value)
+              }
             />
           </div>
           <Divider className="m-b-md m-t-0" />

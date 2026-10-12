@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { FC, ReactNode } from 'react';
+import type { FC, FocusEventHandler, ReactNode } from 'react';
 import type { Placement } from 'react-aria';
 
 export interface TreeSelectNode<T = unknown> {
@@ -93,6 +93,7 @@ export interface TreeSelectProps<T = unknown> {
   tooltip?: string;
   required?: boolean;
   disabled?: boolean;
+  isLoading?: boolean;
   isInvalid?: boolean;
   size?: 'sm' | 'md';
   autoFocus?: boolean;
@@ -159,6 +160,11 @@ export interface TreeSelectProps<T = unknown> {
    * cannot disagree.
    */
   renderSelectedItem?: (node: TreeSelectNode<T>) => ReactNode;
+  maxVisibleItems?: number;
+  /** Condense selected descendants under a selected parent in the trigger only. */
+  selectedDisplayStrategy?: 'all' | 'parent';
+  onFocus?: FocusEventHandler<HTMLDivElement>;
+  onBlur?: FocusEventHandler<HTMLDivElement>;
   /**
    * Handle a failed `fetchData` yourself. Without this the raw error message
    * is toasted, which for an HTTP transport is an untranslated string like

@@ -11,11 +11,16 @@
  *  limitations under the License.
  */
 
-import { Box, ButtonUtility, Tooltip } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  ButtonUtility,
+  NumberInput,
+  Slider,
+  Tooltip,
+} from '@openmetadata/ui-core-components';
 import { XClose } from '@openmetadata/ui-core-components/icons';
-import { InputNumber, Slider } from 'antd';
+
 import { useTranslation } from 'react-i18next';
-import { percentageFormatter } from '../../../utils/ChartUtils';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { SliderWithInputProps } from './SliderWithInput.interface';
 const SliderWithInput = ({
@@ -34,27 +39,30 @@ const SliderWithInput = ({
       wrap="wrap">
       <Box className="layout-column tw:block" style={{ flex: 'auto' }}>
         <Slider
-          marks={{
-            [min]: `${min}%`,
-            100: '100%',
-          }}
-          max={100}
-          min={min}
-          tooltip={{ open: false }}
+          showRange
+          aria-label={t('label.value')}
+          labelFormatter={(value) => `${value}%`}
+          maxValue={100}
+          minValue={min}
           value={value}
-          onChange={onChange}
+          onChange={(value) =>
+            onChange(Array.isArray(value) ? value[0] : value)
+          }
         />
       </Box>
       <Box className="layout-column tw:block w-32">
         <div className="flex items-center gap-2">
-          <InputNumber
-            data-testid="slider-input"
-            formatter={percentageFormatter}
-            max={100}
-            min={min}
+          <NumberInput
+            aria-label={t('label.value')}
+            inputDataTestId="slider-input"
+            maxValue={100}
+            minValue={min}
             step={1}
+            suffix="%"
             value={value}
-            onChange={onChange}
+            onChange={(value) =>
+              onChange(Array.isArray(value) ? value[0] : value)
+            }
           />
           <Tooltip arrow title={t('label.clear')}>
             <ButtonUtility

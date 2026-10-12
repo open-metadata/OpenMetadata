@@ -11,8 +11,15 @@
  *  limitations under the License.
  */
 
-import { Box, Card, Grid, Typography } from '@openmetadata/ui-core-components';
-import { AutoComplete, Button, Form, Input, Select } from 'antd';
+import {
+  Box,
+  Card,
+  ComboBox,
+  Grid,
+  Select as CoreSelect,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Button, Form, Input, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -380,19 +387,35 @@ const AdminPermissionDebugger: React.FC = () => {
                   </Typography>
                 </div>
 
-                <AutoComplete
-                  className="w-full"
-                  notFoundContent={
-                    searchingUsers ? <Loader size="small" /> : null
-                  }
-                  options={userOptions}
-                  placeholder={t('label.search-entity', {
-                    entity: t('label.user'),
-                  })}
-                  style={{ maxWidth: 400 }}
-                  onSearch={searchUsers}
-                  onSelect={handleUserSelect}
-                />
+                <div className="tw:w-full tw:max-w-100">
+                  <ComboBox
+                    aria-label={t('label.search-entity', {
+                      entity: t('label.user'),
+                    })}
+                    emptyState={
+                      searchingUsers ? <Loader size="small" /> : undefined
+                    }
+                    items={userOptions.map((option) => ({
+                      id: option.value,
+                      label: option.label,
+                    }))}
+                    placeholder={t('label.search-entity', {
+                      entity: t('label.user'),
+                    })}
+                    shortcut={false}
+                    onInputChange={searchUsers}
+                    onSelectionChange={(key) => {
+                      if (key != null) {
+                        handleUserSelect(String(key));
+                      }
+                    }}>
+                    {(item) => (
+                      <CoreSelect.Item id={item.id}>
+                        {item.label}
+                      </CoreSelect.Item>
+                    )}
+                  </ComboBox>
+                </div>
 
                 {selectedUsername && (
                   <>

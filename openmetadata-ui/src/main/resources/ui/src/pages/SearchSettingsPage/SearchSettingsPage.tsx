@@ -18,10 +18,11 @@ import {
   AccordionPanel,
   Box,
   Grid,
+  Slider,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Slider } from 'antd';
+import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
@@ -696,17 +697,16 @@ const SearchSettingsPage = () => {
                     className="layout-column tw:block"
                     style={{ flex: 'auto' }}>
                     <Slider
-                      disabled={isUpdating}
-                      max={1}
-                      min={0}
+                      aria-label={t('label.value')}
+                      isDisabled={isUpdating}
+                      maxValue={1}
+                      minValue={0}
                       step={0.1}
-                      tooltip={{
-                        formatter: (val) => `${t('label.semantic')}: ${val}`,
-                      }}
                       value={
                         searchConfig?.globalSettings?.semanticWeight ?? 0.4
                       }
-                      onChange={(val: number) => {
+                      onChange={(value) => {
+                        const val = Array.isArray(value) ? value[0] : value;
                         if (!searchConfig) {
                           return;
                         }

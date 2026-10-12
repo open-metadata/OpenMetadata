@@ -19,10 +19,11 @@ import {
   Badge,
   Box,
   Grid,
+  NumberInput,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { InputNumber, Select } from 'antd';
+import { Select } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, omit, startCase } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
@@ -729,8 +730,9 @@ const EntitySearchSettings = () => {
             <Typography className="text-xs font-normal" color="secondary">
               {t('label.weight')}
             </Typography>
-            <InputNumber
-              min={1}
+            <NumberInput
+              aria-label={t('label.value')}
+              minValue={1}
               value={stage.weight ?? null}
               onChange={(value) =>
                 handleRankingStageWeightChange(
@@ -858,8 +860,9 @@ const EntitySearchSettings = () => {
                 <Typography className="text-xs font-normal" color="secondary">
                   {t('label.max')}
                 </Typography>
-                <InputNumber
-                  min={0.1}
+                <NumberInput
+                  aria-label={t('label.value')}
+                  minValue={0.1}
                   step={0.1}
                   value={signals.maxBoost}
                   onChange={(value) =>

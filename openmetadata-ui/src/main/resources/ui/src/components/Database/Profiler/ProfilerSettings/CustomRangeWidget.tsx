@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Grid } from '@openmetadata/ui-core-components';
+import { Grid, NumberInput, Slider } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
-import { InputNumber, Slider } from 'antd';
+
 import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 
 export const CustomRangeWidget = (props: WidgetProps) => {
@@ -25,26 +25,27 @@ export const CustomRangeWidget = (props: WidgetProps) => {
       style={{ ...getLayoutGutter(20) }}>
       <Grid.Item className="layout-column" span={20}>
         <Slider
-          marks={{
-            [min]: `${min}%`,
-            100: '100%',
-          }}
-          max={100}
-          min={min}
-          tooltip={{ open: false }}
+          showRange
+          aria-label={props.label || props.name || props.id}
+          isDisabled={props.disabled || props.readonly}
+          labelFormatter={(value) => `${value}%`}
+          maxValue={100}
+          minValue={min}
           value={props.value}
           onChange={props.onChange}
         />
       </Grid.Item>
       <Grid.Item className="layout-column" span={4}>
-        <InputNumber
-          data-testid="slider-input"
-          formatter={(value) => `${value}%`}
+        <NumberInput
+          aria-label={props.label || props.name || props.id}
           id={props.id}
-          max={100}
-          min={min}
+          inputDataTestId="slider-input"
+          isDisabled={props.disabled || props.readonly}
+          maxValue={100}
+          minValue={min}
           name={props.name}
           step={1}
+          suffix="%"
           value={props.value}
           onChange={props.onChange}
         />

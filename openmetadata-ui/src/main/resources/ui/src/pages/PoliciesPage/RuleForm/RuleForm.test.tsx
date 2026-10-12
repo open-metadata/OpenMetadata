@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
+import { HookForm } from '@openmetadata/ui-core-components';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { Form } from 'antd';
+import { useForm } from 'react-hook-form';
 import { Rule } from '../../../generated/api/policies/createPolicy';
-import RuleForm, { RuleFormProps } from './RuleForm';
+import RuleForm, { PolicyRuleFormValues, RuleFormProps } from './RuleForm';
 
 jest.mock('../../../rest/rolesAPIV1', () => ({
   getPolicyFunctions: jest.fn().mockImplementation(() => Promise.resolve()),
@@ -50,11 +51,21 @@ const mockProps = {
   setRuleData,
 };
 
-const MockFormComponent = ({ ...mockProps }: RuleFormProps) => {
+const MockFormComponent = ({ ...mockProps }: Omit<RuleFormProps, 'form'>) => {
+  const form = useForm<PolicyRuleFormValues>({
+    defaultValues: {
+      ruleName: mockProps.ruleData.name,
+      resources: mockProps.ruleData.resources,
+      operations: mockProps.ruleData.operations,
+      ruleEffect: mockProps.ruleData.effect,
+      condition: mockProps.ruleData.condition,
+    },
+  });
+
   return (
-    <Form>
-      <RuleForm {...mockProps} />
-    </Form>
+    <HookForm form={form}>
+      <RuleForm form={form} {...mockProps} />
+    </HookForm>
   );
 };
 

@@ -11,12 +11,18 @@
  *  limitations under the License.
  */
 
-import { Box, Card, Typography } from '@openmetadata/ui-core-components';
-import { Button, Form } from 'antd';
+import {
+  Box,
+  Card,
+  HookForm,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { trim } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import Loader from '../../../components/common/Loader/Loader';
@@ -36,7 +42,7 @@ import {
   getSettingPath,
 } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import RuleForm from '../RuleForm/RuleForm';
+import RuleForm, { PolicyRuleFormValues } from '../RuleForm/RuleForm';
 
 const policiesPath = getPath(GlobalSettingOptions.POLICIES);
 
@@ -53,6 +59,17 @@ const AddRulePage = () => {
     operations: [],
     condition: '',
     effect: Effect.Allow,
+  });
+
+  const form = useForm<PolicyRuleFormValues>({
+    mode: 'onChange',
+    defaultValues: {
+      ruleName: '',
+      resources: [],
+      operations: [],
+      ruleEffect: Effect.Allow,
+      condition: '',
+    },
   });
 
   const breadcrumb = useMemo(
@@ -155,15 +172,16 @@ const AddRulePage = () => {
             data-testid="add-rule-title">
             {t('label.add-new-entity', { entity: t('label.rule') })}
           </Typography>
-          <Form
+          <HookForm
             data-testid="rule-form"
+            form={form}
             id="rule-form"
-            initialValues={{
-              ruleEffect: ruleData.effect,
-            }}
-            layout="vertical"
-            onFinish={handleSubmit}>
-            <RuleForm ruleData={ruleData} setRuleData={setRuleData} />
+            onSubmit={form.handleSubmit(handleSubmit)}>
+            <RuleForm
+              form={form}
+              ruleData={ruleData}
+              setRuleData={setRuleData}
+            />
             <Box
               inline
               align="center"
@@ -181,7 +199,7 @@ const AddRulePage = () => {
                 {t('label.create')}
               </Button>
             </Box>
-          </Form>
+          </HookForm>
         </Card.Content>
       </Card>
     </PageLayoutV1>

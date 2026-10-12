@@ -11,18 +11,28 @@
  *  limitations under the License.
  */
 
-import { Box, Divider, Typography } from '@openmetadata/ui-core-components';
-import { Button, Form, Input } from 'antd';
+import {
+  Box,
+  Divider,
+  FormField,
+  FormItemLabel,
+  HintText,
+  HookForm,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Button, Input } from 'antd';
 import { AxiosError } from 'axios';
 import { trim } from 'lodash';
 import { useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
+import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { ADD_POLICY_PAGE_BREADCRUMB } from '../../../constants/Breadcrumb.constants';
 import { ERROR_MESSAGE } from '../../../constants/constants';
-import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
+import { NAME_FIELD_VALIDATION } from '../../../constants/Form.constants';
 import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
 import {
   CreatePolicy,
@@ -30,14 +40,12 @@ import {
   Rule,
 } from '../../../generated/api/policies/createPolicy';
 import { withPageLayout } from '../../../hoc/withPageLayout';
-import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { addPolicy } from '../../../rest/rolesAPIV1';
 import { getIsErrorMatch } from '../../../utils/APIUtils';
-import { getField } from '../../../utils/formUtils';
 import { translateWithNestedKeys } from '../../../utils/i18next/LocalUtil';
 import { getPath, getPolicyWithFqnPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import RuleForm from '../RuleForm/RuleForm';
+import RuleForm, { PolicyRuleFormValues } from '../RuleForm/RuleForm';
 
 const policiesPath = getPath(GlobalSettingOptions.POLICIES);
 
@@ -56,6 +64,17 @@ const AddPolicyPage = () => {
     effect: Effect.Allow,
   });
   const [isSaveLoading, setIsSaveLoading] = useState<boolean>(false);
+
+  const form = useForm<PolicyRuleFormValues>({
+    mode: 'onChange',
+    defaultValues: {
+      ruleName: '',
+      resources: [],
+      operations: [],
+      ruleEffect: Effect.Allow,
+      condition: '',
+    },
+  });
 
   const handleCancel = () => {
     navigate(policiesPath);
@@ -91,26 +110,6 @@ const AddPolicyPage = () => {
     }
   };
 
-  const descriptionField: FieldProp = useMemo(
-    () => ({
-      name: 'description',
-      required: false,
-      label: `${t('label.description')}:`,
-      id: 'root/description',
-      type: FieldTypes.DESCRIPTION,
-      props: {
-        'data-testid': 'description',
-        initialValue: '',
-        style: {
-          margin: 0,
-        },
-        placeHolder: t('message.write-your-description'),
-        onTextChange: (value: string) => setDescription(value),
-      },
-    }),
-    []
-  );
-
   const translatedAddPolicyBreadcrumb = useMemo(
     () =>
       ADD_POLICY_PAGE_BREADCRUMB.map((option) => ({
@@ -139,29 +138,45 @@ const AddPolicyPage = () => {
                   entity: t('label.policy'),
                 })}
               </Typography>
-              <Form
+              <HookForm
                 data-testid="policy-form"
+                form={form}
                 id="policy-form"
-                initialValues={{
-                  ruleEffect: ruleData.effect,
-                }}
-                layout="vertical"
-                onFinish={handleSubmit}>
-                <Form.Item
-                  label={`${t('label.name')}:`}
+                onSubmit={form.handleSubmit(handleSubmit)}>
+                <FormField
+                  control={form.control}
                   name="name"
-                  rules={NAME_FIELD_RULES}>
-                  <Input
-                    data-testid="policy-name"
-                    placeholder={t('label.policy-name')}
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
+                  rules={NAME_FIELD_VALIDATION}>
+                  {({ field, fieldState }) => (
+                    <Box direction="col" gap={2}>
+                      <FormItemLabel required label={t('label.name')} />
+                      <Input
+                        data-testid="policy-name"
+                        placeholder={t('label.policy-name')}
+                        type="text"
+                        value={field.value ?? ''}
+                        onChange={(e) => {
+                          field.onChange(e);
+                          setName(e.target.value);
+                        }}
+                      />
+                      {fieldState.error && (
+                        <HintText isInvalid>
+                          {fieldState.error.message}
+                        </HintText>
+                      )}
+                    </Box>
+                  )}
+                </FormField>
+                <Box direction="col" gap={2}>
+                  <FormItemLabel label={t('label.description')} />
+                  <RichTextEditor
+                    data-testid="description"
+                    initialValue=""
+                    placeHolder={t('message.write-your-description')}
+                    onTextChange={setDescription}
                   />
-                </Form.Item>
-
-                {getField(descriptionField)}
-
+                </Box>
                 <Divider
                   className="tw:my-4"
                   data-testid="add-rule-divider"
@@ -171,8 +186,11 @@ const AddPolicyPage = () => {
                     </span>
                   }
                 />
-                <RuleForm ruleData={ruleData} setRuleData={setRuleData} />
-
+                <RuleForm
+                  form={form}
+                  ruleData={ruleData}
+                  setRuleData={setRuleData}
+                />
                 <Box
                   inline
                   align="center"
@@ -194,7 +212,7 @@ const AddPolicyPage = () => {
                     {t('label.create')}
                   </Button>
                 </Box>
-              </Form>
+              </HookForm>
             </div>
           </div>
         ),

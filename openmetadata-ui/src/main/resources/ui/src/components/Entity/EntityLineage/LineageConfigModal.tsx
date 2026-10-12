@@ -10,11 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Form, InputNumber, Modal } from 'antd';
-import React from 'react';
+import {
+  Box,
+  FormField,
+  HookForm,
+  NumberInput,
+} from '@openmetadata/ui-core-components';
+import { Modal } from 'antd';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { VALIDATION_MESSAGES } from '../../../constants/constants';
-import { LineageConfigModalProps } from './EntityLineage.interface';
+import {
+  LineageConfig,
+  LineageConfigModalProps,
+} from './EntityLineage.interface';
 
 const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
   visible,
@@ -23,7 +31,38 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
   onSave,
 }) => {
   const { t } = useTranslation();
-  const [form] = Form.useForm();
+  const form = useForm<LineageConfig>({
+    defaultValues: {
+      upstreamDepth: config.upstreamDepth,
+      downstreamDepth: config.downstreamDepth,
+      nodesPerLayer: config.nodesPerLayer,
+    },
+    mode: 'onChange',
+  });
+  const handleSubmit = form.handleSubmit((values) => onSave(values));
+  const fields = [
+    {
+      name: 'upstreamDepth',
+      label: t('label.upstream-depth'),
+      minimum: 0,
+      tooltip: t('message.upstream-depth-tooltip'),
+      testId: 'field-upstream',
+    },
+    {
+      name: 'downstreamDepth',
+      label: t('label.downstream-depth'),
+      minimum: 0,
+      tooltip: t('message.downstream-depth-tooltip'),
+      testId: 'field-downstream',
+    },
+    {
+      name: 'nodesPerLayer',
+      label: t('label.nodes-per-layer'),
+      minimum: 5,
+      tooltip: t('message.nodes-per-layer-tooltip'),
+      testId: 'field-nodes-per-layer',
+    },
+  ] as const;
 
   return (
     <Modal
@@ -31,61 +70,41 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
       open={visible}
       title={t('label.lineage-config')}
       onCancel={onCancel}
-      onOk={form.submit}>
-      <Form
-        form={form}
-        initialValues={config}
-        layout="vertical"
-        validateMessages={VALIDATION_MESSAGES}
-        onFinish={onSave}>
-        <Form.Item
-          label={t('label.upstream-depth')}
-          name="upstreamDepth"
-          rules={[
-            {
-              required: true,
-            },
-            {
-              type: 'number',
-              min: 0,
-            },
-          ]}
-          tooltip={t('message.upstream-depth-tooltip')}>
-          <InputNumber className="w-full" data-testid="field-upstream" />
-        </Form.Item>
-
-        <Form.Item
-          label={t('label.downstream-depth')}
-          name="downstreamDepth"
-          rules={[
-            {
-              required: true,
-            },
-            {
-              type: 'number',
-              min: 0,
-            },
-          ]}
-          tooltip={t('message.downstream-depth-tooltip')}>
-          <InputNumber className="w-full" data-testid="field-downstream" />
-        </Form.Item>
-
-        <Form.Item
-          label={t('label.nodes-per-layer')}
-          name="nodesPerLayer"
-          rules={[
-            {
-              required: true,
-            },
-            {
-              type: 'number',
-              min: 5,
-            },
-          ]}
-          tooltip={t('message.nodes-per-layer-tooltip')}>
-          <InputNumber className="w-full" data-testid="field-nodes-per-layer" />
-        </Form.Item>
-      </Form>
+      onOk={handleSubmit}>
+      <HookForm form={form} onSubmit={handleSubmit}>
+        <Box direction="col" gap={4}>
+          {fields.map(({ name, label, minimum, tooltip, testId }) => (
+            <FormField
+              control={form.control}
+              key={name}
+              name={name}
+              rules={{
+                required: t('message.field-text-is-required', {
+                  fieldText: label,
+                }),
+                min: {
+                  value: minimum,
+                  message: t('message.entity-size-less-than', {
+                    entity: label,
+                    min: minimum,
+                  }),
+                },
+              }}>
+              {({ field, fieldState }) => (
+                <NumberInput
+                  {...field}
+                  aria-label={label}
+                  hint={fieldState.error?.message}
+                  inputDataTestId={testId}
+                  isInvalid={!!fieldState.error}
+                  label={label}
+                  tooltip={tooltip}
+                />
+              )}
+            </FormField>
+          ))}
+        </Box>
+      </HookForm>
     </Modal>
   );
 };

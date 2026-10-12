@@ -11,12 +11,18 @@
  *  limitations under the License.
  */
 
-import { Box, Card, Typography } from '@openmetadata/ui-core-components';
-import { Button, Form } from 'antd';
+import {
+  Box,
+  Card,
+  HookForm,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { trim } from 'lodash';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import Loader from '../../../components/common/Loader/Loader';
@@ -36,7 +42,7 @@ import {
   getSettingPath,
 } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import RuleForm from '../RuleForm/RuleForm';
+import RuleForm, { PolicyRuleFormValues } from '../RuleForm/RuleForm';
 
 const policiesPath = getPath(GlobalSettingOptions.POLICIES);
 
@@ -58,6 +64,17 @@ const EditRulePage = () => {
   const [ruleData, setRuleData] = useState<Rule>(InitialData);
 
   const selectedRuleRef = useRef<Rule | undefined>(InitialData);
+
+  const form = useForm<PolicyRuleFormValues>({
+    mode: 'onChange',
+    defaultValues: {
+      ruleName: '',
+      resources: [],
+      operations: [],
+      ruleEffect: Effect.Allow,
+      condition: '',
+    },
+  });
 
   const breadcrumb = useMemo(
     () => [
@@ -94,6 +111,13 @@ const EditRulePage = () => {
         const selectedRule = data.rules.find((rule) => rule.name === ruleName);
         selectedRuleRef.current = selectedRule;
         setRuleData(selectedRule ?? InitialData);
+        form.reset({
+          ruleName: selectedRule?.name ?? '',
+          resources: selectedRule?.resources ?? [],
+          operations: selectedRule?.operations ?? [],
+          ruleEffect: selectedRule?.effect ?? Effect.Allow,
+          condition: selectedRule?.condition ?? '',
+        });
       } else {
         setPolicy({} as Policy);
       }
@@ -175,20 +199,14 @@ const EditRulePage = () => {
             {t('label.edit-entity', { entity: t('label.rule') })}{' '}
             {`"${ruleName}"`}
           </Typography>
-          <Form
+          <HookForm
             data-testid="rule-form"
+            form={form}
             id="rule-form"
-            initialValues={{
-              ruleEffect: ruleData.effect,
-              ruleName: ruleData.name,
-              resources: ruleData.resources,
-              operations: ruleData.operations,
-              condition: ruleData.condition,
-            }}
-            layout="vertical"
-            onFinish={handleSubmit}>
+            onSubmit={form.handleSubmit(handleSubmit)}>
             <RuleForm
               description={selectedRuleRef.current?.description}
+              form={form}
               ruleData={ruleData}
               setRuleData={setRuleData}
             />
@@ -209,7 +227,7 @@ const EditRulePage = () => {
                 {t('label.save')}
               </Button>
             </Box>
-          </Form>
+          </HookForm>
         </Card.Content>
       </Card>
     </PageLayoutV1>

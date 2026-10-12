@@ -11,26 +11,30 @@
  *  limitations under the License.
  */
 import {
+  Box,
   Card,
+  FormField,
+  FormItemLabel,
   Grid,
+  HintText,
+  HookForm,
+  NumberInput,
+  TimePicker,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Form, InputNumber, Select, TimePicker } from 'antd';
-import { FormProps } from 'antd/lib/form/Form';
+import { Button, Select } from 'antd';
 import { isEmpty } from 'lodash';
-import moment from 'moment';
 import { useEffect, useMemo } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as LeftOutlined } from '../../../assets/svg/left-arrow.svg';
 import {
   MAX_LATENCY_UNITS,
   REFRESH_FREQUENCY_UNITS,
   RETENTION_UNITS,
-  SLA_AVAILABILITY_TIME_FORMAT,
 } from '../../../constants/DataContract.constants';
 import {
-  ContractSLA,
   DataContract,
   Timezone,
 } from '../../../generated/entity/data/dataContract';
@@ -42,6 +46,11 @@ import { getPopupContainer } from '../../../utils/formPureUtils';
 import { getColumnOptionsFromTableColumn } from '../../../utils/TablePureUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import './contract-sla-form-tab.less';
+import {
+  SlaFormValues,
+  toContractSla,
+  toSlaFormValues,
+} from './ContractSLAFormTab.utils';
 
 export const ContractSLAFormTab: React.FC<{
   onChange: (data: Partial<DataContract>) => void;
@@ -54,7 +63,7 @@ export const ContractSLAFormTab: React.FC<{
   };
 }> = ({ onChange, onPrev, buttonProps, initialValues }) => {
   const { t } = useTranslation();
-  const [form] = Form.useForm();
+  const form = useForm<SlaFormValues>({ mode: 'onChange' });
   const { data: tableData } = useGenericContext();
 
   const columnOptions = useMemo(() => {
@@ -85,71 +94,14 @@ export const ContractSLAFormTab: React.FC<{
     };
   }, []);
 
-  const handleFormChange: FormProps['onValuesChange'] = (_, values) => {
-    const slaData: ContractSLA = {};
-
-    if (values.availabilityTime) {
-      slaData.availabilityTime = values.availabilityTime.format(
-        SLA_AVAILABILITY_TIME_FORMAT
-      );
-    }
-
-    if (values.timezone) {
-      slaData.timezone = values.timezone;
-    }
-
-    if (values.columnName) {
-      slaData.columnName = values.columnName;
-    }
-
-    if (values.max_latency_unit && values.max_latency_value >= 0) {
-      slaData.maxLatency = {
-        unit: values.max_latency_unit,
-        value: values.max_latency_value,
-      };
-    }
-
-    if (
-      values.refresh_frequency_interval >= 0 &&
-      values.refresh_frequency_unit
-    ) {
-      slaData.refreshFrequency = {
-        interval: values.refresh_frequency_interval,
-        unit: values.refresh_frequency_unit,
-      };
-    }
-
-    if (values.retention_period >= 0 && values.retention_unit) {
-      slaData.retention = {
-        period: values.retention_period,
-        unit: values.retention_unit,
-      };
-    }
-
-    onChange({ sla: slaData });
-  };
+  const handleFormChange = () =>
+    onChange({ sla: toContractSla(form.getValues()) });
 
   useEffect(() => {
     if (initialValues) {
-      form.setFieldsValue({
-        max_latency_unit: initialValues.sla?.maxLatency?.unit,
-        max_latency_value: initialValues.sla?.maxLatency?.value,
-        refresh_frequency_interval:
-          initialValues.sla?.refreshFrequency?.interval,
-        refresh_frequency_unit: initialValues.sla?.refreshFrequency?.unit,
-        retention_period: initialValues.sla?.retention?.period,
-        retention_unit: initialValues.sla?.retention?.unit,
-        timezone: initialValues.sla?.timezone,
-        columnName: initialValues.sla?.columnName,
-        availabilityTime: initialValues.sla?.availabilityTime
-          ? moment(
-              initialValues.sla?.availabilityTime,
-              SLA_AVAILABILITY_TIME_FORMAT
-            )
-          : undefined,
-      });
+      form.reset(toSlaFormValues(initialValues.sla));
     }
-  }, [initialValues]);
+  }, [initialValues, form.reset]);
 
   return (
     <>
@@ -163,11 +115,10 @@ export const ContractSLAFormTab: React.FC<{
           </Typography>
         </div>
 
-        <Form
+        <HookForm
           className="new-form-style contract-security-form"
           form={form}
-          layout="vertical"
-          onValuesChange={handleFormChange}>
+          onSubmit={(event) => event.preventDefault()}>
           <Grid
             className="layout-row layout-grid"
             style={{ ...getLayoutGutter(12, 12) }}>
@@ -183,42 +134,77 @@ export const ContractSLAFormTab: React.FC<{
                   className="layout-row layout-grid"
                   style={{ ...getLayoutGutter(12) }}>
                   <Grid.Item className="layout-column" span={12}>
-                    <Form.Item
-                      label={t('label.interval')}
+                    <FormField
+                      control={form.control}
                       name="refresh_frequency_interval"
-                      rules={[
-                        {
-                          required: true,
+                      rules={{
+                        required: t('message.field-text-is-required', {
+                          fieldText: t('label.interval'),
+                        }),
+                        min: {
+                          value: 0,
+                          message: t('message.entity-size-less-than', {
+                            entity: t('label.interval'),
+                            min: 0,
+                          }),
                         },
-                        {
-                          type: 'number',
-                          min: 0,
-                        },
-                      ]}>
-                      <InputNumber
-                        className="w-full"
-                        data-testid="refresh-frequency-interval-input"
-                        placeholder={t('label.enter-entity', {
-                          entity: t('label.interval'),
-                        })}
-                      />
-                    </Form.Item>
+                      }}>
+                      {({ field, fieldState }) => (
+                        <Box direction="col" gap={2}>
+                          <FormItemLabel required label={t('label.interval')} />
+                          <NumberInput
+                            {...field}
+                            aria-label={t('label.interval')}
+                            inputDataTestId="refresh-frequency-interval-input"
+                            isInvalid={!!fieldState.error}
+                            placeholder={t('label.enter-entity', {
+                              entity: t('label.interval'),
+                            })}
+                            onChange={(value) => {
+                              field.onChange(value);
+                              handleFormChange();
+                            }}
+                          />
+                          {fieldState.error && (
+                            <HintText isInvalid>
+                              {fieldState.error.message}
+                            </HintText>
+                          )}
+                        </Box>
+                      )}
+                    </FormField>
                   </Grid.Item>
                   <Grid.Item className="layout-column" span={12}>
-                    <Form.Item
-                      required
-                      label={t('label.unit')}
+                    <FormField
+                      control={form.control}
                       name="refresh_frequency_unit">
-                      <Select
-                        allowClear
-                        data-testid="refresh-frequency-unit-select"
-                        options={REFRESH_FREQUENCY_UNIT_OPTIONS}
-                        placeholder={t('label.select-entity', {
-                          entity: t('label.unit'),
-                        })}
-                        popupClassName="refresh-frequency-unit-select"
-                      />
-                    </Form.Item>
+                      {({ field, fieldState }) => (
+                        <Box direction="col" gap={2}>
+                          <FormItemLabel required label={t('label.unit')} />
+                          <Select
+                            {...field}
+                            allowClear
+                            aria-label={t('label.unit')}
+                            data-testid="refresh-frequency-unit-select"
+                            options={REFRESH_FREQUENCY_UNIT_OPTIONS}
+                            placeholder={t('label.select-entity', {
+                              entity: t('label.unit'),
+                            })}
+                            popupClassName="refresh-frequency-unit-select"
+                            status={fieldState.error ? 'error' : undefined}
+                            onChange={(value) => {
+                              field.onChange(value);
+                              handleFormChange();
+                            }}
+                          />
+                          {fieldState.error && (
+                            <HintText isInvalid>
+                              {fieldState.error.message}
+                            </HintText>
+                          )}
+                        </Box>
+                      )}
+                    </FormField>
                   </Grid.Item>
                 </Grid>
               </div>
@@ -235,42 +221,75 @@ export const ContractSLAFormTab: React.FC<{
                   className="layout-row layout-grid"
                   style={{ ...getLayoutGutter(24) }}>
                   <Grid.Item className="layout-column" span={12}>
-                    <Form.Item
-                      label={t('label.value')}
+                    <FormField
+                      control={form.control}
                       name="max_latency_value"
-                      rules={[
-                        {
-                          required: true,
+                      rules={{
+                        required: t('message.field-text-is-required', {
+                          fieldText: t('label.value'),
+                        }),
+                        min: {
+                          value: 0,
+                          message: t('message.entity-size-less-than', {
+                            entity: t('label.value'),
+                            min: 0,
+                          }),
                         },
-                        {
-                          type: 'number',
-                          min: 0,
-                        },
-                      ]}>
-                      <InputNumber
-                        className="w-full"
-                        data-testid="max-latency-value-input"
-                        placeholder={t('label.enter-entity', {
-                          entity: t('label.value'),
-                        })}
-                      />
-                    </Form.Item>
+                      }}>
+                      {({ field, fieldState }) => (
+                        <Box direction="col" gap={2}>
+                          <FormItemLabel required label={t('label.value')} />
+                          <NumberInput
+                            {...field}
+                            aria-label={t('label.value')}
+                            inputDataTestId="max-latency-value-input"
+                            isInvalid={!!fieldState.error}
+                            placeholder={t('label.enter-entity', {
+                              entity: t('label.value'),
+                            })}
+                            onChange={(value) => {
+                              field.onChange(value);
+                              handleFormChange();
+                            }}
+                          />
+                          {fieldState.error && (
+                            <HintText isInvalid>
+                              {fieldState.error.message}
+                            </HintText>
+                          )}
+                        </Box>
+                      )}
+                    </FormField>
                   </Grid.Item>
                   <Grid.Item className="layout-column" span={12}>
-                    <Form.Item
-                      required
-                      label={t('label.unit')}
-                      name="max_latency_unit">
-                      <Select
-                        allowClear
-                        data-testid="max-latency-unit-select"
-                        options={MAX_LATENCY_OPTIONS}
-                        placeholder={t('label.select-entity', {
-                          entity: t('label.unit'),
-                        })}
-                        popupClassName="max-latency-unit-select"
-                      />
-                    </Form.Item>
+                    <FormField control={form.control} name="max_latency_unit">
+                      {({ field, fieldState }) => (
+                        <Box direction="col" gap={2}>
+                          <FormItemLabel required label={t('label.unit')} />
+                          <Select
+                            {...field}
+                            allowClear
+                            aria-label={t('label.unit')}
+                            data-testid="max-latency-unit-select"
+                            options={MAX_LATENCY_OPTIONS}
+                            placeholder={t('label.select-entity', {
+                              entity: t('label.unit'),
+                            })}
+                            popupClassName="max-latency-unit-select"
+                            status={fieldState.error ? 'error' : undefined}
+                            onChange={(value) => {
+                              field.onChange(value);
+                              handleFormChange();
+                            }}
+                          />
+                          {fieldState.error && (
+                            <HintText isInvalid>
+                              {fieldState.error.message}
+                            </HintText>
+                          )}
+                        </Box>
+                      )}
+                    </FormField>
                   </Grid.Item>
                 </Grid>
               </div>
@@ -289,47 +308,83 @@ export const ContractSLAFormTab: React.FC<{
                   className="layout-row layout-grid"
                   style={{ ...getLayoutGutter(24) }}>
                   <Grid.Item className="layout-column" span={12}>
-                    <Form.Item label={t('label.time')} name="availabilityTime">
-                      <TimePicker
-                        className="availability-time-picker w-full"
-                        data-testid="availability"
-                        format={`${SLA_AVAILABILITY_TIME_FORMAT}`}
-                        placeholder="09:00"
-                        showNow={false}
-                        suffixIcon={null}
-                      />
-                    </Form.Item>
+                    <FormField control={form.control} name="availabilityTime">
+                      {({ field, fieldState }) => (
+                        <Box direction="col" gap={2}>
+                          <FormItemLabel
+                            label={t('label.time')}
+                            required={false}
+                          />
+                          <TimePicker
+                            granularity="minute"
+                            hourCycle={24}
+                            {...field}
+                            aria-label={t('label.time')}
+                            className="availability-time-picker w-full"
+                            data-testid="availability"
+                            isInvalid={!!fieldState.error}
+                            onChange={(value) => {
+                              field.onChange(value);
+                              handleFormChange();
+                            }}
+                          />
+                          {fieldState.error && (
+                            <HintText isInvalid>
+                              {fieldState.error.message}
+                            </HintText>
+                          )}
+                        </Box>
+                      )}
+                    </FormField>
                   </Grid.Item>
                   <Grid.Item className="layout-column" span={12}>
-                    <Form.Item
-                      label={t('label.timezone')}
-                      name="timezone"
-                      tooltip={t(
-                        'message.contract-sla-timezone-availability-default'
-                      )}>
-                      <Select
-                        allowClear
-                        showSearch
-                        data-testid="timezone-select"
-                        placeholder={t('label.select-entity', {
-                          entity: t('label.timezone'),
-                        })}
-                        popupClassName="timezone-select">
-                        {TIMEZONE_OPTIONS.map((item) => (
-                          <Select.Option
-                            data-testid={`timezone-item-${item.label}`}
-                            key={item.value}>
-                            <Tooltip
-                              arrow
-                              excludeTriggerFromTabOrder
-                              title={item.label}
-                              triggerClassName="tw:inline-flex">
-                              {item.label}
-                            </Tooltip>
-                          </Select.Option>
-                        ))}
-                      </Select>
-                    </Form.Item>
+                    <FormField control={form.control} name="timezone">
+                      {({ field, fieldState }) => (
+                        <Box direction="col" gap={2}>
+                          <FormItemLabel
+                            label={t('label.timezone')}
+                            required={false}
+                            tooltip={t(
+                              'message.contract-sla-timezone-availability-default'
+                            )}
+                          />
+                          <Select
+                            {...field}
+                            allowClear
+                            showSearch
+                            aria-label={t('label.timezone')}
+                            data-testid="timezone-select"
+                            placeholder={t('label.select-entity', {
+                              entity: t('label.timezone'),
+                            })}
+                            popupClassName="timezone-select"
+                            status={fieldState.error ? 'error' : undefined}
+                            onChange={(value) => {
+                              field.onChange(value);
+                              handleFormChange();
+                            }}>
+                            {TIMEZONE_OPTIONS.map((item) => (
+                              <Select.Option
+                                data-testid={`timezone-item-${item.label}`}
+                                key={item.value}>
+                                <Tooltip
+                                  arrow
+                                  excludeTriggerFromTabOrder
+                                  title={item.label}
+                                  triggerClassName="tw:inline-flex">
+                                  {item.label}
+                                </Tooltip>
+                              </Select.Option>
+                            ))}
+                          </Select>
+                          {fieldState.error && (
+                            <HintText isInvalid>
+                              {fieldState.error.message}
+                            </HintText>
+                          )}
+                        </Box>
+                      )}
+                    </FormField>
                   </Grid.Item>
                 </Grid>
               </div>
@@ -346,42 +401,75 @@ export const ContractSLAFormTab: React.FC<{
                   className="layout-row layout-grid"
                   style={{ ...getLayoutGutter(24) }}>
                   <Grid.Item className="layout-column" span={12}>
-                    <Form.Item
-                      label={t('label.period')}
+                    <FormField
+                      control={form.control}
                       name="retention_period"
-                      rules={[
-                        {
-                          required: true,
+                      rules={{
+                        required: t('message.field-text-is-required', {
+                          fieldText: t('label.period'),
+                        }),
+                        min: {
+                          value: 0,
+                          message: t('message.entity-size-less-than', {
+                            entity: t('label.period'),
+                            min: 0,
+                          }),
                         },
-                        {
-                          type: 'number',
-                          min: 0,
-                        },
-                      ]}>
-                      <InputNumber
-                        className="w-full"
-                        data-testid="retention-period-input"
-                        placeholder={t('label.enter-entity', {
-                          entity: t('label.period'),
-                        })}
-                      />
-                    </Form.Item>
+                      }}>
+                      {({ field, fieldState }) => (
+                        <Box direction="col" gap={2}>
+                          <FormItemLabel required label={t('label.period')} />
+                          <NumberInput
+                            {...field}
+                            aria-label={t('label.period')}
+                            inputDataTestId="retention-period-input"
+                            isInvalid={!!fieldState.error}
+                            placeholder={t('label.enter-entity', {
+                              entity: t('label.period'),
+                            })}
+                            onChange={(value) => {
+                              field.onChange(value);
+                              handleFormChange();
+                            }}
+                          />
+                          {fieldState.error && (
+                            <HintText isInvalid>
+                              {fieldState.error.message}
+                            </HintText>
+                          )}
+                        </Box>
+                      )}
+                    </FormField>
                   </Grid.Item>
                   <Grid.Item className="layout-column" span={12}>
-                    <Form.Item
-                      required
-                      label={t('label.unit')}
-                      name="retention_unit">
-                      <Select
-                        allowClear
-                        data-testid="retention-unit-select"
-                        options={RETENTION_UNIT_OPTIONS}
-                        placeholder={t('label.select-entity', {
-                          entity: t('label.unit'),
-                        })}
-                        popupClassName="retention-unit-select"
-                      />
-                    </Form.Item>
+                    <FormField control={form.control} name="retention_unit">
+                      {({ field, fieldState }) => (
+                        <Box direction="col" gap={2}>
+                          <FormItemLabel required label={t('label.unit')} />
+                          <Select
+                            {...field}
+                            allowClear
+                            aria-label={t('label.unit')}
+                            data-testid="retention-unit-select"
+                            options={RETENTION_UNIT_OPTIONS}
+                            placeholder={t('label.select-entity', {
+                              entity: t('label.unit'),
+                            })}
+                            popupClassName="retention-unit-select"
+                            status={fieldState.error ? 'error' : undefined}
+                            onChange={(value) => {
+                              field.onChange(value);
+                              handleFormChange();
+                            }}
+                          />
+                          {fieldState.error && (
+                            <HintText isInvalid>
+                              {fieldState.error.message}
+                            </HintText>
+                          )}
+                        </Box>
+                      )}
+                    </FormField>
                   </Grid.Item>
                 </Grid>
               </div>
@@ -396,24 +484,44 @@ export const ContractSLAFormTab: React.FC<{
                   {t('message.contract-sla-column-name-description')}
                 </Typography>
 
-                <Form.Item label={t('label.column-name')} name="columnName">
-                  <Select
-                    allowClear
-                    showSearch
-                    data-testid="columnName-select"
-                    filterOption={filterSelectOptions}
-                    getPopupContainer={getPopupContainer}
-                    id="columnName-select"
-                    options={columnOptions}
-                    placeholder={t('label.please-enter-entity-name', {
-                      entity: t('label.column'),
-                    })}
-                  />
-                </Form.Item>
+                <FormField control={form.control} name="columnName">
+                  {({ field, fieldState }) => (
+                    <Box direction="col" gap={2}>
+                      <FormItemLabel
+                        label={t('label.column-name')}
+                        required={false}
+                      />
+                      <Select
+                        {...field}
+                        allowClear
+                        showSearch
+                        aria-label={t('label.column-name')}
+                        data-testid="columnName-select"
+                        filterOption={filterSelectOptions}
+                        getPopupContainer={getPopupContainer}
+                        id="columnName-select"
+                        options={columnOptions}
+                        placeholder={t('label.please-enter-entity-name', {
+                          entity: t('label.column'),
+                        })}
+                        status={fieldState.error ? 'error' : undefined}
+                        onChange={(value) => {
+                          field.onChange(value);
+                          handleFormChange();
+                        }}
+                      />
+                      {fieldState.error && (
+                        <HintText isInvalid>
+                          {fieldState.error.message}
+                        </HintText>
+                      )}
+                    </Box>
+                  )}
+                </FormField>
               </div>
             </Grid.Item>
           </Grid>
-        </Form>
+        </HookForm>
       </Card>
       <div className="d-flex justify-between m-t-md">
         <Button
