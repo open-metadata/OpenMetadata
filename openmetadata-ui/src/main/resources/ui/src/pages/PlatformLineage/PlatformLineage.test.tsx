@@ -100,7 +100,15 @@ jest.mock('@openmetadata/ui-core-components', () => {
 
   GridMock.Item = jest.fn(({ children }: GridProps) => <div>{children}</div>);
 
+  const CardMock = Object.assign(
+    ({ children }: GridProps) => <div>{children}</div>,
+    {
+      Content: ({ children }: GridProps) => <div>{children}</div>,
+    }
+  );
+
   return {
+    Card: CardMock,
     Grid: GridMock,
     Tooltip: jest
       .fn()

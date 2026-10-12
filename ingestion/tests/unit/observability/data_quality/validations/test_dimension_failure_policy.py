@@ -297,3 +297,104 @@ def test_an_evaluated_dimension_adds_nothing_to_the_message(create_sqlite_table)
 
     assert aborted_dimensions(res) == []
     assert "could not be evaluated" not in res.result
+
+
+def not_null_within_60_percent_min_rows(min_rows, policy="ANY_DIMENSION", unit="PERCENTAGE"):
+    """Eve (10 rows) is below a minimum of 15, John (20 rows) is not"""
+    return build_test_case(
+        [
+            TestCaseParameterValue(name="threshold", value="60"),
+            TestCaseParameterValue(name="thresholdUnit", value=unit),
+            *policy_param(policy),
+            TestCaseParameterValue(name="minRowsPerDimension", value=min_rows),
+        ]
+    )
+
+
+def excluded_dimensions(result):
+    return sorted(dim.dimensionKey for dim in result.dimensionResults or [] if dim.excludedFromRollUp)
+
+
+def test_a_failing_group_below_the_minimum_does_not_fail_the_test_case(create_sqlite_table):
+    res = run(create_sqlite_table, ColumnValuesToBeNotNullValidator, not_null_within_60_percent_min_rows("15"))
+
+    assert res.testCaseStatus == TestCaseStatus.Success
+    statuses = {dim.dimensionKey: dim.testCaseStatus for dim in res.dimensionResults}
+    assert statuses["name=Eve"] == TestCaseStatus.Failed
+    assert "name=Eve" in excluded_dimensions(res)
+    assert "name=John" not in excluded_dimensions(res)
+    assert "1 dimension group failed with fewer than 15 rows (name=Eve)" in res.result
+    assert "so it does not fail the test case" in res.result
+    assert "ANY_DIMENSION policy fails the test case" not in res.result
+
+
+def test_a_failing_group_at_the_minimum_still_fails_the_test_case(create_sqlite_table):
+    res = run(create_sqlite_table, ColumnValuesToBeNotNullValidator, not_null_within_60_percent_min_rows("10"))
+
+    assert res.testCaseStatus == TestCaseStatus.Failed
+    assert "name=Eve" not in excluded_dimensions(res)
+    assert "1 dimension group failed (name=Eve)" in res.result
+
+
+@pytest.mark.parametrize(
+    "policy,unit",
+    [("OVERALL_ONLY", "PERCENTAGE"), ("ANY_DIMENSION", "ABSOLUTE")],
+)
+def test_the_minimum_only_applies_to_a_percentage_roll_up(create_sqlite_table, policy, unit):
+    """Nothing rolls up under OVERALL_ONLY, and an ABSOLUTE count is not distorted by group size"""
+    res = run(
+        create_sqlite_table,
+        ColumnValuesToBeNotNullValidator,
+        not_null_within_60_percent_min_rows("15", policy=policy, unit=unit),
+    )
+
+    assert excluded_dimensions(res) == []
+    assert "fewer than 15 rows" not in res.result
+
+
+@pytest.mark.parametrize("min_rows", ["0", "-5", "nan", "inf", "many"])
+def test_an_unusable_minimum_rolls_every_group_up(create_sqlite_table, min_rows):
+    res = run(create_sqlite_table, ColumnValuesToBeNotNullValidator, not_null_within_60_percent_min_rows(min_rows))
+
+    assert res.testCaseStatus == TestCaseStatus.Failed
+    assert excluded_dimensions(res) == []
+
+
+def test_excluded_and_rolled_up_groups_are_both_named():
+    validator = ColumnValuesToBeNotNullValidator(MagicMock(), not_null_within_60_percent_min_rows("15"), EXECUTION_DATE)
+    test_result = TestCaseResult(
+        timestamp=int(EXECUTION_DATE.timestamp() * 1000),
+        testCaseStatus=TestCaseStatus.Success,
+        result="Overall passed.",
+    )
+    small = dimension_result("Eve", TestCaseStatus.Failed)
+    small.excludedFromRollUp = True
+
+    validator._roll_up_dimension_results(test_result, [small, dimension_result("Others", TestCaseStatus.Failed)])
+
+    assert test_result.testCaseStatus == TestCaseStatus.Failed
+    assert "1 dimension group failed (name=Others)" in test_result.result
+    assert "fewer than 15 rows (name=Eve)" in test_result.result
+
+
+def test_an_excluded_failing_group_is_named_when_the_aggregate_already_failed():
+    validator = ColumnValuesToBeNotNullValidator(MagicMock(), not_null_within_60_percent_min_rows("15"), EXECUTION_DATE)
+    test_result = TestCaseResult(
+        timestamp=int(EXECUTION_DATE.timestamp() * 1000),
+        testCaseStatus=TestCaseStatus.Failed,
+        result="Overall failed.",
+    )
+    small = dimension_result("Eve", TestCaseStatus.Failed)
+    small.excludedFromRollUp = True
+
+    validator._roll_up_dimension_results(test_result, [small])
+
+    assert test_result.testCaseStatus == TestCaseStatus.Failed
+    assert "fewer than 15 rows (name=Eve)" in test_result.result
+
+
+def test_excluded_sentence_agrees_with_the_number_of_groups():
+    sentence = result_messages.excluded_dimensions_sentence(["name=a", "name=b"], 2.5)
+
+    assert sentence.startswith("2 dimension groups failed with fewer than 2.5 rows (name=a, name=b)")
+    assert "so they do not fail the test case" in sentence

@@ -19,13 +19,13 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
+  Edit01,
   MessageChatSquare,
   MessagePlusSquare,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { lazy, ReactNode, useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { useFqn } from '../../../hooks/useFqn';
@@ -206,10 +206,7 @@ const Description = ({
           aria-label={editDescriptionLabel}
           color="secondary"
           data-testid="edit-description"
-          // edit-new.svg, not untitled's Edit02: every other edit affordance on an entity
-          // page (glossary terms, tags, the header's domain/owner/tier) uses this asset, and
-          // Edit02 is a visibly different pencil — no underline, stroked instead of filled.
-          iconLeading={EditIcon}
+          iconLeading={Edit01}
           size="xxs"
           onPress={handleEditDescription}
         />
@@ -303,7 +300,7 @@ const Description = ({
           className={
             isWidgetHeader
               ? 'tw:whitespace-nowrap tw:text-quaternary'
-              : 'tw:text-text-secondary'
+              : 'tw:text-secondary'
           }
           size="text-sm"
           weight="semibold">
@@ -325,7 +322,7 @@ const Description = ({
       <Box
         className={classNames(
           wrapInCard
-            ? 'tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:p-[18px] tw:shadow-xs'
+            ? 'tw:rounded-xl tw:border tw:border-subtle tw:bg-surface tw:p-[18px] tw:shadow-card'
             : undefined,
           className
         )}

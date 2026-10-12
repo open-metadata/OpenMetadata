@@ -49,6 +49,7 @@ import org.openmetadata.schema.auth.TokenType;
 import org.openmetadata.schema.auth.collate.SupportToken;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
+import org.openmetadata.schema.configuration.GlossarySettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.OpenLineageSettings;
 import org.openmetadata.schema.configuration.SparqlQuerySettings;
@@ -324,6 +325,7 @@ public interface SystemTokenDAOs {
             case MCP_CONFIGURATION -> JsonUtils.readValue(json, MCPConfiguration.class);
             case GLOSSARY_TERM_RELATION_SETTINGS -> JsonUtils.readValue(
                 json, GlossaryTermRelationSettings.class);
+            case GLOSSARY_SETTINGS -> JsonUtils.readValue(json, GlossarySettings.class);
             case SPARQL_QUERY_SETTINGS -> JsonUtils.readValue(json, SparqlQuerySettings.class);
             case APP_CONFIGURATION -> JsonUtils.readValue(json, AppConfiguration.class);
             case STARTUP_CHECKSUMS -> JsonUtils.readValue(json, StartupChecksums.class);

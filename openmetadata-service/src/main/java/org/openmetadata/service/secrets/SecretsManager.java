@@ -18,12 +18,14 @@ import static java.util.Objects.isNull;
 import com.google.common.annotations.VisibleForTesting;
 import jakarta.ws.rs.core.Response;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.regex.Pattern;
@@ -700,6 +702,15 @@ public abstract class SecretsManager {
   }
 
   private void deleteSecrets(Object toDeleteSecretsFrom, String secretId) {
+    deleteSecrets(toDeleteSecretsFrom, List.of(secretId));
+  }
+
+  /**
+   * @param secretIds the secret id of {@code toDeleteSecretsFrom} last, preceded by the ids of the
+   *     objects that enclose it
+   */
+  private void deleteSecrets(Object toDeleteSecretsFrom, List<String> secretIds) {
+    String secretId = secretIds.getLast();
     if (!DO_NOT_ENCRYPT_CLASSES.contains(toDeleteSecretsFrom.getClass())) {
       Arrays.stream(toDeleteSecretsFrom.getClass().getMethods())
           .filter(ReflectionUtil::isGetMethodOfObject)
@@ -712,24 +723,61 @@ public abstract class SecretsManager {
                 // encrypt at encryptPasswordFields
                 if (CommonUtil.isOpenMetadataObject(obj)) {
                   deleteSecrets(
-                      obj, buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT)));
+                      obj,
+                      withNestedSecretId(
+                          secretIds,
+                          buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT))));
                 } else if (obj != null && method.getAnnotation(PasswordField.class) != null) {
-                  deleteSecretInternal(
-                      buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT)));
+                  deleteStoredSecret(
+                      storedSecretName(
+                          (String) obj, secretIds, fieldName.toLowerCase(Locale.ROOT)));
                 } else {
                   forEachTraversableElement(
                       obj,
                       (element, elementKey) ->
                           deleteSecrets(
                               element,
-                              buildSecretId(
-                                  false,
-                                  secretId,
-                                  fieldName.toLowerCase(Locale.ROOT),
-                                  elementKey)));
+                              withNestedSecretId(
+                                  secretIds,
+                                  buildSecretId(
+                                      false,
+                                      secretId,
+                                      fieldName.toLowerCase(Locale.ROOT),
+                                      elementKey))));
                 }
               });
     }
+  }
+
+  private static List<String> withNestedSecretId(List<String> secretIds, String nestedSecretId) {
+    List<String> nestedSecretIds = new ArrayList<>(secretIds);
+    nestedSecretIds.add(nestedSecretId);
+    return nestedSecretIds;
+  }
+
+  /**
+   * Names the secret that holds a password field. A migration that moves a field into a nested
+   * object leaves its {@code secret:} reference where the field used to be, so a reference to the
+   * same field under an enclosing object is the secret to delete. Any other reference was supplied
+   * by the user, points at a secret this entity does not own, and is never deleted.
+   */
+  private String storedSecretName(String fieldValue, List<String> secretIds, String fieldName) {
+    List<String> fieldSecretNames =
+        secretIds.stream().map(secretId -> buildSecretId(false, secretId, fieldName)).toList();
+    return referencedSecretName(fieldValue)
+        .filter(fieldSecretNames::contains)
+        .orElse(fieldSecretNames.getLast());
+  }
+
+  private Optional<String> referencedSecretName(String fieldValue) {
+    return Boolean.TRUE.equals(isSecret(fieldValue))
+        ? Optional.of(fieldValue.substring(SECRET_FIELD_PREFIX.length()))
+        : Optional.empty();
+  }
+
+  /** Removes one secret of an entity that is being hard deleted. */
+  protected void deleteStoredSecret(String secretName) {
+    deleteSecretInternal(secretName);
   }
 
   public static Map<String, String> getTags(SecretsConfig secretsConfig) {

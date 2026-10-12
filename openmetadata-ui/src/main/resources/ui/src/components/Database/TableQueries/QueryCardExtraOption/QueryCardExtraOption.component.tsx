@@ -12,10 +12,13 @@
  */
 import {
   Badge,
+  Box,
+  Button,
   ButtonUtility,
   Dropdown,
+  Tooltip,
 } from '@openmetadata/ui-core-components';
-import { Button, Space, Tooltip } from 'antd';
+
 import { AxiosError } from 'axios';
 import { isUndefined, split } from 'lodash';
 import Qs from 'qs';
@@ -149,10 +152,13 @@ const QueryCardExtraOption = ({
   };
 
   return (
-    <Space
-      className="query-card-extra-option"
+    <Box
+      inline
+      align="center"
+      className="layout-space layout-space-horizontal query-card-extra-option"
       data-testid="extra-option-container"
-      size={8}>
+      gap={2}
+      itemClassName="layout-space-item">
       {QueryHeaderButton && (
         <QueryHeaderButton onClickHandler={onExpandClick} />
       )}
@@ -161,29 +167,29 @@ const QueryCardExtraOption = ({
         {queryLine}
       </Badge>
 
-      <Tooltip title={t('label.up-vote')}>
+      <Tooltip arrow title={t('label.up-vote')}>
         <Button
-          className="vote-button"
+          color="secondary"
           data-testid="up-vote-btn"
-          icon={
+          iconLeading={
             voteStatus === QueryVoteType.votedUp ? (
               <ThumbsUpFilled className="text-success" height={15} width={15} />
             ) : (
               <ThumbsUpOutline height={15} width={15} />
             )
           }
-          loading={loading === QueryVoteType.votedUp}
-          size="small"
-          onClick={() => handleVoteChange(QueryVoteType.votedUp)}>
+          isLoading={loading === QueryVoteType.votedUp}
+          size="xs"
+          onPress={() => handleVoteChange(QueryVoteType.votedUp)}>
           {query.votes?.upVotes || 0}
         </Button>
       </Tooltip>
 
-      <Tooltip title={t('label.down-vote')}>
+      <Tooltip arrow title={t('label.down-vote')}>
         <Button
-          className="vote-button"
+          color="secondary"
           data-testid="down-vote-btn"
-          icon={
+          iconLeading={
             voteStatus === QueryVoteType.votedDown ? (
               <ThumbsUpFilled
                 className="rotate-inverse text-warning-7"
@@ -198,9 +204,9 @@ const QueryCardExtraOption = ({
               />
             )
           }
-          loading={loading === QueryVoteType.votedDown}
-          size="small"
-          onClick={() => handleVoteChange(QueryVoteType.votedDown)}>
+          isLoading={loading === QueryVoteType.votedDown}
+          size="xs"
+          onPress={() => handleVoteChange(QueryVoteType.votedDown)}>
           {query.votes?.downVotes || 0}
         </Button>
       </Tooltip>
@@ -250,7 +256,7 @@ const QueryCardExtraOption = ({
         onCancel={() => setShowDeleteModal(false)}
         onConfirm={onDeleteClick}
       />
-    </Space>
+    </Box>
   );
 };
 

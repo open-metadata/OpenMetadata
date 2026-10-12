@@ -1446,7 +1446,18 @@
       background: @ask-bg-active;
       color: @ask-brand-active;
 
+      // Visited links must keep the selected icon's foreground instead of
+      // inheriting the browser/legacy link accent through currentColor.
+      &:link,
+      &:visited,
+      &:focus,
       &:hover {
+        color: @ask-brand-active;
+      }
+
+      // Match expanded navigation: the icon owns its foreground so link-state
+      // colors cannot change a currentColor glyph when the pointer leaves.
+      svg {
         color: @ask-brand-active;
       }
     }

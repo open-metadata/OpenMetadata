@@ -134,6 +134,7 @@ import org.openmetadata.service.ontology.RelationshipTypeResolver;
 import org.openmetadata.service.ontology.TermRelationMutator;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.glossary.GlossaryTermResource;
+import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.GlossaryTermAssetBucket;
@@ -799,9 +800,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     descriptors.add(
         new PropagationDescriptor(
             FIELD_REVIEWERS, PropagationDescriptor.PropagationType.ENTITY_REFERENCE_LIST, null));
-    descriptors.add(
-        new PropagationDescriptor(
-            FIELD_TAGS, PropagationDescriptor.PropagationType.TAG_LABEL_LIST, null));
+    if (SettingsCache.isGlossaryTagPropagationEnabled()) {
+      descriptors.add(
+          new PropagationDescriptor(
+              FIELD_TAGS, PropagationDescriptor.PropagationType.TAG_LABEL_LIST, null));
+    }
     return descriptors;
   }
 
@@ -2000,7 +2003,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       throw new IllegalArgumentException("Column not found: " + columnFqn);
     }
 
-    // Validate mutually exclusive tags
     Map<String, List<TagLabel>> allAssetTags =
         daoCollection.tagUsageDAO().getTagsByPrefix(columnFqn, "%", true);
     checkMutuallyExclusiveForParentAndSubField(
@@ -2833,7 +2835,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
           Map<String, List<TagLabel>> allAssetTags =
               daoCollection.tagUsageDAO().getTagsByPrefix(fqnHash, "%", false);
 
-          // Assets FQN is not available / we can use fqnHash for now
           checkMutuallyExclusiveForParentAndSubField("", fqnHash, allAssetTags, updatedTags, true);
         }
 

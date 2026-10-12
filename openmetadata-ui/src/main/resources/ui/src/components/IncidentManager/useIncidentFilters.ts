@@ -131,7 +131,28 @@ export const useIncidentFilters = ({
     );
   }, [allParams, navigate]);
 
+  const clearFilters = useCallback(() => {
+    navigate(
+      {
+        search: QueryString.stringify(
+          omit(allParams, [
+            'testCaseFQN',
+            'assignee',
+            'testCaseResolutionStatusType',
+            'startTs',
+            'endTs',
+            'dateField',
+            'key',
+            'title',
+          ])
+        ),
+      },
+      { replace: true }
+    );
+  }, [allParams, navigate]);
+
   return {
+    clearFilters,
     dateRangeKey,
     isDateFilterOpen,
     setIsDateFilterOpen,

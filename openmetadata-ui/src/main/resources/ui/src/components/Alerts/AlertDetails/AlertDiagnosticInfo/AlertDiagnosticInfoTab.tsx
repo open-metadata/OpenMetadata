@@ -13,10 +13,13 @@
 
 import { InfoCircleOutlined } from '@ant-design/icons';
 import {
+  Card,
+  Grid,
   SkeletonParagraph,
+  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Card, Col, Row, Tooltip } from 'antd';
+
 import { AxiosError } from 'axios';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { GRAYED_OUT_COLOR } from '../../../../constants/constants';
@@ -24,6 +27,7 @@ import { EventSubscriptionDiagnosticInfo } from '../../../../generated/events/ap
 import { useFqn } from '../../../../hooks/useFqn';
 import { getDiagnosticInfo } from '../../../../rest/observabilityAPI';
 import { getDiagnosticItems } from '../../../../utils/Alerts/AlertsUtilPure';
+import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 
 function AlertDiagnosticInfoTab() {
@@ -63,34 +67,45 @@ function AlertDiagnosticInfoTab() {
 
   return (
     <Card>
-      {diagnosticIsLoading ? (
-        <SkeletonParagraph rows={3} />
-      ) : (
-        <Row className="w-full" gutter={[16, 16]}>
-          {diagnosticItems.map((item) => (
-            <Col key={item.key} span={12}>
-              <Row align="middle">
-                <Col className="d-flex items-center" span={12}>
-                  <Typography className="d-flex items-center gap-1">
-                    <Typography className="m-0" color="secondary">
-                      {`${item.key}:`}
+      <Card.Content>
+        {diagnosticIsLoading ? (
+          <SkeletonParagraph rows={3} />
+        ) : (
+          <Grid
+            className="layout-row layout-grid w-full"
+            style={{ ...getLayoutGutter(16, 16) }}>
+            {diagnosticItems.map((item) => (
+              <Grid.Item className="layout-column" key={item.key} span={12}>
+                <Grid className="layout-row layout-grid tw:items-center">
+                  <Grid.Item
+                    className="layout-column d-flex items-center"
+                    span={12}>
+                    <Typography className="d-flex items-center gap-1">
+                      <Typography className="m-0" color="secondary">
+                        {`${item.key}:`}
+                      </Typography>
+                      <Tooltip
+                        arrow
+                        excludeTriggerFromTabOrder
+                        placement="bottom"
+                        title={item.description}
+                        triggerClassName="tw:inline-flex">
+                        <InfoCircleOutlined
+                          className="info-icon"
+                          style={{ color: GRAYED_OUT_COLOR }}
+                        />
+                      </Tooltip>
                     </Typography>
-                    <Tooltip placement="bottom" title={item.description}>
-                      <InfoCircleOutlined
-                        className="info-icon"
-                        style={{ color: GRAYED_OUT_COLOR }}
-                      />
-                    </Tooltip>
-                  </Typography>
-                </Col>
-                <Col span={12}>
-                  <Typography>{formatValue(item.value)}</Typography>
-                </Col>
-              </Row>
-            </Col>
-          ))}
-        </Row>
-      )}
+                  </Grid.Item>
+                  <Grid.Item className="layout-column" span={12}>
+                    <Typography>{formatValue(item.value)}</Typography>
+                  </Grid.Item>
+                </Grid>
+              </Grid.Item>
+            ))}
+          </Grid>
+        )}
+      </Card.Content>
     </Card>
   );
 }
