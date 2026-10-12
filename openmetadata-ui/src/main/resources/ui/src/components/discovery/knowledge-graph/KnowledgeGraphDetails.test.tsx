@@ -72,7 +72,7 @@ it('pages and searches all loaded columns without declaring uninspected columns 
   );
 
   expect(within(grid).getByText('column_299')).toBeVisible();
-  expect(within(grid).getByText('label.kg-not-explored')).toBeVisible();
+  expect(within(grid).getByText('label.kg-unknown')).toBeVisible();
   expect(within(grid).queryByText('label.kg-unmapped')).not.toBeInTheDocument();
   expect(
     screen.queryByRole('button', { name: /label.kg-show-more/ })

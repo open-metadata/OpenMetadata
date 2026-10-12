@@ -88,14 +88,10 @@ interface DetailRow {
 
 /** Rows revealed per "Show more", matching the design's paging of the list. */
 const PAGE_SIZE = 40;
-const NOT_EXPLORED: MappingCoverage = 'not-explored';
-const COVERAGE_STATUSES: MappingCoverage[] = [
-  'mapped',
-  'unmapped',
-  NOT_EXPLORED,
-];
+const UNKNOWN: MappingCoverage = 'unknown';
+const COVERAGE_STATUSES: MappingCoverage[] = ['mapped', 'unmapped', UNKNOWN];
 /** Gaps surfaces only the actionable statuses — mapped rows aren't a gap. */
-const GAPS_STATUSES: MappingCoverage[] = ['unmapped', NOT_EXPLORED];
+const GAPS_STATUSES: MappingCoverage[] = ['unmapped', UNKNOWN];
 
 const CELL_TONES: Record<CellTone, string> = {
   mono: 'tw:font-mono tw:text-primary',
@@ -114,10 +110,10 @@ const getColumnCoverage = (
     return 'mapped';
   }
   if (node) {
-    return coverage.get(node.id) ?? NOT_EXPLORED;
+    return coverage.get(node.id) ?? UNKNOWN;
   }
 
-  return NOT_EXPLORED;
+  return UNKNOWN;
 };
 
 const DETAIL_LABELS = {
@@ -166,7 +162,7 @@ const coverageCell = (
     return { text: t('label.kg-missing-glossary-term'), tone: 'warning' };
   }
 
-  // "not-explored" means the node sits outside the current traversal depth.
+  // "unknown" means the node sits outside the current traversal depth.
   // Name that explicitly so the user understands the row needs level-bumping,
   // not a mapping action.
   return { text: t('label.kg-outside-current-level'), tone: 'muted' };
@@ -188,7 +184,7 @@ const suggestedFixCell = (
   if (status === 'unmapped' && href) {
     return { text: t('label.kg-map-glossary-term'), tone: 'brand', href };
   }
-  if (status === NOT_EXPLORED) {
+  if (status === UNKNOWN) {
     // Not-explored stubs don't always have a fullyQualifiedName (they're
     // placeholder rows for assets outside the current depth), so we may not
     // have an asset page to link to. Show the hint as muted text — the
@@ -297,7 +293,7 @@ const KnowledgeGraphDetails = ({
   useEffect(() => {
     setSearch('');
     // Every drawer opens on "All" — Gaps now surfaces one combined table
-    // (unmapped + not-explored) with the status visible in the Missing column.
+    // (unmapped + unknown) with the status visible in the Missing column.
     setFilter('all');
     setLimit(PAGE_SIZE);
   }, [drawer, mode, relationshipScope]);
@@ -360,7 +356,7 @@ const KnowledgeGraphDetails = ({
           .filter(isCoverageNode)
           .filter((node) => coverage.get(node.id) !== 'mapped')
           .map((node) => {
-            const status = coverage.get(node.id) ?? NOT_EXPLORED;
+            const status = coverage.get(node.id) ?? UNKNOWN;
 
             return {
               id: node.id,

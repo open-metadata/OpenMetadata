@@ -112,7 +112,7 @@ it('marks a root as mapped only when mapping evidence is present', () => {
 
   expect(screen.getByText('label.kg-mapped-to-ontology')).toBeVisible();
 
-  root.data.presentation.coverage = 'not-explored';
+  root.data.presentation.coverage = 'unknown';
   rerender(
     <CustomNode nodeData={root} nodeRenderKey={getNodeRenderKey(root)} />
   );

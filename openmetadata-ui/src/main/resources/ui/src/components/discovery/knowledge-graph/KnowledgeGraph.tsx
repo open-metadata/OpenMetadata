@@ -142,7 +142,6 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
   entity,
   entityType,
   levels = 2,
-  // eslint-disable-next-line sonarjs/cyclomatic-complexity
 }) => {
   const { t } = useTranslation();
   const location = useLocation();
@@ -486,15 +485,23 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     );
   }
 
+  // Fullscreen turns the KG root into a modal dialog; non-fullscreen leaves
+  // the element unlabelled so screen readers follow the surrounding page.
+  const fullscreenAria = isFullscreen
+    ? {
+        'aria-label': t('label.knowledge-graph'),
+        'aria-modal': true,
+        role: 'dialog' as const,
+      }
+    : null;
+
   return (
     <FocusScope contain={isFullscreen}>
       <div
         {...overlayProps}
-        aria-label={isFullscreen ? t('label.knowledge-graph') : undefined}
-        aria-modal={isFullscreen || undefined}
+        {...fullscreenAria}
         className={classNames({ 'full-screen-knowledge-graph': isFullscreen })}
-        ref={fullscreenRef}
-        role={isFullscreen ? 'dialog' : undefined}>
+        ref={fullscreenRef}>
         <Card
           className={classNames('knowledge-graph-container', {
             'kg-details-open': drawer,
