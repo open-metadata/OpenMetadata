@@ -46,6 +46,8 @@ class DbtMetaOpenmetadata(BaseModel):
     customProperties: dict[str, Any] | None = None  # noqa: N815
     tags: list[str] | None = None
     unit: str | None = None
+    # database the node's table is ingested under, when the dbt adapter names it otherwise
+    database: str | None = None
 
 
 class DbtMeta(BaseModel):

@@ -937,6 +937,24 @@ def get_dbt_model_name(manifest_node) -> str:
     return manifest_node.alias if hasattr(manifest_node, "alias") and manifest_node.alias else manifest_node.name
 
 
+def get_dbt_database_mapping(manifest_node: Any) -> str | None:
+    """
+    The database a dbt node's table is ingested under in OpenMetadata, set through
+    ``meta.openmetadata.database``. It is needed when the dbt adapter knows the database
+    by another name, e.g. dbt-trino writing through a Trino catalog that fronts a
+    BigQuery project, where the manifest carries the catalog and OpenMetadata the project.
+    """
+    for meta in (
+        getattr(manifest_node, "meta", None),
+        getattr(getattr(manifest_node, "config", None), "meta", None),
+    ):
+        if isinstance(meta, dict) and isinstance(meta.get("openmetadata"), dict):
+            database = meta["openmetadata"].get("database")
+            if isinstance(database, str) and database.strip():
+                return database.strip()
+    return None
+
+
 def get_source_physical_name(manifest_node) -> str:
     """
     Get the warehouse table name of a dbt source node.

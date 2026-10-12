@@ -123,6 +123,7 @@ from metadata.ingestion.source.database.dbt.dbt_utils import (
     get_corrected_name,
     get_data_model_path,
     get_dbt_compiled_query,
+    get_dbt_database_mapping,
     get_dbt_model_name,
     get_dbt_raw_query,
     get_dbt_test_definition_name,
@@ -806,7 +807,11 @@ class DbtSource(DbtServiceSource):
             schema_name=get_corrected_name(manifest_node.schema_),
             table_name=get_source_physical_name(manifest_node),
         )
-        table_entity = self._get_table_entity(table_fqn=source_fqn) if source_fqn else None
+        table_entity = (
+            self._get_table_entity(table_fqn=source_fqn, mapped_database=get_dbt_database_mapping(manifest_node))
+            if source_fqn
+            else None
+        )
         if not table_entity:
             logger.warning(f"Table entity not found for dbt source {key}, skipping its freshness test")
             return
@@ -873,9 +878,48 @@ class DbtSource(DbtServiceSource):
             )
         return candidates[0] if len(candidates) == 1 else None
 
-    def _get_table_entity(self, table_fqn) -> Table | None:
+    def _get_table_entity_in_mapped_database(self, table_fqn: str, mapped_database: str) -> Table | None:
+        """
+        Look the table up under the database named by ``meta.openmetadata.database``, in
+        the configured service first and then in any service: the mapping is an explicit
+        statement of where the table lives, typically in another service than the engine
+        dbt ran on. A mapping that finds nothing falls back to the manifest database.
+        See ADR:2026-10-11-dbt-search-across-databases-falls-back-to-unique-schema-table.
+        """
+        _, _, schema_name, table_name = fqn.split(table_fqn)
+        for service_name in (self.config.serviceName, "*"):
+            table_entity = next(
+                iter(
+                    self._search_tables(
+                        fqn.build(
+                            self.metadata,
+                            entity_type=Table,
+                            service_name=service_name,
+                            database_name=mapped_database,
+                            schema_name=schema_name,
+                            table_name=table_name,
+                            skip_es_search=True,
+                        )
+                    )
+                ),
+                None,
+            )
+            if table_entity:
+                return table_entity
+        logger.warning(
+            "Table '%s.%s' not found under the database '%s' set in meta.openmetadata.database, "
+            "falling back to the database in the dbt manifest",
+            schema_name,
+            table_name,
+            mapped_database,
+        )
+        return None
+
+    def _get_table_entity(self, table_fqn, mapped_database: str | None = None) -> Table | None:
         try:
-            table_entity = next(iter(self._search_tables(table_fqn)), None)
+            table_entity = (
+                self._get_table_entity_in_mapped_database(table_fqn, mapped_database) if mapped_database else None
+            ) or next(iter(self._search_tables(table_fqn)), None)
             if table_entity:
                 logger.debug(f"Using Table Entity: {table_entity.fullyQualifiedName.root}with id {table_entity.id}")
                 return table_entity
@@ -1034,17 +1078,21 @@ class DbtSource(DbtServiceSource):
                         table_name=model_name,
                     )
 
-                    if manifest_node.meta:
-                        dbt_table_tags_list.extend(self.process_dbt_meta(manifest_node.meta, table_fqn) or [])
-
                     dbt_compiled_query = get_dbt_compiled_query(manifest_node)
                     dbt_raw_query = get_dbt_raw_query(manifest_node)
 
-                    if table_entity := self._get_table_entity(table_fqn=table_fqn):
+                    if table_entity := self._get_table_entity(
+                        table_fqn=table_fqn, mapped_database=get_dbt_database_mapping(manifest_node)
+                    ):
                         logger.debug(
                             f"Using Table Entity for datamodel: {table_entity.fullyQualifiedName.root}"
                             f"with id {table_entity.id}"
                         )
+                        # the domain, data products and custom properties read from meta are
+                        # applied by the FQN of the table found, which can differ from the guess
+                        table_fqn = model_str(table_entity.fullyQualifiedName)
+                        if manifest_node.meta:
+                            dbt_table_tags_list.extend(self.process_dbt_meta(manifest_node.meta, table_fqn) or [])
 
                         upstream_nodes = self.parse_upstream_nodes_with_names(manifest_entities, manifest_node)
                         data_model_link = DataModelLink(
@@ -1163,7 +1211,13 @@ class DbtSource(DbtServiceSource):
                         )
 
                         # check if the parent table exists in OM before adding it to the upstream list
-                        table_entity = self._get_table_entity(table_fqn=parent_fqn) if parent_fqn else None
+                        table_entity = (
+                            self._get_table_entity(
+                                table_fqn=parent_fqn, mapped_database=get_dbt_database_mapping(parent_node)
+                            )
+                            if parent_fqn
+                            else None
+                        )
                         # searchAcrossDatabases can resolve the parent under another service or
                         # database, so lineage and tests follow the table that was actually found
                         if parent_fqn and table_entity:
@@ -1835,7 +1889,11 @@ class DbtSource(DbtServiceSource):
                     schema_name=node_relation.schema_name,
                     table_name=node_relation.alias,
                 )
-                from_entity = self._get_table_entity(table_fqn)
+                from_entity = (
+                    self._get_table_entity(table_fqn, mapped_database=get_dbt_database_mapping(sm))
+                    if table_fqn
+                    else None
+                )
                 if not from_entity:
                     continue
                 columns_lineage = self._build_table_metric_column_lineage(metric_entity, from_entity, sm)

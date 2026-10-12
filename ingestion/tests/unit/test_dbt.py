@@ -13,6 +13,7 @@ from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import MagicMock, PropertyMock, patch
 
+import pytest
 from collate_dbt_artifacts_parser.parser import (
     parse_catalog,
     parse_manifest,
@@ -42,6 +43,7 @@ from metadata.generated.schema.type.tagLabel import (
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
 from metadata.ingestion.source.database.dbt.dbt_utils import (
     build_upstream_name_map,
@@ -56,6 +58,7 @@ from metadata.ingestion.source.database.dbt.dbt_utils import (
     get_corrected_name,
     get_data_model_path,
     get_dbt_compiled_query,
+    get_dbt_database_mapping,
     get_dbt_raw_query,
     get_dbt_test_primary_table_fqn,
     get_manifest_column_name,
@@ -2754,7 +2757,7 @@ class DbtUnitTest(TestCase):
 
         expected_fqn = "dbt_test.dev.snapshots.snap_orders"
 
-        def fake_get_table_entity(table_fqn):
+        def fake_get_table_entity(table_fqn, mapped_database=None):
             if table_fqn == expected_fqn:
                 table = MagicMock()
                 table.id.root = uuid.uuid4()
@@ -5419,3 +5422,150 @@ class TestTableLookupAcrossDatabaseNames:
 
         assert [node.fqn for node in upstream_nodes] == [self.BQ_SOURCE]
         assert upstream_nodes[0].table_id is not None
+
+
+class TestTableLookupWithDatabaseMapping:
+    """
+    ``meta.openmetadata.database`` names the database the table is ingested under, so a
+    Trino catalog fronting a BigQuery project resolves exactly, with or without
+    searchAcrossDatabases, and an unmatched mapping falls back to the existing lookup.
+    """
+
+    BQ_MODEL = TestTableLookupAcrossDatabaseNames.BQ_MODEL
+    BQ_SOURCE = TestTableLookupAcrossDatabaseNames.BQ_SOURCE
+    MANIFEST_FQN = "trino_svc.bq_catalog.analytics.stg_customers"
+    _source = staticmethod(TestTableLookupAcrossDatabaseNames._source)
+
+    @staticmethod
+    def _manifest_node(name, database, schema, resource_type="model", depends_on=(), mapped_database=None):
+        meta = {"openmetadata": {"database": mapped_database}} if mapped_database else {}
+        return SimpleNamespace(
+            name=name,
+            alias=name,
+            database=database,
+            schema_=schema,
+            resource_type=resource_type,
+            package_name="trino_bq",
+            meta=meta,
+            tags=[],
+            description=None,
+            columns={},
+            original_file_path=f"models/{name}.sql",
+            raw_code=f"select * from {name}",
+            compiled_code=f"select * from {name}",
+            config=SimpleNamespace(materialized="table", meta=meta),
+            depends_on=SimpleNamespace(nodes=list(depends_on)),
+        )
+
+    @pytest.mark.parametrize(
+        "node, expected",
+        [
+            (SimpleNamespace(meta={"openmetadata": {"database": "my-gcp-project"}}), "my-gcp-project"),
+            (
+                SimpleNamespace(meta={}, config=SimpleNamespace(meta={"openmetadata": {"database": "my-gcp-project"}})),
+                "my-gcp-project",
+            ),
+            (SimpleNamespace(meta={"openmetadata": {"database": "  my-gcp-project "}}), "my-gcp-project"),
+            (SimpleNamespace(meta={"openmetadata": {"database": ""}}), None),
+            (SimpleNamespace(meta={"openmetadata": {"tier": "Tier.Tier1"}}), None),
+            (SimpleNamespace(meta={"openmetadata": "my-gcp-project"}), None),
+            (SimpleNamespace(meta=None), None),
+            (SimpleNamespace(), None),
+        ],
+    )
+    def test_mapping_is_read_from_meta_openmetadata_database(self, node, expected):
+        assert get_dbt_database_mapping(node) == expected
+
+    def test_mapping_resolves_without_search_across_databases(self):
+        source = self._source(self.BQ_MODEL, search_across_databases=False)
+
+        table = source._get_table_entity(self.MANIFEST_FQN, mapped_database="my-gcp-project")
+
+        assert table.fullyQualifiedName.root == self.BQ_MODEL
+
+    def test_mapping_picks_the_mapped_database_where_schema_and_table_alone_are_ambiguous(self):
+        source = self._source(
+            "bq_svc.proj-a.analytics.stg_customers",
+            "bq_svc.proj-b.analytics.stg_customers",
+        )
+
+        assert source._get_table_entity(self.MANIFEST_FQN) is None
+        table = source._get_table_entity(self.MANIFEST_FQN, mapped_database="proj-b")
+        assert table.fullyQualifiedName.root == "bq_svc.proj-b.analytics.stg_customers"
+
+    def test_mapping_prefers_the_configured_service(self):
+        source = self._source(
+            "bq_other.my-gcp-project.analytics.stg_customers",
+            "trino_svc.my-gcp-project.analytics.stg_customers",
+        )
+
+        table = source._get_table_entity(self.MANIFEST_FQN, mapped_database="my-gcp-project")
+
+        assert table.fullyQualifiedName.root == "trino_svc.my-gcp-project.analytics.stg_customers"
+
+    def test_unmatched_mapping_falls_back_to_the_schema_and_table_match(self):
+        source = self._source(self.BQ_MODEL)
+
+        table = source._get_table_entity(self.MANIFEST_FQN, mapped_database="no-such-project")
+
+        assert table.fullyQualifiedName.root == self.BQ_MODEL
+
+    def test_unmatched_mapping_falls_back_to_the_manifest_database(self):
+        source = self._source(self.MANIFEST_FQN, self.BQ_MODEL, search_across_databases=False)
+
+        table = source._get_table_entity(self.MANIFEST_FQN, mapped_database="no-such-project")
+
+        assert table.fullyQualifiedName.root == self.MANIFEST_FQN
+
+    def test_unmatched_mapping_without_search_across_databases_stays_unresolved(self):
+        source = self._source(self.BQ_MODEL, search_across_databases=False)
+
+        assert source._get_table_entity(self.MANIFEST_FQN, mapped_database="no-such-project") is None
+
+    def test_upstream_parent_uses_its_own_mapping(self):
+        parent = self._manifest_node(
+            "customers", "bq_catalog", "raw", resource_type="source", mapped_database="my-gcp-project"
+        )
+        parent.source_name = "bq_raw"
+        model = self._manifest_node(
+            "stg_customers", "bq_catalog", "analytics", depends_on=["source.trino_bq.bq_raw.customers"]
+        )
+        # an identically named table elsewhere would make the schema.table fallback refuse
+        source = self._source(self.BQ_SOURCE, "bq_svc.proj-b.raw.customers", search_across_databases=False)
+
+        upstream_nodes = source.parse_upstream_nodes_with_names({"source.trino_bq.bq_raw.customers": parent}, model)
+
+        assert [node.fqn for node in upstream_nodes] == [self.BQ_SOURCE]
+
+    def test_meta_domain_is_keyed_by_the_table_that_was_found(self):
+        """Domain, data products and custom properties are applied by the resolved table's FQN."""
+        node = self._manifest_node("stg_customers", "bq_catalog", "analytics", mapped_database="my-gcp-project")
+        node.meta["openmetadata"]["domain"] = "Finance"
+        source = self._source(self.BQ_MODEL, search_across_databases=False)
+        source.context = MagicMock()
+        source.reported_unresolved_upstreams = set()
+        source.extracted_domains = {}
+        source.extracted_custom_properties = {}
+        source.extracted_data_products = {}
+        source.source_config.includeTags = False
+        source.source_config.dbtConfigSource = MagicMock()
+        dbt_objects = SimpleNamespace(
+            dbt_manifest=SimpleNamespace(
+                sources={},
+                nodes={"model.trino_bq.stg_customers": node},
+                exposures={},
+                metadata=SimpleNamespace(project_name="trino_bq"),
+            ),
+            dbt_catalog=None,
+            dbt_run_results=None,
+            dbt_sources=None,
+        )
+
+        with (
+            patch.object(DbtSource, "get_dbt_domain", return_value=None),
+            patch.object(DbtSource, "_collect_dbt_metrics"),
+        ):
+            links = [either.right for either in source.yield_data_models(dbt_objects)]
+
+        assert [model_str(link.table_entity.fullyQualifiedName) for link in links] == [self.BQ_MODEL]
+        assert source.extracted_domains == {self.BQ_MODEL: "Finance"}
