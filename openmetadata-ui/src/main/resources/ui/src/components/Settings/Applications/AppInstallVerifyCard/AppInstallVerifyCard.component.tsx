@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 import {
-  CheckCircle,
-  Clock,
-  User01,
-} from '@openmetadata/ui-core-components/icons';
-import {
   Box,
   Card,
   Divider,
   Typography,
 } from '@openmetadata/ui-core-components';
+import {
+  CheckCircle,
+  Clock,
+  User01,
+} from '@openmetadata/ui-core-components/icons';
 import { Avatar, Button, Collapse } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { LIGHT_GREEN_COLOR } from '../../../../constants/constants';

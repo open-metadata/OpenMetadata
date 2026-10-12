@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { ChevronRight } from '@openmetadata/ui-core-components/icons';
 import { Typography } from '@openmetadata/ui-core-components';
+import { ChevronRight } from '@openmetadata/ui-core-components/icons';
 import type { ReactNode } from 'react';
 import ReactDOM from 'react-dom';
 import type { MentionSuggestionsItem } from '../components/ActivityFeed/FeedEditor/FeedEditor.interface';

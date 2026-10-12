@@ -10,12 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { AlertCircle } from '@openmetadata/ui-core-components/icons';
 import {
   Box,
   Divider as CoreDivider,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { AlertCircle } from '@openmetadata/ui-core-components/icons';
 import { Alert, Checkbox, List } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';

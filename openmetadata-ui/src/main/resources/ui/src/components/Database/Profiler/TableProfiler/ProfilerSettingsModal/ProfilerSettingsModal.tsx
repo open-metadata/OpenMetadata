@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Plus } from '@openmetadata/ui-core-components/icons';
 import {
   Box,
   Button as CoreButton,
@@ -20,6 +19,7 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { Button, Input, InputNumber, Select, TreeSelect } from 'antd';
 import Form from 'antd/lib/form';
 import { FormProps, List } from 'antd/lib/form/Form';

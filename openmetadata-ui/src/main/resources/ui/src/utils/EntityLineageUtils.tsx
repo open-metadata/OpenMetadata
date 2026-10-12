@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Check } from '@openmetadata/ui-core-components/icons';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Check } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import type { LoadingState } from 'Models';
 import { Link } from 'react-router-dom';

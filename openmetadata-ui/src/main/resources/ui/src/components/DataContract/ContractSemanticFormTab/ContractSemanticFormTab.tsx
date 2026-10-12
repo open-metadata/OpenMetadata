@@ -192,7 +192,9 @@ export const ContractSemanticFormTab: React.FC<{
             className="add-semantic-button"
             data-testid="add-semantic-button"
             disabled={!isNull(editingKey) || !addFunctionRef.current}
-            icon={<PlusIcon className="anticon tw:size-3.5 tw:shrink-0" />}
+            icon={
+              <PlusIcon className="anticon tw:size-3.5 tw:shrink-0 tw:mr-2" />
+            }
             type="link"
             onClick={handleAddSemantic}>
             {t('label.add-entity', {
@@ -352,7 +354,7 @@ export const ContractSemanticFormTab: React.FC<{
                             data-testid="add-new-rule-btn"
                             disabled={!queryBuilderAddRule?.addRule}
                             icon={
-                              <PlusIcon className="tw:size-3.5 tw:shrink-0" />
+                              <PlusIcon className="tw:size-3.5 tw:shrink-0 tw:mr-2" />
                             }
                             type="link"
                             onClick={handleAddNewRule}>

@@ -12,10 +12,6 @@
  */
 
 import {
-  CheckCircleFilled,
-  CloseCircleFilled,
-} from '@openmetadata/ui-core-components/icons';
-import {
   Box,
   Button as CoreButton,
   Card,
@@ -23,6 +19,10 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import {
+  CheckCircleFilled,
+  CloseCircleFilled,
+} from '@openmetadata/ui-core-components/icons';
 import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';

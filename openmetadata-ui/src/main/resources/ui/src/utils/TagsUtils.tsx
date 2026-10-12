@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import {
   Badge,
   Box,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isString } from 'lodash';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';

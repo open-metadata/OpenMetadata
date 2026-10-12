@@ -11,11 +11,6 @@
  *  limitations under the License.
  */
 import {
-  Check,
-  InfoCircle,
-  XClose,
-} from '@openmetadata/ui-core-components/icons';
-import {
   Box,
   ButtonUtility,
   Divider,
@@ -23,6 +18,11 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import {
+  Check,
+  InfoCircle,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
 import { Button, Form, Input } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, last } from 'lodash';

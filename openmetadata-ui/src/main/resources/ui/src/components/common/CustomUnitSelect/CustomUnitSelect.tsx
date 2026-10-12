@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Plus } from '@openmetadata/ui-core-components/icons';
 import { Divider } from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { Button, Input, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { startCase } from 'lodash';

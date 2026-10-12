@@ -12,15 +12,15 @@
  */
 
 import {
-  AlertCircle,
-  CheckCircle,
-} from '@openmetadata/ui-core-components/icons';
-import {
   Divider,
   Grid,
   Skeleton,
   Tooltip,
 } from '@openmetadata/ui-core-components';
+import {
+  AlertCircle,
+  CheckCircle,
+} from '@openmetadata/ui-core-components/icons';
 import { AlertProps, Checkbox, Select } from 'antd';
 import Form from 'antd/lib/form';
 import { AxiosError } from 'axios';

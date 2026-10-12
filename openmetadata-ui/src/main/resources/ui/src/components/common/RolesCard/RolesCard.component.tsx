@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import { Box, Card } from '@openmetadata/ui-core-components';
+import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import { Button, Select } from 'antd';
 import { isArray, isNil, toLower } from 'lodash';
 import { useState } from 'react';

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { ArrowUp } from '@openmetadata/ui-core-components/icons';
 import { Typography } from '@openmetadata/ui-core-components';
+import { ArrowUp } from '@openmetadata/ui-core-components/icons';
 import { Button } from 'antd';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';

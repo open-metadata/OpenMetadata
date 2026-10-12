@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { XClose } from '@openmetadata/ui-core-components/icons';
 import { Tooltip } from '@openmetadata/ui-core-components';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 
 export const TagRenderer = (props: CustomTagProps) => {

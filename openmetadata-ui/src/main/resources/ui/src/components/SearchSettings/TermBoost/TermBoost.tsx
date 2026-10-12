@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ChevronDown } from '@openmetadata/ui-core-components/icons';
 import { Box, Divider, Typography } from '@openmetadata/ui-core-components';
+import { ChevronDown } from '@openmetadata/ui-core-components/icons';
 import { Button, Slider } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';

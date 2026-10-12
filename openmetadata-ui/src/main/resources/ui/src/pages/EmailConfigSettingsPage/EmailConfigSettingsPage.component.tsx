@@ -223,7 +223,7 @@ function EmailConfigSettingsPage() {
                     data-testid="edit-email-configuration"
                     icon={
                       !isUndefined(emailConfigValues) && (
-                        <IconEdit className="tw:size-3.5 tw:shrink-0" />
+                        <IconEdit className="tw:size-3.5 tw:shrink-0 tw:mr-2" />
                       )
                     }
                     onClick={handleEditClick}>

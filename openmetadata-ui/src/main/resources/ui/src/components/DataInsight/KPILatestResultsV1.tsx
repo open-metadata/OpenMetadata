@@ -12,10 +12,6 @@
  */
 
 import {
-  CheckCircle,
-  InfoCircle,
-} from '@openmetadata/ui-core-components/icons';
-import {
   Box,
   Grid,
   Tooltip,
@@ -26,6 +22,10 @@ import {
   hexToRgba,
   useChartPalette,
 } from '@openmetadata/ui-core-components/charts';
+import {
+  CheckCircle,
+  InfoCircle,
+} from '@openmetadata/ui-core-components/icons';
 import { Progress } from 'antd';
 import { toNumber } from 'lodash';
 import { FC, useMemo } from 'react';

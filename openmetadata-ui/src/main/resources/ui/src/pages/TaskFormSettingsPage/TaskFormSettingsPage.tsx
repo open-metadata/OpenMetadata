@@ -24,8 +24,8 @@
  *  limitations under the License.
  */
 
-import { Plus } from '@openmetadata/ui-core-components/icons';
 import { Box, Card, Tabs, Typography } from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { Alert, Button, Form, Input, Select, Spin } from 'antd';
 import { AxiosError } from 'axios';
 import { FC, lazy, useEffect, useMemo, useState } from 'react';

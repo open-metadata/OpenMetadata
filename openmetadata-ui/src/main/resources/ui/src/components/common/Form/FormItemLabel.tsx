@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { InfoCircle } from '@openmetadata/ui-core-components/icons';
 import { Tooltip } from '@openmetadata/ui-core-components';
+import { InfoCircle } from '@openmetadata/ui-core-components/icons';
 import { Badge } from 'antd';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';

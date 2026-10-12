@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import {
   Badge,
   Card,
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import { Button, Input } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, toLower, uniqBy } from 'lodash';

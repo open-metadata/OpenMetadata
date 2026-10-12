@@ -10,11 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Typography } from '@openmetadata/ui-core-components';
 import {
   Eye,
   EyeInvisibleFilled,
 } from '@openmetadata/ui-core-components/icons';
-import { Typography } from '@openmetadata/ui-core-components';
 import { Button } from 'antd';
 import { useCallback, useMemo } from 'react';
 import { useDrag, useDrop } from 'react-dnd';

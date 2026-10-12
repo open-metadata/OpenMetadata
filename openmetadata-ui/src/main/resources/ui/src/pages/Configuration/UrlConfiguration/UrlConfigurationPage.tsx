@@ -132,7 +132,9 @@ const UrlConfigurationPage = () => {
               <Box className="layout-column tw:block">
                 <Button
                   data-testid="edit-button"
-                  icon={<IconEdit className="tw:size-3.5 tw:shrink-0 tw:mr-2" />}
+                  icon={
+                    <IconEdit className="tw:size-3.5 tw:shrink-0 tw:mr-2" />
+                  }
                   onClick={handleEditClick}>
                   {t('label.edit')}
                 </Button>

@@ -10,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import {
   BadgeWithButton,
   Box,
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import { Button } from 'antd';
 import { FC, useState } from 'react';
 import { Pressable } from 'react-aria-components';

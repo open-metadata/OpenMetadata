@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import {
   ChevronDown,
   ChevronRight,
 } from '@openmetadata/ui-core-components/icons';
-import { Box, Typography } from '@openmetadata/ui-core-components';
 
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { XClose } from '@openmetadata/ui-core-components/icons';
 import { Box } from '@openmetadata/ui-core-components';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import { Button, Drawer, Form, Input, Select } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useState } from 'react';

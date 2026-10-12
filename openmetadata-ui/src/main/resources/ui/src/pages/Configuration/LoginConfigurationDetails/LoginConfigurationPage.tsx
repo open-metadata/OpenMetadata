@@ -10,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { InfoCircle } from '@openmetadata/ui-core-components/icons';
 import {
   Box,
   Grid,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { InfoCircle } from '@openmetadata/ui-core-components/icons';
 import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
@@ -109,7 +109,7 @@ const LoginConfigurationPage = () => {
             <Box className="layout-column tw:block">
               <Button
                 data-testid="edit-button"
-                icon={<IconEdit className="tw:size-3.5 tw:shrink-0" />}
+                icon={<IconEdit className="tw:size-3.5 tw:shrink-0 tw:mr-2" />}
                 onClick={handleEditClick}>
                 {t('label.edit')}
               </Button>

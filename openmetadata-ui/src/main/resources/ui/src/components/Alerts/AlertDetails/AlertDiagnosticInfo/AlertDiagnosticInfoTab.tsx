@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { InfoCircle } from '@openmetadata/ui-core-components/icons';
 import {
   Card,
   Grid,
@@ -19,6 +18,7 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { InfoCircle } from '@openmetadata/ui-core-components/icons';
 
 import { AxiosError } from 'axios';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Plus } from '@openmetadata/ui-core-components/icons';
 import { Box } from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import {
   ObjectFieldTemplatePropertyType,
   ObjectFieldTemplateProps,

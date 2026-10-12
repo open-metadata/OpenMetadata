@@ -32,7 +32,7 @@ const PaginationComponent = (props: PaginationProps) => {
           className="pagination-button hover-button h-full"
           data-testid="previous"
           icon={
-            <ArrowRightOutlined className="pagination-prev-icon tw:size-3 tw:shrink-0" />
+            <ArrowRightOutlined className="pagination-prev-icon tw:size-3 tw:shrink-0 tw:mr-2" />
           }
           type="text">
           <span>{t('label.previous')}</span>
@@ -46,7 +46,7 @@ const PaginationComponent = (props: PaginationProps) => {
           data-testid="next"
           type="text">
           <span> {t('label.next')}</span>
-          <ArrowRightOutlined className="pagination-next-icon tw:size-3 tw:shrink-0" />
+          <ArrowRightOutlined className="pagination-next-icon tw:size-3 tw:shrink-0 tw:mr-2" />
         </Button>
       );
     }

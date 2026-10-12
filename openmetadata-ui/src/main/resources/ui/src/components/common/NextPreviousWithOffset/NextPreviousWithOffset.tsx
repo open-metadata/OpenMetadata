@@ -12,14 +12,14 @@
  */
 
 import {
+  Button as CoreButton,
+  Dropdown,
+} from '@openmetadata/ui-core-components';
+import {
   ArrowLeft,
   ArrowRight,
   ChevronDown,
 } from '@openmetadata/ui-core-components/icons';
-import {
-  Button as CoreButton,
-  Dropdown,
-} from '@openmetadata/ui-core-components';
 import { Button } from 'antd';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';

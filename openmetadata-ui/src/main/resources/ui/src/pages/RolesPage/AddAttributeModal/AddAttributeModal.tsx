@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Check, Search } from '@openmetadata/ui-core-components/icons';
 import { Grid } from '@openmetadata/ui-core-components';
+import { Check, Search } from '@openmetadata/ui-core-components/icons';
 import { Input, Modal } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';

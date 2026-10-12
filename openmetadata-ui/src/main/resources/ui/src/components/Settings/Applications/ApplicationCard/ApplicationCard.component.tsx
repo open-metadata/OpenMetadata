@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { ExclamationCircleFilled } from '@openmetadata/ui-core-components/icons';
 import {
   Button,
   Card,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { ExclamationCircleFilled } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { kebabCase } from 'lodash';
 import { useTranslation } from 'react-i18next';

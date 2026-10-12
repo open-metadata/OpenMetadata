@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { ChevronLeft } from '@openmetadata/ui-core-components/icons';
 import {
   Box,
   Button as CoreButton,
@@ -19,6 +18,7 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { ChevronLeft } from '@openmetadata/ui-core-components/icons';
 import { Alert, Button, Carousel } from 'antd';
 import { AxiosError } from 'axios';
 import { uniqueId } from 'lodash';

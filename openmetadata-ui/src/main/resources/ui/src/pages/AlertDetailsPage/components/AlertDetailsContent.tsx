@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { RefreshCcw02 } from '@openmetadata/ui-core-components/icons';
 import {
   Box,
   Button,
@@ -22,6 +21,7 @@ import {
   Tabs,
   Tooltip,
 } from '@openmetadata/ui-core-components';
+import { RefreshCcw02 } from '@openmetadata/ui-core-components/icons';
 
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';

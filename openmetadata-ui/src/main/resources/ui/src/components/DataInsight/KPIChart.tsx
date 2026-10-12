@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Plus } from '@openmetadata/ui-core-components/icons';
 import {
   Box,
   Card,
@@ -24,6 +23,7 @@ import {
   LineChart,
   useChartPalette,
 } from '@openmetadata/ui-core-components/charts';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, round } from 'lodash';

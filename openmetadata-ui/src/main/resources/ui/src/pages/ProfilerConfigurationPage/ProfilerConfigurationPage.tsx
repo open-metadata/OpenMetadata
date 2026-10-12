@@ -10,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Plus, XClose } from '@openmetadata/ui-core-components/icons';
 import {
   Box,
   Grid,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Plus, XClose } from '@openmetadata/ui-core-components/icons';
 import { Button, Collapse, Form, Select, TreeSelect } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isEqual, values } from 'lodash';
@@ -310,7 +310,7 @@ const ProfilerConfigurationPage = () => {
                               className="text-primary p-0"
                               data-testid="add-fields"
                               icon={
-                                <Plus className="tw:size-3.5 tw:shrink-0" />
+                                <Plus className="tw:size-3.5 tw:shrink-0 tw:mr-2" />
                               }
                               type="text"
                               onClick={() => add()}>

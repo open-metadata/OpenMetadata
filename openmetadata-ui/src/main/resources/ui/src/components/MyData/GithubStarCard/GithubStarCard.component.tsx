@@ -171,7 +171,9 @@ const GithubStarCard = () => {
                 target="_blank">
                 <Button
                   className="github-star-button github-modal-action-button"
-                  icon={<StarGithubIcon className="tw:size-3.5 tw:shrink-0" />}>
+                  icon={
+                    <StarGithubIcon className="tw:size-3.5 tw:shrink-0 tw:mr-2" />
+                  }>
                   {t('label.star')}
                 </Button>
               </a>

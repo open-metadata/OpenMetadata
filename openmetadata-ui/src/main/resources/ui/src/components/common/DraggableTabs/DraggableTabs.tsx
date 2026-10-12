@@ -10,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Button, Dropdown } from '@openmetadata/ui-core-components';
 import {
   CheckCircle,
   DotsVertical,
   Edit01,
   XCircle,
 } from '@openmetadata/ui-core-components/icons';
-import { Button, Dropdown } from '@openmetadata/ui-core-components';
 import React, { Key, useState } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import { useTranslation } from 'react-i18next';

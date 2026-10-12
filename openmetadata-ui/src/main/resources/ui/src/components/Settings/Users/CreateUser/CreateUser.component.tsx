@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Plus } from '@openmetadata/ui-core-components/icons';
 import { Box, Toggle } from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { Button, Form, FormProps, Input, Radio, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { TFunction } from 'i18next';

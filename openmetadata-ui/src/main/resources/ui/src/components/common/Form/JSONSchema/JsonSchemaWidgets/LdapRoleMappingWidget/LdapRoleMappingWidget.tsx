@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Plus } from '@openmetadata/ui-core-components/icons';
 import { Box, Card, Grid, Typography } from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { WidgetProps } from '@rjsf/utils';
 import { Button, Input, Select } from 'antd';
 import { AxiosError } from 'axios';

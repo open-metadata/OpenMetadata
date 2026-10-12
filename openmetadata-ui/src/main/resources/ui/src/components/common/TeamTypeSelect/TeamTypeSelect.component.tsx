@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import { Box } from '@openmetadata/ui-core-components';
+import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import { Button, Select } from 'antd';
 import { useMemo, useState } from 'react';
 import { TeamType } from '../../../generated/entity/teams/team';

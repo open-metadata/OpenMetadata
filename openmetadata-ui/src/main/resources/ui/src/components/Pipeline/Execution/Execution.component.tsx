@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { XCircle } from '@openmetadata/ui-core-components/icons';
 import {
   Box,
   Button as CoreButton,
@@ -20,6 +19,7 @@ import {
   Dropdown,
   Grid,
 } from '@openmetadata/ui-core-components';
+import { XCircle } from '@openmetadata/ui-core-components/icons';
 import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';

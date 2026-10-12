@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { XClose } from '@openmetadata/ui-core-components/icons';
 import { Grid, Toggle, Typography } from '@openmetadata/ui-core-components';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import { Button, Form, Select } from 'antd';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';

@@ -11,17 +11,17 @@
  *  limitations under the License.
  */
 import {
-  ChevronLeft,
-  Clock,
-  SlashCircle01,
-  User01,
-} from '@openmetadata/ui-core-components/icons';
-import {
   Box,
   Tabs,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import {
+  ChevronLeft,
+  Clock,
+  SlashCircle01,
+  User01,
+} from '@openmetadata/ui-core-components/icons';
 import { IChangeEvent } from '@rjsf/core';
 import { RJSFSchema } from '@rjsf/utils';
 import { Button } from 'antd';

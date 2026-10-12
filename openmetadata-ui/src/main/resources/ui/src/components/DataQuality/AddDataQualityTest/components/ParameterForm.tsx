@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { HelpCircle, Plus } from '@openmetadata/ui-core-components/icons';
 import { Toggle, Tooltip, Typography } from '@openmetadata/ui-core-components';
+import { HelpCircle, Plus } from '@openmetadata/ui-core-components/icons';
 import { Button, Form, FormItemProps, Input, InputNumber, Select } from 'antd';
 import { FormListProps, RuleRender } from 'antd/lib/form';
 import { debounce, isUndefined } from 'lodash';

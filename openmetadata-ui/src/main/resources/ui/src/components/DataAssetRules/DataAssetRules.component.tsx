@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { Plus } from '@openmetadata/ui-core-components/icons';
 import {
   Box,
   Grid,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { Button, Form, Input, Modal, Table } from 'antd';
 import { FormInstance } from 'antd/es/form/Form';
 import { AxiosError } from 'axios';

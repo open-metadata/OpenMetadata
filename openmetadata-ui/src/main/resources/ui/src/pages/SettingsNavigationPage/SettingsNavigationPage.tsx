@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Drag } from '@openmetadata/ui-core-components/icons';
 import { Card, Grid, Toggle } from '@openmetadata/ui-core-components';
+import { Drag } from '@openmetadata/ui-core-components/icons';
 import { Tree, TreeDataNode, TreeProps } from 'antd';
 import { cloneDeep, isEqual } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';

@@ -24,8 +24,8 @@
  *  limitations under the License.
  */
 
-import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { Box, Card, Typography } from '@openmetadata/ui-core-components';
+import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { Button, Checkbox, Empty, Form, Input, Select } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
