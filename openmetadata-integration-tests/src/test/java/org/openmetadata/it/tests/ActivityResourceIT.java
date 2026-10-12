@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
 import org.openmetadata.it.util.SdkClients;
@@ -384,6 +385,106 @@ public class ActivityResourceIT {
         listActivityReplies(SdkClients.adminClient(), activity.getId(), 20, null, null)
             .getData()
             .isEmpty());
+  }
+
+  @Test
+  void test_mentionsFeedFollowsMentionsInActivityReplies(TestNamespace ns) throws Exception {
+    Table table = createTestTable(ns, "activity-reply-mentions");
+    ActivityEvent activity =
+        createTestActivityEventWithAbout(
+            table, "<#E::table::" + table.getFullyQualifiedName() + ">");
+    ConversationReply reply =
+        addActivityReply(
+            SdkClients.adminClient(),
+            activity.getId(),
+            "<#E::user::shared_user2> can you check this change?");
+
+    assertTrue(mentionedActivityIds(SdkClients.user2Client()).contains(activity.getId()));
+    assertFalse(
+        mentionedActivityIds(SdkClients.user1Client()).contains(activity.getId()),
+        "Only the mentioned user sees the activity");
+
+    patchConversationReply(
+        SdkClients.adminClient(), activity.getId(), reply.getId(), "No mention any more");
+    assertFalse(
+        mentionedActivityIds(SdkClients.user2Client()).contains(activity.getId()),
+        "Editing the mention out drops the activity");
+
+    patchConversationReply(
+        SdkClients.adminClient(), activity.getId(), reply.getId(), "<#E::user::shared_user2>");
+    deleteConversationReply(SdkClients.adminClient(), activity.getId(), reply.getId());
+    assertFalse(
+        mentionedActivityIds(SdkClients.user2Client()).contains(activity.getId()),
+        "Deleting the reply drops the activity");
+  }
+
+  @Test
+  void test_mentionsFeedSupportsDomainFilter(TestNamespace ns) throws Exception {
+    Domain allowedDomain = createDomain(ns, "mentions-allowed-domain");
+    Domain blockedDomain = createDomain(ns, "mentions-blocked-domain");
+    Table table = createTableInDomain(ns, "mentions-domain-table", allowedDomain);
+    ActivityEvent activity =
+        createTestActivityEventWithAbout(
+            table, "<#E::table::" + table.getFullyQualifiedName() + ">", allowedDomain);
+    addActivityReply(
+        SdkClients.adminClient(),
+        activity.getId(),
+        "<#E::user::" + SharedEntities.get().USER2.getName() + "> please review");
+
+    assertTrue(
+        mentionedActivityIds(SdkClients.user2Client(), allowedDomain.getFullyQualifiedName())
+            .contains(activity.getId()),
+        "Mentions in the requested domain are returned");
+    assertFalse(
+        mentionedActivityIds(SdkClients.user2Client(), blockedDomain.getFullyQualifiedName())
+            .contains(activity.getId()),
+        "Mentions outside the requested domain are excluded");
+  }
+
+  @Test
+  void test_mentionsFeedIncludesTeamMentions(TestNamespace ns) throws Exception {
+    Table table = createTestTable(ns, "activity-team-mentions");
+    ActivityEvent activity =
+        createTestActivityEventWithAbout(
+            table, "<#E::table::" + table.getFullyQualifiedName() + ">");
+    // shared_user2 belongs to TEAM21; shared_user1 does not.
+    addActivityReply(
+        SdkClients.adminClient(),
+        activity.getId(),
+        "<#E::team::" + SharedEntities.get().TEAM21.getName() + "> please review");
+
+    assertTrue(
+        mentionedActivityIds(SdkClients.user2Client()).contains(activity.getId()),
+        "A member of the mentioned team sees the activity");
+    assertFalse(
+        mentionedActivityIds(SdkClients.user1Client()).contains(activity.getId()),
+        "A user outside the mentioned team does not");
+  }
+
+  @Test
+  void test_mentionsFeedFiltersByEntity(TestNamespace ns) throws Exception {
+    Table mentionedTable = createTestTable(ns, "mentions-entity-target");
+    Table otherTable = createTestTable(ns, "mentions-entity-other");
+    String mentionedLink = "<#E::table::" + mentionedTable.getFullyQualifiedName() + ">";
+    ActivityEvent onMentionedTable =
+        createTestActivityEventWithAbout(mentionedTable, mentionedLink);
+    ActivityEvent onOtherTable =
+        createTestActivityEventWithAbout(
+            otherTable, "<#E::table::" + otherTable.getFullyQualifiedName() + ">");
+    String mention = "<#E::user::" + SharedEntities.get().USER2.getName() + "> please review";
+    addActivityReply(SdkClients.adminClient(), onMentionedTable.getId(), mention);
+    addActivityReply(SdkClients.adminClient(), onOtherTable.getId(), mention);
+
+    List<UUID> aboutEntity = mentionedActivityIdsAbout(SdkClients.user2Client(), mentionedLink);
+
+    assertTrue(
+        aboutEntity.contains(onMentionedTable.getId()),
+        "Mentions on the requested entity are returned");
+    assertFalse(
+        aboutEntity.contains(onOtherTable.getId()), "Mentions on another entity are excluded");
+    assertTrue(
+        mentionedActivityIds(SdkClients.user2Client()).contains(onOtherTable.getId()),
+        "Without an entity the feed still has every mention");
   }
 
   @Test
@@ -1541,6 +1642,42 @@ public class ActivityResourceIT {
                 null,
                 options.build());
     return MAPPER.readValue(response, ConversationReplyList.class);
+  }
+
+  private List<UUID> mentionedActivityIds(OpenMetadataClient client) throws Exception {
+    return mentionedActivityIds(client, null);
+  }
+
+  private List<UUID> mentionedActivityIds(OpenMetadataClient client, String domainFqn)
+      throws Exception {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                ACTIVITY_PATH + "/mentions",
+                null,
+                buildActivityRequestOptions(200, 1, domainFqn));
+    return MAPPER.readValue(response, ActivityEventList.class).getData().stream()
+        .map(ActivityEvent::getId)
+        .toList();
+  }
+
+  private List<UUID> mentionedActivityIdsAbout(OpenMetadataClient client, String entityLink)
+      throws Exception {
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("days", "1")
+            .queryParam("limit", "200")
+            .queryParam("entityLink", entityLink)
+            .build();
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, ACTIVITY_PATH + "/mentions", null, options);
+    return MAPPER.readValue(response, ActivityEventList.class).getData().stream()
+        .map(ActivityEvent::getId)
+        .toList();
   }
 
   private ActivityEventList getMyFeed(OpenMetadataClient client, int limit, int days)

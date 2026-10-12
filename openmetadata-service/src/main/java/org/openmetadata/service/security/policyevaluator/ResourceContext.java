@@ -33,7 +33,7 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
  * <p>As multiple threads don't access this, the class is not thread-safe by design.
  */
 @Slf4j
-public class ResourceContext<T extends EntityInterface> implements ResourceContextInterface {
+public class ResourceContext<T extends EntityInterface<?>> implements ResourceContextInterface {
   @NonNull @Getter private final String resource;
   private final EntityRepository<T> entityRepository;
   private final UUID id;
@@ -49,7 +49,7 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
   private BulkFieldHydrator bulkFieldHydrator;
   // Service attributes are read only when a condition asks for them, then memoized for this
   // context. The loaded flags are needed separately because "no service" is a valid null result.
-  private EntityInterface serviceEntity;
+  private EntityInterface<?> serviceEntity;
   private boolean serviceEntityLoaded;
   private List<TagLabel> serviceTags;
   private boolean serviceTagsLoaded;
@@ -150,9 +150,9 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
     // Check for parents owners'
     List<EntityReference> owners =
         nullOrEmpty(entity.getOwners()) ? null : new ArrayList<>(entity.getOwners());
-    List<EntityInterface> parentEntities = resolveParentEntities(entity);
+    List<EntityInterface<?>> parentEntities = resolveParentEntities(entity);
     if (!nullOrEmpty(parentEntities)) {
-      for (EntityInterface parentEntity : parentEntities) {
+      for (EntityInterface<?> parentEntity : parentEntities) {
         if (parentEntity.getOwners() != null) {
           if (owners == null) owners = new ArrayList<>();
           owners.addAll(parentEntity.getOwners());
@@ -163,7 +163,7 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
     return owners;
   }
 
-  private List<EntityInterface> resolveParentEntities(T entity) {
+  private List<EntityInterface<?>> resolveParentEntities(T entity) {
     Fields fields = new Fields(new HashSet<>(Collections.singleton(FIELD_OWNERS)));
     try {
       List<EntityReference> parentReferences =
@@ -175,7 +175,7 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
           };
 
       if (nullOrEmpty(parentReferences)) return null;
-      List<EntityInterface> parentEntities = new ArrayList<>();
+      List<EntityInterface<?>> parentEntities = new ArrayList<>();
 
       for (EntityReference parentReference : parentReferences) {
         if (parentReference == null || parentReference.getId() == null) {
@@ -315,7 +315,7 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
    * Carries the service's {@code tags}; every other service field is stored inline, so callers
    * needing {@code serviceType} or {@code name} can read them off the same instance.
    */
-  private EntityInterface getServiceEntity() {
+  private EntityInterface<?> getServiceEntity() {
     if (!serviceEntityLoaded) {
       serviceEntity = loadServiceEntity();
       serviceEntityLoaded = true;
@@ -329,7 +329,7 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
       // on-demand tag load, so resolving a separate service entity would be a redundant read.
       return getTags();
     }
-    EntityInterface service = getServiceEntity();
+    EntityInterface<?> service = getServiceEntity();
     if (service == null) {
       return Collections.emptyList();
     }
@@ -341,7 +341,7 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
    * otherwise raise {@link EntityNotFoundException} from inside the authorization decision and
    * surface as a 500 on a read that should simply not match the condition.
    */
-  private EntityInterface loadServiceEntity() {
+  private EntityInterface<?> loadServiceEntity() {
     if (isServiceResource()) {
       resolveEntity();
       return entity;
@@ -362,7 +362,7 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
   }
 
   @Override
-  public EntityInterface getResolvedEntity() {
+  public EntityInterface<?> getResolvedEntity() {
     return entity;
   }
 
@@ -372,7 +372,7 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
   }
 
   @Override
-  public EntityInterface getEntity() {
+  public EntityInterface<?> getEntity() {
     return resolveEntity();
   }
 
@@ -387,7 +387,7 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
     return entity.getDomains();
   }
 
-  private EntityInterface resolveEntity() {
+  private EntityInterface<?> resolveEntity() {
     if (entity == null) {
       Fields fieldList;
       RelationIncludes relationIncludesToUse = relationIncludes;

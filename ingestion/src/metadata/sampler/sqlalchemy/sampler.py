@@ -14,9 +14,11 @@ for the profiler
 """
 
 import hashlib
-from typing import cast
+from collections.abc import Callable
+from typing import Any, cast
 
 from sqlalchemy import Column, inspect, select, text
+from sqlalchemy.engine import Dialect
 from sqlalchemy.orm import Query
 from sqlalchemy.orm.util import AliasedClass
 from sqlalchemy.schema import Table
@@ -164,6 +166,12 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         Child classes can override this method to return a different expression.
         """
         return column
+
+    def _process_sample_value(self, column: Column, value: Any) -> Any:
+        """Convert one fetched sample cell, before truncation, for drivers that return encoded values.
+        Child classes override this method.
+        """
+        return value
 
     def _base_sample_query(
         self,
@@ -334,7 +342,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
                 value = row[i]
                 if has_array_columns and self._handle_array_column(col):
                     value = self._process_array_value(value)
-                processed_row.append(self._truncate_cell(value))
+                processed_row.append(self._truncate_cell(self._process_sample_value(col, value)))
             processed_rows.append(processed_row)
         if self.partition_details and not sqa_sample:
             self._warn_empty_partition()
@@ -386,14 +394,65 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
 
         with self.session_factory() as client:
             rnd = client.execute(text(f"{self.sample_query}"))
+            dialect = client.get_bind().dialect
         try:
             columns = [col.name for col in rnd.cursor.description]
         except AttributeError:
             columns = list(rnd.keys())
+        try:
+            type_codes = [entry[1] for entry in rnd.cursor.description]
+        except (AttributeError, IndexError, TypeError):
+            type_codes = [None] * len(columns)
+        # The query returns raw driver values. A result named like a table column converts through that
+        # column's dialect type, as a regular sample does, and a computed column stays as returned.
+        table_columns = {column.name: column for column in self.get_columns()}
+        row_columns = [self._matching_column(str(name), table_columns) for name in columns]
+        processors = [
+            None if column is None else self._result_processor(column, dialect, type_code)
+            for column, type_code in zip(row_columns, type_codes, strict=True)
+        ]
         return TableData(
             columns=columns,
-            rows=[[self._truncate_cell(cell) for cell in row] for row in rnd.fetchmany(100)],
+            rows=[
+                [
+                    self._user_query_cell(column, processor, cell)
+                    for column, processor, cell in zip(row_columns, processors, row, strict=True)
+                ]
+                for row in rnd.fetchmany(100)
+            ],
         )
+
+    @staticmethod
+    def _matching_column(name: str, table_columns: dict[str, Column]) -> Column | None:
+        """An exact name match wins, since a table can hold columns whose names differ only in case."""
+        if name in table_columns:
+            return table_columns[name]
+        folded = name.lower()
+        return next((column for column in table_columns.values() if column.name.lower() == folded), None)
+
+    @staticmethod
+    def _result_processor(column: Column, dialect: Dialect, type_code: Any) -> Callable[[Any], Any] | None:
+        """The dialect's own processor, which a regular sample also uses, or None when it cannot be built.
+
+        A generic type can fail to build one for a dialect, as JSON does without a JSON deserializer.
+        """
+        try:
+            return column.type.dialect_impl(dialect).result_processor(dialect, type_code)
+        except Exception as exc:
+            logger.debug("Keeping raw %s values, its type has no processor for this dialect: %r", column.name, exc)
+            return None
+
+    def _user_query_cell(self, column: Column | None, processor: Callable[[Any], Any] | None, cell: Any) -> Any:
+        if column is None:
+            return self._truncate_cell(cell)
+        if processor is not None:
+            # Processors include custom types that fail with their own errors (rowversion unpacking raises
+            # struct.error), and a cell the column type cannot convert is still a valid sample.
+            try:
+                cell = processor(cell)
+            except Exception as exc:
+                logger.debug("Keeping the raw %s value the column type cannot convert: %r", column.name, exc)
+        return self._truncate_cell(self._process_sample_value(column, cell))
 
     def _rdn_sample_from_user_query(self) -> Query:
         """Returns sql alchemy object to use when running profiling"""

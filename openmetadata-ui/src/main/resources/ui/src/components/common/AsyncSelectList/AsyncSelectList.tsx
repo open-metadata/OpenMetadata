@@ -11,17 +11,18 @@
  *  limitations under the License.
  */
 import {
+  Autocomplete,
+  Box,
+  Button,
   ClassificationTag,
   GlossaryTag,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Empty, Form, Select, SelectProps, Space } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { debounce, isEmpty, pick } from 'lodash';
-import { CustomTagProps } from 'rc-select/lib/BaseSelect';
-import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { debounce, isEmpty, isString, pick } from 'lodash';
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { EntityType } from '../../../enums/entity.enum';
@@ -30,20 +31,20 @@ import { LabelType } from '../../../generated/entity/data/table';
 import { Paging } from '../../../generated/type/paging';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { ensureComboboxMenuOpen } from '../../../utils/formPureUtils';
 import Fqn from '../../../utils/Fqn';
 import { getTagDisplay } from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../Loader/Loader';
-import './async-select-list.less';
 import {
   AsyncSelectListProps,
   SelectOption,
 } from './AsyncSelectList.interface';
 
-const AsyncSelectList: FC<
-  AsyncSelectListProps &
-    SelectProps & { dropdownContainerRef?: React.RefObject<HTMLDivElement> }
-> = ({
+const EMPTY_OPTION_ID = '__async-select-list-empty__';
+const CONTENT_LOADING_OPTION_ID = '__async-select-list-loading__';
+
+const AsyncSelectList: FC<AsyncSelectListProps> = ({
   mode,
   onChange,
   fetchOptions,
@@ -55,11 +56,17 @@ const AsyncSelectList: FC<
   isSubmitLoading,
   newLook = false,
   dropdownContainerRef,
-  ...props
+  autoFocus,
+  open,
+  className,
+  popupClassName,
+  placeholder,
+  defaultValue,
+  value,
+  id,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [hasContentLoading, setHasContentLoading] = useState(false);
-  const [open, setOpen] = useState(props.autoFocus ?? false);
   const [options, setOptions] = useState<SelectOption[]>([]);
   const [searchValue, setSearchValue] = useState<string>('');
   const [paging, setPaging] = useState<Paging>({} as Paging);
@@ -67,9 +74,19 @@ const AsyncSelectList: FC<
   const [selectedTags, setSelectedTags] = useState<SelectOption[]>(
     initialOptions ?? []
   );
+  const [internalValue, setInternalValue] = useState<string[]>(
+    () => defaultValue ?? initialOptions?.map((option) => option.value) ?? []
+  );
   const { t } = useTranslation();
   const [optionFilteredCount, setOptionFilteredCount] = useState(0);
-  const form = Form.useFormInstance();
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const selectedValues = useMemo(
+    () =>
+      value?.map((item) => (isString(item) ? item : item.value)) ??
+      internalValue,
+    [value, internalValue]
+  );
 
   const getFilteredOptions = (data: SelectOption[]) => {
     if (isEmpty(filterOptions)) {
@@ -130,14 +147,14 @@ const AsyncSelectList: FC<
       return {
         label: tag.label,
         displayName: (
-          <Space className="w-full" direction="vertical" size={0}>
+          <Box className="tw:w-full" direction="col">
             <Typography ellipsis as="p" className="m-0 p-0" color="secondary">
               {parts.join(FQN_SEPARATOR_CHAR)}
             </Typography>
             <Typography ellipsis style={{ color: tag.data?.style?.color }}>
               {lastPartOfTag}
             </Typography>
-          </Space>
+          </Box>
         ),
         value: tag.value,
         data: tag.data,
@@ -147,12 +164,27 @@ const AsyncSelectList: FC<
     return newTags;
   }, [options]);
 
-  const defaultSelectedValues = useMemo(
-    () => initialOptions?.map((option) => option.value) ?? [],
-    [initialOptions]
+  const items = useMemo(() => {
+    if (isEmpty(tagOptions)) {
+      return [{ id: EMPTY_OPTION_ID }];
+    }
+
+    const optionItems = tagOptions.map((option) => ({
+      id: option.value,
+      label: option.label,
+    }));
+
+    return hasContentLoading
+      ? [...optionItems, { id: CONTENT_LOADING_OPTION_ID }]
+      : optionItems;
+  }, [tagOptions, hasContentLoading]);
+
+  const selectedItems = useMemo(
+    () => selectedValues.map((value) => ({ id: value, label: value })),
+    [selectedValues]
   );
 
-  const onScroll = async (e: React.UIEvent<HTMLDivElement>) => {
+  const onScroll = async (e: React.UIEvent<HTMLElement>) => {
     const { currentTarget } = e;
     // optionFilteredCount added to equalize the options received from the server
     if (
@@ -174,39 +206,26 @@ const AsyncSelectList: FC<
     }
   };
 
-  const dropdownRender = (menu: React.ReactElement) => (
-    <div ref={dropdownContainerRef}>
-      {menu}
-      {hasContentLoading ? <Loader size="small" /> : null}
-      {onCancel && (
-        <Space className="p-sm p-b-xss p-l-xs custom-dropdown-render" size={8}>
-          <Button
-            className="update-btn"
-            data-testid="saveAssociatedTag"
-            disabled={
-              isEmpty(props.value ?? selectedTags) && isEmpty(initialOptions)
-            }
-            htmlType="submit"
-            loading={isSubmitLoading}
-            size="small"
-            onClick={() => form.submit()}>
-            {t('label.update')}
-          </Button>
-          <Button
-            data-testid="cancelAssociatedTag"
-            size="small"
-            onClick={onCancel}>
-            {t('label.cancel')}
-          </Button>
-        </Space>
-      )}
-    </div>
-  );
+  // The core popover is portaled and remounted on every open; expose its node
+  // so callers (the bulk-edit grid) can keep it inside their focus trap.
+  const handleOpenChange = (isOpen: boolean) => {
+    if (!dropdownContainerRef || !isOpen) {
+      return;
+    }
+    requestAnimationFrame(() => {
+      const listBoxId = containerRef.current
+        ?.querySelector('input')
+        ?.getAttribute('aria-controls');
+      const listBox = listBoxId ? document.getElementById(listBoxId) : null;
+      (
+        dropdownContainerRef as React.MutableRefObject<HTMLDivElement | null>
+      ).current = listBox?.closest<HTMLDivElement>('[data-trigger]') ?? null;
+    });
+  };
 
-  const customTagRender = (data: CustomTagProps) => {
-    const selectedTag = selectedTags.find((tag) => tag.value === data.label);
+  const renderTag = (item: { id: string }, onRemove: () => void) => {
+    const selectedTag = selectedTags.find((tag) => tag.value === item.id);
 
-    const { label, onClose } = data;
     const tag = {
       tagFQN: (selectedTag?.data as Tag)?.fullyQualifiedName,
       ...pick(
@@ -218,7 +237,7 @@ const AsyncSelectList: FC<
         'tagFQN'
       ),
     } as TagLabel;
-    const tagDisplayName = getTagDisplay(label as string);
+    const tagDisplayName = getTagDisplay(item.id);
     const tagLabel = getEntityName(tag) || tagDisplayName || tag.tagFQN;
 
     const isDerived =
@@ -235,6 +254,7 @@ const AsyncSelectList: FC<
         color={tag.style?.color}
         data-testid={`selected-tag-${tagDisplayName}`}
         icon={tag.style?.iconURL}
+        key={item.id}
         label={tagLabel}
         size="sm"
         tooltip={isDerived ? t('message.derived-tag-warning') : undefined}
@@ -243,21 +263,21 @@ const AsyncSelectList: FC<
             ? undefined
             : (e) => {
                 e.stopPropagation();
-                onClose?.();
+                onRemove();
               }
         }
       />
     );
   };
 
-  const handleChange: SelectProps['onChange'] = (values: string[], options) => {
-    const selectedValues = values.map((value) => {
+  const handleChange = (values: string[]) => {
+    const newSelectedTags = values.map((value) => {
       const initialData = initialOptions?.find(
         (item) => item.value === value
       )?.data;
-      const data = (options as SelectOption[]).find(
-        (option) => option.value === value
-      );
+      const option =
+        options.find((option) => option.value === value) ??
+        selectedTags.find((tag) => tag.value === value);
 
       return (
         (initialData
@@ -266,14 +286,15 @@ const AsyncSelectList: FC<
               label: value,
               data: initialData,
             }
-          : data) ?? {
+          : option) ?? {
           value,
           label: value,
         }
       );
     });
-    setSelectedTags(selectedValues);
-    onChange?.(selectedValues);
+    setInternalValue(values);
+    setSelectedTags(newSelectedTags);
+    onChange?.(newSelectedTags);
   };
 
   useEffect(() => {
@@ -281,63 +302,115 @@ const AsyncSelectList: FC<
   }, []);
 
   return (
-    <Select
-      showSearch
-      className={classNames('async-select-list', {
+    <div
+      className={classNames('async-select-list tw:w-full', className, {
         'new-chip-style': newLook,
       })}
-      data-testid="tag-selector"
-      defaultValue={defaultSelectedValues}
-      dropdownRender={dropdownRender}
-      filterOption={false}
-      mode={mode}
-      notFoundContent={
-        isLoading ? (
-          <Loader size="small" />
-        ) : (
-          <Empty
-            description={t('label.no-entity-available', {
-              entity: t('label.tag-plural'),
-            })}
-            image={Empty.PRESENTED_IMAGE_SIMPLE}
-          />
-        )
-      }
-      open={open}
-      optionLabelProp="label"
-      popupClassName={classNames(
-        'async-select-list-dropdown',
-        props.popupClassName
-      )}
-      style={{ width: '100%' }}
-      tagRender={customTagRender}
-      onChange={handleChange}
-      onDropdownVisibleChange={setOpen}
-      onInputKeyDown={(event) => {
-        if (event.key === 'Backspace') {
-          return event.stopPropagation();
+      ref={containerRef}>
+      <Autocomplete
+        // eslint-disable-next-line jsx-a11y/no-autofocus -- callers opt in, e.g. the bulk-edit cell editor
+        autoFocus={autoFocus || open}
+        data-testid="tag-selector"
+        filterOption={() => true}
+        icon={null}
+        id={id}
+        items={items}
+        multiple={mode === 'multiple'}
+        placeholder={placeholder}
+        popoverClassName={classNames(
+          'async-select-list-dropdown',
+          popupClassName
+        )}
+        renderTag={renderTag}
+        selectedItems={selectedItems}
+        onItemCleared={(key) =>
+          handleChange(selectedValues.filter((value) => value !== String(key)))
         }
-      }}
-      onPopupScroll={onScroll}
-      onSearch={debounceFetcher}
-      {...props}>
-      {tagOptions.map(({ label, value, displayName, data }) => (
-        <Select.Option
-          className={classNames(optionClassName, 'w-full')}
-          data={data}
-          data-testid={`tag-${value}`}
-          key={label}
-          value={value}>
-          <Tooltip
-            delay={1.5}
-            placement="top left"
-            title={label}
-            trigger="hover">
-            {displayName}
-          </Tooltip>
-        </Select.Option>
-      ))}
-    </Select>
+        onItemInserted={(key) => {
+          handleChange([...selectedValues, String(key)]);
+          // antd kept a multi select open after a pick; do the same.
+          ensureComboboxMenuOpen(() =>
+            containerRef.current?.querySelector('input')
+          );
+        }}
+        onKeyDown={(event) => {
+          // Backspace must not reach the grid/editor around this field.
+          if (event.key !== 'Backspace') {
+            event.continuePropagation();
+          }
+        }}
+        onOpenChange={handleOpenChange}
+        onPopoverScroll={onScroll}
+        onSearchChange={debounceFetcher}>
+        {(item) => {
+          if (item.id === EMPTY_OPTION_ID) {
+            return (
+              <Autocomplete.Item isDisabled id={EMPTY_OPTION_ID}>
+                {isLoading ? (
+                  <Loader size="small" />
+                ) : (
+                  <Typography as="p" className="tw:w-full tw:text-center">
+                    {t('label.no-entity-available', {
+                      entity: t('label.tag-plural'),
+                    })}
+                  </Typography>
+                )}
+              </Autocomplete.Item>
+            );
+          }
+
+          if (item.id === CONTENT_LOADING_OPTION_ID) {
+            return (
+              <Autocomplete.Item isDisabled id={CONTENT_LOADING_OPTION_ID}>
+                <Loader size="small" />
+              </Autocomplete.Item>
+            );
+          }
+
+          const option = tagOptions.find((tag) => tag.value === item.id);
+
+          return (
+            <Autocomplete.Item
+              className={classNames(optionClassName, 'w-full')}
+              data-testid={`tag-${item.id}`}
+              id={item.id}
+              key={item.label}
+              textValue={item.label}>
+              <Tooltip
+                delay={1.5}
+                placement="top left"
+                title={item.label}
+                trigger="hover">
+                {option?.displayName}
+              </Tooltip>
+            </Autocomplete.Item>
+          );
+        }}
+      </Autocomplete>
+      {onCancel && (
+        <Box className="p-sm p-b-xss p-l-xs custom-dropdown-render" gap={2}>
+          <Button
+            className="update-btn"
+            color="secondary"
+            data-testid="saveAssociatedTag"
+            isDisabled={
+              isEmpty(value ?? selectedTags) && isEmpty(initialOptions)
+            }
+            isLoading={isSubmitLoading}
+            size="xs"
+            type="submit">
+            {t('label.update')}
+          </Button>
+          <Button
+            color="secondary"
+            data-testid="cancelAssociatedTag"
+            size="xs"
+            onPress={onCancel}>
+            {t('label.cancel')}
+          </Button>
+        </Box>
+      )}
+    </div>
   );
 };
 

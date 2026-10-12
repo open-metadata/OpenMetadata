@@ -27,16 +27,6 @@ import org.openmetadata.service.security.auth.CatalogSecurityContext;
 /** Executes bounded, read-only SPARQL queries for MCP clients. */
 public class SparqlQueryTool extends RdfMcpTool<SparqlQueryTool.Result> {
 
-  /**
-   * Default and ceiling both come from the dispatch-level budget rather than a standalone megabyte
-   * figure. The previous 1 MiB default and 16 MiB ceiling were 10x and 160x the dispatch cap, so a
-   * large SELECT was executed and paid for in full, then discarded wholesale by {@code
-   * DefaultToolContext.applyBudget} and replaced with a data-less truncation stub. See {@link
-   * RdfBody}. {@code maxBytes} can therefore only narrow the response, never widen it.
-   */
-  private static final int DEFAULT_MAX_BYTES = RdfBody.MAX_BYTES;
-
-  private static final int HARD_MAX_BYTES = RdfBody.MAX_BYTES;
   private static final int MIN_MAX_BYTES = RdfBody.MIN_BYTES;
   private final GuardedQueryExecutor guardedQueryExecutor;
 
@@ -56,11 +46,9 @@ public class SparqlQueryTool extends RdfMcpTool<SparqlQueryTool.Result> {
   }
 
   /**
-   * {@code warning} carries {@link RdfSparqlService.QueryResult#warning()} - set when the requested
-   * inference level was not actually applied because the graph exceeded {@code
-   * maxInMemoryInferenceTriples}. The REST endpoint surfaces this as the {@code OM-Inference-Warning}
-   * header; dropping it here meant an {@code inferenceLevel: "owl"} call silently returned
-   * un-inferred results that looked authoritative. Null when the query ran as asked.
+   * {@code warning} carries {@link RdfSparqlService.QueryResult#warning()}, which the REST endpoint
+   * surfaces as the {@code X-OpenMetadata-Inference-Warning} header, so a qualified answer is never
+   * presented as authoritative. Null when the query ran as asked.
    */
   @JsonInclude(JsonInclude.Include.NON_NULL)
   public record Result(
@@ -80,9 +68,16 @@ public class SparqlQueryTool extends RdfMcpTool<SparqlQueryTool.Result> {
     RdfSparqlService.ReadQuery query = RdfSparqlService.ReadQuery.parse(sparql);
     RdfRepository repository = repository();
     String inferenceLevel = parameters.optionalString("inferenceLevel");
+    // Default and ceiling both come from the dispatch-level budget rather than a standalone
+    // megabyte
+    // figure. The previous 1 MiB default and 16 MiB ceiling were 10x and 160x the dispatch cap, so
+    // a
+    // large SELECT was executed and paid for in full, then discarded wholesale by
+    // DefaultToolContext.applyBudget and replaced with a data-less truncation stub. See RdfBody.
+    // maxBytes can therefore only narrow the response, never widen it.
+    int budgetBytes = RdfBody.maxBytes();
     int maxBytes =
-        RdfBody.clamp(
-            parameters.integer("maxBytes", DEFAULT_MAX_BYTES), MIN_MAX_BYTES, HARD_MAX_BYTES);
+        RdfBody.clamp(parameters.integer("maxBytes", budgetBytes), MIN_MAX_BYTES, budgetBytes);
     RdfSparqlService sparqlService =
         new RdfSparqlService(repository, new SparqlFederationGuard(repository.getConfig()));
     RdfSparqlService.QueryResult queryResult =

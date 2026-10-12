@@ -254,6 +254,63 @@ test.describe(
             'true'
           );
         });
+
+        await test.step('keeps the small card after a style round trip in the gear modal', async () => {
+          await page.getByTestId('widget-settings-button').click();
+          const modal = page.getByTestId(
+            'custom-properties-widget-settings-modal'
+          );
+          await expect(modal).toBeVisible();
+
+          // fullWidth -> preview -> fullWidth must not flatten the half-width card.
+          await modal.getByTestId('widget-style-preview').click();
+          await modal.getByTestId('widget-style-fullWidth').click();
+          await modal.getByTestId('save-widget-settings').click();
+
+          await expect(modal).toBeHidden();
+          await expect(sizeTab(page, firstProperty, 'Small')).toHaveAttribute(
+            'aria-selected',
+            'true'
+          );
+        });
+
+        await test.step('persists the small card across a saved style round trip', async () => {
+          // Save in preview (a real change the page save can persist), reload,
+          // then switch back to full width and save again: the half-width card
+          // must survive both saves.
+          await page.getByTestId('widget-settings-button').click();
+          let modal = page.getByTestId(
+            'custom-properties-widget-settings-modal'
+          );
+          await expect(modal).toBeVisible();
+          await modal.getByTestId('widget-style-preview').click();
+          await modal.getByTestId('save-widget-settings').click();
+          await expect(modal).toBeHidden();
+          await savePageLayout(page);
+
+          await openTableCustomizePage(page, fixture.persona);
+          await openTabForEditing(page, `tab-${tabName}`);
+
+          await page.getByTestId('widget-settings-button').click();
+          modal = page.getByTestId('custom-properties-widget-settings-modal');
+          await expect(modal).toBeVisible();
+          await modal.getByTestId('widget-style-fullWidth').click();
+          await modal.getByTestId('save-widget-settings').click();
+          await expect(modal).toBeHidden();
+          await savePageLayout(page);
+
+          await openTableCustomizePage(page, fixture.persona);
+          await openTabForEditing(page, `tab-${tabName}`);
+
+          await expect(sizeTab(page, firstProperty, 'Small')).toHaveAttribute(
+            'aria-selected',
+            'true'
+          );
+          await expect(sizeTab(page, secondProperty, 'Large')).toHaveAttribute(
+            'aria-selected',
+            'true'
+          );
+        });
       });
     });
 

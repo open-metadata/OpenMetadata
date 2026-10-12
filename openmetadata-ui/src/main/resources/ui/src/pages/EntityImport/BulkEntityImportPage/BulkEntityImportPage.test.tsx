@@ -16,6 +16,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import BulkEditEntity from '../../../components/BulkEditEntity/BulkEditEntity.component';
@@ -438,7 +439,9 @@ describe('BulkEntityImportPage', () => {
         expect(screen.getByTestId('title-breadcrumb')).toBeInTheDocument();
       });
 
-      const breadcrumbItems = screen.getAllByTestId('breadcrumb-item');
+      const breadcrumbItems = within(
+        screen.getByTestId('title-breadcrumb')
+      ).getAllByRole('listitem');
 
       expect(breadcrumbItems).toHaveLength(3);
       expect(breadcrumbItems[0]).toHaveTextContent('label.governance');

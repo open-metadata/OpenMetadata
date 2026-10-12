@@ -65,7 +65,7 @@ export const Popover = ({
   children,
   arrow = false,
   containerClassName,
-  offset = 8,
+  offset = 4,
   ...popoverProps
 }: PopoverProps) => {
   return (

@@ -27,6 +27,7 @@ import {
   expandSchemaInExploreTree,
   expandServiceInExploreTree,
 } from '../../utils/explore';
+import { isAggregationResponse } from '../../utils/searchAggregation';
 import { sidebarClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -72,8 +73,10 @@ const expandTreeNode = async (page: Page, titleTestId: string) => {
     .waitForResponse(
       (response) =>
         response.url().includes('/api/v1/search/query?') ||
-        (response.url().endsWith('/api/v1/search/aggregate') &&
-          response.request().method() === 'POST'),
+        isAggregationResponse(response, {
+          field: 'service.displayName.keyword',
+          value: null,
+        }),
       { timeout: 15_000 }
     )
     .catch(() => undefined);

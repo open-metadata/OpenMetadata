@@ -55,25 +55,37 @@ jest.mock('@openmetadata/ui-core-components', () => {
     EmptyPlaceholder: ({ title }: { title?: ReactNode }) => (
       <div data-testid="inbox-empty">{title}</div>
     ),
-    PageLayout: {
-      PageHeader: ({
-        footer,
-        icon,
-        title,
-        variant,
+    PageLayout: Object.assign(
+      ({
+        children,
+        'data-testid': testId,
       }: {
-        footer?: ReactNode;
-        icon?: ReactNode;
-        title?: ReactNode;
-        variant?: string;
-      }) => (
-        <div data-testid="inbox-header" data-variant={variant}>
-          {icon}
-          {title}
-          {footer}
-        </div>
-      ),
-    },
+        children?: ReactNode;
+        'data-testid'?: string;
+      }) => <div data-testid={testId}>{children}</div>,
+      {
+        Content: ({ children }: { children?: ReactNode }) => (
+          <main>{children}</main>
+        ),
+        PageHeader: ({
+          footer,
+          icon,
+          title,
+          variant,
+        }: {
+          footer?: ReactNode;
+          icon?: ReactNode;
+          title?: ReactNode;
+          variant?: string;
+        }) => (
+          <div data-testid="inbox-header" data-variant={variant}>
+            {icon}
+            {title}
+            {footer}
+          </div>
+        ),
+      }
+    ),
     Tabs,
   };
 });

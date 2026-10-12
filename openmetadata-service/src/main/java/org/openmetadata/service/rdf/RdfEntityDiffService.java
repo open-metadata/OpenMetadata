@@ -104,7 +104,7 @@ public final class RdfEntityDiffService {
   }
 
   private Model versionModel(final String entityType, final UUID entityId, final Double version) {
-    final EntityInterface entity = versionReader.read(entityType, entityId, version);
+    final EntityInterface<?> entity = versionReader.read(entityType, entityId, version);
     final Model source = translator.toRdf(entity);
     try {
       return parseCanonical(canonicalizer.canonicalize(source));
@@ -182,19 +182,19 @@ public final class RdfEntityDiffService {
     }
   }
 
-  private static EntityInterface readVersion(
+  private static EntityInterface<?> readVersion(
       final String entityType, final UUID entityId, final Double version) {
     return Entity.getEntityRepository(entityType).getVersion(entityId, version.toString());
   }
 
   @FunctionalInterface
   interface EntityVersionReader {
-    EntityInterface read(String entityType, UUID entityId, Double version);
+    EntityInterface<?> read(String entityType, UUID entityId, Double version);
   }
 
   @FunctionalInterface
   interface EntityRdfTranslator {
-    Model toRdf(EntityInterface entity);
+    Model toRdf(EntityInterface<?> entity);
   }
 
   private record DiffRequest(

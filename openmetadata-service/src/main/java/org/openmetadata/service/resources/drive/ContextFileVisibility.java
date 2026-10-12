@@ -51,19 +51,21 @@ public final class ContextFileVisibility {
   private ContextFileVisibility() {}
 
   public static boolean isVisibleToUser(ContextFile file, String userName, boolean isAdmin) {
-    if (isAdmin) {
-      return true;
-    }
+    return isAdmin
+        || isOrgWide(file)
+        || isOwnedBy(file, userName)
+        || isSharedWithUser(file.getShareConfig(), userName);
+  }
+
+  /** Whether everyone may read the file: nothing restricts it, or its visibility is Entity. */
+  public static boolean isOrgWide(ContextFile file) {
     MemoryShareConfig share = file.getShareConfig();
-    if (share == null || share.getVisibility() == null) {
-      return true;
-    }
-    if (isOwnedBy(file, userName)) {
-      return true;
-    }
-    if (share.getVisibility() == MemoryVisibility.ENTITY) {
-      return true;
-    }
+    return share == null
+        || share.getVisibility() == null
+        || share.getVisibility() == MemoryVisibility.ENTITY;
+  }
+
+  private static boolean isSharedWithUser(MemoryShareConfig share, String userName) {
     return share.getVisibility() == MemoryVisibility.SHARED
         && ContextMemoryVisibility.isSharedWith(share.getSharedWith(), userName);
   }

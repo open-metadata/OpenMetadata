@@ -457,7 +457,7 @@ public final class EntityUtil {
     return CommonUtil.getResources(Pattern.compile(path));
   }
 
-  public static <T extends EntityInterface> List<String> toFQNs(List<T> entities) {
+  public static <T extends EntityInterface<?>> List<String> toFQNs(List<T> entities) {
     if (entities == null) {
       return Collections.emptyList();
     }
@@ -877,7 +877,7 @@ public final class EntityUtil {
     return ref == null ? null : ref.getFullyQualifiedName();
   }
 
-  public static String getFqn(EntityInterface entity) {
+  public static String getFqn(EntityInterface<?> entity) {
     return entity == null ? null : entity.getFullyQualifiedName();
   }
 
@@ -892,7 +892,7 @@ public final class EntityUtil {
     return fqns;
   }
 
-  public static EntityReference getEntityReference(EntityInterface entity) {
+  public static EntityReference getEntityReference(EntityInterface<?> entity) {
     return entity == null ? null : entity.getEntityReference();
   }
 
@@ -937,9 +937,9 @@ public final class EntityUtil {
         .orElse(null);
   }
 
-  public static void sortByFQN(List<? extends EntityInterface> entities) {
+  public static void sortByFQN(List<? extends EntityInterface<?>> entities) {
     // Sort entities by fullyQualifiedName
-    entities.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
+    entities.sort(Comparator.comparing(EntityInterface<?>::getFullyQualifiedName));
   }
 
   /**
@@ -1002,22 +1002,6 @@ public final class EntityUtil {
       return Hex.encodeHexString(checksum);
     }
     return null;
-  }
-
-  public static boolean isDescriptionTask(TaskType taskType) {
-    return taskType == TaskType.RequestDescription || taskType == TaskType.UpdateDescription;
-  }
-
-  public static boolean isTagTask(TaskType taskType) {
-    return taskType == TaskType.RequestTag || taskType == TaskType.UpdateTag;
-  }
-
-  public static boolean isApprovalTask(TaskType taskType) {
-    return taskType == TaskType.RequestApproval;
-  }
-
-  public static boolean isTestCaseFailureResolutionTask(TaskType taskType) {
-    return taskType == TaskType.RequestTestCaseFailureResolution;
   }
 
   public static Column findColumn(List<Column> columns, String columnName) {
@@ -1233,7 +1217,7 @@ public final class EntityUtil {
    * This method checks if the entity supports the given field and returns its value.
    * If the field is not supported, returns null.
    */
-  public static Object getEntityField(EntityInterface entity, String fieldName) {
+  public static Object getEntityField(EntityInterface<?> entity, String fieldName) {
     if (entity == null || fieldName == null || fieldName.isEmpty()) {
       return null;
     }

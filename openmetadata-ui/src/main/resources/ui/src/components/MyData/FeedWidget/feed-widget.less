@@ -11,22 +11,11 @@
  *  limitations under the License.
  */
 @import (reference) '../../../styles/variables.less';
-@import (reference) '../../../styles/fonts.less';
 
 .feed-widget-container {
   display: flex;
   flex-direction: column;
   height: 100%;
-  .activity-feed-user-name a {
-    color: @grey-900;
-  }
-
-  .ant-card-body {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    padding: 0;
-  }
 
   .feed-content {
     flex: 1;
@@ -49,11 +38,6 @@
   }
 
   .feed-card-header-v2-timestamp {
-    color: @grey-500;
     font-size: @size-sm;
-  }
-
-  .header-link {
-    color: @primary-7;
   }
 }

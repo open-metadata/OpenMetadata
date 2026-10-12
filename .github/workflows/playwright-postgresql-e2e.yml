@@ -62,26 +62,12 @@ on:
         required: true
         type: boolean
         default: true
-  # Same-repo PRs run under pull_request — unprivileged, secrets absent
-  # from the runner. These jobs build PR code, populate caches, and
-  # exchange artifacts.
+  # Playwright runs only in the merge queue. PRs still trigger the workflow
+  # because `playwright-summary` is a required check: every job is skipped by
+  # its `if:` (no runner starts), and GitHub counts a skipped required check
+  # as passing. With no PR trigger the check would hang at "Expected — waiting".
   pull_request:
     types:
-      - labeled
-      - opened
-      - synchronize
-      - reopened
-      - ready_for_review
-  # Fork PRs need cloud-connector secrets (TEST_SNOWFLAKE_*, TEST_BQ_*,
-  # TEST_REDSHIFT_* …) that pull_request events cannot access on forks.
-  # pull_request_target runs in the base repo's context so those secrets
-  # resolve, but requires a maintainer to apply the "safe to test" label
-  # first (enforced by the gate job in the reusable workflow). Same-repo
-  # PRs already ran under pull_request above; the reusable short-circuits
-  # on them via the head-repo check in the gate job.
-  pull_request_target:
-    types:
-      - labeled
       - opened
       - synchronize
       - reopened
@@ -94,6 +80,7 @@ permissions:
 
 jobs:
   playwright:
+    if: ${{ github.event_name != 'pull_request' }}
     uses: ./.github/workflows/playwright-e2e-reusable.yml
     # secrets: inherit passes the full TEST_* / GITHUB_TOKEN set into the
     # reusable without re-listing each one; the reusable only reads what it
@@ -116,24 +103,12 @@ jobs:
       coarse_bundle: ${{ github.event_name == 'workflow_dispatch' && inputs.coarse_bundle || true }}
       # One retry everywhere while the first-attempt signal is collected: the
       # main-health job alerts Slack on every failure and flaky pass so each can
-      # be fixed. Once main runs clean, flip PRs to zero retries with:
-      #   retries: ${{ !contains(fromJSON('["pull_request","pull_request_target"]'), github.event_name) && 1 || 0 }}
-      # (numeric, inverted so `0` is the else branch: `X && 0 || 1` would
-      # short-circuit to 1, and a string breaks the reusable's `type: number`).
+      # be fixed.
       retries: 1
 
   playwright-summary:
-    name: >-
-      ${{
-        (
-          github.event.action == 'labeled'
-          || needs.playwright.outputs.gate_result != 'success'
-          || needs.playwright.outputs.gate_should_run == 'true'
-        )
-        && 'playwright-summary'
-        || 'playwright-summary (skipped)'
-      }}
-    if: ${{ always() && !cancelled() }}
+    name: playwright-summary
+    if: ${{ always() && !cancelled() && github.event_name != 'pull_request' }}
     needs: [playwright]
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -654,21 +629,6 @@ jobs:
         run: |
           echo "::error::gate did not succeed (result=${{ needs.playwright.outputs.gate_result }}, should_run=${{ needs.playwright.outputs.gate_should_run }}). Refusing synthetic green — this playwright-summary must not report success without a valid gate decision."
           exit 1
-
-      # Short-circuit when gate explicitly decided should_run=false —
-      # every upstream job is legitimately `skipped` in that case
-      # (redundant pull_request_target for a same-repo PR, or fork PR
-      # without safe-to-test), and the renderer below counts each
-      # skipped upstream as a "CI/reporting failure" and fails the whole
-      # check. That's what turned run 30090391086 red on PR #30454 despite
-      # the pipeline correctly opting out. Match on the exact "false"
-      # string (not != 'true') so unset outputs never fall through here.
-      - name: Report gate-skipped run as green
-        if: ${{ github.event_name != 'merge_group' && needs.playwright.outputs.gate_should_run == 'false' }}
-        run: |
-          echo "Gate decided should_run=false for event=${{ github.event_name }}."
-          echo "This run is intentionally skipped; the authoritative playwright-summary comes from the sibling event's run."
-          echo "Exiting 0 so this check does not block branch protection."
 
       - name: Render consolidated job summary and gate on results
         if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.gate_should_run == 'true' }}

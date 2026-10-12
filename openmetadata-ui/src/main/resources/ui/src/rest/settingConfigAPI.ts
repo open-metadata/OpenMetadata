@@ -12,14 +12,21 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { Operation } from 'fast-json-patch';
 import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
 import { AppConfiguration } from '../generated/api/configuration/appConfiguration';
+import { GlossarySettings } from '../generated/configuration/glossarySettings';
 import { RelationCardinality } from '../generated/configuration/glossaryTermRelationSettings';
 import { LineageSettings } from '../generated/configuration/lineageSettings';
 import { LoginConfiguration } from '../generated/configuration/loginConfiguration';
 import { SearchSettings } from '../generated/configuration/searchSettings';
 import { UIThemePreference } from '../generated/configuration/uiThemePreference';
 import { Settings, SettingType } from '../generated/settings/settings';
+import { AdoptDeploymentConfigRequest } from '../generated/system/adoptDeploymentConfigRequest';
+import {
+  SettingSource,
+  SettingsSourceResponse,
+} from '../generated/system/settingsSourceResponse';
 import axiosClient from './axiosClient';
 
 export type RelationCategory = 'hierarchical' | 'associative' | 'equivalence';
@@ -62,6 +69,73 @@ export const updateSettingsConfig = async (payload: Settings) => {
   return response;
 };
 
+/**
+ * Changes only the fields named by the patch, so a write cannot overwrite fields of the setting
+ * that this client never read (unlike {@link updateSettingsConfig}, which replaces the setting).
+ */
+export const patchSettingsConfig = async (
+  configType: SettingType,
+  patches: Operation[]
+) => {
+  const response = await axiosClient.patch<
+    Operation[],
+    AxiosResponse<Settings>
+  >(`/system/settings/${configType}`, patches, {
+    headers: { 'Content-Type': 'application/json-patch+json' },
+  });
+
+  return response.data;
+};
+
+/**
+ * Admin-only. For each setting that lives both in the deployment configuration and in the
+ * database: where it takes its values from, the fields the deployment owns, and the deployment
+ * values the stored setting overrides.
+ */
+export const getSettingsSource = async () => {
+  const response = await axiosClient.get<SettingsSourceResponse>(
+    '/system/settings/source'
+  );
+
+  return response.data;
+};
+
+/**
+ * Admin-only. Replaces the stored values of `paths` (every overridden field when omitted) with
+ * the deployment values, and returns the setting's source status after the change.
+ */
+export const adoptDeploymentConfig = async (
+  configType: SettingSource['configType'],
+  paths?: string[]
+) => {
+  const request: AdoptDeploymentConfigRequest = { paths };
+  const response = await axiosClient.post<
+    AdoptDeploymentConfigRequest,
+    AxiosResponse<SettingSource>
+  >(`/system/settings/source/${configType}/adopt`, request);
+
+  return response.data;
+};
+
+export const getGlossarySettings = async (): Promise<GlossarySettings> => {
+  const response = await getSettingsConfigFromConfigType(
+    SettingType.GlossarySettings
+  );
+
+  return response.data.config_value as GlossarySettings;
+};
+
+export const updateGlossarySettings = async (
+  config: GlossarySettings
+): Promise<GlossarySettings> => {
+  const response = await updateSettingsConfig({
+    config_type: SettingType.GlossarySettings,
+    config_value: config,
+  });
+
+  return response.data.config_value as GlossarySettings;
+};
+
 export const getCustomUiThemePreference = async () => {
   const response = await axiosClient.get<UIThemePreference>(
     `system/config/customUiThemePreference`
@@ -93,16 +167,18 @@ export const getAppConfiguration = async (): Promise<AppConfiguration> => {
 };
 
 /**
- * Admin-only. Writes through the generic `/system/settings` PUT, matching
- * the `config_type`/`config_value` shape the backend's `createOrUpdateSetting`
- * expects (see how `updateGlossaryTermRelationSettings` above writes).
+ * Admin-only. Updates only the given keys: the generic `/system/settings` PUT
+ * replaces the whole document, and several pages (Default App Mode, Table &
+ * Schema) each own one key of it, so the stored value is merged first.
+ * See ADR:2026-10-09-app-configuration-keys-are-owned-and-merged-on-write.
  */
 export const patchAppConfiguration = async (
   patch: Partial<AppConfiguration>
 ): Promise<AppConfiguration> => {
+  const current = await getAppConfiguration();
   const response = await axiosClient.put<Settings>(`/system/settings`, {
     config_type: SettingType.AppConfiguration,
-    config_value: patch,
+    config_value: { ...current, ...patch },
   });
 
   return (response.data.config_value as AppConfiguration) ?? {};

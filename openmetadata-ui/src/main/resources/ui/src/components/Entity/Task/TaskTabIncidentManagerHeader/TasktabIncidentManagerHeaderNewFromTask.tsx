@@ -11,9 +11,16 @@
  *  limitations under the License.
  */
 
-import { Owner, Typography } from '@openmetadata/ui-core-components';
-import { Col, Row, Space, Steps } from 'antd';
-import { isEmpty, isUndefined, last, toLower } from 'lodash';
+import {
+  Box,
+  Owner,
+  ProgressStepItem,
+  ProgressSteps,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Check } from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
+import { isEmpty, isUndefined, last } from 'lodash';
 import { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
@@ -27,11 +34,42 @@ import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEd
 import Severity from '../../../DataQuality/IncidentManager/Severity/Severity.component';
 import './task-tab-incident-manager-header.style.less';
 
+const STEP_STATUS_CLASS: Record<TestCaseResolutionStatusTypes, string> = {
+  [TestCaseResolutionStatusTypes.New]:
+    'tw:bg-utility-purple-50 tw:text-utility-purple-600 tw:outline-utility-purple-600',
+  [TestCaseResolutionStatusTypes.ACK]:
+    'tw:bg-utility-blue-50 tw:text-utility-blue-500 tw:outline-utility-blue-500',
+  [TestCaseResolutionStatusTypes.Assigned]:
+    'tw:bg-utility-yellow-50 tw:text-utility-yellow-500 tw:outline-utility-yellow-400',
+  [TestCaseResolutionStatusTypes.Resolved]:
+    'tw:bg-utility-green-50 tw:text-utility-green-500 tw:outline-utility-green-400',
+};
+
+// ProgressSteps only knows brand colours, so each step draws its own
+// per-status disc over the (neutral, "incomplete") indicator.
+const getStepIcon = (
+  statusType: TestCaseResolutionStatusTypes,
+  isDone: boolean,
+  stepNumber: number
+) => {
+  const StepIcon = () => (
+    <span
+      className={classNames(
+        'tw:flex tw:size-6 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:text-xs tw:font-semibold tw:outline-1 tw:-outline-offset-1',
+        STEP_STATUS_CLASS[statusType]
+      )}>
+      {isDone ? <Check className="tw:size-4" /> : stepNumber}
+    </span>
+  );
+
+  return StepIcon;
+};
+
 const TaskTabIncidentManagerHeaderNewFromTask = ({ task }: { task: Task }) => {
   const { t } = useTranslation();
   const { testCaseResolutionStatus } = useActivityFeedProvider();
 
-  const testCaseResolutionStepper = useMemo(() => {
+  const testCaseResolutionStepper = useMemo<ProgressStepItem[]>(() => {
     const updatedData = [...testCaseResolutionStatus];
     const lastStatusType = last(
       testCaseResolutionStatus
@@ -45,7 +83,7 @@ const TaskTabIncidentManagerHeaderNewFromTask = ({ task }: { task: Task }) => {
       );
     }
 
-    return updatedData.map((status) => {
+    return updatedData.map((status, index) => {
       let details: ReactNode = null;
 
       switch (status.testCaseResolutionStatusType) {
@@ -83,7 +121,13 @@ const TaskTabIncidentManagerHeaderNewFromTask = ({ task }: { task: Task }) => {
       }
 
       return {
-        className: toLower(status.testCaseResolutionStatusType),
+        id: `${status.testCaseResolutionStatusType}-${index}`,
+        icon: getStepIcon(
+          status.testCaseResolutionStatusType,
+          index < testCaseResolutionStatus.length,
+          index + 1
+        ),
+        status: 'incomplete' as const,
         title: (
           <div>
             <Typography as="p" className="m-b-0 tw:text-primary">
@@ -99,7 +143,6 @@ const TaskTabIncidentManagerHeaderNewFromTask = ({ task }: { task: Task }) => {
             </Typography>
           </div>
         ),
-        key: status.testCaseResolutionStatusType,
       };
     });
   }, [testCaseResolutionStatus]);
@@ -114,64 +157,65 @@ const TaskTabIncidentManagerHeaderNewFromTask = ({ task }: { task: Task }) => {
     TestCaseResolutionStatusTypes.Resolved;
 
   return (
-    <Row data-testid="incident-manager-task-header-container" gutter={[8, 16]}>
-      <Col span={24}>
-        <div className="task-resolution-steps-container">
-          <Steps
-            className="task-resolution-steps w-full"
-            current={testCaseResolutionStatus.length}
-            data-testid="task-resolution-steps"
-            items={testCaseResolutionStepper}
-            labelPlacement="vertical"
-            size="small"
-          />
-        </div>
-      </Col>
-      <Col span={24}>
-        <Space className="justify-between w-full">
-          <div className="gap-2 flex-center">
-            <Typography color="secondary">
-              {`${t('label.assignee')}: `}
-            </Typography>
-            {isUndefined(task.assignees) || isEmpty(task.assignees) ? (
-              NO_DATA_PLACEHOLDER
-            ) : (
-              <Owner owners={task.assignees} />
-            )}
-          </div>
-          <div className="gap-2 flex-center">
-            <Typography color="secondary">
-              {`${t('label.created-by')}: `}
-            </Typography>
-            {task.createdBy ? (
-              <Owner owners={[task.createdBy]} />
-            ) : (
-              NO_DATA_PLACEHOLDER
-            )}
-          </div>
-        </Space>
-      </Col>
-      <Col span={24}>
-        <Space className="justify-between w-full">
-          <div className="gap-2 flex-center">
-            <Typography color="secondary">
-              {`${t('label.severity')}: `}
-            </Typography>
-            <Severity severity={latestTestCaseResolutionStatus?.severity} />
-          </div>
-          {isResolved && (
-            <div className="gap-2 flex-center" data-testid="failure-reason">
-              <Typography color="secondary">
-                {`${t('label.failure-reason')}: `}
-              </Typography>
-              {latestTestCaseResolutionStatus?.testCaseResolutionStatusDetails
-                ?.testCaseFailureReason ?? NO_DATA_PLACEHOLDER}
-            </div>
+    <Box
+      data-testid="incident-manager-task-header-container"
+      direction="col"
+      gap={4}>
+      <div className="task-resolution-steps-container">
+        <ProgressSteps
+          // Fixed-width steps scroll inside the container, as the antd Steps did,
+          // instead of squeezing their labels together.
+          className="task-resolution-steps w-full tw:*:min-w-32"
+          data-testid="task-resolution-steps"
+          size="sm"
+          steps={testCaseResolutionStepper}
+        />
+      </div>
+      <Box align="center" className="w-full" gap={2} justify="between">
+        <Box align="center" gap={2} justify="center">
+          <Typography color="secondary">
+            {`${t('label.assignee')}: `}
+          </Typography>
+          {isUndefined(task.assignees) || isEmpty(task.assignees) ? (
+            NO_DATA_PLACEHOLDER
+          ) : (
+            <Owner owners={task.assignees} />
           )}
-        </Space>
-      </Col>
+        </Box>
+        <Box align="center" gap={2} justify="center">
+          <Typography color="secondary">
+            {`${t('label.created-by')}: `}
+          </Typography>
+          {task.createdBy ? (
+            <Owner owners={[task.createdBy]} />
+          ) : (
+            NO_DATA_PLACEHOLDER
+          )}
+        </Box>
+      </Box>
+      <Box align="center" className="w-full" gap={2} justify="between">
+        <Box align="center" gap={2} justify="center">
+          <Typography color="secondary">
+            {`${t('label.severity')}: `}
+          </Typography>
+          <Severity severity={latestTestCaseResolutionStatus?.severity} />
+        </Box>
+        {isResolved && (
+          <Box
+            align="center"
+            data-testid="failure-reason"
+            gap={2}
+            justify="center">
+            <Typography color="secondary">
+              {`${t('label.failure-reason')}: `}
+            </Typography>
+            {latestTestCaseResolutionStatus?.testCaseResolutionStatusDetails
+              ?.testCaseFailureReason ?? NO_DATA_PLACEHOLDER}
+          </Box>
+        )}
+      </Box>
       {isResolved && (
-        <Col span={24}>
+        <div>
           <Typography color="secondary">
             {`${t('label.failure-comment')}: `}
           </Typography>
@@ -181,9 +225,9 @@ const TaskTabIncidentManagerHeaderNewFromTask = ({ task }: { task: Task }) => {
                 ?.testCaseFailureComment ?? ''
             }
           />
-        </Col>
+        </div>
       )}
-    </Row>
+    </Box>
   );
 };
 
