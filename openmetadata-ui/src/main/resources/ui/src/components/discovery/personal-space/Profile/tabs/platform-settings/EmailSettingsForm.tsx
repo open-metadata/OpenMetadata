@@ -17,6 +17,7 @@ import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
+import { EMAIL_CONFIG_FORM_FIELDS } from '../../../../../../constants/EmailConfig.constants';
 import { EMAIL_REG_EX } from '../../../../../../constants/regex.constants';
 import { MASKED_PASSWORD_VALUE } from '../../../../../../constants/Secrets.constants';
 import {
@@ -28,15 +29,18 @@ import {
   getSettingsConfigFromConfigType,
   updateSettingsConfig,
 } from '../../../../../../rest/settingConfigAPI';
+import { pinManagedFields } from '../../../../../../utils/platform/settingsSource.utils';
 import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
+import SettingsSourceBanner from '../../../../../platform/settings/SettingsSourceBanner/SettingsSourceBanner';
 import type { PlatformSettingsFormProps } from './PlatformSettings.types';
 import SettingsFormLayout, {
   SettingsFormSection,
   SettingsSkeleton,
 } from './SettingsFormLayout';
+import { useDeploymentManagedFields } from './useDeploymentManagedFields';
 import { useFormFieldDocs } from './useFormFieldDocs';
 import { useSettingsFetch } from './useSettingsFetch';
 
@@ -77,15 +81,16 @@ export const toEmailFormValues = (config?: SMTPSettings): EmailFormValues => ({
 });
 
 /**
- * Keeps server-owned keys (templates, templatePath) and drops the masked
- * password placeholder so an untouched password field never overwrites the
- * stored secret.
+ * Keeps server-owned keys (templates, templatePath) and the stored value of
+ * every deployment-owned field, and drops the masked password placeholder so
+ * an untouched password field never overwrites the stored secret.
  */
 export const toSmtpSettings = (
   values: EmailFormValues,
-  original?: SMTPSettings
+  original?: SMTPSettings,
+  managedPaths: string[] = []
 ): SMTPSettings => {
-  const settings: SMTPSettings = {
+  const edited: SMTPSettings = {
     ...original,
     serverEndpoint: values.serverEndpoint,
     serverPort: Number(values.serverPort),
@@ -99,6 +104,9 @@ export const toSmtpSettings = (
     password: values.password || undefined,
     supportUrl: values.supportUrl || undefined,
   };
+  const settings = original
+    ? pinManagedFields(edited, original, managedPaths)
+    : edited;
 
   if (settings.password === MASKED_PASSWORD_VALUE) {
     delete settings.password;
@@ -121,7 +129,21 @@ const EmailSettingsForm = ({
 }: PlatformSettingsFormProps) => {
   const { t } = useTranslation();
   const docs = useFormFieldDocs('EmailConfiguration');
-  const { data: config, isLoading } = useSettingsFetch(fetchEmailConfig);
+  const {
+    data: config,
+    isLoading,
+    reload,
+  } = useSettingsFetch(fetchEmailConfig);
+  const {
+    sources,
+    refetch: refetchSources,
+    managedFields,
+    managedPaths,
+    isFullyManaged,
+  } = useDeploymentManagedFields(
+    SettingType.EmailConfiguration,
+    EMAIL_CONFIG_FORM_FIELDS
+  );
   const [isSaving, setIsSaving] = useState(false);
   const form = useForm<EmailFormValues>({
     defaultValues: toEmailFormValues(),
@@ -135,6 +157,8 @@ const EmailSettingsForm = ({
     onNavigate({ type: 'page', page: 'email', isEditing: false });
 
   const fields = useMemo(() => {
+    const isManaged = (name: keyof EmailFormValues) =>
+      managedFields.includes(name);
     const requiredRule = (labelKey: string) => ({
       required: t('label.field-required', { field: t(labelKey) }),
     });
@@ -148,7 +172,7 @@ const EmailSettingsForm = ({
       label: t(labelKey),
       type: FieldTypes.TEXT,
       doc: docs[name],
-      props: { 'data-testid': testId },
+      props: { 'data-testid': testId, isDisabled: isManaged(name) },
       ...extra,
     });
 
@@ -176,6 +200,7 @@ const EmailSettingsForm = ({
         doc: docs.transportationStrategy,
         props: {
           'data-testid': 'transportation-strategy-input',
+          isDisabled: isManaged('transportationStrategy'),
           items: STRATEGY_OPTIONS,
         },
       } as FieldProp,
@@ -184,7 +209,10 @@ const EmailSettingsForm = ({
         label: t('label.enable-smtp-server'),
         type: FieldTypes.SWITCH,
         doc: docs.enableSmtpServer,
-        props: { 'data-testid': 'smtp-server-input' },
+        props: {
+          'data-testid': 'smtp-server-input',
+          isDisabled: isManaged('enableSmtpServer'),
+        },
       } as FieldProp,
       senderMail: textField(
         'senderMail',
@@ -219,14 +247,14 @@ const EmailSettingsForm = ({
         'support-url-input'
       ),
     };
-  }, [docs, t]);
+  }, [docs, managedFields, t]);
 
   const handleSubmit = async (values: EmailFormValues) => {
     setIsSaving(true);
     try {
       await updateSettingsConfig({
         config_type: SettingType.EmailConfiguration,
-        config_value: toSmtpSettings(values, config),
+        config_value: toSmtpSettings(values, config, managedPaths),
       });
       showSuccessToast(
         t('server.update-entity-success', {
@@ -257,11 +285,17 @@ const EmailSettingsForm = ({
   return (
     <SettingsFormLayout
       form={form}
+      isSaveDisabled={isFullyManaged}
       isSaving={isSaving}
       showHint={showHint}
       testId="email-config-form"
       onCancel={backToView}
       onSubmit={handleSubmit}>
+      <SettingsSourceBanner
+        sources={sources}
+        onAdopted={reload}
+        onRefetch={refetchSources}
+      />
       <SettingsFormSection title={t('label.server')}>
         {getField(fields.serverEndpoint)}
         {getField(fields.serverPort)}

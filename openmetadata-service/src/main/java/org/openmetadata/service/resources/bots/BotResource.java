@@ -51,6 +51,7 @@ import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.api.data.RestoreEntity;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
@@ -69,6 +70,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.seeding.EssentialSeeds;
 import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.util.UserUtil;
@@ -100,7 +102,11 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     EssentialSeeds essentialSeeds = EssentialSeeds.getInstance();
-    String domain = SecurityUtil.getDomain(config);
+    // Bots get the domain of the effective (stored) authorizer, which an admin may have changed.
+    AuthorizerConfiguration authorizer = SecurityConfigurationManager.getCurrentAuthzConfig();
+    String domain =
+        SecurityUtil.getDomain(
+            authorizer == null ? config.getAuthorizerConfiguration() : authorizer);
     UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     List<User> botUsers = userRepository.getEntitiesFromSeedData(BOT_USER_SEED_PATH);
     List<Bot> bots = repository.getEntitiesFromSeedData(BOT_SEED_PATH);

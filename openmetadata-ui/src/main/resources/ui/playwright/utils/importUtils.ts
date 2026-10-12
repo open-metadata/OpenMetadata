@@ -669,7 +669,7 @@ export const fillCertificationDetails = async (
   await openActiveCellPopover(
     page,
     option,
-    '/api/v1/tags?parent=Certification*'
+    '/api/v1/search/query?*index=tag&*'
   );
 
   // Picking a row commits it and closes the editor.

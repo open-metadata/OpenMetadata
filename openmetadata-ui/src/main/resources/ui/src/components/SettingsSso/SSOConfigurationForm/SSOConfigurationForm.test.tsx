@@ -19,6 +19,8 @@ import {
   within,
 } from '@testing-library/react';
 import { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { applyPatch } from 'fast-json-patch';
+import { get } from 'lodash';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { VALIDATION_STATUS } from '../../../constants/SSO.constant';
@@ -2217,6 +2219,321 @@ describe('SSOConfigurationForm', () => {
       const docPanel = screen.getByTestId('sso-doc-panel');
 
       expect(docPanel).toBeInTheDocument();
+    });
+  });
+
+  describe('Deployment-managed fields and masked secrets', () => {
+    // What GET /system/security/config returns for a secret: the mask, never the value.
+    const MASK = '*********';
+
+    const authorizerConfiguration = {
+      adminPrincipals: ['admin@example.com'],
+      className: 'org.openmetadata.service.security.DefaultAuthorizer',
+      containerRequestFilter: 'org.openmetadata.service.security.JwtFilter',
+      enableSecureSocketConnection: false,
+      enforcePrincipalDomain: false,
+      principalDomain: '',
+    } as AuthorizerConfiguration;
+
+    const googleConfidentialConfig = {
+      authenticationConfiguration: {
+        provider: AuthProvider.Google,
+        authority: 'https://accounts.google.com',
+        callbackUrl: 'https://app.example.com/callback',
+        clientId: 'google-client-id',
+        clientType: ClientType.Confidential,
+        providerName: 'Google',
+        jwtPrincipalClaims: ['email'],
+        publicKeyUrls: ['https://www.googleapis.com/oauth2/v3/certs'],
+        oidcConfiguration: {
+          id: 'google-client-id',
+          secret: MASK,
+          discoveryUri:
+            'https://accounts.google.com/.well-known/openid-configuration',
+        },
+      } as AuthenticationConfiguration,
+      authorizerConfiguration,
+    } as SecurityConfiguration;
+
+    const samlConfig = {
+      authenticationConfiguration: {
+        provider: AuthProvider.Saml,
+        providerName: 'SAML',
+        authority: 'https://idp.example.com',
+        callbackUrl: 'https://app.example.com/callback',
+        jwtPrincipalClaims: ['email'],
+        publicKeyUrls: [],
+        enableSelfSignup: false,
+        samlConfiguration: {
+          debugMode: false,
+          idp: {
+            entityId: 'https://idp.example.com/entity',
+            ssoLoginUrl: 'https://idp.example.com/sso',
+            idpX509Certificate: 'CERT',
+            authorityUrl: 'https://idp.example.com',
+          },
+          sp: {
+            entityId: 'https://app.example.com',
+            acs: 'https://app.example.com/callback',
+            callback: 'https://app.example.com/callback',
+            spX509Certificate: 'SP_CERT',
+            spPrivateKey: MASK,
+          },
+          security: {
+            strictMode: false,
+            tokenValidity: 3600,
+            keyStorePassword: MASK,
+          },
+        },
+      } as unknown as AuthenticationConfiguration,
+      authorizerConfiguration,
+    } as SecurityConfiguration;
+
+    const ldapConfig = {
+      authenticationConfiguration: {
+        provider: AuthProvider.LDAP,
+        providerName: 'LDAP',
+        authority: '',
+        callbackUrl: '',
+        jwtPrincipalClaims: ['email'],
+        publicKeyUrls: [],
+        enableSelfSignup: false,
+        sessionExpiry: 604800,
+        ldapConfiguration: {
+          host: 'ldap.example.com',
+          port: 636,
+          dnAdminPrincipal: 'cn=admin,dc=example,dc=com',
+          dnAdminPassword: MASK,
+          userBaseDN: 'ou=people,dc=example,dc=com',
+          mailAttributeName: 'mail',
+          sslEnabled: true,
+          truststoreConfigType: 'CustomTrustStore',
+          trustStoreConfig: {
+            customTrustManagerConfig: {
+              trustStoreFilePath: '/opt/truststore.jks',
+              trustStoreFilePassword: MASK,
+              trustStoreFileFormat: 'JKS',
+            },
+          },
+        },
+      } as unknown as AuthenticationConfiguration,
+      authorizerConfiguration,
+    } as SecurityConfiguration;
+
+    const fieldById = (container: HTMLElement, path: string) => {
+      const field = container.querySelector(`[id="root/${path}"]`);
+      if (!field) {
+        throw new Error(`No form field rendered for ${path}`);
+      }
+
+      return field;
+    };
+
+    const savedPatchPaths = () =>
+      mockPatchSecurityConfiguration.mock.calls[0][0].map(({ path }) => path);
+
+    beforeEach(() => {
+      mockPatchSecurityConfiguration.mockResolvedValue(
+        createAxiosResponse({} as SecurityConfiguration)
+      );
+    });
+
+    it('should disable only the fields the deployment configuration owns', async () => {
+      const { container } = renderComponent({
+        forceEditMode: true,
+        securityConfig: googleConfidentialConfig,
+        managedPaths: {
+          authenticationConfiguration: [
+            '/oidcConfiguration/id',
+            '/oidcConfiguration/discoveryUri',
+          ],
+        },
+      });
+
+      await screen.findByTestId('save-sso-configuration');
+
+      expect(
+        fieldById(container, 'authenticationConfiguration/oidcConfiguration/id')
+      ).toBeDisabled();
+      expect(
+        fieldById(
+          container,
+          'authenticationConfiguration/oidcConfiguration/discoveryUri'
+        )
+      ).toBeDisabled();
+      expect(
+        fieldById(
+          container,
+          'authenticationConfiguration/oidcConfiguration/secret'
+        )
+      ).toBeEnabled();
+      expect(screen.getByTestId('save-sso-configuration')).toBeEnabled();
+    });
+
+    it('should show the configuration without any way to change it when read-only', async () => {
+      const { container } = renderComponent({
+        forceEditMode: true,
+        isReadOnly: true,
+        securityConfig: googleConfidentialConfig,
+        managedPaths: {
+          authenticationConfiguration: ['/'],
+          authorizerConfiguration: ['/'],
+        },
+      });
+
+      await waitFor(() => {
+        expect(
+          fieldById(
+            container,
+            'authenticationConfiguration/oidcConfiguration/secret'
+          )
+        ).toBeDisabled();
+      });
+
+      expect(
+        screen.queryByTestId('save-sso-configuration')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('cancel-sso-configuration')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('test-login-sso-configuration')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should hide the SAML metadata upload when the deployment owns the IdP fields', async () => {
+      const { unmount } = renderComponent({
+        forceEditMode: true,
+        securityConfig: samlConfig,
+      });
+
+      expect(await screen.findByTestId('file-uploader')).toBeInTheDocument();
+
+      unmount();
+      renderComponent({
+        forceEditMode: true,
+        securityConfig: samlConfig,
+        managedPaths: {
+          authenticationConfiguration: ['/samlConfiguration/idp/entityId'],
+        },
+      });
+
+      await screen.findByTestId('save-sso-configuration');
+
+      expect(screen.queryByTestId('file-uploader')).not.toBeInTheDocument();
+    });
+
+    it('should save a SAML edit without sending the masked private key or keystore password', async () => {
+      const { container } = renderComponent({
+        forceEditMode: true,
+        securityConfig: samlConfig,
+      });
+      await screen.findByTestId('save-sso-configuration');
+
+      fireEvent.change(
+        fieldById(
+          container,
+          'authenticationConfiguration/samlConfiguration/security/tokenValidity'
+        ),
+        { target: { value: '7200' } }
+      );
+      fireEvent.click(screen.getByTestId('save-sso-configuration'));
+
+      await waitFor(() => {
+        expect(mockPatchSecurityConfiguration).toHaveBeenCalledTimes(1);
+      });
+
+      expect(savedPatchPaths()).toContain(
+        '/authenticationConfiguration/samlConfiguration/security/tokenValidity'
+      );
+      expect(savedPatchPaths()).not.toEqual(
+        expect.arrayContaining([
+          '/authenticationConfiguration/samlConfiguration/sp/spPrivateKey',
+          '/authenticationConfiguration/samlConfiguration/security/keyStorePassword',
+        ])
+      );
+      expect(
+        savedPatchPaths().filter((path: string) =>
+          /spPrivateKey|keyStorePassword/.test(path)
+        )
+      ).toEqual([]);
+    });
+
+    it('should save an LDAP edit without sending the masked admin or truststore password', async () => {
+      const { container } = renderComponent({
+        forceEditMode: true,
+        securityConfig: ldapConfig,
+      });
+      await screen.findByTestId('save-sso-configuration');
+
+      fireEvent.change(
+        fieldById(container, 'authenticationConfiguration/sessionExpiry'),
+        { target: { value: '7200' } }
+      );
+      fireEvent.click(screen.getByTestId('save-sso-configuration'));
+
+      await waitFor(() => {
+        expect(mockPatchSecurityConfiguration).toHaveBeenCalledTimes(1);
+      });
+
+      expect(savedPatchPaths()).toContain(
+        '/authenticationConfiguration/sessionExpiry'
+      );
+      expect(
+        savedPatchPaths().filter((path: string) =>
+          /dnAdminPassword|trustStoreFilePassword/.test(path)
+        )
+      ).toEqual([]);
+    });
+
+    it('should leave every deployment-owned field as stored when saving another edit', async () => {
+      // The form fills schema defaults (false, []) into truststore fields the stored value lacks;
+      // the server rejects a change to any field the deployment owns.
+      const managedLeaves = [
+        '/ldapConfiguration/trustStoreConfig/customTrustManagerConfig/verifyHostname',
+        '/ldapConfiguration/trustStoreConfig/customTrustManagerConfig/examineValidityDates',
+        '/ldapConfiguration/trustStoreConfig/hostNameConfig/allowWildCards',
+        '/ldapConfiguration/trustStoreConfig/hostNameConfig/acceptableHostNames',
+        '/ldapConfiguration/trustStoreConfig/jvmDefaultConfig/verifyHostname',
+        '/ldapConfiguration/trustStoreConfig/trustAllConfig/examineValidityDates',
+        '/ldapConfiguration/dnAdminPassword',
+      ];
+      const { container } = renderComponent({
+        forceEditMode: true,
+        securityConfig: ldapConfig,
+        managedPaths: { authenticationConfiguration: managedLeaves },
+      });
+      await screen.findByTestId('save-sso-configuration');
+
+      fireEvent.change(
+        fieldById(container, 'authenticationConfiguration/sessionExpiry'),
+        { target: { value: '7200' } }
+      );
+      fireEvent.click(screen.getByTestId('save-sso-configuration'));
+
+      await waitFor(() => {
+        expect(mockPatchSecurityConfiguration).toHaveBeenCalledTimes(1);
+      });
+
+      const stored = structuredClone(ldapConfig);
+      const { newDocument } = applyPatch(
+        stored,
+        mockPatchSecurityConfiguration.mock.calls[0][0]
+      );
+      const leafValue = (document: SecurityConfiguration, pointer: string) =>
+        get(document.authenticationConfiguration, pointer.split('/').slice(1));
+
+      for (const pointer of managedLeaves) {
+        expect([pointer, leafValue(newDocument, pointer)]).toEqual([
+          pointer,
+          leafValue(ldapConfig, pointer),
+        ]);
+      }
+
+      expect(newDocument.authenticationConfiguration).toHaveProperty(
+        'sessionExpiry',
+        7200
+      );
     });
   });
 });

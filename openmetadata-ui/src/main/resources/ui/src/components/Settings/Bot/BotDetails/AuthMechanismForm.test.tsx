@@ -28,10 +28,12 @@ import AuthMechanismForm from './AuthMechanismForm';
 const { Option } = Select;
 
 const mockUpdateSettingsConfig = jest.fn();
+const mockPatchSettingsConfig = jest.fn();
 const mockShowErrorToast = jest.fn();
 
 jest.mock('../../../../rest/settingConfigAPI', () => ({
   updateSettingsConfig: jest.fn((...args) => mockUpdateSettingsConfig(...args)),
+  patchSettingsConfig: jest.fn((...args) => mockPatchSettingsConfig(...args)),
 }));
 
 jest.mock('../../../../utils/ToastUtils', () => ({
@@ -92,6 +94,7 @@ describe('AuthMechanismForm', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockUpdateSettingsConfig.mockResolvedValue({});
+    mockPatchSettingsConfig.mockResolvedValue({});
   });
 
   describe('Bot Form Rendering', () => {
@@ -194,11 +197,37 @@ describe('AuthMechanismForm', () => {
       expect(screen.queryByTestId('token-expiry')).not.toBeInTheDocument();
     });
 
-    it('should call updateSettingsConfig and onSave when generating SCIM token', async () => {
+    it('should patch only the enabled flag and call onSave when generating SCIM token', async () => {
       render(<AuthMechanismForm {...scimBotProps} />);
 
       const generateButton = screen.getByTestId('generate-scim-token');
       generateButton.click();
+
+      await waitFor(() => {
+        expect(mockPatchSettingsConfig).toHaveBeenCalledWith(
+          SettingType.ScimConfiguration,
+          [{ op: 'add', path: '/enabled', value: true }]
+        );
+      });
+
+      // A PUT would replace the whole setting and drop the identity provider an operator set.
+      expect(mockUpdateSettingsConfig).not.toHaveBeenCalled();
+      expect(mockOnSave).toHaveBeenCalledWith({
+        authType: AuthType.Jwt,
+        config: {
+          JWTTokenExpiry: JWTTokenExpiry.Unlimited,
+        },
+      });
+    });
+
+    it('should create the SCIM setting when none is stored yet', async () => {
+      mockPatchSettingsConfig.mockRejectedValueOnce({
+        response: { status: 404 },
+      });
+
+      render(<AuthMechanismForm {...scimBotProps} />);
+
+      screen.getByTestId('generate-scim-token').click();
 
       await waitFor(() => {
         expect(mockUpdateSettingsConfig).toHaveBeenCalledWith({
@@ -210,17 +239,20 @@ describe('AuthMechanismForm', () => {
         });
       });
 
-      expect(mockOnSave).toHaveBeenCalledWith({
-        authType: AuthType.Jwt,
-        config: {
-          JWTTokenExpiry: JWTTokenExpiry.Unlimited,
-        },
-      });
+      expect(mockShowErrorToast).not.toHaveBeenCalled();
+      expect(mockOnSave).toHaveBeenCalled();
     });
 
     it('should show error toast when SCIM config update fails', async () => {
-      const mockError = new Error('Failed to update SCIM config');
-      mockUpdateSettingsConfig.mockRejectedValueOnce(mockError);
+      const mockError = {
+        response: {
+          status: 409,
+          data: {
+            message: 'scimConfiguration is managed by SCIM_CONFIG_SOURCE',
+          },
+        },
+      };
+      mockPatchSettingsConfig.mockRejectedValueOnce(mockError);
 
       render(<AuthMechanismForm {...scimBotProps} />);
 
@@ -230,11 +262,13 @@ describe('AuthMechanismForm', () => {
       await waitFor(() => {
         expect(mockShowErrorToast).toHaveBeenCalledWith(mockError);
       });
+
+      expect(mockUpdateSettingsConfig).not.toHaveBeenCalled();
     });
 
     it('should call onSave even if SCIM config update fails', async () => {
       const mockError = new Error('Failed to update SCIM config');
-      mockUpdateSettingsConfig.mockRejectedValueOnce(mockError);
+      mockPatchSettingsConfig.mockRejectedValueOnce(mockError);
 
       render(<AuthMechanismForm {...scimBotProps} />);
 
