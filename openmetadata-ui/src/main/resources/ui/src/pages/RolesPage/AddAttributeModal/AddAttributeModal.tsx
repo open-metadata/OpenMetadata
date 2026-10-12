@@ -35,7 +35,6 @@ import {
   renderHighlightedText,
 } from '../../../utils/EntitySearchUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import './add-attribute-modal.less';
 
 interface Props {
   type: EntityType;
@@ -148,56 +147,59 @@ const AddAttributeModal: FC<Props> = ({
       {isLoading ? (
         <Loader />
       ) : (
-        <div className="attribute-modal-body">
-          <Grid className="layout-row layout-grid ant-search-box-row">
-            <Grid.Item className="layout-column" span={24}>
-              <Input
-                data-testid="search-input"
-                placeholder={t('label.search-entity', {
-                  entity: type,
-                })}
-                prefix={<SearchOutlined style={{ color: '#37352F4D' }} />}
-                onChange={(e) => handleSearch(e.target.value)}
-              />
-            </Grid.Item>
-          </Grid>
+        <>
+          <Input
+            data-testid="search-input"
+            placeholder={t('label.search-entity', {
+              entity: type,
+            })}
+            prefix={<SearchOutlined style={{ color: '#37352F4D' }} />}
+            onChange={(e) => handleSearch(e.target.value)}
+          />
           {isEmpty(searchedData) ? (
             <ErrorPlaceHolder
               className="mt-0-important p-y-lg"
               type={ERROR_PLACEHOLDER_TYPE.FILTER}
             />
           ) : (
-            searchedData.map((option) => (
-              <Grid
-                className={`layout-row layout-grid ${classNames({
-                  selected: selectedValues.includes(option.id),
-                })}`}
-                data-testid="policy-row"
-                key={option.id}
-                style={{ ...getLayoutGutter(16, 16) }}
-                onClick={() => handleValueSelect(option.id)}>
-                <Grid.Item className="layout-column" span={6}>
-                  {renderHighlightedText(
-                    highlightSearchText(getEntityName(option), searchTerm)
+            <div>
+              {searchedData.map((option) => (
+                <Grid
+                  className={classNames(
+                    'layout-row layout-grid tw:cursor-pointer tw:p-4',
+                    {
+                      'tw:bg-utility-brand-50': selectedValues.includes(
+                        option.id
+                      ),
+                    }
                   )}
-                </Grid.Item>
-                <Grid.Item className="layout-column" span={16}>
-                  <RichTextEditorPreviewerV1
-                    markdown={highlightSearchText(
-                      option.description ?? '',
-                      searchTerm
+                  data-testid="policy-row"
+                  key={option.id}
+                  style={{ ...getLayoutGutter(16, 16) }}
+                  onClick={() => handleValueSelect(option.id)}>
+                  <Grid.Item className="layout-column" span={6}>
+                    {renderHighlightedText(
+                      highlightSearchText(getEntityName(option), searchTerm)
                     )}
-                  />
-                </Grid.Item>
-                <Grid.Item className="layout-column" span={2}>
-                  {selectedValues.includes(option.id) && (
-                    <CheckOutlined className="text-primary" />
-                  )}
-                </Grid.Item>
-              </Grid>
-            ))
+                  </Grid.Item>
+                  <Grid.Item className="layout-column" span={16}>
+                    <RichTextEditorPreviewerV1
+                      markdown={highlightSearchText(
+                        option.description ?? '',
+                        searchTerm
+                      )}
+                    />
+                  </Grid.Item>
+                  <Grid.Item className="layout-column" span={2}>
+                    {selectedValues.includes(option.id) && (
+                      <CheckOutlined className="text-primary" />
+                    )}
+                  </Grid.Item>
+                </Grid>
+              ))}
+            </div>
           )}
-        </div>
+        </>
       )}
     </SimpleModal>
   );

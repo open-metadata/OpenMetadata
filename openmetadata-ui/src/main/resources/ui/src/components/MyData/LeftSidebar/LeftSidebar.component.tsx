@@ -171,11 +171,10 @@ const LeftSidebar = () => {
           isOpen
           footer={
             <>
-              <Button className="confirm-btn" onClick={hideConfirmLogoutModal}>
+              <Button onClick={hideConfirmLogoutModal}>
                 {t('label.cancel')}
               </Button>
               <Button
-                className="confirm-btn"
                 data-testid="confirm-logout"
                 type="primary"
                 onClick={onLogoutHandler}>
