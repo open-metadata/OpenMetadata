@@ -69,8 +69,8 @@ const AlertAiDestinationItem = ({
   isDestinationStatusLoading,
   name,
   onChange,
+  recipientCategories,
   remove,
-  selectedSource,
   validationErrors,
   value,
 }: AlertAiDestinationItemProps) => {
@@ -89,19 +89,24 @@ const AlertAiDestinationItem = ({
       getValidationPath('destinations', name, 'downstreamDepth')
     ];
   const destinationStatusDetails = useMemo(() => {
+    const statusDestination = destinationsWithStatus?.[name];
+
+    if (!statusDestination) {
+      return undefined;
+    }
     const { category, config, type } = destination;
 
-    return destinationsWithStatus?.find((statusDestination) =>
-      isEqual(
-        { category, config: omitBy(config, isUndefined), type },
-        {
-          category: statusDestination.category,
-          config: normalizeDestinationConfig(statusDestination.config),
-          type: statusDestination.type,
-        }
-      )
-    )?.statusDetails;
-  }, [destination, destinationsWithStatus]);
+    return isEqual(
+      { category, config: omitBy(config, isUndefined), type },
+      {
+        category: statusDestination.category,
+        config: normalizeDestinationConfig(statusDestination.config),
+        type: statusDestination.type,
+      }
+    )
+      ? statusDestination.statusDetails
+      : undefined;
+  }, [destination, destinationsWithStatus, name]);
   const isSuccessStatus = destinationStatusDetails?.status === 'Success';
   const destinationStatusLabel = isSuccessStatus
     ? t('label.success')
@@ -116,8 +121,13 @@ const AlertAiDestinationItem = ({
     [destinationType]
   );
   const destinationCategoryItems = useMemo(
-    () => getDestinationCategoryItems(t, selectedSource),
-    [selectedSource, t]
+    () =>
+      getDestinationCategoryItems(
+        t,
+        recipientCategories,
+        isInternal ? destinationType : undefined
+      ),
+    [recipientCategories, isInternal, destinationType, t]
   );
 
   /** Rebuilds destination category/type fields to match OSS destination behavior. */
@@ -311,7 +321,7 @@ const AlertAiDestinationItem = ({
       destinationType === SubscriptionCategory.Owners &&
       destination.type !== SubscriptionType.Email;
 
-    const title = isOwnerNonEmailDestination
+    const message = isOwnerNonEmailDestination
       ? t('message.destination-owner-selection-warning', {
           subscriptionCategory: destinationType,
           subscriptionType: destination.type,
@@ -322,12 +332,15 @@ const AlertAiDestinationItem = ({
         });
 
     return (
+      // A one-line notice reads as body copy with a small icon; as a bold
+      // title with the md solid-in-dark icon it outweighs the form fields.
       <Alert
         closable
         className={ALERT_AI_FORM_CLASS_NAMES.destinationAlert}
-        title={title}
-        variant="warning"
-      />
+        iconSize="sm"
+        variant="warning">
+        {message}
+      </Alert>
     );
   };
 

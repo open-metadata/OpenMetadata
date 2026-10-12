@@ -390,7 +390,7 @@ test('Classification Page', async ({ page }) => {
 
     await page.click('[data-testid="request-entity-tags"]');
 
-    await page.click('[data-testid="select-assignee"]');
+    await page.click('[data-testid="select-assignee"] input');
     const assigneeResponse = page.waitForResponse(
       '/api/v1/search/query?q=*&index=user*team*'
     );

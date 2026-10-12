@@ -27,8 +27,6 @@ import { DateTime } from 'luxon';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
-import { ReactComponent as StoryLaneIcon } from '../../assets/svg/ic_storylane.svg';
-import { ReactComponent as VideoIcon } from '../../assets/svg/ic_video.svg';
 import { DeleteModal } from '../../components/common/DeleteModal/DeleteModal';
 import Loader from '../../components/common/Loader/Loader';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
@@ -41,6 +39,7 @@ import {
 } from '../../components/Learning/Learning.interface';
 import { LearningResourceCard } from '../../components/Learning/LearningResourceCard/LearningResourceCard.component';
 import { ResourcePlayerModal } from '../../components/Learning/ResourcePlayer/ResourcePlayerModal.component';
+import { ResourceTypeIcon } from '../../components/Learning/ResourceTypeIcon/ResourceTypeIcon';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
   PAGE_SIZE_BASE,
@@ -68,26 +67,6 @@ import { LearningResourceForm } from './LearningResourceForm.component';
 
 const CARD_GRID_STYLE: React.CSSProperties = {
   gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-};
-
-const RESOURCE_TYPE_ICONS: Record<
-  string,
-  React.FunctionComponent<React.SVGProps<SVGSVGElement>>
-> = {
-  Video: VideoIcon,
-  Storylane: StoryLaneIcon,
-};
-
-const getResourceTypeIcon = (type: string) => {
-  const Icon = RESOURCE_TYPE_ICONS[type] ?? VideoIcon;
-
-  return (
-    <Box
-      align="center"
-      className="tw:size-8 tw:shrink-0 tw:justify-center tw:rounded-md">
-      <Icon height={24} width={24} />
-    </Box>
-  );
 };
 
 const getCategoryLabel = (category: string) =>
@@ -270,7 +249,11 @@ export const LearningResourcesPage: React.FC = () => {
       case 'name':
         return (
           <Box align="center" className="tw:min-w-0" gap={2}>
-            {getResourceTypeIcon(record.resourceType)}
+            <Box
+              align="center"
+              className="tw:size-8 tw:shrink-0 tw:justify-center tw:rounded-md">
+              <ResourceTypeIcon resourceType={record.resourceType} />
+            </Box>
             <Typography
               ellipsis
               as="span"

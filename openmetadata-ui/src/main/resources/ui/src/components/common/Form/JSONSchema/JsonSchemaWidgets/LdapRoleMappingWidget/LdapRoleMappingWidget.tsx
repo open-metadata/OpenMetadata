@@ -12,9 +12,9 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Grid, Typography } from '@openmetadata/ui-core-components';
+import { Box, Card, Grid, Typography } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
-import { Button, Card, Input, Select, Space } from 'antd';
+import { Button, Input, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, uniqBy } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -273,7 +273,14 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
 
   return (
     <div className="ldap-role-mapping-widget" data-testid={id}>
-      <Space direction="vertical" size="small" style={{ width: '100%' }}>
+      <Box
+        inline
+        align="stretch"
+        className="layout-space"
+        direction="col"
+        gap={2}
+        itemClassName="layout-space-item"
+        style={{ width: '100%' }}>
         {mappings.length > 0 && (
           <Grid className="tw:mb-1" gap="2">
             <Grid.Item span={11}>
@@ -295,7 +302,8 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
             className="mapping-card"
             data-testid={`mapping-card-${mapping.id}`}
             key={mapping.id}
-            size="small">
+            size="sm"
+            variant="ghost">
             <Grid gap="2">
               <Grid.Item span={11}>
                 <Input
@@ -371,7 +379,7 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
             {t('message.no-ldap-role-mappings')}
           </Typography>
         )}
-      </Space>
+      </Box>
     </div>
   );
 };

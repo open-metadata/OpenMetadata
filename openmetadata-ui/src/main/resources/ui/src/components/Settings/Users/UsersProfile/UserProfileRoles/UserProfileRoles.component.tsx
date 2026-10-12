@@ -11,8 +11,14 @@
  *  limitations under the License.
  */
 
-import { Divider, Typography } from '@openmetadata/ui-core-components';
-import { Button, Popover, Select, Tooltip } from 'antd';
+import {
+  ButtonUtility,
+  Divider,
+  Popover,
+  PopoverTrigger,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Button, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, toLower, uniqBy } from 'lodash';
 import {
@@ -262,110 +268,108 @@ const UserProfileRoles = ({
           <Typography className="text-sm font-medium">
             {t('label.role-plural')}
           </Typography>
-          <Popover
-            destroyTooltipOnHide
-            content={
-              <div
-                className="user-profile-edit-popover-card relative"
-                data-testid="user-profile-edit-popover"
-                style={{
-                  height: `${popoverHeight}px`,
-                }}>
-                <div className="d-flex justify-start items-center gap-2 m-b-sm">
-                  <div className="d-flex flex-start items-center">
-                    <RoleIcon height={16} />
-                  </div>
-                  <Typography className="user-profile-edit-popover-card-title">
-                    {t('label.role-plural')}
-                  </Typography>
-                </div>
-
-                <div
-                  className="border p-2 bg-gray-100 rounded-md"
-                  style={{
-                    borderRadius: '5px',
-                  }}>
-                  <Select
-                    allowClear
-                    showSearch
-                    aria-label="Roles"
-                    className="w-full"
-                    data-testid="profile-edit-roles-select"
-                    dropdownMatchSelectWidth={false}
-                    filterOption={false}
-                    loading={isRolesLoading}
-                    maxTagCount={3}
-                    maxTagPlaceholder={(omittedValues) =>
-                      renderMaxTagPlaceholder(omittedValues.length, t)
-                    }
-                    mode="multiple"
-                    open={isDropdownOpen}
-                    options={useRolesOption}
-                    popupClassName="roles-custom-dropdown-class"
-                    ref={dropdownRef}
-                    tagRender={TagRenderer}
-                    value={selectedRoles}
-                    onChange={setSelectedRoles}
-                    onDropdownVisibleChange={handleDropdownChange}
-                    onSearch={debouncedFetchRoles}
-                  />
-                </div>
-
-                <div className="flex justify-end gap-2 mt-4">
-                  <Button
-                    className="profile-edit-save"
-                    data-testid="user-profile-edit-roles-cancel-button"
-                    icon={<ClosePopoverIcon height={24} />}
-                    size="small"
-                    style={{
-                      width: '30px',
-                      height: '30px',
-                      background: '#0950C5',
-                      position: 'absolute',
-                      bottom: '0px',
-                      right: '38px',
-                    }}
-                    type="primary"
-                    onClick={handleCloseEditRole}
-                  />
-                  <Button
-                    className="profile-edit-cancel"
-                    data-testid="user-profile-edit-roles-save-button"
-                    icon={<SavePopoverIcon height={24} />}
-                    loading={isLoading}
-                    size="small"
-                    style={{
-                      width: '30px',
-                      height: '30px',
-                      background: '#0950C5',
-                      position: 'absolute',
-                      bottom: '0px',
-                    }}
-                    type="primary"
-                    onClick={handleRolesSave}
-                  />
-                </div>
-              </div>
-            }
-            open={isRolesEdit}
-            overlayClassName="profile-edit-popover-card"
-            placement="right"
-            trigger="click"
-            onOpenChange={setIsRolesEdit}>
-            {isAdminUser && (
-              <Tooltip
-                title={t('label.edit-entity', {
+          {isAdminUser && (
+            <PopoverTrigger isOpen={isRolesEdit} onOpenChange={setIsRolesEdit}>
+              <ButtonUtility
+                color="tertiary"
+                data-testid="edit-roles-button"
+                icon={<EditIcon height={16} width={16} />}
+                size="xs"
+                tooltip={t('label.edit-entity', {
                   entity: t('label.role-plural'),
-                })}>
-                <EditIcon
-                  className="cursor-pointer align-middle"
-                  data-testid="edit-roles-button"
-                  height={16}
-                  onClick={() => setIsRolesEdit(true)}
-                />
-              </Tooltip>
-            )}
-          </Popover>
+                })}
+              />
+              <Popover
+                className="profile-edit-popover-card"
+                containerClassName="tw:w-95 tw:p-5"
+                placement="right">
+                <div
+                  className="user-profile-edit-popover-card relative"
+                  data-testid="user-profile-edit-popover"
+                  style={{
+                    height: `${popoverHeight}px`,
+                  }}>
+                  <div className="d-flex justify-start items-center gap-2 m-b-sm">
+                    <div className="d-flex flex-start items-center">
+                      <RoleIcon height={16} />
+                    </div>
+                    <Typography className="user-profile-edit-popover-card-title">
+                      {t('label.role-plural')}
+                    </Typography>
+                  </div>
+
+                  <div
+                    className="border p-2 bg-gray-100 rounded-md"
+                    style={{
+                      borderRadius: '5px',
+                    }}>
+                    <Select
+                      allowClear
+                      showSearch
+                      aria-label="Roles"
+                      className="w-full"
+                      data-testid="profile-edit-roles-select"
+                      dropdownMatchSelectWidth={false}
+                      filterOption={false}
+                      getPopupContainer={(trigger) =>
+                        trigger.parentElement ?? document.body
+                      }
+                      loading={isRolesLoading}
+                      maxTagCount={3}
+                      maxTagPlaceholder={(omittedValues) =>
+                        renderMaxTagPlaceholder(omittedValues.length, t)
+                      }
+                      mode="multiple"
+                      open={isDropdownOpen}
+                      options={useRolesOption}
+                      popupClassName="roles-custom-dropdown-class"
+                      ref={dropdownRef}
+                      tagRender={TagRenderer}
+                      value={selectedRoles}
+                      onChange={setSelectedRoles}
+                      onDropdownVisibleChange={handleDropdownChange}
+                      onSearch={debouncedFetchRoles}
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-2 mt-4">
+                    <Button
+                      className="profile-edit-save"
+                      data-testid="user-profile-edit-roles-cancel-button"
+                      icon={<ClosePopoverIcon height={24} />}
+                      size="small"
+                      style={{
+                        width: '30px',
+                        height: '30px',
+                        background: '#0950C5',
+                        position: 'absolute',
+                        bottom: '0px',
+                        right: '38px',
+                      }}
+                      type="primary"
+                      onClick={handleCloseEditRole}
+                    />
+                    <Button
+                      className="profile-edit-cancel"
+                      data-testid="user-profile-edit-roles-save-button"
+                      icon={<SavePopoverIcon height={24} />}
+                      loading={isLoading}
+                      size="small"
+                      style={{
+                        width: '30px',
+                        height: '30px',
+                        background: '#0950C5',
+                        position: 'absolute',
+                        bottom: '0px',
+                      }}
+                      type="primary"
+                      onClick={handleRolesSave}
+                    />
+                  </div>
+                </div>
+              </Popover>
+            </PopoverTrigger>
+          )}
         </div>
       </div>
       <div className="user-profile-card-body d-flex justify-start gap-2">

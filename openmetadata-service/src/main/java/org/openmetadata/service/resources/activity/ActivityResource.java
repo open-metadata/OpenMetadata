@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.activity;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -357,6 +359,48 @@ public class ActivityResource {
           @QueryParam("limit")
           int limit) {
     return activityStreamRepository.getFollowingFeed(securityContext, domain, days, limit);
+  }
+
+  @GET
+  @Path("/mentions")
+  @Operation(
+      operationId = "getMentionsActivityFeed",
+      summary = "Get activity whose replies mention the current user",
+      description =
+          "Get activity events with a reply that mentions the current user or one of their teams, "
+              + "optionally only those about one entity.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Activity feed of mentions",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ActivityEventList.class)))
+      })
+  public ResultList<ActivityEvent> getMentionsFeed(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Filter by domain FQN") @QueryParam("domain") String domain,
+      @Parameter(description = "Only activity about this entity (EntityLink string)")
+          @QueryParam("entityLink")
+          String entityLink,
+      @Parameter(description = "Number of days to look back")
+          @DefaultValue("7")
+          @Min(1)
+          @Max(30)
+          @QueryParam("days")
+          int days,
+      @Parameter(description = "Maximum number of events to return")
+          @DefaultValue("50")
+          @Min(1)
+          @Max(200)
+          @QueryParam("limit")
+          int limit) {
+    if (!nullOrEmpty(entityLink)) {
+      authorizeEntityLinkView(securityContext, entityLink);
+    }
+    return activityStreamRepository.getMentionsFeed(
+        securityContext, domain, entityLink, days, limit);
   }
 
   @GET

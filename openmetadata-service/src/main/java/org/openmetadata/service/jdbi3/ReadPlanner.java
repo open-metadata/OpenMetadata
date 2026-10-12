@@ -36,7 +36,7 @@ final class ReadPlanner {
       boolean supportsVotes) {}
 
   ReadPlanBuilder newBuilder(
-      EntityInterface entity,
+      EntityInterface<?> entity,
       Fields fields,
       RelationIncludes relationIncludes,
       ReadPlannerConfig config) {
@@ -108,7 +108,7 @@ final class ReadPlanner {
   }
 
   ReadPlan build(
-      EntityInterface entity,
+      EntityInterface<?> entity,
       Fields fields,
       RelationIncludes relationIncludes,
       ReadPlannerConfig config) {

@@ -86,7 +86,7 @@ export const DomainExpertWidget = () => {
     !isVersionView && editOwnerPermission ? (
       <UserSelectableList
         hasPermission
-        popoverProps={{ placement: 'topLeft' }}
+        popoverProps={{ placement: 'top start' }}
         selectedUsers={domain.experts ?? []}
         onUpdate={handleExpertsUpdate}>
         {isEmpty(domain.experts) ? (

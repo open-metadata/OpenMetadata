@@ -23,7 +23,6 @@ import {
   getApiContext,
   redirectToHomePage,
   uuid,
-  waitForAntdPopupToSettle,
 } from './common';
 import { setDomain } from './domainPicker';
 import {
@@ -847,9 +846,8 @@ export const selectAssetsFilterFromDropdown = async (
   filterLabel: string
 ) => {
   await page.getByTestId('asset-filter-button').click();
-  const menuItem = page.getByRole('menuitem', { name: filterLabel });
+  const menuItem = page.getByRole('menuitemcheckbox', { name: filterLabel });
   await expect(menuItem).toBeVisible();
-  await waitForAntdPopupToSettle(page);
   await menuItem.click();
 };
 

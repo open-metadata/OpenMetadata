@@ -115,6 +115,13 @@ public class GlossaryRdfImporter {
   private static final String RDF = "http://www.w3.org/1999/02/22-rdf-syntax-ns#";
   private static final String OWL = "http://www.w3.org/2002/07/owl#";
   private static final String DCT = "http://purl.org/dc/terms/";
+  private static final String XSD = "http://www.w3.org/2001/XMLSchema#";
+  private static final String OM_ONTOLOGY = "https://open-metadata.org/ontology/";
+  // The ontology export declares the vocabulary it uses (skos:Concept and om:GlossaryTerm as
+  // classes, om:fullyQualifiedName as a data property); re-importing an export must not turn those
+  // declarations into terms or attributes.
+  private static final Set<String> VOCABULARY_NAMESPACES =
+      Set.of(SKOS, RDFS, RDF, OWL, XSD, OM_ONTOLOGY);
   private static final String SKOS_RELATED = SKOS + "related";
   private static final String SKOS_EXACT_MATCH = SKOS + "exactMatch";
   private static final String SKOS_CLOSE_MATCH = SKOS + "closeMatch";
@@ -454,10 +461,15 @@ public class GlossaryRdfImporter {
     var resources = model.listResourcesWithProperty(model.getProperty(RDF, "type"), type);
     while (resources.hasNext()) {
       Resource resource = resources.next();
-      if (resource.isURIResource() && !byIri.containsKey(resource.getURI())) {
+      if (isImportableIri(resource) && !byIri.containsKey(resource.getURI())) {
         byIri.put(resource.getURI(), toTermIntent(resource, model));
       }
     }
+  }
+
+  private static boolean isImportableIri(Resource resource) {
+    return resource.isURIResource()
+        && VOCABULARY_NAMESPACES.stream().noneMatch(resource.getURI()::startsWith);
   }
 
   private TermIntent toTermIntent(Resource resource, Model model) {
@@ -1197,7 +1209,7 @@ public class GlossaryRdfImporter {
         model.listResourcesWithProperty(model.getProperty(RDF, "type"), datatypeProperty);
     while (properties.hasNext()) {
       Resource property = properties.next();
-      if (property.isURIResource()) {
+      if (isImportableIri(property)) {
         intents.add(toDatatypeIntent(property, model));
       }
     }
