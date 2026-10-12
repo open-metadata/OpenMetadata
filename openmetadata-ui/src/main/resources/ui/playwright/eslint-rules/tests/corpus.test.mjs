@@ -55,8 +55,9 @@ test('the suppressions baseline matches its recorded state exactly', () => {
     // language switch targets the core language selector by test id, and the
     // core assignee/schema-field selectors in the task and incident specs
     // remove three more. The merged baseline retains independent locator
-    // fixes from both branches.
-    'om-playwright/no-positional-locator': 590,
+    // fixes from both branches. Scoping the Context Center draft editor to
+    // `.om-block-editor` instead of `.ProseMirror...first()` removes four.
+    'om-playwright/no-positional-locator': 586,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 1,
     'playwright/no-wait-for-selector': 14,

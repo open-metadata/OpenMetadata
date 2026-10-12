@@ -14,10 +14,12 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
   waitForElementToBeRemoved,
 } from '@testing-library/react';
 import {
   AppType,
+  ScheduleTimeline,
   ScheduleType,
 } from '../../../../generated/entity/applications/app';
 import { EntityReference } from '../../../../generated/tests/testSuite';
@@ -125,6 +127,16 @@ describe('AppSchedule component', () => {
       screen.queryByTestId('update-schedule-modal')
     ).not.toBeInTheDocument();
 
+    fireEvent.click(screen.getByRole('button', { name: 'label.edit' }));
+
+    expect(screen.getByTestId('update-schedule-modal')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'label.cancel' }));
+
+    expect(
+      screen.queryByTestId('update-schedule-modal')
+    ).not.toBeInTheDocument();
+
     fireEvent.click(screen.getByRole('button', { name: 'label.run-now' }));
 
     expect(mockOnDemandTrigger).toHaveBeenCalled();
@@ -156,7 +168,7 @@ describe('AppSchedule component', () => {
     expect(mockOnDeployTrigger).toHaveBeenCalled();
   });
 
-  it('check methods in AppSchedule component', () => {
+  it('check methods in AppSchedule component', async () => {
     render(<AppSchedule {...mockProps1} />);
 
     expect(
@@ -172,11 +184,11 @@ describe('AppSchedule component', () => {
 
     expect(mockOnSave).toHaveBeenCalledWith('0 12 * * *');
 
-    fireEvent.click(screen.getByRole('button', { name: 'label.cancel' }));
-
-    expect(
-      screen.queryByTestId('update-schedule-modal')
-    ).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('update-schedule-modal')
+      ).not.toBeInTheDocument()
+    );
   });
 
   it('should show application disable message if appData.deleted is true', () => {
@@ -226,5 +238,40 @@ describe('AppSchedule component', () => {
       'daily',
       'weekly',
     ]);
+  });
+
+  it('hides actions the user has no permission for', () => {
+    render(
+      <AppSchedule
+        {...mockProps1}
+        canDeploy={false}
+        canEdit={false}
+        canTrigger={false}
+      />
+    );
+
+    expect(screen.queryByRole('button', { name: 'label.edit' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'label.run-now' })).toBeNull();
+  });
+
+  it('does not refetch the pipeline when only the schedule changes', async () => {
+    mockGetIngestionPipelineByFqn.mockClear();
+    const { rerender } = render(<AppSchedule {...mockProps2} />);
+    await waitForElementToBeRemoved(() => screen.getByText('Loader'));
+
+    expect(mockGetIngestionPipelineByFqn).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <AppSchedule
+        {...mockProps2}
+        appData={{
+          ...mockProps2.appData,
+          appSchedule: { scheduleTimeline: ScheduleTimeline.None },
+        }}
+      />
+    );
+
+    expect(screen.queryByText('Loader')).not.toBeInTheDocument();
+    expect(mockGetIngestionPipelineByFqn).toHaveBeenCalledTimes(1);
   });
 });

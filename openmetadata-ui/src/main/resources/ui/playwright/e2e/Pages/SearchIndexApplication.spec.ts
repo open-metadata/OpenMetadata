@@ -267,18 +267,14 @@ test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     await test.step('View App Run Config', async () => {
       await page.getByTestId('app-historical-config').click();
-      const configModal = page.getByTestId('edit-table-type-property-modal');
+      const configDialog = page.getByTestId('edit-table-type-property-modal');
 
-      await expect(configModal).toBeVisible();
+      await expect(configDialog).toBeVisible();
+      await expect(configDialog).toContainText('Search Indexing Configuration');
 
-      await expect(configModal.getByTestId('dialog-title')).toContainText(
-        'Search Indexing Configuration'
-      );
+      await page.getByTestId('app-run-config-close').click();
 
-      await page.click('[data-testid="app-run-config-close"]');
-      await configModal.waitFor({
-        state: 'detached',
-      });
+      await expect(configDialog).not.toBeVisible();
     });
 
     await test.step('Edit application', async () => {

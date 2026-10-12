@@ -14,7 +14,9 @@
 import {
   Box,
   Button,
-  SimpleModal,
+  Dialog,
+  Modal,
+  ModalOverlay,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
@@ -53,26 +55,84 @@ const AppScheduleSummary = ({
 
   return (
     <>
-      <div className="d-flex items-center gap-2">
+      <Box align="center" direction="row" gap={2}>
         <Typography className="right-panel-label">
           {t('label.schedule-type')}
         </Typography>
         <Typography className="font-medium" data-testid="schedule-type">
           {(appSchedule as AppScheduleClass).scheduleTimeline ?? ''}
         </Typography>
-      </div>
+      </Box>
 
       {!isEmpty(cronString) && (
-        <div className="d-flex items-center gap-2">
+        <Box align="center" direction="row" gap={2}>
           <Typography className="right-panel-label">
             {t('label.schedule-interval')}
           </Typography>
           <Typography className="font-medium" data-testid="cron-string">
             {cronString}
           </Typography>
-        </div>
+        </Box>
       )}
     </>
+  );
+};
+
+// The action buttons gate on their own flags; kept apart so AppSchedule's
+// branching stays about what it renders, not about each button.
+const AppScheduleActions = ({
+  showDeploy,
+  showEdit,
+  showRunNow,
+  isDeployLoading,
+  isRunLoading,
+  onDeploy,
+  onEdit,
+  onRunNow,
+}: {
+  showDeploy: boolean;
+  showEdit: boolean;
+  showRunNow: boolean;
+  isDeployLoading: boolean;
+  isRunLoading: boolean;
+  onDeploy: () => void;
+  onEdit: () => void;
+  onRunNow: () => void;
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <Box align="center" direction="row" gap={2}>
+      {showDeploy && (
+        <Button
+          color="secondary"
+          data-testid="deploy-button"
+          isLoading={isDeployLoading}
+          size="sm"
+          onPress={onDeploy}>
+          {t('label.deploy')}
+        </Button>
+      )}
+      {showEdit && (
+        <Button
+          color="secondary"
+          data-testid="edit-button"
+          size="sm"
+          onPress={onEdit}>
+          {t('label.edit')}
+        </Button>
+      )}
+      {showRunNow && (
+        <Button
+          color="primary"
+          data-testid="run-now-button"
+          isLoading={isRunLoading}
+          size="sm"
+          onPress={onRunNow}>
+          {t('label.run-now')}
+        </Button>
+      )}
+    </Box>
   );
 };
 
@@ -82,6 +142,9 @@ const AppSchedule = ({
   jsonSchema,
   disabled = false,
   disabledReason,
+  canEdit = true,
+  canTrigger = true,
+  canDeploy = true,
   onSave,
   onDemandTrigger,
   onDeployTrigger,
@@ -108,16 +171,21 @@ const AppSchedule = ({
       (feature) => feature.name === 'app'
     ) ?? {};
 
+  // Keyed on the two fields it reads, not the whole app: a schedule save
+  // replaces appData, and refetching then would flash the loader over the
+  // open schedule dialog and remount the runs history. Deploy still re-checks,
+  // because it reloads the app and remounts this tab.
+  const { appType } = appData;
+  const firstPipeline = appData.pipelines?.[0];
+  const pipelineFqn = firstPipeline
+    ? firstPipeline.fullyQualifiedName ?? ''
+    : undefined;
+
   const fetchPipelineDetails = useCallback(async () => {
     setIsLoading(true);
     try {
-      if (
-        appData.appType === AppType.External &&
-        appData.pipelines &&
-        appData.pipelines.length > 0
-      ) {
-        const fqn = appData.pipelines[0].fullyQualifiedName ?? '';
-        const pipelineData = await getIngestionPipelineByFqn(fqn);
+      if (appType === AppType.External && pipelineFqn !== undefined) {
+        const pipelineData = await getIngestionPipelineByFqn(pipelineFqn);
 
         setIsPipelineDeployed(pipelineData.deployed ?? false);
       } else {
@@ -128,7 +196,7 @@ const AppSchedule = ({
     } finally {
       setIsLoading(false);
     }
-  }, [appData]);
+  }, [appType, pipelineFqn]);
 
   const [cronString, setCronString] = useState<string>('');
 
@@ -232,7 +300,7 @@ const AppSchedule = ({
 
   useEffect(() => {
     fetchPipelineDetails();
-  }, []);
+  }, [fetchPipelineDetails]);
 
   if (isLoading) {
     return <Loader />;
@@ -253,44 +321,16 @@ const AppSchedule = ({
           <Box
             className="layout-column d-flex items-center justify-end"
             style={{ flex: '0 0 200px' }}>
-            <Box
-              inline
-              align="center"
-              className="layout-space layout-space-horizontal"
-              gap={2}
-              itemClassName="layout-space-item">
-              {appData.appType === AppType.External && (
-                <Button
-                  color="primary"
-                  data-testid="deploy-button"
-                  isDisabled={isAppDisabled}
-                  isLoading={isDeployLoading}
-                  onClick={onDeployTrigger}>
-                  {t('label.deploy')}
-                </Button>
-              )}
-
-              {!appData.system && (
-                <Button
-                  color="primary"
-                  data-testid="edit-button"
-                  isDisabled={isAppDisabled}
-                  onClick={onDialogOpen}>
-                  {t('label.edit')}
-                </Button>
-              )}
-
-              {showRunNowButton && (
-                <Button
-                  color="primary"
-                  data-testid="run-now-button"
-                  isDisabled={isAppDisabled}
-                  isLoading={isRunLoading}
-                  onClick={onAppTrigger}>
-                  {t('label.run-now')}
-                </Button>
-              )}
-            </Box>
+            <AppScheduleActions
+              isDeployLoading={isDeployLoading}
+              isRunLoading={isRunLoading}
+              showDeploy={canDeploy && appData.appType === AppType.External}
+              showEdit={canEdit && !appData.system}
+              showRunNow={canTrigger && showRunNowButton}
+              onDeploy={onDeployTrigger}
+              onEdit={onDialogOpen}
+              onRunNow={onAppTrigger}
+            />
           </Box>
         )}
 
@@ -300,39 +340,50 @@ const AppSchedule = ({
           {appRunHistory}
         </Box>
       </Box>
-      <SimpleModal
-        data-testid="update-schedule-modal"
-        footer={
-          <>
-            <Button
-              color="link-color"
-              data-testid="back-button"
-              onClick={onDialogCancel}>
-              {t('label.cancel')}
-            </Button>
-            <Button
-              color="primary"
-              data-testid="deploy-button"
-              isDisabled={!isScheduleValid}
-              isLoading={isSaveLoading}
-              onClick={onDialogSave}>
-              {t('label.save')}
-            </Button>
-          </>
-        }
-        isDismissable={false}
-        isOpen={showModal}
-        title={t('label.update-entity', { entity: t('label.schedule') })}
-        width={650}
-        onCancel={onDialogCancel}>
-        <ScheduleInterval
-          defaultSchedule={defaultCron}
-          includePeriodOptions={initialOptions}
-          value={scheduleValue}
-          onChange={setScheduleValue}
-          onValidityChange={setIsScheduleValid}
-        />
-      </SimpleModal>
+      <ModalOverlay isDismissable={false} isOpen={showModal}>
+        <Modal>
+          <Dialog
+            data-testid="update-schedule-modal"
+            dividers="scroll"
+            title={t('label.update-entity', { entity: t('label.schedule') })}
+            width={650}
+            onClose={onDialogCancel}>
+            <Dialog.Content>
+              <ScheduleInterval
+                defaultSchedule={defaultCron}
+                includePeriodOptions={initialOptions}
+                value={scheduleValue}
+                onChange={setScheduleValue}
+                onValidityChange={setIsScheduleValid}
+              />
+            </Dialog.Content>
+            <Dialog.Footer>
+              <Box
+                className="tw:col-span-2"
+                direction="row"
+                gap={3}
+                justify="end">
+                <Button
+                  color="tertiary"
+                  data-testid="back-button"
+                  size="sm"
+                  onPress={onDialogCancel}>
+                  {t('label.cancel')}
+                </Button>
+                <Button
+                  color="primary"
+                  data-testid="deploy-button"
+                  isDisabled={!isScheduleValid}
+                  isLoading={isSaveLoading}
+                  size="sm"
+                  onPress={onDialogSave}>
+                  {t('label.save')}
+                </Button>
+              </Box>
+            </Dialog.Footer>
+          </Dialog>
+        </Modal>
+      </ModalOverlay>
     </>
   );
 };

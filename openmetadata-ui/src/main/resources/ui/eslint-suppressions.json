@@ -71,7 +71,7 @@
   },
   "playwright/e2e/Features/ContextCenterArticles.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 7
+      "count": 3
     },
     "playwright/no-wait-for-selector": {
       "count": 1
@@ -1361,16 +1361,6 @@
   "src/components/Settings/Applications/AppInstallVerifyCard/AppInstallVerifyCard.component.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 5
-    }
-  },
-  "src/components/Settings/Applications/AppLogsViewer/AppLogsViewer.component.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 3
-    }
-  },
-  "src/components/Settings/Applications/AppLogsViewer/ReindexFailures.component.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 2
     }
   },
   "src/components/Settings/Applications/AppRunsHistory/AppRunsHistory.test.tsx": {

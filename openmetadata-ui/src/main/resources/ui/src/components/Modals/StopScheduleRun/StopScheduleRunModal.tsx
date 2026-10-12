@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 
-import { SimpleModal, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Button,
+  Dialog,
+  Modal,
+  ModalOverlay,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -52,24 +59,52 @@ const StopScheduleModal: FC<StopScheduleRunModalProps> = ({
   };
 
   return (
-    <SimpleModal
-      cancelText={t('label.cancel')}
-      isDismissable={false}
-      isOkLoading={isLoading}
-      isOpen={isModalOpen}
-      okText={t('label.confirm')}
-      title={`${t('label.stop')} ${displayName} ?`}
-      onCancel={onClose}
-      onOk={handleConfirm}>
-      <div data-testid="stop-modal">
-        <Typography data-testid="stop-modal-body">
-          {t('message.are-you-sure-action-property', {
-            action: 'Stop',
-            propertyName: displayName,
-          })}
-        </Typography>
-      </div>
-    </SimpleModal>
+    <ModalOverlay isDismissable={false} isOpen={isModalOpen}>
+      <Modal>
+        <Dialog
+          data-testid="stop-modal"
+          dividers="scroll"
+          showCloseButton={false}
+          title={`${t('label.stop')} ${displayName} ?`}
+          width={480}
+          onClose={onClose}>
+          <Dialog.Content>
+            <Typography
+              className="tw:text-tertiary"
+              data-testid="stop-modal-body"
+              size="text-sm">
+              {t('message.are-you-sure-action-property', {
+                action: t('label.stop'),
+                propertyName: displayName,
+              })}
+            </Typography>
+          </Dialog.Content>
+          <Dialog.Footer>
+            <Box
+              className="tw:col-span-2"
+              direction="row"
+              gap={3}
+              justify="end">
+              <Button
+                color="tertiary"
+                isDisabled={isLoading}
+                size="sm"
+                onPress={onClose}>
+                {t('label.cancel')}
+              </Button>
+              <Button
+                color="primary-destructive"
+                data-testid="stop-modal-confirm"
+                isLoading={isLoading}
+                size="sm"
+                onPress={handleConfirm}>
+                {t('label.confirm')}
+              </Button>
+            </Box>
+          </Dialog.Footer>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 };
 

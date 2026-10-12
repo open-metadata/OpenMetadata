@@ -135,6 +135,7 @@ export enum UnresolvedReason {
     InvalidEntity = "invalidEntity",
     MissingColumns = "missingColumns",
     MissingDatabase = "missingDatabase",
+    MissingSchema = "missingSchema",
     NamespaceNotMapped = "namespaceNotMapped",
     NotFound = "notFound",
     PipelineNotFound = "pipelineNotFound",

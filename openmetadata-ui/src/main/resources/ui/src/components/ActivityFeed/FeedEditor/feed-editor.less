@@ -1139,3 +1139,11 @@ button.ql-emoji {
     margin-right: 0 !important;
   }
 }
+
+// Quill 2 draws each list item's marker on its own `.ql-ui` span. The Quill 1
+// rules above still draw one on the item as well, doubling it ("1•" in a
+// bullet list, an overprinted "1." in a numbered one). Last in the file, so it
+// outranks the per-indent counters above.
+.ql-editor ol li[data-list]::before {
+  content: none;
+}
