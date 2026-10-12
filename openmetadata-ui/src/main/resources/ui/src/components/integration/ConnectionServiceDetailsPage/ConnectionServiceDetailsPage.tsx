@@ -43,7 +43,11 @@ import {
 import { ExportTypes } from '../../../constants/Export.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
+import {
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
+} from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
@@ -97,8 +101,13 @@ import {
   getServiceCategoryBreadcrumb,
 } from './connectionsBreadcrumb.utils';
 import { fetchServiceChildren } from './connectionServiceChildren.utils';
+import DataModelTable from '../../Dashboard/DataModel/DataModels/DataModelsTable';
 import DataAssetHeaderDetailsRow from './DataAssetHeaderDetailsRow/DataAssetHeaderDetailsRow';
 import DataAssetsTab from './DataAssetsTab';
+import {
+  ServiceFilesTab,
+  ServiceSpreadsheetsTab,
+} from './ServiceDriveAssetTabs';
 
 type StaticTabKey = 'dataAssets' | 'connection';
 type TabKey = StaticTabKey | string;
@@ -116,6 +125,20 @@ interface DetailsTab {
 // contribution land before or after these without either side knowing about the other.
 const DATA_ASSETS_TAB_ORDER = 40;
 const CONNECTION_TAB_ORDER = 50;
+
+// The asset tabs classic shows beside the main one, for the categories that have them. They sit
+// between the data-assets tab and Connection, in this order.
+const SECONDARY_ASSET_TABS: Partial<
+  Record<ServiceCategory, Array<{ key: EntityTabs; labelKey: string }>>
+> = {
+  [ServiceCategory.DASHBOARD_SERVICES]: [
+    { key: EntityTabs.DATA_Model, labelKey: 'label.data-model' },
+  ],
+  [ServiceCategory.DRIVE_SERVICES]: [
+    { key: EntityTabs.FILES, labelKey: 'label.file-plural' },
+    { key: EntityTabs.SPREADSHEETS, labelKey: 'label.spreadsheet-plural' },
+  ],
+};
 
 const getActionButtonColor = (action: ActionContribution) => {
   if (action.danger) {
@@ -647,6 +670,13 @@ const ConnectionServiceDetailsPage: React.FC = () => {
           : t('label.data-asset-plural'),
         order: DATA_ASSETS_TAB_ORDER,
       },
+      ...(SECONDARY_ASSET_TABS[serviceCategory as ServiceCategory] ?? []).map(
+        ({ key, labelKey }, index) => ({
+          key,
+          label: t(labelKey),
+          order: DATA_ASSETS_TAB_ORDER + index + 1,
+        })
+      ),
       // The connection config is for those who may edit it; classic hides the tab otherwise.
       ...(canEditAll
         ? [
@@ -676,6 +706,10 @@ const ConnectionServiceDetailsPage: React.FC = () => {
     [tabs]
   );
   const defaultTabKey = tabs[0]?.key ?? 'dataAssets';
+  // A deep link can name a tab this service category doesn't have; the effect below falls back
+  // from it, and until then its content must not mount (and fetch).
+  const isOfferedTab = (key: TabKey) =>
+    activeTab === key && allTabKeys.includes(key);
   // A plain-object extension registry (as returned by the real provider, and by a test double
   // that doesn't memoize its own return value) is a new reference on every render, which would
   // make `allTabKeys` — and this effect — re-run on every render and re-derive the active tab,
@@ -922,6 +956,29 @@ const ConnectionServiceDetailsPage: React.FC = () => {
               showDeleted={showDeleted}
               onDataProductUpdate={onDataProductUpdate}
               onDescriptionUpdate={onDescriptionUpdate}
+              onShowDeletedChange={handleShowDeletedChange}
+            />
+          )}
+
+          {isOfferedTab(EntityTabs.DATA_Model) && (
+            <DataModelTable
+              handleShowDeleted={handleShowDeletedChange}
+              showDeleted={showDeleted}
+            />
+          )}
+
+          {isOfferedTab(EntityTabs.FILES) && (
+            <ServiceFilesTab
+              serviceFqn={decodedFqn}
+              showDeleted={showDeleted}
+              onShowDeletedChange={handleShowDeletedChange}
+            />
+          )}
+
+          {isOfferedTab(EntityTabs.SPREADSHEETS) && (
+            <ServiceSpreadsheetsTab
+              serviceFqn={decodedFqn}
+              showDeleted={showDeleted}
               onShowDeletedChange={handleShowDeletedChange}
             />
           )}

@@ -17,6 +17,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import React from 'react';
 import { getDatabases } from '../../../rest/databaseAPI';
@@ -348,6 +349,31 @@ jest.mock(
   })
 );
 
+const mockDataModelTable = jest.fn();
+jest.mock('../../Dashboard/DataModel/DataModels/DataModelsTable', () => ({
+  __esModule: true,
+  default: (props: Record<string, unknown>) => {
+    mockDataModelTable(props);
+
+    return <div data-testid="data-model-table" />;
+  },
+}));
+
+const mockServiceFilesTab = jest.fn();
+const mockServiceSpreadsheetsTab = jest.fn();
+jest.mock('./ServiceDriveAssetTabs', () => ({
+  ServiceFilesTab: (props: Record<string, unknown>) => {
+    mockServiceFilesTab(props);
+
+    return <div data-testid="service-files-tab" />;
+  },
+  ServiceSpreadsheetsTab: (props: Record<string, unknown>) => {
+    mockServiceSpreadsheetsTab(props);
+
+    return <div data-testid="service-spreadsheets-tab" />;
+  },
+}));
+
 jest.mock('./DataAssetsTab', () => ({
   __esModule: true,
   default: ({
@@ -504,6 +530,114 @@ describe('ConnectionServiceDetailsPage', () => {
     await waitFor(() => {
       expect(screen.getByTestId('edit-connection-button')).toBeInTheDocument();
     });
+  });
+
+  describe('secondary asset tabs', () => {
+    const renderPage = async () => {
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+      await waitFor(() =>
+        expect(screen.getByRole('tablist')).toBeInTheDocument()
+      );
+    };
+
+    const tabLabels = () =>
+      within(screen.getByRole('tablist'))
+        .getAllByRole('button')
+        .map((tab) => tab.textContent);
+
+    it('offers a dashboard service its data models, between its dashboards and its connection', async () => {
+      mockServiceCategory = 'dashboardServices';
+      await renderPage();
+
+      const labels = tabLabels();
+
+      expect(labels).toContain('label.data-model');
+      expect(labels.indexOf('label.data-model')).toBe(
+        labels.indexOf('label.connection') - 1
+      );
+    });
+
+    it('offers a drive service its files and spreadsheets, before its connection', async () => {
+      mockServiceCategory = 'driveServices';
+      await renderPage();
+
+      const labels = tabLabels();
+
+      expect(labels.slice(-3)).toEqual([
+        'label.file-plural',
+        'label.spreadsheet-plural',
+        'label.connection',
+      ]);
+    });
+
+    it('offers neither to a service without such assets', async () => {
+      await renderPage();
+
+      expect(tabLabels()).not.toEqual(
+        expect.arrayContaining(['label.data-model'])
+      );
+      expect(tabLabels()).not.toEqual(
+        expect.arrayContaining([
+          'label.file-plural',
+          'label.spreadsheet-plural',
+        ])
+      );
+    });
+
+    it("lists a dashboard service's data models, sharing the deleted switch", async () => {
+      mockServiceCategory = 'dashboardServices';
+      mockTabParam = 'data-model';
+      mockTableFilters.showDeletedTables = true;
+      await renderPage();
+
+      expect(screen.getByTestId('data-model-table')).toBeInTheDocument();
+      expect(mockDataModelTable).toHaveBeenLastCalledWith(
+        expect.objectContaining({ showDeleted: true })
+      );
+
+      const { handleShowDeleted } = mockDataModelTable.mock.calls.at(-1)[0];
+      act(() => handleShowDeleted(false));
+
+      expect(mockSetFilters).toHaveBeenCalledWith({
+        showDeletedTables: undefined,
+      });
+    });
+
+    it.each([
+      ['files', 'service-files-tab', mockServiceFilesTab],
+      ['spreadsheets', 'service-spreadsheets-tab', mockServiceSpreadsheetsTab],
+    ])("lists a drive service's %s", async (tabKey, testId, tabComponent) => {
+      mockServiceCategory = 'driveServices';
+      mockTabParam = tabKey;
+      await renderPage();
+
+      expect(screen.getByTestId(testId)).toBeInTheDocument();
+      expect(tabComponent).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          serviceFqn: 'test-service',
+          showDeleted: false,
+        })
+      );
+    });
+
+    // The tab param mounts content before the fallback runs; a tab the category lacks must
+    // never mount, or it fetches assets the service cannot have.
+    it.each([
+      ['data-model', mockDataModelTable],
+      ['files', mockServiceFilesTab],
+      ['spreadsheets', mockServiceSpreadsheetsTab],
+    ])(
+      'never mounts %s for a service without it',
+      async (tabKey, tabComponent) => {
+        mockTabParam = tabKey;
+        await renderPage();
+
+        expect(screen.getByTestId('data-assets-tab')).toBeInTheDocument();
+        expect(tabComponent).not.toHaveBeenCalled();
+      }
+    );
   });
 
   describe('read-only user', () => {

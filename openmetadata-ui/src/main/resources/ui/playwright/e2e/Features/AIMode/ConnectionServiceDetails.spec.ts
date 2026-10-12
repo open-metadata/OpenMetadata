@@ -17,7 +17,9 @@
  *
  * Its data-assets table lists each asset's owners and tags, pages that move the rows, the Deleted
  * switch, a soft-deleted service's children, the list after a restore and after a search is
- * cleared, only the top level of nesting assets, and drive directories.
+ * cleared, only the top level of nesting assets, and drive directories. It also offers classic's
+ * other asset tabs (a dashboard service's data models, a drive service's files and spreadsheets)
+ * and the service's data products.
  *
  * It gates what classic gates: the Connection tab, which shows the connection config, only for
  * users who may edit the service; and no domain / owner / tier edits on a soft-deleted service.
@@ -29,6 +31,8 @@
 import { expect } from '@playwright/test';
 import { EXTENDED_TEST_TIMEOUT } from '../../../constant/common';
 import { DOMAIN_TAGS } from '../../../constant/config';
+import { DataProduct } from '../../../support/domain/DataProduct';
+import { DashboardServiceClass } from '../../../support/entity/service/DashboardServiceClass';
 import { DatabaseServiceClass } from '../../../support/entity/service/DatabaseServiceClass';
 import { DriveServiceClass } from '../../../support/entity/service/DriveServiceClass';
 import { StorageServiceClass } from '../../../support/entity/service/StorageServiceClass';
@@ -40,6 +44,7 @@ import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { waitForSearchIndexed } from '../../../utils/polling';
 import { getRowByName } from '../../../utils/scopedLocators';
 import {
+  openAiModeServiceAssetTab,
   visitAiModeServiceDetailsPage,
   waitForServiceChildList,
 } from '../../../utils/service';
@@ -393,23 +398,95 @@ test.describe(
       });
     });
 
+    test.describe('dashboard service', () => {
+      let service: DashboardServiceClass;
+      let serviceFqn = '';
+      let dataModel = '';
+
+      test.beforeAll(async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+        service = new DashboardServiceClass();
+        await service.create(apiContext);
+        serviceFqn = service.entityResponseData.fullyQualifiedName;
+        dataModel = `pw-ai-data-model-${uuid()}`;
+
+        await okJson(
+          await apiContext.post('/api/v1/dashboard/datamodels', {
+            data: {
+              name: dataModel,
+              service: serviceFqn,
+              dataModelType: 'SupersetDataModel',
+              columns: [
+                { name: 'country', dataType: 'VARCHAR', dataLength: 64 },
+              ],
+              tags: [PERSONAL_TAG],
+            },
+          }),
+          'Create data model'
+        );
+
+        await afterAction();
+      });
+
+      test.afterAll(async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+        await service.delete(apiContext);
+        await afterAction();
+      });
+
+      test('lists its data models, with their tags, under a Data Model tab', async ({
+        page,
+      }) => {
+        await enableAiAppMode(page);
+        await visitAiModeServiceDetailsPage(page, {
+          category: 'dashboardServices',
+          fqn: serviceFqn,
+        });
+
+        await openAiModeServiceAssetTab(page, {
+          tabName: 'Data Model',
+          listPath: 'dashboard/datamodels',
+          serviceFqn,
+        });
+
+        const row = getRowByName(page, dataModel);
+
+        await expect(row).toBeVisible();
+        await expect(row).toContainText('Personal');
+      });
+    });
+
     test.describe('drive service', () => {
       let service: DriveServiceClass;
       let serviceFqn = '';
       let directory = '';
+      let file = '';
+      let spreadsheet = '';
 
       test.beforeAll(async ({ browser }) => {
         const { apiContext, afterAction } = await performAdminLogin(browser);
         service = new DriveServiceClass();
         await service.create(apiContext);
         serviceFqn = service.entityResponseData.fullyQualifiedName;
-        directory = `pw-ai-directory-${uuid()}`;
+        const suffix = uuid();
+        directory = `pw-ai-directory-${suffix}`;
+        file = `pw-ai-file-${suffix}`;
+        spreadsheet = `pw-ai-spreadsheet-${suffix}`;
 
-        await okJson(
-          await apiContext.post('/api/v1/drives/directories', {
-            data: { name: directory, service: serviceFqn },
-          }),
-          'Create directory'
+        // Top-level, as the Files and Spreadsheets tabs list only the service's root.
+        await settleAll(
+          [
+            ['drives/directories', directory],
+            ['drives/files', file],
+            ['drives/spreadsheets', spreadsheet],
+          ].map(async ([path, name]) =>
+            okJson(
+              await apiContext.post(`/api/v1/${path}`, {
+                data: { name, service: serviceFqn },
+              }),
+              `Create ${path} ${name}`
+            )
+          )
         );
 
         await afterAction();
@@ -429,6 +506,90 @@ test.describe(
         });
 
         await expect(getRowByName(page, directory)).toBeVisible();
+      });
+
+      test('lists its files and its spreadsheets under their own tabs', async ({
+        page,
+      }) => {
+        await enableAiAppMode(page);
+        await visitAiModeServiceDetailsPage(page, {
+          category: 'driveServices',
+          fqn: serviceFqn,
+        });
+
+        await test.step('Files', async () => {
+          await openAiModeServiceAssetTab(page, {
+            tabName: 'Files',
+            listPath: 'drives/files',
+            serviceFqn,
+          });
+
+          await expect(getRowByName(page, file)).toBeVisible();
+          await expect(getRowByName(page, spreadsheet)).toBeHidden();
+        });
+
+        await test.step('Spreadsheets', async () => {
+          await openAiModeServiceAssetTab(page, {
+            tabName: 'Spreadsheets',
+            listPath: 'drives/spreadsheets',
+            serviceFqn,
+          });
+
+          await expect(getRowByName(page, spreadsheet)).toBeVisible();
+          await expect(getRowByName(page, file)).toBeHidden();
+        });
+      });
+    });
+
+    test.describe('data products', () => {
+      let service: DatabaseServiceClass;
+      let dataProduct: DataProduct;
+
+      test.beforeAll(async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+        service = new DatabaseServiceClass();
+        dataProduct = new DataProduct();
+        await settleAll([
+          service.create(apiContext),
+          dataProduct.create(apiContext),
+        ]);
+        // A data product can only be assigned within its domain.
+        await service.patch(apiContext, [
+          {
+            op: 'add',
+            path: '/domains',
+            value: dataProduct.responseData.domains,
+          },
+          {
+            op: 'add',
+            path: '/dataProducts',
+            value: [{ id: dataProduct.responseData.id, type: 'dataProduct' }],
+          },
+        ]);
+        await afterAction();
+      });
+
+      test.afterAll(async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+        await service.delete(apiContext);
+        await dataProduct.delete(apiContext);
+        await afterAction();
+      });
+
+      test("shows the service's data products in its metadata details", async ({
+        page,
+      }) => {
+        await enableAiAppMode(page);
+        await visitAiModeServiceDetailsPage(page, {
+          category: 'databaseServices',
+          fqn: service.entityResponseData.fullyQualifiedName,
+        });
+
+        await page.getByRole('button', { name: 'Metadata Details' }).click();
+
+        await expect(page.getByTestId('service-data-products')).toContainText(
+          dataProduct.responseData.displayName
+        );
       });
     });
 
