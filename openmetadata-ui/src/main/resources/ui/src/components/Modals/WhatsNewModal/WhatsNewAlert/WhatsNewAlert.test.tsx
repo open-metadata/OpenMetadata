@@ -254,7 +254,7 @@ describe('WhatsNewAlert', () => {
     expect(alertCard).toHaveClass('whats-new-alert-card');
 
     // Check for the three columns structure
-    const columns = alertCard.querySelectorAll('.ant-col');
+    const columns = alertCard.querySelectorAll('.layout-column');
 
     expect(columns).toHaveLength(3);
 

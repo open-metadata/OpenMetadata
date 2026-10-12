@@ -56,6 +56,14 @@ playwright_affected:  ## List the Playwright specs this branch impacts and the c
 playwright_affected_run:  ## Run the impacted Playwright specs and write the PR results block (ARGS="--update-pr --workers=2")
 	python3 .github/scripts/plan_local_playwright.py --run $(ARGS)
 
+.PHONY: java_affected
+java_affected:  ## List the Java unit tests and integration tests this branch impacts and the commands to run them
+	python3 .github/scripts/plan_local_java_tests.py $(ARGS)
+
+.PHONY: java_affected_run
+java_affected_run:  ## Run the impacted Java unit + integration tests and write the PR results block (ARGS="--update-pr")
+	python3 .github/scripts/plan_local_java_tests.py --run $(ARGS)
+
 .PHONY: py_antlr
 py_antlr:  ## Generate the Python code for parsing FQNs
 	antlr4 -Dlanguage=Python3 -o ingestion/src/metadata/generated/antlr ${PWD}/openmetadata-spec/src/main/antlr4/org/openmetadata/schema/*.g4

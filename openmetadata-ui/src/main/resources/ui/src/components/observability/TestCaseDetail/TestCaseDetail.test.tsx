@@ -41,6 +41,9 @@ const mockTestCaseLastRunBanner = jest.fn(({ nextRunTimestamp }: any) => (
     last-run-banner
   </div>
 ));
+const mockManageButton = jest
+  .fn()
+  .mockReturnValue(<div data-testid="manage-button">manage-button</div>);
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -156,7 +159,7 @@ jest.mock(
   'components/common/EntityPageInfos/ManageButton/ManageButton',
   () => ({
     __esModule: true,
-    default: () => <div data-testid="manage-button">manage-button</div>,
+    default: (props: any) => mockManageButton(props),
   })
 );
 
@@ -257,6 +260,7 @@ const baseHookReturn = {
   hasViewPermission: true,
   hasDeletePermission: true,
   editDisplayNamePermission: true,
+  canRestorePermission: true,
   displayName: 'Test Case Display Name',
   tabs: [
     {
@@ -288,6 +292,7 @@ const baseHookReturn = {
   extraDropdownContent: [],
   handleOwnerChange: jest.fn(),
   handleDisplayNameChange: jest.fn(),
+  handleRestore: jest.fn(),
   getEntityFeedCount: jest.fn(),
   setTestCase: jest.fn(),
 };
@@ -597,9 +602,10 @@ describe('TestCaseDetail', () => {
     it('should render the last run banner above the results tab body', () => {
       render(<TestCaseDetail />);
 
-      expect(
-        screen.getByTestId(LAST_RUN_BANNER_CONTAINER_TEST_ID)
-      ).toBeInTheDocument();
+      // 22px down to the results, as in the mock.
+      expect(screen.getByTestId(LAST_RUN_BANNER_CONTAINER_TEST_ID)).toHaveClass(
+        'tw:pb-5.5'
+      );
       expect(screen.getByTestId(LAST_RUN_BANNER_TEST_ID)).toBeInTheDocument();
       expect(screen.getByTestId('result-tab-body')).toBeInTheDocument();
     });
@@ -851,5 +857,48 @@ describe('TestCaseDetail', () => {
     expect(drawer).toBeInTheDocument();
     expect(drawer).toHaveAttribute('data-open', 'true');
     expect(drawer).toHaveAttribute('data-variant', 'modal');
+  });
+
+  describe('ManageButton delete/restore wiring', () => {
+    it('should not force hard-delete-only and should wire restore props for an active test case', () => {
+      render(<TestCaseDetail />);
+
+      expect(mockManageButton).toHaveBeenCalledWith(
+        expect.objectContaining({
+          canDelete: true,
+          canRestore: true,
+          deleted: undefined,
+          entityType: 'testCase',
+          onRestoreEntity: expect.any(Function),
+        })
+      );
+
+      const props = mockManageButton.mock.calls[0][0];
+
+      expect(props.allowSoftDelete).not.toBe(false);
+    });
+
+    it('should wire restore for a soft-deleted test case reached via deep-link', () => {
+      const handleRestore = jest.fn();
+
+      mockUseTestCaseDetailPage.mockReturnValue({
+        ...baseHookReturn,
+        testCase: { ...baseHookReturn.testCase, deleted: true },
+        hasDeletePermission: false,
+        canRestorePermission: true,
+        handleRestore,
+      });
+
+      render(<TestCaseDetail />);
+
+      expect(mockManageButton).toHaveBeenCalledWith(
+        expect.objectContaining({
+          canDelete: false,
+          canRestore: true,
+          deleted: true,
+          onRestoreEntity: handleRestore,
+        })
+      );
+    });
   });
 });

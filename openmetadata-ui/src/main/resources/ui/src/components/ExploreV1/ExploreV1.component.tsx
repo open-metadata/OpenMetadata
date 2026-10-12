@@ -894,7 +894,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
   );
   const sortProps = useMemo(
     () => ({
-      className: 'text-base',
+      className: 'text-base tw:text-fg-secondary',
       'data-testid': 'last-updated',
     }),
     []
@@ -1265,7 +1265,6 @@ const ExploreV1: React.FC<ExploreProps> = ({
               }
               fields={quickFilterFields}
               fieldsWithNullValues={SUPPORTED_EMPTY_FILTER_FIELDS}
-              helperText={t('message.pick-values-to-refine')}
               index={activeTabKey}
               showDeleted={showDeleted}
               onAdvanceSearch={() => toggleModal(true)}

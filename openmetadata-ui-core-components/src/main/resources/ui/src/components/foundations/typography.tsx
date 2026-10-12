@@ -236,10 +236,16 @@ export const Typography = forwardRef<HTMLElement, Omit<TypographyProps, 'ref'>>(
     // explicit consumer `className` text-color utility still wins over the
     // `color` prop, matching how `className` already overrides `sizeClass`/
     // `weightClass` above.
+    const isInlineEllipsis = isEllipsis && INLINE_ELEMENTS.has(Component);
+
+    // `text-overflow` draws the "…" in the color of the box that clips. An
+    // inline element can't clip, so without `block` the wrapper does, and the
+    // "…" ignores a text color passed in `className`.
     const innerClassName = cx(
       sizeClass,
       weightClass,
       colorClass,
+      isInlineEllipsis && ellipsisRows <= 1 && 'tw:block',
       className,
       ellipsisClassName
     );
@@ -270,7 +276,6 @@ export const Typography = forwardRef<HTMLElement, Omit<TypographyProps, 'ref'>>(
       </Component>
     );
 
-    const isInlineEllipsis = isEllipsis && INLINE_ELEMENTS.has(Component);
     const Wrapper = isInlineEllipsis ? 'span' : 'div';
 
     const content = canUnwrap ? (

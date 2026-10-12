@@ -10,14 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Grid } from '@openmetadata/ui-core-components';
 import { useChartPalette } from '@openmetadata/ui-core-components/charts';
-import { Button, Col, Row } from 'antd';
+import { Button } from 'antd';
 import { Gutter } from 'antd/lib/grid/row';
 import classNames from 'classnames';
 import { includes, startCase, toLower } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { updateActiveChartFilter } from '../../utils/ChartUtils';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
 import { dataInsightColor } from '../../utils/DataInsightChartUtils';
 import { sortEntityByValue } from '../../utils/DataInsightPureUtils';
 import Searchbar from '../common/SearchBarComponent/SearchBar.component';
@@ -75,8 +77,11 @@ const TotalEntityInsightSummary = ({
   };
 
   return (
-    <Row data-testid="total-entity-insight-summary-container" gutter={[8, 16]}>
-      <Col className="p-b-sm" span={24}>
+    <Grid
+      className="layout-row layout-grid"
+      data-testid="total-entity-insight-summary-container"
+      style={getLayoutGutter(8, 16)}>
+      <Grid.Item className="layout-column p-b-sm" span={24}>
         <CustomStatistic
           changeInValue={relativePercentage}
           duration={selectedDays}
@@ -85,30 +90,30 @@ const TotalEntityInsightSummary = ({
           })}
           value={total}
         />
-      </Col>
+      </Grid.Item>
       {allowFilter && (
-        <Col span={24}>
+        <Grid.Item className="layout-column" span={24}>
           <Searchbar
             removeMargin
             searchValue={searchEntityKeyWord}
             onSearch={setSearchEntityKeyWord}
           />
-        </Col>
+        </Grid.Item>
       )}
-      <Col
-        className={classNames({
+      <Grid.Item
+        className={`layout-column ${classNames({
           'chart-card-right-panel-container': allowFilter,
-        })}
+        })}`}
         span={24}>
-        <Row gutter={[8, 8]}>
+        <Grid className="layout-row layout-grid" style={getLayoutGutter(8, 8)}>
           {rightSideEntityList.map((entity) => {
             const progress = (latestData[entity] / Number(total)) * 100;
 
             return (
-              <Col
-                className={classNames({
+              <Grid.Item
+                className={`layout-column ${classNames({
                   'entity-summary-container': allowFilter,
-                })}
+                })}`}
                 key={entity}
                 span={24}
                 onClick={() => handleLegendClick(entity)}
@@ -127,20 +132,20 @@ const TotalEntityInsightSummary = ({
                     entity
                   )}
                 />
-              </Col>
+              </Grid.Item>
             );
           })}
-        </Row>
-      </Col>
+        </Grid>
+      </Grid.Item>
 
       {activeKeys && activeKeys.length > 0 && allowFilter && (
-        <Col className="flex justify-end" span={24}>
+        <Grid.Item className="layout-column flex justify-end" span={24}>
           <Button type="link" onClick={() => onActiveKeysUpdate?.([])}>
             {t('label.clear')}
           </Button>
-        </Col>
+        </Grid.Item>
       )}
-    </Row>
+    </Grid>
   );
 };
 

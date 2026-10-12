@@ -63,17 +63,11 @@ test.describe.serial('System Level Certification Tags', () => {
       await openCertificationDropdown(page);
 
       // Disabled Gold tag should NOT be visible
-      await expect(
-        page.getByTestId(`radio-btn-${disabledTagFqn}`)
-      ).not.toBeVisible();
+      await expect(page.getByTestId(disabledTagFqn)).not.toBeVisible();
 
       // Other system tags should still be visible
-      await expect(
-        page.getByTestId('radio-btn-Certification.Silver')
-      ).toBeVisible();
-      await expect(
-        page.getByTestId('radio-btn-Certification.Bronze')
-      ).toBeVisible();
+      await expect(page.getByTestId('Certification.Silver')).toBeVisible();
+      await expect(page.getByTestId('Certification.Bronze')).toBeVisible();
 
       await closeCertificationDropdown(page);
     } finally {
@@ -96,7 +90,7 @@ test.describe.serial('System Level Certification Tags', () => {
 
       // All system certification tags should NOT be visible
       for (const tagFqn of SYSTEM_CERTIFICATION_TAGS) {
-        await expect(page.getByTestId(`radio-btn-${tagFqn}`)).not.toBeVisible();
+        await expect(page.getByTestId(tagFqn)).not.toBeVisible();
       }
 
       await closeCertificationDropdown(page);
@@ -119,7 +113,7 @@ test.describe.serial('System Level Certification Tags', () => {
       await openCertificationDropdown(page);
 
       for (const tagFqn of SYSTEM_CERTIFICATION_TAGS) {
-        await expect(page.getByTestId(`radio-btn-${tagFqn}`)).not.toBeVisible();
+        await expect(page.getByTestId(tagFqn)).not.toBeVisible();
       }
 
       await closeCertificationDropdown(page);
@@ -130,7 +124,7 @@ test.describe.serial('System Level Certification Tags', () => {
       await openCertificationDropdown(page);
 
       for (const tagFqn of SYSTEM_CERTIFICATION_TAGS) {
-        await expect(page.getByTestId(`radio-btn-${tagFqn}`)).toBeVisible();
+        await expect(page.getByTestId(tagFqn)).toBeVisible();
       }
 
       await closeCertificationDropdown(page);

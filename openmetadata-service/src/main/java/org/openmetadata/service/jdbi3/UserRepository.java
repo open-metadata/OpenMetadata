@@ -1901,11 +1901,14 @@ public class UserRepository extends EntityRepository<User> {
           () -> evictNowAndAfterCommit(() -> SubjectCache.invalidateUser(updated.getName())),
           "roles",
           "teams");
+      // Authorization reads these from the cached user context (e.g. hasDomain() and admin checks)
       compareAndUpdateAny(
           () -> evictNowAndAfterCommit(() -> SubjectCache.invalidateUserContext(updated.getName())),
           "personas",
           "defaultPersona",
-          "defaultDomain");
+          "defaultDomain",
+          FIELD_DOMAINS,
+          "isAdmin");
       JwtFilter.invalidateResolvedEmailIdentity(original.getEmail());
       JwtFilter.invalidateResolvedEmailIdentity(updated.getEmail());
     }
@@ -2000,7 +2003,7 @@ public class UserRepository extends EntityRepository<User> {
       Stream.concat(added.stream(), deleted.stream())
           .forEach(
               teamRef -> {
-                EntityInterface team = Entity.getEntity(teamRef, "id,userCount", Include.ALL);
+                EntityInterface<?> team = Entity.getEntity(teamRef, "id,userCount", Include.ALL);
                 searchRepository.updateEntityIndex(team);
               });
     }

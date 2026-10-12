@@ -151,6 +151,7 @@ const MyTaskWidget = ({
             <div className="entity-list-body">
               {tasks.slice(0, PAGE_SIZE_BASE).map((task) => (
                 <TaskFeedCardFromTask
+                  className="tw:py-2!"
                   isOpenInDrawer={myTaskData?.w === 1}
                   key={task.id}
                   task={task}
