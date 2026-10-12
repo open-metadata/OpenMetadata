@@ -84,6 +84,8 @@ export interface TreeSelectTriggerRenderProps {
 }
 
 export interface TreeSelectProps<T = unknown> {
+  id?: string;
+  'aria-label'?: string;
   /** Label text rendered above the field. */
   label?: string;
   /** Placeholder shown in the trigger when nothing is selected. */

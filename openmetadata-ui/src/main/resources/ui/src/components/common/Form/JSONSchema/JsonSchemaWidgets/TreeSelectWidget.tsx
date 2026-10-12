@@ -58,7 +58,9 @@ const TreeSelectWidget: FC<WidgetProps> = ({
       defaultExpandedKeys={['all']}
       disabled={rest.disabled || rest.readonly}
       fetchData={fetchData}
+      id={rest.id}
       placeholder={rest.placeholder}
+      required={rest.required}
       selectedDisplayStrategy="parent"
       value={getTreeSelectValue(treeData, rest.value)}
       onBlur={() => onBlur(rest.id, rest.value)}

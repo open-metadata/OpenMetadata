@@ -23,6 +23,7 @@ import {
   type RefObject,
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -215,6 +216,8 @@ const collectSelectableNodes = <T,>(
 
 export const TreeSelect = <T = unknown,>({
   label,
+  id,
+  'aria-label': ariaLabel,
   placeholder,
   hint,
   tooltip,
@@ -269,6 +272,11 @@ export const TreeSelect = <T = unknown,>({
   filterNode,
 }: TreeSelectProps<T>): ReactElement => {
   const { t } = useCoreTranslation();
+  const treeId = useId();
+  const inputId = id ?? `${treeId}-input`;
+  const [pendingTreeFocus, setPendingTreeFocus] = useState<
+    'first' | 'last' | null
+  >(null);
   const [internalOpen, setInternalOpen] = useState(false);
   const isOpen = controlledIsOpen ?? internalOpen;
   const [expandedKeys, setExpandedKeys] = useState<Set<Key>>(
@@ -966,6 +974,27 @@ export const TreeSelect = <T = unknown,>({
     setShowSelectedOnly(false);
   }, [onChange, multiple, selectedData, clearSearch, setOpen]);
 
+  // Wait for async rows before handing focus to React Aria's keyboard navigation.
+  useEffect(() => {
+    if (!isOpen) {
+      setPendingTreeFocus(null);
+
+      return;
+    }
+    if (!pendingTreeFocus || loading) {
+      return;
+    }
+    const rows = popoverRef.current?.querySelectorAll<HTMLElement>(
+      '[role="row"]:not([aria-disabled="true"])'
+    );
+    const row =
+      pendingTreeFocus === 'first' ? rows?.[0] : rows?.[rows.length - 1];
+    if (row) {
+      row.focus();
+      setPendingTreeFocus(null);
+    }
+  }, [isOpen, pendingTreeFocus, loading, filteredTreeData]);
+
   const treeDropdownContent = (
     <div
       className="tw:contents"
@@ -1009,8 +1038,9 @@ export const TreeSelect = <T = unknown,>({
           </div>
         ) : (
           <Tree
-            aria-label={label ?? placeholder ?? t('label.select')}
+            aria-label={ariaLabel ?? label ?? placeholder ?? t('label.select')}
             expandedKeys={filteredExpandedKeys}
+            id={treeId}
             selectionMode="none"
             onAction={(key) => {
               const id = String(key);
@@ -1164,7 +1194,7 @@ export const TreeSelect = <T = unknown,>({
       onBlur={onBlur}
       onFocus={onFocus}>
       {label && (
-        <Label isRequired={required} tooltip={tooltip}>
+        <Label htmlFor={inputId} isRequired={required} tooltip={tooltip}>
           {label}
         </Label>
       )}
@@ -1228,10 +1258,18 @@ export const TreeSelect = <T = unknown,>({
 
           <FocusScope autoFocus={false} contain={false} restoreFocus={false}>
             <input
-              aria-label={label ?? placeholder}
+              aria-controls={isOpen ? treeId : undefined}
+              aria-expanded={isOpen}
+              aria-haspopup="grid"
+              aria-invalid={isInvalid || undefined}
+              aria-label={
+                ariaLabel ?? label ?? placeholder ?? t('label.select')
+              }
+              aria-required={required || undefined}
               autoFocus={autoFocus}
               className="tw:min-w-[6rem] tw:flex-1 tw:appearance-none tw:bg-transparent tw:text-sm tw:text-primary tw:outline-hidden tw:placeholder:text-placeholder tw:disabled:cursor-not-allowed"
               disabled={disabled}
+              id={inputId}
               placeholder={
                 selectedData.length > 0
                   ? undefined
@@ -1239,12 +1277,22 @@ export const TreeSelect = <T = unknown,>({
               }
               readOnly={!searchable}
               ref={inputRef}
+              role="combobox"
               value={displayValue}
               onChange={(event) =>
                 searchable && setInputValue(event.target.value)
               }
               onFocus={openOnFocus}
               onKeyDown={(event) => {
+                if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                  event.preventDefault();
+                  openTrigger();
+                  setPendingTreeFocus(
+                    event.key === 'ArrowDown' ? 'first' : 'last'
+                  );
+
+                  return;
+                }
                 if (event.key === 'Escape') {
                   dismiss();
 

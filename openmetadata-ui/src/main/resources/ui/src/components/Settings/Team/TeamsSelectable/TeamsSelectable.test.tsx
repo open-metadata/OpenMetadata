@@ -32,7 +32,7 @@ describe('TeamsSelectable', () => {
   it('renders a searchable team picker', async () => {
     render(<TeamsSelectable />, { wrapper: MemoryRouter });
 
-    expect(screen.getByRole('textbox')).toBeInTheDocument();
+    expect(screen.getByRole('combobox')).toBeInTheDocument();
 
     await waitFor(() => expect(getTeamsHierarchy).toHaveBeenCalled());
   });
@@ -53,7 +53,7 @@ describe('TeamsSelectable', () => {
     render(<TeamsSelectable onSelectionChange={onSelectionChange} />, {
       wrapper: MemoryRouter,
     });
-    await user.click(screen.getByRole('textbox'));
+    await user.click(screen.getByRole('combobox'));
     await user.click(await screen.findByText('entityName'));
 
     expect(onSelectionChange).toHaveBeenLastCalledWith([

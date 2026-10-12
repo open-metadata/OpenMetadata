@@ -297,9 +297,11 @@ const RuleForm: FC<RuleFormProps> = ({
             <TreeSelect
               cascadeSelection
               multiple
+              required
               searchable
               data-testid="resources"
               fetchData={fetchResources}
+              isInvalid={fieldState.invalid}
               label={`${t('label.resource-plural')}:`}
               selectedDisplayStrategy="parent"
               value={getTreeSelectValue(resourcesOptions, field.value)}
@@ -332,9 +334,11 @@ const RuleForm: FC<RuleFormProps> = ({
             <TreeSelect
               cascadeSelection
               multiple
+              required
               searchable
               data-testid="operations"
               fetchData={fetchOperations}
+              isInvalid={fieldState.invalid}
               label={`${t('label.operation-plural')}:`}
               selectedDisplayStrategy="parent"
               value={getTreeSelectValue(operationOptions, field.value)}

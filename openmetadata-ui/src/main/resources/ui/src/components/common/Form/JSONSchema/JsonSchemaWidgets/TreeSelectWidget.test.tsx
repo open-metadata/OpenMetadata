@@ -54,7 +54,7 @@ describe('Test TreeSelectWidget Component', () => {
 
     const treeSelectInput = await findByRole(
       screen.getByTestId('tree-select-widget'),
-      'textbox'
+      'combobox'
     );
 
     expect(treeSelectInput).toBeDisabled();
@@ -85,7 +85,7 @@ describe('Test TreeSelectWidget Component', () => {
 
     const treeSelectInput = await findByRole(
       screen.getByTestId('tree-select-widget'),
-      'textbox'
+      'combobox'
     );
 
     await act(async () => {
@@ -113,7 +113,7 @@ describe('Test TreeSelectWidget Component', () => {
 
     const treeSelectInput = await findByRole(
       screen.getByTestId('tree-select-widget'),
-      'textbox'
+      'combobox'
     );
 
     await act(async () => {
@@ -147,7 +147,7 @@ describe('Test TreeSelectWidget Component', () => {
 
     const treeSelectInput = await findByRole(
       screen.getByTestId('tree-select-widget'),
-      'textbox'
+      'combobox'
     );
 
     await act(async () => {
@@ -182,7 +182,7 @@ describe('Test TreeSelectWidget Component', () => {
 
     const treeSelectInput = await findByRole(
       screen.getByTestId('tree-select-widget'),
-      'textbox'
+      'combobox'
     );
 
     await act(async () => {

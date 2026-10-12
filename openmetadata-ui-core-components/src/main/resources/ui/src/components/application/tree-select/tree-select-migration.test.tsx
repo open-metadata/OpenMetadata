@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { TreeSelect } from './tree-select';
@@ -29,6 +29,33 @@ const parent: TreeSelectNode = {
 const fetchData = async () => ({ nodes: [parent] });
 
 describe('TreeSelect migrated selection contracts', () => {
+  it('moves keyboard focus into asynchronously loaded options and selects with Enter', async () => {
+    const onChange = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <TreeSelect
+        multiple
+        searchable
+        aria-label="Choose teams"
+        fetchData={async () => ({ nodes: children })}
+        id="teams"
+        onChange={onChange}
+      />
+    );
+    const input = screen.getByRole('combobox', { name: 'Choose teams' });
+    expect(input).toHaveAttribute('id', 'teams');
+    await user.click(input);
+    await user.keyboard('{ArrowDown}');
+    const firstRow = await screen.findByRole('row', { name: 'A' });
+    await waitFor(() => expect(firstRow).toHaveFocus());
+    expect(input).toHaveAttribute(
+      'aria-controls',
+      screen.getByRole('treegrid').id
+    );
+    await user.keyboard('{Enter}');
+    await waitFor(() => expect(onChange).toHaveBeenCalledWith([children[0]]));
+  });
+
   it('limits visible chips without discarding hidden selections', () => {
     render(
       <TreeSelect
@@ -61,7 +88,7 @@ describe('TreeSelect migrated selection contracts', () => {
     );
     expect(screen.getByText('All')).toBeInTheDocument();
     expect(screen.queryByText('A')).not.toBeInTheDocument();
-    await user.click(screen.getByRole('textbox', { name: 'Metrics' }));
+    await user.click(screen.getByRole('combobox', { name: 'Metrics' }));
     expect(onFocus).toHaveBeenCalled();
     await user.tab();
     expect(onBlur).toHaveBeenCalled();
