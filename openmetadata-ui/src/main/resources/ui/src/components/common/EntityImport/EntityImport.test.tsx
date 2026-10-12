@@ -128,7 +128,7 @@ describe('EntityImport component', () => {
     expect(uploadDragger).toBeInTheDocument();
 
     await act(async () => {
-      fireEvent.change(uploadDragger, { target: { files: [file] } });
+      fireEvent.change(screen.getByTestId('upload-file-input'), { target: { files: [file] } });
     });
 
     expect(
@@ -195,7 +195,7 @@ describe('EntityImport component', () => {
     expect(uploadDragger).toBeInTheDocument();
 
     await act(async () => {
-      fireEvent.change(uploadDragger, { target: { files: [file] } });
+      fireEvent.change(screen.getByTestId('upload-file-input'), { target: { files: [file] } });
     });
 
     expect(
@@ -260,7 +260,7 @@ describe('EntityImport component', () => {
     expect(uploadDragger).toBeInTheDocument();
 
     await act(async () => {
-      fireEvent.change(uploadDragger, { target: { files: [file] } });
+      fireEvent.change(screen.getByTestId('upload-file-input'), { target: { files: [file] } });
     });
 
     expect(
@@ -312,7 +312,7 @@ describe('EntityImport component', () => {
     expect(uploadDragger).toBeInTheDocument();
 
     await act(async () => {
-      fireEvent.change(uploadDragger, { target: { files: [file] } });
+      fireEvent.change(screen.getByTestId('upload-file-input'), { target: { files: [file] } });
     });
 
     expect(
