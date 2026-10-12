@@ -39,6 +39,22 @@ jest.mock('../../../../../utils/FeedUtilsPure', () => ({
   getFrontEndFormat: (message: string) => `front:${message}`,
 }));
 
+// The stack itself is the core component's; here, only what it is given.
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  AvatarGroup: ({
+    owners,
+    overflowTitleLabel,
+  }: {
+    owners: { name: string }[];
+    overflowTitleLabel: string;
+  }) => (
+    <div data-testid="avatar-group" data-title={overflowTitleLabel}>
+      {owners.map(({ name }) => name).join(',')}
+    </div>
+  ),
+}));
+
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
@@ -57,6 +73,28 @@ describe('TaskDetailSummary', () => {
             label: 'Approver',
             value: {
               kind: 'users',
+              refs: [{ id: 'me', type: 'user', name: 'harsh' }],
+            },
+          },
+        ]}
+      />
+    );
+
+    expect(screen.getByText('harsh (label.you)')).toBeInTheDocument();
+    expect(screen.queryByTestId('avatar-group')).not.toBeInTheDocument();
+  });
+
+  // Several people stack as owners do, the overflow titled by the row.
+  it('stacks several people under the row label', () => {
+    render(
+      <TaskDetailSummary
+        rows={[
+          {
+            key: 'assignees',
+            icon: 'user',
+            label: 'Assignee',
+            value: {
+              kind: 'users',
               refs: [
                 { id: 'me', type: 'user', name: 'harsh' },
                 { id: 'other', type: 'user', name: 'dana' },
@@ -67,8 +105,10 @@ describe('TaskDetailSummary', () => {
       />
     );
 
-    expect(screen.getByText('harsh (label.you)')).toBeInTheDocument();
-    expect(screen.getByText('dana')).toBeInTheDocument();
+    const stack = screen.getByTestId('avatar-group');
+
+    expect(stack).toHaveTextContent('harsh,dana');
+    expect(stack).toHaveAttribute('data-title', 'Assignee');
   });
 
   // Markdown and stored mentions render, not their raw markup.
