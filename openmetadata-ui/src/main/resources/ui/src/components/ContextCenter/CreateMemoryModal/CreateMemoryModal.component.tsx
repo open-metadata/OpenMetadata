@@ -1155,7 +1155,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                   modalContainerRef.current ?? document.body
                 }>
                 <HookForm
-                  className="tw:flex tw:flex-col tw:max-h-[92vh]"
+                  className="tw:flex tw:flex-col tw:h-[92vh]"
                   form={form}
                   onSubmit={form.handleSubmit(handleSubmit)}>
                   {/* Sticky header */}

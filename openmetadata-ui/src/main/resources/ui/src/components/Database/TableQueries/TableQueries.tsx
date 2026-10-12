@@ -16,8 +16,14 @@ import {
   SortAscendingOutlined,
   SortDescendingOutlined,
 } from '@ant-design/icons';
-import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
-import { Button, Tooltip } from 'antd';
+import {
+  Box,
+  Button as CoreButton,
+  Grid,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, uniqBy } from 'lodash';
@@ -493,15 +499,18 @@ const TableQueries: FC<TableQueriesProp> = ({
 
   const addButton = (
     <Tooltip
+      arrow
+      isDisabled={permissions?.query.Create}
       placement="top"
-      title={!permissions?.query.Create && t(NO_PERMISSION_FOR_ACTION)}>
-      <Button
+      title={t(NO_PERMISSION_FOR_ACTION)}>
+      <CoreButton
+        color="primary"
         data-testid="add-query-btn"
-        disabled={!permissions?.query.Create}
-        type="primary"
-        onClick={handleAddQueryClick}>
+        isDisabled={!permissions?.query.Create}
+        size="sm"
+        onPress={handleAddQueryClick}>
         {t('label.add')}
-      </Button>
+      </CoreButton>
     </Tooltip>
   );
 

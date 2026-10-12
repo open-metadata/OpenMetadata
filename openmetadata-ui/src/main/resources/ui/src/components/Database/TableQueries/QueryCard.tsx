@@ -11,9 +11,16 @@
  *  limitations under the License.
  */
 
-import { Box, Card, Grid, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  ButtonUtility,
+  Card,
+  Grid,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Copy01 } from '@openmetadata/ui-core-components/icons';
-import { Button, Tooltip } from 'antd';
+import { Button } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import classNames from 'classnames';
 import { isUndefined, split } from 'lodash';
@@ -194,11 +201,19 @@ const QueryCard: FC<QueryCardProp> = ({
 
   const renderExpandIcon = () =>
     isExpanded ? (
-      <Tooltip title={t('label.exit-fit-to-screen')}>
+      <Tooltip
+        arrow
+        excludeTriggerFromTabOrder
+        title={t('label.exit-fit-to-screen')}
+        triggerClassName="tw:inline-flex">
         <ExitFullScreen height={16} width={16} />
       </Tooltip>
     ) : (
-      <Tooltip title={t('label.fit-to-screen')}>
+      <Tooltip
+        arrow
+        excludeTriggerFromTabOrder
+        title={t('label.fit-to-screen')}
+        triggerClassName="tw:inline-flex">
         <FullScreen height={16} width={16} />
       </Tooltip>
     );
@@ -279,11 +294,12 @@ const QueryCard: FC<QueryCardProp> = ({
                 icon={renderExpandIcon()}
                 onClick={handleExpandClick}
               />
-              <Tooltip title={t('message.copy-to-clipboard')}>
-                <Button
-                  className="flex-center"
+              <Tooltip arrow title={t('message.copy-to-clipboard')}>
+                <ButtonUtility
+                  color="secondary"
                   data-testid="query-entity-copy-button"
-                  icon={<Copy01 size={16} />}
+                  icon={Copy01}
+                  size="sm"
                   onClick={onCopyToClipBoard}
                 />
               </Tooltip>

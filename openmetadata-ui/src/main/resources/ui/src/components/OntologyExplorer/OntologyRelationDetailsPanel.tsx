@@ -320,16 +320,23 @@ export const OntologyRelationDetailsPanel = ({
       new Map(nodes.map((node) => [node.id, node.originalLabel ?? node.label])),
     [nodes]
   );
-  const relationshipTypeOptions = useMemo<SelectItemType[]>(
-    () =>
-      relationshipTypes
-        .filter((relationshipType) => !relationshipType.deleted)
-        .map((relationshipType) => ({
-          id: relationshipType.name,
-          label: relationshipType.displayName,
-        })),
-    [relationshipTypes]
-  );
+  const relationshipTypeOptions = useMemo<SelectItemType[]>(() => {
+    const opts: SelectItemType[] = relationshipTypes
+      .filter((relationshipType) => !relationshipType.deleted)
+      .map((relationshipType) => ({
+        id: relationshipType.name,
+        label: relationshipType.displayName,
+      }));
+
+    if (
+      edge?.relationType &&
+      !opts.some((opt) => opt.id === edge.relationType)
+    ) {
+      opts.push({ id: edge.relationType, label: edge.relationType });
+    }
+
+    return opts;
+  }, [relationshipTypes, edge?.relationType]);
   const provenanceOptions = useMemo<SelectItemType[]>(
     () => [
       { id: UpdateProvenance.Manual, label: t('label.manual') },

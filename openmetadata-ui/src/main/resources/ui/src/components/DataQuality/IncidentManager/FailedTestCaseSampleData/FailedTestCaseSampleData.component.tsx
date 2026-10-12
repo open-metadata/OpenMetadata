@@ -251,6 +251,12 @@ const FailedTestCaseSampleData = ({
     return () => {
       cancelled = true;
     };
+    // `testCaseResult.timestamp` is the run-identity signal: it changes on
+    // every run completion, so a re-run that stays `Failed` with the same id
+    // triggers a refetch instead of showing the previous run's rows. It is a
+    // primitive (required on every TestCaseResult), so unrelated `testCaseData`
+    // object replacements (e.g. owner/tag edits carrying the same result
+    // reference) do not spuriously refetch.
   }, [
     testCaseData?.id,
     testCaseData?.testCaseResult?.timestamp,

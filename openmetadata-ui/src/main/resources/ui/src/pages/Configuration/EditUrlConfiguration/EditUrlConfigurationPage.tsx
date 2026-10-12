@@ -20,6 +20,7 @@ import Loader from '../../../components/common/Loader/Loader';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../../components/common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import SettingsSourceBanner from '../../../components/platform/settings/SettingsSourceBanner/SettingsSourceBanner';
 import { VALIDATION_MESSAGES } from '../../../constants/constants';
 import {
   GlobalSettingOptions,
@@ -33,15 +34,21 @@ import { ServiceCategory } from '../../../enums/service.enum';
 import { OpenMetadataBaseURLConfiguration } from '../../../generated/configuration/openMetadataBaseUrlConfiguration';
 import { Settings, SettingType } from '../../../generated/settings/settings';
 import { withPageLayout } from '../../../hoc/withPageLayout';
+import { useSettingsSource } from '../../../hooks/platform/useSettingsSource';
 import {
   getSettingsConfigFromConfigType,
   updateSettingsConfig,
 } from '../../../rest/settingConfigAPI';
 import { getHyperlinkUrlValidationErrorKey } from '../../../utils/CustomProperty.utils';
+import {
+  findSettingSource,
+  isPathManaged,
+} from '../../../utils/platform/settingsSource.utils';
 import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 const { Item } = Form;
+const URL_SETTING_TYPES = [SettingType.OpenMetadataBaseURLConfiguration];
 const EditUrlConfigurationPage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -49,6 +56,12 @@ const EditUrlConfigurationPage = () => {
   const [activeField, setActiveField] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [updating, setUpdating] = useState<boolean>(false);
+  const { sources, refetch: refetchSources } =
+    useSettingsSource(URL_SETTING_TYPES);
+  const isManagedByDeployment = isPathManaged(
+    findSettingSource(sources, SettingType.OpenMetadataBaseURLConfiguration),
+    '/openMetadataUrl'
+  );
 
   const fetchCustomLogoConfig = async () => {
     try {
@@ -127,6 +140,12 @@ const EditUrlConfigurationPage = () => {
   const firstPanelChildren = (
     <>
       <TitleBreadcrumb titleLinks={breadcrumb} />
+      <SettingsSourceBanner
+        className="tw:mt-4"
+        sources={sources}
+        onAdopted={fetchCustomLogoConfig}
+        onRefetch={refetchSources}
+      />
       <Form
         className="m-t-md"
         data-testid="custom-login-config-form"
@@ -158,6 +177,7 @@ const EditUrlConfigurationPage = () => {
           ]}>
           <Input
             data-testid="open-metadata-url-input"
+            disabled={isManagedByDeployment}
             id="root/openMetadataUrl-input"
           />
         </Item>
@@ -170,15 +190,17 @@ const EditUrlConfigurationPage = () => {
               {t('label.cancel')}
             </Button>
           </Box>
-          <Box className="layout-column tw:block">
-            <Button
-              data-testid="save-button"
-              htmlType="submit"
-              loading={updating}
-              type="primary">
-              {t('label.save')}
-            </Button>
-          </Box>
+          {!isManagedByDeployment && (
+            <Box className="layout-column tw:block">
+              <Button
+                data-testid="save-button"
+                htmlType="submit"
+                loading={updating}
+                type="primary">
+                {t('label.save')}
+              </Button>
+            </Box>
+          )}
         </Box>
       </Form>
     </>

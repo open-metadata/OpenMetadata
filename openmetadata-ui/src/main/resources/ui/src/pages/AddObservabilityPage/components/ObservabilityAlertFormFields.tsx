@@ -26,10 +26,8 @@ import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEd
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { ProviderType } from '../../../generated/entity/events/notificationTemplate';
 import { AlertType } from '../../../generated/events/eventSubscription';
-import {
-  ModifiedCreateEventSubscription,
-  ObservabilityAlertFormFieldsProps,
-} from '../AddObservabilityPage.interface';
+import { ModifiedCreateEventSubscription } from '../AddObservabilityPage.interface';
+import { ObservabilityAlertFormFieldsProps } from '../hooks/useObservabilityAlertForm';
 
 function ObservabilityAlertFormFields({
   alert,

@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Button as CoreButton,
+  Grid,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import {
   Button,
   Form,
@@ -20,7 +26,6 @@ import {
   InputNumber,
   Select,
   Slider,
-  Tooltip,
 } from 'antd';
 import { useForm, useWatch } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
@@ -420,14 +425,15 @@ const EditKPIPage = () => {
                   {t('label.go-back')}
                 </Button>
                 {isAdminUser ? (
-                  <Tooltip title={t('label.save')}>
-                    <Button
+                  <Tooltip arrow title={t('label.save')}>
+                    <CoreButton
+                      color="primary"
                       data-testid="submit-btn"
-                      htmlType="submit"
-                      loading={isUpdatingKPI}
-                      type="primary">
+                      isLoading={isUpdatingKPI}
+                      size="sm"
+                      type="submit">
                       {t('label.save')}
-                    </Button>
+                    </CoreButton>
                   </Tooltip>
                 ) : null}
               </Box>
