@@ -101,9 +101,11 @@ const cacheFormDocs = (
  * form has no docs" rather than "one fetch failed".
  */
 export const loadFormFieldDocs = (
-  formName: string
+  formName: string,
+  folder = 'OpenMetadata'
 ): Promise<Record<string, string>> => {
-  const cached = docsCache.get(formName);
+  const cacheKey = `${folder}/${formName}`;
+  const cached = docsCache.get(cacheKey);
   if (cached) {
     return cached;
   }
@@ -111,7 +113,7 @@ export const loadFormFieldDocs = (
   const docs = (async () => {
     try {
       const markdown = await fetchMarkdownFile(
-        `${SupportedLocales.English}/OpenMetadata/${formName}.md`
+        `${SupportedLocales.English}/${folder}/${formName}.md`
       );
 
       return parseFormFieldDocs(markdown);
@@ -123,14 +125,14 @@ export const loadFormFieldDocs = (
       // cap can drop an in-flight entry, and a later call would then re-fetch
       // under the same key — deleting by key alone would throw away that newer,
       // possibly successful fetch on behalf of a request that is already dead.
-      if (docsCache.get(formName) === docs) {
-        docsCache.delete(formName);
+      if (docsCache.get(cacheKey) === docs) {
+        docsCache.delete(cacheKey);
       }
 
       return {};
     }
   })();
-  cacheFormDocs(formName, docs);
+  cacheFormDocs(cacheKey, docs);
 
   return docs;
 };

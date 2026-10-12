@@ -11,13 +11,20 @@
  *  limitations under the License.
  */
 
-import { EyeFilled, MoreOutlined, PlusOutlined } from '@ant-design/icons';
 import {
-  Button as CoreButton,
+  Box,
+  Button,
+  Card,
   Dropdown,
   Grid,
+  Input,
+  SimpleModal,
 } from '@openmetadata/ui-core-components';
-import { Button, Card, Input, Modal } from 'antd';
+import {
+  DotsVertical,
+  EyeFilled,
+  Plus,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty, isNil, isUndefined, uniqueId } from 'lodash';
 import { lazy, useCallback, useMemo, useState } from 'react';
@@ -37,7 +44,7 @@ import { useGridLayoutDirection } from '../../../hooks/useGridLayoutDirection';
 import {
   WidgetCommonProps,
   WidgetConfig,
-} from '../../../pages/CustomizablePage/CustomizablePage.interface';
+} from '../../../interface/customization.interface';
 import { useCustomizeStore } from '../../../pages/CustomizablePage/CustomizeStore';
 import { getEntityTypeFromPageType } from '../../../pages/CustomizeDetailsPage/CustomizeDetailPage.interface';
 import {
@@ -145,7 +152,7 @@ export const CustomizeTabWidget = () => {
     return hasEmptyWidgetPlaceholder
       ? layout
       : getLayoutWithEmptyWidgetPlaceholder(layout, 2, 3);
-  }, [items, activeKey]);
+  }, [items, activeKey, currentPageType]);
 
   const leftPanelWidget = useMemo(() => {
     return tabLayouts.find((layout) =>
@@ -242,35 +249,34 @@ export const CustomizeTabWidget = () => {
     }
   };
 
-  const handleChange: React.ChangeEventHandler<HTMLInputElement> = (event) => {
-    editableItem &&
-      setEditableItem({
-        ...editableItem,
-        displayName: event.target.value ?? '',
-      });
+  const handleChange = (displayName: string) => {
+    editableItem && setEditableItem({ ...editableItem, displayName });
   };
 
-  const handleOpenAddWidgetModal = () => {
+  const handleOpenAddWidgetModal = useCallback(() => {
     setIsWidgetModalOpen(true);
-  };
+  }, []);
 
-  const handlePlaceholderWidgetKey = (value: string) => {
+  const handlePlaceholderWidgetKey = useCallback((value: string) => {
     setPlaceholderWidgetKey(value);
-  };
+  }, []);
 
-  const handleRemoveWidget = (widgetKey: string) => {
-    updateCurrentPage({
-      ...currentPage,
-      tabs: items.map((item) =>
-        item.id === activeKey
-          ? {
-              ...item,
-              layout: tabLayouts.filter((widget) => widget.i !== widgetKey),
-            }
-          : item
-      ),
-    } as Page);
-  };
+  const handleRemoveWidget = useCallback(
+    (widgetKey: string) => {
+      updateCurrentPage({
+        ...currentPage,
+        tabs: items.map((item) =>
+          item.id === activeKey
+            ? {
+                ...item,
+                layout: tabLayouts.filter((widget) => widget.i !== widgetKey),
+              }
+            : item
+        ),
+      } as Page);
+    },
+    [currentPage, items, activeKey, tabLayouts, updateCurrentPage]
+  );
 
   const handleSideLayoutUpdate = useCallback(
     (updatedLayout: Layout[]) => {
@@ -311,27 +317,26 @@ export const CustomizeTabWidget = () => {
     [tabLayouts, takeDrop, currentPage, items, activeKey, updateCurrentPage]
   );
 
-  const handleWidgetConfigChange = (
-    widgetKey: string,
-    config: WidgetConfig['config'],
-    width?: number
-  ) => {
-    updateCurrentPage({
-      ...currentPage,
-      tabs: items.map((item) =>
-        item.id === activeKey
-          ? {
-              ...item,
-              layout: tabLayouts.map((widget) =>
-                widget.i === widgetKey
-                  ? { ...widget, config, w: width ?? widget.w }
-                  : widget
-              ),
-            }
-          : item
-      ),
-    } as Page);
-  };
+  const handleWidgetConfigChange = useCallback(
+    (widgetKey: string, config: WidgetConfig['config'], width?: number) => {
+      updateCurrentPage({
+        ...currentPage,
+        tabs: items.map((item) =>
+          item.id === activeKey
+            ? {
+                ...item,
+                layout: tabLayouts.map((widget) =>
+                  widget.i === widgetKey
+                    ? { ...widget, config, w: width ?? widget.w }
+                    : widget
+                ),
+              }
+            : item
+        ),
+      } as Page);
+    },
+    [currentPage, items, activeKey, tabLayouts, updateCurrentPage]
+  );
 
   const customPropertiesTabLayout = useMemo(
     () =>
@@ -370,77 +375,90 @@ export const CustomizeTabWidget = () => {
     } as Page);
   };
 
-  const getWidgetFromLayout = (layout: WidgetConfig[]) => {
-    return layout.map((widget) => {
-      let widgetComponent = null;
+  const getWidgetFromLayout = useCallback(
+    (layout: WidgetConfig[]) =>
+      layout.map((widget) => {
+        let widgetComponent = null;
 
-      if (
-        widget.i.endsWith('.EmptyWidgetPlaceholder') &&
-        !isUndefined(handleOpenAddWidgetModal) &&
-        !isUndefined(handlePlaceholderWidgetKey) &&
-        !isUndefined(handleRemoveWidget)
-      ) {
-        widgetComponent = (
-          <EmptyWidgetPlaceholder
-            handleOpenAddWidgetModal={handleOpenAddWidgetModal}
-            handlePlaceholderWidgetKey={handlePlaceholderWidgetKey}
-            handleRemoveWidget={handleRemoveWidget}
-            isEditable={widget.isDraggable}
-            widgetKey={widget.i}
-          />
-        );
-      } else if (widget.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)) {
-        widgetComponent = (
-          <div
-            className={classNames('tw:rounded-xl', {
-              'tw:outline-2 tw:-outline-offset-2 tw:outline-brand-solid':
-                dropTarget === 'panel',
-              // Dropped here the widget leaves the panel, so the panel's grid
-              // shows no slot for it.
-              'tw:[&_.react-grid-placeholder]:invisible':
-                dropTarget === 'beside',
-            })}
-            data-drop-target={dropTarget ?? undefined}
-            data-testid="left-panel-drop-target"
-            ref={panelRef}>
-            <LeftPanelContainer
-              isEditView
-              editColumns={widget.w}
-              key={widget.i}
-              layout={widget.children ?? ([] as WidgetConfig[])}
-              type={currentPageType as PageType}
-              onDrag={handlePanelDrag}
-              onDragStop={handlePanelDragStop}
-              onUpdate={handleSideLayoutUpdate}
+        if (
+          widget.i.endsWith('.EmptyWidgetPlaceholder') &&
+          !isUndefined(handleOpenAddWidgetModal) &&
+          !isUndefined(handlePlaceholderWidgetKey) &&
+          !isUndefined(handleRemoveWidget)
+        ) {
+          widgetComponent = (
+            <EmptyWidgetPlaceholder
+              handleOpenAddWidgetModal={handleOpenAddWidgetModal}
+              handlePlaceholderWidgetKey={handlePlaceholderWidgetKey}
+              handleRemoveWidget={handleRemoveWidget}
+              isEditable={widget.isDraggable}
+              widgetKey={widget.i}
             />
+          );
+        } else if (widget.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)) {
+          widgetComponent = (
+            <div
+              className={classNames('tw:rounded-xl', {
+                'tw:outline-2 tw:-outline-offset-2 tw:outline-brand-solid':
+                  dropTarget === 'panel',
+                // Dropped here the widget leaves the panel, so the panel's grid
+                // shows no slot for it.
+                'tw:[&_.react-grid-placeholder]:invisible':
+                  dropTarget === 'beside',
+              })}
+              data-drop-target={dropTarget ?? undefined}
+              data-testid="left-panel-drop-target"
+              ref={panelRef}>
+              <LeftPanelContainer
+                isEditView
+                editColumns={widget.w}
+                key={widget.i}
+                layout={widget.children ?? ([] as WidgetConfig[])}
+                type={currentPageType as PageType}
+                onDrag={handlePanelDrag}
+                onDragStop={handlePanelDragStop}
+                onUpdate={handleSideLayoutUpdate}
+              />
+            </div>
+          );
+        } else {
+          widgetComponent = (
+            <GenericWidget
+              isEditView
+              handleRemoveWidget={handleRemoveWidget}
+              handleWidgetConfigChange={handleWidgetConfigChange}
+              selectedGridSize={widget.w}
+              widgetConfig={widget}
+              widgetKey={widget.i}
+            />
+          );
+        }
+
+        // The panel's height comes from the widgets inside it, for the grid only,
+        // so it is not saved over the stored one.
+        const gridItem = widget.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)
+          ? { ...widget, h: getLeftPanelHeight(widget.children) }
+          : widget;
+
+        return (
+          <div data-grid={gridItem} id={widget.i} key={widget.i}>
+            {widgetComponent}
           </div>
         );
-      } else {
-        widgetComponent = (
-          <GenericWidget
-            isEditView
-            handleRemoveWidget={handleRemoveWidget}
-            handleWidgetConfigChange={handleWidgetConfigChange}
-            selectedGridSize={widget.w}
-            widgetConfig={widget}
-            widgetKey={widget.i}
-          />
-        );
-      }
-
-      // The panel's height comes from the widgets inside it, for the grid only,
-      // so it is not saved over the stored one.
-      const gridItem = widget.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)
-        ? { ...widget, h: getLeftPanelHeight(widget.children) }
-        : widget;
-
-      return (
-        <div data-grid={gridItem} id={widget.i} key={widget.i}>
-          {widgetComponent}
-        </div>
-      );
-    });
-  };
+      }),
+    [
+      currentPageType,
+      dropTarget,
+      handleOpenAddWidgetModal,
+      handlePanelDrag,
+      handlePanelDragStop,
+      handlePlaceholderWidgetKey,
+      handleRemoveWidget,
+      handleSideLayoutUpdate,
+      handleWidgetConfigChange,
+      panelRef,
+    ]
+  );
 
   /**
    * Memoized widgets array optimized for drag and drop performance
@@ -449,13 +467,7 @@ export const CustomizeTabWidget = () => {
    */
   const widgets = useMemo(
     () => getWidgetFromLayout(tabLayouts),
-    [
-      tabLayouts,
-      dropTarget,
-      handlePanelDrag,
-      handlePanelDragStop,
-      handleSideLayoutUpdate,
-    ]
+    [tabLayouts, getWidgetFromLayout]
   );
 
   /**
@@ -565,115 +577,121 @@ export const CustomizeTabWidget = () => {
   return (
     <>
       <Grid.Item className="layout-column" span={24}>
-        <Card
-          bordered={false}
-          data-testid="customize-tab-card"
-          extra={
-            <Button
-              icon={<PlusOutlined />}
-              type="primary"
-              onClick={() => setShowAddTabModal(true)}>
-              {t('label.add-entity', {
-                entity: t('label.tab'),
-              })}
-            </Button>
-          }
-          title={t('label.customize-tab-plural')}>
-          <div className="d-flex flex-wrap gap-4">
-            {items.map((item, index) => (
-              <TabItem
-                index={index}
-                // The Custom Properties tab has no widgets but its card layout
-                // is arranged here.
-                isEditable={
-                  item.editable || item.id === EntityTabs.CUSTOM_PROPERTIES
-                }
-                item={item}
-                key={item.id}
-                moveTab={moveTab}
-                shouldHide={systemTabIds.includes(item.id)}
-                onEdit={onChange}
-                onRemove={remove}
-                onRename={handleTabEditClick}
-              />
-            ))}
-            {hiddenTabs.map((item) => (
-              <Dropdown.Root key={item.id}>
-                <CoreButton
-                  className="draggable-hidden-tab-item bg-grey"
-                  color="secondary"
-                  data-testid={`tab-${item.name}`}
-                  iconTrailing={MoreOutlined}>
-                  {getTabDisplayName(item)}
-                </CoreButton>
-                <Dropdown.Popover
-                  className="tw:w-auto"
-                  placement="bottom start">
-                  <Dropdown.Menu
-                    aria-label={getTabDisplayName(item)}
-                    selectionMode="none"
-                    onAction={() => add(item)}>
-                    <Dropdown.Item
-                      icon={EyeFilled}
-                      id="show"
-                      label={t('label.show')}
-                    />
-                  </Dropdown.Menu>
-                </Dropdown.Popover>
-              </Dropdown.Root>
-            ))}
-          </div>
+        <Card className="tw:w-full" data-testid="customize-tab-card">
+          <Card.Header
+            className="tw:items-center tw:border-b-0 tw:pt-5"
+            extra={
+              <Button
+                color="primary"
+                iconLeading={Plus}
+                onPress={() => setShowAddTabModal(true)}>
+                {t('label.add-entity', {
+                  entity: t('label.tab'),
+                })}
+              </Button>
+            }
+            title={t('label.customize-tab-plural')}
+          />
+          <Card.Content className="tw:pb-6">
+            <Box gap={4} wrap="wrap">
+              {items.map((item, index) => (
+                <TabItem
+                  index={index}
+                  // The Custom Properties tab has no widgets but its card layout
+                  // is arranged here.
+                  isEditable={
+                    item.editable || item.id === EntityTabs.CUSTOM_PROPERTIES
+                  }
+                  item={item}
+                  key={item.id}
+                  moveTab={moveTab}
+                  shouldHide={systemTabIds.includes(item.id)}
+                  onEdit={onChange}
+                  onRemove={remove}
+                  onRename={handleTabEditClick}
+                />
+              ))}
+              {hiddenTabs.map((item) => (
+                <Dropdown.Root key={item.id}>
+                  <Button
+                    className="draggable-hidden-tab-item bg-grey"
+                    color="secondary"
+                    data-testid={`tab-${item.name}`}
+                    iconTrailing={DotsVertical}>
+                    {getTabDisplayName(item)}
+                  </Button>
+                  <Dropdown.Popover
+                    className="tw:w-auto"
+                    placement="bottom start">
+                    <Dropdown.Menu
+                      aria-label={getTabDisplayName(item)}
+                      selectionMode="none"
+                      onAction={() => add(item)}>
+                      <Dropdown.Item
+                        icon={EyeFilled}
+                        id="show"
+                        label={t('label.show')}
+                      />
+                    </Dropdown.Menu>
+                  </Dropdown.Popover>
+                </Dropdown.Root>
+              ))}
+            </Box>
+          </Card.Content>
         </Card>
       </Grid.Item>
       <Grid.Item className="layout-column" span={24}>
-        <Card
-          bodyStyle={{ padding: 0, paddingBottom: '20px' }}
-          bordered={false}
-          extra={
-            activeKey === EntityTabs.CUSTOM_PROPERTIES ? undefined : (
-              <Button
-                icon={<PlusOutlined />}
-                type="primary"
-                onClick={handleOpenAddWidgetModal}>
-                {t('label.add-entity', {
-                  entity: t('label.widget'),
-                })}
-              </Button>
-            )
-          }
-          title={t('label.customize-entity-widget-plural', {
-            entity: getEntityName(
-              items.find((item) => item.id === activeKey) as Tab
-            ),
-          })}>
-          {/* 
+        <Card className="tw:w-full">
+          <Card.Header
+            className="tw:items-center tw:border-b-0 tw:pt-5"
+            extra={
+              activeKey === EntityTabs.CUSTOM_PROPERTIES ? undefined : (
+                <Button
+                  color="primary"
+                  iconLeading={Plus}
+                  onPress={handleOpenAddWidgetModal}>
+                  {t('label.add-entity', {
+                    entity: t('label.widget'),
+                  })}
+                </Button>
+              )
+            }
+            title={t('label.customize-entity-widget-plural', {
+              entity: getEntityName(
+                items.find((item) => item.id === activeKey) as Tab
+              ),
+            })}
+          />
+          <div className="tw:pb-5">
+            {/* 
             ReactGridLayout with optimized drag and drop behavior for tab customization
             - verticalCompact: Packs widgets tightly without gaps
             - preventCollision={false}: Enables automatic widget repositioning on collision
             - useCSSTransforms: Uses CSS transforms for better performance during drag
           */}
-          {activeKey === EntityTabs.CUSTOM_PROPERTIES ? (
-            <CustomPropertiesTabLayoutSection
-              entityType={getEntityTypeFromPageType(currentPageType)}
-              propertyLayout={customPropertiesTabLayout}
-              onChange={handleCustomPropertiesTabLayoutChange}
-            />
-          ) : (
-            <ReactGridLayout
-              useCSSTransforms
-              verticalCompact
-              className="grid-container"
-              cols={TAB_GRID_MAX_COLUMNS}
-              draggableHandle=".drag-widget-icon"
-              margin={[16, 16]}
-              preventCollision={false}
-              rowHeight={100}
-              onDrag={handleTabDrag}
-              onDragStop={handleTabDragStop}
-              onLayoutChange={handleLayoutUpdate}>
-              {widgets}
-            </ReactGridLayout>
-          )}
+            {activeKey === EntityTabs.CUSTOM_PROPERTIES ? (
+              <CustomPropertiesTabLayoutSection
+                entityType={getEntityTypeFromPageType(currentPageType)}
+                propertyLayout={customPropertiesTabLayout}
+                onChange={handleCustomPropertiesTabLayoutChange}
+              />
+            ) : (
+              <ReactGridLayout
+                useCSSTransforms
+                verticalCompact
+                className="grid-container"
+                cols={TAB_GRID_MAX_COLUMNS}
+                draggableHandle=".drag-widget-icon"
+                margin={[16, 16]}
+                preventCollision={false}
+                rowHeight={100}
+                onDrag={handleTabDrag}
+                onDragStop={handleTabDragStop}
+                onLayoutChange={handleLayoutUpdate}>
+                {widgets}
+              </ReactGridLayout>
+            )}
+          </div>
         </Card>
       </Grid.Item>
 
@@ -688,42 +706,39 @@ export const CustomizeTabWidget = () => {
           widgetsList={getCustomizableWidgetByPage(currentPageType)}
         />
       )}
-      {showAddTabModal && (
-        <Modal
-          closable
-          cancelText={t('label.cancel')}
-          closeIcon={null}
-          okText={t('label.add')}
-          open={showAddTabModal}
-          title={t('label.add-entity', {
-            entity: t('label.tab'),
-          })}
-          onCancel={() => setShowAddTabModal(false)}
-          onOk={() => add()}>
-          <Input
-            // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the input when the add-tab modal opens
-            autoFocus
-            data-testid="add-tab-input"
-            value={newTabName}
-            onChange={(e) => setNewTabName(e.target.value)}
-          />
-        </Modal>
-      )}
-      {editableItem && (
-        <Modal
-          maskClosable
-          open={!isNil(editableItem)}
-          title="Rename tab"
-          onCancel={() => setEditableItem(null)}
-          onOk={handleRenameSave}>
-          <Input
-            // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the input when the rename-tab modal opens
-            autoFocus
-            value={getTabDisplayName(editableItem)}
-            onChange={handleChange}
-          />
-        </Modal>
-      )}
+      <SimpleModal
+        cancelText={t('label.cancel')}
+        isOpen={showAddTabModal}
+        okText={t('label.add')}
+        title={t('label.add-entity', {
+          entity: t('label.tab'),
+        })}
+        onCancel={() => setShowAddTabModal(false)}
+        onOk={() => add()}>
+        <Input
+          // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the input when the add-tab modal opens
+          autoFocus
+          aria-label={t('label.tab')}
+          inputDataTestId="add-tab-input"
+          value={newTabName}
+          onChange={setNewTabName}
+        />
+      </SimpleModal>
+      <SimpleModal
+        cancelText={t('label.cancel')}
+        isOpen={!isNil(editableItem)}
+        okText={t('label.ok')}
+        title={t('label.rename-entity', { entity: t('label.tab') })}
+        onCancel={() => setEditableItem(null)}
+        onOk={handleRenameSave}>
+        <Input
+          // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the input when the rename-tab modal opens
+          autoFocus
+          aria-label={t('label.tab')}
+          value={editableItem ? getTabDisplayName(editableItem) : ''}
+          onChange={handleChange}
+        />
+      </SimpleModal>
     </>
   );
 };

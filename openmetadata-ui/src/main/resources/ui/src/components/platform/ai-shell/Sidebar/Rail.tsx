@@ -18,7 +18,6 @@ import { Link as AriaLink } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as ExpandPanelIcon } from '../../../../assets/svg/expand-panel.svg';
-import DomainScopeControl from '../../../common/DomainScopeControl/DomainScopeControl';
 import {
   useAppModeSidebarHeader,
   useAppModeSidebarRailFooter,
@@ -192,9 +191,6 @@ const Rail: React.FC<RailProps> = ({ nodes, onToggle }) => {
       ) : null}
 
       <div className="ask-rail__profile">
-        <div className="ask-rail__domain" data-testid="ask-rail-domain-scope">
-          <DomainScopeControl variant="icon" />
-        </div>
         {footerSlots.length > 0 ? (
           footerSlots.map(({ key, component: Slot }) => <Slot key={key} />)
         ) : (

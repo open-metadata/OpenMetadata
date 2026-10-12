@@ -47,16 +47,24 @@
       "description": "Azure Application (client) ID for Service Principal authentication.",
       "type": "string"
     },
-    "clientSecret": {
-      "title": "Client Secret",
-      "description": "Azure Application client secret for Service Principal authentication.",
-      "type": "string",
-      "format": "password"
-    },
     "tenantId": {
       "title": "Tenant ID",
       "description": "Azure Directory (tenant) ID for Service Principal authentication.",
       "type": "string"
+    },
+    "authType": {
+      "title": "Authentication Type",
+      "description": "Credential the service principal uses to obtain Microsoft Entra ID access tokens for the Fabric SQL endpoint.",
+      "oneOf": [
+        {
+          "title": "Client Secret",
+          "$ref": "./microsoftFabric/clientSecretAuthentication.json"
+        },
+        {
+          "title": "Certificate",
+          "$ref": "./microsoftFabric/certificateAuthentication.json"
+        }
+      ]
     },
     "driver": {
       "title": "Driver",
@@ -116,5 +124,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["hostPort", "clientId", "clientSecret", "tenantId"]
+  "required": ["hostPort", "clientId", "tenantId", "authType"]
 }

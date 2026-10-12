@@ -52,7 +52,7 @@ import { getDefaultTestCaseFormVariant } from '../../../../utils/DataQuality/Tes
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { submitAndClose } from '../../../../utils/FormDrawerUtils';
 import { createScrollToErrorHandler } from '../../../../utils/formPureUtils';
-import { omitDimensionFailurePolicy } from '../../../../utils/observability/data-quality/testCaseThreshold.utils';
+import { omitInapplicableDimensionParams } from '../../../../utils/observability/data-quality/testCaseThreshold.utils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
 import { AiFormModal } from '../../../common/atoms/drawer/AiFormModal';
@@ -263,7 +263,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
         values,
         resolvedDefinition
       );
-      normalizedValues.params = omitDimensionFailurePolicy(
+      normalizedValues.params = omitInapplicableDimensionParams(
         normalizedValues.params,
         !isEmpty(normalizedValues.dimensionColumns)
       );

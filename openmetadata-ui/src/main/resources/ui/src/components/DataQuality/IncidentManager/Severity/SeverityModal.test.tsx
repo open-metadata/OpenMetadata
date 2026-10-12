@@ -20,21 +20,47 @@ const mockProps = {
   onSubmit: jest.fn().mockResolvedValue([]),
 };
 
+const press = (element: HTMLElement) => {
+  fireEvent.pointerDown(element, {
+    button: 0,
+    pointerId: 1,
+    pointerType: 'mouse',
+  });
+  fireEvent.pointerUp(element, {
+    button: 0,
+    pointerId: 1,
+    pointerType: 'mouse',
+  });
+  fireEvent.click(element);
+};
+
+const pickSeverity = async (optionName: string) => {
+  await act(async () => {
+    press(screen.getByRole('button', { name: /label.severity/ }));
+  });
+  await act(async () => {
+    press(screen.getByRole('option', { name: optionName }));
+  });
+};
+
 describe('SeverityModal', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('Should render component', async () => {
     render(<SeverityModal {...mockProps} />);
 
-    const form = await screen.findByTestId('severity-form');
-    const severitySelect = await screen.findByTestId('severity-form');
-
-    expect(form).toBeInTheDocument();
-    expect(severitySelect).toBeInTheDocument();
+    expect(await screen.findByTestId('severity-form')).toBeInTheDocument();
+    expect(await screen.findByTestId('severity-select')).toBeInTheDocument();
   });
 
   it('Initial value should be visible', async () => {
     render(<SeverityModal {...mockProps} />);
 
-    expect(await screen.findByText('Severity 1')).toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: /Severity 1/ })
+    ).toBeInTheDocument();
   });
 
   it('onCancel should work', async () => {
@@ -53,5 +79,32 @@ describe('SeverityModal', () => {
     });
 
     expect(mockProps.onSubmit).toHaveBeenCalledWith(Severities.Severity1);
+  });
+
+  it('should submit the newly picked severity', async () => {
+    render(<SeverityModal {...mockProps} />);
+
+    await pickSeverity('Severity 3');
+    await act(async () => {
+      fireEvent.click(screen.getByText('label.save'));
+    });
+
+    expect(mockProps.onSubmit).toHaveBeenCalledWith(Severities.Severity3);
+  });
+
+  it('should submit undefined once the severity is cleared', async () => {
+    render(<SeverityModal {...mockProps} />);
+
+    await pickSeverity('label.no-entity');
+
+    expect(
+      screen.getByRole('button', { name: /label.please-select-entity/ })
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('label.save'));
+    });
+
+    expect(mockProps.onSubmit).toHaveBeenCalledWith(undefined);
   });
 });

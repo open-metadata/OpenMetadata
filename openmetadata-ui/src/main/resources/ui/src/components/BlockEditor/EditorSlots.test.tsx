@@ -25,9 +25,15 @@ import { EditorSlotsRef } from './BlockEditor.interface';
 import EditorSlots from './EditorSlots';
 import { LinkExtension } from './Extensions/link';
 
-jest.mock('./BlockMenu/BlockMenu', () => () => null);
-jest.mock('./BubbleMenu/BubbleMenu', () => () => null);
-jest.mock('./TableMenu/TableMenu', () => () => null);
+jest.mock('./BlockMenu/BlockMenu', () => () => (
+  <div data-testid="block-menu" />
+));
+jest.mock('./BubbleMenu/BubbleMenu', () => () => (
+  <div data-testid="bubble-menu" />
+));
+jest.mock('./TableMenu/TableMenu', () => () => (
+  <div data-testid="table-menu" />
+));
 jest.mock('./LinkPopup/LinkPopup', () => () => null);
 jest.mock('tippy.js', () => ({
   __esModule: true,
@@ -43,7 +49,7 @@ const createTestEditor = (content: string) =>
 const fillLinkAndSave = async (href: string) => {
   await waitFor(() => expect(screen.getByRole('textbox')).toBeInTheDocument());
   fireEvent.change(screen.getByRole('textbox'), { target: { value: href } });
-  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+  fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
 };
 
 describe('EditorSlots link handling', () => {
@@ -162,5 +168,31 @@ describe('EditorSlots link handling', () => {
 
     editor.destroy();
     document.body.removeChild(dialog);
+  });
+});
+
+describe('EditorSlots menus', () => {
+  it('renders the editing menus for an editable editor', () => {
+    const editor = createTestEditor('<p>Hello</p>');
+
+    render(<EditorSlots editor={editor} menuType="bubble" />);
+
+    expect(screen.getByTestId('bubble-menu')).toBeInTheDocument();
+    expect(screen.getByTestId('block-menu')).toBeInTheDocument();
+    expect(screen.getByTestId('table-menu')).toBeInTheDocument();
+
+    editor.destroy();
+  });
+
+  it('skips the editing menus for a read-only editor', () => {
+    const editor = createTestEditor('<p>Hello</p>');
+
+    render(<EditorSlots editable={false} editor={editor} menuType="bubble" />);
+
+    expect(screen.queryByTestId('bubble-menu')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('block-menu')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('table-menu')).not.toBeInTheDocument();
+
+    editor.destroy();
   });
 });

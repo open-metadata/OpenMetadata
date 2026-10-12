@@ -10,26 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Box, Card, Typography } from '@openmetadata/ui-core-components';
-import { Button, Empty, Radio, Spin } from 'antd';
+import { FilterSelect } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { lazy, ReactNode, Suspense, useEffect, useMemo, useState } from 'react';
+import { isNil } from 'lodash';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CertificationIcon } from '../../assets/svg/ic-certification.svg';
-import { CERTIFICATION_CATEGORY } from '../../constants/constants';
+import {
+  CERTIFICATION_CATEGORY,
+  PAGE_SIZE_LARGE,
+} from '../../constants/constants';
 import { Tag } from '../../generated/entity/classification/tag';
-import { Paging } from '../../generated/type/paging';
 import { getTags } from '../../rest/tagAPI';
 import { getEntityName } from '../../utils/EntityNameUtils';
-import { isImageUrl } from '../../utils/IconUtils';
-import { handleKeyboardActivation } from '../../utils/KeyboardUtil';
-import { stringToHTML } from '../../utils/RichTextStringUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import AnchoredPopover from '../common/AnchoredPopover/AnchoredPopover';
-import Loader from '../common/Loader/Loader';
 import { CertificationProps } from './Certification.interface';
-import './certification.less';
 
 // Lazy-loaded from the dedicated `@openmetadata/ui-core-components/icon`
 // subpath (not the package root) so ICON_MAP's ~44 icon components — a plain
@@ -41,70 +36,71 @@ const Icon = lazy(() =>
   }))
 );
 
+const renderCertificationIcon = (certification: Tag) => {
+  const fallback = <CertificationIcon height={18} width={18} />;
+  const iconURL = certification.style?.iconURL;
+
+  return iconURL ? (
+    <Suspense fallback={fallback}>
+      <Icon
+        alt={getEntityName(certification)}
+        fallback={fallback}
+        iconValue={iconURL}
+        size={18}
+      />
+    </Suspense>
+  ) : (
+    fallback
+  );
+};
+
 const Certification = ({
   currentCertificate = '',
   children,
   onCertificationUpdate,
   popoverProps,
   onClose,
+  isDisabled,
+  'data-testid': testId,
+  'aria-labelledby': ariaLabelledBy,
+  className,
 }: CertificationProps) => {
   const { t } = useTranslation();
   const [isPopupOpen, setIsPopupOpen] = useState(false);
-  const [isLoadingCertificationData, setIsLoadingCertificationData] =
-    useState<boolean>(false);
-  const [hasContentLoading, setHasContentLoading] = useState<boolean>(false);
-  const [certifications, setCertifications] = useState<Array<Tag>>([]);
-  const [selectedCertification, setSelectedCertification] = useState<string>(
-    currentCertificate ?? ''
-  );
-  const [paging, setPaging] = useState<Paging>({} as Paging);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [certifications, setCertifications] = useState<Tag[]>([]);
+  const isOpen = popoverProps?.open ?? isPopupOpen;
+  const isFormField = isNil(children);
+  // A pick or clear closes the picker itself; only a dismissal calls onClose.
+  const isCommitRef = useRef(false);
 
-  const getCertificationData = async (page = 1, append = false) => {
-    if (page === 1) {
-      setIsLoadingCertificationData(true);
-    } else {
-      setHasContentLoading(true);
-    }
-
+  const fetchCertifications = async () => {
+    setIsLoading(true);
     try {
-      const response = await getTags({
-        parent: CERTIFICATION_CATEGORY,
-        limit: 50,
-        after: page > 1 ? paging.after : undefined,
-        disabled: false,
-      });
+      // Every page: the list is searched locally, so a certification past the
+      // first page would never be offered. Cursor pages are sequential by
+      // nature, and a real catalog fits in one.
+      const all: Tag[] = [];
+      let after: string | undefined;
+      do {
+        const { data, paging } = await getTags({
+          parent: CERTIFICATION_CATEGORY,
+          limit: PAGE_SIZE_LARGE,
+          after,
+          disabled: false,
+        });
+        all.push(...data);
+        after = paging.after;
+      } while (after);
 
-      const { data, paging: newPaging } = response;
-
-      // Sort certifications with Gold, Silver, Bronze first (only for initial load)
-      const sortedData =
-        page === 1
-          ? [...data].sort((a, b) => {
-              const order: Record<string, number> = {
-                Gold: 0,
-                Silver: 1,
-                Bronze: 2,
-              };
-
-              const aName = getEntityName(a);
-              const bName = getEntityName(b);
-
-              const aOrder = order[aName] ?? 3;
-              const bOrder = order[bName] ?? 3;
-
-              return aOrder - bOrder;
-            })
-          : data;
-
-      if (append) {
-        setCertifications((prev) => [...prev, ...sortedData]);
-      } else {
-        setCertifications(sortedData);
-      }
-
-      setPaging(newPaging);
-      setCurrentPage(page);
+      // Sort certifications with Gold, Silver, Bronze first
+      const order: Record<string, number> = { Gold: 0, Silver: 1, Bronze: 2 };
+      setCertifications(
+        all.sort(
+          (a, b) =>
+            (order[getEntityName(a)] ?? 3) - (order[getEntityName(b)] ?? 3)
+        )
+      );
     } catch (err) {
       showErrorToast(
         err as AxiosError,
@@ -113,227 +109,68 @@ const Certification = ({
         })
       );
     } finally {
-      setIsLoadingCertificationData(false);
-      setHasContentLoading(false);
+      setIsLoading(false);
     }
-  };
-
-  const handleScroll = async (e: React.UIEvent<HTMLDivElement>) => {
-    const { currentTarget } = e;
-    const isAtBottom =
-      currentTarget.scrollTop + currentTarget.offsetHeight >=
-      currentTarget.scrollHeight - 1; // -1 for precision tolerance
-
-    if (isAtBottom && paging.after && !hasContentLoading) {
-      await getCertificationData(currentPage + 1, true);
-    }
-  };
-
-  const onOpenChange = (visible: boolean) => {
-    if (visible) {
-      getCertificationData(1);
-      setSelectedCertification(currentCertificate);
-      setCurrentPage(1);
-      setPaging({} as Paging);
-    } else {
-      setSelectedCertification('');
-      setCertifications([]);
-    }
-  };
-
-  // A caller's `onOpenChange` replaces the internal one, as the antd props
-  // spread did; the effect below then drives the data reset off `open`.
-  const handleOpenChange = (visible: boolean) => {
-    setIsPopupOpen(visible);
-    (popoverProps?.onOpenChange ?? onOpenChange)(visible);
-  };
-
-  const updateCertificationData = async (value?: string) => {
-    setIsLoadingCertificationData(true);
-    const certification = certifications.find(
-      (cert) => cert.fullyQualifiedName === value
-    );
-    await onCertificationUpdate?.(certification);
-    setIsLoadingCertificationData(false);
-    handleOpenChange(false);
-  };
-
-  const certificationCardData = useMemo(() => {
-    if (certifications.length === 0 && !isLoadingCertificationData) {
-      return (
-        <Empty
-          description={t('label.no-entity-available', {
-            entity: t('label.certification-plural-lowercase'),
-          })}
-          image={Empty.PRESENTED_IMAGE_SIMPLE}
-        />
-      );
-    }
-
-    return (
-      <div
-        className="h-max-100 overflow-y-auto overflow-x-hidden"
-        onScroll={handleScroll}>
-        <Radio.Group className="w-full" value={selectedCertification}>
-          {certifications.map((certificate) => {
-            const iconURL = certificate.style?.iconURL;
-            const title = getEntityName(certificate);
-            const { id, fullyQualifiedName, description } = certificate;
-
-            const isIcon = Boolean(iconURL) && !isImageUrl(iconURL as string);
-            const renderedIcon = iconURL ? (
-              <Suspense fallback={<CertificationIcon height={28} width={28} />}>
-                <Icon
-                  alt={title}
-                  fallback={<CertificationIcon height={28} width={28} />}
-                  iconValue={iconURL}
-                  size={28}
-                />
-              </Suspense>
-            ) : null;
-
-            let iconContent: ReactNode;
-            if (!renderedIcon) {
-              iconContent = (
-                <div className="certification-icon">
-                  <CertificationIcon height={28} width={28} />
-                </div>
-              );
-            } else if (isIcon) {
-              iconContent = (
-                <div className="certification-icon">{renderedIcon}</div>
-              );
-            } else {
-              iconContent = renderedIcon;
-            }
-
-            return (
-              <div
-                className="certification-card-item cursor-pointer"
-                key={id}
-                role="presentation"
-                style={{ cursor: 'pointer' }}
-                onClick={() => {
-                  setSelectedCertification(fullyQualifiedName ?? '');
-                }}>
-                <Radio
-                  className="certification-radio-top-right"
-                  data-testid={`radio-btn-${fullyQualifiedName}`}
-                  value={fullyQualifiedName}
-                />
-                <div className="certification-card-content">
-                  {iconContent}
-                  <div>
-                    <Typography
-                      as="p"
-                      className="m-b-0 font-regular text-xs text-grey-body">
-                      {title}
-                    </Typography>
-                    <Typography
-                      as="div"
-                      className="m-b-0 font-regular text-xs"
-                      color="secondary">
-                      {stringToHTML(description)}
-                    </Typography>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </Radio.Group>
-        {hasContentLoading && (
-          <div className="flex justify-center p-2">
-            <Loader size="small" />
-          </div>
-        )}
-      </div>
-    );
-  }, [
-    certifications,
-    selectedCertification,
-    hasContentLoading,
-    handleScroll,
-    isLoadingCertificationData,
-    t,
-  ]);
-
-  const handleCloseCertification = async () => {
-    handleOpenChange(false);
-    onClose?.();
   };
 
   useEffect(() => {
-    if (popoverProps?.open) {
-      setSelectedCertification(currentCertificate);
-      setCurrentPage(1);
-      setPaging({} as Paging);
-      getCertificationData(1);
-    } else if (popoverProps?.open === false) {
-      setCertifications([]);
-      setSelectedCertification('');
+    if (isFormField ? certifications.length === 0 : isOpen) {
+      void fetchCertifications();
     }
-  }, [popoverProps?.open]);
+  }, [isOpen]);
+
+  const options = useMemo(
+    () =>
+      certifications.map((certification) => ({
+        value: certification.fullyQualifiedName ?? '',
+        label: getEntityName(certification),
+        icon: renderCertificationIcon(certification),
+      })),
+    [certifications]
+  );
+
+  const handleOpenChange = (open: boolean) => {
+    setIsPopupOpen(open);
+    popoverProps?.onOpenChange?.(open);
+    if (!open && !isCommitRef.current) {
+      onClose?.();
+    }
+    isCommitRef.current = false;
+  };
+
+  const handleChange = async ([value]: string[]) => {
+    isCommitRef.current = true;
+    await onCertificationUpdate?.(
+      certifications.find((cert) => cert.fullyQualifiedName === value)
+    );
+  };
 
   return (
-    <AnchoredPopover
-      className="certification-card-popover"
-      content={
-        <Card
-          className="certification-card tw:overflow-visible tw:border-0 tw:text-sm tw:leading-[1.5715] tw:text-primary tw:tabular-nums"
-          data-testid="certification-cards">
-          <div className="tw:-mb-px tw:flex tw:min-h-12 tw:w-full tw:items-center tw:text-base tw:leading-[1.5715] tw:font-medium tw:text-black/85 tw:dark:text-primary">
-            <div className="tw:inline-block tw:flex-1 tw:overflow-hidden tw:text-ellipsis tw:whitespace-nowrap">
-              <Box
-                inline
-                align="center"
-                className="layout-space layout-space-horizontal w-full justify-between"
-                gap={2}
-                itemClassName="layout-space-item">
-                <div className="flex gap-2 items-center w-full">
-                  <CertificationIcon height={18} width={18} />
-                  <Typography className="m-b-0 font-semibold text-sm tw:text-primary">
-                    {t('label.edit-entity', {
-                      entity: t('label.certification'),
-                    })}
-                  </Typography>
-                </div>
-                <Typography
-                  className="m-b-0 font-semibold text-primary text-sm cursor-pointer"
-                  data-testid="clear-certification"
-                  tabIndex={0}
-                  onClick={() => updateCertificationData()}
-                  onKeyDown={handleKeyboardActivation(updateCertificationData)}>
-                  {t('label.clear')}
-                </Typography>
-              </Box>
-            </div>
-          </div>
-          <Spin
-            indicator={<Loader size="small" />}
-            spinning={isLoadingCertificationData}>
-            {certificationCardData}
-            <div className="flex justify-end text-lg gap-2 mt-4">
-              <Button
-                data-testid="close-certification"
-                type="default"
-                onClick={handleCloseCertification}>
-                <CloseOutlined />
-              </Button>
-              <Button
-                data-testid="update-certification"
-                type="primary"
-                onClick={() => updateCertificationData(selectedCertification)}>
-                <CheckOutlined />
-              </Button>
-            </div>
-          </Spin>
-        </Card>
-      }
-      isOpen={popoverProps?.open ?? isPopupOpen}
-      placement={popoverProps?.placement ?? 'bottom end'}
-      onOpenChange={handleOpenChange}>
-      {children}
-    </AnchoredPopover>
+    <FilterSelect
+      hideCounts
+      searchable
+      showRadio
+      aria-labelledby={ariaLabelledBy}
+      className={className}
+      data-testid={testId}
+      emptyState={t('label.no-entity-available', {
+        entity: t('label.certification-plural-lowercase'),
+      })}
+      isDisabled={isDisabled}
+      isLoading={isLoading}
+      isOpen={isOpen}
+      label={t('label.certification')}
+      options={options}
+      placeholder={t('label.select-field', {
+        field: t('label.certification'),
+      })}
+      selectedValues={currentCertificate ? [currentCertificate] : []}
+      selectionMode="single"
+      trigger={children}
+      triggerVariant="input"
+      onChange={handleChange}
+      onOpenChange={handleOpenChange}
+    />
   );
 };
 
