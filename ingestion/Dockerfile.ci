@@ -60,8 +60,9 @@ RUN dpkg --configure -a \
        libpam0g libpam-modules libpam-modules-bin libpam-runtime \
        curl libcurl4 libcurl3-gnutls libmariadb3 wget \
        perl perl-base perl-modules-5.36 libperl5.36 libnss3 linux-libc-dev \
+  # DockerOperator uses docker-py; the Airflow base's Go CLI is unused.
   && apt-get -qq purge -y \
-       'imagemagick*' 'libmagick*' 'graphicsmagick*' \
+       'imagemagick*' 'libmagick*' 'graphicsmagick*' docker-ce-cli \
   && apt-get -qq autoremove -y --purge \
   && rm -rf /var/lib/apt/lists/*
 COPY --from=mysql /usr/bin/mysqldump /usr/bin/mysqldump
@@ -141,9 +142,13 @@ WORKDIR /home/airflow/ingestion
 # Pre-install dialect packages that declare SQLAlchemy<2 in their metadata
 # but work fine at runtime with SQLAlchemy 2.0 (unmaintained packages).
 RUN pip install --no-deps "sqlalchemy-ibmi==0.9.3"
-RUN pip install "datamodel-code-generator==0.64.0"
-RUN mkdir -p /home/airflow/ingestion/src/metadata/generated
-RUN python /home/airflow/scripts/datamodel_generation.py
+# 0.64.0 is vulnerable to CVE-2026-107377 (first patched in 0.81.0). Generate with
+# 0.83.0, then remove it in the same layer so its files cannot remain in the final
+# image's lower layers.
+RUN pip install "datamodel-code-generator==0.83.0" \
+  && mkdir -p /home/airflow/ingestion/src/metadata/generated \
+  && python /home/airflow/scripts/datamodel_generation.py \
+  && pip uninstall -y datamodel-code-generator
 RUN wget -q https://repo1.maven.org/maven2/org/antlr/antlr4/4.9.2/antlr4-4.9.2-complete.jar -O /tmp/antlr.jar \
   && echo "bb117b1476691dc2915a318efd36f8957c0ad93447fb1dac01107eb15fe137cd  /tmp/antlr.jar" | sha256sum -c - \
   && mkdir -p /home/airflow/ingestion/src/metadata/generated/antlr \
@@ -183,7 +188,7 @@ EXPOSE 8080
 # can leave stale 0.2.6 `upath` module files in site-packages that cause import
 # errors at runtime. Force-remove the stale registration then pin to the required version.
 RUN pip uninstall upath -y && pip install "universal-pathlib==0.3.10"
-
+RUN python -c "import importlib.util as u; assert u.find_spec('datamodel_code_generator') is None"
 
 # Strip spaCy's bundled test fixture, which scanners misreport as an installed black.
 # See ingestion/scripts/strip_spacy_test_fixture.sh for the rationale. Must run after the

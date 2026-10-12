@@ -460,7 +460,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
 dev = {
     "ruff~=0.15.12",
     "uvloop==0.21.0",
-    "datamodel-code-generator==0.64.0",
+    "datamodel-code-generator==0.83.0",
     "boto3-stubs",
     "mypy-boto3-glue",
     "google-api-python-client-stubs",
