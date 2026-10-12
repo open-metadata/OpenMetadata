@@ -32,7 +32,8 @@ interface ClassicTestCaseFilterProps {
   testId: string;
 }
 
-interface ClassicSingleSelectProps extends ClassicTestCaseFilterProps {
+interface ClassicSingleSelectProps
+  extends Pick<ClassicTestCaseFilterProps, 'filter' | 'testId'> {
   items: FormSelectItem[];
   selectedKey: string | null;
 }
@@ -84,16 +85,16 @@ const ClassicSingleSelect = ({
         items={visibleItems}
         menuTrigger="focus"
         placeholder={filter.label}
-        selectedKey={selectedKey}
         shortcut={false}
         showSearchIcon={false}
+        value={selectedKey}
+        onChange={handleSelection}
         onInputChange={handleSearch}
         onOpenChange={(isOpen) => {
           if (isOpen) {
             setSearch('');
           }
-        }}
-        onSelectionChange={handleSelection}>
+        }}>
         {renderItem}
       </Select.ComboBox>
     );
@@ -107,8 +108,8 @@ const ClassicSingleSelect = ({
       fontSize="sm"
       items={items}
       placeholder={filter.label}
-      selectedKey={selectedKey}
-      onSelectionChange={handleSelection}>
+      value={selectedKey}
+      onChange={handleSelection}>
       {renderItem}
     </Select>
   );
@@ -120,7 +121,8 @@ const ClassicMultipleSelect = ({
   items,
   selectedItems,
   selectedValues,
-}: ClassicTestCaseFilterProps & ReturnType<typeof getClassicFilterItems>) => (
+}: Pick<ClassicTestCaseFilterProps, 'filter' | 'testId'> &
+  ReturnType<typeof getClassicFilterItems>) => (
   <Box className="tw:min-w-0 tw:flex-1">
     <Autocomplete
       aria-busy={filter.isLoading}

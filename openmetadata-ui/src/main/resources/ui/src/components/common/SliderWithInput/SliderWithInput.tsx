@@ -59,7 +59,7 @@ const SliderWithInput = ({
             maxValue={100}
             minValue={min}
             step={1}
-            value={value ?? NaN}
+            value={value ?? Number.NaN}
             onChange={(next) => onChange(Number.isNaN(next) ? null : next)}
           />
           <Tooltip arrow title={t('label.clear')}>

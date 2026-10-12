@@ -30,12 +30,12 @@ import {
   AlertSelectionProvider,
   useAlertSelection,
 } from '../../../../hooks/useAlertSelection';
-import { ModifiedCreateEventSubscription } from '../../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { getResourceFunctions as getNotificationResourceFunctions } from '../../../../rest/alertsAPI';
 import { getAllNotificationTemplates } from '../../../../rest/notificationtemplateAPI';
 import { getResourceFunctions } from '../../../../rest/observabilityAPI';
 import { getClassicAlertInitialValues } from '../../../../utils/Alerts/ClassicAlertForm.utils';
 import alertsClassBase from '../../../../utils/AlertsClassBase';
+import { ModifiedCreateEventSubscription } from '../../../../utils/AlertsClassBase.interface';
 import Fqn from '../../../../utils/Fqn';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';

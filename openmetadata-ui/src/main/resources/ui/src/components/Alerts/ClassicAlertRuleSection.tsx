@@ -113,8 +113,8 @@ export const ClassicAlertRuleSection = ({
                         isInvalid={Boolean(error)}
                         items={items}
                         placeholder={copy.placeholder}
-                        selectedKey={rule.name || null}
-                        onSelectionChange={(key) => {
+                        value={rule.name || null}
+                        onChange={(key) => {
                           if (key !== null) {
                             changeRules(
                               getRulesWithName({

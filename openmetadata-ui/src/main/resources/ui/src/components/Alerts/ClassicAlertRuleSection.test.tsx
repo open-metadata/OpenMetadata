@@ -24,7 +24,7 @@ import {
   AlertSelection,
   AlertSelectionProvider,
 } from '../../hooks/useAlertSelection';
-import { ModifiedCreateEventSubscription } from '../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import { ModifiedCreateEventSubscription } from '../../utils/AlertsClassBase.interface';
 import { ClassicAlertRuleSection } from './ClassicAlertRuleSection';
 
 const mockSearchQuery = jest.fn();

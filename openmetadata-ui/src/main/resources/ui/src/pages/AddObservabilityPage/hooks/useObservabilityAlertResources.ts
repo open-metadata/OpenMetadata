@@ -17,7 +17,7 @@ const NO_SOURCES: string[] = [];
 
 export function useSelectedAlertSources(
   form: UseFormReturn<ModifiedCreateEventSubscription>
-): { sources: string[]; input?: ModifiedCreateEventSubscription['input'] } {
+): { sources: string[]; input: ModifiedCreateEventSubscription['input'] } {
   return {
     sources: form.watch('resources') ?? NO_SOURCES,
     input: form.watch('input'),

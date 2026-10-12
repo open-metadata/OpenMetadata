@@ -24,7 +24,13 @@ function FormCardSection({
   className = '',
 }: Readonly<FormCardSectionProps>) {
   return (
-    <Card className={className} data-testid={`${heading}-container`}>
+    <Card
+      className={className}
+      data-testid={
+        typeof heading === 'string' || typeof heading === 'number'
+          ? `${heading}-container`
+          : undefined
+      }>
       <Card.Content>
         <Grid className="layout-row layout-grid" style={getLayoutGutter(8, 8)}>
           <Grid.Item className="layout-column" span={24}>

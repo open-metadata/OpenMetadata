@@ -49,7 +49,7 @@ export const CustomRangeWidget = (props: WidgetProps) => {
           minValue={min}
           name={props.name}
           step={1}
-          value={typeof props.value === 'number' ? props.value : NaN}
+          value={typeof props.value === 'number' ? props.value : Number.NaN}
           onChange={(value) =>
             props.onChange(Number.isNaN(value) ? null : value)
           }

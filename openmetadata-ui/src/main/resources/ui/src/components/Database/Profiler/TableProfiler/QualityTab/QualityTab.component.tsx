@@ -453,8 +453,8 @@ export const QualityTab = () => {
                       id: value,
                       label,
                     }))}
-                    selectedKey={selectedTestType}
-                    onSelectionChange={(key) => {
+                    value={selectedTestType}
+                    onChange={(key) => {
                       const type = TEST_CASE_TYPE_OPTION.find(
                         (option) => option.value === key
                       )?.value;
@@ -483,8 +483,8 @@ export const QualityTab = () => {
                       id: value,
                       label,
                     }))}
-                    selectedKey={selectedTestCaseStatus}
-                    onSelectionChange={(key) => {
+                    value={selectedTestCaseStatus}
+                    onChange={(key) => {
                       const status = Object.values(TestCaseStatus).find(
                         (value) => value === key
                       );

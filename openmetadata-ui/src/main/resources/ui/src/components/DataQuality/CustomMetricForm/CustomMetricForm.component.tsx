@@ -168,9 +168,9 @@ const CustomMetricForm = ({
                 placeholder={t('label.please-select-entity', {
                   entity: t('label.column'),
                 })}
-                selectedKey={field.value ?? null}
+                value={field.value ?? null}
                 onBlur={field.onBlur}
-                onSelectionChange={(key) =>
+                onChange={(key) =>
                   field.onChange(key === null ? undefined : String(key))
                 }>
                 {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}

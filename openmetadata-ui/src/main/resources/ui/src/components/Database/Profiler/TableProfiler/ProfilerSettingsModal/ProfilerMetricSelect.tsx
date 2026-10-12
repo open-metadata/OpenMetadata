@@ -78,7 +78,7 @@ export const ProfilerMetricSelect = ({
             label: startCase(id),
           }
       );
-  const fetchData = useCallback(async () => ({ nodes }), [nodes]);
+  const fetchData = useCallback(() => Promise.resolve({ nodes }), [nodes]);
   const handleChange = (
     selection: TreeSelectNode | TreeSelectNode[] | null
   ) => {

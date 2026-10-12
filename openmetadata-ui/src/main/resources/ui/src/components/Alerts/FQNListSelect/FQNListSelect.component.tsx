@@ -59,11 +59,13 @@ const FQNListSelect = ({
   const requestId = useRef(0);
   useEffect(() => {
     let active = true;
-    resolveWildcardFqns(value, searchIndex, containerEntities).then((found) => {
-      if (active) {
-        setWildcards(found);
+    void resolveWildcardFqns(value, searchIndex, containerEntities).then(
+      (found) => {
+        if (active) {
+          setWildcards(found);
+        }
       }
-    });
+    );
 
     return () => {
       active = false;
@@ -100,7 +102,7 @@ const FQNListSelect = ({
     [api]
   );
   useEffect(() => {
-    search('');
+    void search('');
 
     return () => {
       search.cancel();

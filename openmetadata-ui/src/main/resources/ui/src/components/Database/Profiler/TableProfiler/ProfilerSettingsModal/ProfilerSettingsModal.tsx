@@ -150,7 +150,7 @@ const ProfilerSettingsModal = ({
       }
     };
     if (tableId) {
-      load();
+      void load();
     } else {
       setIsDataLoading(false);
     }
@@ -276,9 +276,9 @@ const ProfilerSettingsModal = ({
                     isInvalid={fieldState.invalid}
                     items={completeItems}
                     placeholder={placeholder}
-                    selectedKey={key}
+                    value={key}
                     onBlur={field.onBlur}
-                    onSelectionChange={handleSelection}>
+                    onChange={handleSelection}>
                     {content}
                   </Select>
                 )}
@@ -332,7 +332,7 @@ const ProfilerSettingsModal = ({
           label={label}
           minValue={min}
           placeholder={placeholder}
-          value={field.value ?? NaN}
+          value={field.value ?? Number.NaN}
           onChange={(value) =>
             field.onChange(Number.isNaN(value) ? undefined : value)
           }

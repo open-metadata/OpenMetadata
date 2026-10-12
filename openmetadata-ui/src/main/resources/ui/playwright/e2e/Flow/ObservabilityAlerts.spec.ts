@@ -263,6 +263,29 @@ test('Pipeline Alert', async ({ page }) => {
     await diagnosticTab.click();
     await diagnosticInfoResponse;
     await waitForAllLoadersToDisappear(page);
+
+    const diagnosticHelp = page.getByRole('button', { name: /latest offset/i });
+    await diagnosticTab.focus();
+    await page.keyboard.press('Tab');
+    await expect(diagnosticHelp).toBeFocused();
+    await expect
+      .poll(() =>
+        diagnosticHelp.evaluate((element) => {
+          const style = getComputedStyle(element);
+
+          return (
+            element.matches(':focus-visible') &&
+            Number.parseFloat(style.outlineWidth) >= 2 &&
+            style.outlineStyle !== 'none' &&
+            !/rgba\([^)]*,\s*0\)|transparent/.test(style.outlineColor)
+          );
+        })
+      )
+      .toBe(true);
+    await expect(
+      page.getByRole('tooltip', { name: /latest offset/i })
+    ).toBeVisible();
+    await page.keyboard.press('Escape');
   });
 
   await test.step('Check created alert details', async () => {

@@ -467,7 +467,7 @@ const AddNotificationPage = () => {
                                       name="input"
                                       rules={[
                                         {
-                                          validator: async () => {
+                                          validator: () => {
                                             const errors = validateAlertAiForm(
                                               form.getFieldsValue(true),
                                               t
@@ -483,10 +483,14 @@ const AddNotificationPage = () => {
                                             if (
                                               Object.keys(ruleErrors).length > 0
                                             ) {
-                                              throw new Error(
-                                                Object.values(ruleErrors)[0]
+                                              return Promise.reject(
+                                                new Error(
+                                                  Object.values(ruleErrors)[0]
+                                                )
                                               );
                                             }
+
+                                            return Promise.resolve();
                                           },
                                         },
                                       ]}>
@@ -595,13 +599,13 @@ const AddNotificationPage = () => {
                             hidden
                             getValueProps={() => ({ value: '' })}
                             name="notificationTemplate">
-                            <input readOnly aria-hidden="true" type="hidden" />
+                            <input readOnly type="hidden" />
                           </Form.Item>
                           <Form.Item
                             hidden
                             getValueProps={() => ({ value: '' })}
                             name="customNotificationTemplateData">
-                            <input readOnly aria-hidden="true" type="hidden" />
+                            <input readOnly type="hidden" />
                           </Form.Item>
 
                           {!isUndefined(inlineAlertDetails) && (

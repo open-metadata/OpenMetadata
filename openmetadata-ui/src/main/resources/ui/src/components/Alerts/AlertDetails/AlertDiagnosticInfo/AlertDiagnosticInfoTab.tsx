@@ -12,11 +12,11 @@
  */
 
 import {
+  ButtonUtility,
   Card,
   Grid,
   SkeletonParagraph,
   Tooltip,
-  TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { InfoCircle } from '@openmetadata/ui-core-components/icons';
@@ -87,9 +87,12 @@ function AlertDiagnosticInfoTab() {
                         arrow
                         placement="bottom"
                         title={item.description}>
-                        <TooltipTrigger aria-label={item.description}>
-                          <InfoCircle className="tw:size-4 tw:text-fg-quaternary" />
-                        </TooltipTrigger>
+                        <ButtonUtility
+                          aria-label={item.description}
+                          color="tertiary"
+                          icon={InfoCircle}
+                          size="xs"
+                        />
                       </Tooltip>
                     </Typography>
                   </Grid.Item>

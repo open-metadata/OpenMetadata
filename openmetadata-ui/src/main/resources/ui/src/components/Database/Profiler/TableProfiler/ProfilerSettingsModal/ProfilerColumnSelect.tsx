@@ -53,17 +53,17 @@ export const ProfilerColumnSelect = ({
       isInvalid={isInvalid}
       items={filteredItems}
       placeholder={placeholder}
-      selectedKey={selectedKey}
       shortcut={false}
       showSearchIcon={false}
+      value={selectedKey}
       onBlur={onBlur}
+      onChange={onSelectionChange}
       onInputChange={setSearch}
       onOpenChange={(isOpen) => {
         if (isOpen) {
           setSearch('');
         }
-      }}
-      onSelectionChange={onSelectionChange}>
+      }}>
       {(item) => (
         <Select.Item id={item.id} isDisabled={item.isDisabled}>
           {item.label}
