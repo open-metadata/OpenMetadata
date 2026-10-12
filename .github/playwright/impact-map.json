@@ -848,10 +848,9 @@
       ]
     },
     {
-      "_comment": "FormBuilderV1 widgets and fields render every app-config, SSO, ingestion and service-connection form, so they run the specs those forms map to.",
+      "_comment": "FormBuilderV1 renders every app-config, SSO, ingestion and service-connection form, so it runs the specs those forms map to.",
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/common/FormBuilderV1/widgets/**",
-        "openmetadata-ui/src/main/resources/ui/src/components/common/FormBuilderV1/fields/**"
+        "openmetadata-ui/src/main/resources/ui/src/components/common/FormBuilderV1/**"
       ],
       "projects": ["chromium", "Basic", "GlobalSettings", "Ingestion"],
       "specs": [
@@ -886,6 +885,14 @@
         "playwright/e2e/Pages/TaskFormSettings.spec.ts",
         "playwright/e2e/Pages/TestSuite*.spec.ts"
       ]
+    },
+    {
+      "_comment": "SSO configuration form and its tests; the form itself is also mapped by the generated map.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/SettingsSso/SSOConfigurationForm/**"
+      ],
+      "projects": ["chromium"],
+      "specs": ["playwright/e2e/Features/SSOConfiguration.spec.ts"]
     },
     {
       "_comment": "Shared data-asset picker (shell, rows, footer, count bar, async options hook) behind both DataAssetSelectList and DataAssetAsyncSelectList.",

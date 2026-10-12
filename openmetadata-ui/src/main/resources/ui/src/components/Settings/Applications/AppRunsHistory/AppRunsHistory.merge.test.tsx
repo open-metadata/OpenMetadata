@@ -18,7 +18,6 @@ import {
   waitForElementToBeRemoved,
   within,
 } from '@testing-library/react';
-import { Table as AntdTable } from 'antd';
 import {
   AppRunRecord,
   Status,
@@ -42,7 +41,7 @@ jest.mock('../../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('username'),
 }));
 
-jest.mock('../../../common/FormBuilder/FormBuilder', () =>
+jest.mock('../../../common/FormBuilderV1/FormBuilderV1', () =>
   jest
     .fn()
     .mockImplementation(({ formData }) => (
@@ -117,6 +116,8 @@ jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
 );
 
 jest.mock('../../../common/Table/TableV2', () => {
+  const { Table: AntdTable } = jest.requireActual('antd');
+
   return jest.fn().mockImplementation(({ loading, ...rest }) => (
     <div>
       {loading ? <p>TableLoader</p> : <AntdTable {...rest} />}
