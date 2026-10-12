@@ -43,10 +43,29 @@ import { enableAiAppMode } from '../../Utils/appMode';
  * Open the persona settings straight from its hash deep link — the same link
  * the copy-link button produces — and wait for the persona to load.
  */
+/**
+ * The Home page customize route renders the real landing page, so every widget
+ * on it fetches its own data. `/metadata/types/customProperties` is by far the
+ * slowest of those — ~17s against a local stack — and the page sits on its boot
+ * spinner until it answers. Waiting for that response is deterministic, where
+ * `waitForAllLoadersToDisappear` can only count down a timeout and reports a
+ * still-booting page as "no loaders yet".
+ */
+const waitForCustomProperties = (page: Page) =>
+  waitForResponseWithStatus(
+    page,
+    (response) =>
+      response.url().includes('/api/v1/metadata/types/customProperties') &&
+      response.request().method() === 'GET',
+    200
+  );
+
 const openPersonaSettings = async (
   page: Page,
   personaName: string,
-  subPath = ''
+  subPath = '',
+  // Set for the Home page routes, whose widgets pull in custom properties.
+  waitsForCustomProperties = false
 ) => {
   const personaResponse = waitForResponseWithStatus(
     page,
@@ -55,8 +74,13 @@ const openPersonaSettings = async (
       response.request().method() === 'GET',
     200
   );
+  // Armed before the navigation that triggers it, so it cannot be missed.
+  const customProperties = waitsForCustomProperties
+    ? waitForCustomProperties(page)
+    : undefined;
   await page.goto(`/#personas/${personaName}${subPath}`);
   await personaResponse;
+  await customProperties;
   // Home page and entity customize links open full page, without the modal.
   await expect(
     page
@@ -85,7 +109,7 @@ const discardUnsavedDefaultLayout = async (page: Page) => {
 
 test.describe(
   'Persona settings in the personal-space modal',
-  { tag: [DOMAIN_TAGS.PLATFORM, '@quarantine'] },
+  { tag: [DOMAIN_TAGS.PLATFORM] },
   () => {
     let persona: PersonaClass;
 
@@ -246,6 +270,10 @@ test.describe(
     test('Home page opens full page and Add Widget stays a modal', async ({
       page,
     }) => {
+      // The Home page customize route renders every landing-page widget, so
+      // it pulls ~42s of API work (17s of it `metadata/types/customProperties`,
+      // fetched again after each reload) and does not fit the 60s default.
+      test.slow();
       await openPersonaSettings(page, persona.data.name);
       await page.getByTestId('customize-card-LandingPage').click();
 
@@ -337,7 +365,9 @@ const buildPersona = (prefix: string) => {
 const saveLayoutAndReload = async (
   page: Page,
   saveButtonTestId: string,
-  expectedPayloadFragment: string
+  expectedPayloadFragment: string,
+  // Set for the Home page routes, whose widgets pull in custom properties.
+  waitsForCustomProperties = false
 ) => {
   const saveResponse = waitForResponseWithStatus(
     page,
@@ -378,13 +408,22 @@ const saveLayoutAndReload = async (
     (res) => res.url().includes(layoutPath) && res.request().method() === 'GET',
     200
   );
+  // The reload re-renders the page, so the Home page's slow custom-properties
+  // fetch happens again; without waiting for it the callers assert against a
+  // page that is still on its boot spinner. Only the Home page routes request
+  // it, so this is opt-in: awaiting it unconditionally would stall every other
+  // caller until the wait timed out.
+  const customProperties = waitsForCustomProperties
+    ? waitForCustomProperties(page)
+    : undefined;
   await page.reload();
   await layoutLoaded;
+  await customProperties;
 };
 
 test.describe(
   'Persona settings — persona management actions',
-  { tag: [DOMAIN_TAGS.PLATFORM, '@quarantine'] },
+  { tag: [DOMAIN_TAGS.PLATFORM] },
   () => {
     let persona: PersonaClass;
     let personaToDelete: PersonaClass;
@@ -681,7 +720,7 @@ test.describe(
 
 test.describe(
   'Persona settings — customize saves',
-  { tag: [DOMAIN_TAGS.PLATFORM, '@quarantine'] },
+  { tag: [DOMAIN_TAGS.PLATFORM] },
   () => {
     // One persona per editor: every save writes the same persona document, so
     // sharing one across parallel workers would race on its version.
@@ -808,10 +847,15 @@ test.describe(
     });
 
     test('Home page: the layout is saved', async ({ page }) => {
+      // The Home page customize route renders every landing-page widget, so
+      // it pulls ~42s of API work (17s of it `metadata/types/customProperties`,
+      // fetched again after each reload) and does not fit the 60s default.
+      test.slow();
       await openPersonaSettings(
         page,
         personas.home.data.name,
-        '/customize/LandingPage'
+        '/customize/LandingPage',
+        true
       );
 
       await expect(
@@ -820,7 +864,7 @@ test.describe(
       // A fresh persona has no saved layout, so the seeded default is unsaved.
       await expect(page.getByTestId('save-button')).toBeEnabled();
 
-      await saveLayoutAndReload(page, 'save-button', 'LandingPage');
+      await saveLayoutAndReload(page, 'save-button', 'LandingPage', true);
 
       await expect(
         page.getByTestId('landing-page-editor-overlay')
@@ -834,7 +878,8 @@ test.describe(
       await openPersonaSettings(
         page,
         personas.homeTheme.data.name,
-        '/customize/LandingPage'
+        '/customize/LandingPage',
+        true
       );
       await page
         .getByTestId('customize-landing-page-header')
@@ -876,12 +921,17 @@ test.describe(
     test('Home page: a configured Curated Assets widget is saved', async ({
       page,
     }) => {
+      // The Home page customize route renders every landing-page widget, so
+      // it pulls ~42s of API work (17s of it `metadata/types/customProperties`,
+      // fetched again after each reload) and does not fit the 60s default.
+      test.slow();
       const widgetTitle = `PW Curated ${uuid()}`;
 
       await openPersonaSettings(
         page,
         personas.curated.data.name,
-        '/customize/LandingPage'
+        '/customize/LandingPage',
+        true
       );
 
       await test.step('add the Curated Assets placeholder', async () => {
