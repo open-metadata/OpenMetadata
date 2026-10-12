@@ -683,12 +683,12 @@ const TableQueries: FC<TableQueriesProp> = ({
                         }>
                         {isAscSortOrder ? (
                           <SortAscending
-                            className="text-grey-muted tw:shrink-0"
+                            className="tw:text-quaternary tw:shrink-0"
                             size={14}
                           />
                         ) : (
                           <SortDescending
-                            className="text-grey-muted tw:shrink-0"
+                            className="tw:text-quaternary tw:shrink-0"
                             size={14}
                           />
                         )}

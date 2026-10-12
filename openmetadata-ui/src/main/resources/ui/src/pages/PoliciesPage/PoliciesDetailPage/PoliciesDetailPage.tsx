@@ -542,7 +542,7 @@ const PoliciesDetailPage = () => {
                     className="w-max-full"
                     displayName={policy.displayName}
                     icon={
-                      <PolicyIcon className="align-middle p-y-xss tw:size-[50px] tw:shrink-0" />
+                      <PolicyIcon className="tw:align-middle tw:py-1 tw:size-[50px] tw:shrink-0" />
                     }
                     name={policy?.name ?? ''}
                     serviceName="policy"

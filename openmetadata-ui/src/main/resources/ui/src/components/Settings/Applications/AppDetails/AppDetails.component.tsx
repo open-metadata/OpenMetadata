@@ -606,7 +606,7 @@ const AppDetails = () => {
           className="deleted-badge-button text-xs flex-center app-runtime-disabled-badge"
           data-testid="runtime-disabled-badge">
           <SlashCircle01
-            className="d-flex m-r-xss font-medium text-xs tw:shrink-0"
+            className="tw:flex tw:mr-1 tw:font-medium tw:text-xs tw:shrink-0"
             size={14}
           />
           {t('label.disabled')}

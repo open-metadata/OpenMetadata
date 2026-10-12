@@ -83,7 +83,7 @@ const ProfileManageOptions = ({
         data-testid="edit-displayname"
         onClick={onEditDisplayName}>
         <EditProfileIcon
-          className="m-r-xss"
+          className="tw:mr-1"
           style={{ marginRight: '10px' }}
           {...ICON_DIMENSION_USER_PAGE}
         />
@@ -100,7 +100,7 @@ const ProfileManageOptions = ({
         data-testid="change-password-button"
         onClick={onChangePassword}>
         <ChangePassword
-          className="m-r-xss"
+          className="tw:mr-1"
           style={{ marginRight: '10px' }}
           {...ICON_DIMENSION_USER_PAGE}
         />
@@ -116,7 +116,7 @@ const ProfileManageOptions = ({
         className="profile-manage-item d-flex item-center w-full text-left border-0 bg-transparent remove-button-default-styling"
         onClick={onRestore}>
         <DeleteIcon
-          className="m-r-xss"
+          className="tw:mr-1"
           style={{ marginRight: '10px' }}
           {...ICON_DIMENSION_USER_PAGE}
         />
@@ -130,7 +130,7 @@ const ProfileManageOptions = ({
           className="remove-button-default-styling profile-manage-item d-flex item-center w-full text-left border-0  bg-transparent"
           onClick={onDelete}>
           <DeleteIcon
-            className="m-r-xss"
+            className="tw:mr-1"
             style={{ marginRight: '10px' }}
             {...ICON_DIMENSION_USER_PAGE}
           />
@@ -348,7 +348,7 @@ const ProfileSectionUserDetailsCard = ({
         <span
           className="user-profile-deleted-badge"
           data-testid="deleted-badge">
-          <DeleteIcon className="m-r-xss font-medium text-md ant-icon tw:size-3.5 tw:shrink-0" />
+          <DeleteIcon className="tw:mr-1 tw:font-medium tw:text-md ant-icon tw:size-3.5 tw:shrink-0" />
 
           {t('label.deleted')}
         </span>

@@ -63,7 +63,7 @@ const DeployIngestionLoaderModal = ({
                   background: isActive(isIngestionCreated),
                 }}>
                 <Typography className="flex-center h-full">
-                  <IconCreateIngestion className="align-middle tw:size-[26px] tw:shrink-0" />
+                  <IconCreateIngestion className="tw:align-middle tw:size-[26px] tw:shrink-0" />
                 </Typography>
               </Typography>
             </div>
@@ -74,7 +74,7 @@ const DeployIngestionLoaderModal = ({
                   background: isActive(isDeployed),
                 }}>
                 <Typography className="flex-center h-full">
-                  <IconDeployIngestion className="align-middle tw:size-[26px] tw:shrink-0" />
+                  <IconDeployIngestion className="tw:align-middle tw:size-[26px] tw:shrink-0" />
                 </Typography>
               </Typography>
             </div>

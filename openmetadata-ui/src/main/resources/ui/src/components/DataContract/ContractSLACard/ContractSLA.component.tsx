@@ -243,7 +243,7 @@ const ContractSLA: React.FC<{
         entity: t('label.service-level-agreement'),
       })}
       triggerClassName="tw:inline-flex">
-      <InheritIcon className="inherit-icon cursor-pointer" width={14} />
+      <InheritIcon className="inherit-icon tw:cursor-pointer" width={14} />
     </Tooltip>
   ) : null;
 

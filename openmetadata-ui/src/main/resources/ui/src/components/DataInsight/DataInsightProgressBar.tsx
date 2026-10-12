@@ -80,7 +80,7 @@ const DataInsightProgressBar = ({
             strokeColor={progressColor}
           />
           {showSuccessInfo && progress >= 100 && (
-            <IconSuccessBadge className="align-middle m-l-xs tw:size-4 tw:shrink-0" />
+            <IconSuccessBadge className="tw:align-middle tw:ml-2 tw:size-4 tw:shrink-0" />
           )}
         </div>
       )}

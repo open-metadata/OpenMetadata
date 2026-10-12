@@ -146,7 +146,10 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
             optionLabelProp="value"
             placeholder={t('label.select-tag')}
             suffixIcon={
-              <ChevronDown className="text-grey-muted tw:shrink-0" size={14} />
+              <ChevronDown
+                className="tw:text-quaternary tw:shrink-0"
+                size={14}
+              />
             }
             value={termBoostData.value || undefined}
             onChange={handleTagChange}
@@ -179,7 +182,7 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
           <Button
             className="delete-term-boost"
             data-testid="delete-term-boost"
-            icon={<Delete className="text-md tw:size-3.5 tw:shrink-0" />}
+            icon={<Delete className="tw:text-md tw:size-3.5 tw:shrink-0" />}
             onClick={() => onDeleteBoost(termBoost.value)}
           />
         </Box>

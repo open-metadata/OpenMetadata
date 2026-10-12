@@ -705,7 +705,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                           <Button
                             className="delete-btn"
                             icon={
-                              <IconDelete className="align-middle tw:size-4 tw:shrink-0" />
+                              <IconDelete className="tw:align-middle tw:size-4 tw:shrink-0" />
                             }
                             type="text"
                             onClick={() => remove(name)}
@@ -987,7 +987,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                               <Button
                                 className="delete-btn"
                                 icon={
-                                  <IconDelete className="align-middle tw:size-4 tw:shrink-0" />
+                                  <IconDelete className="tw:align-middle tw:size-4 tw:shrink-0" />
                                 }
                                 type="text"
                                 onClick={() => remove(name)}

@@ -54,7 +54,7 @@ function CommonEntitySummaryInfo({
               target="_blank">
               {info.value}
               <IconExternalLink
-                className="m-l-xs tw:size-3.5 tw:shrink-0"
+                className="tw:ml-2 tw:size-3.5 tw:shrink-0"
                 data-testid="external-link-icon"
               />
             </a>

@@ -377,7 +377,7 @@ const RolesDetailPage = () => {
                   className="w-max-full"
                   displayName={role.displayName}
                   icon={
-                    <RoleIcon className="align-middle p-y-xss tw:size-[50px] tw:shrink-0" />
+                    <RoleIcon className="tw:align-middle tw:py-1 tw:size-[50px] tw:shrink-0" />
                   }
                   name={role?.name ?? ''}
                   serviceName="role"

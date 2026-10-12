@@ -73,7 +73,7 @@ export const EdgeInteractionOverlay: React.FC<EdgeInteractionOverlayProps> = ({
           icon={
             <IconEditCircle
               aria-label="edit-circle"
-              className="align-middle tw:size-4 tw:shrink-0"
+              className="tw:align-middle tw:size-4 tw:shrink-0"
               role="img"
             />
           }
@@ -99,7 +99,7 @@ export const EdgeInteractionOverlay: React.FC<EdgeInteractionOverlayProps> = ({
           icon={
             <IconTimesCircle
               aria-label="times-circle"
-              className="align-middle tw:size-4 tw:shrink-0"
+              className="tw:align-middle tw:size-4 tw:shrink-0"
               role="img"
             />
           }

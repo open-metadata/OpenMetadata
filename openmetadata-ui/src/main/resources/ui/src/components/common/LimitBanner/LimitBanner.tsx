@@ -34,7 +34,7 @@ export const LimitBanner = () => {
       })}
       hidden={!showBanner}>
       <div className="d-flex ">
-        <WarningIcon className="self-center tw:size-6 tw:shrink-0" />
+        <WarningIcon className="tw:self-center tw:size-6 tw:shrink-0" />
         <div className="p-l-sm">
           <p className="pricing-header">{bannerDetails?.header}</p>
           <p className="pricing-subheader">
@@ -46,7 +46,7 @@ export const LimitBanner = () => {
         </div>
       </div>
       <CloseIcon
-        className="close-btn p-0 cursor-pointer tw:size-3.5 tw:shrink-0"
+        className="close-btn tw:p-0 tw:cursor-pointer tw:size-3.5 tw:shrink-0"
         style={{ color: '#546E7A' }}
         onClick={() => setBannerDetails(null)}
       />

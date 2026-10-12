@@ -552,7 +552,7 @@ const TableConstraintsModal = ({
                       className="delete-constraint-button"
                       data-testid={`${key}-delete-constraint-button`}
                       icon={
-                        <IconDelete className="align-middle text-grey-muted tw:size-4 tw:shrink-0" />
+                        <IconDelete className="tw:align-middle tw:text-quaternary tw:size-4 tw:shrink-0" />
                       }
                       size="small"
                       type="text"

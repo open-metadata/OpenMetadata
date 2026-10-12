@@ -123,7 +123,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
               itemClassName="layout-space-item">
               <span>{getEntityName(record)}</span>
 
-              <IconExternalLink className="m-l-xs flex-none align-middle tw:size-3.5 tw:shrink-0" />
+              <IconExternalLink className="tw:ml-2 tw:shrink-0 tw:align-middle tw:size-3.5" />
             </Box>
           </Link>
         ),

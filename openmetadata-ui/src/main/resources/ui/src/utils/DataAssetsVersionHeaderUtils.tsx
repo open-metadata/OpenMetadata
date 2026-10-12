@@ -127,7 +127,7 @@ export const getExtraInfoSourceUrl = (
               )}
             </Typography>
             {safeSourceUrl && (
-              <IconExternalLink className="m-l-xss tw:size-3.5 tw:shrink-0" />
+              <IconExternalLink className="tw:ml-1 tw:size-3.5 tw:shrink-0" />
             )}
           </div>
         </>

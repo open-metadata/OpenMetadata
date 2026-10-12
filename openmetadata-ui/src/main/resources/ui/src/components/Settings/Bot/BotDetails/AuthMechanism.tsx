@@ -86,7 +86,7 @@ const AuthMechanism: FC<Props> = ({
         <>
           <IconError
             aria-label="warning"
-            className="align-middle tw:size-4 tw:shrink-0"
+            className="tw:align-middle tw:size-4 tw:shrink-0"
             role="img"
           />
           <span className="align-middle">
@@ -124,7 +124,7 @@ const AuthMechanism: FC<Props> = ({
             <CopyToClipboardButton copyText={JWTToken} />
           ) : (
             <CopyIcon
-              className="m-t-xs cursor-pointer"
+              className="tw:mt-2 tw:cursor-pointer"
               onClick={() => navigator.clipboard.writeText(JWTToken)}
             />
           )}

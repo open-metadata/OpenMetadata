@@ -207,7 +207,10 @@ const AddAttributeModal: FC<Props> = ({
                 </Grid.Item>
                 <Grid.Item className="layout-column" span={2}>
                   {selectedValues.includes(option.id) && (
-                    <Check className="text-primary tw:shrink-0" size={14} />
+                    <Check
+                      className="tw:text-brand-secondary tw:shrink-0"
+                      size={14}
+                    />
                   )}
                 </Grid.Item>
               </Grid>

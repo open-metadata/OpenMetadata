@@ -94,7 +94,7 @@ export const GlobalSettingItem = ({
             {value}
           </span>
           <EditIcon
-            className="m-l-sm flex-shrink tw:size-3.5 tw:shrink-0"
+            className="tw:ml-3 tw:shrink-0 tw:size-3.5"
             data-testid={`global-setting-edit-icon-${label}`}
             onClick={() => setIsEditing(true)}
           />

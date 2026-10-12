@@ -317,7 +317,7 @@ export const PipelineTaskTab = () => {
               <div className="d-flex items-center">
                 <span className="break-all">{getEntityName(record)}</span>
 
-                <ExternalLinkIcon className="m-l-xs flex-none tw:size-3.5 tw:shrink-0" />
+                <ExternalLinkIcon className="tw:ml-2 tw:shrink-0 tw:size-3.5" />
               </div>
             </Link>
           ) : (

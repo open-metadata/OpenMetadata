@@ -253,7 +253,7 @@ const PasswordConfigSection = ({
                     {isPasswordGenerating ? (
                       <Loader size="small" type="default" />
                     ) : (
-                      <IconSync className="align-middle tw:size-4 tw:shrink-0" />
+                      <IconSync className="tw:align-middle tw:size-4 tw:shrink-0" />
                     )}
                   </div>
 

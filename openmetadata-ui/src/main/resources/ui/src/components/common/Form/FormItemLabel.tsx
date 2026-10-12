@@ -51,7 +51,7 @@ const FormItemLabel = ({
             title={helperText}
             triggerClassName="tw:inline-flex">
             <InfoCircle
-              className="m-l-xs tw:shrink-0"
+              className="tw:ml-2 tw:shrink-0"
               data-testid="helper-icon"
               size={14}
               style={{ color: GRAYED_OUT_COLOR }}

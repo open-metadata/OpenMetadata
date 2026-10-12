@@ -196,7 +196,7 @@ describe('NavbarUtils test', () => {
         // The SVG asset is now rendered directly, sized by a class rather
         // than antd's injected font-size.
         expect(externalIcon.props.className).toBe(
-          'm-l-xss text-base-color tw:size-4 tw:shrink-0'
+          'tw:ml-1 tw:text-secondary tw:size-4 tw:shrink-0'
         );
       });
     });

@@ -247,7 +247,7 @@ const SearchPreview = ({
         data-testid="searchbar"
         placeholder={t('message.search-for-data-assets-placeholder')}
         suffix={
-          <IconSearchV1 className="text-md font-bold m-r-xs tw:size-3.5 tw:shrink-0" />
+          <IconSearchV1 className="tw:text-md tw:font-bold tw:mr-2 tw:size-3.5 tw:shrink-0" />
         }
         type="text"
         value={searchValue}

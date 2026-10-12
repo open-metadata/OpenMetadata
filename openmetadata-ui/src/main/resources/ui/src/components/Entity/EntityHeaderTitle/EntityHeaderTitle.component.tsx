@@ -130,7 +130,7 @@ const EntityHeaderTitle = ({
           <div className="text-xs tw:flex-[0_0_100px]">
             <span className="deleted-badge-button" data-testid="deleted-badge">
               <ExclamationCircleFilled
-                className="m-r-xss font-medium text-xs tw:shrink-0"
+                className="tw:mr-1 tw:font-medium tw:text-xs tw:shrink-0"
                 size={14}
               />
               {t('label.deleted')}
@@ -250,7 +250,7 @@ const EntityHeaderTitle = ({
               {entityName}
               {openEntityInNewPage && (
                 <IconExternalLink
-                  className="vertical-middle m-l-xss"
+                  className="tw:align-middle tw:ml-1"
                   height={14}
                   width={14}
                 />

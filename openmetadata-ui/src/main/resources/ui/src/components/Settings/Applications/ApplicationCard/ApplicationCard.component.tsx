@@ -77,7 +77,10 @@ const ApplicationCard = ({
               <div
                 className="deleted-badge-button text-xss flex-center tw:items-center"
                 data-testid="deleted-badge">
-                <ExclamationCircleFilled className="d-flex m-r-xss" size={14} />
+                <ExclamationCircleFilled
+                  className="tw:flex tw:mr-1"
+                  size={14}
+                />
                 {t('label.disabled')}
               </div>
             )}

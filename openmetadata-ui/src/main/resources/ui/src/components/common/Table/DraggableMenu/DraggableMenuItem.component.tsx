@@ -71,7 +71,7 @@ const DraggableMenuItem: React.FC<DraggableMenuItemProps> = ({
         drag(drop(node));
       }}>
       <ColumnDragIcon
-        className="text-grey-muted"
+        className="tw:text-quaternary"
         data-testid="draggable-menu-item-drag-icon"
         height={16}
         width={16}

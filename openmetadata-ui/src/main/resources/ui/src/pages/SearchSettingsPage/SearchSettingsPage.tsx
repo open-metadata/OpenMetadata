@@ -129,7 +129,7 @@ const SearchBoostsSection = ({
                   data-testid="term-boost-add-btn"
                   disabled={isUpdating || showNewTermBoost}
                   icon={
-                    <PlusOutlined className="text-sm tw:size-3.5 tw:mr-2 tw:shrink-0" />
+                    <PlusOutlined className="tw:text-sm tw:size-3.5 tw:mr-2 tw:shrink-0" />
                   }
                   type="primary"
                   onClick={onAddNewTermBoost}>
@@ -169,7 +169,7 @@ const SearchBoostsSection = ({
                   data-testid="add-field-value-boost-btn"
                   disabled={isUpdating || showFieldValueBoostModal}
                   icon={
-                    <PlusOutlined className="text-sm tw:size-3.5 tw:mr-2 tw:shrink-0" />
+                    <PlusOutlined className="tw:text-sm tw:size-3.5 tw:mr-2 tw:shrink-0" />
                   }
                   onClick={onAddFieldValueBoost}>
                   {t('label.add')}

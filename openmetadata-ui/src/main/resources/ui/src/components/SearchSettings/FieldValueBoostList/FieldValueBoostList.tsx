@@ -97,14 +97,14 @@ const FieldValueBoostList: React.FC<FieldValueBoostListProps> = ({
             <Button
               className="edit-field-value-boost-btn"
               data-testid="edit-field-value-boost-btn"
-              icon={<EditIcon className="text-md tw:size-3.5 tw:shrink-0" />}
+              icon={<EditIcon className="tw:text-md tw:size-3.5 tw:shrink-0" />}
               type="text"
               onClick={() => handleEditFieldValueBoost(record)}
             />
             <Button
               className="delete-field-value-boost-btn"
               data-testid="delete-field-value-boost-btn"
-              icon={<Delete className="text-md tw:size-3.5 tw:shrink-0" />}
+              icon={<Delete className="tw:text-md tw:size-3.5 tw:shrink-0" />}
               type="text"
               onClick={() => handleDeleteFieldValueBoost(record.field)}
             />

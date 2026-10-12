@@ -61,7 +61,10 @@ const ContractSemantics: React.FC<{
                 entity: t('label.semantic-plural'),
               })}
               triggerClassName="tw:inline-flex">
-              <InheritIcon className="inherit-icon cursor-pointer" width={14} />
+              <InheritIcon
+                className="inherit-icon tw:cursor-pointer"
+                width={14}
+              />
             </Tooltip>
           ) : null;
 

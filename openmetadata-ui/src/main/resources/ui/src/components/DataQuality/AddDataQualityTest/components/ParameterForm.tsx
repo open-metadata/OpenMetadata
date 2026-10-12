@@ -407,7 +407,7 @@ const buildArraySetField = ({
             </Form.Item>
             <Button
               icon={
-                <IconDelete className="align-middle tw:size-4 tw:shrink-0" />
+                <IconDelete className="tw:align-middle tw:size-4 tw:shrink-0" />
               }
               type="text"
               onClick={() => remove(name)}

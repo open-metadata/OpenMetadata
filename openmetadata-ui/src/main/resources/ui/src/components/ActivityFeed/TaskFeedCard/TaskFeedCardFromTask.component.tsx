@@ -349,7 +349,7 @@ const TaskFeedCardFromTask = ({
       <Box>
         <Box align="center" justify="center">
           <ReplyIcon
-            className="m-r-xs"
+            className="tw:mr-2"
             height={20}
             width={20}
             onClick={showReplies}

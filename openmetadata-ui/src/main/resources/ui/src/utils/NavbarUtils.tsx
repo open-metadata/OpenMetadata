@@ -57,7 +57,7 @@ const getHelpDropdownLabelContentRenderer = (
         )}
 
         {item.isExternal && (
-          <IconExternalLink className="m-l-xss text-base-color tw:size-4 tw:shrink-0" />
+          <IconExternalLink className="tw:ml-1 tw:text-secondary tw:size-4 tw:shrink-0" />
         )}
       </Grid.Item>
     </Grid>

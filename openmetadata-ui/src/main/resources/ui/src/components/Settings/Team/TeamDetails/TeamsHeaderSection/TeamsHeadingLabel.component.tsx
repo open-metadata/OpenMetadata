@@ -198,7 +198,7 @@ const TeamsHeadingLabel = ({
             className="deleted-badge-button text-xs flex-center"
             data-testid="deleted-badge">
             <ExclamationCircleFilled
-              className="m-r-xss tw:shrink-0"
+              className="tw:mr-1 tw:shrink-0"
               size={14}
             />
             {t('label.deleted')}
