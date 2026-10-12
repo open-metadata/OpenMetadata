@@ -93,6 +93,15 @@ import ActivityChangePanel from './ActivityChangePanel';
 import ActivityThread from './ActivityThread';
 import AuthorPopover from './AuthorPopover';
 
+// The core Card's surface and hover. Its hover tint is translucent in dark,
+// so it is laid over the surface, not swapped in for it: swapped, the page
+// shows through and the card darkens instead of lifting.
+const CARD_CLASS = classNames(
+  'tw:rounded-xl tw:border tw:border-subtle tw:bg-surface tw:pb-4 tw:shadow-xs',
+  'tw:transition-colors tw:hover:border-primary',
+  'tw:hover:bg-[linear-gradient(var(--om-color-bg-primary-hover),var(--om-color-bg-primary-hover))]'
+);
+
 // Repliers shown on the collapsed thread toggle.
 const MAX_REPLY_FACES = 3;
 
@@ -506,7 +515,7 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
 
   return (
     <Box
-      className="tw:rounded-xl tw:border tw:border-subtle tw:bg-surface tw:pb-4 tw:shadow-xs tw:transition-colors tw:hover:border-primary"
+      className={CARD_CLASS}
       data-testid="activity-feed-item"
       direction="col"
       gap={4}>
