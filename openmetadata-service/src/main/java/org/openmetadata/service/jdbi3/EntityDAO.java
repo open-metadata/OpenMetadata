@@ -57,7 +57,7 @@ import org.openmetadata.service.util.jdbi.BindJson;
 import org.openmetadata.service.util.jdbi.BindUUID;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
-public interface EntityDAO<T extends EntityInterface> {
+public interface EntityDAO<T extends EntityInterface<?>> {
   org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(EntityDAO.class);
 
   /**
@@ -935,8 +935,16 @@ public interface EntityDAO<T extends EntityInterface> {
 
   default List<CursorRow> listKeys(ListFilter filter, int limit, boolean ascending) {
     return ascending
-        ? listKeys(getTableName(), filter.getQueryParams(), filter.getCondition(), limit)
-        : listKeysDesc(getTableName(), filter.getQueryParams(), filter.getCondition(), limit);
+        ? listKeys(
+            getTableName(),
+            filter.getQueryParams(),
+            filter.getConditionForEntity(getTableName()),
+            limit)
+        : listKeysDesc(
+            getTableName(),
+            filter.getQueryParams(),
+            filter.getConditionForEntity(getTableName()),
+            limit);
   }
 
   record ServiceTypeCount(String serviceType, int count) {}
@@ -961,7 +969,8 @@ public interface EntityDAO<T extends EntityInterface> {
       @Define("table") String table, @BindMap Map<String, ?> params, @Define("cond") String cond);
 
   default List<ServiceTypeCount> listCountByServiceType(ListFilter filter) {
-    return listCountByServiceType(getTableName(), filter.getQueryParams(), filter.getCondition());
+    return listCountByServiceType(
+        getTableName(), filter.getQueryParams(), filter.getConditionForEntity(getTableName()));
   }
 
   @SqlQuery("SELECT EXISTS (SELECT * FROM <table> WHERE id = :id)")
@@ -1005,13 +1014,13 @@ public interface EntityDAO<T extends EntityInterface> {
   }
 
   /** Default methods that interfaces with implementation. Don't override */
-  default void insert(EntityInterface entity, String fqn) {
+  default void insert(EntityInterface<?> entity, String fqn) {
     insert(getTableName(), getNameHashColumn(), fqn, JsonUtils.pojoToJson(entity));
   }
 
   /** Default methods that interfaces with implementation. Don't override */
-  default void insertMany(List<EntityInterface> entities) {
-    List<String> fqns = entities.stream().map(EntityInterface::getFullyQualifiedName).toList();
+  default void insertMany(List<EntityInterface<?>> entities) {
+    List<String> fqns = entities.stream().map(EntityInterface<?>::getFullyQualifiedName).toList();
     insertMany(
         getTableName(),
         getNameHashColumn(),
@@ -1020,9 +1029,9 @@ public interface EntityDAO<T extends EntityInterface> {
   }
 
   /** Batch update entities. Don't override */
-  default void updateMany(List<EntityInterface> entities) {
-    List<String> fqns = entities.stream().map(EntityInterface::getFullyQualifiedName).toList();
-    List<UUID> ids = entities.stream().map(EntityInterface::getId).toList();
+  default void updateMany(List<EntityInterface<?>> entities) {
+    List<String> fqns = entities.stream().map(EntityInterface<?>::getFullyQualifiedName).toList();
+    List<UUID> ids = entities.stream().map(EntityInterface<?>::getId).toList();
     updateMany(
         getTableName(),
         getNameHashColumn(),
@@ -1031,7 +1040,7 @@ public interface EntityDAO<T extends EntityInterface> {
         entities.stream().map(JsonUtils::pojoToJson).toList());
   }
 
-  default void insert(String nameHash, EntityInterface entity, String fqn) {
+  default void insert(String nameHash, EntityInterface<?> entity, String fqn) {
     insert(getTableName(), nameHash, fqn, JsonUtils.pojoToJson(entity));
   }
 
@@ -1039,7 +1048,7 @@ public interface EntityDAO<T extends EntityInterface> {
     update(getTableName(), getNameHashColumn(), fqn, id.toString(), json);
   }
 
-  default void update(EntityInterface entity) {
+  default void update(EntityInterface<?> entity) {
     update(
         getTableName(),
         getNameHashColumn(),
@@ -1048,7 +1057,7 @@ public interface EntityDAO<T extends EntityInterface> {
         JsonUtils.pojoToJson(entity));
   }
 
-  default void update(String nameHashColumn, EntityInterface entity) {
+  default void update(String nameHashColumn, EntityInterface<?> entity) {
     update(
         getTableName(),
         nameHashColumn,
@@ -1057,7 +1066,7 @@ public interface EntityDAO<T extends EntityInterface> {
         JsonUtils.pojoToJson(entity));
   }
 
-  default int updateIfMatches(EntityInterface entity, String expectedJson) {
+  default int updateIfMatches(EntityInterface<?> entity, String expectedJson) {
     return updateIfMatches(
         getTableName(),
         getNameHashColumn(),
@@ -1189,7 +1198,10 @@ public interface EntityDAO<T extends EntityInterface> {
 
   default int listCount(ListFilter filter) {
     return listCount(
-        getTableName(), getNameHashColumn(), filter.getQueryParams(), filter.getCondition());
+        getTableName(),
+        getNameHashColumn(),
+        filter.getQueryParams(),
+        filter.getConditionForEntity(getTableName()));
   }
 
   default int listTotalCount() {
@@ -1202,7 +1214,7 @@ public interface EntityDAO<T extends EntityInterface> {
     return listBefore(
         getTableName(),
         filter.getQueryParams(),
-        filter.getCondition(),
+        filter.getConditionForEntity(getTableName()),
         limit,
         beforeName,
         beforeId);
@@ -1211,7 +1223,12 @@ public interface EntityDAO<T extends EntityInterface> {
   default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
     // Quoted name is stored in fullyQualifiedName column and not in the name column
     return listAfter(
-        getTableName(), filter.getQueryParams(), filter.getCondition(), limit, afterName, afterId);
+        getTableName(),
+        filter.getQueryParams(),
+        filter.getConditionForEntity(getTableName()),
+        limit,
+        afterName,
+        afterId);
   }
 
   default List<String> listAll(String startHash, String endHash) {
@@ -1221,7 +1238,12 @@ public interface EntityDAO<T extends EntityInterface> {
 
   default List<String> listAll(String startHash, String endHash, ListFilter filter) {
     // Quoted name is stored in fullyQualifiedName column and not in the name column
-    return listAll(getTableName(), filter.getCondition(), getNameHashColumn(), startHash, endHash);
+    return listAll(
+        getTableName(),
+        filter.getConditionForEntity(getTableName()),
+        getNameHashColumn(),
+        startHash,
+        endHash);
   }
 
   default List<String> listAfterWithOffset(int limit, int offset) {
@@ -1235,12 +1257,20 @@ public interface EntityDAO<T extends EntityInterface> {
   }
 
   default List<String> listAfter(ListFilter filter, int limit, int offset) {
-    return listAfter(getTableName(), filter.getQueryParams(), filter.getCondition(), limit, offset);
+    return listAfter(
+        getTableName(),
+        filter.getQueryParams(),
+        filter.getConditionForEntity(getTableName()),
+        limit,
+        offset);
   }
 
   default CursorRow getCursorAtOffset(ListFilter filter, int offset) {
     return getCursorAtOffset(
-        getTableName(), filter.getQueryParams(), filter.getCondition(), offset);
+        getTableName(),
+        filter.getQueryParams(),
+        filter.getConditionForEntity(getTableName()),
+        offset);
   }
 
   default void exists(UUID id) {

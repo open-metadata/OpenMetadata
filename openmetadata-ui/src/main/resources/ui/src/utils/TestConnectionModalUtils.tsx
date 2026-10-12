@@ -453,11 +453,11 @@ function getGatePillClass(
     'tw:inline-flex tw:h-6 tw:items-center tw:rounded-full tw:border tw:px-2',
     'tw:text-xs tw:font-semibold tw:leading-4',
     {
-      'tw:border-utility-brand-200 tw:bg-white tw:text-utility-brand-700':
+      'tw:border-utility-brand-200 tw:bg-brand-primary tw:text-utility-brand-700':
         !gateResult && !isFailed,
-      'tw:border-utility-success-200 tw:bg-white tw:text-utility-success-700':
+      'tw:border-utility-success-200 tw:bg-success-primary tw:text-utility-success-700':
         gateResult?.passed,
-      'tw:border-utility-error-200 tw:bg-white tw:text-utility-error-700':
+      'tw:border-utility-error-200 tw:bg-error-primary tw:text-utility-error-700':
         gateFailed,
     }
   );
@@ -578,15 +578,16 @@ export function ConnectionGateCard(
   );
 
   const pillClass = classNames(
-    'tw:inline-flex tw:h-6 tw:items-center tw:gap-1.5 tw:rounded-full tw:border tw:bg-white tw:px-2.5 tw:text-xs tw:font-medium',
+    'tw:inline-flex tw:h-6 tw:items-center tw:gap-1.5 tw:rounded-full tw:border tw:px-2.5 tw:text-xs tw:font-medium',
     {
-      'tw:border-utility-success-200 tw:text-utility-success-700':
+      'tw:border-utility-success-200 tw:bg-success-primary tw:text-utility-success-700':
         pillState === 'pass',
-      'tw:border-utility-error-200 tw:text-utility-error-700':
+      'tw:border-utility-error-200 tw:bg-error-primary tw:text-utility-error-700':
         pillState === 'fail',
-      'tw:border-utility-brand-200 tw:text-utility-brand-700':
+      'tw:border-utility-brand-200 tw:bg-brand-primary tw:text-utility-brand-700':
         pillState === 'running',
-      'tw:border-gray-300 tw:text-secondary': pillState === 'queued',
+      'tw:border-primary tw:bg-secondary tw:text-secondary':
+        pillState === 'queued',
     }
   );
 

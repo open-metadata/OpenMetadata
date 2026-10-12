@@ -296,7 +296,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     searchListFilter.addQueryParam("excludeFields", SEARCH_FIELDS_EXCLUDE);
     searchListFilter.addQueryParam("domains", domain);
     if (!nullOrEmpty(owner)) {
-      EntityInterface entity;
+      EntityInterface<?> entity;
       try {
         entity = Entity.getEntityByName(Entity.USER, owner, "", ALL);
       } catch (Exception e) {

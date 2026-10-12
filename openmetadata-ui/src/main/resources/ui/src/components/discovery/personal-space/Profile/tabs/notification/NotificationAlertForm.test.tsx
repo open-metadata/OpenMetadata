@@ -53,6 +53,11 @@ jest.mock('../../../../../../rest/alertsAPI', () => ({
   updateNotificationAlert: jest.fn().mockResolvedValue({}),
 }));
 
+// Asking the server what the sources support is tested with the hook itself.
+jest.mock('../../../../../../hooks/useAlertSelection', () => ({
+  useAlertSelection: jest.fn().mockReturnValue({ support: {} }),
+}));
+
 jest.mock('../../../../../../utils/AlertsClassBase', () => ({
   __esModule: true,
   default: {

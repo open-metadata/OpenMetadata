@@ -235,7 +235,7 @@ public class SinkTaskDelegate implements JavaDelegate {
 
                   // Fetch entities for this sub-batch
                   List<SinkResult.SinkError> fetchErrors = new ArrayList<>();
-                  List<EntityInterface> entities = new ArrayList<>();
+                  List<EntityInterface<?>> entities = new ArrayList<>();
                   for (String entityLinkStr : subBatch) {
                     try {
                       var entityLink = MessageParser.EntityLink.parse(entityLinkStr);
@@ -293,7 +293,7 @@ public class SinkTaskDelegate implements JavaDelegate {
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(relatedEntityValue);
     String fields =
         String.join(",", ReindexingUtil.getSearchIndexFields(entityLink.getEntityType()));
-    EntityInterface entity = Entity.getEntity(entityLink, fields, Include.ALL);
+    EntityInterface<?> entity = Entity.getEntity(entityLink, fields, Include.ALL);
 
     LOG.info(
         "[{}] Executing single entity sink for: {}",

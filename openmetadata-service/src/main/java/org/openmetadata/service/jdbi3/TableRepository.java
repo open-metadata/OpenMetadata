@@ -1837,7 +1837,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  protected void applyInheritance(Table entity, Fields fields, EntityInterface parent) {
+  protected void applyInheritance(Table entity, Fields fields, EntityInterface<?> parent) {
     inheritOwners(entity, fields, parent);
     inheritDomains(entity, fields, parent);
     inheritTags(entity, fields, parent);
@@ -1850,7 +1850,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  public EntityInterface getParentEntity(Table entity, String fields) {
+  public EntityInterface<?> getParentEntity(Table entity, String fields) {
     return Entity.getEntity(entity.getDatabaseSchema(), fields, ALL);
   }
 
@@ -1861,7 +1861,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  public List<TagLabel> getAllTags(EntityInterface entity) {
+  public List<TagLabel> getAllTags(EntityInterface<?> entity) {
     List<TagLabel> allTags = new ArrayList<>();
     Table table = (Table) entity;
     EntityUtil.mergeTags(allTags, table.getTags());
@@ -2288,8 +2288,11 @@ public class TableRepository extends EntityRepository<Table> {
       compareAndUpdate(
           "retentionPeriod",
           () ->
-              recordChange(
-                  "retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod()));
+              updateUserOnlyField(
+                  "retentionPeriod",
+                  original.getRetentionPeriod(),
+                  updated.getRetentionPeriod(),
+                  updated::setRetentionPeriod));
       compareAndUpdate(
           "compressionEnabled",
           () ->

@@ -11,18 +11,19 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Form, Input, Modal, Select, Space, Tooltip } from 'antd';
+import {
+  Box,
+  ButtonUtility,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Button, Form, Input, Modal, Select } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
-import {
-  DE_ACTIVE_COLOR,
-  ICON_DIMENSION,
-  NO_DATA_PLACEHOLDER,
-} from '../../../../../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../../../../../constants/constants';
 import {
   SUBSCRIPTION_WEBHOOK,
   SUBSCRIPTION_WEBHOOK_OPTIONS,
@@ -66,7 +67,7 @@ const TeamsSubscription = ({
         </a>
       </Typography>
     ),
-    []
+    [getWebhookIconByKey]
   );
 
   const subscriptionRenderElement = useMemo(() => {
@@ -77,7 +78,7 @@ const TeamsSubscription = ({
         return (
           <div className="d-flex gap-2">
             <Typography
-              className="font-medium text-sm text-secondary-new "
+              className="font-medium text-sm text-secondary-new"
               data-testid="subscription-no-data">
               {t('label.none')}
             </Typography>
@@ -95,7 +96,7 @@ const TeamsSubscription = ({
     }
 
     return cellItem(webhook[0], webhook[1]);
-  }, [subscription, hasEditPermission]);
+  }, [subscription, hasEditPermission, cellItem, t]);
 
   const handleSave = async (values: SubscriptionWebhook) => {
     setIsLoading(true);
@@ -114,7 +115,7 @@ const TeamsSubscription = ({
     if (isWebhookEmpty) {
       form.setFieldValue('endpoint', '');
     }
-  }, [isWebhookEmpty]);
+  }, [isWebhookEmpty, form]);
 
   useEffect(() => {
     if (subscription) {
@@ -124,7 +125,7 @@ const TeamsSubscription = ({
         endpoint: data[1].endpoint,
       });
     }
-  }, [subscription, editSubscription]);
+  }, [subscription, editSubscription, form]);
 
   const subscriptionWebhookTranslated = useMemo(
     () =>
@@ -136,24 +137,27 @@ const TeamsSubscription = ({
   );
 
   return (
-    <Space
+    <Box
       align="start"
-      className="teams-subscription-container d-flex flex-col gap-2"
-      data-testid="teams-subscription">
+      className="layout-space layout-space-horizontal teams-subscription-container d-flex flex-col"
+      data-testid="teams-subscription"
+      gap={2}
+      itemClassName="layout-space-item">
       <div className="d-flex gap-1 items-center teams-subscription-label-container">
         <Typography className="right-panel-label text-sm font-medium subscription-label">
           {`${t('label.subscription')}`}
         </Typography>
         {!editSubscription && !isEmpty(subscription) && hasEditPermission && (
           <Tooltip
+            arrow
             title={t('label.edit-entity', {
               entity: t('label.subscription'),
             })}>
-            <Button
-              className="flex-center teams-info-email-edit-button p-0"
+            <ButtonUtility
+              color="secondary"
               data-testid="edit-team-subscription"
-              icon={<EditIcon {...ICON_DIMENSION} width="12px" />}
-              {...ICON_DIMENSION}
+              icon={EditIcon}
+              size="xs"
               onClick={(e) => {
                 // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
                 e.stopPropagation();
@@ -164,19 +168,15 @@ const TeamsSubscription = ({
         )}
         {isEmpty(subscription) && hasEditPermission && (
           <Tooltip
+            arrow
             title={t('label.edit-entity', {
               entity: t('label.subscription'),
             })}>
-            <Button
-              className="flex-center teams-info-email-edit-button p-0"
+            <ButtonUtility
+              color="secondary"
               data-testid="edit-team-subscription"
-              icon={
-                <EditIcon
-                  color={DE_ACTIVE_COLOR}
-                  {...ICON_DIMENSION}
-                  width="12px"
-                />
-              }
+              icon={EditIcon}
+              size="xs"
               onClick={(e) => {
                 // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
                 e.stopPropagation();
@@ -250,7 +250,7 @@ const TeamsSubscription = ({
           </Modal>
         </Button>
       )}
-    </Space>
+    </Box>
   );
 };
 

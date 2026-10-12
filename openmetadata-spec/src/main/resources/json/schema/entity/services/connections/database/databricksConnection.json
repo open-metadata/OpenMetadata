@@ -156,10 +156,6 @@
         "supportsFullAccess": true,
         "supportsMaskedAccess": false
       }
-    },
-    "sampleDataStorageConfig": {
-      "title": "Storage Config for Sample Data",
-      "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
     }
   },
   "additionalProperties": false,

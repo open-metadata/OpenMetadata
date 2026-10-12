@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../constant/common';
 import { SidebarItem } from '../constant/sidebar';
 import { redirectToHomePage } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
@@ -157,7 +158,7 @@ export const enableDisableSearchRBAC = async (
       },
       {
         message: `Search RBAC setting did not become ${String(enable)}`,
-        timeout: 30_000,
+        timeout: ACTION_TIMEOUT,
       }
     )
     .toBe(enable);

@@ -158,10 +158,7 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
         await metadataTab.click();
       }
       await page.click('[data-testid="add-new-ingestion-button"]');
-      await page
-        .locator('.ant-dropdown:visible [data-menu-id*="dbt"]')
-        .waitFor();
-      await page.click('[data-menu-id*="dbt"]');
+      await page.getByTestId('agent-item-dbt').click();
       await waitForIngestionWorkflowForm(page);
 
       await selectOneOfOption(

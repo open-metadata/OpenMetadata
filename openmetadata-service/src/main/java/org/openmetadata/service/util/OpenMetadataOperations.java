@@ -1813,7 +1813,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
           producerExecutor.submit(
               () -> {
                 try {
-                  org.openmetadata.schema.utils.ResultList<? extends EntityInterface> batch =
+                  org.openmetadata.schema.utils.ResultList<? extends EntityInterface<?>> batch =
                       source.readWithCursor(RestUtil.encodeCursor(String.valueOf(offset)));
                   if (batch != null && batch.getData() != null && !batch.getData().isEmpty()) {
                     taskQueue.put(new ReembedTask(entityType, batch));
@@ -1872,7 +1872,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
   private record ReembedTask(
       String entityType,
-      org.openmetadata.schema.utils.ResultList<? extends EntityInterface> batch) {}
+      org.openmetadata.schema.utils.ResultList<? extends EntityInterface<?>> batch) {}
 
   private java.util.concurrent.CountDownLatch startReembedConsumers(
       int consumerThreads,
@@ -1922,7 +1922,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
           LOG.warn("No index mapping found for entity type: {}, skipping batch", entityType);
           continue;
         }
-        for (EntityInterface entity : task.batch().getData()) {
+        for (EntityInterface<?> entity : task.batch().getData()) {
           try {
             vecService.updateEntityEmbeddings(entity, entityIndexName);
             processedCounts
@@ -3106,7 +3106,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
   private void analyzeEntityTable(String entity) {
     try {
-      EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entity);
+      EntityRepository<? extends EntityInterface<?>> repository =
+          Entity.getEntityRepository(entity);
       LOG.info("Analyzing table for [{}] Entity", entity);
       repository.getDao().analyzeTable();
     } catch (EntityNotFoundException e) {

@@ -68,9 +68,15 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
   const { permissions } = usePermissionProvider();
   const { state: hashState, setHash } = useSettingsHash();
 
+  // Only interpret the sub-path when the hash tab is ours — a transient
+  // foreign sub-path (e.g. the Members tab's `teams/<fqn>` during a tab switch)
+  // must never drive a `getTypeByFQN` here. Mirrors BotsPanel's hash-tab guard.
   const parsedHash = useMemo(
-    () => parseCustomPropertiesHash(hashState.subPath),
-    [hashState.subPath]
+    () =>
+      parseCustomPropertiesHash(
+        hashState.tab === HASH_TAB ? hashState.subPath : ''
+      ),
+    [hashState.tab, hashState.subPath]
   );
 
   const [subView, setSubView] = useState<CustomPropertiesSubView>({

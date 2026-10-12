@@ -14,11 +14,42 @@
 import { useForm } from 'antd/lib/form/Form';
 import {
   ModifiedCreateEventSubscription,
-  UseObservabilityAlertFormOptions,
-  UseObservabilityAlertFormReturn,
+  UseAlertFormDataOptions,
+  UseAlertFormDataReturn,
 } from '../AddObservabilityPage.interface';
 import { useAlertFormData } from './useAlertFormData';
-import { useSelectedAlertTrigger } from './useObservabilityAlertResources';
+import { useSelectedAlertSources } from './useObservabilityAlertResources';
+
+type ObservabilityAlertFormInstance = ReturnType<
+  typeof useForm<ModifiedCreateEventSubscription>
+>[0];
+
+// The classic antd form types live here, beside the only hook that creates the form, so the
+// shared AddObservabilityPage.interface stays antd-free for the AI alert modal.
+export interface UseObservabilityAlertFormOptions
+  extends Omit<UseAlertFormDataOptions, 'input' | 'sources'> {
+  form?: ObservabilityAlertFormInstance;
+}
+
+export interface UseObservabilityAlertFormReturn
+  extends UseAlertFormDataReturn {
+  form: ObservabilityAlertFormInstance;
+}
+
+export type ObservabilityAlertFormProps = UseObservabilityAlertFormReturn;
+
+export type ObservabilityAlertFormFieldsProps = Pick<
+  ObservabilityAlertFormProps,
+  | 'alert'
+  | 'extraFormWidgets'
+  | 'filterResources'
+  | 'form'
+  | 'isLoading'
+  | 'shouldShowActionsSection'
+  | 'shouldShowFiltersSection'
+  | 'templateResourcePermission'
+  | 'templates'
+>;
 
 export function useObservabilityAlertForm({
   form: providedForm,
@@ -26,7 +57,7 @@ export function useObservabilityAlertForm({
 }: UseObservabilityAlertFormOptions = {}): UseObservabilityAlertFormReturn {
   const [internalForm] = useForm<ModifiedCreateEventSubscription>();
   const form = providedForm ?? internalForm;
-  const selectedTrigger = useSelectedAlertTrigger(form);
+  const { sources, input } = useSelectedAlertSources(form);
 
-  return { ...useAlertFormData({ ...options, selectedTrigger }), form };
+  return { ...useAlertFormData({ ...options, sources, input }), form };
 }

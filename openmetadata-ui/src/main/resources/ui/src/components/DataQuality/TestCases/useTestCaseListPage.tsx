@@ -25,7 +25,7 @@ import { getTestCaseManageMenuItems } from '../../../utils/TestCaseUtils';
 import { useEntityExportModalProvider } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { useTestCaseActions } from './useTestCaseActions';
 import { useTestCaseFilterOptions } from './useTestCaseFilterOptions';
-import { useTestCaseFilters } from './useTestCaseFilters';
+import { TestCaseFilterForm, useTestCaseFilters } from './useTestCaseFilters';
 import { useTestCaseList } from './useTestCaseList';
 
 /**
@@ -39,7 +39,10 @@ export type {
   FilterValue as TestCaseFilterValue,
 } from './FilterChip.interface';
 
-export const useTestCaseListPage = () => {
+/** `form` is the classic page's antd filter form; the AI page passes none. */
+export const useTestCaseListPage = ({
+  form,
+}: { form?: TestCaseFilterForm } = {}) => {
   const { tab = DataQualityClassBase.getDefaultActiveTab() } = useParams<{
     tab: DataQualityPageTabs;
   }>();
@@ -75,7 +78,6 @@ export const useTestCaseListPage = () => {
     searchValue,
     selectedFilter,
     setSelectedFilter,
-    form,
     handleMenuClick,
     handleSearchParam,
     handleFilterChange,
@@ -84,6 +86,7 @@ export const useTestCaseListPage = () => {
     hasActiveFilters,
     clearAll,
   } = useTestCaseFilters({
+    form,
     getInitialOptions,
     isOptionsLoading,
     asyncOptionsByKey,
@@ -156,7 +159,6 @@ export const useTestCaseListPage = () => {
     testCaseSummary,
     isTestCaseSummaryLoading,
     // filter bar (OSS antd form + AI descriptors)
-    form,
     params,
     searchValue,
     selectedFilter,

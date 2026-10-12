@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Page } from '@playwright/test';
 import {
   API_COLLECTION_DEFAULT_TABS,
   API_ENDPOINT_DEFAULT_TABS,
@@ -48,6 +49,7 @@ import { TableClass } from '../support/entity/TableClass';
 import { TopicClass } from '../support/entity/TopicClass';
 import { Glossary } from '../support/glossary/Glossary';
 import { GlossaryTerm } from '../support/glossary/GlossaryTerm';
+import { clickUntilVisible } from './waitHelpers';
 
 export const getCustomizeDetailsEntity = (
   type: ECustomizedDataAssets | ECustomizedGovernance
@@ -131,4 +133,18 @@ export const getCustomizeDetailsDefaultTabs = (
     case ECustomizedGovernance.GLOSSARY_TERM:
       return GLOSSARY_TERM_DEFAULT_TABS;
   }
+};
+
+export const openPlaceholderWidgetPicker = async (page: Page) => {
+  await page.getByRole('dialog').waitFor({ state: 'hidden' });
+  await page.locator('.ant-modal-wrap').waitFor({ state: 'detached' });
+  // The new tab's grid is still re-laying out, so pointerdown can focus the
+  // button while pointerup lands elsewhere and no click fires. Opening the
+  // modal is idempotent, so retry until it shows.
+  await clickUntilVisible(
+    page
+      .getByTestId('ExtraWidget.EmptyWidgetPlaceholder')
+      .getByTestId('add-widget-button'),
+    page.getByTestId('widget-info-tabs')
+  );
 };

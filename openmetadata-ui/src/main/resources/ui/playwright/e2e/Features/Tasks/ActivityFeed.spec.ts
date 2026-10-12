@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ACTION_TIMEOUT } from '../../../constant/common';
 import { TableClass } from '../../../support/entity/TableClass';
 import { expect, test } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
@@ -835,7 +836,7 @@ test.describe('Activity Feed - Entity Page counts', () => {
 
     await expect(
       page.getByTestId('left-panel-task-count').getByTestId('filter-count')
-    ).toHaveText(String(SEEDED_TASK_COUNT), { timeout: 30_000 });
+    ).toHaveText(String(SEEDED_TASK_COUNT), { timeout: ACTION_TIMEOUT });
     await expect(page.locator('[data-testid="task-feed-card"]')).toHaveCount(
       SEEDED_TASK_COUNT
     );
@@ -852,7 +853,7 @@ test.describe('Activity Feed - Entity Page counts', () => {
       feedItems
         .filter({ hasText: seededActivitySummary })
         .filter({ visible: true })
-    ).not.toHaveCount(0, { timeout: 30_000 });
+    ).not.toHaveCount(0, { timeout: ACTION_TIMEOUT });
 
     // Deliberately not asserting badge === rendered here. The badge is a
     // server count and the list a separate query, and this fixture also
@@ -862,6 +863,6 @@ test.describe('Activity Feed - Entity Page counts', () => {
     // and rendered list agree on the count') on a fixture with no tasks.
     await expect(
       page.getByTestId('left-panel-all-count').getByTestId('filter-count')
-    ).toHaveText(/^[1-9]\d*$/, { timeout: 30_000 });
+    ).toHaveText(/^[1-9]\d*$/, { timeout: ACTION_TIMEOUT });
   });
 });

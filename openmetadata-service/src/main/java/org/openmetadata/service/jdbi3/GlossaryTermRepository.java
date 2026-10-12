@@ -134,6 +134,7 @@ import org.openmetadata.service.ontology.RelationshipTypeResolver;
 import org.openmetadata.service.ontology.TermRelationMutator;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.glossary.GlossaryTermResource;
+import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.GlossaryTermAssetBucket;
@@ -799,9 +800,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     descriptors.add(
         new PropagationDescriptor(
             FIELD_REVIEWERS, PropagationDescriptor.PropagationType.ENTITY_REFERENCE_LIST, null));
-    descriptors.add(
-        new PropagationDescriptor(
-            FIELD_TAGS, PropagationDescriptor.PropagationType.TAG_LABEL_LIST, null));
+    if (SettingsCache.isGlossaryTagPropagationEnabled()) {
+      descriptors.add(
+          new PropagationDescriptor(
+              FIELD_TAGS, PropagationDescriptor.PropagationType.TAG_LABEL_LIST, null));
+    }
     return descriptors;
   }
 
@@ -816,7 +819,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   @Override
   protected void applyInheritance(
-      GlossaryTerm glossaryTerm, Fields fields, EntityInterface parent) {
+      GlossaryTerm glossaryTerm, Fields fields, EntityInterface<?> parent) {
     inheritOwners(glossaryTerm, fields, parent);
     inheritDomains(glossaryTerm, fields, parent);
     inheritReviewers(glossaryTerm, fields, parent);
@@ -828,7 +831,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
    * parent chain. A root term's parent is its glossary, which declares no attributes, so its
    * effective set is exactly what it declares itself.
    */
-  private void inheritAttributes(GlossaryTerm term, Fields fields, EntityInterface parent) {
+  private void inheritAttributes(GlossaryTerm term, Fields fields, EntityInterface<?> parent) {
     if (!fields.contains(FIELD_EFFECTIVE_ATTRIBUTES)) {
       return;
     }
@@ -1867,7 +1870,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
     GlossaryTerm term = this.get(null, glossaryTermId, getFields("id,tags"));
     EntityRepository<?> glossaryRepository = Entity.getEntityRepository(Entity.GLOSSARY);
-    EntityInterface glossary =
+    EntityInterface<?> glossary =
         glossaryRepository.getByName(
             null, term.getGlossary().getFullyQualifiedName(), glossaryRepository.getFields("tags"));
     // Check if the tags are mutually exclusive for the glossary
@@ -1910,7 +1913,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       }
 
       EntityRepository<?> entityRepository = Entity.getEntityRepository(ref.getType());
-      EntityInterface asset =
+      EntityInterface<?> asset =
           entityRepository.get(null, ref.getId(), entityRepository.getFields("tags"));
 
       try {
@@ -1935,6 +1938,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         tempList.add(tagLabel);
         // Apply Tags to Entities
         entityRepository.applyTags(getUniqueTags(tempList), asset.getFullyQualifiedName());
+        invalidateCacheAfterTagMutation(asset.getEntityReference());
 
         searchRepository.updateEntity(ref);
         RdfUpdater.updateEntity(asset);
@@ -1949,6 +1953,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       // list.
       daoCollection.tagUsageDAO().deleteTagsByTarget(term.getFullyQualifiedName());
       applyTags(getUniqueTags(glossary.getTags()), term.getFullyQualifiedName());
+      invalidateCacheAfterTagMutation(term.getEntityReference());
 
       searchRepository.updateEntity(term.getEntityReference());
       RdfUpdater.updateEntity(term);
@@ -2000,7 +2005,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       throw new IllegalArgumentException("Column not found: " + columnFqn);
     }
 
-    // Validate mutually exclusive tags
     Map<String, List<TagLabel>> allAssetTags =
         daoCollection.tagUsageDAO().getTagsByPrefix(columnFqn, "%", true);
     checkMutuallyExclusiveForParentAndSubField(
@@ -2010,6 +2014,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       List<TagLabel> columnTags = new ArrayList<>(listOrEmpty(targetColumn.getTags()));
       columnTags.add(tagLabel);
       applyTags(getUniqueTags(columnTags), columnFqn);
+      invalidateCacheAfterTagMutation(table.getEntityReference());
       searchRepository.updateEntity(table.getEntityReference());
       RdfUpdater.updateEntity(table);
     }
@@ -2203,7 +2208,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       }
 
       EntityRepository<?> entityRepository = Entity.getEntityRepository(ref.getType());
-      EntityInterface asset =
+      EntityInterface<?> asset =
           entityRepository.get(null, ref.getId(), entityRepository.getFields("id"));
 
       // Skip the destructive tag_usage delete + ES update on dryRun so the preview
@@ -2213,6 +2218,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
             .tagUsageDAO()
             .deleteTagsByTagAndTargetEntity(
                 term.getFullyQualifiedName(), asset.getFullyQualifiedName());
+        invalidateCacheAfterTagMutation(asset.getEntityReference());
       }
       success.add(new BulkResponse().withRequest(ref));
       result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
@@ -2253,6 +2259,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       daoCollection
           .tagUsageDAO()
           .deleteTagsByTagAndTargetEntity(term.getFullyQualifiedName(), columnFqn);
+      invalidateCacheAfterTagMutation(table.getEntityReference());
     }
     success.add(new BulkResponse().withRequest(columnRef));
     result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
@@ -2322,14 +2329,14 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   @Override
-  public EntityInterface getParentEntity(GlossaryTerm entity, String fields) {
+  public EntityInterface<?> getParentEntity(GlossaryTerm entity, String fields) {
     return entity.getParent() != null
         ? Entity.getEntity(entity.getParent(), fields, Include.ALL)
         : Entity.getEntity(entity.getGlossary(), fields, Include.ALL);
   }
 
-  public List<EntityInterface> getParentEntities(List<GlossaryTerm> entities, String fields) {
-    List<EntityInterface> result = new ArrayList<>();
+  public List<EntityInterface<?>> getParentEntities(List<GlossaryTerm> entities, String fields) {
+    List<EntityInterface<?>> result = new ArrayList<>();
     if (CollectionUtils.isEmpty(entities)) {
       return result;
     }
@@ -2833,7 +2840,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
           Map<String, List<TagLabel>> allAssetTags =
               daoCollection.tagUsageDAO().getTagsByPrefix(fqnHash, "%", false);
 
-          // Assets FQN is not available / we can use fqnHash for now
           checkMutuallyExclusiveForParentAndSubField("", fqnHash, allAssetTags, updatedTags, true);
         }
 
@@ -3558,7 +3564,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
     List<GlossaryTerm> terms = listAllForCSV(fields, glossaryTerm.getFullyQualifiedName());
 
-    terms.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
+    terms.sort(Comparator.comparing(EntityInterface<?>::getFullyQualifiedName));
     return new GlossaryRepository.GlossaryCsv(glossary, user).exportCsv(terms, callback);
   }
 

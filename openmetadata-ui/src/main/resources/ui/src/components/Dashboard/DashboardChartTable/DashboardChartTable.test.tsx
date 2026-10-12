@@ -44,13 +44,17 @@ jest.mock('../../../hooks/useTableFilters', () => ({
 }));
 
 let capturedColumns: ColumnsType<ChartType> = [];
+let capturedLoading: unknown;
 
 jest.mock('../../common/Table/TableV2', () =>
-  jest.fn().mockImplementation((props: { columns: unknown }) => {
-    capturedColumns = props.columns as typeof capturedColumns;
+  jest
+    .fn()
+    .mockImplementation((props: { columns: unknown; loading: unknown }) => {
+      capturedColumns = props.columns as typeof capturedColumns;
+      capturedLoading = props.loading;
 
-    return <div data-testid="dashboard-chart-table" />;
-  })
+      return <div data-testid="dashboard-chart-table" />;
+    })
 );
 
 jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
@@ -167,5 +171,29 @@ describe('DashboardChartTable permission wiring', () => {
     const tagsEl = tagsCol?.render?.([], mockChart, 0) as React.ReactElement;
 
     expect(tagsEl.props.hasTagEditAccess).toBe(false);
+  });
+});
+
+describe('DashboardChartTable on the customization page', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    capturedLoading = undefined;
+    (usePermissionProvider as jest.Mock).mockReturnValue({
+      getEntityPermission: jest.fn().mockResolvedValue({}),
+    });
+    (useGenericContext as jest.Mock).mockReturnValue({
+      data: mockDashboardDetails,
+      onThreadLinkSelect: jest.fn(),
+    });
+  });
+
+  it('renders the dummy charts without fetching and clears the loading state', async () => {
+    render(<DashboardChartTable isCustomizationPage />);
+
+    await waitFor(() => {
+      expect(capturedLoading).toBe(false);
+    });
+
+    expect(fetchCharts).not.toHaveBeenCalled();
   });
 });

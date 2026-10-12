@@ -120,6 +120,7 @@ import org.openmetadata.sdk.models.TableColumnList;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
@@ -358,7 +359,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
   @Override
   protected String getCsvImportContainerName(
-      TestNamespace ns, org.openmetadata.schema.EntityInterface entity) {
+      TestNamespace ns, org.openmetadata.schema.EntityInterface<?> entity) {
     return entity.getFullyQualifiedName();
   }
 
@@ -1423,6 +1424,29 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Table updated = patchEntity(table.getId().toString(), table);
     assertEquals(TableType.Regular, updated.getTableType());
     assertEquals(1, updated.getTableConstraints().size());
+  }
+
+  @Test
+  void put_tableTypeRegularToDeltaLake_keepsSameEntity(TestNamespace ns) {
+    // Connectors re-ingest through PUT, so that is how a Regular table becomes Delta. The type must
+    // flip on the same entity: no new id, no new FQN. The version bump is what proves the server
+    // diffed tableType rather than ignoring the field.
+    CreateTable request = createMinimalRequest(ns);
+    request.setName(ns.prefix("delta_lake_table"));
+    request.setTableType(TableType.Regular);
+
+    Table table = createEntity(request);
+    assertEquals(TableType.Regular, table.getTableType());
+
+    request.setTableType(TableType.DeltaLake);
+    Table updated = SdkClients.adminClient().tables().createOrUpdate(request);
+
+    assertEquals(table.getId(), updated.getId());
+    assertEquals(table.getFullyQualifiedName(), updated.getFullyQualifiedName());
+    assertEquals(TableType.DeltaLake, updated.getTableType());
+    assertTrue(
+        updated.getVersion() > table.getVersion(),
+        "tableType flip must bump the version, otherwise the server never diffed the field");
   }
 
   @Test
@@ -5946,6 +5970,51 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     // Note: Actual masking behavior depends on PII masker configuration in OpenMetadata
     // This test verifies the data is accessible with proper permissions
+  }
+
+  @Test
+  void get_sampleData_masksPiiWhenTheSampleCoversOnlySomeColumns(TestNamespace ns) {
+    OpenMetadataClient adminClient = SdkClients.adminClient();
+    User reader = UserTestFactory.createUser(ns, "pii_partial_reader");
+    OpenMetadataClient readerClient =
+        SdkClients.createClient(reader.getEmail(), reader.getEmail(), new String[] {});
+    TagLabel pii =
+        new TagLabel()
+            .withTagFQN(PIIMasker.SENSITIVE_PII_TAG)
+            .withSource(TagLabel.TagSource.CLASSIFICATION);
+
+    CreateTable columnPii = createRequest(ns.prefix("pii_column_partial_sample"), ns);
+    List<Column> columns = new ArrayList<>(columnPii.getColumns());
+    columns.add(
+        ColumnBuilder.of("email", "VARCHAR").dataLength(255).build().withTags(List.of(pii)));
+    columnPii.setColumns(columns);
+    Table table = adminClient.tables().create(columnPii);
+    adminClient
+        .tables()
+        .updateSampleData(
+            table.getId(),
+            new TableData()
+                .withColumns(List.of("id", "name"))
+                .withRows(List.of(List.of(1, "Alice"))));
+
+    TableData visible = readerClient.tables().getSampleData(table.getId()).getSampleData();
+
+    assertEquals(List.of("id", "name"), visible.getColumns());
+    assertEquals(List.of(1, "Alice"), visible.getRows().getFirst());
+
+    CreateTable tablePii = createRequest(ns.prefix("pii_table_partial_sample"), ns);
+    tablePii.setTags(List.of(pii));
+    Table sensitive = adminClient.tables().create(tablePii);
+    adminClient
+        .tables()
+        .updateSampleData(
+            sensitive.getId(),
+            new TableData().withColumns(List.of("name")).withRows(List.of(List.of("Alice"))));
+
+    TableData masked = readerClient.tables().getSampleData(sensitive.getId()).getSampleData();
+
+    assertEquals(List.of("name [MASKED]"), masked.getColumns());
+    assertEquals(List.of(PIIMasker.MASKED_VALUE), masked.getRows().getFirst());
   }
 
   @Test

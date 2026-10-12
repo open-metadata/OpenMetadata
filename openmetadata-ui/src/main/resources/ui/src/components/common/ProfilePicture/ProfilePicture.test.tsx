@@ -126,4 +126,22 @@ describe('Test ProfilePicture component', () => {
       'tw:dark:bg-[hsl(var(--avatar-hue)_40%_22%)]'
     );
   });
+
+  it('draws no outline, ring or tinted border when borderless', () => {
+    mockUseUserProfile.mockReturnValue(['', false, {}]);
+    (Avatar as jest.Mock).mockClear();
+
+    render(<ProfilePicture {...mockData} borderless matchRingToFill />);
+
+    const props = (Avatar as jest.Mock).mock.calls[0][0];
+
+    expect(props.contrastBorder).toBe(false);
+    expect(props.colorVariant).toBe('neutral');
+    expect(props.className).not.toContain(
+      'tw:border-[hsl(var(--avatar-hue)_70%_80%)]'
+    );
+    expect(props.className).toContain(
+      'tw:bg-[hsl(var(--avatar-hue)_100%_92%)]'
+    );
+  });
 });

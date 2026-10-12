@@ -232,7 +232,7 @@ describe('DatePickerMenu', () => {
 
     expect(datePickerContainer).toHaveClass('tw:max-w-80', 'tw:relative');
     expect(datePickerContainer).toHaveClass(
-      'tw:[&_[data-testid=date-picker-menu]_.ant-space-item:first-child]:pr-6'
+      'tw:[&_[data-testid=date-picker-menu]>span:first-of-type]:pr-6'
     );
     expect(clearButton).toHaveAccessibleName('label.clear');
     expect(clearButton).toHaveClass(
