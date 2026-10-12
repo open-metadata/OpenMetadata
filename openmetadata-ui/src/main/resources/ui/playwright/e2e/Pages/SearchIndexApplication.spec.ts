@@ -313,15 +313,17 @@ test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const entitiesField = page.getByTestId('tree-select-widget');
       await entitiesField.click();
 
-      const entitiesTree = page.getByTestId('tree-select-widget-popover');
-      await expect(entitiesTree.getByTestId('tree-node-all')).toBeVisible();
+      // Located by node test id, not the popover's: Collate renders this field with its own tree
+      // select, which wraps the core TreeSelect without forwarding a test id to the popover.
+      const allNode = page.getByTestId('tree-node-all');
+      await expect(allNode).toBeVisible();
 
       // The entity list is server-driven, so bring Table into view by searching. Nodes are keyed
       // by enum value, so `tree-node-table` cannot also match `tableColumn` ("Table Column").
       await entitiesField.getByRole('textbox').fill('table');
 
-      const tableNode = entitiesTree.getByTestId('tree-node-table');
-      const tableCheckbox = entitiesTree.getByTestId('checkbox-table');
+      const tableNode = page.getByTestId('tree-node-table');
+      const tableCheckbox = page.getByTestId('checkbox-table');
       await expect(tableNode).toBeVisible();
 
       // Uncheck Table only if it is currently checked
@@ -333,7 +335,7 @@ test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       // Need an outside click to close the dropdown
       await clickOutside(page);
-      await expect(entitiesTree).toBeHidden();
+      await expect(tableNode).toBeHidden();
 
       await page
         .getByTestId('select-widget-root/searchIndexMappingLanguage')
