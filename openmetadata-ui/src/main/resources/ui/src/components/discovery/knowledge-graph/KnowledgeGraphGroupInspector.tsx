@@ -123,11 +123,17 @@ const KnowledgeGraphGroupInspector = ({
               (edge) => edge.from === member.id || edge.to === member.id
             );
             const memberIsSubject = relationship?.from === member.id;
-            const other = memberIsSubject
-              ? nodes.get(relationship?.to ?? '')
-              : nodes.get(relationship?.from ?? '');
-            const subject = memberIsSubject ? member.label : other?.label ?? '';
-            const object = memberIsSubject ? other?.label ?? '' : member.label;
+            const otherId = memberIsSubject
+              ? relationship?.to
+              : relationship?.from;
+            // When the bundle edge or the other endpoint is missing from the
+            // nodes map, fall back to the anchor's label (the group bundle's
+            // other side is always the anchor entity) so the row still reads
+            // as a complete triple instead of showing a dangling arrow.
+            const otherLabel =
+              nodes.get(otherId ?? '')?.label ?? node.label ?? otherId ?? '';
+            const subject = memberIsSubject ? member.label : otherLabel;
+            const object = memberIsSubject ? otherLabel : member.label;
 
             return (
               <InspectorRelationshipRow
