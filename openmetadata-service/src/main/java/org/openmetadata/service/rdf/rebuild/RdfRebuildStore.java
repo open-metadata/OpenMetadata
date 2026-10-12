@@ -23,7 +23,11 @@ import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
 import org.jdbi.v3.core.transaction.TransactionIsolationLevel;
 import org.openmetadata.service.rdf.storage.RdfWriteOutcomeUnknownException;
 
-/** Durable journal and database fences shared by every OpenMetadata server. */
+/**
+ * Durable journal and database fences shared by every OpenMetadata server. The only writer of
+ * {@code rdf_active_dataset}, so every promotion gets a new generation; see
+ * ADR:2026-10-11-rdf-freshness-watermarks-have-one-writer-per-table.
+ */
 public final class RdfRebuildStore {
   public static final long LEASE_MILLIS = 120_000;
   public static final JournalLimits DEFAULT_LIMITS = new JournalLimits(256L * 1024 * 1024, 100_000);

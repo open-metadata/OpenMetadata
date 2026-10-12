@@ -408,6 +408,10 @@ journal replays writes into a blue/green target. Reuse these instead of a Fuseki
   when any of them does not. The metadata commit and queue insert are separate transactions, so a
   crash between them is invisible to freshness, exactly as it is to projection; a full rebuild
   repairs both.
+- **Rolling upgrades.** Servers before 2.1.0 enqueue without recording the enqueued watermark,
+  so delivering or dead-lettering a row records its ID too. An older server that drains its own
+  write, or promotes a blue/green build without assigning a generation, can still leave an earlier
+  result `CURRENT`; results are trustworthy again after a refresh once every server runs 2.1.0.
 - **Dirty flags** use a captured-revision compare-and-set instead of the unconditional
   `markMaterialized`. Changes during a run stay pending and coalesce into the next refresh.
 
