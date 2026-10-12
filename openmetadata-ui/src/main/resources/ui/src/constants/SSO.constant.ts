@@ -744,51 +744,21 @@ export const ALLOWED_EMAIL_REGISTRATION_DOMAINS_VISIBILITY: Record<
   'aws-cognito': { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
 
-// Provider-specific field removal mapping for cleanup
+// Provider-specific field removal mapping for cleanup. Fields every provider shares, such as
+// enableSelfSignup, stay out of these lists: removing one here drops the admin's value on save.
 export const PROVIDER_FIELD_MAPPINGS: Record<string, string[]> = {
-  ldap: ['samlConfiguration', 'oidcConfiguration', 'enableSelfSignup'],
-  saml: [
-    'ldapConfiguration',
-    'oidcConfiguration',
-    'tokenValidationAlgorithm',
-    'enableSelfSignup',
-  ],
-  customoidc: ['ldapConfiguration', 'samlConfiguration', 'enableSelfSignup'],
-  google: [
-    'ldapConfiguration',
-    'samlConfiguration',
-    'oidcConfiguration',
-    'enableSelfSignup',
-  ],
-  auth0: [
-    'ldapConfiguration',
-    'samlConfiguration',
-    'oidcConfiguration',
-    'enableSelfSignup',
-  ],
-  azure: [
-    'ldapConfiguration',
-    'samlConfiguration',
-    'oidcConfiguration',
-    'enableSelfSignup',
-  ],
-  okta: [
-    'ldapConfiguration',
-    'samlConfiguration',
-    'oidcConfiguration',
-    'enableSelfSignup',
-  ],
-  basic: [
-    'ldapConfiguration',
-    'samlConfiguration',
-    'oidcConfiguration',
-    'enableSelfSignup',
-  ],
+  ldap: ['samlConfiguration', 'oidcConfiguration'],
+  saml: ['ldapConfiguration', 'oidcConfiguration', 'tokenValidationAlgorithm'],
+  customoidc: ['ldapConfiguration', 'samlConfiguration'],
+  google: ['ldapConfiguration', 'samlConfiguration', 'oidcConfiguration'],
+  auth0: ['ldapConfiguration', 'samlConfiguration', 'oidcConfiguration'],
+  azure: ['ldapConfiguration', 'samlConfiguration', 'oidcConfiguration'],
+  okta: ['ldapConfiguration', 'samlConfiguration', 'oidcConfiguration'],
+  basic: ['ldapConfiguration', 'samlConfiguration', 'oidcConfiguration'],
   'aws-cognito': [
     'ldapConfiguration',
     'samlConfiguration',
     'oidcConfiguration',
-    'enableSelfSignup',
   ],
 };
 
