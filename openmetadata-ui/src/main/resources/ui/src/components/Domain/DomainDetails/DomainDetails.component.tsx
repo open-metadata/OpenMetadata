@@ -1076,7 +1076,10 @@ const DomainDetails = ({
                 )}
 
                 {!isVersionsView && (
-                  <ChangeRequestsIndicator entityId={domain.id} />
+                  <ChangeRequestsIndicator
+                    entityId={domain.id}
+                    entityType={EntityType.DOMAIN}
+                  />
                 )}
 
                 <Box align="center" gap={4}>

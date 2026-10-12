@@ -14,12 +14,16 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.it.tests.ChangeRequestITSupport.*;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Duration;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
@@ -164,5 +168,27 @@ class ChangeRequestResourceIT {
             SdkClients.adminClient()
                 .getHttpClient()
                 .executeForString(HttpMethod.GET, "/v1/changeRequests", null));
+  }
+
+  @Test
+  void enforcedEntityTypesListAnActiveEnforceWorkflowUntilItIsSuspended(TestNamespace ns) {
+    // The filter excludes every stored procedure, so no concurrent test's edit is held.
+    String holdsNothing = JsonUtils.pojoToJson(Map.of(Entity.STORED_PROCEDURE, "{\"==\":[1,1]}"));
+    WorkflowDefinition workflow =
+        deployWorkflow(ns, Entity.STORED_PROCEDURE, INCLUDE_DESCRIPTION, "", holdsNothing);
+
+    assertTrue(enforcedEntityTypes(SdkClients.user2Client()).contains(Entity.STORED_PROCEDURE));
+
+    suspendWorkflow(workflow);
+    assertFalse(enforcedEntityTypes(SdkClients.user2Client()).contains(Entity.STORED_PROCEDURE));
+  }
+
+  private static List<String> enforcedEntityTypes(OpenMetadataClient client) {
+    String body =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET, "/v1/metadata/types/workflows/approvalEnforcedEntityTypes", null);
+    return List.of(JsonUtils.readValue(body, String[].class));
   }
 }

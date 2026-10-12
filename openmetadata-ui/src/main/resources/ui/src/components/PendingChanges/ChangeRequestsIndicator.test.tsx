@@ -24,6 +24,8 @@ import {
   withdrawChangeRequest,
 } from '../../rest/changeRequestsAPI';
 import { getTaskById, resolveTask } from '../../rest/tasksAPI';
+import { useApprovalEnforcedEntityTypesStore } from '../../hooks/useApprovalEnforcedEntityTypesStore';
+import { getApprovalEnforcedEntityTypes } from '../../rest/metadataTypeAPI';
 import ChangeRequestsIndicator from './ChangeRequestsIndicator.component';
 
 jest.mock('../../rest/changeRequestsAPI', () => ({
@@ -32,6 +34,10 @@ jest.mock('../../rest/changeRequestsAPI', () => ({
   getChangeRequestRevisions: jest.fn().mockResolvedValue([]),
   getChangeRequestDecisions: jest.fn().mockResolvedValue([]),
   getChangeRequestEvents: jest.fn().mockResolvedValue([]),
+}));
+
+jest.mock('../../rest/metadataTypeAPI', () => ({
+  getApprovalEnforcedEntityTypes: jest.fn(),
 }));
 
 jest.mock('../../rest/tasksAPI', () => ({
@@ -95,7 +101,7 @@ const renderIndicator = async () => {
   await act(async () => {
     render(
       <MemoryRouter>
-        <ChangeRequestsIndicator entityId="entity-1" />
+        <ChangeRequestsIndicator entityId="entity-1" entityType="glossary" />
       </MemoryRouter>
     );
   });
@@ -125,6 +131,34 @@ describe('ChangeRequestsIndicator', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockGetEntity.mockResolvedValue({ tags: [] });
+    (getApprovalEnforcedEntityTypes as jest.Mock).mockResolvedValue([
+      'glossary',
+    ]);
+    useApprovalEnforcedEntityTypesStore.setState({ entityTypes: undefined });
+  });
+
+  it('renders nothing and reads no requests when no Enforce workflow gates the type', async () => {
+    (getApprovalEnforcedEntityTypes as jest.Mock).mockResolvedValue(['table']);
+
+    await renderIndicator();
+
+    expect(
+      screen.queryByTestId('pending-change-requests')
+    ).not.toBeInTheDocument();
+    expect(getChangeRequestsForEntity).not.toHaveBeenCalled();
+  });
+
+  it('renders nothing when the gated types cannot be read', async () => {
+    (getApprovalEnforcedEntityTypes as jest.Mock).mockRejectedValue(
+      new Error('unavailable')
+    );
+
+    await renderIndicator();
+
+    expect(
+      screen.queryByTestId('pending-change-requests')
+    ).not.toBeInTheDocument();
+    expect(getChangeRequestsForEntity).not.toHaveBeenCalled();
   });
 
   it('shows no count when no request is open', async () => {

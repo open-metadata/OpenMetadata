@@ -52,7 +52,9 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.EntityLifecycle;
 import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry.GatingRule;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.GovernanceDAOs;
 
 /**
  * Unit tests for how {@link GovernanceApprovalRegistry} turns a workflow's trigger config into a
@@ -245,6 +247,54 @@ class GovernanceApprovalRegistryTest {
     // still have its open requests re-checked.
     GovernanceApprovalRegistry.invalidate();
     assertTrue(GovernanceApprovalRegistry.mayHaveRules("glossary"));
+  }
+
+  @Test
+  void gatedEntityTypesAreTheSortedTargetsOfActiveEnforceWorkflows() {
+    String defaultMode =
+        "{\"type\":\"eventBasedEntity\",\"config\":{\"approvalMode\":\"Default\",\"entityTypes\":[\"topic\"]}}";
+    List<WorkflowDefinition> stored =
+        List.of(
+            workflow(trigger("\"table\",\"glossary\"", "\"description\"", "", "{}")),
+            workflow(trigger("\"glossary\",\"dashboard\"", "", "", "{}")).withName("wf2"),
+            workflow(trigger("\"pipeline\"", "", "", "{}")).withName("wf3").withSuspended(true),
+            workflow(defaultMode).withName("wf4"));
+
+    assertEquals(
+        List.of("dashboard", "glossary", "table"), gatedEntityTypesFromStored(stored));
+  }
+
+  @Test
+  void noEntityTypeIsGatedWithoutAnEnforceWorkflow() {
+    assertTrue(gatedEntityTypesFromStored(List.of()).isEmpty());
+  }
+
+  @Test
+  void noEntityTypeIsGatedBeforeTheServerWiresItsDaos() {
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getCollectionDAO).thenReturn(null);
+      assertTrue(GovernanceApprovalRegistry.gatedEntityTypes().isEmpty());
+    }
+  }
+
+  @SuppressWarnings({"rawtypes", "unchecked"})
+  private static List<String> gatedEntityTypesFromStored(List<WorkflowDefinition> stored) {
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    GovernanceDAOs.ChangeRequestDAO changeRequestDAO = mock(GovernanceDAOs.ChangeRequestDAO.class);
+    EntityRepository workflowRepository = mock(EntityRepository.class);
+    when(collectionDAO.changeRequestDAO()).thenReturn(changeRequestDAO);
+    when(changeRequestDAO.workflowDefinitionEpoch()).thenReturn(UUID.randomUUID().toString());
+    when(workflowRepository.listAll(any(), any())).thenReturn(stored);
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+      entity
+          .when(() -> Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION))
+          .thenReturn(workflowRepository);
+      GovernanceApprovalRegistry.invalidate();
+      return GovernanceApprovalRegistry.gatedEntityTypes();
+    } finally {
+      GovernanceApprovalRegistry.invalidate();
+    }
   }
 
   @Test

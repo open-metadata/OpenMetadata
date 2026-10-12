@@ -19,6 +19,7 @@ import {
   ChangeRequestStatus,
 } from '../../generated/governance/changeRequest/changeRequest';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useApprovalEnforcedEntityTypesStore } from '../../hooks/useApprovalEnforcedEntityTypesStore';
 import { getChangeRequestsForEntity } from '../../rest/changeRequestsAPI';
 import { PENDING_CHANGE_EVENT } from '../../rest/pendingChangeInterceptor';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -26,6 +27,7 @@ import ReviewPendingChangesModal from './ReviewPendingChanges/ReviewPendingChang
 
 interface ChangeRequestsIndicatorProps {
   entityId: string;
+  entityType: string;
 }
 
 const OPEN_STATUSES = new Set([
@@ -34,19 +36,29 @@ const OPEN_STATUSES = new Set([
 ]);
 
 /**
- * Shows the change requests waiting for approval on an asset. The asset itself keeps serving its
- * published values; these are the proposals, opened for review in the pending changes modal.
+ * Shows the change requests waiting for approval on an asset whose type an Enforce-mode workflow
+ * gates. The asset itself keeps serving its published values; these are the proposals, opened for
+ * review in the pending changes modal.
  */
 const ChangeRequestsIndicator = ({
   entityId,
+  entityType,
 }: ChangeRequestsIndicatorProps) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const [requests, setRequests] = useState<ChangeRequest[]>([]);
   const [isOpen, setIsOpen] = useState(false);
+  const { entityTypes, fetchEntityTypes } =
+    useApprovalEnforcedEntityTypesStore();
+  const isEnforced = entityTypes?.includes(entityType) ?? false;
+
+  // Reads again once a workflow change invalidates the gated types.
+  useEffect(() => {
+    void fetchEntityTypes();
+  }, [entityTypes, fetchEntityTypes]);
 
   const fetchRequests = useCallback(async () => {
-    if (!entityId) {
+    if (!entityId || !isEnforced) {
       return;
     }
     try {
@@ -55,10 +67,10 @@ const ChangeRequestsIndicator = ({
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
-  }, [entityId]);
+  }, [entityId, isEnforced]);
 
   useEffect(() => {
-    fetchRequests();
+    void fetchRequests();
     window.addEventListener(PENDING_CHANGE_EVENT, fetchRequests);
 
     return () =>
@@ -70,6 +82,10 @@ const ChangeRequestsIndicator = ({
       Number(b.requestedBy === currentUser?.name) -
       Number(a.requestedBy === currentUser?.name)
   );
+
+  if (!isEnforced) {
+    return null;
+  }
 
   return (
     <>

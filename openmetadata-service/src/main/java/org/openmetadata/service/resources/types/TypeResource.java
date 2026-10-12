@@ -20,6 +20,7 @@ import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -67,6 +68,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.EntityLifecycle;
+import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
 import org.openmetadata.service.governance.workflows.WorkflowTriggerFieldsRegistry;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -165,6 +167,30 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
               + "applicable to every entity type and a per-entity map of additional fields.")
   public WorkflowTriggerFieldsRegistry.WorkflowTriggerFieldsConfig getWorkflowTriggerFields() {
     return WorkflowTriggerFieldsRegistry.getConfig();
+  }
+
+  @GET
+  @Path("/workflows/approvalEnforcedEntityTypes")
+  @Operation(
+      operationId = "getApprovalEnforcedEntityTypes",
+      summary = "Get entity types whose edits are held for approval",
+      description =
+          "Get the entity types targeted by an active governance workflow whose eventBasedEntity "
+              + "trigger runs in Enforce approval mode. Edits to the fields such a workflow watches "
+              + "are held as change requests until a reviewer approves them.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Sorted list of entity types",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    array = @ArraySchema(schema = @Schema(type = "string"))))
+      })
+  public List<String> getApprovalEnforcedEntityTypes() {
+    // Not authorized beyond authentication: anyone whose edit can be held needs to know it can,
+    // and a held edit's 202 response reveals the same entity type anyway.
+    return GovernanceApprovalRegistry.gatedEntityTypes();
   }
 
   @GET

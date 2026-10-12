@@ -402,7 +402,12 @@ function DataProductActionButtons(
         </Button>
       )}
 
-      {!isVersionsView && <ChangeRequestsIndicator entityId={dataProduct.id} />}
+      {!isVersionsView && (
+        <ChangeRequestsIndicator
+          entityId={dataProduct.id}
+          entityType={EntityType.DATA_PRODUCT}
+        />
+      )}
 
       <Box align="center" gap={4}>
         {dataContractLatestResultButton}

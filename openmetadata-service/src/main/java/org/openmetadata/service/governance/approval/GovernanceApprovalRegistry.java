@@ -91,6 +91,17 @@ public final class GovernanceApprovalRegistry {
   }
 
   /**
+   * Entity types an active Enforce-mode workflow targets, sorted. A workflow's entity filter can
+   * still leave a given asset of the type ungated.
+   */
+  public static List<String> gatedEntityTypes() {
+    if (Entity.getCollectionDAO() == null) {
+      return List.of();
+    }
+    return currentSnapshot().rulesByEntityType().keySet().stream().sorted().toList();
+  }
+
+  /**
    * Whether the most recently resolved rules gate {@code entityType}, without querying workflow
    * definitions. Used on hot write paths; admission and review always resolve rules afresh.
    */
