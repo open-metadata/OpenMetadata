@@ -25,12 +25,22 @@ case "${1:-}" in
     mkdir -p /tmp/arrow-adbc
     tar -xzf /tmp/arrow-adbc-24.tar.gz -C /tmp/arrow-adbc --strip-components=1
     cd /tmp/arrow-adbc/go/adbc
-    go get google.golang.org/grpc@v1.83.2 golang.org/x/text@v0.41.0
-    go get golang.org/x/net@v0.60.0
+    go get google.golang.org/grpc@v1.83.2 golang.org/x/net@v0.60.0 golang.org/x/text@v0.42.0
     go build -buildvcs=false -trimpath -tags driverlib -buildmode=c-shared \
       -ldflags "-s -w -X github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase.infoDriverVersion=1.12.0" \
       -o "$LIBRARY" ./pkg/flightsql
-    go version -m "$LIBRARY" | grep -E 'go1.26.9|golang.org/x/(net|text)|google.golang.org/grpc'
+    go version -m "$LIBRARY" | awk '
+      NR == 1 && $2 == "go1.26.9" { go = 1 }
+      $1 == "dep" && $2 == "google.golang.org/grpc" && $3 == "v1.83.2" { grpc = 1 }
+      $1 == "dep" && $2 == "golang.org/x/net" && $3 == "v0.60.0" { net = 1 }
+      $1 == "dep" && $2 == "golang.org/x/text" && $3 == "v0.42.0" { text = 1 }
+      END {
+        if (!go || !grpc || !net || !text) {
+          print "Flight SQL library does not contain the pinned patched Go versions" > "/dev/stderr"
+          exit 1
+        }
+      }
+    '
     ;;
   install)
     python - "$LIBRARY" <<'PY'
