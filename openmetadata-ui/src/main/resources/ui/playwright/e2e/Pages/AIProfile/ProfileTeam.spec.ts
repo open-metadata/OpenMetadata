@@ -27,7 +27,7 @@ import {
   openTeamTab,
   waitForTeamPatch,
 } from '../../../utils/aiProfile';
-import { uuid } from '../../../utils/common';
+import { chooseSelectOption, uuid } from '../../../utils/common';
 import { expect, test } from '../../fixtures/pages';
 
 // Ports the PORTABLE behaviours of e2e/Pages/Teams.spec.ts onto the AI-mode team
@@ -48,8 +48,24 @@ const makeTeam = (
 test.describe('AI Profile Team Detail', () => {
   test.beforeAll(async ({ browser }) => {
     createdTeams = [];
-    policy = new PolicyClass();
-    role = new RolesClass();
+    // The add-role/add-policy picker fetches one unsearched page of 100 and
+    // filters it in the browser (MembersTeamDetail.handleStartAdd), and the
+    // API returns them sorted ascending by name. On an instance with 100+
+    // roles/policies a default `PW%...` fixture sorts past that window and the
+    // option never renders, so prefix with '0' — digits sort before letters,
+    // putting these fixtures on the first page whatever else exists.
+    const policyId = uuid();
+    const roleId = uuid();
+    policy = new PolicyClass({
+      name: `0PW%Policy-${policyId}`,
+      displayName: `0PW Policy ${policyId}`,
+      description: 'playwright for policy description',
+    });
+    role = new RolesClass({
+      name: `0PW%Roles-${roleId}`,
+      displayName: `0PW Roles ${roleId}`,
+      description: 'playwright for roles description',
+    });
     member = new UserClass();
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await member.create(apiContext);
@@ -299,11 +315,14 @@ test.describe('AI Profile Team Detail', () => {
       await page.getByTestId(entityCase.addTestId).click();
       await optionsList;
 
-      await page
-        .getByTestId(entityCase.selectTestId)
-        .getByRole('combobox')
-        .fill(name);
-      await page.getByRole('option', { name }).click();
+      const select = page.getByTestId(entityCase.selectTestId);
+      await select.getByRole('combobox').fill(name);
+      // chooseSelectOption, not a bare click: the listbox is a non-modal
+      // react-aria popover wired to useCloseOnScroll, so the scroll Playwright
+      // performs during a click's actionability check dismisses it and leaves
+      // the click waiting on a detached option. The helper centres the control
+      // first and reopens the popup if it closed anyway.
+      await chooseSelectOption(select, page.getByRole('option', { name }));
       // Close the autocomplete dropdown so it doesn't intercept the Save click.
       await page.keyboard.press('Escape');
 
