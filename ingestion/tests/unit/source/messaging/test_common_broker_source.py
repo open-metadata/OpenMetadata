@@ -113,6 +113,18 @@ def test_protobuf_decoder_is_built_once_per_schema():
     mock_decoder.assert_any_call("t", "schema")
 
 
+def test_protobuf_decoder_compile_failure_is_not_retried():
+    source = _source()
+
+    with patch("metadata.ingestion.source.messaging.common_broker_source.ProtobufMessageDecoder") as mock_decoder:
+        mock_decoder.side_effect = RuntimeError("protoc exited with code 1")
+        for _ in range(3):
+            with pytest.raises(RuntimeError, match="protoc"):
+                CommonBrokerSource.decode_message(source, b"payload", "bad", SchemaType.Protobuf, topic_name="t")
+
+    assert mock_decoder.call_count == 1
+
+
 def test_decode_message_non_avro_handles_bytes_and_decoded_values():
     source = _source()
     decoded_payload = {"foo": "bar"}

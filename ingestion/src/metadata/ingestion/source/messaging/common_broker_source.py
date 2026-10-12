@@ -102,7 +102,8 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
         self.schema_registry_client = self.connection.schema_registry_client
         self.context.processed_schemas = {}
         self._avro_deserializers = LRUCache(maxsize=AVRO_DESERIALIZER_CACHE_SIZE)
-        # Merged Protobuf schema text per topic: the stored schema text lacks its references.
+        # Merged Protobuf schema text per topic, held from yield_topic until its sample data is
+        # read: the stored schema text lacks its references.
         self._protobuf_schema_texts: dict[str, str] = {}
         self._protobuf_decoders = LRUCache(maxsize=PROTOBUF_DECODER_CACHE_SIZE)
         if self.generate_sample_data:
@@ -151,7 +152,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                     schema_text = merge_and_clean_protobuf_schema(
                         self._get_schema_text_with_references(schema=topic_schema)
                     )
-                    if schema_text:
+                    if schema_text and self.generate_sample_data:
                         self._protobuf_schema_texts[topic_details.topic_name] = schema_text
                 schema_fields = load_parser_fn(topic_details.topic_name, schema_text)
 
@@ -262,6 +263,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
             topic_name=self.context.get().topic,
         )
         topic_entity = self.metadata.get_by_name(entity=TopicEntity, fqn=topic_fqn)
+        merged_protobuf_schema = self._protobuf_schema_texts.pop(topic_details.topic_name, None)
         if topic_entity and self.generate_sample_data:
             topic_name = topic_details.topic_name
             sample_data = []
@@ -302,7 +304,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 )
             else:
                 if messages:
-                    schema_text = self._protobuf_schema_texts.get(topic_name, topic_entity.messageSchema.schemaText)
+                    schema_text = merged_protobuf_schema or topic_entity.messageSchema.schemaText
                     for message in messages:
                         try:
                             value = message.value()
@@ -342,11 +344,17 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 self._avro_deserializers[schema] = deserializer
             return str(deserializer(bytes(record), None))
         if schema_type == SchemaType.Protobuf:
-            # One decoder per schema: compiling it runs protoc.
-            decoder = self._protobuf_decoders.get((topic_name, schema))
+            # One decoder per schema: compiling it runs protoc, so a failure is kept too.
+            key = (topic_name, schema)
+            decoder = self._protobuf_decoders.get(key)
             if decoder is None:
-                decoder = ProtobufMessageDecoder(topic_name, schema)
-                self._protobuf_decoders[(topic_name, schema)] = decoder
+                try:
+                    decoder = ProtobufMessageDecoder(topic_name, schema)
+                except Exception as exc:
+                    decoder = exc
+                self._protobuf_decoders[key] = decoder
+            if isinstance(decoder, Exception):
+                raise decoder
             return decoder(bytes(record))
         # Strict: a binary payload we cannot type (Avro with no registry configured)
         # must be skipped by the caller, not stored as mojibake.
