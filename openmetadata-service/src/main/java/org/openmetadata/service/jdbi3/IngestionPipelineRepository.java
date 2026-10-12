@@ -640,8 +640,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     decrypted.setOpenMetadataServerConnection(
         secretsManager.encryptOpenMetadataConnection(openMetadataServerConnection, false));
 
-    // The service may still be soft-deleted here (e.g. a restore cascade restores children first)
-    ServiceEntityInterface service = Entity.getEntity(decrypted.getService(), "", ALL);
+    ServiceEntityInterface service =
+        Entity.getEntity(decrypted.getService(), "", Include.NON_DELETED);
 
     PipelineServiceClientResponse deployResponse = deployIngestionPipeline(decrypted, service);
 
