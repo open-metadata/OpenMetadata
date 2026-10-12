@@ -12,7 +12,6 @@
  */
 import {
   Button,
-  Card,
   Divider,
   Skeleton,
   Typography,
@@ -60,7 +59,7 @@ const DataStatisticWidget = ({
   const renderFooter = footer || defaultFooter;
 
   return (
-    <Card
+    <div
       className={classNames('data-statistic-widget-box', className)}
       data-testid={`${name}-data-statistic-widget`}>
       <div className="tw:flex tw:gap-4 tw:items-center tw:mb-1">
@@ -93,7 +92,7 @@ const DataStatisticWidget = ({
           <div className="data-statistic-widget-footer">{renderFooter}</div>
         </>
       )}
-    </Card>
+    </div>
   );
 };
 
