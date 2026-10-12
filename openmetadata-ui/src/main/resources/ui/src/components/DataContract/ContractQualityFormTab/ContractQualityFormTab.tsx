@@ -211,11 +211,9 @@ export const ContractQualityFormTab: React.FC<{
 
   return (
     <ContractFormStep
-      className="contract-quality-form-tab-container"
       description={t('message.quality-contract-description')}
       extra={
         <Button
-          className="contract-export-button"
           color="secondary"
           data-testid="add-test-button"
           iconLeading={PlusIcon}
