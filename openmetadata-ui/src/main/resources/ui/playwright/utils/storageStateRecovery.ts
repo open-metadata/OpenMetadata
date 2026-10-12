@@ -10,7 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { BrowserContext, Page, Request, test } from '@playwright/test';
+import {
+  BrowserContext,
+  Frame,
+  Page,
+  Request,
+  Response,
+  test,
+} from '@playwright/test';
 import { readdir, readFile } from 'fs/promises';
 import path from 'path';
 import { APP_STATE_KEY, getToken, OIDC_TOKEN_KEY } from './tokenStorage';
@@ -40,6 +47,12 @@ const AUTH_STATE_DIR = 'playwright/.auth';
 const SESSION_COOKIE_NAME = 'OM_SESSION';
 const LOGGED_IN_USER_PATH = '/api/v1/users/loggedInUser';
 const BOOT_DECISION_TIMEOUT_MS = 30_000;
+const SIGN_IN_ROUTE = '/signin';
+
+const pathnameOf = (url: string) => new URL(url, 'http://localhost').pathname;
+
+const isSignInRoute = (url: string) =>
+  pathnameOf(url).startsWith(SIGN_IN_ROUTE);
 
 type StorageStateFile = {
   cookies?: { name: string; value: string }[];
@@ -53,23 +66,58 @@ type StorageStateFile = {
 /**
  * Resolves to true when the app decides it is signed out, false when it loads
  * the signed-in user. Must be started before the navigation it observes.
+ *
+ * Both arms are event listeners plus one shared timer, and the first decision
+ * detaches all three. `page.waitForURL`/`waitForResponse` would read better but
+ * cannot be used here: a `Promise.race` settles the race, it does not cancel
+ * the loser, and catching the loser's rejection does not stop its operation
+ * either. On a healthy boot the `/signin` arm therefore stayed pending for the
+ * full BOOT_DECISION_TIMEOUT_MS and then timed out as a step on the test's own
+ * page — attributed to whatever the test was doing 30s after this call, with a
+ * log listing navigations this guard never waited for. Every slow spec that
+ * reached the 30s mark inherited that as an unrelated-looking failure.
  */
 const watchAuthBoot = (page: Page): Promise<boolean> => {
-  const signedOut = page
-    .waitForURL('**/signin', { timeout: BOOT_DECISION_TIMEOUT_MS })
-    .then(() => true);
-  const signedIn = page
-    .waitForResponse(
-      (response) => response.url().includes(LOGGED_IN_USER_PATH),
-      { timeout: BOOT_DECISION_TIMEOUT_MS }
-    )
-    .then(() => false);
+  return new Promise<boolean>((resolve) => {
+    let timer: NodeJS.Timeout;
 
-  // The loser of the race rejects on its own timeout later; that is expected.
-  signedOut.catch(() => undefined);
-  signedIn.catch(() => undefined);
+    const settle = (signedOut: boolean) => {
+      clearTimeout(timer);
+      page.off('framenavigated', onNavigated);
+      page.off('response', onResponse);
+      resolve(signedOut);
+    };
 
-  return Promise.race([signedOut, signedIn]).catch(() => false);
+    const onNavigated = (frame: Frame) => {
+      // Only /signin, matching the waitForURL this replaced. The other auth
+      // routes must not count: /callback is a transient hop a *healthy* SSO
+      // boot passes through, so treating it as signed-out would re-seed a
+      // token over a perfectly good login.
+      if (!frame.parentFrame() && isSignInRoute(frame.url())) {
+        settle(true);
+      }
+    };
+
+    const onResponse = (response: Response) => {
+      if (response.url().includes(LOGGED_IN_USER_PATH)) {
+        settle(false);
+      }
+    };
+
+    // Neither arm fired: treat as signed in, exactly as the old race's
+    // `.catch(() => false)` did, so a quiet boot never triggers recovery.
+    timer = setTimeout(() => settle(false), BOOT_DECISION_TIMEOUT_MS);
+
+    page.on('framenavigated', onNavigated);
+    page.on('response', onResponse);
+
+    // waitForURL also matched the URL the page was already on. Only reachable
+    // when a caller re-claims a page parked on /signin, but without this that
+    // boot waits out the timer and resolves "signed in", losing the recovery.
+    if (isSignInRoute(page.url())) {
+      settle(true);
+    }
+  });
 };
 
 const tokenFromStateFile = (state: StorageStateFile): string | undefined => {
@@ -181,13 +229,10 @@ const annotateRecovery = (description: string) => {
 
 // A test that deliberately lands here (to log in as another user) is not a
 // failed restore, whatever state its storage happens to be in.
-const AUTH_ROUTES = ['/signin', '/signup', '/forgot-password', '/callback'];
+const AUTH_ROUTES = [SIGN_IN_ROUTE, '/signup', '/forgot-password', '/callback'];
 
-const isAuthRoute = (url: string) => {
-  const { pathname } = new URL(url, 'http://localhost');
-
-  return AUTH_ROUTES.some((route) => pathname.startsWith(route));
-};
+const isAuthRoute = (url: string) =>
+  AUTH_ROUTES.some((route) => pathnameOf(url).startsWith(route));
 
 const recover = async (
   page: Page,

@@ -197,6 +197,38 @@ test.describe('Search Settings', () => {
       ).toHaveText('2000');
     });
 
+    // Confirming would delete the column index that later specs search, so this stops at Cancel.
+    test('Column indexing asks for confirmation before turning off', async ({
+      page,
+    }) => {
+      await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
+
+      const columnIndexingToggle = page.getByTestId(
+        'enable-column-indexing-switch'
+      );
+      const columnIndexingSwitch = columnIndexingToggle.getByRole('switch');
+
+      await expect(columnIndexingSwitch).toBeChecked();
+
+      await columnIndexingToggle.click();
+
+      await expect(
+        page.getByText(
+          'Turning off column indexing deletes the column search index'
+        )
+      ).toBeVisible();
+
+      await page.getByTestId('cancel').click();
+
+      await expect(page.getByTestId('save-button')).not.toBeVisible();
+      await expect(columnIndexingSwitch).toBeChecked();
+
+      await page.reload();
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(columnIndexingSwitch).toBeChecked();
+    });
+
     test('Update entity search settings', async ({ page }) => {
       await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
 
@@ -456,7 +488,10 @@ test.describe('Search Settings', () => {
         page.getByTestId('highlight-field-switch').getByRole('switch')
       ).not.toBeChecked();
 
-      const searchInput = page.getByTestId('searchbar');
+      // The shell also renders a searchbar; preview queries belong to this page.
+      const searchInput = page
+        .getByTestId('page-layout-v1')
+        .getByTestId('searchbar');
       const searchPreviewResponse = page.waitForResponse(
         (response) =>
           response.url().endsWith('/api/v1/search/preview') &&
@@ -687,7 +722,10 @@ test.describe('Search Settings', () => {
         );
         await waitForAllLoadersToDisappear(page);
 
-        await page.getByTestId('searchbar').fill('test');
+        await page
+          .getByTestId('page-layout-v1')
+          .getByTestId('searchbar')
+          .fill('test');
 
         const freshCard = page.getByTestId(
           'table-data-card_pw_race_service.fresh_result'
@@ -830,7 +868,9 @@ test.describe('Search Settings', () => {
         );
         await columnCard.click();
 
-        const searchInput = page.getByTestId('searchbar');
+        const searchInput = page
+          .getByTestId('page-layout-v1')
+          .getByTestId('searchbar');
         const previewResponse = page.waitForResponse(
           (response) =>
             response.url().endsWith('/api/v1/search/preview') &&

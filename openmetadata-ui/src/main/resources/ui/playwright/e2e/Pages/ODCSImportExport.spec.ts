@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import {
   generateODCSContract,
   getODCSWithRunnableQualityRules,
@@ -1637,9 +1638,11 @@ version: "1.0.0"`;
         buffer: Buffer.from(ODCS_VALID_MULTI_OBJECT_YAML),
       });
 
-      await page.getByTestId('file-info-card').waitFor({ timeout: 30000 });
+      await page
+        .getByTestId('file-info-card')
+        .waitFor({ timeout: ACTION_TIMEOUT });
       await expect(page.getByTestId('object-selector-section')).toBeVisible({
-        timeout: 30000,
+        timeout: ACTION_TIMEOUT,
       });
 
       // Open the dropdown to see all options

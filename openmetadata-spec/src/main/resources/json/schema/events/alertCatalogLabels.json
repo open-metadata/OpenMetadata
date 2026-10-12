@@ -1,0 +1,19 @@
+{
+  "$id": "https://open-metadata.org/schema/events/alertCatalogLabels.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AlertCatalogLabels",
+  "description": "What a filter or a trigger is called for one source, when that differs from what its definition says.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.events.AlertCatalogLabels",
+  "properties": {
+    "displayName": {
+      "description": "Display name of the filter or trigger for this source.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the filter or trigger for this source.",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

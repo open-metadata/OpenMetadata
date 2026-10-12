@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { hideChartTooltips } from '@openmetadata/ui-core-components';
 import React, {
   PropsWithChildren,
   useEffect,
@@ -210,6 +211,12 @@ export const KeepAliveRoutes = ({
     hasMountedRef.current = true;
     // visitedCacheablePaths is intentionally read from the pre-append render closure, so
     // re-running only on activeCacheablePath change is correct.
+  }, [activeCacheablePath]);
+
+  // Chart tooltips are appended to <body>, so one left open on a route that has
+  // just gone hidden would float over the new page until the pointer moves.
+  useEffect(() => {
+    hideChartTooltips();
   }, [activeCacheablePath]);
 
   // Single window-focus / tab-visibility listener for the whole shell.

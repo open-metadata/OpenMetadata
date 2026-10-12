@@ -528,7 +528,7 @@ public class TagRepository extends EntityRepository<Tag> {
       }
 
       EntityRepository<?> entityRepository = Entity.getEntityRepository(ref.getType());
-      EntityInterface asset =
+      EntityInterface<?> asset =
           entityRepository.get(null, ref.getId(), entityRepository.getFields("tags"));
 
       try {
@@ -554,6 +554,7 @@ public class TagRepository extends EntityRepository<Tag> {
         tempList.add(tagLabel);
         // Apply Tags to Entities
         entityRepository.applyTags(getUniqueTags(tempList), asset.getFullyQualifiedName());
+        invalidateCacheAfterTagMutation(asset.getEntityReference());
 
         searchRepository.updateEntity(ref);
         RdfUpdater.updateEntity(asset);
@@ -619,6 +620,7 @@ public class TagRepository extends EntityRepository<Tag> {
       List<TagLabel> columnTags = new ArrayList<>(listOrEmpty(targetColumn.getTags()));
       columnTags.add(tagLabel);
       applyTags(getUniqueTags(columnTags), columnFqn);
+      invalidateCacheAfterTagMutation(table.getEntityReference());
       searchRepository.updateEntity(table.getEntityReference());
       RdfUpdater.updateEntity(table);
     }
@@ -683,7 +685,7 @@ public class TagRepository extends EntityRepository<Tag> {
       }
 
       EntityRepository<?> entityRepository = Entity.getEntityRepository(ref.getType());
-      EntityInterface asset =
+      EntityInterface<?> asset =
           entityRepository.get(null, ref.getId(), entityRepository.getFields("id"));
 
       // Skip the destructive tag_usage delete + ES update on dryRun so the preview
@@ -693,6 +695,7 @@ public class TagRepository extends EntityRepository<Tag> {
             .tagUsageDAO()
             .deleteTagsByTagAndTargetEntity(
                 tag.getFullyQualifiedName(), asset.getFullyQualifiedName());
+        invalidateCacheAfterTagMutation(asset.getEntityReference());
       }
       success.add(new BulkResponse().withRequest(ref));
       result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
@@ -733,6 +736,7 @@ public class TagRepository extends EntityRepository<Tag> {
       daoCollection
           .tagUsageDAO()
           .deleteTagsByTagAndTargetEntity(tag.getFullyQualifiedName(), columnFqn);
+      invalidateCacheAfterTagMutation(table.getEntityReference());
     }
     success.add(new BulkResponse().withRequest(columnRef));
     result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);

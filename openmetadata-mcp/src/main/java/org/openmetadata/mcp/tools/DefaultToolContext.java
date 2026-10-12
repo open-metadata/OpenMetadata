@@ -96,6 +96,9 @@ public class DefaultToolContext {
         case "find_context":
           result = new FindContextTool().execute(authorizer, securityContext, params);
           break;
+        case "get_concept_context":
+          result = new GetConceptContextTool().execute(authorizer, securityContext, params);
+          break;
         case "company_context":
           result = new CompanyContextTool().execute(authorizer, securityContext, params);
           break;
@@ -432,12 +435,12 @@ public class DefaultToolContext {
   static BudgetedResult applyBudget(Object result, String toolName) {
     String serialized = JsonUtils.pojoToJson(result);
     Object payload = result;
-    if (serialized.length() > McpResponseTrim.MAX_RESPONSE_CHARS) {
+    if (serialized.length() > McpResponseTrim.maxResponseChars()) {
       LOG.warn(
           "[MCP] tool '{}' response {} chars exceeds {} budget; returning truncation envelope",
           toolName,
           serialized.length(),
-          McpResponseTrim.MAX_RESPONSE_CHARS);
+          McpResponseTrim.maxResponseChars());
       payload =
           McpResponseTrim.oversizedEnvelope(
               serialized.length(), Map.of("tool", toolName), OVERSIZED_ADVICE);

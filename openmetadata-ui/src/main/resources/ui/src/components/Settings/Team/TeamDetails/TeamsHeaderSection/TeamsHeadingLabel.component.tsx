@@ -16,13 +16,18 @@ import {
   CloseOutlined,
   ExclamationCircleFilled,
 } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Input, Space, Tooltip } from 'antd';
+import {
+  Box,
+  ButtonUtility,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Button, Input } from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
-import { DE_ACTIVE_COLOR } from '../../../../../constants/constants';
+
 import { Team } from '../../../../../generated/entity/teams/team';
 import { useAuth } from '../../../../../hooks/authHooks';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
@@ -116,6 +121,7 @@ const TeamsHeadingLabel = ({
     const canEditHeading = hasAccess || isCurrentTeamOwner;
     const editHeadingButton = canEditHeading && !currentTeam.deleted && (
       <Tooltip
+        arrow
         placement="right"
         title={
           hasEditDisplayNamePermission
@@ -124,13 +130,12 @@ const TeamsHeadingLabel = ({
               })
             : t('message.no-permission-for-action')
         }>
-        <Button
-          className="p-0 edit-team-name flex-center"
+        <ButtonUtility
+          color="secondary"
           data-testid="edit-team-name"
-          disabled={!hasEditDisplayNamePermission}
-          icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
-          size="small"
-          type="text"
+          icon={EditIcon}
+          isDisabled={!hasEditDisplayNamePermission}
+          size="xs"
           onClick={(e) => {
             // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
             e.stopPropagation();
@@ -157,7 +162,13 @@ const TeamsHeadingLabel = ({
           value={heading}
           onChange={(e) => setHeading(e.target.value)}
         />
-        <Space className="flex-none" data-testid="buttons" size={4}>
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal flex-none"
+          data-testid="buttons"
+          gap={1}
+          itemClassName="layout-space-item">
           <Button
             className="rounded-4 text-sm p-xss"
             data-testid="cancelAssociatedTag"
@@ -174,7 +185,7 @@ const TeamsHeadingLabel = ({
             onMouseDown={onHeadingSave}>
             <CheckOutlined />
           </Button>
-        </Space>
+        </Box>
       </div>
     ) : (
       <>

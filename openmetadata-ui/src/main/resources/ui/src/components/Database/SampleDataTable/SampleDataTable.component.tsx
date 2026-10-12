@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Dropdown, Select, Space, Tooltip } from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Select } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 
@@ -22,7 +21,6 @@ import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconDownload } from '../../../assets/svg/ic-download.svg';
-import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { AUTO_CLASSIFICATION_DOCS } from '../../../constants/docs.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityType } from '../../../enums/entity.enum';
@@ -44,6 +42,10 @@ import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DeleteModal from '../../common/DeleteModal/DeleteModal';
+import {
+  ManageMenu,
+  ManageMenuItem,
+} from '../../common/EntityPageInfos/ManageButton/ManageMenu';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
@@ -220,7 +222,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
     }
   };
 
-  const manageButtonContent: ItemType[] = [
+  const manageButtonContent: ManageMenuItem[] = [
     {
       label: (
         <ManageButtonItemLabel
@@ -233,8 +235,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
         />
       ),
       key: 'export-button',
-      onClick: (e: { domEvent: { stopPropagation: () => void } }) => {
-        e.domEvent.stopPropagation();
+      onClick: () => {
         setShowActions(false);
         exportToCSV();
       },
@@ -256,8 +257,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
               />
             ),
             key: 'delete-button',
-            onClick: (e) => {
-              e.domEvent.stopPropagation();
+            onClick: () => {
               setShowActions(false);
               handleDeleteModal();
             },
@@ -323,8 +323,18 @@ const SampleDataTable: FC<SampleDataProps> = ({
       })}
       data-testid="sample-data"
       id="sampleDataDetails">
-      <Space className="m-y-xss justify-between w-full">
-        <Space>
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal m-y-xss justify-between w-full"
+        gap={2}
+        itemClassName="layout-space-item">
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal"
+          gap={2}
+          itemClassName="layout-space-item">
           <Typography color="secondary">{t('label.row-limit')}:</Typography>
           <Select
             className="w-28"
@@ -340,30 +350,17 @@ const SampleDataTable: FC<SampleDataProps> = ({
               </Select.Option>
             ))}
           </Select>
-        </Space>
-        <Dropdown
-          menu={{
-            items: manageButtonContent,
-          }}
-          open={showActions}
-          overlayClassName="manage-dropdown-list-container"
-          overlayStyle={{ width: '350px' }}
-          placement="bottomRight"
-          onOpenChange={setShowActions}>
-          <Tooltip
-            placement="topLeft"
-            title={t('label.manage-entity', {
-              entity: t('label.sample-data'),
-            })}>
-            <Button
-              className="flex-center px-1.5"
-              data-testid="sample-data-manage-button"
-              onClick={() => setShowActions(true)}>
-              <IconDropdown className="anticon self-center " />
-            </Button>
-          </Tooltip>
-        </Dropdown>
-      </Space>
+        </Box>
+        <ManageMenu
+          data-testid="sample-data-manage-button"
+          isOpen={showActions}
+          items={manageButtonContent}
+          label={t('label.manage-entity', {
+            entity: t('label.sample-data'),
+          })}
+          onOpenChange={setShowActions}
+        />
+      </Box>
 
       <TableComponent
         columns={sampleData?.columns}

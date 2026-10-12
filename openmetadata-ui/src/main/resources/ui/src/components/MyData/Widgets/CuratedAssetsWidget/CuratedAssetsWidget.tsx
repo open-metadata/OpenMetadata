@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Col, Row } from 'antd';
+import { Grid, Typography } from '@openmetadata/ui-core-components';
+
 import { AxiosError } from 'axios';
 import { get, isEmpty } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
@@ -369,7 +369,10 @@ const CuratedAssetsWidgetContent = ({
               <div className="flex items-center gap-1">
                 <Typography
                   className="entity-list-item-title"
-                  ellipsis={{ tooltip: true }}>
+                  ellipsis={{
+                    tooltip: true,
+                    excludeTriggerFromTabOrder: true,
+                  }}>
                   {title}
                 </Typography>
                 {certification && (
@@ -382,7 +385,10 @@ const CuratedAssetsWidgetContent = ({
                 <Typography
                   className="max-two-lines entity-list-item-description"
                   color="secondary"
-                  ellipsis={{ tooltip: true }}>
+                  ellipsis={{
+                    tooltip: true,
+                    excludeTriggerFromTabOrder: true,
+                  }}>
                   {getTextFromHtmlString(description)}
                 </Typography>
               )}
@@ -396,13 +402,13 @@ const CuratedAssetsWidgetContent = ({
 
   const entityListData = useMemo(() => {
     return isFullSize ? (
-      <Row className="curated-assets-grid">
+      <Grid className="layout-row layout-grid curated-assets-grid">
         {data.map((item) => (
-          <Col key={item.id} span={12}>
+          <Grid.Item className="layout-column" key={item.id} span={12}>
             {entityListLinkItem(item)}
-          </Col>
+          </Grid.Item>
         ))}
-      </Row>
+      </Grid>
     ) : (
       data.map((item) => entityListLinkItem(item))
     );

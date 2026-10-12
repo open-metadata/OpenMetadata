@@ -55,9 +55,7 @@ describe('WidgetSortFilter', () => {
     const dateOption = screen.getByText('Date');
     fireEvent.click(dateOption);
 
-    expect(mockProps.onSortChange).toHaveBeenCalledWith(
-      expect.objectContaining({ key: 'date' })
-    );
+    expect(mockProps.onSortChange).toHaveBeenCalledWith('date');
   });
 
   it('does not render when in edit view', () => {

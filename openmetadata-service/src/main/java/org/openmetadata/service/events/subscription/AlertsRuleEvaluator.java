@@ -18,6 +18,7 @@ import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.Entity.THREAD;
 import static org.openmetadata.service.Entity.USER;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -145,7 +146,7 @@ public class AlertsRuleEvaluator {
   }
 
   private boolean matchesEntityOrTestSuiteOwner(
-      EntityInterface entity, List<String> ownerNameList) {
+      EntityInterface<?> entity, List<String> ownerNameList) {
     List<EntityReference> ownerReferences = resolveOwners(entity);
     boolean matched = false;
     if (!nullOrEmpty(ownerReferences)) {
@@ -160,11 +161,11 @@ public class AlertsRuleEvaluator {
     return matched;
   }
 
-  private List<EntityReference> resolveOwners(EntityInterface entity) {
+  private List<EntityReference> resolveOwners(EntityInterface<?> entity) {
     List<EntityReference> ownerReferences = entity.getOwners();
     if (nullOrEmpty(ownerReferences)
         && supports(changeEvent.getEntityType(), EntityRepository::isSupportsOwners)) {
-      EntityInterface storedEntity = readStoredEntity(entity.getId(), Entity.FIELD_OWNERS);
+      EntityInterface<?> storedEntity = readStoredEntity(entity.getId(), Entity.FIELD_OWNERS);
       ownerReferences = storedEntity == null ? ownerReferences : storedEntity.getOwners();
     }
     return ownerReferences;
@@ -188,7 +189,7 @@ public class AlertsRuleEvaluator {
       return feedSubjectMatchesFqn(entityFqns);
     }
 
-    EntityInterface entity = getEntity(changeEvent);
+    EntityInterface<?> entity = getEntity(changeEvent);
     if (matchesFqnOrDescendant(entity.getFullyQualifiedName(), entityFqns)) {
       return true;
     }
@@ -277,10 +278,9 @@ public class AlertsRuleEvaluator {
     }
 
     // we need to handle both fields updated and fields added
-    List<FieldChange> fieldChanges = changeEvent.getChangeDescription().getFieldsUpdated();
-    if (!changeEvent.getChangeDescription().getFieldsAdded().isEmpty()) {
-      fieldChanges.addAll(changeEvent.getChangeDescription().getFieldsAdded());
-    }
+    List<FieldChange> fieldChanges =
+        new ArrayList<>(changeEvent.getChangeDescription().getFieldsUpdated());
+    fieldChanges.addAll(changeEvent.getChangeDescription().getFieldsAdded());
 
     for (FieldChange fieldChange : fieldChanges) {
       if (fieldChange.getName().equals("testCaseResult") && fieldChange.getNewValue() != null) {
@@ -494,10 +494,11 @@ public class AlertsRuleEvaluator {
     return matched;
   }
 
-  private boolean matchesEntityOrTestSuiteDomain(EntityInterface entity, List<String> domainFqns) {
+  private boolean matchesEntityOrTestSuiteDomain(
+      EntityInterface<?> entity, List<String> domainFqns) {
     List<EntityReference> domains = entity.getDomains();
     if (supports(changeEvent.getEntityType(), EntityRepository::isSupportsDomains)) {
-      EntityInterface storedEntity = readStoredEntity(entity.getId(), Entity.FIELD_DOMAINS);
+      EntityInterface<?> storedEntity = readStoredEntity(entity.getId(), Entity.FIELD_DOMAINS);
       domains = storedEntity == null ? domains : storedEntity.getDomains();
     }
     boolean matched = matchesAnyDomainFqn(domains, domainFqns);
@@ -531,7 +532,7 @@ public class AlertsRuleEvaluator {
    * lookup must not abort the whole subscription then (issue #29674) and callers fall back to the
    * payload instead.
    */
-  private <T extends EntityInterface> T readStoredEntity(UUID entityId, String fields) {
+  private <T extends EntityInterface<?>> T readStoredEntity(UUID entityId, String fields) {
     return Entity.getEntityOrNull(
         changeEvent.getEntityType(), entityId, fields, DELETED_TOLERANT_SUBJECT);
   }
@@ -561,11 +562,11 @@ public class AlertsRuleEvaluator {
     return listOrEmpty(testSuites);
   }
 
-  public static EntityInterface getEntity(ChangeEvent event) {
-    Class<? extends EntityInterface> entityClass =
+  public static EntityInterface<?> getEntity(ChangeEvent event) {
+    Class<? extends EntityInterface<?>> entityClass =
         Entity.getEntityClassFromType(event.getEntityType());
     if (entityClass != null) {
-      EntityInterface entity;
+      EntityInterface<?> entity;
       if (event.getEntity() instanceof String str) {
         entity = JsonUtils.readValue(str, entityClass);
       } else {
@@ -657,19 +658,25 @@ public class AlertsRuleEvaluator {
         usersOrTeamName.stream().map(EntityInterfaceUtil::unquoteName).collect(Collectors.toSet());
     for (MessageParser.EntityLink entityLink : mentions) {
       String fqn = entityLink.getEntityFQN();
-      if (USER.equals(entityLink.getEntityType())) {
-        User user = Entity.getCollectionDAO().userDAO().findEntityByName(fqn);
-        if (names.contains(user.getName())) {
-          return true;
-        }
-      } else if (TEAM.equals(entityLink.getEntityType())) {
-        Team team = Entity.getCollectionDAO().teamDAO().findEntityByName(fqn);
-        if (names.contains(team.getName())) {
-          return true;
-        }
+      if (names.contains(mentionedName(entityLink.getEntityType(), fqn))) {
+        return true;
       }
     }
     return false;
+  }
+
+  private static String mentionedName(String entityType, String fqn) {
+    String name = null;
+    try {
+      if (USER.equals(entityType)) {
+        name = Entity.getCollectionDAO().userDAO().findEntityByName(fqn).getName();
+      } else if (TEAM.equals(entityType)) {
+        name = Entity.getCollectionDAO().teamDAO().findEntityByName(fqn).getName();
+      }
+    } catch (EntityNotFoundException e) {
+      LOG.debug("Mentioned {} {} no longer exists, so it is not counted", entityType, fqn);
+    }
+    return name;
   }
 
   public static Conversation getConversation(ChangeEvent event) {
@@ -769,7 +776,7 @@ public class AlertsRuleEvaluator {
   }
 
   // The event's entity of entityType: the entity itself, or for a comment, the entity it is on.
-  private EntityInterface eventEntityOfType(String entityType) {
+  private EntityInterface<?> eventEntityOfType(String entityType) {
     if (changeEvent == null || changeEvent.getEntity() == null) {
       return null;
     }
@@ -780,7 +787,7 @@ public class AlertsRuleEvaluator {
     };
   }
 
-  private EntityInterface feedSubjectOfType(String entityType) {
+  private EntityInterface<?> feedSubjectOfType(String entityType) {
     EntityReference subject = feedSubject();
     return subject != null && entityType.equals(subject.getType())
         ? Entity.getEntityOrNull(subject, "", Include.NON_DELETED)
@@ -825,7 +832,7 @@ public class AlertsRuleEvaluator {
   }
 
   private boolean feedSubjectMatchesOwner(List<String> ownerNameList) {
-    EntityInterface subject =
+    EntityInterface<?> subject =
         readFeedSubject(Entity.FIELD_OWNERS, EntityRepository::isSupportsOwners);
     return subject != null
         && !nullOrEmpty(subject.getOwners())
@@ -833,15 +840,16 @@ public class AlertsRuleEvaluator {
   }
 
   private boolean feedSubjectMatchesDomain(List<String> domainFqns) {
-    EntityInterface subject =
+    EntityInterface<?> subject =
         readFeedSubject(Entity.FIELD_DOMAINS, EntityRepository::isSupportsDomains);
     return subject != null && matchesAnyDomainFqn(subject.getDomains(), domainFqns);
   }
 
   /** The feed's subject read with {@code field}, or null when its type cannot supply that field. */
-  private EntityInterface readFeedSubject(String field, Predicate<EntityRepository<?>> capability) {
+  private EntityInterface<?> readFeedSubject(
+      String field, Predicate<EntityRepository<?>> capability) {
     EntityReference subject = feedSubject();
-    EntityInterface entity = null;
+    EntityInterface<?> entity = null;
     if (subject != null && supports(subject.getType(), capability)) {
       entity = Entity.getEntityOrNull(subject, field, Include.NON_DELETED);
     }

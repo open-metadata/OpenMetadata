@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { SidebarItem } from '../../constant/sidebar';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
@@ -376,7 +377,9 @@ test.describe('Tag Page with Admin Roles', () => {
           exact: true,
         })
         .first();
-      await expect(classificationEntry).toBeVisible({ timeout: 30000 });
+      await expect(classificationEntry).toBeVisible({
+        timeout: ACTION_TIMEOUT,
+      });
       await classificationEntry.click();
       await expect(
         adminPage.locator(

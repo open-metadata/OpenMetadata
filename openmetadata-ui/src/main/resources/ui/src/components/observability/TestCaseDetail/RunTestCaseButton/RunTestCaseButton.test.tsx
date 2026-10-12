@@ -10,11 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { QueryClient } from '@tanstack/react-query';
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { fireEvent, renderHook, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AxiosError } from 'axios';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import {
   IngestionPipeline,
@@ -30,8 +31,16 @@ import { renderWithQueryClient } from '../../../../test/unit/test-utils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import RunTestCaseButton from './RunTestCaseButton';
+import { useRunTestCase } from './useRunTestCase';
 
 const mockUseEntityPermissions = jest.fn();
+const mockUseParams = jest.fn().mockReturnValue({});
+
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useParams: () => mockUseParams(),
+}));
+
 const mockResourcePermissions: {
   ingestionPipeline?: Partial<OperationPermission>;
 } = {};
@@ -126,6 +135,7 @@ const setPipelinePermission = (
 describe('RunTestCaseButton', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUseParams.mockReturnValue({});
     delete mockResourcePermissions.ingestionPipeline;
   });
 
@@ -184,6 +194,57 @@ describe('RunTestCaseButton', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('is not offered on the version page, without reading the pipelines', () => {
+    mockUseParams.mockReturnValue({ version: '0.2' });
+    setPipelines([pipeline()]);
+    setPipelinePermission(true);
+
+    renderWithQueryClient(<RunTestCaseButton testCase={testCase} />);
+
+    expect(
+      screen.queryByTestId('run-test-case-button')
+    ).not.toBeInTheDocument();
+    expect(getIngestionPipelines).not.toHaveBeenCalled();
+  });
+
+  it('reads no pipeline on the version page, even one the test case page left in the cache', () => {
+    mockUseParams.mockReturnValue({ version: '0.2' });
+    setPipelinePermission(true);
+    const queryClient = new QueryClient();
+    // The test case page cached its suite pipeline mid-run.
+    queryClient.setQueryData(
+      ['test-case-run-pipelines', testCase.testSuite?.fullyQualifiedName],
+      [
+        pipeline({
+          pipelineStatuses: [
+            {
+              runId: 'running-run',
+              pipelineState: PipelineState.Running,
+              timestamp: Date.now(),
+            },
+          ],
+        }),
+      ]
+    );
+
+    const { result } = renderHook(() => useRunTestCase(testCase), {
+      wrapper: ({ children }) => (
+        <QueryClientProvider client={queryClient}>
+          {children}
+        </QueryClientProvider>
+      ),
+    });
+
+    expect(result.current.runInProgress).toBe(false);
+    // Nor does it read the permissions of a pipeline it cannot run.
+    expect(mockUseEntityPermissions).toHaveBeenLastCalledWith(
+      ResourceEntity.INGESTION_PIPELINE,
+      '',
+      { enabled: false }
+    );
+    expect(getIngestionPipelines).not.toHaveBeenCalled();
+  });
+
   it('disables the button when there is no runnable pipeline but the user may trigger pipelines', async () => {
     setPipelines([pipeline({ deployed: false })]);
     setPipelinePermission(false);
@@ -195,6 +256,26 @@ describe('RunTestCaseButton', () => {
     expect(
       screen.getByRole('group', { name: 'message.pipeline-not-deployed' })
     ).toBeInTheDocument();
+  });
+
+  it('disables the button with the load error when the pipelines could not be read', async () => {
+    (getIngestionPipelines as jest.Mock).mockRejectedValue(
+      new Error('Internal Server Error')
+    );
+    setPipelinePermission(false);
+    mockResourcePermissions.ingestionPipeline = { [Operation.Trigger]: true };
+
+    renderWithQueryClient(<RunTestCaseButton testCase={testCase} />);
+
+    expect(await screen.findByTestId('run-test-case-button')).toBeDisabled();
+    expect(
+      screen.getByRole('group', {
+        name: 'message.pipelines-could-not-be-loaded',
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('group', { name: 'message.no-pipeline-linked' })
+    ).not.toBeInTheDocument();
   });
 
   it('runs the test case on click, confirms it was queued and reloads the run state', async () => {
