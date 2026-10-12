@@ -161,6 +161,7 @@ const BotDetails: FC<BotsDetailProps> = ({
                         />
                         <div className="flex justify-end" data-testid="buttons">
                           <Button
+                            aria-label={t('label.cancel')}
                             className="tw:mr-1"
                             color="primary"
                             data-testid="cancel-displayName"
@@ -170,6 +171,7 @@ const BotDetails: FC<BotsDetailProps> = ({
                           />
 
                           <Button
+                            aria-label={t('label.save')}
                             className="tw:mr-1"
                             color="primary"
                             data-testid="save-displayName"

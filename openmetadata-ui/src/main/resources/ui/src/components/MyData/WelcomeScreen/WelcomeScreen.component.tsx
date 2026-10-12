@@ -53,6 +53,7 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
     <Card className="welcome-screen-container" data-testid="welcome-screen">
       <div className="tw:flex tw:justify-end tw:px-4 tw:pt-4">
         <Button
+          aria-label={t('label.close')}
           color="tertiary"
           data-testid="welcome-screen-close-btn"
           iconLeading={<CloseIcon height={12} width={12} />}

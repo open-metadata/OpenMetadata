@@ -556,6 +556,9 @@ const TableConstraintsModal = ({
                         </Select>
                       </Form.Item>
                       <Button
+                        aria-label={t('label.delete-entity', {
+                          entity: t('label.constraint'),
+                        })}
                         className="tw:absolute tw:top-2.5 tw:right-3"
                         color="tertiary"
                         data-testid={`${key}-delete-constraint-button`}

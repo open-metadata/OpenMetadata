@@ -180,6 +180,9 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
         </Box>
         <Box className="layout-column d-flex items-center justify-end gap-2">
           <Button
+            aria-label={t('label.delete-entity', {
+              entity: t('label.term-boost'),
+            })}
             color="secondary"
             data-testid="delete-term-boost"
             iconLeading={<Icon component={Delete} />}

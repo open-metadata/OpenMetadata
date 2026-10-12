@@ -125,6 +125,7 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
                 )}
               </div>
               <Button
+                aria-label={t('label.delete')}
                 color="secondary"
                 data-testid="delete-search-field"
                 iconLeading={<Icon component={Delete} />}

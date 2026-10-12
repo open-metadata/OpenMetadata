@@ -235,6 +235,7 @@ const CustomMetricGraphs = ({
                         setOpenMenuKey(isOpen ? key : null)
                       }>
                       <Button
+                        aria-label={t('label.more-action')}
                         color="secondary"
                         data-testid={`${key}-custom-metrics-menu`}
                         iconLeading={DotsVertical}

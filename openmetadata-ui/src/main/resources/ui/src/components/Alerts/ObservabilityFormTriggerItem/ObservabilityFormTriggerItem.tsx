@@ -126,6 +126,9 @@ function ObservabilityFormTriggerItem({
                       </div>
                       {!isViewMode && (
                         <Button
+                          aria-label={t('label.remove-entity', {
+                            entity: t('label.trigger'),
+                          })}
                           color="secondary"
                           data-testid={`remove-trigger-${name}`}
                           iconLeading={<CloseOutlined />}

@@ -391,6 +391,7 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
 
           {schema.additionalProperties && (
             <Button
+              aria-label={t('label.add')}
               color="primary"
               data-testid={`add-item-${title}`}
               iconLeading={

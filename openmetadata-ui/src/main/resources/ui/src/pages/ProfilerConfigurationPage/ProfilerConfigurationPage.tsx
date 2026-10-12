@@ -293,6 +293,7 @@ const ProfilerConfigurationPage = () => {
                               </Form.Item>
                               <Form.Item>
                                 <Button
+                                  aria-label={t('label.remove')}
                                   color="secondary"
                                   data-testid={`remove-filter-${name}`}
                                   iconLeading={<CloseOutlined />}

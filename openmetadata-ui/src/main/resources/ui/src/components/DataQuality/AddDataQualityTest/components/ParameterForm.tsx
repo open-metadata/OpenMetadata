@@ -376,6 +376,7 @@ const buildArraySetField = ({
           <>
             <Typography>{data.displayName}</Typography>
             <Button
+              aria-label={t('label.add')}
               className="tw:mx-3"
               color="primary"
               iconLeading={<PlusOutlined />}
@@ -409,6 +410,7 @@ const buildArraySetField = ({
               )}
             </Form.Item>
             <Button
+              aria-label={t('label.remove')}
               color="tertiary"
               iconLeading={
                 <Icon component={IconDelete} style={{ fontSize: '16px' }} />

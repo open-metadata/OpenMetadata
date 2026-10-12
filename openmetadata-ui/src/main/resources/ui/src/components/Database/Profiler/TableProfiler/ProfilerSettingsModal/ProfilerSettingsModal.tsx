@@ -652,6 +652,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                       {`${t('label.include')}:`}
                     </p>
                     <Button
+                      aria-label={t('label.add')}
                       color="primary"
                       iconLeading={<PlusOutlined />}
                       size="xs"
@@ -703,6 +704,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                             />
                           </Form.Item>
                           <Button
+                            aria-label={t('label.remove')}
                             color="tertiary"
                             iconLeading={
                               <Icon
@@ -952,6 +954,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                             {`${t('label.value')}:`}
                           </p>
                           <Button
+                            aria-label={t('label.add')}
                             color="primary"
                             iconLeading={<PlusOutlined />}
                             size="xs"
@@ -990,6 +993,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                                 />
                               </Form.Item>
                               <Button
+                                aria-label={t('label.remove')}
                                 color="tertiary"
                                 iconLeading={
                                   <Icon

@@ -162,6 +162,9 @@ const ContractPolicyCard: React.FC<ContractPolicyCardProps> = ({
                   />
 
                   <Button
+                    aria-label={t('label.delete-entity', {
+                      entity: t('label.policy'),
+                    })}
                     color="secondary-destructive"
                     data-testid={`delete-policy-${policyField.key}`}
                     iconLeading={<DeleteIcon />}
@@ -301,6 +304,9 @@ const ContractPolicyCard: React.FC<ContractPolicyCardProps> = ({
 
                                   <Grid.Item className="layout-column" span={2}>
                                     <Button
+                                      aria-label={t('label.remove-entity', {
+                                        entity: t('label.row-filter'),
+                                      })}
                                       className="tw:mt-2.5"
                                       color="tertiary"
                                       iconLeading={

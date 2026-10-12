@@ -335,6 +335,7 @@ const UserProfileRoles = ({
 
                   <div className="flex justify-end gap-2 mt-4">
                     <Button
+                      aria-label={t('label.cancel')}
                       color="primary"
                       data-testid="user-profile-edit-roles-cancel-button"
                       iconLeading={<ClosePopoverIcon height={24} />}
@@ -347,6 +348,7 @@ const UserProfileRoles = ({
                       onClick={handleCloseEditRole}
                     />
                     <Button
+                      aria-label={t('label.save')}
                       color="primary"
                       data-testid="user-profile-edit-roles-save-button"
                       iconLeading={<SavePopoverIcon height={24} />}

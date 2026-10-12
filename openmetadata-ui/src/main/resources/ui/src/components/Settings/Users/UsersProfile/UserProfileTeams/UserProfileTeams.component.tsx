@@ -177,6 +177,7 @@ const UserProfileTeams = ({
 
                   <div className="flex justify-end gap-2 mt-4">
                     <Button
+                      aria-label={t('label.cancel')}
                       color="primary"
                       data-testid="teams-edit-close-btn"
                       iconLeading={<ClosePopoverIcon height={24} />}
@@ -189,6 +190,7 @@ const UserProfileTeams = ({
                       onClick={handleCloseEditTeam}
                     />
                     <Button
+                      aria-label={t('label.save')}
                       color="primary"
                       data-testid="teams-edit-save-btn"
                       iconLeading={<SavePopoverIcon height={24} />}

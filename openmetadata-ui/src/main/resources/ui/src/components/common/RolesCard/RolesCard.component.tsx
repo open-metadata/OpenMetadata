@@ -127,6 +127,7 @@ const RolesCard = ({
                 />
                 <div className="flex justify-end" data-testid="buttons">
                   <Button
+                    aria-label={t('label.cancel')}
                     className="tw:mr-1"
                     color="primary"
                     data-testid="cancel-roles"
@@ -135,6 +136,7 @@ const RolesCard = ({
                     onMouseDown={() => setIsRolesEdit(false)}
                   />
                   <Button
+                    aria-label={t('label.save')}
                     color="primary"
                     data-testid="save-roles"
                     iconLeading={<CheckOutlined />}

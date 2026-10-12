@@ -319,6 +319,7 @@ export const PersonaSelectableList = ({
 
           <div className="flex justify-end gap-2">
             <Button
+              aria-label={t('label.save')}
               color="primary"
               data-testid={`user-profile${
                 isDefaultPersona ? '-default' : ''
@@ -328,6 +329,7 @@ export const PersonaSelectableList = ({
               onClick={handleCloseEditTeam}
             />
             <Button
+              aria-label={t('label.cancel')}
               color="primary"
               data-testid={`user-profile${
                 isDefaultPersona ? '-default' : ''

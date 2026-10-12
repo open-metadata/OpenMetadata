@@ -953,6 +953,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
             </div>
             <div className="tw:shrink-0">
               <Button
+                aria-label={t('label.close')}
                 color="secondary"
                 data-testid="close-button"
                 iconLeading={XClose}
@@ -1042,6 +1043,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     <div className="tw:flex tw:justify-between tw:items-center tw:w-full navigation-container">
       <div className="tw:flex tw:items-center tw:gap-1 tw:mt-2">
         <Button
+          aria-label={t('label.previous')}
           color="secondary"
           iconLeading={ChevronUp}
           isDisabled={isPreviousDisabled}
@@ -1049,6 +1051,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           onClick={handlePreviousColumn}
         />
         <Button
+          aria-label={t('label.next')}
           color="secondary"
           iconLeading={ChevronDown}
           isDisabled={isNextDisabled}

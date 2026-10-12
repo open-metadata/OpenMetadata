@@ -354,6 +354,9 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
 
               <Grid.Item className="tw:flex tw:items-center" span={1}>
                 <Button
+                  aria-label={t('label.remove-entity', {
+                    entity: t('label.mapping'),
+                  })}
                   color="tertiary"
                   data-testid={`remove-mapping-btn-${mapping.id}`}
                   iconLeading={<DeleteIcon height={20} width={20} />}

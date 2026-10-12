@@ -18,6 +18,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { CurrentTourPageType } from '../../enums/tour.enum';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { t } from '../../utils/i18next/LocalUtil';
 import TourEndModal from '../Modals/TourEndModal/TourEndModal';
 import './tour.style.less';
 
@@ -58,6 +59,7 @@ const Tour = ({ steps }: { steps: TourSteps[] }) => {
             inViewThreshold={200}
             lastStepNextButton={
               <Button
+                aria-label={t('label.next')}
                 color="tertiary"
                 data-testid="last-step-button"
                 iconLeading={

@@ -96,12 +96,18 @@ const FieldValueBoostList: React.FC<FieldValueBoostListProps> = ({
         render: (_: unknown, record: FieldValueBoost) => (
           <div className="d-flex items-center gap-2">
             <Button
+              aria-label={t('label.edit-entity', {
+                entity: t('label.field-value-boost'),
+              })}
               color="tertiary"
               data-testid="edit-field-value-boost-btn"
               iconLeading={<Icon component={EditIcon} />}
               onClick={() => handleEditFieldValueBoost(record)}
             />
             <Button
+              aria-label={t('label.delete-entity', {
+                entity: t('label.field-value-boost'),
+              })}
               color="tertiary"
               data-testid="delete-field-value-boost-btn"
               iconLeading={<Icon component={Delete} />}

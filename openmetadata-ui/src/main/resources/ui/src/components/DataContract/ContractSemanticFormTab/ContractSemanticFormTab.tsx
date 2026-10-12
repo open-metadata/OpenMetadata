@@ -256,6 +256,9 @@ export const ContractSemanticFormTab: React.FC<{
                                 />
 
                                 <Button
+                                  aria-label={t('label.delete-entity', {
+                                    entity: t('label.semantic'),
+                                  })}
                                   color="secondary-destructive"
                                   data-testid={`delete-semantic-${field.key}`}
                                   iconLeading={<DeleteIcon />}

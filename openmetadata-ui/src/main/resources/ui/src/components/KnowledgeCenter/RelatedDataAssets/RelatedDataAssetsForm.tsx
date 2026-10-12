@@ -98,6 +98,7 @@ export const RelatedDataAssetsForm: FC<RelatedDataAssetsFormProps> = ({
             gap={2}
             itemClassName="layout-space-item">
             <Button
+              aria-label={t('label.cancel')}
               color="secondary"
               data-testid="cancelDataAssets"
               iconLeading={<CloseOutlined size={12} />}
@@ -106,6 +107,7 @@ export const RelatedDataAssetsForm: FC<RelatedDataAssetsFormProps> = ({
               onClick={onCancel}
             />
             <Button
+              aria-label={t('label.save')}
               color="primary"
               data-testid="saveDataAssets"
               iconLeading={<CheckOutlined size={12} />}

@@ -96,6 +96,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
       multiple: true,
       children: (
         <Button
+          aria-label={t('label.add-entity', { entity: t('label.domain') })}
           color="primary"
           data-testid="add-domain"
           iconLeading={

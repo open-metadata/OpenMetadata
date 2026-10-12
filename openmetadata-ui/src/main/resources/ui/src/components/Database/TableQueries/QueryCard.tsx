@@ -290,6 +290,7 @@ const QueryCard: FC<QueryCardProp> = ({
               gap={2}
               itemClassName="layout-space-item">
               <Button
+                aria-label={t('label.expand')}
                 color="secondary"
                 data-testid="query-entity-expand-button"
                 iconLeading={renderExpandIcon()}

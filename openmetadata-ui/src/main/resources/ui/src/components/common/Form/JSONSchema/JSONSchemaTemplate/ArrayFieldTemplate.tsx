@@ -18,6 +18,7 @@ import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { Fragment, FunctionComponent } from 'react';
 import { ReactComponent as DeleteIcon } from '../../../../../assets/svg/ic-delete.svg';
+import { t } from '../../../../../utils/i18next/LocalUtil';
 
 export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
   props: ArrayFieldTemplateProps
@@ -30,6 +31,7 @@ export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
         <Typography className="control-label">{title}</Typography>
         {canAdd && (
           <Button
+            aria-label={t('label.add')}
             color="primary"
             data-testid={`add-item-${title}`}
             iconLeading={

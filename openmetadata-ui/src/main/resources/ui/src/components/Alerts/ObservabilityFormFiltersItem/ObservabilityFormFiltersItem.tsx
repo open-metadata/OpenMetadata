@@ -126,6 +126,9 @@ function ObservabilityFormFiltersItem({
 
                       {!isViewMode && (
                         <Button
+                          aria-label={t('label.remove-entity', {
+                            entity: t('label.filter'),
+                          })}
                           color="secondary"
                           data-testid={`remove-filter-${name}`}
                           iconLeading={<CloseOutlined />}
