@@ -11,19 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import {
-  AutoComplete,
-  Button,
-  Card,
-  Col,
-  Form,
-  Input,
-  Row,
-  Select,
-  Space,
-  Spin,
-} from 'antd';
+import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
+import { AutoComplete, Button, Card, Form, Input, Select, Spin } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -38,6 +27,7 @@ import {
   PermissionEvaluationDebugInfo,
 } from '../../../../rest/permissionAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
+import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 import { getSettingPageEntityBreadCrumb } from '../../../../utils/GlobalSettingsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -180,7 +170,13 @@ const AdminPermissionDebugger: React.FC = () => {
           }`,
         }}
         title={t('label.permission-evaluation-result')}>
-        <Space className="w-full" direction="vertical">
+        <Box
+          inline
+          align="stretch"
+          className="layout-space w-full"
+          direction="col"
+          gap={2}
+          itemClassName="layout-space-item">
           <div className="evaluation-summary">
             <Typography as="h4">
               {t('label.decision') + ': '}{' '}
@@ -208,7 +204,13 @@ const AdminPermissionDebugger: React.FC = () => {
 
           {evaluationInfo.summary && (
             <div className="evaluation-stats">
-              <Space wrap>
+              <Box
+                inline
+                align="center"
+                className="layout-space layout-space-horizontal"
+                gap={2}
+                itemClassName="layout-space-item"
+                wrap="wrap">
                 <Typography>
                   {t('label.policies-evaluated')}:{' '}
                   {evaluationInfo.summary.totalPoliciesEvaluated}
@@ -234,7 +236,7 @@ const AdminPermissionDebugger: React.FC = () => {
                     milliseconds: evaluationInfo.summary.evaluationTimeMs,
                   })}
                 </Typography>
-              </Space>
+              </Box>
             </div>
           )}
 
@@ -250,7 +252,12 @@ const AdminPermissionDebugger: React.FC = () => {
                 key={step.stepNumber}
                 size="small"
                 title={
-                  <Space>
+                  <Box
+                    inline
+                    align="center"
+                    className="layout-space layout-space-horizontal"
+                    gap={2}
+                    itemClassName="layout-space-item">
                     <Typography>
                       {t('label.step')} <span>{step.stepNumber}</span>
                       {' : '}
@@ -261,9 +268,15 @@ const AdminPermissionDebugger: React.FC = () => {
                     <Typography>
                       {' - '} {t('label.rule') + ': '} <span>{step.rule}</span>
                     </Typography>
-                  </Space>
+                  </Box>
                 }>
-                <Space className="w-full" direction="vertical" size="small">
+                <Box
+                  inline
+                  align="stretch"
+                  className="layout-space w-full"
+                  direction="col"
+                  gap={2}
+                  itemClassName="layout-space-item">
                   <Typography>
                     {t('label.source') + ': '} <span>{step.source}</span>{' '}
                     <span>({step.sourceEntity.name})</span>
@@ -308,7 +321,7 @@ const AdminPermissionDebugger: React.FC = () => {
                       ))}
                     </div>
                   )}
-                </Space>
+                </Box>
               </Card>
             ))}
           </div>
@@ -326,7 +339,7 @@ const AdminPermissionDebugger: React.FC = () => {
               ))}
             </div>
           )}
-        </Space>
+        </Box>
       </Card>
     );
   };
@@ -335,13 +348,21 @@ const AdminPermissionDebugger: React.FC = () => {
     <PageLayoutV1
       className="bg-grey admin-permission-debugger"
       pageTitle={t('label.permission-debugger')}>
-      <Row className="p-x-lg" gutter={[0, 16]}>
-        <Col span={24}>
+      <Grid
+        className="layout-row layout-grid p-x-lg"
+        style={{ ...getLayoutGutter(0, 16) }}>
+        <Grid.Item className="layout-column" span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
-        </Col>
-        <Col span={24}>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
           <Card>
-            <Space className="w-full" direction="vertical" size={16}>
+            <Box
+              inline
+              align="stretch"
+              className="layout-space w-full"
+              direction="col"
+              gap={4}
+              itemClassName="layout-space-item">
               <div>
                 <Typography as="h5" size="text-md" weight="semibold">
                   {t('label.select-user-to-debug-permissions')}
@@ -373,7 +394,7 @@ const AdminPermissionDebugger: React.FC = () => {
                   </Typography>
                 </>
               )}
-            </Space>
+            </Box>
           </Card>
 
           <Card className="m-b-md" title={t('label.evaluate-permission')}>
@@ -383,8 +404,19 @@ const AdminPermissionDebugger: React.FC = () => {
               </Typography>
             ) : (
               <Form form={form} layout="vertical" onFinish={handleEvaluate}>
-                <Space className="w-full" direction="vertical">
-                  <Space>
+                <Box
+                  inline
+                  align="stretch"
+                  className="layout-space w-full"
+                  direction="col"
+                  gap={2}
+                  itemClassName="layout-space-item">
+                  <Box
+                    inline
+                    align="center"
+                    className="layout-space layout-space-horizontal"
+                    gap={2}
+                    itemClassName="layout-space-item">
                     <Form.Item
                       label={t('label.resource')}
                       name="resource"
@@ -442,7 +474,7 @@ const AdminPermissionDebugger: React.FC = () => {
                         placeholder={t('label.enter-resource-fqn-or-id')}
                       />
                     </Form.Item>
-                  </Space>
+                  </Box>
 
                   <Form.Item>
                     <Button
@@ -452,7 +484,7 @@ const AdminPermissionDebugger: React.FC = () => {
                       {t('label.evaluate')}
                     </Button>
                   </Form.Item>
-                </Space>
+                </Box>
               </Form>
             )}
           </Card>
@@ -473,8 +505,8 @@ const AdminPermissionDebugger: React.FC = () => {
               />
             </Card>
           )}
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
     </PageLayoutV1>
   );
 };

@@ -269,9 +269,11 @@ test.describe(
           .click();
         await page.click(`[data-testid="edit-${NEW_TABLE_TEST_CASE.name}"]`);
 
-        await expect(page.getByTestId('form-heading')).toHaveText(
-          `Edit ${NEW_TABLE_TEST_CASE.name}`
-        );
+        await expect(
+          page
+            .getByRole('dialog')
+            .getByText(`Edit ${NEW_TABLE_TEST_CASE.name}`, { exact: true })
+        ).toBeVisible();
 
         await page.locator('#testCaseFormV1_params_columnName').clear();
         await page.fill('#testCaseFormV1_params_columnName', 'new_column_name');
@@ -719,7 +721,9 @@ test.describe(
           '/api/v1/dataQuality/testCases/search/list?*'
         );
         await sidebarClick(page, SidebarItem.DATA_QUALITY);
-        await page.click('[data-testid="test-cases"]');
+        await page
+          .getByRole('tab', { name: 'Test Cases', exact: true })
+          .click();
         await getTestCase;
         const searchTestCaseResponse = page.waitForResponse(
           `/api/v1/dataQuality/testCases/search/list?*q=*${testCaseName}*`
@@ -735,7 +739,11 @@ test.describe(
 
         await page.click(`[data-testid="edit-${testCaseName}"]`);
 
-        await expect(page.getByTestId('form-heading')).toBeVisible();
+        await expect(
+          page
+            .getByRole('dialog')
+            .filter({ has: page.getByTestId('test-case-form-v1') })
+        ).toBeVisible();
 
         await expect(page.locator('[id="root\\/displayName"]')).toHaveValue(
           'Table test case display name'

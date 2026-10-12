@@ -87,6 +87,10 @@ const DefaultAppModePage = withPageSuspenseFallback(
   )
 );
 
+const GlossarySettings = withPageSuspenseFallback(
+  React.lazy(() => import('../governance/glossary/GlossarySettings'))
+);
+
 const EditLoginConfiguration = withPageSuspenseFallback(
   React.lazy(
     () =>
@@ -1000,6 +1004,17 @@ const SettingsRouter = () => {
         path={getSettingPathRelative(
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.APP_MODE
+        )}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <GlossarySettings />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
+          GlobalSettingsMenuCategory.PREFERENCES,
+          GlobalSettingOptions.GLOSSARY
         )}
       />
       <Route

@@ -342,18 +342,20 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
         new CreateContextMemory()
             .withName(ns.prefix("status-invalid"))
             .withDescription("Invalid status transition")
-            .withQuestion("Can Approved go back to Draft?")
-            .withAnswer("No, Approved cannot revert to Draft.")
+            .withQuestion("Can an Archived memory go back to Draft?")
+            .withAnswer("No, only an Approved one can return to review.")
             .withEntityStatus(ContextMemoryStatus.APPROVED);
 
     ContextMemory memory = createEntity(request);
     assertEquals(ContextMemoryStatus.APPROVED, memory.getEntityStatus());
+    request.withEntityStatus(ContextMemoryStatus.ARCHIVED);
+    getContextMemoryService().put(request);
 
     request.withEntityStatus(ContextMemoryStatus.DRAFT);
     assertThrows(
         Exception.class,
         () -> getContextMemoryService().put(request),
-        "Transition from Approved to Draft should be rejected");
+        "Transition from Archived to Draft should be rejected");
   }
 
   @Test

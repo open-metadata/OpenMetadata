@@ -101,6 +101,12 @@ jest.mock(
     ({ itemId }: { itemId: string }) =>
       <div data-testid="entity-search-view">{itemId}</div>
 );
+jest.mock('./TableSchemaSettings', () => () => (
+  <div data-testid="table-schema-view" />
+));
+jest.mock('./TableSchemaSettingsForm', () => () => (
+  <div data-testid="table-schema-form" />
+));
 jest.mock('./AppModeSettingsForm', () => () => (
   <div data-testid="app-mode-form" />
 ));
@@ -140,6 +146,7 @@ describe('PlatformSettingsPanel', () => {
       'learning-resources',
       'search',
       'app-mode',
+      'table-schema',
     ].forEach((id) =>
       expect(
         screen.getByTestId(`platform-settings-card-${id}`)
