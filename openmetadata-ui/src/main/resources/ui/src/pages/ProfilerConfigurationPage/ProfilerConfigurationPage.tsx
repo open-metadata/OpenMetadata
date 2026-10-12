@@ -12,12 +12,16 @@
  */
 import { CloseOutlined, PlusOutlined } from '@ant-design/icons';
 import {
+  Accordion,
+  AccordionHeader,
+  AccordionItem,
+  AccordionPanel,
   Box,
   Grid,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Collapse, Form, Select, TreeSelect } from 'antd';
+import { Button, Form, Select, TreeSelect } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isEqual, values } from 'lodash';
 import { Fragment, useEffect, useMemo, useState } from 'react';
@@ -188,147 +192,154 @@ const ProfilerConfigurationPage = () => {
             />
           </Grid.Item>
           <Grid.Item className="layout-column" span={24}>
-            <Collapse
-              className="profiler-configuration-collapse"
-              defaultActiveKey={['profileConfig']}
-              expandIconPosition="right">
-              <Collapse.Panel
-                header={
+            <Accordion
+              allowsMultipleExpanded
+              className={'profiler-configuration-collapse' + '  '}
+              defaultExpandedKeys={new Set(['profileConfig'])}>
+              <AccordionItem
+                className=""
+                id={String('profileConfig')}
+                key="profileConfig">
+                <AccordionHeader className="">
                   <PageHeader
                     data={{
                       header: t('label.metric-configuration'),
                       subHeader: t('message.metric-configuration-description'),
                     }}
                   />
-                }
-                key="profileConfig">
-                <Form.List name="metricConfiguration">
-                  {(fields, { add, remove }) => {
-                    return (
-                      <Grid
-                        className="layout-row layout-grid"
-                        style={{ ...getLayoutGutter(16, 16) }}>
-                        <Grid.Item className="layout-column" span={10}>
-                          {t('label.data-type')}
-                          <span className="text-failure">*</span>
-                        </Grid.Item>
-                        <Grid.Item className="layout-column" span={11}>
-                          {t('label.metric-type')}
-                        </Grid.Item>
-                        <Grid.Item className="layout-column" span={3}>
-                          {t('label.disable')}
-                        </Grid.Item>
-                        {fields.map(({ key, name }) => (
-                          <Fragment key={key}>
-                            <Grid.Item className="layout-column" span={10}>
-                              <Form.Item
-                                name={[name, 'dataType']}
-                                rules={[
-                                  {
-                                    required: true,
-                                    message: t(
-                                      'message.field-text-is-required',
-                                      {
-                                        fieldText: t('label.data-type'),
-                                      }
-                                    ),
-                                  },
-                                ]}>
-                                <Select
-                                  allowClear
-                                  showSearch
-                                  data-testid="data-type-select"
-                                  options={dataTypeOptions}
-                                  placeholder={t('label.select-field', {
-                                    field: t('label.data-type'),
-                                  })}
-                                />
-                              </Form.Item>
-                            </Grid.Item>
-                            <Grid.Item className="layout-column" span={11}>
-                              <Form.Item
-                                noStyle
-                                shouldUpdate={(prevValues, currentValues) => {
-                                  return !isEqual(
-                                    prevValues['metricConfiguration']?.[name]?.[
-                                      'disabled'
-                                    ],
-                                    currentValues['metricConfiguration']?.[
-                                      name
-                                    ]?.['disabled']
-                                  );
-                                }}>
-                                {() => (
-                                  <Form.Item name={[name, 'metrics']}>
-                                    <TreeSelect
-                                      allowClear
-                                      treeCheckable
-                                      data-testid="metric-type-select"
-                                      disabled={form.getFieldValue([
-                                        'metricConfiguration',
-                                        name,
-                                        'disabled',
-                                      ])}
-                                      maxTagCount={5}
-                                      placeholder={t('label.select-field', {
-                                        field: t('label.metric-type'),
-                                      })}
-                                      showCheckedStrategy={
-                                        TreeSelect.SHOW_PARENT
-                                      }
-                                      treeData={PROFILER_METRICS_TYPE_OPTIONS}
-                                    />
-                                  </Form.Item>
-                                )}
-                              </Form.Item>
-                            </Grid.Item>
-                            <Grid.Item
-                              className="layout-column d-flex justify-between"
-                              span={3}>
-                              <Form.Item
-                                name={[name, 'disabled']}
-                                valuePropName="isSelected">
-                                <Toggle data-testid="disabled-switch" />
-                              </Form.Item>
-                              <Form.Item>
-                                <Button
-                                  data-testid={`remove-filter-${name}`}
-                                  icon={<CloseOutlined />}
-                                  size="small"
-                                  onClick={() => remove(name)}
-                                />
-                              </Form.Item>
-                            </Grid.Item>
-                          </Fragment>
-                        ))}
+                </AccordionHeader>
+                <AccordionPanel className="">
+                  <Form.List name="metricConfiguration">
+                    {(fields, { add, remove }) => {
+                      return (
+                        <Grid
+                          className="layout-row layout-grid"
+                          style={{ ...getLayoutGutter(16, 16) }}>
+                          <Grid.Item className="layout-column" span={10}>
+                            {t('label.data-type')}
+                            <span className="text-failure">*</span>
+                          </Grid.Item>
+                          <Grid.Item className="layout-column" span={11}>
+                            {t('label.metric-type')}
+                          </Grid.Item>
+                          <Grid.Item className="layout-column" span={3}>
+                            {t('label.disable')}
+                          </Grid.Item>
+                          {fields.map(({ key, name }) => (
+                            <Fragment key={key}>
+                              <Grid.Item className="layout-column" span={10}>
+                                <Form.Item
+                                  name={[name, 'dataType']}
+                                  rules={[
+                                    {
+                                      required: true,
+                                      message: t(
+                                        'message.field-text-is-required',
+                                        {
+                                          fieldText: t('label.data-type'),
+                                        }
+                                      ),
+                                    },
+                                  ]}>
+                                  <Select
+                                    allowClear
+                                    showSearch
+                                    data-testid="data-type-select"
+                                    options={dataTypeOptions}
+                                    placeholder={t('label.select-field', {
+                                      field: t('label.data-type'),
+                                    })}
+                                  />
+                                </Form.Item>
+                              </Grid.Item>
+                              <Grid.Item className="layout-column" span={11}>
+                                <Form.Item
+                                  noStyle
+                                  shouldUpdate={(prevValues, currentValues) => {
+                                    return !isEqual(
+                                      prevValues['metricConfiguration']?.[
+                                        name
+                                      ]?.['disabled'],
+                                      currentValues['metricConfiguration']?.[
+                                        name
+                                      ]?.['disabled']
+                                    );
+                                  }}>
+                                  {() => (
+                                    <Form.Item name={[name, 'metrics']}>
+                                      <TreeSelect
+                                        allowClear
+                                        treeCheckable
+                                        data-testid="metric-type-select"
+                                        disabled={form.getFieldValue([
+                                          'metricConfiguration',
+                                          name,
+                                          'disabled',
+                                        ])}
+                                        maxTagCount={5}
+                                        placeholder={t('label.select-field', {
+                                          field: t('label.metric-type'),
+                                        })}
+                                        showCheckedStrategy={
+                                          TreeSelect.SHOW_PARENT
+                                        }
+                                        treeData={PROFILER_METRICS_TYPE_OPTIONS}
+                                      />
+                                    </Form.Item>
+                                  )}
+                                </Form.Item>
+                              </Grid.Item>
+                              <Grid.Item
+                                className="layout-column d-flex justify-between"
+                                span={3}>
+                                <Form.Item
+                                  name={[name, 'disabled']}
+                                  valuePropName="isSelected">
+                                  <Toggle data-testid="disabled-switch" />
+                                </Form.Item>
+                                <Form.Item>
+                                  <Button
+                                    data-testid={`remove-filter-${name}`}
+                                    icon={<CloseOutlined />}
+                                    size="small"
+                                    onClick={() => remove(name)}
+                                  />
+                                </Form.Item>
+                              </Grid.Item>
+                            </Fragment>
+                          ))}
 
-                        <Grid.Item className="layout-column" span={24}>
-                          <div className="matrix-collapse-footer">
-                            <Button
-                              className="text-primary p-0"
-                              data-testid="add-fields"
-                              icon={<PlusOutlined />}
-                              type="text"
-                              onClick={() => add()}>
-                              {t('label.add-new-field')}
-                            </Button>
-                          </div>
-                        </Grid.Item>
-                      </Grid>
-                    );
-                  }}
-                </Form.List>
-              </Collapse.Panel>
-            </Collapse>
+                          <Grid.Item className="layout-column" span={24}>
+                            <div className="matrix-collapse-footer">
+                              <Button
+                                className="text-primary p-0"
+                                data-testid="add-fields"
+                                icon={<PlusOutlined />}
+                                type="text"
+                                onClick={() => add()}>
+                                {t('label.add-new-field')}
+                              </Button>
+                            </div>
+                          </Grid.Item>
+                        </Grid>
+                      );
+                    }}
+                  </Form.List>
+                </AccordionPanel>
+              </AccordionItem>
+            </Accordion>
           </Grid.Item>
 
           <Grid.Item className="layout-column" span={24}>
-            <Collapse
-              className="profiler-configuration-collapse"
-              defaultActiveKey={['sampleDataConfig']}
-              expandIconPosition="right">
-              <Collapse.Panel
-                header={
+            <Accordion
+              allowsMultipleExpanded
+              className={'profiler-configuration-collapse' + '  '}
+              defaultExpandedKeys={new Set(['sampleDataConfig'])}>
+              <AccordionItem
+                className=""
+                id={String('sampleDataConfig')}
+                key="sampleDataConfig">
+                <AccordionHeader className="">
                   <PageHeader
                     data={{
                       header: t('label.sample-data-ingestion-configuration'),
@@ -337,79 +348,90 @@ const ProfilerConfigurationPage = () => {
                       ),
                     }}
                   />
-                }
-                key="sampleDataConfig">
-                <Grid
-                  className="layout-row layout-grid"
-                  data-testid="sample-data-ingestion-config"
-                  style={{ ...getLayoutGutter(0, 24) }}>
-                  <Grid.Item className="layout-column" span={24}>
-                    <Box
-                      align="center"
-                      className="layout-row"
-                      justify="between"
-                      wrap="nowrap">
+                </AccordionHeader>
+                <AccordionPanel className="">
+                  <Grid
+                    className="layout-row layout-grid"
+                    data-testid="sample-data-ingestion-config"
+                    style={{ ...getLayoutGutter(0, 24) }}>
+                    <Grid.Item className="layout-column" span={24}>
                       <Box
-                        className="layout-column tw:block"
-                        style={{ flex: 'auto' }}>
-                        <Typography weight="semibold">
-                          {t('label.enable-storing-of-sample-data')}
-                        </Typography>
-                        <Typography as="p" className="m-b-0" color="secondary">
-                          {t('message.enable-storing-sample-data-description')}
-                        </Typography>
+                        align="center"
+                        className="layout-row"
+                        justify="between"
+                        wrap="nowrap">
+                        <Box
+                          className="layout-column tw:block"
+                          style={{ flex: 'auto' }}>
+                          <Typography weight="semibold">
+                            {t('label.enable-storing-of-sample-data')}
+                          </Typography>
+                          <Typography
+                            as="p"
+                            className="m-b-0"
+                            color="secondary">
+                            {t(
+                              'message.enable-storing-sample-data-description'
+                            )}
+                          </Typography>
+                        </Box>
+                        <Box
+                          className="layout-column tw:block p-l-lg"
+                          style={{ flex: 'none' }}>
+                          <Form.Item
+                            name={['sampleDataConfig', 'storeSampleData']}
+                            valuePropName="isSelected">
+                            <Toggle
+                              data-testid="store-sample-data-switch"
+                              onChange={(isSelected) => {
+                                if (isSelected) {
+                                  form.setFieldValue(
+                                    ['sampleDataConfig', 'readSampleData'],
+                                    true
+                                  );
+                                }
+                              }}
+                            />
+                          </Form.Item>
+                        </Box>
                       </Box>
+                    </Grid.Item>
+                    <Grid.Item className="layout-column" span={24}>
                       <Box
-                        className="layout-column tw:block p-l-lg"
-                        style={{ flex: 'none' }}>
-                        <Form.Item
-                          name={['sampleDataConfig', 'storeSampleData']}
-                          valuePropName="isSelected">
-                          <Toggle
-                            data-testid="store-sample-data-switch"
-                            onChange={(isSelected) => {
-                              if (isSelected) {
-                                form.setFieldValue(
-                                  ['sampleDataConfig', 'readSampleData'],
-                                  true
-                                );
-                              }
-                            }}
-                          />
-                        </Form.Item>
+                        align="center"
+                        className="layout-row"
+                        justify="between"
+                        wrap="nowrap">
+                        <Box
+                          className="layout-column tw:block"
+                          style={{ flex: 'auto' }}>
+                          <Typography weight="semibold">
+                            {t('label.enable-reading-of-sample-data')}
+                          </Typography>
+                          <Typography
+                            as="p"
+                            className="m-b-0"
+                            color="secondary">
+                            {t(
+                              'message.enable-reading-sample-data-description'
+                            )}
+                          </Typography>
+                        </Box>
+                        <Box
+                          className="layout-column tw:block p-l-lg"
+                          style={{ flex: 'none' }}>
+                          <Form.Item
+                            name={['sampleDataConfig', 'readSampleData']}
+                            valuePropName="isSelected">
+                            <Toggle data-testid="read-sample-data-switch" />
+                          </Form.Item>
+                        </Box>
                       </Box>
-                    </Box>
-                  </Grid.Item>
-                  <Grid.Item className="layout-column" span={24}>
-                    <Box
-                      align="center"
-                      className="layout-row"
-                      justify="between"
-                      wrap="nowrap">
-                      <Box
-                        className="layout-column tw:block"
-                        style={{ flex: 'auto' }}>
-                        <Typography weight="semibold">
-                          {t('label.enable-reading-of-sample-data')}
-                        </Typography>
-                        <Typography as="p" className="m-b-0" color="secondary">
-                          {t('message.enable-reading-sample-data-description')}
-                        </Typography>
-                      </Box>
-                      <Box
-                        className="layout-column tw:block p-l-lg"
-                        style={{ flex: 'none' }}>
-                        <Form.Item
-                          name={['sampleDataConfig', 'readSampleData']}
-                          valuePropName="isSelected">
-                          <Toggle data-testid="read-sample-data-switch" />
-                        </Form.Item>
-                      </Box>
-                    </Box>
-                  </Grid.Item>
-                </Grid>
-              </Collapse.Panel>
-            </Collapse>
+                    </Grid.Item>
+                  </Grid>
+                </AccordionPanel>
+              </AccordionItem>
+            </Accordion>
           </Grid.Item>
 
           <Grid.Item className="layout-column" span={24}>

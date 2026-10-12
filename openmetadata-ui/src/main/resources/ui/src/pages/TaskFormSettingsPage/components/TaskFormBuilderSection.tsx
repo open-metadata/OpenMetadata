@@ -25,8 +25,14 @@
  */
 
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
-import { Box, Card, Typography } from '@openmetadata/ui-core-components';
-import { Button, Checkbox, Empty, Form, Input, Select } from 'antd';
+import {
+  Box,
+  Card,
+  Checkbox,
+  EmptyPlaceholder,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Button, Form, Input, Select } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { JsonSchemaObject } from '../../../rest/taskFormSchemasAPI';
@@ -288,27 +294,27 @@ const TaskFormBuilderSection = ({
                         gap={6}
                         itemClassName="layout-space-item">
                         <Checkbox
-                          checked={field.required}
                           data-testid={`${testIdPrefix}-field-required-${index}`}
+                          isSelected={field.required}
+                          label={<>{t('label.required')}</>}
                           onChange={(event) =>
                             updateField(index, (currentField) => ({
                               ...currentField,
-                              required: event.target.checked,
+                              required: event,
                             }))
-                          }>
-                          {t('label.required')}
-                        </Checkbox>
+                          }
+                        />
                         <Checkbox
-                          checked={field.hidden}
                           data-testid={`${testIdPrefix}-field-hidden-${index}`}
+                          isSelected={field.hidden}
+                          label={<>{t('label.hidden')}</>}
                           onChange={(event) =>
                             updateField(index, (currentField) => ({
                               ...currentField,
-                              hidden: event.target.checked,
+                              hidden: event,
                             }))
-                          }>
-                          {t('label.hidden')}
-                        </Checkbox>
+                          }
+                        />
                       </Box>
                     </div>
                   </Card.Content>
@@ -316,10 +322,11 @@ const TaskFormBuilderSection = ({
               );
             })
           ) : (
-            <Empty
+            <EmptyPlaceholder
+              className="tw:static"
               data-testid={`${testIdPrefix}-empty`}
               description="No fields configured yet"
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              width="100%"
             />
           )}
         </div>

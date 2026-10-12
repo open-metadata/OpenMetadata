@@ -14,14 +14,16 @@
 import {
   Box,
   Button,
+  SlideoutMenu,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Drawer, Select } from 'antd';
+import { Select } from 'antd';
 import { AxiosError } from 'axios';
 import {
   useCallback,
   useEffect,
+  useId,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -34,6 +36,7 @@ import { getReindexFailures } from '../../../../rest/searchAPI';
 import { formatDateTimeWithTimezone } from '../../../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import CopyToClipboardButton from '../../../common/CopyToClipboardButton/CopyToClipboardButton';
+import { DrawerPopupContainerProvider } from '../../../common/DrawerPopupContainerProvider/DrawerPopupContainerProvider';
 import { ColumnsType } from '../../../common/Table/Table.interface';
 import Table from '../../../common/Table/TableV2';
 import {
@@ -83,6 +86,8 @@ const ReindexFailures = ({
   onClose,
   appName,
 }: ReindexFailuresProps) => {
+  const drawerTitleId = useId();
+
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<ReindexFailureRecord[]>([]);
@@ -229,67 +234,80 @@ const ReindexFailures = ({
     [t]
   );
 
+  // Popup portals belong to the drawer even though they render outside its DOM tree.
   return (
-    <Drawer
-      destroyOnClose
-      open={visible}
-      placement="right"
-      title={t('label.reindex-failure-plural')}
+    <SlideoutMenu
+      isDismissable
+      aria-labelledby={drawerTitleId}
+      isOpen={visible}
+      shouldCloseOnInteractOutside={(element) =>
+        !element.closest('[data-react-aria-top-layer]')
+      }
       width={900}
-      onClose={onClose}>
-      <Box
-        inline
-        align="stretch"
-        className="layout-space w-full m-b-md"
-        direction="col"
-        gap={2}
-        itemClassName="layout-space-item">
-        <Box
-          inline
-          align="center"
-          className="layout-space layout-space-horizontal"
-          gap={2}
-          itemClassName="layout-space-item">
-          <Typography>{t('label.filter-by-entity-type')}:</Typography>
-          <Select
-            allowClear
-            placeholder={t('label.all')}
-            style={{ width: 200 }}
-            value={entityTypeFilter}
-            onChange={handleEntityTypeChange}>
-            {entityTypes.map((type) => (
-              <Select.Option key={type} value={type}>
-                {type}
-              </Select.Option>
-            ))}
-          </Select>
-        </Box>
-        {total > 0 && (
-          <Typography color="secondary">
-            {t('label.showing-total-failure-plural', { total })}
-          </Typography>
-        )}
-      </Box>
-
-      <Table
-        columns={columns}
-        dataSource={data}
-        loading={loading}
-        pagination={{
-          current: currentPage,
-          pageSize: PAGE_SIZE,
-          showSizeChanger: false,
-          total,
-        }}
-        rowKey="id"
-        // Columns are fixed widths summing 950px (120+150+100+400+180) — wider
-        // than the 900px drawer. Set the horizontal extent so TableV2 scrolls
-        // rather than collapsing the columns into the drawer width.
-        scroll={{ x: 950, y: 'calc(100vh - 280px)' }}
-        size="small"
-        onChange={({ current }) => handlePageChange(current ?? 1)}
-      />
-    </Drawer>
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) {
+          onClose();
+        }
+      }}>
+      <SlideoutMenu.Header showCloseButton id={drawerTitleId} onClose={onClose}>
+        {t('label.reindex-failure-plural')}
+      </SlideoutMenu.Header>
+      <SlideoutMenu.Content role="region">
+        <DrawerPopupContainerProvider>
+          <Box
+            inline
+            align="stretch"
+            className="layout-space w-full m-b-md"
+            direction="col"
+            gap={2}
+            itemClassName="layout-space-item">
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal"
+              gap={2}
+              itemClassName="layout-space-item">
+              <Typography>{t('label.filter-by-entity-type')}:</Typography>
+              <Select
+                allowClear
+                placeholder={t('label.all')}
+                style={{ width: 200 }}
+                value={entityTypeFilter}
+                onChange={handleEntityTypeChange}>
+                {entityTypes.map((type) => (
+                  <Select.Option key={type} value={type}>
+                    {type}
+                  </Select.Option>
+                ))}
+              </Select>
+            </Box>
+            {total > 0 && (
+              <Typography color="secondary">
+                {t('label.showing-total-failure-plural', { total })}
+              </Typography>
+            )}
+          </Box>
+          <Table
+            columns={columns}
+            dataSource={data}
+            loading={loading}
+            pagination={{
+              current: currentPage,
+              pageSize: PAGE_SIZE,
+              showSizeChanger: false,
+              total,
+            }}
+            rowKey="id"
+            // Columns are fixed widths summing 950px (120+150+100+400+180) — wider
+            // than the 900px drawer. Set the horizontal extent so TableV2 scrolls
+            // rather than collapsing the columns into the drawer width.
+            scroll={{ x: 950, y: 'calc(100vh - 280px)' }}
+            size="small"
+            onChange={({ current }) => handlePageChange(current ?? 1)}
+          />
+        </DrawerPopupContainerProvider>
+      </SlideoutMenu.Content>
+    </SlideoutMenu>
   );
 };
 

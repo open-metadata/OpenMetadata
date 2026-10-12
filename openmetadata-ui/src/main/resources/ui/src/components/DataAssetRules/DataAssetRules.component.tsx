@@ -18,7 +18,7 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Form, Input, Modal, Table } from 'antd';
+import { Button, Form, Input, Modal } from 'antd';
 import { FormInstance } from 'antd/es/form/Form';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -40,6 +40,7 @@ import jsonLogicSearchClassBase from '../../utils/JSONLogicSearchClassBase';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import QueryBuilderWidget from '../common/Form/JSONSchema/JsonSchemaWidgets/QueryBuilderWidget/QueryBuilderWidget';
 import RichTextEditorPreviewerNew from '../common/RichTextEditor/RichTextEditorPreviewNew';
+import Table from '../common/Table/TableV2';
 import { SearchOutputType } from '../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import './DataAssetRules.less';
 

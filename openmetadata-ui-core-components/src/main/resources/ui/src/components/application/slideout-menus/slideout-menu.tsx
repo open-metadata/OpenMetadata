@@ -83,6 +83,7 @@ interface SlideoutMenuProps
   extends Omit<AriaModalOverlayProps, 'children'>,
     RefAttributes<HTMLDivElement> {
   'aria-label'?: string;
+  'aria-labelledby'?: string;
   children:
     | ReactNode
     | ((children: AriaModalRenderProps & { close: () => void }) => ReactNode);
@@ -92,6 +93,7 @@ interface SlideoutMenuProps
 
 const Menu = ({
   'aria-label': ariaLabel,
+  'aria-labelledby': ariaLabelledBy,
   children,
   dialogClassName,
   width,
@@ -109,7 +111,10 @@ const Menu = ({
         }
         style={width !== undefined ? { maxWidth: width } : undefined}>
         {(state) => (
-          <Dialog aria-label={ariaLabel} className={dialogClassName}>
+          <Dialog
+            aria-label={ariaLabel}
+            aria-labelledby={ariaLabelledBy}
+            className={dialogClassName}>
             {({ close }) => {
               return typeof children === 'function'
                 ? children({ ...state, close })
@@ -139,12 +144,15 @@ Content.displayName = 'SlideoutContent';
 
 interface SlideoutHeaderProps extends ComponentPropsWithRef<'header'> {
   onClose?: () => void;
+  /** Omit the built-in close control when the caller already supplies one. */
+  showCloseButton?: boolean;
 }
 
 const Header = ({
   className,
   children,
   onClose,
+  showCloseButton = true,
   ...props
 }: SlideoutHeaderProps) => {
   return (
@@ -155,11 +163,13 @@ const Header = ({
         className
       )}>
       {children}
-      <CloseButton
-        className="tw:absolute tw:top-1/2 tw:right-3 tw:shrink-0 tw:-translate-y-1/2"
-        size="md"
-        onClick={onClose}
-      />
+      {showCloseButton && (
+        <CloseButton
+          className="tw:absolute tw:top-1/2 tw:right-3 tw:shrink-0 tw:-translate-y-1/2"
+          size="md"
+          onClick={onClose}
+        />
+      )}
     </header>
   );
 };

@@ -12,13 +12,19 @@
  */
 import Icon from '@ant-design/icons';
 import {
+  Accordion,
+  AccordionHeader,
+  AccordionItem,
+  AccordionPanel,
+  Badge,
+  Box,
   Divider,
   Toggle,
   Tooltip,
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Badge, Button, Collapse, Select, Slider } from 'antd';
+import { Button, Select, Slider } from 'antd';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as Delete } from '../../../assets/svg/delete-colored.svg';
@@ -91,134 +97,144 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
   ];
 
   return (
-    <Collapse
-      activeKey={activeFieldKeys[index] || []}
-      bordered={false}
+    <Accordion
+      allowsMultipleExpanded
+      className={'' + ' tw:outline-0 tw:divide-y-0'}
       data-field-name={field.fieldName}
+      expandedKeys={new Set(activeFieldKeys[index] || [])}
       key={index}
-      onChange={(key) => handleCollapseChange(key, index)}>
-      <Collapse.Panel
-        className=" custom-panel m-b-md"
+      onExpandedChange={(keys) =>
+        ((key) => handleCollapseChange(key, index))([...keys].map(String))
+      }>
+      <AccordionItem
+        className="custom-panel m-b-md"
         data-testid={`field-configuration-panel-${field.fieldName}`}
-        header={
-          <div
-            className="field-container-header"
-            data-testid="field-container-header"
-            style={{
-              backgroundColor: activeFieldKeys[index]?.includes(String(index))
-                ? '#F5FAFF'
-                : 'white',
-            }}>
-            <div className="d-flex items-center justify-between">
-              <div className="d-flex items-center gap-2">
-                <Typography data-testid="field-name">
-                  {field.fieldName}
-                </Typography>
-                {field.fieldName.startsWith('extension.') && (
-                  <Badge
-                    className="custom-property-badge"
-                    color="blue"
-                    count={t('label.custom')}
-                    data-testid="custom-property-badge"
-                  />
-                )}
+        id={String(String(index))}
+        key={String(index)}>
+        <Box align="start" className="tw:relative" gap={2}>
+          <AccordionHeader
+            className="tw:flex-1 tw:group-data-expanded/item:bg-brand-primary_alt"
+            showChevron={false}>
+            <Box className="tw:w-full">
+              <div
+                className="field-container-header"
+                data-testid="field-container-header">
+                <div className="d-flex items-center justify-between">
+                  <div className="d-flex items-center gap-2">
+                    <Typography data-testid="field-name">
+                      {field.fieldName}
+                    </Typography>
+                    {field.fieldName.startsWith('extension.') && (
+                      <Badge
+                        className="custom-property-badge"
+                        color="brand"
+                        data-testid="custom-property-badge"
+                        size="sm">
+                        {t('label.custom')}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+
+                <div className="d-flex items-center justify-between gap-2 m-y-xss">
+                  <span className="text-grey-muted text-xs font-normal">
+                    {fieldDescription ?? t('label.no-description')}
+                  </span>
+                  <span
+                    className="p-x-xs font-semibold text-primary d-flex items-center field-weightage"
+                    data-testid="field-weight">
+                    <Icon className="text-md" component={FilterIcon} />
+                    {fieldWeight < 10 ? `0${fieldWeight}` : fieldWeight}
+                  </span>
+                </div>
               </div>
-              <Button
-                className="delete-search-field"
-                data-testid="delete-search-field"
-                icon={<Icon className="text-md" component={Delete} />}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDeleteSearchField(field.fieldName);
-                }}
+            </Box>
+          </AccordionHeader>
+          <Box className="tw:absolute tw:end-3 tw:top-3">
+            <Button
+              className="delete-search-field"
+              data-testid="delete-search-field"
+              icon={<Icon className="text-md" component={Delete} />}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDeleteSearchField(field.fieldName);
+              }}
+            />
+          </Box>
+        </Box>
+        <AccordionPanel className="">
+          <Divider className="m-0" />
+          <div className="m-y-sm" style={{ padding: '10px' }}>
+            {/* Highlight Fields Section */}
+            <div className="m-y-md m-b-lg d-flex items-center justify-between">
+              <Typography>{t('label.highlight-field-plural')}</Typography>
+              {isHighlightAllowed ? (
+                <Toggle
+                  className="m-l-xlg"
+                  data-testid="highlight-field-switch"
+                  isSelected={
+                    searchSettings?.highlightFields?.includes(
+                      field.fieldName
+                    ) ?? false
+                  }
+                  size="sm"
+                  onChange={() => onHighlightFieldsChange(field.fieldName)}
+                />
+              ) : (
+                <Tooltip
+                  placement="top"
+                  title={t('message.field-cannot-be-highlighted')}>
+                  <TooltipTrigger>
+                    <Toggle
+                      isDisabled
+                      className="m-l-xlg"
+                      data-testid="highlight-field-switch"
+                      isSelected={false}
+                      size="sm"
+                    />
+                  </TooltipTrigger>
+                </Tooltip>
+              )}
+            </div>
+            <Divider className="tw:my-6" />
+
+            {/* Weight Section */}
+            <div className="m-y-md m-b-lg d-flex items-center justify-between">
+              <Typography>{t('label.weight')}</Typography>
+              <Typography
+                className="font-semibold field-weightage-text"
+                data-testid="field-weight-value">
+                {fieldWeight}
+              </Typography>
+            </div>
+            <div data-testid="field-weight-slider">
+              <Slider
+                max={100}
+                min={0}
+                step={0.1}
+                tooltip={{ open: false }}
+                value={fieldWeight}
+                onChange={handleWeightChange}
               />
             </div>
+            <Divider className="tw:my-6" />
 
-            <div className="d-flex items-center justify-between gap-2 m-y-xss">
-              <span className="text-grey-muted text-xs font-normal">
-                {fieldDescription ?? t('label.no-description')}
-              </span>
-              <span
-                className="p-x-xs font-semibold text-primary d-flex items-center field-weightage"
-                data-testid="field-weight">
-                <Icon className="text-md" component={FilterIcon} />
-                {fieldWeight < 10 ? `0${fieldWeight}` : fieldWeight}
-              </span>
-            </div>
-          </div>
-        }
-        key={String(index)}
-        showArrow={false}>
-        <Divider className="m-0" />
-        <div className="m-y-sm" style={{ padding: '10px' }}>
-          {/* Highlight Fields Section */}
-          <div className="m-y-md m-b-lg d-flex items-center justify-between">
-            <Typography>{t('label.highlight-field-plural')}</Typography>
-            {isHighlightAllowed ? (
-              <Toggle
+            {/* Match Type Section */}
+            <div className="m-y-md m-b-lg d-flex items-center justify-between">
+              <Typography>{t('label.match-type')}</Typography>
+              <Select
                 className="m-l-xlg"
-                data-testid="highlight-field-switch"
-                isSelected={
-                  searchSettings?.highlightFields?.includes(field.fieldName) ??
-                  false
-                }
-                size="sm"
-                onChange={() => onHighlightFieldsChange(field.fieldName)}
+                data-testid="match-type-select"
+                options={matchTypeOptions}
+                style={{ width: 150 }}
+                value={fieldMatchType}
+                onChange={handleMatchTypeChange}
               />
-            ) : (
-              <Tooltip
-                placement="top"
-                title={t('message.field-cannot-be-highlighted')}>
-                <TooltipTrigger>
-                  <Toggle
-                    isDisabled
-                    className="m-l-xlg"
-                    data-testid="highlight-field-switch"
-                    isSelected={false}
-                    size="sm"
-                  />
-                </TooltipTrigger>
-              </Tooltip>
-            )}
+            </div>
           </div>
-          <Divider className="tw:my-6" />
-
-          {/* Weight Section */}
-          <div className="m-y-md m-b-lg d-flex items-center justify-between">
-            <Typography>{t('label.weight')}</Typography>
-            <Typography
-              className="font-semibold field-weightage-text"
-              data-testid="field-weight-value">
-              {fieldWeight}
-            </Typography>
-          </div>
-          <div data-testid="field-weight-slider">
-            <Slider
-              max={100}
-              min={0}
-              step={0.1}
-              tooltip={{ open: false }}
-              value={fieldWeight}
-              onChange={handleWeightChange}
-            />
-          </div>
-          <Divider className="tw:my-6" />
-
-          {/* Match Type Section */}
-          <div className="m-y-md m-b-lg d-flex items-center justify-between">
-            <Typography>{t('label.match-type')}</Typography>
-            <Select
-              className="m-l-xlg"
-              data-testid="match-type-select"
-              options={matchTypeOptions}
-              style={{ width: 150 }}
-              value={fieldMatchType}
-              onChange={handleMatchTypeChange}
-            />
-          </div>
-        </div>
-      </Collapse.Panel>
-    </Collapse>
+        </AccordionPanel>
+      </AccordionItem>
+    </Accordion>
   );
 };
 

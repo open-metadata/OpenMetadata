@@ -15,6 +15,7 @@ import {
   Box,
   Button,
   Card,
+  SlideoutMenu,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -24,7 +25,9 @@ import {
   ChevronUp,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
-import { Drawer } from 'antd';
+import { useId } from 'react';
+import { DrawerPopupContainerProvider } from '../../common/DrawerPopupContainerProvider/DrawerPopupContainerProvider';
+
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isString } from 'lodash';
@@ -128,6 +131,8 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   tableConstraints = [],
   entityType,
 }: ColumnDetailPanelProps<T>) => {
+  const drawerTitleId = useId();
+
   const { t } = useTranslation();
   const { permissions, changeSummary } = useGenericContext();
 
@@ -1062,37 +1067,51 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     </div>
   );
 
+  // Popup portals belong to the drawer even though they render outside its DOM tree.
   return (
-    <Drawer
-      className="column-detail-panel"
-      closable={false}
-      footer={navFooter}
-      open={isOpen}
-      placement="right"
-      title={columnTitle}
+    <SlideoutMenu
+      isDismissable
+      aria-labelledby={drawerTitleId}
+      dialogClassName="column-detail-panel"
+      isOpen={isOpen}
+      shouldCloseOnInteractOutside={(element) =>
+        !element.closest('[data-react-aria-top-layer]')
+      }
       width="40%"
-      onClose={onClose}>
-      <div className="column-detail-panel-container">
-        <div className="tw:flex tw:gap-2 tw:h-full">
-          <Card className="summary-panel-container" variant="ghost">
-            <Card
-              className="tw:h-full tw:overflow-y-auto tw:max-h-full"
-              style={{ width: '100%' }}>
-              {renderTabContent()}
-            </Card>
-          </Card>
-          <div className="tw:mr-2">
-            <EntityRightPanelVerticalNav
-              isColumnDetailPanel
-              activeTab={activeTab}
-              entityType={entityType}
-              verticalNavConatinerclassName="tw:w-[70px]"
-              onTabChange={handleTabChange}
-            />
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) {
+          onClose();
+        }
+      }}>
+      <SlideoutMenu.Header id={drawerTitleId} showCloseButton={false}>
+        {columnTitle}
+      </SlideoutMenu.Header>
+      <SlideoutMenu.Content role="region">
+        <DrawerPopupContainerProvider>
+          <div className="column-detail-panel-container">
+            <div className="tw:flex tw:gap-2 tw:h-full">
+              <Card className="summary-panel-container" variant="ghost">
+                <Card
+                  className="tw:h-full tw:overflow-y-auto tw:max-h-full"
+                  style={{ width: '100%' }}>
+                  {renderTabContent()}
+                </Card>
+              </Card>
+              <div className="tw:mr-2">
+                <EntityRightPanelVerticalNav
+                  isColumnDetailPanel
+                  activeTab={activeTab}
+                  entityType={entityType}
+                  verticalNavConatinerclassName="tw:w-[70px]"
+                  onTabChange={handleTabChange}
+                />
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
-      {renderDisplayNameModal()}
-    </Drawer>
+          {renderDisplayNameModal()}
+        </DrawerPopupContainerProvider>
+      </SlideoutMenu.Content>
+      <SlideoutMenu.Footer>{navFooter}</SlideoutMenu.Footer>
+    </SlideoutMenu>
   );
 };

@@ -10,12 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import AssetSelectionContentBody, {
   AssetSelectionContentBodyProps,
 } from './AssetSelectionContentBody';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Alert: jest.requireActual('@openmetadata/ui-core-components').Alert,
+  Checkbox: jest.requireActual('@openmetadata/ui-core-components').Checkbox,
   Box: ({
     children,
     onScroll,
@@ -269,6 +277,37 @@ describe('AssetSelectionContentBody', () => {
     expect(
       screen.getByText('label.validation-error-plural')
     ).toBeInTheDocument();
+  });
+
+  it('dismisses failed requests and restores the alert for a later failure', async () => {
+    const failedStatus = {
+      failedRequest: [{ request: { id: '1' }, message: 'failed' }],
+    } as never;
+    const { rerender } = render(
+      <AssetSelectionContentBody
+        {...defaultProps}
+        failedStatus={failedStatus}
+      />
+    );
+
+    fireEvent.click(
+      within(screen.getByRole('alert')).getByRole('button', { name: /close/i })
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    );
+
+    rerender(<AssetSelectionContentBody {...defaultProps} />);
+    rerender(
+      <AssetSelectionContentBody
+        {...defaultProps}
+        failedStatus={failedStatus}
+      />
+    );
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'label.validation-error-plural'
+    );
   });
 
   it('should not show validation error alert when failedStatus has no failed requests', () => {

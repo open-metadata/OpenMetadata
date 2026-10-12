@@ -11,9 +11,15 @@
  *  limitations under the License.
  */
 
-import { Box, Card, Grid, Typography } from '@openmetadata/ui-core-components';
-import { Empty } from 'antd';
-import Tree from 'antd/lib/tree';
+import {
+  Box,
+  Card,
+  EmptyPlaceholder,
+  Grid,
+  Tree,
+  Typography,
+} from '@openmetadata/ui-core-components';
+
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,6 +28,7 @@ import {
   PipelineStatus,
   Task,
 } from '../../../../generated/entity/data/pipeline';
+import { TreeNode } from '../../../../interface/tree.interface';
 import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getTreeData, getTreeViewData } from '../../../../utils/executionUtils';
@@ -54,6 +61,25 @@ const TreeViewTab = ({
 
   const { t } = useTranslation();
 
+  const renderNode = (
+    node: TreeNode,
+    showGuideLines: boolean
+  ): React.ReactNode => (
+    <Tree.Item id={node.key} key={node.key} textValue={String(node.key)}>
+      <Tree.ItemContent
+        className="tw:min-h-9"
+        indentPerLevel={showGuideLines ? 22 : 0}
+        showExpandIcon={false}
+        showGuideLines={showGuideLines}>
+        {node.icon}
+        {node.title}
+      </Tree.ItemContent>
+      {node.children?.map((child) => renderNode(child, showGuideLines))}
+    </Tree.Item>
+  );
+  const expandedKeys = (nodes: TreeNode[]): (string | number)[] =>
+    nodes.flatMap((node) => [node.key, ...expandedKeys(node.children ?? [])]);
+
   return (
     <Card>
       <Card.Content>
@@ -79,29 +105,28 @@ const TreeViewTab = ({
         </Box>
 
         {isEmpty(viewData) ? (
-          <Empty
-            className="my-4"
+          <EmptyPlaceholder
+            className="tw:static my-4"
             description={t('message.no-execution-runs-found')}
+            width="100%"
           />
         ) : (
           <Grid className="layout-row layout-grid w-full">
             <Grid.Item className="layout-column" span={12}>
               <Tree
-                defaultExpandAll
-                showIcon
-                showLine={{ showLeafIcon: false }}
-                switcherIcon={<></>}
-                treeData={treeLabelList}
-              />
+                aria-label={t('label.task-plural')}
+                defaultExpandedKeys={expandedKeys(treeLabelList)}
+                selectionMode="none">
+                {treeLabelList.map((node) => renderNode(node, true))}
+              </Tree>
             </Grid.Item>
             <Grid.Item className="layout-column" span={12}>
               <Tree
-                defaultExpandAll
-                showIcon
-                className="tree-without-indent"
-                switcherIcon={<></>}
-                treeData={treeDataList}
-              />
+                aria-label={t('label.task-plural')}
+                defaultExpandedKeys={expandedKeys(treeDataList)}
+                selectionMode="none">
+                {treeDataList.map((node) => renderNode(node, false))}
+              </Tree>
             </Grid.Item>
           </Grid>
         )}

@@ -16,12 +16,13 @@ import {
   ExclamationCircleOutlined,
 } from '@ant-design/icons';
 import {
+  CheckboxBase,
   Divider,
   Grid,
   Skeleton,
   Tooltip,
 } from '@openmetadata/ui-core-components';
-import { AlertProps, Checkbox, Select } from 'antd';
+import { Select } from 'antd';
 import Form from 'antd/lib/form';
 import { AxiosError } from 'axios';
 import { isEmpty, uniq, uniqBy } from 'lodash';
@@ -579,7 +580,9 @@ export const getSourceOptionsFromResourceList = (
         className="d-flex items-center gap-2"
         data-testid={`${resource}-option`}>
         {showCheckbox && (
-          <Checkbox checked={selectedResource?.includes(resource)} />
+          <span aria-hidden="true">
+            <CheckboxBase isSelected={selectedResource?.includes(resource)} />
+          </span>
         )}
         {showIcon &&
           searchClassBase.getEntityIconWithBg(
@@ -668,7 +671,7 @@ export const getDestinationStatusAlertData = (destinationStatus?: string) => {
     destinationStatus === DestinationStatus.Success
       ? t('label.success')
       : t('label.failed');
-  const alertType: AlertProps['type'] =
+  const alertType: 'success' | 'error' =
     destinationStatus === DestinationStatus.Success ? 'success' : 'error';
   const alertClassName =
     destinationStatus === DestinationStatus.Success

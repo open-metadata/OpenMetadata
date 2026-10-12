@@ -12,16 +12,18 @@
  */
 
 import {
+  Alert,
   Button as CoreButton,
   ButtonUtility,
+  Dot,
   Dropdown,
   Popover,
   PopoverTrigger,
   Tooltip as CoreTooltip,
   Tooltip,
 } from '@openmetadata/ui-core-components';
-import { Alert, Badge, Button, InputRef } from 'antd';
-import { Header } from 'antd/lib/layout/layout';
+import { RefreshCw01 } from '@openmetadata/ui-core-components/icons';
+import { Button, InputRef } from 'antd';
 import { AxiosError } from 'axios';
 import { CookieStorage } from 'cookie-storage';
 import { startCase, upperCase } from 'lodash';
@@ -39,7 +41,6 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DropDownIcon } from '../../assets/svg/drop-down.svg';
 import { ReactComponent as IconBell } from '../../assets/svg/ic-alert-bell.svg';
 import { ReactComponent as Help } from '../../assets/svg/ic-help.svg';
-import { ReactComponent as RefreshIcon } from '../../assets/svg/ic-refresh.svg';
 import { ReactComponent as SidebarCollapsedIcon } from '../../assets/svg/ic-sidebar-collapsed.svg';
 import { ReactComponent as SidebarExpandedIcon } from '../../assets/svg/ic-sidebar-expanded.svg';
 import {
@@ -569,7 +570,9 @@ const NavBar = () => {
       showVersionMissMatchAlert ? (
         <Alert
           showIcon
-          action={
+          className="refresh-alert slide-in-top"
+          icon={RefreshCw01}
+          rightContent={
             <Button
               size="small"
               type="link"
@@ -579,19 +582,17 @@ const NavBar = () => {
               {t('label.refresh')}
             </Button>
           }
-          className="refresh-alert slide-in-top"
-          description="For a seamless experience recommend you to refresh the page"
-          icon={<RefreshIcon />}
-          message="A new version is available"
-          type="info"
-        />
+          title={t('message.new-version-available')}
+          variant="brand">
+          {t('message.refresh-page-recommended')}
+        </Alert>
       ) : null,
     [showVersionMissMatchAlert, navigate, t]
   );
 
   return (
     <>
-      <Header style={headerStyle}>
+      <header style={headerStyle}>
         <div className="navbar-container">
           <div className="flex-center gap-2">
             <Tooltip arrow placement="right" title={sidebarTooltipTitle}>
@@ -642,11 +643,17 @@ const NavBar = () => {
                 aria-label={t('label.notification-plural')}
                 color="tertiary"
                 iconLeading={
-                  <Badge
-                    dot={hasTaskNotification || hasMentionNotification}
-                    offset={[-3, 3]}>
+                  <span className="tw:relative tw:inline-flex tw:items-center">
                     <IconBell data-testid="task-notifications" width={20} />
-                  </Badge>
+                    {(hasTaskNotification || hasMentionNotification) && (
+                      <Dot
+                        aria-label={t('label.notification-plural')}
+                        className="tw:absolute tw:-right-1 tw:top-0 tw:text-fg-error-primary"
+                        role="img"
+                        size="sm"
+                      />
+                    )}
+                  </span>
                 }
                 size="sm"
               />
@@ -687,7 +694,7 @@ const NavBar = () => {
             <UserProfileIcon />
           </div>
         </div>
-      </Header>
+      </header>
       {versionMismatchAlert}
       {renderAlertCards}
     </>

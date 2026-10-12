@@ -28,7 +28,6 @@ jest.mock('antd', () => ({
       TreeSelect.component
     </div>
   )),
-  Alert: jest.fn().mockImplementation(() => <div>Alert</div>),
 }));
 
 jest.mock('../../../../rest/teamsAPI', () => ({
@@ -80,7 +79,7 @@ describe('TeamsSelectable component test', () => {
       });
     });
 
-    const noTeamsAlert = screen.getByText('Alert');
+    const noTeamsAlert = screen.getByRole('alert');
 
     expect(noTeamsAlert).toBeInTheDocument();
   });
@@ -97,7 +96,7 @@ describe('TeamsSelectable component test', () => {
       });
     });
 
-    const noTeamsAlert = screen.queryByText('Alert');
+    const noTeamsAlert = screen.queryByRole('alert');
 
     expect(noTeamsAlert).toBeNull();
   });

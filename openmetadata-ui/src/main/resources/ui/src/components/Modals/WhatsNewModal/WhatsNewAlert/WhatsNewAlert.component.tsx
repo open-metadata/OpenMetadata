@@ -12,7 +12,7 @@
  */
 import Icon from '@ant-design/icons';
 import { Box, Card, Typography } from '@openmetadata/ui-core-components';
-import { Affix, Button } from 'antd';
+import { Button } from 'antd';
 import { CookieStorage } from 'cookie-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -101,7 +101,7 @@ const WhatsNewAlert = () => {
   return (
     <>
       {showWhatsNew.alert && isHomePage && (
-        <Affix className="whats-new-alert-affix">
+        <div className="whats-new-alert-affix">
           <Card
             className="whats-new-alert-card"
             data-testid="whats-new-alert-card">
@@ -179,7 +179,7 @@ const WhatsNewAlert = () => {
               </Box>
             </Box>
           </Card>
-        </Affix>
+        </div>
       )}
     </>
   );

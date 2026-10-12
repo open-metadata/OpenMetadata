@@ -13,13 +13,14 @@
 
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
+  Badge,
   Box,
   Card,
   Divider,
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Badge, Button, Table } from 'antd';
+import { Button } from 'antd';
 import { capitalize, isEmpty, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -35,12 +36,14 @@ import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 import { formatDateTimeWithTimezone } from '../../../../utils/date-time/DateTimeUtils';
 import AppBadge from '../../../common/Badge/Badge.component';
 import LogViewerModal from '../../../common/LogViewerModal/LogViewerModal.component';
+import Table from '../../../common/Table/TableV2';
 import './app-logs-viewer.less';
 import {
   AppLogsViewerProps,
   ServerStats,
   ServerStatsData,
 } from './AppLogsViewer.interface';
+import { formatRecordCount } from './AppLogsViewer.utils';
 import ReindexFailures from './ReindexFailures.component';
 
 const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
@@ -166,46 +169,46 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                         gap={2}
                         itemClassName="layout-space-item">
                         <Badge
-                          showZero
                           className="request-badge running"
-                          count={stepStats.totalRecords}
-                          overflowCount={99999999}
-                          title={`${t('label.total-index-sent')}: ${
+                          color="brand"
+                          size="sm"
+                          tooltip={`${t('label.total-index-sent')}: ${
                             stepStats.totalRecords
-                          }`}
-                        />
+                          }`}>
+                          {formatRecordCount(stepStats.totalRecords)}
+                        </Badge>
 
                         <Badge
-                          showZero
                           className="request-badge success"
-                          count={stepStats.successRecords}
-                          overflowCount={99999999}
-                          title={`${t('label.entity-index', {
+                          color="success"
+                          size="sm"
+                          tooltip={`${t('label.entity-index', {
                             entity: t('label.success'),
-                          })}: ${stepStats.successRecords}`}
-                        />
+                          })}: ${stepStats.successRecords}`}>
+                          {formatRecordCount(stepStats.successRecords)}
+                        </Badge>
 
                         <Badge
-                          showZero
                           className="request-badge failed"
-                          count={stepStats.failedRecords}
-                          overflowCount={99999999}
-                          title={`${t('label.entity-index', {
+                          color="error"
+                          size="sm"
+                          tooltip={`${t('label.entity-index', {
                             entity: t('label.failed'),
-                          })}: ${stepStats.failedRecords}`}
-                        />
+                          })}: ${stepStats.failedRecords}`}>
+                          {formatRecordCount(stepStats.failedRecords)}
+                        </Badge>
 
                         {stepStats.warningRecords !== undefined &&
                           stepStats.warningRecords > 0 && (
                             <Badge
-                              showZero
                               className="request-badge warning"
-                              count={stepStats.warningRecords}
-                              overflowCount={99999999}
-                              title={`${t('label.entity-index', {
+                              color="warning"
+                              size="sm"
+                              tooltip={`${t('label.entity-index', {
                                 entity: t('label.warning-plural'),
-                              })}: ${stepStats.warningRecords}`}
-                            />
+                              })}: ${stepStats.warningRecords}`}>
+                              {formatRecordCount(stepStats.warningRecords)}
+                            </Badge>
                           )}
                       </Box>
                     </span>
@@ -580,9 +583,11 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
               {serverCount && (
                 <Badge
                   className="request-badge running"
-                  count={serverCount}
-                  title={`${serverCount} ${t('label.server')}(s)`}
-                />
+                  color="brand"
+                  size="sm"
+                  tooltip={`${serverCount} ${t('label.server')}(s)`}>
+                  {formatRecordCount(serverCount, 99)}
+                </Badge>
               )}
             </Box>
           }

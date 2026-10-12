@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Header } from 'antd/lib/layout/layout';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -29,7 +28,7 @@ export const LimitBanner = () => {
   const showBanner = bannerDetails && !(isTourOpen || isTourPage);
 
   return (
-    <Header
+    <header
       className={classNames('pricing-banner', {
         errored: bannerDetails?.type === 'danger',
       })}
@@ -56,6 +55,6 @@ export const LimitBanner = () => {
         style={{ color: '#546E7A', fontSize: '14px' }}
         onClick={() => setBannerDetails(null)}
       />
-    </Header>
+    </header>
   );
 };

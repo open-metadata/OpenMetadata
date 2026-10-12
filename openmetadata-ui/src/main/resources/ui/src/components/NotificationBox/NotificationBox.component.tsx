@@ -12,8 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Tabs, Typography } from '@openmetadata/ui-core-components';
-import { Badge, Button, List } from 'antd';
+import { Dot, Tabs, Typography } from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -240,13 +240,7 @@ const NotificationBox = ({
 
   const getTabTitle = (name: string, key: string) => {
     return (
-      <Badge
-        dot={
-          key === NotificationTabsKey.TASK
-            ? hasTaskNotification
-            : hasMentionNotification
-        }
-        offset={[5, 0]}>
+      <span className="tw:relative tw:inline-flex tw:items-center">
         <Icon
           alt="notification-icon"
           className="align-middle m-r-xs"
@@ -254,7 +248,17 @@ const NotificationBox = ({
           style={{ fontSize: '16px' }}
         />
         {name}
-      </Badge>
+        {(key === NotificationTabsKey.TASK
+          ? hasTaskNotification
+          : hasMentionNotification) && (
+          <Dot
+            aria-label={t('label.notification-plural')}
+            className="tw:absolute tw:-right-1 tw:top-0 tw:text-fg-error-primary"
+            role="img"
+            size="sm"
+          />
+        )}
+      </span>
     );
   };
 
@@ -265,10 +269,17 @@ const NotificationBox = ({
           <p>{t('message.no-notification-found')}</p>
         </div>
       ) : (
-        <List
-          className="notification-content-container"
-          dataSource={notificationDropDownList}
-          footer={
+        <div className="notification-content-container">
+          <ul className="tw:m-0 tw:h-50 tw:list-none tw:overflow-y-auto tw:p-0">
+            {notificationDropDownList.map((item, index) => (
+              <li
+                className="notification-dropdown-list-btn cursor-pointer tw:px-4 tw:py-3 tw:border-b tw:border-secondary"
+                key={notifications[index].id}>
+                {item}
+              </li>
+            ))}
+          </ul>
+          <div className="notification-list-footer tw:px-4 tw:py-3">
             <Button block href={viewAllPath} type="link">
               <span>
                 {t('label.view-entity', {
@@ -276,15 +287,8 @@ const NotificationBox = ({
                 })}
               </span>
             </Button>
-          }
-          itemLayout="vertical"
-          renderItem={(item) => (
-            <List.Item className="notification-dropdown-list-btn cursor-pointer">
-              {item}
-            </List.Item>
-          )}
-          size="small"
-        />
+          </div>
+        </div>
       ),
     [notifications, notificationDropDownList, viewAllPath, t]
   );

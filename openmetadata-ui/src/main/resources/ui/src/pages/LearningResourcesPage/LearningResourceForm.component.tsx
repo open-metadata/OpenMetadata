@@ -12,11 +12,12 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import { Box } from '@openmetadata/ui-core-components';
-import { Button, Drawer, Form, Input, Select } from 'antd';
+import { Box, SlideoutMenu } from '@openmetadata/ui-core-components';
+import { Button, Form, Input, Select } from 'antd';
 import { AxiosError } from 'axios';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { DrawerPopupContainerProvider } from '../../components/common/DrawerPopupContainerProvider/DrawerPopupContainerProvider';
 import { ResourceTypeIcon } from '../../components/Learning/ResourceTypeIcon/ResourceTypeIcon';
 import {
   CATEGORIES,
@@ -54,6 +55,8 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
   resource,
   onClose,
 }) => {
+  const drawerTitleId = useId();
+
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -166,193 +169,212 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
     </div>
   );
 
+  // Popup portals belong to the drawer even though they render outside its DOM tree.
   return (
-    <Drawer
-      destroyOnClose
-      className="learning-resource-form-drawer"
-      closable={false}
+    <SlideoutMenu
+      isDismissable
+      aria-labelledby={drawerTitleId}
       data-testid="learning-resource-form-drawer"
-      footer={drawerFooter}
-      open={open}
-      placement="right"
-      title={drawerTitle}
+      dialogClassName="learning-resource-form-drawer"
+      isOpen={open}
+      shouldCloseOnInteractOutside={(element) =>
+        !element.closest('[data-react-aria-top-layer]')
+      }
       width={600}
-      onClose={onClose}>
-      <Form
-        className="learning-resource-form"
-        form={form}
-        initialValues={{
-          categories: [],
-          contexts: [],
-          status: LearningResourceStatus.Active,
-        }}
-        layout="vertical">
-        <Form.Item
-          className="form-item-required"
-          label={t('label.name')}
-          name="name"
-          rules={[
-            {
-              message: t('label.field-required', {
-                field: t('label.name'),
-              }),
-              required: true,
-            },
-          ]}>
-          <Input
-            data-testid="name-input"
-            disabled={Boolean(resource)}
-            placeholder={t('label.enter-entity', { entity: t('label.name') })}
-          />
-        </Form.Item>
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) {
+          onClose();
+        }
+      }}>
+      <SlideoutMenu.Header id={drawerTitleId} showCloseButton={false}>
+        {drawerTitle}
+      </SlideoutMenu.Header>
+      <SlideoutMenu.Content role="region">
+        <DrawerPopupContainerProvider>
+          <Form
+            className="learning-resource-form"
+            form={form}
+            initialValues={{
+              categories: [],
+              contexts: [],
+              status: LearningResourceStatus.Active,
+            }}
+            layout="vertical">
+            <Form.Item
+              className="form-item-required"
+              label={t('label.name')}
+              name="name"
+              rules={[
+                {
+                  message: t('label.field-required', {
+                    field: t('label.name'),
+                  }),
+                  required: true,
+                },
+              ]}>
+              <Input
+                data-testid="name-input"
+                disabled={Boolean(resource)}
+                placeholder={t('label.enter-entity', {
+                  entity: t('label.name'),
+                })}
+              />
+            </Form.Item>
 
-        <Form.Item
-          className="form-item-required form-item-description"
-          label={t('label.description')}
-          name="description"
-          rules={[
-            {
-              message: t('label.field-required', {
-                field: t('label.description'),
-              }),
-              required: true,
-            },
-          ]}>
-          <TextArea
-            data-testid="description-input"
-            placeholder={t('message.enter-description')}
-            rows={6}
-          />
-        </Form.Item>
+            <Form.Item
+              className="form-item-required form-item-description"
+              label={t('label.description')}
+              name="description"
+              rules={[
+                {
+                  message: t('label.field-required', {
+                    field: t('label.description'),
+                  }),
+                  required: true,
+                },
+              ]}>
+              <TextArea
+                data-testid="description-input"
+                placeholder={t('message.enter-description')}
+                rows={6}
+              />
+            </Form.Item>
 
-        <Form.Item
-          className="form-item-required form-item-type"
-          data-testid="resource-type-form-item"
-          label={t('label.type')}
-          name="resourceType"
-          rules={[
-            {
-              message: t('label.field-required', {
-                field: t('label.type'),
-              }),
-              required: true,
-            },
-          ]}>
-          <Select
-            data-testid="resource-type-select"
-            placeholder={t('label.select-field', { field: t('label.type') })}>
-            {RESOURCE_TYPE_VALUES.map((type) => (
-              <Select.Option key={type} value={type}>
-                <Box
-                  inline
-                  align="center"
-                  className="layout-space layout-space-horizontal"
-                  gap={2}
-                  itemClassName="layout-space-item">
-                  <ResourceTypeIcon aria-hidden resourceType={type} />
-                  {t(RESOURCE_TYPE_LABEL_KEYS[type])}
-                </Box>
-              </Select.Option>
-            ))}
-          </Select>
-        </Form.Item>
+            <Form.Item
+              className="form-item-required form-item-type"
+              data-testid="resource-type-form-item"
+              label={t('label.type')}
+              name="resourceType"
+              rules={[
+                {
+                  message: t('label.field-required', {
+                    field: t('label.type'),
+                  }),
+                  required: true,
+                },
+              ]}>
+              <Select
+                data-testid="resource-type-select"
+                placeholder={t('label.select-field', {
+                  field: t('label.type'),
+                })}>
+                {RESOURCE_TYPE_VALUES.map((type) => (
+                  <Select.Option key={type} value={type}>
+                    <Box
+                      inline
+                      align="center"
+                      className="layout-space layout-space-horizontal"
+                      gap={2}
+                      itemClassName="layout-space-item">
+                      <ResourceTypeIcon aria-hidden resourceType={type} />
+                      {t(RESOURCE_TYPE_LABEL_KEYS[type])}
+                    </Box>
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
 
-        <Form.Item
-          className="form-item-required"
-          data-testid="categories-form-item"
-          label={t('label.category-plural')}
-          name="categories"
-          normalize={normalizeToArray}
-          rules={[
-            {
-              message: t('label.field-required', {
-                field: t('label.category-plural'),
-              }),
-              required: true,
-            },
-          ]}>
-          <Select
-            data-testid="categories-select"
-            mode="multiple"
-            options={CATEGORIES}
-            placeholder={t('label.select-type')}
-          />
-        </Form.Item>
+            <Form.Item
+              className="form-item-required"
+              data-testid="categories-form-item"
+              label={t('label.category-plural')}
+              name="categories"
+              normalize={normalizeToArray}
+              rules={[
+                {
+                  message: t('label.field-required', {
+                    field: t('label.category-plural'),
+                  }),
+                  required: true,
+                },
+              ]}>
+              <Select
+                data-testid="categories-select"
+                mode="multiple"
+                options={CATEGORIES}
+                placeholder={t('label.select-type')}
+              />
+            </Form.Item>
 
-        <Form.Item
-          className="form-item-required"
-          data-testid="contexts-form-item"
-          label={t('label.context')}
-          name="contexts"
-          normalize={normalizeToArray}
-          rules={[
-            {
-              message: t('label.field-required', {
-                field: t('label.context'),
-              }),
-              required: true,
-            },
-          ]}>
-          <Select
-            data-testid="contexts-select"
-            mode="multiple"
-            options={PAGE_IDS}
-            placeholder={t('label.select-field', { field: t('label.context') })}
-          />
-        </Form.Item>
+            <Form.Item
+              className="form-item-required"
+              data-testid="contexts-form-item"
+              label={t('label.context')}
+              name="contexts"
+              normalize={normalizeToArray}
+              rules={[
+                {
+                  message: t('label.field-required', {
+                    field: t('label.context'),
+                  }),
+                  required: true,
+                },
+              ]}>
+              <Select
+                data-testid="contexts-select"
+                mode="multiple"
+                options={PAGE_IDS}
+                placeholder={t('label.select-field', {
+                  field: t('label.context'),
+                })}
+              />
+            </Form.Item>
 
-        <Form.Item
-          dependencies={['resourceType']}
-          label={t('label.source-url')}
-          name="sourceUrl"
-          rules={[
-            {
-              message: t('label.field-required', {
-                field: t('label.source-url'),
-              }),
-              required: true,
-            },
-            { message: t('label.invalid-url'), type: 'url' },
-          ]}>
-          <Input
-            data-testid="source-url-input"
-            placeholder={
-              SOURCE_URL_PLACEHOLDERS[
-                selectedResourceType ?? ResourceType.Video
-              ]
-            }
-          />
-        </Form.Item>
+            <Form.Item
+              dependencies={['resourceType']}
+              label={t('label.source-url')}
+              name="sourceUrl"
+              rules={[
+                {
+                  message: t('label.field-required', {
+                    field: t('label.source-url'),
+                  }),
+                  required: true,
+                },
+                { message: t('label.invalid-url'), type: 'url' },
+              ]}>
+              <Input
+                data-testid="source-url-input"
+                placeholder={
+                  SOURCE_URL_PLACEHOLDERS[
+                    selectedResourceType ?? ResourceType.Video
+                  ]
+                }
+              />
+            </Form.Item>
 
-        <Form.Item label={t('label.source-provider')} name="sourceProvider">
-          <Input placeholder="YouTube, Storylane, etc." />
-        </Form.Item>
+            <Form.Item label={t('label.source-provider')} name="sourceProvider">
+              <Input placeholder="YouTube, Storylane, etc." />
+            </Form.Item>
 
-        <Form.Item label={t('label.duration')} name="estimatedDuration">
-          <Select
-            allowClear
-            options={DURATIONS.map((d) => ({
-              label: d,
-              value: parseDuration(d),
-            }))}
-            placeholder={t('label.select-duration')}
-          />
-        </Form.Item>
+            <Form.Item label={t('label.duration')} name="estimatedDuration">
+              <Select
+                allowClear
+                options={DURATIONS.map((d) => ({
+                  label: d,
+                  value: parseDuration(d),
+                }))}
+                placeholder={t('label.select-duration')}
+              />
+            </Form.Item>
 
-        <Form.Item
-          data-testid="status-form-item"
-          label={t('label.status')}
-          name="status">
-          <Select
-            data-testid="status-select"
-            options={LEARNING_RESOURCE_STATUSES.map((status) => ({
-              label: status,
-              value: status,
-            }))}
-            placeholder={t('label.select-status')}
-          />
-        </Form.Item>
-      </Form>
-    </Drawer>
+            <Form.Item
+              data-testid="status-form-item"
+              label={t('label.status')}
+              name="status">
+              <Select
+                data-testid="status-select"
+                options={LEARNING_RESOURCE_STATUSES.map((status) => ({
+                  label: status,
+                  value: status,
+                }))}
+                placeholder={t('label.select-status')}
+              />
+            </Form.Item>
+          </Form>
+        </DrawerPopupContainerProvider>
+      </SlideoutMenu.Content>
+      <SlideoutMenu.Footer>{drawerFooter}</SlideoutMenu.Footer>
+    </SlideoutMenu>
   );
 };

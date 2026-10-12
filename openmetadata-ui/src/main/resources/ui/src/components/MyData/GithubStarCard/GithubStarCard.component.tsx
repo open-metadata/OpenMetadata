@@ -17,7 +17,7 @@ import {
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Affix, Button } from 'antd';
+import { Button } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { CookieStorage } from 'cookie-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -124,7 +124,7 @@ const GithubStarCard = () => {
   }, [usernameExistsInCookie, updateGithubPopup]);
 
   return showGithubStarPopup && isHomePage ? (
-    <Affix
+    <div
       className={`github-star-popup-card 
       ${
         isWhatNewAlertVisible
@@ -197,7 +197,7 @@ const GithubStarCard = () => {
           </ButtonGroup>
         </Card.Content>
       </Card>
-    </Affix>
+    </div>
   ) : null;
 };
 

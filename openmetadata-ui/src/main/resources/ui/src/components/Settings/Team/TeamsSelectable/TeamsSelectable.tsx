@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Alert, TreeSelect } from 'antd';
+import { Alert } from '@openmetadata/ui-core-components';
+import { TreeSelect } from 'antd';
 import { AxiosError } from 'axios';
 
 import { isEmpty } from 'lodash';
@@ -117,10 +118,10 @@ const TeamsSelectable = ({
         <Alert
           showIcon
           className="m-t-md"
-          message={t('message.no-entity-data-available', {
+          title={t('message.no-entity-data-available', {
             entity: t('label.team-plural'),
           })}
-          type="info"
+          variant="brand"
         />
       )}
     </>

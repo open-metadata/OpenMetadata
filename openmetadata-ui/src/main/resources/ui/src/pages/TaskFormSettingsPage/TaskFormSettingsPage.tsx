@@ -25,12 +25,19 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Box, Card, Tabs, Typography } from '@openmetadata/ui-core-components';
-import { Alert, Button, Form, Input, Select, Spin } from 'antd';
+import {
+  Alert,
+  Box,
+  Card,
+  Tabs,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Button, Form, Input, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { FC, lazy, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
+import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
@@ -174,7 +181,7 @@ const SchemaSidebarCard: FC<{
     <Card.Content>
       {loading ? (
         <div className="text-center p-y-lg">
-          <Spin />
+          <Loader />
         </div>
       ) : (
         <div className="task-form-settings-schema-list">
@@ -813,10 +820,10 @@ const TaskFormSettingsPage = () => {
           <Alert
             showIcon
             className="task-form-settings-designer-pane__alert"
-            description="Use the builder for create forms, resolve forms, transition forms, and stage mappings. The raw JSON editors are still available under Advanced."
-            message="Design task forms visually"
-            type="info"
-          />
+            title={t('message.task-form-builder-title')}
+            variant="brand">
+            {t('message.task-form-builder-description')}
+          </Alert>
           <Tabs
             className="tw:gap-6"
             selectedKey={designerTab}

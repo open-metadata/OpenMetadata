@@ -12,13 +12,17 @@
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
+  Accordion,
+  AccordionHeader,
+  AccordionItem,
+  AccordionPanel,
   Badge,
   Box,
   Grid,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Collapse, InputNumber, Select } from 'antd';
+import { InputNumber, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, omit, startCase } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
@@ -921,146 +925,162 @@ const EntitySearchSettings = () => {
             maxWidth: '33.33333333333333%',
             flex: '0 0 33.33333333333333%',
           }}>
-          <Collapse
-            accordion
-            activeKey={activeKey}
-            bordered={false}
-            className="w-full entity-collapse-container"
-            onChange={handleCollapseChange}>
-            <Collapse.Panel
-              header={
+          <Accordion
+            className={
+              'w-full entity-collapse-container' + ' tw:outline-0 tw:divide-y-0'
+            }
+            expandedKeys={new Set([activeKey].filter(Boolean))}
+            onExpandedChange={(keys) =>
+              handleCollapseChange([...keys].map(String))
+            }>
+            <AccordionItem className="" id={String('ranking')} key="ranking">
+              <AccordionHeader className="tw:flex-row-reverse">
                 <Typography className="text-md font-semibold">
                   {t('label.ranking-detail-plural')}
                 </Typography>
-              }
-              key="ranking">
-              <div className="bg-white border-radius-card p-box configuration-container ranking-configuration-container">
-                {renderRankingSettings()}
-              </div>
-            </Collapse.Panel>
-            <Collapse.Panel
-              header={
-                <CollapseHeader
-                  dataTestId="add-field-btn"
-                  menuItems={menuItems}
-                  title={t('label.matching-fields')}
-                />
-              }
-              key="1">
-              <div className="bg-white configuration-container">
-                <Box
-                  className="layout-row p-y-xs"
-                  data-testid="field-configurations"
-                  wrap="wrap">
-                  {entitySearchFields.map(
-                    (
-                      field: {
-                        fieldName: string;
-                        weight: number;
-                        matchType?: MatchType;
-                      },
-                      index: number
-                    ) => (
-                      <Box
-                        className="layout-column tw:block m-b-sm"
-                        key={field.fieldName}
-                        style={{ maxWidth: '100%', flex: '0 0 100%' }}>
-                        <FieldConfiguration
-                          entityFields={entityFields}
-                          field={field}
-                          index={index}
-                          initialOpen={field.fieldName === lastAddedSearchField}
+              </AccordionHeader>
+              <AccordionPanel className="">
+                <div className="bg-white border-radius-card p-box configuration-container ranking-configuration-container">
+                  {renderRankingSettings()}
+                </div>
+              </AccordionPanel>
+            </AccordionItem>
+            <AccordionItem className="" id={String('1')} key="1">
+              <CollapseHeader
+                dataTestId="add-field-btn"
+                menuItems={menuItems}
+                title={
+                  <AccordionHeader className="">
+                    {t('label.matching-fields')}
+                  </AccordionHeader>
+                }
+              />
+              <AccordionPanel className="">
+                <div className="bg-white configuration-container">
+                  <Box
+                    className="layout-row p-y-xs"
+                    data-testid="field-configurations"
+                    wrap="wrap">
+                    {entitySearchFields.map(
+                      (
+                        field: {
+                          fieldName: string;
+                          weight: number;
+                          matchType?: MatchType;
+                        },
+                        index: number
+                      ) => (
+                        <Box
+                          className="layout-column tw:block m-b-sm"
                           key={field.fieldName}
-                          searchSettings={searchSettings}
-                          onDeleteSearchField={handleDeleteSearchField}
-                          onFieldWeightChange={handleFieldWeightChange}
-                          onHighlightFieldsChange={handleHighlightFieldsChange}
-                          onMatchTypeChange={handleMatchTypeChange}
+                          style={{ maxWidth: '100%', flex: '0 0 100%' }}>
+                          <FieldConfiguration
+                            entityFields={entityFields}
+                            field={field}
+                            index={index}
+                            initialOpen={
+                              field.fieldName === lastAddedSearchField
+                            }
+                            key={field.fieldName}
+                            searchSettings={searchSettings}
+                            onDeleteSearchField={handleDeleteSearchField}
+                            onFieldWeightChange={handleFieldWeightChange}
+                            onHighlightFieldsChange={
+                              handleHighlightFieldsChange
+                            }
+                            onMatchTypeChange={handleMatchTypeChange}
+                          />
+                        </Box>
+                      )
+                    )}
+                    {/* Score Mode and Boost Mode Section */}
+                    <Box className="layout-column flex flex-col w-full">
+                      <div className="p-y-xs p-x-sm border-radius-card m-b-sm bg-white config-section-content">
+                        <Typography
+                          className="text-xs font-normal"
+                          color="secondary">
+                          {t('label.score-mode')}
+                        </Typography>
+                        <Select
+                          bordered={false}
+                          className="w-full border-none custom-select"
+                          data-testid="score-mode-select"
+                          options={scoreModeOptions}
+                          value={searchSettings.scoreMode}
+                          onChange={(value: ScoreMode) =>
+                            handleModeUpdate('scoreMode', value)
+                          }
                         />
-                      </Box>
-                    )
-                  )}
-                  {/* Score Mode and Boost Mode Section */}
-                  <Box className="layout-column flex flex-col w-full">
-                    <div className="p-y-xs p-x-sm border-radius-card m-b-sm bg-white config-section-content">
-                      <Typography
-                        className="text-xs font-normal"
-                        color="secondary">
-                        {t('label.score-mode')}
-                      </Typography>
-                      <Select
-                        bordered={false}
-                        className="w-full border-none custom-select"
-                        data-testid="score-mode-select"
-                        options={scoreModeOptions}
-                        value={searchSettings.scoreMode}
-                        onChange={(value: ScoreMode) =>
-                          handleModeUpdate('scoreMode', value)
-                        }
-                      />
-                    </div>
-                    <div className="p-y-xs p-x-sm border-radius-card m-b-sm bg-white config-section-content">
-                      <Typography
-                        className="text-xs font-normal"
-                        color="secondary">
-                        {t('label.boost-mode')}
-                      </Typography>
-                      <Select
-                        bordered={false}
-                        className="w-full border-none custom-select"
-                        data-testid="boost-mode-select"
-                        options={boostModeOptions}
-                        value={searchSettings.boostMode}
-                        onChange={(value: BoostMode) =>
-                          handleModeUpdate('boostMode', value)
-                        }
-                      />
-                    </div>
+                      </div>
+                      <div className="p-y-xs p-x-sm border-radius-card m-b-sm bg-white config-section-content">
+                        <Typography
+                          className="text-xs font-normal"
+                          color="secondary">
+                          {t('label.boost-mode')}
+                        </Typography>
+                        <Select
+                          bordered={false}
+                          className="w-full border-none custom-select"
+                          data-testid="boost-mode-select"
+                          options={boostModeOptions}
+                          value={searchSettings.boostMode}
+                          onChange={(value: BoostMode) =>
+                            handleModeUpdate('boostMode', value)
+                          }
+                        />
+                      </div>
+                    </Box>
                   </Box>
-                </Box>
-              </div>
-            </Collapse.Panel>
-            <Collapse.Panel
-              header={
-                <CollapseHeader
-                  dataTestId="add-term-boost-btn"
-                  handleAddNewBoost={handleAddNewTermBoost}
-                  title={t('label.term-boost')}
-                />
-              }
-              key="2">
-              <div className="bg-white border-radius-card p-box configuration-container">
-                <TermBoostList
-                  className="flex-column justify-center"
-                  handleDeleteTermBoost={handleDeleteTermBoost}
-                  handleTermBoostChange={handleTermBoostChange}
-                  showNewTermBoost={showNewTermBoost}
-                  termBoostCardClassName="term-boost-card"
-                  termBoosts={searchSettings.termBoosts ?? []}
-                />
-              </div>
-            </Collapse.Panel>
-            <Collapse.Panel
-              header={
-                <CollapseHeader
-                  dataTestId="add-field-value-boost-btn"
-                  handleAddNewBoost={handleAddNewFieldValueBoost}
-                  title={t('label.field-value-boost')}
-                />
-              }
-              key="3">
-              <div className="bg-white border-radius-card p-box configuration-container">
-                <FieldValueBoostList
-                  entitySearchSettingsPage
-                  dataTestId="entity-field-value-boost-table"
-                  fieldValueBoosts={searchSettings.fieldValueBoosts ?? []}
-                  handleDeleteFieldValueBoost={handleDeleteFieldValueBoost}
-                  handleEditFieldValueBoost={handleEditFieldValueBoost}
-                  isLoading={false}
-                />
-              </div>
-            </Collapse.Panel>
-          </Collapse>
+                </div>
+              </AccordionPanel>
+            </AccordionItem>
+            <AccordionItem className="" id={String('2')} key="2">
+              <CollapseHeader
+                dataTestId="add-term-boost-btn"
+                handleAddNewBoost={handleAddNewTermBoost}
+                title={
+                  <AccordionHeader className="">
+                    {t('label.term-boost')}
+                  </AccordionHeader>
+                }
+              />
+              <AccordionPanel className="">
+                <div className="bg-white border-radius-card p-box configuration-container">
+                  <TermBoostList
+                    className="flex-column justify-center"
+                    handleDeleteTermBoost={handleDeleteTermBoost}
+                    handleTermBoostChange={handleTermBoostChange}
+                    showNewTermBoost={showNewTermBoost}
+                    termBoostCardClassName="term-boost-card"
+                    termBoosts={searchSettings.termBoosts ?? []}
+                  />
+                </div>
+              </AccordionPanel>
+            </AccordionItem>
+            <AccordionItem className="" id={String('3')} key="3">
+              <CollapseHeader
+                dataTestId="add-field-value-boost-btn"
+                handleAddNewBoost={handleAddNewFieldValueBoost}
+                title={
+                  <AccordionHeader className="">
+                    {t('label.field-value-boost')}
+                  </AccordionHeader>
+                }
+              />
+              <AccordionPanel className="">
+                <div className="bg-white border-radius-card p-box configuration-container">
+                  <FieldValueBoostList
+                    entitySearchSettingsPage
+                    dataTestId="entity-field-value-boost-table"
+                    fieldValueBoosts={searchSettings.fieldValueBoosts ?? []}
+                    handleDeleteFieldValueBoost={handleDeleteFieldValueBoost}
+                    handleEditFieldValueBoost={handleEditFieldValueBoost}
+                    isLoading={false}
+                  />
+                </div>
+              </AccordionPanel>
+            </AccordionItem>
+          </Accordion>
         </Box>
         <Box
           className="layout-column bg-white border-radius-card p-box h-full d-flex flex-column preview-section"

@@ -16,10 +16,8 @@ import {
   render,
   screen,
   waitForElementToBeRemoved,
-  within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { Table as AntdTable } from 'antd';
 import React from 'react';
 import { AppType } from '../../../../generated/entity/applications/app';
 import { Status } from '../../../../generated/entity/applications/appRunRecord';
@@ -148,11 +146,15 @@ jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
 );
 
 jest.mock('../../../common/Table/TableV2', () => {
+  const ActualTable = jest.requireActual(
+    '../../../common/Table/TableV2'
+  ).default;
+
   return jest
     .fn()
     .mockImplementation(({ loading, customPaginationProps, ...rest }) => (
       <div>
-        {loading ? <p>TableLoader</p> : <AntdTable {...rest} />}
+        {loading ? <p>TableLoader</p> : <ActualTable {...rest} />}
         {customPaginationProps && (
           <button
             onClick={() =>
@@ -263,7 +265,9 @@ describe('AppRunsHistory', () => {
       .findIndex((header) => header.textContent === 'label.triggered-by');
     const [, firstDataRow] = screen.getAllByRole('row');
 
-    return within(firstDataRow).getAllByRole('cell')[columnIndex];
+    return Array.from(
+      firstDataRow.querySelectorAll('[role="rowheader"], [role="gridcell"]')
+    )[columnIndex];
   };
 
   it('should show the user who triggered an on-demand run', async () => {

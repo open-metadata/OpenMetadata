@@ -12,12 +12,16 @@
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
+  Accordion,
+  AccordionHeader,
+  AccordionItem,
+  AccordionPanel,
   Box,
   Grid,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Collapse, Slider } from 'antd';
+import { Button, Slider } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
@@ -99,24 +103,27 @@ const SearchBoostsSection = ({
       className="layout-row boosts-section m-t-lg"
       style={getLayoutGutter(0, 16)}
       wrap="wrap">
-      <Collapse
-        accordion
-        bordered={false}
-        className="w-full search-settings-collapse">
-        <Collapse.Panel
-          className="term-boost-panel"
-          header={
-            <Box
-              className="layout-row d-flex items-center justify-between w-full"
-              wrap="wrap">
-              <Box className="layout-column d-flex items-center gap-4">
-                <Typography className="text-sm font-semibold m-0 tw:text-primary">
-                  {t('label.term-boost')}
-                </Typography>
-                <span className="count-label">
-                  {searchConfig?.globalSettings?.termBoosts?.length ?? 0}
-                </span>
+      <Accordion
+        className={
+          'w-full search-settings-collapse' + ' tw:outline-0 tw:divide-y-0'
+        }>
+        <AccordionItem className="term-boost-panel" id={String('1')} key="1">
+          <Box align="center" gap={2}>
+            <AccordionHeader className="tw:flex-1">
+              <Box
+                className="layout-row d-flex items-center justify-between w-full"
+                wrap="wrap">
+                <Box className="layout-column d-flex items-center gap-4">
+                  <Typography className="text-sm font-semibold m-0 tw:text-primary">
+                    {t('label.term-boost')}
+                  </Typography>
+                  <span className="count-label">
+                    {searchConfig?.globalSettings?.termBoosts?.length ?? 0}
+                  </span>
+                </Box>
               </Box>
+            </AccordionHeader>
+            <Box className="tw:pe-4">
               <Box className="layout-column d-flex items-center gap-2">
                 <Button
                   className="term-boost-save-btn"
@@ -136,32 +143,40 @@ const SearchBoostsSection = ({
                 </Button>
               </Box>
             </Box>
-          }
-          key="1">
-          <Grid.Item className="layout-column" span={24}>
-            <TermBoostList
-              handleDeleteTermBoost={onDeleteTermBoost}
-              handleTermBoostChange={onTermBoostChange}
-              showNewTermBoost={showNewTermBoost}
-              termBoostCardClassName="settings-term-boost-card"
-              termBoosts={searchConfig?.globalSettings?.termBoosts ?? []}
-            />
-          </Grid.Item>
-        </Collapse.Panel>
-        <Collapse.Panel
+          </Box>
+          <AccordionPanel className="">
+            <Grid.Item className="layout-column" span={24}>
+              <TermBoostList
+                handleDeleteTermBoost={onDeleteTermBoost}
+                handleTermBoostChange={onTermBoostChange}
+                showNewTermBoost={showNewTermBoost}
+                termBoostCardClassName="settings-term-boost-card"
+                termBoosts={searchConfig?.globalSettings?.termBoosts ?? []}
+              />
+            </Grid.Item>
+          </AccordionPanel>
+        </AccordionItem>
+        <AccordionItem
           className="field-value-boost-panel"
-          header={
-            <Box
-              className="layout-row d-flex items-center justify-between w-full"
-              wrap="wrap">
-              <Box className="layout-column d-flex items-center gap-4">
-                <Typography className="text-sm font-semibold m-0 tw:text-primary">
-                  {t('label.field-value-boost')}
-                </Typography>
-                <span className="count-label">
-                  {searchConfig?.globalSettings?.fieldValueBoosts?.length ?? 0}
-                </span>
+          id={String('2')}
+          key="2">
+          <Box align="center" gap={2}>
+            <AccordionHeader className="tw:flex-1">
+              <Box
+                className="layout-row d-flex items-center justify-between w-full"
+                wrap="wrap">
+                <Box className="layout-column d-flex items-center gap-4">
+                  <Typography className="text-sm font-semibold m-0 tw:text-primary">
+                    {t('label.field-value-boost')}
+                  </Typography>
+                  <span className="count-label">
+                    {searchConfig?.globalSettings?.fieldValueBoosts?.length ??
+                      0}
+                  </span>
+                </Box>
               </Box>
+            </AccordionHeader>
+            <Box className="tw:pe-4">
               <Box className="layout-column d-flex items-center gap-2">
                 <Button
                   className="field-value-boost-add-btn"
@@ -173,23 +188,24 @@ const SearchBoostsSection = ({
                 </Button>
               </Box>
             </Box>
-          }
-          key="2">
-          <Box className="layout-row p-t-sm w-full" wrap="wrap">
-            <div className="field-value-boost-table-container">
-              <FieldValueBoostList
-                dataTestId="field-value-boost-table"
-                fieldValueBoosts={
-                  searchConfig?.globalSettings?.fieldValueBoosts ?? []
-                }
-                handleDeleteFieldValueBoost={onDeleteFieldValueBoost}
-                handleEditFieldValueBoost={onEditFieldValueBoost}
-                isLoading={isLoading}
-              />
-            </div>
           </Box>
-        </Collapse.Panel>
-      </Collapse>
+          <AccordionPanel className="">
+            <Box className="layout-row p-t-sm w-full" wrap="wrap">
+              <div className="field-value-boost-table-container">
+                <FieldValueBoostList
+                  dataTestId="field-value-boost-table"
+                  fieldValueBoosts={
+                    searchConfig?.globalSettings?.fieldValueBoosts ?? []
+                  }
+                  handleDeleteFieldValueBoost={onDeleteFieldValueBoost}
+                  handleEditFieldValueBoost={onEditFieldValueBoost}
+                  isLoading={isLoading}
+                />
+              </div>
+            </Box>
+          </AccordionPanel>
+        </AccordionItem>
+      </Accordion>
     </Box>
   );
 };

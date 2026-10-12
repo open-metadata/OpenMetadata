@@ -16,9 +16,7 @@ import {
   render,
   screen,
   waitForElementToBeRemoved,
-  within,
 } from '@testing-library/react';
-import { Table as AntdTable } from 'antd';
 import {
   AppRunRecord,
   Status,
@@ -117,9 +115,13 @@ jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
 );
 
 jest.mock('../../../common/Table/TableV2', () => {
+  const ActualTable = jest.requireActual(
+    '../../../common/Table/TableV2'
+  ).default;
+
   return jest.fn().mockImplementation(({ loading, ...rest }) => (
     <div>
-      {loading ? <p>TableLoader</p> : <AntdTable {...rest} />}
+      {loading ? <p>TableLoader</p> : <ActualTable {...rest} />}
       Table
     </div>
   ));
@@ -204,7 +206,9 @@ const getTriggeredByCell = () => {
     .findIndex((header) => header.textContent === 'label.triggered-by');
   const [, firstDataRow] = screen.getAllByRole('row');
 
-  return within(firstDataRow).getAllByRole('cell')[columnIndex];
+  return Array.from(
+    firstDataRow.querySelectorAll('[role="rowheader"], [role="gridcell"]')
+  )[columnIndex];
 };
 
 const getConfigFormData = () => {
@@ -320,10 +324,14 @@ describe('AppRunsHistory websocket merge', () => {
       .findIndex((header) => header.textContent === 'label.triggered-by');
 
     expect(
-      within(firstRow).getAllByRole('cell')[triggeredByIndex]
+      Array.from(
+        firstRow.querySelectorAll('[role="rowheader"], [role="gridcell"]')
+      )[triggeredByIndex]
     ).toHaveTextContent('alice');
     expect(
-      within(secondRow).getAllByRole('cell')[triggeredByIndex]
+      Array.from(
+        secondRow.querySelectorAll('[role="rowheader"], [role="gridcell"]')
+      )[triggeredByIndex]
     ).toHaveTextContent('bob');
   });
 

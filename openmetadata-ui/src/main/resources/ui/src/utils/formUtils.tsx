@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  Alert,
   Divider,
   Input as UTInput,
   Select as UTSelect,
@@ -20,7 +21,6 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  Alert,
   Checkbox,
   Form,
   FormItemProps,
@@ -412,8 +412,8 @@ export const getField = (field: FieldProp) => {
           showIcon
           className="m-b-lg alert-icon"
           data-testid="form-item-alert"
-          message={helperText}
-          type="warning"
+          title={helperText}
+          variant="warning"
         />
       )}
 

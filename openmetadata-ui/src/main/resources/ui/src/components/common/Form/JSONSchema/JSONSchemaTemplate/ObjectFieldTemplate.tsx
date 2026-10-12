@@ -12,12 +12,18 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Box } from '@openmetadata/ui-core-components';
+import {
+  Accordion,
+  AccordionHeader,
+  AccordionItem,
+  AccordionPanel,
+  Box,
+} from '@openmetadata/ui-core-components';
 import {
   ObjectFieldTemplatePropertyType,
   ObjectFieldTemplateProps,
 } from '@rjsf/utils';
-import { Button, Collapse } from 'antd';
+import { Button } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
 import { createElement, Fragment, FunctionComponent } from 'react';
@@ -25,8 +31,6 @@ import { useTranslation } from 'react-i18next';
 import { ADVANCED_PROPERTIES } from '../../../../../constants/Services.constant';
 import serviceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
 import './object-field-template.less';
-
-const { Panel } = Collapse;
 
 interface PropertyMap {
   advancedProperties: ObjectFieldTemplatePropertyType[];
@@ -136,22 +140,26 @@ export const ObjectFieldTemplate: FunctionComponent<
         </div>
       ))}
       {!isEmpty(advancedProperties) && (
-        <Collapse
-          destroyInactivePanel
-          className="advanced-properties-collapse m-t-sm"
-          expandIconPosition="end">
-          <Panel header={`${title} ${t('label.advanced-config')}`} key="1">
-            {advancedProperties.map((element) => (
-              <div
-                className={classNames('property-wrapper', {
-                  'additional-fields': schema.additionalProperties,
-                })}
-                key={element.content.key}>
-                {element.content}
-              </div>
-            ))}
-          </Panel>
-        </Collapse>
+        <Accordion
+          allowsMultipleExpanded
+          className={'advanced-properties-collapse m-t-sm' + '  '}>
+          <AccordionItem className="" id={String('1')} key="1">
+            <AccordionHeader className="">{`${title} ${t(
+              'label.advanced-config'
+            )}`}</AccordionHeader>
+            <AccordionPanel unmountOnCollapse className="">
+              {advancedProperties.map((element) => (
+                <div
+                  className={classNames('property-wrapper', {
+                    'additional-fields': schema.additionalProperties,
+                  })}
+                  key={element.content.key}>
+                  {element.content}
+                </div>
+              ))}
+            </AccordionPanel>
+          </AccordionItem>
+        </Accordion>
       )}
     </Fragment>
   );

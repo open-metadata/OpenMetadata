@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Box, Owner } from '@openmetadata/ui-core-components';
-import { Checkbox } from 'antd';
+import { Box, Checkbox, Owner } from '@openmetadata/ui-core-components';
+
 import classNames from 'classnames';
 import { isString, startCase } from 'lodash';
 import { ExtraInfo } from 'Models';
@@ -174,7 +174,12 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
               style={{ flex: '0 0 20px' }}>
               {/* Same test id as ExploreSearchCard's checkbox, so Playwright selects
                 assets in this modal and in the asset tabs the same way. */}
-              <Checkbox checked={checked} data-testid="asset-checkbox" />
+              <Checkbox
+                aria-label={t('label.select')}
+                data-testid="asset-checkbox"
+                isSelected={checked}
+                onChange={() => handleSummaryPanelDisplay?.(source, tab)}
+              />
             </Box>
           )}
           <Box className="layout-column tw:block" style={{ flex: 'auto' }}>

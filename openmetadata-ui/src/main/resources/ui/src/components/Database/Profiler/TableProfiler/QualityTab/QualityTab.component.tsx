@@ -12,7 +12,6 @@
  */
 import { Box, Tabs } from '@openmetadata/ui-core-components';
 import { Form, Select } from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
 import { useEffect, useMemo, useState } from 'react';
@@ -48,6 +47,7 @@ import { checkPermission } from '../../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../../utils/RouterUtils';
 import { ExtraTestCaseDropdownOptions } from '../../../../../utils/TestCaseUtils';
 import ManageButton from '../../../../common/EntityPageInfos/ManageButton/ManageButton';
+import { ManageMenuItem as ItemType } from '../../../../common/EntityPageInfos/ManageButton/ManageMenu';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { NextPreviousProps } from '../../../../common/NextPrevious/NextPrevious.interface';
 import Searchbar from '../../../../common/SearchBarComponent/SearchBar.component';

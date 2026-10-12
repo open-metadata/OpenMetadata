@@ -12,14 +12,17 @@
  */
 import { ExclamationCircleOutlined } from '@ant-design/icons';
 import {
+  Alert,
   Box,
+  Checkbox,
   Divider as CoreDivider,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Alert, Checkbox, List } from 'antd';
+
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import VirtualList from 'rc-virtual-list';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SearchIndex } from '../../../enums/search.enum';
 import Banner from '../../common/Banner/Banner';
@@ -91,6 +94,15 @@ const AssetSelectionHeader = ({
   clearFilters,
 }: AssetSelectionHeaderProps) => {
   const { t } = useTranslation();
+  const [isFailureAlertDismissed, setIsFailureAlertDismissed] = useState(false);
+  const hasFailedRequests = Boolean(failedStatus?.failedRequest?.length);
+
+  // Core alerts are controlled; a later failure must reappear after this one clears.
+  useEffect(() => {
+    if (!hasFailedRequests) {
+      setIsFailureAlertDismissed(false);
+    }
+  }, [hasFailedRequests]);
 
   return (
     <Box className="tw:shrink-0" direction="col" gap={4}>
@@ -104,7 +116,7 @@ const AssetSelectionHeader = ({
       )}
 
       {infoBannerText && (
-        <Alert showIcon message={infoBannerText} type="info" />
+        <Alert showIcon title={infoBannerText} variant="brand" />
       )}
 
       <div className="d-flex items-center gap-3">
@@ -143,16 +155,12 @@ const AssetSelectionHeader = ({
         )}
       </div>
 
-      {failedStatus?.failedRequest && failedStatus.failedRequest.length > 0 && (
+      {hasFailedRequests && !isFailureAlertDismissed && (
         <Alert
           closable
           className="w-full"
-          description={
-            <Typography as="span" className="tw:text-tertiary">
-              {t('message.validation-error-assets')}
-            </Typography>
-          }
-          message={
+          showIcon={false}
+          title={
             <div className="d-flex items-center gap-3">
               <ExclamationCircleOutlined className="tw:text-2xl tw:text-error-primary" />
               <Typography as="span" size="text-sm" weight="semibold">
@@ -160,8 +168,12 @@ const AssetSelectionHeader = ({
               </Typography>
             </div>
           }
-          type="error"
-        />
+          variant="error"
+          onClose={() => setIsFailureAlertDismissed(true)}>
+          <Typography as="span" className="tw:text-tertiary">
+            {t('message.validation-error-assets')}
+          </Typography>
+        </Alert>
       )}
     </Box>
   );
@@ -203,15 +215,21 @@ const AssetSelectionList = ({
         <div className="border p-xs asset-list-wrapper">
           <Checkbox
             className="assets-checkbox p-x-sm"
-            onChange={(e) => onSelectAll(e.target.checked)}>
-            {t('label.select-field', {
-              field: t('label.all'),
-            })}
-          </Checkbox>
-          <List>
+            label={
+              <>
+                {t('label.select-field', {
+                  field: t('label.all'),
+                })}
+              </>
+            }
+            onChange={(e) => onSelectAll(e)}
+          />
+          <>
             <VirtualList
+              aria-label={t('label.asset-plural')}
               data={items}
-              itemKey={(item) => item._source.id ?? item._id}>
+              itemKey={(item) => item._source.id ?? item._id}
+              role="list">
               {({ _source: item }) => {
                 const { isError, errorMessage } = getErrorStatusAndMessage(
                   item.id ?? ''
@@ -222,7 +240,8 @@ const AssetSelectionList = ({
                     className={classNames({
                       'm-y-sm border-danger rounded-4': isError,
                     })}
-                    key={item.id}>
+                    key={item.id}
+                    role="listitem">
                     <TableDataCardV2
                       openEntityInNewPage
                       showCheckboxes
@@ -254,7 +273,7 @@ const AssetSelectionList = ({
                 );
               }}
             </VirtualList>
-          </List>
+          </>
           {isLoading && items.length < totalCount && (
             <div className="d-flex justify-center p-y-sm">
               <Loader size="small" />

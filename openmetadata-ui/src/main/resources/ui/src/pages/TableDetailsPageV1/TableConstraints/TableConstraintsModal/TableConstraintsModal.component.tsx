@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Box, Typography } from '@openmetadata/ui-core-components';
-import { Button, Empty, Form, Modal, Select } from 'antd';
+import {
+  Box,
+  EmptyPlaceholder,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Button, Form, Modal, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, isEmpty } from 'lodash';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
@@ -526,11 +530,12 @@ const TableConstraintsModal = ({
                           isRelatedColumnLoading ? (
                             <Loader size="small" />
                           ) : (
-                            <Empty
+                            <EmptyPlaceholder
+                              className="tw:static"
                               description={t('label.no-entity-available', {
                                 entity: t('label.column-plural'),
                               })}
-                              image={Empty.PRESENTED_IMAGE_SIMPLE}
+                              width="100%"
                             />
                           )
                         }

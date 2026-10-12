@@ -12,13 +12,17 @@
  */
 
 import {
+  Accordion,
+  AccordionHeader,
+  AccordionItem,
+  AccordionPanel,
   Box,
   Card,
   Grid,
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Collapse } from 'antd';
+
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
@@ -94,77 +98,84 @@ function AgentsStatusWidget({
   }, [agentsInfo]);
 
   return (
-    <Collapse
-      className="service-insights-collapse-widget agents-status-widget"
-      data-testid="agent-status-widget"
-      expandIcon={() =>
-        renderAgentStatusExpandIcon(isLoading, agentStatusSummary, t)
-      }
-      expandIconPosition="end">
-      <Collapse.Panel
-        header={
-          <div className="flex justify-between items-center">
-            <div className="flex flex-col gap-1">
-              <Typography className="font-medium text-lg">
-                {t('label.entity-status', {
-                  entity: t('label.agent-plural'),
-                })}
-              </Typography>
+    <Accordion
+      allowsMultipleExpanded
+      className={'service-insights-collapse-widget agents-status-widget' + '  '}
+      data-testid="agent-status-widget">
+      <AccordionItem className="" id={String('1')} key="1">
+        <AccordionHeader className="">
+          <Box align="center" className="tw:w-full" justify="between">
+            <div className="flex justify-between items-center">
+              <div className="flex flex-col gap-1">
+                <Typography className="font-medium text-lg">
+                  {t('label.entity-status', {
+                    entity: t('label.agent-plural'),
+                  })}
+                </Typography>
 
-              {agentsRunningStatusMessage}
+                {agentsRunningStatusMessage}
+              </div>
             </div>
-          </div>
-        }
-        key="1">
-        {!isLoading && isEmpty(agentsInfo) && (
-          <div className="flex-center p-y-md">
-            <ErrorPlaceHolder
-              size={SIZE.SMALL}
-              type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
-            />
-          </div>
-        )}
+            {renderAgentStatusExpandIcon(isLoading, agentStatusSummary, t)}
+          </Box>
+        </AccordionHeader>
+        <AccordionPanel className="">
+          {!isLoading && isEmpty(agentsInfo) && (
+            <div className="flex-center p-y-md">
+              <ErrorPlaceHolder
+                size={SIZE.SMALL}
+                type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
+              />
+            </div>
+          )}
 
-        <Grid
-          className="layout-row layout-grid"
-          style={getLayoutGutter(16, 16)}>
-          {isLoading
-            ? Array.from(
-                { length: 8 },
-                (_, index) => `agent-skeleton-${index}`
-              ).map((skeletonKey) => (
-                <Grid.Item className="layout-column" key={skeletonKey} span={6}>
-                  <Card className="agent-status-card">
-                    <Card.Content>
-                      <Skeleton height={32} variant="rounded" width={160} />
-                    </Card.Content>
-                  </Card>
-                </Grid.Item>
-              ))
-            : agentsInfo.map((agent) => (
-                <Grid.Item className="layout-column" key={agent.label} span={6}>
-                  <Card
-                    className="agent-status-card"
-                    color={agent.isCollateAgent ? 'brand' : 'default'}
-                    data-testid={`agent-status-card-${agent.label}`}>
-                    <Card.Content className="tw:flex tw:items-center tw:justify-between tw:gap-2">
-                      <Box
-                        inline
-                        align="center"
-                        className="layout-space layout-space-horizontal"
-                        gap={2}
-                        itemClassName="layout-space-item">
-                        {agent.agentIcon}
-                        <Typography>{agent.label}</Typography>
-                      </Box>
-                      {getIconFromStatus(agent.status)}
-                    </Card.Content>
-                  </Card>
-                </Grid.Item>
-              ))}
-        </Grid>
-      </Collapse.Panel>
-    </Collapse>
+          <Grid
+            className="layout-row layout-grid"
+            style={getLayoutGutter(16, 16)}>
+            {isLoading
+              ? Array.from(
+                  { length: 8 },
+                  (_, index) => `agent-skeleton-${index}`
+                ).map((skeletonKey) => (
+                  <Grid.Item
+                    className="layout-column"
+                    key={skeletonKey}
+                    span={6}>
+                    <Card className="agent-status-card">
+                      <Card.Content>
+                        <Skeleton height={32} variant="rounded" width={160} />
+                      </Card.Content>
+                    </Card>
+                  </Grid.Item>
+                ))
+              : agentsInfo.map((agent) => (
+                  <Grid.Item
+                    className="layout-column"
+                    key={agent.label}
+                    span={6}>
+                    <Card
+                      className="agent-status-card"
+                      color={agent.isCollateAgent ? 'brand' : 'default'}
+                      data-testid={`agent-status-card-${agent.label}`}>
+                      <Card.Content className="tw:flex tw:items-center tw:justify-between tw:gap-2">
+                        <Box
+                          inline
+                          align="center"
+                          className="layout-space layout-space-horizontal"
+                          gap={2}
+                          itemClassName="layout-space-item">
+                          {agent.agentIcon}
+                          <Typography>{agent.label}</Typography>
+                        </Box>
+                        {getIconFromStatus(agent.status)}
+                      </Card.Content>
+                    </Card>
+                  </Grid.Item>
+                ))}
+          </Grid>
+        </AccordionPanel>
+      </AccordionItem>
+    </Accordion>
   );
 }
 
