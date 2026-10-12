@@ -537,18 +537,13 @@ const AddDataContract: React.FC<{
 
   const cardHeader = (
     <Card.Header
-      className="add-contract-card-header tw:items-center"
+      className="tw:items-center"
       extra={
         <div className="tw:flex tw:gap-2">
-          <Button
-            className="add-contract-cancel-button"
-            color="secondary"
-            size="md"
-            onPress={onCancel}>
+          <Button color="secondary" size="md" onPress={onCancel}>
             {t('label.cancel')}
           </Button>
           <Button
-            className="add-contract-save-button"
             data-testid="save-contract-btn"
             isDisabled={isSaveDisabled}
             isLoading={isSubmitting}

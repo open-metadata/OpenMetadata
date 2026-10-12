@@ -249,7 +249,6 @@ export const ContractSemanticFormTab: React.FC<{
 
         <div className="semantic-form-item-actions">
           <Button
-            className="add-semantic-button"
             color="link-color"
             data-testid="add-new-rule-btn"
             iconLeading={PlusIcon}
@@ -279,7 +278,6 @@ export const ContractSemanticFormTab: React.FC<{
       description={t('message.semantics-description')}
       extra={
         <Button
-          className="add-semantic-button"
           color="link-color"
           data-testid="add-semantic-button"
           iconLeading={PlusIcon}

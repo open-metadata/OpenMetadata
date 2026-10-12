@@ -303,7 +303,6 @@ const ContractPolicyCard = ({
                   {t('label.row-filter-plural')}
                 </Typography>
                 <Button
-                  className="add-row-filter-button"
                   color="link-color"
                   data-testid={`add-row-filter-button-${policyIndex}`}
                   iconLeading={PlusIcon}
@@ -427,7 +426,6 @@ export const ContractSecurityFormTab: React.FC<{
             </div>
 
             <Button
-              className="add-policy-button"
               color="link-color"
               data-testid="add-policy-button"
               iconLeading={PlusIcon}

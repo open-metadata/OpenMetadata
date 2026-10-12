@@ -75,7 +75,6 @@ export const ContractFormStep = ({
           )}>
           {onPrev && (
             <Button
-              className="contract-prev-button"
               color="secondary"
               iconLeading={ChevronLeft}
               size="md"
@@ -85,7 +84,6 @@ export const ContractFormStep = ({
           )}
           {showNext && (
             <Button
-              className="contract-next-button"
               color="primary"
               iconTrailing={ChevronRight}
               size="md"
