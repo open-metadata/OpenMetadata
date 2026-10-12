@@ -24,66 +24,66 @@ import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
-  createNewPage,
-  getApiContext,
-  redirectToHomePage,
-  resolveDescriptionBox,
-  uuid,
+    createNewPage,
+    getApiContext,
+    redirectToHomePage,
+    resolveDescriptionBox,
+    uuid
 } from '../../utils/common';
 import {
-  ARTICLES_URL,
-  ARTICLE_DESCRIPTION,
-  assertArticleEditorSaved,
-  blockArticleAutoSave,
-  cleanupCurrentArticle,
-  createArticleFromButton,
-  createArticleViaApi,
-  deleteArticleByFqn,
-  getArticleFqnFromUrl,
-  getLoggedInUser,
-  navigateToArticle,
-  navigateToArticles,
-  navigateToDashboard,
-  QUICK_LINK_DESCRIPTION,
-  QUICK_LINK_URL,
-  readDraftStore,
-  scrollHierarchyToNode,
-  scrollListingToCard,
-  verifyArticleSearch,
-  waitForArticleInFollows,
-  waitForArticleSearchResponse,
-  waitForDraftPersisted,
-  waitForDraftSyncedIntoEditor,
-  waitForRecentlyViewed,
+    ARTICLES_URL,
+    ARTICLE_DESCRIPTION,
+    assertArticleEditorSaved,
+    blockArticleAutoSave,
+    cleanupCurrentArticle,
+    createArticleFromButton,
+    createArticleViaApi,
+    deleteArticleByFqn,
+    getArticleFqnFromUrl,
+    getLoggedInUser,
+    navigateToArticle,
+    navigateToArticles,
+    navigateToDashboard,
+    QUICK_LINK_DESCRIPTION,
+    QUICK_LINK_URL,
+    readDraftStore,
+    scrollHierarchyToNode,
+    scrollListingToCard,
+    verifyArticleSearch,
+    waitForArticleInFollows,
+    waitForArticleSearchResponse,
+    waitForDraftPersisted,
+    waitForDraftSyncedIntoEditor,
+    waitForRecentlyViewed
 } from '../../utils/ContextCenterUtil';
 import {
-  addMultiOwner,
-  visitEntityPage,
-  waitForAllLoadersToDisappear,
+    addMultiOwner,
+    visitEntityPage,
+    waitForAllLoadersToDisappear
 } from '../../utils/entity';
 import {
-  addTitle,
-  createMentionInConversation,
-  createQuickLink,
-  deletePage,
-  toggleKnowledgePageBookmark,
-  updateBody,
-  updateQuickLink,
-  updateTags,
-  verifyNotificationAndClick,
-  waitForAutoSave,
+    addTitle,
+    createMentionInConversation,
+    createQuickLink,
+    deletePage,
+    toggleKnowledgePageBookmark,
+    updateBody,
+    updateQuickLink,
+    updateTags,
+    verifyNotificationAndClick,
+    waitForAutoSave
 } from '../../utils/KnowledgeCenter';
 import { waitForSearchIndexed } from '../../utils/polling';
 import { sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
 import { navigateToKCEntity } from '../Utils/ExplorePageRightPanelUtils';
 import {
-  runAdvancedBlocksTest,
-  runContentPersistenceTest,
-  runEditorOperationsTest,
-  runNestedListsTest,
-  runSlashCommandsAndBasicBlocksTest,
-  runTextFormattingTest,
+    runAdvancedBlocksTest,
+    runContentPersistenceTest,
+    runEditorOperationsTest,
+    runNestedListsTest,
+    runSlashCommandsAndBasicBlocksTest,
+    runTextFormattingTest
 } from './KnowledgeCenterTextEditor.common';
 
 const RELATED_QUICK_LINK_URL = 'https://docs.open-metadata.org';

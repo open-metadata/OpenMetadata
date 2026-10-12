@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 import {
-  APIRequestContext,
-  Browser,
-  expect,
-  Locator,
-  Page,
-  Response,
+    APIRequestContext,
+    Browser,
+    expect,
+    Locator,
+    Page,
+    Response
 } from '@playwright/test';
 import { ACTION_TIMEOUT } from '../constant/common';
 import { SLASH_COMMANDS } from '../constant/KnowledgeCenter.constant';

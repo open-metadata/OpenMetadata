@@ -568,21 +568,38 @@ test.describe(
         // from the previous result set is torn out mid-click ("element was
         // detached from the DOM"). Wait for the search that this text triggers
         // to land before touching the list.
-        const userSearch = page.waitForResponse(
-          (response) =>
+        //
+        // Match on `q`, not just the index: `onFocus` fires its own
+        // *undebounced* search with an empty query, and `fill()` focuses the
+        // input first. Waiting on the index alone would resolve on that
+        // unfiltered page and leave the assertions racing the debounced
+        // result exactly as before.
+        const searchText = user.responseData.name ?? '';
+        const userSearch = page.waitForResponse((response) => {
+          const params = new URL(response.url()).searchParams;
+
+          return (
             response.url().includes('/api/v1/search/query') &&
-            new URL(response.url()).searchParams.get('index') === 'user' &&
+            params.get('index') === 'user' &&
+            (params.get('q') ?? '').includes(searchText) &&
             response.status() === 200
-        );
-        await picker.fill(user.responseData.name ?? '');
+          );
+        });
+        await picker.fill(searchText);
         await userSearch;
 
         // Commit with Enter rather than a click: Autocomplete drops a
         // selection whenever `isLeavingRef` is set, and `onBlurCapture` arms
         // that ref for a microtask, so a click whose actionability scroll
         // blurs the input is silently ignored and Save stays disabled.
-        const option = page.getByRole('option', { name: userName });
-        await expect(option).toBeVisible();
+        //
+        // ArrowDown highlights the list's *first* option, so require the
+        // filtered list to hold exactly the target before pressing it —
+        // otherwise a name that also prefixes another user would commit the
+        // wrong one, and the Save assertion below would still pass.
+        const options = page.getByRole('option');
+        await expect(options).toHaveCount(1);
+        await expect(options).toContainText(userName);
         await picker.press('ArrowDown');
         await picker.press('Enter');
 
