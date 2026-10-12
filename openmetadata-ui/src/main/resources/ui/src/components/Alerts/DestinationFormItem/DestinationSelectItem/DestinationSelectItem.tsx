@@ -441,7 +441,7 @@ function DestinationSelectItem({
           color="tertiary"
           data-testid={`remove-destination-${id}`}
           onPress={() => remove(id)}>
-          <XClose className="tw:size-3.5 tw:shrink-0" />
+          <XClose className="tw:shrink-0" size={14} />
         </Button>
       )}
     </div>

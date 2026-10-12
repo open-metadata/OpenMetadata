@@ -47,7 +47,8 @@ export const ProfilerObjectFieldTemplate: FC<ObjectFieldTemplateProps> = (
             data-testid={`add-item-${title}`}
             icon={
               <Plus
-                className="tw:size-3 tw:shrink-0"
+                className="tw:shrink-0"
+                size={12}
                 style={{ color: 'white' }}
               />
             }

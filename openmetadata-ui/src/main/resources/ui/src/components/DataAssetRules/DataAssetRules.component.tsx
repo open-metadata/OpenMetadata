@@ -405,7 +405,7 @@ export const useSemanticsRuleList = ({
             ghost
             className="add-button"
             data-testid="add-widget-button"
-            icon={<Plus className="tw:size-3.5 tw:shrink-0 tw:mr-2" />}
+            icon={<Plus className="tw:shrink-0 tw:mr-2" size={14} />}
             type="primary"
             onClick={handleAddDataAssetRule}>
             {t('label.add')}

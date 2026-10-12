@@ -91,7 +91,8 @@ function AlertDiagnosticInfoTab() {
                         title={item.description}
                         triggerClassName="tw:inline-flex">
                         <InfoCircle
-                          className="info-icon tw:size-3.5 tw:shrink-0"
+                          className="info-icon tw:shrink-0"
+                          size={14}
                           style={{ color: GRAYED_OUT_COLOR }}
                         />
                       </Tooltip>

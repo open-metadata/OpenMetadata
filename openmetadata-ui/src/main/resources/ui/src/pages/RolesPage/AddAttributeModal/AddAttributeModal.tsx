@@ -168,7 +168,8 @@ const AddAttributeModal: FC<Props> = ({
                 })}
                 prefix={
                   <Search
-                    className="tw:size-3.5 tw:shrink-0"
+                    className="tw:shrink-0"
+                    size={14}
                     style={{ color: '#37352F4D' }}
                   />
                 }
@@ -206,7 +207,7 @@ const AddAttributeModal: FC<Props> = ({
                 </Grid.Item>
                 <Grid.Item className="layout-column" span={2}>
                   {selectedValues.includes(option.id) && (
-                    <Check className="text-primary tw:size-3.5 tw:shrink-0" />
+                    <Check className="text-primary tw:shrink-0" size={14} />
                   )}
                 </Grid.Item>
               </Grid>

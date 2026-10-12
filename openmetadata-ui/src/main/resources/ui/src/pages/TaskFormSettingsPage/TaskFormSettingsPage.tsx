@@ -237,7 +237,7 @@ const TransitionFormsPane: FC<{
       </div>
       <Button
         data-testid="task-form-transition-add-button"
-        icon={<Plus className="tw:size-3.5 tw:shrink-0 tw:mr-2" />}
+        icon={<Plus className="tw:shrink-0 tw:mr-2" size={14} />}
         onClick={() =>
           syncTransitionDesigner([
             ...transitionBuilders,
@@ -348,7 +348,7 @@ const WorkflowStagesPane: FC<{
       </div>
       <Button
         data-testid="task-form-stage-mapping-add-button"
-        icon={<Plus className="tw:size-3.5 tw:shrink-0 tw:mr-2" />}
+        icon={<Plus className="tw:shrink-0 tw:mr-2" size={14} />}
         onClick={() =>
           syncStageMappings([...stageMappings, createEmptyStageMapping()])
         }>

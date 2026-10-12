@@ -310,7 +310,10 @@ const ProfilerConfigurationPage = () => {
                               className="text-primary p-0"
                               data-testid="add-fields"
                               icon={
-                                <Plus className="tw:size-3.5 tw:shrink-0 tw:mr-2" />
+                                <Plus
+                                  className="tw:shrink-0 tw:mr-2"
+                                  size={14}
+                                />
                               }
                               type="text"
                               onClick={() => add()}>

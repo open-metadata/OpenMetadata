@@ -648,7 +648,7 @@ const TableQueries: FC<TableQueriesProp> = ({
                             bordered={false}
                             className="p-t-0"
                             clearIcon={
-                              <XCircle className="tw:size-3.5 tw:shrink-0" />
+                              <XCircle className="tw:shrink-0" size={14} />
                             }
                             data-testid="data-range-picker"
                             open={isClickedCalendar}
@@ -682,9 +682,15 @@ const TableQueries: FC<TableQueriesProp> = ({
                           )
                         }>
                         {isAscSortOrder ? (
-                          <SortAscending className="text-grey-muted tw:size-3.5 tw:shrink-0" />
+                          <SortAscending
+                            className="text-grey-muted tw:shrink-0"
+                            size={14}
+                          />
                         ) : (
-                          <SortDescending className="text-grey-muted tw:size-3.5 tw:shrink-0" />
+                          <SortDescending
+                            className="text-grey-muted tw:shrink-0"
+                            size={14}
+                          />
                         )}
                       </Button>
                       {addButton}

@@ -79,7 +79,7 @@ function TeamTypeSelect({
           size="small"
           type="primary"
           onClick={handleCancel}>
-          <XClose className="tw:size-3.5 tw:shrink-0" />
+          <XClose className="tw:shrink-0" size={14} />
         </Button>
         <Button
           className="h-8 p-x-xss"
@@ -87,7 +87,7 @@ function TeamTypeSelect({
           size="small"
           type="primary"
           onClick={handleSubmit}>
-          <Check className="tw:size-3.5 tw:shrink-0" />
+          <Check className="tw:shrink-0" size={14} />
         </Button>
       </Box>
     </Box>

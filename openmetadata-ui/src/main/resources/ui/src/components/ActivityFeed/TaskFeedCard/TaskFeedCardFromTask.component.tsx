@@ -388,7 +388,7 @@ const TaskFeedCardFromTask = ({
               color="tertiary"
               data-testid="approve-button"
               iconLeading={
-                <CheckCircleFilled className="tw:size-3.5 tw:shrink-0" />
+                <CheckCircleFilled className="tw:shrink-0" size={14} />
               }
               size="xs"
               onPress={onTaskResolve}>
@@ -400,7 +400,7 @@ const TaskFeedCardFromTask = ({
               color="tertiary-destructive"
               data-testid="reject-button"
               iconLeading={
-                <CloseCircleFilled className="tw:size-3.5 tw:shrink-0" />
+                <CloseCircleFilled className="tw:shrink-0" size={14} />
               }
               size="xs"
               onPress={onTaskReject}>

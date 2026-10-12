@@ -366,7 +366,7 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
             className="add-mapping-btn"
             data-testid="add-mapping-btn"
             disabled={disabled}
-            icon={<Plus className="tw:size-3.5 tw:shrink-0 tw:mr-2" />}
+            icon={<Plus className="tw:shrink-0 tw:mr-2" size={14} />}
             onClick={handleAddMapping}>
             {t('label.add-entity', {
               entity: t('label.ldap-group-mapping'),

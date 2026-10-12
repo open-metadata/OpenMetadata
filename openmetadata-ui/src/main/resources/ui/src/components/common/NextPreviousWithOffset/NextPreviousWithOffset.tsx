@@ -78,7 +78,7 @@ const NextPreviousWithOffset = ({
         className="hover-button text-sm flex-center"
         data-testid="previous"
         disabled={currentPage === 1 || isLoading}
-        icon={<ArrowLeft className="tw:size-3.5 tw:shrink-0 tw:mr-2" />}
+        icon={<ArrowLeft className="tw:shrink-0 tw:mr-2" size={14} />}
         type="primary"
         onClick={onPreviousHandler}>
         <span>{t('label.previous')}</span>
@@ -94,14 +94,14 @@ const NextPreviousWithOffset = ({
         type="primary"
         onClick={onNextHandler}>
         <span> {t('label.next')}</span>
-        <ArrowRight className="tw:size-3.5 tw:shrink-0 tw:ml-2" />
+        <ArrowRight className="tw:shrink-0 tw:ml-2" size={14} />
       </Button>
       {onShowSizeChange && (
         <Dropdown.Root>
           <CoreButton
             color="secondary"
             data-testid="page-size-change-button"
-            iconTrailing={<ChevronDown className="tw:size-3.5 tw:shrink-0" />}
+            iconTrailing={<ChevronDown className="tw:shrink-0" size={14} />}
             isDisabled={isLoading}>
             {`${pageSize} / ${t('label.page')}`}
           </CoreButton>

@@ -202,10 +202,7 @@ const NodeChildren = ({
               entity: childrenHeading,
             })}
             suffix={
-              <Search
-                className="tw:size-3.5 tw:shrink-0"
-                color={BORDER_COLOR}
-              />
+              <Search className="tw:shrink-0" color={BORDER_COLOR} size={14} />
             }
             value={searchValue}
             onChange={handleSearchChange}

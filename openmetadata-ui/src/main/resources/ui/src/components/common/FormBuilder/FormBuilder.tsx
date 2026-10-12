@@ -131,8 +131,9 @@ const FormBuilder = forwardRef<Form, Props>(
             className="p-x-md p-y-xxs h-auto rounded-6"
             type="primary">
             <Check
-              className="tw:size-3.5 tw:shrink-0"
+              className="tw:shrink-0"
               data-testid="success-icon"
+              size={14}
             />
           </Button>
         );

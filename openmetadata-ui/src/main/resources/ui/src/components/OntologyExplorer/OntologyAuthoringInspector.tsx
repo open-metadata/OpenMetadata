@@ -64,7 +64,8 @@ const EXTERNAL_SCHEME_SUGGESTIONS = ['schema', 'wikidata', 'fibo', 'snomed'];
 const SearchInputIcon = ({ className }: { className?: string }) => (
   <Search
     aria-hidden="true"
-    className={classNames('tw:size-3.5 tw:shrink-0', className)}
+    className={classNames('tw:shrink-0', className)}
+    size={14}
   />
 );
 

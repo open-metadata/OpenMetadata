@@ -652,7 +652,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                     </p>
                     <Button
                       className="include-columns-add-button flex-center"
-                      icon={<Plus className="tw:size-2 tw:shrink-0" />}
+                      icon={<Plus className="tw:shrink-0" size={8} />}
                       size="small"
                       type="primary"
                       onClick={() => add({ metrics: ['all'] })}
@@ -947,7 +947,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                           </p>
                           <Button
                             className="include-columns-add-button flex-center"
-                            icon={<Plus className="tw:size-2 tw:shrink-0" />}
+                            icon={<Plus className="tw:shrink-0" size={8} />}
                             size="small"
                             type="primary"
                             onClick={() => add()}

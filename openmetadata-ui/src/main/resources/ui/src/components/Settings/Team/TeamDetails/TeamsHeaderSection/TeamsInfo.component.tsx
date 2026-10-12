@@ -255,7 +255,7 @@ const TeamsInfo = ({
                   size="small"
                   type="primary"
                   onClick={() => setIsEmailEdit(false)}>
-                  <XClose className="tw:size-3.5 tw:shrink-0" />
+                  <XClose className="tw:shrink-0" size={14} />
                 </Button>
                 <Button
                   className="h-8 p-x-xss"
@@ -264,7 +264,7 @@ const TeamsInfo = ({
                   loading={isLoading}
                   size="small"
                   type="primary">
-                  <Check className="tw:size-3.5 tw:shrink-0" />
+                  <Check className="tw:shrink-0" size={14} />
                 </Button>
               </Box>
             </Box>
@@ -476,8 +476,9 @@ const TeamsInfo = ({
             title={t('message.team-distinct-user-description')}
             triggerClassName="tw:inline-flex">
             <InfoCircle
-              className="m-x-xss tw:size-3.5 tw:shrink-0"
+              className="m-x-xss tw:shrink-0"
               data-testid="helper-icon"
+              size={14}
               style={{ color: GRAYED_OUT_COLOR }}
             />
           </Tooltip>

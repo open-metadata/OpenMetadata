@@ -128,8 +128,9 @@ const LoginConfigurationPage = () => {
                   title={t('message.login-fail-attempt-message')}
                   triggerClassName="tw:inline-flex">
                   <InfoCircle
-                    className="m-x-xss tw:size-3.5 tw:shrink-0"
+                    className="m-x-xss tw:shrink-0"
                     data-testid="max-login-fail-attampts-url-info"
+                    size={14}
                     style={{ color: GRAYED_OUT_COLOR }}
                   />
                 </Tooltip>
@@ -154,8 +155,9 @@ const LoginConfigurationPage = () => {
                   title={t('message.access-block-time-message')}
                   triggerClassName="tw:inline-flex">
                   <InfoCircle
-                    className="m-x-xss tw:size-3.5 tw:shrink-0"
+                    className="m-x-xss tw:shrink-0"
                     data-testid="access-block-time-info"
+                    size={14}
                     style={{ color: GRAYED_OUT_COLOR }}
                   />
                 </Tooltip>
@@ -180,8 +182,9 @@ const LoginConfigurationPage = () => {
                   title={t('message.jwt-token-expiry-time-message')}
                   triggerClassName="tw:inline-flex">
                   <InfoCircle
-                    className="m-x-xss tw:size-3.5 tw:shrink-0"
+                    className="m-x-xss tw:shrink-0"
                     data-testid="jwt-token-expiry-time-info"
+                    size={14}
                     style={{ color: GRAYED_OUT_COLOR }}
                   />
                 </Tooltip>

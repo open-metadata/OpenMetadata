@@ -316,7 +316,10 @@ const buildStringField = ({
                 excludeTriggerFromTabOrder
                 title={data.description}
                 triggerClassName="tw:inline-flex">
-                <HelpCircle className="ant-form-item-tooltip tw:size-3.5 tw:shrink-0" />
+                <HelpCircle
+                  className="ant-form-item-tooltip tw:shrink-0"
+                  size={14}
+                />
               </Tooltip>
             </label>
           </div>

@@ -605,7 +605,10 @@ const AppDetails = () => {
         <div
           className="deleted-badge-button text-xs flex-center app-runtime-disabled-badge"
           data-testid="runtime-disabled-badge">
-          <SlashCircle01 className="d-flex m-r-xss font-medium text-xs tw:size-3.5 tw:shrink-0" />
+          <SlashCircle01
+            className="d-flex m-r-xss font-medium text-xs tw:shrink-0"
+            size={14}
+          />
           {t('label.disabled')}
         </div>
       </Tooltip>
@@ -680,7 +683,7 @@ const AppDetails = () => {
         <div className="d-flex tw:min-w-0 tw:flex-auto">
           <Button
             className="p-0"
-            icon={<ChevronLeft className="tw:size-3.5 tw:shrink-0 tw:mr-2" />}
+            icon={<ChevronLeft className="tw:shrink-0 tw:mr-2" size={14} />}
             size="small"
             type="text"
             onClick={onBrowseAppsClick}>
@@ -724,7 +727,7 @@ const AppDetails = () => {
                   className="layout-space layout-space-horizontal"
                   gap={2}
                   itemClassName="layout-space-item">
-                  <Clock className="tw:size-3.5 tw:shrink-0" />
+                  <Clock className="tw:shrink-0" size={14} />
                   <Typography className="text-xs" color="secondary">
                     {`${t('label.installed')} ${getRelativeTime(
                       appData?.updatedAt
@@ -738,7 +741,7 @@ const AppDetails = () => {
                   className="layout-space layout-space-horizontal"
                   gap={2}
                   itemClassName="layout-space-item">
-                  <User01 className="tw:size-3.5 tw:shrink-0" />
+                  <User01 className="tw:shrink-0" size={14} />
                   <Typography className="text-xs" color="secondary">
                     {t('label.developed-by-developer', {
                       developer: appData?.developer,

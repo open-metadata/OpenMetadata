@@ -301,8 +301,9 @@ const CustomizeAppModeSidebarPage = () => {
             <Box align="center" direction="row" gap={2}>
               <DotsGrid
                 aria-hidden
-                className="tw:size-4 tw:shrink-0 tw:cursor-grab tw:text-fg-quaternary"
+                className="tw:shrink-0 tw:cursor-grab tw:text-fg-quaternary"
                 data-testid="ask-sidebar-drag-handle"
+                size={16}
               />
               {Icon && (
                 <Icon className="tw:text-fg-tertiary" height={20} width={20} />
@@ -365,7 +366,7 @@ const CustomizeAppModeSidebarPage = () => {
                     color="secondary"
                     data-testid="reset-button"
                     iconLeading={
-                      <RefreshCw01 className="tw:size-3.5 tw:shrink-0" />
+                      <RefreshCw01 className="tw:shrink-0" size={14} />
                     }
                     isDisabled={isSaving}
                     onPress={handleReset}>
@@ -374,7 +375,7 @@ const CustomizeAppModeSidebarPage = () => {
                   <Button
                     color="primary"
                     data-testid="save-button"
-                    iconLeading={<Save className="tw:size-3.5 tw:shrink-0" />}
+                    iconLeading={<Save className="tw:shrink-0" size={14} />}
                     isDisabled={disableSave}
                     isLoading={isSaving}
                     onPress={handleSave}>

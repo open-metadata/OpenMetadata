@@ -71,7 +71,7 @@ const renderCustomUnitDropdown = (
         }}
       />
       <Button
-        icon={<Plus className="tw:size-3.5 tw:shrink-0 tw:mr-2" />}
+        icon={<Plus className="tw:shrink-0 tw:mr-2" size={14} />}
         type="text"
         onClick={onAddCustomUnit}>
         {t('label.add')}

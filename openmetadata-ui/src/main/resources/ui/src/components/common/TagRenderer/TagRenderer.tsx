@@ -35,7 +35,7 @@ export const TagRenderer = (props: CustomTagProps) => {
       {labelNode}
       {closable && (
         <button className="selected-chip-tag-remove" onClick={onClose}>
-          <XClose className="tw:size-3.5 tw:shrink-0" />
+          <XClose className="tw:shrink-0" size={14} />
         </button>
       )}
     </span>

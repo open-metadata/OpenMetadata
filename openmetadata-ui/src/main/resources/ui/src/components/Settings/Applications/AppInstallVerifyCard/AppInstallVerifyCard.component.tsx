@@ -57,8 +57,9 @@ const AppInstallVerifyCard = ({
           className="tw:w-44 tw:gap-0 app-card-divider"
           label={
             <CheckCircle
-              className="tw:size-3.5 tw:shrink-0"
+              className="tw:shrink-0"
               color={LIGHT_GREEN_COLOR}
+              size={14}
             />
           }
         />
@@ -154,7 +155,7 @@ const AppInstallVerifyCard = ({
               className="layout-space layout-space-horizontal"
               gap={2}
               itemClassName="layout-space-item">
-              <User01 className="tw:size-3.5 tw:shrink-0" />
+              <User01 className="tw:shrink-0" size={14} />
               <Typography className="text-xs" color="secondary">
                 {t('label.developed-by-developer', {
                   developer: appData?.developer,
@@ -167,7 +168,7 @@ const AppInstallVerifyCard = ({
               className="layout-space layout-space-horizontal"
               gap={2}
               itemClassName="layout-space-item">
-              <Clock className="tw:size-3.5 tw:shrink-0" />
+              <Clock className="tw:shrink-0" size={14} />
               <Typography className="text-xs" color="secondary">
                 {`${t('label.updated')} ${getRelativeTime(appData?.updatedAt)}`}
               </Typography>

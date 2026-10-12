@@ -122,7 +122,7 @@ const TaskFormBuilderSection = ({
         </div>
         <Button
           data-testid={`${testIdPrefix}-add-field`}
-          icon={<Plus className="tw:size-3.5 tw:shrink-0 tw:mr-2" />}
+          icon={<Plus className="tw:shrink-0 tw:mr-2" size={14} />}
           onClick={() => onChange([...fields, createEmptyDesignerField()])}>
           {t('label.add-field')}
         </Button>
@@ -155,7 +155,7 @@ const TaskFormBuilderSection = ({
                         danger
                         data-testid={`${testIdPrefix}-field-remove-${index}`}
                         icon={
-                          <Trash01 className="tw:size-3.5 tw:shrink-0 tw:mr-2" />
+                          <Trash01 className="tw:shrink-0 tw:mr-2" size={14} />
                         }
                         size="small"
                         type="text"

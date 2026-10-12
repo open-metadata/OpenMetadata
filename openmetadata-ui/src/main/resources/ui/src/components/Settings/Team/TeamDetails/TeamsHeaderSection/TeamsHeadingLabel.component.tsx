@@ -175,7 +175,7 @@ const TeamsHeadingLabel = ({
             disabled={isLoading}
             type="primary"
             onMouseDown={handleClose}>
-            <XClose className="tw:size-3.5 tw:shrink-0" />
+            <XClose className="tw:shrink-0" size={14} />
           </Button>
           <Button
             className="rounded-4 text-sm p-xss"
@@ -183,7 +183,7 @@ const TeamsHeadingLabel = ({
             loading={isLoading}
             type="primary"
             onMouseDown={onHeadingSave}>
-            <Check className="tw:size-3.5 tw:shrink-0" />
+            <Check className="tw:shrink-0" size={14} />
           </Button>
         </Box>
       </div>
@@ -197,7 +197,10 @@ const TeamsHeadingLabel = ({
           <div
             className="deleted-badge-button text-xs flex-center"
             data-testid="deleted-badge">
-            <ExclamationCircleFilled className="m-r-xss tw:size-3.5 tw:shrink-0" />
+            <ExclamationCircleFilled
+              className="m-r-xss tw:shrink-0"
+              size={14}
+            />
             {t('label.deleted')}
           </div>
         )}
