@@ -21,7 +21,6 @@ import {
   Grid,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { isNaN, map } from 'lodash';
 import { Key, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -66,7 +65,6 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
     getEpochMillisForPastDays(EXECUTION_FILTER_RANGE.last365days.days)
   );
   const [endTime, setEndTime] = useState(() => getCurrentMillis());
-  const [isClickedCalendar, setIsClickedCalendar] = useState(false);
   const [status, setStatus] = useState(MenuOptions.all);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -196,39 +194,16 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
                 </Dropdown.Popover>
               </Dropdown.Root>
               {view === PIPELINE_EXECUTION_TABS.LIST_VIEW ? (
-                <>
-                  <span
-                    className={classNames(
-                      'range-picker-button tw:inline-flex tw:cursor-pointer tw:items-center tw:gap-1',
-                      {
-                        'range-picker-button-width':
-                          !datesSelected && !isClickedCalendar,
-                      }
-                    )}
-                    data-testid="data-range-picker-button"
-                    role="presentation"
-                    onClick={() => {
-                      setIsClickedCalendar(true);
-                    }}>
-                    <Icon component={Calendar} size={12} />
-                    <span className="date-container">
-                      {!datesSelected && <span>{t('label.date-filter')}</span>}
-                      <DatePicker.RangePicker
-                        allowClear
-                        showNow
-                        bordered={false}
-                        className="executions-date-picker"
-                        clearIcon={<CloseCircleOutlined />}
-                        data-testid="data-range-picker"
-                        open={isClickedCalendar}
-                        placeholder={['', '']}
-                        suffixIcon={null}
-                        onChange={onDateChange}
-                        onOpenChange={setIsClickedCalendar}
-                      />
-                    </span>
-                  </span>
-                </>
+                <DatePicker.RangePicker
+                  allowClear
+                  showNow
+                  className="executions-date-picker"
+                  clearIcon={<CloseCircleOutlined />}
+                  data-testid="data-range-picker"
+                  placeholder={[t('label.date-filter'), '']}
+                  suffixIcon={<Icon component={Calendar} size={12} />}
+                  onChange={onDateChange}
+                />
               ) : null}
             </Box>
           </Box>
