@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Tooltip, Typography } from '@openmetadata/ui-core-components';
-import { Card } from 'antd';
+import { Card, Tooltip, Typography } from '@openmetadata/ui-core-components';
+
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 
@@ -329,16 +329,18 @@ const AccessTokenCard: FC<MockProps> = ({
         isSCIMBot && 'scim-token-card'
       )}
       data-testid="center-panel">
-      {!isDataLoaded ? <Loader /> : renderAuthComponent()}
-      <AccessTokenRevokeModal
-        confirmMessage={confirmMessage}
-        disabled={disabled}
-        isModalOpen={isModalOpen}
-        isSCIMBot={isSCIMBot}
-        isTokenRemoving={isTokenRemoving}
-        onCancel={() => setIsModalOpen(false)}
-        onConfirm={handleTokenRevoke}
-      />
+      <Card.Content>
+        {!isDataLoaded ? <Loader /> : renderAuthComponent()}
+        <AccessTokenRevokeModal
+          confirmMessage={confirmMessage}
+          disabled={disabled}
+          isModalOpen={isModalOpen}
+          isSCIMBot={isSCIMBot}
+          isTokenRemoving={isTokenRemoving}
+          onCancel={() => setIsModalOpen(false)}
+          onConfirm={handleTokenRevoke}
+        />
+      </Card.Content>
     </Card>
   );
 

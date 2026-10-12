@@ -36,6 +36,7 @@ import omPlaywright from './playwright/eslint-rules/index.mjs';
 // antd components with no remaining imports anywhere in src. Add a component
 // here in the PR that removes its last import (open-metadata/openmetadata-collate#6884).
 const MIGRATED_ANTD_COMPONENTS = [
+  'Card',
   'Col',
   'Divider',
   'Dropdown',
