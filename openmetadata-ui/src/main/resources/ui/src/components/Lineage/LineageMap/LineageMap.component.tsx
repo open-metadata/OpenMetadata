@@ -2259,7 +2259,7 @@ const LineageMapCanvas = ({
           onToggleMiniMap={() => setMiniMapVisible((visible) => !visible)}
         />
       </Panel>
-      <Panel position="bottom-left">
+      <Panel className="lineage-layers-panel" position="bottom-left">
         <LineageLayers
           sceneLens={scene.lens}
           sceneLevelLabelKey={getSceneLevelLabelKey(scene)}

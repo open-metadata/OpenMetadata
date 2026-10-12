@@ -303,7 +303,7 @@ const EntityLineageCanvas = ({
           onEdgeClick={handleCanvasEdgeClick}
           onEdgeHover={setHoveredEdge}
         />
-        <Panel position="bottom-left">
+        <Panel className="lineage-layers-panel" position="bottom-left">
           <LineageLayers entity={entity} entityType={entityType} />
         </Panel>
         <Panel position="bottom-right">

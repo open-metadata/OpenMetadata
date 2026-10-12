@@ -167,7 +167,7 @@ const LayerMenuOption = ({
         as="span"
         className={isSelected ? 'tw:text-brand-secondary' : 'tw:text-primary'}
         size="text-sm"
-        weight={isSelected ? 'semibold' : 'medium'}>
+        weight={isSelected ? 'semibold' : 'regular'}>
         {title}
       </Typography>
       {description && (
@@ -373,7 +373,7 @@ const LineageLayers = ({
               as="span"
               className="tw:whitespace-nowrap tw:text-primary"
               size="text-sm"
-              weight="semibold">
+              weight="regular">
               {triggerLabel}
             </Typography>
             <ChevronDown
