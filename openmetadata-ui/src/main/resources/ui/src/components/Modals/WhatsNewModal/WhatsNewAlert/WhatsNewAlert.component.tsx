@@ -110,7 +110,7 @@ const WhatsNewAlert = () => {
                 className={`layout-column tw:block whats-new-alert-left${
                   releaseDate ? '' : ' whats-new-alert-left--centered'
                 }`}
-                style={{ flex: '0 0 220px' }}>
+                style={{ flex: releaseDate ? '0 0 220px' : '0 0 140px' }}>
                 <div className="whats-new-alert-version-block">
                   <div className="whats-new-alert-meta">
                     <Typography className="whats-new-alert-meta-label">
