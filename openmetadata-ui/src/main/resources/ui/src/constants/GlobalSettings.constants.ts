@@ -57,6 +57,7 @@ export enum GlobalSettingOptions {
   EMAIL = 'email',
   NOTIFICATIONS = 'notifications',
   ALERTS = 'alerts',
+  ANNOUNCEMENTS = 'announcements',
   OBSERVABILITY = 'observability',
   GLOSSARY_TERM = 'glossaryTerm',
   ADD_NOTIFICATION = 'add-notification',

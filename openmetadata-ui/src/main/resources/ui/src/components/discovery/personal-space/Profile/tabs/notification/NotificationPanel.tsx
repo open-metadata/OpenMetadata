@@ -41,6 +41,7 @@ import { checkPermission } from '../../../../../../utils/PermissionsUtils';
 import Loader from '../../../../../common/Loader/Loader';
 import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
+import { NATIVE_NOTIFICATION_SECTIONS } from './nativeNotificationSections';
 import type { NotificationView } from './Notification.types';
 import {
   buildSectionCards,
@@ -119,10 +120,12 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
   const viewFqn = 'fqn' in view ? view.fqn : undefined;
 
   const sectionContributions = useMemo(
-    () =>
-      getContributions<NotificationSectionContribution>(
+    () => [
+      ...NATIVE_NOTIFICATION_SECTIONS,
+      ...getContributions<NotificationSectionContribution>(
         EXTENSION_POINTS.NOTIFICATION_LANDING_SECTIONS
       ),
+    ],
     [getContributions]
   );
 

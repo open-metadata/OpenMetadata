@@ -22,6 +22,7 @@ import {
   NotificationSectionContribution,
 } from '../../../../../../utils/ExtensionPointTypes';
 import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
+import { NATIVE_NOTIFICATION_SECTIONS } from './nativeNotificationSections';
 import type {
   NotificationLandingCard,
   NotificationLandingProps,
@@ -46,15 +47,14 @@ const NotificationLanding: FC<NotificationLandingProps> = ({ onNavigate }) => {
       view: { type: 'list' },
     };
 
-    // Downstream builds (e.g. Collate) contribute extra Notification sections;
-    // their cards come from the global-settings Notifications menu.
-    const contributions = getContributions<NotificationSectionContribution>(
-      EXTENSION_POINTS.NOTIFICATION_LANDING_SECTIONS
-    );
-
-    if (contributions.length === 0) {
-      return [alertsCard];
-    }
+    // Native sections, then those downstream builds (e.g. Collate) contribute;
+    // every card comes from the global-settings Notifications menu.
+    const contributions = [
+      ...NATIVE_NOTIFICATION_SECTIONS,
+      ...getContributions<NotificationSectionContribution>(
+        EXTENSION_POINTS.NOTIFICATION_LANDING_SECTIONS
+      ),
+    ];
 
     return [
       alertsCard,
