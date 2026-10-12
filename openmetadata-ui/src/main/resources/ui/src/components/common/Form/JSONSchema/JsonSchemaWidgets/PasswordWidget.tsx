@@ -10,9 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CredentialFileInput } from '@openmetadata/ui-core-components';
+import {
+  CredentialFileInput,
+  PasswordInput,
+} from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
-import { Input } from 'antd';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ALL_ASTERISKS_REGEX } from '../../../../../constants/regex.constants';
@@ -71,21 +73,21 @@ const PasswordWidget: FC<WidgetProps> = (props) => {
   }
 
   return (
-    <Input.Password
-      allowClear
+    <PasswordInput
+      aria-label={props.label || props.name}
       autoComplete="off"
       // eslint-disable-next-line jsx-a11y/no-autofocus -- focus is driven by the RJSF widget schema
       autoFocus={props.autofocus}
       data-testid={`password-input-widget-${props.id}`}
-      disabled={props.disabled}
       id={props.id}
+      isDisabled={props.disabled}
+      isReadOnly={props.readonly}
+      isRequired={props.required}
       name={props.name}
       placeholder={props.placeholder}
-      readOnly={props.readonly}
-      required={props.required}
       value={props.value}
       onBlur={() => props.onBlur(props.id, props.value)}
-      onChange={(e) => handleChange(e.target.value)}
+      onChange={handleChange}
       onFocus={() => props.onFocus(props.id, props.value)}
     />
   );

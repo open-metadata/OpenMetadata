@@ -738,17 +738,17 @@ test.describe('SSO Configuration Tests', () => {
 
       // Open the roles dropdown — options are loaded from the API
       const roleInput = adminsMapping.rolesSelect.getByRole('combobox');
-      await roleInput.focus();
-      await roleInput.press('ArrowDown');
-      const roleOption = page
-        .locator('.ant-select-dropdown:visible')
-        .getByTitle('Data Consumer', { exact: true });
+      await roleInput.click();
+      const roleOption = page.getByRole('option', {
+        name: 'Data Consumer',
+        exact: true,
+      });
       await expect(roleOption).toBeVisible();
       await roleOption.click();
       await roleInput.press('Escape');
       await expect(
-        adminsMapping.rolesSelect.getByTitle('Data Consumer', { exact: true })
-      ).toBeVisible();
+        adminsMapping.rolesSelect.getByTestId('autocomplete-selected-item')
+      ).toHaveText('Data Consumer');
 
       // Add a second mapping with a duplicate DN — both rows show an error
       const duplicateMapping = await addMapping();
@@ -792,49 +792,48 @@ test.describe('SSO Configuration Tests', () => {
       const field = page.getByTestId(
         'sso-configuration-form-array-field-template-authReassignRoles'
       );
-      const dropdown = page.locator('.ant-select-dropdown:visible');
+      const dropdown = page.getByRole('listbox');
+      const selectedRoles = field.getByTestId('autocomplete-selected-item');
 
       // Field renders as a combobox (not a plain tags input)
       await expect(field).toBeVisible();
       await expect(field.getByRole('combobox')).toBeVisible();
 
       // Opening the dropdown shows API-fetched role options
-      await field.click();
+      await field.getByRole('combobox').click();
       await expect(dropdown).toBeVisible();
-      await expect(dropdown.locator('.ant-select-item-option')).not.toHaveCount(
-        0
-      );
+      await expect(dropdown.getByRole('option')).not.toHaveCount(0);
 
       // Select a named role — it appears as a selection tag
-      await dropdown.getByTitle('Data Consumer', { exact: true }).click();
-      await expect(field.locator('.ant-select-selection-item')).toHaveCount(1);
+      await dropdown
+        .getByRole('option', { name: 'Data Consumer', exact: true })
+        .click();
+      await expect(selectedRoles).toHaveCount(1);
 
       // Remove the selected role via its remove button
-      await field.locator('.ant-select-selection-item-remove').click();
-      await expect(field.locator('.ant-select-selection-item')).toHaveCount(0);
+      await selectedRoles.getByRole('button').click();
+      await expect(selectedRoles).toHaveCount(0);
 
       // Typing filters the visible options
-      await field.click();
+      await field.getByRole('combobox').click();
       const dataRoleSearchResponse = page.waitForResponse(
         '/api/v1/roles/search?*'
       );
-      await field.locator('input').fill('Data');
+      await field.getByRole('combobox').fill('Data');
       await dataRoleSearchResponse;
-      await expect(
-        dropdown.locator(
-          '.ant-select-item-option:not(.ant-select-item-option-disabled)'
-        )
-      ).not.toHaveCount(0, { timeout: 15000 });
+      await expect(dropdown.getByRole('option')).not.toHaveCount(0, {
+        timeout: 15000,
+      });
 
       // Pressing Enter on a non-existent value does not create an arbitrary tag
-      await field.locator('input').clear();
+      await field.getByRole('combobox').clear();
       const missingRoleSearchResponse = page.waitForResponse(
         '/api/v1/roles/search?*'
       );
-      await field.locator('input').fill('NonExistentRoleXYZ123');
+      await field.getByRole('combobox').fill('NonExistentRoleXYZ123');
       await missingRoleSearchResponse;
-      await field.locator('input').press('Enter');
-      await expect(field.locator('.ant-select-selection-item')).toHaveCount(0);
+      await field.getByRole('combobox').press('Enter');
+      await expect(selectedRoles).toHaveCount(0);
     });
 
     test('should not display role mapping widget for non-LDAP providers', async ({

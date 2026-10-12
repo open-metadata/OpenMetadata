@@ -12,7 +12,7 @@
  */
 
 import { Registry, WidgetProps } from '@rjsf/utils';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import {
   MOCK_FILE_SELECT_WIDGET,
   MOCK_PASSWORD_WIDGET,
@@ -51,6 +51,12 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     )
   ),
 }));
+
+// The core PasswordInput puts the test id on its field wrapper.
+const getPasswordInput = () =>
+  screen
+    .getByTestId('password-input-widget-root/password')
+    .querySelector('input') as HTMLInputElement;
 
 const mockOnFocus = jest.fn();
 const mockOnBlur = jest.fn();
@@ -91,15 +97,13 @@ describe('Test PasswordWidget Component', () => {
   it('Should be disabled', async () => {
     render(<PasswordWidget {...mockProps} disabled />);
 
-    expect(
-      screen.getByTestId('password-input-widget-root/password')
-    ).toBeDisabled();
+    expect(getPasswordInput()).toBeDisabled();
   });
 
   it('Should call onFocus', async () => {
     render(<PasswordWidget {...mockProps} />);
 
-    fireEvent.focus(screen.getByTestId('password-input-widget-root/password'));
+    act(() => getPasswordInput().focus());
 
     expect(mockOnFocus).toHaveBeenCalled();
   });
@@ -107,7 +111,7 @@ describe('Test PasswordWidget Component', () => {
   it('Should call onBlur', async () => {
     render(<PasswordWidget {...mockProps} />);
 
-    fireEvent.blur(screen.getByTestId('password-input-widget-root/password'));
+    fireEvent.blur(getPasswordInput());
 
     expect(mockOnBlur).toHaveBeenCalled();
   });
@@ -115,12 +119,9 @@ describe('Test PasswordWidget Component', () => {
   it('Should call onChange', async () => {
     render(<PasswordWidget {...mockProps} />);
 
-    fireEvent.change(
-      screen.getByTestId('password-input-widget-root/password'),
-      {
-        target: { value: 'password' },
-      }
-    );
+    fireEvent.change(getPasswordInput(), {
+      target: { value: 'password' },
+    });
 
     expect(mockOnChange).toHaveBeenCalledWith('password');
   });
@@ -128,12 +129,9 @@ describe('Test PasswordWidget Component', () => {
   it('Should call onChange with asterisk', async () => {
     render(<PasswordWidget {...mockProps} />);
 
-    fireEvent.change(
-      screen.getByTestId('password-input-widget-root/password'),
-      {
-        target: { value: '*******' },
-      }
-    );
+    fireEvent.change(getPasswordInput(), {
+      target: { value: '*******' },
+    });
 
     expect(mockOnChange).toHaveBeenCalledWith('*******');
   });
@@ -141,21 +139,17 @@ describe('Test PasswordWidget Component', () => {
   it('Should show masked value as dots so the user knows a secret is stored', async () => {
     render(<PasswordWidget {...mockProps} />);
 
-    const passwordInput = screen.getByTestId(
-      'password-input-widget-root/password'
-    );
+    const passwordInput = getPasswordInput();
 
     // The input now shows the masked sentinel as password-hidden dots so users
-    // can see that a value is stored and use the allowClear × to remove it.
+    // can see that a value is stored and clear it.
     expect(passwordInput).toHaveValue('******');
   });
 
   it('Should call onChange with undefined when the field is cleared', async () => {
     render(<PasswordWidget {...mockProps} />);
 
-    const passwordInput = screen.getByTestId(
-      'password-input-widget-root/password'
-    );
+    const passwordInput = getPasswordInput();
 
     // Clearing converts '' to undefined — the '' → undefined conversion in
     // handleChange prevents the RJSF form data from holding an explicit empty
@@ -168,9 +162,7 @@ describe('Test PasswordWidget Component', () => {
   it('Should show empty after clearing — no dots visible', () => {
     const { rerender } = render(<PasswordWidget {...mockProps} />);
 
-    const passwordInput = screen.getByTestId(
-      'password-input-widget-root/password'
-    );
+    const passwordInput = getPasswordInput();
 
     expect(passwordInput).toHaveValue('******');
 

@@ -12,14 +12,7 @@
  */
 
 import { Registry, WidgetProps } from '@rjsf/utils';
-import {
-  act,
-  findByRole,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
   MOCK_SELECT_WIDGET,
@@ -52,7 +45,13 @@ const mockTreeSelectProps: WidgetProps = {
   ...MOCK_TREE_SELECT_WIDGET,
 };
 
+const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+
 describe('Test SelectWidget Component', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('Should render select component', async () => {
     render(<SelectWidget {...mockSelectProps} />);
 
@@ -68,34 +67,17 @@ describe('Test SelectWidget Component', () => {
   it('Should be disabled', async () => {
     render(<SelectWidget {...mockSelectProps} disabled />);
 
-    const selectInput = await findByRole(
-      screen.getByTestId('select-widget-root/searchIndexMappingLanguage'),
-      'combobox'
-    );
-
-    expect(selectInput).toBeDisabled();
+    expect(screen.getByRole('combobox')).toBeDisabled();
   });
 
-  it('Should call onFocus', async () => {
+  it('Should call onFocus and onBlur', async () => {
     render(<SelectWidget {...mockSelectProps} />);
 
-    const selectInput = screen.getByTestId(
-      'select-widget-root/searchIndexMappingLanguage'
-    );
-
-    fireEvent.focus(selectInput);
+    act(() => screen.getByRole('combobox').focus());
 
     expect(mockOnFocus).toHaveBeenCalled();
-  });
 
-  it('Should call onBlur', async () => {
-    render(<SelectWidget {...mockSelectProps} />);
-
-    const selectInput = screen.getByTestId(
-      'select-widget-root/searchIndexMappingLanguage'
-    );
-
-    fireEvent.blur(selectInput);
+    act(() => screen.getByRole('combobox').blur());
 
     expect(mockOnBlur).toHaveBeenCalled();
   });
@@ -103,20 +85,8 @@ describe('Test SelectWidget Component', () => {
   it('Should call onChange', async () => {
     render(<SelectWidget {...mockSelectProps} />);
 
-    const selectInput = await findByRole(
-      screen.getByTestId('select-widget-root/searchIndexMappingLanguage'),
-      'combobox'
-    );
-
-    await act(async () => {
-      userEvent.click(selectInput);
-    });
-
-    await waitFor(() => screen.getByTestId('select-option-JP'));
-
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('select-option-EN'));
-    });
+    await user.click(screen.getByRole('combobox'));
+    await user.click(await screen.findByTestId('select-option-EN'));
 
     expect(mockOnChange).toHaveBeenCalledTimes(1);
   });
@@ -136,32 +106,20 @@ describe('Test SelectWidget Component', () => {
   it('Should filter options when searching', async () => {
     render(<SelectWidget {...mockSelectProps} />);
 
-    const selectInput = await findByRole(
-      screen.getByTestId('select-widget-root/searchIndexMappingLanguage'),
-      'combobox'
-    );
+    await user.click(screen.getByRole('combobox'));
 
-    // Open dropdown using mouseDown which is more reliable for Ant Design Select
-    await act(async () => {
-      fireEvent.mouseDown(selectInput);
-    });
-
-    // Wait for dropdown to open and show all options
-    await waitFor(() => screen.getByTestId('select-option-EN'));
-
-    expect(screen.getByTestId('select-option-JP')).toBeInTheDocument();
+    expect(await screen.findByTestId('select-option-JP')).toBeInTheDocument();
     expect(screen.getByTestId('select-option-RU')).toBeInTheDocument();
     expect(screen.getByTestId('select-option-ZH')).toBeInTheDocument();
 
-    // Type to search/filter using fireEvent.change for search input
-    fireEvent.change(selectInput, { target: { value: 'EN' } });
+    await user.clear(screen.getByRole('combobox'));
+    await user.type(screen.getByRole('combobox'), 'EN');
 
-    // After filtering, only EN should be visible
-    await waitFor(() => {
-      expect(screen.getByTestId('select-option-EN')).toBeInTheDocument();
-    });
+    await waitFor(() =>
+      expect(screen.queryByTestId('select-option-JP')).not.toBeInTheDocument()
+    );
 
-    expect(screen.queryByTestId('select-option-JP')).not.toBeInTheDocument();
+    expect(screen.getByTestId('select-option-EN')).toBeInTheDocument();
     expect(screen.queryByTestId('select-option-RU')).not.toBeInTheDocument();
     expect(screen.queryByTestId('select-option-ZH')).not.toBeInTheDocument();
   });

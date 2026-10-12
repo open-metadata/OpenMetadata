@@ -14,6 +14,7 @@ import {
   ButtonUtility,
   Card,
   Grid,
+  Select,
   Tooltip,
   TooltipTrigger,
 } from '@openmetadata/ui-core-components';
@@ -22,12 +23,10 @@ import {
   Home02,
   Minimize02,
 } from '@openmetadata/ui-core-components/icons';
-import { Select } from 'antd';
-import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { debounce, startCase } from 'lodash';
 import QueryString from 'qs';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Key, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DownloadIcon } from '../../assets/svg/ic-download.svg';
@@ -85,11 +84,11 @@ const PlatformLineage = () => {
   const { fqn: decodedFqn } = useFqn();
   const [selectedEntity, setSelectedEntity] = useState<SourceType>();
   const [isEntityLoading, setIsEntityLoading] = useState(false);
-  const [options, setOptions] = useState<DefaultOptionType[]>([]);
-  const [isSearchLoading, setIsSearchLoading] = useState(false);
+  const [searchResults, setSearchResults] = useState<SourceType[]>([]);
   const [defaultValue, setDefaultValue] = useState<string | undefined>(
     decodedFqn || undefined
   );
+  const [searchText, setSearchText] = useState(defaultValue ?? '');
   // Config lives in the Zustand store — Lineage's fetch effect depends on
   // it, so writing here triggers a refetch. Local useState here would leave
   // the store untouched and the depth change would never reach the network.
@@ -168,46 +167,27 @@ const PlatformLineage = () => {
   const runSearch = useMemo(
     () =>
       debounce(async (value: string, request: number) => {
-        try {
-          setIsSearchLoading(true);
-          const searchIndices = [
-            SearchIndex.DATA_ASSET,
-            SearchIndex.DOMAIN,
-            SearchIndex.SERVICE,
-          ];
+        const searchIndices = [
+          SearchIndex.DATA_ASSET,
+          SearchIndex.DOMAIN,
+          SearchIndex.SERVICE,
+        ];
 
-          const response = await searchQuery({
-            query: escapeESReservedCharacters(value),
-            searchIndex: searchIndices,
-            pageSize: PAGE_SIZE_BASE,
-            queryFilter: getLineageEntityExclusionFilter(),
-            includeDeleted: false,
-          });
+        const response = await searchQuery({
+          query: escapeESReservedCharacters(value),
+          searchIndex: searchIndices,
+          pageSize: PAGE_SIZE_BASE,
+          queryFilter: getLineageEntityExclusionFilter(),
+          includeDeleted: false,
+        });
 
-          if (request !== searchOrder.current) {
-            return;
-          }
-
-          setOptions(
-            response.hits.hits.map((hit) => ({
-              value: hit._source.fullyQualifiedName ?? '',
-              label: (
-                <EntitySuggestionOption
-                  showEntityTypeBadge
-                  entity={hit._source as EntityReference}
-                  onSelectHandler={handleEntitySelect}
-                />
-              ),
-              data: hit,
-            }))
+        if (request === searchOrder.current) {
+          setSearchResults(
+            response.hits.hits.map((hit) => hit._source as SourceType)
           );
-        } finally {
-          if (request === searchOrder.current) {
-            setIsSearchLoading(false);
-          }
         }
       }, 300),
-    [handleEntitySelect]
+    []
   );
 
   const debouncedSearch = useCallback(
@@ -216,6 +196,35 @@ const PlatformLineage = () => {
       runSearch(value, request);
     },
     [runSearch]
+  );
+
+  const searchItems = useMemo(
+    () =>
+      searchResults.map((entity) => ({
+        id: entity.fullyQualifiedName ?? '',
+        label: getEntityName(entity),
+      })),
+    [searchResults]
+  );
+
+  const handleSearchInputChange = useCallback(
+    (value: string) => {
+      setSearchText(value);
+      debouncedSearch(value);
+    },
+    [debouncedSearch]
+  );
+
+  const handleSearchSelect = useCallback(
+    (key: Key | null) => {
+      const entity = searchResults.find(
+        (result) => result.fullyQualifiedName === key
+      );
+      if (entity) {
+        handleEntitySelect(entity as EntityReference);
+      }
+    },
+    [searchResults, handleEntitySelect]
   );
 
   const init = useCallback(async () => {
@@ -232,6 +241,7 @@ const PlatformLineage = () => {
       )(decodedFqn);
       setSelectedEntity(entityResponse);
       setDefaultValue(decodedFqn || undefined);
+      setSearchText(decodedFqn ?? '');
     } catch {
       // Old code awaited this via Promise.allSettled alongside the permission fetch, so a
       // rejection (or a synchronous throw from an unsupported entityType) never reached a
@@ -273,22 +283,40 @@ const PlatformLineage = () => {
   const header = useMemo(() => {
     return (
       <div className="d-flex justify-between items-center">
-        <Select
-          showSearch
-          className="w-max-500"
+        <Select.ComboBox
+          allowsEmptyCollection
+          aria-label={t('label.search-entity-for-lineage', {
+            entity: 'entity',
+          })}
+          className="tw:w-1/2 tw:max-w-125"
           data-testid="search-entity-select"
-          filterOption={false}
-          loading={isSearchLoading}
-          optionLabelProp="value"
-          options={options}
+          inputValue={searchText}
+          items={searchItems}
           placeholder={t('label.search-entity-for-lineage', {
             entity: 'entity',
           })}
-          style={{ width: '50%' }}
-          value={defaultValue}
+          selectedKey={null}
+          shortcut={false}
           onFocus={() => !defaultValue && debouncedSearch('')}
-          onSearch={debouncedSearch}
-        />
+          onInputChange={handleSearchInputChange}
+          onSelectionChange={handleSearchSelect}>
+          {(item) => (
+            <Select.Item
+              data-testid={`node-suggestion-${item.id}`}
+              id={item.id}
+              key={item.id}
+              textValue={item.label}>
+              <EntitySuggestionOption
+                showEntityTypeBadge
+                entity={
+                  searchResults.find(
+                    (result) => result.fullyQualifiedName === item.id
+                  ) as EntityReference
+                }
+              />
+            </Select.Item>
+          )}
+        </Select.ComboBox>
         <div className="d-flex gap-2">
           <Tooltip
             placement="top"
@@ -333,11 +361,14 @@ const PlatformLineage = () => {
       </div>
     );
   }, [
-    isSearchLoading,
-    options,
+    searchItems,
+    searchResults,
+    searchText,
     t,
     defaultValue,
     debouncedSearch,
+    handleSearchInputChange,
+    handleSearchSelect,
     handleExport,
     isFullScreen,
     navigate,

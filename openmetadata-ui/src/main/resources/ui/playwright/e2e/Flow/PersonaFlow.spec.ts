@@ -500,25 +500,25 @@ test.describe.serial('Team persona setting flow', () => {
 
       // Wait for dropdown to open and options to load
       await adminPage.getByTestId('default-persona-select-list').waitFor();
-      await adminPage.locator('.ant-select-dropdown').waitFor({
-        state: 'visible',
-      });
+      await adminPage.getByRole('listbox').waitFor({ state: 'visible' });
       const personaResponse = await personasLoadResponse;
       expect(personaResponse.status()).toBe(200);
 
-      const option = adminPage.locator(
-        `.ant-select-dropdown:visible [title="${teamPersona.responseData.displayName}"]`
-      );
+      const option = adminPage.getByRole('option', {
+        name: teamPersona.responseData.displayName,
+      });
 
       await expect(option).toBeVisible();
       await option.click();
 
+      const selectedPersona = adminPage
+        .getByTestId('default-persona-select-list')
+        .getByTestId('autocomplete-selected-item');
+
       // Verify the selected option is correct
-      await expect(
-        adminPage.locator(
-          `span.ant-select-selection-item[title="${teamPersona.responseData.displayName}"]`
-        )
-      ).toBeVisible();
+      await expect(selectedPersona).toContainText(
+        teamPersona.responseData.displayName
+      );
 
       const teamPatchResponse = adminPage.waitForResponse('/api/v1/teams/*');
 
@@ -529,9 +529,7 @@ test.describe.serial('Team persona setting flow', () => {
       await teamPatchResponse;
 
       // Ensure dropdown closed
-      await expect(
-        adminPage.locator('.ant-select-dropdown:visible')
-      ).not.toBeVisible();
+      await expect(adminPage.getByRole('listbox')).not.toBeVisible();
 
       // Verify persona renders in team UI
       await expect(adminPage.getByTestId('team-persona')).toContainText(
@@ -544,11 +542,11 @@ test.describe.serial('Team persona setting flow', () => {
       );
       await adminPage.getByTestId('default-edit-user-persona').click();
       await adminPage.getByTestId('default-persona-select-list').waitFor();
-      await adminPage.locator('.ant-select-dropdown').waitFor({
-        state: 'visible',
-      });
       const personaResponse2 = await personasLoadResponse2;
       expect(personaResponse2.status()).toBe(200);
+
+      // Single select: the current default is removed before picking another.
+      await selectedPersona.getByRole('button').click();
 
       // Typing filters via the server-side search endpoint, not client-side.
       const personaSearchResponse = adminPage.waitForResponse(
@@ -557,29 +555,24 @@ test.describe.serial('Team persona setting flow', () => {
           response.request().method() === 'GET'
       );
       await adminPage
-        .locator('[data-testid="default-persona-select-list"] input')
+        .getByTestId('default-persona-select-list')
+        .getByRole('combobox')
         .fill(teamPersona2.responseData.displayName);
       const searchResponse = await personaSearchResponse;
       expect(searchResponse.status()).toBe(200);
 
       // Click the new persona (teamPersona2)
-      const userPersonaOption = adminPage.locator(
-        `.ant-select-dropdown:visible [title="${teamPersona2.responseData.displayName}"]`
-      );
+      const userPersonaOption = adminPage.getByRole('option', {
+        name: teamPersona2.responseData.displayName,
+      });
       await expect(userPersonaOption).toBeVisible();
       await userPersonaOption.click();
 
-      // Verify the new option replaces the old option in the dropdown selection display
-      await expect(
-        adminPage.locator(
-          `span.ant-select-selection-item[title="${teamPersona2.responseData.displayName}"]`
-        )
-      ).toBeVisible();
-      await expect(
-        adminPage.locator(
-          `span.ant-select-selection-item[title="${teamPersona.responseData.displayName}"]`
-        )
-      ).not.toBeVisible();
+      // Verify the new option replaces the old option in the selection display
+      await expect(selectedPersona).toHaveCount(1);
+      await expect(selectedPersona).toContainText(
+        teamPersona2.responseData.displayName
+      );
 
       // Save it and re-verify
       const teamPatchSwitchResponse =
@@ -598,13 +591,15 @@ test.describe.serial('Team persona setting flow', () => {
         response.url().includes('/api/v1/personas')
       );
       await adminPage.getByTestId('default-edit-user-persona').click();
-      await adminPage.locator('.ant-select-dropdown').waitFor({
-        state: 'visible',
-      });
       await personasLoadResponse3;
-      const revertOption = adminPage.locator(
-        `.ant-select-dropdown:visible [title="${teamPersona.responseData.displayName}"]`
-      );
+      await selectedPersona.getByRole('button').click();
+      await adminPage
+        .getByTestId('default-persona-select-list')
+        .getByRole('combobox')
+        .click();
+      const revertOption = adminPage.getByRole('option', {
+        name: teamPersona.responseData.displayName,
+      });
       await expect(revertOption).toBeVisible();
       await revertOption.click();
       const teamPatchRevertResponse =
@@ -692,15 +687,10 @@ test.describe.serial('Team persona setting flow', () => {
 
       await adminPage.getByTestId('default-persona-select-list').waitFor();
 
-      // Hover over the select to reveal the clear button, then click it
       await adminPage
-        .locator('[data-testid="default-persona-select-list"]')
-        .hover();
-
-      await adminPage
-        .locator(
-          '[data-testid="default-persona-select-list"] .ant-select-clear'
-        )
+        .getByTestId('default-persona-select-list')
+        .getByTestId('autocomplete-selected-item')
+        .getByRole('button')
         .click();
 
       const defaultPersonaChangeResponse =

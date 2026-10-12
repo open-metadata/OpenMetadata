@@ -1467,10 +1467,8 @@ export const verifyPlatformLineageForEntity = async (
 
   await page
     .getByTestId('search-entity-select')
-    .locator('div')
-    .filter({ hasText: /^Search entity to view lineage$/ })
-    .click();
-  await page.getByTestId('search-entity-select').locator('input').fill(fromFqn);
+    .getByRole('combobox')
+    .fill(fromFqn);
 
   const focusSceneResponse = page.waitForResponse(
     (response) =>

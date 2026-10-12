@@ -15,10 +15,11 @@ import {
   Badge,
   Box,
   Grid,
+  Select,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Collapse, InputNumber, Select } from 'antd';
+import { Collapse, InputNumber } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, omit, startCase } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
@@ -829,24 +830,28 @@ const EntitySearchSettings = () => {
                   {t('label.boost-mode')}
                 </Typography>
                 <Select
-                  bordered={false}
-                  className="w-full border-none custom-select"
-                  options={boostModeOptions}
-                  value={signals.boostMode}
-                  onChange={handleRankingSignalBoostModeChange}
-                />
+                  aria-label={t('label.boost-mode')}
+                  items={boostModeOptions}
+                  value={signals.boostMode ?? null}
+                  onChange={(key) =>
+                    handleRankingSignalBoostModeChange(key as BoostMode)
+                  }>
+                  {(item) => <Select.Item id={item.id} label={item.label} />}
+                </Select>
               </Grid.Item>
               <Grid.Item className="layout-column" span={12}>
                 <Typography className="text-xs font-normal" color="secondary">
                   {t('label.score-mode')}
                 </Typography>
                 <Select
-                  bordered={false}
-                  className="w-full border-none custom-select"
-                  options={scoreModeOptions}
-                  value={signals.scoreMode}
-                  onChange={handleRankingSignalScoreModeChange}
-                />
+                  aria-label={t('label.score-mode')}
+                  items={scoreModeOptions}
+                  value={signals.scoreMode ?? null}
+                  onChange={(key) =>
+                    handleRankingSignalScoreModeChange(key as ScoreMode)
+                  }>
+                  {(item) => <Select.Item id={item.id} label={item.label} />}
+                </Select>
               </Grid.Item>
               <Grid.Item
                 className="layout-column ranking-number-control"
@@ -989,15 +994,17 @@ const EntitySearchSettings = () => {
                         {t('label.score-mode')}
                       </Typography>
                       <Select
-                        bordered={false}
-                        className="w-full border-none custom-select"
+                        aria-label={t('label.score-mode')}
                         data-testid="score-mode-select"
-                        options={scoreModeOptions}
-                        value={searchSettings.scoreMode}
-                        onChange={(value: ScoreMode) =>
-                          handleModeUpdate('scoreMode', value)
-                        }
-                      />
+                        items={scoreModeOptions}
+                        value={searchSettings.scoreMode ?? null}
+                        onChange={(key) =>
+                          handleModeUpdate('scoreMode', key as ScoreMode)
+                        }>
+                        {(item) => (
+                          <Select.Item id={item.id} label={item.label} />
+                        )}
+                      </Select>
                     </div>
                     <div className="p-y-xs p-x-sm border-radius-card m-b-sm bg-white config-section-content">
                       <Typography
@@ -1006,15 +1013,17 @@ const EntitySearchSettings = () => {
                         {t('label.boost-mode')}
                       </Typography>
                       <Select
-                        bordered={false}
-                        className="w-full border-none custom-select"
+                        aria-label={t('label.boost-mode')}
                         data-testid="boost-mode-select"
-                        options={boostModeOptions}
-                        value={searchSettings.boostMode}
-                        onChange={(value: BoostMode) =>
-                          handleModeUpdate('boostMode', value)
-                        }
-                      />
+                        items={boostModeOptions}
+                        value={searchSettings.boostMode ?? null}
+                        onChange={(key) =>
+                          handleModeUpdate('boostMode', key as BoostMode)
+                        }>
+                        {(item) => (
+                          <Select.Item id={item.id} label={item.label} />
+                        )}
+                      </Select>
                     </div>
                   </Box>
                 </Box>
