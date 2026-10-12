@@ -19,13 +19,13 @@ import {
   ChangeRevisionStatus,
   MutationOpType,
 } from '../../generated/governance/changeRequest/changeRequest';
+import { useApprovalEnforcedEntityTypesStore } from '../../hooks/useApprovalEnforcedEntityTypesStore';
 import {
   getChangeRequestsForEntity,
   withdrawChangeRequest,
 } from '../../rest/changeRequestsAPI';
-import { getTaskById, resolveTask } from '../../rest/tasksAPI';
-import { useApprovalEnforcedEntityTypesStore } from '../../hooks/useApprovalEnforcedEntityTypesStore';
 import { getApprovalEnforcedEntityTypes } from '../../rest/metadataTypeAPI';
+import { getTaskById, resolveTask } from '../../rest/tasksAPI';
 import ChangeRequestsIndicator from './ChangeRequestsIndicator.component';
 
 jest.mock('../../rest/changeRequestsAPI', () => ({
