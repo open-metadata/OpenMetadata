@@ -370,9 +370,12 @@ export const TreeSelect = <T = unknown,>({
     }
   }, [value, setSelection]);
 
-  // Resync the draft on open, including a programmatic one via `isOpen`.
+  // Resync on open, including a programmatic one via `isOpen`. Staged mode
+  // drops the draft; a controlled immediate picker drops an optimistic pick the
+  // parent never echoed back (its save failed), which `value` alone cannot
+  // signal because the rejected parent keeps passing the same reference.
   useEffect(() => {
-    if (isOpen && isStaged) {
+    if (isOpen && (isStaged || value !== undefined)) {
       setSelection(toArray(value));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
