@@ -761,7 +761,7 @@ export const addAssetToGlossaryTerm = async (
     await page
       .locator(`[data-testid="table-data-card_${entityFqn}"]`)
       .getByTestId('asset-checkbox')
-      .check();
+      .click();
     await waitForAllLoadersToDisappear(page);
     await expect(
       page.locator(
