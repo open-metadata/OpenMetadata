@@ -31,7 +31,8 @@ const meta = {
       control: false,
       table: {
         type: {
-          summary: '"default" | "brand" | "error" | "warning" | "success"',
+          summary:
+            '"default" | "secondary" | "brand" | "error" | "warning" | "success"',
         },
       },
     },
@@ -167,18 +168,25 @@ export const Variants: StoryObj = {
 export const Colors: StoryObj = {
   render: () => (
     <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-      {(['default', 'brand', 'error', 'warning', 'success'] as const).map(
-        (color) => (
-          <div key={color} style={{ width: 180 }}>
-            <Card color={color}>
-              <Card.Header subtitle="color" title={color} />
-              <Card.Content>
-                <p className="tw:text-sm tw:text-secondary">color="{color}"</p>
-              </Card.Content>
-            </Card>
-          </div>
-        )
-      )}
+      {(
+        [
+          'default',
+          'secondary',
+          'brand',
+          'error',
+          'warning',
+          'success',
+        ] as const
+      ).map((color) => (
+        <div key={color} style={{ width: 180 }}>
+          <Card color={color}>
+            <Card.Header subtitle="color" title={color} />
+            <Card.Content>
+              <p className="tw:text-sm tw:text-secondary">color="{color}"</p>
+            </Card.Content>
+          </Card>
+        </div>
+      ))}
     </div>
   ),
 };
@@ -296,6 +304,54 @@ export const CardWithAllProps: StoryObj = {
           <p className="tw:text-xs tw:text-tertiary">Footer content</p>
         </Card.Footer>
       </Card>
+    </div>
+  ),
+};
+
+export const SecondaryPanel: StoryObj = {
+  render: () => (
+    <div style={{ width: 420 }}>
+      <Card color="secondary" variant="ghost">
+        <Card.Header
+          hasDivider={false}
+          subtitle="A grey panel that holds its own cards, so it draws no border and no rule."
+          title="Secondary panel"
+        />
+        <Card.Content>
+          <Card>
+            <Card.Content>
+              <p className="tw:text-sm tw:text-secondary">
+                A default card sitting on the secondary surface.
+              </p>
+            </Card.Content>
+          </Card>
+        </Card.Content>
+      </Card>
+    </div>
+  ),
+};
+
+export const HeaderDivider: StoryObj = {
+  render: () => (
+    <div style={{ display: 'flex', gap: 16 }}>
+      {([true, false] as const).map((hasDivider) => (
+        <div key={String(hasDivider)} style={{ width: 240 }}>
+          <Card>
+            <Card.Header
+              hasDivider={hasDivider}
+              subtitle="Rule under the header"
+              title={`hasDivider={${hasDivider}}`}
+            />
+            <Card.Content>
+              <p className="tw:text-sm tw:text-secondary">
+                {hasDivider
+                  ? 'The default: a rule in the card\u2019s own border colour.'
+                  : 'No rule, for a header that opens a panel rather than a body.'}
+              </p>
+            </Card.Content>
+          </Card>
+        </div>
+      ))}
     </div>
   ),
 };

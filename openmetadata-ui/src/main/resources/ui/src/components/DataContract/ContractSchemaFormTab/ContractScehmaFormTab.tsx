@@ -46,7 +46,7 @@ import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import { ColumnsType } from '../../common/Table/Table.interface';
-import AntTable from '../../common/Table/TableV2';
+import TableV2 from '../../common/Table/TableV2';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { TableCellRendered } from '../../Database/SchemaTable/SchemaTable.interface';
 import TableTags from '../../Database/TableTags/TableTags.component';
@@ -541,7 +541,7 @@ export const ContractSchemaFormTab: React.FC<{
       title={t('label.schema')}
       onNext={onNext}
       onPrev={onPrev}>
-      <AntTable
+      <TableV2
         columns={columns}
         customPaginationProps={paginationProps}
         dataSource={columnsData}
