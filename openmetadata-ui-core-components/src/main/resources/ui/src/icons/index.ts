@@ -218,6 +218,7 @@ export { Image01 } from './Image01';
 export { InactivePipeline } from './InactivePipeline';
 export { Inbox01 } from './Inbox01';
 export { InfoCircle } from './InfoCircle';
+export { Info } from './Info';
 export { Inherit } from './Inherit';
 export { Integrity } from './Integrity';
 export { Italic01 } from './Italic01';
