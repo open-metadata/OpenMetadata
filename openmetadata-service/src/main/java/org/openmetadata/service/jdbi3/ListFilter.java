@@ -16,7 +16,6 @@ import org.openmetadata.schema.api.data.CreateEntityProfile;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.AnnouncementStatus;
 import org.openmetadata.schema.type.Column;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.RegexMode;
 import org.openmetadata.schema.type.Relationship;
@@ -39,6 +38,7 @@ public class ListFilter extends Filter<ListFilter> {
   // holding these as fields keeps the sorted and unsorted listings on a single count-cache entry.
   private String sortField;
   private String sortOrder;
+  private String entityTableName;
 
   private static final String TASK_STATUS_GROUP_OPEN = "open";
   private static final String TASK_STATUS_GROUP_ACTIVE = "active";
@@ -64,6 +64,11 @@ public class ListFilter extends Filter<ListFilter> {
 
   public ListFilter(Include include) {
     this.include = include;
+  }
+
+  public String getConditionForEntity(String tableName) {
+    entityTableName = tableName;
+    return getCondition();
   }
 
   public String getSortField() {
@@ -137,6 +142,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getActiveCondition());
     conditions.add(getAnnouncementTypeCondition());
     conditions.add(getAnnouncementStatusCondition());
+    conditions.add(getSystemAnnouncementCondition());
     conditions.add(getAgentTypeCondition());
     conditions.add(getProviderCondition(tableName));
     conditions.add(getExcludeProviderCondition(tableName));
@@ -540,6 +546,19 @@ public class ListFilter extends Filter<ListFilter> {
     return announcementType == null ? "" : "type = :announcementType";
   }
 
+  /** A system announcement is one with no entityLink; only AnnouncementResource sets this. */
+  private String getSystemAnnouncementCondition() {
+    String systemAnnouncement = queryParams.get("systemAnnouncement");
+    String condition = "";
+    if (systemAnnouncement != null) {
+      condition =
+          Boolean.parseBoolean(systemAnnouncement)
+              ? "entityLink IS NULL"
+              : "entityLink IS NOT NULL";
+    }
+    return condition;
+  }
+
   /**
    * An announcement's stored {@code status} is only a snapshot of its last write, so the generated
    * {@code status} column still reads {@code Active} once the window has closed. Deriving the
@@ -571,7 +590,16 @@ public class ListFilter extends Filter<ListFilter> {
     }
 
     Set<String> validStatuses =
-        Arrays.stream(EntityStatus.values()).map(EntityStatus::value).collect(Collectors.toSet());
+        Entity.getEntityTypesWithLifecycleStage().stream()
+            .map(Entity::getEntityRepository)
+            .filter(
+                repository ->
+                    repository
+                        .getDao()
+                        .getTableName()
+                        .equals(entityTableName == null ? tableName : entityTableName))
+            .flatMap(repository -> repository.getEntityLifecycle().stageCodes().stream())
+            .collect(Collectors.toSet());
     List<String> statusValues =
         Arrays.stream(entityStatus.split(","))
             .map(String::trim)
@@ -580,7 +608,7 @@ public class ListFilter extends Filter<ListFilter> {
             .toList();
 
     if (statusValues.isEmpty()) {
-      return "";
+      return "1 = 0";
     }
 
     List<String> bindParams = new ArrayList<>();
@@ -1485,15 +1513,15 @@ public class ListFilter extends Filter<ListFilter> {
   }
 
   private String getFqnPrefixCondition(String tableName, String fqnPrefix, String paramName) {
-    String prefix = FullyQualifiedName.buildHash(fqnPrefix) + Entity.SEPARATOR;
+    String hash = FullyQualifiedName.buildHash(fqnPrefix);
+    String prefix = hash + Entity.SEPARATOR;
     queryParams.put(paramName + "Hash", prefix + "%");
-    // Companion bind for "exclude descendants below the immediate level" — used by listings
-    // that need direct children only (e.g. ContainerDAO root listings, ContainerRepository
-    // listChildren). fqnHash uses fixed-width MD5 segments joined by '.', so a fqnHash that
-    // matches `<prefix>.%.%` has at least two segments below the prefix and is therefore not
-    // a direct child. Always bound — most queries don't reference it; the cost is one map
-    // entry. Avoids threading an extra param through every listing site.
-    queryParams.put(paramName + "HashChild", prefix + "%.%");
+    // Companion bind for "direct children of this prefix only" — used by listings that need
+    // the immediate level (e.g. ContainerDAO root listings). Matched against the generated
+    // `parentFqnHash` column, so the depth test is an indexed equality rather than a
+    // negated LIKE the planner can't use. Always bound — most queries don't reference it;
+    // the cost is one map entry. Avoids threading an extra param through every listing site.
+    queryParams.put(paramName + "HashExact", hash);
     return tableName == null
         ? String.format("fqnHash LIKE :%s", paramName + "Hash")
         : String.format("%s.fqnHash LIKE :%s", tableName, paramName + "Hash");

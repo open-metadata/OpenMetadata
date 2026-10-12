@@ -27,6 +27,7 @@ import {
   uuid,
 } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
+import { expectBreadcrumbToContainAncestor } from './headerBreadcrumbUtils';
 import {
   fillTagDetails,
   pressKeyXTimes,
@@ -291,14 +292,11 @@ export const verifyIncidentBreadcrumbsFromTablePageRedirect = async (
     );
   }
 
-  // The detail page renders a compact asset trail built from the table FQN
-  // (service > ... > table > test case): the middle crumbs (database and
-  // schema) are collapsed into the "..." menu and labels use entity names.
+  // The detail page starts with Observability, so service/database/schema
+  // ancestors may be collapsed while the table remains an inline link.
   const breadcrumb = page.getByTestId('breadcrumb');
 
-  await expect(
-    breadcrumb.getByRole('link', { name: service.name })
-  ).toBeVisible();
+  await expectBreadcrumbToContainAncestor(page, service.name);
   await expect(breadcrumb.getByRole('link', { name: tableName })).toBeVisible();
 
   await breadcrumb

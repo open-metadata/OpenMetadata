@@ -78,7 +78,7 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
           && !Entity.DOMAIN.equals(entityLink.getEntityType())) {
         relationshipFields += ",domains";
       }
-      EntityInterface entity = Entity.getEntity(entityLink, relationshipFields, Include.ALL);
+      EntityInterface<?> entity = Entity.getEntity(entityLink, relationshipFields, Include.ALL);
 
       Set<String> assignees = new LinkedHashSet<>();
 
@@ -238,7 +238,7 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
   }
 
   private List<EntityReference> resolveDomainOwners(
-      final String entityType, final EntityInterface entity) {
+      final String entityType, final EntityInterface<?> entity) {
     if (Entity.DOMAIN.equals(entityType)) {
       return entity.getOwners() == null ? List.of() : entity.getOwners();
     }
@@ -480,7 +480,7 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
   }
 
   private List<EntityReference> resolveEffectiveReviewers(
-      String entityType, EntityInterface entity) {
+      String entityType, EntityInterface<?> entity) {
     if (entity.getReviewers() != null && !entity.getReviewers().isEmpty()) {
       return entity.getReviewers();
     }

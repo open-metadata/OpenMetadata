@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { expect, test as base } from '../../support/fixtures/base';
 import { performAdminLogin } from '../../utils/admin';
 
@@ -60,7 +61,7 @@ test.describe('FeedEditor duplicate-id fix (live browser)', () => {
         .getByTestId('message-container')
         .filter({ hasText: `${marker} thread` })
         .filter({ hasNot: page.getByTestId('feed-reply-card') });
-      await threadCard.waitFor({ state: 'visible', timeout: 30000 });
+      await threadCard.waitFor({ state: 'visible', timeout: ACTION_TIMEOUT });
       await threadCard.getByTestId('reply-button').click();
 
       // Hover the reply and open its inline-edit editor (mounts one FeedEditor).

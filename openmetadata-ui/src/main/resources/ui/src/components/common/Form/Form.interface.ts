@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { TooltipPlacement, TooltipProps } from 'antd/lib/tooltip';
 import { ReactNode } from 'react';
+import type { Placement } from 'react-aria';
 import { HelperTextType } from '../../../interface/FormUtils.interface';
 
 export interface FormItemLabelProps {
@@ -20,10 +20,7 @@ export interface FormItemLabelProps {
   helperText?: ReactNode;
   helperTextType?: HelperTextType;
   showHelperText?: boolean;
-  placement?: TooltipPlacement;
-  overlayClassName?: string;
-  overlayInnerStyle?: React.CSSProperties;
-  align?: TooltipProps['align'];
+  placement?: Placement;
   isBeta?: boolean;
   labelClassName?: string;
   betaBadgeClassName?: string;

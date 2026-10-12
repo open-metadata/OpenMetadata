@@ -1111,11 +1111,13 @@ export const deleteGlossaryOrGlossaryTerm = async (
 
 export const addSynonyms = async (page: Page, synonyms: string[]) => {
   await page.getByTestId('synonym-add-button').click();
-  await page.locator('.ant-select-selection-overflow').click();
+  const synonymsInput = page
+    .getByTestId('synonyms-select')
+    .getByRole('combobox');
 
   for (const synonym of synonyms) {
-    await page.locator('#synonyms-select').fill(synonym);
-    await page.locator('#synonyms-select').press('Enter');
+    await synonymsInput.fill(synonym);
+    await synonymsInput.press('Enter');
   }
 
   const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
@@ -1278,26 +1280,24 @@ export const createDescriptionTaskForGlossary = async (
   const entityType = isGlossary ? 'glossary' : 'glossaryTerm';
   const entityName = get(entity, 'responseData.displayName');
 
-  await expect(page.locator('#title')).toHaveValue(
+  await expect(page.getByTestId('title').locator('input')).toHaveValue(
     `${
       addDescription ? 'Update' : 'Request'
     } description for ${entityType} ${entityName}`
   );
 
   if (isUndefined(value.assignee)) {
-    await expect(
-      page.locator('[data-testid="select-assignee"] > .ant-select-selector')
-    ).toHaveText(value.assignee ?? '');
+    await expect(page.getByTestId('select-assignee')).toContainText(
+      value.assignee ?? ''
+    );
 
     await expect(
-      page.locator(
-        '[data-testid="select-assignee"] > .ant-select-selector input'
-      )
+      page.getByTestId('select-assignee').getByRole('combobox')
     ).toBeDisabled();
   } else {
-    const assigneeField = page.locator(
-      '[data-testid="select-assignee"] > .ant-select-selector #assignees'
-    );
+    const assigneeField = page
+      .getByTestId('select-assignee')
+      .getByRole('combobox');
     await assigneeField.click();
 
     const userSearchResponse = page.waitForResponse(
@@ -1334,25 +1334,23 @@ export const createTagTaskForGlossary = async (
   const entityType = isGlossary ? 'glossary' : 'glossaryTerm';
   const entityName = get(entity, 'responseData.displayName');
 
-  await expect(page.locator('#title')).toHaveValue(
+  await expect(page.getByTestId('title').locator('input')).toHaveValue(
     `Request tags for ${entityType} ${entityName}`
   );
 
   if (isUndefined(value.assignee)) {
-    await expect(
-      page.locator('[data-testid="select-assignee"] > .ant-select-selector')
-    ).toHaveText(value.assignee ?? '');
+    await expect(page.getByTestId('select-assignee')).toContainText(
+      value.assignee ?? ''
+    );
 
     await expect(
-      page.locator(
-        '[data-testid="select-assignee"] > .ant-select-selector input'
-      )
+      page.getByTestId('select-assignee').getByRole('combobox')
     ).toBeDisabled();
   } else {
     // select assignee
-    const assigneeField = page.locator(
-      '[data-testid="select-assignee"] > .ant-select-selector #assignees'
-    );
+    const assigneeField = page
+      .getByTestId('select-assignee')
+      .getByRole('combobox');
     await assigneeField.click();
     const userSearchResponse = page.waitForResponse(
       `/api/v1/search/query?q=*${value.assignee}**&index=user%2Cteam*`
@@ -1369,9 +1367,7 @@ export const createTagTaskForGlossary = async (
 
   if (addTag) {
     // select tags
-    const suggestTags = page.locator(
-      '[data-testid="tag-selector"] > .ant-select-selector .ant-select-selection-search-input'
-    );
+    const suggestTags = page.locator('[data-testid="tag-selector"] input');
     await suggestTags.click();
 
     const querySearchResponse = page.waitForResponse(

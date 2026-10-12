@@ -69,8 +69,8 @@ const AlertAiDestinationItem = ({
   isDestinationStatusLoading,
   name,
   onChange,
+  recipientCategories,
   remove,
-  selectedSource,
   validationErrors,
   value,
 }: AlertAiDestinationItemProps) => {
@@ -116,8 +116,13 @@ const AlertAiDestinationItem = ({
     [destinationType]
   );
   const destinationCategoryItems = useMemo(
-    () => getDestinationCategoryItems(t, selectedSource),
-    [selectedSource, t]
+    () =>
+      getDestinationCategoryItems(
+        t,
+        recipientCategories,
+        isInternal ? destinationType : undefined
+      ),
+    [recipientCategories, isInternal, destinationType, t]
   );
 
   /** Rebuilds destination category/type fields to match OSS destination behavior. */
@@ -311,7 +316,7 @@ const AlertAiDestinationItem = ({
       destinationType === SubscriptionCategory.Owners &&
       destination.type !== SubscriptionType.Email;
 
-    const title = isOwnerNonEmailDestination
+    const message = isOwnerNonEmailDestination
       ? t('message.destination-owner-selection-warning', {
           subscriptionCategory: destinationType,
           subscriptionType: destination.type,
@@ -322,12 +327,15 @@ const AlertAiDestinationItem = ({
         });
 
     return (
+      // A one-line notice reads as body copy with a small icon; as a bold
+      // title with the md solid-in-dark icon it outweighs the form fields.
       <Alert
         closable
         className={ALERT_AI_FORM_CLASS_NAMES.destinationAlert}
-        title={title}
-        variant="warning"
-      />
+        iconSize="sm"
+        variant="warning">
+        {message}
+      </Alert>
     );
   };
 

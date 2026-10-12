@@ -746,6 +746,37 @@ public final class SecurityUtil {
     return redirects;
   }
 
+  /**
+   * The scheme and authority of a configured absolute URL, or {@code null} for anything else.
+   *
+   * <p>Anchors OpenMetadata's own fixed paths on the host an operator configured, rather than on
+   * whatever host a request claims to be.
+   */
+  public static String originOf(String configuredUrl) {
+    URI uri = parseOrNull(configuredUrl);
+    boolean hasOrigin = uri != null && uri.isAbsolute() && StringUtils.isNotBlank(uri.getHost());
+    return hasOrigin ? schemeAndAuthority(uri) : null;
+  }
+
+  private static String schemeAndAuthority(URI uri) {
+    try {
+      return new URI(uri.getScheme(), null, uri.getHost(), uri.getPort(), null, null, null)
+          .toString();
+    } catch (URISyntaxException e) {
+      LOG.warn("Could not derive an origin from URL [{}]", uri, e);
+      return null;
+    }
+  }
+
+  private static URI parseOrNull(String value) {
+    try {
+      return StringUtils.isBlank(value) ? null : new URI(value.trim());
+    } catch (URISyntaxException e) {
+      LOG.warn("Ignoring unparseable URL [{}]", value);
+      return null;
+    }
+  }
+
   private static URI parseTrustedRedirectUri(String value) {
     URI trustedUri = parseRedirectUri(value);
     if (trustedUri.getRawUserInfo() != null) {

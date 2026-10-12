@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
+import { Grid } from '@openmetadata/ui-core-components';
 import {
   LineChart,
   useChartPalette,
 } from '@openmetadata/ui-core-components/charts';
-import { Card, Col, Row } from 'antd';
+import { Card } from 'antd';
 import { AxiosError } from 'axios';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -28,6 +29,7 @@ import { DataInsightChartType } from '../../generated/dataInsight/dataInsightCha
 import { PageViewsByEntities } from '../../generated/dataInsight/type/pageViewsByEntities';
 import { ChartFilter } from '../../interface/data-insight.interface';
 import { getAggregateChartData } from '../../rest/DataInsightAPI';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
 import {
   getDataInsightLineSeries,
   getDataInsightTooltip,
@@ -133,8 +135,10 @@ const PageViewsByEntitiesChart: FC<Props> = ({ chartFilter, selectedDays }) => {
       data-testid="entity-page-views-card"
       id={DataInsightChartType.PageViewsByEntities}
       loading={isLoading}>
-      <Row gutter={DI_STRUCTURE.rowContainerGutter}>
-        <Col span={DI_STRUCTURE.leftContainerSpan}>
+      <Grid className="layout-row layout-grid" style={getLayoutGutter(32)}>
+        <Grid.Item
+          className="layout-column"
+          span={DI_STRUCTURE.leftContainerSpan}>
           <PageHeader
             data={{
               header: t('label.page-views-by-data-asset-plural'),
@@ -150,8 +154,10 @@ const PageViewsByEntitiesChart: FC<Props> = ({ chartFilter, selectedDays }) => {
             tooltip={tooltip}
             xKey="timestamp"
           />
-        </Col>
-        <Col span={DI_STRUCTURE.rightContainerSpan}>
+        </Grid.Item>
+        <Grid.Item
+          className="layout-column"
+          span={DI_STRUCTURE.rightContainerSpan}>
           <TotalEntityInsightSummary
             allowFilter
             activeKeys={activeKeys}
@@ -164,8 +170,8 @@ const PageViewsByEntitiesChart: FC<Props> = ({ chartFilter, selectedDays }) => {
             onActiveKeyMouseHover={(entity) => setActiveMouseHoverKey(entity)}
             onActiveKeysUpdate={(entities) => setActiveKeys(entities)}
           />
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
     </Card>
   );
 };

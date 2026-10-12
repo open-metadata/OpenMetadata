@@ -12,13 +12,19 @@
  */
 
 import Icon, { CloseCircleOutlined } from '@ant-design/icons';
-import { ButtonGroup, ButtonGroupItem } from '@openmetadata/ui-core-components';
-import { Button, Col, Dropdown, MenuProps, Row, Space } from 'antd';
+import {
+  Box,
+  Button as CoreButton,
+  ButtonGroup,
+  ButtonGroupItem,
+  Dropdown,
+  Grid,
+} from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isNaN, map } from 'lodash';
-import { MenuInfo } from 'rc-menu/lib/interface';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Key, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as Calendar } from '../../../assets/svg/calendar.svg';
 import { ReactComponent as FilterIcon } from '../../../assets/svg/filter.svg';
@@ -33,6 +39,7 @@ import {
 } from '../../../constants/SegmentToggle.constants';
 import { PipelineStatus, Task } from '../../../generated/entity/data/pipeline';
 import { getPipelineStatus } from '../../../rest/pipelineAPI';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import {
   getCurrentMillis,
   getEpochMillisForPastDays,
@@ -83,21 +90,9 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
     }
   };
 
-  const handleMenuClick: MenuProps['onClick'] = useCallback(
-    (event: MenuInfo) =>
-      setStatus(MenuOptions[event.key as keyof typeof MenuOptions]),
+  const handleMenuClick = useCallback(
+    (key: Key) => setStatus(MenuOptions[key as keyof typeof MenuOptions]),
     []
-  );
-
-  const statusMenuItems = useMemo(
-    () => ({
-      items: map(MenuOptions, (value, key) => ({
-        key: key,
-        label: value,
-      })),
-      onClick: handleMenuClick,
-    }),
-    [handleMenuClick]
   );
 
   const onDateChange: RangePickerProps['onChange'] = (values) => {
@@ -141,9 +136,16 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
     <div
       className="h-full p-md border-default border-radius-sm"
       data-testid="execution-tab">
-      <Row gutter={[16, 16]}>
-        <Col span={24}>
-          <Space className="justify-between w-full">
+      <Grid
+        className="layout-row layout-grid"
+        style={{ ...getLayoutGutter(16, 16) }}>
+        <Grid.Item className="layout-column" span={24}>
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal justify-between w-full"
+            gap={2}
+            itemClassName="layout-space-item">
             <ButtonGroup
               disallowEmptySelection
               className={SEGMENT_TOGGLE_GROUP_CLASS}
@@ -166,16 +168,34 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
               ))}
             </ButtonGroup>
 
-            <Space>
-              <Dropdown menu={statusMenuItems} placement="bottom">
-                <Button
-                  ghost
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal"
+              gap={2}
+              itemClassName="layout-space-item">
+              <Dropdown.Root>
+                <CoreButton
+                  className="tw:text-brand-secondary tw:after:outline-brand"
+                  color="secondary"
                   data-testid="status-button"
-                  icon={<Icon component={FilterIcon} size={12} />}
-                  type="primary">
+                  iconLeading={<FilterIcon height={12} width={12} />}
+                  size="sm">
                   {status === MenuOptions.all ? t('label.status') : status}
-                </Button>
-              </Dropdown>
+                </CoreButton>
+                <Dropdown.Popover className="tw:w-auto" placement="bottom">
+                  <Dropdown.Menu
+                    aria-label={t('label.status')}
+                    selectionMode="none"
+                    onAction={handleMenuClick}>
+                    {map(MenuOptions, (value, key) => (
+                      <Dropdown.Item id={key} key={key}>
+                        {value}
+                      </Dropdown.Item>
+                    ))}
+                  </Dropdown.Menu>
+                </Dropdown.Popover>
+              </Dropdown.Root>
               {view === PIPELINE_EXECUTION_TABS.LIST_VIEW ? (
                 <>
                   <Button
@@ -209,10 +229,10 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
                   </Button>
                 </>
               ) : null}
-            </Space>
-          </Space>
-        </Col>
-        <Col span={24}>
+            </Box>
+          </Box>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
           {view === PIPELINE_EXECUTION_TABS.LIST_VIEW ? (
             <ListView
               executions={executions}
@@ -230,8 +250,8 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
               tasks={tasks}
             />
           )}
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
     </div>
   );
 };

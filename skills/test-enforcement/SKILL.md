@@ -161,10 +161,11 @@ If an API endpoint lacks integration test coverage:
 2. Read a similar entity's IT class as a reference pattern
 3. Create the IT class with all CRUD operations tested
 4. Add entity-specific endpoint tests
-5. Run and verify:
+5. Run and verify. A new or changed IT is selected by the planner, which prints the per-lane command:
    ```bash
-   mvn verify -pl openmetadata-integration-tests -Dtest=MyEntityIT
+   make java_affected        # then copy MyEntityIT's line, or run them all with make java_affected_run
    ```
+   PR CI does not run integration tests; see the `java-affected-tests` skill.
 
 ### Step 4: Check Playwright E2E Tests
 

@@ -142,7 +142,7 @@ public interface FeedDAOs {
         @Bind("id") String id, @BindJson("json") String json, @BindFQN("fqnHash") String fqn);
 
     @Override
-    default void insert(org.openmetadata.schema.EntityInterface entity, String fqn) {
+    default void insert(org.openmetadata.schema.EntityInterface<?> entity, String fqn) {
       Task task = (Task) entity;
       insertTask(task.getId().toString(), JsonUtils.pojoToJson(task), task.getFullyQualifiedName());
     }
@@ -381,7 +381,7 @@ public interface FeedDAOs {
         @Bind("id") String id, @BindJson("json") String json, @BindFQN("fqnHash") String fqn);
 
     @Override
-    default void insert(org.openmetadata.schema.EntityInterface entity, String fqn) {
+    default void insert(org.openmetadata.schema.EntityInterface<?> entity, String fqn) {
       Announcement announcement = (Announcement) entity;
       insertAnnouncement(
           announcement.getId().toString(),
@@ -418,7 +418,7 @@ public interface FeedDAOs {
         @Bind("id") String id, @BindJson("json") String json, @BindFQN("fqnHash") String fqn);
 
     @Override
-    default void insert(org.openmetadata.schema.EntityInterface entity, String fqn) {
+    default void insert(org.openmetadata.schema.EntityInterface<?> entity, String fqn) {
       TaskFormSchema schema = (TaskFormSchema) entity;
       insertTaskFormSchema(
           schema.getId().toString(), JsonUtils.pojoToJson(schema), schema.getFullyQualifiedName());

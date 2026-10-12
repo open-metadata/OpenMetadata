@@ -138,7 +138,7 @@ public class CreateTask implements TaskListener {
                   varHandler.getNamespacedVariable(
                       inputNamespaces.namespaceFor(RELATED_ENTITY_VARIABLE),
                       RELATED_ENTITY_VARIABLE));
-      EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
+      EntityInterface<?> entity = Entity.getEntity(entityLink, "*", Include.ALL);
 
       // Get approval threshold, default to 1 if not set
       Integer approvalThreshold =
@@ -385,7 +385,7 @@ public class CreateTask implements TaskListener {
 
   private Task createOrUpdateTask(
       DelegateTask delegateTask,
-      EntityInterface entity,
+      EntityInterface<?> entity,
       List<EntityReference> assignees,
       TaskEntityType taskType,
       TaskCategory taskCategory,
@@ -717,7 +717,7 @@ public class CreateTask implements TaskListener {
   private void supersedePriorApprovalTask(
       DelegateTask delegateTask,
       TaskRepository taskRepository,
-      EntityInterface entity,
+      EntityInterface<?> entity,
       TaskCategory taskCategory,
       UUID currentWorkflowDefinitionId,
       UUID currentWorkflowInstanceId,
@@ -755,7 +755,7 @@ public class CreateTask implements TaskListener {
    */
   static Object findPriorOpenApprovalPayload(
       TaskRepository taskRepository,
-      EntityInterface entity,
+      EntityInterface<?> entity,
       TaskCategory taskCategory,
       UUID currentWorkflowDefinitionId,
       UUID currentWorkflowInstanceId) {
@@ -1060,7 +1060,7 @@ public class CreateTask implements TaskListener {
    * description.
    */
   static Object applyProposedChangesIfApproval(
-      TaskEntityType taskType, EntityInterface entity, Object payload) {
+      TaskEntityType taskType, EntityInterface<?> entity, Object payload) {
     if (taskType != TaskEntityType.GlossaryApproval && taskType != TaskEntityType.RequestApproval) {
       return payload;
     }
@@ -1092,7 +1092,7 @@ public class CreateTask implements TaskListener {
     return TaskPriority.fromValue(priority);
   }
 
-  private String buildTaskDescription(EntityInterface entity, TaskEntityType taskType) {
+  private String buildTaskDescription(EntityInterface<?> entity, TaskEntityType taskType) {
     return String.format("Approval required for %s", entity.getName());
   }
 
@@ -1136,7 +1136,7 @@ public class CreateTask implements TaskListener {
 
   private EntityReference resolveCreatedByReference(
       EntityReference requestedCreatedBy,
-      EntityInterface entity,
+      EntityInterface<?> entity,
       Object payload,
       TaskEntityType taskType) {
     if (requestedCreatedBy != null && requestedCreatedBy.getId() != null) {
@@ -1189,7 +1189,7 @@ public class CreateTask implements TaskListener {
     }
   }
 
-  private String resolveUpdatedBy(EntityInterface entity, EntityReference createdByRef) {
+  private String resolveUpdatedBy(EntityInterface<?> entity, EntityReference createdByRef) {
     if (entity != null && entity.getUpdatedBy() != null && !entity.getUpdatedBy().isEmpty()) {
       return entity.getUpdatedBy();
     }

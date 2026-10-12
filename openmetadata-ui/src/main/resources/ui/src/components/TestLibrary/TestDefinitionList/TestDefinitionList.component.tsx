@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 
-import { Input, Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Col, Row } from 'antd';
+import { Box, Grid, Input, Typography } from '@openmetadata/ui-core-components';
+import { Button, Card } from 'antd';
 import { isEmpty } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { TEST_DEFINITION_FILTERS } from '../../../constants/TestDefinition.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { useFilterSelection } from '../../common/atoms/filters/useFilterSelection';
 import {
@@ -110,11 +111,13 @@ const TestDefinitionList = () => {
 
   return (
     <>
-      <Row className="p-b-md" gutter={[16, 16]}>
-        <Col span={24}>
+      <Grid
+        className="layout-row layout-grid p-b-md"
+        style={{ ...getLayoutGutter(16, 16) }}>
+        <Grid.Item className="layout-column" span={24}>
           <Card>
-            <Row justify="space-between">
-              <Col>
+            <Box className="layout-row" justify="between" wrap="wrap">
+              <Box className="layout-column tw:block">
                 <div className="flex gap-2 items-center m-b-xss">
                   <Typography
                     as="h5"
@@ -131,9 +134,9 @@ const TestDefinitionList = () => {
                 <Typography color="secondary">
                   {t('message.page-sub-header-for-test-definitions')}
                 </Typography>
-              </Col>
+              </Box>
               {createPermission && (
-                <Col>
+                <Box className="layout-column tw:block">
                   <Button
                     data-testid="add-test-definition-button"
                     type="primary"
@@ -142,13 +145,13 @@ const TestDefinitionList = () => {
                       entity: t('label.test-definition'),
                     })}
                   </Button>
-                </Col>
+                </Box>
               )}
-            </Row>
+            </Box>
           </Card>
-        </Col>
+        </Grid.Item>
 
-        <Col span={24}>
+        <Grid.Item className="layout-column" span={24}>
           <Card
             bodyStyle={{
               padding: 0,
@@ -185,8 +188,8 @@ const TestDefinitionList = () => {
               onSortChange={handleSortChange}
             />
           </Card>
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
 
       {isFormVisible && (
         <TestDefinitionForm

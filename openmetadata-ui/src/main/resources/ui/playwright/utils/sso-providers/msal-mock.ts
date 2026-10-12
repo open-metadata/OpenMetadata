@@ -31,6 +31,7 @@
 // `useMsal()` is swapped; the react-msal wiring still runs.
 //
 import { APIRequestContext, expect, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import {
   applyProviderConfig,
   fetchSecurityConfig,
@@ -378,7 +379,7 @@ export const msalMockProviderFixture: SsoProviderFixture = {
     // basic.ts uses — keeps downstream assertions provider-agnostic.
     try {
       await expect(page.getByTestId('app-bar-item-my-data')).toBeVisible({
-        timeout: 30_000,
+        timeout: ACTION_TIMEOUT,
       });
     } catch (originalError) {
       const url = page.url();

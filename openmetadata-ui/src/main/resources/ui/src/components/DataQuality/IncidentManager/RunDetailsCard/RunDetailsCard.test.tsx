@@ -10,13 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, screen } from '@testing-library/react';
+import { act, fireEvent, screen, within } from '@testing-library/react';
 import {
   TestCase,
   TestCaseResult,
   TestCaseStatus,
 } from '../../../../generated/tests/testCase';
 import { renderWithQueryClient } from '../../../../test/unit/test-utils';
+import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { useTestCaseStore } from '../useTestCase.store';
 import RunDetailsCard from './RunDetailsCard';
 
@@ -81,6 +82,10 @@ describe('RunDetailsCard', () => {
     expect(screen.getByTestId('run-details-definition')).toHaveTextContent(
       'tableRowCountToEqual'
     );
+    // Sentence case, as the mock labels the card.
+    expect(
+      screen.getByText('label.test-definition-sentence')
+    ).toBeInTheDocument();
     expect(screen.getByTestId('run-details-expected')).toHaveTextContent(
       '10,000'
     );
@@ -97,6 +102,36 @@ describe('RunDetailsCard', () => {
     );
   });
 
+  it('sets the four values in columns, in the weight the mock gives them', () => {
+    renderCard([FAILED_RUN]);
+
+    const found = screen.getByTestId('run-details-found');
+
+    expect(found).toHaveClass('tw:text-xs', 'tw:font-semibold');
+    expect(screen.getByTestId('run-details-definition')).toHaveClass(
+      'tw:text-xs',
+      'tw:font-medium'
+    );
+    // Equal columns broke "tableRowCountToBeBetween" mid-word at 1440px; the
+    // definition's column is never narrower than the name.
+    expect(found.closest('.tw\\:grid')).toHaveClass(
+      'tw:@lg:grid-cols-[minmax(max-content,1fr)_repeat(3,minmax(0,1fr))]',
+      'tw:gap-x-3'
+    );
+  });
+
+  it('quiets an unknown expectation, as it does an unknown result', () => {
+    renderCard([{ ...FAILED_RUN, testCaseStatus: TestCaseStatus.Aborted }], {
+      ...TEST_CASE,
+      parameterValues: [],
+    } as TestCase);
+
+    const expected = screen.getByTestId('run-details-expected');
+
+    expect(expected).toHaveTextContent('—');
+    expect(expected).toHaveClass('tw:text-quaternary');
+  });
+
   it('shows a successful run with its note', () => {
     renderCard([
       {
@@ -106,8 +141,9 @@ describe('RunDetailsCard', () => {
       },
     ]);
 
+    // Signed like any other difference, as the mock shows it.
     expect(screen.getByTestId('run-details-difference')).toHaveTextContent(
-      '0 (0.0%)'
+      '+0 (+0.0%)'
     );
     expect(screen.getByTestId('run-details-note')).toHaveTextContent(
       'message.run-details-success-note'
@@ -189,12 +225,51 @@ describe('RunDetailsCard', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('hides the duration when the run has none', () => {
-    renderCard([{ ...FAILED_RUN, duration: undefined }]);
+  it('keeps the duration slot, with a dash, for a run that has none yet', () => {
+    renderCard([
+      {
+        timestamp: FAILED_RUN.timestamp,
+        testCaseStatus: TestCaseStatus.Queued,
+        testResultValue: [],
+      },
+    ]);
 
-    expect(
-      screen.queryByTestId('run-details-duration')
-    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('run-details-duration')).toHaveTextContent('—');
+  });
+
+  it("dates the run as the banner does, in the reader's time zone", () => {
+    renderCard([FAILED_RUN]);
+
+    const header = screen.getByTestId('run-details-date');
+
+    expect(header).toHaveTextContent(formatDateTime(FAILED_RUN.timestamp));
+    expect(header).toHaveTextContent('(UTC');
+  });
+
+  it('draws found and expected as bars on one scale, the found one in its status colour', () => {
+    renderCard([FAILED_RUN]);
+
+    const comparison = screen.getByTestId('run-details-comparison');
+    const found = within(screen.getByTestId('run-details-found-bar'));
+    const expected = within(screen.getByTestId('run-details-expected-bar'));
+
+    // 10,000 is the longer bar; 110 is 1.1% of it.
+    expect(expected.getByRole('progressbar', { hidden: true })).toHaveAttribute(
+      'aria-valuenow',
+      '100'
+    );
+    expect(found.getByRole('progressbar', { hidden: true })).toHaveAttribute(
+      'aria-valuenow',
+      '1.1'
+    );
+    expect(screen.getByTestId('run-details-found-bar')).toHaveAttribute(
+      'aria-hidden',
+      'true'
+    );
+    expect(comparison).toHaveTextContent('110');
+    expect(screen.getByTestId('run-details-found-value')).toHaveClass(
+      'tw:text-utility-error-700'
+    );
   });
 
   it('shows the run selected on the chart', () => {
@@ -210,6 +285,32 @@ describe('RunDetailsCard', () => {
     renderCard([FAILED_RUN, olderRun]);
 
     expect(screen.getByTestId('run-details-found')).toHaveTextContent('9,000');
+    // An older run says so, and offers the way back.
+    expect(screen.getByTestId('run-details-selected')).toHaveTextContent(
+      'label.selected-run'
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'label.back-to-latest' })
+    );
+
+    expect(useTestCaseStore.getState().selectedRunTimestamp).toBeUndefined();
+    expect(screen.getByTestId('run-details-found')).toHaveTextContent('110');
+    expect(
+      screen.queryByTestId('run-details-selected')
+    ).not.toBeInTheDocument();
+  });
+
+  it('does not label the latest run as selected, even when it was clicked', () => {
+    act(() =>
+      useTestCaseStore.getState().setSelectedRunTimestamp(FAILED_RUN.timestamp)
+    );
+
+    renderCard([FAILED_RUN]);
+
+    expect(
+      screen.queryByTestId('run-details-selected')
+    ).not.toBeInTheDocument();
   });
 
   it('falls back to the latest run without a selection', () => {

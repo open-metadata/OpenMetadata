@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 
-import { Skeleton, Typography } from '@openmetadata/ui-core-components';
-import { Card, Col, Collapse, Row, Space } from 'antd';
+import {
+  Box,
+  Grid,
+  Skeleton,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Card, Collapse } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
@@ -24,6 +29,7 @@ import {
   getAgentRunningStatusMessage,
   getIconFromStatus,
 } from '../../../utils/AgentsStatusWidgetUtils';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import './agents-status-widget.less';
 import { AgentsStatusWidgetProps } from './AgentsStatusWidget.interface';
@@ -118,35 +124,42 @@ function AgentsStatusWidget({
           </div>
         )}
 
-        <Row gutter={[16, 16]}>
+        <Grid
+          className="layout-row layout-grid"
+          style={getLayoutGutter(16, 16)}>
           {isLoading
             ? Array.from(
                 { length: 8 },
                 (_, index) => `agent-skeleton-${index}`
               ).map((skeletonKey) => (
-                <Col key={skeletonKey} span={6}>
+                <Grid.Item className="layout-column" key={skeletonKey} span={6}>
                   <Card className="agent-status-card">
                     <Skeleton height={32} variant="rounded" width={160} />
                   </Card>
-                </Col>
+                </Grid.Item>
               ))
             : agentsInfo.map((agent) => (
-                <Col key={agent.label} span={6}>
+                <Grid.Item className="layout-column" key={agent.label} span={6}>
                   <Card
                     className={classNames(
                       'agent-status-card',
                       agent.isCollateAgent ? 'collate-agent' : ''
                     )}
                     data-testid={`agent-status-card-${agent.label}`}>
-                    <Space align="center" size={8}>
+                    <Box
+                      inline
+                      align="center"
+                      className="layout-space layout-space-horizontal"
+                      gap={2}
+                      itemClassName="layout-space-item">
                       {agent.agentIcon}
                       <Typography>{agent.label}</Typography>
-                    </Space>
+                    </Box>
                     {getIconFromStatus(agent.status)}
                   </Card>
-                </Col>
+                </Grid.Item>
               ))}
-        </Row>
+        </Grid>
       </Collapse.Panel>
     </Collapse>
   );

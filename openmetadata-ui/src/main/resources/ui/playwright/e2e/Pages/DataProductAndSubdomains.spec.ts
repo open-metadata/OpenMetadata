@@ -44,7 +44,11 @@ import {
 } from '../../utils/entity';
 import { waitForSearchIndexed } from '../../utils/polling';
 import { sidebarClick } from '../../utils/sidebar';
-import { waitForResponseWithStatus } from '../../utils/waitHelpers';
+import {
+  clickAndWaitFor,
+  clickUntilVisible,
+  waitForResponseWithStatus,
+} from '../../utils/waitHelpers';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -242,13 +246,15 @@ test.describe('Data Product Comprehensive Tests', () => {
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
       await selectDataProduct(page, dataProduct.data);
 
-      // Click add expert button
-      await page.getByTestId('domain-expert-name').getByTestId('Add').click();
+      const expertsWidget = page.getByTestId('domain-expert-name');
 
-      // Wait for the popover to appear
-      await page.getByTestId('selectable-list').waitFor({
-        state: 'visible',
-      });
+      // The Add button mounts while the right-panel widgets are still resizing
+      // to their lazily loaded content; a reflow between mousedown and mouseup
+      // swallows the click, leaving the button focused and the popover shut.
+      await clickUntilVisible(
+        expertsWidget.getByTestId('Add'),
+        page.getByTestId('selectable-list')
+      );
 
       // Wait for fixture indexing before issuing the UI search
       const searchBar = page.getByTestId('searchbar');
@@ -288,13 +294,14 @@ test.describe('Data Product Comprehensive Tests', () => {
       await expertItem.waitFor({ state: 'visible', timeout: 5000 });
       await expertItem.click();
 
-      // Click update button
-      const patchRes = page.waitForResponse('/api/v1/dataProducts/*');
-      await page.getByTestId('selectable-list-update-btn').click();
-      await patchRes;
+      await clickAndWaitFor(
+        page,
+        page.getByTestId('selectable-list-update-btn'),
+        '/api/v1/dataProducts/*'
+      );
 
       // Verify expert is displayed (UI shows displayName)
-      await expect(page.getByTestId('owner-link')).toContainText(
+      await expect(expertsWidget.getByTestId('owner-link')).toContainText(
         user.getUserDisplayName()
       );
     } finally {
@@ -838,7 +845,9 @@ test.describe('Multiple Subdomains Tests', () => {
       await waitForAntdPopupToSettle(page);
       await deleteMenuItem.click();
 
-      await expect(page.getByRole('dialog')).toBeVisible();
+      await expect(
+        page.getByRole('dialog').filter({ hasNot: page.getByRole('menu') })
+      ).toBeVisible();
 
       const deleteRes = page.waitForResponse('/api/v1/domains/*');
       await fillDeleteConfirmationIfPresent(page);
