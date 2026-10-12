@@ -830,6 +830,37 @@
       ]
     },
     {
+      "_comment": "System announcements: Settings > Notifications > Announcements (list, form, routed pages) and its AI-mode settings-modal section.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/platform/settings/announcements/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/platform/settings/SystemAnnouncementsPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/platform/settings/SystemAnnouncementFormPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/platform/useSystemAnnouncements*",
+        "openmetadata-ui/src/main/resources/ui/src/utils/platform/systemAnnouncements.utils*",
+        "openmetadata-ui/src/main/resources/ui/src/constants/platform/systemAnnouncements.constants.ts",
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/notification/nativeNotificationSections.ts",
+        "openmetadata-ui/src/main/resources/ui/src/assets/svg/announcement-colored-new.svg"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/Announcements/SystemAnnouncements.spec.ts"
+      ]
+    },
+    {
+      "_comment": "Announcement pieces shared by system announcements and asset announcements: the REST client, the add/edit modal and its date field, and the drawer list with its delete dialog.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/rest/announcementsAPI.ts",
+        "openmetadata-ui/src/main/resources/ui/src/components/Modals/AnnouncementModal/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/Announcement/**"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/Announcements/SystemAnnouncements.spec.ts",
+        "playwright/e2e/Features/Announcements/AnnouncementEntity.spec.ts",
+        "playwright/e2e/Features/Announcements/EntityHeaderAnnouncements.spec.ts"
+      ]
+    },
+    {
       "_comment": "Shared shell of the AI-mode settings modal: the nav registry, its ids and the section/row layout every panel renders. A change here can move or restyle any panel, so every modal spec runs.",
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/profileNavConfig.tsx",
