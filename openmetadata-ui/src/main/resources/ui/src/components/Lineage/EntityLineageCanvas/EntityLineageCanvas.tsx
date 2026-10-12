@@ -63,6 +63,9 @@ interface EntityLineageCanvasProps {
   hasEditAccess?: boolean;
 }
 
+// React Flow padding is a share of the viewport, not pixels.
+const FIT_VIEW_OPTIONS = { padding: 0.2, maxZoom: 1 };
+
 const toEdgeEntity = (node?: Node): EdgeFromToData | undefined => {
   const entity = node?.data?.node;
 
@@ -100,6 +103,7 @@ const EntityLineageCanvas = ({
     isDQEnabled,
     dqHighlightedEdges,
     platformView,
+    reactFlowInstance,
     setCanEditLineage,
     setIsCreatingEdge,
   } = useLineageStore();
@@ -234,7 +238,7 @@ const EntityLineageCanvas = ({
         deleteKeyCode={null}
         edgeTypes={memoizedEdgeTypes}
         edges={memoizedEdges}
-        fitViewOptions={{ padding: 48 }}
+        fitViewOptions={FIT_VIEW_OPTIONS}
         maxZoom={MAX_ZOOM_VALUE}
         minZoom={MIN_ZOOM_VALUE}
         nodeDragThreshold={1}
@@ -264,6 +268,7 @@ const EntityLineageCanvas = ({
         <Panel position="bottom-right">
           <LineageControlButtons
             miniMapVisible={showMiniMap}
+            reactFlowInstance={reactFlowInstance}
             onToggleMiniMap={() => setShowMiniMap((show) => !show)}
           />
         </Panel>

@@ -13,6 +13,7 @@
 import {
   Box,
   Button,
+  FilterSelect,
   Select,
   SelectItemType,
   SlideoutMenu,
@@ -20,11 +21,10 @@ import {
 } from '@openmetadata/ui-core-components';
 import { ArrowRight } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import { debounce } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PAGE_SIZE } from '../../../constants/constants';
 import { entityData } from '../../../constants/Lineage.constants';
+import { EntityFields } from '../../../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import {
@@ -32,10 +32,17 @@ import {
   LineageNodeType,
 } from '../../../interface/lineage.interface';
 import { searchQuery } from '../../../rest/searchAPI';
+import { EntityIconSize } from '../../../utils/EntityIconUtils';
 import { getEntityChildrenAndLabel } from '../../../utils/EntityLineageNodeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getCanonicalEntityType } from '../../../utils/ExplorePureUtils';
+import { getAggregationOptions } from '../../../utils/ExploreUtils';
 import { getNameFromFQN } from '../../../utils/FqnUtils';
+import searchClassBase from '../../../utils/SearchClassBase';
+import { getEntityTypeFromSearchIndex } from '../../../utils/SearchPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import DataAssetAsyncSelectList from '../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList';
+import { DataAssetOption } from '../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import { AddLineagePopoverProps } from './AddLineagePopover.interface';
 
 // Only entity types whose search hits carry columns via getEntityChildrenAndLabel's
@@ -139,8 +146,7 @@ const AddLineagePopover = ({
 }: AddLineagePopoverProps) => {
   const { t } = useTranslation();
   const [type, setType] = useState<SearchIndex>();
-  const [query, setQuery] = useState('');
-  const [hits, setHits] = useState<EntityHit[]>([]);
+  const [typeCounts, setTypeCounts] = useState<Record<string, number>>({});
   const [entity, setEntity] = useState<EntityHit>();
   const [columnFqn, setColumnFqn] = useState<string>();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -148,36 +154,95 @@ const AddLineagePopover = ({
 
   useEffect(() => {
     setType(undefined);
-    setQuery('');
-    setHits([]);
     setEntity(undefined);
     setColumnFqn(undefined);
   }, [request]);
 
-  const search = useMemo(
-    () =>
-      debounce(async (index: SearchIndex, text: string) => {
-        try {
-          const response = await searchQuery({
-            query: text,
-            searchIndex: index,
-            pageNumber: 1,
-            pageSize: PAGE_SIZE,
-            includeDeleted: false,
-          });
-          setHits(
-            response.hits.hits
-              .map(({ _source }) => _source as unknown as EntityHit)
-              .filter((searchHit) => searchHit.id !== excludeEntityId)
-          );
-        } catch (error) {
-          showErrorToast(error as AxiosError);
-        }
-      }, 300),
-    [excludeEntityId]
+  // Asset counts per type, as the Explore "Data Assets" filter shows them.
+  useEffect(() => {
+    if (!request) {
+      return;
+    }
+    // One bucket per listed type; the default page of 10 drops the rest.
+    getAggregationOptions(
+      entityData.map(({ type: index }) => index),
+      EntityFields.ENTITY_TYPE,
+      '',
+      '',
+      true,
+      false,
+      entityData.length
+    )
+      .then((response) =>
+        setTypeCounts(
+          Object.fromEntries(
+            (
+              response.data.aggregations[`sterms#${EntityFields.ENTITY_TYPE}`]
+                ?.buckets ?? []
+            ).map(({ key, doc_count }) => [
+              getCanonicalEntityType(key),
+              doc_count,
+            ])
+          )
+        )
+      )
+      .catch(() => setTypeCounts({}));
+  }, [request]);
+
+  // The search hit for the picked asset carries the columns to map to.
+  const loadColumns = useCallback(
+    async (picked: EntityHit, index: SearchIndex) => {
+      try {
+        const response = await searchQuery({
+          query: '',
+          searchIndex: index,
+          pageNumber: 1,
+          pageSize: 1,
+          queryFilter: { query: { term: { id: picked.id } } },
+          includeDeleted: false,
+        });
+        const hit = response.hits.hits[0]?._source as unknown as EntityHit;
+        setEntity((current) =>
+          current?.id === picked.id && hit ? { ...current, ...hit } : current
+        );
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    []
   );
 
-  useEffect(() => () => search.cancel(), [search]);
+  const handleAssetChange = useCallback(
+    (option?: DataAssetOption | DataAssetOption[]) => {
+      const picked = Array.isArray(option) ? option[0] : option;
+      setColumnFqn(undefined);
+      if (!picked?.reference.id) {
+        setEntity(undefined);
+
+        return;
+      }
+      const hit: EntityHit = {
+        id: picked.reference.id,
+        name: picked.name,
+        displayName: picked.displayName,
+        fullyQualifiedName: picked.reference.fullyQualifiedName,
+        entityType: picked.reference.type,
+      };
+      setEntity(hit);
+      if (isColumnTarget && type) {
+        void loadColumns(hit, type);
+      }
+    },
+    [isColumnTarget, loadColumns, type]
+  );
+
+  const excludeQueryFilter = useMemo(
+    () =>
+      excludeEntityId
+        ? { query: { bool: { must_not: [{ term: { id: excludeEntityId } }] } } }
+        : undefined,
+    [excludeEntityId]
+  );
 
   const submit = useCallback(
     async (picked: EntityHit, columnFqn?: string) => {
@@ -201,27 +266,29 @@ const AddLineagePopover = ({
     [isSubmitting, onClose, onSubmit]
   );
 
-  const typeItems: SelectItemType[] = useMemo(
+  const typeOptions = useMemo(
     () =>
       (isColumnTarget
         ? entityData.filter(({ type: index }) =>
             COLUMN_CAPABLE_SEARCH_INDEXES.includes(index)
           )
         : entityData
-      ).map(({ type: index, label }) => ({
-        id: index,
-        label: t(label),
-      })),
-    [isColumnTarget, t]
-  );
-  const entityItems: SelectItemType[] = useMemo(
-    () =>
-      hits.map((searchHit) => ({
-        id: searchHit.id,
-        label: getEntityName(searchHit),
-        supportingText: searchHit.fullyQualifiedName,
-      })),
-    [hits]
+      ).map(({ type: index, label }) => {
+        const entityType = getEntityTypeFromSearchIndex(index) ?? index;
+
+        return {
+          value: index,
+          label: t(label),
+          textValue: t(label),
+          count: typeCounts[entityType],
+          icon:
+            searchClassBase.getEntityIconWithBg(
+              entityType,
+              EntityIconSize.Size14
+            ) ?? undefined,
+        };
+      }),
+    [isColumnTarget, t, typeCounts]
   );
   const columnItems: SelectItemType[] = useMemo(() => {
     if (!entity) {
@@ -286,59 +353,60 @@ const AddLineagePopover = ({
               isUpstream={isUpstream}
               pickedName={pickedName}
             />
-            <Select
-              data-testid="add-lineage-type-select"
-              items={typeItems}
-              label={t('label.select-type')}
-              selectedKey={type ?? null}
-              size="sm"
-              onSelectionChange={(key) => {
-                // A search queued for the previous type must not refill the list.
-                search.cancel();
-                setType(key as SearchIndex);
-                setQuery('');
-                setEntity(undefined);
-                setColumnFqn(undefined);
-                setHits([]);
-              }}>
-              {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
-            </Select>
+            <Box className="tw:gap-1.5" direction="col">
+              <Typography
+                as="span"
+                className="tw:text-secondary"
+                size="text-sm"
+                weight="medium">
+                {t('label.select-type')}
+              </Typography>
+              <FilterSelect
+                searchable
+                commitMode="immediate"
+                data-testid="add-lineage-type-select"
+                hideCounts={false}
+                label={t('label.select-type')}
+                options={typeOptions}
+                placeholder={t('label.select-entity', {
+                  entity: t('label.type'),
+                })}
+                popoverClassName="tw:w-(--trigger-width)!"
+                selectedValues={type ? [type] : []}
+                selectionMode="single"
+                size="md"
+                triggerVariant="input"
+                onChange={([value]) => {
+                  setType(value as SearchIndex | undefined);
+                  setEntity(undefined);
+                  setColumnFqn(undefined);
+                }}
+              />
+            </Box>
             {type && (
-              // Select.ComboBox drops data-testid, so the wrapper carries it.
-              <div data-testid="add-lineage-entity-input">
-                <Select.ComboBox
-                  allowsEmptyCollection
-                  inputValue={query}
-                  isDisabled={isSubmitting}
-                  items={entityItems}
-                  label={t('label.search-entity', {
-                    entity: t('label.entity'),
+              <Box
+                className="tw:gap-1.5"
+                data-testid="add-lineage-entity-input"
+                direction="col">
+                <Typography
+                  as="span"
+                  className="tw:text-secondary"
+                  size="text-sm"
+                  weight="medium">
+                  {t('label.search-entity', { entity: t('label.asset') })}
+                </Typography>
+                <DataAssetAsyncSelectList
+                  // A new type starts a fresh search.
+                  key={type}
+                  placeholder={t('label.search-entity', {
+                    entity: t('label.asset'),
                   })}
-                  size="sm"
-                  onInputChange={(text) => {
-                    setQuery(text);
-                    search(type, text);
-                  }}
-                  onSelectionChange={(key) => {
-                    const picked = hits.find(
-                      (searchHit) => searchHit.id === key
-                    );
-                    if (!picked) {
-                      return;
-                    }
-                    setEntity(picked);
-                    setColumnFqn(undefined);
-                    setQuery(getEntityName(picked));
-                  }}>
-                  {(item) => (
-                    <Select.Item
-                      id={item.id}
-                      supportingText={item.supportingText}>
-                      {item.label}
-                    </Select.Item>
-                  )}
-                </Select.ComboBox>
-              </div>
+                  queryFilter={excludeQueryFilter}
+                  searchIndex={type}
+                  value={entity?.fullyQualifiedName}
+                  onChange={handleAssetChange}
+                />
+              </Box>
             )}
             {isColumnTarget && entity && (
               <Select

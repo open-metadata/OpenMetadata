@@ -561,23 +561,22 @@ export const addLineageViaMenu = async (
   const popover = page.getByTestId('add-lineage-popover');
   await expect(popover).toBeVisible();
 
-  // Options are keyed by search index, which is locale-independent where the
-  // option labels are not.
-  await popover
-    .getByTestId('add-lineage-type-select')
-    .getByRole('button')
-    .click();
+  // Type rows carry their search index as test id, which is locale-independent
+  // where the option labels are not.
+  await popover.getByTestId('add-lineage-type-select').click();
   await page
-    .locator(
-      `[role="listbox"]:visible [data-key="${getEntityTypeSearchIndexMapping(
-        toEntity.type
-      )}"]`
-    )
+    .getByTestId('drop-down-menu')
+    .getByTestId(getEntityTypeSearchIndexMapping(toEntity.type))
     .click();
 
   const toName = get(toEntity, 'entityResponseData.name') ?? '';
   const toFqn = get(toEntity, 'entityResponseData.fullyQualifiedName') ?? '';
-  const searchResponse = page.waitForResponse('/api/v1/search/query?*');
+  // The list also searches on open; wait for the query that carries the name.
+  const searchResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      decodeURIComponent(response.url()).includes(toName)
+  );
   await popover
     .getByTestId('add-lineage-entity-input')
     .getByRole('combobox')
@@ -589,14 +588,9 @@ export const addLineageViaMenu = async (
       response.request().method() === 'PUT' &&
       new URL(response.url()).pathname.endsWith('/api/v1/lineage')
   );
-  // Options end with the FQN as supporting text, which tells apart entities
-  // that share a name across services. Anchor it: a child container's FQN
-  // starts with its parent's.
-  await page
-    .locator('[role="listbox"]:visible')
-    .getByRole('option')
-    .filter({ hasText: new RegExp(`${escapeRegExp(toFqn)}$`) })
-    .click();
+  // Asset options are keyed by FQN, which tells apart entities that share a
+  // name across services.
+  await page.getByTestId(`option-${toFqn}`).click();
   if (columnFqn) {
     await popover
       .getByTestId('add-lineage-column-select')

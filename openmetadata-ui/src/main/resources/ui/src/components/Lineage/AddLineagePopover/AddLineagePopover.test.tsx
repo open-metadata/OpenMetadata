@@ -10,98 +10,103 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen, waitFor, within } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createRef } from 'react';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import { searchQuery } from '../../../rest/searchAPI';
-import { showErrorToast } from '../../../utils/ToastUtils';
+import { getAggregationOptions } from '../../../utils/ExploreUtils';
+import { DataAssetOption } from '../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import AddLineagePopover from './AddLineagePopover';
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 jest.mock('../../../rest/searchAPI', () => ({ searchQuery: jest.fn() }));
+jest.mock('../../../utils/ExploreUtils', () => ({
+  getAggregationOptions: jest.fn(),
+}));
 jest.mock('../../../utils/ToastUtils', () => ({ showErrorToast: jest.fn() }));
 
-const hit = (id: string, name: string, extra = {}) => ({
-  _source: {
-    id,
-    name,
-    fullyQualifiedName: `s.d.sc.${name}`,
-    entityType: 'table',
-    ...extra,
-  },
-});
+const ORDERS: DataAssetOption = {
+  displayName: 'orders',
+  name: 'orders',
+  value: 's.d.sc.orders',
+  reference: { id: 'b', type: 'table', fullyQualifiedName: 's.d.sc.orders' },
+};
 
-const trigger = document.createElement('button');
-document.body.appendChild(trigger);
+// The asset list is its own tested component; here it only has to hand back a pick.
+jest.mock(
+  '../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList',
+  () => ({
+    __esModule: true,
+    default: ({
+      onChange,
+      searchIndex,
+      queryFilter,
+    }: {
+      onChange: (option: DataAssetOption) => void;
+      searchIndex: string;
+      queryFilter?: unknown;
+    }) => (
+      <button
+        data-query-filter={JSON.stringify(queryFilter)}
+        data-search-index={searchIndex}
+        data-testid="pick-orders"
+        onClick={() => onChange(ORDERS)}>
+        pick
+      </button>
+    ),
+  })
+);
+
 const triggerRef = createRef<HTMLElement>() as { current: HTMLElement };
-triggerRef.current = trigger;
+triggerRef.current = document.createElement('button');
 
 const baseProps = {
   excludeEntityId: 'self',
+  nodeName: 'customers',
   onClose: jest.fn(),
   onSubmit: jest.fn().mockResolvedValue(true),
 };
 
-// react-aria-components popovers only open on a full pointer-event sequence
-// (pointerdown/pointerup), which `fireEvent.click` does not synthesize —
-// `@testing-library/user-event` is required to actually open the Select /
-// ComboBox popovers. The testids sit on wrapper `<div>`s (Select's own, and
-// one the popover adds around the ComboBox) rather than on the clickable
-// trigger, so triggers are queried by role within that wrapper instead.
-const openTypeSelect = async (user: ReturnType<typeof userEvent.setup>) => {
-  const wrapper = screen.getByTestId('add-lineage-type-select');
-  await user.click(within(wrapper).getByRole('button'));
-};
-
-const openColumnSelect = async (user: ReturnType<typeof userEvent.setup>) => {
-  const wrapper = screen.getByTestId('add-lineage-column-select');
-  await user.click(within(wrapper).getByRole('button'));
-};
-
-const pickType = async (user: ReturnType<typeof userEvent.setup>) => {
-  await openTypeSelect(user);
-  await user.click(
-    await screen.findByRole('option', { name: 'label.table-plural' })
+// FilterSelect's menu does not settle under userEvent's pointer sequence in
+// jsdom; a plain click opens it and picks a row.
+const pickType = async (index = 'table') => {
+  fireEvent.click(screen.getByTestId('add-lineage-type-select'));
+  fireEvent.click(
+    within(await screen.findByTestId('drop-down-menu')).getByTestId(index)
   );
-};
-
-const searchEntity = async (
-  user: ReturnType<typeof userEvent.setup>,
-  text: string
-) => {
-  await user.type(
-    within(screen.getByTestId('add-lineage-entity-input')).getByRole(
-      'combobox'
-    ),
-    text
-  );
-  await act(async () => jest.advanceTimersByTime(300));
 };
 
 describe('AddLineagePopover', () => {
   let user: ReturnType<typeof userEvent.setup>;
 
   beforeEach(() => {
-    jest.useFakeTimers();
-    user = userEvent.setup({
-      advanceTimers: jest.advanceTimersByTime,
-      delay: null,
-    });
-    (searchQuery as jest.Mock).mockResolvedValue({
-      hits: { hits: [hit('self', 'self'), hit('b', 'orders')] },
+    jest.clearAllMocks();
+    user = userEvent.setup({ delay: null, pointerEventsCheck: 0 });
+    (getAggregationOptions as jest.Mock).mockResolvedValue({
+      data: {
+        aggregations: {
+          'sterms#entityType': {
+            buckets: [{ key: 'table', doc_count: 528 }],
+          },
+        },
+      },
     });
   });
-
-  afterEach(() => jest.useRealTimers());
 
   const open = (direction = LineageDirection.Downstream, columnFqn?: string) =>
     render(
       <AddLineagePopover
         {...baseProps}
-        nodeName="customers"
         request={{ nodeId: 'n1', direction, columnFqn, triggerRef }}
       />
     );
@@ -115,26 +120,35 @@ describe('AddLineagePopover', () => {
   it('shows the direction title', () => {
     open(LineageDirection.Upstream);
 
-    expect(screen.getByText('label.add-upstream')).toBeInTheDocument();
+    expect(screen.getAllByText('label.add-upstream').length).toBeGreaterThan(0);
   });
 
-  it('searches the chosen type, excludes the current entity and submits on Add', async () => {
+  it('lists asset types with their counts', async () => {
     open();
-    await pickType(user);
-    await searchEntity(user, 'ord');
+    fireEvent.click(screen.getByTestId('add-lineage-type-select'));
+    const menu = await screen.findByTestId('drop-down-menu');
 
-    expect(searchQuery).toHaveBeenCalledWith(
-      expect.objectContaining({ searchIndex: 'table' })
+    await waitFor(() =>
+      expect(within(menu).getByTestId('table')).toHaveTextContent('528')
     );
-    expect(
-      screen.queryByRole('option', { name: /self/ })
-    ).not.toBeInTheDocument();
+  });
 
-    await user.click(await screen.findByRole('option', { name: /orders/ }));
+  it('searches the chosen type without the current entity and submits on Add', async () => {
+    open();
+
+    expect(screen.getByTestId('add-lineage-submit')).toBeDisabled();
+
+    await pickType();
+    const list = screen.getByTestId('pick-orders');
+
+    expect(list).toHaveAttribute('data-search-index', 'table');
+    expect(list.getAttribute('data-query-filter')).toContain('self');
+
+    fireEvent.click(list);
 
     expect(baseProps.onSubmit).not.toHaveBeenCalled();
 
-    await user.click(screen.getByTestId('add-lineage-submit'));
+    fireEvent.click(screen.getByTestId('add-lineage-submit'));
 
     await waitFor(() =>
       expect(baseProps.onSubmit).toHaveBeenCalledWith({
@@ -143,84 +157,43 @@ describe('AddLineagePopover', () => {
     );
   });
 
-  it('keeps Add disabled until an asset is picked', async () => {
-    open();
-
-    expect(screen.getByTestId('add-lineage-submit')).toBeDisabled();
-
-    await pickType(user);
-
-    expect(screen.getByTestId('add-lineage-submit')).toBeDisabled();
-  });
-
   it('previews the new edge with the current node on the matching side', async () => {
     open(LineageDirection.Upstream);
-    await pickType(user);
-    await searchEntity(user, 'ord');
-    await user.click(await screen.findByRole('option', { name: /orders/ }));
+    await pickType();
+    fireEvent.click(screen.getByTestId('pick-orders'));
 
-    const preview = screen.getByTestId('add-lineage-preview');
-
-    expect(preview.textContent).toMatch(/orders.*customers/);
-  });
-
-  it('shows an error toast when the search fails', async () => {
-    const error = new Error('search failed');
-    (searchQuery as jest.Mock).mockRejectedValueOnce(error);
-    open();
-    await pickType(user);
-    await searchEntity(user, 'ord');
-
-    await waitFor(() => expect(showErrorToast).toHaveBeenCalledWith(error));
-  });
-
-  it('drops a pending search when the type changes', async () => {
-    open();
-    await pickType(user);
-    await user.type(
-      within(screen.getByTestId('add-lineage-entity-input')).getByRole(
-        'combobox'
-      ),
-      'ord'
+    expect(screen.getByTestId('add-lineage-preview').textContent).toMatch(
+      /orders.*customers/
     );
-    await user.keyboard('{Escape}');
-    await openTypeSelect(user);
-    await user.click(
-      await screen.findByRole('option', { name: 'label.dashboard-plural' })
-    );
-    await act(async () => jest.advanceTimersByTime(300));
-
-    expect(searchQuery).not.toHaveBeenCalled();
-    expect(
-      within(screen.getByTestId('add-lineage-entity-input')).getByRole(
-        'combobox'
-      )
-    ).toHaveValue('');
   });
 
   it('asks for a column when opened from a column and submits the column', async () => {
     (searchQuery as jest.Mock).mockResolvedValue({
       hits: {
         hits: [
-          hit('b', 'orders', {
-            columns: [{ name: 'id', fullyQualifiedName: 's.d.sc.orders.id' }],
-          }),
+          {
+            _source: {
+              id: 'b',
+              entityType: 'table',
+              columns: [{ name: 'id', fullyQualifiedName: 's.d.sc.orders.id' }],
+            },
+          },
         ],
       },
     });
     open(LineageDirection.Downstream, 's.d.sc.self.id');
-    await pickType(user);
-    await searchEntity(user, 'ord');
-    await user.click(await screen.findByRole('option', { name: /orders/ }));
+    await pickType();
+    fireEvent.click(screen.getByTestId('pick-orders'));
 
-    expect(baseProps.onSubmit).not.toHaveBeenCalled();
+    expect(screen.getByTestId('add-lineage-submit')).toBeDisabled();
 
-    await openColumnSelect(user);
+    await user.click(
+      within(screen.getByTestId('add-lineage-column-select')).getByRole(
+        'button'
+      )
+    );
     await user.click(await screen.findByRole('option', { name: 'id' }));
-
-    expect(baseProps.onSubmit).not.toHaveBeenCalled();
-
-    await user.click(screen.getByTestId('add-lineage-submit'));
+    fireEvent.click(screen.getByTestId('add-lineage-submit'));
 
     await waitFor(() =>
       expect(baseProps.onSubmit).toHaveBeenCalledWith({
@@ -230,7 +203,7 @@ describe('AddLineagePopover', () => {
     );
   });
 
-  it('stays open with selections kept when submit fails, and ignores duplicate submits', async () => {
+  it('stays open when submit fails, and ignores duplicate submits', async () => {
     let resolveSubmit: (value: boolean) => void = (_value: boolean) =>
       undefined;
     baseProps.onSubmit.mockImplementation(
@@ -240,11 +213,10 @@ describe('AddLineagePopover', () => {
         })
     );
     open();
-    await pickType(user);
-    await searchEntity(user, 'ord');
-    await user.click(await screen.findByRole('option', { name: /orders/ }));
-    await user.click(screen.getByTestId('add-lineage-submit'));
-    await user.click(screen.getByTestId('add-lineage-submit'));
+    await pickType();
+    fireEvent.click(screen.getByTestId('pick-orders'));
+    fireEvent.click(screen.getByTestId('add-lineage-submit'));
+    fireEvent.click(screen.getByTestId('add-lineage-submit'));
 
     expect(baseProps.onSubmit).toHaveBeenCalledTimes(1);
 
