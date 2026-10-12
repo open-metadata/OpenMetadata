@@ -58,9 +58,9 @@ describe('TestCaseUtils', () => {
       );
 
       expect(result).toHaveLength(3);
-      expect((result[0] as ItemType)!.key).toBe('import-button');
-      expect((result[1] as ItemType)!.key).toBe('export-button');
-      expect((result[2] as ItemType)!.key).toBe('bulk-edit-button');
+      expect((result[0] as NonNullable<ItemType>).key).toBe('import-button');
+      expect((result[1] as NonNullable<ItemType>).key).toBe('export-button');
+      expect((result[2] as NonNullable<ItemType>).key).toBe('bulk-edit-button');
     });
 
     it('should return only export option when ViewAll is true but EditAll is false', () => {
@@ -74,7 +74,7 @@ describe('TestCaseUtils', () => {
       );
 
       expect(result).toHaveLength(1);
-      expect((result[0] as ItemType)!.key).toBe('export-button');
+      expect((result[0] as NonNullable<ItemType>).key).toBe('export-button');
     });
 
     it('should return empty array when both permissions are false', () => {
@@ -133,14 +133,7 @@ describe('TestCaseUtils', () => {
         mockShowModal
       );
 
-      render(
-        <MemoryRouter>
-          {(result[0] as ItemType & { label: React.ReactNode }).label}
-        </MemoryRouter>
-      );
-
-      const importButton = screen.getByTestId('import-button');
-      importButton.click();
+      (result[0] as { onClick?: () => void }).onClick?.();
 
       expect(mockNavigate).toHaveBeenCalledWith(`/import/testCase/${fqn}`);
     });
@@ -156,14 +149,7 @@ describe('TestCaseUtils', () => {
         EntityType.TABLE
       );
 
-      render(
-        <MemoryRouter>
-          {(result[0] as ItemType & { label: React.ReactNode }).label}
-        </MemoryRouter>
-      );
-
-      const importButton = screen.getByTestId('import-button');
-      importButton.click();
+      (result[0] as { onClick?: () => void }).onClick?.();
 
       expect(mockNavigate).toHaveBeenCalledWith(
         `/import/testCase/${fqn}?sourceEntityType=table`
@@ -200,14 +186,7 @@ describe('TestCaseUtils', () => {
         mockShowModal
       );
 
-      render(
-        <MemoryRouter>
-          {(result[1] as ItemType & { label: React.ReactNode }).label}
-        </MemoryRouter>
-      );
-
-      const exportButton = screen.getByTestId('export-button');
-      exportButton.click();
+      (result[1] as { onClick?: () => void }).onClick?.();
 
       expect(mockShowModal).toHaveBeenCalledWith({
         name: fqn,
@@ -246,14 +225,7 @@ describe('TestCaseUtils', () => {
         mockShowModal
       );
 
-      render(
-        <MemoryRouter>
-          {(result[2] as ItemType & { label: React.ReactNode }).label}
-        </MemoryRouter>
-      );
-
-      const bulkEditButton = screen.getByTestId('bulk-edit-button');
-      bulkEditButton.click();
+      (result[2] as { onClick?: () => void }).onClick?.();
 
       expect(mockNavigate).toHaveBeenCalledWith(`/bulk-edit/testCase/${fqn}`);
     });
@@ -269,14 +241,7 @@ describe('TestCaseUtils', () => {
         EntityType.TEST_SUITE
       );
 
-      render(
-        <MemoryRouter>
-          {(result[2] as ItemType & { label: React.ReactNode }).label}
-        </MemoryRouter>
-      );
-
-      const bulkEditButton = screen.getByTestId('bulk-edit-button');
-      bulkEditButton.click();
+      (result[2] as { onClick?: () => void }).onClick?.();
 
       expect(mockNavigate).toHaveBeenCalledWith(
         `/bulk-edit/testCase/${fqn}?sourceEntityType=testSuite`
@@ -294,8 +259,8 @@ describe('TestCaseUtils', () => {
       );
 
       expect(result).toHaveLength(2);
-      expect((result[0] as ItemType)!.key).toBe('import-button');
-      expect((result[1] as ItemType)!.key).toBe('bulk-edit-button');
+      expect((result[0] as NonNullable<ItemType>).key).toBe('import-button');
+      expect((result[1] as NonNullable<ItemType>).key).toBe('bulk-edit-button');
     });
 
     it('should handle empty FQN', () => {
@@ -322,14 +287,7 @@ describe('TestCaseUtils', () => {
         mockShowModal
       );
 
-      render(
-        <MemoryRouter>
-          {(result[0] as ItemType & { label: React.ReactNode }).label}
-        </MemoryRouter>
-      );
-
-      const importButton = screen.getByTestId('import-button');
-      importButton.click();
+      (result[0] as { onClick?: () => void }).onClick?.();
 
       expect(mockNavigate).toHaveBeenCalledWith(
         `/import/testCase/${specialFqn}`

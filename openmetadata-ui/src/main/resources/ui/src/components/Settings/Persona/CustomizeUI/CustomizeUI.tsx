@@ -10,12 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row } from 'antd';
+import { Grid } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../../../utils/common/layout.utils';
+
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../../../constants/char.constants';
-import { useAppRoutesRegistry } from '../../../../hooks/useAppRoutesRegistry';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../hooks/useFqn';
 import { getCustomizePagePath } from '../../../../utils/GlobalSettingsUtils';
@@ -26,16 +27,7 @@ import {
 import SettingItemCard from '../../SettingItemCard/SettingItemCard.component';
 
 export const CustomizeUI = () => {
-  const hasNonDefaultMode = useAppRoutesRegistry(
-    (state) => Object.keys(state.routes).length > 0
-  );
-  const categories = useMemo(
-    () =>
-      getCustomizePageCategories().filter(
-        (category) => category.key !== 'app-mode' || hasNonDefaultMode
-      ),
-    [hasNonDefaultMode]
-  );
+  const categories = useMemo(() => getCustomizePageCategories(), []);
   const navigate = useNavigate();
   const location = useCustomLocation();
   const { fqn: personaFQN } = useFqn();
@@ -75,12 +67,14 @@ export const CustomizeUI = () => {
   }, [activeCat, categories]);
 
   return (
-    <Row className="bg-grey" gutter={[16, 16]}>
+    <Grid
+      className="layout-row layout-grid bg-grey"
+      style={getLayoutGutter(16, 16)}>
       {items.map((value) => (
-        <Col key={value.key} span={8}>
+        <Grid.Item className="layout-column" key={value.key} span={8}>
           <SettingItemCard data={value} onClick={handleCustomizeItemClick} />
-        </Col>
+        </Grid.Item>
       ))}
-    </Row>
+    </Grid>
   );
 };

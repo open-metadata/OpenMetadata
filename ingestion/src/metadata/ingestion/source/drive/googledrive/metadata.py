@@ -15,8 +15,9 @@ Google Drive source implementation
 
 # pylint: disable=too-many-lines
 import traceback
+from collections.abc import Iterable
 from datetime import datetime
-from typing import TYPE_CHECKING, Dict, Iterable, List, Optional, cast  # noqa: UP035
+from typing import TYPE_CHECKING, cast
 
 from metadata.generated.schema.api.data.createDirectory import CreateDirectoryRequest
 from metadata.generated.schema.api.data.createFile import CreateFileRequest
@@ -70,7 +71,7 @@ if TYPE_CHECKING:
 logger = ingestion_logger()
 
 
-def convert_timestamp_to_unix_millis(timestamp_str: Optional[str]) -> Optional[int]:  # noqa: UP045
+def convert_timestamp_to_unix_millis(timestamp_str: str | None) -> int | None:
     """
     Convert ISO format timestamp string to Unix epoch time in milliseconds.
     """
@@ -100,14 +101,14 @@ class GoogleDriveSource(DriveServiceSource):
         self.connection_obj = self.client
 
         # Cache for storing directory hierarchy
-        self._directories_cache: Dict[str, GoogleDriveDirectoryInfo] = {}  # noqa: UP006
-        self._current_directory_context: Optional[str] = None  # noqa: UP045
+        self._directories_cache: dict[str, GoogleDriveDirectoryInfo] = {}
+        self._current_directory_context: str | None = None
 
         # Cache for storing files organized by parent directory
-        self._files_by_parent_cache: Dict[str, List[GoogleDriveFile]] = {}  # noqa: UP006
+        self._files_by_parent_cache: dict[str, list[GoogleDriveFile]] = {}
 
         # Cache for storing directory FQNs by directory ID
-        self._directory_fqn_cache: Dict[str, str] = {}  # noqa: UP006
+        self._directory_fqn_cache: dict[str, str] = {}
 
         # Flag to track if root files have been processed
         self._root_files_processed: bool = False
@@ -120,7 +121,7 @@ class GoogleDriveSource(DriveServiceSource):
         cls,
         config_dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,  # noqa: UP045
+        pipeline_name: str | None = None,
     ):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: GoogleDriveConnection = config.serviceConnection.root.config
@@ -131,8 +132,8 @@ class GoogleDriveSource(DriveServiceSource):
     def _build_directory_path(
         self,
         directory_id: str,
-        directories_map: Dict[str, GoogleDriveDirectoryInfo],  # noqa: UP006
-    ) -> List[str]:  # noqa: UP006
+        directories_map: dict[str, GoogleDriveDirectoryInfo],
+    ) -> list[str]:
         """Build full directory path by traversing parents."""
         directory = directories_map.get(directory_id)
         if not directory:
@@ -268,10 +269,10 @@ class GoogleDriveSource(DriveServiceSource):
             logger.debug(traceback.format_exc())
             self._files_by_parent_cache = {}
 
-    def _sort_directories_by_hierarchy(self) -> List[str]:  # noqa: UP006
+    def _sort_directories_by_hierarchy(self) -> list[str]:
         """Sort directories hierarchically (parents before children)."""
         # Build adjacency list of parent -> children relationships
-        children_map: Dict[str, List[str]] = {}  # noqa: UP006
+        children_map: dict[str, list[str]] = {}
         root_directories = []
 
         for dir_id, directory_info in self._directories_cache.items():
@@ -322,8 +323,8 @@ class GoogleDriveSource(DriveServiceSource):
 
     def _fetch_drive_items(
         self,
-        directory_id: Optional[str] = None,  # noqa: UP045
-        mime_type_filter: Optional[str] = None,  # noqa: UP045
+        directory_id: str | None = None,
+        mime_type_filter: str | None = None,
         exclude_spreadsheets: bool = False,
     ) -> Iterable[GoogleDriveFile]:
         """Fetch items from Google Drive with optional filtering."""
@@ -372,7 +373,7 @@ class GoogleDriveSource(DriveServiceSource):
             logger.error(f"Error fetching drive items: {e}")
             logger.debug(traceback.format_exc())
 
-    def _fetch_files(self, directory_id: Optional[str] = None) -> Iterable[GoogleDriveFile]:  # noqa: UP045
+    def _fetch_files(self, directory_id: str | None = None) -> Iterable[GoogleDriveFile]:
         """Fetch files excluding Google Workspace native apps and folders."""
         yield from self._fetch_drive_items(directory_id=directory_id, exclude_spreadsheets=True)
 
@@ -848,7 +849,7 @@ class GoogleDriveSource(DriveServiceSource):
                     continue
 
                 # Build columns by fetching header row and inferring types from a small sample
-                columns: List[Column] = []  # noqa: UP006
+                columns: list[Column] = []
                 if worksheet_title:
                     try:
                         columns = self._get_sheet_columns(
@@ -937,7 +938,7 @@ class GoogleDriveSource(DriveServiceSource):
             logger.error(f"Error closing Google Drive source: {e}")
             logger.debug(traceback.format_exc())
 
-    def _normalize_rows_to_headers(self, data_rows: List[List], headers: List[str]) -> List[List]:  # noqa: UP006
+    def _normalize_rows_to_headers(self, data_rows: list[list], headers: list[str]) -> list[list]:
         """
         Normalize row lengths to match the number of headers.
         """
@@ -953,7 +954,7 @@ class GoogleDriveSource(DriveServiceSource):
 
     def _get_sheet_columns(  # pylint: disable=too-many-locals
         self, spreadsheet_id: str, sheet_title: str
-    ) -> List[Column]:  # noqa: UP006
+    ) -> list[Column]:
         """Fetch header row and a sample of data rows to infer column data types using the
         same DataFrame + DataFrameColumnParser approach used for datalake files.
 
@@ -997,7 +998,7 @@ class GoogleDriveSource(DriveServiceSource):
             df = pd.DataFrame(normalized_rows, columns=headers) if normalized_rows else pd.DataFrame(columns=headers)
 
             parser = DataFrameColumnParser.create(df)
-            inferred_columns: List[Column] = parser.get_columns()  # noqa: UP006
+            inferred_columns: list[Column] = parser.get_columns()
 
             return inferred_columns  # noqa: TRY300
 

@@ -10,15 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { AreaChart } from '@openmetadata/ui-core-components/charts';
 import { render, screen } from '@testing-library/react';
 import { act } from 'react-test-renderer';
 import { MOCK_KPI_LIST_RESPONSE } from '../../../../pages/KPIPage/KPIMock.mock';
 import { getListKPIs } from '../../../../rest/KpiAPI';
 import KPIWidget from './KPIWidget.component';
-
-jest.mock('../../../../constants/DataInsight.constants', () => ({
-  DATA_INSIGHT_GRAPH_COLORS: ['#E7B85D'],
-}));
 
 jest.mock('../../../../constants/constants', () => {
   const actualConstants = jest.requireActual('../../../../constants/constants');
@@ -26,7 +23,6 @@ jest.mock('../../../../constants/constants', () => {
   return {
     ...actualConstants,
     CHART_WIDGET_DAYS_DURATION: 14,
-    GRAPH_BACKGROUND_COLOR: '#000000',
   };
 });
 
@@ -119,19 +115,25 @@ const widgetProps = {
 
 describe('KPIWidget', () => {
   it('renders widget with header', async () => {
-    render(<KPIWidget {...widgetProps} />);
+    await act(async () => {
+      render(<KPIWidget {...widgetProps} />);
+    });
 
     expect(await screen.findByTestId('widget-header')).toBeInTheDocument();
   });
 
   it('renders widget wrapper', async () => {
-    render(<KPIWidget {...widgetProps} />);
+    await act(async () => {
+      render(<KPIWidget {...widgetProps} />);
+    });
 
     expect(await screen.findByTestId('KnowledgePanel.KPI')).toBeInTheDocument();
   });
 
   it('should fetch kpi list api initially', async () => {
-    render(<KPIWidget {...widgetProps} />);
+    await act(async () => {
+      render(<KPIWidget {...widgetProps} />);
+    });
 
     expect(getListKPIs).toHaveBeenCalledWith({ fields: 'dataInsightChart' });
   });
@@ -147,25 +149,49 @@ describe('KPIWidget', () => {
     expect(await screen.findByTestId('kpi-widget')).toBeInTheDocument();
   });
 
+  it('plots each KPI as an area with dots on a fixed y scale', async () => {
+    await act(async () => {
+      render(<KPIWidget {...widgetProps} />);
+    });
+
+    const props = (AreaChart as unknown as jest.Mock).mock.calls.at(-1)[0];
+
+    expect(props.xKey).toBe('day');
+    expect(props.series[0]).toEqual(
+      expect.objectContaining({
+        color: '#100000',
+        showDots: true,
+        seriesOption: { connectNulls: true },
+      })
+    );
+    expect(props.yAxis).toEqual({ min: 0, max: expect.any(Number) });
+    expect(props.yAxis.max).toBeGreaterThan(0);
+    expect(props.yAxis).not.toHaveProperty('interval');
+    expect(props.legend).toEqual({ show: false });
+    expect(props['data-testid']).toBe('kpi-widget-chart');
+  });
+
   it('should render WidgetEmptyState if no data there', async () => {
     (getListKPIs as jest.Mock).mockImplementation(() =>
       Promise.resolve({ data: [] })
     );
 
-    render(
-      <KPIWidget
-        {...widgetProps}
-        currentLayout={[
-          {
-            i: 'testWidgetKey',
-            x: 0,
-            y: 0,
-            w: 1,
-            h: 1,
-          },
-        ]}
-      />
-    );
+    await act(async () => {
+      render(
+        <KPIWidget
+          {...widgetProps}
+          currentLayout={[
+            {
+              i: 'testWidgetKey',
+              x: 0,
+              y: 0,
+              w: 1,
+              h: 1,
+            },
+          ]}
+        />
+      );
+    });
 
     // Wait for loading to complete and empty state to render
     expect(

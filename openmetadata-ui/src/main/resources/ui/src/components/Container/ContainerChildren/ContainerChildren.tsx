@@ -10,8 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Switch, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import {
+  EmptyPlaceholder,
+  Toggle,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Assets, NoSearch } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -28,9 +32,9 @@ import { getColumnSorter } from '../../../utils/EntitySortUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { descriptionTableObject } from '../../../utils/TableColumn.util';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
-import Table from '../../common/Table/Table';
+import { ColumnsType } from '../../common/Table/Table.interface';
+import Table from '../../common/Table/TableV2';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { ContainerChildrenProps } from './ContainerChildren.interface';
 import { useContainerChildrenCountSetter } from './ContainerChildrenCountContext';
@@ -228,21 +232,39 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({ isReadOnly }) => {
       dataSource={containerChildrenData}
       extraTableFilters={
         !isReadOnly && (
-          <span>
-            <Switch
-              checked={showDeleted}
+          <span className="tw:inline-flex tw:items-center">
+            <Toggle
               data-testid="show-deleted"
-              onClick={handleShowDeletedChange}
+              isSelected={showDeleted}
+              size="sm"
+              onChange={handleShowDeletedChange}
             />
-            <Typography.Text className="m-l-xs">
-              {t('label.deleted')}
-            </Typography.Text>
+            <Typography className="m-l-xs">{t('label.deleted')}</Typography>
           </span>
         )
       }
       loading={isChildrenLoading}
       locale={{
-        emptyText: <ErrorPlaceHolder className="p-y-md" />,
+        emptyText: (
+          <div className="tw:relative tw:min-h-70">
+            {searchValue ? (
+              <EmptyPlaceholder
+                description={t('message.check-spelling-or-try-shorter-term')}
+                icon={<NoSearch className="tw:text-secondary" />}
+                title={t('label.no-matching-result-plural')}
+                variant="blank"
+              />
+            ) : (
+              <EmptyPlaceholder
+                icon={<Assets className="tw:text-utility-gray-600" />}
+                title={t('message.no-entity-data-available', {
+                  entity: t('label.container-plural'),
+                })}
+                variant="blank"
+              />
+            )}
+          </div>
+        ),
       }}
       pagination={false}
       rowKey="id"

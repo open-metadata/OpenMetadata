@@ -42,11 +42,24 @@ import {
 import { createUpdatedTestCasePatch } from '../../../../utils/DataQuality/DataQualityPureUtils';
 import TestCaseFormDrawer from './TestCaseFormDrawer';
 import {
+  TestCaseFormBodyProps,
   TestCaseFormContext,
   TestCaseFormDrawerProps,
   TestLevel,
 } from './TestCaseFormV1.interface';
-import { buildEditDefaults } from './transformTestCaseFormData';
+import {
+  buildEditDefaults,
+  buildTestSuitePipelinePayload,
+} from './transformTestCaseFormData';
+
+// The pipeline-payload builder is stubbed module-wide below so the unrelated
+// submit tests can assert on a fixed payload. The FQN regression test restores
+// the real implementation for a single call so it can assert on the request
+// body that actually reaches addIngestionPipeline.
+const { buildTestSuitePipelinePayload: actualBuildTestSuitePipelinePayload } =
+  jest.requireActual<typeof import('./transformTestCaseFormData')>(
+    './transformTestCaseFormData'
+  );
 
 const mockGetResourceLimit = jest.fn().mockResolvedValue(undefined);
 
@@ -132,6 +145,20 @@ const mockContextWithPipeline: TestCaseFormContext = {
     name: 'table',
     fullyQualifiedName: 'service.db.schema.table',
   } as Table,
+  selectedTableFqn: 'service.db.schema.table',
+  selectedColumn: undefined,
+  selectedTestLevel: TestLevel.TABLE,
+  generateName: () => 'generated-name',
+  canCreatePipeline: true,
+};
+
+// `canCreatePipeline` is gated on the raw form FQN, not on the asynchronously
+// fetched table, so the form can be submitted while `selectedTableData` is
+// still in flight (or after its fetch failed).
+const mockContextPipelineTableUnresolved: TestCaseFormContext = {
+  selectedDefinition: undefined,
+  selectedTableData: undefined,
+  selectedTableFqn: 'service.db.schema.table',
   selectedColumn: undefined,
   selectedTestLevel: TestLevel.TABLE,
   generateName: () => 'generated-name',
@@ -141,86 +168,88 @@ const mockContextWithPipeline: TestCaseFormContext = {
 let emitContextFn: ((ctx: TestCaseFormContext) => void) | undefined;
 let emitActiveFieldFn: ((fieldId: string) => void) | undefined;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let lastFormBodyProps: Record<string, any> | undefined;
+let lastFormBodyProps:
+  | { isEditMode?: boolean; showOnlyParameter?: boolean }
+  | undefined;
 
 jest.mock('./TestCaseFormBody', () =>
-  jest.fn().mockImplementation(
-    ({
-      form,
-      onContextChange,
-      onActiveFieldChange,
-      errorMessage,
-      isEditMode,
-      showOnlyParameter,
-    }: // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    any) => {
-      emitContextFn = onContextChange;
-      emitActiveFieldFn = onActiveFieldChange;
-      lastFormBodyProps = { isEditMode, showOnlyParameter };
+  jest
+    .fn()
+    .mockImplementation(
+      ({
+        form,
+        onContextChange,
+        onActiveFieldChange,
+        errorMessage,
+        isEditMode,
+        showOnlyParameter,
+      }: TestCaseFormBodyProps) => {
+        emitContextFn = onContextChange;
+        emitActiveFieldFn = onActiveFieldChange;
+        lastFormBodyProps = { isEditMode, showOnlyParameter };
 
-      const testTypeField: FieldProp = {
-        name: 'testTypeId',
-        label: 'Test Type',
-        type: FieldTypes.TEXT,
-        required: false,
-        id: 'root/testType',
-        doc: TEST_TYPE_DOC,
-        props: { 'data-testid': 'test-type' },
-      };
+        const testTypeField: FieldProp = {
+          name: 'testTypeId',
+          label: 'Test Type',
+          type: FieldTypes.TEXT,
+          required: false,
+          id: 'root/testType',
+          doc: TEST_TYPE_DOC,
+          props: { 'data-testid': 'test-type' },
+        };
 
-      const testNameValue = form?.watch ? form.watch('testName') : undefined;
-      const displayNameValue = form?.watch
-        ? form.watch('displayName')
-        : undefined;
-      const paramsValue = form?.watch ? form.watch('params') : undefined;
+        const testNameValue = form?.watch?.('testName');
+        const displayNameValue = form?.watch?.('displayName');
+        const paramsValue = form?.watch?.('params');
 
-      return (
-        <div data-testid="test-case-form-body">
-          {!showOnlyParameter && (
-            <input
-              data-testid="test-case-name"
-              disabled={Boolean(isEditMode)}
-              value={testNameValue ?? ''}
-              onChange={() => undefined}
-            />
-          )}
-          {!showOnlyParameter && isEditMode && (
-            <input
-              data-testid="display-name"
-              value={displayNameValue ?? ''}
-              onChange={() => undefined}
-            />
-          )}
-          {!showOnlyParameter && (
-            <div data-testid="select-table-card">select-table-card</div>
-          )}
-          <div data-testid="test-type-card">
-            {getField(testTypeField)}
-            <div data-testid="params-value">
-              {paramsValue ? JSON.stringify(paramsValue) : ''}
+        return (
+          <div data-testid="test-case-form-body">
+            {!showOnlyParameter && (
+              <input
+                aria-label="Test case name"
+                data-testid="test-case-name"
+                disabled={Boolean(isEditMode)}
+                value={testNameValue ?? ''}
+                onChange={() => undefined}
+              />
+            )}
+            {!showOnlyParameter && isEditMode && (
+              <input
+                aria-label="Display name"
+                data-testid="display-name"
+                value={displayNameValue ?? ''}
+                onChange={() => undefined}
+              />
+            )}
+            {!showOnlyParameter && (
+              <div data-testid="select-table-card">select-table-card</div>
+            )}
+            <div data-testid="test-type-card">
+              {getField(testTypeField)}
+              <div data-testid="params-value">
+                {paramsValue ? JSON.stringify(paramsValue) : ''}
+              </div>
             </div>
+            {errorMessage && <div data-testid="form-error">{errorMessage}</div>}
+            <button
+              data-testid="emit-context"
+              onClick={() => onContextChange?.(mockContext)}>
+              emit
+            </button>
+            <button
+              data-testid="emit-context-pipeline"
+              onClick={() => onContextChange?.(mockContextWithPipeline)}>
+              emit-pipeline
+            </button>
+            <button
+              data-testid="emit-active-field"
+              onClick={() => onActiveFieldChange?.('testName')}>
+              emit-field
+            </button>
           </div>
-          {errorMessage && <div data-testid="form-error">{errorMessage}</div>}
-          <button
-            data-testid="emit-context"
-            onClick={() => onContextChange?.(mockContext)}>
-            emit
-          </button>
-          <button
-            data-testid="emit-context-pipeline"
-            onClick={() => onContextChange?.(mockContextWithPipeline)}>
-            emit-pipeline
-          </button>
-          <button
-            data-testid="emit-active-field"
-            onClick={() => onActiveFieldChange?.('testName')}>
-            emit-field
-          </button>
-        </div>
-      );
-    }
-  )
+        );
+      }
+    )
 );
 
 jest.mock('../../../common/ServiceDocPanel/ServiceDocPanel', () =>
@@ -457,6 +486,50 @@ describe('TestCaseFormDrawer', () => {
     });
   });
 
+  it('should create the pipeline against the selected table FQN when the table entity has not resolved', async () => {
+    (buildTestSuitePipelinePayload as jest.Mock).mockImplementationOnce(
+      actualBuildTestSuitePipelinePayload
+    );
+    mockCreateTestCase.mockResolvedValue({
+      name: 'transformed-test-case',
+      id: 'created-id',
+      testSuite: { id: 'suite-id', name: 'test-suite' },
+    });
+
+    // No `table` prop: the drawer is opened from the Test Library, where the
+    // table comes from the form field alone. Otherwise the payload builder's
+    // `table` fallback would hide a missing FQN.
+    renderDrawer({
+      table: undefined,
+      onFormSubmit: jest.fn(),
+      onClose: jest.fn(),
+    });
+
+    await screen.findByTestId('test-case-form-body');
+
+    await act(async () => {
+      emitContextFn?.(mockContextPipelineTableUnresolved);
+    });
+
+    const submitBtn = await screen.findByTestId('create-btn');
+
+    await act(async () => {
+      fireEvent.click(submitBtn);
+    });
+
+    await waitFor(() => {
+      expect(mockAddIngestionPipeline).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sourceConfig: {
+            config: expect.objectContaining({
+              entityFullyQualifiedName: 'service.db.schema.table',
+            }),
+          },
+        })
+      );
+    });
+  });
+
   it('should forward onActiveFieldChange from body to the prop callback', async () => {
     const onActiveFieldChange = jest.fn();
     renderDrawer({ onActiveFieldChange });
@@ -526,7 +599,7 @@ describe('TestCaseFormDrawer', () => {
       await screen.findByRole('dialog');
 
       await act(async () => {
-        fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+        fireEvent.click(screen.getByRole('button', { name: 'label.close' }));
       });
 
       expect(onClose).toHaveBeenCalledTimes(1);

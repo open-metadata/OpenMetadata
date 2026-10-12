@@ -14,6 +14,7 @@ import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { ROUTES } from '../../../constants/constants';
+import { SearchIndex } from '../../../enums/search.enum';
 import {
   AdvanceSearchProvider,
   useAdvanceSearch,
@@ -47,6 +48,23 @@ jest.mock('../../common/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div>Loader</div>)
 );
 
+// The global mock in setupTests.js stubs getQbConfigs to return an empty object,
+// but this provider feeds the config straight into the react-awesome-query-builder
+// utilities, which require a fully-formed config (settings, types, widgets...).
+// Restore the real getQbConfigs here so the tree utilities receive a valid config.
+jest.mock('../../../utils/AdvancedSearchClassBase', () => {
+  const actual = jest.requireActual('../../../utils/AdvancedSearchClassBase');
+
+  return {
+    __esModule: true,
+    ...actual,
+    default: {
+      ...actual.default,
+      autocomplete: jest.fn().mockReturnValue(jest.fn()),
+    },
+  };
+});
+
 const mockNavigate = jest.fn();
 
 jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
@@ -61,19 +79,6 @@ jest.mock('react-router-dom', () => ({
     tab: 'tabValue',
   }),
   useNavigate: jest.fn().mockImplementation(() => mockNavigate),
-}));
-
-jest.mock('../../../utils/AdvancedSearchClassBase', () => ({
-  __esModule: true,
-  default: {
-    getURLSearchParams: jest.fn().mockReturnValue({}),
-    getQueryFilters: jest.fn().mockReturnValue({}),
-    buildQueryFilter: jest.fn().mockReturnValue({}),
-    createQueryFilter: jest.fn().mockReturnValue({}),
-    handleAdvanceSearchClick: jest.fn(),
-    autocomplete: jest.fn(),
-    getQbConfigs: jest.fn().mockReturnValue({}),
-  },
 }));
 
 const Children = () => {
@@ -101,40 +106,108 @@ const mockWithAdvanceSearch =
 
 const ComponentWithProvider = mockWithAdvanceSearch(Children);
 
-describe.skip('AdvanceSearchProvider component', () => {
-  it('should render the AdvanceSearchModal as close by default', () => {
-    render(<ComponentWithProvider />);
+describe('AdvanceSearchProvider component', () => {
+  // Fake timers are enabled globally, so user-event must be told how to advance
+  // them, otherwise its internal delays never resolve and clicks hang.
+  const setupUser = () =>
+    userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
 
-    expect(screen.getByText('AdvanceSearchModal Close')).toBeInTheDocument();
+  it('should render the provider children with the modal closed by default', async () => {
+    await act(async () => {
+      render(<ComponentWithProvider />);
+    });
+
+    expect(screen.getByText('Open AdvanceSearch Modal')).toBeInTheDocument();
+    // The modal is only mounted when it is opened, so nothing modal related
+    // should be present on the initial render.
+    expect(screen.queryByText('AdvanceSearchModal Open')).toBeNull();
+    expect(screen.queryByText('Apply Advance Search')).toBeNull();
   });
 
-  it('should call mockPush after submit advance search form', async () => {
-    render(<ComponentWithProvider />);
+  it('should open the AdvanceSearchModal on call of toggleModal with true', async () => {
+    const user = setupUser();
+    await act(async () => {
+      render(<ComponentWithProvider />);
+    });
 
-    userEvent.click(screen.getByText('Apply Advance Search'));
+    expect(screen.queryByText('AdvanceSearchModal Open')).toBeNull();
+
+    await user.click(screen.getByText('Open AdvanceSearch Modal'));
+
+    expect(
+      await screen.findByText('AdvanceSearchModal Open')
+    ).toBeInTheDocument();
+  });
+
+  it('should call navigate after submitting the advance search form', async () => {
+    const user = setupUser();
+    await act(async () => {
+      render(<ComponentWithProvider />);
+    });
+
+    await user.click(screen.getByText('Open AdvanceSearch Modal'));
+
+    const applyButton = await screen.findByText('Apply Advance Search');
+
+    mockNavigate.mockClear();
+
+    await user.click(applyButton);
 
     expect(mockNavigate).toHaveBeenCalled();
   });
 
-  it('should open the AdvanceSearchModal on call of toggleModal with true', async () => {
+  it('onResetAllFilters should navigate to the reset filters search params', async () => {
+    const user = setupUser();
     await act(async () => {
       render(<ComponentWithProvider />);
     });
 
-    expect(screen.getByText('AdvanceSearchModal Close')).toBeInTheDocument();
+    mockNavigate.mockClear();
 
-    userEvent.click(screen.getByText('Open AdvanceSearch Modal'));
+    await user.click(screen.getByText('Reset All Filters'));
 
-    expect(screen.getByText('AdvanceSearchModal Open')).toBeInTheDocument();
+    expect(mockNavigate).toHaveBeenCalledWith(
+      expect.objectContaining({ pathname: ROUTES.EXPLORE })
+    );
   });
+});
 
-  it('onResetAllFilters call mockPush should be called', async () => {
+describe('AdvanceSearchProvider — search index changes', () => {
+  const IndexProbe = () => {
+    const { onChangeSearchIndex, isUpdating, searchIndex } = useAdvanceSearch();
+
+    return (
+      <>
+        <span data-testid="is-updating">{String(isUpdating)}</span>
+        <button
+          data-testid="reselect-same"
+          onClick={() =>
+            onChangeSearchIndex(searchIndex as SearchIndex | SearchIndex[])
+          }>
+          reselect
+        </button>
+      </>
+    );
+  };
+
+  const ProbeWithProvider = mockWithAdvanceSearch(IndexProbe);
+
+  // `loadData` is what clears `isUpdating`, and it only re-runs when
+  // `searchIndex` actually changes. Flipping the flag for a no-op change
+  // strands every consumer in "updating" forever — which is how the workflow
+  // Exclude Filter, asking for the provider's own default index, rendered
+  // nothing while Data Asset Filter (a different index) worked.
+  it('should not enter the updating state when the index is unchanged', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+
     await act(async () => {
-      render(<ComponentWithProvider />);
+      render(<ProbeWithProvider />);
     });
 
-    userEvent.click(screen.getByText('Reset All Filters'));
+    await act(async () => {
+      await user.click(screen.getByTestId('reselect-same'));
+    });
 
-    expect(mockNavigate).toHaveBeenCalledWith(-1);
+    expect(screen.getByTestId('is-updating')).toHaveTextContent('false');
   });
 });

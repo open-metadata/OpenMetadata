@@ -10,17 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Space, SpaceProps } from 'antd';
+import { Box } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { FC } from 'react';
 import { ReactComponent as IconRetry } from '../../../assets/svg/ic-retry-icon.svg';
-import { AIRFLOW_HYBRID } from '../../../constants/constants';
+import { AIRFLOW_HYBRID, DISABLED } from '../../../constants/constants';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import './airflow-message-banner.less';
 
-interface AirflowMessageBannerProps extends SpaceProps {
+interface AirflowMessageBannerProps {
+  className?: string;
   /**
    * Shown when the service is unreachable but the status call carried no `reason` — a thrown call
    * has none. Opt-in and caller-supplied, because what to say depends on what the caller left on
@@ -29,11 +30,20 @@ interface AirflowMessageBannerProps extends SpaceProps {
    * behaviour of rendering nothing without a `reason`.
    */
   unreachableFallbackMessage?: string;
+  /**
+   * Shown when no pipeline service client is configured. That reads as a *healthy* 200 with
+   * `platform` set to `disabled`, so it never reached the unreachable case above and the banner
+   * said nothing — while deploy, run and kill all answer 200 without doing anything. Its `reason`
+   * is an untranslated server string, hence a caller-supplied message here. Opt-in for the same
+   * reason as the unreachable one: the setup and success screens have nothing to explain.
+   */
+  disabledFallbackMessage?: string;
 }
 
 const AirflowMessageBanner: FC<AirflowMessageBannerProps> = ({
   className,
   unreachableFallbackMessage,
+  disabledFallbackMessage,
 }) => {
   const { reason, isAirflowAvailable, isFetchingStatus, platform } =
     useAirflowStatus();
@@ -42,33 +52,45 @@ const AirflowMessageBanner: FC<AirflowMessageBannerProps> = ({
     return null;
   }
 
+  const isPlatformDisabled = platform === DISABLED;
+
   // For hybrid runner, always show the banner even if status is 200 — but it has nothing to say
-  // without a reason. For other platforms, only show when Airflow is not available.
-  if (isAirflowAvailable) {
-    if (platform !== AIRFLOW_HYBRID || isEmpty(reason)) {
-      return null;
-    }
+  // without a reason. For other platforms, only show when Airflow is not available. A disabled
+  // client reports itself available, so it has to be let through here on its own account.
+  if (
+    !isPlatformDisabled &&
+    isAirflowAvailable &&
+    (platform !== AIRFLOW_HYBRID || isEmpty(reason))
+  ) {
+    return null;
   }
 
-  const message = isEmpty(reason) ? unreachableFallbackMessage : reason;
+  const unreachableMessage = isEmpty(reason)
+    ? unreachableFallbackMessage
+    : reason;
+
+  const message = isPlatformDisabled
+    ? disabledFallbackMessage
+    : unreachableMessage;
 
   if (isEmpty(message)) {
     return null;
   }
 
   return (
-    <Space
+    <Box
+      inline
       align="center"
       className={classNames('airflow-message-banner', className)}
       data-testid="no-airflow-placeholder"
-      role="status"
-      size={16}>
+      gap={4}
+      role="status">
       <IconRetry className="align-middle" height={24} width={24} />
       <RichTextEditorPreviewerV1
         enableSeeMoreVariant={false}
         markdown={message ?? ''}
       />
-    </Space>
+    </Box>
   );
 };
 

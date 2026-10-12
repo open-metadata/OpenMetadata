@@ -77,11 +77,13 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
       defaultValue,
       focused = false,
       onSave,
+      emptyMentionText,
     }: FeedEditorProp,
     ref
   ) => {
     const { t, i18n } = useTranslation();
     const editorRef = useRef<ReactQuill>(null);
+    const rootRef = useRef<HTMLDivElement>(null);
     const [value, setValue] = useState(() =>
       getSanitizeContent(defaultValue ?? '')
     );
@@ -91,11 +93,12 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
     const { userProfilePics } = useApplicationStore();
 
     const handleClickOutside = useCallback((event: MouseEvent) => {
-      const emojiContainer = document.querySelector(
-        '#om-quill-editor #textarea-emoji'
+      const root = rootRef.current;
+      const emojiContainer = root?.querySelector(
+        '#textarea-emoji'
       ) as HTMLElement;
-      const emojiToggleButton = document.querySelector(
-        '#om-quill-editor .textarea-emoji-control.ql-list'
+      const emojiToggleButton = root?.querySelector(
+        '.textarea-emoji-control.ql-list'
       ) as HTMLElement;
 
       if (
@@ -154,55 +157,71 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
       } catch (error) {
         // Empty
       } finally {
-        renderList(newMatches, searchTerm);
+        const noMatchRow: MentionSuggestionsItem = {
+          id: undefined,
+          value: emptyMentionText ?? '',
+          link: '',
+          name: emptyMentionText ?? '',
+          breadcrumbs: [],
+          disabled: true,
+        };
+        renderList(
+          newMatches.length === 0 && emptyMentionText
+            ? [noMatchRow]
+            : newMatches,
+          searchTerm
+        );
       }
     };
 
-    const renderItems = useCallback(
-      (item: MentionSuggestionsItem) => {
-        if (['user', 'team'].includes(item.type as string)) {
-          return item.avatarEle;
-        }
+    const renderItems = useCallback((item: MentionSuggestionsItem) => {
+      if (item.disabled) {
+        const emptyRow = document.createElement('div');
+        emptyRow.className = 'ql-mention-empty';
+        emptyRow.textContent = item.value;
 
-        const breadcrumbsData = item.breadcrumbs
-          ? item.breadcrumbs.map((obj: { name: string }) => obj.name).join('/')
-          : '';
+        return emptyRow;
+      }
+      if (['user', 'team'].includes(item.type as string)) {
+        return item.avatarEle;
+      }
 
-        const breadcrumbEle = breadcrumbsData
-          ? `<div class="d-flex flex-wrap">
-              <span class="text-grey-muted truncate w-max-200 text-xss">${breadcrumbsData}</span>
-            </div>`
-          : '';
-
-        const iconString = ReactDOMServer.renderToString(
-          searchClassBase.getEntityIconWithBg(
-            item.type ?? '',
-            EntityIconSize.Size14
-          )
-        );
-
-        const typeSpan = !breadcrumbEle
-          ? `<span class="text-grey-muted text-xs">${item.type}</span>`
-          : '';
-
-        const result = `<div class="d-flex items-center gap-2">
-          ${iconString}
+      const breadcrumbsData = item.breadcrumbs
+        ? item.breadcrumbs.map((obj: { name: string }) => obj.name).join('/')
+        : '';
+      const icon = searchClassBase.getEntityIconWithBg(
+        item.type ?? '',
+        EntityIconSize.Size14
+      );
+      const markup = ReactDOMServer.renderToStaticMarkup(
+        <div className="d-flex items-center gap-2">
+          {icon}
           <div>
-            ${breadcrumbEle}
-            <div class="d-flex flex-col">
-              ${typeSpan}
-              <span class="font-medium truncate w-56">${item.name}</span>
+            {breadcrumbsData ? (
+              <div className="d-flex flex-wrap">
+                <span className="text-grey-muted truncate w-max-200 text-xss">
+                  {breadcrumbsData}
+                </span>
+              </div>
+            ) : (
+              <span className="text-grey-muted text-xs">{item.type}</span>
+            )}
+            <div className="d-flex flex-col">
+              <span className="font-medium truncate w-56">{item.name}</span>
             </div>
           </div>
-        </div>`;
+        </div>
+      );
+      const renderedDocument = new DOMParser().parseFromString(
+        markup,
+        'text/html'
+      );
+      const renderedItem = renderedDocument.body.firstElementChild;
 
-        const wrapper = document.createElement('div');
-        wrapper.innerHTML = result;
-
-        return wrapper;
-      },
-      [userProfilePics]
-    );
+      return renderedItem
+        ? (document.importNode(renderedItem, true) as HTMLElement)
+        : document.createElement('div');
+    }, []);
     /**
      * Prepare modules for editor
      */
@@ -229,9 +248,9 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
             setTimeout(() => toggleMentionList(false), 0);
           },
           onSelect: (
-            item: Record<string, any>,
+            item: Record<string, unknown>,
 
-            insertItem: (item: Record<string, any>) => void
+            insertItem: (item: Record<string, unknown>) => void
           ) => {
             insertItem(item);
           },
@@ -245,6 +264,8 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
           matchers: [['del, strike', strikethrough]],
         },
       }),
+      // Quill re-creates the editor whenever `modules` changes, so build it once.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       []
     );
 
@@ -288,11 +309,14 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
           e.preventDefault();
           onSaveHandle();
         }
-        // handle enter keybinding for mention popup
-        // set mention list state to false when mention item is selected
-        else {
-          toggleMentionList(false);
-        }
+        // When the list is open, quill-mention's onClose (deferred via
+        // setTimeout) is the sole authority on when isMentionListOpen goes
+        // false. Flipping it here on every Enter-while-open desynchronises
+        // React's flag from the real dropdown: a disabled "No match found"
+        // row keeps the dropdown open (selectItem returns early, so onClose
+        // never fires), but an unconditional toggle would set the flag to
+        // false anyway, letting the next Enter submit through the
+        // !isMentionListOpen guard.
       }
     };
 
@@ -335,32 +359,34 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
 
     useEffect(() => {
       // get the editor container
-      const container = document.getElementById('om-quill-editor');
+      const container = rootRef.current;
 
       if (container && editorRef.current) {
         // get the editor instance
         const editorInstance = editorRef.current.getEditor();
         const direction = i18n.dir();
 
-        // get the current direction of the editor
-        const { align } = editorInstance.getFormat();
+        // Explicit ranges throughout: getFormat() and format() without one read
+        // the selection with focus, so a merely mounted editor would pull focus
+        // away from wherever the user is typing.
+        const { align } = editorInstance.getFormat(0, 0);
 
         if (direction === 'rtl' && isNil(align)) {
           container.setAttribute('data-dir', direction);
-          editorInstance.format('align', 'right', 'user');
+          editorInstance.formatLine(0, 1, 'align', 'right', 'user');
         } else if (align === 'right') {
-          editorInstance.format('align', false, 'user');
+          editorInstance.formatLine(0, 1, 'align', false, 'user');
           container.setAttribute('data-dir', 'ltr');
         }
-        editorInstance.format('direction', direction, 'user');
+        editorInstance.formatLine(0, 1, 'direction', direction, 'user');
       }
     }, [i18n, editorRef]);
 
     return (
       <div
-        className={className}
+        className={classNames(className, 'feed-editor-root')}
         data-testid="editor-wrapper"
-        id="om-quill-editor">
+        ref={rootRef}>
         <ReactQuill
           className={classNames('editor-container', editorClass)}
           modules={modules}

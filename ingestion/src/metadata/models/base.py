@@ -12,7 +12,7 @@
 Base Models to be used when useful.
 """
 
-from typing import Dict, Generic, Optional, TypeVar  # noqa: UP035
+from typing import Generic, TypeVar
 
 from pydantic import RootModel
 
@@ -20,7 +20,7 @@ K = TypeVar("K")
 V = TypeVar("V")
 
 
-class DictModel(RootModel[Dict[K, V]], Generic[K, V]):  # noqa: UP006
+class DictModel(RootModel[dict[K, V]], Generic[K, V]):
     """Base DictModel to be used when a Dict RootModel is needed.
     It implements proxies for useful Dict API methods."""
 
@@ -29,7 +29,7 @@ class DictModel(RootModel[Dict[K, V]], Generic[K, V]):  # noqa: UP006
     def __getitem__(self, key: K) -> V:
         return self.root[key]
 
-    def get(self, key: K, default: Optional[V] = None) -> Optional[V]:  # noqa: UP045
+    def get(self, key: K, default: V | None = None) -> V | None:
         return self.root.get(key, default)
 
     def keys(self):

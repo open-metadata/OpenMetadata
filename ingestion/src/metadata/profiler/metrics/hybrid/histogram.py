@@ -14,7 +14,7 @@ Histogram Metric definition
 """
 
 import math
-from typing import TYPE_CHECKING, Any, Dict, Optional, Union, cast  # noqa: UP035
+from typing import TYPE_CHECKING, Any, Optional, cast
 
 from sqlalchemy import and_, case, column, func
 from sqlalchemy.orm import Session
@@ -62,7 +62,7 @@ class Histogram(HybridMetric):
         return dict
 
     @staticmethod
-    def _get_bin_width(iqr: float, row_count: float) -> Union[float, int]:  # noqa: UP007
+    def _get_bin_width(iqr: float, row_count: float) -> float | int:
         """
         Compute the bin width for the histogram using Freedman-Diaconis rule
         """
@@ -71,7 +71,7 @@ class Histogram(HybridMetric):
         return 2 * iqr * row_count ** (-1 / 3)
 
     @staticmethod
-    def _get_res(res: Dict[str, Any]):  # noqa: UP006
+    def _get_res(res: dict[str, Any]):
         # get the metric need for the freedman-diaconis rule
         res_iqr = res.get(InterQuartileRange.name())
         res_row_count = res.get(Count.name())
@@ -89,7 +89,7 @@ class Histogram(HybridMetric):
         )  # Decimal to float
 
     @staticmethod
-    def _format_bin_labels(lower_bin: Union[float, int], upper_bin: Optional[Union[float, int]] = None) -> str:  # noqa: UP007, UP045
+    def _format_bin_labels(lower_bin: float | int, upper_bin: float | int | None = None) -> str:
         """format bin labels
 
         Args:
@@ -140,9 +140,9 @@ class Histogram(HybridMetric):
 
     def fn(
         self,
-        sample: Optional[type],  # noqa: UP045
-        res: Dict[str, Any],  # noqa: UP006
-        session: Optional[Session] = None,  # noqa: UP045
+        sample: type | None,
+        res: dict[str, Any],
+        session: Session | None = None,
     ):
         """
         Build the histogram query
@@ -169,7 +169,7 @@ class Histogram(HybridMetric):
 
         # set starting and ending bin bounds for the first bin
         starting_bin_bound = res_min
-        res_min = cast(Union[float, int], res_min)  # satisfy mypy  # noqa: TC006, UP007
+        res_min = cast(float | int, res_min)  # satisfy mypy  # noqa: TC006
         ending_bin_bound = res_min + bin_width
 
         if is_concatenable(self.col.type):
@@ -206,7 +206,7 @@ class Histogram(HybridMetric):
 
     def df_fn(
         self,
-        res: Dict[str, Any],  # noqa: UP006
+        res: dict[str, Any],
         dfs: Optional["PandasRunner"] = None,
     ):
         """_summary_
@@ -252,11 +252,11 @@ class Histogram(HybridMetric):
         for df in dfs:
             if not frequencies.any():
                 frequencies = (
-                    pd.cut(df[self.col.name], bins, right=False).value_counts().values
+                    pd.cut(df[self.col.name], bins, right=False).value_counts().to_numpy()
                 )  # right boundary is exclusive
                 continue
             frequencies += (
-                pd.cut(df[self.col.name], bins, right=False).value_counts().values
+                pd.cut(df[self.col.name], bins, right=False).value_counts().to_numpy()
             )  # right boundary is exclusive
 
         if frequencies.size > 0:  # pyright: ignore[reportAttributeAccessIssue]

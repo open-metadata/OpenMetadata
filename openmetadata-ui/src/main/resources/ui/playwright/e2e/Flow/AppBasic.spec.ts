@@ -20,7 +20,7 @@ test('should call installed app api and it should respond with 200', async ({
 }) => {
   const installedApp = page.waitForResponse('/api/v1/apps/installed');
 
-  await page.goto('/');
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
 
   const response = await installedApp;
 

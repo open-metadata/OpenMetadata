@@ -1,0 +1,19 @@
+{
+  "title": "OpenAPISchemaURL",
+  "description": "Open API Schema URL Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.api.OpenAPISchemaURL",
+  "properties": {
+    "openAPISchemaURL": {
+      "expose": true,
+      "title": "OpenAPI Schema URL",
+      "description": "Open API Schema URL.",
+      "type": "string",
+      "format": "uri"
+    }
+  },
+  "required": [
+    "openAPISchemaURL"
+  ],
+  "additionalProperties": false
+}

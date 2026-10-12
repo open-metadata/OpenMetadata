@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { startCase } from 'lodash';
 import type { ServiceTypes } from 'Models';
 import {
   ADMONITION_BLOCK_REGEX,
@@ -34,7 +33,10 @@ import entityUtilClassBase from './EntityUtilClassBase';
 import { MarkdownToHTMLConverter } from './FeedUtilsPure';
 import { t } from './i18next/LocalUtil';
 import { getBrokers } from './MessagingServiceUtils';
-import { getSearchIndexFromService } from './ServicePureUtils';
+import {
+  getSearchIndexFromService,
+  getServiceCategoryLabel,
+} from './ServicePureUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 
 export const getOptionalFields = (
@@ -47,7 +49,7 @@ export const getOptionalFields = (
 
       return (
         <div className="m-b-xss truncate" data-testid="additional-field">
-          <label className="m-b-0">{t('label.broker-plural') + ':'}</label>
+          <span className="m-b-0">{t('label.broker-plural') + ':'}</span>
           <span
             className="m-l-xss font-normal text-grey-body"
             data-testid="brokers">
@@ -61,7 +63,7 @@ export const getOptionalFields = (
 
       return (
         <div className="m-b-xss truncate" data-testid="additional-field">
-          <label className="m-b-0">{t('label.url-uppercase') + ':'}</label>
+          <span className="m-b-0">{t('label.url-uppercase') + ':'}</span>
           <span
             className="m-l-xss font-normal text-grey-body"
             data-testid="dashboard-url">
@@ -75,7 +77,7 @@ export const getOptionalFields = (
 
       return (
         <div className="m-b-xss truncate" data-testid="additional-field">
-          <label className="m-b-0">{t('label.url-uppercase') + ':'}</label>
+          <span className="m-b-0">{t('label.url-uppercase') + ':'}</span>
           <span
             className="m-l-xss font-normal text-grey-body"
             data-testid="pipeline-url">
@@ -91,7 +93,7 @@ export const getOptionalFields = (
       return (
         <>
           <div className="m-b-xss truncate" data-testid="additional-field">
-            <label className="m-b-0">{t('label.registry')}:</label>
+            <span className="m-b-0">{t('label.registry')}:</span>
             <span
               className="m-l-xss font-normal text-grey-body"
               data-testid="pipeline-url">
@@ -99,7 +101,7 @@ export const getOptionalFields = (
             </span>
           </div>
           <div className="m-b-xss truncate" data-testid="additional-field">
-            <label className="m-b-0">{t('label.tracking')}:</label>
+            <span className="m-b-0">{t('label.tracking')}:</span>
             <span
               className="m-l-xss font-normal text-grey-body"
               data-testid="pipeline-url">
@@ -179,7 +181,7 @@ export const getAddServiceEntityBreadcrumb = (
 ) => {
   return [
     {
-      label: startCase(serviceCategory),
+      label: getServiceCategoryLabel(serviceCategory),
       // Delegated so an embedded experience that owns the service listing can redirect this
       // crumb; the base implementation returns the same settings path.
       href: connectionsRouterClassBase.getSettingsServicesPath(serviceCategory),

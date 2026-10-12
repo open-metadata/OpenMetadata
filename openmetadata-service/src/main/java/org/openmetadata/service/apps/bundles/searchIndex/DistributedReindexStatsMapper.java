@@ -155,10 +155,27 @@ class DistributedReindexStatsMapper {
 
     long processSuccess = aggregatedStats.processSuccess();
     long processFailed = aggregatedStats.processFailed();
-    processStats.setTotalRecords(saturatedToInt(processSuccess + processFailed));
+    long processWarnings = processWarnings(aggregatedStats, processSuccess, processFailed);
+    processStats.setTotalRecords(saturatedToInt(processSuccess + processFailed + processWarnings));
     processStats.setSuccessRecords(saturatedToInt(processSuccess));
     processStats.setFailedRecords(saturatedToInt(processFailed));
+    processStats.setWarningRecords(saturatedToInt(processWarnings));
     processStats.setTotalTimeMs(aggregatedStats.processTimeMs());
+  }
+
+  /**
+   * Rows the doc build neither indexed nor failed on — a stale reference skipped the document (see
+   * {@code OpenSearchBulkSink.recordStaleReferenceWarning}). {@code StageStatsTracker.flush} folds
+   * every stage's warnings into the single {@code readerWarnings} column, so the process-stage
+   * share is recovered from the reader hand-off instead: each row the reader emitted gets exactly
+   * one process outcome, so whatever is neither a success nor a failure warned. Leaving these out
+   * would drop them from {@code totalRecords} and break the reader-equals-processor invariant.
+   */
+  private long processWarnings(
+      CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats aggregatedStats,
+      long processSuccess,
+      long processFailed) {
+    return Math.max(0, aggregatedStats.readerSuccess() - processSuccess - processFailed);
   }
 
   private void updateSinkStats(

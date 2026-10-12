@@ -11,12 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  APIRequestContext,
-  expect,
-  Page,
-  test as base,
-} from '@playwright/test';
+import { APIRequestContext, Page } from '@playwright/test';
 import { get } from 'lodash';
 import { SidebarItem } from '../../constant/sidebar';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
@@ -25,6 +20,7 @@ import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { SubDomain } from '../../support/domain/SubDomain';
 import { TableClass } from '../../support/entity/TableClass';
+import { expect, test as base } from '../../support/fixtures/base';
 import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
@@ -56,8 +52,6 @@ const test = base.extend<{
 });
 
 test.describe('Domain Expert Permissions', () => {
-  test.slow(true);
-
   let testResources: {
     expertUser: UserClass;
     domain: Domain;
@@ -142,8 +136,6 @@ test.describe('Domain Expert Permissions', () => {
 });
 
 test.describe('Move Assets Between Domains', () => {
-  test.slow(true);
-
   test('Move table from one domain to another via API', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const domain1 = new Domain();
@@ -160,11 +152,13 @@ test.describe('Move Assets Between Domains', () => {
         patchData: [
           {
             op: 'add',
-            path: '/domains/0',
-            value: {
-              id: domain1.responseData.id,
-              type: 'domain',
-            },
+            path: '/domains',
+            value: [
+              {
+                id: domain1.responseData.id,
+                type: 'domain',
+              },
+            ],
           },
         ],
       });
@@ -172,7 +166,8 @@ test.describe('Move Assets Between Domains', () => {
       await page.goto(
         `/table/${encodeURIComponent(
           table.entityResponseData.fullyQualifiedName
-        )}`
+        )}`,
+        { waitUntil: 'domcontentloaded' }
       );
 
       await expect(
@@ -184,16 +179,18 @@ test.describe('Move Assets Between Domains', () => {
         patchData: [
           {
             op: 'replace',
-            path: '/domains/0',
-            value: {
-              id: domain2.responseData.id,
-              type: 'domain',
-            },
+            path: '/domains',
+            value: [
+              {
+                id: domain2.responseData.id,
+                type: 'domain',
+              },
+            ],
           },
         ],
       });
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await expect(
         page.locator('[data-testid="domain-link"]').first()
@@ -232,11 +229,13 @@ test.describe('Move Assets Between Domains', () => {
         patchData: [
           {
             op: 'add',
-            path: '/domains/0',
-            value: {
-              id: domain.responseData.id,
-              type: 'domain',
-            },
+            path: '/domains',
+            value: [
+              {
+                id: domain.responseData.id,
+                type: 'domain',
+              },
+            ],
           },
         ],
       });
@@ -246,11 +245,13 @@ test.describe('Move Assets Between Domains', () => {
         patchData: [
           {
             op: 'replace',
-            path: '/domains/0',
-            value: {
-              id: subDomain.responseData.id,
-              type: 'domain',
-            },
+            path: '/domains',
+            value: [
+              {
+                id: subDomain.responseData.id,
+                type: 'domain',
+              },
+            ],
           },
         ],
       });
@@ -258,7 +259,8 @@ test.describe('Move Assets Between Domains', () => {
       await page.goto(
         `/table/${encodeURIComponent(
           table.entityResponseData.fullyQualifiedName
-        )}`
+        )}`,
+        { waitUntil: 'domcontentloaded' }
       );
       await waitForAllLoadersToDisappear(page);
 
@@ -280,8 +282,6 @@ test.describe('Move Assets Between Domains', () => {
 });
 
 test.describe('Subdomain Permissions', () => {
-  test.slow(true);
-
   let testResources: {
     testUser: UserClass;
     domain: Domain;
@@ -313,7 +313,7 @@ test.describe('Subdomain Permissions', () => {
         resources: ['All'],
         operations: ['ViewAll', 'EditDescription'],
         effect: 'allow',
-        condition: `hasDomain('${domain.responseData.fullyQualifiedName}')`,
+        condition: 'hasDomain()',
       },
     ];
     await domainPolicy.create(apiContext, domainRule);
@@ -399,7 +399,9 @@ test.describe('Subdomain Permissions', () => {
 
     const subDomainFqn =
       testResources.subDomain.responseData.fullyQualifiedName;
-    await userPage.goto(`/domain/${encodeURIComponent(subDomainFqn)}`);
+    await userPage.goto(`/domain/${encodeURIComponent(subDomainFqn)}`, {
+      waitUntil: 'domcontentloaded',
+    });
     await waitForAllLoadersToDisappear(userPage);
 
     await expect(
@@ -411,8 +413,6 @@ test.describe('Subdomain Permissions', () => {
 });
 
 test.describe('Domain Version History', () => {
-  test.slow(true);
-
   test('Domain version history shows changes', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
@@ -491,8 +491,6 @@ test.describe('Domain Version History', () => {
 });
 
 test.describe('Domain Description Editing', () => {
-  test.slow(true);
-
   test('Admin can edit domain description', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
@@ -556,8 +554,6 @@ test.describe('Domain Description Editing', () => {
 });
 
 test.describe('Bulk Domain Asset Operations', () => {
-  test.slow(true);
-
   test('Add multiple assets to domain at once', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const { assets, assetCleanup } = await setupAssetsForDomain(page);
@@ -590,9 +586,35 @@ test.describe('Bulk Domain Asset Operations', () => {
       await checkAssetsCount(page, assets.length);
 
       for (const asset of assets) {
-        const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
+        const name = get(asset, 'entityResponseData.name') as
+          | string
+          | undefined;
+        const fqn = get(asset, 'entityResponseData.fullyQualifiedName') as
+          | string
+          | undefined;
+
+        if (!name || !fqn) {
+          throw new Error(
+            `Remove multiple assets: asset missing entityResponseData.name or fullyQualifiedName. Got name=${name}, fqn=${fqn}`
+          );
+        }
+
+        // Narrow before check — same pattern as removeAssetsFromDataProduct.
+        // The asset tab wraps the search value into `*<value>*`, so match
+        // the name anywhere in the URL and let the next iteration's fill
+        // overwrite (no inter-iteration clear needed).
+        const searchRes = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/search/query') &&
+            response.url().includes(name)
+        );
+        await page.getByTestId('searchbar').fill(name);
+        await searchRes;
+        await waitForAllLoadersToDisappear(page);
+
         await page
-          .locator(`[data-testid="table-data-card_${fqn}"] input`)
+          .locator(`[data-testid="table-data-card_${fqn}"]`)
+          .getByTestId('asset-checkbox')
           .check();
       }
 
@@ -600,7 +622,7 @@ test.describe('Bulk Domain Asset Operations', () => {
       await page.getByTestId('delete-all-button').click();
       await removeRes;
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await checkAssetsCount(page, 0);
     } finally {
       await domain.delete(apiContext);
@@ -611,8 +633,6 @@ test.describe('Bulk Domain Asset Operations', () => {
 });
 
 test.describe('Cross-Domain Access Denial', () => {
-  test.slow(true);
-
   let testResources: {
     testUser: UserClass;
     accessibleDomain: Domain;
@@ -647,11 +667,13 @@ test.describe('Cross-Domain Access Denial', () => {
       patchData: [
         {
           op: 'add',
-          path: '/domains/0',
-          value: {
-            id: accessibleDomain.responseData.id,
-            type: 'domain',
-          },
+          path: '/domains',
+          value: [
+            {
+              id: accessibleDomain.responseData.id,
+              type: 'domain',
+            },
+          ],
         },
       ],
     });
@@ -661,11 +683,13 @@ test.describe('Cross-Domain Access Denial', () => {
       patchData: [
         {
           op: 'add',
-          path: '/domains/0',
-          value: {
-            id: inaccessibleDomain.responseData.id,
-            type: 'domain',
-          },
+          path: '/domains',
+          value: [
+            {
+              id: inaccessibleDomain.responseData.id,
+              type: 'domain',
+            },
+          ],
         },
       ],
     });
@@ -678,7 +702,7 @@ test.describe('Cross-Domain Access Denial', () => {
         resources: ['All'],
         operations: ['ViewAll'],
         effect: 'allow',
-        condition: `hasDomain('${accessibleDomain.responseData.fullyQualifiedName}')`,
+        condition: 'hasDomain()',
       },
     ];
     await domainPolicy.create(apiContext, domainRule);
@@ -750,7 +774,9 @@ test.describe('Cross-Domain Access Denial', () => {
 
     const tableFqn =
       testResources.accessibleTable.entityResponseData.fullyQualifiedName;
-    await userPage.goto(`/table/${encodeURIComponent(tableFqn)}`);
+    await userPage.goto(`/table/${encodeURIComponent(tableFqn)}`, {
+      waitUntil: 'domcontentloaded',
+    });
     await waitForAllLoadersToDisappear(userPage);
 
     await expect(
@@ -771,7 +797,9 @@ test.describe('Cross-Domain Access Denial', () => {
 
     const tableFqn =
       testResources.accessibleTable.entityResponseData.fullyQualifiedName;
-    await userPage.goto(`/table/${encodeURIComponent(tableFqn)}`);
+    await userPage.goto(`/table/${encodeURIComponent(tableFqn)}`, {
+      waitUntil: 'domcontentloaded',
+    });
     await waitForAllLoadersToDisappear(userPage);
 
     await expect(userPage.getByTestId('entity-header-title')).toBeVisible();
@@ -781,8 +809,6 @@ test.describe('Cross-Domain Access Denial', () => {
 });
 
 test.describe('Domain Type Behavior', () => {
-  test.slow(true);
-
   test('Create domain with Source System type', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain({
@@ -835,8 +861,6 @@ test.describe('Domain Type Behavior', () => {
 });
 
 test.describe('Data Product Asset Management', () => {
-  test.slow(true);
-
   test('Move assets between data products', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
@@ -855,11 +879,13 @@ test.describe('Data Product Asset Management', () => {
         patchData: [
           {
             op: 'add',
-            path: '/domains/0',
-            value: {
-              id: domain.responseData.id,
-              type: 'domain',
-            },
+            path: '/domains',
+            value: [
+              {
+                id: domain.responseData.id,
+                type: 'domain',
+              },
+            ],
           },
         ],
       });
@@ -879,7 +905,8 @@ test.describe('Data Product Asset Management', () => {
       await searchRes;
 
       await page
-        .locator(`[data-testid="table-data-card_${tableFqn}"] input`)
+        .locator(`[data-testid="table-data-card_${tableFqn}"]`)
+        .getByTestId('asset-checkbox')
         .check();
 
       const addRes = page.waitForResponse('/api/v1/dataProducts/*/assets/add');
@@ -903,8 +930,6 @@ test.describe('Data Product Asset Management', () => {
 });
 
 test.describe('Domain Search and Filter', () => {
-  test.slow(true);
-
   test('Search for domain by name', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const uniqueId = uuid();
@@ -925,9 +950,12 @@ test.describe('Domain Search and Filter', () => {
         .getByTestId('page-layout-v1')
         .getByPlaceholder('Search');
 
+      const domainSearchResponse = page.waitForResponse(
+        '/api/v1/search/query?q=*&index=domain*'
+      );
       await searchBox.fill(`SearchTestDomain_${uniqueId}`);
 
-      await page.waitForResponse('/api/v1/search/query?q=*&index=domain*');
+      await domainSearchResponse;
 
       await waitForAllLoadersToDisappear(page);
 
@@ -952,16 +980,18 @@ test.describe('Domain Search and Filter', () => {
         patchData: [
           {
             op: 'add',
-            path: '/domains/0',
-            value: {
-              id: domain.responseData.id,
-              type: 'domain',
-            },
+            path: '/domains',
+            value: [
+              {
+                id: domain.responseData.id,
+                type: 'domain',
+              },
+            ],
           },
         ],
       });
 
-      await page.goto('/explore/tables');
+      await page.goto('/explore/tables', { waitUntil: 'domcontentloaded' });
 
       await page.getByTestId('domain-dropdown').click();
 
@@ -985,18 +1015,44 @@ test.describe('Domain Search and Filter', () => {
 });
 
 test.describe('Domain asset dryRun — remove confirmation', () => {
-  test.slow(true);
-
   const navigateToDomainAssets = async (page: Page, domain: Domain) => {
-    await sidebarClick(page, SidebarItem.DOMAIN);
-    await selectDomain(page, domain.data);
+    // Navigate to domain directly by URL. Going through the sidebar +
+    // search-backed listing is flaky: the just-created domain can be missing
+    // from the eventually-consistent search index when the row is clicked.
+    const domainFqn =
+      domain.responseData.fullyQualifiedName ?? domain.responseData.name;
+    await page.goto(`/domain/${encodeURIComponent(domainFqn)}`);
+    await waitForAllLoadersToDisappear(page);
     await page.getByTestId('assets').click();
     await waitForAllLoadersToDisappear(page);
   };
 
   const selectAssetCardCheckbox = async (page: Page, table: TableClass) => {
+    const name = table.entityResponseData.name ?? '';
     const fqn = table.entityResponseData.fullyQualifiedName ?? '';
-    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+
+    // Narrow the list to this one card first — under SharedInfra the
+    // domain asset tab lists every table on the shard, and toggling a
+    // checkbox reflows enough that a subsequent target scrolls under
+    // the pointer and .check() retries out. The tab wraps the search
+    // into `*<value>*`, so match the name anywhere in the URL. Between
+    // consecutive selectAssetCardCheckbox calls, the next fill overwrites
+    // — no inter-call clear needed.
+    const searchRes = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes(name)
+    );
+    await page.getByTestId('searchbar').fill(name);
+    await searchRes;
+    // Loader wait before check defeats the reflow race between response
+    // arrival and React swapping the list to a single card.
+    await waitForAllLoadersToDisappear(page);
+
+    await page
+      .locator(`[data-testid="table-data-card_${fqn}"]`)
+      .getByTestId('asset-checkbox')
+      .check();
   };
 
   test('single-asset remove with linked data product shows preview and commits on Remove Anyway', async ({
@@ -1056,7 +1112,7 @@ test.describe('Domain asset dryRun — remove confirmation', () => {
       expect(commitBody.dryRun).not.toBe(true);
       await expect(warningModal).not.toBeVisible();
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
       await checkAssetsCount(page, 0);
     } finally {
@@ -1121,7 +1177,7 @@ test.describe('Domain asset dryRun — remove confirmation', () => {
 
       expect(await commitOnCancel).toBeNull();
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
       await checkAssetsCount(page, 1);
     } finally {
@@ -1187,7 +1243,7 @@ test.describe('Domain asset dryRun — remove confirmation', () => {
       await warningModal.getByTestId('save-button').click();
       await commitPromise;
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
       await checkAssetsCount(page, 0);
     } finally {

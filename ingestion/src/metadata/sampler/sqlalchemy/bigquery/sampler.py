@@ -13,12 +13,10 @@ Helper module to handle data sampling
 for the profiler
 """
 
-from copy import deepcopy  # noqa: I001
-from typing import Optional
+from copy import deepcopy
 
-from sqlalchemy import Column
+from sqlalchemy import Column, text
 from sqlalchemy import Table as SqaTable
-from sqlalchemy import text
 from sqlalchemy.orm import Query
 
 from metadata.generated.schema.entity.data.table import Table, TableType
@@ -44,7 +42,7 @@ class BigQuerySampler(SQASampler):
     def __init__(self, *args, **kwargs):
         table_type = kwargs.pop("table_type", None)
         super().__init__(*args, **kwargs)
-        self.raw_dataset_type: Optional[TableType] = table_type or (  # noqa: UP045
+        self.raw_dataset_type: TableType | None = table_type or (
             self.entity.tableType if isinstance(self.entity, Table) else None
         )
 
@@ -93,7 +91,12 @@ class BigQuerySampler(SQASampler):
                 # FROM sample TABLESAMPLE SYSTEM (n PERCENT)
                 column = Column(column_parts[0], STRUCT)
                 # pylint: disable=protected-access
-                column._set_parent(self.raw_dataset.__table__)
+                table = self.raw_dataset.__table__  # pyright: ignore[reportOptionalMemberAccess]
+                column._set_parent(
+                    table,
+                    all_names={c.name: c for c in table.columns},  # pyright: ignore[reportCallIssue]
+                    allow_replacements=True,
+                )
                 # pylint: enable=protected-access
 
         return super()._base_sample_query(selectable, column, label=label)

@@ -52,18 +52,20 @@ jest.mock('antd', () => {
 
   return {
     ...antd,
-    // Render the popover content inline so the Select mounts without a click.
-    Popover: ({ children, content }: any) => (
-      <div>
-        {children}
-        {content}
-      </div>
-    ),
-    Select: ({ options, onSearch, onChange }: any) => {
+    Select: ({
+      options,
+      onSearch,
+      onChange,
+    }: {
+      options?: { label: string; value: string }[];
+      onSearch?: (value: string) => void;
+      onChange?: (value: string[]) => void;
+    }) => {
       latestOnChange = onChange;
 
       return (
         <div>
+          {/* eslint-disable-next-line jsx-a11y/control-has-associated-label -- test mock */}
           <input
             data-testid="persona-search"
             onChange={(e) => onSearch?.(e.target.value)}
@@ -72,6 +74,7 @@ jest.mock('antd', () => {
             <div
               data-testid={`option-${option.value}`}
               key={option.value}
+              role="presentation"
               onClick={() => onChange?.([option.value])}>
               {option.label}
             </div>
@@ -132,6 +135,7 @@ describe('PersonaSelectableList', () => {
 
     await waitFor(() => expect(mockGetAllPersonas).toHaveBeenCalled());
 
+    fireEvent.click(screen.getByTestId('edit-user-persona'));
     fireEvent.change(screen.getByTestId('persona-search'), {
       target: { value: 'ana' },
     });
@@ -151,6 +155,7 @@ describe('PersonaSelectableList', () => {
       />
     );
 
+    fireEvent.click(screen.getByTestId('edit-user-persona'));
     fireEvent.change(screen.getByTestId('persona-search'), {
       target: { value: 'ana' },
     });
@@ -165,11 +170,11 @@ describe('PersonaSelectableList', () => {
   });
 
   it('retains a persona selected under a previous query when saving', async () => {
-    mockSearchPersonas.mockImplementation((query: string) =>
-      Promise.resolve(
-        query === 'ana' ? [PERSONAS[0]] : query === 'stew' ? [PERSONAS[1]] : []
-      )
-    );
+    mockSearchPersonas.mockImplementation((query: string) => {
+      const stewMatches = query === 'stew' ? [PERSONAS[1]] : [];
+
+      return Promise.resolve(query === 'ana' ? [PERSONAS[0]] : stewMatches);
+    });
     const onUpdate = jest.fn().mockResolvedValue(undefined);
 
     render(
@@ -181,6 +186,7 @@ describe('PersonaSelectableList', () => {
       />
     );
 
+    fireEvent.click(screen.getByTestId('edit-user-persona'));
     const searchInput = screen.getByTestId('persona-search');
 
     fireEvent.change(searchInput, { target: { value: 'ana' } });

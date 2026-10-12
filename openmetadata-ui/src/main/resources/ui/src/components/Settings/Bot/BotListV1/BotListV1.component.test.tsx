@@ -69,6 +69,9 @@ jest.mock('../../../../hoc/LimitWrapper', () => {
 
 jest.mock('../../../../utils/StringUtils', () => ({
   ...jest.requireActual('../../../../utils/StringUtils'),
+}));
+
+jest.mock('../../../../utils/RichTextStringUtils', () => ({
   stringToHTML: jest.fn((text) => text),
 }));
 
@@ -154,10 +157,13 @@ describe('BotListV1', () => {
         const arg = call[0] as { query?: string; queryFilter?: unknown };
         const filterStr = JSON.stringify(arg.queryFilter);
 
-        return (
+        const matchesEmptyQueryAndEmail =
           arg.query === '' &&
           filterStr.includes('*testbot*') &&
-          filterStr.includes('email.keyword') &&
+          filterStr.includes('email.keyword');
+
+        return (
+          matchesEmptyQueryAndEmail &&
           filterStr.includes('name.keyword') &&
           filterStr.includes('displayName.keyword') &&
           filterStr.includes('fullyQualifiedName.keyword')

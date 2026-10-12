@@ -13,8 +13,9 @@
 Validator Mixin for SQA tests cases
 """
 
+from collections.abc import Callable
 from enum import Enum, auto
-from typing import Any, Callable, Dict, List, Optional, cast  # noqa: UP035
+from typing import Any, cast
 
 from sqlalchemy import (
     Column,
@@ -75,7 +76,7 @@ class DataQualityQueryType(Enum):
 class SQAValidatorMixin:
     """Validator mixin for SQA test cases"""
 
-    def get_column(self: HasValidatorContext, column_name: Optional[str] = None) -> Column:  # noqa: UP045
+    def get_column(self: HasValidatorContext, column_name: str | None = None) -> Column:
         """Get column object for the given column name
 
         Args:
@@ -96,7 +97,7 @@ class SQAValidatorMixin:
         )
 
     @staticmethod
-    def get_column_from_list(entity_link: str, columns: List) -> Column:  # noqa: UP006
+    def get_column_from_list(entity_link: str, columns: list) -> Column:
         """Given a column name get the column object
 
         Args:
@@ -117,9 +118,9 @@ class SQAValidatorMixin:
         self,
         runner: QueryRunner,
         metric: Metrics,
-        column: Optional[Column] = None,  # noqa: UP045
-        **kwargs: Optional[Any],  # noqa: UP045
-    ) -> Optional[int]:  # noqa: UP045
+        column: Column | None = None,
+        **kwargs: Any | None,
+    ) -> int | None:
         """Run the metric query against the column
 
         Args:
@@ -137,12 +138,62 @@ class SQAValidatorMixin:
         metric_obj = add_props(**kwargs)(metric.value) if kwargs else metric.value
         metric_fn = metric_obj(column).fn() if column is not None else metric_obj().fn()
 
+        values = self._select_metrics(runner, metric_fn)
+
+        return self._read_metric(values, metric, column)
+
+    def run_query_results_with_row_count(
+        self,
+        runner: QueryRunner,
+        metric: Metrics,
+        column: Column,
+        **kwargs: Any | None,
+    ) -> dict[str, int | None]:
+        """Run `metric` and the row count denominator as a single query
+
+        A PERCENTAGE failure threshold needs the row count to divide the violation count
+        by, whether or not the test case asks for row level results. Both are aggregates
+        over the same dataset, so the denominator costs one more column rather than one
+        more round trip.
+
+        Args:
+            runner (QueryRunner): runner object with sqlalchemy session object
+            metric (Metrics): metric counting the violating rows
+            column (Column): column object
+            **kwargs: props to pass to the violation metric at runtime
+
+        Returns:
+            dict[str, int | None]: both values, keyed by `Metrics` enum name
+        """
+        metric_obj = add_props(**kwargs)(metric.value) if kwargs else metric.value
+
+        values = self._select_metrics(
+            runner,
+            metric_obj(column).fn(),
+            Metrics.rowCount(column).fn(),
+        )
+
+        return {
+            metric.name: self._read_metric(values, metric, column),
+            Metrics.rowCount.name: self._read_metric(values, Metrics.rowCount, column),
+        }
+
+    @staticmethod
+    def _select_metrics(runner: QueryRunner, *metric_fns: Any) -> dict[str, Any]:
+        """Run the metric expressions against the dataset in a single query"""
         try:
-            row = runner.dispatch_query_select_first(metric_fn)  # type: ignore
-            value = dict(row._mapping)
-            res = value.get(metric.name)
+            row = runner.dispatch_query_select_first(*metric_fns)  # type: ignore
         except Exception as exc:
             raise SQLAlchemyError(exc)  # noqa: B904
+
+        # An empty dataset yields no row; `_read_metric` turns the missing value into
+        # the "your table might be empty" error that names the metric that came back void.
+        return dict(row._mapping) if row is not None else {}
+
+    @staticmethod
+    def _read_metric(values: dict[str, Any], metric: Metrics, column: Column | None) -> int | None:
+        """Read one metric out of a query result, rejecting the empty answer"""
+        res = values.get(metric.name)
 
         if res is None:
             raise ValueError(
@@ -183,6 +234,34 @@ class SQAValidatorMixin:
             raise SQLAlchemyError(exc)  # noqa: B904
 
         return res
+
+    def _compute_row_violations(self, runner: QueryRunner, violations_expr: ColumnElement) -> tuple[Any, Any]:
+        """Count the rows read and the violating ones among them, in a single aggregate query
+
+        Both counts come from the same scan so they are always counted against each other: a
+        violation count read from one query and a population from another can disagree on a
+        table that changed in between.
+
+        Args:
+            runner: runner with the sqlalchemy session
+            violations_expr: aggregate expression counting the violating rows, built by a checker
+
+        Returns:
+            tuple[Any, Any]: rows evaluated, violating rows
+        """
+        try:
+            row = runner.dispatch_query_select_first(
+                Metrics.rowCount().fn().label(DIMENSION_TOTAL_COUNT_KEY),
+                violations_expr.label(DIMENSION_FAILED_COUNT_KEY),
+            )
+        except Exception as exc:
+            raise SQLAlchemyError(exc)  # noqa: B904
+
+        if row is None:
+            raise SQLAlchemyError("The row violation count query returned no row")
+
+        values = dict(row._mapping)
+        return values.get(DIMENSION_TOTAL_COUNT_KEY), values.get(DIMENSION_FAILED_COUNT_KEY)
 
     def _compute_row_count(self, runner: QueryRunner, column: Column, **kwargs):
         """compute row count
@@ -230,10 +309,10 @@ class SQAValidatorMixin:
     def _get_metrics_query(
         source: Any,
         dimension_expr: ColumnElement,
-        metric_expressions: Dict[str, ClauseElement],  # noqa: UP006
+        metric_expressions: dict[str, ClauseElement],
         query_type: DataQualityQueryType,
-        filter_clause: Optional[ColumnElement] = None,  # noqa: UP045
-        failed_count_builder: Optional[Callable] = None,  # noqa: UP045
+        filter_clause: ColumnElement | None = None,
+        failed_count_builder: Callable | None = None,
         top_n: int = DEFAULT_TOP_DIMENSIONS,
     ):
         if DIMENSION_TOTAL_COUNT_KEY not in metric_expressions:
@@ -312,12 +391,12 @@ class SQAValidatorMixin:
         self: HasValidatorContext,
         source: FromClause,
         dimension_expr: ColumnElement,
-        metric_expressions: Dict[str, ClauseElement],  # noqa: UP006
-        failed_count_builder: Optional[Callable] = None,  # noqa: UP045
-        others_source_builder: Optional[Callable[[List[str]], FromClause]] = None,  # noqa: UP006, UP045
-        others_metric_expressions_builder: Optional[Callable[[FromClause], Dict[str, ClauseElement]]] = None,  # noqa: UP006, UP045
+        metric_expressions: dict[str, ClauseElement],
+        failed_count_builder: Callable | None = None,
+        others_source_builder: Callable[[list[str]], FromClause] | None = None,
+        others_metric_expressions_builder: Callable[[FromClause], dict[str, ClauseElement]] | None = None,
         top_n: int = DEFAULT_TOP_DIMENSIONS,
-    ) -> List[Dict[str, Any]]:  # noqa: UP006
+    ) -> list[dict[str, Any]]:
         """Execute two-pass dimensional validation with metrics.
 
         Pass 1: Get top N+1 dimensions with full metrics

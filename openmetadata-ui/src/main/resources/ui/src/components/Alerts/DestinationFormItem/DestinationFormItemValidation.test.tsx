@@ -1,0 +1,451 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { useState } from 'react';
+import {
+  HTTPMethod,
+  SubscriptionCategory,
+  SubscriptionType,
+  Type,
+} from '../../../generated/events/eventSubscription';
+import {
+  AlertSelection,
+  AlertSelectionProvider,
+} from '../../../hooks/useAlertSelection';
+import { testAlertDestination } from '../../../rest/alertsAPI';
+import DestinationFormItemFormBridge, {
+  DestinationFormFields,
+} from './DestinationFormItemFormBridge';
+
+jest.mock('../../../rest/alertsAPI', () => ({
+  ...jest.requireActual('../../../rest/alertsAPI'),
+  testAlertDestination: jest.fn(),
+}));
+
+jest.mock('../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
+
+const OAUTH_DESTINATION_VALUES: Partial<DestinationFormFields> = {
+  destinations: [
+    {
+      category: SubscriptionCategory.External,
+      config: {
+        authType: {
+          clientId: 'client-id',
+          clientSecret: 'client-secret',
+          tokenUrl: 'https://auth.example.com/oauth/token',
+          type: Type.Oauth2,
+        },
+        endpoint: 'https://hooks.slack.com/services/test',
+        httpMethod: HTTPMethod.Post,
+      },
+      destinationType: SubscriptionType.Slack,
+      type: SubscriptionType.Slack,
+    },
+  ],
+};
+
+interface ValidationHarnessProps {
+  initialValues?: Partial<DestinationFormFields>;
+  isRequired?: boolean;
+  onFinish: jest.Mock;
+  selection?: AlertSelection;
+}
+
+function ValidationHarness({
+  initialValues,
+  isRequired,
+  onFinish,
+  selection,
+}: ValidationHarnessProps) {
+  const [values, setValues] = useState<Partial<DestinationFormFields>>(
+    initialValues ?? {}
+  );
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [validationError, setValidationError] = useState('');
+
+  const form = (
+    <>
+      <DestinationFormItemFormBridge
+        isRequired={isRequired}
+        renderValidationField={(validate) => (
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                await validate();
+                onFinish();
+              } catch (error) {
+                setIsBlocked(true);
+                setValidationError((error as Error).message);
+              }
+            }}>
+            Save
+          </button>
+        )}
+        values={values}
+        onChange={(nextValues) => setValues(nextValues)}
+      />
+      {isBlocked && <span>parent-form-blocked</span>}
+      <output data-testid="parent-validation-error">
+        {JSON.stringify(validationError)}
+      </output>
+    </>
+  );
+
+  return selection ? (
+    <AlertSelectionProvider value={selection}>{form}</AlertSelectionProvider>
+  ) : (
+    form
+  );
+}
+
+function ParentFormFocusHarness() {
+  const [values, setValues] = useState<Partial<DestinationFormFields>>(
+    OAUTH_DESTINATION_VALUES
+  );
+
+  return (
+    <>
+      <output data-testid="parent-token-url">
+        {values.destinations?.[0]?.config?.authType?.tokenUrl}
+      </output>
+      <DestinationFormItemFormBridge values={values} onChange={setValues} />
+    </>
+  );
+}
+
+function ParentFormDestinationChangeHarness() {
+  const [values, setValues] = useState<Partial<DestinationFormFields>>({
+    destinations: OAUTH_DESTINATION_VALUES.destinations,
+  });
+
+  return <DestinationFormItemFormBridge values={values} onChange={setValues} />;
+}
+
+// The page provides the chosen sources; the destination form holds only its own fields.
+const TABLE_SELECTION = {
+  sources: ['table'],
+  support: {},
+  capabilities: { loading: false },
+  loading: false,
+  search: {
+    indexes: [],
+    containerEntities: [],
+    byName: jest.fn(),
+    byId: jest.fn(),
+  },
+} as AlertSelection;
+
+function UnconfiguredEmailDestinationHarness() {
+  const [values, setValues] = useState<Partial<DestinationFormFields>>({
+    destinations: [
+      {
+        category: SubscriptionCategory.External,
+        destinationType: SubscriptionType.Email,
+        type: SubscriptionType.Email,
+      },
+    ],
+  });
+
+  return (
+    <AlertSelectionProvider value={TABLE_SELECTION}>
+      <DestinationFormItemFormBridge values={values} onChange={setValues} />
+    </AlertSelectionProvider>
+  );
+}
+
+describe('DestinationFormItem validation', () => {
+  it('does not show a required error before submission', () => {
+    const onFinish = jest.fn();
+    render(<ValidationHarness onFinish={onFinish} />);
+
+    expect(
+      screen.queryByText('message.minimum-count-error')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('message.length-validator-error')
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows the minimum destination error when required submission is blocked', async () => {
+    const onFinish = jest.fn();
+    render(<ValidationHarness onFinish={onFinish} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await screen.findByText('parent-form-blocked');
+
+    expect(screen.getByText('message.length-validator-error')).toHaveClass(
+      'tw:text-error-primary'
+    );
+    expect(onFinish).not.toHaveBeenCalled();
+  });
+
+  it('allows submission without a destination when optional', async () => {
+    const onFinish = jest.fn();
+    render(<ValidationHarness isRequired={false} onFinish={onFinish} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(onFinish).toHaveBeenCalledTimes(1));
+
+    expect(
+      screen.queryByText('message.length-validator-error')
+    ).not.toBeInTheDocument();
+  });
+
+  it('does not report a missing destination when nested config is invalid', async () => {
+    const onFinish = jest.fn();
+    render(
+      <ValidationHarness
+        initialValues={{
+          destinations: [
+            {
+              category: SubscriptionCategory.External,
+              config: { endpoint: '' },
+              destinationType: SubscriptionType.Slack,
+              type: SubscriptionType.Slack,
+            },
+          ],
+        }}
+        onFinish={onFinish}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await screen.findByText('parent-form-blocked');
+
+    expect(screen.getByTestId('parent-validation-error')).not.toHaveTextContent(
+      'message.length-validator-error'
+    );
+    expect(screen.getByTestId('parent-validation-error')).not.toHaveTextContent(
+      'message.minimum-count-error'
+    );
+    expect(onFinish).not.toHaveBeenCalled();
+  });
+
+  it('clears a timeout error when the corrected value is blurred', async () => {
+    const onFinish = jest.fn();
+    render(
+      <ValidationHarness
+        initialValues={{
+          ...OAUTH_DESTINATION_VALUES,
+          readTimeout: 12,
+          timeout: 10,
+        }}
+        onFinish={onFinish}
+      />
+    );
+    const readTimeoutInput = screen.getByTestId('read-timeout-input');
+
+    fireEvent.change(readTimeoutInput, { target: { value: '0' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await screen.findByText('label.field-invalid');
+
+    fireEvent.change(readTimeoutInput, { target: { value: '12' } });
+    fireEvent.blur(readTimeoutInput);
+
+    await waitFor(() =>
+      expect(screen.queryByText('label.field-invalid')).not.toBeInTheDocument()
+    );
+  });
+
+  it('keeps a destination input focused when the parent form echoes its value', async () => {
+    render(<ParentFormFocusHarness />);
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'label.advanced-configuration',
+      })
+    );
+
+    const tokenUrlInput = screen.getByPlaceholderText(
+      'https://auth.example.com/oauth/token'
+    );
+    tokenUrlInput.focus();
+    fireEvent.change(tokenUrlInput, {
+      target: { value: 'https://auth.example.com/oauth/token/v2' },
+    });
+
+    await waitFor(() =>
+      expect(screen.getByTestId('parent-token-url')).toHaveTextContent(
+        'https://auth.example.com/oauth/token/v2'
+      )
+    );
+
+    expect(document.activeElement).toBe(tokenUrlInput);
+  });
+
+  it('clears registered config fields when the destination changes', async () => {
+    render(<ParentFormDestinationChangeHarness />);
+
+    fireEvent.click(
+      (
+        await screen.findByTestId('destination-category-select-0')
+      ).querySelector('button') as HTMLElement
+    );
+    fireEvent.click(await screen.findByRole('option', { name: 'G Chat' }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByPlaceholderText(
+          'https://chat.googleapis.com/v1/spaces/XXXXX/messages?key=XXXXX'
+        )
+      ).toHaveValue('')
+    );
+  });
+
+  it('shows required errors instead of testing an unconfigured destination', async () => {
+    render(<UnconfiguredEmailDestinationHarness />);
+
+    fireEvent.click(await screen.findByTestId('test-destination-button'));
+
+    expect(
+      await screen.findByText('message.field-text-is-required')
+    ).toBeInTheDocument();
+    expect(testAlertDestination).not.toHaveBeenCalled();
+  });
+
+  it('keeps nested destination errors visible after adding a destination row (Test path)', async () => {
+    render(<UnconfiguredEmailDestinationHarness />);
+
+    fireEvent.click(await screen.findByTestId('test-destination-button'));
+
+    expect(
+      await screen.findByText('message.field-text-is-required')
+    ).toBeInTheDocument();
+    expect(testAlertDestination).not.toHaveBeenCalled();
+
+    // Adding an unrelated empty sibling row must not wipe the existing row's
+    // nested field errors surfaced by `trigger('destinations')`.
+    fireEvent.click(screen.getByTestId('add-destination-button'));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('message.field-text-is-required')
+      ).toBeInTheDocument();
+    });
+
+    expect(testAlertDestination).not.toHaveBeenCalled();
+  });
+
+  it('keeps nested destination errors visible after adding a destination row (Save path)', async () => {
+    const onFinish = jest.fn();
+    render(
+      <ValidationHarness
+        initialValues={{
+          destinations: [
+            {
+              category: SubscriptionCategory.External,
+              destinationType: SubscriptionType.Email,
+              type: SubscriptionType.Email,
+            },
+          ],
+        }}
+        selection={TABLE_SELECTION}
+        onFinish={onFinish}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await screen.findByText('parent-form-blocked');
+
+    expect(
+      screen.getByText('message.field-text-is-required')
+    ).toBeInTheDocument();
+
+    // Adding an unrelated empty sibling row must not wipe the existing row's
+    // nested field errors surfaced by the bridge's full `trigger()`.
+    fireEvent.click(screen.getByTestId('add-destination-button'));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('message.field-text-is-required')
+      ).toBeInTheDocument();
+    });
+
+    expect(onFinish).not.toHaveBeenCalled();
+  });
+
+  it('keeps nested destination errors visible after removing a sibling destination row (Save path)', async () => {
+    const onFinish = jest.fn();
+    render(
+      <ValidationHarness
+        initialValues={{
+          destinations: [
+            {
+              category: SubscriptionCategory.External,
+              destinationType: SubscriptionType.Email,
+              type: SubscriptionType.Email,
+            },
+          ],
+        }}
+        selection={TABLE_SELECTION}
+        onFinish={onFinish}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await screen.findByText('parent-form-blocked');
+
+    expect(
+      screen.getByText('message.field-text-is-required')
+    ).toBeInTheDocument();
+
+    // Add an unrelated empty sibling row (preserves the existing error), then
+    // remove that sibling. Neither mutation may wipe the invalid row's error.
+    fireEvent.click(screen.getByTestId('add-destination-button'));
+    await waitFor(() =>
+      expect(
+        screen.getByText('message.field-text-is-required')
+      ).toBeInTheDocument()
+    );
+
+    fireEvent.click(screen.getByTestId('remove-destination-1'));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('message.field-text-is-required')
+      ).toBeInTheDocument();
+    });
+  });
+
+  it('clears the stale minimum destination count error when a destination is added', async () => {
+    const onFinish = jest.fn();
+    render(
+      <ValidationHarness selection={TABLE_SELECTION} onFinish={onFinish} />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(
+      await screen.findByText('message.length-validator-error')
+    ).toHaveClass('tw:text-error-primary');
+
+    // Adding a destination addresses the missing-destination error; the
+    // `clearErrors` effect must still remove that stale array-root error
+    // (now stored under the `root.*` sentinel) without waiting for re-Save.
+    fireEvent.click(screen.getByTestId('add-destination-button'));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText('message.length-validator-error')
+      ).not.toBeInTheDocument();
+    });
+  });
+});

@@ -31,6 +31,10 @@ import { ReactComponent as HyperlinkIcon } from '../assets/svg/link.svg';
 
 export const PROPERTY_TYPES_WITH_FORMAT = ['date-cp', 'dateTime-cp', 'time-cp'];
 
+// Enums can carry thousands of values; rendering one removable tag per value
+// in the edit forms blocks the main thread for seconds.
+export const ENUM_CONFIG_MAX_VISIBLE_VALUES = 20;
+
 export const PROPERTY_TYPES_WITH_ENTITY_REFERENCE = [
   'entityReference',
   'entityReferenceList',
@@ -182,20 +186,6 @@ export const SUPPORTED_FORMAT_MAP = {
 export const TABLE_TYPE_CUSTOM_PROPERTY = 'table-cp';
 
 export const HYPERLINK_TYPE_CUSTOM_PROPERTY = 'hyperlink-cp';
-
-export const SCROLLABLE_WRAPPER_TYPES = [TABLE_TYPE_CUSTOM_PROPERTY];
-
-export const AUTO_HEIGHT_TYPES = [
-  'entityReferenceList',
-  TABLE_TYPE_CUSTOM_PROPERTY,
-  'sqlQuery',
-];
-
-export const NO_OVERFLOW_TOGGLE_TYPES = [
-  ...PROPERTY_TYPES_WITH_ENTITY_REFERENCE,
-  TABLE_TYPE_CUSTOM_PROPERTY,
-  'sqlQuery',
-];
 
 export const CUSTOM_PROPERTIES_ICON_MAP = {
   'date-cp': DateIcon,

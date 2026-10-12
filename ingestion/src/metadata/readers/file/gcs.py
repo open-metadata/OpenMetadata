@@ -14,7 +14,6 @@ Read files as string from S3
 """
 
 import traceback
-from typing import List  # noqa: UP035
 
 from metadata.readers.file.base import Reader, ReadException
 from metadata.utils.logger import ingestion_logger
@@ -38,7 +37,7 @@ class GCSReader(Reader):
                 logger.debug(traceback.format_exc())
             raise ReadException(f"Error fetching file [{path}] from GCS: {err}")  # noqa: B904
 
-    def _get_tree(self) -> List[str]:  # noqa: UP006
+    def _get_tree(self) -> list[str]:
         """
         We are not implementing this yet. This should
         only be needed for now for the Datalake where we don't need

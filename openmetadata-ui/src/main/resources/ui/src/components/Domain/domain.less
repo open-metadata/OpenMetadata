@@ -13,27 +13,17 @@
 @import (reference) '../../styles/variables.less';
 
 .domain-page-container {
-  background-color: var(--tw-color-bg-primary);
-  border: 1px solid var(--tw-color-gray-blue-100);
+  background-color: var(--tw-color-bg-canvas);
   border-radius: var(--om-radius-md);
   margin-bottom: var(--om-space-20);
 
   .grid-container {
     background: none;
-    padding-right: var(--om-space-1);
+    padding-right: 0;
   }
 
   .resizable-panels-layout {
     background: none !important;
-  }
-
-  .custom-properties-card {
-    border: none;
-    padding: 0;
-  }
-
-  .assets-tab-container {
-    border: 1px solid var(--tw-color-gray-blue-100);
   }
 
   .grid-container > #KnowledgePanel\.LeftPanel {
@@ -55,17 +45,14 @@
     line-height: 20px !important;
   }
 
-  .ant-btn.entity-follow-button {
+  .entity-follow-button {
     padding: var(--om-space-2) var(--om-space-4);
+    font-size: var(--om-font-size-xs);
+    line-height: 18px;
   }
 
   .entity-follow-button svg {
     width: 12px;
-  }
-
-  .entity-follow-button > .ant-typography {
-    font-size: var(--om-font-size-xs);
-    line-height: 18px;
   }
 
   .copy-button svg {
@@ -100,20 +87,6 @@
 .domain-details-page-tabs {
   .announcement-card {
     margin-top: var(--om-space-4);
-  }
-
-  .ant-tabs.tabs-new {
-    .ant-tabs-tabpane {
-      height: @domain-page-height;
-      overflow-y: auto;
-    }
-    .ant-tabs-nav {
-      .ant-tabs-nav-list {
-        > div.ant-tabs-tab:nth-last-of-type(2) {
-          margin-right: var(--om-space-36);
-        }
-      }
-    }
   }
 }
 

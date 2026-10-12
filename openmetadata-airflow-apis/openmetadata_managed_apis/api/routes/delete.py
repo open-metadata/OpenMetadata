@@ -13,7 +13,7 @@ Delete the DAG in Airflow's db, as well as the python file
 """
 
 import traceback
-from typing import Callable  # noqa: UP035
+from collections.abc import Callable
 
 from flask import Blueprint, Response
 from werkzeug.utils import secure_filename

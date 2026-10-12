@@ -2,9 +2,13 @@
 Data quality validation utility functions.
 """
 
-from typing import Any, Callable, List, Optional, TypeVar, Union  # noqa: UP035
+from collections.abc import Callable
+from typing import Any, TypeVar
 from urllib.parse import quote
 
+from jinja2 import StrictUndefined, TemplateSyntaxError, UndefinedError
+from jinja2.exceptions import SecurityError
+from jinja2.sandbox import SandboxedEnvironment
 from sqlalchemy.engine import URL
 
 from metadata.generated.schema.tests.testCase import TestCaseParameterValue
@@ -21,12 +25,12 @@ USERNAME_RESERVED_CHARACTERS = ":/?#"
 
 
 def get_test_case_param_value(
-    test_case_param_vals: List[TestCaseParameterValue],  # noqa: UP006
+    test_case_param_vals: list[TestCaseParameterValue],
     name: str,
     type_: T,
-    default: Optional[R] = None,  # noqa: UP045
-    pre_processor: Optional[Callable] = None,  # noqa: UP045
-) -> Optional[Union[R, T]]:  # noqa: UP007, UP045
+    default: R | None = None,
+    pre_processor: Callable | None = None,
+) -> R | T | None:
     """Return a test case parameter value with the appropriate type casting for the test case definition.
 
     Args:
@@ -49,9 +53,9 @@ def get_test_case_param_value(
 
 
 def get_bool_test_case_param(
-    test_case_param_vals: List[TestCaseParameterValue],  # noqa: UP006
+    test_case_param_vals: list[TestCaseParameterValue],
     name: str,
-) -> Optional[Union[R, T]]:  # noqa: UP007, UP045
+) -> R | T | None:
     """Return a test case parameter value as a boolean. Boolean values are always False by default.
 
     Args:
@@ -111,3 +115,21 @@ def casefold_if_string(value: Any) -> Any:
         Any: case folded value
     """
     return value.casefold() if isinstance(value, str) else value
+
+
+def render_sql_expression(sql_template: str, params: dict[str, str]) -> str:
+    """Render a Rule Library SQL expression, raising ``ValueError`` on any template error.
+
+    The expression is user-authored, so it is rendered sandboxed: a plain Template
+    lets it reach Python internals and run code on the ingestion worker.
+    """
+    try:
+        return SandboxedEnvironment(undefined=StrictUndefined).from_string(sql_template).render(**params)
+    except TemplateSyntaxError as e:
+        raise ValueError(f"Invalid Jinja2 syntax in SQL expression: {e.message}") from e
+    except SecurityError as e:
+        raise ValueError(f"Unsafe operation in SQL expression: {e}") from e
+    except UndefinedError as e:
+        raise ValueError(
+            f"Undefined variable in SQL expression: {e.message}. Available parameters: {list(params.keys())}"
+        ) from e

@@ -57,6 +57,7 @@ public class PersonaRepository extends EntityRepository<Persona> {
   private static final int MAX_CHARACTER_BUDGET = 2_000_000;
   private static final int MIN_CACHE_TTL_MINUTES = 1;
   private static final int MAX_CACHE_TTL_MINUTES = 1_440;
+  private static final int MAX_PROMPT_LENGTH = 8_000;
   private static final Set<ContextSection> ASSET_SECTIONS =
       Set.of(
           ContextSection.DESCRIPTION,
@@ -169,13 +170,15 @@ public class PersonaRepository extends EntityRepository<Persona> {
   private void unsetExistingDefaultPersona(String newDefaultPersonaId) {
     // Capture both id and FQN *before* the bulk update. The bulk update rewrites JSON directly —
     // bypassing invalidateCachesAfterStore — so every affected persona would keep stale
-    // "default=true" in both CACHE_WITH_ID and CACHE_WITH_NAME variants. Passing fqn lets
+    // "default=true" in both EntityRepository.CACHE_WITH_ID and EntityRepository.CACHE_WITH_NAME
+    // variants.
+    // Passing fqn lets
     // invalidateCacheForEntity drop the by-name cache alongside the by-id one.
     List<EntityDAO.EntityIdFqnPair> affected =
         daoCollection.personaDAO().findOtherDefaultPersonaIdsWithFqn(newDefaultPersonaId);
     daoCollection.personaDAO().unsetOtherDefaultPersonas(newDefaultPersonaId);
     for (EntityDAO.EntityIdFqnPair persona : affected) {
-      invalidateCacheForEntity(Entity.PERSONA, persona.id, persona.fqn);
+      EntityRepository.invalidateCacheForEntity(Entity.PERSONA, persona.id, persona.fqn);
     }
   }
 
@@ -194,6 +197,7 @@ public class PersonaRepository extends EntityRepository<Persona> {
     definition.setLastGeneratedAt(null);
     definition.setCacheState(null);
     definition.setLastError(null);
+    definition.setPrompt(normalizedPrompt(definition.getPrompt()));
     if (definition.getCharacterBudget() == null
         || definition.getCharacterBudget() < MIN_CHARACTER_BUDGET
         || definition.getCharacterBudget() > MAX_CHARACTER_BUDGET) {
@@ -259,6 +263,16 @@ public class PersonaRepository extends EntityRepository<Persona> {
         }
       }
     }
+  }
+
+  /** Trimmed, or null when blank so an emptied editor clears the prompt instead of storing "". */
+  private static String normalizedPrompt(String prompt) {
+    String trimmed = prompt == null ? "" : prompt.strip();
+    if (trimmed.length() > MAX_PROMPT_LENGTH) {
+      throw new IllegalArgumentException(
+          "Persona context prompt must be at most " + MAX_PROMPT_LENGTH + " characters");
+    }
+    return trimmed.isEmpty() ? null : trimmed;
   }
 
   private static Set<ContextSection> allowedSections(String entityType) {
@@ -331,13 +345,14 @@ public class PersonaRepository extends EntityRepository<Persona> {
     // Users/teams that had this persona cached embed the persona reference in their serialized
     // JSON. Drop their cached entries so the next read rebuilds without the now-deleted persona.
     for (EntityReference user : listOrEmpty(users)) {
-      invalidateCacheForEntity(USER, user.getId(), user.getFullyQualifiedName());
+      EntityRepository.invalidateCacheForEntity(USER, user.getId(), user.getFullyQualifiedName());
     }
     for (EntityReference user : listOrEmpty(defaultUsers)) {
-      invalidateCacheForEntity(USER, user.getId(), user.getFullyQualifiedName());
+      EntityRepository.invalidateCacheForEntity(USER, user.getId(), user.getFullyQualifiedName());
     }
     for (EntityReference team : listOrEmpty(teams)) {
-      invalidateCacheForEntity(Entity.TEAM, team.getId(), team.getFullyQualifiedName());
+      EntityRepository.invalidateCacheForEntity(
+          Entity.TEAM, team.getId(), team.getFullyQualifiedName());
     }
     if (Boolean.TRUE.equals(persona.getDefault()) || !teams.isEmpty()) {
       SubjectCache.invalidateAllUserContexts();

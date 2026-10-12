@@ -41,9 +41,10 @@ export function useMultiContainerFocusTrap({
     trapRef.current.activate();
   }, [options, ...containers]);
 
+  // No deps: `trapRef.current` re-ran the effect below, re-stealing focus every render.
   const deactivateTrap = useCallback(() => {
     trapRef.current?.deactivate();
-  }, [trapRef.current]);
+  }, []);
 
   useEffect(() => {
     if (active) {
@@ -54,8 +55,6 @@ export function useMultiContainerFocusTrap({
       };
     } else {
       deactivateTrap();
-
-      return;
     }
   }, [active, activateTrap, deactivateTrap]);
 
@@ -79,6 +78,7 @@ export const FocusTrapWithContainer = ({
   });
 
   return (
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- stops Enter propagation only
     <div
       ref={containerRef}
       onKeyDown={(e) => {

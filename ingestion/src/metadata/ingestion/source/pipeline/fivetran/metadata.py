@@ -14,9 +14,10 @@ Fivetran source to extract metadata
 
 import traceback
 from collections import Counter
+from collections.abc import Iterable
 from datetime import datetime
 from itertools import dropwhile
-from typing import Iterable, List, Optional, TypeVar, Union, cast  # noqa: UP035
+from typing import TypeVar, cast
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -113,7 +114,7 @@ ACTIONABLE_SKIP_REASONS = frozenset(
 EntityT = TypeVar("EntityT", Table, Topic)
 
 
-def _resolve_field_fqn(entity: Union[Table, Topic], name: str) -> Optional[str]:  # noqa: UP007, UP045
+def _resolve_field_fqn(entity: Table | Topic, name: str) -> str | None:
     if isinstance(entity, Topic):
         return get_topic_field_fqn(entity, name)
     return get_column_fqn(table_entity=entity, column=name)
@@ -134,7 +135,7 @@ class FivetranSource(PipelineServiceSource):
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,  # noqa: UP045
+        pipeline_name: str | None = None,
     ) -> "FivetranSource":
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: FivetranConnection = config.serviceConnection.root.config
@@ -145,8 +146,8 @@ class FivetranSource(PipelineServiceSource):
     def get_connections_jobs(
         self,
         pipeline_details: FivetranPipelineDetails,
-        source_url: Optional[SourceUrl] = None,  # noqa: UP045
-    ) -> List[Task]:  # noqa: UP006
+        source_url: SourceUrl | None = None,
+    ) -> list[Task]:
         """Returns the three ELT phase tasks for a Fivetran connector."""
         return [
             Task(
@@ -215,7 +216,7 @@ class FivetranSource(PipelineServiceSource):
 
         yield from self._get_status_from_rest(pipeline_details, pipeline_fqn)
 
-    def _resolve_log_source(self, log_service_type: str) -> Optional[DatabaseService]:  # noqa: UP045
+    def _resolve_log_source(self, log_service_type: str) -> DatabaseService | None:
         """Resolve the warehouse DatabaseService that holds fivetran_metadata.log.
 
         Fivetran calls this warehouse the "destination" but from OM's
@@ -241,7 +242,7 @@ class FivetranSource(PipelineServiceSource):
         self,
         pipeline_details: FivetranPipelineDetails,
         pipeline_fqn: str,
-    ) -> Optional[List[OMetaPipelineStatus]]:  # noqa: UP006, UP045
+    ) -> list[OMetaPipelineStatus] | None:
         # Fivetran's "destination" config holds the warehouse where logs live
         log_database = self._get_database_name(pipeline_details.destination)
         if not log_database:
@@ -511,9 +512,9 @@ class FivetranSource(PipelineServiceSource):
         self,
         *,
         table_name: str,
-        schema_name: Optional[str],  # noqa: UP045
-        database_name: Optional[str],  # noqa: UP045
-    ) -> Optional[Table]:  # noqa: UP045
+        schema_name: str | None,
+        database_name: str | None,
+    ) -> Table | None:
         service_names = self.get_db_service_names()
         for service_name in service_names or []:
             entity_fqn = fqn.build(
@@ -533,7 +534,7 @@ class FivetranSource(PipelineServiceSource):
             return None
         return self._search_any_service(Table, [database_name, schema_name, table_name])
 
-    def _resolve_topic(self, *, topic_name: str) -> Optional[Topic]:  # noqa: UP045
+    def _resolve_topic(self, *, topic_name: str) -> Topic | None:
         service_names = self.get_messaging_service_names()
         for service_name in service_names or []:
             entity_fqn = fqn.build(
@@ -554,8 +555,8 @@ class FivetranSource(PipelineServiceSource):
     def _search_any_service(
         self,
         entity_type: type[EntityT],
-        parts: List[Optional[str]],  # noqa: UP006, UP045
-    ) -> Optional[EntityT]:  # noqa: UP045
+        parts: list[str | None],
+    ) -> EntityT | None:
         # search_in_any_service pads missing parent levels with `*` at the front only
         # (prefix_entity_for_wildcard_search), so leading unknown parts can be dropped -
         # padding fills them back in. An interior gap must NOT be dropped: doing so
@@ -579,7 +580,7 @@ class FivetranSource(PipelineServiceSource):
         )
         return result
 
-    def _get_pipeline_entity(self) -> Optional[Pipeline]:  # noqa: UP045
+    def _get_pipeline_entity(self) -> Pipeline | None:
         pipeline_fqn = fqn.build(
             metadata=self.metadata,
             entity_type=Pipeline,
@@ -594,9 +595,9 @@ class FivetranSource(PipelineServiceSource):
         pipeline_name: str,
         schema_name: str,
         table_name: str,
-        from_entity: Union[Table, Topic],  # noqa: UP007
-        to_entity: Union[Table, Topic],  # noqa: UP007
-    ) -> List[ColumnLineage]:  # noqa: UP006
+        from_entity: Table | Topic,
+        to_entity: Table | Topic,
+    ) -> list[ColumnLineage]:
         col_lineage = []
         for (
             column_name,
@@ -662,7 +663,7 @@ class FivetranSource(PipelineServiceSource):
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _get_database_name(details: dict) -> Optional[str]:  # noqa: UP045
+    def _get_database_name(details: dict) -> str | None:
         """Extract database name from a Fivetran source or destination config.
 
         Different connector types store the database/catalog/project name
@@ -679,7 +680,7 @@ class FivetranSource(PipelineServiceSource):
     @staticmethod
     def _get_schedule_interval(
         pipeline_details: FivetranPipelineDetails,
-    ) -> Optional[str]:  # noqa: UP045
+    ) -> str | None:
         sync_freq = pipeline_details.source.get("sync_frequency")
         if not sync_freq:
             return None
@@ -708,10 +709,10 @@ class FivetranSource(PipelineServiceSource):
 
     def get_source_url(
         self,
-        connector_id: Optional[str],  # noqa: UP045
-        group_id: Optional[str],  # noqa: UP045
-        source_name: Optional[str],  # noqa: UP045
-    ) -> Optional[SourceUrl]:  # noqa: UP045
+        connector_id: str | None,
+        group_id: str | None,
+        source_name: str | None,
+    ) -> SourceUrl | None:
         try:
             if connector_id and group_id and source_name:
                 return SourceUrl(

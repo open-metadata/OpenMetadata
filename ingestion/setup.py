@@ -13,17 +13,24 @@
 Python Dependencies
 """
 
-from typing import Dict, List, Set  # noqa: UP035
-
 from setuptools import setup
 
 # Add here versions required for multiple plugins
 VERSIONS = {
     # CVE-2026-42252 BashOperator Jinja2 injection; CVE-2026-48891 /ui/dependencies leaks
-    # Dag IDs the caller cannot read (residual gap in the CVE-2026-28563 fix, needs 3.3.0)
-    "airflow": "apache-airflow==3.3.0",
+    # Dag IDs the caller cannot read (residual gap in the CVE-2026-28563 fix, needs 3.3.0);
+    # CVE-2026-67587 Dag-author RCE on the Scheduler via a Serde Callback deserialization
+    # gadget and CVE-2026-54183 Variables unmasked in the UI (both need 3.3.1);
+    # CVE-2026-86473 logout ignores a presented Authorization bearer token, leaving it
+    # revocable only by expiry, and CVE-2026-75158 the asset events API returns events for
+    # every Dag with no per-Dag authorization filter (both need 3.3.2)
+    "airflow": "apache-airflow==3.3.2",
     "adlfs": "adlfs>=2023.1.0",
     "aiobotocore": "aiobotocore~=2.26.0",
+    # authlib >=1.6.9 required for: CVE-2026-27962 (critical, JWS JWK header injection),
+    # CVE-2026-28490 (RSA1_5 Bleichenbacher), CVE-2026-28498 (OIDC hash fail-open),
+    # CVE-2026-28802 (alg:none bypass).
+    "authlib": "authlib>=1.6.9",
     "avro": "avro>=1.11.4,<1.12",
     "boto3": "boto3~=1.41.5",
     "cloud-sql-python-connector-pymysql": "cloud-sql-python-connector[pymysql]>=1.0.0,<2.0.0",
@@ -38,15 +45,21 @@ VERSIONS = {
     "ijson": "ijson~=3.4",
     "msal": "msal~=1.2",
     "neo4j": "neo4j~=5.3",
-    "pandas": "pandas~=2.1.4",
+    "pandas": "pandas>=2.2.2,<3",
     "pyarrow": "pyarrow>=23.0.1,<26",  # CVE-2026-25087 / CVE-2024-52338 IPC pre-buffer use-after-free (fixed in 23.0.1)
-    "pydantic": "pydantic~=2.0,>=2.7.0,<2.12",  # Pin down to <2.12 due to breaking changes in 2.12.0
+    "pydantic": "pydantic>=2.12.5,<3",
     "pydantic-settings": "pydantic-settings~=2.0,>=2.14.2",  # GHSA-4xgf-cpjx-pc3j secrets_dir symlink escape
     "pydomo": "pydomo~=0.3",
+    # 2.6.0 annotates with typing.Self (3.11+) but declares no requires-python floor, so
+    # pip/uv installs it on 3.10 and `import pygtrie` raises AttributeError. Airflow pulls
+    # it in unpinned (apache-airflow-core/task-sdk require pygtrie>=2.5.0) and imports it
+    # from airflow._shared.logging.structlog, which breaks `import airflow` on our main CI
+    # interpreter. Drop the cap once pygtrie declares its floor or 3.10 support is dropped.
+    "pygtrie": "pygtrie<2.6",
     "pymysql": "pymysql~=1.0",
     "pyodbc": "pyodbc~=5.3.0",
-    "numpy": "numpy<2",
-    "scikit-learn": "scikit-learn>=1.3,<2",
+    "numpy": "numpy>=2,<3",
+    "scikit-learn": "scikit-learn>=1.4.2,<2",
     "packaging": "packaging",
     "azure-storage-blob": "azure-storage-blob~=12.14",
     "azure-identity": "azure-identity~=1.12",
@@ -54,12 +67,13 @@ VERSIONS = {
     "databricks-sql-connector": "databricks-sql-connector>=4.0.0",
     "databricks-sqlalchemy": "databricks-sqlalchemy~=2.0.9",
     "trino": "trino[sqlalchemy]",
-    "spacy": "spacy<3.8",
+    "spacy": "spacy>=3.8.2,<3.9",
     "looker-sdk": "looker-sdk>=22.20.0,!=24.18.0",
     "lkml": "lkml~=1.3",
     "tableau": "tableauserverclient==0.40",  # pre-0.37 pins urllib3<2, which conflicts with collate-data-diff's urllib3>=2.7
     "pyhive": "pyhive[hive_pure_sasl]~=0.7",
     "mongo": "pymongo~=4.3",
+    "simple-salesforce": "simple_salesforce~=1.11",
     "snowflake": "snowflake-sqlalchemy>=1.8.0",  # <1.8 caps snowflake-connector-python at <4, but we need 4.x for pyOpenSSL 26 (CVE-2026-27459)
     "elasticsearch8": "elasticsearch8~=8.9.0",
     "giturlparse": "giturlparse",
@@ -68,14 +82,19 @@ VERSIONS = {
     "cockroach": "sqlalchemy-cockroachdb~=2.0",
     "cassandra": "cassandra-driver>=3.28.0",
     "opensearch": "opensearch-py~=2.4.0",
+    "pydoris": "pydoris==1.2.0",
     "starrocks": "pymysql~=1.0",
     "google-cloud-bigtable": "google-cloud-bigtable>=2.0.0",
     "google-cloud-pubsub": "google-cloud-pubsub>=2.0.0",
-    "pyathena": "pyathena~=3.25.0",
+    "pyathena": "pyathena~=3.35.4",  # <3.35.4 routes DELETE/CTAS to the Hive escaper -> SQL injection (CVE-2026-65321)
     "s3fs": "s3fs~=2026.3",
     "sqlalchemy-bigquery": "sqlalchemy-bigquery>=1.15.0",
+    # <1.0: 1.0.0 is a SQLAlchemy-2.0 rewrite (first release since 0.0.5 in 2020) that drops
+    # get_all_table_comments and retypes the dialect methods vertica/metadata.py patches onto it
+    "sqlalchemy-vertica": "sqlalchemy-vertica[vertica-python]>=0.0.5,<1.0",
     "presidio-analyzer": "presidio-analyzer==2.2.358",
-    "asammdf": "asammdf~=7.4.5",
+    "asammdf": "asammdf>=8.2,<8.8",  # 8.8+ requires chardet>=7, conflicting with the chardet==4.0.0 profiler pin
+    "canmatrix": "canmatrix<1.3",  # 1.3 breaks importing asammdf: https://github.com/ebroecker/canmatrix/issues/926
     "kafka-connect": "kafka-connect-py==0.10.11",
     "griffe2md": "griffe2md~=1.2",
     "factory-boy": "factory-boy~=3.3.3",
@@ -92,6 +111,7 @@ COMMONS = {
     },
     "datalake": {
         VERSIONS["asammdf"],
+        VERSIONS["canmatrix"],
         VERSIONS["avro"],
         VERSIONS["boto3"],
         VERSIONS["ijson"],
@@ -110,7 +130,15 @@ COMMONS = {
     },
     "kafka": {
         VERSIONS["avro"],
-        "confluent_kafka>=2.1.1,<=2.6.1",
+        # CVE-2026-15911 (improper TLS certificate validation in the HashiCorp Vault KMS
+        # integration) is fixed in 2.15.0. The <=2.6.1 ceiling this replaces dated from
+        # Jan 2025 and pinned the client nine minor versions behind.
+        # The [schemaregistry] extra is required, not cosmetic: from 2.9 the schema registry
+        # client's dependencies (certifi, httpx, attrs, cachetools, authlib) moved behind it,
+        # and a bare install raises ModuleNotFoundError on `confluent_kafka.schema_registry`
+        # -- which messaging/common_broker_source.py, messaging/kafka/connection.py and
+        # sampler/messaging/kafka/sampler.py all import at module level.
+        "confluent_kafka[schemaregistry]>=2.15.0,<3",
         "fastavro>=1.2.0",
         # Due to https://github.com/grpc/grpc/issues/30843#issuecomment-1303816925
         # use >= v1.47.2 https://github.com/grpc/grpc/blob/v1.47.2/tools/distrib/python/grpcio_tools/grpc_version.py#L17
@@ -123,6 +151,12 @@ COMMONS = {
         VERSIONS["geoalchemy2"],
         VERSIONS["packaging"],
     },  # Adding as Postgres SQL & GreenPlum are using common packages.
+    # Shared by the Salesforce CRM connector and both Data 360 connectors, which all
+    # talk to Salesforce through simple_salesforce's OAuth (authlib) flow.
+    "salesforce": {
+        VERSIONS["simple-salesforce"],
+        VERSIONS["authlib"],
+    },
 }
 
 DATA_DIFF = {
@@ -159,7 +193,7 @@ base_requirements = {
     "google-crc32c",
     "email-validator>=2.0",  # For the pydantic generated models for Email
     "importlib-metadata>=4.13.0",  # From airflow constraints
-    "Jinja2>=2.11.3",
+    "Jinja2>=3.1.6",  # 3.1.5/3.1.6 close sandbox escapes; the Rule Library relies on the sandbox
     "idna>=3.15",  # CVE-2026-45409 idna.encode() bypass of CVE-2024-3651 fix
     "jsonpatch<2.0, >=1.24",
     "kubernetes>=21.0.0,<36",  # 36.0.0 regressed in-cluster auth (https://github.com/kubernetes-client/python/issues/2582)
@@ -177,15 +211,18 @@ base_requirements = {
     "PyYAML~=6.0",
     "requests>=2.32.4",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
-    "sqlalchemy>=2.0.0,<3",
-    "collate-sqllineage==2.1.4",
+    # snowflake-sqlalchemy subclasses sqlalchemy.orm.context.ORMSelectCompileState, which is
+    # private in SQLAlchemy 2.1 — importing the Snowflake dialect raises AttributeError there.
+    # Raise the ceiling once a snowflake-sqlalchemy release supports 2.1.
+    "sqlalchemy>=2.0.0,<2.1",
+    "collate-sqllineage==2.1.8",
     "tabulate==0.9.0",
     "tenacity>=8.0,<10",
     "typing-inspect",
     "packaging",  # For version parsing
     "setuptools>=78.1.1",
     "shapely",
-    "collate-data-diff>=0.11.15",
+    "collate-data-diff>=0.11.17",  # get_stats_dict(retain_rows=...), DataDiffDuplicateKeyError
     # Floor on dbt-extractor (transitive via collate-data-diff -> dbt-core).
     # Pre-0.5 versions ship no cp310-manylinux_2_17_aarch64 wheel, forcing a
     # Rust/Cargo source build on ARM runners. 0.5+ uses cp38-abi3 wheels.
@@ -195,11 +232,12 @@ base_requirements = {
     "httpx~=0.28.0",
 }
 
-plugins: Dict[str, Set[str]] = {  # noqa: UP006
+plugins: dict[str, set[str]] = {
     "airflow": {
         "opentelemetry-exporter-otlp==1.37.0",
         "attrs",
         VERSIONS["airflow"],
+        VERSIONS["pygtrie"],
         # Transitive floor pins for Airflow 3.x stack — Dependabot CVEs.
         "apache-airflow-providers-http>=6.0.0",  # CVE-2025-69219 unsafe pickle RCE
         "apache-airflow-providers-opensearch>=1.9.1",  # CVE-2026-43826 credential leak
@@ -235,8 +273,15 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         "clickhouse-sqlalchemy>=0.3",
         DATA_DIFF["clickhouse"],
     },
+    "clickzetta": {
+        "clickzetta-sqlalchemy==0.8.65.4",
+        "clickzetta-connector==1.0.30",
+    },
     "dagster": {
-        "croniter<3",
+        # No croniter ceiling here: dagster 1.13 declares no croniter dependency at all,
+        # nothing under ingestion/ imports it, and apache-airflow-core 3.3.1 raised its
+        # floor to croniter>=6.2.2 -- a stale "croniter<3" makes the two uninstallable
+        # together. The airflow images already run croniter 6.2.x via the constraints file.
         VERSIONS["pymysql"],
         "psycopg2-binary",
         VERSIONS["geoalchemy2"],
@@ -255,6 +300,10 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         # sqlalchemy-ibmi is pre-installed with --no-deps (SA<2 metadata conflict).
         # Its SA-1.x call sites are adapted at runtime by
         # metadata.ingestion.source.database.db2.utils.patch_ibmi_dialect
+    },
+    "databend": {
+        "databend-driver==0.33.7",
+        "databend-sqlalchemy==0.5.5",
     },
     "databricks": {
         VERSIONS["databricks-sqlalchemy"],
@@ -286,16 +335,14 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     "deltalake": {
         "delta-spark>=3.0.0,<4.0.0",
         "deltalake>=0.19.0,<0.20",
-        "pyspark==3.5.6",
+        "pyspark==3.5.9",
     },  # TODO: remove pinning to under 0.20 after https://github.com/open-metadata/OpenMetadata/issues/17909
     "s3": {*COMMONS["storage-archive"]},
     "gcs": {VERSIONS["google-cloud-storage"], *COMMONS["storage-archive"]},
     "deltalake-storage": {"deltalake>=0.19.0,<0.20"},
-    "deltalake-spark": {"delta-spark>=3.0.0,<4.0.0", "pyspark==3.5.6"},
+    "deltalake-spark": {"delta-spark>=3.0.0,<4.0.0", "pyspark==3.5.9"},
     "domo": {VERSIONS["pydomo"]},
-    # pydoris-custom declares sqlalchemy<2 but works at runtime with SA 2.0.
-    # Pre-installed with --no-deps in Dockerfiles.
-    "doris": set(),
+    "doris": {VERSIONS["pydoris"]},
     "starrocks": {VERSIONS["pymysql"]},
     "druid": {"pydruid>=0.6.5"},
     "dynamodb": {VERSIONS["boto3"]},
@@ -319,6 +366,10 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         # (data amplification): thrift <0.24.0 is vulnerable. impyla hard-pinned thrift==0.16.0
         # from 0.18.0 through 0.23.0 and only relaxed it to >=0.23.0 in 0.24.0, so the driver
         # has to move for this floor to be satisfiable.
+        # CVE-2026-66858 + CVE-2026-85494 need >=0.25.0 and are NOT fixed here: the latest
+        # databricks-sql-connector (4.6.0) requires thrift<0.25.0, and the "all" extra installs
+        # both, so raising this floor makes "all" unresolvable. Revisit when Databricks relaxes
+        # its ceiling.
         "thrift>=0.24.0,<1",
         # Replacing sasl with pure-sasl based on https://github.com/cloudera/python-sasl/issues/30 for py 3.11
         "pure-sasl",
@@ -333,7 +384,8 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     "impala": {
         "presto-types-parser>=0.0.2",
         # See the hive extra: impyla <0.24.0 hard-pins thrift==0.16.0, which is what holds
-        # thrift below the fixed 0.24.0.
+        # thrift below the fixed 0.24.0, and why CVE-2026-66858 / CVE-2026-85494 cannot be
+        # cleared here either.
         "impyla[kerberos]~=0.24.0",
         "thrift>=0.24.0,<1",
         "pure-sasl",
@@ -342,6 +394,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     "kafka": {*COMMONS["kafka"]},
     "kafkaconnect": {VERSIONS["kafka-connect"]},
     "kinesis": {VERSIONS["boto3"]},
+    "nats": {"nats-py[nkeys]>=2.7.0,<3.0.0"},
     "pubsub": {VERSIONS["google-cloud-pubsub"]},
     "looker": {
         VERSIONS["looker-sdk"],
@@ -375,7 +428,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     },
     "nifi": {},  # uses requests
     "openlineage": {*COMMONS["kafka"]},
-    "oracle": {"cx_Oracle>=8.3.0,<9", "oracledb~=1.2", DATA_DIFF["oracle"]},
+    "oracle": {"oracledb>=3.4.2,<4", DATA_DIFF["oracle"]},
     "pgspider": {"psycopg2-binary", "sqlalchemy-pgspider"},
     "pinotdb": {"pinotdb~=5.0"},
     "postgres": {*COMMONS["postgres"]},
@@ -400,10 +453,9 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         VERSIONS["geoalchemy2"],
     },
     "sagemaker": {VERSIONS["boto3"]},
-    # authlib >=1.6.9 required for: CVE-2026-27962 (critical, JWS JWK header injection),
-    # CVE-2026-28490 (RSA1_5 Bleichenbacher), CVE-2026-28498 (OIDC hash fail-open),
-    # CVE-2026-28802 (alg:none bypass).
-    "salesforce": {"simple_salesforce~=1.11", "authlib>=1.6.9"},
+    "salesforce": {*COMMONS["salesforce"]},
+    "data360": {*COMMONS["salesforce"]},
+    "data360pipeline": {*COMMONS["salesforce"]},
     "sample-data": {
         VERSIONS["avro"],
         VERSIONS["grpc-tools"],
@@ -420,9 +472,14 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     "ssrs": {"requests-ntlm"},
     "superset": {},  # uses requests
     "tableau": {VERSIONS["tableau"], VERSIONS["validators"], VERSIONS["packaging"]},
+    "tableaupipeline": {
+        VERSIONS["tableau"],
+        VERSIONS["validators"],
+        VERSIONS["packaging"],
+    },
     "teradata": {VERSIONS["teradata"]},
     "trino": {VERSIONS["trino"], DATA_DIFF["trino"]},
-    "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5", DATA_DIFF["vertica"]},
+    "vertica": {VERSIONS["sqlalchemy-vertica"], DATA_DIFF["vertica"]},
     # SDK Data Quality: Required for DataFrame validation (DataFrameValidator)
     # Install with: pip install 'openmetadata-ingestion[pandas]'
     "pandas": {VERSIONS["pandas"], VERSIONS["numpy"]},
@@ -445,7 +502,7 @@ dev = {
     "google-api-python-client-stubs",
     "google-auth-stubs",
     "types-requests",
-    "pandas-stubs~=2.1.4",
+    "pandas-stubs~=2.2",
     "scipy-stubs",
     "nox",
     "pre-commit",
@@ -482,6 +539,7 @@ test = {
     # Install Airflow as it's not part of `all` plugin
     "opentelemetry-exporter-otlp==1.37.0",
     VERSIONS["airflow"],
+    VERSIONS["pygtrie"],
     "boto3-stubs",
     "mypy-boto3-glue",
     "coverage",
@@ -516,10 +574,11 @@ test = {
     VERSIONS["grpc-tools"],
     VERSIONS["neo4j"],
     VERSIONS["cockroach"],
-    # pydoris-custom pre-installed with --no-deps in Dockerfiles (SA<2 metadata constraint).
+    VERSIONS["pydoris"],
     VERSIONS["starrocks"],
     *plugins["vertica"],
     "testcontainers~=4.8.0",
+    # S3 client for the S3Proxy-backed object-storage test containers
     "minio==7.2.5",
     *plugins["mlflow"],
     "skops",  # mlflow 3.14 switched the mlflow.sklearn serialization default to skops, which mlflow-skinny does not pull in
@@ -533,6 +592,7 @@ test = {
     *plugins["datalake-gcs"],
     *plugins["pgspider"],
     *plugins["clickhouse"],
+    *plugins["databend"],
     *plugins["dagster"],
     *plugins["oracle"],
     *plugins["mssql"],
@@ -584,7 +644,7 @@ playwright_dependencies = {
 }
 
 
-def filter_requirements(filtered: Set[str]) -> List[str]:  # noqa: UP006
+def filter_requirements(filtered: set[str]) -> list[str]:
     """Filter out requirements from base_requirements"""
     return list(
         base_requirements.union(*[requirements for plugin, requirements in plugins.items() if plugin not in filtered])

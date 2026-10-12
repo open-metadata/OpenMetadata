@@ -49,6 +49,7 @@ import org.flowable.task.service.delegate.DelegateTask;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
+import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.DataAccessRequestPayload;
 import org.openmetadata.schema.type.EntityReference;
@@ -74,6 +75,7 @@ import org.openmetadata.service.governance.workflows.elements.nodes.userTask.hel
 import org.openmetadata.service.governance.workflows.util.ChangePreviewUtils;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.TaskRepository;
+import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver.WorkflowStartVariables;
@@ -135,7 +137,7 @@ public class CreateTask implements TaskListener {
                   varHandler.getNamespacedVariable(
                       inputNamespaces.namespaceFor(RELATED_ENTITY_VARIABLE),
                       RELATED_ENTITY_VARIABLE));
-      EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
+      EntityInterface<?> entity = Entity.getEntity(entityLink, "*", Include.ALL);
 
       // Get approval threshold, default to 1 if not set
       Integer approvalThreshold =
@@ -382,7 +384,7 @@ public class CreateTask implements TaskListener {
 
   private Task createOrUpdateTask(
       DelegateTask delegateTask,
-      EntityInterface entity,
+      EntityInterface<?> entity,
       List<EntityReference> assignees,
       TaskEntityType taskType,
       TaskCategory taskCategory,
@@ -593,7 +595,7 @@ public class CreateTask implements TaskListener {
             // stays one stage behind the (already committed) Flowable runtime and self-heals on the
             // next stage advance, which re-reads the current task.
             Task latest = taskRepository.get(null, persistTaskId, taskRepository.getFields("*"));
-            taskRepository.update(null, latest, desired, updatedBy);
+            taskRepository.updateWorkflowStage(latest, desired, updatedBy);
           });
       return updatedTask;
     }
@@ -704,7 +706,7 @@ public class CreateTask implements TaskListener {
   private void supersedePriorApprovalTask(
       DelegateTask delegateTask,
       TaskRepository taskRepository,
-      EntityInterface entity,
+      EntityInterface<?> entity,
       TaskCategory taskCategory,
       UUID currentWorkflowDefinitionId,
       UUID currentWorkflowInstanceId,
@@ -742,7 +744,7 @@ public class CreateTask implements TaskListener {
    */
   static Object findPriorOpenApprovalPayload(
       TaskRepository taskRepository,
-      EntityInterface entity,
+      EntityInterface<?> entity,
       TaskCategory taskCategory,
       UUID currentWorkflowDefinitionId,
       UUID currentWorkflowInstanceId) {
@@ -779,8 +781,31 @@ public class CreateTask implements TaskListener {
         && currentWorkflowDefinitionId != null
         && prior.getWorkflowInstanceId() != null
         && !isTerminalTaskStatus(prior.getStatus())
+        && prior.getResolution() == null
         && !prior.getWorkflowInstanceId().equals(currentWorkflowInstanceId)
-        && currentWorkflowDefinitionId.equals(prior.getWorkflowDefinitionId());
+        && currentWorkflowDefinitionId.equals(resolvePriorWorkflowDefinitionId(prior));
+  }
+
+  /**
+   * Resolve the prior task's workflow definition id, falling back to its workflow instance when the
+   * task itself carries none. Tasks migrated from the pre-2.0 thread model were wired to a workflow
+   * instance but never stamped with a workflowDefinitionId, which would otherwise make the supersede
+   * comparison above fail against a null and leave duplicate approval tasks on re-edit. The lookup is
+   * a single indexed read of the instance record and only runs on the null-definition fallback path.
+   */
+  private static UUID resolvePriorWorkflowDefinitionId(Task prior) {
+    UUID definitionId = prior.getWorkflowDefinitionId();
+    if (definitionId == null && prior.getWorkflowInstanceId() != null) {
+      WorkflowInstanceRepository workflowInstanceRepository =
+          (WorkflowInstanceRepository)
+              Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE);
+      WorkflowInstance priorInstance =
+          workflowInstanceRepository.getById(prior.getWorkflowInstanceId());
+      if (priorInstance != null) {
+        definitionId = priorInstance.getWorkflowDefinitionId();
+      }
+    }
+    return definitionId;
   }
 
   private void cancelAndTerminatePriorApproval(
@@ -1024,7 +1049,7 @@ public class CreateTask implements TaskListener {
    * description.
    */
   static Object applyProposedChangesIfApproval(
-      TaskEntityType taskType, EntityInterface entity, Object payload) {
+      TaskEntityType taskType, EntityInterface<?> entity, Object payload) {
     if (taskType != TaskEntityType.GlossaryApproval && taskType != TaskEntityType.RequestApproval) {
       return payload;
     }
@@ -1056,7 +1081,7 @@ public class CreateTask implements TaskListener {
     return TaskPriority.fromValue(priority);
   }
 
-  private String buildTaskDescription(EntityInterface entity, TaskEntityType taskType) {
+  private String buildTaskDescription(EntityInterface<?> entity, TaskEntityType taskType) {
     return String.format("Approval required for %s", entity.getName());
   }
 
@@ -1100,7 +1125,7 @@ public class CreateTask implements TaskListener {
 
   private EntityReference resolveCreatedByReference(
       EntityReference requestedCreatedBy,
-      EntityInterface entity,
+      EntityInterface<?> entity,
       Object payload,
       TaskEntityType taskType) {
     if (requestedCreatedBy != null && requestedCreatedBy.getId() != null) {
@@ -1153,7 +1178,7 @@ public class CreateTask implements TaskListener {
     }
   }
 
-  private String resolveUpdatedBy(EntityInterface entity, EntityReference createdByRef) {
+  private String resolveUpdatedBy(EntityInterface<?> entity, EntityReference createdByRef) {
     if (entity != null && entity.getUpdatedBy() != null && !entity.getUpdatedBy().isEmpty()) {
       return entity.getUpdatedBy();
     }

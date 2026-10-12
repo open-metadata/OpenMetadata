@@ -10,7 +10,7 @@
 #  limitations under the License.
 """Custom Messaging connector yielding deterministic in-memory topics."""
 
-from typing import Iterable, Optional  # noqa: UP035
+from collections.abc import Iterable
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.services.createMessagingService import (
@@ -67,7 +67,7 @@ class CustomMessagingSource(Source):
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,  # noqa: UP045
+        pipeline_name: str | None = None,
     ) -> "CustomMessagingSource":
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection = config.serviceConnection.root.config

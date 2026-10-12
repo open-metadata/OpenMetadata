@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO.SystemDAO;
+import org.openmetadata.service.jdbi3.SystemTokenDAOs.SystemDAO;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.search.SearchRepository;
 
@@ -66,6 +66,40 @@ class SystemRepositoryMissingIndexesTest {
     List<String> missing = systemRepository.findMissingIndexes(searchRepository);
 
     assertTrue(missing.isEmpty(), "vectorEmbedding should be ignored when semantic search is off");
+  }
+
+  @Test
+  void testColumnIndexSkippedWhileColumnIndexingIsOff() {
+    IndexMapping tableMapping = mock(IndexMapping.class);
+    IndexMapping columnMapping = mock(IndexMapping.class);
+    Map<String, IndexMapping> indexMap =
+        Map.of("table", tableMapping, "tableColumn", columnMapping);
+
+    when(searchRepository.getEntityIndexMap()).thenReturn(indexMap);
+    when(searchRepository.isIndexDisabled("tableColumn")).thenReturn(true);
+    when(searchRepository.indexExists(tableMapping)).thenReturn(true);
+    when(searchRepository.indexExists(columnMapping)).thenReturn(false);
+
+    List<String> missing = systemRepository.findMissingIndexes(searchRepository);
+
+    assertTrue(missing.isEmpty(), "a turned-off column index is absent on purpose");
+  }
+
+  @Test
+  void testColumnIndexReportedMissingWhileColumnIndexingIsOn() {
+    IndexMapping tableMapping = mock(IndexMapping.class);
+    IndexMapping columnMapping = mock(IndexMapping.class);
+    Map<String, IndexMapping> indexMap =
+        Map.of("table", tableMapping, "tableColumn", columnMapping);
+
+    when(searchRepository.getEntityIndexMap()).thenReturn(indexMap);
+    when(searchRepository.isIndexDisabled("tableColumn")).thenReturn(false);
+    when(searchRepository.indexExists(tableMapping)).thenReturn(true);
+    when(searchRepository.indexExists(columnMapping)).thenReturn(false);
+
+    List<String> missing = systemRepository.findMissingIndexes(searchRepository);
+
+    assertEquals(List.of("tableColumn"), missing);
   }
 
   @Test

@@ -16,14 +16,18 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.openmetadata.schema.api.learning.CreateLearningResource.ResourceType;
 import org.openmetadata.schema.api.learning.ResourceCategory;
 import org.openmetadata.schema.entity.learning.LearningResource;
 import org.openmetadata.schema.entity.learning.LearningResourceContext;
@@ -34,6 +38,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.learning.LearningResourceResource;
+import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -43,6 +48,11 @@ public class LearningResourceRepository extends EntityRepository<LearningResourc
   private static final String UPDATE_FIELDS =
       "owners,reviewers,tags,contexts,categories,difficulty,source,estimatedDuration,status";
   private static final String PATCH_FIELDS = UPDATE_FIELDS;
+  // The UI opens Link URLs in a new tab and frames PDF URLs, so other schemes (javascript:, data:)
+  // would run in the product's origin.
+  private static final Set<ResourceType> WEB_URL_ONLY_TYPES =
+      EnumSet.of(ResourceType.LINK, ResourceType.PDF);
+  private static final Set<String> WEB_URL_SCHEMES = Set.of("http", "https");
 
   public LearningResourceRepository() {
     super(
@@ -60,6 +70,9 @@ public class LearningResourceRepository extends EntityRepository<LearningResourc
    * existing entities, this method will update existing resources if the seed data has changed.
    */
   public void initSeedDataWithMerge() throws java.io.IOException {
+    if (!SeedDataGate.getInstance().shouldSeed()) {
+      return;
+    }
     List<LearningResource> seedEntities = getEntitiesFromSeedData();
     for (LearningResource seedEntity : seedEntities) {
       setFullyQualifiedName(seedEntity);
@@ -129,6 +142,7 @@ public class LearningResourceRepository extends EntityRepository<LearningResourc
   @Override
   public void prepare(LearningResource entity, boolean update) {
     validateSource(entity.getSource());
+    validateSourceUrlScheme(entity);
     ensureCategories(entity);
     validateContexts(entity.getContexts());
     validateDuration(entity.getEstimatedDuration());
@@ -167,6 +181,20 @@ public class LearningResourceRepository extends EntityRepository<LearningResourc
     if (source == null || source.getUrl() == null) {
       throw BadRequestException.of("Learning resource source with URL is required");
     }
+  }
+
+  private void validateSourceUrlScheme(LearningResource entity) {
+    if (WEB_URL_ONLY_TYPES.contains(entity.getResourceType())
+        && !isWebUrl(entity.getSource().getUrl())) {
+      throw BadRequestException.of(
+          "Learning resource of type '%s' requires an http or https URL"
+              .formatted(entity.getResourceType().value()));
+    }
+  }
+
+  private static boolean isWebUrl(URI url) {
+    String scheme = url.getScheme();
+    return scheme != null && WEB_URL_SCHEMES.contains(scheme.toLowerCase(Locale.ROOT));
   }
 
   private void ensureCategories(LearningResource entity) {
@@ -407,6 +435,10 @@ public class LearningResourceRepository extends EntityRepository<LearningResourc
 
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      compareAndUpdate(
+          "resourceType",
+          () ->
+              recordChange("resourceType", original.getResourceType(), updated.getResourceType()));
       compareAndUpdate("categories", this::run);
       compareAndUpdate(
           "contexts",

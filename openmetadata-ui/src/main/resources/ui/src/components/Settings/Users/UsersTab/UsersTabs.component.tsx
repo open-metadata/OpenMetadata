@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Modal, Tooltip } from 'antd';
+import { ButtonUtility, Tooltip } from '@openmetadata/ui-core-components';
+import { Modal } from 'antd';
 import { isNil } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,7 +23,7 @@ import { EntityReference } from '../../../../generated/entity/type';
 import { getUserById } from '../../../../rest/userAPI';
 import { commonUserDetailColumns } from '../../../../utils/Users.util';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Table from '../../../common/Table/Table';
+import Table from '../../../common/Table/TableV2';
 
 interface UsersTabProps {
   users: EntityReference[];
@@ -96,15 +97,15 @@ export const UsersTab = ({ users, onRemoveUser }: UsersTabProps) => {
         return (
           onRemoveUser && (
             <Tooltip
+              arrow
               title={t('label.remove-entity', {
                 entity: t('label.user'),
               })}>
-              <Button
+              <ButtonUtility
+                color="tertiary"
                 data-testid="remove-user-btn"
-                icon={
-                  <IconRemove height={16} name={t('label.remove')} width={16} />
-                }
-                type="text"
+                icon={IconRemove}
+                size="sm"
                 onClick={() => handleRemoveButtonClick(record)}
               />
             </Tooltip>

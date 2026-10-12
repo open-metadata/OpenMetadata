@@ -71,14 +71,12 @@ class StreamableLogHandler(logging.Handler):
         self._buffer: Queue = Queue(maxsize=max_buffer)
         self._stop_event = threading.Event()
         self._closed = False
-        self._worker: Optional[threading.Thread] = None  # noqa: UP045
+        self._worker: threading.Thread | None = None
         self._post_in_flight = threading.Event()
 
         # Isolated session/connection pool; shares ClientConfig so token
         # refresh on the main client is visible here.
-        self._client: Optional[REST] = (  # noqa: UP045
-            REST(metadata.client.config) if enable_streaming else None
-        )
+        self._client: REST | None = REST(metadata.client.config) if enable_streaming else None
 
         # Counters surfaced at shutdown.
         self.shipped_records = 0
@@ -344,11 +342,11 @@ class StreamableLogHandlerManager:
 
 def setup_streamable_logging_for_workflow(
     metadata: OpenMetadata,
-    pipeline_fqn: Optional[str] = None,  # noqa: UP045
-    run_id: Optional[UUID] = None,  # noqa: UP045
+    pipeline_fqn: str | None = None,
+    run_id: UUID | None = None,
     log_level: int = logging.INFO,
     enable_streaming: bool = False,
-) -> Optional[StreamableLogHandler]:  # noqa: UP045
+) -> StreamableLogHandler | None:
     if not enable_streaming or not pipeline_fqn or not run_id:
         logger.debug(
             "Streamable logging not configured: enable=%s, pipeline_fqn=%s, run_id=%s",

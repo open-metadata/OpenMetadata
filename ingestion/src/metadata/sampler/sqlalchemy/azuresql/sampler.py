@@ -13,8 +13,6 @@ Helper module to handle data sampling
 for the profiler
 """
 
-from typing import List, Optional  # noqa: UP035
-
 from sqlalchemy import Column, Table, text
 from sqlalchemy.sql.selectable import CTE
 
@@ -58,7 +56,7 @@ class AzureSQLSampler(SQASampler):
         query = self.get_client().query(rnd)
         return query.cte(f"{self.get_sampler_table_name()}_sample")
 
-    def fetch_sample_data(self, columns: Optional[List[Column]] = None) -> TableData:  # noqa: UP006, UP045
+    def fetch_sample_data(self, columns: list[Column] | None = None) -> TableData:
         if not columns:
             return super().fetch_sample_data(columns)
         temporal_cols = get_temporal_column_names(self)

@@ -14,7 +14,7 @@ Dataframe base reader
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Any
 
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
     AzureConfig,
@@ -67,8 +67,8 @@ class DataFrameReader(ABC):
     def __init__(
         self,
         config_source: ConfigSource,
-        client: Optional[Any],  # noqa: UP045
-        session: Optional[Any] = None,  # noqa: UP045
+        client: Any | None,
+        session: Any | None = None,
     ):
         self.config_source = config_source
         self.client = client
@@ -76,7 +76,7 @@ class DataFrameReader(ABC):
 
         self.reader = get_reader(config_source=config_source, client=client)
 
-    def _get_file_size_mb(self, key: str, bucket_name: str, file_size: Optional[int] = None) -> float:  # noqa: UP045
+    def _get_file_size_mb(self, key: str, bucket_name: str, file_size: int | None = None) -> float:
         """
         Get file size in MB. Returns 0 if unable to determine.
         If file_size (bytes) is provided from listing metadata, uses that

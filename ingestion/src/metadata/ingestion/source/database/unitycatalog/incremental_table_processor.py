@@ -23,7 +23,8 @@ logs a warning so the rest of the ingestion can proceed (e.g. when the
 
 import re
 import traceback
-from typing import Any, Callable, Dict, Optional, Set, Tuple  # noqa: UP035
+from collections.abc import Callable
+from typing import Any
 
 from sqlalchemy.engine import Connection
 from sqlalchemy.sql import text
@@ -36,7 +37,7 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
-SchemaToTables = Dict[str, Set[str]]  # noqa: UP006
+SchemaToTables = dict[str, set[str]]
 
 VALID_CATALOG_NAME = re.compile(r"^[A-Za-z0-9_]+$")
 
@@ -88,7 +89,7 @@ class UnityCatalogIncrementalTableProcessor:
         query: str,
         catalog: str,
         start_timestamp: int,
-        row_to_schema_table: Callable[[Any], Optional[Tuple[str, str]]],  # noqa: UP006, UP045
+        row_to_schema_table: Callable[[Any], tuple[str, str] | None],
         context: str,
     ) -> SchemaToTables:
         """Execute a query and bucket its rows into a {schema: {table, ...}} map.
@@ -115,7 +116,7 @@ class UnityCatalogIncrementalTableProcessor:
         return table_map
 
     @staticmethod
-    def _split_full_name(full_name: Optional[str]) -> Optional[Tuple[str, str]]:  # noqa: UP045, UP006
+    def _split_full_name(full_name: str | None) -> tuple[str, str] | None:
         """Split a `catalog.schema.table` name into its (schema, table) parts."""
         result = None
         if full_name and full_name.count(".") == 2:
@@ -123,10 +124,10 @@ class UnityCatalogIncrementalTableProcessor:
             result = (schema, table)
         return result
 
-    def get_changed(self, schema_name: str) -> Set[str]:  # noqa: UP006
+    def get_changed(self, schema_name: str) -> set[str]:
         """Return the names of tables changed since the watermark for a schema."""
         return self._changed_map.get(schema_name, set())
 
-    def get_deleted(self, schema_name: str) -> Set[str]:  # noqa: UP006
+    def get_deleted(self, schema_name: str) -> set[str]:
         """Return the names of tables deleted since the watermark for a schema."""
         return self._deleted_map.get(schema_name, set())

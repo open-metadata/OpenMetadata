@@ -12,7 +12,8 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Input, Row, Tag, Tooltip, Typography } from 'antd';
+import { Badge, Grid, Typography } from '@openmetadata/ui-core-components';
+import { Button, Card, Input } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, toLower, uniqBy } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -24,7 +25,9 @@ import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore
 import { EntityType } from '../../../../enums/entity.enum';
 import { Role } from '../../../../generated/entity/teams/role';
 import { searchRoles } from '../../../../rest/rolesAPIV1';
+import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { getSettingPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import Description from '../../../common/EntityDescription/Description';
@@ -56,15 +59,19 @@ const BotDetails: FC<BotsDetailProps> = ({
 
   const { t } = useTranslation();
 
-  const { editAllPermission, displayNamePermission, descriptionPermission } =
-    useMemo(
-      () => ({
-        editAllPermission: botPermission.EditAll,
-        displayNamePermission: botPermission.EditDisplayName,
-        descriptionPermission: botPermission.EditDescription,
-      }),
-      [botPermission]
-    );
+  // Consumer via the `botPermission: OperationPermission` prop (raw contract kept per Task 8
+  // rule 2). No `deleted` argument — bots aren't soft-deletable through this page and the old
+  // expressions never referenced a deleted concept. Both call sites below OR'd a raw
+  // field-specific flag with the raw `botPermission.EditAll` (displayNamePermission ||
+  // editAllPermission, descriptionPermission || editAllPermission) — each now reads
+  // canEditDisplayName/canEditDescription directly (explicit-deny-wins fix, Task 6 Finding 1);
+  // the prioritized flag already folds in the EditAll fallback, so the separate EditAll term
+  // isn't lost, just no longer spelled out raw. The old `editAllPermission` (bare EditAll-only)
+  // local is now unused and dropped (Task 7/8 dead-code precedent).
+  const { canEditDisplayName, canEditDescription } = useMemo(
+    () => getDerivedPermissionFlags(botPermission),
+    [botPermission]
+  );
 
   const initLimits = async () => {
     if (!config?.enable) {
@@ -125,8 +132,10 @@ const BotDetails: FC<BotsDetailProps> = ({
 
   const fetchLeftPanel = () => {
     return (
-      <Row gutter={[0, 20]}>
-        <Col span={24}>
+      <Grid
+        className="layout-row layout-grid"
+        style={{ ...getLayoutGutter(0, 20) }}>
+        <Grid.Item className="layout-column" span={24}>
           <Card className="page-layout-v1-left-panel mt-2">
             <div data-testid="left-panel">
               <div className="d-flex flex-col gap-5">
@@ -166,17 +175,22 @@ const BotDetails: FC<BotsDetailProps> = ({
                   ) : (
                     <>
                       {displayName ? (
-                        <Typography.Title ellipsis className="m-0" level={5}>
+                        <Typography
+                          ellipsis
+                          as="h5"
+                          className="m-0"
+                          size="text-md"
+                          weight="semibold">
                           {displayName}
-                        </Typography.Title>
+                        </Typography>
                       ) : (
-                        <Typography.Text className="text-grey-muted">
+                        <Typography color="secondary">
                           {t('label.add-entity', {
                             entity: t('label.display-name'),
                           })}
-                        </Typography.Text>
+                        </Typography>
                       )}
-                      {(displayNamePermission || editAllPermission) && (
+                      {canEditDisplayName && (
                         <div>
                           <EditIconButton
                             newLook
@@ -193,28 +207,29 @@ const BotDetails: FC<BotsDetailProps> = ({
                   )}
                 </div>
                 {botUserData.allowImpersonation && (
-                  <Tooltip title={t('message.allow-impersonation-help')}>
-                    <Tag
-                      className="w-fit-content"
-                      color="blue"
-                      data-testid="impersonation-enabled-badge">
-                      {t('label.impersonation-enabled')}
-                    </Tag>
-                  </Tooltip>
+                  <Badge
+                    className="tw:mr-2"
+                    color="blue"
+                    data-testid="impersonation-enabled-badge"
+                    size="sm"
+                    tooltip={t('message.allow-impersonation-help')}
+                    type="color">
+                    {t('label.impersonation-enabled')}
+                  </Badge>
                 )}
                 <Description
                   description={botData.description}
                   entityName={getEntityName(botData)}
                   entityType={EntityType.BOT}
-                  hasEditAccess={descriptionPermission || editAllPermission}
+                  hasEditAccess={canEditDescription}
                   showCommentsIcon={false}
                   onDescriptionUpdate={handleDescriptionChange}
                 />
               </div>
             </div>
           </Card>
-        </Col>
-        <Col span={24}>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
           <RolesCard
             isRolesLoading={isRolesLoading}
             roles={roles}
@@ -226,11 +241,11 @@ const BotDetails: FC<BotsDetailProps> = ({
             updateUserDetails={updateUserDetails}
             userData={botUserData}
           />
-        </Col>
-        <Col span={24}>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
           <InheritedRolesCard userData={botUserData} />
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
     );
   };
 
@@ -273,12 +288,12 @@ const BotDetails: FC<BotsDetailProps> = ({
       rightPanel={
         <Card className="h-full m-b-box" data-testid="right-panel">
           <div className="d-flex flex-col">
-            <Typography.Text className="mb-2 text-lg">
+            <Typography className="mb-2 text-lg">
               {t('label.token-security')}
-            </Typography.Text>
-            <Typography.Text className="mb-2">
+            </Typography>
+            <Typography className="mb-2">
               {t('message.token-security-description')}
-            </Typography.Text>
+            </Typography>
           </div>
         </Card>
       }

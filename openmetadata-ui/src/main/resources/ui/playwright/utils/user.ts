@@ -12,6 +12,7 @@
  */
 
 import { Browser, expect, Page } from '@playwright/test';
+import { LONG_ACTION_TIMEOUT } from '../constant/common';
 import {
   GLOBAL_SETTING_PERMISSIONS,
   SETTING_PAGE_ENTITY_PERMISSION,
@@ -23,13 +24,13 @@ import {
   SETTING_CUSTOM_PROPERTIES_PATH,
 } from '../constant/settings';
 import { SidebarItem } from '../constant/sidebar';
+import { installServerLoadReducers } from '../support/fixtures/serverLoad';
 import { UserClass } from '../support/user/UserClass';
 import {
   clickOutside,
-  descriptionBox,
   descriptionBoxReadOnly,
+  fillDescriptionBox,
   getAuthContext,
-  getToken,
   redirectToHomePage,
   toastNotification,
   visitOwnProfilePage,
@@ -37,6 +38,8 @@ import {
 import { customFormatDateTime, getEpochMillisForFutureDays } from './dateTime';
 import { waitForAllLoadersToDisappear } from './entity';
 import { clickUpdateButtonIfVisible } from './explore';
+import { getCellByName } from './scopedLocators';
+import { waitForAggregation } from './searchAggregation';
 import { settingClick, SettingOptionsType, sidebarClick } from './sidebar';
 
 export const visitUserListPage = async (page: Page) => {
@@ -62,6 +65,17 @@ export const searchUserByEmail = async (
   await expect(page.getByTestId(userName)).toBeVisible();
 };
 
+/**
+ * A signed-in page for `user`, plus an API context authenticated as them.
+ *
+ * Signs in through the API rather than the form. The nine UI interactions
+ * `UserClass.login()` performs are not what any caller of this helper is
+ * testing, and every one of them is a step that can time out — swapping the
+ * mechanism here speeds up and de-flakes every call site without any of them
+ * changing. A spec that is genuinely testing the sign-in *form* should call
+ * `signInThroughForm(page, user)` from utils/formSignIn instead of coming
+ * through here; `UserClass.login()` in a spec is a lint error.
+ */
 export const performUserLogin = async (browser: Browser, user: UserClass) => {
   const context = await browser.newContext({
     storageState: {
@@ -69,9 +83,14 @@ export const performUserLogin = async (browser: Browser, user: UserClass) => {
       origins: [],
     },
   });
+  await installServerLoadReducers(context);
   const page = await context.newPage();
-  await user.login(page);
-  const token = await getToken(page);
+  // `/`, not the default `/my-data`: callers of this helper assert where
+  // sign-in *lands* (PersonaAppLayout checks the persona's configured landing
+  // page), and the form path this replaced never chose a destination either.
+  const token = await user.signIn(page, undefined, undefined, {
+    landingPath: '/',
+  });
   const apiContext = await getAuthContext(token);
   const afterAction = async () => {
     await apiContext.dispose();
@@ -86,8 +105,8 @@ export const nonDeletedUserChecks = async (page: Page) => {
   await expect(
     page
       .locator('[data-testid="user-profile"] [data-testid="edit-user-persona"]')
-      .first()
-  ).toBeVisible();
+      .filter({ visible: true })
+  ).not.toHaveCount(0);
 
   await expect(page.locator('[data-testid="edit-teams-button"]')).toBeVisible();
   await expect(page.locator('[data-testid="edit-roles-button"]')).toBeVisible();
@@ -115,25 +134,31 @@ export const deletedUserChecks = async (page: Page) => {
 };
 
 export const visitUserProfilePage = async (page: Page, userName: string) => {
-  await settingClick(page, GlobalSettingOptions.USERS);
-
-  const listLoader = page
-    .getByTestId('user-list-v1-component')
-    .getByTestId('loader');
-  const userRow = page.getByTestId(userName);
-
-  await listLoader.waitFor({ state: 'detached' });
-
-  const searchResponse = page.waitForResponse(
-    '/api/v1/search/query?q=*&index=user&from=0&size=*'
+  // Deliberately not routed through the user-list search box. That list is
+  // Elasticsearch-backed and a user created seconds earlier may not be indexed
+  // yet; once the empty result renders nothing re-issues the query, so waiting
+  // on the row cannot recover. The profile page reads the user from the API by
+  // name, which is immediately consistent.
+  const encodedUserName = encodeURIComponent(userName);
+  const userResponse = page.waitForResponse(
+    `/api/v1/users/name/${encodedUserName}?fields=*`
   );
-  await page.getByTestId('searchbar').fill(userName);
-  await searchResponse;
-  await listLoader.waitFor({ state: 'detached' });
+  await page.goto(`/users/${encodedUserName}`, {
+    waitUntil: 'domcontentloaded',
+  });
 
-  await expect(userRow).toBeVisible();
+  // A 404/5xx satisfies the wait just as a 200 does, and the page then drops
+  // its loader and renders an error state. Callers that guard their assertions
+  // on visibility would silently assert nothing, so fail here instead.
+  const response = await userResponse;
 
-  await userRow.click();
+  expect(
+    response.ok(),
+    `Profile for "${userName}" failed to load: HTTP ${response.status()}`
+  ).toBeTruthy();
+
+  await waitForAllLoadersToDisappear(page);
+  await expect(page.getByTestId('user-email-value')).toBeVisible();
 };
 
 export const softDeleteUserProfilePage = async (
@@ -146,10 +171,7 @@ export const softDeleteUserProfilePage = async (
   );
   await page.getByTestId('searchbar').fill(userName);
   await userResponse;
-  await page
-    .locator('.user-list-table')
-    .getByTestId('loader')
-    .waitFor({ state: 'detached' });
+  await waitForAllLoadersToDisappear(page.locator('.user-list-table'));
 
   await page.getByTestId(userName).click();
 
@@ -160,11 +182,7 @@ export const softDeleteUserProfilePage = async (
   });
   await page.click('[data-testid="user-profile-manage-btn"]');
 
-  await page.locator('.ant-popover:not(.ant-popover-hidden)').waitFor({
-    state: 'visible',
-  });
-
-  await page.getByText('Delete Profile').click();
+  await page.getByRole('dialog').getByText('Delete Profile').click();
 
   await page.getByTestId('delete-modal').waitFor();
 
@@ -269,7 +287,7 @@ export const editDescription = async (
   await page.click('[data-testid="edit-description"]');
 
   // Clear and type the new description
-  await page.locator(descriptionBox).fill(updatedDescription);
+  await fillDescriptionBox(page, updatedDescription);
 
   const updateDescription = page.waitForResponse('/api/v1/users/*');
   await page.click('[data-testid="save"]');
@@ -289,9 +307,7 @@ export const handleAdminUpdateDetails = async (
   page: Page,
   editedUserName: string
 ) => {
-  const feedResponse = page.waitForResponse('/api/v1/feed?type=Conversation');
   await visitOwnProfilePage(page);
-  await feedResponse;
 
   // edit displayName
   await editDisplayName(page, editedUserName);
@@ -301,11 +317,7 @@ export const handleUserUpdateDetails = async (
   page: Page,
   editedUserName: string
 ) => {
-  const feedResponse = page.waitForResponse(
-    '/api/v1/feed?type=Conversation&filterType=OWNER_OR_FOLLOWS&userId=*'
-  );
   await visitOwnProfilePage(page);
-  await feedResponse;
 
   // edit displayName
   await editDisplayName(page, editedUserName);
@@ -575,6 +587,12 @@ export const checkDataConsumerPermissions = async (page: Page) => {
   ).not.toBeVisible();
   await expect(page.locator('[data-testid="delete-button"]')).not.toBeVisible();
 
+  // The core manage menu is modal; close it so the tab click is not swallowed.
+  await clickOutside(page);
+  await expect(
+    page.getByTestId('manage-dropdown-list-container')
+  ).not.toBeVisible();
+
   await page.click('[data-testid="lineage"]');
 
   await waitForAllLoadersToDisappear(page);
@@ -602,17 +620,12 @@ export const checkStewardServicesPermissions = async (page: Page) => {
   // Perform search actions
   await page.click('[data-testid="search-dropdown-Data Assets"]');
 
-  await page
-    .getByTestId('drop-down-menu')
-    .getByTestId('loader')
-    .first()
-    .waitFor({
-      state: 'detached',
-    });
+  await waitForAllLoadersToDisappear(page.getByTestId('drop-down-menu'));
 
-  const dataAssetDropdownRequest = page.waitForResponse(
-    '/api/v1/search/aggregate?index=dataAsset&field=entityType.keyword*'
-  );
+  const dataAssetDropdownRequest = waitForAggregation(page, {
+    field: 'entityType.keyword',
+    value: 'table',
+  });
 
   await page
     .getByTestId('drop-down-menu')
@@ -620,13 +633,14 @@ export const checkStewardServicesPermissions = async (page: Page) => {
     .fill('table');
   await dataAssetDropdownRequest;
 
-  await page.locator('[data-testid="table-checkbox"]').scrollIntoViewIfNeeded();
+  const tableRow = page.getByTestId('drop-down-menu').getByTestId('table');
+  await tableRow.scrollIntoViewIfNeeded();
 
   // Arm before the option click: immediate-apply fires the query on the click
   const getSearchResultResponse = page.waitForResponse(
     '/api/v1/search/query?q=*'
   );
-  await page.click('[data-testid="table-checkbox"]');
+  await tableRow.click();
   await clickUpdateButtonIfVisible(page);
 
   await getSearchResultResponse;
@@ -645,8 +659,7 @@ export const checkStewardPermissions = async (page: Page) => {
   // Check Add domain permission
   await expect(page.locator('[data-testid="add-domain"]')).not.toBeVisible();
 
-  await page
-    .getByRole('cell', { name: /user_id/i })
+  await getCellByName(page, /user_id/i)
     .getByTestId('edit-displayName-button')
     .waitFor({ state: 'attached' });
 
@@ -701,32 +714,34 @@ export const addUser = async (
   }
 ) => {
   await waitForAllLoadersToDisappear(page);
+  const initialRolesSearchResponse = page.waitForResponse(
+    '/api/v1/roles/search?*'
+  );
   await page.click('[data-testid="add-user"]');
 
-  await page.waitForResponse('/api/v1/roles/search?*');
+  await initialRolesSearchResponse;
   await page.fill('[data-testid="email"]', email);
 
   await page.fill('[data-testid="displayName"]', name);
 
-  await page.locator(descriptionBox).fill('Adding new user');
+  await fillDescriptionBox(page, 'Adding new user');
 
   await page.click(':nth-child(2) > .ant-radio > .ant-radio-input');
-  await page.fill('#password', password);
-  await page.fill('#confirmPassword', password);
+  await page.fill('input[name="password"]', password);
+  await page.fill('input[name="confirmPassword"]', password);
 
   const rolesCombobox = page
     .getByTestId('roles-dropdown')
     .getByRole('combobox');
-  await expect(rolesCombobox).toBeVisible({ timeout: 120000 });
+  await expect(rolesCombobox).toBeVisible({ timeout: LONG_ACTION_TIMEOUT });
   await rolesCombobox.click();
   const rolesSearchResponse = page.waitForResponse('/api/v1/roles/search?*');
   await rolesCombobox.fill(role);
   await rolesSearchResponse;
   const roleOption = page
     .locator('.ant-select-item-option-content')
-    .filter({ hasText: new RegExp(`^${role}$`) })
-    .first();
-  await expect(roleOption).toBeVisible({ timeout: 120000 });
+    .filter({ hasText: new RegExp(`^${role}$`) });
+  await expect(roleOption).toBeVisible({ timeout: LONG_ACTION_TIMEOUT });
   await roleOption.click();
   await clickOutside(page);
 
@@ -738,14 +753,11 @@ export const addUser = async (
       .getByTestId('personas-dropdown')
       .getByRole('combobox')
       .fill(personas[0]);
-    await page.locator('.ant-select-dropdown:visible').first().waitFor({
-      state: 'visible',
-    });
+    await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);
     const personaOption = page
       .locator('.ant-select-dropdown:visible')
       .locator('.ant-select-item-option')
-      .filter({ hasText: personas[0] })
-      .first();
+      .filter({ hasText: personas[0] });
     await personaOption.waitFor({ state: 'visible' });
     await personaOption.click();
     await clickOutside(page);
@@ -776,11 +788,11 @@ export const checkForUserExistError = async (
 
   await page.fill('[data-testid="displayName"]', name);
 
-  await page.locator(descriptionBox).fill('Adding new user');
+  await fillDescriptionBox(page, 'Adding new user');
 
   await page.click(':nth-child(2) > .ant-radio > .ant-radio-input');
-  await page.fill('#password', password);
-  await page.fill('#confirmPassword', password);
+  await page.fill('input[name="password"]', password);
+  await page.fill('input[name="confirmPassword"]', password);
 
   const saveResponse = page.waitForResponse('/api/v1/users');
   await page.click('[data-testid="save-user"]');
@@ -863,7 +875,7 @@ export const settingPageOperationPermissionCheck = async (page: Page) => {
       await apiResponse;
     }
 
-    await expect(page.locator('.ant-skeleton-button')).not.toBeVisible();
+    await expect(page.locator('.button-skeleton')).not.toBeVisible();
     await expect(page.getByTestId(id.button)).not.toBeVisible();
   }
 

@@ -4,7 +4,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.CONTAINER;
-import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
 import static org.openmetadata.service.Entity.FIELD_PARENT;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.STORAGE_SERVICE;
@@ -35,9 +34,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.Container;
-import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.services.StorageService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ContainerFileFormat;
@@ -47,7 +44,6 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
-import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
@@ -56,10 +52,7 @@ import org.openmetadata.service.cache.AncestorsCache;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.ChildrenPageCache;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
-import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
-import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.storages.ContainerResource;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
@@ -76,8 +69,6 @@ public class ContainerRepository extends EntityRepository<Container> {
   private static final String CONTAINER_PATCH_FIELDS = "dataModel,parent";
   private static final Set<String> CHANGE_SUMMARY_FIELDS = Set.of("dataModel.columns.description");
   public static final String CONTAINER_SAMPLE_DATA_EXTENSION = "container.sampleData";
-
-  private final FeedRepository feedRepository = Entity.getFeedRepository();
 
   public ContainerRepository() {
     super(
@@ -267,7 +258,8 @@ public class ContainerRepository extends EntityRepository<Container> {
     // De-dupe service IDs before resolving them to references. In any practical paged
     // listing the children are all under the same storage service, so the naive loop
     // below would call getEntityReferenceById N times for the same service id —
-    // each call hits CACHE_WITH_ID (or DB) for the full StorageService JSON. Cache one
+    // each call hits EntityRepository.CACHE_WITH_ID (or DB) for the full StorageService JSON. Cache
+    // one
     // ref per unique service id and fan it back out to every child.
     Map<UUID, EntityReference> serviceRefById = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject record : records) {
@@ -566,7 +558,7 @@ public class ContainerRepository extends EntityRepository<Container> {
   @Override
   public EntityRepository<Container>.EntityUpdater getUpdater(
       Container original, Container updated, Operation operation, ChangeSource changeSource) {
-    return new ContainerUpdater(original, updated, operation);
+    return new ContainerUpdater(original, updated, operation, changeSource);
   }
 
   @Override
@@ -592,7 +584,7 @@ public class ContainerRepository extends EntityRepository<Container> {
   }
 
   @Override
-  public EntityInterface getParentEntity(Container entity, String fields) {
+  public EntityInterface<?> getParentEntity(Container entity, String fields) {
     if (entity.getService() == null) {
       return null;
     }
@@ -600,7 +592,7 @@ public class ContainerRepository extends EntityRepository<Container> {
   }
 
   @Override
-  public List<TagLabel> getAllTags(EntityInterface entity) {
+  public List<TagLabel> getAllTags(EntityInterface<?> entity) {
     List<TagLabel> allTags = new ArrayList<>();
     Container container = (Container) entity;
     EntityUtil.mergeTags(allTags, container.getTags());
@@ -610,23 +602,6 @@ public class ContainerRepository extends EntityRepository<Container> {
       }
     }
     return allTags;
-  }
-
-  @Override
-  public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
-    validateTaskThread(threadContext);
-    EntityLink entityLink = threadContext.getAbout();
-    if (entityLink.getFieldName() != null && entityLink.getFieldName().equals("dataModel")) {
-      TaskType taskType = threadContext.getThread().getTask().getType();
-      if (EntityUtil.isDescriptionTask(taskType)) {
-        return new DataModelDescriptionTaskWorkflow(threadContext);
-      } else if (EntityUtil.isTagTask(taskType)) {
-        return new DataModelTagTaskWorkflow(threadContext);
-      } else {
-        throw new IllegalArgumentException(String.format("Invalid task type %s", taskType));
-      }
-    }
-    return super.getTaskWorkflow(threadContext);
   }
 
   public ResultList<Container> listChildren(String parentFQN, Integer limit, Integer offset) {
@@ -658,13 +633,18 @@ public class ContainerRepository extends EntityRepository<Container> {
    * </ul>
    *
    * <p>The FQN-depth approach asks the right question — "which rows have an FQN that is
-   * exactly one level below this prefix?" — and answers it with a single indexed range
-   * scan against {@code idx_storage_container_entity_fqnhash_pattern}. The parent UUID is
+   * exactly one level below this prefix?" — and answers it as an equality against the
+   * generated {@code parentFqnHash} column (the row's own fqnHash minus its last segment),
+   * served by {@code idx_storage_container_entity_parent_children}. The parent UUID is
    * never needed; the parent doesn't even have to exist for its descendants to be
-   * discoverable. Because each FQN segment hashes to a fixed-width MD5, "exactly one
-   * segment below" is expressible as {@code fqnHash LIKE :parentHash AND fqnHash NOT LIKE
-   * :parentHashChild}, where {@code :parentHash} is {@code <hash>.%} and
-   * {@code :parentHashChild} is {@code <hash>.%.%}.
+   * discoverable.
+   *
+   * <p>The depth test used to be spelled {@code fqnHash LIKE '<hash>.%' AND fqnHash NOT
+   * LIKE '<hash>.%.%'}. That selects the same rows but gives the planner no indexable
+   * equality, so the {@code ORDER BY name, id LIMIT n} below won on cost and both engines
+   * scanned container rows until the page filled — O(containers in the deployment) per
+   * listing, worst exactly where it hurts most: a container near the root of a deep tree,
+   * with a large subtree but few direct children (#22530).
    *
    * <p>{@code search} narrows the page to children whose name contains the given substring
    * (case-insensitive). Empty / null disables the filter — the caller passes the raw text
@@ -697,9 +677,7 @@ public class ContainerRepository extends EntityRepository<Container> {
     // latency budget in prod we can tell which step (depth query / count / service
     // restore) was responsible. The parent-lookup phase from the previous
     // entity_relationship-based implementation is gone — the FQN is enough.
-    String parentHashRaw = FullyQualifiedName.buildHash(parentFQN);
-    String parentHash = parentHashRaw + Entity.SEPARATOR + "%";
-    String parentHashChild = parentHashRaw + Entity.SEPARATOR + "%" + Entity.SEPARATOR + "%";
+    String parentHash = FullyQualifiedName.buildHash(parentFQN);
     String includeBind = includeToBindString(safeInclude);
     CollectionDAO.ContainerDAO containerDAO = (CollectionDAO.ContainerDAO) dao;
 
@@ -708,14 +686,12 @@ public class ContainerRepository extends EntityRepository<Container> {
       try (var ignored = RequestLatencyContext.phase("listChildrenPage")) {
         children =
             containerDAO.listDirectChildSummariesByParentHash(
-                parentHash, parentHashChild, nameLike, includeBind, safeLimit, safeOffset);
+                parentHash, nameLike, includeBind, safeLimit, safeOffset);
       }
 
       int total;
       try (var ignored = RequestLatencyContext.phase("listChildrenCount")) {
-        total =
-            containerDAO.countDirectChildrenByParentHash(
-                parentHash, parentHashChild, nameLike, includeBind);
+        total = containerDAO.countDirectChildrenByParentHash(parentHash, nameLike, includeBind);
       }
 
       if (children.isEmpty()) {
@@ -776,9 +752,10 @@ public class ContainerRepository extends EntityRepository<Container> {
    * deleted predicate on this bind via a three-branch OR chain
    * ({@code :includeDeleted = 'ALL' OR (:includeDeleted = 'DELETED' AND deleted = TRUE)
    * OR (:includeDeleted = 'NON_DELETED' AND deleted = FALSE)}) rather than three
-   * separate query templates — the underlying access path is identical, the index range
-   * scan on {@code fqnHash} runs once, and the per-row deleted predicate is evaluated
-   * post-index in all three modes.
+   * separate query templates — the underlying access path is identical in all three modes:
+   * the {@code parentFqnHash} equality drives the index, and {@code deleted} is the index's
+   * next column, so NON_DELETED and DELETED narrow the same lookup while ALL reads the
+   * parent's whole entry range.
    */
   private static String includeToBindString(Include include) {
     return switch (include) {
@@ -985,45 +962,6 @@ public class ContainerRepository extends EntityRepository<Container> {
     return container;
   }
 
-  static class DataModelDescriptionTaskWorkflow extends DescriptionTaskWorkflow {
-    private final Column column;
-
-    DataModelDescriptionTaskWorkflow(ThreadContext threadContext) {
-      super(threadContext);
-      DashboardDataModel dataModel =
-          Entity.getEntity(
-              DASHBOARD_DATA_MODEL, threadContext.getAboutEntity().getId(), "dataModel", ALL);
-      threadContext.setAboutEntity(dataModel);
-      column = EntityUtil.findColumn(dataModel.getColumns(), getAbout().getArrayFieldName());
-    }
-
-    @Override
-    public EntityInterface performTask(String user, ResolveTask resolveTask) {
-      column.setDescription(resolveTask.getNewValue());
-      return threadContext.getAboutEntity();
-    }
-  }
-
-  static class DataModelTagTaskWorkflow extends TagTaskWorkflow {
-    private final Column column;
-
-    DataModelTagTaskWorkflow(ThreadContext threadContext) {
-      super(threadContext);
-      DashboardDataModel dataModel =
-          Entity.getEntity(
-              DASHBOARD_DATA_MODEL, threadContext.getAboutEntity().getId(), "dataModel,tags", ALL);
-      threadContext.setAboutEntity(dataModel);
-      column = EntityUtil.findColumn(dataModel.getColumns(), getAbout().getArrayFieldName());
-    }
-
-    @Override
-    public EntityInterface performTask(String user, ResolveTask resolveTask) {
-      List<TagLabel> tags = JsonUtils.readObjects(resolveTask.getNewValue(), TagLabel.class);
-      column.setTags(tags);
-      return threadContext.getAboutEntity();
-    }
-  }
-
   /**
    * Rewrite feed entity-links and field-relationships when a container's FQN changes (parent
    * move).
@@ -1043,8 +981,8 @@ public class ContainerRepository extends EntityRepository<Container> {
       List<EntityDAO.EntityIdFqnPair> renamedDescendants) {
     daoCollection.fieldRelationshipDAO().renameByToFQN(oldFqn, newFqn);
 
-    EntityLink newAbout = new EntityLink(CONTAINER, newFqn);
-    feedRepository.updateLegacyThreadsAbout(newAbout.getLinkString(), updated.getId().toString());
+    ConversationRepository conversations = Entity.getConversationRepository();
+    conversations.updateEntityReference(updated.getEntityReference(), oldFqn);
 
     if (renamedDescendants == null || renamedDescendants.isEmpty()) {
       return;
@@ -1058,9 +996,7 @@ public class ContainerRepository extends EntityRepository<Container> {
         continue;
       }
       String descendantNewFqn = newFqn + descendant.fqn.substring(oldFqn.length());
-      EntityLink descendantAbout = new EntityLink(CONTAINER, descendantNewFqn);
-      feedRepository.updateLegacyThreadsAbout(
-          descendantAbout.getLinkString(), descendant.id.toString());
+      conversations.updateEntityFqn(CONTAINER, descendant.id, descendant.fqn, descendantNewFqn);
     }
   }
 
@@ -1197,8 +1133,9 @@ public class ContainerRepository extends EntityRepository<Container> {
 
   /** Handles entity updated from PUT and POST operations */
   public class ContainerUpdater extends ColumnEntityUpdater {
-    public ContainerUpdater(Container original, Container updated, Operation operation) {
-      super(original, updated, operation);
+    public ContainerUpdater(
+        Container original, Container updated, Operation operation, ChangeSource changeSource) {
+      super(original, updated, operation, changeSource);
     }
 
     @Transaction
@@ -1251,8 +1188,11 @@ public class ContainerRepository extends EntityRepository<Container> {
       compareAndUpdate(
           "retentionPeriod",
           () ->
-              recordChange(
-                  "retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod()));
+              updateUserOnlyField(
+                  "retentionPeriod",
+                  original.getRetentionPeriod(),
+                  updated.getRetentionPeriod(),
+                  updated::setRetentionPeriod));
       compareAndUpdate(
           "sourceHash",
           () ->
@@ -1352,8 +1292,8 @@ public class ContainerRepository extends EntityRepository<Container> {
       validateSubtreeSize(oldFqn, descendantCount, maxAllowed);
 
       List<EntityDAO.EntityIdFqnPair> renamedContainers =
-          invalidateCacheForRenameCascade(CONTAINER, oldFqn);
-      invalidateCacheForTaggedEntitiesAndDescendants(CONTAINER, oldFqn);
+          EntityRepository.invalidateCacheForRenameCascade(CONTAINER, oldFqn);
+      EntityRepository.invalidateCacheForTaggedEntitiesAndDescendants(CONTAINER, oldFqn);
 
       daoCollection.containerDAO().updateFqn(oldFqn, newFqn);
 
@@ -1383,7 +1323,7 @@ public class ContainerRepository extends EntityRepository<Container> {
           FIELD_PARENT, original.getParent(), updated.getParent(), true, entityReferenceMatch);
 
       updateAssetIndexes(oldFqn, newFqn);
-      finishInvalidateCacheForRenameCascade(CONTAINER, renamedContainers);
+      EntityRepository.finishInvalidateCacheForRenameCascade(CONTAINER, renamedContainers);
     }
 
     private void updateParentRelationship(Container orig, Container updated) {

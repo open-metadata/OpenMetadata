@@ -22,12 +22,9 @@ import { ManageButtonItemLabel } from '../../../components/common/ManageButtonCo
 import { EntityName } from '../../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
-import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import {
   ChangeDescription,
   EntityReference,
@@ -35,6 +32,7 @@ import {
 } from '../../../generated/tests/testCase';
 import { EntityHistory } from '../../../generated/type/entityHistory';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import {
@@ -44,15 +42,17 @@ import {
 import {
   getTestCaseVersionDetails,
   getTestCaseVersionList,
+  restoreTestCase,
   updateTestCaseById,
 } from '../../../rest/testAPI';
+import { getRenderedActiveTab } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtilsPure';
 import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
-import { showErrorToast } from '../../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { TestCasePageTabs } from '../IncidentManager.interface';
 import testCaseClassBase, { TestCaseTabType } from './TestCaseClassBase';
@@ -71,6 +71,7 @@ export interface UseTestCaseDetailPageResult {
   hasEditPermission: boolean | undefined;
   hasDeletePermission: boolean | undefined;
   editDisplayNamePermission: boolean | undefined;
+  canRestorePermission: boolean;
   feedCount: FeedCounts;
   displayName: string | undefined;
   tabs: TestCaseTabType[];
@@ -95,6 +96,7 @@ export interface UseTestCaseDetailPageResult {
   }>;
   handleOwnerChange: (owners?: EntityReference[]) => Promise<void>;
   handleDisplayNameChange: (entityName?: EntityName) => Promise<void>;
+  handleRestore: () => Promise<boolean>;
   getEntityFeedCount: () => void;
   setTestCase: (testCase: TestCase) => void;
 }
@@ -114,7 +116,7 @@ export const useTestCaseDetailPage = ({
   const queryClient = useQueryClient();
 
   const {
-    tab: activeTab = TestCasePageTabs.TEST_CASE_RESULTS,
+    tab: urlTab = TestCasePageTabs.TEST_CASE_RESULTS,
     version,
     dimensionKey,
   } = useRequiredParams<{
@@ -131,8 +133,6 @@ export const useTestCaseDetailPage = ({
     setTestCase,
     testCase,
     reset,
-    isPermissionLoading,
-    testCasePermission,
     setTestCasePermission,
     setIsPermissionLoading,
     isTabExpanded,
@@ -147,22 +147,59 @@ export const useTestCaseDetailPage = ({
   });
   const [isDimensionEdit, setIsDimensionEdit] = useState<boolean>(false);
 
-  const { getEntityPermissionByFqn } = usePermissionProvider();
+  // Fetch-owner: this hook is the sole writer of the store's testCasePermission/
+  // isPermissionLoading (see the sync effects below) — useTestCaseResultTab.tsx and
+  // useTestCaseIncidentHeader.ts (Task 8 Batch 6) read testCasePermission back off the
+  // store as a raw OperationPermission and derive their own flags, so the store must keep
+  // receiving the raw object, not just the named flags this hook consumes locally.
+  // canEditDisplayName is an explicit-deny-wins fix, same precedent as canViewBasic
+  // (Task 6 Finding 1): a field-specific deny now wins over a broader EditAll grant.
+  // Soft-delete support (base commit fa824bf1b4): every edit-family flag must go false once
+  // the test case itself is deleted, EXCEPT canRestorePermission (offered only on a deleted
+  // row, so it must stay ungated — same `ungatedFlags` precedent as
+  // DataAssetsHeader.component.tsx). `useEntityPermissions`'s own `deleted` option isn't used
+  // here since `canRestorePermission` needs the same underlying `canEditAll` read left
+  // ungated; instead each flag is gated individually below, matching upstream's
+  // `!isDeleted && ...` reads 1:1.
+  const isDeleted = Boolean(testCase?.deleted);
+
   const {
-    hasViewPermission,
-    editDisplayNamePermission,
-    hasDeletePermission,
-    hasEditPermission,
-  } = useMemo(() => {
-    return {
-      hasViewPermission:
-        testCasePermission?.ViewAll || testCasePermission?.ViewBasic,
-      editDisplayNamePermission:
-        testCasePermission?.EditAll || testCasePermission?.EditDisplayName,
-      hasDeletePermission: testCasePermission?.Delete,
-      hasEditPermission: testCasePermission?.EditAll,
-    };
-  }, [testCasePermission]);
+    permissions: testCasePermission,
+    isLoading: isPermissionLoading,
+    error: permissionsError,
+    hasViewAccess: hasViewPermission,
+    canEditAll,
+    canEditDisplayName,
+    canDelete,
+  } = useEntityPermissions(ResourceEntity.TEST_CASE, testCaseFQN, {
+    enabled: Boolean(testCaseFQN),
+  });
+
+  const hasEditPermission = !isDeleted && canEditAll;
+  const editDisplayNamePermission = !isDeleted && canEditDisplayName;
+  const hasDeletePermission = !isDeleted && canDelete;
+  const canRestorePermission = canEditAll;
+
+  useEffect(() => {
+    if (permissionsError) {
+      showErrorToast(permissionsError as AxiosError);
+    }
+  }, [permissionsError]);
+
+  // Mirror into the Zustand store — the pre-existing single source of truth for the
+  // other IncidentManager hooks/components that read testCasePermission directly off
+  // {@code useTestCaseStore()} rather than from this hook's return value. Gated on
+  // `!isPermissionLoading` so the store keeps its old "undefined until populated"
+  // contract instead of eagerly writing the hook's DEFAULT_ENTITY_PERMISSION placeholder.
+  useEffect(() => {
+    setIsPermissionLoading(isPermissionLoading);
+  }, [isPermissionLoading, setIsPermissionLoading]);
+
+  useEffect(() => {
+    if (!isPermissionLoading) {
+      setTestCasePermission(testCasePermission);
+    }
+  }, [testCasePermission, isPermissionLoading, setTestCasePermission]);
 
   const testCaseFields = useMemo(() => testCaseClassBase.getFields(), []);
 
@@ -228,11 +265,6 @@ export const useTestCaseDetailPage = ({
       .catch((error) => showErrorToast(error as AxiosError));
   }, [isVersionPage, testCaseData?.id]);
 
-  const isExpandViewSupported = useMemo(
-    () => activeTab === TestCasePageTabs.TEST_CASE_RESULTS,
-    [activeTab]
-  );
-
   const toggleTabExpanded = useCallback(() => {
     setIsTabExpanded(!isTabExpanded);
   }, [isTabExpanded, setIsTabExpanded]);
@@ -253,21 +285,20 @@ export const useTestCaseDetailPage = ({
     isVersionPage,
   ]);
 
-  const fetchTestCasePermission = async () => {
-    setIsPermissionLoading(true);
-    try {
-      const response = await getEntityPermissionByFqn(
-        ResourceEntity.TEST_CASE,
-        testCaseFQN
-      );
+  // The URL tab may not be rendered (e.g. `issues` on a version page), so every
+  // consumer reads the tab actually on screen; navigation keeps the URL tab.
+  const activeTab = useMemo(
+    () =>
+      getRenderedActiveTab<EntityTabs | TestCasePageTabs>(
+        tabs,
+        urlTab,
+        TestCasePageTabs.TEST_CASE_RESULTS
+      ),
+    [tabs, urlTab]
+  );
 
-      setTestCasePermission(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsPermissionLoading(false);
-    }
-  };
+  const isExpandViewSupported =
+    activeTab === TestCasePageTabs.TEST_CASE_RESULTS;
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
@@ -296,6 +327,10 @@ export const useTestCaseDetailPage = ({
   };
   const updateTestCase = useCallback(
     async (id: string, patch: PatchOperation[]) => {
+      if (testCase?.deleted) {
+        return;
+      }
+
       try {
         const res = await updateTestCaseById(id, patch);
         setEntityDetails(res);
@@ -303,8 +338,30 @@ export const useTestCaseDetailPage = ({
         showErrorToast(error as AxiosError);
       }
     },
-    [setEntityDetails]
+    [setEntityDetails, testCase?.deleted]
   );
+
+  const handleRestore = useCallback(async () => {
+    if (!testCase?.id) {
+      return false;
+    }
+
+    try {
+      const restoredTestCase = await restoreTestCase(testCase.id);
+      setEntityDetails(restoredTestCase);
+      showSuccessToast(
+        t('server.restore-entity-success', {
+          entity: testCase.displayName ?? testCase.name,
+        })
+      );
+
+      return true;
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+
+      return false;
+    }
+  }, [setEntityDetails, t, testCase]);
   const handleOwnerChange = async (owners?: EntityReference[]) => {
     if (testCase) {
       const updatedTestCase = {
@@ -365,7 +422,7 @@ export const useTestCaseDetailPage = ({
         : observabilityRouterClassBase.getTestCaseVersionPath(
             testCaseFQN,
             toString(testCase?.version) ?? '',
-            activeTab
+            urlTab
           ),
       { state: location.state }
     );
@@ -377,12 +434,12 @@ export const useTestCaseDetailPage = ({
         observabilityRouterClassBase.getTestCaseVersionPath(
           testCaseFQN,
           toString(newVersion),
-          activeTab
+          urlTab
         ),
         { state: location.state }
       );
     },
-    [testCaseFQN, activeTab, location.state]
+    [testCaseFQN, urlTab, location.state]
   );
   const fetchCurrentVersion = async (id: string) => {
     try {
@@ -402,12 +459,6 @@ export const useTestCaseDetailPage = ({
         )
       : testCase?.displayName;
   }, [testCase?.changeDescription, testCase?.displayName, isVersionPage]);
-
-  useEffect(() => {
-    if (testCaseFQN) {
-      fetchTestCasePermission();
-    }
-  }, [testCaseFQN]);
 
   useEffect(() => {
     if (hasViewPermission && testCaseFQN) {
@@ -458,6 +509,7 @@ export const useTestCaseDetailPage = ({
     hasEditPermission,
     hasDeletePermission,
     editDisplayNamePermission,
+    canRestorePermission,
     feedCount,
     displayName,
     tabs,
@@ -478,6 +530,7 @@ export const useTestCaseDetailPage = ({
     extraDropdownContent,
     handleOwnerChange,
     handleDisplayNameChange,
+    handleRestore,
     getEntityFeedCount,
     setTestCase,
   };

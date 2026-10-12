@@ -258,6 +258,45 @@ class DescriptionSanitizerTest {
   }
 
   @Test
+  void mathEquationElementIsPreserved() {
+    String input =
+        "<block-math-equation math_equation=\"$x^2 + y^2 = z^2$\" isediting=\"false\"></block-math-equation>";
+    String result = DescriptionSanitizer.sanitize(input);
+
+    assertTrue(result.contains("<block-math-equation"));
+    assertTrue(result.contains("math_equation="));
+    assertTrue(result.contains("isediting=\"false\""));
+  }
+
+  @Test
+  void mathEquationIsEditingRejectsNonBoolean() {
+    String input =
+        "<block-math-equation math_equation=\"x\" isediting=\"onclick=alert(1)\"></block-math-equation>";
+    String result = DescriptionSanitizer.sanitize(input);
+
+    assertTrue(result.contains("<block-math-equation"));
+    assertFalse(result.contains("onclick"));
+  }
+
+  @Test
+  void pureMarkdownBackticksAreNotEncoded() {
+    String input = "**Source:** `deal_option_attrs`";
+    assertEquals(input, DescriptionSanitizer.sanitize(input));
+  }
+
+  @Test
+  void pureMarkdownApostrophesAreNotEncoded() {
+    String input = "It's a test with 'single quotes'";
+    assertEquals(input, DescriptionSanitizer.sanitize(input));
+  }
+
+  @Test
+  void entityLinkWithSurroundingMarkdownIsPreserved() {
+    String input = "See `table` via <#E::table::db.schema.t1>";
+    assertEquals(input, DescriptionSanitizer.sanitize(input));
+  }
+
+  @Test
   void entityMentionAttributesOnAnchorArePreservedForMention() {
     String input =
         "<a data-type=\"mention\" data-id=\"u1\" data-label=\"admin\""

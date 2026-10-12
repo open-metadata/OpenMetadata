@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Skeleton } from 'antd';
+import { SkeletonParagraph } from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
@@ -112,7 +113,7 @@ export const ColumnSummaryList = ({
   }, [loading, currentPage, handleLoadMore, t]);
 
   if (loading && currentPage === 1) {
-    return <Skeleton active paragraph={{ rows: 1 }} />;
+    return <SkeletonParagraph rows={1} />;
   }
 
   return (

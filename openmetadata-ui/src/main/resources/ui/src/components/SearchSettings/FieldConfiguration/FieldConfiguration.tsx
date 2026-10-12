@@ -12,15 +12,13 @@
  */
 import Icon from '@ant-design/icons';
 import {
-  Badge,
-  Button,
-  Collapse,
   Divider,
-  Select,
-  Slider,
-  Switch,
+  Toggle,
+  Tooltip,
+  TooltipTrigger,
   Typography,
-} from 'antd';
+} from '@openmetadata/ui-core-components';
+import { Badge, Button, Collapse, Select, Slider } from 'antd';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as Delete } from '../../../assets/svg/delete-colored.svg';
@@ -49,9 +47,14 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
     field.matchType || MatchType.Standard
   );
 
-  const fieldDescription = entityFields.find(
+  const entityFieldConfig = entityFields.find(
     (entityField) => entityField.name === field.fieldName
-  )?.description;
+  );
+  const fieldDescription = entityFieldConfig?.description;
+  // Only analyzed text fields can be highlighted. The server derives this from the index mapping
+  // and rejects a save that targets a flattened or non-indexed path, so offering the toggle here
+  // would only produce a 400 the admin cannot act on.
+  const isHighlightAllowed = entityFieldConfig?.highlight ?? false;
 
   useEffect(() => {
     // If initialOpen is true, open this panel automatically
@@ -108,9 +111,9 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
             }}>
             <div className="d-flex items-center justify-between">
               <div className="d-flex items-center gap-2">
-                <Typography.Text data-testid="field-name">
+                <Typography data-testid="field-name">
                   {field.fieldName}
-                </Typography.Text>
+                </Typography>
                 {field.fieldName.startsWith('extension.') && (
                   <Badge
                     className="custom-property-badge"
@@ -150,29 +153,44 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
         <div className="m-y-sm" style={{ padding: '10px' }}>
           {/* Highlight Fields Section */}
           <div className="m-y-md m-b-lg d-flex items-center justify-between">
-            <Typography.Text>
-              {t('label.highlight-field-plural')}
-            </Typography.Text>
-            <Switch
-              checked={
-                searchSettings?.highlightFields?.includes(field.fieldName) ??
-                false
-              }
-              className="m-l-xlg"
-              data-testid="highlight-field-switch"
-              onChange={() => onHighlightFieldsChange(field.fieldName)}
-            />
+            <Typography>{t('label.highlight-field-plural')}</Typography>
+            {isHighlightAllowed ? (
+              <Toggle
+                className="m-l-xlg"
+                data-testid="highlight-field-switch"
+                isSelected={
+                  searchSettings?.highlightFields?.includes(field.fieldName) ??
+                  false
+                }
+                size="sm"
+                onChange={() => onHighlightFieldsChange(field.fieldName)}
+              />
+            ) : (
+              <Tooltip
+                placement="top"
+                title={t('message.field-cannot-be-highlighted')}>
+                <TooltipTrigger>
+                  <Toggle
+                    isDisabled
+                    className="m-l-xlg"
+                    data-testid="highlight-field-switch"
+                    isSelected={false}
+                    size="sm"
+                  />
+                </TooltipTrigger>
+              </Tooltip>
+            )}
           </div>
-          <Divider />
+          <Divider className="tw:my-6" />
 
           {/* Weight Section */}
           <div className="m-y-md m-b-lg d-flex items-center justify-between">
-            <Typography.Text>{t('label.weight')}</Typography.Text>
-            <Typography.Text
+            <Typography>{t('label.weight')}</Typography>
+            <Typography
               className="font-semibold field-weightage-text"
               data-testid="field-weight-value">
               {fieldWeight}
-            </Typography.Text>
+            </Typography>
           </div>
           <div data-testid="field-weight-slider">
             <Slider
@@ -184,11 +202,11 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
               onChange={handleWeightChange}
             />
           </div>
-          <Divider />
+          <Divider className="tw:my-6" />
 
           {/* Match Type Section */}
           <div className="m-y-md m-b-lg d-flex items-center justify-between">
-            <Typography.Text>{t('label.match-type')}</Typography.Text>
+            <Typography>{t('label.match-type')}</Typography>
             <Select
               className="m-l-xlg"
               data-testid="match-type-select"

@@ -30,10 +30,14 @@ const ActivityPanelBody: FC<ActivityPanelBodyProps> = ({
   activity,
   className,
 }) => {
-  // Activities are read-only change-event notifications — no comment editor.
   return (
     <div className={classNames('activity-panel-body', className)}>
-      <ActivityFeedCardNew isForFeedTab isOpenInDrawer activity={activity} />
+      <ActivityFeedCardNew
+        isForFeedTab
+        isOpenInDrawer
+        showThread
+        activity={activity}
+      />
     </div>
   );
 };

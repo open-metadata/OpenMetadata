@@ -23,13 +23,13 @@ import org.openmetadata.service.apps.bundles.insights.workflows.costAnalysis.Cos
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityProfileRepository;
-import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.workflows.interfaces.Processor;
 
 @Slf4j
 public class DatabaseServiceTablesProcessor
     implements Processor<
-        List<CostAnalysisWorkflow.CostAnalysisTableData>, ResultList<? extends EntityInterface>> {
+        List<CostAnalysisWorkflow.CostAnalysisTableData>,
+        ResultList<? extends EntityInterface<?>>> {
   private final StepStats stats = new StepStats();
 
   public DatabaseServiceTablesProcessor(int total) {
@@ -38,11 +38,11 @@ public class DatabaseServiceTablesProcessor
 
   @Override
   public List<CostAnalysisWorkflow.CostAnalysisTableData> process(
-      ResultList<? extends EntityInterface> input, Map<String, Object> contextData)
+      ResultList<? extends EntityInterface<?>> input, Map<String, Object> contextData)
       throws SearchIndexException {
     List<CostAnalysisWorkflow.CostAnalysisTableData> costAnalysisTableDataList = new ArrayList<>();
     try {
-      for (EntityInterface entity : input.getData()) {
+      for (EntityInterface<?> entity : input.getData()) {
         Table table = (Table) entity;
         Optional<LifeCycle> oTableLifeCycle = Optional.empty();
         Optional<Double> oSize = Optional.empty();
@@ -64,7 +64,8 @@ public class DatabaseServiceTablesProcessor
             daoCollection
                 .profilerDataTimeSeriesDao()
                 .getLatestExtension(
-                    table.getFullyQualifiedName(), TableRepository.TABLE_PROFILE_EXTENSION);
+                    table.getFullyQualifiedName(),
+                    CollectionDAO.ProfilerDataTimeSeriesDAO.TABLE_PROFILE_EXTENSION);
 
         EntityProfile entityProfile =
             profileJson != null ? JsonUtils.readValue(profileJson, EntityProfile.class) : null;

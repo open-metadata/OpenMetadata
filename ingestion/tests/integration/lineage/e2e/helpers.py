@@ -1,6 +1,3 @@
-from typing import Optional
-
-
 def get_source_tables(lineage: dict) -> set:
     table_id = lineage["entity"]["id"]
 
@@ -35,7 +32,7 @@ def get_target_tables(lineage: dict) -> set:
     return target_tables
 
 
-def assert_lineage_sources(lineage: dict, expected_source_tables: Optional[set[str]]) -> None:  # noqa: UP045
+def assert_lineage_sources(lineage: dict, expected_source_tables: set[str] | None) -> None:
     if expected_source_tables is None:
         return
 
@@ -47,7 +44,7 @@ def assert_lineage_sources(lineage: dict, expected_source_tables: Optional[set[s
     )
 
 
-def assert_lineage_targets(lineage: dict, expected_target_tables: Optional[set[str]]) -> None:  # noqa: UP045
+def assert_lineage_targets(lineage: dict, expected_target_tables: set[str] | None) -> None:
     if expected_target_tables is None:
         return
 
@@ -59,7 +56,7 @@ def assert_lineage_targets(lineage: dict, expected_target_tables: Optional[set[s
     )
 
 
-def assert_column_lineage(lineage: dict, expected_column_lineage: Optional[list[tuple[str, str]]]) -> None:  # noqa: UP045
+def assert_column_lineage(lineage: dict, expected_column_lineage: list[tuple[str, str]] | None) -> None:
     if expected_column_lineage is None:
         return
 
@@ -76,9 +73,9 @@ def assert_column_lineage(lineage: dict, expected_column_lineage: Optional[list[
 
 def assert_lineage(
     lineage: dict,
-    expected_source_tables: Optional[set[str]],  # noqa: UP045
-    expected_target_tables: Optional[set[str]],  # noqa: UP045
-    expected_column_lineage: Optional[list[tuple[str, str]]],  # noqa: UP045
+    expected_source_tables: set[str] | None,
+    expected_target_tables: set[str] | None,
+    expected_column_lineage: list[tuple[str, str]] | None,
 ) -> None:
     # check if lineage is present
     assert lineage is not None, "Lineage object is None"

@@ -17,11 +17,27 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
+  within,
 } from '@testing-library/react';
 import React, { act } from 'react';
+import { Link } from 'react-router-dom';
+import { TEST_CASE_DELETION_MODE } from '../../../../constants/DataQuality.constants';
+import {
+  Access,
+  ResourcePermission,
+} from '../../../../generated/entity/policies/accessControl/resourcePermission';
+import { Operation } from '../../../../generated/entity/policies/policy';
 import { TestCase, TestCaseStatus } from '../../../../generated/tests/testCase';
 import { MOCK_PERMISSIONS } from '../../../../mocks/Glossary.mock';
 import { MOCK_TEST_CASE } from '../../../../mocks/TestSuite.mock';
+import {
+  removeTestCasesFromTestSuiteBulk,
+  restoreTestCase,
+} from '../../../../rest/testAPI';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
+import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import TestCaseIncidentManagerStatus from '../../../DataQuality/IncidentManager/TestCaseStatus/TestCaseIncidentManagerStatus.component';
 import { DataQualityTabProps } from '../ProfilerDashboard/profilerDashboard.interface';
 import DataQualityTab from './DataQualityTab';
@@ -40,6 +56,14 @@ const SortContext = React.createContext<{
   }) => void;
 }>({});
 
+type MockSelection = 'all' | Set<string>;
+
+const SelectionContext = React.createContext<{
+  isEnabled: boolean;
+  selectedKeys?: MockSelection;
+  onSelectionChange?: (keys: MockSelection) => void;
+}>({ isEnabled: false });
+
 jest.mock('@openmetadata/ui-core-components', () => {
   const DropdownRoot = ({
     children,
@@ -48,11 +72,18 @@ jest.mock('@openmetadata/ui-core-components', () => {
   }: React.PropsWithChildren<{
     isOpen?: boolean;
     onOpenChange?: (isOpen: boolean) => void;
-  }>) => (
-    <DropdownContext.Provider value={{ isOpen, onOpenChange }}>
-      {children}
-    </DropdownContext.Provider>
-  );
+  }>) => {
+    const value = React.useMemo(
+      () => ({ isOpen, onOpenChange }),
+      [isOpen, onOpenChange]
+    );
+
+    return (
+      <DropdownContext.Provider value={value}>
+        {children}
+      </DropdownContext.Provider>
+    );
+  };
 
   const DropdownPopover = ({ children }: React.PropsWithChildren) => {
     const { isOpen } = React.useContext(DropdownContext);
@@ -86,10 +117,14 @@ jest.mock('@openmetadata/ui-core-components', () => {
 
   const MockButton = ({
     children,
+    className,
+    href,
     onClick,
     'data-testid': testId,
     isDisabled,
   }: React.PropsWithChildren<{
+    className?: string;
+    href?: string;
     onClick?: React.MouseEventHandler;
     'data-testid'?: string;
     isDisabled?: boolean;
@@ -101,8 +136,24 @@ jest.mock('@openmetadata/ui-core-components', () => {
       onClick?.(e);
     };
 
+    if (href) {
+      return (
+        <a
+          className={className}
+          data-testid={testId}
+          href={href}
+          onClick={handleClick}>
+          {children}
+        </a>
+      );
+    }
+
     return (
-      <button data-testid={testId} disabled={isDisabled} onClick={handleClick}>
+      <button
+        className={className}
+        data-testid={testId}
+        disabled={isDisabled}
+        onClick={handleClick}>
         {children}
       </button>
     );
@@ -140,6 +191,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
     'data-testid': testId,
     onSortChange,
     sortDescriptor,
+    selectionMode,
+    selectedKeys,
+    onSelectionChange,
   }: React.PropsWithChildren<{
     'data-testid'?: string;
     onSortChange?: (desc: {
@@ -147,25 +201,61 @@ jest.mock('@openmetadata/ui-core-components', () => {
       direction?: 'ascending' | 'descending';
     }) => void;
     sortDescriptor?: { column?: string; direction?: string };
+    selectionMode?: string;
+    selectedKeys?: MockSelection;
+    onSelectionChange?: (keys: MockSelection) => void;
     [key: string]: unknown;
-  }>) => (
-    <SortContext.Provider value={{ sortDescriptor, onSortChange }}>
-      <table data-testid={testId}>{children}</table>
-    </SortContext.Provider>
-  );
+  }>) => {
+    const value = React.useMemo(
+      () => ({ sortDescriptor, onSortChange }),
+      [sortDescriptor, onSortChange]
+    );
+    const selection = React.useMemo(
+      () => ({
+        isEnabled: selectionMode === 'multiple',
+        selectedKeys,
+        onSelectionChange,
+      }),
+      [selectionMode, selectedKeys, onSelectionChange]
+    );
 
-  MockTable.Header = ({
+    return (
+      <SelectionContext.Provider value={selection}>
+        <SortContext.Provider value={value}>
+          <table data-testid={testId}>{children}</table>
+        </SortContext.Provider>
+      </SelectionContext.Provider>
+    );
+  };
+
+  const MockTableHeader = ({
     columns,
     children,
   }: {
     columns: unknown[];
     children: (col: unknown) => React.ReactNode;
-  }) => (
-    <thead>
-      <tr>{(columns || []).map((col) => children(col))}</tr>
-    </thead>
-  );
+  }) => {
+    const { isEnabled, onSelectionChange } = React.useContext(SelectionContext);
 
+    return (
+      <thead>
+        <tr>
+          {isEnabled && (
+            <th>
+              <input
+                aria-label="select-all"
+                type="checkbox"
+                onChange={() => onSelectionChange?.('all')}
+              />
+            </th>
+          )}
+          {(columns || []).map((col) => children(col))}
+        </tr>
+      </thead>
+    );
+  };
+
+  MockTable.Header = MockTableHeader;
   MockTable.Head = MockTableHead;
 
   MockTable.Body = ({
@@ -185,10 +275,41 @@ jest.mock('@openmetadata/ui-core-components', () => {
     </tbody>
   );
 
-  MockTable.Row = ({
+  const MockTableRow = ({
     children,
-    id,
-  }: React.PropsWithChildren<{ id?: string }>) => <tr id={id}>{children}</tr>;
+    id = '',
+  }: React.PropsWithChildren<{ id?: string }>) => {
+    const { isEnabled, selectedKeys, onSelectionChange } =
+      React.useContext(SelectionContext);
+    const isSelected = selectedKeys === 'all' || Boolean(selectedKeys?.has(id));
+    const toggle = () => {
+      const next = new Set(selectedKeys === 'all' ? [] : selectedKeys);
+      if (isSelected) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      onSelectionChange?.(next);
+    };
+
+    return (
+      <tr id={id}>
+        {isEnabled && (
+          <td>
+            <input
+              aria-label={`select-${id}`}
+              checked={isSelected}
+              type="checkbox"
+              onChange={toggle}
+            />
+          </td>
+        )}
+        {children}
+      </tr>
+    );
+  };
+
+  MockTable.Row = MockTableRow;
 
   MockTable.Cell = ({
     children,
@@ -244,9 +365,24 @@ jest.mock('@openmetadata/ui-core-components', () => {
       children,
       title,
     }: React.PropsWithChildren<{ title?: string }>) => (
-      <div title={title}>{children}</div>
+      <div data-testid="tooltip" title={String(title)}>
+        {children}
+      </div>
     ),
-    TooltipTrigger: ({ children }: React.PropsWithChildren) => <>{children}</>,
+    TooltipTrigger: ({
+      children,
+      className,
+      onPress,
+      'data-testid': testId,
+    }: React.PropsWithChildren<{
+      className?: string;
+      onPress?: () => void;
+      'data-testid'?: string;
+    }>) => (
+      <button className={className} data-testid={testId} onClick={onPress}>
+        {children}
+      </button>
+    ),
     Typography: ({
       children,
       className,
@@ -267,6 +403,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
 
 jest.mock('../../../../rest/testAPI', () => ({
   removeTestCaseFromTestSuite: jest.fn().mockResolvedValue({}),
+  removeTestCasesFromTestSuiteBulk: jest.fn().mockResolvedValue({}),
+  restoreTestCase: jest.fn().mockResolvedValue({}),
+}));
+
+jest.mock('../../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
 }));
 
 jest.mock('../../../common/NextPrevious/NextPrevious', () =>
@@ -314,10 +457,30 @@ jest.mock('../../../common/DateTimeDisplay/DateTimeDisplay', () =>
   jest.fn().mockImplementation(() => <span data-testid="date-time-display" />)
 );
 
+// The list API is now the only source of row permissions, so the default props
+// carry the same grants the removed per-row fetch used to return.
+const mockInlinePermissions = (MOCK_TEST_CASE as TestCase[]).reduce(
+  (acc, testCase) => {
+    acc[testCase.id ?? ''] = {
+      resource: 'testCase',
+      permissions: Object.entries(MOCK_PERMISSIONS).map(
+        ([operation, allowed]) => ({
+          operation: operation as Operation,
+          access: allowed ? Access.Allow : Access.Deny,
+        })
+      ),
+    };
+
+    return acc;
+  },
+  {} as Record<string, ResourcePermission>
+);
+
 const mockProps: DataQualityTabProps = {
   testCases: MOCK_TEST_CASE,
   onTestUpdate: jest.fn(),
   fetchTestCases: jest.fn(),
+  entityPermissions: mockInlinePermissions,
 };
 const mockPermissionsData = MOCK_PERMISSIONS;
 const mockNavigateDataQualityTab = jest.fn();
@@ -330,8 +493,8 @@ jest.mock('react-router-dom', () => {
     ...actual,
     Link: jest
       .fn()
-      .mockImplementation(({ children, ...rest }) => (
-        <span {...rest}>{children}</span>
+      .mockImplementation(({ children, to: _to, state: _state, ...rest }) => (
+        <a {...rest}>{children}</a>
       )),
     useNavigate: () => mockNavigateDataQualityTab,
   };
@@ -343,11 +506,13 @@ jest.mock('../../../../hooks/authHooks', () => ({
   }),
 }));
 
+const mockGetEntityPermissionByFqn = jest
+  .fn()
+  .mockImplementation(() => mockPermissionsData);
+
 jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: () => ({
-    getEntityPermissionByFqn: jest
-      .fn()
-      .mockImplementation(() => mockPermissionsData),
+    getEntityPermissionByFqn: mockGetEntityPermissionByFqn,
   }),
 }));
 
@@ -369,6 +534,28 @@ jest.mock('../../../common/DeleteModal/DeleteModal', () =>
   )
 );
 
+jest.mock('../../../common/DeleteWidget/DeleteEntityModal', () =>
+  jest
+    .fn()
+    .mockImplementation(
+      ({ visible, onCancel, afterDeleteAction, allowSoftDelete }) =>
+        visible ? (
+          <div>
+            <p>DeleteEntityModal</p>
+            <span data-testid="allow-soft-delete">
+              {String(Boolean(allowSoftDelete))}
+            </span>
+            <button
+              data-testid="soft-delete-confirm"
+              onClick={afterDeleteAction}>
+              delete
+            </button>
+            <button onClick={onCancel}>cancel</button>
+          </div>
+        ) : null
+    )
+);
+
 jest.mock(
   '../../../DataQuality/AddDataQualityTest/components/TestCaseFormDrawer',
   () =>
@@ -384,22 +571,26 @@ jest.mock(
 );
 
 jest.mock('../../../Modals/ConfirmationModal/ConfirmationModal', () =>
-  jest.fn().mockImplementation(({ visible, onCancel, onConfirm, isLoading }) =>
-    visible ? (
-      <div>
-        <p>ConfirmationModal</p>
-        <button onClick={onCancel}>cancel</button>
-        <button onClick={onConfirm}>
-          {isLoading ? (
-            <span data-testid="submit-btn-loading">Loading</span>
-          ) : (
-            ''
-          )}
-          submit
-        </button>
-      </div>
-    ) : null
-  )
+  jest
+    .fn()
+    .mockImplementation(
+      ({ visible, onCancel, onConfirm, isLoading, bodyText }) =>
+        visible ? (
+          <div>
+            <p>ConfirmationModal</p>
+            <p data-testid="confirmation-body">{bodyText}</p>
+            <button onClick={onCancel}>cancel</button>
+            <button onClick={onConfirm}>
+              {isLoading ? (
+                <span data-testid="submit-btn-loading">Loading</span>
+              ) : (
+                ''
+              )}
+              submit
+            </button>
+          </div>
+        ) : null
+    )
 );
 
 describe('DataQualityTab test', () => {
@@ -415,6 +606,58 @@ describe('DataQualityTab test', () => {
 
     expect(tableRows).toHaveLength(6);
     expect(await screen.findByTestId('test-case-table')).toBeVisible();
+  });
+
+  it('should consume inline entityPermissions and skip per-row permission calls', async () => {
+    const entityPermissions = (mockProps.testCases as TestCase[]).reduce(
+      (acc, testCase) => {
+        acc[testCase.id ?? ''] = {
+          resource: 'testCase',
+          permissions: [
+            { operation: Operation.EditAll, access: Access.Allow },
+            { operation: Operation.Delete, access: Access.Allow },
+          ],
+        };
+
+        return acc;
+      },
+      {} as Record<string, ResourcePermission>
+    );
+
+    await act(async () => {
+      render(
+        <DataQualityTab {...mockProps} entityPermissions={entityPermissions} />
+      );
+    });
+
+    expect(await screen.findByTestId('test-case-table')).toBeVisible();
+    // The list API already returned permissions, so the N per-test-case
+    // permission calls must not fire.
+    expect(mockGetEntityPermissionByFqn).not.toHaveBeenCalled();
+  });
+
+  it('should never fetch per-row permissions, whatever the list returned', async () => {
+    const testCases = mockProps.testCases as TestCase[];
+    const [covered] = testCases;
+    const partialMap = {
+      [covered.id ?? '']: {
+        resource: 'testCase',
+        permissions: [{ operation: Operation.EditAll, access: Access.Allow }],
+      },
+    } as Record<string, ResourcePermission>;
+
+    // No map, an empty map, and a partial map are all answered from the list
+    // response alone -- the permission endpoint is never called again.
+    for (const entityPermissions of [undefined, {}, partialMap]) {
+      const { unmount } = render(
+        <DataQualityTab {...mockProps} entityPermissions={entityPermissions} />
+      );
+
+      expect(await screen.findByTestId('test-case-table')).toBeVisible();
+      expect(mockGetEntityPermissionByFqn).not.toHaveBeenCalled();
+
+      unmount();
+    }
   });
 
   it('Table header should be visible', async () => {
@@ -539,6 +782,48 @@ describe('DataQualityTab test', () => {
 
     expect(editButton).toBeInTheDocument();
     expect(deleteButton).toBeInTheDocument();
+  });
+
+  it('Should show a styled Tooltip with the full entity name for the Name cell, not a native title attribute', async () => {
+    const firstRowData = MOCK_TEST_CASE[0];
+    await act(async () => {
+      render(<DataQualityTab {...mockProps} />);
+    });
+
+    const nameCellWrapper = await screen.findByTestId(firstRowData.name);
+    const trigger = within(nameCellWrapper).getByText(
+      getEntityName(firstRowData)
+    );
+
+    // The trigger is a real Link, wrapped in TooltipTrigger's <button> so
+    // hover/focus opens the tooltip - this deliberately nests <a> inside
+    // <button> (known, tracked separately on the shared component library
+    // side, not fixed here).
+    expect(trigger.tagName).toBe('A');
+    expect(trigger.parentElement?.tagName).toBe('BUTTON');
+    expect(trigger).not.toHaveAttribute('title');
+
+    const tooltip = within(nameCellWrapper).getByTestId('tooltip');
+
+    expect(tooltip).toHaveAttribute('title', getEntityName(firstRowData));
+  });
+
+  it('Should link the Name cell trigger to the test case detail page', async () => {
+    const firstRowData = MOCK_TEST_CASE[0];
+    await act(async () => {
+      render(<DataQualityTab {...mockProps} />);
+    });
+
+    const nameLinkCall = (Link as unknown as jest.Mock).mock.calls.find(
+      ([props]) =>
+        props.to?.pathname ===
+        observabilityRouterClassBase.getTestCaseDetailPagePath(
+          firstRowData.fullyQualifiedName ?? ''
+        )
+    );
+
+    expect(nameLinkCall).toBeDefined();
+    expect(nameLinkCall?.[0].state).toEqual({ breadcrumbData: undefined });
   });
 
   it('Should keep action dropdowns aligned when dimensions are present', async () => {
@@ -1208,6 +1493,205 @@ describe('DataQualityTab test', () => {
     expect(queuedReason).toHaveTextContent('Queued: Waiting for execution');
   });
 
+  describe('bulk remove from a bundle suite', () => {
+    const testSuite = { id: 'testSuiteId', name: 'testSuiteName' };
+    const [firstCase, secondCase] = MOCK_TEST_CASE as TestCase[];
+
+    const renderBundleSuiteTab = (
+      props: Partial<DataQualityTabProps> = {},
+      isAllowed = true
+    ) =>
+      render(
+        <DataQualityTab
+          {...mockProps}
+          removeFromTestSuite={{ testSuite, isAllowed }}
+          {...props}
+        />
+      );
+
+    const selectRows = (...testCases: TestCase[]) =>
+      testCases.forEach((testCase) =>
+        fireEvent.click(screen.getByLabelText(`select-${testCase.id}`))
+      );
+
+    const confirmBulkRemove = async () => {
+      fireEvent.click(screen.getByTestId('bulk-remove-test-cases'));
+      await act(async () => {
+        fireEvent.click(screen.getByText('submit'));
+      });
+    };
+
+    it('renders selection checkboxes only when removal is allowed', async () => {
+      const { unmount } = renderBundleSuiteTab();
+
+      expect(screen.getByLabelText('select-all')).toBeInTheDocument();
+      expect(
+        screen.getByLabelText(`select-${firstCase.id}`)
+      ).toBeInTheDocument();
+
+      unmount();
+      renderBundleSuiteTab({}, false);
+
+      expect(screen.queryByLabelText('select-all')).not.toBeInTheDocument();
+      expect(screen.queryAllByRole('checkbox')).toHaveLength(0);
+    });
+
+    it('shows Remove but not Add to Bundle Suite on the bundle suite', () => {
+      renderBundleSuiteTab();
+      selectRows(firstCase);
+
+      expect(screen.getByTestId('bulk-remove-test-cases')).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('add-selected-to-bundle-suite')
+      ).not.toBeInTheDocument();
+    });
+
+    it('keeps Add to Bundle Suite and omits Remove on the test case list', () => {
+      render(<DataQualityTab {...mockProps} enableBulkActions />);
+      selectRows(firstCase);
+
+      expect(
+        screen.getByTestId('add-selected-to-bundle-suite')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('bulk-remove-test-cases')
+      ).not.toBeInTheDocument();
+    });
+
+    it('removes the selected test cases in a single request', async () => {
+      const afterDeleteAction = jest.fn();
+      renderBundleSuiteTab({ afterDeleteAction });
+      selectRows(firstCase, secondCase);
+      fireEvent.click(screen.getByTestId('bulk-remove-test-cases'));
+
+      expect(screen.getByTestId('confirmation-body')).toHaveTextContent(
+        'message.are-you-sure-you-want-to-remove-count-test-cases-from-parent'
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('submit'));
+      });
+
+      expect(removeTestCasesFromTestSuiteBulk).toHaveBeenCalledTimes(1);
+      expect(removeTestCasesFromTestSuiteBulk).toHaveBeenCalledWith(
+        'testSuiteId',
+        [firstCase.id, secondCase.id]
+      );
+      expect(showSuccessToast).toHaveBeenCalledWith(
+        'message.test-cases-removed-from-test-suite'
+      );
+      expect(afterDeleteAction).toHaveBeenCalledTimes(1);
+      expect(
+        screen.queryByTestId('bulk-remove-test-cases')
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText('ConfirmationModal')).not.toBeInTheDocument();
+    });
+
+    it('sends exactly the loaded page when every row is selected', async () => {
+      renderBundleSuiteTab();
+      fireEvent.click(screen.getByLabelText('select-all'));
+
+      await confirmBulkRemove();
+
+      expect(removeTestCasesFromTestSuiteBulk).toHaveBeenCalledWith(
+        'testSuiteId',
+        expect.arrayContaining(
+          (MOCK_TEST_CASE as TestCase[]).map((testCase) => testCase.id)
+        )
+      );
+      expect(
+        (removeTestCasesFromTestSuiteBulk as jest.Mock).mock.calls[0][1]
+      ).toHaveLength(MOCK_TEST_CASE.length);
+    });
+
+    it('does not transfer select-all to rows loaded on another page', () => {
+      const { rerender } = renderBundleSuiteTab({
+        testCases: [firstCase, secondCase],
+      });
+      fireEvent.click(screen.getByLabelText('select-all'));
+
+      const nextPageCase = (MOCK_TEST_CASE as TestCase[])[2];
+      rerender(
+        <DataQualityTab
+          {...mockProps}
+          removeFromTestSuite={{ testSuite, isAllowed: true }}
+          testCases={[nextPageCase]}
+        />
+      );
+
+      expect(
+        screen.getByLabelText(`select-${nextPageCase.id}`)
+      ).not.toBeChecked();
+      expect(
+        screen.queryByTestId('bulk-remove-test-cases')
+      ).not.toBeInTheDocument();
+    });
+
+    it('never sends a row that has no id', async () => {
+      const { id: _id, ...caseWithoutId } = firstCase;
+      renderBundleSuiteTab({
+        testCases: [caseWithoutId as TestCase, secondCase],
+      });
+      fireEvent.click(screen.getByLabelText('select-all'));
+
+      await confirmBulkRemove();
+
+      expect(removeTestCasesFromTestSuiteBulk).toHaveBeenCalledWith(
+        'testSuiteId',
+        [secondCase.id]
+      );
+    });
+
+    it('sends no request when the selection holds no id', async () => {
+      const { id: _id, ...caseWithoutId } = firstCase;
+      renderBundleSuiteTab({ testCases: [caseWithoutId as TestCase] });
+      fireEvent.click(screen.getByLabelText('select-all'));
+
+      await confirmBulkRemove();
+
+      expect(removeTestCasesFromTestSuiteBulk).not.toHaveBeenCalled();
+      expect(screen.queryByText('ConfirmationModal')).not.toBeInTheDocument();
+    });
+
+    it('keeps the selection when cancelled', () => {
+      renderBundleSuiteTab();
+      selectRows(firstCase);
+      fireEvent.click(screen.getByTestId('bulk-remove-test-cases'));
+      fireEvent.click(screen.getByText('cancel'));
+
+      expect(removeTestCasesFromTestSuiteBulk).not.toHaveBeenCalled();
+      expect(screen.getByLabelText(`select-${firstCase.id}`)).toBeChecked();
+    });
+
+    it('keeps the selection and reports the error when removal fails', async () => {
+      const error = new Error('boom');
+      (removeTestCasesFromTestSuiteBulk as jest.Mock).mockRejectedValueOnce(
+        error
+      );
+      const afterDeleteAction = jest.fn();
+      renderBundleSuiteTab({ afterDeleteAction });
+      selectRows(firstCase);
+
+      await confirmBulkRemove();
+
+      expect(showErrorToast).toHaveBeenCalledWith(error);
+      expect(afterDeleteAction).not.toHaveBeenCalled();
+      expect(screen.getByLabelText(`select-${firstCase.id}`)).toBeChecked();
+      expect(screen.getByTestId('bulk-remove-test-cases')).toBeInTheDocument();
+    });
+
+    it('clears the selection from the toolbar', () => {
+      renderBundleSuiteTab();
+      selectRows(firstCase);
+      fireEvent.click(screen.getByTestId('bulk-clear-test-case-selection'));
+
+      expect(
+        screen.queryByTestId('bulk-remove-test-cases')
+      ).not.toBeInTheDocument();
+      expect(screen.getByLabelText(`select-${firstCase.id}`)).not.toBeChecked();
+    });
+  });
+
   describe('BundleSuiteFormDrawer integration', () => {
     it('should render BundleSuiteFormDrawer unconditionally with open=false by default', async () => {
       await act(async () => {
@@ -1285,6 +1769,210 @@ describe('DataQualityTab test', () => {
       expect(
         screen.queryByTestId('incident-manager-status')
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe('soft delete and restore', () => {
+    const deletedTestCase = {
+      ...MOCK_TEST_CASE[0],
+      name: 'deleted_test_case',
+      deleted: true,
+    };
+
+    it('should use soft deletion only when requested by the caller', async () => {
+      const firstRowData = MOCK_TEST_CASE[0];
+      render(
+        <DataQualityTab
+          {...mockProps}
+          deletionMode={TEST_CASE_DELETION_MODE.SOFT}
+          testCases={[firstRowData]}
+        />
+      );
+
+      fireEvent.click(
+        await screen.findByTestId(`action-dropdown-${firstRowData.name}`)
+      );
+      fireEvent.click(await screen.findByTestId(`delete-${firstRowData.name}`));
+
+      expect(await screen.findByText('DeleteEntityModal')).toBeInTheDocument();
+      expect(screen.getByTestId('allow-soft-delete')).toHaveTextContent('true');
+      expect(screen.queryByText('DeleteModal')).not.toBeInTheDocument();
+    });
+
+    it('should show restore as the only action for a deleted test case', async () => {
+      render(
+        <DataQualityTab
+          {...mockProps}
+          deletionMode={TEST_CASE_DELETION_MODE.SOFT}
+          testCases={[deletedTestCase]}
+        />
+      );
+
+      fireEvent.click(
+        await screen.findByTestId(`action-dropdown-${deletedTestCase.name}`)
+      );
+
+      expect(
+        await screen.findByTestId(`restore-${deletedTestCase.name}`)
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId(`edit-${deletedTestCase.name}`)
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId(`delete-${deletedTestCase.name}`)
+      ).not.toBeInTheDocument();
+    });
+
+    it('should restore a deleted test case and refresh the current view', async () => {
+      const afterDeleteAction = jest.fn();
+      render(
+        <DataQualityTab
+          {...mockProps}
+          afterDeleteAction={afterDeleteAction}
+          deletionMode={TEST_CASE_DELETION_MODE.SOFT}
+          testCases={[deletedTestCase]}
+        />
+      );
+
+      fireEvent.click(
+        await screen.findByTestId(`action-dropdown-${deletedTestCase.name}`)
+      );
+      fireEvent.click(
+        await screen.findByTestId(`restore-${deletedTestCase.name}`)
+      );
+      fireEvent.click(await screen.findByText('submit'));
+
+      await waitFor(() =>
+        expect(restoreTestCase).toHaveBeenCalledWith(deletedTestCase.id)
+      );
+
+      expect(afterDeleteAction).toHaveBeenCalled();
+    });
+
+    it('should preserve the newer restore loading state when an older restore finishes', async () => {
+      let resolveFirstRestore: (() => void) | undefined;
+      let resolveSecondRestore: (() => void) | undefined;
+      const afterDeleteAction = jest.fn();
+      const secondDeletedTestCase = {
+        ...deletedTestCase,
+        id: 'second-deleted-test-case-id',
+        name: 'second_deleted_test_case',
+      };
+      (restoreTestCase as jest.Mock)
+        .mockImplementationOnce(
+          () =>
+            new Promise<void>((resolve) => {
+              resolveFirstRestore = () => resolve();
+            })
+        )
+        .mockImplementationOnce(
+          () =>
+            new Promise<void>((resolve) => {
+              resolveSecondRestore = () => resolve();
+            })
+        );
+      render(
+        <DataQualityTab
+          {...mockProps}
+          afterDeleteAction={afterDeleteAction}
+          deletionMode={TEST_CASE_DELETION_MODE.SOFT}
+          testCases={[deletedTestCase, secondDeletedTestCase]}
+        />
+      );
+
+      fireEvent.click(
+        await screen.findByTestId(`action-dropdown-${deletedTestCase.name}`)
+      );
+      fireEvent.click(
+        await screen.findByTestId(`restore-${deletedTestCase.name}`)
+      );
+      fireEvent.click(await screen.findByText('submit'));
+
+      await waitFor(() =>
+        expect(restoreTestCase).toHaveBeenCalledWith(deletedTestCase.id)
+      );
+      fireEvent.click(await screen.findByText('cancel'));
+      fireEvent.click(
+        await screen.findByTestId(
+          `action-dropdown-${secondDeletedTestCase.name}`
+        )
+      );
+      fireEvent.click(
+        await screen.findByTestId(`restore-${secondDeletedTestCase.name}`)
+      );
+      fireEvent.click(await screen.findByText('submit'));
+
+      await waitFor(() =>
+        expect(restoreTestCase).toHaveBeenLastCalledWith(
+          secondDeletedTestCase.id
+        )
+      );
+
+      expect(screen.getByText('ConfirmationModal')).toBeInTheDocument();
+      expect(screen.getByTestId('submit-btn-loading')).toBeInTheDocument();
+
+      await act(async () => resolveFirstRestore?.());
+
+      await waitFor(() => expect(afterDeleteAction).toHaveBeenCalledTimes(1));
+
+      expect(screen.getByText('ConfirmationModal')).toBeInTheDocument();
+      expect(screen.getByTestId('submit-btn-loading')).toBeInTheDocument();
+      expect(showSuccessToast).toHaveBeenCalled();
+      expect(showErrorToast).not.toHaveBeenCalled();
+
+      await act(async () => resolveSecondRestore?.());
+
+      await waitFor(() => expect(afterDeleteAction).toHaveBeenCalledTimes(2));
+
+      expect(screen.queryByText('ConfirmationModal')).not.toBeInTheDocument();
+    });
+
+    it('should keep the restore modal open and report restore failures', async () => {
+      const error = new Error('Restore failed');
+      (restoreTestCase as jest.Mock).mockRejectedValueOnce(error);
+      render(
+        <DataQualityTab
+          {...mockProps}
+          deletionMode={TEST_CASE_DELETION_MODE.SOFT}
+          testCases={[deletedTestCase]}
+        />
+      );
+
+      fireEvent.click(
+        await screen.findByTestId(`action-dropdown-${deletedTestCase.name}`)
+      );
+      fireEvent.click(
+        await screen.findByTestId(`restore-${deletedTestCase.name}`)
+      );
+      fireEvent.click(await screen.findByText('submit'));
+
+      await waitFor(() => expect(showErrorToast).toHaveBeenCalledWith(error));
+
+      expect(screen.getByText('ConfirmationModal')).toBeInTheDocument();
+    });
+
+    it('should render deleted incident status as read-only', async () => {
+      const deletedWithIncident = {
+        ...deletedTestCase,
+        incidentStatus: {
+          stateId: 'state-1',
+          testCaseResolutionStatusType: 'New',
+        },
+      } as unknown as TestCase;
+      render(
+        <DataQualityTab
+          {...mockProps}
+          deletionMode={TEST_CASE_DELETION_MODE.SOFT}
+          testCases={[deletedWithIncident]}
+        />
+      );
+
+      await screen.findByTestId('incident-manager-status');
+
+      expect(TestCaseIncidentManagerStatus).toHaveBeenCalledWith(
+        expect.objectContaining({ hasPermission: false }),
+        expect.anything()
+      );
     });
   });
 });

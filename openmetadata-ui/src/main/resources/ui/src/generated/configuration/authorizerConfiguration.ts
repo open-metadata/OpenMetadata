@@ -15,19 +15,32 @@
  */
 export interface AuthorizerConfiguration {
     /**
-     * List of unique admin principals.
+     * List of email addresses that should be granted admin privileges. Preferred over
+     * adminPrincipals.
      */
-    adminPrincipals: string[];
+    adminEmails?: string[];
     /**
-     * Allowed Domains to access
+     * [DEPRECATED: Use 'adminEmails' instead] List of unique admin principals.
+     */
+    adminPrincipals?: string[];
+    /**
+     * [DEPRECATED: Use 'allowedEmailDomains' instead] Allowed Domains to access.
      */
     allowedDomains?: string[];
+    /**
+     * List of email domains allowed to authenticate. If empty, all domains are allowed.
+     */
+    allowedEmailDomains?: string[];
     /**
      * List of unique email domains that are allowed to signup on the platforms
      */
     allowedEmailRegistrationDomains?: string[];
     /**
-     * **@Deprecated** List of unique bot principals
+     * Email domain used for system-created bots (e.g., ingestion-bot@{botDomain}).
+     */
+    botDomain?: string;
+    /**
+     * [DEPRECATED] List of unique bot principals.
      */
     botPrincipals?: string[];
     /**
@@ -48,13 +61,14 @@ export interface AuthorizerConfiguration {
      */
     enableSecureSocketConnection: boolean;
     /**
-     * Enable Enforce Principal Domain
+     * [DEPRECATED: Use 'allowedEmailDomains' instead] Enable Enforce Principal Domain.
      */
-    enforcePrincipalDomain: boolean;
+    enforcePrincipalDomain?: boolean;
     /**
-     * Principal Domain
+     * [DEPRECATED: Use 'botDomain' for bots, 'allowedEmailDomains' for domain restrictions]
+     * Domain to use for constructing email addresses.
      */
-    principalDomain: string;
+    principalDomain?: string;
     /**
      * List of unique principals used as test users. **NOTE THIS IS ONLY FOR TEST SETUP AND NOT
      * TO BE USED IN PRODUCTION SETUP**

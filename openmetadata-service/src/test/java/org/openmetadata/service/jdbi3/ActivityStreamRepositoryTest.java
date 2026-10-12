@@ -19,8 +19,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Metrics;
@@ -71,7 +73,7 @@ class ActivityStreamRepositoryTest {
     ActivityStreamRepository repository = new ActivityStreamRepository(dao);
 
     ChangeEvent changeEvent = changeEventWith(/* userName */ null);
-    EntityInterface entity = tableEntity();
+    EntityInterface<?> entity = tableEntity();
 
     repository.createFromChangeEvent(changeEvent, entity);
 
@@ -89,7 +91,7 @@ class ActivityStreamRepositoryTest {
     ActivityStreamRepository repository = new ActivityStreamRepository(dao);
 
     ChangeEvent changeEvent = changeEventWith("ghost-user");
-    EntityInterface entity = tableEntity();
+    EntityInterface<?> entity = tableEntity();
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock
@@ -137,6 +139,26 @@ class ActivityStreamRepositoryTest {
         deliveredTypes);
   }
 
+  @Test
+  void listCountAndRetentionDoNotQueryConversationStorage() {
+    CollectionDAO.ActivityStreamDAO dao = mock(CollectionDAO.ActivityStreamDAO.class);
+    ActivityStreamRepository repository = new ActivityStreamRepository(dao);
+    when(dao.list(0L, 25)).thenReturn(List.of());
+    when(dao.count(0L)).thenReturn(0);
+    when(dao.deleteOlderThan(100L)).thenReturn(3);
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      assertEquals(List.of(), repository.list(0L, 25));
+      assertEquals(0, repository.count(0L));
+      assertEquals(3, repository.deleteOlderThan(100L));
+
+      verify(dao).list(0L, 25);
+      verify(dao).count(0L);
+      verify(dao).deleteOlderThan(100L);
+      entityMock.verify(Entity::getConversationRepository, never());
+    }
+  }
+
   private static ChangeEvent changeEventWith(String userName) {
     return new ChangeEvent()
         .withId(UUID.randomUUID())
@@ -147,7 +169,7 @@ class ActivityStreamRepositoryTest {
         .withUserName(userName);
   }
 
-  private static EntityInterface tableEntity() {
+  private static EntityInterface<?> tableEntity() {
     return new Table().withId(UUID.randomUUID()).withFullyQualifiedName("svc.db.schema.table");
   }
 

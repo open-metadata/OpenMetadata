@@ -12,13 +12,13 @@
  */
 
 import Icon, { CheckOutlined } from '@ant-design/icons';
-import { Typography } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
+import { Typography } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import type { LoadingState } from 'Models';
 import { Link } from 'react-router-dom';
 import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
 import Loader from '../components/common/Loader/Loader';
+import type { ColumnsType } from '../components/common/Table/Table.interface';
 import CustomNodeV1 from '../components/Entity/EntityLineage/CustomNodeV1.component';
 import LoadMoreNode from '../components/Entity/EntityLineage/LoadMoreNode/LoadMoreNode';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
@@ -69,9 +69,9 @@ const buildLineageTableColumns = (headers: string[]): ColumnsType<string> => {
           />
         )}
 
-        <Typography.Text className="text-primary" ellipsis={{ tooltip: true }}>
+        <Typography className="text-primary" ellipsis={{ tooltip: true }}>
           {isEmpty(fqn) ? NO_DATA_PLACEHOLDER : fqn}
-        </Typography.Text>
+        </Typography>
       </div>
     );
   };
@@ -160,11 +160,12 @@ const buildLineageTableColumns = (headers: string[]): ColumnsType<string> => {
       width: 200,
       ellipsis: { showTitle: false },
       render: (text: string) => (
-        <Typography.Text
+        <Typography
+          className="tw:text-primary"
           data-testid={`lineage-column-${header}-${text}`}
           ellipsis={{ tooltip: true }}>
           {isEmpty(text) ? NO_DATA_PLACEHOLDER : text}
-        </Typography.Text>
+        </Typography>
       ),
     });
   });

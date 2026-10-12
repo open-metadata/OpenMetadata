@@ -1,6 +1,6 @@
 """Snowflake spec for data diff"""
 
-from typing import Optional, cast
+from typing import cast
 
 from sqlalchemy.engine import URL, make_url
 
@@ -26,7 +26,7 @@ class SnowflakeTableParameter(BaseTableParameter):
         key_columns,
         extra_columns,
         case_sensitive_columns,
-        service_url: Optional[str],  # noqa: UP045
+        service_url: str | None,
     ) -> TableParameter:
         table_param: TableParameter = super().get(
             service,

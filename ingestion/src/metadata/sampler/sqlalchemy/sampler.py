@@ -14,9 +14,11 @@ for the profiler
 """
 
 import hashlib
-from typing import List, Optional, Union, cast  # noqa: UP035
+from collections.abc import Callable
+from typing import Any, cast
 
 from sqlalchemy import Column, inspect, select, text
+from sqlalchemy.engine import Dialect
 from sqlalchemy.orm import Query
 from sqlalchemy.orm.util import AliasedClass
 from sqlalchemy.schema import Table
@@ -25,6 +27,7 @@ from sqlalchemy.sql.sqltypes import Enum
 
 from metadata.generated.schema.entity.data.table import (
     ColumnProfilerConfig,
+    PartitionIntervalTypes,
     PartitionProfilerConfig,
     TableData,
 )
@@ -32,11 +35,11 @@ from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
 from metadata.mixins.sqalchemy.sqa_mixin import SQAInterfaceMixin
+from metadata.profiler.constants import ROW_COUNT
 from metadata.profiler.interface.sqlalchemy.stored_statistics_profiler import Metrics
 from metadata.profiler.orm.functions.modulo import ModuloFn
 from metadata.profiler.orm.functions.random_num import RandomNumFn
 from metadata.profiler.orm.functions.table_metric_computer import (
-    ROW_COUNT,
     table_metric_computer_factory,
 )
 from metadata.profiler.processor.handle_partition import build_partition_predicate
@@ -164,6 +167,12 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         """
         return column
 
+    def _process_sample_value(self, column: Column, value: Any) -> Any:
+        """Convert one fetched sample cell, before truncation, for drivers that return encoded values.
+        Child classes override this method.
+        """
+        return value
+
     def _base_sample_query(
         self,
         selectable: Table | TableSample,
@@ -235,7 +244,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         such as _sample, or _rnd.
         """
         encoded_name = self.raw_dataset.__tablename__.encode(UTF_8)
-        hash_object = hashlib.md5(encoded_name)
+        hash_object = hashlib.md5(encoded_name, usedforsecurity=False)
         return hash_object.hexdigest()
 
     def get_sample_query(self, static: StaticSamplingConfig | None, *, column=None) -> Query:
@@ -269,7 +278,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
             )
             return query.limit(static.profileSample if static else None).cte(f"{self.get_sampler_table_name()}_rnd")
 
-    def get_dataset(self, column=None, **__) -> Union[type, AliasedClass]:  # noqa: UP007
+    def get_dataset(self, column=None, **__) -> type | AliasedClass:
         """
         Either return a sampled CTE of table, or
         the full table if no sampling is required.
@@ -277,25 +286,15 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         if self.sample_query:
             return self._rdn_sample_from_user_query()
 
-        static = self._resolve_sample_config
-
-        if (
-            not static
-            or not static.profileSample
-            or (
-                static.profileSampleType == ProfileSampleType.PERCENTAGE
-                and static.profileSample == 100
-                and self.sample_config.randomizedSample is not True
-            )
-        ):
+        if not self.applies_sampling:
             if self.partition_details:
                 return self._partitioned_table()
 
             return self.raw_dataset
 
-        return self.get_sample_query(static, column=column)  # type: ignore
+        return self.get_sample_query(self._resolve_sample_config, column=column)  # type: ignore
 
-    def fetch_sample_data(self, columns: Optional[List[Column]] = None) -> TableData:  # noqa: UP006, UP045
+    def fetch_sample_data(self, columns: list[Column] | None = None) -> TableData:
         """
         Use the sampler to retrieve sample data rows as per limit given by user
 
@@ -343,12 +342,50 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
                 value = row[i]
                 if has_array_columns and self._handle_array_column(col):
                     value = self._process_array_value(value)
-                processed_row.append(self._truncate_cell(value))
+                processed_row.append(self._truncate_cell(self._process_sample_value(col, value)))
             processed_rows.append(processed_row)
+        if self.partition_details and not sqa_sample:
+            self._warn_empty_partition()
         return TableData(
             columns=[column.name for column in sqa_columns],
             rows=processed_rows,
         )
+
+    def _warn_empty_partition(self) -> None:
+        """Warn when a partition filter yields an empty sample, so a silently
+        unexamined table is not reported the same as one examined and found clean
+        (issue #33084). Wording is tailored to the partition type."""
+        partition_details = self.partition_details
+        if partition_details is None:
+            return
+        table_name = getattr(self.raw_dataset, "__tablename__", "unknown")
+        interval_type = partition_details.partitionIntervalType
+        if interval_type in (
+            PartitionIntervalTypes.TIME_UNIT,
+            PartitionIntervalTypes.INGESTION_TIME,
+        ):
+            interval_unit = getattr(
+                partition_details.partitionIntervalUnit,
+                "value",
+                partition_details.partitionIntervalUnit,
+            )
+            logger.warning(
+                "Partition filter on table '%s' returned 0 rows. "
+                "The partition window (interval=%s %s) may not cover the table's most-recent data. "
+                "Override the profiler partition config for this table to widen the window. "
+                "See https://docs.open-metadata.org/latest/how-to-guides/data-quality-observability/"
+                "profiler/workflow#4.-updating-profiler-setting-at-the-table-level",
+                table_name,
+                partition_details.partitionInterval,
+                interval_unit,
+            )
+        else:
+            logger.warning(
+                "Partition filter on table '%s' returned 0 rows. "
+                "Verify the partition config (type=%s) matches the table's data.",
+                table_name,
+                interval_type,
+            )
 
     def _fetch_sample_data_from_user_query(self) -> TableData:
         """Returns a table data object using results from query execution"""
@@ -357,14 +394,65 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
 
         with self.session_factory() as client:
             rnd = client.execute(text(f"{self.sample_query}"))
+            dialect = client.get_bind().dialect
         try:
             columns = [col.name for col in rnd.cursor.description]
         except AttributeError:
             columns = list(rnd.keys())
+        try:
+            type_codes = [entry[1] for entry in rnd.cursor.description]
+        except (AttributeError, IndexError, TypeError):
+            type_codes = [None] * len(columns)
+        # The query returns raw driver values. A result named like a table column converts through that
+        # column's dialect type, as a regular sample does, and a computed column stays as returned.
+        table_columns = {column.name: column for column in self.get_columns()}
+        row_columns = [self._matching_column(str(name), table_columns) for name in columns]
+        processors = [
+            None if column is None else self._result_processor(column, dialect, type_code)
+            for column, type_code in zip(row_columns, type_codes, strict=True)
+        ]
         return TableData(
             columns=columns,
-            rows=[[self._truncate_cell(cell) for cell in row] for row in rnd.fetchmany(100)],
+            rows=[
+                [
+                    self._user_query_cell(column, processor, cell)
+                    for column, processor, cell in zip(row_columns, processors, row, strict=True)
+                ]
+                for row in rnd.fetchmany(100)
+            ],
         )
+
+    @staticmethod
+    def _matching_column(name: str, table_columns: dict[str, Column]) -> Column | None:
+        """An exact name match wins, since a table can hold columns whose names differ only in case."""
+        if name in table_columns:
+            return table_columns[name]
+        folded = name.lower()
+        return next((column for column in table_columns.values() if column.name.lower() == folded), None)
+
+    @staticmethod
+    def _result_processor(column: Column, dialect: Dialect, type_code: Any) -> Callable[[Any], Any] | None:
+        """The dialect's own processor, which a regular sample also uses, or None when it cannot be built.
+
+        A generic type can fail to build one for a dialect, as JSON does without a JSON deserializer.
+        """
+        try:
+            return column.type.dialect_impl(dialect).result_processor(dialect, type_code)
+        except Exception as exc:
+            logger.debug("Keeping raw %s values, its type has no processor for this dialect: %r", column.name, exc)
+            return None
+
+    def _user_query_cell(self, column: Column | None, processor: Callable[[Any], Any] | None, cell: Any) -> Any:
+        if column is None:
+            return self._truncate_cell(cell)
+        if processor is not None:
+            # Processors include custom types that fail with their own errors (rowversion unpacking raises
+            # struct.error), and a cell the column type cannot convert is still a valid sample.
+            try:
+                cell = processor(cell)
+            except Exception as exc:
+                logger.debug("Keeping the raw %s value the column type cannot convert: %r", column.name, exc)
+        return self._truncate_cell(self._process_sample_value(column, cell))
 
     def _rdn_sample_from_user_query(self) -> Query:
         """Returns sql alchemy object to use when running profiling"""

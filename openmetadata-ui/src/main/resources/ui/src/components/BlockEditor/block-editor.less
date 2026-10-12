@@ -13,14 +13,16 @@
 @import (reference) '../../styles/variables.less';
 
 @border-radius: var(--om-radius-md);
-@border-color: var(--om-legacy-color-e8e8ed);
-@markdown-bg-color: var(--om-legacy-color-f8f8fa);
-@hover-bg: var(--om-legacy-color-0-0-0-0-02);
-@callout-bg: var(--om-legacy-color-f8f8fa);
-@callout-warning-bg: var(--om-legacy-color-fff3dc);
-@callout-info-bg: @primary-1;
-@callout-danger-bg: var(--om-legacy-color-255-76-59-0-2);
-@callout-border: var(--om-legacy-color-afafc1);
+@border-color: var(--tw-color-border-subtle);
+// Semantic surface so inline code, table headers and callouts follow dark mode
+// (the legacy #f8f8fa alias has no dark value).
+@markdown-bg-color: var(--om-color-bg-secondary);
+@hover-bg: var(--tw-color-bg-primary_hover);
+@callout-bg: var(--om-color-bg-secondary);
+@callout-warning-bg: var(--tw-color-bg-warning-primary);
+@callout-info-bg: var(--tw-color-bg-brand-primary);
+@callout-danger-bg: var(--tw-color-bg-error-primary);
+@callout-border: var(--tw-color-border-subtle);
 
 .block-editor-wrapper {
   .om-block-editor > p:last-child {
@@ -92,7 +94,7 @@
     }
 
     a {
-      color: @primary-color;
+      color: var(--tw-color-text-link);
       text-decoration: none;
       line-height: 24px;
 
@@ -243,8 +245,13 @@
   }
 
   &.block-editor-wrapper--bar-menu {
-    border: 1px solid var(--om-legacy-color-dadde6);
+    background: var(--tw-color-bg-surface);
+    border: 1px solid var(--tw-color-border-subtle);
     border-radius: var(--om-radius-sm);
+
+    &:focus-within {
+      border-color: var(--tw-color-border-brand);
+    }
 
     // do not show drag handle and block handle in bar menu mode
     .om-drag-handle,
@@ -280,7 +287,7 @@
 }
 
 .menu-wrapper {
-  background-color: var(--tw-color-bg-primary);
+  background-color: var(--tw-color-bg-surface);
   display: flex;
   gap: var(--om-space-8);
   align-items: center;
@@ -298,7 +305,7 @@
 .slash-menu-wrapper {
   max-height: 300px;
   padding: var(--om-space-12) 0;
-  background-color: var(--tw-color-bg-primary);
+  background-color: var(--tw-color-bg-overlay-surface);
   border: @global-border;
   border-radius: @border-rad-base;
   overflow-y: auto;
@@ -308,7 +315,7 @@
       display: block;
       object-fit: cover;
       border-radius: var(--om-radius-sm);
-      background: white;
+      background: var(--om-color-bg-surface);
       width: 32px;
       height: 32px;
       box-shadow: var(--om-legacy-color-15-15-15-0-1) 0px 0px 0px 1px;
@@ -323,7 +330,7 @@
   max-height: 300px;
   max-width: 300px;
   padding: var(--om-space-12) 0;
-  background-color: var(--tw-color-bg-primary);
+  background-color: var(--tw-color-bg-overlay-surface);
   border: @global-border;
   border-radius: @border-rad-base;
   overflow-y: auto;
@@ -354,15 +361,6 @@
   line-height: 20px;
   white-space: pre-wrap;
   word-break: break-word;
-}
-
-.block-editor-link-modal,
-.block-editor-image-modal {
-  .ant-modal-content {
-    .ant-modal-body {
-      padding: var(--om-space-16);
-    }
-  }
 }
 
 .link-popup {
@@ -441,11 +439,14 @@
 }
 
 .is-format-active {
-  .ant-typography {
-    color: @primary-color;
+  .ant-typography,
+  .format-label {
+    color: var(--tw-color-text-link);
   }
   svg {
-    fill: @primary-color;
+    // Toolbar paths use currentColor, so the active state must set the foreground.
+    color: var(--tw-color-text-link);
+    fill: currentColor;
   }
 }
 
@@ -472,7 +473,7 @@
 }
 .om-image-node-action {
   width: 100%;
-  .ant-space-item {
+  :is(.ant-space-item, .layout-space-item) {
     width: 100%;
   }
 }
@@ -510,24 +511,15 @@ body .om-image-node-embed-link-btn-col {
   border-left-color: @error-color;
 }
 
-.callout-type-btn.ant-btn.ant-btn-text {
-  padding: var(--om-space-2) var(--om-space-4);
-}
-
-.om-callout-node-popover {
-  .ant-popover-inner-content {
-    padding: var(--om-space-12) var(--om-space-4);
-  }
-}
-
 .callout-menu {
   display: flex;
   flex-direction: column;
   align-items: baseline;
-  .ant-btn {
+  button {
     width: 100%;
     display: inline-flex;
     gap: var(--om-space-4);
+    justify-content: flex-start;
     text-align: left;
     padding: var(--om-space-8) var(--om-space-16);
     height: auto;

@@ -1,6 +1,7 @@
 package org.openmetadata.service.jobs;
 
 import io.dropwizard.lifecycle.Managed;
+import java.time.Duration;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -30,14 +31,16 @@ public class GenericBackgroundWorker implements Managed {
   // prevents double execution across pool threads and across servers.
   public static final int WORKER_POOL_SIZE = 3;
 
-  // How often this server stamps updatedAt on the jobs it is running. The cleanup
-  // sweeper treats a job with no recent heartbeat as orphaned, so this must stay
-  // comfortably below CsvAsyncJobManager.RUNNING_JOB_STALE_AFTER.
+  static final Duration RUNNING_JOB_STALE_AFTER = Duration.ofMinutes(5);
+
+  // Keep this comfortably below RUNNING_JOB_STALE_AFTER so cleanup cannot claim work owned by a
+  // live server.
   private static final long HEARTBEAT_SECONDS = 60L;
 
   private final JobDAO jobDao;
   private final JobHandlerRegistry handlerRegistry;
   private final Semaphore workerSlots = new Semaphore(WORKER_POOL_SIZE);
+  private final AtomicInteger memoryJobsInFlight = new AtomicInteger();
   // Bounded by WORKER_POOL_SIZE — a job is added when claimed and removed when it finishes.
   private final Set<Long> inFlightJobIds = ConcurrentHashMap.newKeySet();
   private volatile boolean running = true;
@@ -167,9 +170,12 @@ public class GenericBackgroundWorker implements Managed {
       if (!running) {
         return false;
       }
-      Optional<BackgroundJob> jobOpt = jobDao.fetchPendingJob();
+      Optional<BackgroundJob> jobOpt = jobDao.fetchPendingJob(memoryJobsInFlight.get() == 0);
       if (running && jobOpt.isPresent() && jobDao.claimPendingJob(jobOpt.get().getId()) > 0) {
         BackgroundJob job = jobOpt.get();
+        if (isMemoryJob(job)) {
+          memoryJobsInFlight.incrementAndGet();
+        }
         workerPool.submit(() -> runClaimedJob(job));
         slotHandedToTask = true;
         dispatched = true;
@@ -195,8 +201,18 @@ public class GenericBackgroundWorker implements Managed {
       jobDao.updateJobStatus(job.getId(), BackgroundJob.Status.FAILED);
     } finally {
       inFlightJobIds.remove(job.getId());
+      if (isMemoryJob(job)) {
+        memoryJobsInFlight.decrementAndGet();
+      }
       workerSlots.release();
     }
+  }
+
+  private boolean isMemoryJob(BackgroundJob job) {
+    // Collate can load an older generated JobType enum while running this worker.
+    return job.getJobType() == BackgroundJob.JobType.CONTEXT_MEMORY_EXTRACTION
+        || (job.getJobType() != null
+            && JobDAO.ONTOLOGY_MEMORY_DERIVATION_JOB_TYPE.equals(job.getJobType().name()));
   }
 
   private void processJob(BackgroundJob job) {

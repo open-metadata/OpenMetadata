@@ -10,9 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row } from 'antd';
-import { ColumnsType, TableProps } from 'antd/lib/table';
-import { TableRowSelection } from 'antd/lib/table/interface';
+import { Grid } from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import capitalize from 'lodash/capitalize';
 import isNil from 'lodash/isNil';
@@ -20,7 +19,10 @@ import map from 'lodash/map';
 import startCase from 'lodash/startCase';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { INITIAL_PAGING_VALUE } from '../../../../../constants/constants';
+import {
+  DISABLED,
+  INITIAL_PAGING_VALUE,
+} from '../../../../../constants/constants';
 import { SORT_FIELD_DISPLAY_NAME } from '../../../../../constants/Ingestions.constant';
 import { useAirflowStatus } from '../../../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { SORT_ORDER } from '../../../../../enums/common.enum';
@@ -37,6 +39,7 @@ import {
   deployIngestionPipelineById,
   getIngestionPipelines,
 } from '../../../../../rest/ingestionPipelineAPI';
+import { getLayoutGutter } from '../../../../../utils/common/layout.utils';
 import { getEntityTypeFromServiceCategory } from '../../../../../utils/ServicePureUtils';
 import { columnFilterIcon } from '../../../../../utils/TableColumn.util';
 import {
@@ -45,6 +48,11 @@ import {
 } from '../../../../../utils/ToastUtils';
 import AirflowMessageBanner from '../../../../common/AirflowMessageBanner/AirflowMessageBanner';
 import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
+import {
+  ColumnsType,
+  TableProps,
+  TableRowSelection,
+} from '../../../../common/Table/Table.interface';
 import { ColumnFilter } from '../../../../Database/ColumnFilter/ColumnFilter.component';
 import IngestionListTable from '../IngestionListTable/IngestionListTable';
 
@@ -64,7 +72,12 @@ export const IngestionPipelineList = ({
   className?: string;
 }) => {
   const [pipelines, setPipelines] = useState<Array<IngestionPipeline>>([]);
-  const { isAirflowAvailable, isFetchingStatus } = useAirflowStatus();
+  const { isAirflowAvailable, isFetchingStatus, platform } = useAirflowStatus();
+
+  // A client switched off in the configuration answers the status call with a healthy 200, so
+  // `isAirflowAvailable` alone cannot tell it from a working one. Deploy answers 200 too without
+  // deploying anything, which is why this has to gate the button rather than the response.
+  const isPlatformDisabled = useMemo(() => platform === DISABLED, [platform]);
 
   const [selectedPipelines, setSelectedPipelines] = useState<
     Array<IngestionPipeline>
@@ -297,30 +310,37 @@ export const IngestionPipelineList = ({
   );
 
   return (
-    <Row className={className} gutter={[16, 16]}>
-      <Col span={24}>
-        {/* Says why re-deploy is unavailable; the list itself stays readable. */}
+    <Grid
+      className={`layout-row layout-grid ${className}`}
+      style={{ ...getLayoutGutter(16, 16) }}>
+      <Grid.Item className="layout-column" span={24}>
+        {/* Says why re-deploy is unavailable, or why it will not do anything; the list itself
+            stays readable. */}
         <AirflowMessageBanner
+          disabledFallbackMessage={t(
+            'message.pipeline-service-disabled-agent-actions'
+          )}
           unreachableFallbackMessage={t(
             'message.pipeline-service-unreachable-agent-actions'
           )}
         />
-      </Col>
-      <Col className="text-right" span={24}>
+      </Grid.Item>
+      <Grid.Item className="layout-column text-right" span={24}>
         <Button
           data-testid="bulk-re-deploy-button"
           disabled={
             selectedPipelines?.length === 0 ||
             isFetchingStatus ||
-            !isAirflowAvailable
+            !isAirflowAvailable ||
+            isPlatformDisabled
           }
           loading={deploying}
           type="primary"
           onClick={handleBulkRedeploy}>
           {t('label.re-deploy')}
         </Button>
-      </Col>
-      <Col span={24}>
+      </Grid.Item>
+      <Grid.Item className="layout-column" span={24}>
         <IngestionListTable
           enableActions={false}
           extraTableProps={{
@@ -336,7 +356,7 @@ export const IngestionPipelineList = ({
           onPageChange={handlePipelinePageChange}
           onSortChange={handleSortChange}
         />
-      </Col>
-    </Row>
+      </Grid.Item>
+    </Grid>
   );
 };

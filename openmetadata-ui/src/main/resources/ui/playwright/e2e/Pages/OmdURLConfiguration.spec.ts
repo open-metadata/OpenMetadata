@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
+import { expect, test } from '../../support/fixtures/base';
 import { redirectToHomePage, toastNotification } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
 
@@ -46,5 +46,23 @@ test.describe('OM URL configuration', () => {
     await expect(page.locator('[data-testid="open-metadata-url"]')).toHaveText(
       'http://localhost:8080'
     );
+  });
+
+  test('url without a scheme is rejected before saving', async ({ page }) => {
+    await page.click('[data-testid="edit-button"]');
+
+    let settingsUpdated = false;
+    page.on('request', (request) => {
+      settingsUpdated =
+        settingsUpdated ||
+        (request.method() === 'PUT' &&
+          request.url().includes('/api/v1/system/settings'));
+    });
+
+    await page.fill('[data-testid="open-metadata-url-input"]', 'example.org');
+    await page.click('[data-testid="save-button"]');
+
+    await expect(page.getByText('Invalid URL format')).toBeVisible();
+    expect(settingsUpdated).toBe(false);
   });
 });

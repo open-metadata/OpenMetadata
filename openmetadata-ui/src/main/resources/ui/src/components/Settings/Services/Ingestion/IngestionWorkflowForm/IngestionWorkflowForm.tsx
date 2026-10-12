@@ -10,16 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Box } from '@openmetadata/ui-core-components';
 import Form, { IChangeEvent } from '@rjsf/core';
 import { RegistryFieldsType, UiSchema } from '@rjsf/utils';
 import { customizeValidator } from '@rjsf/validator-ajv8';
-import { Button, Space } from 'antd';
+import { Button } from 'antd';
 import classNames from 'classnames';
 import { capitalize, isUndefined, omit, omitBy } from 'lodash';
 import {
   forwardRef,
   lazy,
   Suspense,
+  useCallback,
   useEffect,
   useImperativeHandle,
   useMemo,
@@ -45,6 +47,7 @@ import databaseAutoClassificationJson from '../../../../../jsons/ingestionSchema
 import ProfilerConfigurationClassBase from '../../../../../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
 import { transformErrors } from '../../../../../utils/formPureUtils';
 import { getSchemaByWorkflowType } from '../../../../../utils/IngestionWorkflowUtils';
+import { getFieldSchemaForId } from '../../../../../utils/ServiceConnectionUtils';
 import { withSuspenseFallback } from '../../../../AppRouter/withSuspenseFallback';
 import CoreInputWidget from '../../../../common/FormBuilderV1/widgets/CoreInputWidget';
 import CoreSelectWidget from '../../../../common/FormBuilderV1/widgets/CoreSelectWidget';
@@ -342,6 +345,19 @@ const IngestionWorkflowForm = forwardRef<
     []
   );
 
+  /**
+   * Workflow markdown only documents a subset of the pipeline fields, so the docs
+   * panel needs the focused field's own schema title/description to fall back on.
+   * Custom fields (arrays, toggles) emit focus through formContext.handleFocus
+   * rather than RJSF's form-level onFocus, so both paths get the enriched handler.
+   */
+  const handleFieldFocus = useCallback(
+    (id: string) => {
+      onFocus(id, getFieldSchemaForId(schema as Record<string, unknown>, id));
+    },
+    [onFocus, schema]
+  );
+
   const handleSubmit = (e: IChangeEvent<IngestionWorkflowData>) => {
     if (e.formData) {
       let formData = { ...e.formData };
@@ -385,7 +401,7 @@ const IngestionWorkflowForm = forwardRef<
         noHtml5Validate
         className={classNames('rjsf no-header', className)}
         fields={customFields}
-        formContext={{ handleFocus: onFocus }}
+        formContext={{ handleFocus: handleFieldFocus }}
         formData={internalData}
         idSeparator="/"
         ref={formRef}
@@ -403,13 +419,18 @@ const IngestionWorkflowForm = forwardRef<
         validator={validator}
         widgets={widgets}
         onChange={handleOnChange}
-        onFocus={onFocus}
+        onFocus={handleFieldFocus}
         onSubmit={handleSubmit}>
         {/* When hideFooter is true, the parent card renders the footer to span full width
          * and keep the card's bottom border-radius visible during scroll. */}
         {!hideFooter && (
           <div className="d-flex w-full justify-end">
-            <Space>
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal"
+              gap={2}
+              itemClassName="layout-space-item">
               <Button type="link" onClick={onCancel}>
                 {cancelText ?? t('label.cancel')}
               </Button>
@@ -417,7 +438,7 @@ const IngestionWorkflowForm = forwardRef<
               <Button data-testid="submit-btn" htmlType="submit" type="primary">
                 {okText ?? t('label.save')}
               </Button>
-            </Space>
+            </Box>
           </div>
         )}
       </Form>

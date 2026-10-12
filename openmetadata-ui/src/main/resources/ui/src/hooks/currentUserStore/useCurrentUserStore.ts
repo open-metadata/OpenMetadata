@@ -36,6 +36,11 @@ export interface UserPreferences {
   marketplaceRecentSearches: MarketplaceRecentSearchEntry[];
   connectionsViewMode?: 'grid' | 'list';
   /**
+   * Persisted natural-language-search toggle — remembers the user's last
+   * NLP on/off choice on the Explore search bar across sessions.
+   */
+  isNLPActive?: boolean;
+  /**
    * Boot-time app-mode preference — the "open in this mode when I log in"
    * checkbox in the app-mode switcher. `null` means "no explicit preference,
    * fall back to persona/app-default/constant at boot." Only the switcher's
@@ -293,6 +298,28 @@ async function flushPendingPatch(
  * the one-shot migration call from `hydrateBackendSyncedPreferences`), the
  * last known server value is used instead.
  */
+function resolvePreviousValue(
+  key: string,
+  previous?: Partial<UserPreferences>
+): unknown {
+  const serverFallback = (serverKnown as Record<string, unknown>)[key] ?? null;
+
+  return previous && key in previous
+    ? (previous as Record<string, unknown>)[key] ?? null
+    : serverFallback;
+}
+
+function queuePatchKey(
+  key: string,
+  value: unknown,
+  previous?: Partial<UserPreferences>
+): void {
+  if (!previousValues.has(key)) {
+    previousValues.set(key, resolvePreviousValue(key, previous));
+  }
+  pendingPatch.set(key, value ?? null);
+}
+
 export function syncBackendKeys(
   userName: string,
   userId: string,
@@ -304,22 +331,10 @@ export function syncBackendKeys(
     if (!BACKEND_SYNCED_KEYS.has(key as keyof UserPreferences)) {
       continue;
     }
-    if (!previousValues.has(key)) {
-      const serverFallback =
-        (serverKnown as Record<string, unknown>)[key] ?? null;
-      const previousValue =
-        previous && key in previous
-          ? (previous as Record<string, unknown>)[key] ?? null
-          : serverFallback;
-      previousValues.set(key, previousValue);
-    }
-    pendingPatch.set(key, value ?? null);
+    queuePatchKey(key, value, previous);
     queued = true;
   }
-  if (!queued) {
-    return;
-  }
-  if (flushTimer !== null) {
+  if (!queued || flushTimer !== null) {
     return;
   }
   flushTimer = setTimeout(() => {

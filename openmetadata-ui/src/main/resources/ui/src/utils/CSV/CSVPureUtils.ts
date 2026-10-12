@@ -145,12 +145,14 @@ export const getCsvGridRowHeight = (
       return currentMax;
     }
 
-    const columnWidth =
-      typeof column.width === 'number'
-        ? column.width
-        : typeof column.minWidth === 'number'
-        ? column.minWidth
-        : CSV_DEFAULT_CHIP_COLUMN_WIDTH;
+    let columnWidth: number;
+    if (typeof column.width === 'number') {
+      columnWidth = column.width;
+    } else if (typeof column.minWidth === 'number') {
+      columnWidth = column.minWidth;
+    } else {
+      columnWidth = CSV_DEFAULT_CHIP_COLUMN_WIDTH;
+    }
 
     return Math.max(currentMax, estimateChipRowLines(items, columnWidth));
   }, 1);

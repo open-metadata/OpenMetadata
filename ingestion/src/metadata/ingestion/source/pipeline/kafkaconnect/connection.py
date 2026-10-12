@@ -13,8 +13,6 @@
 Source connection handler
 """
 
-from typing import Optional
-
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
@@ -39,8 +37,8 @@ class KafkaConnectConnection(BaseConnection[KafkaConnectConnectionConfig, KafkaC
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part
@@ -53,6 +51,7 @@ class KafkaConnectConnection(BaseConnection[KafkaConnectConnectionConfig, KafkaC
             "GetClusterInfo": client.get_cluster_info,
             "GetPipelines": client.get_connectors_list,
             "GetPlugins": client.get_connector_plugins,
+            "CheckConfluentTelemetry": client.check_confluent_telemetry,
         }
 
         return test_connection_steps(

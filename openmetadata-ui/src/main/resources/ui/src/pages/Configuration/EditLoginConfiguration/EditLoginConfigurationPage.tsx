@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Form, Row } from 'antd';
+import { Box } from '@openmetadata/ui-core-components';
+import { Button, Form } from 'antd';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -172,16 +173,16 @@ const EditLoginConfiguration = () => {
           setActiveField(e.target.id);
         }}>
         {generateFormFields(formFields)}
-        <Row justify="end">
-          <Col>
+        <Box className="layout-row" justify="end" wrap="wrap">
+          <Box className="layout-column tw:block">
             <Button
               data-testid="cancel-button"
               type="link"
               onClick={handleGoBack}>
               {t('label.cancel')}
             </Button>
-          </Col>
-          <Col>
+          </Box>
+          <Box className="layout-column tw:block">
             <Button
               data-testid="save-button"
               htmlType="submit"
@@ -189,8 +190,8 @@ const EditLoginConfiguration = () => {
               type="primary">
               {t('label.save')}
             </Button>
-          </Col>
-        </Row>
+          </Box>
+        </Box>
       </Form>
     </>
   );

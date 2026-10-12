@@ -33,7 +33,10 @@ export const isTestCaseListSynchronized = (
   authoritativeTotal === undefined ||
   indexedTotal >= authoritativeTotal;
 
-export const shouldResetTestCaseLoading = (
-  isCurrentRequest: () => boolean,
-  keepLoading: boolean
-) => isCurrentRequest() && !keepLoading;
+export const isTestCaseRemovalIndexed = (
+  indexedTotal: number | undefined,
+  authoritativeTotal: number | undefined
+) =>
+  indexedTotal === undefined ||
+  authoritativeTotal === undefined ||
+  indexedTotal <= authoritativeTotal;

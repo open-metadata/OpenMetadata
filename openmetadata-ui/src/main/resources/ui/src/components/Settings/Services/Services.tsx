@@ -11,10 +11,16 @@
  *  limitations under the License.
  */
 
-import { Button, EmptyPlaceholder } from '@openmetadata/ui-core-components';
-import { Col, Row, Space, Tooltip, Typography } from 'antd';
+import {
+  Box,
+  Button,
+  Button as CoreButton,
+  EmptyPlaceholder,
+  Grid,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import Card from 'antd/lib/card/Card';
-import { ColumnsType, TableProps } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty, map, startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -44,9 +50,13 @@ import { usePaging } from '../../../hooks/paging/usePaging';
 import { DatabaseServiceSearchSource } from '../../../interface/search.interface';
 import { ServicesType } from '../../../interface/service.interface';
 import { getServices, searchService } from '../../../rest/serviceAPI';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { highlightSearchText } from '../../../utils/EntitySearchUtils';
+import {
+  highlightSearchText,
+  renderHighlightedText,
+} from '../../../utils/EntitySearchUtils';
 import { getColumnSorter } from '../../../utils/EntitySortUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getServiceDetailsPath } from '../../../utils/RouterUtils';
@@ -56,7 +66,6 @@ import {
 } from '../../../utils/ServicePureUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { getOptionalFields } from '../../../utils/ServiceUtils';
-import { stringToHTML } from '../../../utils/StringUtils';
 import {
   columnFilterIcon,
   ownerTableObject,
@@ -68,8 +77,10 @@ import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.inte
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import ButtonSkeleton from '../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
+import { ColumnsType, TableProps } from '../../common/Table/Table.interface';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import PageHeader from '../../PageHeader/PageHeader.component';
+
 interface ServicesProps {
   serviceName: ServiceCategory;
 }
@@ -247,55 +258,24 @@ const Services = ({ serviceName }: ServicesProps) => {
   );
 
   const getServicePageHeader = useCallback(() => {
-    let pageHeader;
-    switch (serviceName) {
-      case ServiceCategory.DATABASE_SERVICES:
-        pageHeader = PAGE_HEADERS.DATABASES_SERVICES;
+    const pageHeaderByCategory: Partial<
+      Record<ServiceCategory, (typeof PAGE_HEADERS)[keyof typeof PAGE_HEADERS]>
+    > = {
+      [ServiceCategory.DATABASE_SERVICES]: PAGE_HEADERS.DATABASES_SERVICES,
+      [ServiceCategory.DASHBOARD_SERVICES]: PAGE_HEADERS.DASHBOARD_SERVICES,
+      [ServiceCategory.MESSAGING_SERVICES]: PAGE_HEADERS.MESSAGING_SERVICES,
+      [ServiceCategory.METADATA_SERVICES]: PAGE_HEADERS.METADATA_SERVICES,
+      [ServiceCategory.ML_MODEL_SERVICES]: PAGE_HEADERS.ML_MODELS_SERVICES,
+      [ServiceCategory.PIPELINE_SERVICES]: PAGE_HEADERS.PIPELINES_SERVICES,
+      [ServiceCategory.STORAGE_SERVICES]: PAGE_HEADERS.STORAGE_SERVICES,
+      [ServiceCategory.SEARCH_SERVICES]: PAGE_HEADERS.SEARCH_SERVICES,
+      [ServiceCategory.API_SERVICES]: PAGE_HEADERS.API_SERVICES,
+      [ServiceCategory.SECURITY_SERVICES]: PAGE_HEADERS.SECURITY_SERVICES,
+      [ServiceCategory.DRIVE_SERVICES]: PAGE_HEADERS.DRIVE_SERVICES,
+    };
 
-        break;
-      case ServiceCategory.DASHBOARD_SERVICES:
-        pageHeader = PAGE_HEADERS.DASHBOARD_SERVICES;
-
-        break;
-      case ServiceCategory.MESSAGING_SERVICES:
-        pageHeader = PAGE_HEADERS.MESSAGING_SERVICES;
-
-        break;
-      case ServiceCategory.METADATA_SERVICES:
-        pageHeader = PAGE_HEADERS.METADATA_SERVICES;
-
-        break;
-      case ServiceCategory.ML_MODEL_SERVICES:
-        pageHeader = PAGE_HEADERS.ML_MODELS_SERVICES;
-
-        break;
-      case ServiceCategory.PIPELINE_SERVICES:
-        pageHeader = PAGE_HEADERS.PIPELINES_SERVICES;
-
-        break;
-      case ServiceCategory.STORAGE_SERVICES:
-        pageHeader = PAGE_HEADERS.STORAGE_SERVICES;
-
-        break;
-      case ServiceCategory.SEARCH_SERVICES:
-        pageHeader = PAGE_HEADERS.SEARCH_SERVICES;
-
-        break;
-      case ServiceCategory.API_SERVICES:
-        pageHeader = PAGE_HEADERS.API_SERVICES;
-
-        break;
-      case ServiceCategory.SECURITY_SERVICES:
-        pageHeader = PAGE_HEADERS.SECURITY_SERVICES;
-
-        break;
-      case ServiceCategory.DRIVE_SERVICES:
-        pageHeader = PAGE_HEADERS.DRIVE_SERVICES;
-
-        break;
-      default:
-        pageHeader = PAGE_HEADERS.DATABASES_SERVICES;
-    }
+    const pageHeader =
+      pageHeaderByCategory[serviceName] ?? PAGE_HEADERS.DATABASES_SERVICES;
 
     return {
       header: t(pageHeader.header),
@@ -423,7 +403,7 @@ const Services = ({ serviceName }: ServicesProps) => {
                 record.fullyQualifiedName ?? record.name,
                 serviceName
               )}>
-              {stringToHTML(
+              {renderHighlightedText(
                 highlightSearchText(getEntityName(record), searchTerm)
               )}
             </Link>
@@ -457,7 +437,9 @@ const Services = ({ serviceName }: ServicesProps) => {
         filters: serviceTypeFilters,
         render: (serviceType) => (
           <span className="font-normal text-grey-body">
-            {stringToHTML(highlightSearchText(serviceType, searchTerm))}
+            {renderHighlightedText(
+              highlightSearchText(serviceType, searchTerm)
+            )}
           </span>
         ),
       },
@@ -468,25 +450,29 @@ const Services = ({ serviceName }: ServicesProps) => {
 
   const serviceCardRenderer = (service: ServicesType) => {
     return (
-      <Col key={service.name} lg={8} xl={6}>
+      <Grid.Item
+        className="layout-column tw:col-span-24 tw:min-[992px]:col-span-8 tw:min-[1200px]:col-span-6"
+        key={service.name}>
         <Card className="w-full" size="small">
           <div
             className="d-flex justify-between text-grey-muted"
             data-testid="service-card">
-            <Row gutter={[0, 6]}>
-              <Col span={24}>
+            <Grid
+              className="layout-row layout-grid"
+              style={{ ...getLayoutGutter(0, 6) }}>
+              <Grid.Item className="layout-column" span={24}>
                 <Link
                   className="no-underline"
                   to={getServiceDetailsPath(
                     service.fullyQualifiedName ?? service.name,
                     serviceName
                   )}>
-                  <Typography.Text
+                  <Typography
                     className="text-base text-grey-body font-medium truncate w-48 d-inline-block"
                     data-testid={`service-name-${service.name}`}
                     title={getEntityName(service)}>
                     {getEntityName(service)}
-                  </Typography.Text>
+                  </Typography>
                 </Link>
                 <div
                   className="p-t-xs text-grey-body break-all description-text"
@@ -504,16 +490,16 @@ const Services = ({ serviceName }: ServicesProps) => {
                   )}
                 </div>
                 {getOptionalFields(service, serviceName)}
-              </Col>
-              <Col span={24}>
+              </Grid.Item>
+              <Grid.Item className="layout-column" span={24}>
                 <div className="m-b-xss" data-testid="service-type">
-                  <label className="m-b-0">{`${t('label.type')}:`}</label>
+                  <span className="m-b-0">{`${t('label.type')}:`}</span>
                   <span className="font-normal m-l-xss text-grey-body">
                     {service.serviceType}
                   </span>
                 </div>
-              </Col>
-            </Row>
+              </Grid.Item>
+            </Grid>
 
             <div className="d-flex flex-col justify-between flex-none">
               <div className="d-flex justify-end" data-testid="service-icon">
@@ -522,7 +508,7 @@ const Services = ({ serviceName }: ServicesProps) => {
             </div>
           </div>
         </Card>
-      </Col>
+      </Grid.Item>
     );
   };
 
@@ -571,12 +557,18 @@ const Services = ({ serviceName }: ServicesProps) => {
   };
 
   return (
-    <Row
-      className="justify-center"
+    <Grid
+      className="layout-row layout-grid justify-center"
       data-testid="services-container"
-      gutter={[16, 16]}>
-      <Col span={24}>
-        <Space className="w-full justify-between m-b-lg" data-testid="header">
+      style={{ ...getLayoutGutter(16, 16) }}>
+      <Grid.Item className="layout-column" span={24}>
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal w-full justify-between m-b-lg"
+          data-testid="header"
+          gap={2}
+          itemClassName="layout-space-item">
           <PageHeader
             data={getServicePageHeader()}
             learningPageId={LEARNING_PAGE_IDS.SERVICES}
@@ -585,6 +577,8 @@ const Services = ({ serviceName }: ServicesProps) => {
             <ButtonSkeleton size="default" />
           ) : (
             <Tooltip
+              arrow
+              excludeTriggerFromTabOrder
               placement="left"
               title={
                 addServicePermission
@@ -592,25 +586,27 @@ const Services = ({ serviceName }: ServicesProps) => {
                       entity: t('label.service'),
                     })
                   : t(NO_PERMISSION_FOR_ACTION)
-              }>
+              }
+              triggerClassName="tw:inline-flex">
               {addServicePermission && (
                 <LimitWrapper resource="dataAssets">
-                  <Button
+                  <CoreButton
                     className="m-b-xs"
+                    color="primary"
                     data-testid="add-service-button"
-                    type="primary"
-                    onClick={handleAddServiceClick}>
+                    size="sm"
+                    onPress={handleAddServiceClick}>
                     {t('label.add-new-entity', {
                       entity: t('label.service'),
                     })}
-                  </Button>
+                  </CoreButton>
                 </LimitWrapper>
               )}
             </Tooltip>
           )}
-        </Space>
-      </Col>
-      <Col span={24}>
+        </Box>
+      </Grid.Item>
+      <Grid.Item className="layout-column" span={24}>
         <ListView<ServicesType>
           cardRenderer={serviceCardRenderer}
           customPaginationProps={customPaginationTableProps}
@@ -633,8 +629,8 @@ const Services = ({ serviceName }: ServicesProps) => {
             onChange: handleTableChange,
           }}
         />
-      </Col>
-    </Row>
+      </Grid.Item>
+    </Grid>
   );
 };
 

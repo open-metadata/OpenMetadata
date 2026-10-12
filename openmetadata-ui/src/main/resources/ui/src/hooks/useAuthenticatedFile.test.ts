@@ -151,7 +151,7 @@ describe('useAuthenticatedFile', () => {
   });
 
   it('toggles isLoading to true while the request is in flight', async () => {
-    let resolveDownload: (value: Blob) => void = () => undefined;
+    let resolveDownload: (value: Blob) => void = (_value) => undefined;
     mockDownloadAsset.mockReturnValue(
       new Promise((resolve) => {
         resolveDownload = resolve;

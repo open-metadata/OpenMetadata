@@ -147,9 +147,9 @@ public class KpiRepository extends EntityRepository<Kpi> {
             kpi.withKpiResult(kpiResult);
           }
         }
-      } catch (IOException e) {
+      } catch (IOException | RuntimeException e) {
         // Log error but continue processing other KPIs
-        LOG.warn("Failed to fetch KPI results for chart {}: {}", entry.getKey(), e.getMessage());
+        LOG.warn("Failed to fetch KPI results for chart {}", entry.getKey(), e);
       }
     }
   }

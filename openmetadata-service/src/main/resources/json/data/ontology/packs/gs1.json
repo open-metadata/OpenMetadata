@@ -1,0 +1,26 @@
+{
+  "abbreviation": "GS1",
+  "bundled": true,
+  "description": "A compact OpenMetadata starter subset of GS1 Web Vocabulary core classes.",
+  "id": "gs1",
+  "license": "MIT",
+  "licenseUrl": "https://www.gs1.org/standards",
+  "modules": [
+    {
+      "conceptCount": 8,
+      "dependencies": [],
+      "description": "Core GS1 classes for products, organizations, places, and offers.",
+      "format": "turtle",
+      "id": "core-vocabulary",
+      "name": "Core vocabulary",
+      "relationshipCount": 4,
+      "resourcePath": "rdf/ontology-packs/gs1/core-vocabulary.ttl",
+      "selectedByDefault": true,
+      "sha256": "c11f0f3747249ca7ba77e6eccce66861f938763de9fee111c5069b0547b8ed9d"
+    }
+  ],
+  "name": "GS1 Vocabulary",
+  "sourceUrl": "https://www.gs1.org/voc/",
+  "standard": "GS1 Web Vocabulary",
+  "version": "2025Q1-om1"
+}

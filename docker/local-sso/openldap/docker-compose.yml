@@ -1,0 +1,31 @@
+name: openmetadata-openldap
+
+services:
+  openldap:
+    # bitnami/openldap:2.6.7 was removed from the primary Docker Hub org
+    # after Bitnami moved older tags to `bitnamilegacy`. Point at that
+    # namespace so `docker pull` still succeeds in CI without a version
+    # bump. Pinned by multi-arch index digest — a floating `:2.6.7` tag
+    # could be silently retargeted by the registry, so reviewers see any
+    # future image change as an explicit compose diff rather than an
+    # invisible upstream shift.
+    image: bitnamilegacy/openldap:2.6.7@sha256:e1e9a6fb53bfd463f6bab31323ffa16c4a9fc0fb2de14647459491ba4c9e6bfb
+    container_name: openmetadata_openldap
+    environment:
+      LDAP_ADMIN_USERNAME: ${OPENLDAP_ADMIN_USERNAME:-admin}
+      LDAP_ADMIN_PASSWORD: ${OPENLDAP_ADMIN_PASSWORD:-adminpassword}
+      LDAP_ROOT: ${OPENLDAP_ROOT:-dc=openmetadata,dc=org}
+      LDAP_CUSTOM_LDIF_DIR: /ldifs
+    ports:
+      - '${OPENLDAP_PORT:-1389}:1389'
+    volumes:
+      - ./bootstrap.ldif:/ldifs/bootstrap.ldif:ro
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          "ldapsearch -x -H ldap://localhost:1389 -b dc=openmetadata,dc=org 'uid=ldapuser' >/dev/null 2>&1 || exit 1",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 20

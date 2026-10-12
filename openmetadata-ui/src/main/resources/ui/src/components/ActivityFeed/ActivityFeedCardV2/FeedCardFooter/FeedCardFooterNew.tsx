@@ -11,10 +11,12 @@
  *  limitations under the License.
  */
 
-import { Avatar, Button, Col, Row } from 'antd';
+import { AvatarStack, Box, Button } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
-import { min, noop, sortBy } from 'lodash';
+import { noop } from 'lodash';
 import { useCallback, useMemo } from 'react';
+import { PressEvent } from 'react-aria-components';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as ThreadIcon } from '../../../../assets/svg/ic-reply-2.svg';
 import { ReactionOperation } from '../../../../enums/reactions.enum';
 import { ReactionType } from '../../../../generated/type/reaction';
@@ -24,98 +26,123 @@ import { useActivityFeedProvider } from '../../ActivityFeedProvider/ActivityFeed
 import Reactions from '../../Reactions/Reactions';
 import { FeedCardFooterProps } from './FeedCardFooter.interface';
 
+const MAX_VISIBLE_AVATARS = 3;
+const AVATAR_SIZE = 20;
+
 function FeedCardFooterNew({
-  feed,
-  post,
-  isPost = false,
+  conversation,
+  conversationId,
+  reply,
+  isReply = false,
   isForFeedTab = false,
 }: Readonly<FeedCardFooterProps>) {
-  const { showDrawer, updateReactions, fetchUpdatedThread } =
-    useActivityFeedProvider();
+  const { t } = useTranslation();
+  const { showDrawer, updateReactions } = useActivityFeedProvider();
 
-  // The number of posts in the thread
-  const postLength = useMemo(() => feed?.postsCount ?? 0, [feed?.postsCount]);
+  const postLength = useMemo(
+    () => conversation?.replyCount ?? 0,
+    [conversation?.replyCount]
+  );
 
-  // The latest reply timestamp and the list of unique users who replied
-  const { repliedUniqueUsersList } = useMemo(() => {
-    const posts = sortBy(feed?.posts, 'postTs').reverse();
-    const latestReplyTimeStamp = posts[0]?.postTs;
-
-    const repliedUsers = [...new Set((feed?.posts ?? []).map((f) => f.from))];
-
-    const repliedUniqueUsersList = repliedUsers.slice(
-      0,
-      min([3, repliedUsers.length])
-    );
-
-    return { latestReplyTimeStamp, repliedUniqueUsersList };
-  }, [feed?.posts]);
+  const repliedUsers = useMemo(() => {
+    return [
+      ...new Set(
+        (conversation?.replies ?? [])
+          .map((item) => item.author.name ?? item.author.fullyQualifiedName)
+          .filter((name): name is string => Boolean(name))
+      ),
+    ];
+  }, [conversation?.replies]);
 
   const onReactionUpdate = useCallback(
     async (reaction: ReactionType, operation: ReactionOperation) => {
-      if (!post) {
+      const target = reply ?? conversation;
+
+      if (!target) {
         return;
       }
-      await updateReactions(post, feed.id, !isPost, reaction, operation);
-      await fetchUpdatedThread(feed.id);
+      await updateReactions(
+        target,
+        conversationId,
+        !isReply,
+        reaction,
+        operation
+      );
     },
-    [updateReactions, post, feed.id, isPost, fetchUpdatedThread]
+    [updateReactions, reply, conversation, conversationId, isReply]
   );
+
   const showReplies = useCallback(() => {
-    showDrawer?.(feed);
-  }, [showDrawer, feed]);
+    if (conversation) {
+      showDrawer(conversation);
+    }
+  }, [showDrawer, conversation]);
+
+  // The press must keep bubbling: the card container behind this footer
+  // selects the conversation on click, as it did when these were native
+  // buttons.
+  const handleRepliesPress = useCallback(
+    (event: PressEvent) => {
+      event.continuePropagation();
+      if (isForFeedTab) {
+        showReplies();
+      }
+    },
+    [isForFeedTab, showReplies]
+  );
 
   return (
-    <Row align="top" className={classNames({ 'm-y-md': isPost })}>
-      <Col className="footer-container" span={24}>
+    <Box align="start" className={classNames({ 'm-y-md': isReply })}>
+      <Box
+        className="footer-container tw:w-full"
+        data-testid="feed-card-footer"
+        direction="col">
         <div>
-          <div className="flex items-center gap-2 w-full rounded-8">
-            {postLength > 0 && !isPost && (
-              <Avatar.Group
-                className="feed-avatar-group"
-                maxCount={3}
-                maxPopoverPlacement="top"
-                maxStyle={{
-                  color: '#f56a00',
-                  backgroundColor: '#fde3cf',
-                }}>
-                {repliedUniqueUsersList.map((user, index) => (
+          <Box align="center" className="w-full rounded-8" gap={2}>
+            {postLength > 0 && !isReply && (
+              <AvatarStack
+                avatarSize={AVATAR_SIZE}
+                items={repliedUsers.map((user) => (
                   <Button
-                    className="p-0"
+                    noTextPadding
+                    className="p-0 tw:h-10! tw:border tw:border-transparent"
+                    color="tertiary"
                     key={user}
-                    style={{
-                      marginLeft: index === 0 ? '0px' : '-8px',
-                      zIndex: repliedUniqueUsersList.length - index,
-                    }}
-                    type="text"
-                    onClick={isForFeedTab ? showReplies : undefined}>
+                    onPress={handleRepliesPress}>
                     <UserPopOverCard userName={user}>
-                      <div className="d-flex items-center">
-                        <ProfilePicture name={user} width="20" />
-                      </div>
+                      <ProfilePicture name={user} width="20" />
                     </UserPopOverCard>
                   </Button>
                 ))}
-              </Avatar.Group>
+                maxCount={MAX_VISIBLE_AVATARS}
+                onOverflowClick={isForFeedTab ? showReplies : undefined}
+              />
             )}
 
-            {!isPost && (
+            {!isReply && (
               <Button
-                className="p-0 flex-center"
+                aria-label={t('label.reply')}
+                className="p-0 flex-center tw:h-10! tw:border tw:border-transparent"
+                color="tertiary"
                 data-testid="reply-button"
-                type="text"
-                onClick={isForFeedTab ? showReplies : undefined}>
-                <ThreadIcon data-testid="reply-count" height={18} width={18} />
-              </Button>
+                iconLeading={
+                  <ThreadIcon
+                    data-testid="reply-count"
+                    height={18}
+                    width={18}
+                  />
+                }
+                onPress={handleRepliesPress}
+              />
             )}
             <Reactions
-              reactions={post?.reactions ?? []}
+              reactions={(reply ?? conversation)?.reactions ?? []}
               onReactionSelect={onReactionUpdate ?? noop}
             />
-          </div>
+          </Box>
         </div>
-      </Col>
-    </Row>
+      </Box>
+    </Box>
   );
 }
 

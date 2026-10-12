@@ -15,10 +15,10 @@ DBT service Topology.
 
 import traceback
 from abc import ABC, abstractmethod
-from typing import Iterable, List  # noqa: UP035
+from collections.abc import Iterable
+from typing import Annotated
 
 from pydantic import Field
-from typing_extensions import Annotated  # noqa: UP035
 
 from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -137,6 +137,11 @@ class DbtServiceTopology(ServiceTopology):
                 processor="process_dbt_domain",
                 nullable=True,
             ),
+            NodeStage(
+                type_=DataModelLink,
+                processor="process_dbt_data_products",
+                nullable=True,
+            ),
         ],
     )
     process_dbt_tests: Annotated[TopologyNode, Field(description="Process dbt tests")] = TopologyNode(
@@ -242,7 +247,7 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
                         else:
                             value["constraints"] = None
 
-    def remove_run_result_non_required_keys(self, run_results: List[dict]):  # noqa: UP006
+    def remove_run_result_non_required_keys(self, run_results: list[dict]):
         """
         Method to remove the non required keys from run results file
         """
@@ -398,6 +403,12 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
     def process_dbt_domain(self, data_model_link: DataModelLink):
         """
         Method to process DBT domain using patch APIs
+        """
+
+    @abstractmethod
+    def process_dbt_data_products(self, data_model_link: DataModelLink):
+        """
+        Method to attach the table to its dbt-declared Data Products
         """
 
     @abstractmethod

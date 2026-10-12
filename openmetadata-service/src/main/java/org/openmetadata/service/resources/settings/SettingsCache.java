@@ -20,6 +20,7 @@ import static org.openmetadata.schema.settings.SettingsType.AUTHORIZER_CONFIGURA
 import static org.openmetadata.schema.settings.SettingsType.CUSTOM_UI_THEME_PREFERENCE;
 import static org.openmetadata.schema.settings.SettingsType.EMAIL_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.ENTITY_RULES_SETTINGS;
+import static org.openmetadata.schema.settings.SettingsType.GLOSSARY_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.GLOSSARY_TERM_RELATION_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.LINEAGE_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.LOGIN_CONFIGURATION;
@@ -28,18 +29,22 @@ import static org.openmetadata.schema.settings.SettingsType.OPEN_LINEAGE_SETTING
 import static org.openmetadata.schema.settings.SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.SCIM_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.SEARCH_SETTINGS;
+import static org.openmetadata.schema.settings.SettingsType.SPARQL_QUERY_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.WORKFLOW_SETTINGS;
 
 import com.cronutils.utils.StringUtils;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import com.google.common.util.concurrent.UncheckedExecutionException;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import javax.annotation.CheckForNull;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -53,17 +58,21 @@ import org.openmetadata.schema.api.lineage.LineageLayer;
 import org.openmetadata.schema.api.lineage.LineageSettings;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
 import org.openmetadata.schema.api.search.FieldBoost;
+import org.openmetadata.schema.api.search.GlobalSettings;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.ExecutorConfiguration;
+import org.openmetadata.schema.configuration.GlossarySettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationType;
 import org.openmetadata.schema.configuration.HistoryCleanUpConfiguration;
 import org.openmetadata.schema.configuration.OpenLineageSettings;
+import org.openmetadata.schema.configuration.RelationCardinality;
 import org.openmetadata.schema.configuration.RelationCategory;
+import org.openmetadata.schema.configuration.SparqlQuerySettings;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.security.scim.ScimConfiguration;
@@ -73,6 +82,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.system.SearchSettingsHandler;
@@ -83,11 +93,29 @@ import org.openmetadata.service.util.EntityUtil;
 @Slf4j
 public class SettingsCache {
   private static volatile boolean initialized = false;
-  protected static final LoadingCache<String, Settings> CACHE =
+
+  /**
+   * Counts invalidations. Guava ignores invalidate() for a key whose load is still running, so a
+   * load that read a setting just before an update committed would cache the old value until it
+   * expires. Each cached value records the count its load started from, and a read reloads a value
+   * loaded before the latest invalidation.
+   */
+  private static final AtomicLong INVALIDATIONS = new AtomicLong();
+
+  private static final int MAX_STALE_RELOADS = 3;
+
+  protected static final LoadingCache<String, LoadedSettings> CACHE =
       CacheBuilder.newBuilder()
           .maximumSize(1000)
           .expireAfterWrite(3, TimeUnit.MINUTES)
           .build(new SettingsLoader());
+
+  /** A cached setting and the invalidation count its load started from. */
+  record LoadedSettings(Settings settings, long invalidationsAtLoad) {
+    boolean predatesTheLatestInvalidation() {
+      return invalidationsAtLoad < INVALIDATIONS.get();
+    }
+  }
 
   private SettingsCache() {
     // Private constructor for singleton
@@ -353,6 +381,14 @@ public class SettingsCache {
       Entity.getSystemRepository().createNewSetting(setting);
     }
 
+    if (Entity.getSystemRepository().getConfigWithKey(GLOSSARY_SETTINGS.toString()) == null) {
+      Entity.getSystemRepository()
+          .createNewSetting(
+              new Settings()
+                  .withConfigType(GLOSSARY_SETTINGS)
+                  .withConfigValue(new GlossarySettings()));
+    }
+
     // Initialize Glossary Term Relation Settings with default relation types
     Settings glossaryTermRelationSettings =
         Entity.getSystemRepository().getConfigWithKey(GLOSSARY_TERM_RELATION_SETTINGS.toString());
@@ -370,6 +406,7 @@ public class SettingsCache {
                   RelationCategory.ASSOCIATIVE,
                   true,
                   "#1570ef",
+                  RelationCardinality.MANY_TO_MANY,
                   null,
                   null),
               createRelationType(
@@ -383,6 +420,7 @@ public class SettingsCache {
                   RelationCategory.EQUIVALENCE,
                   true,
                   "#b42318",
+                  RelationCardinality.MANY_TO_MANY,
                   null,
                   null),
               createRelationType(
@@ -396,6 +434,7 @@ public class SettingsCache {
                   RelationCategory.ASSOCIATIVE,
                   true,
                   "#b54708",
+                  RelationCardinality.MANY_TO_MANY,
                   null,
                   null),
               createRelationType(
@@ -409,6 +448,7 @@ public class SettingsCache {
                   RelationCategory.HIERARCHICAL,
                   true,
                   "#067647",
+                  RelationCardinality.MANY_TO_MANY,
                   null,
                   null),
               createRelationType(
@@ -422,6 +462,7 @@ public class SettingsCache {
                   RelationCategory.HIERARCHICAL,
                   true,
                   "#4e5ba6",
+                  RelationCardinality.MANY_TO_MANY,
                   null,
                   null),
               createRelationType(
@@ -435,6 +476,7 @@ public class SettingsCache {
                   RelationCategory.HIERARCHICAL,
                   true,
                   "#026aa2",
+                  RelationCardinality.MANY_TO_MANY,
                   null,
                   null),
               createRelationType(
@@ -448,6 +490,7 @@ public class SettingsCache {
                   RelationCategory.HIERARCHICAL,
                   true,
                   "#155eef",
+                  RelationCardinality.MANY_TO_MANY,
                   null,
                   null),
               createRelationType(
@@ -461,6 +504,7 @@ public class SettingsCache {
                   RelationCategory.ASSOCIATIVE,
                   true,
                   "#6938ef",
+                  RelationCardinality.MANY_TO_MANY,
                   null,
                   null),
               createRelationType(
@@ -474,6 +518,7 @@ public class SettingsCache {
                   RelationCategory.ASSOCIATIVE,
                   true,
                   "#ba24d5",
+                  RelationCardinality.MANY_TO_MANY,
                   null,
                   null),
               createRelationType(
@@ -487,6 +532,7 @@ public class SettingsCache {
                   RelationCategory.ASSOCIATIVE,
                   true,
                   "#c11574",
+                  RelationCardinality.MANY_TO_MANY,
                   null,
                   null));
 
@@ -496,6 +542,26 @@ public class SettingsCache {
               .withConfigValue(
                   new GlossaryTermRelationSettings().withRelationTypes(defaultRelationTypes));
       Entity.getSystemRepository().createNewSetting(setting);
+    }
+    Settings sparqlQuerySettings =
+        Entity.getSystemRepository().getConfigWithKey(SPARQL_QUERY_SETTINGS.toString());
+    if (sparqlQuerySettings == null) {
+      try {
+        List<String> jsonDataFiles =
+            EntityUtil.getJsonDataResources(".*json/data/settings/sparqlQuerySettings.json$");
+        if (!jsonDataFiles.isEmpty()) {
+          String json =
+              CommonUtil.getResourceAsStream(
+                  EntityRepository.class.getClassLoader(), jsonDataFiles.get(0));
+          Settings setting =
+              new Settings()
+                  .withConfigType(SPARQL_QUERY_SETTINGS)
+                  .withConfigValue(JsonUtils.readValue(json, SparqlQuerySettings.class));
+          Entity.getSystemRepository().createNewSetting(setting);
+        }
+      } catch (IOException e) {
+        LOG.error("Failed to read default SPARQL query settings", e);
+      }
     }
   }
 
@@ -532,6 +598,7 @@ public class SettingsCache {
       RelationCategory category,
       boolean isSystemDefined,
       String color,
+      RelationCardinality cardinality,
       Integer sourceMax,
       Integer targetMax) {
     return new GlossaryTermRelationType()
@@ -545,13 +612,14 @@ public class SettingsCache {
         .withCategory(category)
         .withIsSystemDefined(isSystemDefined)
         .withColor(color)
+        .withCardinality(cardinality)
         .withSourceMax(sourceMax)
         .withTargetMax(targetMax);
   }
 
   public static <T> T getSetting(SettingsType settingName, Class<T> clazz) {
     try {
-      Object configValue = CACHE.get(settingName.toString()).getConfigValue();
+      Object configValue = currentSettings(settingName.toString()).getConfigValue();
       return JsonUtils.convertValue(configValue, clazz);
     } catch (Exception ex) {
       LOG.error("Failed to fetch Settings . Setting {}", settingName, ex);
@@ -563,7 +631,7 @@ public class SettingsCache {
       SettingsType settingName, T defaultValue, Class<T> clazz) {
     T result = defaultValue;
     try {
-      Object configValue = CACHE.get(settingName.toString()).getConfigValue();
+      Object configValue = currentSettings(settingName.toString()).getConfigValue();
       result = JsonUtils.convertValue(configValue, clazz);
     } catch (CacheLoader.InvalidCacheLoadException ex) {
       // The loader returns null for a setting that was never configured. Serving the caller's
@@ -575,17 +643,43 @@ public class SettingsCache {
     return result;
   }
 
+  public static boolean isGlossaryTagPropagationEnabled() {
+    GlossarySettings settings =
+        getSettingOrDefault(GLOSSARY_SETTINGS, new GlossarySettings(), GlossarySettings.class);
+    return settings == null || !Boolean.FALSE.equals(settings.getEnableTagPropagation());
+  }
+
+  private static Settings currentSettings(String settingsName) throws ExecutionException {
+    LoadedSettings loaded = CACHE.get(settingsName);
+    for (int reload = 0;
+        reload < MAX_STALE_RELOADS && loaded.predatesTheLatestInvalidation();
+        reload++) {
+      CACHE.invalidate(settingsName);
+      loaded = CACHE.get(settingsName);
+    }
+    return loaded.settings();
+  }
+
   public static void cleanUp() {
+    INVALIDATIONS.incrementAndGet();
     CACHE.invalidateAll();
     initialized = false;
   }
 
   public static void invalidateSettings(String settingsName) {
     try {
+      INVALIDATIONS.incrementAndGet();
       CACHE.invalidate(settingsName);
-      // If search settings are being invalidated, also invalidate aggregated fields
+      // If search settings are being invalidated, also invalidate the values derived from them
       if (SEARCH_SETTINGS.toString().equals(settingsName)) {
         CACHE.invalidate(SEARCH_SETTINGS_AGGREGATED_FIELDS);
+        CACHE.invalidate(SEARCH_SETTINGS_COLUMN_INDEXING);
+      }
+      if (GLOSSARY_SETTINGS.value().equals(settingsName)) {
+        var tagCache = CacheBundle.getCachedTagUsageDao();
+        if (tagCache != null) {
+          tagCache.invalidateAll();
+        }
       }
     } catch (Exception ex) {
       LOG.error("Failed to invalidate cache for settings {}", settingsName, ex);
@@ -605,7 +699,7 @@ public class SettingsCache {
   @SuppressWarnings("unchecked")
   public static Map<String, Float> getAggregatedSearchFields() {
     try {
-      Settings aggregatedFields = CACHE.get(SEARCH_SETTINGS_AGGREGATED_FIELDS);
+      Settings aggregatedFields = currentSettings(SEARCH_SETTINGS_AGGREGATED_FIELDS);
       return (Map<String, Float>) aggregatedFields.getConfigValue();
     } catch (Exception ex) {
       LOG.error("Failed to fetch aggregated search fields", ex);
@@ -649,18 +743,62 @@ public class SettingsCache {
         .withConfigValue(Collections.unmodifiableMap(fields));
   }
 
+  /**
+   * Whether table columns get their own documents in the column search index. Every table write
+   * asks, so the flag is cached on its own instead of copying all of SearchSettings per call.
+   */
+  public static boolean isColumnIndexingEnabled() {
+    try {
+      return (Boolean) currentSettings(SEARCH_SETTINGS_COLUMN_INDEXING).getConfigValue();
+    } catch (ExecutionException | UncheckedExecutionException ex) {
+      LOG.warn("Failed to read the column indexing flag, treating it as enabled", ex);
+      return true;
+    }
+  }
+
+  /** A missing flag means enabled: installs that predate the setting always indexed columns. */
+  public static boolean isColumnIndexingEnabled(SearchSettings searchSettings) {
+    GlobalSettings globalSettings =
+        searchSettings == null ? null : searchSettings.getGlobalSettings();
+    return globalSettings == null
+        || !Boolean.FALSE.equals(globalSettings.getEnableColumnIndexing());
+  }
+
+  private static Settings computeColumnIndexingEnabled() {
+    SearchSettings searchSettings =
+        getSettingOrDefault(SEARCH_SETTINGS, null, SearchSettings.class);
+    return new Settings()
+        .withConfigType(SEARCH_SETTINGS)
+        .withConfigValue(isColumnIndexingEnabled(searchSettings));
+  }
+
   // Special key for caching aggregated search fields
   public static final String SEARCH_SETTINGS_AGGREGATED_FIELDS =
       "SEARCH_SETTINGS_AGGREGATED_FIELDS";
 
-  static class SettingsLoader extends CacheLoader<String, Settings> {
+  // Special key for caching the column indexing flag
+  public static final String SEARCH_SETTINGS_COLUMN_INDEXING = "SEARCH_SETTINGS_COLUMN_INDEXING";
+
+  static class SettingsLoader extends CacheLoader<String, LoadedSettings> {
+    /** A null result reaches callers as InvalidCacheLoadException, meaning the setting is unset. */
     @Override
-    public @NonNull Settings load(@CheckForNull String settingsName) {
+    public @NonNull LoadedSettings load(@CheckForNull String settingsName) {
+      long invalidationsAtLoad = INVALIDATIONS.get();
+      Settings fetchedSettings = fetch(settingsName);
+      return fetchedSettings == null
+          ? null
+          : new LoadedSettings(fetchedSettings, invalidationsAtLoad);
+    }
+
+    private Settings fetch(String settingsName) {
       Settings fetchedSettings;
 
       // Handle special case for aggregated fields
       if (SEARCH_SETTINGS_AGGREGATED_FIELDS.equals(settingsName)) {
         return computeAggregatedSearchFields();
+      }
+      if (SEARCH_SETTINGS_COLUMN_INDEXING.equals(settingsName)) {
+        return computeColumnIndexingEnabled();
       }
 
       switch (SettingsType.fromValue(settingsName)) {
@@ -697,9 +835,14 @@ public class SettingsCache {
         }
         case SEARCH_SETTINGS -> {
           fetchedSettings = Entity.getSystemRepository().getConfigWithKey(settingsName);
-          LOG.info("Loaded Setting {}", fetchedSettings.getConfigType());
-          // When SEARCH_SETTINGS are loaded, invalidate aggregated fields cache
+          // Absent until SettingsCache.initialize seeds it on a fresh install, but startup reads
+          // the column indexing flag before that.
+          if (fetchedSettings != null) {
+            LOG.info("Loaded Setting {}", fetchedSettings.getConfigType());
+          }
+          // When SEARCH_SETTINGS are loaded, invalidate the values derived from them
           CACHE.invalidate(SEARCH_SETTINGS_AGGREGATED_FIELDS);
+          CACHE.invalidate(SEARCH_SETTINGS_COLUMN_INDEXING);
         }
         default -> {
           fetchedSettings = Entity.getSystemRepository().getConfigWithKey(settingsName);

@@ -18,9 +18,9 @@ import shutil
 import traceback
 import zipfile
 from collections import defaultdict
+from contextlib import suppress
 from functools import singledispatch
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple  # noqa: UP035
 
 from metadata.clients.aws_client import AWSClient
 from metadata.clients.azure_client import AzureClient
@@ -52,7 +52,7 @@ from metadata.utils.s3_utils import list_s3_objects
 logger = utils_logger()
 
 
-def get_prefix_config(config) -> Tuple[Optional[str], Optional[str]]:  # noqa: UP006, UP045
+def get_prefix_config(config) -> tuple[str | None, str | None]:
     """
     Return (bucket, prefix) tuple
     """
@@ -64,7 +64,13 @@ def get_prefix_config(config) -> Tuple[Optional[str], Optional[str]]:  # noqa: U
     return None, None
 
 
-def get_blobs_grouped_by_dir(blobs: List[str]) -> Dict[str, List[str]]:  # noqa: UP006
+def _ensure_extract_dir(path: str | None) -> None:
+    if path is None:
+        raise PowerBIFileConfigException("PowerBI .pbit extraction directory is not configured")
+    Path(path).mkdir(parents=True, exist_ok=True)
+
+
+def get_blobs_grouped_by_dir(blobs: list[str]) -> dict[str, list[str]]:
     """
     Method to group the objs by the dir
     """
@@ -94,10 +100,10 @@ def _safe_local_path(extract_dir: str, blob: str) -> str:
 
 
 def download_pbit_files(
-    blob_grouped_by_directory: Dict,  # noqa: UP006
+    blob_grouped_by_directory: dict,
     config,
     client,
-    bucket_name: Optional[str],  # noqa: UP045
+    bucket_name: str | None,
     extract_dir: str,
 ):
     """
@@ -122,7 +128,7 @@ def download_pbit_files(
             reader.download(path=blob, local_file_path=local_file_path, **kwargs)
 
 
-def _get_datamodel_schema_list(path: str) -> Optional[List[DataModelSchema]]:  # noqa: UP006, UP045
+def _get_datamodel_schema_list(path: str) -> list[DataModelSchema] | None:
     """
     Method maps the json to datamodel schema model
     """
@@ -150,7 +156,7 @@ def _get_datamodel_schema_list(path: str) -> Optional[List[DataModelSchema]]:  #
     return datamodel_schema_list
 
 
-def get_datamodel_schema_files_from_pbit(path: str) -> Optional[List[DataModelSchema]]:  # noqa: UP006, UP045
+def get_datamodel_schema_files_from_pbit(path: str) -> list[DataModelSchema] | None:
     """
     Method to unzip the locally saved pbit files and get the schema files
     """
@@ -186,6 +192,7 @@ def get_pbit_files(config):
 @get_pbit_files.register
 def _(config: S3Config):
     try:
+        _ensure_extract_dir(config.pbitFilesExtractDir)
         bucket_name, prefix = get_prefix_config(config)
 
         client = AWSClient(config.securityConfig).get_client(service_name="s3")
@@ -220,6 +227,7 @@ def _(config: S3Config):
 @get_pbit_files.register
 def _(config: AzureConfig):
     try:
+        _ensure_extract_dir(config.pbitFilesExtractDir)
         bucket_name, prefix = get_prefix_config(config)
 
         client = AzureClient(config.securityConfig).create_blob_client()
@@ -249,12 +257,15 @@ def _(config: AzureConfig):
 
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        raise PowerBIFileConfigException(f"Error fetching .pbit files from Azure: {exc}")  # noqa: B904
+        raise PowerBIFileConfigException(  # noqa: B904
+            f"Error fetching .pbit files from Azure: {exc}"
+        )
 
 
 @get_pbit_files.register
 def _(config: GCSConfig):
     try:
+        _ensure_extract_dir(config.pbitFilesExtractDir)
         bucket_name, prefix = get_prefix_config(config)
         from google.cloud import storage  # pylint: disable=import-outside-toplevel
 
@@ -312,7 +323,7 @@ class PowerBiFileClient:
     def __init__(self, config: PowerBIConnection):
         self.config = config
 
-    def get_data_model_schema_mappings(self) -> Optional[List[DataModelSchema]]:  # noqa: UP006, UP045
+    def get_data_model_schema_mappings(self) -> list[DataModelSchema] | None:
         """
         Get the data model schema mappings
         """
@@ -322,4 +333,8 @@ class PowerBiFileClient:
         """
         Method to remove the files after ingestion is completed
         """
-        shutil.rmtree(self.config.pbitFilesSource.pbitFilesExtractDir)
+        source = self.config.pbitFilesSource
+        extract_dir = source.pbitFilesExtractDir if source is not None else None
+        if extract_dir is not None:
+            with suppress(FileNotFoundError):
+                shutil.rmtree(extract_dir)

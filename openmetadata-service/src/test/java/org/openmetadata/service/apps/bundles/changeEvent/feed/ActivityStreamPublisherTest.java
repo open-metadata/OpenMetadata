@@ -26,7 +26,6 @@ import static org.mockito.Mockito.when;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -38,6 +37,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.errors.EventPublisherException;
@@ -48,22 +48,6 @@ class ActivityStreamPublisherTest {
 
   @Mock private EventSubscription eventSubscription;
   @Mock private SubscriptionDestination subscriptionDestination;
-
-  @BeforeEach
-  void setUp() {
-    when(subscriptionDestination.getType())
-        .thenReturn(SubscriptionDestination.SubscriptionType.ACTIVITY_FEED);
-  }
-
-  @Test
-  void constructorRejectsIllegalDestinationType() {
-    when(subscriptionDestination.getType())
-        .thenReturn(SubscriptionDestination.SubscriptionType.EMAIL);
-
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> new ActivityStreamPublisher(eventSubscription, subscriptionDestination));
-  }
 
   @Test
   void requiresRecipientsIsDisabled() {
@@ -152,6 +136,8 @@ class ActivityStreamPublisherTest {
 
   @Test
   void sendMessageWrapsRepositoryErrors() {
+    when(subscriptionDestination.getType())
+        .thenReturn(SubscriptionDestination.SubscriptionType.ACTIVITY_FEED);
     try (MockedConstruction<ActivityStreamRepository> repositoryConstruction =
         mockConstruction(
             ActivityStreamRepository.class,
@@ -170,6 +156,43 @@ class ActivityStreamPublisherTest {
           () -> publisher.sendMessage(event, Collections.emptySet()));
 
       ActivityStreamRepository repository = repositoryConstruction.constructed().getFirst();
+      verify(repository).createFieldEventsFromChangeEvent(any(), any());
+    }
+  }
+
+  @Test
+  void sendMessagePurgesActivityOnHardDelete() throws EventPublisherException {
+    try (MockedConstruction<ActivityStreamRepository> repositoryConstruction =
+        mockConstruction(ActivityStreamRepository.class)) {
+      ActivityStreamPublisher publisher =
+          new ActivityStreamPublisher(eventSubscription, subscriptionDestination);
+
+      ChangeEvent event = createChangeEvent(Entity.DOMAIN, createTableEntity());
+      event.setEventType(EventType.ENTITY_DELETED);
+
+      assertDoesNotThrow(() -> publisher.sendMessage(event, Collections.emptySet()));
+
+      ActivityStreamRepository repository = repositoryConstruction.constructed().getFirst();
+      verify(repository).deleteByEntity(event.getEntityType(), event.getEntityId());
+      verify(repository, never()).createFieldEventsFromChangeEvent(any(), any());
+      verify(repository, never()).insertBatch(any());
+    }
+  }
+
+  @Test
+  void sendMessageRecordsActivityOnSoftDelete() throws EventPublisherException {
+    try (MockedConstruction<ActivityStreamRepository> repositoryConstruction =
+        mockConstruction(ActivityStreamRepository.class)) {
+      ActivityStreamPublisher publisher =
+          new ActivityStreamPublisher(eventSubscription, subscriptionDestination);
+
+      ChangeEvent event = createChangeEvent(Entity.TABLE, createTableEntity());
+      event.setEventType(EventType.ENTITY_SOFT_DELETED);
+
+      assertDoesNotThrow(() -> publisher.sendMessage(event, Collections.emptySet()));
+
+      ActivityStreamRepository repository = repositoryConstruction.constructed().getFirst();
+      verify(repository, never()).deleteByEntity(any(), any());
       verify(repository).createFieldEventsFromChangeEvent(any(), any());
     }
   }

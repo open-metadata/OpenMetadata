@@ -7,7 +7,7 @@ import { type SelectItemType, sizes } from '@/components/base/select/select';
 import { TagCloseX } from '@/components/base/tags/base-components/tag-close-x';
 import { useResizeObserver } from '@/hooks/use-resize-observer';
 import { cx } from '@/utils/cx';
-import { SearchLg } from '@untitledui/icons';
+import { Search } from '../../../icons';
 import type {
   FocusEventHandler,
   KeyboardEvent,
@@ -37,7 +37,6 @@ import {
   ComboBoxStateContext,
 } from 'react-aria-components';
 import type { ListData } from 'react-stately';
-import { useListData } from 'react-stately';
 import { SelectItem } from './select-item';
 
 interface ComboBoxValueProps
@@ -200,7 +199,7 @@ const InnerMultiSelect = ({
           shortcut && 'tw:min-w-[30%]'
         )}>
         <AriaInput
-          className="tw:w-full tw:flex-[1_0_0] tw:appearance-none tw:bg-transparent tw:text-md tw:text-ellipsis tw:text-primary tw:caret-alpha-black/90 tw:outline-hidden tw:placeholder:text-placeholder tw:focus:outline-hidden tw:disabled:cursor-not-allowed tw:disabled:text-disabled tw:disabled:placeholder:text-disabled"
+          className="tw:w-full tw:flex-[1_0_0] tw:appearance-none tw:bg-transparent tw:text-md tw:text-ellipsis tw:text-primary tw:caret-text-primary tw:outline-hidden tw:placeholder:text-placeholder tw:focus:outline-hidden tw:disabled:cursor-not-allowed tw:disabled:text-disabled tw:disabled:placeholder:text-disabled"
           placeholder={placeholder}
           onKeyDown={handleInputKeyDown}
           onMouseDown={handleInputMouseDown}
@@ -232,7 +231,7 @@ export const MultiSelectTagsValue = ({
   shortcut,
   placeholder,
   shortcutClassName,
-  icon: Icon = SearchLg,
+  icon: Icon = Search,
   // Omit this prop to avoid invalid HTML attribute warning
   isDisabled: _isDisabled,
   ...otherProps
@@ -280,6 +279,7 @@ export const MultiSelectBase = ({
   onItemInserted,
   shortcut,
   placeholder = 'Search',
+  onInputChange: onInputChangeProp,
   // Omit these props to avoid conflicts with the `Select` component
   name: _name,
   className: _className,
@@ -298,10 +298,15 @@ export const MultiSelectBase = ({
     [contains, selectedKeys]
   );
 
-  const accessibleList = useListData({
-    initialItems: items,
-    filter,
-  });
+  // Derive the visible options from the live `items` prop instead of
+  // useListData({ initialItems }) — that hook snapshots the items on mount,
+  // so async consumers that fetch options on input change never see their
+  // results reflected in the popup.
+  const [filterText, setFilterText] = useState('');
+  const filteredItems = useMemo(
+    () => (items ?? []).filter((item) => filter(item, filterText)),
+    [items, filter, filterText]
+  );
 
   const onRemove = useCallback(
     (keys: Set<Key>) => {
@@ -317,12 +322,31 @@ export const MultiSelectBase = ({
     [selectedItems, onItemCleared]
   );
 
+  // react-aria commits the focused option on blur/Tab, and the listbox focuses
+  // whatever the pointer last passed over — so leaving the field inserted an
+  // option the user never picked. Only a press or Enter adds a value.
+  const isLeavingRef = useRef(false);
+  const suppressCommit = useCallback(() => {
+    isLeavingRef.current = true;
+    queueMicrotask(() => {
+      isLeavingRef.current = false;
+    });
+  }, []);
+  const onKeyDownCapture = useCallback(
+    (event: KeyboardEvent) => {
+      if (event.key === 'Tab') {
+        suppressCommit();
+      }
+    },
+    [suppressCommit]
+  );
+
   const onSelectionChange = (id: Key | null) => {
-    if (!id) {
+    if (!id || isLeavingRef.current) {
       return;
     }
 
-    const item = accessibleList.getItem(id);
+    const item = (items ?? []).find((currentItem) => currentItem.id === id);
 
     if (!item) {
       return;
@@ -333,14 +357,18 @@ export const MultiSelectBase = ({
       onItemInserted?.(id);
     }
 
-    accessibleList.setFilterText('');
+    setFilterText('');
   };
 
   const onInputChange = useCallback(
     (value: string) => {
-      accessibleList.setFilterText(value);
+      setFilterText(value);
+      // Chain the consumer's handler — the internal one is applied after
+      // {...props} on AriaComboBox and would otherwise silently drop it
+      // (async search widgets rely on it to fetch matching options).
+      onInputChangeProp?.(value);
     },
-    [accessibleList]
+    [onInputChangeProp]
   );
 
   const placeholderRef = useRef<HTMLDivElement>(null);
@@ -370,8 +398,8 @@ export const MultiSelectBase = ({
     <ComboboxContext.Provider value={contextValues}>
       <AriaComboBox
         allowsEmptyCollection
-        inputValue={accessibleList.filterText}
-        items={accessibleList.items}
+        inputValue={filterText}
+        items={filteredItems}
         menuTrigger="focus"
         // This keeps the combobox popover open and the input value unchanged when an item is selected.
         selectedKey={null}
@@ -379,7 +407,10 @@ export const MultiSelectBase = ({
         onInputChange={onInputChange}
         onSelectionChange={onSelectionChange}>
         {(state) => (
-          <div className="tw:flex tw:flex-col tw:gap-1.5">
+          <div
+            className="tw:flex tw:flex-col tw:gap-1.5"
+            onBlurCapture={suppressCommit}
+            onKeyDownCapture={onKeyDownCapture}>
             {props.label && (
               <Label isRequired={state.isRequired} tooltip={props.tooltip}>
                 {props.label}

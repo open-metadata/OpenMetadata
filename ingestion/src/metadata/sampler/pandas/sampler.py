@@ -13,14 +13,14 @@ Helper module to handle data sampling
 for the profiler
 """
 
-from typing import Callable, List, Optional, cast  # noqa: UP035
+from collections.abc import Callable
+from typing import cast
 
 from metadata.generated.schema.entity.data.table import (
     ColumnProfilerConfig,
     PartitionProfilerConfig,
     TableData,
 )
-from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
 from metadata.sampler.sampler_config import DatabaseSamplerConfig
 from metadata.sampler.sampler_interface import SamplerInterface
@@ -79,14 +79,14 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
         return self.connection
 
     @property
-    def columns(self) -> List[SQALikeColumn]:  # noqa: UP006
+    def columns(self) -> list[SQALikeColumn]:
         """Return columns filtered by include/exclude lists."""
         if self._columns:
             return self._columns
 
         included = {col.columnName for col in self.include_columns if col.columnName}
         excluded = set(self.exclude_columns)
-        all_columns: List[SQALikeColumn] = [col for col in self.get_columns() if col is not None]  # noqa: UP006
+        all_columns: list[SQALikeColumn] = [col for col in self.get_columns() if col is not None]
 
         if included:
             self._columns = [col for col in all_columns if col.name in included]
@@ -111,7 +111,7 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
     def get_col_row(
         self,
         df_iterator: Callable,
-        columns: Optional[List[SQALikeColumn]] = None,  # noqa: UP006, UP045
+        columns: list[SQALikeColumn] | None = None,
         sample_query: str = None,  # noqa: RUF013
     ):
         """
@@ -148,22 +148,14 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
             raw_dataset = self._partitioned_table()
 
         static = self._resolve_sample_config
-        if (
-            not static
-            or not static.profileSample
-            or (
-                static.profileSample == 100
-                and static.profileSampleType == ProfileSampleType.PERCENTAGE
-                and self.sample_config.randomizedSample is not True
-            )
-        ):
+        if not static or not self.applies_sampling:
             return raw_dataset
         return self.get_sampled_dataframe(raw_dataset, static)
 
     def _fetch_rows(self, data_frame):
         return [[self._truncate_cell(cell) for cell in row] for row in data_frame.dropna().values.tolist()]
 
-    def fetch_sample_data(self, columns: Optional[List[SQALikeColumn]] = None) -> TableData:  # noqa: UP006, UP045
+    def fetch_sample_data(self, columns: list[SQALikeColumn] | None = None) -> TableData:
         """Fetch sample data from the table
 
         Returns:
@@ -175,7 +167,7 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
         cols, rows = self.get_col_row(df_iterator=self.raw_dataset, columns=columns)
         return TableData(columns=cols, rows=rows)
 
-    def get_columns(self) -> List[Optional[SQALikeColumn]]:  # noqa: UP006, UP045
+    def get_columns(self) -> list[SQALikeColumn | None]:
         """Get SQALikeColumns for datalake to be passed for metric computation"""
         sqalike_columns = []
         if self.raw_dataset:

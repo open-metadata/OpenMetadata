@@ -133,10 +133,7 @@ class PostgresIngestionClass extends ServiceBaseClass {
           await metadataTab.click();
         }
         await page.click('[data-testid="add-new-ingestion-button"]');
-        await page
-          .locator('.ant-dropdown:visible [data-menu-id*="usage"]')
-          .waitFor();
-        await page.click('[data-menu-id*="usage"]');
+        await page.getByTestId('agent-item-usage').click();
         await waitForIngestionWorkflowForm(page);
         await page.fill('#root\\/queryLogFilePath', this.queryLogFilePath);
 
@@ -154,10 +151,7 @@ class PostgresIngestionClass extends ServiceBaseClass {
         if (await metadataTab2.isVisible()) {
           await metadataTab2.click();
         }
-        await page
-          .getByLabel('agents')
-          .getByTestId('loader')
-          .waitFor({ state: 'detached' });
+        await waitForAllLoadersToDisappear(page.getByLabel('agents'));
 
         const response = await apiContext
           .get(
@@ -166,19 +160,14 @@ class PostgresIngestionClass extends ServiceBaseClass {
             )}&pipelineType=usage&serviceType=databaseService&limit=1`
           )
           .then((res) => res.json());
-
-        // eslint-disable-next-line playwright/no-wait-for-timeout -- pipeline deployment settling time
-        await page.waitForTimeout(3000);
+        const startedAfter = Date.now();
         await getAgentCard(page, response.data[0].name)
           .getByTestId('run-agent-button')
           .click();
 
         await toastNotification(page, `Pipeline triggered successfully!`);
 
-        // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for latest pipeline run results
-        await page.waitForTimeout(2000);
-
-        await this.handleIngestionRetry('usage', page);
+        await this.waitForIngestion(page, startedAfter, 'usage');
       });
 
       await test.step('Verify if usage is ingested properly', async () => {

@@ -13,8 +13,6 @@
 
 package org.openmetadata.service.apps.bundles.changeEvent.feed;
 
-import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.ACTIVITY_FEED;
-
 import java.util.List;
 import java.util.Set;
 import lombok.Getter;
@@ -25,6 +23,7 @@ import org.openmetadata.schema.entity.activity.ActivityEvent;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
@@ -54,6 +53,7 @@ public class ActivityStreamPublisher implements Destination<ChangeEvent> {
   private static final Set<String> SKIP_ENTITY_TYPES =
       Set.of(
           Entity.THREAD,
+          Entity.CONVERSATION,
           Entity.TASK,
           Entity.BOT,
           Entity.INGESTION_PIPELINE,
@@ -67,14 +67,9 @@ public class ActivityStreamPublisher implements Destination<ChangeEvent> {
 
   public ActivityStreamPublisher(
       EventSubscription eventSubscription, SubscriptionDestination subscriptionDestination) {
-    if (subscriptionDestination.getType() == ACTIVITY_FEED) {
-      this.eventSubscription = eventSubscription;
-      this.subscriptionDestination = subscriptionDestination;
-      this.activityStreamRepository = new ActivityStreamRepository();
-    } else {
-      throw new IllegalArgumentException(
-          "ActivityStreamPublisher invoked with illegal subscription type.");
-    }
+    this.eventSubscription = eventSubscription;
+    this.subscriptionDestination = subscriptionDestination;
+    this.activityStreamRepository = new ActivityStreamRepository();
   }
 
   @Override
@@ -86,13 +81,23 @@ public class ActivityStreamPublisher implements Destination<ChangeEvent> {
         return;
       }
 
+      // Hard delete (soft delete emits ENTITY_SOFT_DELETED): purge the entity's activity instead of
+      // recording a "deleted" event. Keyed by entity id so an entity later recreated with the same
+      // fully qualified name does not inherit the dead entity's history (#28923). This runs after
+      // the delete transaction commits, so it also supersedes this trailing delete event itself.
+      if (changeEvent.getEventType() == EventType.ENTITY_DELETED) {
+        activityStreamRepository.deleteByEntity(
+            changeEvent.getEntityType(), changeEvent.getEntityId());
+        return;
+      }
+
       // Skip if no entity in the change event
       if (changeEvent.getEntity() == null) {
         return;
       }
 
       // Get the entity to extract domains
-      EntityInterface entity = getEntityFromChangeEvent(changeEvent);
+      EntityInterface<?> entity = getEntityFromChangeEvent(changeEvent);
       if (entity == null) {
         LOG.debug(
             "Could not get entity for change event: {} {}",
@@ -119,23 +124,24 @@ public class ActivityStreamPublisher implements Destination<ChangeEvent> {
     } catch (Exception ex) {
       String message =
           CatalogExceptionMessage.eventPublisherFailedToPublish(
-              ACTIVITY_FEED, changeEvent, ex.getMessage());
+              subscriptionDestination.getType(), changeEvent, ex.getMessage());
       LOG.error(message, ex);
       throw new EventPublisherException(
-          CatalogExceptionMessage.eventPublisherFailedToPublish(ACTIVITY_FEED, ex.getMessage()),
+          CatalogExceptionMessage.eventPublisherFailedToPublish(
+              subscriptionDestination.getType(), ex.getMessage()),
           Pair.of(subscriptionDestination.getId(), changeEvent));
     }
   }
 
-  private EntityInterface getEntityFromChangeEvent(ChangeEvent changeEvent) {
+  private EntityInterface<?> getEntityFromChangeEvent(ChangeEvent changeEvent) {
     try {
       Object entityObj = changeEvent.getEntity();
-      if (entityObj instanceof EntityInterface entityInterface) {
+      if (entityObj instanceof EntityInterface<?> entityInterface) {
         return entityInterface;
       }
 
       if (entityObj != null) {
-        Class<? extends EntityInterface> entityClass =
+        Class<? extends EntityInterface<?>> entityClass =
             Entity.getEntityClassFromType(changeEvent.getEntityType());
         if (entityClass != null) {
           return entityObj instanceof String entityJson

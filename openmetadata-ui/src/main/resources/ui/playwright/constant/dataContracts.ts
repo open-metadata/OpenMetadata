@@ -932,3 +932,33 @@ description:
 
     For more details, see the [documentation](https://example.com/docs).
 `;
+
+// Rules that run as test cases on the given column and table, one that cannot run, and a
+// field OpenMetadata does not import, so the import report has something in every section.
+export const getODCSWithRunnableQualityRules = (
+  column: string
+) => `apiVersion: v3.1.0
+kind: DataContract
+id: quality-report-contract
+name: ODCS Contract with Runnable Quality Rules
+version: "1.0.0"
+status: active
+schema:
+  - name: table
+    logicalType: object
+    quality:
+      - name: Table is not empty
+        metric: rowCount
+        mustBeGreaterThan: 0
+    properties:
+      - name: ${column}
+        businessName: Shop
+        logicalType: integer
+        quality:
+          - name: Id is set
+            metric: nullValues
+            mustBe: 0
+quality:
+  - name: Steward review
+    type: text
+`;

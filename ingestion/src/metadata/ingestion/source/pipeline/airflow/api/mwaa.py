@@ -15,7 +15,6 @@ Uses AWS MWAA invoke_rest_api for direct API calls without token management
 
 import json
 import traceback
-from typing import Dict, List, Optional  # noqa: UP035
 from urllib.parse import quote
 
 from metadata.clients.aws_client import AWSClient
@@ -48,9 +47,9 @@ class MWAAClient:
         self,
         path: str,
         method: str = "GET",
-        body: Optional[Dict] = None,  # noqa: UP006, UP045
-        query: Optional[Dict] = None,  # noqa: UP006, UP045
-    ) -> Dict:  # noqa: UP006
+        body: dict | None = None,
+        query: dict | None = None,
+    ) -> dict:
         """
         Invoke MWAA REST API using AWS MWAA invoke_rest_api method.
 
@@ -90,12 +89,12 @@ class MWAAClient:
             logger.debug(traceback.format_exc())
             raise
 
-    def get_version(self) -> Dict:  # noqa: UP006
+    def get_version(self) -> dict:
         """Get basic connection info - MWAA doesn't expose version endpoint"""
         # Return a simple response to indicate connectivity
         return {"version": "MWAA", "status": "connected"}
 
-    def test_get_version(self) -> Dict:  # noqa: UP006
+    def test_get_version(self) -> dict:
         """Prove the environment is reachable and the credentials work.
 
         ``get_version`` is a hardcoded stub - MWAA exposes no version endpoint - so
@@ -106,16 +105,16 @@ class MWAAClient:
         self._invoke_rest_api("/dags", query={"limit": "1"})
         return {"version": "MWAA", "status": "connected"}
 
-    def list_dags(self, limit: int = 100, offset: int = 0) -> Dict:  # noqa: UP006
+    def list_dags(self, limit: int = 100, offset: int = 0) -> dict:
         """List DAGs with pagination"""
         query = {"limit": str(limit), "offset": str(offset)}
         return self._invoke_rest_api("/dags", query=query)
 
-    def get_dag_tasks(self, dag_id: str) -> Dict:  # noqa: UP006
+    def get_dag_tasks(self, dag_id: str) -> dict:
         """Get tasks for a specific DAG"""
         return self._invoke_rest_api(f"/dags/{quote(dag_id, safe='')}/tasks")
 
-    def list_dag_runs(self, dag_id: str, limit: int = 10) -> Dict:  # noqa: UP006
+    def list_dag_runs(self, dag_id: str, limit: int = 10) -> dict:
         """List DAG runs for a specific DAG"""
         query_param = "?order_by=-start_date"
         query_param += f"&limit={limit}" if limit is not None else ""
@@ -123,15 +122,15 @@ class MWAAClient:
             f"/dags/{quote(dag_id, safe='')}/dagRuns{query_param}",
         )
 
-    def get_task_instances(self, dag_id: str, dag_run_id: str) -> Dict:  # noqa: UP006
+    def get_task_instances(self, dag_id: str, dag_run_id: str) -> dict:
         """Get task instances for a specific DAG run"""
         return self._invoke_rest_api(
             f"/dags/{quote(dag_id, safe='')}/dagRuns/{quote(dag_run_id, safe='')}/taskInstances"
         )
 
-    def _paginate(self, path: str, key: str, limit: int = 100) -> List[Dict]:  # noqa: UP006
+    def _paginate(self, path: str, key: str, limit: int = 100) -> list[dict]:
         """Paginate through API results"""
-        result: List[Dict] = []  # noqa: UP006
+        result: list[dict] = []
         offset = 0
 
         while True:
@@ -158,11 +157,11 @@ class MWAAClient:
 
         return result
 
-    def get_all_dags(self) -> List[Dict]:  # noqa: UP006
+    def get_all_dags(self) -> list[dict]:
         """Get all DAGs using pagination"""
         return self._paginate("/dags", key="dags")
 
-    def build_dag_details(self, dag_data: Dict) -> AirflowApiDagDetails:  # noqa: UP006
+    def build_dag_details(self, dag_data: dict) -> AirflowApiDagDetails:
         """Build DAG details using existing model format"""
         dag_id = dag_data["dag_id"]
 
@@ -217,7 +216,7 @@ class MWAAClient:
             tasks=tasks,
         )
 
-    def get_dag_runs(self, dag_id: str, limit: int = 10) -> List[AirflowApiDagRun]:  # noqa: UP006
+    def get_dag_runs(self, dag_id: str, limit: int = 10) -> list[AirflowApiDagRun]:
         """Get DAG runs using existing model format"""
         try:
             response = self.list_dag_runs(dag_id, limit=limit)
@@ -240,7 +239,7 @@ class MWAAClient:
             )
         return result
 
-    def get_task_instances_for_run(self, dag_id: str, dag_run_id: str) -> List[AirflowApiTaskInstance]:  # noqa: UP006
+    def get_task_instances_for_run(self, dag_id: str, dag_run_id: str) -> list[AirflowApiTaskInstance]:
         """Get task instances using existing model format"""
         try:
             path = f"/dags/{quote(dag_id, safe='')}/dagRuns/{quote(dag_run_id, safe='')}/taskInstances"

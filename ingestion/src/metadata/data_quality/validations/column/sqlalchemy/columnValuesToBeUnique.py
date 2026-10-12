@@ -14,7 +14,7 @@ Validator for column values to be unique test case
 """
 
 import logging
-from typing import List, Optional, cast  # noqa: UP035
+from typing import cast
 
 from sqlalchemy import Column, case, func, inspect, literal_column, select
 from sqlalchemy.exc import SQLAlchemyError
@@ -69,7 +69,7 @@ class ColumnValuesToBeUniqueValidator(
         """
         return count - unique_count
 
-    def _run_results(self, metric: Metrics, column: Column) -> Optional[int]:  # noqa: UP045
+    def _run_results(self, metric: Metrics, column: Column) -> int | None:
         """compute result of the test case
 
         Args:
@@ -115,7 +115,7 @@ class ColumnValuesToBeUniqueValidator(
 
         return res
 
-    def _get_unique_count(self, metric: Metrics, column: Column) -> Optional[int]:  # noqa: UP045
+    def _get_unique_count(self, metric: Metrics, column: Column) -> int | None:
         """Get unique count of values"""
 
         return self.value.get(metric.name)
@@ -125,9 +125,9 @@ class ColumnValuesToBeUniqueValidator(
         column: Column,
         dimension_col: Column,
         metrics_to_compute: dict,
-        test_params: Optional[dict],  # noqa: UP045
+        test_params: dict | None,
         top_n: int,
-    ) -> List[DimensionResult]:  # noqa: UP006
+    ) -> list[DimensionResult]:
         """Execute dimensional validation for uniqueness using two-pass approach
 
         Two-pass query strategy for accurate "Others" unique count:
@@ -151,46 +151,37 @@ class ColumnValuesToBeUniqueValidator(
         Returns:
             List[DimensionResult]: Top N dimensions plus "Others" with accurate unique count
         """
-        dimension_results = []
+        if hasattr(self.runner.dataset, "__table__"):
+            table = self.runner.dataset.__table__
+        else:
+            table = self.runner.dataset
 
-        try:
-            if hasattr(self.runner.dataset, "__table__"):
-                table = self.runner.dataset.__table__
-            else:
-                table = self.runner.dataset
+        dialect = self.runner._session.get_bind().dialect.name
 
-            dialect = self.runner._session.get_bind().dialect.name
+        normalized_dimension = self._get_normalized_dimension_expression(dimension_col)
 
-            normalized_dimension = self._get_normalized_dimension_expression(dimension_col)
+        # Build dialect-specific value_counts CTE for dimensional unique count
+        value_counts_cte, unique_count_expr = _unique_count_dimensional_cte(
+            column, table, normalized_dimension, dialect
+        )
 
-            # Build dialect-specific value_counts CTE for dimensional unique count
-            value_counts_cte, unique_count_expr = _unique_count_dimensional_cte(
-                column, table, normalized_dimension, dialect
-            )
+        metric_expressions = {
+            DIMENSION_TOTAL_COUNT_KEY: func.sum(value_counts_cte.c.row_count),
+            Metrics.valuesCount.name: func.sum(value_counts_cte.c.occurrence_count),
+            Metrics.uniqueCount.name: unique_count_expr,
+            DIMENSION_FAILED_COUNT_KEY: func.sum(value_counts_cte.c.occurrence_count) - unique_count_expr,
+        }
 
-            metric_expressions = {
-                DIMENSION_TOTAL_COUNT_KEY: func.sum(value_counts_cte.c.row_count),
-                Metrics.valuesCount.name: func.sum(value_counts_cte.c.occurrence_count),
-                Metrics.uniqueCount.name: unique_count_expr,
-                DIMENSION_FAILED_COUNT_KEY: func.sum(value_counts_cte.c.occurrence_count) - unique_count_expr,
-            }
+        result_rows = self._run_dimensional_validation_query(
+            source=value_counts_cte,
+            dimension_expr=value_counts_cte.c.dim_value,
+            metric_expressions=metric_expressions,
+            others_source_builder=self._get_others_source_builder(value_counts_cte),
+            others_metric_expressions_builder=self._get_others_metric_expressions_builder(),
+            top_n=top_n,
+        )
 
-            result_rows = self._run_dimensional_validation_query(
-                source=value_counts_cte,
-                dimension_expr=value_counts_cte.c.dim_value,
-                metric_expressions=metric_expressions,
-                others_source_builder=self._get_others_source_builder(value_counts_cte),
-                others_metric_expressions_builder=self._get_others_metric_expressions_builder(),
-                top_n=top_n,
-            )
-
-            return self._process_dimension_rows(result_rows, dimension_col.name, metrics_to_compute, test_params)
-
-        except Exception as exc:
-            logger.warning(f"Error executing dimensional query: {exc}")
-            logger.debug("Full error details: ", exc_info=True)
-
-        return dimension_results
+        return self._process_dimension_rows(result_rows, dimension_col.name, metrics_to_compute, test_params)
 
     def _get_others_source_builder(self, value_counts_cte):
         def build_others_source(top_values):

@@ -11,8 +11,22 @@
  *  limitations under the License.
  */
 
-import { APIRequestContext, expect, Response } from '@playwright/test';
-import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
+import {
+  APIRequestContext,
+  BrowserContext,
+  expect,
+  Response,
+} from '@playwright/test';
+import { test as base } from '../../support/fixtures/base';
+import { installServerLoadReducers } from '../../support/fixtures/serverLoad';
+import { UserClass } from '../../support/user/UserClass';
+import { createAdminApiContext } from '../../utils/admin';
+import {
+  disableEtagConditionalReads,
+  getApiContext,
+  redirectToHomePage,
+  uuid,
+} from '../../utils/common';
 import {
   BulkOperationResult,
   ContextCenterDocument,
@@ -35,7 +49,7 @@ import {
   copyAndGetClipboardText,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
-import { test } from '../fixtures/pages';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 // ─── Cleanup Sets ─────────────────────────────────────────────────────────────
 
@@ -64,16 +78,63 @@ const uploadDocument = async (
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
-test.use({ storageState: 'playwright/.auth/admin.json' });
+type DocumentSession = {
+  apiContext: APIRequestContext;
+  storageState: Awaited<ReturnType<BrowserContext['storageState']>>;
+};
+
+const test = base.extend<object, { documentSession: DocumentSession }>({
+  documentSession: [
+    async ({ browser }, use, workerInfo) => {
+      const user = new UserClass(undefined, true);
+      const { apiContext: adminContext, afterAction } =
+        await createAdminApiContext();
+      const context = await browser.newContext({
+        baseURL: workerInfo.project.use.baseURL,
+        ignoreHTTPSErrors: workerInfo.project.use.ignoreHTTPSErrors,
+        storageState: { cookies: [], origins: [] },
+      });
+      try {
+        await user.create(adminContext);
+        await installServerLoadReducers(context);
+        const page = await context.newPage();
+        await user.signIn(page);
+        const { apiContext, afterAction: disposeApiContext } =
+          await getApiContext(page);
+        try {
+          // Async deletion messages go to every session for the initiating user.
+          // A worker's fixture cleanup must not cover another worker's controls.
+          await use({
+            apiContext,
+            storageState: await context.storageState({ indexedDB: true }),
+          });
+        } finally {
+          await disposeApiContext();
+        }
+      } finally {
+        await context.close();
+        if (user.responseData.id) {
+          await user.delete(adminContext);
+        }
+        await afterAction();
+      }
+    },
+    { scope: 'worker' },
+  ],
+  storageState: async ({ documentSession }, use) => {
+    await use(documentSession.storageState);
+  },
+});
 
 // ─── Suite ────────────────────────────────────────────────────────────────────
 
 test.describe('Context Center - Documents Page', () => {
-  test.slow(true);
   test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
 
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
+  test.beforeAll(async ({ documentSession }) => {
+    contextFileIdsToCleanup.clear();
+    contextFolderIdsToCleanup.clear();
+    const { apiContext } = documentSession;
     await uploadDocument(
       apiContext,
       `seed-document-${uuid()}.txt`,
@@ -102,11 +163,45 @@ test.describe('Context Center - Documents Page', () => {
         })
       )
     );
+  });
 
-    await afterAction();
+  test.afterAll(async ({ documentSession }) => {
+    const { apiContext } = documentSession;
+    try {
+      const deleteIds = (collection: string, ids: Set<string>) =>
+        Promise.allSettled(
+          [...ids].map(async (id) => {
+            const response = await apiContext.delete(
+              `/api/v1/contextCenter/drive/${collection}/${id}?hardDelete=true`
+            );
+            expect(
+              [200, 202, 404],
+              `Delete ${collection}/${id}: ${await response.text()}`
+            ).toContain(response.status());
+          })
+        );
+      const results = [
+        ...(await deleteIds('folders', contextFolderIdsToCleanup)),
+        ...(await deleteIds('files', contextFileIdsToCleanup)),
+      ];
+      const failures = results.filter(
+        (result): result is PromiseRejectedResult =>
+          result.status === 'rejected'
+      );
+      if (failures.length) {
+        throw new AggregateError(
+          failures.map((failure) => failure.reason),
+          'Document fixture cleanup failed'
+        );
+      }
+    } finally {
+      contextFileIdsToCleanup.clear();
+      contextFolderIdsToCleanup.clear();
+    }
   });
 
   test.beforeEach(async ({ page }) => {
+    await disableEtagConditionalReads(page);
     await redirectToHomePage(page);
   });
 
@@ -116,9 +211,7 @@ test.describe('Context Center - Documents Page', () => {
     page,
   }) => {
     await navigateToDocuments(page);
-    await page.getByTestId('document-row-skeleton').first().waitFor({
-      state: 'detached',
-    });
+    await expect(page.getByTestId('document-row-skeleton')).toHaveCount(0);
     const view = page.getByTestId('documents-view');
     const rows = view.locator('[data-testid^="document-row-"]');
     const countBefore = await rows.count();
@@ -143,9 +236,7 @@ test.describe('Context Center - Documents Page', () => {
     const loadMoreRes = await loadMoreResPromise;
     expect(loadMoreRes.status()).toBe(200);
 
-    await page.getByTestId('document-row-skeleton').last().waitFor({
-      state: 'hidden',
-    });
+    await expect(page.getByTestId('document-row-skeleton')).toHaveCount(0);
 
     const countAfter = await rows.count();
     expect(countAfter).toBeGreaterThan(countBefore);
@@ -237,8 +328,8 @@ test.describe('Context Center - Documents Page', () => {
       res.url().includes('after=') &&
       res.request().method() === 'GET';
 
-    test.beforeAll(async ({ browser }) => {
-      const { apiContext, afterAction } = await createNewPage(browser);
+    test.beforeAll(async ({ documentSession }) => {
+      const { apiContext } = documentSession;
       const suffix = uuid();
 
       const folders = await Promise.all(
@@ -258,8 +349,6 @@ test.describe('Context Center - Documents Page', () => {
 
       folders.forEach((folder) => contextFolderIdsToCleanup.add(folder.id));
       lastPageFolder = folders[FOLDER_PAGE_SIZE];
-
-      await afterAction();
     });
 
     test('scrolling the sidebar folder tree loads the next page and reveals the page-2 folder', async ({
@@ -278,17 +367,16 @@ test.describe('Context Center - Documents Page', () => {
     });
 
     test('scrolling the per-file "Move to Folder" submenu loads the next page and reveals the page-2 folder', async ({
-      browser,
+      documentSession,
       page,
     }) => {
       const fileName = `folder-pagination-move-${uuid()}.txt`;
-      const { apiContext, afterAction } = await createNewPage(browser);
+      const { apiContext } = documentSession;
       await uploadDocument(
         apiContext,
         fileName,
         Buffer.from('folder pagination submenu test')
       );
-      await afterAction();
 
       await navigateToDocuments(page);
 
@@ -329,17 +417,16 @@ test.describe('Context Center - Documents Page', () => {
     });
 
     test('scrolling the bulk "Move" dropdown loads the next page and reveals the page-2 folder', async ({
-      browser,
+      documentSession,
       page,
     }) => {
       const fileName = `folder-pagination-bulk-move-${uuid()}.txt`;
-      const { apiContext, afterAction } = await createNewPage(browser);
+      const { apiContext } = documentSession;
       const document = await uploadDocument(
         apiContext,
         fileName,
         Buffer.from('folder pagination bulk move test')
       );
-      await afterAction();
 
       await navigateToDocuments(page);
 
@@ -416,7 +503,7 @@ test.describe('Context Center - Documents Page', () => {
 
       // If the seed document was indexed, it appears; otherwise the empty state shows
       if (count > 0) {
-        await expect(rows.first()).toBeVisible();
+        await expect(rows.filter({ visible: true })).not.toHaveCount(0);
       } else {
         await expect(page.getByTestId('no-data-placeholder')).toBeVisible({
           timeout: 8000,
@@ -479,15 +566,15 @@ test.describe('Context Center - Documents Page', () => {
         page
           .getByTestId('documents-view')
           .locator('[data-testid^="document-row-"]')
-          .first()
-      ).toBeVisible();
+          .filter({ visible: true })
+      ).not.toHaveCount(0);
     });
   });
 
   // ─── Search scoped to selected folder ────────────────────────────────────
 
   test('searching with folder selected scopes results to that folder only', async ({
-    browser,
+    documentSession,
     page,
   }) => {
     const sharedToken = uuid();
@@ -495,7 +582,7 @@ test.describe('Context Center - Documents Page', () => {
     const docInFolderName = `doc-${sharedToken}-in.txt`;
     const docOutsideName = `doc-${sharedToken}-out.txt`;
 
-    const { apiContext, afterAction } = await createNewPage(browser);
+    const { apiContext } = documentSession;
     const folderRes = await apiContext.post(
       '/api/v1/contextCenter/drive/folders',
       { data: { name: folderName, displayName: folderName } }
@@ -519,8 +606,6 @@ test.describe('Context Center - Documents Page', () => {
       docOutsideName,
       Buffer.from('document outside folder')
     );
-
-    await afterAction();
 
     await page.route(
       (url) =>
@@ -573,16 +658,6 @@ test.describe('Context Center - Documents Page', () => {
     await waitForAllLoadersToDisappear(page);
     await selectFolderInSidebar(page, folderName);
 
-    const folderSearchResPromise = page.waitForResponse(
-      (res) =>
-        res.url().includes('/api/v1/search/query') &&
-        res.url().includes('index=contextFile')
-    );
-
-    await searchInput.fill(sharedToken);
-    await folderSearchResPromise;
-    await waitForAllLoadersToDisappear(page);
-
     await expect(
       view.locator(`[data-testid="document-row-${inFolderDoc.id}"]`)
     ).toBeVisible();
@@ -624,7 +699,7 @@ test.describe('Context Center - Documents Page', () => {
     const hint = modal.locator('[class*="hint"], p').filter({
       hasText: /supports all file types/i,
     });
-    await expect(hint.first()).toBeVisible();
+    await expect(hint.filter({ visible: true })).not.toHaveCount(0);
 
     const attachBtn = modal.getByRole('button', { name: /attach/i });
     await expect(attachBtn).toBeVisible();
@@ -653,7 +728,9 @@ test.describe('Context Center - Documents Page', () => {
       buffer: Buffer.from('context center upload test file'),
     });
 
-    await expect(modal.getByText(fileName).first()).toBeVisible();
+    await expect(
+      modal.getByText(fileName).filter({ visible: true })
+    ).not.toHaveCount(0);
 
     const uploadResPromise = page.waitForResponse(
       '/api/v1/contextCenter/drive/files/upload'
@@ -665,19 +742,21 @@ test.describe('Context Center - Documents Page', () => {
     contextFileIdsToCleanup.add(uploadedDocument.id);
 
     await expect(modal).not.toBeVisible();
-    await expect(page.getByText(fileName).first()).toBeVisible();
+    await expect(
+      page.getByText(fileName).filter({ visible: true })
+    ).not.toHaveCount(0);
   });
 
   // ─── Req 1: All card details (name, size, updatedBy, updatedAt, folder) ──
 
   test('uploaded document card shows name, size, updatedBy, updatedAt, and folder', async ({
-    browser,
+    documentSession,
     page,
   }) => {
     const fileName = `card-details-${uuid()}.txt`;
     const folderName = `card-details-folder-${uuid()}`;
 
-    const { apiContext, afterAction } = await createNewPage(browser);
+    const { apiContext } = documentSession;
     const folderRes = await apiContext.post(
       '/api/v1/contextCenter/drive/folders',
       { data: { name: folderName, displayName: folderName } }
@@ -692,7 +771,6 @@ test.describe('Context Center - Documents Page', () => {
       Buffer.from('card detail test'),
       folder.fullyQualifiedName
     );
-    await afterAction();
 
     await navigateToDocuments(page);
 
@@ -725,13 +803,16 @@ test.describe('Context Center - Documents Page', () => {
   // ─── Req 2: Delete single document via card menu ──────────────────────────
 
   test('delete single document from card menu removes it from the list', async ({
-    browser,
+    documentSession,
     page,
   }) => {
     const fileName = `card-menu-delete-${uuid()}.txt`;
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await uploadDocument(apiContext, fileName, Buffer.from('delete from menu'));
-    await afterAction();
+    const { apiContext } = documentSession;
+    const doc = await uploadDocument(
+      apiContext,
+      fileName,
+      Buffer.from('delete from menu')
+    );
 
     await navigateToDocuments(page);
 
@@ -751,6 +832,7 @@ test.describe('Context Center - Documents Page', () => {
     await page.getByTestId('confirm-button').click();
     const deleteRes = await deleteResPromise;
     expect(deleteRes.status()).toBe(200);
+    contextFileIdsToCleanup.delete(doc.id);
 
     await expect(getDocumentRowByName(page, fileName)).not.toBeVisible();
   });
@@ -808,13 +890,13 @@ test.describe('Context Center - Documents Page', () => {
   // ─── Req 4: Move single document to folder via card menu ──────────────────
 
   test('move document to folder via card menu shows folder name on the card', async ({
-    browser,
+    documentSession,
     page,
   }) => {
     const fileName = `card-move-${uuid()}.txt`;
     const folderName = `card-move-folder-${uuid()}`;
 
-    const { apiContext, afterAction } = await createNewPage(browser);
+    const { apiContext } = documentSession;
     const doc = await uploadDocument(
       apiContext,
       fileName,
@@ -828,7 +910,6 @@ test.describe('Context Center - Documents Page', () => {
     expect(folderRes.status(), folderBody).toBe(201);
     const folder = parseResponseJson<ContextCenterFolder>(folderBody);
     contextFolderIdsToCleanup.add(folder.id);
-    await afterAction();
 
     await navigateToDocuments(page);
 
@@ -859,13 +940,13 @@ test.describe('Context Center - Documents Page', () => {
   // ─── Req 4b: Move to folder → folder visible on card; re-open menu shows folder selected; click again removes from folder ──
 
   test('moving document to folder shows folder on card; re-opening menu shows current folder selected; clicking it again removes document from folder', async ({
-    browser,
+    documentSession,
     page,
   }) => {
     const fileName = `card-move-remove-${uuid()}.txt`;
     const folderName = `card-move-remove-folder-${uuid()}`;
 
-    const { apiContext, afterAction } = await createNewPage(browser);
+    const { apiContext } = documentSession;
     const doc = await uploadDocument(
       apiContext,
       fileName,
@@ -880,7 +961,6 @@ test.describe('Context Center - Documents Page', () => {
     expect(folderRes.status(), folderBody).toBe(201);
     const folder = parseResponseJson<ContextCenterFolder>(folderBody);
     contextFolderIdsToCleanup.add(folder.id);
-    await afterAction();
 
     await navigateToDocuments(page);
 
@@ -913,7 +993,9 @@ test.describe('Context Center - Documents Page', () => {
 
     const currentFolderItem = page.getByTestId(`move-to-folder-${folder.id}`);
     await expect(currentFolderItem).toBeVisible();
-    await expect(currentFolderItem.locator('svg').last()).toBeVisible();
+    await expect(
+      currentFolderItem.locator('svg').filter({ visible: true })
+    ).not.toHaveCount(0);
 
     const removeResPromise = page.waitForResponse(
       (res) =>
@@ -934,13 +1016,13 @@ test.describe('Context Center - Documents Page', () => {
   // ─── Req 5: Preview panel — name, status, size, folder, updatedBy, updatedAt + copy link ──
 
   test('clicking document row opens preview panel with name, status, size, folder, updatedBy, updatedAt and copy button copies correct link', async ({
-    browser,
+    documentSession,
     page,
   }) => {
     const fileName = `preview-panel-${uuid()}.txt`;
     const folderName = `preview-panel-folder-${uuid()}`;
 
-    const { apiContext, afterAction } = await createNewPage(browser);
+    const { apiContext } = documentSession;
     const folderRes = await apiContext.post(
       '/api/v1/contextCenter/drive/folders',
       { data: { name: folderName, displayName: folderName } }
@@ -955,7 +1037,6 @@ test.describe('Context Center - Documents Page', () => {
       Buffer.from('preview panel content'),
       folder.fullyQualifiedName
     );
-    await afterAction();
 
     await navigateToDocuments(page);
 
@@ -971,6 +1052,7 @@ test.describe('Context Center - Documents Page', () => {
     await expect(page).toHaveURL(new RegExp(`document=${doc.id}`));
     await expect(row.getByTestId('document-name')).toHaveText(fileName);
 
+    await expect(panel.getByText('Status')).toBeVisible();
     await expect(panel.getByText('Size')).toBeVisible();
     await expect(panel.getByText('Folder', { exact: true })).toBeVisible();
     await expect(panel.getByText(folderName)).toBeVisible();
@@ -984,23 +1066,23 @@ test.describe('Context Center - Documents Page', () => {
     expect(panelClipboardText).toContain(`document=${doc.id}`);
 
     await panel.getByTestId('close-preview-btn').click();
+    await panel.waitFor({ state: 'hidden' });
     await expect(panel).not.toBeVisible();
   });
 
   // ─── Req 6: Copy link button on document list row ─────────────────────────
 
   test('copy link button on document list row copies URL with correct document id and opening the link shows the preview panel', async ({
-    browser,
+    documentSession,
     page,
   }) => {
     const fileName = `copy-link-row-${uuid()}.txt`;
-    const { apiContext, afterAction } = await createNewPage(browser);
+    const { apiContext } = documentSession;
     const doc = await uploadDocument(
       apiContext,
       fileName,
       Buffer.from('copy link test')
     );
-    await afterAction();
 
     await navigateToDocuments(page);
 
@@ -1014,8 +1096,8 @@ test.describe('Context Center - Documents Page', () => {
     const clipboardText = await copyAndGetClipboardText(page, copyBtn);
     expect(clipboardText).toContain(`document=${doc.id}`);
 
-    const newTab = await browser.newPage();
-    await newTab.goto(clipboardText);
+    const newTab = await page.context().newPage();
+    await newTab.goto(clipboardText, { waitUntil: 'domcontentloaded' });
     await newTab
       .getByTestId('context-center-documents-page')
       .waitFor({ state: 'visible' });
@@ -1031,14 +1113,14 @@ test.describe('Context Center - Documents Page', () => {
   // ─── Req 7: Bulk move 2 docs → API validated + folder name on both cards ──
 
   test('bulk move moves selected documents to a folder with a single API call and folder name appears on both cards', async ({
-    browser,
+    documentSession,
     page,
   }) => {
     const folderName = `bulk-move-folder-${uuid()}`;
     const firstFileName = `bulk-move-one-${uuid()}.txt`;
     const secondFileName = `bulk-move-two-${uuid()}.txt`;
 
-    const { apiContext, afterAction } = await createNewPage(browser);
+    const { apiContext } = documentSession;
     const firstDocument = await uploadDocument(
       apiContext,
       firstFileName,
@@ -1049,7 +1131,6 @@ test.describe('Context Center - Documents Page', () => {
       secondFileName,
       Buffer.from('second document for bulk move')
     );
-    await afterAction();
 
     await navigateToDocuments(page);
 
@@ -1107,13 +1188,13 @@ test.describe('Context Center - Documents Page', () => {
   // ─── Req 8: Bulk delete 2 docs → removed from list + appear in archive ────
 
   test('bulk delete 2 documents removes them from the list and both appear in the archive', async ({
-    browser,
+    documentSession,
     page,
   }) => {
     const firstName = `bulk-del-archive-one-${uuid()}.txt`;
     const secondName = `bulk-del-archive-two-${uuid()}.txt`;
 
-    const { apiContext, afterAction } = await createNewPage(browser);
+    const { apiContext } = documentSession;
     const doc1 = await uploadDocument(
       apiContext,
       firstName,
@@ -1124,7 +1205,6 @@ test.describe('Context Center - Documents Page', () => {
       secondName,
       Buffer.from('second for archive verify')
     );
-    await afterAction();
 
     await navigateToDocuments(page);
 
@@ -1151,6 +1231,8 @@ test.describe('Context Center - Documents Page', () => {
       doc1.id,
       doc2.id,
     ]);
+    contextFileIdsToCleanup.delete(doc1.id);
+    contextFileIdsToCleanup.delete(doc2.id);
 
     await expect(
       await searchAndGetDocumentRow(page, firstName)
@@ -1159,7 +1241,9 @@ test.describe('Context Center - Documents Page', () => {
       await searchAndGetDocumentRow(page, secondName)
     ).not.toBeVisible();
 
-    await page.goto('/context-center/archive');
+    await page.goto('/context-center/archive', {
+      waitUntil: 'domcontentloaded',
+    });
     await page
       .getByTestId('context-center-archive-page')
       .waitFor({ state: 'visible' });
@@ -1172,13 +1256,13 @@ test.describe('Context Center - Documents Page', () => {
   // ─── Req 9: Left sidebar folder tree — doc nested under its folder ─────────
 
   test('document appears nested in the folder tree after being moved to a folder', async ({
-    browser,
+    documentSession,
     page,
   }) => {
     const fileName = `folder-tree-doc-${uuid()}.txt`;
     const folderName = `folder-tree-${uuid()}`;
 
-    const { apiContext, afterAction } = await createNewPage(browser);
+    const { apiContext } = documentSession;
     const doc = await uploadDocument(
       apiContext,
       fileName,
@@ -1192,7 +1276,6 @@ test.describe('Context Center - Documents Page', () => {
     expect(folderRes.status(), folderBody).toBe(201);
     const folder = parseResponseJson<ContextCenterFolder>(folderBody);
     contextFolderIdsToCleanup.add(folder.id);
-    await afterAction();
 
     await navigateToDocuments(page);
 
@@ -1219,7 +1302,16 @@ test.describe('Context Center - Documents Page', () => {
     const tree = page.getByRole('treegrid', { name: 'Folders' });
     const folderRow = await revealFolderRow(page, folderName);
 
+    const folderFilesResPromise = page.waitForResponse(
+      (res) =>
+        res.url().includes('/api/v1/contextCenter/drive/files') &&
+        res.url().includes(`folderId=${folder.id}`) &&
+        !res.url().includes('after=') &&
+        res.request().method() === 'GET'
+    );
     await folderRow.getByRole('button', { name: 'Expand' }).click();
+    const folderFilesRes = await folderFilesResPromise;
+    expect(folderFilesRes.status()).toBe(200);
 
     await expect(folderRow).toHaveAttribute('aria-expanded', 'true');
     await expect(tree.getByText(fileName, { exact: true })).toBeVisible();
@@ -1228,14 +1320,14 @@ test.describe('Context Center - Documents Page', () => {
   // ─── Req 10: Click folder → filters list; move menu hides current folder ──
 
   test('clicking folder in sidebar shows only that folder documents and move menu show the current folder', async ({
-    browser,
+    documentSession,
     page,
   }) => {
     const docInFolderName = `in-folder-${uuid()}.txt`;
     const docOutsideName = `outside-folder-${uuid()}.txt`;
     const folderName = `filter-folder-${uuid()}`;
 
-    const { apiContext, afterAction } = await createNewPage(browser);
+    const { apiContext } = documentSession;
     const folderRes = await apiContext.post(
       '/api/v1/contextCenter/drive/folders',
       { data: { name: folderName, displayName: folderName } }
@@ -1256,7 +1348,6 @@ test.describe('Context Center - Documents Page', () => {
       docOutsideName,
       Buffer.from('document outside folder')
     );
-    await afterAction();
 
     await navigateToDocuments(page);
 
@@ -1276,16 +1367,10 @@ test.describe('Context Center - Documents Page', () => {
     await expect(documentsViewCount).toBeVisible();
     await expect(folderViewCount).toBeVisible();
 
-    const globalCountText = await documentsViewCount.textContent();
-    const globalCount = parseInt(globalCountText ?? '0', 10);
-    expect(globalCount).toBeGreaterThanOrEqual(2);
-
-    // The folder-view header should show the same global total.
-    const folderCount = parseInt(
-      (await folderViewCount.textContent())?.match(/\d+/)?.[0] ?? '0',
-      10
-    );
-    expect(folderCount).toBeGreaterThanOrEqual(globalCount);
+    // Clear the search before comparing the two headers. While a search is
+    // active the DocumentsView count reports the *result* total, not the global
+    // one, so the two headers are measuring different things and comparing them
+    // is meaningless.
     const browseResPromise = page.waitForResponse(
       (res) =>
         res.url().includes('/api/v1/contextCenter/drive/files') &&
@@ -1295,6 +1380,26 @@ test.describe('Context Center - Documents Page', () => {
     await browseResPromise;
     await waitForAllLoadersToDisappear(page);
 
+    // Unsearched and unfiltered, both headers show the same system-wide total.
+    // Re-read both counts each attempt rather than comparing one to a value
+    // captured earlier: every other worker in the run is adding to and deleting
+    // from that corpus, so two reads taken a moment apart are not two views of
+    // the same number.
+    await expect
+      .poll(async () => {
+        const global = parseInt(
+          (await documentsViewCount.textContent()) ?? '0',
+          10
+        );
+        const folder = parseInt(
+          (await folderViewCount.textContent())?.match(/\d+/)?.[0] ?? '0',
+          10
+        );
+
+        return global >= 2 && folder >= global;
+      })
+      .toBe(true);
+
     // Click the folder — triggers a server-side refetch scoped to that folder.
     await selectFolderInSidebar(page, folderName);
 
@@ -1303,14 +1408,20 @@ test.describe('Context Center - Documents Page', () => {
     await expect(getDocumentRowByName(page, docOutsideName)).not.toBeVisible();
 
     // DocumentsView header count updates to reflect the folder-scoped total.
-    await expect(documentsViewCount).toContainText('1');
+    // Anchored: toContainText('1') would also accept "21 files" or "100 files".
+    await expect(documentsViewCount).toHaveText(/^1\s+files?$/i);
 
-    // DocumentFolderView header still shows the global total (unchanged).
+    // DocumentFolderView header is not scoped by the sidebar selection, so it
+    // still counts the document outside the folder as well as the one inside
+    // it. That is the property under test, and unlike a comparison against the
+    // total captured before the click it does not depend on a number shared
+    // with every other worker: chromium-24 read 77 before selecting the folder
+    // and 52 afterwards, having lost 25 documents it never created.
     const folderCountAfter = parseInt(
       (await folderViewCount.textContent())?.match(/\d+/)?.[0] ?? '0',
       10
     );
-    expect(folderCountAfter).toBeGreaterThanOrEqual(globalCount);
+    expect(folderCountAfter).toBeGreaterThanOrEqual(2);
 
     const inFolderRow = await searchAndGetDocumentRow(page, docInFolderName);
     await inFolderRow.scrollIntoViewIfNeeded();
@@ -1332,14 +1443,14 @@ test.describe('Context Center - Documents Page', () => {
   // ─── Req 11: Duplicate in same folder → retry error; same name in diff folder → success; delete file + folder ──
 
   test('duplicate filename in same folder shows retry error; uploading same name to different folder succeeds; delete file and folder from UI', async ({
-    browser,
+    documentSession,
     page,
   }) => {
     const sharedFileName = `dup-folder-${uuid()}.txt`;
     const folderAName = `dup-folder-a-${uuid()}`;
     const folderBName = `dup-folder-b-${uuid()}`;
 
-    const { apiContext, afterAction } = await createNewPage(browser);
+    const { apiContext } = documentSession;
     const folderARes = await apiContext.post(
       '/api/v1/contextCenter/drive/folders',
       { data: { name: folderAName, displayName: folderAName } }
@@ -1364,7 +1475,6 @@ test.describe('Context Center - Documents Page', () => {
       Buffer.from('original in folder A'),
       folderA.fullyQualifiedName
     );
-    await afterAction();
 
     await navigateToDocuments(page);
 
@@ -1391,30 +1501,28 @@ test.describe('Context Center - Documents Page', () => {
     const dupRes = await dupResPromise;
     expect(dupRes.status()).toBe(400);
 
-    await expect(modal.getByText(/try again|failed/i).first()).toBeVisible();
+    await expect(
+      modal.getByText(/try again|failed/i).filter({ visible: true })
+    ).not.toHaveCount(0);
     await expect(modal.getByRole('button', { name: /attach/i })).toBeDisabled();
 
     await modal.getByRole('button', { name: /cancel/i }).click();
     await expect(modal).not.toBeVisible();
 
-    let uploadedDocId: string;
-    {
-      const { apiContext: api2, afterAction: after2 } = await createNewPage(
-        browser
-      );
-      const uploadedDoc = await uploadDocument(
-        api2,
-        sharedFileName,
-        Buffer.from('same filename in folder B'),
-        folderB.fullyQualifiedName
-      );
-      uploadedDocId = uploadedDoc.id;
-      await after2();
-    }
+    const { id: uploadedDocId } = await uploadDocument(
+      apiContext,
+      sharedFileName,
+      Buffer.from('same filename in folder B'),
+      folderB.fullyQualifiedName
+    );
 
     await navigateToDocuments(page);
 
-    const uploadedRow = page.getByTestId(`document-row-${uploadedDocId}`);
+    const uploadedRow = await searchAndGetDocumentRow(
+      page,
+      sharedFileName,
+      uploadedDocId
+    );
     await expect(uploadedRow).toBeVisible();
     await uploadedRow.scrollIntoViewIfNeeded();
 
@@ -1467,19 +1575,18 @@ test.describe('Context Center - Documents Page', () => {
   });
 
   test('duplicate filename upload fails case-insensitively in the same folder', async ({
-    browser,
+    documentSession,
     page,
   }) => {
     const duplicateName = `Duplicate-Document-${uuid()}.TXT`;
     const lowerCaseDuplicateName = duplicateName.toLowerCase();
 
-    const { apiContext, afterAction } = await createNewPage(browser);
+    const { apiContext } = documentSession;
     await uploadDocument(
       apiContext,
       duplicateName,
       Buffer.from('original duplicate document')
     );
-    await afterAction();
 
     await navigateToDocuments(page);
     await page.getByRole('button', { name: /upload file/i }).click();
@@ -1506,7 +1613,9 @@ test.describe('Context Center - Documents Page', () => {
 
     expect(duplicateUploadRes.status(), duplicateUploadBody).toBe(400);
     expect(duplicateUploadBody).toContain(lowerCaseDuplicateName);
-    await expect(modal.getByText(/failed/i).first()).toBeVisible();
+    await expect(
+      modal.getByText(/failed/i).filter({ visible: true })
+    ).not.toHaveCount(0);
     await expect(modal.getByRole('button', { name: /attach/i })).toBeDisabled();
   });
 
@@ -1569,7 +1678,9 @@ test.describe('Context Center - Documents Page', () => {
       mimeType: 'text/plain',
       name: fileName,
     });
-    await expect(modal.getByText(fileName).first()).toBeVisible();
+    await expect(
+      modal.getByText(fileName).filter({ visible: true })
+    ).not.toHaveCount(0);
 
     // Trigger the first (failing) upload.
     const failedResPromise = page.waitForResponse(
@@ -1580,15 +1691,19 @@ test.describe('Context Center - Documents Page', () => {
     expect(failedRes.status()).toBe(500);
 
     // File row should show "Failed" with a "Try again" button.
-    await expect(modal.getByText(/failed/i).first()).toBeVisible();
+    await expect(
+      modal.getByText(/failed/i).filter({ visible: true })
+    ).not.toHaveCount(0);
     const tryAgainBtn = modal.getByRole('button', { name: /try again/i });
     await expect(tryAgainBtn).toBeVisible();
 
     // Retry — the route now passes through, so the real server handles it.
-    const retryResPromise = page.waitForResponse(
+    const retryResPromise = waitForResponseWithStatus(
+      page,
       (res) =>
-        res.url().includes('/api/v1/contextCenter/drive/files/upload') &&
-        res.status() === 201
+        res.request().method() === 'POST' &&
+        res.url().includes('/api/v1/contextCenter/drive/files/upload'),
+      201
     );
     await tryAgainBtn.click();
     const retryRes = await retryResPromise;
@@ -1611,16 +1726,14 @@ test.describe('Context Center - Documents Page', () => {
     const modal = page.getByRole('dialog', { name: /upload documents/i });
     await expect(modal).toBeVisible();
 
-    // First upload succeeds; second upload fails.
-    let uploadCount = 0;
+    // Uploads run concurrently, so identify the intended failure by filename.
     await page.route(
       '**/api/v1/contextCenter/drive/files/upload',
       async (route) => {
-        uploadCount++;
-        if (uploadCount <= 1) {
-          await route.continue();
-        } else {
+        if (route.request().postData()?.includes(`filename="${file2}"`)) {
           await route.fulfill({ status: 500, body: 'Simulated server error' });
+        } else {
+          await route.continue();
         }
       }
     );
@@ -1639,32 +1752,48 @@ test.describe('Context Center - Documents Page', () => {
         name: file2,
       },
     ]);
-    await expect(modal.getByText(file1).first()).toBeVisible();
-    await expect(modal.getByText(file2).first()).toBeVisible();
+    const successfulRow = modal
+      .getByRole('listitem')
+      .filter({ hasText: file1 });
+    const failedRow = modal.getByRole('listitem').filter({ hasText: file2 });
+    await expect(successfulRow).toBeVisible();
+    await expect(failedRow).toBeVisible();
 
     // Capture the successful upload response for cleanup.
-    const successResPromise = page.waitForResponse(
+    const successResPromise = waitForResponseWithStatus(
+      page,
       (res) =>
+        res.request().method() === 'POST' &&
         res.url().includes('/api/v1/contextCenter/drive/files/upload') &&
-        res.status() === 201
+        !!res.request().postData()?.includes(`filename="${file1}"`),
+      201
+    );
+    const failedResPromise = waitForResponseWithStatus(
+      page,
+      (res) =>
+        res.request().method() === 'POST' &&
+        res.url().includes('/api/v1/contextCenter/drive/files/upload') &&
+        !!res.request().postData()?.includes(`filename="${file2}"`),
+      500
     );
 
     await modal.getByRole('button', { name: /attach/i }).click();
-    const successRes = await successResPromise;
+    const [successRes] = await Promise.all([
+      successResPromise,
+      failedResPromise,
+    ]);
     const successDoc = (await successRes.json()) as ContextCenterDocument;
     contextFileIdsToCleanup.add(successDoc.id);
 
     // Modal must stay open because one file failed.
     await expect(modal).toBeVisible();
 
-    // At least one row shows "Failed" with a "Try again" button.
-    await expect(modal.getByText(/failed/i).first()).toBeVisible();
+    await expect(failedRow.getByText(/failed/i)).toBeVisible();
     await expect(
-      modal.getByRole('button', { name: /try again/i })
+      failedRow.getByRole('button', { name: /try again/i })
     ).toBeVisible();
 
-    // The successful row shows "Complete", not "Failed".
-    await expect(modal.getByText(/complete/i).first()).toBeVisible();
+    await expect(successfulRow.getByText(/complete/i)).toBeVisible();
   });
 
   test('attaching a new file does not close the modal when a pre-existing error file is present', async ({
@@ -1702,7 +1831,9 @@ test.describe('Context Center - Documents Page', () => {
       mimeType: 'text/plain',
       name: errorFile,
     });
-    await expect(modal.getByText(errorFile).first()).toBeVisible();
+    await expect(
+      modal.getByText(errorFile).filter({ visible: true })
+    ).not.toHaveCount(0);
 
     const firstFailRes = page.waitForResponse(
       '**/api/v1/contextCenter/drive/files/upload'
@@ -1711,7 +1842,9 @@ test.describe('Context Center - Documents Page', () => {
     await firstFailRes;
 
     // First file is now in error state; Attach button is disabled.
-    await expect(modal.getByText(/failed/i).first()).toBeVisible();
+    await expect(
+      modal.getByText(/failed/i).filter({ visible: true })
+    ).not.toHaveCount(0);
     await expect(modal.getByRole('button', { name: /attach/i })).toBeDisabled();
 
     // Add a second, valid file.
@@ -1721,13 +1854,17 @@ test.describe('Context Center - Documents Page', () => {
       mimeType: 'text/plain',
       name: newFile,
     });
-    await expect(modal.getByText(newFile).first()).toBeVisible();
+    await expect(
+      modal.getByText(newFile).filter({ visible: true })
+    ).not.toHaveCount(0);
 
     // Upload the new file — it succeeds.
-    const secondSuccessRes = page.waitForResponse(
+    const secondSuccessRes = waitForResponseWithStatus(
+      page,
       (res) =>
-        res.url().includes('/api/v1/contextCenter/drive/files/upload') &&
-        res.status() === 201
+        res.request().method() === 'POST' &&
+        res.url().includes('/api/v1/contextCenter/drive/files/upload'),
+      201
     );
     await modal.getByRole('button', { name: /attach/i }).click();
     const uploadRes = await secondSuccessRes;
@@ -1736,7 +1873,11 @@ test.describe('Context Center - Documents Page', () => {
 
     // Modal must stay open because the first file is still in error state.
     await expect(modal).toBeVisible();
-    await expect(modal.getByText(/failed/i).first()).toBeVisible();
-    await expect(modal.getByText(/complete/i).first()).toBeVisible();
+    await expect(
+      modal.getByText(/failed/i).filter({ visible: true })
+    ).not.toHaveCount(0);
+    await expect(
+      modal.getByText(/complete/i).filter({ visible: true })
+    ).not.toHaveCount(0);
   });
 });

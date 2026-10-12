@@ -261,17 +261,6 @@ public class AppRepository extends EntityRepository<App> {
     }
   }
 
-  @Override
-  protected void postDelete(App entity, boolean hardDelete) {
-    super.postDelete(entity, hardDelete);
-    // Delete the status stored in the app extension
-    // Note that we don't want to delete the LIMITS, since we want to keep them
-    // between different app installations
-    daoCollection
-        .appExtensionTimeSeriesDao()
-        .delete(entity.getId().toString(), AppExtension.ExtensionType.STATUS.toString());
-  }
-
   public final List<App> listAll() {
     List<String> jsons = dao.listAfterWithOffset(Integer.MAX_VALUE, 0);
     List<App> entities = new ArrayList<>();
@@ -537,6 +526,12 @@ public class AppRepository extends EntityRepository<App> {
     return JsonUtils.readValue(result.get(0), clazz);
   }
 
+  /**
+   * Reached exclusively from {@code cleanup()}, which the delete path runs on the hard-delete
+   * branch only — so an app's run history survives a (reversible) soft delete and comes back with
+   * the app on restore. LIMITS extensions are deliberately left in place: they are meant to carry
+   * over between installations of the same app.
+   */
   @Override
   protected void entitySpecificCleanup(App app) {
     // Remove the Pipelines for Application
@@ -544,6 +539,9 @@ public class AppRepository extends EntityRepository<App> {
     pipelineRef.forEach(
         reference ->
             Entity.deleteEntity("admin", reference.getType(), reference.getId(), true, true));
+    daoCollection
+        .appExtensionTimeSeriesDao()
+        .delete(app.getId().toString(), AppExtension.ExtensionType.STATUS.toString());
   }
 
   @Override

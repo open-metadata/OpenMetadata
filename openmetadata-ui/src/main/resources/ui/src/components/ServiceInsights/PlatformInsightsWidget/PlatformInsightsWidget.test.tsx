@@ -11,10 +11,12 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { GREEN_1, RED_1 } from '../../../constants/Color.constants';
 import { SystemChartType } from '../../../enums/DataInsight.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
+import { ServicesType } from '../../../interface/service.interface';
 import { getTitleByChartType } from '../../../utils/ServiceInsightsTabPureUtils';
 import { getReadableCountString } from '../../../utils/ServicePureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
@@ -48,7 +50,9 @@ jest.mock('../../../assets/svg/ic-trend-up.svg', () => {
   };
 });
 
-const mockUseRequiredParams = useRequiredParams as jest.MockedFunction<any>;
+const mockUseRequiredParams = useRequiredParams as jest.MockedFunction<
+  typeof useRequiredParams
+>;
 
 const mockGetTitleByChartType = getTitleByChartType as jest.MockedFunction<
   typeof getTitleByChartType
@@ -61,9 +65,9 @@ describe('PlatformInsightsWidget', () => {
   const mockServiceDetails = {
     id: 'test-service-id',
     name: 'test-service',
-    serviceType: 'Mysql' as any,
+    serviceType: 'Mysql',
     fullyQualifiedName: 'test-service-fqn',
-  } as any;
+  } as unknown as ServicesType;
 
   const mockChartsData = [
     {
@@ -133,12 +137,28 @@ describe('PlatformInsightsWidget', () => {
       ).toBeInTheDocument();
     });
 
-    it('should render expand/collapse functionality', () => {
+    it('collapses and restores chart content through its accessible header', () => {
       renderComponent();
+      const header = screen.getByRole('button', { expanded: true });
 
-      const expandIcon = screen.getByText('label.view-more');
+      expect(screen.getByText('85%')).toBeVisible();
 
-      expect(expandIcon).toBeInTheDocument();
+      fireEvent.click(header);
+
+      expect(header).toHaveAttribute('aria-expanded', 'false');
+      expect(screen.getByText('85%')).not.toBeVisible();
+
+      fireEvent.click(header);
+
+      expect(header).toHaveAttribute('aria-expanded', 'true');
+      expect(screen.getByText('85%')).toBeVisible();
+    });
+
+    it('keeps embedded charts visible without a disabled collapse control', () => {
+      renderComponent({ variant: 'embedded' });
+
+      expect(screen.getByText('85%')).toBeVisible();
+      expect(screen.queryByRole('button')).not.toBeInTheDocument();
     });
 
     it('should render the export class for platform insights chart', () => {
@@ -157,7 +177,7 @@ describe('PlatformInsightsWidget', () => {
       renderComponent({ isLoading: true });
 
       // Should render 5 skeleton cards for database services (includes HealthyDataAssets)
-      const skeletonCards = document.querySelectorAll('.ant-skeleton');
+      const skeletonCards = document.querySelectorAll('.other-charts-card');
 
       expect(skeletonCards).toHaveLength(5);
     });
@@ -169,7 +189,7 @@ describe('PlatformInsightsWidget', () => {
       renderComponent({ isLoading: true });
 
       // Should render 4 skeleton cards (excludes HealthyDataAssets for non-database services)
-      const skeletonCards = document.querySelectorAll('.ant-skeleton');
+      const skeletonCards = document.querySelectorAll('.other-charts-card');
 
       expect(skeletonCards).toHaveLength(4);
     });
@@ -231,7 +251,7 @@ describe('PlatformInsightsWidget', () => {
       const positiveChange = screen.getByText('5%');
 
       expect(positiveChange).toBeInTheDocument();
-      expect(positiveChange).toHaveStyle({ color: 'rgb(6, 118, 71)' }); // GREEN_1
+      expect(positiveChange).toHaveStyle({ color: GREEN_1 });
     });
 
     it('should render negative percentage change with red color and down arrow', () => {
@@ -240,7 +260,7 @@ describe('PlatformInsightsWidget', () => {
       const negativeChange = screen.getByText('-2%');
 
       expect(negativeChange).toBeInTheDocument();
-      expect(negativeChange).toHaveStyle({ color: 'rgb(240, 68, 56)' }); // RED_1
+      expect(negativeChange).toHaveStyle({ color: RED_1 });
     });
 
     it('should render percentage change text but not icon when value is 0', () => {

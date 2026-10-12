@@ -10,23 +10,27 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
+import { expect, test as base } from '../../support/fixtures/isolatedUser';
 import { PersonaClass } from '../../support/persona/PersonaClass';
-import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { selectOption } from '../../utils/advancedSearch';
-import { redirectToHomePage, removeLandingBanner } from '../../utils/common';
+import { redirectToHomePage } from '../../utils/common';
+import {
+  createArticleViaApi,
+  deleteArticleByFqn,
+} from '../../utils/ContextCenterUtil';
 import {
   addCuratedAssetPlaceholder,
   CURATED_ASSETS_WIDGET_KEY,
   ENTITY_TYPE_CONFIGS,
+  NameableEntityResponse,
   navigateToCustomizeLandingPage,
   removeAndCheckWidget,
   saveCustomizeLayoutPage,
   selectAssetTypes,
   setUserDefaultPersona,
-  toNameableEntity,
   waitForLandingPageWidget,
 } from '../../utils/customizeLandingPage';
 import {
@@ -34,63 +38,62 @@ import {
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 
-const adminUser = new UserClass();
 const persona = new PersonaClass();
+let knowledgePage: Awaited<ReturnType<typeof createArticleViaApi>>;
 
-// Define the type for test entities using EntityDataClass properties
-type TestEntity = (typeof EntityDataClass)[keyof typeof EntityDataClass];
-
-// Map entity types to their EntityDataClass properties
-const entityTypeToTestEntity: Record<string, TestEntity> = {
-  'API Collection': EntityDataClass.apiCollection1,
-  'API Endpoint': EntityDataClass.apiEndpoint1,
-  'Data Model': EntityDataClass.dashboardDataModel1,
-  'Data Product': EntityDataClass.dataProduct1,
-  'Database Schema': EntityDataClass.databaseSchema,
-  'Glossary Term': EntityDataClass.glossaryTerm1,
-  'ML Model': EntityDataClass.mlModel1,
-  'Search Index': EntityDataClass.searchIndex1,
-  'Stored Procedure': EntityDataClass.storedProcedure1,
-  Chart: EntityDataClass.chart1,
-  Container: EntityDataClass.container1,
-  Dashboard: EntityDataClass.dashboard1,
-  Database: EntityDataClass.database,
-  Metric: EntityDataClass.metric1,
-  Pipeline: EntityDataClass.pipeline1,
-  Table: EntityDataClass.table1,
-  Topic: EntityDataClass.topic1,
+const entityTypeToTestEntity: Record<string, () => NameableEntityResponse> = {
+  'API Collection': () => EntityDataClass.apiCollection1.entityResponseData,
+  'API Endpoint': () => EntityDataClass.apiEndpoint1.entityResponseData,
+  'Data Model': () => EntityDataClass.dashboardDataModel1.entityResponseData,
+  'Data Product': () => EntityDataClass.dataProduct1.responseData,
+  'Database Schema': () => EntityDataClass.databaseSchema.entityResponseData,
+  'Glossary Term': () => EntityDataClass.glossaryTerm1.responseData,
+  'Knowledge Page': () => knowledgePage,
+  'ML Model': () => EntityDataClass.mlModel1.entityResponseData,
+  'Search Index': () => EntityDataClass.searchIndex1.entityResponseData,
+  'Stored Procedure': () => EntityDataClass.storedProcedure1.entityResponseData,
+  Chart: () => EntityDataClass.chart1.entityResponseData,
+  Container: () => EntityDataClass.container1.entityResponseData,
+  Dashboard: () => EntityDataClass.dashboard1.entityResponseData,
+  Database: () => EntityDataClass.database.entityResponseData,
+  Metric: () => EntityDataClass.metric1.entityResponseData,
+  Pipeline: () => EntityDataClass.pipeline1.entityResponseData,
+  Table: () => EntityDataClass.table1.entityResponseData,
+  Topic: () => EntityDataClass.topic1.entityResponseData,
 };
 
+// The worker's isolated admin (created, signed in once and deleted by the
+// fixture) owns this file's persona, so no other test's account is touched.
 const test = base.extend<{ page: Page }>({
-  page: async ({ browser }, use) => {
-    const page = await browser.newPage();
-    await adminUser.login(page);
-    await use(page);
-    await page.close();
+  page: async ({ isolatedUserPage }, use) => {
+    // The fixture page starts blank; land on the app as signIn() used to, so
+    // helpers that read the session from the page find the token.
+    await redirectToHomePage(isolatedUserPage);
+    await use(isolatedUserPage);
   },
 });
 
-base.beforeAll('Setup pre-requests', async ({ browser }) => {
-  test.slow(true);
+test.use({ isolatedUserOptions: { isAdmin: true } });
 
+test.beforeAll(
+  'Setup pre-requests',
+  async ({ browser, isolatedUserSession }) => {
+    const { afterAction, apiContext } = await performAdminLogin(browser);
+
+    await persona.create(apiContext, [
+      isolatedUserSession.user.responseData.id,
+    ]);
+    knowledgePage = await createArticleViaApi(apiContext);
+
+    await afterAction();
+  }
+);
+
+test.afterAll('Cleanup', async ({ browser }) => {
   const { afterAction, apiContext } = await performAdminLogin(browser);
 
-  // Create admin user and persona
-  await adminUser.create(apiContext);
-  await adminUser.setAdminRole(apiContext);
-  await persona.create(apiContext, [adminUser.responseData.id]);
-
-  await afterAction();
-});
-
-base.afterAll('Cleanup', async ({ browser }) => {
-  test.slow(true);
-
-  const { afterAction, apiContext } = await performAdminLogin(browser);
-
-  // Delete user and persona
-  await adminUser.delete(apiContext);
   await persona.delete(apiContext);
+  await deleteArticleByFqn(apiContext, knowledgePage.fullyQualifiedName);
 
   await afterAction();
 });
@@ -101,7 +104,6 @@ test.describe('Curated Assets Widget', () => {
 
     await setUserDefaultPersona(page, persona.responseData.displayName);
     await redirectToHomePage(page);
-    await removeLandingBanner(page);
 
     await page.getByTestId('sidebar-toggle').click();
   });
@@ -112,10 +114,8 @@ test.describe('Curated Assets Widget', () => {
     }) => {
       test.slow(true);
 
-      const testEntity = entityTypeToTestEntity[entityType.name];
-      if (!testEntity) {
-        return;
-      }
+      const testEntity = entityTypeToTestEntity[entityType.name]?.();
+      expect(testEntity, `Seeded entity for ${entityType.name}`).toBeDefined();
 
       // Add a new curated asset placeholder
       await addCuratedAssetPlaceholder({
@@ -140,25 +140,40 @@ test.describe('Curated Assets Widget', () => {
       await selectAssetTypes(page, [entityType.name]);
 
       // Apply Display Name filter with the actual entity's display name
-      const ruleLocator = page.locator('.rule').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-rule-0');
 
       await selectOption(
         page,
-        ruleLocator.locator('.rule--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Display Name',
         true
       );
 
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator .ant-select'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         'Contains'
       );
 
-      const entityDisplayName =
-        getEntityDisplayName(toNameableEntity(testEntity)) || 'pw';
-      await ruleLocator.locator('.rule--value input').clear();
-      await ruleLocator.locator('.rule--value input').fill(entityDisplayName);
+      // entityTypeToTestEntity already yields the nameable response, so do not
+      // unwrap it again -- toNameableEntity would read .entityResponseData off
+      // something that has no such field and hand back undefined. The old 'pw'
+      // fallback then searched for a prefix every seeded entity shares, which
+      // passed by accident for most types and failed for Metric and Knowledge
+      // Page. Assert the name instead of guessing at it.
+      const entityDisplayName = getEntityDisplayName(testEntity);
+      expect(
+        entityDisplayName,
+        `Seeded display name for ${entityType.name}`
+      ).toBeTruthy();
+      await ruleLocator
+        .getByTestId('advanced-search-value')
+        .locator('input')
+        .clear();
+      await ruleLocator
+        .getByTestId('advanced-search-value')
+        .locator('input')
+        .fill(entityDisplayName);
 
       // Wait for save button to be enabled
       await expect(page.locator('[data-testid="saveButton"]')).toBeEnabled();
@@ -184,11 +199,9 @@ test.describe('Curated Assets Widget', () => {
         curatedAssetsWidget
           .locator('.entity-list-item-title')
           .filter({ hasText: entityDisplayName })
-          .first()
       ).toBeVisible();
 
       await redirectToHomePage(page);
-      await removeLandingBanner(page);
 
       await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
@@ -214,7 +227,6 @@ test.describe('Curated Assets Widget', () => {
         curatedAssetsWidget
           .locator('.entity-list-item-title')
           .filter({ hasText: entityDisplayName })
-          .first()
       ).toBeVisible();
 
       await navigateToCustomizeLandingPage(page, {
@@ -245,7 +257,9 @@ test.describe('Curated Assets Widget', () => {
 
     await curatedAssetsWidget.getByText('Create').click();
 
-    await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+    await expect(
+      page.getByTestId('curated-assets-modal-container')
+    ).toBeVisible();
 
     // Configure widget with ALL entity types
     // Fill widget name
@@ -257,22 +271,23 @@ test.describe('Curated Assets Widget', () => {
     await selectAssetTypes(page, 'all');
 
     // Add a simple filter condition
-    const ruleLocator = page.locator('.rule').nth(0);
+    const ruleLocator = page.getByTestId('query-builder-rule-0');
     await selectOption(
       page,
-      ruleLocator.locator('.rule--field .ant-select'),
+      ruleLocator.getByTestId('advanced-search-field-select'),
       'Deleted',
       true
     );
 
     await selectOption(
       page,
-      ruleLocator.locator('.rule--operator .ant-select'),
+      ruleLocator.getByTestId('advanced-search-operator-select'),
       'Is'
     );
 
     await ruleLocator
-      .locator('.rule--value .rule--widget--BOOLEAN .ant-switch')
+      .getByTestId('advanced-search-value')
+      .locator('label')
       .click();
 
     await expect(page.locator('[data-testid="saveButton"]')).toBeEnabled();
@@ -333,38 +348,42 @@ test.describe('Curated Assets Widget', () => {
     await selectAssetTypes(page, ['Chart', 'Dashboard']);
 
     // Add OR conditions
-    const ruleLocator1 = page.locator('.rule').nth(0);
+    const ruleLocator1 = page.getByTestId('query-builder-rule-0');
     await selectOption(
       page,
-      ruleLocator1.locator('.rule--field .ant-select'),
+      ruleLocator1.getByTestId('advanced-search-field-select'),
       'Owners',
       true
     );
     await selectOption(
       page,
-      ruleLocator1.locator('.rule--operator .ant-select'),
+      ruleLocator1.getByTestId('advanced-search-operator-select'),
       'Is Set'
     );
 
-    await page.getByRole('button', { name: 'Add Condition' }).click();
+    await page.getByRole('button', { name: 'Add New Field' }).click();
 
     // Switch to OR condition (AND is selected by default, click OR button)
-    await page.locator('.group--conjunctions button:has-text("OR")').click();
+    await page
+      .getByTestId('advanced-search-conjunction')
+      .getByTestId('advanced-search-conjunction-or')
+      .click();
 
-    const ruleLocator2 = page.locator('.rule').nth(1);
+    const ruleLocator2 = page.getByTestId('query-builder-rule-1');
     await selectOption(
       page,
-      ruleLocator2.locator('.rule--field .ant-select'),
+      ruleLocator2.getByTestId('advanced-search-field-select'),
       'Deleted',
       true
     );
     await selectOption(
       page,
-      ruleLocator2.locator('.rule--operator .ant-select'),
+      ruleLocator2.getByTestId('advanced-search-operator-select'),
       'Is'
     );
     await ruleLocator2
-      .locator('.rule--value .rule--widget--BOOLEAN .ant-switch')
+      .getByTestId('advanced-search-value')
+      .locator('label')
       .click();
 
     const queryResponse = page.waitForResponse(
@@ -387,7 +406,6 @@ test.describe('Curated Assets Widget', () => {
     // Wait for auto-save to complete before navigating
 
     await redirectToHomePage(page);
-    await removeLandingBanner(page);
 
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
@@ -397,8 +415,8 @@ test.describe('Curated Assets Widget', () => {
     );
 
     await expect(
-      curatedAssetsWidget.locator('.entity-list-item-title').first()
-    ).toBeVisible();
+      curatedAssetsWidget.locator('.entity-list-item-title')
+    ).not.toHaveCount(0);
 
     // Navigate back, delete the widget and save at the end
     await navigateToCustomizeLandingPage(page, {
@@ -436,41 +454,51 @@ test.describe('Curated Assets Widget', () => {
     await selectAssetTypes(page, ['Pipeline', 'Topic', 'ML Model']);
 
     // Configure conditions
-    const ruleLocator1 = page.locator('.rule').nth(0);
+    const ruleLocator1 = page.getByTestId('query-builder-rule-0');
     await selectOption(
       page,
-      ruleLocator1.locator('.rule--field .ant-select'),
+      ruleLocator1.getByTestId('advanced-search-field-select'),
       'Deleted',
       true
     );
     await selectOption(
       page,
-      ruleLocator1.locator('.rule--operator .ant-select'),
+      ruleLocator1.getByTestId('advanced-search-operator-select'),
       'Is'
     );
     await ruleLocator1
-      .locator('.rule--value .rule--widget--BOOLEAN .ant-switch')
+      .getByTestId('advanced-search-value')
+      .locator('label')
       .click();
 
-    await page.getByRole('button', { name: 'Add Condition' }).click();
-    await page.locator('.group--conjunctions button:has-text("AND")').click();
+    await page.getByRole('button', { name: 'Add New Field' }).click();
+    await page
+      .getByTestId('advanced-search-conjunction')
+      .getByTestId('advanced-search-conjunction-and')
+      .click();
 
-    const ruleLocator2 = page.locator('.rule').nth(1);
+    const ruleLocator2 = page.getByTestId('query-builder-rule-1');
     await selectOption(
       page,
-      ruleLocator2.locator('.rule--field .ant-select'),
+      ruleLocator2.getByTestId('advanced-search-field-select'),
       'Display Name',
       true
     );
     await selectOption(
       page,
-      ruleLocator2.locator('.rule--operator .ant-select'),
+      ruleLocator2.getByTestId('advanced-search-operator-select'),
       'Contains'
     );
 
     // Use a common prefix that should match test entities
-    await ruleLocator2.locator('.rule--value input').clear();
-    await ruleLocator2.locator('.rule--value input').fill('pw');
+    await ruleLocator2
+      .getByTestId('advanced-search-value')
+      .locator('input')
+      .clear();
+    await ruleLocator2
+      .getByTestId('advanced-search-value')
+      .locator('input')
+      .fill('pw');
 
     const queryResponse = page.waitForResponse(
       (response) =>
@@ -496,14 +524,13 @@ test.describe('Curated Assets Widget', () => {
     );
 
     await expect(
-      curatedAssetsWidget.locator('.entity-list-item-title').first()
-    ).toBeVisible();
+      curatedAssetsWidget.locator('.entity-list-item-title')
+    ).not.toHaveCount(0);
 
     // Wait for auto-save to complete before navigating
 
     // Navigate to landing page to verify widget
     await redirectToHomePage(page);
-    await removeLandingBanner(page);
 
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
@@ -513,8 +540,8 @@ test.describe('Curated Assets Widget', () => {
     );
 
     await expect(
-      curatedAssetsWidget.locator('.entity-list-item-title').first()
-    ).toBeVisible();
+      curatedAssetsWidget.locator('.entity-list-item-title')
+    ).not.toHaveCount(0);
 
     // Navigate back, delete the widget and save at the end
     await navigateToCustomizeLandingPage(page, {
@@ -552,68 +579,74 @@ test.describe('Curated Assets Widget', () => {
     await selectAssetTypes(page, 'all');
 
     // Create first group with OR conditions
-    const ruleLocator1 = page.locator('.rule').nth(0);
+    const ruleLocator1 = page.getByTestId('query-builder-rule-0');
     await selectOption(
       page,
-      ruleLocator1.locator('.rule--field .ant-select'),
+      ruleLocator1.getByTestId('advanced-search-field-select'),
       'Owners',
       true
     );
     await selectOption(
       page,
-      ruleLocator1.locator('.rule--operator .ant-select'),
+      ruleLocator1.getByTestId('advanced-search-operator-select'),
       'Any in'
     );
     await selectOption(
       page,
-      ruleLocator1.locator('.rule--value .ant-select'),
+      ruleLocator1.getByTestId('advanced-search-value'),
       'admin',
       true
     );
 
-    await page.getByRole('button', { name: 'Add Condition' }).click();
+    // The owners MultiSelect keeps its popup open, and an open react-aria
+    // popup hides the rest of the dialog from the accessibility tree. Close it
+    // on the modal title (Escape would also dismiss the modal).
+    await page.getByTestId('curated-assets-modal-title').click();
+    await page.getByRole('button', { name: 'Add New Field' }).click();
 
     // Switch first group to OR condition (AND is default)
-    await page.locator('.group--conjunctions button:has-text("OR")').click();
+    await page
+      .getByTestId('advanced-search-conjunction')
+      .getByTestId('advanced-search-conjunction-or')
+      .click();
 
-    const ruleLocator2 = page.locator('.rule').nth(1);
+    const ruleLocator2 = page.getByTestId('query-builder-rule-1');
     await selectOption(
       page,
-      ruleLocator2.locator('.rule--field .ant-select'),
+      ruleLocator2.getByTestId('advanced-search-field-select'),
       'Description Status',
       true
     );
     await selectOption(
       page,
-      ruleLocator2.locator('.rule--operator .ant-select'),
+      ruleLocator2.getByTestId('advanced-search-operator-select'),
       'Is'
     );
     await selectOption(
       page,
-      ruleLocator2.locator('.rule--value .ant-select'),
+      ruleLocator2.getByTestId('advanced-search-value'),
       'Incomplete'
     );
-    await ruleLocator2.locator('.rule--value input').fill('production');
 
     // Add another condition
-    await page.getByRole('button', { name: 'Add Condition' }).click();
+    await page.getByRole('button', { name: 'Add New Field' }).click();
 
-    const ruleLocator3 = page.locator('.rule').nth(2);
+    const ruleLocator3 = page.getByTestId('query-builder-rule-2');
     await selectOption(
       page,
-      ruleLocator3.locator('.rule--field .ant-select'),
+      ruleLocator3.getByTestId('advanced-search-field-select'),
       'Tier',
       true
     );
     await selectOption(
       page,
-      ruleLocator3.locator('.rule--operator .ant-select'),
+      ruleLocator3.getByTestId('advanced-search-operator-select'),
       'Is Not'
     );
     await selectOption(
       page,
-      ruleLocator3.locator('.rule--value .ant-select'),
-      'tier.tier5',
+      ruleLocator3.getByTestId('advanced-search-value'),
+      'Tier.Tier5',
       true
     );
 
@@ -624,7 +657,7 @@ test.describe('Curated Assets Widget', () => {
       (response) =>
         response.url().includes('/api/v1/search/query') &&
         response.url().includes('index=all') &&
-        response.url().includes('tier.tier5')
+        response.url().toLowerCase().includes('tier.tier5')
     );
 
     await page.locator('[data-testid="saveButton"]').click();
@@ -639,14 +672,13 @@ test.describe('Curated Assets Widget', () => {
     );
 
     await expect(
-      curatedAssetsWidget.locator('.entity-list-item-title').first()
-    ).toBeVisible();
+      curatedAssetsWidget.locator('.entity-list-item-title')
+    ).not.toHaveCount(0);
 
     // Wait for auto-save to complete before navigating
 
     // Navigate to landing page to verify widget
     await redirectToHomePage(page);
-    await removeLandingBanner(page);
 
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
@@ -656,8 +688,8 @@ test.describe('Curated Assets Widget', () => {
     );
 
     await expect(
-      curatedAssetsWidget.locator('.entity-list-item-title').first()
-    ).toBeVisible();
+      curatedAssetsWidget.locator('.entity-list-item-title')
+    ).not.toHaveCount(0);
 
     // Navigate back, delete the widget and save at the end
     await navigateToCustomizeLandingPage(page, {
@@ -685,7 +717,6 @@ test.describe('Curated Assets Widget', () => {
     await page.locator('[data-testid="save-button"]').click();
 
     await redirectToHomePage(page);
-    await removeLandingBanner(page);
 
     // Verify placeholder is not visible when no widget is configured
     await expect(

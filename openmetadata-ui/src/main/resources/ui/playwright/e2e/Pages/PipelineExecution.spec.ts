@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
 import { PipelineClass } from '../../support/entity/PipelineClass';
+import { expect, test } from '../../support/fixtures/base';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
 
 // use the admin user to login

@@ -14,7 +14,8 @@ Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
 
-from typing import Callable, cast  # noqa: UP035
+from collections.abc import Callable
+from typing import cast
 
 from metadata.data_quality.validations.table.pandas.tableRowInsertedCountToBeBetween import (
     TableRowInsertedCountToBeBetweenValidator,

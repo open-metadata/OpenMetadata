@@ -10,9 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { FeaturedIcon, Tabs } from '@openmetadata/ui-core-components';
-import { User03 } from '@untitledui/icons';
-import { Button, Col, Modal, Row, Typography } from 'antd';
+import {
+  FeaturedIcon,
+  Grid,
+  Tabs,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { User03 } from '@openmetadata/ui-core-components/icons';
+import { Button, Modal } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -32,23 +37,21 @@ import { UserSelectableList } from '../../../components/common/UserSelectableLis
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { CustomizeUI } from '../../../components/Settings/Persona/CustomizeUI/CustomizeUI';
-import { PersonaAIContext } from '../../../components/Settings/Persona/PersonaAIContext/PersonaAIContext.component';
 import { UsersTab } from '../../../components/Settings/Users/UsersTab/UsersTabs.component';
 import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
-import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { SIZE } from '../../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Persona } from '../../../generated/entity/teams/persona';
 import { Include } from '../../../generated/type/include';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { useAppRoutesRegistry } from '../../../hooks/useAppRoutesRegistry';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../../hooks/useFqn';
 import { getPersonaByName, updatePersona } from '../../../rest/PersonaAPI';
 import { getUserById } from '../../../rest/userAPI';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getCustomizePageCategories } from '../../../utils/Persona/PersonaUtils';
 import {
   getPersonaDetailsPath,
@@ -56,6 +59,8 @@ import {
 } from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import './persona-details-page.less';
+
+const CUSTOMIZE_UI_KEY = 'customize-ui';
 
 export const PersonaDetailsPage = () => {
   const { fqn } = useFqn();
@@ -66,14 +71,11 @@ export const PersonaDetailsPage = () => {
   const [isConfirmModalVisible, setIsConfirmModalVisible] = useState(false);
   const [isConfirmModalLoading, setIsConfirmModalLoading] = useState(false);
   const { t } = useTranslation();
-  const [entityPermission, setEntityPermission] = useState(
-    DEFAULT_ENTITY_PERMISSION
-  );
   const location = useCustomLocation();
   const { activeKey, activeCategory, fullHash } = useMemo(() => {
-    const activeKey = (location.hash?.replace('#', '') || 'customize-ui').split(
-      '.'
-    )[0];
+    const activeKey = (
+      location.hash?.replace('#', '') || CUSTOMIZE_UI_KEY
+    ).split('.')[0];
     const activeCategory = (location.hash?.replace('#', '') || '').split(
       '.'
     )[1];
@@ -85,10 +87,22 @@ export const PersonaDetailsPage = () => {
     };
   }, [location.hash]);
 
-  const { getEntityPermissionByFqn } = usePermissionProvider();
-  const hasNonDefaultMode = useAppRoutesRegistry(
-    (state) => Object.keys(state.routes).length > 0
-  );
+  // Personas aren't soft-deletable through this page (ManageButton is passed a hardcoded
+  // `deleted={false}` below), so this call is deliberately ungated — no `deleted` option.
+  // canEditDescription is also an explicit-deny-wins fix, same precedent as canViewBasic
+  // (Task 6 Finding 1): a field-specific deny now wins over a broader EditAll grant.
+  const {
+    canEditAll,
+    canEditDescription,
+    canDelete: hasDeletePermission,
+    error: permissionsError,
+  } = useEntityPermissions(ResourceEntity.PERSONA, fqn);
+
+  useEffect(() => {
+    if (permissionsError) {
+      showErrorToast(permissionsError as AxiosError);
+    }
+  }, [permissionsError]);
 
   const breadcrumb = useMemo(() => {
     const breadcrumbList = [
@@ -103,9 +117,9 @@ export const PersonaDetailsPage = () => {
     ];
 
     if (activeCategory) {
-      const category = getCustomizePageCategories()
-        .filter((item) => item.key !== 'app-mode' || hasNonDefaultMode)
-        .find((category) => category.key === activeCategory);
+      const category = getCustomizePageCategories().find(
+        (category) => category.key === activeCategory
+      );
 
       if (category) {
         breadcrumbList.push({
@@ -116,13 +130,7 @@ export const PersonaDetailsPage = () => {
     }
 
     return breadcrumbList;
-  }, [personaDetails, activeCategory, fqn, hasNonDefaultMode]);
-
-  useEffect(() => {
-    getEntityPermissionByFqn(ResourceEntity.PERSONA, fqn).then(
-      setEntityPermission
-    );
-  }, []);
+  }, [personaDetails, activeCategory, fqn]);
 
   const fetchPersonaDetails = async () => {
     try {
@@ -148,7 +156,7 @@ export const PersonaDetailsPage = () => {
       return;
     }
 
-    if (!location.hash.includes('customize-ui')) {
+    if (!location.hash.includes(CUSTOMIZE_UI_KEY)) {
       navigate(
         {
           pathname: location.pathname,
@@ -280,19 +288,8 @@ export const PersonaDetailsPage = () => {
     return [
       {
         label: t('label.customize-ui'),
-        key: 'customize-ui',
+        key: CUSTOMIZE_UI_KEY,
         children: <CustomizeUI />,
-      },
-      {
-        label: t('label.ai-context'),
-        key: 'ai-context',
-        children: personaDetails ? (
-          <PersonaAIContext
-            canEdit={entityPermission.EditAll}
-            persona={personaDetails}
-            onPersonaUpdate={fetchPersonaDetails}
-          />
-        ) : null,
       },
       {
         label: t('label.user-plural'),
@@ -305,7 +302,7 @@ export const PersonaDetailsPage = () => {
         ),
       },
     ];
-  }, [entityPermission.EditAll, personaDetails, t]);
+  }, [canEditAll, personaDetails, t]);
 
   const activeTabContent = useMemo(
     () => tabItems.find((item) => item.key === activeKey)?.children,
@@ -347,8 +344,10 @@ export const PersonaDetailsPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={personaDetails.name}>
-      <Row className="m-b-md tw:isolate" gutter={[0, 16]}>
-        <Col span={24}>
+      <Grid
+        className="layout-row layout-grid m-b-md tw:isolate"
+        style={getLayoutGutter(0, 16)}>
+        <Grid.Item className="layout-column" span={24}>
           <div className="d-flex justify-between items-start">
             <div className="persona-details-title-container">
               <TitleBreadcrumb titleLinks={breadcrumb} />
@@ -363,12 +362,10 @@ export const PersonaDetailsPage = () => {
             <ManageButton
               afterDeleteAction={handleAfterDeleteAction}
               allowSoftDelete={false}
-              canDelete={entityPermission.EditAll || entityPermission.Delete}
+              canDelete={canEditAll || hasDeletePermission}
               deleted={false}
               displayName={getEntityName(personaDetails)}
-              editDisplayNamePermission={
-                entityPermission.EditAll || entityPermission.EditDescription
-              }
+              editDisplayNamePermission={canEditDescription}
               entityFQN={personaDetails.fullyQualifiedName}
               entityId={personaDetails.id}
               entityName={personaDetails.name}
@@ -379,22 +376,20 @@ export const PersonaDetailsPage = () => {
               }}
             />
           </div>
-        </Col>
-        <Col span={24}>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
           <Description
             description={personaDetails.description}
             entityName={personaDetails.name}
             entityType={EntityType.PERSONA}
-            hasEditAccess={
-              entityPermission.EditAll || entityPermission.EditDescription
-            }
+            hasEditAccess={canEditDescription}
             showCommentsIcon={false}
             onDescriptionUpdate={async (description) => {
               await handlePersonaUpdate({ description });
             }}
           />
-        </Col>
-        <Col span={24}>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
           <Tabs
             selectedKey={activeKey}
             onSelectionChange={(key) => handleTabClick(String(key))}>
@@ -427,8 +422,8 @@ export const PersonaDetailsPage = () => {
             </div>
           </Tabs>
           <div>{activeTabContent}</div>
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
 
       {/* Set Default Persona Confirmation Modal */}
       <Modal
@@ -446,7 +441,7 @@ export const PersonaDetailsPage = () => {
         }
         onCancel={handleCancelSetAsDefault}
         onOk={handleConfirmDefaultAction}>
-        <Typography.Text>
+        <Typography>
           {personaDetails?.default
             ? t('message.remove-default-persona-confirmation', {
                 persona: getEntityName(personaDetails),
@@ -454,7 +449,7 @@ export const PersonaDetailsPage = () => {
             : t('message.set-default-persona-confirmation', {
                 persona: getEntityName(personaDetails),
               })}
-        </Typography.Text>
+        </Typography>
       </Modal>
     </PageLayoutV1>
   );

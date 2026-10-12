@@ -13,72 +13,43 @@
 
 package org.openmetadata.service.notifications.recipients.strategy.impl;
 
-import java.util.Collections;
-import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
-import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.SubscriptionAction;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.schema.type.Webhook;
-import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.notifications.recipients.context.EmailRecipient;
-import org.openmetadata.service.notifications.recipients.context.Recipient;
-import org.openmetadata.service.notifications.recipients.context.WebhookRecipient;
+import org.openmetadata.service.events.subscription.channels.Channels;
+import org.openmetadata.service.notifications.recipients.Lookup;
+import org.openmetadata.service.notifications.recipients.Recipients;
 import org.openmetadata.service.notifications.recipients.strategy.RecipientResolutionStrategy;
 
 /**
- * Resolves static recipients configured directly in the subscription destination.
- *
- * For EXTERNAL destinations, recipients are explicitly configured and do not depend
- * on entity relationships. The receivers are already the final contact information
- * (email addresses or webhook URLs) and require no further resolution.
+ * Resolves the recipients an External destination names itself: its receivers are already the
+ * addresses (email addresses or webhook URLs) and depend on no entity.
  */
-@Slf4j
 public class ExternalRecipientResolver implements RecipientResolutionStrategy {
 
   @Override
-  public Set<Recipient> resolve(
+  public Recipients resolve(
       ChangeEvent event, SubscriptionAction action, SubscriptionDestination destination) {
-    return resolveExternalRecipients(action, destination);
+    return configured(action, destination);
   }
 
   @Override
-  public Set<Recipient> resolve(
+  public Recipients resolve(
       UUID entityId,
       String entityType,
       SubscriptionAction action,
       SubscriptionDestination destination) {
-    return resolveExternalRecipients(action, destination);
+    return configured(action, destination);
   }
 
-  private Set<Recipient> resolveExternalRecipients(
+  private static Recipients configured(
       SubscriptionAction action, SubscriptionDestination destination) {
-    try {
-      SubscriptionDestination.SubscriptionType notificationType = destination.getType();
-
-      // For EMAIL notifications, receivers are email addresses
-      if (notificationType == SubscriptionDestination.SubscriptionType.EMAIL) {
-        if (action.getReceivers() == null || action.getReceivers().isEmpty()) {
-          return Collections.emptySet();
-        }
-        return action.getReceivers().stream()
-            .map(EmailRecipient::new)
-            .collect(Collectors.toUnmodifiableSet());
-      }
-
-      // For webhook types, extract custom webhook config and create webhook recipients
-      Webhook webhook = JsonUtils.convertValue(destination.getConfig(), Webhook.class);
-      if (webhook == null || webhook.getEndpoint() == null) {
-        return Collections.emptySet();
-      }
-      return Set.of(new WebhookRecipient(webhook));
-
-    } catch (Exception e) {
-      LOG.error("Failed to resolve external recipients", e);
-      return Collections.emptySet();
-    }
+    return Recipients.from(
+        Lookup.of(
+            "the receivers of destination " + destination.getId(),
+            () -> Channels.required(destination).directory().configured(action, destination)),
+        Recipients::of);
   }
 
   @Override

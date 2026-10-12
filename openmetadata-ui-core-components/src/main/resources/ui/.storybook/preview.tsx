@@ -18,6 +18,7 @@ import '@fontsource/inter/700.css';
 import '@fontsource/inter/800.css';
 import '@fontsource/inter/900.css';
 import { useEffect } from 'react';
+import { HelmetProvider } from 'react-helmet-async';
 import { I18nextProvider } from 'react-i18next';
 import type { Preview, StoryFn, StoryContext } from '@storybook/react';
 import { CORE_LOCALES } from '../src/locale';
@@ -49,6 +50,18 @@ const StoryWithLocale = ({
       void i18n.changeLanguage(locale);
     }
   }, [locale]);
+
+  // Portaled overlays (modals, dropdowns, tooltips) mount on document.body,
+  // outside the wrapper div below, so the inline `.dark-mode` class never
+  // reaches them. Mirror the theme onto the document root so portal content
+  // follows it too. `both` leaves the root light — portals can only resolve one
+  // theme, and each side-by-side column scopes its own inline `.dark-mode`.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.toggle('dark-mode', theme === 'dark');
+
+    return () => root.classList.remove('dark-mode');
+  }, [theme]);
 
   if (theme === 'both') {
     return (
@@ -126,14 +139,16 @@ const preview: Preview = {
       const dir = RTL_LOCALES.has(locale) ? 'rtl' : 'ltr';
 
       return (
-        <I18nextProvider i18n={i18n}>
-          <StoryWithLocale
-            Story={Story}
-            dir={dir}
-            locale={locale}
-            theme={theme}
-          />
-        </I18nextProvider>
+        <HelmetProvider>
+          <I18nextProvider i18n={i18n}>
+            <StoryWithLocale
+              Story={Story}
+              dir={dir}
+              locale={locale}
+              theme={theme}
+            />
+          </I18nextProvider>
+        </HelmetProvider>
       );
     },
   ],

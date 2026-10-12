@@ -13,7 +13,6 @@ Mixin class containing Task entity specific methods.
 """
 
 import json
-from typing import Dict, List, Optional, Union  # noqa: UP035
 from uuid import UUID
 
 from metadata.ingestion.ometa.client import REST, APIError
@@ -62,7 +61,7 @@ class OMetaTaskMixin:
 
     def resolve_task(
         self,
-        task_id: Union[str, UUID],  # noqa: UP007
+        task_id: str | UUID,
         resolve_request: ResolveTaskRequest,
     ) -> Task:
         """Resolve a task with the given resolution type.
@@ -83,11 +82,11 @@ class OMetaTaskMixin:
 
     def get_task(
         self,
-        task_id: Union[str, UUID],  # noqa: UP007
-        fields: Optional[List[str]] = None,  # noqa: UP006, UP045
-        include: Optional[str] = None,  # noqa: UP045
+        task_id: str | UUID,
+        fields: list[str] | None = None,
+        include: str | None = None,
         nullable: bool = True,
-    ) -> Optional[Task]:  # noqa: UP045
+    ) -> Task | None:
         """Get a task by UUID."""
         query = []
         if fields:
@@ -106,9 +105,9 @@ class OMetaTaskMixin:
     def get_task_by_task_id(
         self,
         task_id: str,
-        fields: Optional[List[str]] = None,  # noqa: UP006, UP045
-        include: Optional[str] = None,  # noqa: UP045
-    ) -> Optional[Task]:  # noqa: UP045
+        fields: list[str] | None = None,
+        include: str | None = None,
+    ) -> Task | None:
         """Get a task by its human-readable task id (e.g. TASK-00001)."""
         query = []
         if fields:
@@ -121,24 +120,24 @@ class OMetaTaskMixin:
 
     def list_tasks(  # noqa: C901
         self,
-        fields: Optional[List[str]] = None,  # noqa: UP006, UP045
-        status: Optional[TaskEntityStatus] = None,  # noqa: UP045
-        status_group: Optional[str] = None,  # noqa: UP045
-        category: Optional[TaskCategory] = None,  # noqa: UP045
-        type_: Optional[TaskEntityType] = None,  # noqa: UP045
-        domain: Optional[str] = None,  # noqa: UP045
-        priority: Optional[TaskPriority] = None,  # noqa: UP045
-        assignee: Optional[str] = None,  # noqa: UP045
-        created_by: Optional[str] = None,  # noqa: UP045
-        created_by_id: Optional[Union[str, UUID]] = None,  # noqa: UP007, UP045
-        about_entity: Optional[str] = None,  # noqa: UP045
-        mentioned_user: Optional[str] = None,  # noqa: UP045
+        fields: list[str] | None = None,
+        status: TaskEntityStatus | None = None,
+        status_group: str | None = None,
+        category: TaskCategory | None = None,
+        type_: TaskEntityType | None = None,
+        domain: str | None = None,
+        priority: TaskPriority | None = None,
+        assignee: str | None = None,
+        created_by: str | None = None,
+        created_by_id: str | UUID | None = None,
+        about_entity: str | None = None,
+        mentioned_user: str | None = None,
         limit: int = 10,
-        before: Optional[str] = None,  # noqa: UP045
-        after: Optional[str] = None,  # noqa: UP045
-        include: Optional[str] = None,  # noqa: UP045
+        before: str | None = None,
+        after: str | None = None,
+        include: str | None = None,
     ) -> EntityList[Task]:
-        params: Dict[str, str] = {"limit": str(limit)}  # noqa: UP006
+        params: dict[str, str] = {"limit": str(limit)}
         if fields:
             params["fields"] = ",".join(fields)
         if status:
@@ -178,7 +177,7 @@ class OMetaTaskMixin:
             before=resp["paging"].get("before"),
         )
 
-    def add_task_comment(self, task_id: Union[str, UUID], message: str) -> Optional[Task]:  # noqa: UP007, UP045
+    def add_task_comment(self, task_id: str | UUID, message: str) -> Task | None:
         """Add a comment to a task.
 
         Args:
@@ -194,7 +193,7 @@ class OMetaTaskMixin:
             return Task.model_validate(resp)
         return None
 
-    def patch_task(self, task_id: Union[str, UUID], patch: list[dict]) -> Task:  # noqa: UP007
+    def patch_task(self, task_id: str | UUID, patch: list[dict]) -> Task:
         """Patch a task via JsonPatch operations."""
         resp = self.client.patch(
             f"{self._tasks_path}/{model_str(task_id)}",
@@ -202,13 +201,13 @@ class OMetaTaskMixin:
         )
         return Task.model_validate(resp)
 
-    def close_task(self, task_id: Union[str, UUID], comment: Optional[str] = None) -> Task:  # noqa: UP007, UP045
+    def close_task(self, task_id: str | UUID, comment: str | None = None) -> Task:
         """Close a task without applying changes."""
         suffix = f"?comment={quote(comment)}" if comment else ""
         resp = self.client.post(f"{self._tasks_path}/{model_str(task_id)}/close{suffix}")
         return Task.model_validate(resp)
 
-    def apply_suggestion(self, task_id: Union[str, UUID], comment: Optional[str] = None) -> Task:  # noqa: UP007, UP045
+    def apply_suggestion(self, task_id: str | UUID, comment: str | None = None) -> Task:
         """Approve and apply a suggestion task to its target entity."""
         suffix = f"?comment={quote(comment)}" if comment else ""
         resp = self.client.put(f"{self._tasks_path}/{model_str(task_id)}/suggestion/apply{suffix}")

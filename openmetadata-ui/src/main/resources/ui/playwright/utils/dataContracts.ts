@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../constant/common';
 import {
   DataContractSecuritySlaData,
   DATA_CONTRACT_DETAILS,
@@ -22,14 +23,38 @@ import { getApiContext } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
 
-const TERMINAL_CONTRACT_STATUS = /(Aborted|Success|Failed|PartialSuccess)/;
+// Terminal states as the backend defines them. `Queued` is intentionally NOT
+// included — a queued run has not started, so a caller waiting for terminal
+// must not exit on it. This is the one pre-existing bug carried over from the
+// old `/(Aborted|Success|Failed|PartialSuccess|Queued)/` pattern.
+const TERMINAL_CONTRACT_STATUSES = new Set([
+  'Success',
+  'Aborted',
+  'Failed',
+  'PartialSuccess',
+]);
 
+/**
+ * Wait for a data-contract validation to reach any terminal state.
+ *
+ * Permissive by design: this helper is shared between positive-path callers
+ * (`saveAndTriggerDataContractValidation`, which expects `Success`) and
+ * negative-path callers (`triggerContractValidation`, which is used by
+ * `DataContractsSemanticRules` tests that deliberately set up rules that
+ * SHOULD fail — the test then asserts on the UI's `Failed` badge). Baking
+ * "must be Success" into the poll would break the negative-path tests.
+ *
+ * Callers that expect success should assert on the UI status after this
+ * returns; the poll just guarantees the backend has settled so the UI
+ * assertion isn't racing an in-flight validation.
+ */
 const pollContractStatus = async (
   page: Page,
   contractId: string,
-  timeoutMs = 180_000
+  timeoutMs = 300_000
 ): Promise<void> => {
   const { apiContext } = await getApiContext(page);
+
   await expect
     .poll(
       async () => {
@@ -38,15 +63,43 @@ const pollContractStatus = async (
           .then((r) => (r.ok() ? r.json() : null))
           .catch(() => null);
 
-        return contract?.latestResult?.status ?? 'Running';
+        const status = contract?.latestResult?.status;
+
+        return status && TERMINAL_CONTRACT_STATUSES.has(status);
       },
       {
-        message: 'Wait for contract validation to reach terminal state',
+        message: `Wait for contract ${contractId} validation to reach a terminal state`,
         timeout: timeoutMs,
         intervals: [3_000, 5_000, 5_000, 10_000, 15_000, 20_000],
       }
     )
-    .toEqual(expect.stringMatching(TERMINAL_CONTRACT_STATUS));
+    .toBe(true);
+};
+
+/**
+ * Reload the current entity page and wait until it is ready to assert against.
+ *
+ * `waitUntil: 'domcontentloaded'` is deliberate. Playwright's default, `load`,
+ * is gated on every subresource the document pulls in — the route chunks
+ * `React.lazy` requests, service icons, chart assets — and the same server
+ * that serves those assets also runs the contract validations these specs
+ * trigger. On a loaded CI shard one asset can stall past the 60s navigation
+ * timeout while the SPA has long since rendered, so the reload fails on a page
+ * that was ready to assert on. `load` was never the signal these callers
+ * wanted anyway.
+ *
+ * The header wait is not redundant: `domcontentloaded` resolves before React
+ * mounts, so a bare loader count would pass against an empty `#root` and push
+ * the whole page load into the next assertion's 15s expect budget.
+ */
+export const reloadContractPage = async (page: Page): Promise<void> => {
+  await page.reload({ waitUntil: 'domcontentloaded' });
+
+  await expect(page.getByTestId('data-assets-header')).toBeVisible({
+    timeout: ACTION_TIMEOUT,
+  });
+
+  await waitForAllLoadersToDisappear(page);
 };
 
 export const saveAndTriggerDataContractValidation = async (
@@ -86,12 +139,14 @@ export const saveAndTriggerDataContractValidation = async (
   // reloading the page. Without this, the UI status check immediately after
   // the reload is racy: the backend may still be processing the result.
   if (responseData?.id) {
-    await pollContractStatus(page, responseData.id);
+    await waitForContractExecutionWithFallback(
+      page,
+      responseData.id,
+      responseData.name
+    );
   }
 
-  await page.reload();
-
-  await waitForAllLoadersToDisappear(page);
+  await reloadContractPage(page);
 
   return responseData;
 };
@@ -142,6 +197,10 @@ export const validateDataContractInsideBundleTestSuites = async (
   }
 };
 
+// Permissive terminal wait — see `pollContractStatus` for the rationale.
+// Same use-site profile: callers that expect success must assert on the UI
+// after this returns; callers that expect failure use this to wait then
+// verify the `Failed` badge themselves.
 export const waitForDataContractExecution = async (
   page: Page,
   contractId: string,
@@ -149,8 +208,6 @@ export const waitForDataContractExecution = async (
 ) => {
   const { apiContext } = await getApiContext(page);
   let consecutiveErrors = 0;
-  const terminalStatusPattern =
-    /(Aborted|Success|Failed|PartialSuccess|Queued)/;
 
   await expect
     .poll(
@@ -167,7 +224,7 @@ export const waitForDataContractExecution = async (
 
           const status = contractResponse?.latestResult?.status;
 
-          return status ?? 'Running';
+          return status && TERMINAL_CONTRACT_STATUSES.has(status);
         } catch (error) {
           consecutiveErrors++;
           if (consecutiveErrors >= maxConsecutiveErrors) {
@@ -180,12 +237,12 @@ export const waitForDataContractExecution = async (
         }
       },
       {
-        message: 'Wait for data contract execution to complete',
+        message: `Wait for data contract ${contractId} execution to reach a terminal state`,
         timeout: 600_000,
         intervals: [30_000, 20_000, 10_000],
       }
     )
-    .toEqual(expect.stringMatching(terminalStatusPattern));
+    .toBe(true);
 };
 
 /**
@@ -250,10 +307,14 @@ export const waitForContractExecutionWithFallback = async (
       suiteStatus = 'Success';
     }
 
-    const terminalStatusPattern =
-      /(Aborted|Success|Failed|PartialSuccess|Queued)/;
-
-    expect(suiteStatus).toEqual(expect.stringMatching(terminalStatusPattern));
+    // Permissive terminal-state match here too: the fallback is shared
+    // between positive- and negative-path tests, so callers are responsible
+    // for asserting on `Success` themselves after this returns.
+    // Anchored to the exact values the compute above can produce — the prior
+    // regex also listed `Queued` (not terminal, see the top-level comment)
+    // and `PartialSuccess` (this branch never sets it), which contradicted
+    // the terminal-state definition without changing behaviour.
+    expect(suiteStatus).toMatch(/^(Aborted|Success|Failed)$/);
 
     return false;
   }

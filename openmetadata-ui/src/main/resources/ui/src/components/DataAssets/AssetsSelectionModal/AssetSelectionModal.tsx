@@ -13,7 +13,7 @@
 import { Dialog, Modal, ModalOverlay } from '@openmetadata/ui-core-components';
 import { isUndefined } from 'lodash';
 import { useTranslation } from 'react-i18next';
-import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
+import { AssetsOfEntity } from '../../../enums/Assets.enum';
 import './asset-selection-model.style.less';
 import AssetSelectionContentBody from './AssetSelectionContentBody';
 import AssetSelectionFooter from './AssetSelectionFooter';
@@ -51,7 +51,7 @@ export const AssetSelectionModal = ({
           title={t('label.add-entity', { entity: t('label.asset-plural') })}
           width={675}
           onClose={onCancel}>
-          <Dialog.Content className="tw:max-h-[70vh] tw:overflow-hidden">
+          <Dialog.Content>
             <AssetSelectionContentBody
               aggregations={state.aggregations}
               assetJobResponse={state.assetJobResponse}

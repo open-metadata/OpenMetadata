@@ -89,3 +89,17 @@ def test_utc_from_timestamp(timestamp_input, expected_datetime):
 )
 def test_datetime_to_timestamp(datetime_value, milliseconds, expected_timestamp):
     assert datetime_to_timestamp(datetime_value, milliseconds) == expected_timestamp
+
+
+@pytest.mark.parametrize(
+    "datetime_value,timezone_str,expected_timestamp",
+    [
+        (datetime(2021, 10, 31, 2, 30), "Europe/Madrid", 1635640200),
+        (datetime(2021, 10, 31, 1, 30), "Europe/Dublin", 1635640200),
+        (datetime(2021, 10, 31, 1, 30, fold=1), "Europe/Dublin", 1635643800),
+        (datetime(2021, 3, 28, 2, 30), "Europe/Madrid", 1616895000),
+        (datetime(2019, 5, 5, 2, 30), "Africa/Casablanca", 1557019800),
+    ],
+)
+def test_datetime_to_timestamp_honors_fold(datetime_value, timezone_str, expected_timestamp):
+    assert datetime_to_timestamp(datetime_value, timezone_str=timezone_str) == expected_timestamp

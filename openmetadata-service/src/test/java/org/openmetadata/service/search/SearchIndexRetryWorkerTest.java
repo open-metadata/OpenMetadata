@@ -50,8 +50,8 @@ import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexRetryQueueDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexRetryQueueDAO.SearchIndexRetryRecord;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexRetryQueueDAO;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexRetryQueueDAO.SearchIndexRetryRecord;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
 class SearchIndexRetryWorkerTest {
@@ -212,7 +212,7 @@ class SearchIndexRetryWorkerTest {
     SearchIndexRetryWorker retryWorker =
         new SearchIndexRetryWorker(mock(CollectionDAO.class), searchRepository);
     UUID testCaseId = UUID.randomUUID();
-    EntityInterface testCase = mock(EntityInterface.class);
+    EntityInterface<?> testCase = mock(EntityInterface.class);
     when(testCase.getId()).thenReturn(testCaseId);
     when(testCase.getEntityReference())
         .thenReturn(
@@ -293,7 +293,7 @@ class SearchIndexRetryWorkerTest {
     SearchRepository searchRepository = mock(SearchRepository.class);
     SearchIndexRetryWorker retryWorker =
         new SearchIndexRetryWorker(mock(CollectionDAO.class), searchRepository);
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     ChangeDescription changeDescription =
         new ChangeDescription()
             .withPreviousVersion(1.0)

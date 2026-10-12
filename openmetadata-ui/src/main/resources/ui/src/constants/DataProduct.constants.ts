@@ -22,6 +22,7 @@ export const DATAPRODUCT_DEFAULT_QUICK_FILTERS = [
   EntityFields.OWNERS,
   EntityFields.DOMAINS,
   EntityFields.DATA_PRODUCT_TYPE,
+  EntityFields.CERTIFICATION,
   EntityFields.CLASSIFICATION_TAGS,
   EntityFields.GLOSSARY_TERMS,
 ];
@@ -46,6 +47,10 @@ export const DATAPRODUCT_FILTERS = [
   {
     label: 'label.portfolio-priority',
     key: EntityFields.PORTFOLIO_PRIORITY,
+  },
+  {
+    label: 'label.certification',
+    key: EntityFields.CERTIFICATION,
   },
   {
     label: 'label.tag-plural',

@@ -14,7 +14,6 @@ Source connection handler for Google Cloud Pub/Sub
 
 import os
 from dataclasses import dataclass
-from typing import Optional
 
 from google.api_core.exceptions import GoogleAPIError
 from google.cloud import pubsub_v1
@@ -37,7 +36,11 @@ from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN
-from metadata.utils.credentials import set_google_credentials
+from metadata.utils.credentials import (
+    get_gcp_default_credentials,
+    get_gcp_impersonate_credentials,
+    set_google_credentials,
+)
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -49,11 +52,11 @@ PUBSUB_EMULATOR_HOST = "PUBSUB_EMULATOR_HOST"
 class PubSubClient:
     publisher: pubsub_v1.PublisherClient
     subscriber: pubsub_v1.SubscriberClient
-    schema_client: Optional[SchemaServiceClient]  # noqa: UP045
+    schema_client: SchemaServiceClient | None
     project_id: str
 
 
-def _get_project_id(connection: PubSubConnectionConfig) -> Optional[str]:  # noqa: UP045
+def _get_project_id(connection: PubSubConnectionConfig) -> str | None:
     """
     Get project ID from connection config or from credentials.
     Returns None if project ID cannot be determined.
@@ -93,7 +96,9 @@ class PubSubConnection(BaseConnection[PubSubConnectionConfig, PubSubClient]):
         """
         connection = self.service_connection
         try:
-            if connection.useEmulator and connection.hostPort:
+            if connection.useEmulator:
+                if not connection.hostPort:
+                    raise ValueError("hostPort is required when using the Pub/Sub emulator (e.g. 'localhost:8085').")
                 if connection.hostPort == "pubsub.googleapis.com":
                     raise ValueError(
                         "When using the Pub/Sub emulator, 'hostPort' must be set "
@@ -108,12 +113,27 @@ class PubSubConnection(BaseConnection[PubSubConnectionConfig, PubSubClient]):
                 if PUBSUB_EMULATOR_HOST in os.environ:
                     del os.environ[PUBSUB_EMULATOR_HOST]
 
-            publisher = pubsub_v1.PublisherClient()
-            subscriber = pubsub_v1.SubscriberClient()
+            gcp_credentials = None
+            if not connection.useEmulator and connection.gcpConfig:
+                impersonate = connection.gcpConfig.gcpImpersonateServiceAccount
+                if impersonate and impersonate.impersonateServiceAccount:
+                    target = impersonate.impersonateServiceAccount.strip()
+                    if target:
+                        gcp_credentials = get_gcp_impersonate_credentials(
+                            impersonate_service_account=target,
+                            lifetime=impersonate.lifetime or 3600,
+                        )
+                    else:
+                        gcp_credentials = get_gcp_default_credentials()
+                else:
+                    gcp_credentials = get_gcp_default_credentials()
+
+            publisher = pubsub_v1.PublisherClient(credentials=gcp_credentials)
+            subscriber = pubsub_v1.SubscriberClient(credentials=gcp_credentials)
 
             schema_client = None
             if connection.schemaRegistryEnabled and not connection.useEmulator:
-                schema_client = SchemaServiceClient()
+                schema_client = SchemaServiceClient(credentials=gcp_credentials)
 
             project_id = _get_project_id(connection)
             if not project_id:
@@ -132,8 +152,8 @@ class PubSubConnection(BaseConnection[PubSubConnectionConfig, PubSubClient]):
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part

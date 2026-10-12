@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
+import { expect, test as base } from '../../support/fixtures/base';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -37,13 +38,13 @@ const test = base.extend<{
 }>({
   adminPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await adminUser.login(page);
+    await adminUser.signIn(page);
     await use(page);
     await page.close();
   },
   userPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await user.login(page);
+    await user.signIn(page);
     await use(page);
     await page.close();
   },
@@ -67,9 +68,9 @@ test.beforeAll('Setup', async ({ browser }) => {
   // return undefined and the item is silently dropped from the rendered nav.
   // governance is the sole exception — its key is the literal string 'governance'.
   //
-  // This saved nav simulates a persona created before Ontology Explorer and
+  // This saved nav simulates a persona created before Ontology Studio and
   // Metrics existed: governance only has Glossary and Tags (Tags is hidden).
-  // Ontology Explorer and Metrics are entirely absent — new items shipped later.
+  // Ontology Studio and Metrics are entirely absent — new items shipped later.
   const savedNavigation = [
     {
       id: '/explore',
@@ -95,7 +96,7 @@ test.beforeAll('Setup', async ({ browser }) => {
           isHidden: true,
           pageId: '/tags',
         },
-        // '/metrics' and '/governance/ontology' (Ontology Explorer) are
+        // '/metrics' and '/governance/ontology' (Ontology Studio) are
         // deliberately absent — they simulate new items shipped after this
         // persona's nav snapshot was saved.
       ],
@@ -153,7 +154,7 @@ test.describe(
     }) => {
       test.slow();
 
-      await test.step('admin: Ontology Explorer toggle is OFF for items absent from saved nav', async () => {
+      await test.step('admin: Ontology Studio toggle is OFF for items absent from saved nav', async () => {
         await redirectToHomePage(adminPage);
 
         const personaListResponse =
@@ -170,12 +171,12 @@ test.describe(
         await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
         await adminPage.getByTestId('navigation').click();
 
-        // Ontology Explorer was not in the saved nav (shipped after persona
+        // Ontology Studio was not in the saved nav (shipped after persona
         // was created) — its toggle must be OFF, not ON.
         await expect(
           adminPage
             .getByTestId('page-layout-v1')
-            .getByText('Ontology Explorer')
+            .getByText('Ontology Studio')
             .first()
             .getByRole('switch')
         ).not.toBeChecked();
@@ -250,8 +251,8 @@ test.describe(
         await expect(
           userPage
             .locator(`[data-testid="app-bar-item-${SidebarItem.GLOSSARY}"]`)
-            .first()
-        ).toBeVisible();
+            .filter({ visible: true })
+        ).not.toHaveCount(0);
 
         // Tags is in saved nav with isHidden: true — must not be visible
         await expect(
@@ -267,7 +268,7 @@ test.describe(
             .first()
         ).not.toBeVisible();
 
-        // Ontology Explorer is absent from saved nav's governance children — must not be visible
+        // Ontology Studio is absent from saved nav's governance children — must not be visible
         await expect(
           userPage
             .locator(
@@ -304,7 +305,7 @@ test.describe(
         .getByTestId('page-layout-v1')
         .getByText('Glossary')
         .first()
-        .getByRole('switch')
+        .locator('[data-testid^="navigation-switch-"]')
         .click();
 
       await expect(adminPage.getByTestId('save-button')).toBeEnabled();

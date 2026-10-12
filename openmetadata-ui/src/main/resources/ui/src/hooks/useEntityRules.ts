@@ -36,6 +36,15 @@ export const useEntityRules = (entityType: EntityType) => {
     [allEntityRules, entityType]
   );
 
+  // The backend only returns *enabled* rules, so an empty rule set is
+  // indistinguishable from "not fetched yet". Track whether the rules for this
+  // entity have actually loaded so consumers can hold the strict default (e.g.
+  // domain-scoped Data Products) until the real rule state is known.
+  const isRulesLoaded = useMemo(
+    () => Boolean(allEntityRules?.[entityType]),
+    [allEntityRules, entityType]
+  );
+
   useEffect(() => {
     if (entityType) {
       fetchRulesForEntity(entityType);
@@ -45,6 +54,7 @@ export const useEntityRules = (entityType: EntityType) => {
   return {
     rules,
     entityRules,
+    isRulesLoaded,
     isLoading,
   };
 };

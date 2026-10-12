@@ -13,8 +13,6 @@
 DBTCloud Source Model module
 """
 
-from typing import List, Optional  # noqa: UP035
-
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -30,20 +28,20 @@ class AliasedModel(BaseModel):
 
 
 class DBTSchedule(BaseModel):
-    cron: Optional[str] = None  # noqa: UP045
+    cron: str | None = None
 
 
 class DBTJob(BaseModel):
     id: int
     name: str
-    description: Optional[str] = None  # noqa: UP045
+    description: str | None = None
     created_at: str
-    updated_at: Optional[str] = None  # noqa: UP045
+    updated_at: str | None = None
     state: int
-    job_type: Optional[str] = None  # noqa: UP045
-    schedule: Optional[DBTSchedule] = None  # noqa: UP045
+    job_type: str | None = None
+    schedule: DBTSchedule | None = None
     project_id: int
-    environment_id: Optional[int] = None  # noqa: UP045
+    environment_id: int | None = None
 
 
 class Pagination(BaseModel):
@@ -52,51 +50,51 @@ class Pagination(BaseModel):
 
 
 class Extra(BaseModel):
-    pagination: Optional[Pagination] = None  # noqa: UP045
+    pagination: Pagination | None = None
 
 
 class DBTJobList(AliasedModel):
-    Jobs: List[DBTJob] = Field(alias="data")  # noqa: UP006
-    extra: Optional[Extra] = None  # noqa: UP045
+    Jobs: list[DBTJob] = Field(alias="data")
+    extra: Extra | None = None
 
 
 class DBTRun(AliasedModel):
-    id: Optional[int] = None  # noqa: UP045
+    id: int | None = None
     status: int
-    status_message: Optional[str] = None  # noqa: UP045
-    state: Optional[str] = Field(None, alias="status_humanized")  # noqa: UP045
-    href: Optional[str] = None  # noqa: UP045
-    started_at: Optional[str] = None  # noqa: UP045
-    finished_at: Optional[str] = None  # noqa: UP045
-    duration: Optional[str] = None  # noqa: UP045
+    status_message: str | None = None
+    state: str | None = Field(None, alias="status_humanized")
+    href: str | None = None
+    started_at: str | None = None
+    finished_at: str | None = None
+    duration: str | None = None
 
 
 class DBTRunList(AliasedModel):
-    Runs: Optional[List[DBTRun]] = Field([], alias="data")  # noqa: UP006, UP045
-    extra: Optional[Extra] = None  # noqa: UP045
+    Runs: list[DBTRun] | None = Field([], alias="data")
+    extra: Extra | None = None
 
 
 class DBTSources(AliasedModel):
-    uniqueId: Optional[str] = None  # noqa: N815, UP045
-    name: Optional[str] = None  # noqa: UP045
-    dbtschema: Optional[str] = Field(None, alias="schema")  # noqa: UP045
-    database: Optional[str] = None  # noqa: UP045
-    runGeneratedAt: Optional[str] = None  # noqa: N815, UP045
-    extra: Optional[Extra] = None  # noqa: UP045
+    uniqueId: str | None = None  # noqa: N815
+    name: str | None = None
+    dbtschema: str | None = Field(None, alias="schema")
+    database: str | None = None
+    runGeneratedAt: str | None = None  # noqa: N815
+    extra: Extra | None = None
 
 
 class DBTModel(AliasedModel):
-    uniqueId: Optional[str] = None  # noqa: N815, UP045
-    name: Optional[str] = None  # noqa: UP045
-    dbtschema: Optional[str] = Field(None, alias="schema")  # noqa: UP045
-    database: Optional[str] = None  # noqa: UP045
-    runGeneratedAt: Optional[str] = None  # noqa: N815, UP045
-    dependsOn: Optional[List[str]] = None  # noqa: N815, UP006, UP045
-    compiledCode: Optional[str] = None  # noqa: N815, UP045
+    uniqueId: str | None = None  # noqa: N815
+    name: str | None = None
+    dbtschema: str | None = Field(None, alias="schema")
+    database: str | None = None
+    runGeneratedAt: str | None = None  # noqa: N815
+    dependsOn: list[str] | None = None  # noqa: N815
+    compiledCode: str | None = None  # noqa: N815
 
 
 class DBTModelList(BaseModel):
-    models: Optional[List[DBTModel]] = []  # noqa: UP006, UP045
-    seeds: Optional[List[DBTModel]] = []  # noqa: UP006, UP045
-    sources: Optional[List[DBTModel]] = []  # noqa: UP006, UP045
-    extra: Optional[Extra] = None  # noqa: UP045
+    models: list[DBTModel] | None = []
+    seeds: list[DBTModel] | None = []
+    sources: list[DBTModel] | None = []
+    extra: Extra | None = None

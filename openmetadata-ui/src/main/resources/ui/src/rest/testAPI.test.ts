@@ -24,6 +24,7 @@
  */
 
 import { TestCaseStatus } from '../generated/tests/testCase';
+import { Include } from '../generated/type/include';
 
 // Mock response data
 const mockTestCase = {
@@ -65,7 +66,7 @@ describe('testAPI tests', () => {
         const mockGet = jest
           .fn()
           .mockResolvedValue({ data: mockPagingResponse });
-        jest.mock('./index', () => ({
+        jest.mock('./axiosClient', () => ({
           __esModule: true,
           default: {
             get: mockGet,
@@ -91,11 +92,38 @@ describe('testAPI tests', () => {
         expect(result).toEqual(mockPagingResponse);
       });
 
+      it('should serialize multiple test case statuses as a comma-separated parameter', async () => {
+        const mockGet = jest
+          .fn()
+          .mockResolvedValue({ data: mockPagingResponse });
+        jest.mock('./axiosClient', () => ({
+          __esModule: true,
+          default: {
+            get: mockGet,
+          },
+        }));
+
+        const { getListTestCaseBySearch } = require('./testAPI');
+
+        await getListTestCaseBySearch({
+          testCaseStatus: [TestCaseStatus.Success, TestCaseStatus.Queued],
+        });
+
+        expect(mockGet).toHaveBeenCalledWith(
+          '/dataQuality/testCases/search/list',
+          {
+            params: {
+              testCaseStatus: `${TestCaseStatus.Success},${TestCaseStatus.Queued}`,
+            },
+          }
+        );
+      });
+
       it('should handle empty search parameters', async () => {
         const mockGet = jest
           .fn()
           .mockResolvedValue({ data: mockPagingResponse });
-        jest.mock('./index', () => ({
+        jest.mock('./axiosClient', () => ({
           __esModule: true,
           default: {
             get: mockGet,
@@ -114,10 +142,38 @@ describe('testAPI tests', () => {
         );
       });
 
+      it('should forward request cancellation to the search request', async () => {
+        const mockGet = jest
+          .fn()
+          .mockResolvedValue({ data: mockPagingResponse });
+        jest.mock('./axiosClient', () => ({
+          __esModule: true,
+          default: {
+            get: mockGet,
+          },
+        }));
+
+        const { getListTestCaseBySearch } = require('./testAPI');
+        const controller = new AbortController();
+
+        await getListTestCaseBySearch(
+          { testSuiteId: 'suite-id' },
+          { signal: controller.signal }
+        );
+
+        expect(mockGet).toHaveBeenCalledWith(
+          '/dataQuality/testCases/search/list',
+          {
+            params: { testSuiteId: 'suite-id' },
+            signal: controller.signal,
+          }
+        );
+      });
+
       it('should handle API errors', async () => {
         const error = new Error('API Error');
         const mockGet = jest.fn().mockRejectedValue(error);
-        jest.mock('./index', () => ({
+        jest.mock('./axiosClient', () => ({
           __esModule: true,
           default: {
             get: mockGet,
@@ -135,7 +191,7 @@ describe('testAPI tests', () => {
         const mockGet = jest.fn().mockResolvedValue({
           data: { data: [], paging: {} },
         });
-        jest.mock('./index', () => ({
+        jest.mock('./axiosClient', () => ({
           __esModule: true,
           default: {
             get: mockGet,
@@ -156,7 +212,7 @@ describe('testAPI tests', () => {
         const mockGet = jest.fn().mockResolvedValue({
           data: { data: [], paging: {} },
         });
-        jest.mock('./index', () => ({
+        jest.mock('./axiosClient', () => ({
           __esModule: true,
           default: {
             get: mockGet,
@@ -174,7 +230,7 @@ describe('testAPI tests', () => {
     describe('getTestCaseByFqn', () => {
       it('should fetch test case by FQN with fields', async () => {
         const mockGet = jest.fn().mockResolvedValue({ data: mockTestCase });
-        jest.mock('./index', () => ({
+        jest.mock('./axiosClient', () => ({
           __esModule: true,
           default: {
             get: mockGet,
@@ -196,7 +252,7 @@ describe('testAPI tests', () => {
 
       it('should handle missing params', async () => {
         const mockGet = jest.fn().mockResolvedValue({ data: mockTestCase });
-        jest.mock('./index', () => ({
+        jest.mock('./axiosClient', () => ({
           __esModule: true,
           default: {
             get: mockGet,
@@ -211,12 +267,54 @@ describe('testAPI tests', () => {
           params: undefined,
         });
       });
+
+      it('should request deleted test cases when include is provided', async () => {
+        const mockGet = jest.fn().mockResolvedValue({ data: mockTestCase });
+        jest.mock('./axiosClient', () => ({
+          __esModule: true,
+          default: {
+            get: mockGet,
+          },
+        }));
+
+        const { getTestCaseByFqn } = require('./testAPI');
+
+        await getTestCaseByFqn('test.case.fqn', {
+          fields: ['owner'],
+          include: Include.All,
+        });
+
+        expect(mockGet).toHaveBeenCalledWith(expect.any(String), {
+          params: { fields: ['owner'], include: Include.All },
+        });
+      });
+    });
+
+    describe('restoreTestCase', () => {
+      it('should restore a test case by id', async () => {
+        const mockPut = jest.fn().mockResolvedValue({ data: mockTestCase });
+        jest.mock('./axiosClient', () => ({
+          __esModule: true,
+          default: {
+            put: mockPut,
+          },
+        }));
+
+        const { restoreTestCase } = require('./testAPI');
+
+        const result = await restoreTestCase(mockTestCase.id);
+
+        expect(mockPut).toHaveBeenCalledWith('/dataQuality/testCases/restore', {
+          id: mockTestCase.id,
+        });
+        expect(result).toEqual(mockTestCase);
+      });
     });
 
     describe('createTestCase', () => {
       it('should create a test case', async () => {
         const mockPost = jest.fn().mockResolvedValue({ data: mockTestCase });
-        jest.mock('./index', () => ({
+        jest.mock('./axiosClient', () => ({
           __esModule: true,
           default: {
             post: mockPost,
@@ -243,7 +341,7 @@ describe('testAPI tests', () => {
       it('should handle creation errors', async () => {
         const error = new Error('Creation failed');
         const mockPost = jest.fn().mockRejectedValue(error);
-        jest.mock('./index', () => ({
+        jest.mock('./axiosClient', () => ({
           __esModule: true,
           default: {
             post: mockPost,
@@ -259,7 +357,7 @@ describe('testAPI tests', () => {
     describe('updateTestCaseById', () => {
       it('should update test case with JSON patch', async () => {
         const mockPatch = jest.fn().mockResolvedValue({ data: mockTestCase });
-        jest.mock('./index', () => ({
+        jest.mock('./axiosClient', () => ({
           __esModule: true,
           default: {
             patch: mockPatch,
@@ -286,7 +384,7 @@ describe('testAPI tests', () => {
       it('should fetch execution summary with test suite ID', async () => {
         const mockSummary = { success: 10, failed: 2, aborted: 1 };
         const mockGet = jest.fn().mockResolvedValue({ data: mockSummary });
-        jest.mock('./index', () => ({
+        jest.mock('./axiosClient', () => ({
           __esModule: true,
           default: {
             get: mockGet,
@@ -306,7 +404,7 @@ describe('testAPI tests', () => {
 
       it('should fetch execution summary without test suite ID', async () => {
         const mockGet = jest.fn().mockResolvedValue({ data: {} });
-        jest.mock('./index', () => ({
+        jest.mock('./axiosClient', () => ({
           __esModule: true,
           default: {
             get: mockGet,
@@ -327,7 +425,7 @@ describe('testAPI tests', () => {
     describe('addTestCaseToLogicalTestSuite', () => {
       it('should add test cases to logical test suite', async () => {
         const mockPut = jest.fn().mockResolvedValue({ data: mockTestSuite });
-        jest.mock('./index', () => ({
+        jest.mock('./axiosClient', () => ({
           __esModule: true,
           default: {
             put: mockPut,
@@ -354,7 +452,7 @@ describe('testAPI tests', () => {
     describe('addTestCasesToLogicalTestSuiteBulk', () => {
       it('should PUT bulk ids mode to logicalTestCases/bulk', async () => {
         const mockPut = jest.fn().mockResolvedValue({ data: mockTestSuite });
-        jest.mock('./index', () => ({
+        jest.mock('./axiosClient', () => ({
           __esModule: true,
           default: {
             put: mockPut,
@@ -385,7 +483,7 @@ describe('testAPI tests', () => {
 
       it('should PUT bulk all mode with excludeIds to logicalTestCases/bulk', async () => {
         const mockPut = jest.fn().mockResolvedValue({ data: mockTestSuite });
-        jest.mock('./index', () => ({
+        jest.mock('./axiosClient', () => ({
           __esModule: true,
           default: {
             put: mockPut,
@@ -417,7 +515,7 @@ describe('testAPI tests', () => {
     describe('removeTestCaseFromTestSuite', () => {
       it('should remove test case from test suite', async () => {
         const mockDelete = jest.fn().mockResolvedValue({ data: mockTestCase });
-        jest.mock('./index', () => ({
+        jest.mock('./axiosClient', () => ({
           __esModule: true,
           default: {
             delete: mockDelete,
@@ -439,7 +537,7 @@ describe('testAPI tests', () => {
       it('should fetch test case version list', async () => {
         const mockVersions = { versions: ['1.0', '1.1'] };
         const mockGet = jest.fn().mockResolvedValue({ data: mockVersions });
-        jest.mock('./index', () => ({
+        jest.mock('./axiosClient', () => ({
           __esModule: true,
           default: {
             get: mockGet,
@@ -461,7 +559,7 @@ describe('testAPI tests', () => {
       it('should fetch specific version details', async () => {
         const mockVersion = { version: '1.0', ...mockTestCase };
         const mockGet = jest.fn().mockResolvedValue({ data: mockVersion });
-        jest.mock('./index', () => ({
+        jest.mock('./axiosClient', () => ({
           __esModule: true,
           default: {
             get: mockGet,
@@ -483,7 +581,7 @@ describe('testAPI tests', () => {
       it('should fetch dimension results with parameters', async () => {
         const mockResults = { data: [], paging: {} };
         const mockGet = jest.fn().mockResolvedValue({ data: mockResults });
-        jest.mock('./index', () => ({
+        jest.mock('./axiosClient', () => ({
           __esModule: true,
           default: {
             get: mockGet,
@@ -516,7 +614,7 @@ describe('testAPI tests', () => {
         const mockGet = jest
           .fn()
           .mockResolvedValue({ data: mockPagingResponse });
-        jest.mock('./index', () => ({
+        jest.mock('./axiosClient', () => ({
           __esModule: true,
           default: {
             get: mockGet,
@@ -545,7 +643,7 @@ describe('testAPI tests', () => {
       it('should export test cases with recursive parameter', async () => {
         const mockResponse = { jobId: 'export-job-id' };
         const mockGet = jest.fn().mockResolvedValue({ data: mockResponse });
-        jest.mock('./index', () => ({
+        jest.mock('./axiosClient', () => ({
           __esModule: true,
           default: {
             get: mockGet,
@@ -568,7 +666,7 @@ describe('testAPI tests', () => {
       it('should export test cases without parameters', async () => {
         const mockResponse = { jobId: 'export-job-id' };
         const mockGet = jest.fn().mockResolvedValue({ data: mockResponse });
-        jest.mock('./index', () => ({
+        jest.mock('./axiosClient', () => ({
           __esModule: true,
           default: {
             get: mockGet,
@@ -591,7 +689,7 @@ describe('testAPI tests', () => {
       it('should fetch test definitions with filters', async () => {
         const mockResponse = { data: [mockTestDefinition], paging: {} };
         const mockGet = jest.fn().mockResolvedValue({ data: mockResponse });
-        jest.mock('./index', () => ({
+        jest.mock('./axiosClient', () => ({
           __esModule: true,
           default: {
             get: mockGet,
@@ -620,7 +718,7 @@ describe('testAPI tests', () => {
         const mockGet = jest
           .fn()
           .mockResolvedValue({ data: mockTestDefinition });
-        jest.mock('./index', () => ({
+        jest.mock('./axiosClient', () => ({
           __esModule: true,
           default: {
             get: mockGet,
@@ -646,7 +744,7 @@ describe('testAPI tests', () => {
         const mockPost = jest
           .fn()
           .mockResolvedValue({ data: mockTestDefinition });
-        jest.mock('./index', () => ({
+        jest.mock('./axiosClient', () => ({
           __esModule: true,
           default: {
             post: mockPost,
@@ -675,7 +773,7 @@ describe('testAPI tests', () => {
         const mockPut = jest
           .fn()
           .mockResolvedValue({ data: mockTestDefinition });
-        jest.mock('./index', () => ({
+        jest.mock('./axiosClient', () => ({
           __esModule: true,
           default: {
             put: mockPut,
@@ -699,7 +797,7 @@ describe('testAPI tests', () => {
         const mockPatch = jest
           .fn()
           .mockResolvedValue({ data: mockTestDefinition });
-        jest.mock('./index', () => ({
+        jest.mock('./axiosClient', () => ({
           __esModule: true,
           default: {
             patch: mockPatch,
@@ -725,7 +823,7 @@ describe('testAPI tests', () => {
         const mockDelete = jest
           .fn()
           .mockResolvedValue({ data: mockTestDefinition });
-        jest.mock('./index', () => ({
+        jest.mock('./axiosClient', () => ({
           __esModule: true,
           default: {
             delete: mockDelete,
@@ -746,7 +844,7 @@ describe('testAPI tests', () => {
         const mockDelete = jest
           .fn()
           .mockResolvedValue({ data: mockTestDefinition });
-        jest.mock('./index', () => ({
+        jest.mock('./axiosClient', () => ({
           __esModule: true,
           default: {
             delete: mockDelete,
@@ -773,7 +871,7 @@ describe('testAPI tests', () => {
       it('should fetch test suites with filters', async () => {
         const mockResponse = { data: [mockTestSuite], paging: {} };
         const mockGet = jest.fn().mockResolvedValue({ data: mockResponse });
-        jest.mock('./index', () => ({
+        jest.mock('./axiosClient', () => ({
           __esModule: true,
           default: {
             get: mockGet,
@@ -802,7 +900,7 @@ describe('testAPI tests', () => {
         const mockGet = jest
           .fn()
           .mockResolvedValue({ data: mockPagingResponse });
-        jest.mock('./index', () => ({
+        jest.mock('./axiosClient', () => ({
           __esModule: true,
           default: {
             get: mockGet,
@@ -831,7 +929,7 @@ describe('testAPI tests', () => {
     describe('createTestSuites', () => {
       it('should create a test suite', async () => {
         const mockPost = jest.fn().mockResolvedValue({ data: mockTestSuite });
-        jest.mock('./index', () => ({
+        jest.mock('./axiosClient', () => ({
           __esModule: true,
           default: {
             post: mockPost,
@@ -858,7 +956,7 @@ describe('testAPI tests', () => {
     describe('createExecutableTestSuite', () => {
       it('should create an executable test suite', async () => {
         const mockPost = jest.fn().mockResolvedValue({ data: mockTestSuite });
-        jest.mock('./index', () => ({
+        jest.mock('./axiosClient', () => ({
           __esModule: true,
           default: {
             post: mockPost,
@@ -885,7 +983,7 @@ describe('testAPI tests', () => {
     describe('getTestSuiteByName', () => {
       it('should default owners/experts to non-deleted so soft-deleted owners stay hidden (issue #30117)', async () => {
         const mockGet = jest.fn().mockResolvedValue({ data: mockTestSuite });
-        jest.mock('./index', () => ({
+        jest.mock('./axiosClient', () => ({
           __esModule: true,
           default: {
             get: mockGet,
@@ -912,7 +1010,7 @@ describe('testAPI tests', () => {
 
       it('should respect a caller-provided includeRelations', async () => {
         const mockGet = jest.fn().mockResolvedValue({ data: mockTestSuite });
-        jest.mock('./index', () => ({
+        jest.mock('./axiosClient', () => ({
           __esModule: true,
           default: {
             get: mockGet,
@@ -930,9 +1028,39 @@ describe('testAPI tests', () => {
         });
       });
 
+      it('should forward request cancellation to the suite request', async () => {
+        const mockGet = jest.fn().mockResolvedValue({ data: mockTestSuite });
+        jest.mock('./axiosClient', () => ({
+          __esModule: true,
+          default: {
+            get: mockGet,
+          },
+        }));
+
+        const { getTestSuiteByName } = require('./testAPI');
+        const controller = new AbortController();
+
+        await getTestSuiteByName(
+          'test.suite.name',
+          { fields: ['owners'] },
+          { signal: controller.signal }
+        );
+
+        expect(mockGet).toHaveBeenCalledWith(
+          expect.stringContaining('/dataQuality/testSuites/name/'),
+          {
+            params: {
+              fields: ['owners'],
+              includeRelations: 'owners:non-deleted,experts:non-deleted',
+            },
+            signal: controller.signal,
+          }
+        );
+      });
+
       it('should encode FQN with special characters', async () => {
         const mockGet = jest.fn().mockResolvedValue({ data: mockTestSuite });
-        jest.mock('./index', () => ({
+        jest.mock('./axiosClient', () => ({
           __esModule: true,
           default: {
             get: mockGet,
@@ -950,7 +1078,7 @@ describe('testAPI tests', () => {
     describe('updateTestSuiteById', () => {
       it('should update test suite with JSON patch', async () => {
         const mockPatch = jest.fn().mockResolvedValue({ data: mockTestSuite });
-        jest.mock('./index', () => ({
+        jest.mock('./axiosClient', () => ({
           __esModule: true,
           default: {
             patch: mockPatch,
@@ -977,7 +1105,7 @@ describe('testAPI tests', () => {
       it('should fetch data quality report with aggregation query', async () => {
         const mockReport = { metrics: {}, charts: [] };
         const mockGet = jest.fn().mockResolvedValue({ data: mockReport });
-        jest.mock('./index', () => ({
+        jest.mock('./axiosClient', () => ({
           __esModule: true,
           default: {
             get: mockGet,
@@ -1012,7 +1140,7 @@ describe('testAPI tests', () => {
       const mockPatch = jest.fn().mockRejectedValue(networkError);
       const mockDelete = jest.fn().mockRejectedValue(networkError);
 
-      jest.mock('./index', () => ({
+      jest.mock('./axiosClient', () => ({
         __esModule: true,
         default: {
           get: mockGet,
@@ -1048,7 +1176,7 @@ describe('testAPI tests', () => {
       const notFoundError = { response: { status: 404 } };
       const mockGet = jest.fn().mockRejectedValue(notFoundError);
 
-      jest.mock('./index', () => ({
+      jest.mock('./axiosClient', () => ({
         __esModule: true,
         default: {
           get: mockGet,
@@ -1066,7 +1194,7 @@ describe('testAPI tests', () => {
       const serverError = { response: { status: 500 } };
       const mockPost = jest.fn().mockRejectedValue(serverError);
 
-      jest.mock('./index', () => ({
+      jest.mock('./axiosClient', () => ({
         __esModule: true,
         default: {
           post: mockPost,
@@ -1084,7 +1212,7 @@ describe('testAPI tests', () => {
       const mockGet = jest
         .fn()
         .mockResolvedValue({ data: { data: [], paging: {} } });
-      jest.mock('./index', () => ({
+      jest.mock('./axiosClient', () => ({
         __esModule: true,
         default: {
           get: mockGet,
@@ -1103,7 +1231,7 @@ describe('testAPI tests', () => {
       const mockGet = jest.fn().mockResolvedValue({
         data: { data: largeData, paging: { total: 1000 } },
       });
-      jest.mock('./index', () => ({
+      jest.mock('./axiosClient', () => ({
         __esModule: true,
         default: {
           get: mockGet,
@@ -1119,7 +1247,7 @@ describe('testAPI tests', () => {
 
     it('should handle special characters in all FQN parameters', async () => {
       const mockGet = jest.fn().mockResolvedValue({ data: mockTestCase });
-      jest.mock('./index', () => ({
+      jest.mock('./axiosClient', () => ({
         __esModule: true,
         default: {
           get: mockGet,

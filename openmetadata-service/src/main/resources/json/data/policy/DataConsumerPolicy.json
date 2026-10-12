@@ -22,10 +22,31 @@
       "effect": "allow"
     },
     {
+      "name": "DataConsumerPolicy-CreateConversation-Rule",
+      "description" : "Allow authenticated users to create conversations and replies.",
+      "resources" : ["conversation"],
+      "operations": ["Create"],
+      "effect": "allow"
+    },
+    {
       "name": "DataConsumerPolicy-TaskRule",
       "description" : "Allow authenticated users to file and edit tasks (data access requests, suggestions, etc.) against any entity. Restrict this rule (e.g. with an isOwner condition) to limit who can file or edit tasks on which entities.",
       "resources" : ["all"],
       "operations": ["CreateTask", "EditTask"],
+      "effect": "allow"
+    },
+    {
+      "name": "DataConsumerPolicy-ExecuteSparqlQuery-Rule",
+      "description" : "Allow authenticated users to run read-only SPARQL queries through the agent SPARQL endpoint. The endpoint does not filter results by asset, so remove this rule if viewing is restricted through custom policies.",
+      "resources" : ["all"],
+      "operations": ["ExecuteSparqlQuery"],
+      "effect": "allow"
+    },
+    {
+      "name": "DataConsumerPolicy-CreateContextMemory-Rule",
+      "description" : "Allow authenticated users to create context memories, including the ones the AI agent saves from their conversations. The creator owns a new memory and can edit or delete it. An Entity memory is shown to everyone who can view its asset, or to everyone when it has no asset, so remove this rule if only admins should create memories.",
+      "resources" : ["contextMemory"],
+      "operations": ["Create"],
       "effect": "allow"
     }
   ]

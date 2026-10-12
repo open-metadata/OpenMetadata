@@ -11,15 +11,21 @@
  *  limitations under the License.
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Col, Form, Row, Space } from 'antd';
-import DataAssetAsyncSelectList from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList';
-import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
-
+import {
+  BadgeWithButton,
+  Box,
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import { FC, useState } from 'react';
+import { Pressable } from 'react-aria-components';
+import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
+import DataAssetSelectList from '../../../components/DataAssets/DataAssetSelectList/DataAssetSelectList';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import i18n from '../../../utils/i18next/LocalUtil';
 
 interface RelatedDataAssetsFormProps {
-  defaultValue?: string[];
   initialOptions?: DataAssetOption[];
   onSubmit: (option: DataAssetOption[]) => Promise<void>;
   onCancel: () => void;
@@ -41,28 +47,56 @@ const knowledgeCenterQueryFilter = {
 };
 
 export const RelatedDataAssetsForm: FC<RelatedDataAssetsFormProps> = ({
-  defaultValue,
   initialOptions,
   onCancel,
   onSubmit,
 }) => {
   const { t } = i18n;
-  const [form] = Form.useForm();
+  const [selected, setSelected] = useState<DataAssetOption[]>(
+    initialOptions ?? []
+  );
   const [isSubmitLoading, setIsSubmitLoading] = useState(false);
 
+  const placeholder = t('label.data-asset-plural');
+
+  const handleChange = (option?: DataAssetOption | DataAssetOption[]) => {
+    if (!option) {
+      setSelected([]);
+
+      return;
+    }
+    setSelected(Array.isArray(option) ? option : [option]);
+  };
+
+  const handleRemoveChip = (id: string) => {
+    const next = selected.filter((s) => s.reference.id !== id);
+    handleChange(next.length ? next : undefined);
+  };
+
+  const handleSubmit = () => {
+    setIsSubmitLoading(true);
+    onSubmit(selected);
+  };
+
+  const chipItems = selected.map((s) => ({
+    id: s.reference.id,
+    label: s.displayName ?? s.label ?? '',
+  }));
+
   return (
-    <Form
-      data-testid="dataAssetsForm"
-      form={form}
-      initialValues={{ dataAssets: defaultValue }}
-      name="dataAssetsForm"
-      onFinish={(data) => {
-        setIsSubmitLoading(true);
-        onSubmit(data['dataAssets']);
-      }}>
-      <Row gutter={[0, 8]}>
-        <Col className="gutter-row d-flex justify-end" span={24}>
-          <Space align="center">
+    <div data-testid="dataAssetsForm">
+      <Grid
+        className="layout-row layout-grid"
+        style={{ ...getLayoutGutter(0, 8) }}>
+        <Grid.Item
+          className="layout-column gutter-row d-flex justify-end"
+          span={24}>
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal"
+            gap={2}
+            itemClassName="layout-space-item">
             <Button
               className="p-x-05"
               data-testid="cancelDataAssets"
@@ -74,26 +108,69 @@ export const RelatedDataAssetsForm: FC<RelatedDataAssetsFormProps> = ({
             <Button
               className="p-x-05"
               data-testid="saveDataAssets"
-              htmlType="submit"
               icon={<CheckOutlined size={12} />}
               loading={isSubmitLoading}
               size="small"
               type="primary"
+              onClick={handleSubmit}
             />
-          </Space>
-        </Col>
+          </Box>
+        </Grid.Item>
 
-        <Col className="gutter-row" span={24}>
-          <Form.Item noStyle name="dataAssets">
-            <DataAssetAsyncSelectList
-              initialOptions={initialOptions}
-              mode="multiple"
-              placeholder={t('label.data-asset-plural')}
-              queryFilter={knowledgeCenterQueryFilter}
-            />
-          </Form.Item>
-        </Col>
-      </Row>
-    </Form>
+        <Grid.Item className="layout-column gutter-row" span={24}>
+          <DataAssetSelectList
+            initialOptions={initialOptions}
+            placeholder={placeholder}
+            popoverPlacement="top end"
+            queryFilter={knowledgeCenterQueryFilter}
+            renderTrigger={({ open }) => (
+              <Pressable onClick={open}>
+                <Box
+                  align="center"
+                  className="tw:relative tw:w-full tw:min-h-10 tw:rounded-lg tw:bg-primary tw:shadow-xs tw:px-3 tw:py-2 tw:outline-1 tw:-outline-offset-1 tw:outline-primary"
+                  gap={2}
+                  wrap="wrap">
+                  {chipItems.length > 0 ? (
+                    chipItems.map((item) => (
+                      <BadgeWithButton
+                        buttonLabel={t('label.remove-entity', {
+                          entity: item.label,
+                        })}
+                        color="gray"
+                        key={item.id}
+                        size="sm"
+                        type="modern"
+                        onButtonClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveChip(item.id);
+                        }}>
+                        <div className="tw:max-w-28">
+                          <Typography
+                            className="tw:whitespace-nowrap"
+                            ellipsis={{
+                              tooltip: item.label,
+                              excludeTriggerFromTabOrder: true,
+                            }}
+                            size="text-xs">
+                            {item.label}
+                          </Typography>
+                        </div>
+                      </BadgeWithButton>
+                    ))
+                  ) : (
+                    <Typography className="tw:text-tertiary">
+                      {t('label.data-asset-plural')}
+                    </Typography>
+                  )}
+                </Box>
+              </Pressable>
+            )}
+            selectionMode="multiple"
+            value={selected}
+            onChange={handleChange}
+          />
+        </Grid.Item>
+      </Grid>
+    </div>
   );
 };

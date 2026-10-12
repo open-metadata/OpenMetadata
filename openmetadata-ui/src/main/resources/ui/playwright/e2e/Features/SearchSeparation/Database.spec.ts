@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { test } from '@playwright/test';
 import { DatabaseClass } from '../../../support/entity/DatabaseClass';
+import { DatabaseServiceClass } from '../../../support/entity/service/DatabaseServiceClass';
+import { test } from '../../../support/fixtures/base';
 import { registerFilterSeparationSuite } from './SearchSeparationSuite';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -20,5 +21,7 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 registerFilterSeparationSuite({
   suiteName: 'Database',
   reindexEntityType: 'database',
-  entityFactory: () => new DatabaseClass(),
+  // The service facet only isolates this entity if it owns its service.
+  entityFactory: () =>
+    new DatabaseClass({ service: new DatabaseServiceClass() }),
 });

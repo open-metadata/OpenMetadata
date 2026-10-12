@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { capitalize, isNaN, isNil, toInteger, toNumber } from 'lodash';
-import { DateTime, Duration } from 'luxon';
+import { DateTime, Duration, ToRelativeCalendarOptions } from 'luxon';
 import {
   DAY_SECONDS,
   HOUR_SECONDS,
@@ -225,6 +225,37 @@ export const getShortRelativeTime = (timeStamp?: number): string => {
 
   return shortForm;
 };
+const ELAPSED_UNITS = [
+  'years',
+  'months',
+  'weeks',
+  'days',
+  'hours',
+  'minutes',
+  'seconds',
+] as const;
+
+/**
+ * Time since a moment in its largest whole unit and narrowest form, e.g. "23h"
+ * or "3d", for a label that already says what the time is.
+ */
+export const getElapsedTime = (timeStamp?: number): string => {
+  if (isNil(timeStamp)) {
+    return '';
+  }
+
+  const elapsed = DateTime.now().diff(DateTime.fromMillis(timeStamp), [
+    ...ELAPSED_UNITS,
+  ]);
+  const unit = ELAPSED_UNITS.find((u) => elapsed.get(u) >= 1) ?? 'seconds';
+
+  return new Intl.NumberFormat(i18next.language, {
+    style: 'unit',
+    unit: unit.slice(0, -1),
+    unitDisplay: 'narrow',
+  }).format(Math.max(Math.floor(elapsed.get(unit)), 0));
+};
+
 /**
  *
  * @param timeStamp
@@ -233,7 +264,10 @@ export const getShortRelativeTime = (timeStamp?: number): string => {
  */
 export const getRelativeCalendar = (
   timeStamp: number,
-  baseTimeStamp?: number
+  baseTimeStamp?: number,
+  // Without a unit Luxon picks the largest that differs, so two days ago
+  // across a month boundary reads "Last month"; 'days' keeps it "2 days ago".
+  unit?: ToRelativeCalendarOptions['unit']
 ): string => {
   return capitalize(
     DateTime.fromMillis(timeStamp, {
@@ -242,6 +276,7 @@ export const getRelativeCalendar = (
       base: baseTimeStamp
         ? DateTime.fromMillis(baseTimeStamp, { locale: i18next.language })
         : DateTime.now(),
+      unit,
     }) || ''
   );
 };
@@ -301,31 +336,26 @@ export const getIntervalInMilliseconds = (
 };
 
 /**
- * Calculates the interval between two timestamps in milliseconds
- * and returns the result as a formatted string "X Days, Y Hours".
- *
- * @param startTime - The start time in milliseconds.
- * @param endTime - The end time in milliseconds.
- * @returns A formatted string representing the interval in "X Days, Y Hours".
+ * Joins the non-zero unit parts into a compact human-readable string, applying an
+ * optional max-unit cap and a negative-value prefix. Returns '0s' when empty.
  */
-export const calculateInterval = (
-  startTime: number,
-  endTime: number
+const buildHumanReadableResult = (
+  parts: string[],
+  length: number | undefined,
+  isNegative: boolean,
+  prependForNegativeValue: string
 ): string => {
-  try {
-    const intervalInMilliseconds = getIntervalInMilliseconds(
-      startTime,
-      endTime
-    );
-
-    const duration = Duration.fromMillis(intervalInMilliseconds);
-    const days = Math.floor(duration.as('days'));
-    const hours = Math.floor(duration.as('hours')) % 24;
-
-    return `${days} Days, ${hours} Hours`;
-  } catch {
-    return 'Invalid interval';
+  if (parts.length === 0) {
+    return '0s';
   }
+
+  const limitedParts =
+    length && parts.length > length ? parts.slice(0, length) : parts;
+  const formattedResult = limitedParts.join(' ');
+
+  return isNegative
+    ? `${prependForNegativeValue}${formattedResult}`
+    : formattedResult;
 };
 
 /**
@@ -353,55 +383,34 @@ export const convertMillisecondsToHumanReadableFormat = (
   const absoluteTimestamp = Math.abs(timestamp);
 
   const duration = Duration.fromMillis(absoluteTimestamp);
-  const result: string[] = [];
 
   // Extract each unit from the duration
-  const years = Math.floor(duration.as('years'));
-  const months = Math.floor(duration.as('months')) % 12;
-  const days = Math.floor(duration.as('days')) % 30;
-  const hours = Math.floor(duration.as('hours')) % 24;
-  const minutes = Math.floor(duration.as('minutes')) % 60;
-  const seconds = Math.floor(duration.as('seconds')) % 60;
-  const milliseconds = Math.floor(duration.as('milliseconds')) % 1000;
+  const units: Array<{ value: number; suffix: string }> = [
+    { value: Math.floor(duration.as('years')), suffix: 'Y' },
+    { value: Math.floor(duration.as('months')) % 12, suffix: 'M' },
+    { value: Math.floor(duration.as('days')) % 30, suffix: 'd' },
+    { value: Math.floor(duration.as('hours')) % 24, suffix: 'h' },
+    { value: Math.floor(duration.as('minutes')) % 60, suffix: 'm' },
+    { value: Math.floor(duration.as('seconds')) % 60, suffix: 's' },
+  ];
 
-  // Add non-zero units to the result
-  if (years > 0) {
-    result.push(`${years}Y`);
-  }
-  if (months > 0) {
-    result.push(`${months}M`);
-  }
-  if (days > 0) {
-    result.push(`${days}d`);
-  }
-  if (hours > 0) {
-    result.push(`${hours}h`);
-  }
-  if (minutes > 0) {
-    result.push(`${minutes}m`);
-  }
-  if (seconds > 0) {
-    result.push(`${seconds}s`);
-  }
-  if (showMilliseconds && milliseconds > 0) {
-    result.push(`${milliseconds}ms`);
+  if (showMilliseconds) {
+    units.push({
+      value: Math.floor(duration.as('milliseconds')) % 1000,
+      suffix: 'ms',
+    });
   }
 
-  // If no units found, return 0s
-  if (result.length === 0) {
-    return '0s';
-  }
+  const result = units
+    .filter((unit) => unit.value > 0)
+    .map((unit) => `${unit.value}${unit.suffix}`);
 
-  let formattedResult = result.join(' ');
-
-  if (length && result.length > length) {
-    formattedResult = result.slice(0, length).join(' ');
-  }
-
-  // Prepend minus sign for negative values
-  return isNegative
-    ? `${prependForNegativeValue}${formattedResult}`
-    : formattedResult;
+  return buildHumanReadableResult(
+    result,
+    length,
+    isNegative,
+    prependForNegativeValue
+  );
 };
 
 /**
@@ -429,62 +438,36 @@ export const convertSecondsToHumanReadableFormat = (
 
   const result: string[] = [];
 
-  // Extract years first (using 360 days per year: 12 months × 30 days)
-  const years = Math.floor(remainingSeconds / YEAR_SECONDS);
-  if (years > 0) {
-    result.push(`${years}Y`);
-    remainingSeconds -= years * YEAR_SECONDS;
-  }
+  // Extract each fixed-size unit from largest to smallest, subtracting as we go
+  // (using 360 days per year: 12 months × 30 days).
+  const unitDivisors: Array<{ unitSeconds: number; suffix: string }> = [
+    { unitSeconds: YEAR_SECONDS, suffix: 'Y' },
+    { unitSeconds: MONTH_SECONDS, suffix: 'M' },
+    { unitSeconds: DAY_SECONDS, suffix: 'd' },
+    { unitSeconds: HOUR_SECONDS, suffix: 'h' },
+    { unitSeconds: MINUTE_SECONDS, suffix: 'm' },
+  ];
 
-  // Extract months (only from what remains after years)
-  const months = Math.floor(remainingSeconds / MONTH_SECONDS);
-  if (months > 0) {
-    result.push(`${months}M`);
-    remainingSeconds -= months * MONTH_SECONDS;
-  }
+  unitDivisors.forEach(({ unitSeconds, suffix }) => {
+    const value = Math.floor(remainingSeconds / unitSeconds);
+    if (value > 0) {
+      result.push(`${value}${suffix}`);
+      remainingSeconds -= value * unitSeconds;
+    }
+  });
 
-  // Extract days
-  const days = Math.floor(remainingSeconds / DAY_SECONDS);
-  if (days > 0) {
-    result.push(`${days}d`);
-    remainingSeconds -= days * DAY_SECONDS;
-  }
-
-  // Extract hours
-  const hours = Math.floor(remainingSeconds / HOUR_SECONDS);
-  if (hours > 0) {
-    result.push(`${hours}h`);
-    remainingSeconds -= hours * HOUR_SECONDS;
-  }
-
-  // Extract minutes
-  const minutes = Math.floor(remainingSeconds / MINUTE_SECONDS);
-  if (minutes > 0) {
-    result.push(`${minutes}m`);
-    remainingSeconds -= minutes * MINUTE_SECONDS;
-  }
-
-  // Extract seconds
+  // Extract remaining whole seconds
   const secs = Math.floor(remainingSeconds);
   if (secs > 0) {
     result.push(`${secs}s`);
   }
 
-  // If no units found, return 0s
-  if (result.length === 0) {
-    return '0s';
-  }
-
-  let formattedResult = result.join(' ');
-
-  if (length && result.length > length) {
-    formattedResult = result.slice(0, length).join(' ');
-  }
-
-  // Prepend prefix for negative values
-  return isNegative
-    ? `${prependForNegativeValue}${formattedResult}`
-    : formattedResult;
+  return buildHumanReadableResult(
+    result,
+    length,
+    isNegative,
+    prependForNegativeValue
+  );
 };
 
 export const formatDuration = (ms: number) => {

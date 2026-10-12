@@ -1,0 +1,38 @@
+{
+  "abbreviation": "FIBO",
+  "bundled": true,
+  "description": "A compact OpenMetadata starter subset aligned to the Financial Industry Business Ontology.",
+  "id": "fibo",
+  "license": "MIT",
+  "licenseUrl": "https://spec.edmcouncil.org/fibo/page/how-to-contribute",
+  "modules": [
+    {
+      "conceptCount": 4,
+      "dependencies": [],
+      "description": "Foundational financial concepts, instruments, contracts, and markets.",
+      "format": "turtle",
+      "id": "foundations",
+      "name": "Foundations",
+      "relationshipCount": 3,
+      "resourcePath": "rdf/ontology-packs/fibo/foundations.ttl",
+      "selectedByDefault": true,
+      "sha256": "ef63c4aefed09c66a2b8c35172a20b47758d4b8f7ba372c3463b912c50f839d2"
+    },
+    {
+      "conceptCount": 4,
+      "dependencies": ["foundations"],
+      "description": "Business and legal entity concepts used in financial models.",
+      "format": "turtle",
+      "id": "business-entities",
+      "name": "Business entities",
+      "relationshipCount": 3,
+      "resourcePath": "rdf/ontology-packs/fibo/business-entities.ttl",
+      "selectedByDefault": true,
+      "sha256": "db9f978224c768373d47a9ab853c78c6d2eb8a82d4af604c2b923b5111cfa6c6"
+    }
+  ],
+  "name": "FIBO Starter",
+  "sourceUrl": "https://spec.edmcouncil.org/fibo/",
+  "standard": "Financial Industry Business Ontology",
+  "version": "2025Q1-om1"
+}

@@ -12,6 +12,12 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
+import {
+  createOrFetch,
+  deleteFixtureEntity,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { visitEntityPageByFqn } from '../../utils/entity';
 import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
@@ -31,6 +37,7 @@ export class MetricClass extends EntityClass {
     metricType: string;
     displayName: string;
     unitOfMeasurement: string;
+    customUnitOfMeasurement?: string;
     dimensions?: {
       name: string;
       type: string;
@@ -91,14 +98,15 @@ export class MetricClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    const entityResponse = await apiContext.post('/api/v1/metrics', {
+    this.entityResponseData = await createOrFetch(apiContext, {
+      label: 'MetricClass.create',
+      createPath: '/api/v1/metrics',
+      fqnSegments: [this.entity.name],
       data: this.entity,
     });
 
-    this.entityResponseData = await entityResponse.json();
-
     return {
-      entity: entityResponse.body,
+      entity: this.entityResponseData,
     };
   }
 
@@ -119,17 +127,18 @@ export class MetricClass extends EntityClass {
     apiContext: APIRequestContext;
     patchData: Operation[];
   }) {
-    const response = await apiContext.patch(
-      `/api/v1/metrics/name/${this.entityResponseData?.['fullyQualifiedName']}`,
-      {
-        data: patchData,
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(
+        `/api/v1/metrics/name/${this.entityResponseData?.['fullyQualifiedName']}`,
+        {
+          data: patchData,
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      )
     );
-
-    this.entityResponseData = await response.json();
+    this.entityResponseData = await okJson(response, 'MetricClass.patch');
 
     return {
       entity: this.entityResponseData,
@@ -147,7 +156,8 @@ export class MetricClass extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext) {
-    const entityResponse = await apiContext.delete(
+    const entityResponse = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/metrics/${this.entityResponseData?.['id']}?recursive=true&hardDelete=true`
     );
 

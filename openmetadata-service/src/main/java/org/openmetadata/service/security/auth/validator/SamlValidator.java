@@ -4,15 +4,21 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
+import java.security.cert.CertificateParsingException;
 import java.security.cert.X509Certificate;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.Collection;
 import java.util.Date;
+import java.util.List;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
 import org.openmetadata.catalog.type.IdentityProviderConfig;
@@ -24,6 +30,9 @@ import org.openmetadata.service.util.ValidationHttpUtil;
 
 @Slf4j
 public class SamlValidator {
+
+  /** {@code GeneralName} tags for dNSName (2) and uniformResourceIdentifier (6) — RFC 5280 §4.2.1.6. */
+  private static final Set<Integer> DNS_AND_URI_SAN_TYPES = Set.of(2, 6);
 
   public FieldError validateSamlConfiguration(
       AuthenticationConfiguration authConfig, SamlSSOClientConfig samlConfig) {
@@ -281,6 +290,7 @@ public class SamlValidator {
   }
 
   private FieldError validateIdpConnectivity(SamlSSOClientConfig samlConfig) {
+    HttpURLConnection conn = null;
     try {
       String ssoUrl = samlConfig.getIdp().getSsoLoginUrl();
       LOG.debug("Testing IdP SSO URL with SAML request: {}", ssoUrl);
@@ -293,7 +303,7 @@ public class SamlValidator {
           ssoUrl + (ssoUrl.contains("?") ? "&" : "?") + "SAMLRequest=" + samlRequest;
 
       URL url = new URL(urlWithParams);
-      HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+      conn = openConnection(url);
       conn.setRequestMethod("GET");
       conn.setConnectTimeout(5000);
       conn.setReadTimeout(5000);
@@ -340,7 +350,15 @@ public class SamlValidator {
       // Warning case - treat as success since URL format might be valid
       LOG.warn("SSO URL validation warning: {}", e.getMessage());
       return null;
+    } finally {
+      if (conn != null) {
+        conn.disconnect();
+      }
     }
+  }
+
+  HttpURLConnection openConnection(URL url) throws IOException {
+    return (HttpURLConnection) url.openConnection();
   }
 
   private String createTestSamlRequest(SamlSSOClientConfig samlConfig) {
@@ -395,15 +413,17 @@ public class SamlValidator {
 
   private String readResponseSnippet(HttpURLConnection conn) {
     try {
-      java.io.InputStream inputStream = conn.getErrorStream();
+      InputStream inputStream = conn.getErrorStream();
       if (inputStream == null) {
         inputStream = conn.getInputStream();
       }
       if (inputStream != null) {
-        byte[] buffer = new byte[500];
-        int bytesRead = inputStream.read(buffer);
-        if (bytesRead > 0) {
-          return new String(buffer, 0, bytesRead, StandardCharsets.UTF_8);
+        try (InputStream responseStream = inputStream) {
+          byte[] buffer = new byte[500];
+          int bytesRead = responseStream.read(buffer);
+          if (bytesRead > 0) {
+            return new String(buffer, 0, bytesRead, StandardCharsets.UTF_8);
+          }
         }
       }
     } catch (Exception e) {
@@ -482,123 +502,71 @@ public class SamlValidator {
     }
   }
 
+  /**
+   * Inspects the IdP certificate's naming against the configured Entity ID and records anything
+   * surprising, but never rejects the configuration.
+   *
+   * <p>The IdP certificate is a trust anchor the admin copies out of the IdP's own metadata, and
+   * SAML verifies assertion signatures against its public key without any PKIX name validation —
+   * the CN is never consulted at authentication time (see {@code SamlSettingsHolder}). Certificate
+   * naming is vendor-specific and routinely differs from the Entity ID host: Okta issues
+   * {@code CN=<org short name>} against an Entity ID of {@code http://www.okta.com/{appId}}, and
+   * Auth0 custom domains diverge the same way. Treating a mismatch as fatal rejected every valid
+   * Okta configuration (issue #28619), so it is logged and allowed through.
+   */
   private void validateIdpCertificateAgainstConfig(
-      X509Certificate cert, SamlSSOClientConfig samlConfig) throws CertificateException {
+      X509Certificate cert, SamlSSOClientConfig samlConfig) {
     try {
-      String subjectDN = cert.getSubjectDN().toString();
-
-      // Extract CN from certificate subject
-      String certCN = extractCNFromDN(subjectDN);
-      if (certCN == null || certCN.isEmpty()) {
-        LOG.warn("Certificate does not have a Common Name (CN) in subject");
-        return;
-      }
-
-      LOG.info("Validating certificate CN '{}' against IdP configuration", certCN);
-
-      // Extract domains from IdP configuration
-      String idpEntityId = samlConfig.getIdp().getEntityId();
-      String ssoLoginUrl = samlConfig.getIdp().getSsoLoginUrl();
-
-      // Extract domain from Entity ID for comparison
-      String entityIdDomain = null;
-      if (idpEntityId != null && !idpEntityId.isEmpty()) {
-        entityIdDomain = extractDomainFromUrl(idpEntityId);
-        LOG.info("Extracted domain '{}' from Entity ID '{}'", entityIdDomain, idpEntityId);
-      }
-
-      // SIMPLE AUTH0 VALIDATION: Certificate CN must match the Entity ID domain exactly
-      if (entityIdDomain != null && entityIdDomain.contains(".auth0.com")) {
-        // This is Auth0 configuration - certificate CN MUST match the tenant domain
-        if (!certCN.equals(entityIdDomain)) {
-          throw new CertificateException(
-              "Auth0 certificate validation failed. Certificate CN '"
-                  + certCN
-                  + "' does not match Entity ID domain '"
-                  + entityIdDomain
-                  + "'. Auth0 requires exact tenant match.");
-        }
-        LOG.info("Auth0 certificate validation passed - CN matches Entity ID domain");
-        return; // Valid Auth0 certificate, no need for further checks
-      }
-
-      // OKTA VALIDATION: Similar to Auth0
-      if (entityIdDomain != null && entityIdDomain.contains(".okta.com")) {
-        if (!certCN.equals(entityIdDomain) && !certCN.equals("*.okta.com")) {
-          throw new CertificateException(
-              "Okta certificate validation failed. Certificate CN '"
-                  + certCN
-                  + "' does not match Entity ID domain '"
-                  + entityIdDomain
-                  + "'");
-        }
-        LOG.info("Okta certificate validation passed");
-        return;
-      }
-
-      // AZURE AD VALIDATION: Must have Microsoft certificate
-      if ((idpEntityId != null
-              && (idpEntityId.contains("sts.windows.net")
-                  || idpEntityId.contains("microsoftonline.com")))
-          || (ssoLoginUrl != null && ssoLoginUrl.contains("microsoftonline.com"))) {
-        if (!certCN.contains("Microsoft Azure")) {
-          throw new CertificateException(
-              "Azure AD certificate validation failed. Expected Microsoft Azure certificate but found CN: '"
-                  + certCN
-                  + "'");
-        }
-        LOG.info("Azure AD certificate validation passed - Microsoft certificate detected");
-        return;
-      }
-
-      // REJECT MICROSOFT CERTIFICATE IF NOT AZURE CONFIG
-      if (certCN.contains("Microsoft Azure")) {
-        throw new CertificateException(
-            "Invalid use of Microsoft Azure certificate. This certificate can only be used with Azure AD configurations. "
-                + "Current Entity ID: "
-                + idpEntityId);
-      }
-
-      // For other providers or custom OIDC, warn if CN doesn't match
-      if (entityIdDomain != null && !certCN.equals(entityIdDomain)) {
-        LOG.warn(
-            "Certificate CN '{}' does not match Entity ID domain '{}'. This may cause issues.",
-            certCN,
-            entityIdDomain);
-      }
-
-      // Also check Subject Alternative Names if present
-      try {
-        java.util.Collection<java.util.List<?>> sanNames = cert.getSubjectAlternativeNames();
-        if (sanNames != null && !sanNames.isEmpty()) {
-          LOG.debug("Certificate has {} Subject Alternative Names", sanNames.size());
-          for (java.util.List<?> san : sanNames) {
-            if (san.size() >= 2) {
-              Integer type = (Integer) san.get(0);
-              String value = san.get(1).toString();
-              // Type 2 is DNS name, Type 6 is URI
-              if (type == 2 || type == 6) {
-                LOG.debug("SAN: {}", value);
-                // Check if SAN matches entity ID domain
-                if (entityIdDomain != null
-                    && !entityIdDomain.isEmpty()
-                    && value.contains(entityIdDomain)) {
-                  LOG.info("Found matching SAN '{}' for domain '{}'", value, entityIdDomain);
-                }
-              }
-            }
-          }
-        }
-      } catch (Exception e) {
-        LOG.debug("Could not check Subject Alternative Names: {}", e.getMessage());
-      }
-
-    } catch (CertificateException e) {
-      // Re-throw certificate validation failures
-      throw e;
-    } catch (Exception e) {
-      LOG.warn("Could not perform IdP certificate domain validation: {}", e.getMessage());
+      inspectIdpCertificateNaming(cert, samlConfig);
+    } catch (RuntimeException e) {
+      // This inspection only produces log output, so a misbehaving certificate implementation must
+      // never turn into a failed configuration save.
+      LOG.warn("Could not inspect IdP certificate naming: {}", e.getMessage());
     }
+  }
+
+  private void inspectIdpCertificateNaming(X509Certificate cert, SamlSSOClientConfig samlConfig) {
+    String certCN = extractCNFromDN(cert.getSubjectDN().toString());
+    if (nullOrEmpty(certCN)) {
+      LOG.warn("IdP certificate has no Common Name (CN) in its subject");
+      return;
+    }
+
+    String idpEntityId = samlConfig.getIdp().getEntityId();
+    String entityIdDomain = nullOrEmpty(idpEntityId) ? null : extractDomainFromUrl(idpEntityId);
+    if (!nullOrEmpty(entityIdDomain) && !certCN.equals(entityIdDomain)) {
+      LOG.info(
+          "IdP certificate CN '{}' differs from Entity ID domain '{}'. This is expected for several identity providers and is not an error.",
+          certCN,
+          entityIdDomain);
+    }
+
+    logSubjectAlternativeNames(cert, entityIdDomain);
+  }
+
+  private void logSubjectAlternativeNames(X509Certificate cert, String entityIdDomain) {
+    try {
+      Collection<List<?>> sanNames = cert.getSubjectAlternativeNames();
+      if (nullOrEmpty(sanNames)) {
+        return;
+      }
+      LOG.debug("IdP certificate has {} Subject Alternative Names", sanNames.size());
+      sanNames.stream()
+          .filter(san -> san.size() >= 2)
+          .filter(san -> DNS_AND_URI_SAN_TYPES.contains((Integer) san.get(0)))
+          .map(san -> san.get(1).toString())
+          .forEach(value -> logSubjectAlternativeName(value, entityIdDomain));
+    } catch (CertificateParsingException e) {
+      LOG.debug("Could not read Subject Alternative Names: {}", e.getMessage());
+    }
+  }
+
+  private void logSubjectAlternativeName(String value, String entityIdDomain) {
+    if (!nullOrEmpty(entityIdDomain) && value.contains(entityIdDomain)) {
+      LOG.debug("SAN '{}' matches Entity ID domain '{}'", value, entityIdDomain);
+      return;
+    }
+    LOG.debug("SAN: {}", value);
   }
 
   private String extractCNFromDN(String dn) {

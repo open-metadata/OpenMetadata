@@ -91,9 +91,9 @@ export const WithFooter: Story = {
           footers.
         </p>
       </div>
-      <div className="tw:border-t tw:border-secondary tw:px-6 tw:py-4">
+      <Card.Footer>
         <p className="tw:text-xs tw:text-tertiary">Footer content</p>
-      </div>
+      </Card.Footer>
     </Card>
   ),
 };

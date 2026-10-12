@@ -129,12 +129,14 @@ public class McpSdkUpgradeTest {
 
     HttpServletRequest mockRequest = mock(HttpServletRequest.class);
     when(mockRequest.getHeader("Authorization")).thenReturn("Bearer my-jwt-token");
+    when(mockRequest.getHeader("X-OpenMetadata-Persona")).thenReturn("Data Steward");
 
     McpTransportContext context = extractor.extract(mockRequest);
 
     assertThat(context).isNotNull();
     // JwtFilter.extractToken strips "Bearer " prefix
     assertThat(context.get("Authorization")).isEqualTo("my-jwt-token");
+    assertThat(context.get("X-OpenMetadata-Persona")).isEqualTo("Data Steward");
   }
 
   @Test
@@ -191,6 +193,25 @@ public class McpSdkUpgradeTest {
   }
 
   @Test
+  void searchToolsAdvertiseTheExplicitPersonaScopeBypass() {
+    List<McpSchema.Tool> tools = McpUtils.getToolProperties("json/data/mcp/tools.json");
+
+    assertThat(tools)
+        .filteredOn(tool -> List.of("search_metadata", "semantic_search").contains(tool.name()))
+        .hasSize(2)
+        .allSatisfy(
+            tool -> {
+              Object schema = tool.inputSchema().properties().get("ignorePersonaScope");
+              assertThat(schema).isInstanceOf(Map.class);
+              Map<?, ?> property = (Map<?, ?>) schema;
+              assertThat(property.get("type")).isEqualTo("boolean");
+              assertThat(property.get("default")).isEqualTo(false);
+              assertThat(property.get("description").toString())
+                  .contains("after the scoped search returns no results");
+            });
+  }
+
+  @Test
   void testMcpUtilsGetToolPropertiesMarksPatchEntityAsDestructive() {
     List<McpSchema.Tool> tools = McpUtils.getToolProperties("json/data/mcp/tools.json");
 
@@ -201,19 +222,33 @@ public class McpSdkUpgradeTest {
     assertThat(patchTool.annotations()).isNotNull();
     assertThat(patchTool.annotations().readOnlyHint()).isFalse();
     assertThat(patchTool.annotations().destructiveHint()).isTrue();
+    // A JSONPatch is not idempotent in general - an 'add' to '/owners/-' appends again on a retry -
+    // so a client must not treat a retry as free. The MCP default is false, but state it.
+    assertThat(patchTool.annotations().idempotentHint()).isFalse();
   }
 
-  private static final List<String> UPSERT_CAPABLE_CREATE_TOOLS =
-      List.of(
-          "create_glossary_term",
-          "create_glossary",
-          "create_tag",
-          "create_metric",
-          "create_classification",
-          "create_domain",
-          "create_data_product",
-          "create_test_case",
-          "create_context_memory");
+  /**
+   * Guards against copy-paste duplication when a tool description is edited. These are sent to the
+   * model on every request, so a repeated sentence is paid for on every call - and folding two tools
+   * together left exactly that in patch_entity once already.
+   */
+  @Test
+  void testToolDescriptionsDoNotRepeatThemselves() {
+    List<McpSchema.Tool> tools = McpUtils.getToolProperties("json/data/mcp/tools.json");
+
+    for (McpSchema.Tool tool : tools) {
+      List<String> sentences =
+          java.util.Arrays.stream(tool.description().split("(?<=[.!?])\\s+"))
+              .map(String::trim)
+              .filter(sentence -> sentence.length() > 40)
+              .toList();
+      assertThat(sentences)
+          .as("tool '%s' repeats a sentence in its description", tool.name())
+          .doesNotHaveDuplicates();
+    }
+  }
+
+  private static final List<String> UPSERT_CAPABLE_CREATE_TOOLS = List.of("create_test_case");
 
   @Test
   void testMcpUtilsGetToolPropertiesMarksUpsertCapableCreateToolsAsDestructive() {

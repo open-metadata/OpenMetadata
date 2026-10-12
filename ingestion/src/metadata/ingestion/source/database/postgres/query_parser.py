@@ -14,7 +14,7 @@ Postgres Query parser module
 
 import traceback
 from abc import ABC
-from typing import Iterable, Optional  # noqa: UP035
+from collections.abc import Iterable
 
 from sqlalchemy import text
 from sqlalchemy.engine.base import Engine  # noqa: TC002
@@ -32,6 +32,7 @@ from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.postgres.queries import POSTGRES_GET_DATABASE
 from metadata.ingestion.source.database.postgres.utils import (
     get_postgres_time_column_name,
+    validate_query_statement_source,
 )
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 from metadata.utils.helpers import get_start_and_end
@@ -55,7 +56,7 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
         self.start, self.end = get_start_and_end(duration)
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: PostgresConnection = config.serviceConnection.root.config
         if not isinstance(connection, PostgresConnection):
@@ -71,7 +72,7 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
             result_limit=self.config.sourceConfig.config.resultLimit,  # pyright: ignore[reportAttributeAccessIssue]
             filters=self.get_filters(),
             time_column_name=get_postgres_time_column_name(engine=self.engine),
-            query_statement_source=self.service_connection.queryStatementSource or "pg_stat_statements",
+            query_statement_source=validate_query_statement_source(self.service_connection.queryStatementSource),
         )
 
     # pylint: disable=no-member

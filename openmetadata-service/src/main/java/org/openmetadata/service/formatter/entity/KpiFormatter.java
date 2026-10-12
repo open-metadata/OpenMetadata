@@ -18,11 +18,11 @@ import static org.openmetadata.service.formatter.util.FormatterUtil.transformMes
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.dataInsight.type.KpiResult;
 import org.openmetadata.schema.dataInsight.type.KpiTarget;
-import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
+import org.openmetadata.service.formatter.util.FormattedMessage;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 
 public class KpiFormatter implements EntityFormatter {
@@ -31,7 +31,7 @@ public class KpiFormatter implements EntityFormatter {
   @Override
   public String format(
       MessageDecorator<?> messageFormatter,
-      Thread thread,
+      FormattedMessage thread,
       FieldChange fieldChange,
       FormatterUtil.CHANGE_TYPE changeType) {
     if (KPI_RESULT_FIELD.equals(fieldChange.getName())) {
@@ -41,8 +41,8 @@ public class KpiFormatter implements EntityFormatter {
   }
 
   private String transformKpiResult(
-      MessageDecorator<?> messageFormatter, Thread thread, FieldChange fieldChange) {
-    EntityInterface entity =
+      MessageDecorator<?> messageFormatter, FormattedMessage thread, FieldChange fieldChange) {
+    EntityInterface<?> entity =
         Entity.getEntity(
             thread.getEntityRef().getType(), thread.getEntityRef().getId(), "id", Include.ALL);
     String kpiName = entity.getName();

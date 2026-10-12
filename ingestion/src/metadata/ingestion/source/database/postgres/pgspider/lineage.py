@@ -13,7 +13,7 @@
 PGSpider lineage module
 """
 
-from typing import Iterable, Iterator  # noqa: UP035
+from collections.abc import Iterable, Iterator
 
 from sqlalchemy.sql import text
 
@@ -49,10 +49,11 @@ def _get_child_tables(connection, multi_tenant_table: str) -> Iterable[any]:
     """
     Get list of child foreign tables of a multi-tenant table
     """
-    sql = PGSPIDER_GET_CHILD_TABLES.format(multi_tenant_table=multi_tenant_table)
-
     with get_connection(connection).connect() as conn:
-        rows = conn.execute(text(sql))
+        rows = conn.execute(
+            text(PGSPIDER_GET_CHILD_TABLES),
+            {"multi_tenant_table": multi_tenant_table},
+        )
         return rows  # noqa: RET504
 
 

@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Locator, Page } from '@playwright/test';
+import { expect, Locator, Page, Response } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../constant/common';
 import {
   SHORTCUTS,
   SLASH_COMMANDS,
@@ -18,7 +19,11 @@ import {
 import { SidebarItem } from '../constant/sidebar';
 import { TopicClass } from '../support/entity/TopicClass';
 import { redirectToHomePage } from './common';
-import { waitForAllLoadersToDisappear } from './entity';
+import {
+  escapeESReservedCharacters,
+  openClassificationTagPicker,
+  waitForAllLoadersToDisappear,
+} from './entity';
 import { sidebarClick } from './sidebar';
 
 const ARTICLE_PATH_PREFIX = '/context-center/articles/';
@@ -82,12 +87,12 @@ export const addTitle = async (page: Page, title: string) => {
 };
 
 export const updateBody = async (page: Page, body: string) => {
-  await page.fill('.om-block-editor', body);
   const updateBodyResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/contextCenter/pages/') &&
       response.request().method() === 'PATCH'
   );
+  await page.fill('.om-block-editor', body);
   const res = await updateBodyResponse;
   expect(res.status()).toBe(200);
 
@@ -107,72 +112,29 @@ export const updateTags = async (
   const addTagBtn = tagsContainer.getByTestId('add-tag');
   const editTagBtn = tagsContainer.getByTestId('edit-button');
   const isAdd = await addTagBtn.isVisible();
-  if (isAdd) {
-    await addTagBtn.click();
-  } else {
-    await editTagBtn.click();
-  }
+  const trigger = isAdd ? addTagBtn : editTagBtn;
 
-  await page.waitForSelector('[data-testid="tag-selector"] input', {
-    state: 'visible',
-  });
+  await openClassificationTagPicker(page, trigger);
+
   const searchTagResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
-      response.url().includes(`q=*${data.tag}*`) &&
+      response
+        .url()
+        .includes(encodeURIComponent(escapeESReservedCharacters(data.tag))) &&
       response.request().method() === 'GET'
   );
-  await page.fill('[data-testid="tag-selector"] input', data.tag);
+  await page.getByTestId('classification-tag-picker-search').fill(data.tag);
   await searchTagResponse;
-  await page.click(`[data-testid='tag-${data.tagFqn}']`);
 
-  await expect(
-    page.locator(
-      `[data-testid="tag-selector"] [data-testid="selected-tag-${data.tagFqn}"]`
-    )
-  ).toBeVisible();
+  await page.getByTestId(`tree-node-${data.tagFqn}`).click();
 
-  await page.locator('[data-testid="saveAssociatedTag"]').click();
-  const response = await updateKnowledgePage;
-  expect(response.status()).toBe(200);
-};
-
-export const updateDataAsset = async (
-  page: Page,
-  dataAsset: TopicClass,
-  title: string
-) => {
-  const updateKnowledgePage = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/contextCenter/pages/') &&
-      response.request().method() === 'PATCH'
-  );
-  await page.getByTestId('add-data-assets-container').click();
-
-  await page.waitForSelector(
-    '[data-testid="asset-select-list"] > .ant-select-selector input',
-    { state: 'visible' }
-  );
-  await page.fill(
-    '[data-testid="asset-select-list"] > .ant-select-selector input',
-    dataAsset.entity.name
-  );
-  await page
-    .locator('.ant-select-item-option-content', {
-      hasText: dataAsset.entity.name,
-    })
-    .click();
-  await page.locator('[data-testid="saveDataAssets"]').click();
+  await page.getByTestId('update-btn').waitFor({ state: 'visible' });
+  await expect(page.getByTestId('update-btn')).toBeEnabled();
+  await page.getByTestId('update-btn').click();
 
   const response = await updateKnowledgePage;
   expect(response.status()).toBe(200);
-
-  await page.waitForSelector(`[data-testid="${dataAsset.entity.name}"]`, {
-    state: 'visible',
-  });
-  await page.click(`[data-testid="${dataAsset.entity.name}"]`);
-
-  await page.getByRole('link', { name: title }).click();
 };
 
 export const updateVotes = async (page: Page) => {
@@ -236,8 +198,39 @@ export const createQuickLink = async (
     '[data-testid="related-entities-container"] input[role="combobox"]'
   );
 
+  // Matches the exact `q` the field sent, with the ES reserved-character
+  // escaping the UI adds (`-` → `\-`) stripped.
+  const isAssetSearch = (res: Response, query: string) => {
+    const url = new URL(res.url());
+
+    return (
+      url.pathname.endsWith('/api/v1/search/query') &&
+      url.searchParams.get('index') === 'dataAsset' &&
+      url.searchParams.get('q')?.replaceAll('\\', '') === query &&
+      res.request().method() === 'GET'
+    );
+  };
+
+  // The field sits below the fold of the modal's scrollable body. Scrolling it
+  // in as part of the click dispatches the `scroll` event after react-aria has
+  // opened the popover, and its non-modal popover closes on any ancestor
+  // scroll. Scroll first so that event lands before the popover exists.
+  await assetInput.scrollIntoViewIfNeeded();
+
+  // Focus fires an unfiltered `q=*` fetch. Let it settle before typing so it
+  // cannot resolve after the typed query and replace its results.
+  const initialOptions = page.waitForResponse((res) => isAssetSearch(res, '*'));
   await assetInput.click();
-  await assetInput.fill(dataAsset.entity.name);
+  expect((await initialOptions).status()).toBe(200);
+
+  // `fill` sets .value and fires one synthetic input event; react-aria's
+  // combobox closes its popover on that, so the query still runs but the
+  // results have nowhere to render. Real keystrokes keep it open.
+  const assetSearch = page.waitForResponse((res) =>
+    isAssetSearch(res, `*${dataAsset.entity.name}*`)
+  );
+  await assetInput.pressSequentially(dataAsset.entity.name);
+  expect((await assetSearch).status()).toBe(200);
 
   await expect(
     page.getByRole('option', { name: dataAsset.entity.name })
@@ -318,20 +311,21 @@ export const updateQuickLink = async (
   await descriptionTextarea.press('ControlOrMeta+a');
   await descriptionTextarea.fill(knowledgePageQuickLink.updatedDescription);
 
-  const tagInput = modal.locator(
-    '[data-testid="tags-container"] input[role="combobox"]'
-  );
+  const tagsTrigger = modal.getByTestId('tags-container');
+  await tagsTrigger.click();
 
-  await tagInput.click();
-  await tagInput.fill(knowledgePageQuickLink.tag);
+  const searchInput = page
+    .getByTestId('drop-down-menu')
+    .getByTestId('search-input');
+  await searchInput.waitFor({ state: 'visible' });
+  await searchInput.fill(knowledgePageQuickLink.tag);
 
-  await expect(
-    page.getByRole('option', { name: knowledgePageQuickLink.tag })
-  ).toBeVisible();
+  await page
+    .getByTestId('drop-down-menu')
+    .getByTestId(knowledgePageQuickLink.tagFqn)
+    .click();
 
-  await page.getByRole('option', { name: knowledgePageQuickLink.tag }).click();
   await page.keyboard.press('Escape');
-
   await modal.getByRole('button', { name: 'Save' }).click();
 
   await readQuickLink(page, {
@@ -354,34 +348,30 @@ export const readArticleInHierarchy = async (
   await hierarchyElement.hover();
   await page.mouse.wheel(0, -9999);
 
-  await page.waitForTimeout(500);
+  // The hierarchy lazy-loads nodes as it scrolls, so paginate by scrolling and
+  // re-counting. expect.poll owns the retry budget and the interval between
+  // attempts, which is what the fixed waits here used to approximate — and it
+  // fails with the observed count rather than a bare timeout.
+  await expect
+    .poll(
+      async () => {
+        if ((await article.count()) > 0) {
+          return true;
+        }
 
-  // Retry mechanism for pagination
-  let elementCount = await article.count();
-  let retryCount = 0;
-  const maxRetries = 20;
+        await hierarchyElement.hover();
+        await page.mouse.wheel(0, 500);
 
-  while (elementCount === 0 && retryCount < maxRetries) {
-    await page.locator('[data-testid="knowledge-pages-hierarchy"]').hover();
-    await page.mouse.wheel(0, 500);
-    await page.waitForTimeout(500);
+        return (await article.count()) > 0;
+      },
+      {
+        message: `article "${articleTitle}" never appeared in the hierarchy while scrolling`,
+        timeout: ACTION_TIMEOUT,
+      }
+    )
+    .toBe(true);
 
-    // Create fresh locator and check if the article is now visible after this retry
-    const freshArticle = page.getByTestId(`page-node-${articleTitle}`);
-    const count = await freshArticle.count();
-
-    // Check if the article is now visible after this retry
-    elementCount = count;
-
-    // If we found the element, validate it and break out of the loop
-    if (count > 0) {
-      await expect(freshArticle).toBeVisible();
-
-      return; // Exit the function early since we found and validated the article
-    }
-
-    retryCount++;
-  }
+  await expect(article).toBeVisible();
 };
 
 export const createMentionInConversation = async (
@@ -395,7 +385,13 @@ export const createMentionInConversation = async (
 
   // Click on Conversations tab
   await page.getByRole('tab', { name: 'Conversations' }).click();
-  await page.waitForSelector('[data-testid="editor-wrapper"]');
+  const editor = page.locator(
+    '[data-testid="editor-wrapper"] [contenteditable="true"]'
+  );
+  if (!(await editor.isVisible())) {
+    await page.getByTestId('add-new-conversation').click();
+  }
+  await expect(editor).toBeVisible();
 
   // Create message with mention
   const messageWithMention = `${message} @${userName}`;
@@ -406,12 +402,8 @@ export const createMentionInConversation = async (
   );
 
   // Type the message with mention
-  await page
-    .locator('[data-testid="editor-wrapper"] [contenteditable="true"]')
-    .click();
-  await page
-    .locator('[data-testid="editor-wrapper"] [contenteditable="true"]')
-    .fill(messageWithMention);
+  await editor.click();
+  await editor.fill(messageWithMention);
 
   await userSuggestionsResponse;
 
@@ -419,7 +411,7 @@ export const createMentionInConversation = async (
   await page.locator(`[data-value="@${userName}"]`).first().click();
 
   // Send the message
-  const feedResponse = page.waitForResponse('/api/v1/feed');
+  const feedResponse = page.waitForResponse('/api/v1/conversations');
   await page.locator('[data-testid="send-button"]').click();
   await feedResponse;
 
@@ -444,23 +436,27 @@ export const verifyNotificationAndClick = async (
 
   // Click on Mentions tab
   const mentionsTabResponse = page.waitForResponse(
-    '/api/v1/feed?userId=*&filterType=MENTIONS'
+    (response) =>
+      response.url().includes('/api/v1/conversations') &&
+      response.url().includes('filterType=MENTIONS')
   );
 
   await page.getByRole('tab', { name: 'Mentions' }).click();
   await mentionsTabResponse;
 
-  // Verify the notification contains the mentioned user and entity type
-  await expect(
-    page.getByTestId(`notification-item-${entityName}`).nth(1)
-  ).toContainText(expectedUserName);
+  const mentionsPanel = page
+    .locator('.notification-box')
+    .getByRole('tabpanel', { name: /Mentions/ });
+  const notificationItem = mentionsPanel.getByTestId(
+    `notification-item-${entityName}`
+  );
 
-  await expect(
-    page.getByTestId(`notification-item-${entityName}`).nth(1)
-  ).toContainText(entityName);
+  // Verify the notification contains the mentioned user and entity type
+  await expect(notificationItem).toContainText(expectedUserName);
+  await expect(notificationItem).toContainText(entityName);
 
   // Click on the notification to navigate to the entity
-  await page.getByTestId(`notification-link-${entityName}`).nth(1).click();
+  await mentionsPanel.getByTestId(`notification-link-${entityName}`).click();
 };
 
 export const getKnowledgePageCardByIndex = async (
@@ -720,7 +716,15 @@ export const verifyTextFormatting = async (
     code: 'code',
   }[format];
 
-  await expect(editor.locator(formatTag, { hasText: text })).toBeVisible();
+  // Assert the WHOLE text carries the format — a last-word fallback would let a half-applied
+  // format (e.g. only "text" of "Italic text" italic) pass. Escape regex metacharacters in `text`.
+  const escaped = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  await expect(
+    editor.locator(formatTag).filter({ hasText: new RegExp(`^${escaped}$`) })
+  ).toBeVisible({
+    timeout: 15_000,
+  });
 };
 
 export const undo = async (page: Page): Promise<void> => {
@@ -834,14 +838,14 @@ export const verifyTaskList = async (
 };
 
 export const toggleTask = async (
-  page: Page,
   editor: Locator,
   taskText: string
 ): Promise<void> => {
   const taskItem = editor.locator('li').filter({ hasText: taskText });
   const checkbox = taskItem.locator('input[type="checkbox"]');
+  const wasChecked = await checkbox.isChecked();
   await checkbox.click();
-  await page.waitForTimeout(100);
+  await expect(checkbox).toBeChecked({ checked: !wasChecked });
 };
 
 export const createCallout = async (
@@ -849,7 +853,7 @@ export const createCallout = async (
   text: string
 ): Promise<void> => {
   await executeSlashCommand(page, SLASH_COMMANDS.callout);
-  await page.waitForTimeout(200);
+  await expect(page.locator('[data-type="callout"]')).not.toHaveCount(0);
   await page.keyboard.type(text);
 };
 
@@ -865,7 +869,7 @@ export const verifyCallout = async (
 
 export const createTable = async (page: Page): Promise<void> => {
   await executeSlashCommand(page, SLASH_COMMANDS.table);
-  await page.waitForTimeout(300);
+  await expect(page.locator('table')).not.toHaveCount(0);
 };
 
 export const verifyTable = async (editor: Locator): Promise<void> => {

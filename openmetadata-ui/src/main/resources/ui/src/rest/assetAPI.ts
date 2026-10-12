@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import axios, { AxiosError, AxiosResponse } from 'axios';
+import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
 import { FOLDER_PAGE_SIZE } from '../constants/ContextCenter.constants';
 import { Asset, AssetType } from '../generated/attachments/asset';
@@ -18,7 +19,7 @@ import { ContextFile } from '../generated/entity/data/contextFile';
 import { Folder } from '../generated/entity/data/folder';
 import { BulkOperationResult } from '../generated/type/bulkOperationResult';
 import { ListParams } from '../interface/API.interface';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 export interface CreateFolderRequest {
   name: string;
@@ -109,7 +110,10 @@ export const deleteFolder = async (
   });
 };
 
-type ListContextFilesParams = ListParams & { folderId?: string };
+type ListContextFilesParams = ListParams & {
+  folderId?: string;
+  assetId?: string;
+};
 
 export const listContextFiles = async (params: ListContextFilesParams = {}) => {
   const response = await APIClient.get<PagingResponse<ContextFile[]>>(
@@ -132,6 +136,20 @@ export const getContextFileById = async (id: string): Promise<ContextFile> => {
     `/contextCenter/drive/files/${id}`,
     { params: { fields: 'folder,memoryCount' } }
   );
+
+  return response.data;
+};
+
+export const updateContextFile = async (
+  id: string,
+  patch: Operation[]
+): Promise<ContextFile> => {
+  const response = await APIClient.patch<
+    Operation[],
+    AxiosResponse<ContextFile>
+  >(`/contextCenter/drive/files/${id}`, patch, {
+    headers: { 'Content-type': 'application/json-patch+json' },
+  });
 
   return response.data;
 };
@@ -259,11 +277,14 @@ export const restoreDriveFile = async (id: string): Promise<ContextFile> => {
   return response.data;
 };
 
-export const downloadDriveFile = async (id: string): Promise<Blob> => {
+export const downloadDriveFile = async (
+  id: string,
+  signal?: AbortSignal
+): Promise<Blob> => {
   try {
     const response = await APIClient.get<Blob>(
       `/contextCenter/drive/files/${id}/download`,
-      { params: { redirect: false }, responseType: 'blob' }
+      { params: { redirect: false }, responseType: 'blob', signal }
     );
 
     return response.data;

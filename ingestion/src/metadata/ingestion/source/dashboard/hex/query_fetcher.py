@@ -16,7 +16,6 @@ import re
 import traceback
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional  # noqa: UP035
 
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
@@ -64,7 +63,7 @@ class HexProjectLineage:
             self.upstream_tables.append(table)
             self._table_ids_seen.add(table.id.root)
 
-    def add_tables(self, tables: List[Table]) -> None:  # noqa: UP006
+    def add_tables(self, tables: list[Table]) -> None:
         """Add multiple tables, skipping duplicates"""
         for table in tables:
             self.add_table(table)
@@ -98,12 +97,12 @@ class HexQueryFetcher:
         self.start_time = self.end_time - timedelta(days=lookback_days)
 
         # Cache for project lineage
-        self._project_lineage_map: Dict[str, HexProjectLineage] = {}  # noqa: UP006
+        self._project_lineage_map: dict[str, HexProjectLineage] = {}
 
     def fetch_hex_queries_from_service_prefix(
         self,
-        db_service_prefix: Optional[str] = None,  # noqa: UP045
-    ) -> Dict[str, HexProjectLineage]:  # noqa: UP006
+        db_service_prefix: str | None = None,
+    ) -> dict[str, HexProjectLineage]:
         """
         Fetch Hex queries from database services matching the prefix
 
@@ -142,7 +141,7 @@ class HexQueryFetcher:
 
         return self._project_lineage_map
 
-    def _find_matching_service(self, service_name: str) -> Optional[DatabaseService]:  # noqa: UP045
+    def _find_matching_service(self, service_name: str) -> DatabaseService | None:
         """
         Find database service by exact name
 
@@ -159,7 +158,7 @@ class HexQueryFetcher:
             logger.debug(f"Service not found with name {service_name}: {e}")
             return None
 
-    def _fetch_from_single_service(self, db_service: DatabaseService, db_service_prefix: Optional[str] = None):  # noqa: UP045
+    def _fetch_from_single_service(self, db_service: DatabaseService, db_service_prefix: str | None = None):
         """
         Fetch Hex queries from a single database service
 
@@ -200,7 +199,7 @@ class HexQueryFetcher:
             logger.error(f"Error fetching from service {db_service.name.root}: {e}")
             logger.debug(traceback.format_exc())
 
-    def _create_engine_for_service(self, connection_config) -> Optional[Engine]:  # noqa: UP045
+    def _create_engine_for_service(self, connection_config) -> Engine | None:
         """
         Create SQLAlchemy engine for a database service
 
@@ -223,7 +222,7 @@ class HexQueryFetcher:
             logger.debug(traceback.format_exc())
             return None
 
-    def _execute_hex_query(self, engine: Engine, warehouse_type: str, connection_config) -> List[Dict]:  # noqa: UP006
+    def _execute_hex_query(self, engine: Engine, warehouse_type: str, connection_config) -> list[dict]:
         """
         Execute Hex-specific query on the warehouse
 
@@ -284,7 +283,7 @@ class HexQueryFetcher:
 
         return results
 
-    def _extract_hex_metadata(self, query_text: str) -> Optional[Dict[str, str]]:  # noqa: UP006, UP045
+    def _extract_hex_metadata(self, query_text: str) -> dict[str, str] | None:
         """
         Extract Hex metadata from query text
 
@@ -311,9 +310,9 @@ class HexQueryFetcher:
 
     def _process_query_results(
         self,
-        queries: List[Dict],  # noqa: UP006
+        queries: list[dict],
         service_name: str,
-        db_service_prefix: Optional[str] = None,  # noqa: UP045
+        db_service_prefix: str | None = None,
     ):
         """
         Process query results and extract lineage
@@ -354,10 +353,10 @@ class HexQueryFetcher:
         self,
         query_text: str,
         service_name: str,
-        database_name: Optional[str],  # noqa: UP045
-        schema_name: Optional[str],  # noqa: UP045
-        db_service_prefix: Optional[str] = None,  # noqa: UP045
-    ) -> List[Table]:  # noqa: UP006
+        database_name: str | None,
+        schema_name: str | None,
+        db_service_prefix: str | None = None,
+    ) -> list[Table]:
         """
         Extract table references from SQL query and resolve to Table entities
 
@@ -424,7 +423,7 @@ class HexQueryFetcher:
 
         return tables
 
-    def _matches_prefix_constraints(self, table: Table, db_service_prefix: Optional[str]) -> bool:  # noqa: UP045
+    def _matches_prefix_constraints(self, table: Table, db_service_prefix: str | None) -> bool:
         """
         Check if a table matches the constraints specified in the prefix
 

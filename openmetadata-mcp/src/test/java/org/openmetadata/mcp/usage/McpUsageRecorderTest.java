@@ -127,7 +127,7 @@ class McpUsageRecorderTest {
     stubMcpApp(UUID.randomUUID(), McpAppConstants.MCP_APP_NAME);
     doThrow(new RuntimeException("db down")).when(dao).insert(anyString(), eq("limits"));
 
-    McpUsageRecorder.record("create_glossary", "alice", false);
+    McpUsageRecorder.record("create_entity", "alice", false);
 
     verify(dao, times(1)).insert(anyString(), eq("limits"));
   }
@@ -149,12 +149,7 @@ class McpUsageRecorderTest {
     stubMcpApp(UUID.randomUUID(), McpAppConstants.MCP_APP_NAME);
 
     McpUsageRecorder.record(
-        "create_glossary",
-        "bob",
-        false,
-        342L,
-        McpToolCallUsage.ErrorCategory.AUTH,
-        "Claude Desktop");
+        "create_entity", "bob", false, 342L, McpToolCallUsage.ErrorCategory.AUTH, "Claude Desktop");
 
     ArgumentCaptor<String> json = ArgumentCaptor.forClass(String.class);
     verify(dao).insert(json.capture(), eq("limits"));

@@ -56,7 +56,8 @@
 }
 
 .slide-in-top {
-  animation: slide-in-top var(--om-duration-1000) cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+  animation: slide-in-top var(--om-duration-1000)
+    cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
 }
 
 @keyframes slide-in-top {
@@ -66,31 +67,6 @@
 
   100% {
     transform: translate(-50%, 0);
-  }
-}
-
-.ant-btn.domain-nav-btn {
-  background-color: var(--tw-color-bg-primary);
-  border: 1px solid var(--tw-color-border-primary);
-  color: var(--tw-color-text-secondary);
-  height: 40px;
-
-  .domain-text {
-    max-width: 15vw;
-    color: inherit;
-  }
-
-  &:hover,
-  &:focus {
-    background-color: var(--tw-color-bg-primary_hover);
-    border: 1px solid var(--tw-color-border-primary);
-    color: var(--tw-color-text-secondary);
-  }
-
-  &.domain-active {
-    color: var(--tw-color-text-brand-tertiary);
-    border: 1px solid var(--tw-color-border-brand);
-    background-color: var(--tw-color-bg-brand-primary);
   }
 }
 

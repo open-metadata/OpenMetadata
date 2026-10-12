@@ -26,6 +26,7 @@ from dateutil import parser
 from presidio_analyzer import (
     AnalyzerEngine,
     EntityRecognizer,
+    Pattern,
     PatternRecognizer,
     RecognizerRegistry,
     RecognizerResult,
@@ -36,6 +37,7 @@ from presidio_analyzer.predefined_recognizers import (
     AuTfnRecognizer,
     CreditCardRecognizer,
     DateRecognizer,
+    InAadhaarRecognizer,
     NhsRecognizer,
     UsBankRecognizer,
     UsLicenseRecognizer,
@@ -228,6 +230,27 @@ def au_tfn_factory(
 ) -> AuTfnRecognizer:
     return AuTfnRecognizer(
         patterns=patterns.au_tfn_number,
+        supported_language=supported_language,
+        context=context,
+    )
+
+
+@recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
+    InAadhaarRecognizer
+)
+def in_aadhaar_factory(
+    *,
+    supported_language: str = SUPPORTED_LANG,
+    context: list[str] | None = None,
+) -> InAadhaarRecognizer:
+    return InAadhaarRecognizer(
+        patterns=[
+            Pattern(
+                "AADHAAR",
+                r"(?<![0-9])(?<![0-9]{4}[- ])[0-9]{4}(?:[- ]?[0-9]{4}){2}(?![- ]?[0-9])",
+                0.01,
+            )
+        ],
         supported_language=supported_language,
         context=context,
     )

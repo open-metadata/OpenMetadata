@@ -132,6 +132,22 @@ public class LogStorageTest {
   }
 
   @Test
+  void getLogsPreservesPipelineServiceErrorsOutsideLogContent() {
+    when(mockPipelineServiceClient.getLastIngestionLogs(any(IngestionPipeline.class), isNull()))
+        .thenReturn(
+            Map.of(
+                PipelineServiceClientInterface.LOGS_ERROR_KEY,
+                "Kubernetes pod status could not be parsed"));
+
+    Map<String, Object> result = defaultLogStorage.getLogs(testPipelineFQN, testRunId, null, 10);
+
+    assertEquals(
+        "Kubernetes pod status could not be parsed",
+        result.get(PipelineServiceClientInterface.LOGS_ERROR_KEY));
+    assertFalse(result.containsKey("logs"));
+  }
+
+  @Test
   void getLogsSurfacesAPipelineServiceFailure() {
     // An unreachable pipeline service used to be reported as a run with no logs, which reads as
     // "this run produced nothing" rather than "we could not reach the runner".

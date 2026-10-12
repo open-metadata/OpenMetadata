@@ -14,7 +14,7 @@ Utils module of BigQuery
 """
 
 from copy import deepcopy
-from typing import TYPE_CHECKING, List, Optional  # noqa: UP035
+from typing import TYPE_CHECKING
 
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
@@ -37,12 +37,12 @@ if TYPE_CHECKING:
 
 
 def get_bigquery_client(
-    project_id: Optional[str] = None,  # noqa: UP045
-    location: Optional[str] = None,  # noqa: UP045
-    impersonate_service_account: Optional[str] = None,  # noqa: UP045
-    quota_project_id: Optional[str] = None,  # noqa: UP045
-    scopes: Optional[List[str]] = None,  # noqa: UP006, UP045
-    lifetime: Optional[int] = 3600,  # noqa: UP045
+    project_id: str | None = None,
+    location: str | None = None,
+    impersonate_service_account: str | None = None,
+    quota_project_id: str | None = None,
+    scopes: list[str] | None = None,
+    lifetime: int | None = 3600,
 ) -> "bigquery.Client":
     """Get a BigQuery client
 

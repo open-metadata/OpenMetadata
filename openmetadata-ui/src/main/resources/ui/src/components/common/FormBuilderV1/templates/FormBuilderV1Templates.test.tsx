@@ -44,6 +44,10 @@ jest.mock('@openmetadata/ui-core-components', () => {
   const AccordionItemContext = ActualReact.createContext(undefined);
 
   return {
+    Badge: jest.fn(({ children }: { children: React.ReactNode }) => (
+      <span>{children}</span>
+    )),
+    useFieldDoc: jest.fn(() => ({})),
     Accordion: jest.fn(({ children }: { children: React.ReactNode }) => {
       const [expandedItem, setExpandedItem] = ActualReact.useState(
         undefined as string | undefined
@@ -128,8 +132,10 @@ jest.mock('@openmetadata/ui-core-components', () => {
         onChange?: (v: string) => void;
       }) => (
         <div>
+          {/* eslint-disable-next-line jsx-a11y/label-has-for -- test mock */}
           {label && <label htmlFor={id}>{label}</label>}
           <input
+            aria-label={label}
             id={id}
             placeholder={placeholder}
             value={value}
@@ -152,11 +158,8 @@ jest.mock('@openmetadata/ui-core-components', () => {
   };
 });
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   ChevronDown: () => <span aria-hidden="true">chevron-down-icon</span>,
-  Hexagon01: (props: React.HTMLAttributes<HTMLSpanElement>) => (
-    <span {...props}>hexagon-icon</span>
-  ),
   Plus: () => <span>plus-icon</span>,
   Trash01: () => <span>trash-icon</span>,
 }));
@@ -342,86 +345,15 @@ describe('FormBuilderV1 templates', () => {
     expect(advancedConfigToggle).toHaveAttribute('aria-expanded', 'false');
   });
 
-  it('adds stable layout classes for sample data storage nested configs', () => {
-    const { container, rerender } = render(
+  it('lays out a gated credential block and gates its static AWS fields', () => {
+    const { container } = render(
       <CoreObjectFieldTemplate
         {...{
-          idSchema: { $id: 'root/sampleDataStorageConfig/config' },
-          registry: {} as ObjectFieldTemplateProps['registry'],
-          schema: {},
-          title: 'Sample Data Storage Config',
-          onAddClick: jest.fn(),
-          properties: [
-            {
-              content: <div>file path field</div>,
-              hidden: false,
-              name: 'filePathPattern',
-            },
-            {
-              content: <div>bucket field</div>,
-              hidden: false,
-              name: 'bucketName',
-            },
-            {
-              content: <div>prefix field</div>,
-              hidden: false,
-              name: 'prefix',
-            },
-            {
-              content: <div>overwrite field</div>,
-              hidden: false,
-              name: 'overwriteData',
-            },
-            {
-              content: <div>storage field</div>,
-              hidden: false,
-              name: 'storageConfig',
-            },
-          ],
-        }}
-      />
-    );
-
-    expect(
-      container.querySelector('.core-object-field-template-sample-data-config')
-    ).toBeInTheDocument();
-    expect(
-      container.querySelector('.core-object-field-template-body-grid')
-    ).toBeInTheDocument();
-    expect(
-      container.querySelector(
-        '.core-object-field-template-property-filePathPattern'
-      )
-    ).toHaveTextContent('file path field');
-    expect(
-      container.querySelector(
-        '.core-object-field-template-property-storageConfig'
-      )
-    ).toHaveTextContent('storage field');
-    expect(
-      Array.from(
-        container.querySelectorAll(
-          '.core-object-field-template-sample-data-config > .core-object-field-template-body > .core-object-field-template-property'
-        )
-      ).map((element) => element.getAttribute('data-field-name'))
-    ).toEqual([
-      'bucketName',
-      'prefix',
-      'filePathPattern',
-      'overwriteData',
-      'storageConfig',
-    ]);
-
-    rerender(
-      <CoreObjectFieldTemplate
-        {...{
-          idSchema: {
-            $id: 'root/sampleDataStorageConfig/config/storageConfig',
-          },
+          idSchema: { $id: 'root/securityConfig' },
           formData: { enabled: true },
           registry: {} as ObjectFieldTemplateProps['registry'],
           schema: {},
-          title: 'AWS S3 Storage Config',
+          title: 'Security Config',
           onAddClick: jest.fn(),
           properties: [
             {
@@ -440,17 +372,32 @@ describe('FormBuilderV1 templates', () => {
               name: 'enabled',
             },
             {
-              content: <input data-testid="field-awsSecretAccessKey" />,
+              content: (
+                <input
+                  aria-label="awsSecretAccessKey"
+                  data-testid="field-awsSecretAccessKey"
+                />
+              ),
               hidden: false,
               name: 'awsSecretAccessKey',
             },
             {
-              content: <input data-testid="field-awsAccessKeyId" />,
+              content: (
+                <input
+                  aria-label="awsAccessKeyId"
+                  data-testid="field-awsAccessKeyId"
+                />
+              ),
               hidden: false,
               name: 'awsAccessKeyId',
             },
             {
-              content: <input data-testid="field-awsSessionToken" />,
+              content: (
+                <input
+                  aria-label="awsSessionToken"
+                  data-testid="field-awsSessionToken"
+                />
+              ),
               hidden: false,
               name: 'awsSessionToken',
             },
@@ -459,10 +406,6 @@ describe('FormBuilderV1 templates', () => {
       />
     );
 
-    expect(screen.getByTestId('storage-config-title-icon')).toBeInTheDocument();
-    expect(
-      container.querySelector('.core-object-field-template-storage-config')
-    ).toBeInTheDocument();
     expect(
       container.querySelector(
         '.core-object-field-template-gated-credential-block'
@@ -480,14 +423,14 @@ describe('FormBuilderV1 templates', () => {
     expect(
       Array.from(
         container.querySelectorAll(
-          '.core-object-field-template-storage-config > .core-object-field-template-body-gated > .core-object-field-template-property'
+          '.core-object-field-template-gated-credential-block > .core-object-field-template-body-gated > .core-object-field-template-property'
         )
       ).map((element) => element.getAttribute('data-field-name'))
     ).toEqual(['enabled']);
     expect(
       Array.from(
         container.querySelectorAll(
-          '.core-object-field-template-storage-config .core-object-field-template-credential-field-grid > .core-object-field-template-property'
+          '.core-object-field-template-gated-credential-block .core-object-field-template-credential-field-grid > .core-object-field-template-property'
         )
       ).map((element) => element.getAttribute('data-field-name'))
     ).toEqual(['awsAccessKeyId', 'awsSecretAccessKey', 'awsRegion']);
@@ -603,8 +546,8 @@ describe('FormBuilderV1 templates', () => {
     ).toHaveClass('core-object-field-template-property-full-width');
   });
 
-  it('disables static AWS credentials for AWS S3 configs with IAM auth', () => {
-    const { container } = render(
+  it('disables static AWS credentials at the root when IAM auth is enabled', () => {
+    render(
       <CoreObjectFieldTemplate
         {...{
           idSchema: { $id: 'root/securityConfig' },
@@ -620,12 +563,22 @@ describe('FormBuilderV1 templates', () => {
               name: 'enabled',
             },
             {
-              content: <input data-testid="generic-awsAccessKeyId" />,
+              content: (
+                <input
+                  aria-label="awsAccessKeyId"
+                  data-testid="generic-awsAccessKeyId"
+                />
+              ),
               hidden: false,
               name: 'awsAccessKeyId',
             },
             {
-              content: <input data-testid="generic-awsSecretAccessKey" />,
+              content: (
+                <input
+                  aria-label="awsSecretAccessKey"
+                  data-testid="generic-awsSecretAccessKey"
+                />
+              ),
               hidden: false,
               name: 'awsSecretAccessKey',
             },
@@ -639,10 +592,6 @@ describe('FormBuilderV1 templates', () => {
       />
     );
 
-    expect(
-      container.querySelector('.core-object-field-template-storage-config')
-    ).toBeInTheDocument();
-    expect(screen.getByTestId('storage-config-title-icon')).toBeInTheDocument();
     expect(screen.getByTestId('generic-awsAccessKeyId')).toBeDisabled();
     expect(screen.getByTestId('generic-awsSecretAccessKey')).toBeDisabled();
   });

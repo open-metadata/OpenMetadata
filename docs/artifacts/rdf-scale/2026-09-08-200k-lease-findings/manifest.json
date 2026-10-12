@@ -1,0 +1,78 @@
+{
+  "productionCommit": "a3e202811e4f57f8592bf3def8cdd6754a734274",
+  "outcome": "scenario-passed-with-distributed-lease-findings",
+  "workload": {
+    "tables": 200000,
+    "edges": 2000000,
+    "wideEvery": 100,
+    "wideColumns": 500,
+    "detailedEvery": 100
+  },
+  "compression": "JSONL files use gzip with mtime=0; JSON files are unchanged",
+  "files": [
+    {
+      "source": "report.json",
+      "published": "report.json",
+      "sourceBytes": 77981,
+      "sourceSha256": "6687400d72807de920829ccf5f4b66ac6c8023bf55f67a6712e77d463188d749",
+      "publishedBytes": 77981,
+      "publishedSha256": "6687400d72807de920829ccf5f4b66ac6c8023bf55f67a6712e77d463188d749"
+    },
+    {
+      "source": "resources.jsonl",
+      "published": "resources.jsonl.gz",
+      "sourceBytes": 733941,
+      "sourceSha256": "d0cd40d2df55d15f42e479da5b7fe50b2fb6d332c678eb3b07bfbf1c8e94aa09",
+      "publishedBytes": 107626,
+      "publishedSha256": "972707f354991dac0cb3b9997972e1688597fdbed79691e21d1528535c8af943"
+    },
+    {
+      "source": "queries-after-distributed.jsonl",
+      "published": "queries-after-distributed.jsonl.gz",
+      "sourceBytes": 47728,
+      "sourceSha256": "3b6bc8082fab74d2eaf1458cdfa1773ddacc28b42856a7eeff7ecb9ce769704e",
+      "publishedBytes": 5574,
+      "publishedSha256": "931c369faf7ee8ad311ecb901c4e57468722621b5bad9557290e8be31b350479"
+    },
+    {
+      "source": "queries-after-local.jsonl",
+      "published": "queries-after-local.jsonl.gz",
+      "sourceBytes": 47843,
+      "sourceSha256": "ef4446fd012e2348d7f17ebca5c0d0b34cd08aefff318d6bd81da76a09767963",
+      "publishedBytes": 5567,
+      "publishedSha256": "d36e36063d9dbacb640ed4d3e713f8d6ff6c3706ff9cb36d042c03d351fa040d"
+    },
+    {
+      "source": "queries-after-restart.jsonl",
+      "published": "queries-after-restart.jsonl.gz",
+      "sourceBytes": 47750,
+      "sourceSha256": "faa46cc1ee5a90196e3c61d4b842be93d1002ac92e3f1c79a21589cdc584f1b8",
+      "publishedBytes": 5622,
+      "publishedSha256": "fd02aaffe0da5d1044cca7c480572b0bff214a80d123ddf903e5603ba11120dc"
+    },
+    {
+      "source": "queries-during-recovery.jsonl",
+      "published": "queries-during-recovery.jsonl.gz",
+      "sourceBytes": 172057,
+      "sourceSha256": "5236b2567aa40a12d38f1a8801d76608b8e8d662e5e12ab445944e3d7d309e95",
+      "publishedBytes": 20960,
+      "publishedSha256": "2c33805d24432799d7cd872625d9fe86141544e9b29bb47f6795f5bb6f413790"
+    },
+    {
+      "source": "findings.json",
+      "published": "findings.json",
+      "sourceBytes": 1297,
+      "sourceSha256": "c9423da20e9449dd84da46a7c25f59aaf819d789705cad64c0838891bb018469",
+      "publishedBytes": 1297,
+      "publishedSha256": "c9423da20e9449dd84da46a7c25f59aaf819d789705cad64c0838891bb018469"
+    },
+    {
+      "source": "progress.jsonl",
+      "published": "progress.jsonl.gz",
+      "sourceBytes": 48067,
+      "sourceSha256": "c0269b85512bae8de24e24a064c761a743bd38aa9117821a6706bf0ff6462a14",
+      "publishedBytes": 3152,
+      "publishedSha256": "33e42c40ba0350faa42ad41c2757a14515d9e5aa3f14d8bd888c47968f03b8e5"
+    }
+  ]
+}

@@ -36,17 +36,6 @@ export const getSelectedText = (state: EditorState) => {
   return text;
 };
 
-export const isInViewport = (ele: HTMLElement, container: HTMLElement) => {
-  const eleTop = ele.offsetTop;
-  const eleBottom = eleTop + ele.clientHeight;
-
-  const containerTop = container.scrollTop;
-  const containerBottom = containerTop + container.clientHeight;
-
-  // The element is fully visible in the container
-  return eleTop >= containerTop && eleBottom <= containerBottom;
-};
-
 // Unique marker prefix used to temporarily replace entity links during HTML serialization
 // This avoids HTML encoding of < and > characters in entity links
 const ENTITY_LINK_MARKER_PREFIX = '__ENTITY_LINK_MARKER_';
@@ -84,14 +73,12 @@ export const formatServerContent = (htmlString: string) => {
 
     // Validate href to only allow safe protocols before embedding into entity link string.
     // This prevents unsafe URLs from bypassing DOMPurify via the post-sanitization replacement.
-    const href =
-      rawHref &&
-      (rawHref.startsWith('http://') ||
-        rawHref.startsWith('https://') ||
-        rawHref.startsWith('/') ||
-        rawHref.startsWith('#'))
-        ? rawHref
-        : '';
+    const hasSafeProtocol =
+      rawHref?.startsWith('http://') ||
+      rawHref?.startsWith('https://') ||
+      rawHref?.startsWith('/') ||
+      rawHref?.startsWith('#');
+    const href = rawHref && hasSafeProtocol ? rawHref : '';
 
     const safeEntityType = sanitizeEntityLinkField(entityType ?? '');
     const safeFqn = sanitizeEntityLinkField(fqn ?? '');

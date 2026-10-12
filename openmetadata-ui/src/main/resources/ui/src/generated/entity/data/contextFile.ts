@@ -116,6 +116,13 @@ export interface ContextFile {
      */
     processingStatus?: ProcessingStatus;
     /**
+     * Who can see this file, beyond its owners. Absent means the file follows ordinary policy,
+     * which is how every file added before this field behaved; Private restricts it to its
+     * owners and the principals it names. A file uploaded to a chat is created Private, because
+     * the person who attached it to a conversation did not thereby publish it.
+     */
+    shareConfig?: ShareConfig;
+    /**
      * ID of the file in the external source system.
      */
     sourceId?: string;
@@ -230,6 +237,8 @@ export interface FieldChange {
  * the relationship of a table `belongs to a` database.
  *
  * Parent folder containing this file.
+ *
+ * Principal receiving access. Supported principal types are user, team, and domain.
  */
 export interface EntityReference {
     /**
@@ -330,6 +339,56 @@ export enum ProcessingStatus {
     Processed = "Processed",
     Unsupported = "Unsupported",
     Uploaded = "Uploaded",
+}
+
+/**
+ * Who can see this file, beyond its owners. Absent means the file follows ordinary policy,
+ * which is how every file added before this field behaved; Private restricts it to its
+ * owners and the principals it names. A file uploaded to a chat is created Private, because
+ * the person who attached it to a conversation did not thereby publish it.
+ *
+ * Visibility and sharing configuration for the memory.
+ */
+export interface ShareConfig {
+    /**
+     * Explicit principals the memory is shared with.
+     */
+    sharedWith?: SharedPrincipal[];
+    visibility?: ShareVisibility;
+}
+
+/**
+ * A principal granted access to the memory.
+ */
+export interface SharedPrincipal {
+    /**
+     * Principal receiving access. Supported principal types are user, team, and domain.
+     */
+    principal?: EntityReference;
+    /**
+     * Role granted to the principal.
+     */
+    role?: ShareRole;
+}
+
+/**
+ * Role granted to the principal.
+ *
+ * Role granted to a shared principal.
+ */
+export enum ShareRole {
+    Editor = "Editor",
+    Viewer = "Viewer",
+}
+
+/**
+ * Visibility level for the memory.
+ */
+export enum ShareVisibility {
+    Entity = "Entity",
+    Private = "Private",
+    Public = "Public",
+    Shared = "Shared",
 }
 
 /**

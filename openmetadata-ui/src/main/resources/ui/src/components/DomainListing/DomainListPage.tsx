@@ -18,14 +18,21 @@ import {
   Input,
   PaginationCardDefault,
 } from '@openmetadata/ui-core-components';
-import { Globe01, Plus } from '@untitledui/icons';
+import {
+  Globe01,
+  NoSearch,
+  Plus,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ROUTES } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
+import { VIEW_MODE_PAGE } from '../../constants/platform/personaAppLayout.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { PageViewMode } from '../../generated/type/personaPreferences';
+import { usePersonaViewMode } from '../../hooks/platform/usePersonaViewMode';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
 import { useDelete } from '../common/atoms/actions/useDelete';
@@ -37,11 +44,11 @@ import { useListSearchInput } from '../common/atoms/navigation/useListSearchInpu
 import { usePageHeader } from '../common/atoms/navigation/usePageHeader';
 import { useTitleAndCount } from '../common/atoms/navigation/useTitleAndCount';
 import { hasActiveSearchOrFilter } from '../common/atoms/shared/utils/hasActiveSearchOrFilter';
-import NoFilteredResultsPlaceholder from '../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
 import EntityCardView from '../common/EntityCardView/EntityCardView.component';
 import EntityListingTable from '../common/EntityListingTable/EntityListingTable.component';
 import HeaderBreadcrumb from '../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import ViewToggle, { ViewMode } from '../common/ViewToggle/ViewToggle';
+import ViewToggle from '../common/ViewToggle/ViewToggle';
+import MarketplaceSearchInput from '../DataMarketplace/MarketplaceSearchInput/MarketplaceSearchInput.component';
 import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
 import DomainTreeView from './components/DomainTreeView';
 import { DomainListPageProps } from './DomainListPage.interface';
@@ -49,10 +56,10 @@ import { useDomainCreateDrawer } from './hooks/useDomainCreateDrawer';
 import { useDomainListingData } from './hooks/useDomainListingData';
 
 const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
-  const domainListing = useDomainListingData();
   const { isMarketplace, domainBasePath } = useMarketplaceStore();
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
+  const domainListing = useDomainListingData({ enableNlq: isAiMode });
   const { permissions } = usePermissionProvider();
   const [treeRefreshToken, setTreeRefreshToken] = useState(0);
 
@@ -97,6 +104,14 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
     <HeaderBreadcrumb noMargin items={breadcrumbItems} />
   );
 
+  const standaloneBreadcrumb = useMemo(
+    () =>
+      !renderPageHeader && !isAiMode ? (
+        <HeaderBreadcrumb items={breadcrumbItems} />
+      ) : null,
+    [renderPageHeader, isAiMode, breadcrumbItems]
+  );
+
   const showHeaderSearch = isAiMode;
 
   const { searchInputProps } = useListSearchInput({
@@ -105,13 +120,22 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
   });
 
   const headerSearch = showHeaderSearch ? (
-    <Input className="tw:w-72" {...searchInputProps} />
+    <MarketplaceSearchInput
+      placeholder={t('label.search-for-type', {
+        type: t('label.domain-plural'),
+      })}
+      searchQuery={domainListing.urlState.searchQuery}
+      onRefresh={domainListing.refetch}
+      onSearchChange={domainListing.handleSearchChange}
+    />
   ) : undefined;
+
+  const canCreateDomain = permissions.domain?.Create || false;
 
   const { pageHeader } = usePageHeader({
     titleKey: 'label.domain-plural',
     descriptionMessageKey: 'message.domain-description',
-    createPermission: permissions.domain?.Create || false,
+    createPermission: canCreateDomain,
     addButtonLabelKey: 'label.add-domain',
     addButtonTestId: 'add-domain',
     onAddClick: openDrawer,
@@ -127,12 +151,16 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
     loading: domainListing.loading,
   });
 
-  const [view, setView] = useState<ViewMode>(ViewMode.Table);
-  const isTreeView = view === ViewMode.Tree;
+  const personaView = usePersonaViewMode(VIEW_MODE_PAGE.Domains);
+  const [selectedView, setView] = useState<PageViewMode>();
+  const view = selectedView ?? personaView;
+  const isTreeView = view === PageViewMode.Tree;
   const { renderDomainCard } = useDomainCardTemplates();
 
   const { columns: domainColumns, renderCell: renderDomainCell } =
-    useDomainTableColumns();
+    useDomainTableColumns({
+      onEntityClick: domainListing.actionHandlers.onEntityClick,
+    });
 
   const selectedDomainEntities = useMemo(
     () =>
@@ -166,6 +194,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
             openAddDomainDrawer={openDrawer}
             refreshToken={treeRefreshToken}
             searchQuery={domainListing.urlState.searchQuery}
+            onClearSearch={domainListing.handleClearAll}
           />
         </div>
       );
@@ -174,12 +203,19 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
     if (!domainListing.loading && isEmpty(domainListing.entities)) {
       if (isSearchOrFilterActive()) {
         return (
-          <div className="tw:relative tw:min-h-70">
-            <NoFilteredResultsPlaceholder
-              onClearFilters={() => {
-                domainListing.handleSearchChange('');
-                domainListing.handleFilterChange([]);
-              }}
+          <div className="tw:relative tw:min-h-70 tw:h-full">
+            <EmptyPlaceholder
+              actions={[
+                {
+                  color: 'primary',
+                  key: 'clear-filters',
+                  label: t('label.clear-entity', { entity: t('label.all') }),
+                  onPress: domainListing.handleClearAll,
+                },
+              ]}
+              description={t('message.check-spelling-or-try-different-term')}
+              icon={<NoSearch className="tw:text-quaternary" />}
+              title={t('label.no-matching-results')}
             />
           </div>
         );
@@ -212,7 +248,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
       );
     }
 
-    if (view === ViewMode.Table) {
+    if (view === PageViewMode.Table) {
       return (
         <>
           <EntityListingTable
@@ -263,7 +299,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
     domainListing.currentPage,
     domainListing.totalPages,
     domainListing.handlePageChange,
-    domainListing.handleSearchChange,
+    domainListing.handleClearAll,
     isSearchOrFilterActive,
     view,
     renderDomainCell,
@@ -281,13 +317,11 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
         'tw:h-[var(--om-page-height)]': isTreeView && !isAiMode,
       })}
       direction="col">
-      {!renderPageHeader && !isAiMode && (
-        <HeaderBreadcrumb items={breadcrumbItems} />
-      )}
+      {standaloneBreadcrumb}
       {renderPageHeader
         ? renderPageHeader({
             onAddClick: openDrawer,
-            createPermission: permissions.domain?.Create || false,
+            createPermission: canCreateDomain,
             count: domainListing.totalEntities,
             breadcrumb: headerBreadcrumb,
             search: headerSearch,
@@ -296,23 +330,28 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
 
       <Card
         className={classNames('tw:flex tw:min-h-0 tw:flex-1 tw:flex-col', {
+          'tw:bg-canvas': isAiMode,
           'tw:mb-5': !isAiMode,
+          // Compact layout pads 8px; AI content sits on the 16px gutter.
+          'tw:mx-2': isAiMode,
         })}
-        variant={isAiMode ? 'default' : 'elevated'}>
+        variant={isAiMode ? 'ghost' : 'elevated'}>
         <Box
           className="tw:px-6 tw:py-4 tw:border-b tw:border-secondary"
           direction="col"
           gap={4}>
           <Box align="center" direction="row" gap={5}>
-            {!showHeaderSearch && titleAndCount}
             {!showHeaderSearch && (
-              <Input className="tw:max-w-86" {...searchInputProps} />
+              <>
+                {titleAndCount}
+                <Input className="tw:max-w-86" {...searchInputProps} />
+              </>
             )}
             {quickFilters}
             <Box className="tw:ml-auto" />
             <ViewToggle
               value={view}
-              views={[ViewMode.Table, ViewMode.Card, ViewMode.Tree]}
+              views={[PageViewMode.Table, PageViewMode.Card, PageViewMode.Tree]}
               onChange={setView}
             />
             {deleteIconButton}

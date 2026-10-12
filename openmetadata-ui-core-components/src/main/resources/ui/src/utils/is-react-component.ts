@@ -38,7 +38,8 @@ export const isForwardRefComponent = (
   return (
     typeof component === 'object' &&
     component !== null &&
-    component.$$typeof.toString() === 'Symbol(react.forward_ref)'
+    // Arrays and fragments are objects without $$typeof — guard, don't throw.
+    component.$$typeof?.toString() === 'Symbol(react.forward_ref)'
   );
 };
 

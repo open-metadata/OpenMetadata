@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
+import { isEmpty } from 'lodash';
 import {
   lazy,
   RefObject,
@@ -29,7 +30,11 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { useElementInView } from '../../../../hooks/useElementInView';
 import { useFqn } from '../../../../hooks/useFqn';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
-import { getTaskCounts, Task } from '../../../../rest/tasksAPI';
+import {
+  getTaskCounts,
+  Task,
+  TaskStatusGroup,
+} from '../../../../rest/tasksAPI';
 import TaskListV1 from '../../../ActivityFeed/ActivityFeedList/TaskListV1.component';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
@@ -70,7 +75,8 @@ const TestCaseIncidentTab = () => {
   const [openTasksCount, setOpenTasksCount] = useState(0);
   const [closedTasksCount, setClosedTasksCount] = useState(0);
 
-  const statusGroup = taskFilter === 'open' ? 'open' : 'closed';
+  const statusGroup =
+    taskFilter === 'open' ? TaskStatusGroup.Open : TaskStatusGroup.Closed;
 
   const fetchCounts = useCallback(async () => {
     if (!decodedFqn) {
@@ -109,7 +115,13 @@ const TestCaseIncidentTab = () => {
     if (decodedFqn && isInView && entityPaging.after && !loading) {
       handleFeedFetchFromFeedList(entityPaging.after);
     }
-  }, [entityPaging, loading, isInView, decodedFqn]);
+  }, [
+    entityPaging,
+    loading,
+    isInView,
+    decodedFqn,
+    handleFeedFetchFromFeedList,
+  ]);
 
   const handleTaskClick = useCallback(
     (task: Task) => {
@@ -149,7 +161,7 @@ const TestCaseIncidentTab = () => {
         data-testid="left-container"
         id="left-container">
         <div className="d-flex gap-4 p-sm p-x-lg">
-          <Typography.Text
+          <Typography
             className={classNames(
               'cursor-pointer p-l-xss d-flex items-center',
               {
@@ -160,8 +172,8 @@ const TestCaseIncidentTab = () => {
             onClick={() => handleOpenCloseTaskClick('open')}>
             <TaskIcon className="m-r-xss" width={14} /> {openTasksCount}{' '}
             {t('label.open')}
-          </Typography.Text>
-          <Typography.Text
+          </Typography>
+          <Typography
             className={classNames('cursor-pointer d-flex items-center', {
               'font-medium': taskFilter === 'close',
             })}
@@ -169,18 +181,18 @@ const TestCaseIncidentTab = () => {
             onClick={() => handleOpenCloseTaskClick('close')}>
             <CheckIcon className="m-r-xss" width={14} /> {closedTasksCount}{' '}
             {t('label.closed')}
-          </Typography.Text>
+          </Typography>
         </div>
 
         <TaskListV1
           activeFeedId={selectedTask?.id}
           emptyPlaceholderText={t('message.no-tasks-assigned')}
-          isLoading={false}
+          isLoading={loading && isEmpty(tasks)}
           selectedTask={selectedTask}
           taskList={tasks}
           onTaskClick={handleTaskClick}
         />
-        {loader}
+        {!isEmpty(tasks) && loader}
         <div
           className="w-full"
           data-testid="observer-element"

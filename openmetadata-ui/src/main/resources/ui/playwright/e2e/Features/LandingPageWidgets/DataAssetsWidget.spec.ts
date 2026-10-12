@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test } from '@playwright/test';
 import { toLower } from 'lodash';
 import { ContainerClass } from '../../../support/entity/ContainerClass';
 import { DashboardClass } from '../../../support/entity/DashboardClass';
@@ -19,8 +18,10 @@ import { PipelineClass } from '../../../support/entity/PipelineClass';
 import { SearchIndexClass } from '../../../support/entity/SearchIndexClass';
 import { TableClass } from '../../../support/entity/TableClass';
 import { TopicClass } from '../../../support/entity/TopicClass';
+import { test } from '../../../support/fixtures/base';
 import { createNewPage, redirectToHomePage } from '../../../utils/common';
 import { checkDataAssetWidget } from '../../../utils/entity';
+import { pickEntityMatrix } from '../../../utils/entityMatrix';
 
 const entities = [
   TableClass,
@@ -30,12 +31,12 @@ const entities = [
   ContainerClass,
   MlModelClass,
   SearchIndexClass,
-] as const;
+];
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-entities.forEach((EntityClass) => {
+pickEntityMatrix(__filename, entities, [TableClass]).forEach((EntityClass) => {
   const entity = new EntityClass();
 
   test.describe(entity.getType(), () => {

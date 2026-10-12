@@ -76,6 +76,32 @@ jest.mock('@melloware/react-logviewer', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Button: ({
+    children,
+    onPress,
+    className,
+    'data-testid': testId,
+    'aria-label': ariaLabel,
+    'aria-pressed': ariaPressed,
+    onClick,
+  }: {
+    children?: ReactNode;
+    onPress?: () => void;
+    className?: string;
+    'data-testid'?: string;
+    'aria-label'?: string;
+    'aria-pressed'?: boolean;
+    onClick?: () => void;
+  }) => (
+    <button
+      aria-label={ariaLabel}
+      aria-pressed={ariaPressed}
+      className={className}
+      data-testid={testId}
+      onClick={onClick ?? onPress}>
+      {children}
+    </button>
+  ),
   ModalOverlay: ({
     children,
     isOpen,
@@ -138,7 +164,7 @@ jest.mock('react-aria-components', () => ({
   ),
 }));
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   AlignLeft: () => <span data-testid="icon-wrap" />,
   ArrowDown: () => <span data-testid="icon-follow" />,
   ChevronDownDouble: () => <span data-testid="icon-jump-to-end" />,
@@ -147,7 +173,7 @@ jest.mock('@untitledui/icons', () => ({
   File02: () => <span data-testid="icon-file" />,
   Maximize01: () => <span data-testid="icon-maximize" />,
   Minimize01: () => <span data-testid="icon-minimize" />,
-  SearchMd: () => <span data-testid="icon-search" />,
+  Search: () => <span data-testid="icon-search" />,
 }));
 
 jest.mock('../../../hooks/useClipBoard', () => ({
@@ -818,6 +844,90 @@ describe('LogViewerModal — auto-follow', () => {
     expect(screen.getByTestId('log-viewer-follow')).toHaveAttribute(
       'aria-pressed',
       'true'
+    );
+  });
+
+  it('keeps following after a hand-made resume when an append lands short of the tail', () => {
+    render(<LogViewerModal {...defaultProps} mode="stream" />);
+
+    act(() => mockLazyLog.onScroll?.(atTail));
+    fireEvent.wheel(screen.getByTestId('log-viewer-body'), { deltaY: -120 });
+    fireEvent.wheel(screen.getByTestId('log-viewer-body'), { deltaY: 120 });
+    act(() => mockLazyLog.onScroll?.(scrolledBackToTail));
+
+    expect(screen.getByTestId('log-viewer-follow')).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+
+    // The library scrolls itself on every append and lands approximately: the
+    // offset moved a long way *towards* the tail and still stopped short of it.
+    // Nobody scrolls down in order to leave the tail, so this cannot be the user.
+    act(() =>
+      mockLazyLog.onScroll?.({
+        scrollTop: 800,
+        scrollHeight: 1500,
+        clientHeight: 400,
+      })
+    );
+
+    expect(screen.getByTestId('log-viewer-follow')).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+  });
+
+  it('grants a hand-made resume the same catch-up grace as the toggle', () => {
+    render(<LogViewerModal {...defaultProps} mode="stream" />);
+
+    act(() => mockLazyLog.onScroll?.(atTail));
+    fireEvent.wheel(screen.getByTestId('log-viewer-body'), { deltaY: -120 });
+    fireEvent.wheel(screen.getByTestId('log-viewer-body'), { deltaY: 120 });
+    act(() => mockLazyLog.onScroll?.(scrolledBackToTail));
+    mockLazyLog.scrollToIndex.mockClear();
+
+    // One gestureless report pulling away from the tail is what a relayout does
+    // on its way to re-pinning it, so it is caught up rather than obeyed — the
+    // same answer the toolbar toggle's resume gets.
+    act(() =>
+      mockLazyLog.onScroll?.({
+        scrollTop: 500,
+        scrollHeight: 1100,
+        clientHeight: 400,
+      })
+    );
+
+    expect(screen.getByTestId('log-viewer-follow')).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    expect(mockLazyLog.scrollToIndex).toHaveBeenCalledWith(2);
+  });
+
+  it('still lets a gestureless drag take back a hand-made resume', () => {
+    render(<LogViewerModal {...defaultProps} mode="stream" />);
+
+    act(() => mockLazyLog.onScroll?.(atTail));
+    fireEvent.wheel(screen.getByTestId('log-viewer-body'), { deltaY: -120 });
+    fireEvent.wheel(screen.getByTestId('log-viewer-body'), { deltaY: 120 });
+    act(() => mockLazyLog.onScroll?.(scrolledBackToTail));
+
+    // A native scrollbar drag reports no wheel and no key. Pulling away from the
+    // tail twice in a row is something the catch-up never does, so the grace the
+    // resume granted has to be outrun rather than being indefinite.
+    for (const scrollTop of [500, 300]) {
+      act(() =>
+        mockLazyLog.onScroll?.({
+          scrollTop,
+          scrollHeight: 1100,
+          clientHeight: 400,
+        })
+      );
+    }
+
+    expect(screen.getByTestId('log-viewer-follow')).toHaveAttribute(
+      'aria-pressed',
+      'false'
     );
   });
 

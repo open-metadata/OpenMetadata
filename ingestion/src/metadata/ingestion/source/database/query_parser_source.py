@@ -13,8 +13,8 @@ Query Parser Source module. Parent class for Lineage & Usage workflows
 """
 
 from abc import ABC, abstractmethod
+from collections.abc import Iterator
 from datetime import datetime
-from typing import Iterator, Optional  # noqa: UP035
 
 from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import (
     QueryParserType,
@@ -25,7 +25,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.lineage.masker import masked_query_cache
-from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
+from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.progress.modes import ProgressMode
 from metadata.ingestion.progress.tracking import (
@@ -61,7 +61,7 @@ class QueryParserSource(Source, ABC):
         return attach_progress_tracking(self)
 
     sql_stmt: str
-    dialect: str
+    dialect: Dialect
     filters: str
     database_field: str
     schema_field: str
@@ -148,8 +148,8 @@ class QueryParserSource(Source, ABC):
 
     def check_life_cycle_query(
         self,
-        query_type: Optional[str],  # pylint: disable=unused-argument  # noqa: UP045
-        query_text: Optional[str],  # pylint: disable=unused-argument  # noqa: UP045
+        query_type: str | None,  # pylint: disable=unused-argument
+        query_text: str | None,  # pylint: disable=unused-argument
     ) -> bool:
         """
         returns true if query is to be used for life cycle processing.

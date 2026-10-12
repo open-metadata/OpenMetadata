@@ -13,21 +13,14 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { act } from 'react';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
-import { Operation } from '../../../../generated/entity/policies/policy';
 import { TestSuite } from '../../../../generated/tests/testCase';
 import { DataQualitySubTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
 import { getListTestSuitesBySearch } from '../../../../rest/testAPI';
-import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
-import { escapeESReservedCharacters } from '../../../../utils/StringUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useTestSuitesData, UseTestSuitesDataProps } from './useTestSuitesData';
 
 jest.mock('../../../../rest/testAPI', () => ({
   getListTestSuitesBySearch: jest.fn(),
-}));
-
-jest.mock('../../../../utils/PermissionsUtils', () => ({
-  getPrioritizedViewPermission: jest.fn().mockReturnValue(true),
 }));
 
 jest.mock('../../../../utils/ToastUtils', () => ({
@@ -85,7 +78,6 @@ const renderData = (props: UseTestSuitesDataProps = buildProps()) =>
 describe('useTestSuitesData', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (getPrioritizedViewPermission as jest.Mock).mockReturnValue(true);
     mockGetListTestSuitesBySearch.mockResolvedValue({
       data: [],
       paging: {},
@@ -140,9 +132,9 @@ describe('useTestSuitesData', () => {
   });
 
   it('should not fetch and should stop loading when the injected view permission is absent', async () => {
-    (getPrioritizedViewPermission as jest.Mock).mockReturnValue(false);
-
-    const { result } = renderData();
+    const { result } = renderData(
+      buildProps({ testSuitePermission: {} as OperationPermission })
+    );
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
@@ -150,15 +142,14 @@ describe('useTestSuitesData', () => {
   });
 
   it('should gate the fetch on the injected testSuite permission for ViewBasic', async () => {
-    renderData();
-
-    await waitFor(() =>
-      expect(getPrioritizedViewPermission).toHaveBeenCalled()
+    renderData(
+      buildProps({
+        testSuitePermission: { ViewBasic: true } as OperationPermission,
+      })
     );
 
-    expect(getPrioritizedViewPermission).toHaveBeenCalledWith(
-      testSuitePermission,
-      Operation.ViewBasic
+    await waitFor(() =>
+      expect(mockGetListTestSuitesBySearch).toHaveBeenCalled()
     );
   });
 
@@ -271,11 +262,11 @@ describe('useTestSuitesData', () => {
     );
 
     expect(mockGetListTestSuitesBySearch).toHaveBeenCalledWith(
-      expect.objectContaining({ q: '*abc*', owner: 'u1' })
+      expect.objectContaining({ q: 'abc', owner: 'u1' })
     );
   });
 
-  it('should escape query_string reserved characters in searchValue so a URL does not break the shard query', async () => {
+  it('should send a reserved-character term verbatim, since the server parses q as literal text', async () => {
     const url = 'https://example.com/data-quality/test-case-results';
     renderData(buildProps({ searchValue: url }));
 
@@ -285,10 +276,7 @@ describe('useTestSuitesData', () => {
 
     const { q } = mockGetListTestSuitesBySearch.mock.calls.at(-1)?.[0] ?? {};
 
-    expect(q).toBe(`*${escapeESReservedCharacters(url)}*`);
-    expect(q).toContain(String.raw`\:`);
-    expect(q).toContain(String.raw`\/`);
-    expect(q).not.toMatch(/[^\\][:/]/);
+    expect(q).toBe(url);
   });
 
   it('should refetch when an injected filter changes (driving effect)', async () => {
@@ -306,7 +294,7 @@ describe('useTestSuitesData', () => {
     );
 
     expect(mockGetListTestSuitesBySearch).toHaveBeenLastCalledWith(
-      expect.objectContaining({ q: '*xyz*' })
+      expect.objectContaining({ q: 'xyz' })
     );
   });
 

@@ -16,7 +16,7 @@ import {
   Tooltip,
   TooltipTrigger,
 } from '@openmetadata/ui-core-components';
-import { RefreshCw01 } from '@untitledui/icons';
+import { RefreshCw01 } from '@openmetadata/ui-core-components/icons';
 import { FC, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FitViewOptionsIcon } from '../../assets/svg/ic-fit-view-options.svg';
@@ -50,7 +50,7 @@ const OntologyControlButtons: FC<OntologyControlButtonsProps> = ({
           />
         </Tooltip>
       </TooltipTrigger>
-      <div className="tw:h-6 tw:w-px tw:bg-gray-200" />
+      <div className="tw:h-6 tw:w-px tw:bg-quaternary" />
 
       <TooltipTrigger>
         <Tooltip placement="top" title={t('label.zoom-in')}>
@@ -63,7 +63,7 @@ const OntologyControlButtons: FC<OntologyControlButtonsProps> = ({
           />
         </Tooltip>
       </TooltipTrigger>
-      <div className="tw:h-6 tw:w-px tw:bg-gray-200" />
+      <div className="tw:h-6 tw:w-px tw:bg-quaternary" />
       <TooltipTrigger>
         <Tooltip placement="top" title={t('label.zoom-out')}>
           <Button
@@ -75,7 +75,7 @@ const OntologyControlButtons: FC<OntologyControlButtonsProps> = ({
           />
         </Tooltip>
       </TooltipTrigger>
-      <div className="tw:h-6 tw:w-px tw:bg-gray-200" />
+      <div className="tw:h-6 tw:w-px tw:bg-quaternary" />
 
       <TooltipTrigger>
         <Tooltip placement="top" title={t('label.refresh')}>

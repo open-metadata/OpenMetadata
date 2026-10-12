@@ -14,6 +14,7 @@
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Document } from '../../generated/entity/docStore/document';
+import { normalizePersonaDocument } from '../../utils/CustomizePage/PersonaPage.utils';
 import { getDocumentByFQN } from '../DocStoreAPI';
 
 /**
@@ -36,8 +37,8 @@ export const PERSONA_DOC_STALE_TIME = 5 * 60 * 1000;
 
 export const docStoreQueryKey = (fqn: string) => ['docStore', fqn] as const;
 
-export const docStoreQueryFn = (fqn: string) => (): Promise<Document> =>
-  getDocumentByFQN(fqn);
+export const docStoreQueryFn = (fqn: string) => async (): Promise<Document> =>
+  normalizePersonaDocument(await getDocumentByFQN(fqn));
 
 /**
  * Derive the docStore FQN for a persona's UICustomization document.

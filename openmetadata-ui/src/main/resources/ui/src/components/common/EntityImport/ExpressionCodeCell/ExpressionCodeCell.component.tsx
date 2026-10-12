@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Check, X } from '@untitledui/icons';
+import { Check, X } from '@openmetadata/ui-core-components/icons';
 import {
   KeyboardEvent,
   useEffect,
@@ -104,6 +104,7 @@ const ExpressionCodeCell = ({
               className="bulk-edit-code-editor"
               data-testid="bulk-edit-code-editor"
               ref={panelRef}
+              role="presentation"
               style={{ top: position.top, left: position.left }}
               onKeyDown={handleKeyDown}
               onMouseDown={(event) => event.stopPropagation()}>
@@ -155,9 +156,11 @@ const ExpressionCodeCell = ({
               </div>
               <div className="bulk-edit-code-editor-foot">
                 <span className="bulk-edit-code-editor-hint">
+                  {/* eslint-disable-next-line i18next/no-literal-string -- decorative keyboard shortcut glyph */}
                   <span className="bulk-edit-code-editor-kbd">⌘↵</span>{' '}
                   {t('label.save').toLowerCase()}
                   {' · '}
+                  {/* eslint-disable-next-line i18next/no-literal-string -- decorative keyboard key label */}
                   <span className="bulk-edit-code-editor-kbd">Esc</span>{' '}
                   {t('label.cancel').toLowerCase()}
                 </span>

@@ -10,7 +10,7 @@
 #  limitations under the License.
 """Custom Database connector yielding a deterministic in-memory catalog."""
 
-from typing import Iterable, Optional  # noqa: UP035
+from collections.abc import Iterable
 
 from metadata.generated.schema.api.classification.createClassification import (
     CreateClassificationRequest,
@@ -114,7 +114,7 @@ class CustomDatabaseSource(Source):
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,  # noqa: UP045
+        pipeline_name: str | None = None,
     ) -> "CustomDatabaseSource":
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection = config.serviceConnection.root.config

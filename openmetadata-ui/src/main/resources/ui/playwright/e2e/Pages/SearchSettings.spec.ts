@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { TableClass } from '../../support/entity/TableClass';
+import { expect, test as base } from '../../support/fixtures/base';
 import { AdminClass } from '../../support/user/AdminClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
@@ -38,7 +39,7 @@ let adminUser: AdminClass;
 const test = base.extend<{ page: Page }>({
   page: async ({ browser }, use) => {
     const adminPage = await browser.newPage();
-    await adminUser.login(adminPage);
+    await adminUser.signIn(adminPage);
     await use(adminPage);
     await adminPage.close();
   },
@@ -196,6 +197,38 @@ test.describe('Search Settings', () => {
       ).toHaveText('2000');
     });
 
+    // Confirming would delete the column index that later specs search, so this stops at Cancel.
+    test('Column indexing asks for confirmation before turning off', async ({
+      page,
+    }) => {
+      await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
+
+      const columnIndexingToggle = page.getByTestId(
+        'enable-column-indexing-switch'
+      );
+      const columnIndexingSwitch = columnIndexingToggle.getByRole('switch');
+
+      await expect(columnIndexingSwitch).toBeChecked();
+
+      await columnIndexingToggle.click();
+
+      await expect(
+        page.getByText(
+          'Turning off column indexing deletes the column search index'
+        )
+      ).toBeVisible();
+
+      await page.getByTestId('cancel').click();
+
+      await expect(page.getByTestId('save-button')).not.toBeVisible();
+      await expect(columnIndexingSwitch).toBeChecked();
+
+      await page.reload();
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(columnIndexingSwitch).toBeChecked();
+    });
+
     test('Update entity search settings', async ({ page }) => {
       await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
 
@@ -222,7 +255,14 @@ test.describe('Search Settings', () => {
       await highlightFieldToggle.click();
 
       // Field Weight
-      await setSliderValue(page, 'field-weight-slider', 8);
+      await setSliderValue(
+        page,
+        'field-weight-slider',
+        8,
+        0,
+        100,
+        'field-weight-value'
+      );
 
       // Match Type
       const matchTypeSelect = page.getByTestId('match-type-select');
@@ -255,6 +295,68 @@ test.describe('Search Settings', () => {
 
       await expect(scoreModeSelect).toHaveText('Max');
       await expect(boostModeSelect).toHaveText('Replace');
+    });
+
+    test('Highlight toggle is offered for analyzed fields', async ({
+      page,
+    }) => {
+      // The highlight toggle is driven by allowedFields[].highlight, which the server derives from
+      // the index mapping. Nothing in the shipped settings is unhighlightable, so every toggle here
+      // must be enabled. A backend that stops annotating the flag serves the schema default (false)
+      // for every field and silently disables all of them — the Jest test cannot catch that,
+      // because it supplies entityFields as props.
+      const settingsResponse = page.waitForResponse(
+        '/api/v1/system/settings/searchSettings'
+      );
+      await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
+
+      const tableCard = page.getByTestId(mockEntitySearchSettings.key);
+      await tableCard.click();
+
+      expect((await settingsResponse).status()).toBe(200);
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(
+        page.getByTestId('entity-search-settings-header')
+      ).toBeVisible();
+
+      await openMatchingFieldsPanel(page);
+      // Named field rather than whichever row happens to render first: the assertion below is
+      // that the server annotates `highlight`, which only means something on a field the index
+      // mapping can actually highlight -- an analyzed text field such as `description`.
+      await page.getByTestId('field-configuration-panel-description').click();
+
+      const highlightFieldToggle = page
+        .getByTestId('highlight-field-switch')
+        .getByRole('switch');
+
+      await expect(highlightFieldToggle).toBeAttached();
+      await expect(highlightFieldToggle).toBeEnabled();
+
+      // Saving must not disable it. The page takes the PUT response straight into app state, so an
+      // endpoint that serves searchSettings without deriving `highlight` greys out every toggle the
+      // moment you hit Save, while the server goes on highlighting the field. Checking after a
+      // reload would miss it entirely — a reload re-reads the GET, which was always annotated.
+      await setSliderValue(
+        page,
+        'field-weight-slider',
+        7,
+        0,
+        100,
+        'field-weight-value'
+      );
+
+      const saveSettings = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/system/settings') &&
+          response.request().method() === 'PUT'
+      );
+      await page.getByTestId('save-btn').click();
+      await saveSettings;
+
+      await toastNotification(page, /Search Settings updated successfully/);
+
+      await expect(highlightFieldToggle).toBeEnabled();
     });
 
     test('Restore default search settings', async ({ page }) => {
@@ -369,20 +471,35 @@ test.describe('Search Settings', () => {
         `field-configuration-panel-description`
       );
       await descriptionField.click();
-      await setSliderValue(page, 'field-weight-slider', 68);
+      await setSliderValue(
+        page,
+        'field-weight-slider',
+        68,
+        0,
+        100,
+        'field-weight-value'
+      );
 
       const previewResponse = page.waitForResponse('/api/v1/search/preview');
       await page.getByTestId('highlight-field-switch').click();
       await previewResponse;
 
-      await expect(page.getByTestId('highlight-field-switch')).toHaveAttribute(
-        'aria-checked',
-        'false'
-      );
+      await expect(
+        page.getByTestId('highlight-field-switch').getByRole('switch')
+      ).not.toBeChecked();
 
-      const searchInput = page.getByTestId('searchbar');
+      // The shell also renders a searchbar; preview queries belong to this page.
+      const searchInput = page
+        .getByTestId('page-layout-v1')
+        .getByTestId('searchbar');
+      const searchPreviewResponse = page.waitForResponse(
+        (response) =>
+          response.url().endsWith('/api/v1/search/preview') &&
+          response.request().method() === 'POST' &&
+          response.request().postDataJSON()?.query === table1.entity.name
+      );
       await searchInput.fill(table1.entity.name);
-      await previewResponse;
+      expect((await searchPreviewResponse).status()).toBe(200);
 
       await waitForAllLoadersToDisappear(page);
 
@@ -476,7 +593,16 @@ test.describe('Search Settings', () => {
         await ngramPanel.click();
 
         // Change n-gram weight to 5 and save.
-        await setSliderValue(page, 'field-weight-slider', 5);
+        await setSliderValue(
+          page,
+          'field-weight-slider',
+          5,
+          0,
+          100,
+          'field-weight-value'
+        );
+
+        await expect(page.getByTestId('save-btn')).toBeEnabled();
 
         const saveResponse = page.waitForResponse(
           (r) =>
@@ -484,7 +610,7 @@ test.describe('Search Settings', () => {
             r.request().method() === 'PUT'
         );
         await page.getByTestId('save-btn').click();
-        await saveResponse;
+        expect((await saveResponse).status()).toBe(200);
         await toastNotification(page, /Search Settings updated successfully/);
 
         // Scope the predicate to the reverted boost value so a stale post-save
@@ -506,7 +632,14 @@ test.describe('Search Settings', () => {
           return boost === initialNgramBoost;
         });
 
-        await setSliderValue(page, 'field-weight-slider', initialNgramBoost);
+        await setSliderValue(
+          page,
+          'field-weight-slider',
+          initialNgramBoost,
+          0,
+          100,
+          'field-weight-value'
+        );
 
         const revertedPreviewResponse = await revertedPreviewPromise;
         expect(revertedPreviewResponse.status()).toBe(200);
@@ -529,7 +662,7 @@ test.describe('Search Settings', () => {
 
         // Reload so the page re-fetches the restored config and triggers preview.
         const previewPromise = page.waitForResponse('/api/v1/search/preview');
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
         const previewResponse = await previewPromise;
         await waitForAllLoadersToDisappear(page);
 
@@ -589,7 +722,10 @@ test.describe('Search Settings', () => {
         );
         await waitForAllLoadersToDisappear(page);
 
-        await page.getByTestId('searchbar').fill('test');
+        await page
+          .getByTestId('page-layout-v1')
+          .getByTestId('searchbar')
+          .fill('test');
 
         const freshCard = page.getByTestId(
           'table-data-card_pw_race_service.fresh_result'
@@ -667,11 +803,19 @@ test.describe('Search Settings', () => {
       await firstFieldContainer.click();
 
       const highlightToggle = page.getByTestId('highlight-field-switch');
-      const wasHighlighted =
-        (await highlightToggle.getAttribute('aria-checked')) === 'true';
+      const wasHighlighted = await highlightToggle
+        .getByRole('switch')
+        .isChecked();
       await highlightToggle.click();
 
-      await setSliderValue(page, 'field-weight-slider', 15);
+      await setSliderValue(
+        page,
+        'field-weight-slider',
+        15,
+        0,
+        100,
+        'field-weight-value'
+      );
 
       const matchTypeSelect = page.getByTestId('match-type-select');
       await matchTypeSelect.click();
@@ -690,7 +834,7 @@ test.describe('Search Settings', () => {
       await saveSettings;
 
       const previewResponse = page.waitForResponse('/api/v1/search/preview');
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await previewResponse;
       await waitForAllLoadersToDisappear(page);
       await openMatchingFieldsPanel(page);
@@ -698,10 +842,9 @@ test.describe('Search Settings', () => {
       await openMatchingFieldsPanel(page);
 
       await firstFieldContainer.click();
-      await expect(highlightToggle).toHaveAttribute(
-        'aria-checked',
-        String(!wasHighlighted)
-      );
+      await expect(highlightToggle.getByRole('switch')).toBeChecked({
+        checked: !wasHighlighted,
+      });
     });
 
     test('Search preview displays column results correctly', async ({
@@ -725,11 +868,17 @@ test.describe('Search Settings', () => {
         );
         await columnCard.click();
 
-        const searchInput = page.getByTestId('searchbar');
+        const searchInput = page
+          .getByTestId('page-layout-v1')
+          .getByTestId('searchbar');
+        const previewResponse = page.waitForResponse(
+          (response) =>
+            response.url().endsWith('/api/v1/search/preview') &&
+            response.request().method() === 'POST' &&
+            response.request().postDataJSON()?.query === uniqueColumnName
+        );
         await searchInput.fill(uniqueColumnName);
-
-        const previewResponse = page.waitForResponse('/api/v1/search/preview');
-        await previewResponse;
+        expect((await previewResponse).status()).toBe(200);
 
         const searchResultsContainer = page.locator(
           '.search-results-container'

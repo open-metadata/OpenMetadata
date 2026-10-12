@@ -20,7 +20,7 @@ import {
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ArrowNarrowRight } from '@untitledui/icons';
+import { ArrowNarrowRight } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FC, Fragment, KeyboardEvent, MouseEvent } from 'react';
 import {
@@ -51,7 +51,7 @@ function RecentItem({
   return (
     <Box
       align="center"
-      className="tw:py-1.5 tw:cursor-pointer tw:rounded tw:hover:bg-primary_hover"
+      className="tw:px-2 tw:py-1.5 tw:cursor-pointer tw:rounded tw:hover:bg-primary_hover tw:focus-visible:bg-primary_hover"
       gap={2}
       role="button"
       tabIndex={0}
@@ -78,7 +78,8 @@ function RecentItem({
         </div>
         <Box align="center" gap={1}>
           {item.meta.map((metaItem, index) => (
-            <Fragment key={`${index}-${metaItem}`}>
+            // eslint-disable-next-line react/no-array-index-key -- meta strings may repeat; index disambiguates
+            <Fragment key={`${metaItem}-${index}`}>
               <div className="tw:max-w-20">
                 <Typography
                   ellipsis
@@ -178,7 +179,7 @@ const ContextKnowledgePillarCard: FC<ContextKnowledgePillarCardProps> = ({
       <div>
         <Box align="center" className="tw:mb-3.5" gap={3}>
           <FeaturedIcon
-            className="tw:size-9 tw:rounded-lg tw:bg-brand-50"
+            className="tw:size-9 tw:rounded-lg tw:bg-brand-primary"
             color="brand"
             icon={<Icon className="tw:size-5" />}
             size="sm"

@@ -2,8 +2,6 @@
 Classifications entity SDK with fluent API
 """
 
-from typing import Type  # noqa: UP035
-
 from metadata.generated.schema.api.classification.createClassification import (
     CreateClassificationRequest,
 )
@@ -17,6 +15,6 @@ class Classifications(BaseEntity[Classification, CreateClassificationRequest]):
     """Classifications SDK class - plural to avoid conflict with generated Classification entity"""
 
     @classmethod
-    def entity_type(cls) -> Type[Classification]:  # noqa: UP006
+    def entity_type(cls) -> type[Classification]:
         """Return the Classification entity type"""
         return Classification

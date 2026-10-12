@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 import test, { expect, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../../constant/common';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
-import { createNewPage } from '../../../utils/common';
+import { clickIgnoringToasts, createNewPage } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   confirmationDragAndDropGlossary,
@@ -104,6 +105,7 @@ test.describe('Large Glossary Performance Tests', () => {
   };
 
   test.beforeAll(async ({ browser }) => {
+    glossaryTerms.length = 0;
     test.setTimeout(8 * 60 * 1000);
 
     const { apiContext, afterAction } = await createNewPage(browser);
@@ -152,51 +154,62 @@ test.describe('Large Glossary Performance Tests', () => {
   test('should handle large number of glossary terms with pagination', async ({
     page,
   }) => {
-    await page
-      .locator(
-        '[data-testid="glossary-terms-scroll-container"] [data-testid="loader"]'
-      )
-      .waitFor({ state: 'detached' });
+    await waitForAllLoadersToDisappear(
+      page.locator('[data-testid="glossary-terms-scroll-container"]')
+    );
 
     const initialTerms = await page.locator('tbody tr[data-row-key]').count();
 
     expect(initialTerms).toBe(50);
 
-    const infiniteScrollRequest = page.waitForResponse(
+    // First page: Previous is disabled, Next is enabled.
+    const pagination = page.getByTestId('pagination');
+
+    await expect(pagination).toBeVisible();
+    await expect(pagination.getByTestId('previous')).toBeDisabled();
+    await expect(pagination.getByTestId('next')).toBeEnabled();
+
+    // Next fetches the following page using a cursor (directChildrenOf + after).
+    const nextPageRequest = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/glossaryTerms') &&
         response.url().includes('directChildrenOf=') &&
         response.url().includes('after=')
     );
 
-    await scrollGlossaryTermsToBottom(page);
+    await clickIgnoringToasts(pagination.getByTestId('next'));
 
-    // Wait for more terms to load
-    const infiniteScrollResponse = await infiniteScrollRequest;
-    expect(infiniteScrollResponse.status()).toBe(200);
-    await page
-      .locator(
-        '[data-testid="glossary-terms-scroll-container"] [data-testid="loader"]'
-      )
-      .waitFor({ state: 'detached' });
+    const nextPageResponse = await nextPageRequest;
+    expect(nextPageResponse.status()).toBe(200);
+    await waitForAllLoadersToDisappear(
+      page.locator('[data-testid="glossary-terms-scroll-container"]')
+    );
 
-    // Verify more terms are loaded
+    // Cursor pagination replaces the page rather than appending, so the second
+    // page still shows 50 rows and Previous is now enabled.
+    await expect
+      .poll(() => page.locator('tbody tr[data-row-key]').count())
+      .toBe(50);
+    await expect(pagination.getByTestId('previous')).toBeEnabled();
 
-    const afterScrollTerms = await page
-      .locator('tbody tr[data-row-key]')
-      .count();
-
-    expect(afterScrollTerms).toBe(100);
+    // Going back returns to the first page.
+    await clickIgnoringToasts(pagination.getByTestId('previous'));
+    await waitForAllLoadersToDisappear(
+      page.locator('[data-testid="glossary-terms-scroll-container"]')
+    );
+    await expect(pagination.getByTestId('previous')).toBeDisabled();
   });
 
   test('should search and filter glossary terms', async ({ page }) => {
     // Type in search box
     const searchInput = page.getByPlaceholder(/search.*term/i);
-    await searchInput.fill('Term_5');
-
-    const searchRes = await page.waitForResponse(
+    const searchResponse = page.waitForResponse(
       'api/v1/glossaryTerms/search?*'
     );
+    await searchInput.fill('Term_5');
+
+    const searchRes = await searchResponse;
+
     expect(searchRes.status()).toBe(200);
     await waitForAllLoadersToDisappear(page);
     // Verify filtered results
@@ -210,8 +223,11 @@ test.describe('Large Glossary Performance Tests', () => {
     await expect(page.getByText('Term_5', { exact: true })).toBeVisible();
 
     // Clear search
+    const allTermsResponse = page.waitForResponse('api/v1/glossaryTerms?*');
     await searchInput.clear();
-    const clearRes = await page.waitForResponse('api/v1/glossaryTerms?*');
+
+    const clearRes = await allTermsResponse;
+
     expect(clearRes.status()).toBe(200);
     await waitForAllLoadersToDisappear(page);
 
@@ -244,7 +260,7 @@ test.describe('Large Glossary Performance Tests', () => {
 
       // Wait for the button text to change to "Expand All"
       await expect(expandAllButton).toContainText('Expand All', {
-        timeout: 30000,
+        timeout: ACTION_TIMEOUT,
       });
     }
 
@@ -259,7 +275,7 @@ test.describe('Large Glossary Performance Tests', () => {
     });
 
     // Wait for expansion to complete (max 30 seconds)
-    await expect(expandAllButton).toBeEnabled({ timeout: 30000 });
+    await expect(expandAllButton).toBeEnabled({ timeout: ACTION_TIMEOUT });
     await expect(expandAllButton).toContainText('Collapse All');
 
     // Verify some child terms are visible
@@ -309,11 +325,9 @@ test.describe('Large Glossary Performance Tests', () => {
     await scrollGlossaryTermsToBottom(page);
 
     // Wait for more terms to load
-    await page
-      .locator(
-        '[data-testid="glossary-terms-scroll-container"] [data-testid="loader"]'
-      )
-      .waitFor({ state: 'detached' });
+    await waitForAllLoadersToDisappear(
+      page.locator('[data-testid="glossary-terms-scroll-container"]')
+    );
 
     await setGlossaryTermsScrollTop(page, scrollPositionBeforeLoad);
 
@@ -379,6 +393,7 @@ test.describe('Large Glossary Child Term Performace', () => {
   const glossaryTerms: GlossaryTerm[] = [];
 
   test.beforeAll(async ({ browser }) => {
+    glossaryTerms.length = 0;
     test.setTimeout(8 * 60 * 1000);
 
     const { apiContext, afterAction } = await createNewPage(browser);

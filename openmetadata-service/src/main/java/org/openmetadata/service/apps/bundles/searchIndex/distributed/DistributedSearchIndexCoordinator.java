@@ -30,16 +30,16 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingConfiguration;
 import org.openmetadata.service.apps.bundles.searchIndex.SearchIndexEntityTypes;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexJobDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexJobDAO.SearchIndexJobRecord;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexPartitionDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexPartitionDAO.AggregatedStatsRecord;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexPartitionDAO.EntityStatsRecord;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexPartitionDAO.SearchIndexPartitionRecord;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexPartitionDAO.ServerStatsRecord;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchReindexLockDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexJobDAO;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexJobDAO.SearchIndexJobRecord;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexPartitionDAO;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexPartitionDAO.AggregatedStatsRecord;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexPartitionDAO.EntityStatsRecord;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexPartitionDAO.SearchIndexPartitionRecord;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexPartitionDAO.ServerStatsRecord;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchReindexLockDAO;
 import org.openmetadata.service.util.RestUtil;
 
 /**
@@ -292,7 +292,7 @@ public class DistributedSearchIndexCoordinator {
    * make the {@code name > :afterName} predicate evaluate to NULL/false and return zero
    * rows.
    */
-  private <T extends org.openmetadata.schema.EntityInterface> void walkAndRecord(
+  private <T extends org.openmetadata.schema.EntityInterface<?>> void walkAndRecord(
       EntityRepository<T> repo, List<Long> sortedTargets, Map<Long, String> result) {
     ListFilter filter = repo.getReindexFilter();
     String afterName = "";
@@ -338,7 +338,7 @@ public class DistributedSearchIndexCoordinator {
     }
   }
 
-  private <T extends org.openmetadata.schema.EntityInterface> Object deserializeLast(
+  private <T extends org.openmetadata.schema.EntityInterface<?>> Object deserializeLast(
       EntityRepository<T> repo, List<String> batch) {
     return JsonUtils.readValue(batch.get(batch.size() - 1), repo.getEntityClass());
   }

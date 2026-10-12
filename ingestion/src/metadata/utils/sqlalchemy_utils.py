@@ -15,7 +15,6 @@ Module for sqlalchemy dialect utils
 """
 
 import traceback
-from typing import Dict, Optional, Tuple  # noqa: UP035
 
 from sqlalchemy import text
 from sqlalchemy.engine import Engine, reflection
@@ -32,7 +31,7 @@ def get_all_table_comments(self, connection, query):
     """
     Method to fetch comment of all available tables
     """
-    self.all_table_comments: Dict[Tuple[str, str], str] = {}  # noqa: UP006
+    self.all_table_comments: dict[tuple[str, str], str] = {}
     self.current_db: str = connection.engine.url.database
     result = connection.execute(text(query) if isinstance(query, str) else query)
     for table in result:
@@ -51,7 +50,7 @@ def get_all_table_owners(self, connection, query, schema_name, **kw):  # pylint:
     """
     Method to fetch owners of all available tables
     """
-    self.all_table_owners: Dict[Tuple[str, str], str] = {}  # noqa: UP006
+    self.all_table_owners: dict[tuple[str, str], str] = {}
     result = connection.execute(text(query) if isinstance(query, str) else query)
     for table in result:
         self.all_table_owners[(table[0], table[1])] = table[2]
@@ -68,7 +67,7 @@ def get_all_view_definitions(self, connection, query):
     """
     Method to fetch view definition of all available views
     """
-    self.all_view_definitions: Dict[Tuple[str, str], str] = {}  # noqa: UP006
+    self.all_view_definitions: dict[tuple[str, str], str] = {}
     self.current_db: str = connection.engine.url.database  # type: ignore
     result = connection.execute(text(query) if isinstance(query, str) else query)
     for view in result:
@@ -104,9 +103,9 @@ def is_complex_type(col_type: str):
 
 def get_display_datatype(
     col_type: str,
-    char_len: Optional[int],  # noqa: UP045
-    precision: Optional[int],  # noqa: UP045
-    scale: Optional[int],  # noqa: UP045
+    char_len: int | None,
+    precision: int | None,
+    scale: int | None,
 ):
     if char_len or (precision is not None and scale is None):
         length = char_len or scale
@@ -137,7 +136,7 @@ def get_all_table_ddls(self, connection, query, schema_name, **kw):  # pylint: d
     Method to fetch ddl of all available tables
     """
     try:
-        self.all_table_ddls: Dict[Tuple[str, str], str] = {}  # noqa: UP006
+        self.all_table_ddls: dict[tuple[str, str], str] = {}
         self.current_db: str = schema_name
         meta = MetaData()
         meta.reflect(bind=connection, schema=schema_name)
@@ -181,7 +180,7 @@ def get_schema_comment_results(self, connection, query, database, schema=None):
     """
     Method to fetch comment of all available schemas
     """
-    self.schema_comment_result: Dict[str, str] = {}  # noqa: UP006
+    self.schema_comment_result: dict[str, str] = {}
     self.current_db: str = database
     result = connection.execute(text(query) if isinstance(query, str) else query).fetchall()
     self.schema_comment_result[schema] = result
@@ -192,7 +191,7 @@ def get_table_comment_results(self, connection, query, database, table_name, sch
     """
     Method to fetch comment of all available tables
     """
-    self.table_comment_result: Dict[Tuple[str, str], str] = {}  # noqa: UP006
+    self.table_comment_result: dict[tuple[str, str], str] = {}
     self.current_db: str = database
     result = connection.execute(text(query) if isinstance(query, str) else query).fetchall()
     self.table_comment_result[(table_name, schema)] = result

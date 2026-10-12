@@ -13,8 +13,6 @@
 Source connection handler
 """
 
-from typing import Optional
-
 from botocore.client import BaseClient
 from confluent_kafka import Consumer as KafkaConsumer
 from confluent_kafka import TopicPartition
@@ -78,6 +76,10 @@ def _get_kafka_connection(
             "group.id": broker.consumerGroupName,
             "auto.offset.reset": broker.consumerOffsets.value,
             "security.protocol": security_protocol.value,
+            # The source stores each offset after its event is processed. The default
+            # stores it as soon as poll() returns the message, which commits an event
+            # before its lineage is written and loses it if the run stops mid-event.
+            "enable.auto.offset.store": False,
         }
         if requires_ssl and ssl_config is not None:
             # confluent_kafka's ssl.*.location keys take file paths, but the
@@ -151,8 +153,8 @@ class OpenLineageConnection(BaseConnection[OpenLineageConnectionConfig, KafkaCon
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part

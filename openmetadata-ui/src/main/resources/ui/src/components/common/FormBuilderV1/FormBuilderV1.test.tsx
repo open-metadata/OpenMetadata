@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import type { FormProps } from '@rjsf/core';
+import defaultValidator from '@rjsf/validator-ajv8';
 import {
   act,
   fireEvent,
@@ -29,6 +31,15 @@ const mockFormatFormDataForRender = jest.fn(
 );
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Box: jest.fn(
+    ({
+      children,
+      className,
+    }: {
+      children: React.ReactNode;
+      className?: string;
+    }) => <div className={className}>{children}</div>
+  ),
   Button: jest.fn(
     ({
       children,
@@ -109,7 +120,7 @@ describe('FormBuilderV1', () => {
 
     expect(mockFormatFormDataForRender).toHaveBeenCalledWith({ name: 'value' });
 
-    const lastFormProps = mockForm.mock.calls.at(-1)![0];
+    const lastFormProps = mockForm.mock.calls.at(-1)?.[0];
 
     expect(lastFormProps.formData).toEqual({
       name: 'value',
@@ -131,7 +142,7 @@ describe('FormBuilderV1', () => {
     );
 
     act(() => {
-      mockForm.mock.calls.at(-1)![0].onChange({
+      mockForm.mock.calls.at(-1)?.[0].onChange({
         formData: {
           name: 'changed',
         },
@@ -139,7 +150,7 @@ describe('FormBuilderV1', () => {
     });
 
     await waitFor(() => {
-      expect(mockForm.mock.calls.at(-1)![0].formData).toEqual({
+      expect(mockForm.mock.calls.at(-1)?.[0].formData).toEqual({
         name: 'changed',
       });
     });
@@ -149,7 +160,7 @@ describe('FormBuilderV1', () => {
     expect(onCancel).toHaveBeenCalled();
 
     await waitFor(() => {
-      expect(mockForm.mock.calls.at(-1)![0].formData).toEqual({
+      expect(mockForm.mock.calls.at(-1)?.[0].formData).toEqual({
         name: 'initial',
         formatted: true,
       });
@@ -176,12 +187,12 @@ describe('FormBuilderV1', () => {
     };
 
     act(() => {
-      mockForm.mock.calls.at(-1)![0].onChange(changeEvent);
+      mockForm.mock.calls.at(-1)?.[0].onChange(changeEvent);
     });
 
     expect(onChange).toHaveBeenCalledWith(changeEvent);
 
-    const submittedFormData = mockForm.mock.calls.at(-1)![0].formData;
+    const submittedFormData = mockForm.mock.calls.at(-1)?.[0].formData;
 
     fireEvent.submit(screen.getByTestId('rjsf-form'));
 
@@ -213,6 +224,25 @@ describe('FormBuilderV1', () => {
     );
   });
 
+  it('uses the default validator unless one is passed', () => {
+    const customValidator = {} as FormProps['validator'];
+    const { rerender } = render(
+      <FormBuilderV1 formData={{}} schema={schema} />
+    );
+
+    expect(mockForm.mock.calls.at(-1)?.[0].validator).toBe(defaultValidator);
+
+    rerender(
+      <FormBuilderV1
+        formData={{}}
+        schema={schema}
+        validator={customValidator}
+      />
+    );
+
+    expect(mockForm.mock.calls.at(-1)?.[0].validator).toBe(customValidator);
+  });
+
   it('disables submit when requested', () => {
     render(
       <FormBuilderV1
@@ -230,7 +260,7 @@ describe('FormBuilderV1', () => {
       <FormBuilderV1 formData={{ name: 'initial' }} schema={schema} />
     );
 
-    expect(mockForm.mock.calls.at(-1)![0].formData).toEqual({
+    expect(mockForm.mock.calls.at(-1)?.[0].formData).toEqual({
       name: 'initial',
       formatted: true,
     });
@@ -238,7 +268,7 @@ describe('FormBuilderV1', () => {
     rerender(<FormBuilderV1 formData={{ name: 'updated' }} schema={schema} />);
 
     await waitFor(() => {
-      expect(mockForm.mock.calls.at(-1)![0].formData).toEqual({
+      expect(mockForm.mock.calls.at(-1)?.[0].formData).toEqual({
         name: 'updated',
         formatted: true,
       });

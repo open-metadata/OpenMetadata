@@ -31,7 +31,6 @@ const AnnouncementItemV2 = ({
     entityFQN,
     entityName,
     entityType,
-    fieldOperation,
     timestamp,
     title,
     userName,
@@ -49,7 +48,6 @@ const AnnouncementItemV2 = ({
       entityName,
       entityType,
       entityFQN: fqn,
-      fieldOperation: undefined,
       columnName: '',
     };
   }, [announcement]);
@@ -80,7 +78,6 @@ const AnnouncementItemV2 = ({
         entityIcon={entityIcon}
         entityName={entityName}
         entityType={entityType}
-        fieldOperation={fieldOperation}
         timestamp={timestamp}
         title={title}
         userName={userName}

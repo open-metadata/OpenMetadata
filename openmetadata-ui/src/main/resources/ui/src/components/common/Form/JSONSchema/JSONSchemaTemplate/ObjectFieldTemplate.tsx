@@ -12,11 +12,12 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
+import { Box } from '@openmetadata/ui-core-components';
 import {
   ObjectFieldTemplatePropertyType,
   ObjectFieldTemplateProps,
 } from '@rjsf/utils';
-import { Button, Collapse, Space } from 'antd';
+import { Button, Collapse } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
 import { createElement, Fragment, FunctionComponent } from 'react';
@@ -72,7 +73,13 @@ export const ObjectFieldTemplate: FunctionComponent<
 
   const fieldElement = (
     <Fragment>
-      <Space className="w-full justify-between header-title-wrapper m-t-sm">
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal w-full justify-between header-title-wrapper m-t-sm"
+        gap={2}
+        itemClassName="layout-space-item">
+        {/* eslint-disable-next-line jsx-a11y/label-has-for -- caption, not a control */}
         <label
           className={classNames('control-label', {
             'font-medium text-base-color text-md': !schema.additionalProperties,
@@ -80,10 +87,16 @@ export const ObjectFieldTemplate: FunctionComponent<
           id={`${idSchema.$id}__title`}>
           {title}
         </label>
-      </Space>
+      </Box>
 
       {schema.additionalProperties && (
-        <Space className="w-full justify-between m-t-sm">
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal w-full justify-between m-t-sm"
+          gap={2}
+          itemClassName="layout-space-item">
+          {/* eslint-disable-next-line jsx-a11y/label-has-for -- caption, not a control */}
           <label
             className="font-medium text-base-color text-md"
             id={`${idSchema.$id}__AdditionalProperties-label`}>
@@ -105,7 +118,7 @@ export const ObjectFieldTemplate: FunctionComponent<
               }
             }}
           />
-        </Space>
+        </Box>
       )}
 
       {AdditionalField &&
@@ -113,12 +126,12 @@ export const ObjectFieldTemplate: FunctionComponent<
           data: additionalFieldContent,
         })}
 
-      {updatedNormalProperties.map((element, index) => (
+      {updatedNormalProperties.map((element) => (
         <div
           className={classNames('property-wrapper', {
             'additional-fields': schema.additionalProperties,
           })}
-          key={`${element.content.key}-${index}`}>
+          key={element.content.key}>
           {element.content}
         </div>
       ))}
@@ -128,12 +141,12 @@ export const ObjectFieldTemplate: FunctionComponent<
           className="advanced-properties-collapse m-t-sm"
           expandIconPosition="end">
           <Panel header={`${title} ${t('label.advanced-config')}`} key="1">
-            {advancedProperties.map((element, index) => (
+            {advancedProperties.map((element) => (
               <div
                 className={classNames('property-wrapper', {
                   'additional-fields': schema.additionalProperties,
                 })}
-                key={`${element.content.key}-${index}`}>
+                key={element.content.key}>
                 {element.content}
               </div>
             ))}

@@ -106,7 +106,8 @@ describe('CanvasButtonPopover', () => {
       />
     );
 
-    const popover = screen.getByTestId('entity-popover-card').parentElement;
+    const popover = screen.getByTestId('entity-popover-card')
+      .parentElement as HTMLElement;
 
     expect(popover).toHaveStyle({
       position: 'absolute',
@@ -144,7 +145,7 @@ describe('CanvasButtonPopover', () => {
     );
 
     const extraInfo = screen.getByTestId('extra-info');
-    const tag = extraInfo.querySelector('.green');
+    const tag = extraInfo.querySelector('[class*="bg-utility-success-50"]');
 
     expect(tag).toBeInTheDocument();
     expect(tag).toHaveTextContent('Successful');
@@ -194,9 +195,10 @@ describe('CanvasButtonPopover', () => {
       />
     );
 
-    const popover = screen.getByTestId('entity-popover-card').parentElement;
+    const popover = screen.getByTestId('entity-popover-card')
+      .parentElement as HTMLElement;
 
-    fireEvent.mouseEnter(popover!);
+    fireEvent.mouseEnter(popover);
 
     expect(mockIsOverPopoverRef.current).toBe(true);
     expect(mockHoverTimeoutRef.current).toBeNull();
@@ -214,9 +216,10 @@ describe('CanvasButtonPopover', () => {
       />
     );
 
-    const popover = screen.getByTestId('entity-popover-card').parentElement;
+    const popover = screen.getByTestId('entity-popover-card')
+      .parentElement as HTMLElement;
 
-    fireEvent.mouseLeave(popover!);
+    fireEvent.mouseLeave(popover);
 
     expect(mockOnMouseLeave).toHaveBeenCalledTimes(1);
   });
@@ -249,7 +252,7 @@ describe('CanvasButtonPopover', () => {
     );
 
     const extraInfo = screen.getByTestId('extra-info');
-    const tag = extraInfo.querySelector('.red');
+    const tag = extraInfo.querySelector('[class*="bg-utility-error-50"]');
 
     expect(tag).toBeInTheDocument();
     expect(tag).toHaveTextContent('Failed');
@@ -283,7 +286,7 @@ describe('CanvasButtonPopover', () => {
     );
 
     const extraInfo = screen.getByTestId('extra-info');
-    const tag = extraInfo.querySelector('.amber');
+    const tag = extraInfo.querySelector('[class*="bg-utility-warning-50"]');
 
     expect(tag).toBeInTheDocument();
     expect(tag).toHaveTextContent('Pending');
@@ -301,7 +304,8 @@ describe('CanvasButtonPopover', () => {
       />
     );
 
-    const popover = screen.getByTestId('entity-popover-card').parentElement;
+    const popover = screen.getByTestId('entity-popover-card')
+      .parentElement as HTMLElement;
 
     expect(popover).toHaveStyle({
       pointerEvents: 'all',

@@ -39,6 +39,7 @@ const SelectWidget: FC<WidgetProps> = (props) => {
     <Select
       allowClear
       showSearch
+      // eslint-disable-next-line jsx-a11y/no-autofocus -- autofocus is driven by the JSON schema widget config
       autoFocus={rest.autofocus}
       className="d-block w-full"
       data-testid={`select-widget-${rest.id}`}

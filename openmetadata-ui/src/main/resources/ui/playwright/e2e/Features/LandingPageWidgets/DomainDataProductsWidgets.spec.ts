@@ -10,17 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page, test as base } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
 import { SidebarItem } from '../../../constant/sidebar';
 import { DataProduct } from '../../../support/domain/DataProduct';
 import { Domain } from '../../../support/domain/Domain';
 import { SubDomain } from '../../../support/domain/SubDomain';
 import { TableClass } from '../../../support/entity/TableClass';
 import { TopicClass } from '../../../support/entity/TopicClass';
+import { test as base } from '../../../support/fixtures/base';
 import { PersonaClass } from '../../../support/persona/PersonaClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
-import { redirectToHomePage, removeLandingBanner } from '../../../utils/common';
+import { redirectToHomePage } from '../../../utils/common';
 import {
   addAndVerifyWidget,
   setUserDefaultPersona,
@@ -36,7 +37,10 @@ import {
   selectDomain,
 } from '../../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
-import { waitForEntitySearchable } from '../../../utils/search';
+import {
+  waitForDomainAssetCount,
+  waitForEntitySearchable,
+} from '../../../utils/search';
 import { sidebarClick } from '../../../utils/sidebar';
 
 const adminUser = new UserClass();
@@ -60,7 +64,7 @@ const topic = new TopicClass();
 const test = base.extend<{ page: Page }>({
   page: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await adminUser.login(page);
+    await adminUser.signIn(page);
     await use(page);
     await page.close();
   },
@@ -92,10 +96,8 @@ base.afterAll('Cleanup', async ({ browser }) => {
 });
 
 test.describe.serial('Domain and Data Product Asset Counts', () => {
-  test.slow(); // Slow Test
   test.beforeEach(async ({ page }, testInfo) => {
     await redirectToHomePage(page, false);
-    await removeLandingBanner(page);
     await waitForAllLoadersToDisappear(page).catch(() => undefined);
 
     if (testInfo.title !== 'Assign Widgets') {
@@ -112,7 +114,6 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
         dataProduct.responseData.id ?? ''
       );
       await redirectToHomePage(page, false);
-      await removeLandingBanner(page);
       await waitForAllLoadersToDisappear(page).catch(() => undefined);
     }
   });
@@ -133,8 +134,8 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
   });
 
   test('Verify Widgets are having 0 count initially', async ({ page }) => {
+    test.slow();
     await redirectToHomePage(page, false);
-    await removeLandingBanner(page);
     await waitForAllLoadersToDisappear(page).catch(() => undefined);
 
     await verifyWidgetCountOnCurrentPage(
@@ -163,6 +164,7 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
   test('Domain asset count should update when assets are added', async ({
     page,
   }) => {
+    test.slow();
     await redirectToHomePage(page);
     await waitForAllLoadersToDisappear(page);
     await sidebarClick(page, SidebarItem.DOMAIN);
@@ -204,6 +206,7 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
   test('Domain asset count should update when assets are removed', async ({
     page,
   }) => {
+    test.slow();
     await redirectToHomePage(page);
     await waitForAllLoadersToDisappear(page);
     await sidebarClick(page, SidebarItem.DOMAIN);
@@ -212,10 +215,32 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
     await page.getByTestId('assets').click();
     await checkAssetsCount(page, 2);
 
+    const topicName = topic.entityResponseData.name;
     const topicFqn = topic.entityResponseData.fullyQualifiedName;
+    // Narrow the list to just the topic before .check() — the asset
+    // card body streams tags/owners/counts after the initial render,
+    // and the sibling table's card re-renders shift the topic card's
+    // Y-position for the full test timeout. Narrowing to one card
+    // eliminates the neighbor and lets the layout settle. Tab wraps
+    // `q=*<value>*`, so match the name anywhere in the URL.
+    const narrowRes = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes(topicName)
+    );
+    await page.getByTestId('searchbar').fill(topicName);
+    await narrowRes;
+    await waitForAllLoadersToDisappear(page);
+
     await page
-      .locator(`[data-testid="table-data-card_${topicFqn}"] input`)
+      .locator(`[data-testid="table-data-card_${topicFqn}"]`)
+      .getByTestId('asset-checkbox')
       .check();
+    // Clear so delete-all's post-flow sees the domain-wide state, not
+    // a filtered subset (delete-all acts on selectedItems, but the
+    // dry-run modal preview shows the visible list).
+    await page.getByTestId('searchbar').clear();
+    await waitForAllLoadersToDisappear(page);
 
     const dryRunRes = page.waitForResponse(
       (r) =>
@@ -236,6 +261,16 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
       .click();
     await removeRes;
 
+    // The remove mutation returns before Elasticsearch is refreshed, and both
+    // the assets-tab badge and the landing-page widget read the count exactly
+    // once per page load. Wait for the search index to reflect the removal
+    // before reloading so those single-shot reads snapshot the updated count.
+    await waitForDomainAssetCount(
+      page,
+      domain.responseData.fullyQualifiedName ?? domain.data.name,
+      1
+    );
+
     await page.reload();
     await checkAssetsCount(page, 1);
 
@@ -250,6 +285,7 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
   test('Data Product asset count should update when assets are removed', async ({
     page,
   }) => {
+    test.slow();
     await redirectToHomePage(page);
     await waitForAllLoadersToDisappear(page);
     await sidebarClick(page, SidebarItem.DATA_PRODUCT);
@@ -267,15 +303,14 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
 
     // Remove every asset currently attached to the data product. The card
     // list paints asynchronously after the assets response resolves, and
-    // count() does not auto-wait — so wait for the first card to render
-    // before counting, otherwise the loop reads 0 and removes nothing.
+    // all() does not auto-wait — so wait for at least one card to render
+    // before enumerating, otherwise the loop reads 0 and removes nothing.
     await waitForAllLoadersToDisappear(page);
     const assetCard = page.locator('[data-testid^="table-data-card_"]');
-    await assetCard.first().waitFor({ state: 'visible' });
+    await expect(assetCard).not.toHaveCount(0);
 
-    const attachedCount = await assetCard.count();
-    for (let i = 0; i < attachedCount; i++) {
-      await assetCard.nth(i).locator('input[type="checkbox"]').check();
+    for (const card of await assetCard.all()) {
+      await card.getByTestId('asset-checkbox').check();
     }
 
     const removeRes = page.waitForResponse('**/assets/remove');

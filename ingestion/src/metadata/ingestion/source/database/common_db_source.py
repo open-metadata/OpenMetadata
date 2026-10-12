@@ -15,8 +15,9 @@ Generic source to build SQL connectors.
 import copy
 import traceback
 from abc import ABC
+from collections.abc import Iterable
 from copy import deepcopy
-from typing import Any, Dict, Iterable, List, Optional, Tuple, cast  # noqa: UP035
+from typing import Any, cast
 
 from pydantic import BaseModel
 from sqlalchemy.engine import Connection
@@ -84,8 +85,8 @@ logger = ingestion_logger()
 class ColumnAndReferredColumn(BaseModel):
     table_name: str
     schema_name: str
-    db_name: Optional[str]  # noqa: UP045
-    column: Dict  # noqa: UP006
+    db_name: str | None
+    column: dict
 
 
 class TableNameAndType(BaseModel):
@@ -215,19 +216,19 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
 
         yield database_name
 
-    def get_database_description(self, database_name: str) -> Optional[str]:  # noqa: UP045
+    def get_database_description(self, database_name: str) -> str | None:
         """
         Method to fetch the database description
         by default there will be no database description
         """
 
-    def get_schema_description(self, schema_name: str) -> Optional[str]:  # noqa: UP045
+    def get_schema_description(self, schema_name: str) -> str | None:
         """
         Method to fetch the schema description
         by default there will be no schema description
         """
 
-    def get_stored_procedure_description(self, stored_procedure: str) -> Optional[str]:  # noqa: UP045
+    def get_stored_procedure_description(self, stored_procedure: str) -> str | None:
         """
         Method to fetch the stored procedure description
         by default there will be no stored procedure description
@@ -367,7 +368,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
             for table_name in self.inspector.get_view_names(schema_name) or []
         ]
 
-    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, TableType]]]:  # noqa: UP006, UP045
+    def get_tables_name_and_type(self) -> Iterable[tuple[str, TableType]] | None:
         """
         Handle table and views.
 
@@ -451,7 +452,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         table_name: str,
         schema_name: str,
         inspector: Inspector,
-    ) -> Optional[str]:  # noqa: UP045
+    ) -> str | None:
         """
         Get the DDL statement or View Definition for a table
         """
@@ -492,7 +493,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         table_name: str,
         schema_name: str,
         inspector: Inspector,
-    ) -> Tuple[bool, Optional[TablePartition]]:  # noqa: UP006, UP045
+    ) -> tuple[bool, TablePartition | None]:
         """
         check if the table is partitioned table and return the partition details
         """
@@ -514,7 +515,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
     def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
         """Not Implemented"""
 
-    def get_location_path(self, table_name: str, schema_name: str) -> Optional[str]:  # noqa: UP045
+    def get_location_path(self, table_name: str, schema_name: str) -> str | None:
         """
         Method to fetch the location path of the table
         by default there will be no location path
@@ -529,7 +530,20 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         Method to fetch the extensions of the table
         """
 
-    def yield_table(self, table_name_and_type: Tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:  # noqa: UP006
+    def get_table_aliases(
+        self,
+        table_name: str,  # pyright: ignore[reportUnusedParameter]
+        schema_name: str,  # pyright: ignore[reportUnusedParameter]
+    ) -> list[str] | None:
+        """
+        Alternate fully qualified SQL names that resolve to this table.
+
+        Connectors that expose database-native alternate names for a table
+        override this. The list is source-managed: it is recomputed from the
+        source on every run and replaces whatever is stored.
+        """
+
+    def yield_table(self, table_name_and_type: tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.
         Prepare a table request and pass it to the sink
@@ -578,6 +592,8 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
                 else None
             )
 
+            table_aliases = self.get_table_aliases(table_name=table_name, schema_name=schema_name)
+
             table_request = CreateTableRequest(
                 name=EntityName(table_name),
                 tableType=table_type,
@@ -594,7 +610,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
                         schema_name=schema_name,
                     )
                 ),
-                tags=self.get_tag_labels(table_name=table_name),  # Pick tags from context info, if any
+                tags=self.get_tag_labels(table_name=table_name),
                 sourceUrl=self.get_source_url(
                     table_name=table_name,
                     schema_name=schema_name,
@@ -604,6 +620,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
                 owners=self.get_owner_ref(table_name=table_name),
                 locationPath=self.get_location_path(table_name=table_name, schema_name=schema_name),
                 extension=self.get_table_extensions(table_name=table_name, table_type=table_type),
+                aliases=([FullyQualifiedEntityName(alias) for alias in table_aliases] if table_aliases else None),
             )
 
             is_partitioned, partition_details = self.get_table_partition_details(
@@ -632,21 +649,18 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
     def _prepare_foreign_constraints(  # pylint: disable=too-many-arguments, too-many-locals
         self,
         supports_database: bool,
-        column: Dict,  # noqa: UP006
+        column: dict,
         table_name: str,
         schema_name: str,
         db_name: str,
-        columns: List[Column],  # noqa: UP006
+        columns: list[Column],
         add_to_global: bool = True,
     ):
         """
         Method to prepare the foreign constraints
         """
         referred_column_fqns = []
-        if supports_database:
-            database_name = column.get("referred_database")
-        else:
-            database_name = self.context.get().database
+        database_name = (column.get("referred_database") if supports_database else None) or self.context.get().database  # pyright: ignore[reportAttributeAccessIssue]
 
         referred_schema = column.get("referred_schema") or schema_name
         referred_table_fqn = (
@@ -689,9 +703,9 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         table_name,
         schema_name,
         db_name,
-        foreign_columns: List[Dict],  # noqa: UP006
-        columns: List[Column],  # noqa: UP006
-    ) -> List[TableConstraint]:  # noqa: UP006
+        foreign_columns: list[dict],
+        columns: list[Column],
+    ) -> list[TableConstraint]:
         """
         Search the referred table for foreign constraints
         and get referred column fqn
@@ -716,7 +730,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         table_constraints,
         foreign_columns,
         columns,
-    ) -> List[TableConstraint]:  # noqa: UP006
+    ) -> list[TableConstraint]:
         """
         From topology.
         process the table constraints of all tables
@@ -784,11 +798,11 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
 
     def get_source_url(
         self,
-        database_name: Optional[str] = None,  # noqa: UP045
-        schema_name: Optional[str] = None,  # noqa: UP045
-        table_name: Optional[str] = None,  # noqa: UP045
-        table_type: Optional[TableType] = None,  # noqa: UP045
-    ) -> Optional[str]:  # noqa: UP045
+        database_name: str | None = None,
+        schema_name: str | None = None,
+        table_name: str | None = None,
+        table_type: TableType | None = None,
+    ) -> str | None:
         """
         By default the source url is not supported for
         """
@@ -799,32 +813,49 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         """
         supports_database = hasattr(self.service_connection, "supportsDatabase")
 
+        # One PATCH per table: fewer round trips than one per deferred FK.
+        grouped: dict[str, list[ColumnAndReferredColumn]] = {}
         for foreign_table in self.context.get_global().foreign_tables or []:
-            try:
-                foreign_constraints = []
-                table_fqn = fqn.build(
-                    metadata=self.metadata,
-                    entity_type=Table,
-                    service_name=self.context.get().database_service,
-                    database_name=foreign_table.db_name,
-                    schema_name=foreign_table.schema_name,
-                    table_name=foreign_table.table_name,
+            table_fqn = fqn.build(
+                metadata=self.metadata,
+                entity_type=Table,
+                service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                database_name=foreign_table.db_name,
+                schema_name=foreign_table.schema_name,
+                table_name=foreign_table.table_name,
+            )
+            if not table_fqn:
+                logger.warning(
+                    "Could not build FQN for table [%s.%s], skipping its foreign key constraints",
+                    foreign_table.schema_name,
+                    foreign_table.table_name,
                 )
-                table = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
-                if table:
+                continue
+            grouped.setdefault(table_fqn, []).append(foreign_table)
+
+        for table_fqn, foreign_table_list in grouped.items():
+            try:
+                # tableConstraints is not a default field: without it the table comes back with
+                # tableConstraints=None, the patch becomes `add /tableConstraints` and replaces
+                # every constraint already stored (PK/UNIQUE and FKs resolved at creation time).
+                table = self.metadata.get_by_name(entity=Table, fqn=table_fqn, fields=["tableConstraints"])
+                if not table:
+                    continue
+
+                foreign_constraints = []
+                for foreign_table in foreign_table_list:
                     foreign_constraint = self._prepare_foreign_constraints(
                         supports_database,
                         foreign_table.column,
                         foreign_table.table_name,
                         foreign_table.schema_name,
-                        foreign_table.db_name,
+                        foreign_table.db_name,  # pyright: ignore[reportArgumentType]
                         table.columns,
                         False,
                     )
                     if foreign_constraint:
                         foreign_constraints.append(foreign_constraint)
 
-                # send the patch request
                 if foreign_constraints:
                     new_entity = copy.deepcopy(table)
                     new_entity.tableConstraints = (new_entity.tableConstraints or []) + foreign_constraints
@@ -835,10 +866,11 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
                     )
                     yield Either(right=patch_request)
             except Exception as exc:
+                first = foreign_table_list[0]
                 yield Either(
                     left=StackTraceError(
-                        name=str(foreign_table.table_name),
-                        error=f"Error to yield tableConstraints for {str(foreign_table.table_name)}: {exc}",  # noqa: RUF010
+                        name=str(first.table_name),
+                        error=f"Error to yield tableConstraints for {str(first.table_name)}: {exc}",  # noqa: RUF010
                         stackTrace=traceback.format_exc(),
                     )
                 )

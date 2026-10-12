@@ -13,8 +13,8 @@ Trino usage module
 """
 
 import traceback
+from collections.abc import Iterable
 from datetime import timedelta
-from typing import Iterable  # noqa: UP035
 
 from sqlalchemy import text
 
@@ -109,6 +109,7 @@ class TrinoUsageSource(TrinoQueryParserSource, UsageSource):
                             f"Fetching next page with offset {offset} (fetched {total_fetched}/{max_results}) "
                             f"for {(self.start + timedelta(days=days)).date()}"
                         )
+                    self.warn_if_query_log_truncated(total_fetched, "usage")
             except Exception as exc:
                 if query:
                     logger.debug(

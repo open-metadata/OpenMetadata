@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { useTourProvider } from '../../context/TourProvider/TourProvider';
+import {
+  TourProviderContextProps,
+  useTourProvider,
+} from '../../context/TourProvider/TourProvider';
 import { SearchIndex } from '../../enums/search.enum';
 import { searchQuery } from '../../rest/searchAPI';
 import Suggestions from './Suggestions';
@@ -22,7 +25,8 @@ jest.mock('../../context/TourProvider/TourProvider');
 jest.mock('../../utils/SearchUtils', () => ({
   filterOptionsByIndex: jest.fn((options, index) => {
     return options.filter(
-      (option: any) => option._source?.entityType === index
+      (option: { _source?: { entityType?: string } }) =>
+        option._source?.entityType === index
     );
   }),
   getGroupLabel: jest.fn((index) => `Group ${index}`),
@@ -157,7 +161,7 @@ describe('Suggestions Component', () => {
         isTourOpen: true,
         updateTourPage: jest.fn(),
         updateTourSearch: jest.fn(),
-      } as any);
+      } as unknown as TourProviderContextProps);
 
       render(<Suggestions {...defaultProps} />);
 

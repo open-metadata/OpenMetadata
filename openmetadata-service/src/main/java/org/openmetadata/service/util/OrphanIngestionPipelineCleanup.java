@@ -31,7 +31,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipObject;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipObject;
 
 /**
  * Finds and hard-deletes ingestion pipelines whose container {@code CONTAINS} relationship row is

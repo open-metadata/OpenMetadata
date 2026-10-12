@@ -60,8 +60,6 @@ export const Focus = Extension.create<FocusOptions>({
                 }
 
                 maxLevels += 1;
-
-                return;
               });
             }
 
@@ -96,8 +94,6 @@ export const Focus = Extension.create<FocusOptions>({
                   class: this.options.className,
                 })
               );
-
-              return;
             });
 
             return DecorationSet.create(doc, decorations);

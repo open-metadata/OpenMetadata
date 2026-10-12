@@ -20,6 +20,7 @@ import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -58,19 +59,27 @@ class DistributedIndexingStrategyTest {
 
   private CollectionDAO collectionDAO;
   private SearchRepository searchRepository;
+  private ReindexStopSignal stopSignal;
   private DistributedIndexingStrategy strategy;
 
   @BeforeEach
   void setUp() {
     collectionDAO = mock(CollectionDAO.class);
     searchRepository = mock(SearchRepository.class);
+    stopSignal = new ReindexStopSignal();
     strategy =
         new DistributedIndexingStrategy(
-            collectionDAO, searchRepository, new EventPublisherJob(), APP_ID, 1234L, "admin");
+            collectionDAO,
+            searchRepository,
+            new EventPublisherJob(),
+            APP_ID,
+            1234L,
+            "admin",
+            stopSignal);
   }
 
   @Test
-  void lifecycleHelpersExposeInjectedStateAndStopDelegatesOnce() throws Exception {
+  void lifecycleHelpersExposeInjectedStateAndReadTheRunStopSignal() throws Exception {
     ReindexingProgressListener listener = mock(ReindexingProgressListener.class);
     DistributedSearchIndexExecutor executor = mock(DistributedSearchIndexExecutor.class);
 
@@ -82,13 +91,11 @@ class DistributedIndexingStrategyTest {
     assertEquals(1, ((CompositeProgressListener) getField("listeners")).getListenerCount());
 
     setField("distributedExecutor", executor);
-    strategy.stop();
-    strategy.stop();
+    stopSignal.requestStop();
 
     assertTrue(strategy.isStopped());
     assertNotNull(strategy.getStats());
     assertEquals(executor, strategy.getDistributedExecutor());
-    verify(executor, times(1)).stop();
   }
 
   @Test
@@ -130,6 +137,30 @@ class DistributedIndexingStrategyTest {
       assertEquals(
           FullyQualifiedName.buildHash(reportDataType),
           filterCaptor.getValue().getQueryParams().get("entityFQNHash"));
+    }
+  }
+
+  @Test
+  @SuppressWarnings({"rawtypes", "unchecked"})
+  void initializeTotalRecordsTracksColumnsWithTablesOnlyWhileColumnIndexingIsOn() {
+    EntityRepository entityRepository = mock(EntityRepository.class);
+    EntityDAO entityDao = mock(EntityDAO.class);
+    when(entityRepository.getDao()).thenReturn(entityDao);
+    when(entityRepository.getReindexFilter()).thenReturn(new ListFilter(Include.ALL));
+    when(entityDao.listCount(any(ListFilter.class))).thenReturn(7);
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(entityRepository);
+
+      when(searchRepository.isColumnIndexingEnabled()).thenReturn(true);
+      Stats withColumns = strategy.initializeTotalRecords(Set.of(Entity.TABLE));
+      when(searchRepository.isColumnIndexingEnabled()).thenReturn(false);
+      Stats withoutColumns = strategy.initializeTotalRecords(Set.of(Entity.TABLE));
+
+      assertNotNull(
+          withColumns.getEntityStats().getAdditionalProperties().get(Entity.TABLE_COLUMN));
+      assertNull(
+          withoutColumns.getEntityStats().getAdditionalProperties().get(Entity.TABLE_COLUMN));
     }
   }
 
@@ -227,9 +258,11 @@ class DistributedIndexingStrategyTest {
     assertEquals(18, stats.getReaderStats().getSuccessRecords());
     assertEquals(1, stats.getReaderStats().getFailedRecords());
     assertEquals(1, stats.getReaderStats().getWarningRecords());
-    assertEquals(17, stats.getProcessStats().getTotalRecords());
+    // 18 rows reached the doc build: 14 indexed, 3 failed, and the remaining one warned
+    assertEquals(18, stats.getProcessStats().getTotalRecords());
     assertEquals(14, stats.getProcessStats().getSuccessRecords());
     assertEquals(3, stats.getProcessStats().getFailedRecords());
+    assertEquals(1, stats.getProcessStats().getWarningRecords());
     assertEquals(17, stats.getSinkStats().getTotalRecords());
     assertEquals(15, stats.getSinkStats().getSuccessRecords());
     assertEquals(2, stats.getSinkStats().getFailedRecords());
@@ -474,7 +507,7 @@ class DistributedIndexingStrategyTest {
         (Boolean)
             invokePrivate("hasIncompleteProcessing", new Class<?>[] {Stats.class}, withFailures));
 
-    strategy.stop();
+    stopSignal.requestStop();
     assertEquals(
         ExecutionResult.Status.STOPPED,
         invokePrivate("determineStatus", new Class<?>[] {Stats.class}, complete));
@@ -800,6 +833,41 @@ class DistributedIndexingStrategyTest {
       assertEquals(5, result.totalRecords());
       assertNotNull(result.finalStats());
       assertEquals(1, executorConstruction.constructed().size());
+    }
+  }
+
+  /**
+   * Regression: a stop that landed before the executor existed had no executor to reach, so it
+   * created and started the job the user had stopped. The executor now joins the run's stop signal.
+   */
+  @Test
+  @SuppressWarnings({"rawtypes", "unchecked"})
+  void executorJoinsTheRunStopSignal() {
+    EntityRepository entityRepository = mock(EntityRepository.class);
+    EntityDAO entityDao = mock(EntityDAO.class);
+
+    when(entityRepository.getDao()).thenReturn(entityDao);
+    when(entityRepository.getReindexFilter()).thenReturn(new ListFilter(Include.ALL));
+    when(entityDao.listCount(any(ListFilter.class))).thenReturn(5);
+
+    List<Object> executorArguments = new ArrayList<>();
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedConstruction<DistributedSearchIndexExecutor> ignoredExecutor =
+            mockConstruction(
+                DistributedSearchIndexExecutor.class,
+                (mock, construction) -> {
+                  executorArguments.addAll(construction.arguments());
+                  doThrow(new RuntimeException("end the run before job creation"))
+                      .when(mock)
+                      .performStartupRecovery();
+                })) {
+      entityMock.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(entityRepository);
+
+      strategy.execute(
+          ReindexingConfiguration.builder().entities(Set.of(Entity.TABLE)).build(),
+          context(APP_ID));
+
+      assertTrue(executorArguments.contains(stopSignal));
     }
   }
 

@@ -25,9 +25,9 @@ import org.openmetadata.service.csv.CsvAsyncJobManager;
 /**
  * Keeps {@code background_jobs} bounded and reaps jobs whose worker stopped responding.
  *
- * <p>The table is shared: CSV and audit exports live there alongside custom-property enum cleanup.
- * Pruning terminal rows therefore applies to every job type, while export-payload retention is
- * delegated to {@link CsvAsyncJobManager} because only export jobs carry a payload.
+ * <p>The table is shared: CSV, audit, and ontology jobs live there alongside custom-property enum
+ * cleanup. Pruning terminal rows therefore applies to every job type, while export-payload
+ * retention is delegated to {@link CsvAsyncJobManager} because only export jobs carry a payload.
  *
  * <p>Reaping used to happen once at startup and failed every RUNNING job unconditionally, so in a
  * multi-server deployment a pod coming up during a rolling deploy killed the jobs its peers were
@@ -50,6 +50,7 @@ public class BackgroundJobCleanupScheduler implements Managed {
   private static final Duration JOB_ROW_RETENTION = Duration.ofDays(7);
   private static final int PRUNE_BATCH_SIZE = 500;
   private static final int PRUNE_MAX_ITERATIONS = 100;
+  private static final int MEMORY_REQUEUE_MAX_ITERATIONS = 500;
 
   private final JobDAO jobDao;
   private final CsvAsyncJobManager csvJobManager;
@@ -83,13 +84,42 @@ public class BackgroundJobCleanupScheduler implements Managed {
     }
   }
 
-  private void runCleanupSafely() {
+  void runCleanupSafely() {
     try {
-      csvJobManager.runCleanupOnce();
-      pruneTerminalJobRows(System.currentTimeMillis() - JOB_ROW_RETENTION.toMillis());
-    } catch (Exception e) {
-      LOG.warn("Failed to run background job cleanup", e);
+      runCleanupOnce(System.currentTimeMillis());
+    } catch (RuntimeException exception) {
+      LOG.warn("Failed to run background job cleanup", exception);
     }
+  }
+
+  void runCleanupOnce(final long now) {
+    final long staleBefore = now - GenericBackgroundWorker.RUNNING_JOB_STALE_AFTER.toMillis();
+    final int requeuedMemoryJobs = requeueStaleMemoryJobs(now, staleBefore);
+    if (requeuedMemoryJobs > 0) {
+      LOG.info("Requeued {} interrupted memory extraction jobs", requeuedMemoryJobs);
+    }
+    final int supersededMemoryJobs = jobDao.cancelStaleMemoryJobsWithPending(now, staleBefore);
+    if (supersededMemoryJobs > 0) {
+      LOG.info("Cancelled {} superseded memory extraction jobs", supersededMemoryJobs);
+    }
+    final int failedJobs = jobDao.markStaleRunningJobsFailed(now, staleBefore);
+    if (failedJobs > 0) {
+      LOG.info("Marked {} unresponsive background jobs as failed", failedJobs);
+    }
+    csvJobManager.runCleanupOnce();
+    pruneTerminalJobRows(now - JOB_ROW_RETENTION.toMillis());
+  }
+
+  private int requeueStaleMemoryJobs(long now, long staleBefore) {
+    int requeued = 0;
+    for (int iteration = 0; iteration < MEMORY_REQUEUE_MAX_ITERATIONS; iteration++) {
+      if (jobDao.requeueStaleMemoryJobs(now, staleBefore) == 0) {
+        return requeued;
+      }
+      requeued++;
+    }
+    LOG.warn("Memory job recovery reached its {} job limit", MEMORY_REQUEUE_MAX_ITERATIONS);
+    return requeued;
   }
 
   /**

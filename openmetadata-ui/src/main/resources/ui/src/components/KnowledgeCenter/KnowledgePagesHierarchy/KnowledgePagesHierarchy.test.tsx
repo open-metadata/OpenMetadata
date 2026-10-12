@@ -327,12 +327,14 @@ describe('KnowledgePagesHierarchy', () => {
     const row = screen
       .getByText('How to Discover Assets of Interest')
       .closest('[role="row"]');
-    const expandBtn = row?.querySelector('button[slot="chevron"]');
+    const expandBtn = row?.querySelector(
+      'button[slot="chevron"]'
+    ) as HTMLElement;
 
     expect(expandBtn).not.toBeNull();
 
     await act(async () => {
-      fireEvent.click(expandBtn!);
+      fireEvent.click(expandBtn);
     });
 
     expect(
@@ -358,12 +360,12 @@ describe('KnowledgePagesHierarchy', () => {
     const row = screen
       .getByText('How to Discover Assets of Interest')
       .closest('[role="row"]');
-    const chevron = row?.querySelector('button[slot="chevron"]');
+    const chevron = row?.querySelector('button[slot="chevron"]') as HTMLElement;
 
     expect(chevron).not.toBeNull();
 
     await act(async () => {
-      fireEvent.click(chevron!);
+      fireEvent.click(chevron);
     });
 
     expect(
@@ -371,7 +373,7 @@ describe('KnowledgePagesHierarchy', () => {
     ).toBeInTheDocument();
 
     await act(async () => {
-      fireEvent.click(chevron!);
+      fireEvent.click(chevron);
     });
 
     expect(
@@ -416,6 +418,90 @@ describe('KnowledgePagesHierarchy', () => {
     fireEvent.click(deleteButton);
 
     expect(screen.getByTestId('delete-widget')).toBeInTheDocument();
+  });
+
+  it('should not render the delete button when Delete permission is denied', async () => {
+    await act(async () => {
+      render(
+        <KnowledgePagesHierarchy permissions={DEFAULT_ENTITY_PERMISSION} />,
+        { wrapper: TestWrapper }
+      );
+    });
+
+    expect(
+      screen.queryByTestId('How to Discover Assets of Interest-delete-page-btn')
+    ).not.toBeInTheDocument();
+  });
+
+  describe('move to top level (root drop)', () => {
+    const dropOnContainer = (sourceKey: string) => {
+      const container = screen.getByTestId(
+        'knowledge-pages-hierarchy-container'
+      );
+
+      fireEvent.drop(container, {
+        dataTransfer: { getData: () => sourceKey },
+      });
+    };
+
+    // The child article whose parent is 'Article_XJIGIKX2' — a node with a
+    // parent is the only case that can be moved up to the root.
+    const childKey = 'Article_2p7Z8MAN';
+
+    it('should open the move confirmation when a nested page is dropped on the root container', async () => {
+      await act(async () => {
+        render(
+          <KnowledgePagesHierarchy
+            permissions={{ ...DEFAULT_ENTITY_PERMISSION, EditAll: true }}
+          />,
+          { wrapper: TestWrapper }
+        );
+      });
+
+      await act(async () => {
+        dropOnContainer(childKey);
+      });
+
+      expect(
+        await screen.findByText('label.move-the-entity')
+      ).toBeInTheDocument();
+    });
+
+    it('should ignore a root drop when EditAll permission is denied', async () => {
+      await act(async () => {
+        render(
+          <KnowledgePagesHierarchy permissions={DEFAULT_ENTITY_PERMISSION} />,
+          { wrapper: TestWrapper }
+        );
+      });
+
+      await act(async () => {
+        dropOnContainer(childKey);
+      });
+
+      expect(
+        screen.queryByText('label.move-the-entity')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should ignore a root drop of a page that is already at the root', async () => {
+      await act(async () => {
+        render(
+          <KnowledgePagesHierarchy
+            permissions={{ ...DEFAULT_ENTITY_PERMISSION, EditAll: true }}
+          />,
+          { wrapper: TestWrapper }
+        );
+      });
+
+      await act(async () => {
+        dropOnContainer('Article_XJIGIKX2');
+      });
+
+      expect(
+        screen.queryByText('label.move-the-entity')
+      ).not.toBeInTheDocument();
+    });
   });
 
   describe('loadNodeChildren', () => {
@@ -474,10 +560,12 @@ describe('KnowledgePagesHierarchy', () => {
       const row = screen
         .getByText('Mismatched Count Parent')
         .closest('[role="row"]');
-      const expandBtn = row?.querySelector('button[slot="chevron"]');
+      const expandBtn = row?.querySelector(
+        'button[slot="chevron"]'
+      ) as HTMLElement;
 
       await act(async () => {
-        fireEvent.click(expandBtn!);
+        fireEvent.click(expandBtn);
       });
 
       await waitFor(() => {
@@ -559,10 +647,12 @@ describe('KnowledgePagesHierarchy', () => {
       });
 
       const row = screen.getByText('Paged Parent').closest('[role="row"]');
-      const expandBtn = row?.querySelector('button[slot="chevron"]');
+      const expandBtn = row?.querySelector(
+        'button[slot="chevron"]'
+      ) as HTMLElement;
 
       await act(async () => {
-        fireEvent.click(expandBtn!);
+        fireEvent.click(expandBtn);
       });
 
       await waitFor(() => {
@@ -640,10 +730,12 @@ describe('KnowledgePagesHierarchy', () => {
       });
 
       const row = screen.getByText('Exhausted Parent').closest('[role="row"]');
-      const expandBtn = row?.querySelector('button[slot="chevron"]');
+      const expandBtn = row?.querySelector(
+        'button[slot="chevron"]'
+      ) as HTMLElement;
 
       await act(async () => {
-        fireEvent.click(expandBtn!);
+        fireEvent.click(expandBtn);
       });
 
       await waitFor(() => {
@@ -664,10 +756,10 @@ describe('KnowledgePagesHierarchy', () => {
         .closest('[role="row"]');
       const expandBtnAfterRefresh = rowAfterRefresh?.querySelector(
         'button[slot="chevron"]'
-      );
+      ) as HTMLElement;
 
       await act(async () => {
-        fireEvent.click(expandBtnAfterRefresh!);
+        fireEvent.click(expandBtnAfterRefresh);
       });
 
       await waitFor(() => {

@@ -58,6 +58,7 @@ public final class IngestionLogTailer {
   private long streamedBytes;
   private String cursor;
   private boolean terminated;
+  private LogSourceUnavailableException sourceError;
 
   public IngestionLogTailer(
       LogStreamRun run, LogStreamSettings settings, LongSupplier nanoTime, Runnable onTerminate) {
@@ -159,11 +160,36 @@ public final class IngestionLogTailer {
   private void pollOnce() {
     if (!terminated) {
       final long bytes = drain();
-      final LogStreamEndReason reason = terminated ? null : terminalReason(bytes);
-      if (reason != null) {
-        complete(reason);
+      if (sourceError != null) {
+        fail(sourceError.getMessage());
+      } else {
+        final LogStreamEndReason reason = terminated ? null : terminalReason(bytes);
+        if (reason != null) {
+          complete(reason);
+        }
       }
     }
+  }
+
+  /**
+   * Ends a stream whose source reported a failure that will not resolve on a later poll. Reported
+   * as an {@code error} event rather than the silent close {@link #abort()} uses, so a persistent
+   * backend failure (e.g. a Kubernetes client that cannot deserialize the cluster's response) is
+   * visible to the viewer instead of looking like an idle stream.
+   */
+  private void fail(String message) {
+    final LogStreamEvent event =
+        new LogStreamEvent()
+            .withEventType(LogStreamEventType.ERROR)
+            .withRunId(run.runId())
+            .withMessage(message);
+    subscribers.forEach(
+        subscriber -> {
+          subscriber.send(event);
+          subscriber.close();
+        });
+    subscribers.clear();
+    stop();
   }
 
   /**
@@ -222,6 +248,10 @@ public final class IngestionLogTailer {
     LogChunk chunk = null;
     try {
       chunk = run.source().readNext();
+    } catch (LogSourceUnavailableException e) {
+      // Distinct from the transient/no-content case below: this failure will not resolve on a
+      // later poll, so it is surfaced to the viewer instead of being retried into an idle timeout.
+      sourceError = e;
     } catch (Exception e) {
       // A backend that has no log file yet answers with an error rather than an empty page, and a
       // transient outage looks identical. Neither is fatal: the run either produces content on a

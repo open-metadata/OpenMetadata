@@ -18,7 +18,7 @@ import {
 } from '../generated/entity/data/dashboardDataModel';
 import { EntityReference } from '../generated/type/entityReference';
 import { LabelType, State } from '../generated/type/tagLabel';
-import { extractDataModelColumns } from './DashboardDataModelUtils';
+import { extractDataModelColumns } from './TablePureUtils';
 
 type DashboardDataModelTestData = Partial<DashboardDataModel> &
   Pick<Omit<EntityReference, 'type'>, 'id'>;

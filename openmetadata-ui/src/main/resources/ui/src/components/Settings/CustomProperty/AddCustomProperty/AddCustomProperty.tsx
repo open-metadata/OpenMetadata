@@ -13,13 +13,14 @@
 
 import {
   Badge,
+  Box,
   Button as CoreButton,
   SelectItemType,
   SlideoutMenu,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Col, Form, FormInstance, Row } from 'antd';
+import { Button, Form, FormInstance } from 'antd';
 import { AxiosError } from 'axios';
 import { ReactComponent as ColumnIcon } from '../../../../assets/svg/entity/column.svg';
 
@@ -74,6 +75,13 @@ interface AddCustomPropertyProps {
   open?: boolean;
   onClose?: () => void;
 }
+
+/**
+ * Column name the earlier table-type custom property editor used as its
+ * internal row key and stripped on save. It stays reserved so a user column
+ * never takes that name and loses its data to an older client.
+ */
+const RESERVED_TABLE_COLUMN_NAMES = ['__row_id__'];
 
 const AddCustomProperty = ({
   formRef,
@@ -463,6 +471,15 @@ const AddCustomProperty = ({
                     label: t('label.column-plural'),
                   });
                 }
+                if (
+                  value.some((c: string) =>
+                    RESERVED_TABLE_COLUMN_NAMES.includes(c)
+                  )
+                ) {
+                  throw t('message.reserved-column-name', {
+                    name: RESERVED_TABLE_COLUMN_NAMES.join(', '),
+                  });
+                }
               } else {
                 throw t('label.field-required', {
                   field: t('label.column-plural'),
@@ -556,6 +573,37 @@ const AddCustomProperty = ({
     }
   };
 
+  // Fields shown conditionally based on the selected property type; computed
+  // once here so the render body doesn't carry each type-specific branch.
+  const conditionalTypeFields: FieldProp[] = useMemo(() => {
+    const fields: FieldProp[] = [];
+
+    if (hasEnumConfig) {
+      fields.push(enumConfigField, multiSelectField);
+    }
+    if (hasFormatConfig) {
+      fields.push(formatConfigField);
+    }
+    if (hasEntityReferenceConfig) {
+      fields.push(entityReferenceConfigField);
+    }
+    if (hasTableTypeConfig) {
+      fields.push(...tableTypePropertyConfig);
+    }
+
+    return fields;
+  }, [
+    hasEnumConfig,
+    hasFormatConfig,
+    hasEntityReferenceConfig,
+    hasTableTypeConfig,
+    enumConfigField,
+    multiSelectField,
+    formatConfigField,
+    entityReferenceConfigField,
+    tableTypePropertyConfig,
+  ]);
+
   const formContent = (
     <Form
       className="m-t-md"
@@ -566,35 +614,19 @@ const AddCustomProperty = ({
       onFinish={handleFormSubmit}
       onFocus={handleFieldFocus}>
       {generateFormFields(formFields)}
-      {
-        // Only show enum value field if the property type has enum config
-        hasEnumConfig && generateFormFields([enumConfigField, multiSelectField])
-      }
-      {
-        // Only show format field if the property type has format config
-        hasFormatConfig && generateFormFields([formatConfigField])
-      }
-
-      {
-        // Only show entity reference field if the property type has entity reference config
-        hasEntityReferenceConfig &&
-          generateFormFields([entityReferenceConfigField])
-      }
-
-      {hasTableTypeConfig && generateFormFields(tableTypePropertyConfig)}
-
+      {generateFormFields(conditionalTypeFields)}
       {generateFormFields([descriptionField])}
       {isUndefined(open) && (
-        <Row justify="end">
-          <Col>
+        <Box className="layout-row" justify="end" wrap="wrap">
+          <Box className="layout-column tw:block">
             <Button
               data-testid="back-button"
               type="link"
               onClick={handleCancel}>
               {t('label.back')}
             </Button>
-          </Col>
-          <Col>
+          </Box>
+          <Box className="layout-column tw:block">
             <Button
               data-testid="create-button"
               htmlType="submit"
@@ -602,8 +634,8 @@ const AddCustomProperty = ({
               type="primary">
               {t('label.create')}
             </Button>
-          </Col>
-        </Row>
+          </Box>
+        </Box>
       )}
     </Form>
   );

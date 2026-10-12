@@ -8,7 +8,6 @@ import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
-import org.openmetadata.service.apps.bundles.insights.search.IndexTemplate;
 
 public class ElasticSearchDataInsightsClient implements DataInsightsSearchInterface {
   private final Rest5Client client;
@@ -43,6 +42,11 @@ public class ElasticSearchDataInsightsClient implements DataInsightsSearchInterf
   }
 
   @Override
+  public String getResourcePath() {
+    return resourcePath;
+  }
+
+  @Override
   public void createIndexTemplate(String name, String template) throws IOException {
     performRequest("PUT", String.format("/_index_template/%s", name), template);
   }
@@ -66,18 +70,21 @@ public class ElasticSearchDataInsightsClient implements DataInsightsSearchInterf
       String language,
       int retentionDays)
       throws IOException {
-    createComponentTemplate(
-        getStringWithClusterAlias("di-data-assets-mapping"),
-        buildMapping(
-            entityType,
-            entityIndexMapping,
-            language,
-            readResource(String.format("%s/indexMappingsTemplate.json", resourcePath))));
-    createIndexTemplate(
-        getStringWithClusterAlias("di-data-assets"),
-        IndexTemplate.getIndexTemplateWithClusterAlias(
-            getClusterAlias(), readResource(String.format("%s/indexTemplate.json", resourcePath))));
+    prepareDataAssetTemplates(name, entityType, entityIndexMapping, language, resourcePath);
     createDataStream(name);
+  }
+
+  @Override
+  public void putWriteIndexMapping(String name, String mappings) throws IOException {
+    Request request = new Request("PUT", "/" + name + "/_mapping");
+    request.addParameter("write_index_only", "true");
+    request.setEntity(new StringEntity(mappings, ContentType.APPLICATION_JSON));
+    client.performRequest(request);
+  }
+
+  @Override
+  public void rolloverDataStream(String name) throws IOException {
+    performRequest("POST", "/" + name + "/_rollover");
   }
 
   @Override

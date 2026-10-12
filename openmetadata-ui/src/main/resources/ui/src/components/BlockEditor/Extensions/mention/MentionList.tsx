@@ -10,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import { SuggestionProps } from '@tiptap/suggestion';
-import { Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { forwardRef, useImperativeHandle, useState } from 'react';
 import ProfilePicture from '../../../../components/common/ProfilePicture/ProfilePicture';
-import { isInViewport } from '../../../../utils/BlockEditorUtils';
+import { isInViewport } from '../../../../utils/BlockEditorPureUtils';
 import { ExtensionRef, SuggestionItem } from '../../BlockEditor.interface';
 
 export default forwardRef<ExtensionRef, SuggestionProps<SuggestionItem>>(
@@ -104,23 +104,30 @@ export default forwardRef<ExtensionRef, SuggestionProps<SuggestionItem>>(
     }));
 
     return (
-      <Space
+      <Box
+        inline
         className="suggestion-menu-wrapper"
-        direction="vertical"
+        direction="col"
+        gap={2}
         id="mention-viewport">
         {items.map((item, index) => (
-          <Space
+          <Box
+            inline
+            align="center"
             className={classNames('w-full cursor-pointer mention-item', {
               'bg-grey-2': index === selectedIndex,
             })}
+            gap={2}
             id={`mention-item-${item.id}`}
             key={item.id}
             onClick={() => selectItem(index)}>
             <ProfilePicture name={item.name} width="20" />
-            <Typography className="truncate w-max-200">{item.label}</Typography>
-          </Space>
+            <Typography as="article" className="truncate w-max-200">
+              {item.label}
+            </Typography>
+          </Box>
         ))}
-      </Space>
+      </Box>
     );
   }
 );

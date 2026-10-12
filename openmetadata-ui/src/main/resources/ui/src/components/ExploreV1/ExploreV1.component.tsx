@@ -13,12 +13,20 @@
 
 import {
   Alert,
+  Badge,
   Box,
   Button,
   Card as CoreCard,
+  Dialog,
   Divider,
   Dropdown,
+  Modal,
+  ModalOverlay,
   PaginationCardWithControls,
+  RadioButton,
+  RadioGroup,
+  Skeleton,
+  Tabs,
   Toggle,
   Typography as CoreTypography,
 } from '@openmetadata/ui-core-components';
@@ -28,11 +36,10 @@ import {
   FilterFunnel01,
   InfoCircle,
   Trash01,
-} from '@untitledui/icons';
-import { Card, Col, Menu, Modal, Radio, Row, Skeleton } from 'antd';
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isEmpty, isString, isUndefined, noop, omit } from 'lodash';
+import { isEmpty, isString, isUndefined, lowerCase, noop, omit } from 'lodash';
 import Qs from 'qs';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -55,7 +62,10 @@ import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { SIZE, SORT_ORDER } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
-import { QueryFilterInterface } from '../../pages/ExplorePage/ExplorePage.interface';
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
+import { useQuickFilterLabels } from '../../hooks/useQuickFilterLabels';
+import { ExploreSearchIndex } from '../../interface/discovery/explore.interface';
+import type { QueryFilterInterface } from '../../interface/queryFilter.interface';
 import { exportSearchResultsAsync, searchQuery } from '../../rest/searchAPI';
 import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
 import { parseExportErrorMessage } from '../../utils/APIUtils';
@@ -79,7 +89,6 @@ import ResizableLeftPanels from '../common/ResizablePanels/ResizableLeftPanels';
 import {
   ExploreProps,
   ExploreQuickFilterField,
-  ExploreSearchIndex,
 } from '../Explore/ExplorePage.interface';
 import ExploreTree from '../Explore/ExploreTree/ExploreTree';
 import SearchedData from '../SearchedData/SearchedData';
@@ -103,6 +112,493 @@ const EXPLORE_PAGE_SIZE_OPTIONS = [
   PAGE_SIZE_MEDIUM,
   PAGE_SIZE_LARGE,
 ];
+
+interface ExploreExportScopeModalProps {
+  open: boolean;
+  exportScope: 'visible' | 'all';
+  onExportScopeChange: (scope: 'visible' | 'all') => void;
+  isSearchMode: boolean;
+  isCountLoading: boolean;
+  tabAssetsCount?: number;
+  pageResultCount: number;
+  allAssetsCount?: number;
+  activeTabLabel: string;
+  isExporting: boolean;
+  isAllAssetsLimitExceeded: boolean;
+  isTabScopeDisabled: boolean;
+  exportError?: string;
+  title: React.ReactNode;
+  onCancel: () => void;
+  onOk: () => void;
+  t: (key: string, options?: Record<string, unknown>) => string;
+}
+
+const ExportScopeVisibleCount = ({
+  isSearchMode,
+  isCountLoading,
+  tabAssetsCount,
+  pageResultCount,
+  t,
+}: {
+  isSearchMode: boolean;
+  isCountLoading: boolean;
+  tabAssetsCount?: number;
+  pageResultCount: number;
+  t: (key: string) => string;
+}) =>
+  isSearchMode && isCountLoading ? (
+    <Skeleton height={16} variant="rounded" width={60} />
+  ) : (
+    <CoreTypography
+      className="tw:text-tertiary"
+      data-testid="export-scope-visible-count"
+      size="text-sm"
+      weight="regular">
+      ({isSearchMode ? tabAssetsCount ?? '—' : pageResultCount}{' '}
+      {t('label.result-plural')})
+    </CoreTypography>
+  );
+
+const ExportScopeAllCount = ({
+  isCountLoading,
+  allAssetsCount,
+  t,
+}: {
+  isCountLoading: boolean;
+  allAssetsCount?: number;
+  t: (key: string) => string;
+}) =>
+  isCountLoading ? (
+    <Skeleton height={16} variant="rounded" width={60} />
+  ) : (
+    allAssetsCount !== undefined && (
+      <CoreTypography
+        className="tw:text-tertiary"
+        data-testid="export-scope-all-count"
+        size="text-sm"
+        weight="regular">
+        ({allAssetsCount} {t('label.result-plural')})
+      </CoreTypography>
+    )
+  );
+
+/** The "Export" modal: lets the user choose visible-page vs. all-matching-assets scope. */
+const ExploreExportScopeModal = ({
+  open,
+  exportScope,
+  onExportScopeChange,
+  isSearchMode,
+  isCountLoading,
+  tabAssetsCount,
+  pageResultCount,
+  allAssetsCount,
+  activeTabLabel,
+  isExporting,
+  isAllAssetsLimitExceeded,
+  isTabScopeDisabled,
+  exportError,
+  title,
+  onCancel,
+  onOk,
+  t,
+}: ExploreExportScopeModalProps) => {
+  return (
+    <ModalOverlay
+      isDismissable
+      isOpen={open}
+      onOpenChange={(isOpen) => !isOpen && onCancel()}>
+      <Modal>
+        {/* Overrides reproduce the antd Modal (modal.less) this replaced. */}
+        <Dialog
+          showCloseButton
+          data-testid="export-scope-modal"
+          panelClassName="search-export-modal tw:rounded-lg tw:shadow-[2px_4px_12px_var(--om-legacy-color-0-0-0-0-2)] tw:dark:shadow-overlay"
+          width={680}
+          onClose={onCancel}>
+          <Dialog.Header
+            className={classNames(
+              'tw:border-b tw:border-[var(--om-legacy-color-dde3ea)] tw:px-6 tw:py-4',
+              'tw:sm:px-6 tw:sm:pt-4 tw:*:font-medium! tw:*:leading-[22px]!',
+              'tw:*:text-black/85! tw:dark:border-subtle tw:dark:*:text-primary!'
+            )}>
+            <div className="tw:text-md" data-testid="export-scope-modal-title">
+              {title}
+            </div>
+          </Dialog.Header>
+          <Dialog.Content className="tw:gap-0 tw:px-6 tw:py-6 tw:sm:px-6">
+            {isAllAssetsLimitExceeded && (
+              <Alert
+                className="m-b-sm"
+                title={t('message.export-assets-limit-exceeded', {
+                  limit: EXPORT_ALL_ASSETS_LIMIT,
+                })}
+                variant="error"
+              />
+            )}
+            {exportError && (
+              <Alert className="m-b-sm" title={exportError} variant="error" />
+            )}
+            <CoreTypography
+              className="tw:text-secondary"
+              size="text-sm"
+              weight="medium">
+              {t('label.export-scope')}
+            </CoreTypography>
+            <RadioGroup
+              aria-label={t('label.export-scope')}
+              className="tw:mt-3 tw:w-full tw:flex-row tw:gap-3"
+              value={exportScope}
+              onChange={(value) =>
+                onExportScopeChange(value as 'visible' | 'all')
+              }>
+              <CoreCard
+                isClickable
+                className="export-scope-option-card tw:flex-1 tw:p-4"
+                data-testid="export-scope-visible-card"
+                isSelected={exportScope === 'visible'}
+                onClick={() => onExportScopeChange('visible')}>
+                <div className="d-flex items-start gap-1">
+                  {/* Reproduces antd's 16x22 radio wrapper and its 8px gap. */}
+                  <span className="tw:mr-2 tw:flex tw:h-[22px] tw:shrink-0 tw:items-center">
+                    <RadioButton
+                      aria-label={t('label.visible-result-plural')}
+                      value="visible"
+                    />
+                  </span>
+                  <div>
+                    <div className="d-flex items-center gap-2">
+                      <CoreTypography
+                        className="tw:text-primary d-flex items-center tw:gap-0.5"
+                        size="text-sm"
+                        weight="semibold">
+                        {isSearchMode
+                          ? activeTabLabel
+                          : t('label.visible-result-plural')}
+                        <ExportScopeVisibleCount
+                          isCountLoading={isCountLoading}
+                          isSearchMode={isSearchMode}
+                          pageResultCount={pageResultCount}
+                          t={t}
+                          tabAssetsCount={tabAssetsCount}
+                        />
+                      </CoreTypography>
+                    </div>
+                    <CoreTypography
+                      className="tw:text-tertiary"
+                      size="text-sm"
+                      weight="regular">
+                      {t('message.export-visible-results-description', {
+                        dataAssetType: activeTabLabel,
+                      })}
+                    </CoreTypography>
+                  </div>
+                </div>
+              </CoreCard>
+              <CoreCard
+                isClickable
+                className="export-scope-option-card tw:flex-1 tw:p-4"
+                data-testid="export-scope-all-card"
+                isSelected={exportScope === 'all'}
+                onClick={() => onExportScopeChange('all')}>
+                <div className="d-flex items-start tw:gap-1">
+                  {/* Reproduces antd's 16x22 radio wrapper and its 8px gap. */}
+                  <span className="tw:mr-2 tw:flex tw:h-[22px] tw:shrink-0 tw:items-center">
+                    <RadioButton
+                      aria-label={t('label.all-asset-plural')}
+                      value="all"
+                    />
+                  </span>
+                  <div>
+                    <CoreTypography
+                      className="tw:text-primary d-flex items-center tw:gap-1"
+                      size="text-sm"
+                      weight="semibold">
+                      {`${t('label.all-asset-plural')} `}
+                      <ExportScopeAllCount
+                        allAssetsCount={allAssetsCount}
+                        isCountLoading={isCountLoading}
+                        t={t}
+                      />
+                    </CoreTypography>
+                    <CoreTypography
+                      className="tw:text-tertiary"
+                      size="text-sm"
+                      weight="regular">
+                      {t('message.export-all-matching-assets-description')}
+                    </CoreTypography>
+                  </div>
+                </div>
+              </CoreCard>
+            </RadioGroup>
+          </Dialog.Content>
+          <Dialog.Footer className="tw:mt-0 tw:border-[var(--om-legacy-color-dde3ea)] tw:sm:mt-0 tw:dark:border-subtle tw:*:gap-[13px]! tw:*:px-[23px]! tw:*:py-4!">
+            <Button
+              className="tw:h-10 tw:rounded-lg tw:px-[15px] tw:py-0 tw:font-normal tw:text-[var(--ant-primary-color)] tw:hover:bg-transparent tw:hover:text-[var(--ant-primary-color-hover)]"
+              color="tertiary"
+              data-testid="export-scope-cancel-button"
+              onPress={onCancel}>
+              {t('label.cancel')}
+            </Button>
+            <Button
+              className="tw:h-10 tw:rounded-lg tw:px-[15px] tw:py-0 tw:font-normal"
+              color="primary"
+              data-testid="export-scope-ok-button"
+              isDisabled={
+                isExporting ||
+                isCountLoading ||
+                isAllAssetsLimitExceeded ||
+                isTabScopeDisabled
+              }
+              isLoading={isExporting}
+              onPress={onOk}>
+              {t('label.export')}
+            </Button>
+          </Dialog.Footer>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
+  );
+};
+
+interface ExploreFilterStatusRowProps {
+  shouldShowQueryFilterChips: boolean;
+  browseFields: ExploreQuickFilterField[];
+  searchQueryParam: string;
+  quickFilterFields: ExploreQuickFilterField[];
+  clearFilters: () => void;
+  handleRemoveBrowseLevel: (levelKey: string) => void;
+  handleRemoveQuickFilterValue: (
+    field: ExploreQuickFilterField,
+    optionKey: string
+  ) => void;
+  isElasticSearchIssue?: boolean;
+  sqlQuery?: string;
+  onResetQueryFilter: () => void;
+  onEditQueryFilter: () => void;
+  t: (key: string) => string;
+}
+
+/** The row of applied-filter chips, the "index not found" banner, and the SQL filter text. */
+const ExploreFilterStatusRow = ({
+  shouldShowQueryFilterChips,
+  browseFields,
+  searchQueryParam,
+  quickFilterFields,
+  clearFilters,
+  handleRemoveBrowseLevel,
+  handleRemoveQuickFilterValue,
+  isElasticSearchIssue,
+  sqlQuery,
+  onResetQueryFilter,
+  onEditQueryFilter,
+  t,
+}: ExploreFilterStatusRowProps) => {
+  return (
+    <>
+      {shouldShowQueryFilterChips && (
+        <div className="tw:relative tw:max-w-full tw:min-h-px tw:flex-[0_0_100%]">
+          <ExploreQueryFilterChips
+            browseFields={browseFields}
+            emptyText={
+              searchQueryParam
+                ? undefined
+                : t('message.browse-estate-query-placeholder')
+            }
+            fields={quickFilterFields}
+            onClearAll={clearFilters}
+            onRemoveBrowseLevel={handleRemoveBrowseLevel}
+            onRemoveValue={handleRemoveQuickFilterValue}
+          />
+        </div>
+      )}
+      {isElasticSearchIssue ? (
+        <div className="tw:relative tw:max-w-full tw:min-h-px tw:flex-[0_0_100%]">
+          <IndexNotFoundBanner />
+        </div>
+      ) : (
+        <></>
+      )}
+      {sqlQuery && (
+        <div className="tw:relative tw:max-w-full tw:min-h-px tw:flex-[0_0_100%]">
+          <AppliedFilterText
+            filterText={sqlQuery}
+            onClear={onResetQueryFilter}
+            onEdit={onEditQueryFilter}
+          />
+        </div>
+      )}
+    </>
+  );
+};
+
+interface ExploreResultsPanelProps {
+  loading?: boolean;
+  isElasticSearchIssue?: boolean;
+  searchResults: ExploreProps['searchResults'];
+  parsedSearch: Qs.ParsedQs;
+  handleSummaryPanelDisplay: (
+    details: SearchedDataProps['data'][number]['_source']
+  ) => void;
+  hasActiveFilters: boolean;
+  showSummaryPanel: boolean;
+  entityDetails?: SearchedDataProps['data'][number]['_source'];
+  showRankingDetails?: boolean;
+  totalValue: number;
+  totalPages: number;
+  validCurrentPage: number;
+  pageSize: number;
+  handleExplorePageChange: (updatedPage: number) => void;
+  handleExplorePageSizeChange: (updatedPageSize: number) => void;
+  handleClosePanel: () => void;
+  firstEntity?: SearchedDataProps['data'][number];
+  selectedQuickFilters: ExploreQuickFilterField[];
+}
+
+/** Search results list + pagination on the left, entity summary panel on the right. */
+interface ExploreResultsListPanelProps {
+  loading?: boolean;
+  isElasticSearchIssue?: boolean;
+  searchResults: ExploreProps['searchResults'];
+  parsedSearch: Qs.ParsedQs;
+  handleSummaryPanelDisplay: (
+    details: SearchedDataProps['data'][number]['_source']
+  ) => void;
+  hasActiveFilters: boolean;
+  showSummaryPanel: boolean;
+  entityDetails?: SearchedDataProps['data'][number]['_source'];
+  showRankingDetails?: boolean;
+  totalValue: number;
+  totalPages: number;
+  validCurrentPage: number;
+  pageSize: number;
+  handleExplorePageChange: (updatedPage: number) => void;
+  handleExplorePageSizeChange: (updatedPageSize: number) => void;
+}
+
+/** Search results list (or loader) plus the pagination controls beneath it. */
+const ExploreResultsListPanel = ({
+  loading,
+  isElasticSearchIssue,
+  searchResults,
+  parsedSearch,
+  handleSummaryPanelDisplay,
+  hasActiveFilters,
+  showSummaryPanel,
+  entityDetails,
+  showRankingDetails,
+  totalValue,
+  totalPages,
+  validCurrentPage,
+  pageSize,
+  handleExplorePageChange,
+  handleExplorePageSizeChange,
+}: ExploreResultsListPanelProps) => {
+  return (
+    <div className="h-full tw:flex tw:min-w-[300px] tw:flex-1 tw:flex-col tw:overflow-hidden tw:rounded-xl explore-main-card">
+      <CoreCard className="tw:min-h-0 tw:flex-1 tw:rounded-b-none tw:border-b-0 tw:border-utility-gray-blue-100 tw:dark:border-subtle">
+        <div className="tw:h-full tw:overflow-y-auto tw:p-5">
+          {!loading && !isElasticSearchIssue ? (
+            <SearchedData
+              data={searchResults?.hits.hits ?? []}
+              filter={parsedSearch}
+              handleSummaryPanelDisplay={handleSummaryPanelDisplay}
+              isFilterSelected={hasActiveFilters}
+              isSummaryPanelVisible={showSummaryPanel}
+              selectedEntityId={entityDetails?.id || ''}
+              showRankingDetails={showRankingDetails}
+              showResultCount={hasActiveFilters}
+              totalValue={totalValue}
+            />
+          ) : (
+            <></>
+          )}
+          {loading ? <Loader /> : <></>}
+        </div>
+      </CoreCard>
+      {!loading && !isElasticSearchIssue && totalValue > 0 ? (
+        <PaginationCardWithControls
+          page={validCurrentPage}
+          pageSize={pageSize}
+          pageSizeOptions={EXPLORE_PAGE_SIZE_OPTIONS}
+          total={totalPages}
+          onPageChange={handleExplorePageChange}
+          onPageSizeChange={handleExplorePageSizeChange}
+        />
+      ) : (
+        <></>
+      )}
+    </div>
+  );
+};
+
+const ExploreResultsPanel = ({
+  loading,
+  isElasticSearchIssue,
+  searchResults,
+  parsedSearch,
+  handleSummaryPanelDisplay,
+  hasActiveFilters,
+  showSummaryPanel,
+  entityDetails,
+  showRankingDetails,
+  totalValue,
+  totalPages,
+  validCurrentPage,
+  pageSize,
+  handleExplorePageChange,
+  handleExplorePageSizeChange,
+  handleClosePanel,
+  firstEntity,
+  selectedQuickFilters,
+}: ExploreResultsPanelProps) => {
+  return (
+    <Box
+      className="explore-results-row tw:h-full tw:min-w-0 tw:w-full"
+      colGap={3}>
+      <ExploreResultsListPanel
+        entityDetails={entityDetails}
+        handleExplorePageChange={handleExplorePageChange}
+        handleExplorePageSizeChange={handleExplorePageSizeChange}
+        handleSummaryPanelDisplay={handleSummaryPanelDisplay}
+        hasActiveFilters={hasActiveFilters}
+        isElasticSearchIssue={isElasticSearchIssue}
+        loading={loading}
+        pageSize={pageSize}
+        parsedSearch={parsedSearch}
+        searchResults={searchResults}
+        showRankingDetails={showRankingDetails}
+        showSummaryPanel={showSummaryPanel}
+        totalPages={totalPages}
+        totalValue={totalValue}
+        validCurrentPage={validCurrentPage}
+      />
+
+      {showSummaryPanel && entityDetails && !loading && (
+        <div className="explore-page-right-panel">
+          <EntitySummaryPanel
+            entityDetails={{ details: entityDetails }}
+            handleClosePanel={handleClosePanel}
+            highlights={omit(
+              {
+                ...firstEntity?.highlight, // highlights of firstEntity that we get from the query api
+                'tag.name': (
+                  selectedQuickFilters?.find(
+                    (filterOption) => filterOption.key === TAG_FQN_KEY
+                  )?.value ?? []
+                ).map((tagFQN) => tagFQN.key), // finding the tags filter from SelectedQuickFilters and creating the array of selected Tags FQN
+              },
+              ['description', 'displayName']
+            )}
+            key={
+              entityDetails.entityType + '-' + entityDetails.fullyQualifiedName
+            }
+            panelPath="explore"
+          />
+        </div>
+      )}
+    </Box>
+  );
+};
 
 const ExploreV1: React.FC<ExploreProps> = ({
   aggregations,
@@ -131,8 +627,18 @@ const ExploreV1: React.FC<ExploreProps> = ({
   browseQueryFilter,
   onTreeSelect = noop,
 }) => {
-  const tabsInfo = searchClassBase.getTabsInfo();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  // getTabsInfo() bakes translated labels into its result, so recompute on a
+  // language switch rather than freezing the first language for the mount.
+  const tabsInfo = useMemo(
+    () => searchClassBase.getTabsInfo(),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- result bakes in t() output
+    [i18n.language]
+  );
+  // The router location, not the global: the global's `search` is not a valid
+  // hook dependency (mutating it never re-renders), so the memo below went
+  // stale across in-app navigation.
+  const location = useCustomLocation();
   const [selectedQuickFilters, setSelectedQuickFilters] = useState<
     ExploreQuickFilterField[]
   >([] as ExploreQuickFilterField[]);
@@ -154,9 +660,14 @@ const ExploreV1: React.FC<ExploreProps> = ({
 
   const searchQueryParam = useMemo(
     () => (isString(parsedSearch.search) ? parsedSearch.search : ''),
-    [location.search]
+    [parsedSearch.search]
   );
   const totalValue = searchResults?.hits.total.value ?? 0;
+
+  const hitSources = useMemo(
+    () => (searchResults?.hits?.hits ?? []).map((hit) => hit._source),
+    [searchResults]
+  );
   const totalPages = useMemo(
     () => Math.max(Math.ceil(totalValue / pageSize), 1),
     [pageSize, totalValue]
@@ -272,6 +783,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
     queryFilter,
     browseQueryFilter,
     searchIndex,
+    isSearchMode,
   ]);
 
   const handleExportScopeConfirm = useCallback(async () => {
@@ -341,6 +853,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
     }
   }, [
     exportScope,
+    t,
     searchIndex,
     allAssetsCount,
     visibleResultCount,
@@ -367,7 +880,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
       ...field,
       name: t(field.name),
     }));
-  }, [searchIndex, t]);
+  }, [searchIndex, t, tabsInfo]);
 
   const handleClosePanel = () => {
     setShowSummaryPanel(false);
@@ -379,7 +892,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
   );
   const sortProps = useMemo(
     () => ({
-      className: 'text-base',
+      className: 'text-base tw:text-fg-secondary',
       'data-testid': 'last-updated',
     }),
     []
@@ -542,6 +1055,15 @@ const ExploreV1: React.FC<ExploreProps> = ({
     () => selectedQuickFilters.some((field) => !isEmpty(field.value)),
     [selectedQuickFilters]
   );
+  // Selected values round trip through the URL as lowercased aggregation keys.
+  // Labels are presentational, so only the rendered fields are hydrated — query
+  // building keeps reading the raw state, whose keys never change.
+  const quickFilterFields = useQuickFilterLabels({
+    fields: selectedQuickFilters,
+    sources: hitSources,
+    index: activeTabKey,
+  });
+
   const hasActiveFilterQuery = useMemo(
     () => hasQuickFilterValues || !isEmpty(browseFields),
     [hasQuickFilterValues, browseFields]
@@ -581,20 +1103,52 @@ const ExploreV1: React.FC<ExploreProps> = ({
 
     if (searchQueryParam) {
       return (
-        <Menu
-          className="custom-menu"
-          data-testid="explore-left-panel"
-          items={tabItems}
-          mode="inline"
-          rootClassName="left-container"
-          selectedKeys={[activeTabKey]}
-          onClick={(info) => {
-            if (info && info.key !== activeTabKey) {
-              onChangeSearchIndex(info.key as ExploreSearchIndex);
+        <Tabs
+          orientation="vertical"
+          selectedKey={activeTabKey}
+          onSelectionChange={(key) => {
+            if (key !== activeTabKey) {
+              onChangeSearchIndex(key as ExploreSearchIndex);
               setShowSummaryPanel(false);
             }
-          }}
-        />
+          }}>
+          <Tabs.List
+            fullWidth
+            aria-label={t('label.browse-estate')}
+            className="tw:w-full"
+            data-testid="explore-left-panel"
+            type="button-gray">
+            {tabItems.map(
+              ({ key, label, icon: Icon, iconClassName, count }) => (
+                <Tabs.Item
+                  data-testid={`${lowerCase(label)}-tab`}
+                  id={key}
+                  key={key}>
+                  {({ isSelected }) => (
+                    <>
+                      <Icon
+                        className={classNames(
+                          'tw:size-4 tw:shrink-0',
+                          iconClassName
+                        )}
+                      />
+                      <span className="tw:min-w-0 tw:flex-1 tw:truncate tw:text-left">
+                        {label}
+                      </span>
+                      <Badge
+                        color={isSelected ? 'brand' : 'gray'}
+                        data-testid="filter-count"
+                        size="sm"
+                        type="pill-color">
+                        {count}
+                      </Badge>
+                    </>
+                  )}
+                </Tabs.Item>
+              )
+            )}
+          </Tabs.List>
+        </Tabs>
       );
     }
 
@@ -616,6 +1170,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
     onChangeSearchIndex,
     selectedEntityTypes,
     queryFilter,
+    t,
   ]);
 
   useEffect(() => {
@@ -662,7 +1217,12 @@ const ExploreV1: React.FC<ExploreProps> = ({
       setShowSummaryPanel(false);
       setEntityDetails(undefined);
     }
-  }, [searchResults]);
+  }, [
+    searchResults,
+    firstEntity?._source,
+    firstEntity?.highlight,
+    handleSummaryPanelDisplay,
+  ]);
 
   const exportModalTitle = useMemo(
     () => (
@@ -681,43 +1241,19 @@ const ExploreV1: React.FC<ExploreProps> = ({
     [t]
   );
 
-  const visibleCardCount =
-    isSearchMode && isCountLoading ? (
-      <Skeleton.Input active size="small" style={{ width: 60, height: 16 }} />
-    ) : (
-      <CoreTypography
-        className="tw:text-tertiary"
-        data-testid="export-scope-visible-count"
-        size="text-sm"
-        weight="regular">
-        ({isSearchMode ? tabAssetsCount ?? '—' : pageResultCount}{' '}
-        {t('label.result-plural')})
-      </CoreTypography>
-    );
-
-  const allAssetsCountDisplay = isCountLoading ? (
-    <Skeleton.Input active size="small" style={{ width: 60, height: 16 }} />
-  ) : (
-    allAssetsCount !== undefined && (
-      <CoreTypography
-        className="tw:text-tertiary"
-        data-testid="export-scope-all-count"
-        size="text-sm"
-        weight="regular">
-        ({allAssetsCount} {t('label.result-plural')})
-      </CoreTypography>
-    )
-  );
-
   if (tabItems.length === 0 && !searchQueryParam) {
     return <Loader />;
   }
 
   return (
     <div className="explore-page bg-grey" data-testid="explore-page">
-      <Card className="p-xs card-padding-0 m-b-box">
-        <Row className="tw:mr-2" gutter={[0, 8]}>
-          <Col>
+      <CoreCard className="m-b-box tw:block tw:border-utility-gray-blue-100 tw:p-2 tw:dark:border-subtle">
+        <div className="tw:mr-2 tw:flex tw:flex-wrap tw:gap-y-2">
+          {/* Zero flex-basis: with flex-wrap, a max-content basis would place
+              the sort controls on their own row before shrinking is even
+              considered; basis 0 keeps both columns on one line and lets the
+              toolbar wrap internally. */}
+          <div className="tw:relative tw:min-h-px tw:max-w-full tw:min-w-0 tw:flex-[1_1_0%]">
             <ExploreQuickFilters
               immediateApply
               showSelectedCounts
@@ -725,17 +1261,26 @@ const ExploreV1: React.FC<ExploreProps> = ({
               defaultQueryFilter={
                 browseQueryFilter as unknown as Record<string, unknown>
               }
-              fields={selectedQuickFilters}
+              fields={quickFilterFields}
               fieldsWithNullValues={SUPPORTED_EMPTY_FILTER_FIELDS}
-              helperText={t('message.pick-values-to-refine')}
               index={activeTabKey}
               showDeleted={showDeleted}
               onAdvanceSearch={() => toggleModal(true)}
               onChangeShowDeleted={onChangeShowDeleted}
               onFieldValueSelect={handleQuickFiltersValueSelect}
             />
-          </Col>
-          <Col className="d-flex items-center justify-end gap-3" flex={410}>
+          </div>
+          {/* Content-sized: a grow factor here would swallow the free space the
+              zero-basis filters column needs (grow 410 vs 1 left it ~2px wide).
+              Top-aligned, and offset by the filters' own `mt-1`, so the controls
+              sit on the first filter row: centring them inside a column the
+              wrapped filters have made two rows tall floats them into the gap
+              and reads as a much heavier block. */}
+          {/* `self-start` keeps this column at its content height. Left to
+              stretch, it grows with the wrapped filters, and the vertical
+              dividers — which are `self-stretch` — grow with it, towering over
+              the controls they separate. */}
+          <div className="d-flex items-start justify-end gap-3 tw:relative tw:mt-1 tw:min-h-px tw:max-w-full tw:flex-none tw:self-start">
             <Button
               aria-label={t('label.sort-order')}
               className="tw:p-0"
@@ -767,11 +1312,12 @@ const ExploreV1: React.FC<ExploreProps> = ({
             <Divider className="tw:my-2" orientation="vertical" />
 
             <Dropdown.Root>
+              {/* The Tools label should match the adjacent 14px Explore filters. */}
               <Button
                 hideFocusOutline
                 color="tertiary"
                 iconTrailing={<ChevronDown size={14} />}
-                size="xs">
+                size="sm">
                 {t('label.tool-plural')}
               </Button>
               <Dropdown.Popover>
@@ -824,41 +1370,23 @@ const ExploreV1: React.FC<ExploreProps> = ({
                 </Dropdown.Menu>
               </Dropdown.Popover>
             </Dropdown.Root>
-          </Col>
-          {shouldShowQueryFilterChips && (
-            <Col span={24}>
-              <ExploreQueryFilterChips
-                browseFields={browseFields}
-                emptyText={
-                  searchQueryParam
-                    ? undefined
-                    : t('message.browse-estate-query-placeholder')
-                }
-                fields={selectedQuickFilters}
-                onClearAll={clearFilters}
-                onRemoveBrowseLevel={handleRemoveBrowseLevel}
-                onRemoveValue={handleRemoveQuickFilterValue}
-              />
-            </Col>
-          )}
-          {isElasticSearchIssue ? (
-            <Col span={24}>
-              <IndexNotFoundBanner />
-            </Col>
-          ) : (
-            <></>
-          )}
-          {sqlQuery && (
-            <Col span={24}>
-              <AppliedFilterText
-                filterText={sqlQuery}
-                onClear={() => onResetQueryFilter()}
-                onEdit={() => toggleModal(true)}
-              />
-            </Col>
-          )}
-        </Row>
-      </Card>
+          </div>
+          <ExploreFilterStatusRow
+            browseFields={browseFields}
+            clearFilters={clearFilters}
+            handleRemoveBrowseLevel={handleRemoveBrowseLevel}
+            handleRemoveQuickFilterValue={handleRemoveQuickFilterValue}
+            isElasticSearchIssue={isElasticSearchIssue}
+            quickFilterFields={quickFilterFields}
+            searchQueryParam={searchQueryParam}
+            shouldShowQueryFilterChips={shouldShowQueryFilterChips}
+            sqlQuery={sqlQuery}
+            t={t}
+            onEditQueryFilter={() => toggleModal(true)}
+            onResetQueryFilter={() => onResetQueryFilter()}
+          />
+        </div>
+      </CoreCard>
 
       <ResizableLeftPanels
         showLearningIcon
@@ -866,14 +1394,12 @@ const ExploreV1: React.FC<ExploreProps> = ({
           'filter-applied': Boolean(sqlQuery),
         })}
         firstPanel={{
-          // Ant Card owns the title padding, so the spacing belongs on its header rather than the inner row.
-          cardClassName: 'tw:[&_.ant-card-head-title]:pb-2',
           className: 'content-resizable-panel-container',
           flex: 0.2,
           minWidth: 280,
           title: t('label.browse-estate'),
           titleClassName: 'tw:capitalize tw:font-medium',
-          titleContainerClassName: 'tw:items-center',
+          titleContainerClassName: 'tw:items-center tw:pb-2',
           titleStrong: false,
           children: <div className="p-x-sm">{exploreLeftPanel}</div>,
         }}
@@ -881,176 +1407,54 @@ const ExploreV1: React.FC<ExploreProps> = ({
           flex: 0.8,
           minWidth: 800,
           children: (
-            <Box className="tw:h-full tw:min-w-0 tw:w-full" colGap={3}>
-              <div className="h-full tw:flex tw:min-w-[300px] tw:flex-1 tw:flex-col tw:overflow-hidden tw:rounded-xl explore-main-card">
-                <Card className="tw:min-h-0 tw:flex-1 tw:rounded-b-none">
-                  {!loading && !isElasticSearchIssue ? (
-                    <SearchedData
-                      data={searchResults?.hits.hits ?? []}
-                      filter={parsedSearch}
-                      handleSummaryPanelDisplay={handleSummaryPanelDisplay}
-                      isFilterSelected={hasActiveFilters}
-                      isSummaryPanelVisible={showSummaryPanel}
-                      selectedEntityId={entityDetails?.id || ''}
-                      showRankingDetails={showRankingDetails}
-                      showResultCount={hasActiveFilters}
-                      totalValue={totalValue}
-                    />
-                  ) : (
-                    <></>
-                  )}
-                  {loading ? <Loader /> : <></>}
-                </Card>
-                {!loading && !isElasticSearchIssue && totalValue > 0 ? (
-                  <PaginationCardWithControls
-                    page={validCurrentPage}
-                    pageSize={pageSize}
-                    pageSizeOptions={EXPLORE_PAGE_SIZE_OPTIONS}
-                    total={totalPages}
-                    onPageChange={handleExplorePageChange}
-                    onPageSizeChange={handleExplorePageSizeChange}
-                  />
-                ) : (
-                  <></>
-                )}
-              </div>
-
-              {showSummaryPanel && entityDetails && !loading && (
-                <div className="explore-page-right-panel">
-                  <EntitySummaryPanel
-                    entityDetails={{ details: entityDetails }}
-                    handleClosePanel={handleClosePanel}
-                    highlights={omit(
-                      {
-                        ...firstEntity?.highlight, // highlights of firstEntity that we get from the query api
-                        'tag.name': (
-                          selectedQuickFilters?.find(
-                            (filterOption) => filterOption.key === TAG_FQN_KEY
-                          )?.value ?? []
-                        ).map((tagFQN) => tagFQN.key), // finding the tags filter from SelectedQuickFilters and creating the array of selected Tags FQN
-                      },
-                      ['description', 'displayName']
-                    )}
-                    key={
-                      entityDetails.entityType +
-                      '-' +
-                      entityDetails.fullyQualifiedName
-                    }
-                    panelPath="explore"
-                  />
-                </div>
-              )}
-            </Box>
+            <ExploreResultsPanel
+              entityDetails={entityDetails}
+              firstEntity={firstEntity}
+              handleClosePanel={handleClosePanel}
+              handleExplorePageChange={handleExplorePageChange}
+              handleExplorePageSizeChange={handleExplorePageSizeChange}
+              handleSummaryPanelDisplay={handleSummaryPanelDisplay}
+              hasActiveFilters={hasActiveFilters}
+              isElasticSearchIssue={isElasticSearchIssue}
+              loading={loading}
+              pageSize={pageSize}
+              parsedSearch={parsedSearch}
+              searchResults={searchResults}
+              selectedQuickFilters={selectedQuickFilters}
+              showRankingDetails={showRankingDetails}
+              showSummaryPanel={showSummaryPanel}
+              totalPages={totalPages}
+              totalValue={totalValue}
+              validCurrentPage={validCurrentPage}
+            />
           ),
         }}
       />
 
       {searchQueryParam && tabItems.length === 0 && loading && <Loader />}
 
-      <Modal
-        centered
-        cancelText={t('label.cancel')}
-        className="search-export-modal tw:overflow-hidden"
-        data-testid="export-scope-modal"
-        okButtonProps={{
-          disabled:
-            isExporting ||
-            isCountLoading ||
-            isAllAssetsLimitExceeded ||
-            isTabScopeDisabled,
-          loading: isExporting,
-        }}
-        okText={t('label.export')}
+      <ExploreExportScopeModal
+        activeTabLabel={activeTabLabel}
+        allAssetsCount={allAssetsCount}
+        exportError={exportError}
+        exportScope={exportScope}
+        isAllAssetsLimitExceeded={isAllAssetsLimitExceeded}
+        isCountLoading={isCountLoading}
+        isExporting={isExporting}
+        isSearchMode={isSearchMode}
+        isTabScopeDisabled={isTabScopeDisabled}
         open={showExportScopeModal}
+        pageResultCount={pageResultCount}
+        t={t}
+        tabAssetsCount={tabAssetsCount}
         title={exportModalTitle}
-        width={680}
         onCancel={() => {
           setShowExportScopeModal(false);
           setExportError(undefined);
         }}
-        onOk={handleExportScopeConfirm}>
-        {isAllAssetsLimitExceeded && (
-          <Alert
-            className="m-b-sm"
-            title={t('message.export-assets-limit-exceeded', {
-              limit: EXPORT_ALL_ASSETS_LIMIT,
-            })}
-            variant="error"
-          />
-        )}
-        {exportError && (
-          <Alert className="m-b-sm" title={exportError} variant="error" />
-        )}
-        <CoreTypography
-          className="tw:text-secondary"
-          size="text-sm"
-          weight="medium">
-          {t('label.export-scope')}
-        </CoreTypography>
-        <Radio.Group
-          className="d-flex gap-3 m-t-sm w-full"
-          value={exportScope}
-          onChange={(e) =>
-            handleExportScopeChange(e.target.value as 'visible' | 'all')
-          }>
-          <CoreCard
-            isClickable
-            className="export-scope-option-card tw:flex-1 tw:p-4"
-            data-testid="export-scope-visible-card"
-            isSelected={exportScope === 'visible'}
-            onClick={() => handleExportScopeChange('visible')}>
-            <div className="d-flex items-start gap-1">
-              <Radio value="visible" />
-              <div>
-                <div className="d-flex items-center gap-2">
-                  <CoreTypography
-                    className="tw:text-primary d-flex items-center tw:gap-0.5"
-                    size="text-sm"
-                    weight="semibold">
-                    {isSearchMode
-                      ? activeTabLabel
-                      : t('label.visible-result-plural')}
-                    {visibleCardCount}
-                  </CoreTypography>
-                </div>
-                <CoreTypography
-                  className="tw:text-tertiary"
-                  size="text-sm"
-                  weight="regular">
-                  {t('message.export-visible-results-description', {
-                    dataAssetType: activeTabLabel,
-                  })}
-                </CoreTypography>
-              </div>
-            </div>
-          </CoreCard>
-          <CoreCard
-            isClickable
-            className="export-scope-option-card tw:flex-1 tw:p-4"
-            data-testid="export-scope-all-card"
-            isSelected={exportScope === 'all'}
-            onClick={() => handleExportScopeChange('all')}>
-            <div className="d-flex items-start tw:gap-1">
-              <Radio value="all" />
-              <div>
-                <CoreTypography
-                  className="tw:text-primary d-flex items-center tw:gap-1"
-                  size="text-sm"
-                  weight="semibold">
-                  {`${t('label.all-asset-plural')} `}
-                  {allAssetsCountDisplay}
-                </CoreTypography>
-                <CoreTypography
-                  className="tw:text-tertiary"
-                  size="text-sm"
-                  weight="regular">
-                  {t('message.export-all-matching-assets-description')}
-                </CoreTypography>
-              </div>
-            </div>
-          </CoreCard>
-        </Radio.Group>
-      </Modal>
+        onExportScopeChange={handleExportScopeChange}
+        onOk={handleExportScopeConfirm}
+      />
     </div>
   );
 };

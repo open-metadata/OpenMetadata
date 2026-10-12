@@ -1,0 +1,1564 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { ComponentProps, ComponentType, ReactNode } from 'react';
+
+const mockGetTaskById = jest.fn();
+const mockResolveTask = jest.fn();
+const mockAddComment = jest.fn();
+const mockSetEditorContent = jest.fn();
+const mockEditComment = jest.fn();
+const mockDeleteComment = jest.fn();
+const mockShowErrorToast = jest.fn();
+const mockGetEntityPermission = jest.fn();
+const mockGetResolvedTaskFormSchema = jest.fn();
+
+let mockCurrentUser: { id?: string; name?: string; isAdmin?: boolean } = {
+  name: 'bob',
+};
+
+// `TASK_ENTITY_TYPES` is built by indexing the `tasksAPI` enum mocked above, so
+// stub the map directly rather than re-declaring every enum member.
+// Clamping and its tooltip have their own suite; render the text as is.
+jest.mock('./ClampedText', () => ({
+  __esModule: true,
+  default: ({ children }: { children: ReactNode }) => <>{children}</>,
+}));
+
+jest.mock('constants/Task.constant', () => ({
+  TASK_ENTITY_TYPES: {
+    RequestApproval: 'message.request-approval-message',
+    GlossaryApproval: 'message.request-approval-message',
+    DataAccessRequest: 'message.data-access-request-message',
+  },
+}));
+
+jest.mock('rest/tasksAPI', () => ({
+  getTaskById: mockGetTaskById,
+  resolveTask: mockResolveTask,
+  addTaskComment: (...a: unknown[]) => mockAddComment(...a),
+  editTaskComment: (...a: unknown[]) => mockEditComment(...a),
+  deleteTaskComment: (...a: unknown[]) => mockDeleteComment(...a),
+  TaskResolutionType: {
+    Approved: 'Approved',
+    AutoApproved: 'AutoApproved',
+    Rejected: 'Rejected',
+    AutoRejected: 'AutoRejected',
+  },
+}));
+
+// Boundary stub keeping the two behaviours the legacy resolve body depends on:
+// approval tasks resolve to a sentinel, suggestion tasks to the applied value.
+jest.mock('utils/TaskFormSchemaUtils', () => ({
+  getResolvedTaskFormSchema: (...a: unknown[]) =>
+    mockGetResolvedTaskFormSchema(...a),
+  applyTaskFormSchemaDefaults: (payload: Record<string, unknown>) => payload,
+  getEditableTaskPayload: (task: { payload?: Record<string, unknown> }) =>
+    task.payload ?? {},
+  getTaskFormHandlerConfig: (task: { type?: string }) =>
+    task.type === 'DescriptionUpdate'
+      ? { type: 'descriptionUpdate', valueField: 'newDescription' }
+      : {
+          type: 'approval',
+          approvedValue: 'approved',
+          rejectedValue: 'rejected',
+        },
+  getTaskResolutionNewValue: (
+    _task: unknown,
+    payload: Record<string, unknown>
+  ) => payload.newDescription,
+  shouldRequireTaskResolutionValue: () => false,
+}));
+
+jest.mock('hooks/useApplicationStore', () => ({
+  useApplicationStore: () => ({ currentUser: mockCurrentUser }),
+}));
+
+jest.mock('context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: () => ({
+    getEntityPermission: mockGetEntityPermission,
+  }),
+}));
+
+jest.mock('utils/FeedUtilsPure', () => ({
+  MarkdownToHTMLConverter: { makeHtml: (m: string) => m },
+  getFrontEndFormat: (m: string) => m,
+}));
+
+jest.mock('components/common/DeleteModal/DeleteModal', () => ({
+  __esModule: true,
+  default: ({ open, onDelete }: { open: boolean; onDelete: () => void }) =>
+    open ? (
+      <button data-testid="confirm-delete-task-comment" onClick={onDelete}>
+        delete
+      </button>
+    ) : null,
+}));
+
+jest.mock('utils/ToastUtils', () => ({
+  showErrorToast: mockShowErrorToast,
+}));
+
+// Tag the fallback so tests assert the permission-aware message reaches the toast.
+jest.mock('utils/StringUtils', () => ({
+  ...jest.requireActual('utils/StringUtils'),
+  getPermissionErrorText: jest.fn(
+    (_error: unknown, fallback: string) => `perm:${fallback}`
+  ),
+}));
+
+jest.mock(
+  'components/common/UserTeamSelectableList/UserTeamSelectableList.component',
+  () => ({
+    UserTeamSelectableList: ({
+      children,
+      onUpdate,
+    }: {
+      children?: ReactNode;
+      onUpdate: (...args: unknown[]) => void;
+    }) => (
+      <div data-testid="user-team-picker">
+        <button
+          aria-label="picker-save"
+          data-testid="picker-save"
+          onClick={() =>
+            onUpdate([
+              {
+                id: 'u2',
+                type: 'user',
+                name: 'bob',
+                displayName: 'Bob',
+                href: 'http://x/u2',
+              },
+            ])
+          }
+        />
+        <button
+          aria-label="picker-save-empty"
+          data-testid="picker-save-empty"
+          onClick={() => onUpdate([])}
+        />
+        {children}
+      </div>
+    ),
+  })
+);
+
+// Spread the real module: the status badge pulls in `inbox.utils`, whose
+// profiler constants need the day helpers at import time.
+jest.mock('utils/date-time/DateTimeUtils', () => ({
+  ...jest.requireActual('utils/date-time/DateTimeUtils'),
+  getRelativeTime: (ts: number) => `time-${ts}`,
+}));
+
+jest.mock('utils/EntityNameUtils', () => ({
+  getEntityName: (ref: { name?: string }) => ref?.name ?? '',
+}));
+
+const mockGetContributions = jest.fn().mockReturnValue([]);
+
+jest.mock(
+  'components/Settings/Applications/ApplicationsProvider/ApplicationsProvider',
+  () => ({
+    useApplicationsProvider: () => ({
+      extensionRegistry: { getContributions: mockGetContributions },
+    }),
+  })
+);
+
+// Expose what a plugin contribution changes: the stat tiles it supplies, and
+// the summary rows and callout its describe() merges in.
+jest.mock('./TaskAssetCard', () => ({
+  __esModule: true,
+  default: ({ StatTiles }: { StatTiles?: ComponentType }) => (
+    <div data-testid="task-asset-card">{StatTiles && <StatTiles />}</div>
+  ),
+}));
+
+jest.mock('./TaskDetailSummary', () => ({
+  __esModule: true,
+  default: ({
+    rows,
+    callout,
+  }: {
+    rows: { key: string }[];
+    callout?: { label: string };
+  }) => (
+    <div
+      data-callout={callout?.label}
+      data-rows={rows.map((row) => row.key).join(',')}
+      data-testid="task-detail-summary"
+    />
+  ),
+}));
+
+jest.mock('../useTaskAboutEntity', () => ({
+  useTaskAboutEntity: () => ({ about: undefined, isLoading: false }),
+}));
+
+jest.mock('./TaskActionCommentModal', () => ({
+  __esModule: true,
+  default: ({
+    open,
+    showRootCause,
+    onConfirm,
+    onCancel,
+  }: {
+    open?: boolean;
+    showRootCause?: boolean;
+    onConfirm: (...args: unknown[]) => void;
+    onCancel?: (...args: unknown[]) => void;
+  }) =>
+    open ? (
+      <div data-testid="comment-modal">
+        {showRootCause && <span data-testid="modal-root-cause" />}
+        <button
+          aria-label="modal-confirm"
+          data-testid="modal-confirm"
+          onClick={() => onConfirm({ comment: 'a comment' })}
+        />
+        <button
+          aria-label="modal-confirm-with-root-cause"
+          data-testid="modal-confirm-with-root-cause"
+          onClick={() =>
+            onConfirm({ comment: 'a comment', rootCause: 'FalsePositive' })
+          }
+        />
+        <button
+          aria-label="modal-cancel"
+          data-testid="modal-cancel"
+          onClick={onCancel}
+        />
+      </div>
+    ) : null,
+}));
+
+jest.mock('./TaskActivityTimeline', () => ({
+  __esModule: true,
+  default: () => <div data-testid="task-activity-timeline" />,
+}));
+
+jest.mock(
+  'components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew',
+  () => {
+    const { forwardRef, useImperativeHandle } = jest.requireActual('react');
+
+    return {
+      __esModule: true,
+      default: forwardRef(
+        (
+          { onSave }: { onSave?: (m: string) => void },
+          ref: React.Ref<unknown>
+        ) => {
+          useImperativeHandle(ref, () => ({
+            getEditorContent: () => '',
+            clearEditorContent: jest.fn(),
+            setEditorContent: mockSetEditorContent,
+          }));
+
+          return (
+            <button
+              data-testid="comment-editor"
+              onClick={() => onSave?.('edited')}>
+              editor
+            </button>
+          );
+        }
+      ),
+    };
+  }
+);
+
+jest.mock('components/common/Loader/Loader', () => ({
+  __esModule: true,
+  default: () => <div data-testid="loader" />,
+}));
+
+jest.mock('components/common/ProfilePicture/ProfilePicture', () => ({
+  __esModule: true,
+  default: () => <div />,
+}));
+
+jest.mock('components/common/RichTextEditor/RichTextEditorPreviewerV1', () => ({
+  __esModule: true,
+  default: () => <div />,
+}));
+
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Dot: () => <span />,
+  BadgeWithDot: ({
+    children,
+    color,
+    'data-testid': testId,
+  }: {
+    children?: ReactNode;
+    color?: string;
+    'data-testid'?: string;
+  }) => (
+    <span data-color={color} data-testid={testId}>
+      {children}
+    </span>
+  ),
+  Dropdown: {
+    Root: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+    Popover: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+    Menu: ({
+      children,
+      onAction,
+    }: {
+      children?: ReactNode;
+      onAction?: (key: string) => void;
+    }) => (
+      <div data-onaction={Boolean(onAction)} role="menu">
+        {children}
+      </div>
+    ),
+    Item: ({
+      children,
+      'data-testid': testId,
+    }: {
+      children?: ReactNode;
+      'data-testid'?: string;
+    }) => <div data-testid={testId}>{children}</div>,
+  },
+  Badge: ({
+    children,
+    color,
+    'data-testid': testId,
+  }: {
+    children?: ReactNode;
+    color?: string;
+    'data-testid'?: string;
+  }) => (
+    <span data-color={color} data-testid={testId}>
+      {children}
+    </span>
+  ),
+  Box: ({
+    children,
+    onMouseEnter,
+    onMouseLeave,
+    ...rest
+  }: {
+    children?: ReactNode;
+    onMouseEnter?: () => void;
+    onMouseLeave?: () => void;
+    'data-testid'?: string;
+  }) => (
+    <div
+      data-testid={rest['data-testid']}
+      role="presentation"
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}>
+      {children}
+    </div>
+  ),
+  Skeleton: () => <div data-testid="skeleton" />,
+  Button: ({
+    children,
+    onClick,
+    onPress,
+    isDisabled,
+    'data-testid': testId,
+  }: {
+    children?: ReactNode;
+    onClick?: (...args: unknown[]) => void;
+    onPress?: (...args: unknown[]) => void;
+    isDisabled?: boolean;
+    'data-testid'?: string;
+  }) => (
+    <button
+      data-testid={testId}
+      disabled={isDisabled}
+      onClick={onClick ?? onPress}>
+      {children}
+    </button>
+  ),
+  Typography: ({
+    children,
+    'data-testid': testId,
+  }: {
+    children?: ReactNode;
+    'data-testid'?: string;
+  }) => <span data-testid={testId}>{children}</span>,
+  EmptyPlaceholder: ({
+    title,
+    description,
+  }: {
+    title?: ReactNode;
+    description?: ReactNode;
+  }) => (
+    <div>
+      <span>{title}</span>
+      <span>{description}</span>
+    </div>
+  ),
+  Tabs: Object.assign(
+    ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+    {
+      List: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+      Item: ({ label }: { label?: ReactNode }) => <span>{label}</span>,
+      Panel: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+    }
+  ),
+}));
+
+jest.mock(
+  '@openmetadata/ui-core-components/icons',
+  () =>
+    new Proxy(
+      {},
+      {
+        get: (_target, name: string) =>
+          name === '__esModule'
+            ? false
+            : (props: ComponentProps<'span'>) => <span {...props} />,
+      }
+    )
+);
+
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({ t: (key: string) => key }),
+}));
+
+jest.mock('react-router-dom', () => ({
+  Link: ({
+    children,
+    to,
+    'data-testid': testId,
+  }: {
+    children?: ReactNode;
+    to?: string;
+    'data-testid'?: string;
+  }) => (
+    <a data-testid={testId} href={to}>
+      {children}
+    </a>
+  ),
+}));
+
+// Boundary stub for the routing layer: the panel only cares that a task with an
+// about-entity links to it, and that an incident falls back to its test case.
+jest.mock('utils/TaskNavigationUtils', () => ({
+  getTaskAboutPath: (
+    task: { about?: { type?: string; fullyQualifiedName?: string } },
+    incidentTestCaseFqn: string
+  ) => {
+    if (task.about?.fullyQualifiedName) {
+      return `/${task.about?.type}/${task.about?.fullyQualifiedName}/activity_feed/tasks`;
+    }
+
+    return incidentTestCaseFqn.includes('.')
+      ? `/test-case/${incidentTestCaseFqn}/issues`
+      : '';
+  },
+}));
+
+// Spread the real enums: the tier lookup behind the asset context reaches
+// `TabSpecificField` at import time, which a bare stub would leave undefined.
+jest.mock('enums/entity.enum', () => ({
+  ...jest.requireActual('enums/entity.enum'),
+  EntityType: { TEST_CASE: 'testCase' },
+  EntityTabs: { ACTIVITY_FEED: 'activity_feed' },
+}));
+
+jest.mock(
+  'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface',
+  () => ({
+    ActivityFeedTabs: { TASKS: 'tasks' },
+  })
+);
+
+jest.mock('pages/IncidentManager/IncidentManager.interface', () => ({
+  TestCasePageTabs: { ISSUES: 'issues' },
+}));
+
+import TaskDetailPanel from './TaskDetailPanel';
+
+const TASK = {
+  id: 'task-1',
+  taskId: '42',
+  name: 'DAR-001',
+  displayName: 'Access to Sales Table',
+  status: 'Open',
+  createdAt: 1000,
+  createdBy: { id: 'u1', name: 'alice' },
+  availableTransitions: [
+    { id: 'approve', label: 'label.approve', resolutionType: 'Approved' },
+    { id: 'reject', label: 'label.reject', resolutionType: 'Rejected' },
+  ],
+  comments: [],
+};
+
+// An approved access request stays open awaiting its grant, so its next
+// transitions stay actionable; any other approved task is closed.
+const DAR_TASK = { ...TASK, type: 'DataAccessRequest' };
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockGetContributions.mockReturnValue([]);
+  mockCurrentUser = { name: 'bob' };
+  mockGetTaskById.mockResolvedValue({ data: TASK });
+  mockGetEntityPermission.mockResolvedValue({ ResolveTask: true });
+  mockGetResolvedTaskFormSchema.mockResolvedValue(undefined);
+});
+
+describe('TaskDetailPanel', () => {
+  it('renders the task header after loading', async () => {
+    await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+    expect(screen.getByText('Access to Sales Table')).toBeInTheDocument();
+    expect(screen.getByText('42')).toBeInTheDocument();
+  });
+
+  // A closed task reads as its outcome, led by whoever decided it.
+  it('leads a closed task with its outcome', async () => {
+    mockGetTaskById.mockResolvedValue({
+      data: {
+        ...TASK,
+        status: 'Rejected',
+        resolution: {
+          resolvedBy: { id: 'u9', name: 'harsh', displayName: 'Harsh' },
+          resolvedAt: 1000,
+        },
+      },
+    });
+
+    await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+    expect(screen.getByText('message.task-outcome-by-on')).toBeInTheDocument();
+  });
+
+  it('falls back to the description when the name is only the taskId', async () => {
+    mockGetTaskById.mockResolvedValue({
+      data: {
+        ...TASK,
+        displayName: undefined,
+        name: '42',
+        description: 'Approval required for sales_table',
+      },
+    });
+
+    await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+    // The id appears once, as the header's id chip — never as the heading too.
+    expect(screen.getAllByText('42')).toHaveLength(1);
+    expect(
+      screen.getAllByText('Approval required for sales_table').length
+    ).toBeGreaterThan(0);
+  });
+
+  it('fetches the task with the full field set', async () => {
+    await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+    expect(mockGetTaskById).toHaveBeenCalledWith('task-1', {
+      fields:
+        'about,createdBy,reviewers,assignees,resolution,approvedBy,approvedAt,availableTransitions,payload,comments',
+    });
+  });
+
+  it('resolves the task and notifies on Approve', async () => {
+    const onResolved = jest.fn();
+    mockResolveTask.mockResolvedValue({ ...TASK, status: 'Approved' });
+
+    await act(async () =>
+      render(<TaskDetailPanel taskId="task-1" onResolved={onResolved} />)
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('label.approve'));
+    });
+
+    expect(mockResolveTask).toHaveBeenCalledWith('task-1', {
+      transitionId: 'approve',
+      resolutionType: 'Approved',
+    });
+    expect(onResolved).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'Approved' })
+    );
+  });
+
+  it('hides the action buttons after a transition is fired', async () => {
+    // The workflow advances async, so the just-used transition must not stay
+    // clickable — re-submitting it hits a workflow with no active task (500).
+    mockResolveTask.mockResolvedValue({ ...TASK, status: 'Approved' });
+
+    await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+    expect(screen.getByText('label.approve')).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('label.approve'));
+    });
+
+    expect(screen.queryByText('label.approve')).not.toBeInTheDocument();
+    expect(screen.queryByText('label.reject')).not.toBeInTheDocument();
+  });
+
+  it('shows the next stage actions once the workflow advances, without a reload', async () => {
+    // Approve → the workflow moves the DAR to "awaiting grant". The panel polls
+    // until the consumed transition is gone, then renders Mark as granted.
+    jest.useFakeTimers();
+    mockResolveTask.mockResolvedValue({ ...DAR_TASK, status: 'Approved' });
+    mockGetTaskById
+      // Initial load, then one poll that still echoes the consumed transition.
+      .mockResolvedValueOnce({ data: TASK })
+      .mockResolvedValueOnce({ data: TASK })
+      .mockResolvedValue({
+        data: {
+          ...DAR_TASK,
+          status: 'Approved',
+          availableTransitions: [
+            {
+              id: 'markAsGranted',
+              label: 'Mark as granted',
+              resolutionType: 'Granted',
+            },
+          ],
+        },
+      });
+
+    await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('label.approve'));
+    });
+
+    // Actions stay hidden while the workflow is still echoing `approve`.
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+
+    expect(screen.queryByText('Mark as granted')).not.toBeInTheDocument();
+
+    await act(async () => {
+      jest.advanceTimersByTime(3000);
+    });
+
+    expect(screen.getByText('Mark as granted')).toBeInTheDocument();
+    expect(screen.queryByText('label.approve')).not.toBeInTheDocument();
+
+    jest.useRealTimers();
+  });
+
+  it('keeps a consumed transition hidden when the workflow never advances', async () => {
+    // The poll gives up after its attempts; re-firing the consumed transition
+    // would hit a workflow with no active task (500), so it must stay hidden.
+    jest.useFakeTimers();
+    mockResolveTask.mockResolvedValue({ ...DAR_TASK, status: 'Approved' });
+
+    await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('label.approve'));
+    });
+
+    // One tick per poll attempt (the intervals back off), so each re-read
+    // settles before the next timer fires.
+    for (let attempt = 0; attempt < 7; attempt++) {
+      await act(async () => {
+        jest.advanceTimersByTime(10_000);
+      });
+    }
+
+    expect(screen.queryByText('label.approve')).not.toBeInTheDocument();
+    // The untouched transition comes back once the sync window closes.
+    expect(screen.getByText('label.reject')).toBeInTheDocument();
+
+    jest.useRealTimers();
+  });
+
+  it('resolves the task and notifies on Reject', async () => {
+    const onResolved = jest.fn();
+    mockResolveTask.mockResolvedValue({ ...TASK, status: 'Rejected' });
+
+    await act(async () =>
+      render(<TaskDetailPanel taskId="task-1" onResolved={onResolved} />)
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('label.reject'));
+    });
+
+    expect(mockResolveTask).toHaveBeenCalledWith('task-1', {
+      transitionId: 'reject',
+      resolutionType: 'Rejected',
+    });
+    expect(onResolved).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'Rejected' })
+    );
+  });
+
+  it('runs a non-approve/reject transition (e.g. Revoke) with its id and type', async () => {
+    const onResolved = jest.fn();
+    mockGetTaskById.mockResolvedValue({
+      data: {
+        ...TASK,
+        availableTransitions: [
+          { id: 'revoke', label: 'Revoke access', resolutionType: 'Revoked' },
+        ],
+      },
+    });
+    mockResolveTask.mockResolvedValue({ ...TASK, status: 'Closed' });
+
+    await act(async () =>
+      render(<TaskDetailPanel taskId="task-1" onResolved={onResolved} />)
+    );
+
+    // Non-approve/reject transitions get a stable `task-transition-<id>` testid
+    // so e2e can target them (approve/reject keep their dedicated testids).
+    const revokeButton = screen.getByTestId('task-transition-revoke');
+
+    expect(revokeButton).toHaveTextContent('Revoke access');
+
+    await act(async () => {
+      fireEvent.click(revokeButton);
+    });
+
+    expect(mockResolveTask).toHaveBeenCalledWith('task-1', {
+      transitionId: 'revoke',
+      resolutionType: 'Revoked',
+    });
+    expect(onResolved).toHaveBeenCalled();
+  });
+
+  it('falls back to default Approve/Reject actions when the task offers none', async () => {
+    mockGetTaskById.mockResolvedValue({
+      data: { ...TASK, availableTransitions: [] },
+    });
+
+    await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+    expect(screen.getByText('label.approve')).toBeInTheDocument();
+    expect(screen.getByText('label.reject')).toBeInTheDocument();
+  });
+
+  it('shows no action buttons for a closed/terminal task', async () => {
+    // Terminal status with no server transitions must not fabricate approve/reject.
+    mockGetTaskById.mockResolvedValue({
+      data: { ...TASK, status: 'Rejected', availableTransitions: [] },
+    });
+
+    await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+    expect(screen.queryByText('label.approve')).not.toBeInTheDocument();
+    expect(screen.queryByText('label.reject')).not.toBeInTheDocument();
+  });
+
+  it('disables the other action while a transition is in flight', async () => {
+    // A never-settling resolve keeps the panel in the loading state.
+    mockResolveTask.mockReturnValue(new Promise(() => undefined));
+
+    await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('label.approve'));
+    });
+
+    // Approve is busy, so Reject must be disabled to prevent a double action.
+    expect(screen.getByText('label.reject').closest('button')).toBeDisabled();
+  });
+
+  it('shows an error toast when resolve fails', async () => {
+    const err = new Error('boom');
+    mockResolveTask.mockRejectedValue(err);
+
+    await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('label.reject'));
+    });
+
+    // Fallback routed through getPermissionErrorText (tagged 'perm:' by the mock).
+    expect(mockShowErrorToast).toHaveBeenCalledWith(
+      err,
+      'perm:message.something-went-wrong'
+    );
+  });
+
+  it('shows an error toast and no-data when the task fails to load', async () => {
+    mockGetTaskById.mockRejectedValue(new Error('nope'));
+
+    await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+    expect(mockShowErrorToast).toHaveBeenCalled();
+    expect(screen.getByText('label.no-task-found')).toBeInTheDocument();
+  });
+
+  it('opens the assignee picker for a reassign transition instead of firing', async () => {
+    const onTaskUpdated = jest.fn();
+    mockGetTaskById.mockResolvedValue({
+      data: {
+        ...TASK,
+        availableTransitions: [
+          {
+            id: 'reassign',
+            label: 'Reassign',
+            targetStageId: 'assigned',
+            targetTaskStatus: 'InProgress',
+          },
+        ],
+      },
+    });
+    mockResolveTask.mockResolvedValue({ ...TASK, status: 'InProgress' });
+
+    await act(async () =>
+      render(<TaskDetailPanel taskId="task-1" onTaskUpdated={onTaskUpdated} />)
+    );
+
+    // The button is wrapped in the picker; clicking it must not fire the API.
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('task-transition-reassign'));
+    });
+
+    expect(mockResolveTask).not.toHaveBeenCalled();
+
+    // Picking an assignee fires the transition with the payload.
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('picker-save'));
+    });
+
+    expect(mockResolveTask).toHaveBeenCalledWith('task-1', {
+      transitionId: 'reassign',
+      resolutionType: undefined,
+      payload: {
+        assignees: [
+          { id: 'u2', type: 'user', name: 'bob', displayName: 'Bob' },
+        ],
+      },
+    });
+    // Assignee changes notify onTaskUpdated so the list re-syncs visibility.
+    expect(onTaskUpdated).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'InProgress' })
+    );
+  });
+
+  it('does not fire an assign transition when the picker selection is empty', async () => {
+    mockGetTaskById.mockResolvedValue({
+      data: {
+        ...TASK,
+        availableTransitions: [
+          { id: 'assign', label: 'Assign', targetStageId: 'assigned' },
+        ],
+      },
+    });
+
+    await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('picker-save-empty'));
+    });
+
+    expect(mockResolveTask).not.toHaveBeenCalled();
+    // Empty selection (toggling the current assignee off) surfaces feedback
+    // rather than silently no-op'ing.
+    expect(mockShowErrorToast).toHaveBeenCalledWith(
+      'message.field-text-is-required'
+    );
+  });
+
+  it('collects a comment before firing a requiresComment transition', async () => {
+    const onResolved = jest.fn();
+    mockGetTaskById.mockResolvedValue({
+      data: {
+        ...TASK,
+        availableTransitions: [
+          {
+            id: 'approve',
+            label: 'label.approve',
+            resolutionType: 'Approved',
+            requiresComment: true,
+          },
+        ],
+      },
+    });
+    mockResolveTask.mockResolvedValue({ ...TASK, status: 'Approved' });
+
+    await act(async () =>
+      render(<TaskDetailPanel taskId="task-1" onResolved={onResolved} />)
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('label.approve'));
+    });
+
+    // The transition must not fire until the comment is collected.
+    expect(mockResolveTask).not.toHaveBeenCalled();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('modal-confirm'));
+    });
+
+    expect(mockResolveTask).toHaveBeenCalledWith('task-1', {
+      transitionId: 'approve',
+      resolutionType: 'Approved',
+      comment: 'a comment',
+    });
+    expect(onResolved).toHaveBeenCalled();
+  });
+
+  it('sends the root cause as testCaseFailureReason for an incident resolve', async () => {
+    mockGetTaskById.mockResolvedValue({
+      data: {
+        ...TASK,
+        category: 'Incident',
+        availableTransitions: [
+          {
+            id: 'resolve',
+            label: 'Resolve',
+            resolutionType: 'Completed',
+            requiresComment: true,
+          },
+        ],
+      },
+    });
+    mockResolveTask.mockResolvedValue({ ...TASK, status: 'Completed' });
+
+    await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Resolve'));
+    });
+
+    // Incident tasks surface the Root Cause select in the modal.
+    expect(screen.getByTestId('modal-root-cause')).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('modal-confirm-with-root-cause'));
+    });
+
+    expect(mockResolveTask).toHaveBeenCalledWith('task-1', {
+      transitionId: 'resolve',
+      resolutionType: 'Completed',
+      comment: 'a comment',
+      payload: { testCaseFailureReason: 'FalsePositive' },
+    });
+  });
+
+  it('does not surface the root cause select for non-incident tasks', async () => {
+    mockGetTaskById.mockResolvedValue({
+      data: {
+        ...TASK,
+        category: 'Approval',
+        availableTransitions: [
+          {
+            id: 'approve',
+            label: 'label.approve',
+            resolutionType: 'Approved',
+            requiresComment: true,
+          },
+        ],
+      },
+    });
+
+    await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('label.approve'));
+    });
+
+    expect(screen.queryByTestId('modal-root-cause')).not.toBeInTheDocument();
+  });
+
+  it('cancelling the comment modal fires nothing', async () => {
+    mockGetTaskById.mockResolvedValue({
+      data: {
+        ...TASK,
+        availableTransitions: [
+          {
+            id: 'approve',
+            label: 'label.approve',
+            resolutionType: 'Approved',
+            requiresComment: true,
+          },
+        ],
+      },
+    });
+
+    await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('label.approve'));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('modal-cancel'));
+    });
+
+    expect(mockResolveTask).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('comment-modal')).not.toBeInTheDocument();
+  });
+
+  it('links only the asset name within the title', async () => {
+    mockGetTaskById.mockResolvedValue({
+      data: {
+        ...TASK,
+        about: {
+          id: 'e1',
+          type: 'table',
+          name: 'Sales Table',
+          fullyQualifiedName: 'svc.db.schema.sales',
+        },
+      },
+    });
+
+    await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+    const link = screen.getByTestId('task-about-link');
+
+    expect(link).toHaveAttribute(
+      'href',
+      '/table/svc.db.schema.sales/activity_feed/tasks'
+    );
+    expect(link).toHaveTextContent('Sales Table');
+  });
+
+  it('highlights the whole trailing token when the asset name has a suffix', async () => {
+    // The asset name is a prefix of the trailing token; the entire token is
+    // highlighted, never a half-coloured word.
+    mockGetTaskById.mockResolvedValue({
+      data: {
+        ...TASK,
+        displayName: 'Request Access to dim_address_clean_changed',
+        about: {
+          id: 'e2',
+          type: 'table',
+          name: 'dim_address_clean',
+          fullyQualifiedName: 'svc.db.schema.dim_address_clean',
+        },
+      },
+    });
+
+    await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+    const link = screen.getByTestId('task-about-link');
+
+    expect(link.textContent).toBe('dim_address_clean_changed');
+    expect(link).toHaveAttribute(
+      'href',
+      '/table/svc.db.schema.dim_address_clean/activity_feed/tasks'
+    );
+  });
+
+  it('links the test case for an incident task with no about, derived from the description', async () => {
+    mockGetTaskById.mockResolvedValue({
+      data: {
+        ...TASK,
+        displayName:
+          'Test Case Incident - comments_table_column_count_to_equal_scby',
+        category: 'Incident',
+        about: undefined,
+        description:
+          'New incident for test case: mysql_sample.default.posts_db.Comments.comments_table_column_count_to_equal_scby',
+      },
+    });
+
+    await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+    const link = screen.getByTestId('task-about-link');
+
+    expect(link).toHaveAttribute(
+      'href',
+      '/test-case/mysql_sample.default.posts_db.Comments.comments_table_column_count_to_equal_scby/issues'
+    );
+    // The server-written "Test Case Incident - …" is not used as the title;
+    // the composed one is covered in taskTitle.utils.test.
+    expect(link.textContent).toContain(
+      'comments_table_column_count_to_equal_scby'
+    );
+    expect(link.textContent).not.toContain('Test Case Incident');
+  });
+
+  it('renders a plain title when the task has no about reference', async () => {
+    mockGetTaskById.mockResolvedValue({
+      data: { ...TASK, about: undefined },
+    });
+
+    await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+    expect(screen.queryByTestId('task-about-link')).not.toBeInTheDocument();
+    expect(screen.getByText('Access to Sales Table')).toBeInTheDocument();
+  });
+
+  it('links the whole title when the asset name is only a substring, not a trailing token', async () => {
+    // A glossary term named "1" must not link the "1" inside "TASK-19586".
+    mockGetTaskById.mockResolvedValue({
+      data: {
+        ...TASK,
+        displayName: 'TASK-19586',
+        about: {
+          id: 'g1',
+          type: 'glossaryTerm',
+          name: '1',
+          fullyQualifiedName: 'TeamGlow.1',
+        },
+      },
+    });
+
+    await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+    const link = screen.getByTestId('task-about-link');
+
+    expect(link).toHaveAttribute(
+      'href',
+      '/glossaryTerm/TeamGlow.1/activity_feed/tasks'
+    );
+    expect(link).toHaveTextContent('TASK-19586');
+    expect(screen.queryByText('(glossaryTerm)')).not.toBeInTheDocument();
+  });
+
+  describe('ResolveTask permission gate (self-approval guard)', () => {
+    const DAR_TASK = { ...TASK, type: 'DataAccessRequest' };
+
+    it('hides Approve/Reject on a DAR task when ResolveTask is denied (self-approval)', async () => {
+      mockGetTaskById.mockResolvedValue({ data: DAR_TASK });
+      mockGetEntityPermission.mockResolvedValue({ ResolveTask: false });
+
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+      expect(mockGetEntityPermission).toHaveBeenCalledWith('task', 'task-1');
+      expect(screen.queryByText('label.approve')).not.toBeInTheDocument();
+      expect(screen.queryByText('label.reject')).not.toBeInTheDocument();
+    });
+
+    it('fails closed: hides Approve/Reject on a DAR task while the permission is still resolving', async () => {
+      mockGetTaskById.mockResolvedValue({ data: DAR_TASK });
+      // A never-settling permission fetch keeps canResolveTask at its default.
+      mockGetEntityPermission.mockReturnValue(new Promise(() => undefined));
+
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+      expect(screen.queryByText('label.approve')).not.toBeInTheDocument();
+      expect(screen.queryByText('label.reject')).not.toBeInTheDocument();
+    });
+
+    it('shows Approve/Reject on a DAR task when ResolveTask is allowed', async () => {
+      mockGetTaskById.mockResolvedValue({ data: DAR_TASK });
+      mockGetEntityPermission.mockResolvedValue({ ResolveTask: true });
+
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+      expect(screen.getByText('label.approve')).toBeInTheDocument();
+      expect(screen.getByText('label.reject')).toBeInTheDocument();
+    });
+
+    it('keeps a reassign transition on a DAR task even when ResolveTask is denied (gated by EditTask, not ResolveTask)', async () => {
+      mockGetTaskById.mockResolvedValue({
+        data: {
+          ...DAR_TASK,
+          availableTransitions: [
+            { id: 'reassign', label: 'Reassign', targetStageId: 'assigned' },
+            {
+              id: 'approve',
+              label: 'label.approve',
+              resolutionType: 'Approved',
+            },
+          ],
+        },
+      });
+      mockGetEntityPermission.mockResolvedValue({ ResolveTask: false });
+
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+      expect(
+        screen.getByTestId('task-transition-reassign')
+      ).toBeInTheDocument();
+      expect(screen.queryByText('label.approve')).not.toBeInTheDocument();
+    });
+
+    it('does not gate a non-DAR task on ResolveTask and skips the permission fetch', async () => {
+      mockGetTaskById.mockResolvedValue({ data: TASK });
+      mockGetEntityPermission.mockResolvedValue({ ResolveTask: false });
+
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+      expect(mockGetEntityPermission).not.toHaveBeenCalled();
+      expect(screen.getByText('label.approve')).toBeInTheDocument();
+      expect(screen.getByText('label.reject')).toBeInTheDocument();
+    });
+  });
+
+  describe('status badge', () => {
+    // An open task reads as what it is waiting on, not as the raw status: the
+    // server models "nobody has it" and "it is yours to approve" both as Open.
+    it('reads an unassigned open task as unassigned', async () => {
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+      const badge = screen.getByTestId('task-status-badge');
+
+      expect(badge).toHaveTextContent('label.unassigned');
+      expect(badge).toHaveAttribute('data-color', 'gray');
+    });
+
+    it('reads an open task assigned to the viewer as pending their approval', async () => {
+      mockCurrentUser = { name: 'bob', id: 'u2' };
+      mockGetTaskById.mockResolvedValue({
+        data: { ...TASK, assignees: [{ id: 'u2', name: 'bob' }] },
+      });
+
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+      expect(screen.getByTestId('task-status-badge')).toHaveTextContent(
+        'label.pending-approval'
+      );
+      expect(screen.getByTestId('task-status-badge')).toHaveAttribute(
+        'data-color',
+        'brand'
+      );
+    });
+
+    // The design's meta row: status badge, then the id, then the type.
+    it('leads the header with the status, then the id and the type', async () => {
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+      const badge = screen.getByTestId('task-status-badge');
+      const type = screen.getByTestId('task-type-badge');
+
+      expect(
+        badge.compareDocumentPosition(type) & Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
+      expect(type).not.toHaveTextContent('·');
+    });
+
+    it('reads an open task assigned to someone else as assigned', async () => {
+      mockGetTaskById.mockResolvedValue({
+        data: { ...TASK, assignees: [{ id: 'u9', name: 'carol' }] },
+      });
+
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+      expect(screen.getByTestId('task-status-badge')).toHaveTextContent(
+        'label.assigned'
+      );
+    });
+
+    it('tones a rejected task red', async () => {
+      mockGetTaskById.mockResolvedValue({
+        data: { ...TASK, status: 'Rejected', availableTransitions: [] },
+      });
+
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+      const badge = screen.getByTestId('task-status-badge');
+
+      expect(badge).toHaveTextContent('label.rejected');
+      expect(badge).toHaveAttribute('data-color', 'error');
+    });
+
+    it('tones a granted request green', async () => {
+      mockGetTaskById.mockResolvedValue({
+        data: { ...TASK, status: 'Granted', availableTransitions: [] },
+      });
+
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+      expect(screen.getByTestId('task-status-badge')).toHaveAttribute(
+        'data-color',
+        'success'
+      );
+    });
+  });
+
+  describe('plugin contributions (INBOX_TASK_PANELS)', () => {
+    const contribution = (
+      overrides: Partial<Record<string, unknown>>
+    ): Record<string, unknown> => ({
+      key: 'plugin',
+      condition: () => true,
+      ...overrides,
+    });
+
+    it('merges a matching describe() and swaps in its stat tiles', async () => {
+      mockGetContributions.mockReturnValue([
+        contribution({ key: 'other', condition: () => false }),
+        contribution({
+          describe: () => ({
+            rows: [{ key: 'pluginRow' }],
+            callout: { label: 'Plugin reason', text: 'why' },
+          }),
+          stats: () => <div data-testid="plugin-stat-tiles" />,
+        }),
+      ]);
+
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+      const summary = screen.getByTestId('task-detail-summary');
+
+      expect(summary.getAttribute('data-rows')).toMatch(/^pluginRow/);
+      expect(summary).toHaveAttribute('data-callout', 'Plugin reason');
+      expect(screen.getByTestId('plugin-stat-tiles')).toBeInTheDocument();
+    });
+
+    it('ignores a contribution whose condition does not match', async () => {
+      mockGetContributions.mockReturnValue([
+        contribution({
+          condition: () => false,
+          stats: () => <div data-testid="plugin-stat-tiles" />,
+        }),
+      ]);
+
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+      expect(screen.getByTestId('task-detail-summary')).toBeInTheDocument();
+      expect(screen.queryByTestId('plugin-stat-tiles')).not.toBeInTheDocument();
+    });
+
+    // `component` is deprecated but still honoured, so a plugin built for the
+    // old pane keeps rendering where the summary would.
+    it('renders a deprecated component in place of the summary', async () => {
+      mockGetContributions.mockReturnValue([
+        contribution({
+          component: () => <div data-testid="legacy-plugin-panel" />,
+        }),
+      ]);
+
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+      expect(screen.getByTestId('legacy-plugin-panel')).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('task-detail-summary')
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe('legacy (non-workflow) tasks', () => {
+    // No availableTransitions, so there is no transition id to name: the server
+    // 400s on a fabricated one and the body must carry resolutionType + newValue.
+    const LEGACY_APPROVAL_TASK = {
+      ...TASK,
+      type: 'RequestApproval',
+      category: 'Approval',
+      availableTransitions: [],
+      payload: { proposedChanges: { owners: { added: ['bob'] } } },
+    };
+
+    // The list row carries no availableTransitions; acting on it before the
+    // full task lands could take the legacy path for a workflow task.
+    it('offers no actions until the full task has loaded', async () => {
+      const pending: { resolve?: (value: { data: unknown }) => void } = {};
+      mockGetTaskById.mockReturnValue(
+        new Promise((resolve) => {
+          pending.resolve = resolve;
+        })
+      );
+
+      await act(async () =>
+        render(
+          <TaskDetailPanel
+            fallbackTask={LEGACY_APPROVAL_TASK as never}
+            taskId="task-1"
+          />
+        )
+      );
+
+      expect(screen.getByTestId('task-detail-panel')).toBeInTheDocument();
+      expect(screen.queryByTestId('task-approve')).not.toBeInTheDocument();
+
+      await act(async () => pending.resolve?.({ data: LEGACY_APPROVAL_TASK }));
+
+      expect(screen.getByTestId('task-approve')).toBeInTheDocument();
+    });
+
+    // Only the first load gates the actions; a reload after a comment must not
+    // blank the buttons (or flip the status label) while it runs.
+    it('keeps its actions while a comment reloads the task', async () => {
+      mockGetTaskById.mockResolvedValueOnce({ data: LEGACY_APPROVAL_TASK });
+      mockAddComment.mockResolvedValue({});
+
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+      expect(screen.getByTestId('task-approve')).toBeInTheDocument();
+
+      const pending: { resolve?: (value: { data: unknown }) => void } = {};
+      mockGetTaskById.mockReturnValueOnce(
+        new Promise((resolve) => {
+          pending.resolve = resolve;
+        })
+      );
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('comment-editor'));
+      });
+
+      expect(mockGetTaskById).toHaveBeenCalledTimes(2);
+      expect(screen.getByTestId('task-approve')).toBeInTheDocument();
+
+      await act(async () => pending.resolve?.({ data: LEGACY_APPROVAL_TASK }));
+
+      expect(screen.getByTestId('task-approve')).toBeInTheDocument();
+    });
+
+    // The panel rejects a refused comment, so the composer puts it back.
+    it('keeps a refused comment in the composer', async () => {
+      const refused = new Error('refused');
+      mockGetTaskById.mockResolvedValue({ data: LEGACY_APPROVAL_TASK });
+      mockAddComment.mockRejectedValueOnce(refused);
+
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('comment-editor'));
+      });
+
+      expect(mockShowErrorToast).toHaveBeenCalledWith(refused);
+      expect(mockSetEditorContent).toHaveBeenCalledWith(
+        expect.stringContaining('edited')
+      );
+    });
+
+    it('resolves an approve without a transitionId, carrying newValue and the payload', async () => {
+      mockGetTaskById.mockResolvedValue({ data: LEGACY_APPROVAL_TASK });
+      mockResolveTask.mockResolvedValue({
+        ...LEGACY_APPROVAL_TASK,
+        status: 'Approved',
+      });
+
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('task-approve'));
+      });
+
+      expect(mockResolveTask).toHaveBeenCalledWith('task-1', {
+        resolutionType: 'Approved',
+        newValue: 'approved',
+        payload: { proposedChanges: { owners: { added: ['bob'] } } },
+      });
+    });
+
+    it('resolves a reject with the rejected sentinel and no payload', async () => {
+      mockGetTaskById.mockResolvedValue({ data: LEGACY_APPROVAL_TASK });
+      mockResolveTask.mockResolvedValue({
+        ...LEGACY_APPROVAL_TASK,
+        status: 'Rejected',
+      });
+
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('task-reject'));
+      });
+
+      expect(mockResolveTask).toHaveBeenCalledWith('task-1', {
+        resolutionType: 'Rejected',
+        newValue: 'rejected',
+      });
+    });
+
+    it('applies the suggested value for a description task', async () => {
+      mockGetTaskById.mockResolvedValue({
+        data: {
+          ...TASK,
+          type: 'DescriptionUpdate',
+          category: 'MetadataUpdate',
+          availableTransitions: [],
+          payload: { fieldPath: 'description', newDescription: 'the new one' },
+        },
+      });
+      mockResolveTask.mockResolvedValue({ ...TASK, status: 'Approved' });
+
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('task-approve'));
+      });
+
+      expect(mockResolveTask).toHaveBeenCalledWith('task-1', {
+        resolutionType: 'Approved',
+        newValue: 'the new one',
+        payload: { fieldPath: 'description', newDescription: 'the new one' },
+      });
+    });
+
+    it('resolves the form schema for a legacy task only', async () => {
+      mockGetTaskById.mockResolvedValue({ data: LEGACY_APPROVAL_TASK });
+
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+      expect(mockGetResolvedTaskFormSchema).toHaveBeenCalledWith(
+        'RequestApproval',
+        'Approval'
+      );
+    });
+
+    it('skips the form schema fetch for a workflow-driven task', async () => {
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+      expect(mockGetResolvedTaskFormSchema).not.toHaveBeenCalled();
+    });
+
+    it('does not poll for a consumed transition after a legacy resolve', async () => {
+      mockGetTaskById.mockResolvedValue({ data: LEGACY_APPROVAL_TASK });
+      mockResolveTask.mockResolvedValue({
+        ...LEGACY_APPROVAL_TASK,
+        status: 'Approved',
+      });
+
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('task-approve'));
+      });
+
+      // A legacy resolve is synchronous, so only the initial load hits the API.
+      expect(mockGetTaskById).toHaveBeenCalledTimes(1);
+    });
+
+    it('offers no generic approve/reject on an incident without transitions', async () => {
+      // Incidents need transitionId 'resolve' + Completed + a root cause.
+      mockGetTaskById.mockResolvedValue({
+        data: {
+          ...TASK,
+          type: 'TestCaseResolution',
+          category: 'Incident',
+          availableTransitions: [],
+        },
+      });
+
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+      expect(screen.queryByTestId('task-approve')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('task-reject')).not.toBeInTheDocument();
+    });
+
+    it('keeps the incident resolve transition when the workflow provides one', async () => {
+      mockGetTaskById.mockResolvedValue({
+        data: {
+          ...TASK,
+          type: 'TestCaseResolution',
+          category: 'Incident',
+          availableTransitions: [
+            {
+              id: 'resolve',
+              label: 'Resolve',
+              requiresComment: true,
+              resolutionType: 'Completed',
+            },
+          ],
+        },
+      });
+      mockResolveTask.mockResolvedValue({ ...TASK, status: 'Completed' });
+
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+      fireEvent.click(screen.getByTestId('task-transition-resolve'));
+
+      // The modal also collects the root cause, stored as testCaseFailureReason.
+      expect(screen.getByTestId('modal-root-cause')).toBeInTheDocument();
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('modal-confirm-with-root-cause'));
+      });
+
+      expect(mockResolveTask).toHaveBeenCalledWith('task-1', {
+        transitionId: 'resolve',
+        resolutionType: 'Completed',
+        comment: 'a comment',
+        payload: { testCaseFailureReason: 'FalsePositive' },
+      });
+    });
+  });
+});

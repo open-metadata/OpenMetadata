@@ -31,7 +31,7 @@ import { getUserAndTeamSearch } from '../../../../rest/miscAPI';
 import { createTask } from '../../../../rest/tasksAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   ArrowLeft: () => <svg data-testid="icon-arrow-left" />,
   Check: () => <svg data-testid="icon-check" />,
   ChevronDown: () => <svg data-testid="icon-chevron-down" />,
@@ -101,7 +101,11 @@ jest.mock('@openmetadata/ui-core-components', () => {
     label?: React.ReactNode;
     onAction?: (key: React.Key) => void;
   }) => (
-    <div role="menuitem" onClick={() => onAction?.(id)}>
+    <div
+      role="menuitem"
+      tabIndex={0}
+      onClick={() => onAction?.(id)}
+      onKeyDown={() => onAction?.(id)}>
       {children ?? label}
     </div>
   );
@@ -184,6 +188,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         return (
           <div data-testid="dropdown-root">
             <div
+              role="presentation"
               onClick={() => {
                 setOpen(true);
                 onOpenChange?.(true);
@@ -224,10 +229,10 @@ jest.mock('@openmetadata/ui-core-components', () => {
       children: React.ReactNode;
       isRequired?: boolean;
     }) => (
-      <label>
+      <span>
         {children}
         {isRequired && <span> *</span>}
-      </label>
+      </span>
     ),
     Popover: ({
       children,
@@ -260,6 +265,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
       return (
         <div data-testid="popover-trigger-root">
           <div
+            role="presentation"
             onClick={() => {
               setOpen(true);
               onOpenChange?.(true);
@@ -306,6 +312,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
 });
 
 jest.mock('../../../../rest/incidentManagerAPI', () => ({
+  // Spread the real module: the transition ids are plain constants the
+  // source reads at import time, and a bare factory leaves them undefined.
+  ...jest.requireActual('../../../../rest/incidentManagerAPI'),
   transitionIncident: jest.fn().mockResolvedValue({}),
   postTestCaseIncidentStatus: jest
     .fn()
@@ -728,10 +737,10 @@ describe('InlineTestCaseIncidentStatus', () => {
 
       const backButton = screen
         .getByTestId('icon-arrow-left')
-        .closest('button');
+        .closest('button') as HTMLButtonElement;
 
       await act(async () => {
-        fireEvent.click(backButton!);
+        fireEvent.click(backButton);
       });
 
       await waitFor(() => {
@@ -958,10 +967,10 @@ describe('InlineTestCaseIncidentStatus', () => {
 
       const backButton = screen
         .getByTestId('icon-arrow-left')
-        .closest('button');
+        .closest('button') as HTMLButtonElement;
 
       await act(async () => {
-        fireEvent.click(backButton!);
+        fireEvent.click(backButton);
       });
 
       await waitFor(() => {

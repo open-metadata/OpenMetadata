@@ -10,11 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { ProviderType } from '../../../generated/entity/bot';
+import { Access } from '../../../generated/entity/policies/accessControl/resourcePermission';
+import { getEntityPermissionByFqn } from '../../../rest/permissionAPI';
 import {
   deleteTestDefinitionByFqn,
   getListTestDefinitions,
@@ -24,6 +27,51 @@ import {
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import TestDefinitionForm from '../TestDefinitionForm/TestDefinitionForm.component';
 import TestDefinitionList from './TestDefinitionList.component';
+
+// TestDefinitionList renders the real (unmocked) useTestDefinitionRowPermissions,
+// now folded onto useBulkEntityPermissions (Task 9) — the per-row fetch moved
+// from usePermissionProvider().getEntityPermissionByFqn to rest/permissionAPI's
+// getEntityPermissionByFqn (react-query owned). mockGetEntityPermissionByFqn is
+// wired to that seam; buildPermissionResponse turns the old flat
+// { Create, Delete, ViewAll, ... } fixtures this file used into the raw
+// ResourcePermission shape getOperationPermissions expects. A fresh QueryClient
+// per render() call (via createWrapper()) keeps each test's permission cache
+// isolated from the others.
+const mockGetEntityPermissionByFqn = jest.fn();
+
+jest.mock('../../../rest/permissionAPI', () => ({
+  getEntityPermissionByFqn: (
+    ...args: Parameters<typeof getEntityPermissionByFqn>
+  ) => mockGetEntityPermissionByFqn(...args),
+}));
+
+const buildPermissionResponse = (flags: Record<string, boolean>) => ({
+  resource: 'testDefinition',
+  permissions: Object.entries(flags).map(([operation, allow]) => ({
+    operation,
+    access: allow ? Access.Allow : Access.Deny,
+  })),
+});
+
+const FULL_ACCESS_FLAGS = {
+  Create: true,
+  Delete: true,
+  ViewAll: true,
+  ViewBasic: true,
+  EditAll: true,
+};
+
+const createWrapper = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+
+  return ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>{children}</MemoryRouter>
+    </QueryClientProvider>
+  );
+};
 
 jest.mock('@openmetadata/ui-core-components', () => {
   const TableMock = Object.assign(
@@ -82,7 +130,28 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
     Box: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+    Toggle: jest.requireActual('@openmetadata/ui-core-components').Toggle,
+    CloseButton: jest
+      .fn()
+      .mockImplementation(({ onPress }) => (
+        <button
+          aria-label="clear"
+          data-testid="clear-search"
+          onClick={onPress}
+        />
+      )),
+    Input: jest
+      .fn()
+      .mockImplementation(({ value, onChange, inputDataTestId }) => (
+        <input
+          aria-label="search"
+          data-testid={inputDataTestId}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      )),
     EmptyPlaceholder: jest.fn().mockImplementation(({ title, description }) => (
       <div data-testid="empty-placeholder">
         <span>{title}</span>
@@ -103,8 +172,12 @@ jest.mock('@openmetadata/ui-core-components', () => {
     ButtonUtility: jest
       .fn()
       .mockImplementation(
-        ({ icon, onClick, className, 'data-testid': testId }) => (
-          <button className={className} data-testid={testId} onClick={onClick}>
+        ({ icon, onClick, className, isDisabled, 'data-testid': testId }) => (
+          <button
+            className={className}
+            data-testid={testId}
+            disabled={isDisabled}
+            onClick={onClick}>
             {icon}
           </button>
         )
@@ -253,13 +326,6 @@ jest.mock('../../common/atoms/filters/useFilterSelection', () => ({
 
 jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
-    getEntityPermissionByFqn: jest.fn().mockResolvedValue({
-      Create: true,
-      Delete: true,
-      ViewAll: true,
-      ViewBasic: true,
-      EditAll: true,
-    }),
     permissions: {
       testDefinition: {
         Create: true,
@@ -287,10 +353,13 @@ jest.mock('../../common/DeleteModal/DeleteModal', () => ({
 describe('TestDefinitionList Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockGetEntityPermissionByFqn.mockResolvedValue(
+      buildPermissionResponse(FULL_ACCESS_FLAGS)
+    );
   });
 
   it('should render component with test definitions table', async () => {
-    render(<TestDefinitionList />, { wrapper: MemoryRouter });
+    render(<TestDefinitionList />, { wrapper: createWrapper() });
 
     await waitFor(() => {
       expect(screen.getByTestId('test-definition-table')).toBeInTheDocument();
@@ -305,7 +374,7 @@ describe('TestDefinitionList Component', () => {
   });
 
   it('should render all table columns', async () => {
-    render(<TestDefinitionList />, { wrapper: MemoryRouter });
+    render(<TestDefinitionList />, { wrapper: createWrapper() });
 
     await waitFor(() => {
       const tableHeaders = screen.getAllByRole('columnheader');
@@ -321,19 +390,24 @@ describe('TestDefinitionList Component', () => {
   });
 
   it('should fetch test definitions on mount', async () => {
-    render(<TestDefinitionList />, { wrapper: MemoryRouter });
+    render(<TestDefinitionList />, { wrapper: createWrapper() });
 
     await waitFor(() => {
       expect(getListTestDefinitions).toHaveBeenCalledWith({
         after: undefined,
         before: undefined,
         limit: 15,
+        entityType: undefined,
+        testPlatform: undefined,
+        q: undefined,
+        sortField: 'displayName',
+        sortOrder: 'asc',
       });
     });
   });
 
   it('should render enabled switch for each test definition', async () => {
-    render(<TestDefinitionList />, { wrapper: MemoryRouter });
+    render(<TestDefinitionList />, { wrapper: createWrapper() });
 
     const switches = await screen.findAllByRole('switch');
 
@@ -341,7 +415,7 @@ describe('TestDefinitionList Component', () => {
   });
 
   it('should call patchTestDefinition when enable switch is toggled', async () => {
-    render(<TestDefinitionList />, { wrapper: MemoryRouter });
+    render(<TestDefinitionList />, { wrapper: createWrapper() });
 
     await waitFor(() => {
       expect(screen.getByTestId('test-definition-table')).toBeInTheDocument();
@@ -357,7 +431,7 @@ describe('TestDefinitionList Component', () => {
   });
 
   it('should render edit and delete action buttons', async () => {
-    render(<TestDefinitionList />, { wrapper: MemoryRouter });
+    render(<TestDefinitionList />, { wrapper: createWrapper() });
 
     const editButtons = await screen.findAllByTestId(/edit-test-definition-/);
     const deleteButtons = await screen.findAllByTestId(
@@ -369,7 +443,7 @@ describe('TestDefinitionList Component', () => {
   });
 
   it('should open form drawer when edit button is clicked', async () => {
-    render(<TestDefinitionList />, { wrapper: MemoryRouter });
+    render(<TestDefinitionList />, { wrapper: createWrapper() });
 
     await waitFor(() => {
       const editButtons = screen.getAllByTestId(/edit-test-definition-/);
@@ -382,7 +456,7 @@ describe('TestDefinitionList Component', () => {
   });
 
   it('should show delete confirmation modal when delete button is clicked', async () => {
-    render(<TestDefinitionList />, { wrapper: MemoryRouter });
+    render(<TestDefinitionList />, { wrapper: createWrapper() });
 
     await waitFor(() => {
       const deleteButtons = screen.getAllByTestId(/delete-test-definition-/);
@@ -395,7 +469,7 @@ describe('TestDefinitionList Component', () => {
   });
 
   it('should call deleteTestDefinitionByFqn when delete is confirmed', async () => {
-    render(<TestDefinitionList />, { wrapper: MemoryRouter });
+    render(<TestDefinitionList />, { wrapper: createWrapper() });
 
     await waitFor(() => {
       const deleteButtons = screen.getAllByTestId(/delete-test-definition-/);
@@ -429,7 +503,7 @@ describe('TestDefinitionList Component', () => {
       showPagination: true,
     });
 
-    render(<TestDefinitionList />, { wrapper: MemoryRouter });
+    render(<TestDefinitionList />, { wrapper: createWrapper() });
 
     await waitFor(() => {
       const deleteButtons = screen.getAllByTestId(/delete-test-definition-/);
@@ -463,7 +537,7 @@ describe('TestDefinitionList Component', () => {
       showPagination: true,
     });
 
-    render(<TestDefinitionList />, { wrapper: MemoryRouter });
+    render(<TestDefinitionList />, { wrapper: createWrapper() });
 
     const addButton = await screen.findByTestId('add-test-definition-button');
     fireEvent.click(addButton);
@@ -485,7 +559,7 @@ describe('TestDefinitionList Component', () => {
   });
 
   it('should render add test definition button', async () => {
-    render(<TestDefinitionList />, { wrapper: MemoryRouter });
+    render(<TestDefinitionList />, { wrapper: createWrapper() });
 
     await waitFor(() => {
       expect(
@@ -495,7 +569,7 @@ describe('TestDefinitionList Component', () => {
   });
 
   it('should open form drawer when add button is clicked', async () => {
-    render(<TestDefinitionList />, { wrapper: MemoryRouter });
+    render(<TestDefinitionList />, { wrapper: createWrapper() });
 
     const addButton = await screen.findByTestId('add-test-definition-button');
     fireEvent.click(addButton);
@@ -510,7 +584,7 @@ describe('TestDefinitionList Component', () => {
 
     (getListTestDefinitions as jest.Mock).mockRejectedValueOnce(mockError);
 
-    render(<TestDefinitionList />, { wrapper: MemoryRouter });
+    render(<TestDefinitionList />, { wrapper: createWrapper() });
 
     await waitFor(() => {
       expect(showErrorToast).toHaveBeenCalledWith(mockError);
@@ -518,7 +592,7 @@ describe('TestDefinitionList Component', () => {
   });
 
   it('should refresh list after successful create/update', async () => {
-    render(<TestDefinitionList />, { wrapper: MemoryRouter });
+    render(<TestDefinitionList />, { wrapper: createWrapper() });
 
     const addButton = await screen.findByTestId('add-test-definition-button');
     fireEvent.click(addButton);
@@ -541,8 +615,8 @@ describe('TestDefinitionList Component', () => {
     });
   });
 
-  it('should disable edit and delete buttons for System test definitions', async () => {
-    render(<TestDefinitionList />, { wrapper: MemoryRouter });
+  it('should keep System test definitions editable but not deletable', async () => {
+    render(<TestDefinitionList />, { wrapper: createWrapper() });
 
     await waitFor(() => {
       const editButtons = screen.getAllByTestId(/edit-test-definition-/);
@@ -552,39 +626,17 @@ describe('TestDefinitionList Component', () => {
       expect(editButtons[0]).not.toBeDisabled();
       expect(deleteButtons[0]).not.toBeDisabled();
 
-      // Second definition is System provider - should be disabled
-      expect(editButtons[1]).toBeDisabled();
+      // Second definition is System provider - the form is open for editing because its
+      // data quality dimension can be changed, but it can still never be deleted
+      expect(editButtons[1]).not.toBeDisabled();
       expect(deleteButtons[1]).toBeDisabled();
     });
   });
 
   it('should not fetch permissions for System test definitions', async () => {
-    const mockGetEntityPermissionByFqn = jest.fn().mockResolvedValue({
-      Create: true,
-      Delete: true,
-      ViewAll: true,
-      ViewBasic: true,
-      EditAll: true,
-    });
-
-    const { usePermissionProvider } = jest.requireMock(
-      '../../../context/PermissionProvider/PermissionProvider'
-    );
-
-    (usePermissionProvider as jest.Mock).mockReturnValue({
-      getEntityPermissionByFqn: mockGetEntityPermissionByFqn,
-      permissions: {
-        testDefinition: {
-          Create: true,
-          Delete: true,
-          ViewAll: true,
-          ViewBasic: true,
-          EditAll: true,
-        },
-      },
-    });
-
-    render(<TestDefinitionList />, { wrapper: MemoryRouter });
+    // beforeEach already resolves mockGetEntityPermissionByFqn with full
+    // access — this test only asserts the call pattern.
+    render(<TestDefinitionList />, { wrapper: createWrapper() });
 
     await waitFor(() => {
       // Permissions fetched for all definitions (including system and external)
@@ -609,7 +661,7 @@ describe('TestDefinitionList Component', () => {
   });
 
   it('should enable switch when user has EditAll permission', async () => {
-    render(<TestDefinitionList />, { wrapper: MemoryRouter });
+    render(<TestDefinitionList />, { wrapper: createWrapper() });
 
     const switches = await screen.findAllByRole('switch');
 
@@ -623,7 +675,7 @@ describe('TestDefinitionList Component', () => {
 
   describe('External Test Definition Handling', () => {
     it('should disable toggle switch for external test definitions', async () => {
-      render(<TestDefinitionList />, { wrapper: MemoryRouter });
+      render(<TestDefinitionList />, { wrapper: createWrapper() });
 
       const switches = await screen.findAllByRole('switch');
 
@@ -635,7 +687,7 @@ describe('TestDefinitionList Component', () => {
     });
 
     it('should show correct tooltip for external test toggle', async () => {
-      render(<TestDefinitionList />, { wrapper: MemoryRouter });
+      render(<TestDefinitionList />, { wrapper: createWrapper() });
 
       const switches = await screen.findAllByRole('switch');
       const externalSwitch = switches[2];
@@ -645,7 +697,7 @@ describe('TestDefinitionList Component', () => {
     });
 
     it('should not call patchTestDefinition when external test toggle is clicked', async () => {
-      render(<TestDefinitionList />, { wrapper: MemoryRouter });
+      render(<TestDefinitionList />, { wrapper: createWrapper() });
 
       const switches = await screen.findAllByRole('switch');
       const externalSwitch = switches[2];
@@ -653,15 +705,14 @@ describe('TestDefinitionList Component', () => {
       const initialCallCount = (patchTestDefinition as jest.Mock).mock.calls
         .length;
 
-      fireEvent.click(externalSwitch);
-
-      await waitFor(() => {
-        expect(patchTestDefinition).toHaveBeenCalledTimes(initialCallCount);
-      });
+      // The guard is the native `disabled` input: browsers drop clicks on it,
+      // but jsdom still toggles a disabled checkbox on a synthetic click.
+      expect(externalSwitch).toBeDisabled();
+      expect(patchTestDefinition).toHaveBeenCalledTimes(initialCallCount);
     });
 
     it('should allow toggling OpenMetadata test definitions', async () => {
-      render(<TestDefinitionList />, { wrapper: MemoryRouter });
+      render(<TestDefinitionList />, { wrapper: createWrapper() });
 
       const switches = await screen.findAllByRole('switch');
       const omSwitch = switches[0];
@@ -677,7 +728,7 @@ describe('TestDefinitionList Component', () => {
     });
 
     it('should display all test definitions including external ones', async () => {
-      render(<TestDefinitionList />, { wrapper: MemoryRouter });
+      render(<TestDefinitionList />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(
@@ -692,7 +743,7 @@ describe('TestDefinitionList Component', () => {
     });
 
     it('should show correct test platforms for external tests', async () => {
-      render(<TestDefinitionList />, { wrapper: MemoryRouter });
+      render(<TestDefinitionList />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByText('dbt')).toBeInTheDocument();
@@ -701,7 +752,7 @@ describe('TestDefinitionList Component', () => {
     });
 
     it('should render 4 test definitions with correct switch states', async () => {
-      render(<TestDefinitionList />, { wrapper: MemoryRouter });
+      render(<TestDefinitionList />, { wrapper: createWrapper() });
 
       const switches = await screen.findAllByRole('switch');
 
@@ -725,30 +776,9 @@ describe('TestDefinitionList Component', () => {
     });
 
     it('should disable toggle for external tests even with EditAll permission', async () => {
-      const { usePermissionProvider } = jest.requireMock(
-        '../../../context/PermissionProvider/PermissionProvider'
-      );
-
-      (usePermissionProvider as jest.Mock).mockReturnValue({
-        getEntityPermissionByFqn: jest.fn().mockResolvedValue({
-          Create: true,
-          Delete: true,
-          ViewAll: true,
-          ViewBasic: true,
-          EditAll: true,
-        }),
-        permissions: {
-          testDefinition: {
-            Create: true,
-            Delete: true,
-            ViewAll: true,
-            ViewBasic: true,
-            EditAll: true,
-          },
-        },
-      });
-
-      render(<TestDefinitionList />, { wrapper: MemoryRouter });
+      // beforeEach already resolves mockGetEntityPermissionByFqn with full
+      // access, matching this test's intent.
+      render(<TestDefinitionList />, { wrapper: createWrapper() });
 
       const switches = await screen.findAllByRole('switch');
 
@@ -760,35 +790,20 @@ describe('TestDefinitionList Component', () => {
 
   describe('Permission-based Toggle Behavior', () => {
     it('should disable enabled switch when user lacks EditAll permission', async () => {
-      const mockGetEntityPermission = jest.fn().mockResolvedValue({
-        Create: false,
-        Delete: false,
-        ViewAll: true,
-        ViewBasic: true,
-        EditAll: false,
-      });
-
-      const { usePermissionProvider } = jest.requireMock(
-        '../../../context/PermissionProvider/PermissionProvider'
+      mockGetEntityPermissionByFqn.mockResolvedValue(
+        buildPermissionResponse({
+          Create: false,
+          Delete: false,
+          ViewAll: true,
+          ViewBasic: true,
+          EditAll: false,
+        })
       );
 
-      (usePermissionProvider as jest.Mock).mockReturnValue({
-        getEntityPermissionByFqn: mockGetEntityPermission,
-        permissions: {
-          testDefinition: {
-            Create: true,
-            Delete: true,
-            ViewAll: true,
-            ViewBasic: true,
-            EditAll: true,
-          },
-        },
-      });
-
-      render(<TestDefinitionList />, { wrapper: MemoryRouter });
+      render(<TestDefinitionList />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(mockGetEntityPermission).toHaveBeenCalled();
+        expect(mockGetEntityPermissionByFqn).toHaveBeenCalled();
       });
 
       const switches = await screen.findAllByRole('switch');
@@ -807,7 +822,7 @@ describe('TestDefinitionList Component', () => {
         '../../../hooks/useTableFilters'
       );
 
-      render(<TestDefinitionList />, { wrapper: MemoryRouter });
+      render(<TestDefinitionList />, { wrapper: createWrapper() });
 
       expect(useTableFilters).toHaveBeenCalledWith({
         entityType: undefined,
@@ -820,7 +835,7 @@ describe('TestDefinitionList Component', () => {
         '../../common/atoms/filters/useQuickFiltersWithComponent'
       );
 
-      render(<TestDefinitionList />, { wrapper: MemoryRouter });
+      render(<TestDefinitionList />, { wrapper: createWrapper() });
 
       expect(useQuickFiltersWithComponent).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -843,7 +858,7 @@ describe('TestDefinitionList Component', () => {
         setFilters: jest.fn(),
       });
 
-      render(<TestDefinitionList />, { wrapper: MemoryRouter });
+      render(<TestDefinitionList />, { wrapper: createWrapper() });
 
       const { useQuickFiltersWithComponent } = jest.requireMock(
         '../../common/atoms/filters/useQuickFiltersWithComponent'
@@ -889,7 +904,7 @@ describe('TestDefinitionList Component', () => {
         setFilters: mockUpdateUrlParams,
       });
 
-      render(<TestDefinitionList />, { wrapper: MemoryRouter });
+      render(<TestDefinitionList />, { wrapper: createWrapper() });
 
       const { useQuickFiltersWithComponent } = jest.requireMock(
         '../../common/atoms/filters/useQuickFiltersWithComponent'
@@ -937,7 +952,7 @@ describe('TestDefinitionList Component', () => {
         setFilters: mockUpdateUrlParams,
       });
 
-      render(<TestDefinitionList />, { wrapper: MemoryRouter });
+      render(<TestDefinitionList />, { wrapper: createWrapper() });
 
       const { useQuickFiltersWithComponent } = jest.requireMock(
         '../../common/atoms/filters/useQuickFiltersWithComponent'
@@ -973,7 +988,7 @@ describe('TestDefinitionList Component', () => {
         setFilters: mockUpdateUrlParams,
       });
 
-      render(<TestDefinitionList />, { wrapper: MemoryRouter });
+      render(<TestDefinitionList />, { wrapper: createWrapper() });
 
       const { useQuickFiltersWithComponent } = jest.requireMock(
         '../../common/atoms/filters/useQuickFiltersWithComponent'
@@ -1040,7 +1055,7 @@ describe('TestDefinitionList Component', () => {
         },
       });
 
-      render(<TestDefinitionList />, { wrapper: MemoryRouter });
+      render(<TestDefinitionList />, { wrapper: createWrapper() });
 
       const { useQuickFiltersWithComponent } = jest.requireMock(
         '../../common/atoms/filters/useQuickFiltersWithComponent'
@@ -1069,7 +1084,7 @@ describe('TestDefinitionList Component', () => {
     });
 
     it('should render quick filters component', async () => {
-      render(<TestDefinitionList />, { wrapper: MemoryRouter });
+      render(<TestDefinitionList />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByTestId('quick-filters')).toBeInTheDocument();

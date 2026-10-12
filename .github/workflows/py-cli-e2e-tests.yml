@@ -46,6 +46,12 @@ jobs:
       fail-fast: false
       matrix:
         e2e-test: ${{ fromJSON(inputs.e2e-tests || '["bigquery", "dbt_redshift", "metabase", "mssql", "mysql", "redash", "snowflake", "tableau", "python-unittests", "python-integration", "redshift", "quicksight", "datalake_s3", "postgres", "oracle", "athena", "bigquery_multiple_project", "exasol"]') }}
+    # Snowflake drops and recreates the E2E database that the v2 Snowflake job also uses, so both
+    # workflows put their Snowflake jobs in one group that runs one at a time. A newer pending job
+    # replaces an older one.
+    concurrency:
+      group: ${{ matrix.e2e-test == 'snowflake' && 'cli-e2e-snowflake-database' || format('{0}-{1}-{2}', github.workflow, github.run_id, matrix.e2e-test) }}
+      cancel-in-progress: false
     environment: test
 
     steps:
@@ -216,7 +222,7 @@ jobs:
     - name: Upload coverage artifact for Python unit tests
       if: matrix.e2e-test == 'python-unittests' && steps.python-unittest.outcome == 'success' && env.DEBUG == 'false'
       continue-on-error: true
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: coverage-${{ matrix.e2e-test }}
         path: .coverage.python-unittests
@@ -230,7 +236,7 @@ jobs:
     - name: Upload coverage artifact for Python integration tests
       if: matrix.e2e-test == 'python-integration' && steps.python-integration-test.outcome == 'success' && env.DEBUG == 'false'
       continue-on-error: true
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: coverage-${{ matrix.e2e-test }}
         path: .coverage.python-integration
@@ -239,7 +245,7 @@ jobs:
     - name: Upload coverage artifact for CLI E2E tests
       if: matrix.e2e-test != 'python-unittests' && matrix.e2e-test != 'python-integration' && steps.e2e-test.outcome == 'success' && env.DEBUG == 'false'
       continue-on-error: true
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: coverage-${{ matrix.e2e-test }}
         path: .coverage.${{ matrix.e2e-test }}
@@ -279,7 +285,7 @@ jobs:
     - name: Upload tests artifact
       if: ${{ always() }}
       continue-on-error: true
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: tests-${{ matrix.e2e-test }}
         path: |
@@ -318,7 +324,7 @@ jobs:
     - name: Upload runner and service diagnostics
       if: ${{ failure() || cancelled() }}
       continue-on-error: true
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: py-cli-e2e-diagnostics-${{ matrix.e2e-test }}
         path: ${{ runner.temp }}/python-ci-diagnostics/
@@ -346,7 +352,7 @@ jobs:
         payload: |
           {
             "channel": "C03EYBDDX17",
-            "text": "🔥 Failed E2E Test for: ${{ matrix.e2e-test }} 🔥\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            "text": "<!subteam^S0AH093PEQL> 🔥 Failed E2E Test for: ${{ matrix.e2e-test }} 🔥\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           }
 
   py-cli-e2e-tests-status:

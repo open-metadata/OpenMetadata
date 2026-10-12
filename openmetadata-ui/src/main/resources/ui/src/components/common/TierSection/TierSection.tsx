@@ -10,17 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import {
+  ClassificationTag,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
-import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { useEditableSection } from '../../../hooks/useEditableSection';
 import { updateEntityField } from '../../../utils/EntityUpdateUtils';
-import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
+import { getTagName, getTagRedirectLink } from '../../../utils/TagsPureUtils';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import Loader from '../Loader/Loader';
 import TierCard from '../TierCard/TierCard';
@@ -39,21 +41,15 @@ const TierSection: React.FC<TierSectionProps> = ({
   const { t } = useTranslation();
 
   const {
-    isEditing,
     isLoading,
     popoverOpen,
     displayData: displayTier,
     setDisplayData: setDisplayTier,
     setIsLoading,
-    setPopoverOpen,
     startEditing,
     completeEditing,
     cancelEditing,
   } = useEditableSection<TagLabel | undefined>(tier);
-
-  const handleEditClick = () => {
-    startEditing();
-  };
 
   const handleSaveWithTier = useCallback(
     async (selectedTier?: Tag) => {
@@ -114,9 +110,9 @@ const TierSection: React.FC<TierSectionProps> = ({
     ]
   );
 
-  const handleCancel = () => {
-    setPopoverOpen(false);
-  };
+  // The picker owns the toggle; a button onClick would reopen it after a close.
+  const handlePopoverOpenChange = (open: boolean) =>
+    open ? startEditing() : cancelEditing();
 
   const handleTierSelection = async (selectedTier?: Tag) => {
     await handleSaveWithTier(selectedTier);
@@ -131,49 +127,20 @@ const TierSection: React.FC<TierSectionProps> = ({
     []
   );
 
-  const editingState = useMemo(
-    () => (
-      <TierCard
-        currentTier={displayTier?.tagFQN}
-        footerActionButtonsClassName="tier-card-footer-action-buttons"
-        popoverProps={{ open: popoverOpen }}
-        tierCardClassName="tier-card-popover"
-        updateTier={handleTierSelection}
-        onClose={() => {
-          handleCancel();
-          cancelEditing();
-        }}>
-        <div className="tier-selector-display">
-          {displayTier && (
-            <div className="d-flex flex-col gap-2">
-              <TagsV1
-                hideIcon
-                startWith={TAG_START_WITH.SOURCE_ICON}
-                tag={displayTier}
-                tagProps={{
-                  'data-testid': 'Tier',
-                }}
-              />
-            </div>
-          )}
-        </div>
-      </TierCard>
-    ),
-    [displayTier, popoverOpen, handleTierSelection, handleCancel]
-  );
-
   const tierDisplay = useMemo(
     () => (
       <div className="tier-display">
         {displayTier ? (
           <div className="d-flex flex-col gap-2">
-            <TagsV1
-              hideIcon
-              startWith={TAG_START_WITH.SOURCE_ICON}
-              tag={displayTier}
-              tagProps={{
-                'data-testid': 'Tier',
-              }}
+            <ClassificationTag
+              color={displayTier.style?.color}
+              data-testid="Tier"
+              href={getTagRedirectLink(displayTier)}
+              icon={displayTier.style?.iconURL}
+              label={getTagName(displayTier)}
+              maxWidth={200}
+              size="sm"
+              tooltip={getTagName(displayTier)}
             />
           </div>
         ) : (
@@ -192,33 +159,33 @@ const TierSection: React.FC<TierSectionProps> = ({
     if (isLoading) {
       return loadingState;
     }
-    if (isEditing) {
-      return editingState;
-    }
 
     return tierDisplay;
-  }, [isLoading, isEditing, loadingState, editingState, tierDisplay]);
+  }, [isLoading, loadingState, tierDisplay]);
 
   const canShowEditButton = showEditButton && hasPermission && !isLoading;
 
   return (
     <div className="tier-section">
       <div className="tier-header">
-        <Typography.Text className="tier-title">
-          {t('label.tier')}
-        </Typography.Text>
+        <Typography className="tier-title">{t('label.tier')}</Typography>
         {canShowEditButton && (
-          <EditIconButton
-            newLook
-            data-testid="edit-icon-tier"
-            disabled={false}
-            icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
-            size="small"
-            title={t('label.edit-entity', {
-              entity: t('label.tier'),
-            })}
-            onClick={handleEditClick}
-          />
+          <TierCard
+            currentTier={displayTier?.tagFQN}
+            open={popoverOpen}
+            updateTier={handleTierSelection}
+            onOpenChange={handlePopoverOpenChange}>
+            <EditIconButton
+              newLook
+              data-testid="edit-icon-tier"
+              disabled={false}
+              icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
+              size="small"
+              title={t('label.edit-entity', {
+                entity: t('label.tier'),
+              })}
+            />
+          </TierCard>
         )}
       </div>
       <div className="tier-content">{tierContent}</div>

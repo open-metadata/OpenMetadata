@@ -47,6 +47,7 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.ContainerDataModel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.migration.utils.v1130.MigrationUtil;
 import org.openmetadata.service.resources.settings.SettingsCache;
 
@@ -148,7 +149,11 @@ public class FlattenedChildrenHighlightSearchIT {
       }
     }
     settings.setConfigValue(config);
-    putSearchSettings(JsonUtils.pojoToJson(settings));
+    // Written straight to the repository rather than through PUT /v1/system/settings, because
+    // SearchSettingsHandler.validateHighlightFields now rejects this exact value at save time. The
+    // guard under test protects clusters that stored such a value before that check existed (or via
+    // the unvalidated PATCH path), so the test has to reproduce a stored value, not a saveable one.
+    Entity.getSystemRepository().createOrUpdate(settings);
   }
 
   private List<String> containerHighlightFields() throws Exception {

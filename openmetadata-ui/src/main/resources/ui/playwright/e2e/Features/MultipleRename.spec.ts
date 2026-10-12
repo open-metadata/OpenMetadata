@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
+import { expect, test } from '../../support/fixtures/base';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
@@ -115,7 +116,7 @@ test.describe('Multiple Rename Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     let currentName = glossary.data.name;
 
     try {
-      await adminUser.login(page);
+      await adminUser.signIn(page);
       await redirectToHomePage(page);
 
       // Navigate to glossary using displayName
@@ -175,7 +176,7 @@ test.describe('Multiple Rename Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     const page = await browser.newPage();
 
     try {
-      await adminUser.login(page);
+      await adminUser.signIn(page);
       await redirectToHomePage(page);
 
       // Navigate to glossary term using displayName
@@ -227,12 +228,14 @@ test.describe('Multiple Rename Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     let currentName = classification.data.name;
 
     try {
-      await adminUser.login(page);
+      await adminUser.signIn(page);
       await redirectToHomePage(page);
 
       // Navigate to classification using side panel and displayName
       await sidebarClick(page, SidebarItem.TAGS);
-      await page.getByTestId('side-panel-classification').first().waitFor();
+      await expect(
+        page.getByTestId('side-panel-classification').filter({ visible: true })
+      ).not.toHaveCount(0);
       await page
         .locator('[data-testid="side-panel-classification"]')
         .filter({ hasText: classification.data.displayName })
@@ -296,12 +299,14 @@ test.describe('Multiple Rename Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     const page = await browser.newPage();
 
     try {
-      await adminUser.login(page);
+      await adminUser.signIn(page);
       await redirectToHomePage(page);
 
       // Navigate to tag using side panel and displayName
       await sidebarClick(page, SidebarItem.TAGS);
-      await page.getByTestId('side-panel-classification').first().waitFor();
+      await expect(
+        page.getByTestId('side-panel-classification').filter({ visible: true })
+      ).not.toHaveCount(0);
       await page
         .locator('[data-testid="side-panel-classification"]')
         .filter({ hasText: classification.data.displayName })

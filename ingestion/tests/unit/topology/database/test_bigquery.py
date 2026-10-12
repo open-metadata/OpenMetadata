@@ -17,7 +17,7 @@ bigquery unit tests
 import types
 from copy import deepcopy
 from types import SimpleNamespace
-from typing import ClassVar, Dict  # noqa: UP035
+from typing import ClassVar
 from unittest import TestCase
 from unittest.mock import MagicMock, Mock, patch
 
@@ -34,6 +34,9 @@ from metadata.generated.schema.entity.data.table import (
     Table,
     TableConstraint,
     TableType,
+)
+from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
+    BigQueryConnection,
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -272,7 +275,7 @@ MOCK_COLUMN_DATA = [
     ],
 ]
 
-MOCK_PK_CONSTRAINT: Dict[str, Dict] = {  # noqa: UP006
+MOCK_PK_CONSTRAINT: dict[str, dict] = {
     "customers": dict({"constrained_columns": ("customer_id",)}),  # noqa: C418
     "orders": dict({"constrained_columns": ()}),  # noqa: C418
 }
@@ -678,9 +681,6 @@ class BigqueryUnitTest(TestCase):
         """
         from google.auth.credentials import Credentials
 
-        from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
-            BigQueryConnection,
-        )
         from metadata.ingestion.source.database.bigquery.helper import (
             get_inspector_details,
         )
@@ -705,6 +705,37 @@ class BigqueryUnitTest(TestCase):
         result_null = get_inspector_details(database_name="test-project", service_connection=service_connection_null)
         assert "location=eu" not in str(result_null.engine.url)
         assert result_null.client._location is None
+
+    def test_clone_connection_for_project_scopes_adc_and_path_credentials(self):
+        """
+        clone_connection_for_project must override projectId to the requested
+        single project for every gcpConfig variant that accepts a multi-project
+        projectId (GcpCredentialsValues, GcpADC, GcpCredentialsPath) - not just
+        GcpCredentialsValues. Without this, a multi-project GcpADC/
+        GcpCredentialsPath connection silently re-scans whatever project
+        get_connection_url resolves its MultipleProjectId to (its first entry)
+        on every iteration, instead of actually switching projects.
+        """
+        from metadata.ingestion.source.database.bigquery.helper import (
+            clone_connection_for_project,
+        )
+
+        for gcp_config in (
+            {"type": "gcp_adc", "projectId": ["project-one", "project-two"]},
+            {"type": "gcp_credential_path", "path": "credentials.json", "projectId": ["project-one", "project-two"]},
+        ):
+            config = deepcopy(mock_bq_config["source"]["serviceConnection"]["config"])
+            config["credentials"]["gcpConfig"] = gcp_config
+            service_connection = BigQueryConnection.model_validate(config)
+
+            scoped = clone_connection_for_project("project-two", service_connection)
+
+            assert scoped.credentials.gcpConfig.projectId.root == "project-two"
+            # The original, unscoped connection is untouched.
+            assert service_connection.credentials.gcpConfig.projectId.root == [
+                "project-one",
+                "project-two",
+            ]
 
 
 class BigqueryLineageSourceTest(TestCase):

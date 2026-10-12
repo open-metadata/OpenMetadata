@@ -154,11 +154,6 @@
   // 20px bottom spacing
   height: calc(@asset-details-tab-pane-height - 20px);
 
-  .lineage-container {
-    height: calc(100% - 77px);
-    overflow-y: auto;
-  }
-
   // lineage and it's children's always should be ltr
   direction: ltr;
 
@@ -290,6 +285,7 @@
   top: @om-navbar-height;
   left: @sidebar-width;
   width: calc(100% - @sidebar-width);
+  z-index: var(--om-z-sticky);
 
   &.sidebar-collapsed {
     left: calc(72px + @padding-mlg);
@@ -304,7 +300,6 @@
   .lineage-card {
     // Navbar - breadcrumb - bottom spacing
     height: calc(100vh - @om-navbar-height - 36px - 20px);
-    overflow-y: auto;
   }
 
   .entity-panel-container {
@@ -354,27 +349,6 @@
   svg {
     color: inherit;
   }
-}
-
-.ant-tag.amber {
-  background: @yellow-5;
-  color: @yellow-6;
-  border: 1px solid @yellow-6;
-  margin: 0;
-}
-
-.ant-tag.red {
-  background: @red-6;
-  border: 1px solid @red-7;
-  color: @red-7;
-  margin: 0;
-}
-
-.ant-tag.green {
-  background: @green-6;
-  border: 1px solid @green-7;
-  color: @green-7;
-  margin: 0;
 }
 
 @keyframes blink {

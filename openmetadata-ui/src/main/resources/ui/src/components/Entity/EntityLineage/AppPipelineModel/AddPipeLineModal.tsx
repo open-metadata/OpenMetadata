@@ -106,8 +106,6 @@ const AddPipeLineModal = ({
 
       return <ErrorPlaceHolder />;
     }
-
-    return;
   }, [selectedEdge, edgeSearchValue]);
 
   const debounceOnSearch = useCallback(debounce(getSearchResults, 300), []);
@@ -169,7 +167,14 @@ const AddPipeLineModal = ({
               })}
               data-testid={`pipeline-entry-${item.fullyQualifiedName}`}
               key={item.id}
-              onClick={() => setEdgeSelection(item)}>
+              role="button"
+              tabIndex={0}
+              onClick={() => setEdgeSelection(item)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  setEdgeSelection(item);
+                }
+              }}>
               {searchClassBase.getEntityIconWithBg(
                 item.type,
                 EntityIconSize.Size14

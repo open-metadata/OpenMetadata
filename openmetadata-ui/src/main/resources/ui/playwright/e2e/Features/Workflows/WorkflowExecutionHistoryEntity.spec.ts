@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { expect, test as base, type Page } from '@playwright/test';
+import { type Page } from '@playwright/test';
+import { expect, test as base } from '../../../support/fixtures/base';
 import { performAdminLogin } from '../../../utils/admin';
 import { redirectToHomePage, uuid } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
@@ -117,7 +118,9 @@ async function openExecutionHistory(page: Page, workflowName: string) {
     }
   );
 
-  await page.goto(`/workflows/${encodeURIComponent(workflowName)}/workflow`);
+  await page.goto(`/workflows/${encodeURIComponent(workflowName)}/workflow`, {
+    waitUntil: 'domcontentloaded',
+  });
   await waitForAllLoadersToDisappear(page);
 
   await page.getByTestId('workflow-execution-history').click();

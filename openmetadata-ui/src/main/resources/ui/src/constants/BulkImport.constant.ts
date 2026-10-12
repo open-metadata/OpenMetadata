@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ResourceEntity } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../enums/entity.enum';
+import { ResourceEntity } from '../enums/permissions.enum';
 
 export const SUPPORTED_BULK_IMPORT_EDIT_ENTITY = [
   ResourceEntity.TABLE,
@@ -22,6 +22,7 @@ export const SUPPORTED_BULK_IMPORT_EDIT_ENTITY = [
   ResourceEntity.GLOSSARY,
   ResourceEntity.METRIC,
   ResourceEntity.TEST_CASE,
+  ResourceEntity.CLASSIFICATION,
 ];
 
 export enum VALIDATION_STEP {

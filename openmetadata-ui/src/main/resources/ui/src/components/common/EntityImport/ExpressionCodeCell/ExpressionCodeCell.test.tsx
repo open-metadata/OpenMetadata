@@ -22,6 +22,7 @@ jest.mock('../../../Database/SchemaEditor/SchemaEditor', () => ({
   __esModule: true,
   default: jest.fn(({ value, onChange, mode }) => (
     <textarea
+      aria-label="schema-editor"
       data-mode={mode?.name}
       data-testid="schema-editor"
       value={value}

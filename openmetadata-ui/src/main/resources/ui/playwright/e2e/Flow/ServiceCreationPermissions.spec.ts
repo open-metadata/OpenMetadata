@@ -11,16 +11,18 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import {
   SERVICE_CREATOR_RULES,
   SERVICE_VIEWER_RULES,
 } from '../../constant/permission';
+import { COLLATE_SAAS_RUNNER } from '../../constant/serviceForm';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
+import { expect, test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
@@ -30,6 +32,7 @@ import {
 } from '../../utils/common';
 import { updateDescription } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
+import { selectIngestionRunnerFromDropdown } from '../../utils/serviceFormUtils';
 import {
   advanceToServiceConnectionStep,
   getAgentCard,
@@ -67,25 +70,25 @@ const test = base.extend<{
 }>({
   serviceOwnerPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await serviceOwnerUser.login(page);
+    await serviceOwnerUser.signIn(page);
     await use(page);
     await page.close();
   },
   anotherUserPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await anotherUser.login(page);
+    await anotherUser.signIn(page);
     await use(page);
     await page.close();
   },
   pipelineTriggerPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await pipelineTriggerUser.login(page);
+    await pipelineTriggerUser.signIn(page);
     await use(page);
     await page.close();
   },
   pipelineEditPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await pipelineEditUser.login(page);
+    await pipelineEditUser.signIn(page);
     await use(page);
     await page.close();
   },
@@ -115,39 +118,14 @@ const openPipelineActions = async (page: Page) => {
 
   const actionsDropdown = page.getByTestId('actions-dropdown');
 
-  // AgentOverflowMenu recomputes its item list from the `permissions` prop on
-  // every render, but the async per-FQN permission fetch can still be in
-  // flight when the menu is first opened — some items (edit-gated: redeploy,
-  // edit, pause/resume) are briefly absent. Close and reopen until the
-  // permission-gated items are present instead of polling a single stale
-  // open instance.
-  await expect
-    .poll(
-      async () => {
-        await actionButton.click();
-        await actionsDropdown.waitFor();
-        const hasReDeploy = await actionsDropdown
-          .getByTestId('re-deploy-button')
-          .isVisible()
-          .catch(() => false);
-        if (!hasReDeploy) {
-          await page.keyboard.press('Escape');
-          await actionsDropdown.waitFor({ state: 'hidden' });
-        }
-
-        return hasReDeploy;
-      },
-      { intervals: [1_000, 2_000, 3_000], timeout: 30_000 }
-    )
-    .toBe(true);
+  await actionButton.click();
+  await expect(actionsDropdown.getByTestId('re-deploy-button')).toBeVisible();
 };
 
 test.describe(
   'Service Creation with isOwner() Permissions',
   PLAYWRIGHT_INGESTION_TAG_OBJ,
   () => {
-    test.slow();
-
     test.beforeAll('Setup prerequisites', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
@@ -353,6 +331,7 @@ test.describe(
       await advanceToServiceConnectionStep(page);
 
       await page.locator('#root\\/username').fill('test_user');
+      await selectIngestionRunnerFromDropdown(page, COLLATE_SAAS_RUNNER);
       await page.locator('#root\\/authType\\/password').fill('test_password');
       await page.locator('#root\\/hostPort').fill('localhost:3306');
 
@@ -636,32 +615,18 @@ test.describe(
 
       await expect(actionsDropdown).toBeHidden();
 
-      // The pipeline deployed in beforeAll may still be registering in
-      // Airflow, so retry the trigger until it succeeds instead of a fixed sleep.
-      await expect
-        .poll(
-          async () => {
-            const triggerResponse = page.waitForResponse(
-              (response) =>
-                response
-                  .url()
-                  .includes('/api/v1/services/ingestionPipelines/trigger/') &&
-                response.request().method() === 'POST'
-            );
-
-            await agentCard.getByTestId('run-agent-button').click();
-
-            const response = await triggerResponse;
-
-            if (response.status() !== 200) {
-              agentCard = await visitAgentCard(page);
-            }
-
-            return response.status();
-          },
-          { intervals: [3_000], timeout: 90_000 }
-        )
-        .toBe(200);
+      const triggerResponse = page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes('/api/v1/services/ingestionPipelines/trigger/') &&
+          response.request().method() === 'POST'
+      );
+      await agentCard.getByTestId('run-agent-button').click();
+      const response = await triggerResponse;
+      expect(response.status(), 'The first pipeline trigger must succeed').toBe(
+        200
+      );
     });
 
     test('User with EditAll but not Trigger cannot run a pipeline', async ({

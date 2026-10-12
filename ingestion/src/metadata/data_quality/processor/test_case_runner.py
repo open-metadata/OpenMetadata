@@ -15,7 +15,7 @@ This Processor is in charge of executing the test cases
 
 import traceback
 from copy import deepcopy
-from typing import List, Optional, cast  # noqa: UP035
+from typing import cast
 
 from pydantic import RootModel
 
@@ -36,6 +36,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.tests.basic import TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testDefinition import (
     EntityType,
@@ -48,6 +49,7 @@ from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.step import Step  # noqa: TC001
 from metadata.ingestion.api.steps import Processor
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.utils import entity_link
 from metadata.utils.entity_reference import require_entity_reference_id
 from metadata.utils.logger import test_suite_logger
@@ -104,7 +106,7 @@ class TestCaseRunner(Processor):
 
         return Either(right=TestCaseResults(test_results=test_results))
 
-    def get_test_cases(self, test_cases: List[TestCase], table_fqn: str) -> List[TestCase]:  # noqa: UP006
+    def get_test_cases(self, test_cases: list[TestCase], table_fqn: str) -> list[TestCase]:
         """
         Based on the test suite test cases that we already know, pick up
         the rest from the YAML config, compare and create the new ones
@@ -121,16 +123,16 @@ class TestCaseRunner(Processor):
 
     def get_test_case_from_cli_config(
         self,
-    ) -> List[TestCaseDefinition]:  # noqa: UP006
+    ) -> list[TestCaseDefinition]:
         """Get all the test cases names defined in the CLI config file"""
         return list(self.processor_config.testCases or [])
 
     def compare_and_create_test_cases(
         self,
-        cli_test_cases_definitions: List[TestCaseDefinition],  # noqa: UP006
-        test_cases: List[TestCase],  # noqa: UP006
+        cli_test_cases_definitions: list[TestCaseDefinition],
+        test_cases: list[TestCase],
         table_fqn: str,
-    ) -> List[TestCase]:  # noqa: UP006
+    ) -> list[TestCase]:
         """
         compare test cases defined in CLI config workflow with test cases
         defined on the server
@@ -204,8 +206,8 @@ class TestCaseRunner(Processor):
 
     def _update_test_cases(
         self,
-        test_cases_to_update: List[TestCaseDefinition],  # noqa: UP006
-        test_cases: List[TestCase],  # noqa: UP006
+        test_cases_to_update: list[TestCaseDefinition],
+        test_cases: list[TestCase],
         table_fqn: str,
     ):
         """Given a list of CLI test definition patch test cases in the platform
@@ -213,38 +215,37 @@ class TestCaseRunner(Processor):
         Args:
             test_cases_to_update (List[TestCaseDefinition]): list of test case definitions
         """
-        test_cases_to_update_names = {test_case_to_update.name for test_case_to_update in test_cases_to_update}
-        for indx, test_case in enumerate(deepcopy(test_cases)):
-            if test_case.name.root in test_cases_to_update_names:
-                test_case_definition = next(
-                    test_case_to_update
-                    for test_case_to_update in test_cases_to_update
-                    if test_case_to_update.name == test_case.name.root
-                )
-                updated_test_case = self.metadata.patch_test_case_definition(
-                    test_case=test_case,
-                    entity_link=entity_link.get_entity_link(
-                        Table,
-                        fqn=table_fqn,
-                        column_name=test_case_definition.columnName,
-                    ),
-                    test_case_parameter_values=test_case_definition.parameterValues,
-                    compute_passed_failed_row_count=test_case_definition.computePassedFailedRowCount,
-                )
-                if updated_test_case:
-                    test_cases.pop(indx)
-                    test_cases.append(updated_test_case)
+        definitions_by_name: dict[str, TestCaseDefinition] = {}
+        for definition in test_cases_to_update:
+            definitions_by_name.setdefault(definition.name, definition)
+        updated: list[TestCase] = []
+        for test_case in test_cases:
+            definition = definitions_by_name.get(test_case.name.root)
+            if definition is None:
+                updated.append(test_case)
+                continue
+            patched_test_case = self.metadata.patch_test_case_definition(
+                test_case=test_case,
+                entity_link=entity_link.get_entity_link(
+                    Table,
+                    fqn=table_fqn,
+                    column_name=definition.columnName,
+                ),
+                test_case_parameter_values=definition.parameterValues,
+                compute_passed_failed_row_count=definition.computePassedFailedRowCount,
+            )
+            updated.append(patched_test_case or test_case)
 
-        return test_cases
+        return updated
 
-    def filter_for_om_test_cases(self, test_cases: List[TestCase]) -> List[TestCase]:  # noqa: UP006
+    def filter_for_om_test_cases(self, test_cases: list[TestCase]) -> list[TestCase]:
         """
         Filter test cases for OM test cases only. This will prevent us from running non OM test cases
 
         Args:
             test_cases: list of test cases
         """
-        om_test_cases: List[TestCase] = []  # noqa: UP006
+        om_test_cases: list[TestCase] = []
         for test_case in test_cases:
             test_definition_id = require_entity_reference_id(test_case.testDefinition, "Test definition")
             test_definition = cast(
@@ -261,13 +262,44 @@ class TestCaseRunner(Processor):
 
         return om_test_cases
 
-    def _run_test_case(
-        self, test_case: TestCase, test_suite_runner: DataTestsRunner
-    ) -> Optional[TestCaseResultResponse]:  # noqa: UP045
+    def _record_if_aborted(self, test_case: TestCase, test_result: TestCaseResultResponse | None) -> bool:
+        """Count a test that could not be evaluated as a failure of this step.
+
+        A validation does not raise when it cannot run. It catches the error and
+        returns a result carrying ``TestCaseStatus.Aborted`` - a connection that
+        failed, a metric that could not be computed, an unsupported dialect. That
+        result is still worth sending to the server, so it reaches the sink; it is
+        only kept out of the scanned records, because ``Status.calculate_success``
+        divides those by themselves plus the failures. Counting an aborted case on
+        both sides of that ratio reports 10 cases with 5 aborted as 66.67% rather
+        than 50%, which is enough to end a failed run in ``partialSuccess``.
+
+        Without this, the step only ever sees successes: a run in which not one
+        test could execute reports ``Errors: 0`` and ``Success %: 100.0``, and the
+        pipeline ends in ``PipelineState.success``. A scheduled suite whose
+        credentials expire then reports success indefinitely.
+
+        Returns whether the result was aborted.
+        """
+        result = test_result.testCaseResult if test_result else None
+        if result is None or result.testCaseStatus is not TestCaseStatus.Aborted:
+            return False
+        error = result.result or f"Test case {test_case.name.root} was aborted"
+        logger.warning("Test case %s was aborted: %s", test_case.name.root, error)
+        self.status.failed(
+            StackTraceError(
+                name=test_case.name.root,
+                error=error,
+            )
+        )
+        return True
+
+    def _run_test_case(self, test_case: TestCase, test_suite_runner: DataTestsRunner) -> TestCaseResultResponse | None:
         """Execute the test case and return the result, if any"""
         try:
             test_result = test_suite_runner.run_and_handle(test_case)
-            self.status.scanned(test_case.fullyQualifiedName.root)
+            if not self._record_if_aborted(test_case, test_result):
+                self.status.scanned(model_str(test_case.fullyQualifiedName))
             return test_result  # noqa: TRY300
         except Exception as exc:
             error = f"Could not run test case {test_case.name.root}: {exc}"
@@ -287,7 +319,7 @@ class TestCaseRunner(Processor):
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,  # noqa: UP045
+        pipeline_name: str | None = None,
     ) -> "Step":
         config = parse_workflow_config_gracefully(config_dict)
         return cls(config=config, metadata=metadata)
@@ -295,10 +327,13 @@ class TestCaseRunner(Processor):
     def close(self) -> None:
         """Nothing to close"""
 
-    def filter_incompatible_test_cases(self, table: Table, test_cases: List[TestCase]) -> List[TestCase]:  # noqa: UP006
+    def filter_incompatible_test_cases(self, table: Table, test_cases: list[TestCase]) -> list[TestCase]:
         """Filter out test cases that are defined for incompatible columns. An example of this is a
         test case that checks for a column value to be between two values, but the column is of type
         VARCHAR and not a numeric type. Incompatible test cases will be logged as failures.
+
+        A test definition without any `supportedDataTypes` is generic: it declares no restriction, so
+        it runs against every column type rather than against none of them.
 
         Args:
             table: Table entity the test cases are run against
@@ -307,7 +342,7 @@ class TestCaseRunner(Processor):
         Returns:
             List of test cases that are compatible with the table columns
         """
-        result: List[TestCase] = []  # noqa: UP006
+        result: list[TestCase] = []
         for tc in test_cases:
             test_definition_id = require_entity_reference_id(tc.testDefinition, "Test definition")
             test_definition: TestDefinition = self.metadata.get_by_id(
@@ -319,7 +354,13 @@ class TestCaseRunner(Processor):
             column_name = entity_link.get_decoded_column(tc.entityLink.root)
             column = next(c for c in table.columns if c.name.root == column_name)
 
-            if column.dataType not in test_definition.supportedDataTypes:
+            # An empty supportedDataTypes declares no restriction: every column type is compatible.
+            supported_data_types = test_definition.supportedDataTypes
+            is_compatible = not supported_data_types or column.dataType in supported_data_types
+
+            if is_compatible:
+                result.append(tc)
+            else:
                 self.status.failed(
                     StackTraceError(
                         name="Incompatible Column for Test Case",
@@ -327,8 +368,6 @@ class TestCaseRunner(Processor):
                         f" is not compatible with column {column.name.root} of type {column.dataType.value}",
                     )
                 )
-            else:
-                result.append(tc)
         return result
 
     def get_test_suite_runner(self, table: Table):

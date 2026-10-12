@@ -18,6 +18,7 @@ import * as apiCollectionsAPI from '../rest/apiCollectionsAPI';
 import * as apiEndpointsAPI from '../rest/apiEndpointsAPI';
 import * as databaseAPI from '../rest/databaseAPI';
 import * as glossaryAPI from '../rest/glossaryAPI';
+import * as knowledgeCenterAPI from '../rest/knowledgeCenterAPI';
 import * as serviceAPI from '../rest/serviceAPI';
 import * as tableAPI from '../rest/tableAPI';
 import * as testAPI from '../rest/testAPI';
@@ -26,6 +27,7 @@ import { getEntityByFqnUtil } from './EntityByFqnUtils';
 jest.mock('../rest/tableAPI');
 jest.mock('../rest/databaseAPI');
 jest.mock('../rest/glossaryAPI');
+jest.mock('../rest/knowledgeCenterAPI');
 jest.mock('../rest/serviceAPI');
 jest.mock('../rest/alertsAPI');
 jest.mock('../rest/apiCollectionsAPI');
@@ -233,6 +235,48 @@ describe('EntityByFqnUtils', () => {
 
       expect(alertsAPI.getAlertsFromName).toHaveBeenCalledWith(mockFqn);
       expect(result).toEqual(mockEventSubData);
+    });
+
+    it('should fetch KNOWLEDGE_PAGE entity forwarding the requested fields', async () => {
+      const mockPageData = { id: '1', name: 'test-article' };
+      (knowledgeCenterAPI.getKnowledgePageByFqn as jest.Mock).mockResolvedValue(
+        mockPageData
+      );
+
+      const result = await getEntityByFqnUtil(
+        EntityType.KNOWLEDGE_PAGE,
+        mockFqn,
+        mockFields
+      );
+
+      expect(knowledgeCenterAPI.getKnowledgePageByFqn).toHaveBeenCalledWith(
+        mockFqn,
+        {
+          fields: mockFields,
+        }
+      );
+      expect(result).toEqual(mockPageData);
+    });
+
+    it('should fetch KNOWLEDGE_CENTER entity forwarding the requested fields', async () => {
+      const mockPageData = { id: '1', name: 'test-article' };
+      (knowledgeCenterAPI.getKnowledgePageByFqn as jest.Mock).mockResolvedValue(
+        mockPageData
+      );
+
+      const result = await getEntityByFqnUtil(
+        EntityType.KNOWLEDGE_CENTER,
+        mockFqn,
+        mockFields
+      );
+
+      expect(knowledgeCenterAPI.getKnowledgePageByFqn).toHaveBeenCalledWith(
+        mockFqn,
+        {
+          fields: mockFields,
+        }
+      );
+      expect(result).toEqual(mockPageData);
     });
 
     it('should return null for unknown entity type', async () => {

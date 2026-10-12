@@ -13,7 +13,8 @@ OpenSearch source to extract metadata
 """
 
 import traceback
-from typing import Any, Iterable, Optional  # noqa: UP035
+from collections.abc import Iterable
+from typing import Any
 
 from opensearchpy import OpenSearch  # noqa: TC002
 
@@ -58,7 +59,7 @@ class OpensearchSource(SearchServiceSource):
         self.client: OpenSearch = self.connection
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         """
         Create an instance of OpensearchSource.
 
@@ -103,7 +104,7 @@ class OpensearchSource(SearchServiceSource):
                 continue
             yield self.client.indices.get(index=str(index))
 
-    def get_search_index_name(self, search_index_details: dict) -> Optional[str]:  # noqa: UP045
+    def get_search_index_name(self, search_index_details: dict) -> str | None:
         """
         Get the search index name.
 
@@ -184,7 +185,7 @@ class OpensearchSource(SearchServiceSource):
         """
         yield from self.client.indices.get_index_template().get("index_templates", [])
 
-    def get_search_index_template_name(self, search_index_template_details: dict) -> Optional[str]:  # noqa: UP045
+    def get_search_index_template_name(self, search_index_template_details: dict) -> str | None:
         """
         Get the search index template name.
 

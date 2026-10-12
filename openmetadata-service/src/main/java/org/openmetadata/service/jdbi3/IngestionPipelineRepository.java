@@ -68,6 +68,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
+import org.openmetadata.sdk.RunOptions;
 import org.openmetadata.sdk.exception.IngestionRunnerUnavailableException;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.Entity;
@@ -85,6 +86,7 @@ import org.openmetadata.service.resources.services.ingestionpipelines.IngestionP
 import org.openmetadata.service.resources.services.ingestionpipelines.ProgressSseManager;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -99,6 +101,10 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       "sourceConfig,airflowConfig,loggerLevel,enabled,deployed,processingEngine";
   private static final String PATCH_FIELDS =
       "sourceConfig,airflowConfig,loggerLevel,enabled,deployed,processingEngine";
+  private static final String SOURCE_CONFIG_TYPE = "type";
+  private static final String SOURCE_CONFIG_TYPE_REQUIRED = "sourceConfig.config.type is required";
+  private static final String SOURCE_CONFIG_OBJECT_REQUIRED =
+      "sourceConfig.config must be an object with type";
 
   private static final String PIPELINE_STATUS_JSON_SCHEMA = "ingestionPipelineStatus";
   public static final String PIPELINE_STATUS_EXTENSION = "ingestionPipeline.pipelineStatus";
@@ -372,7 +378,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       return;
     }
     try {
-      EntityInterface parent = Entity.getEntity(serviceRef, "owners,domains", ALL);
+      EntityInterface<?> parent = Entity.getEntity(serviceRef, "owners,domains", ALL);
       inheritOwners(ingestionPipeline, fields, parent);
       inheritDomains(ingestionPipeline, fields, parent);
     } catch (EntityNotFoundException e) {
@@ -510,6 +516,44 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   public void prepare(IngestionPipeline ingestionPipeline, boolean update) {
     var service = getCachedParentOrLoad(ingestionPipeline.getService(), "", Include.NON_DELETED);
     ingestionPipeline.setService(service.getEntityReference());
+    validateSourceConfigHasType(ingestionPipeline);
+  }
+
+  static void validateSourceConfigHasType(IngestionPipeline ingestionPipeline) {
+    Object config = getRequiredSourceConfig(ingestionPipeline);
+    Map<?, ?> configMap = getSourceConfigMap(config);
+    if (!hasSourceConfigType(config, configMap)) {
+      throw new BadRequestException(SOURCE_CONFIG_TYPE_REQUIRED);
+    }
+  }
+
+  private static Object getRequiredSourceConfig(IngestionPipeline ingestionPipeline) {
+    if (ingestionPipeline.getSourceConfig() == null
+        || ingestionPipeline.getSourceConfig().getConfig() == null) {
+      throw new BadRequestException(SOURCE_CONFIG_TYPE_REQUIRED);
+    }
+    return ingestionPipeline.getSourceConfig().getConfig();
+  }
+
+  private static Map<?, ?> getSourceConfigMap(Object config) {
+    try {
+      return config instanceof Map<?, ?> map ? map : JsonUtils.getMap(config);
+    } catch (IllegalArgumentException e) {
+      throw new BadRequestException(SOURCE_CONFIG_OBJECT_REQUIRED);
+    }
+  }
+
+  private static boolean hasSourceConfigType(Object config, Map<?, ?> configMap) {
+    Object type = configMap.get(SOURCE_CONFIG_TYPE);
+    return type instanceof String typeValue && !typeValue.isBlank()
+        || !(config instanceof Map<?, ?>) && type instanceof Enum<?>;
+  }
+
+  @Override
+  protected IngestionPipeline restorePatchSecrets(
+      IngestionPipeline original, IngestionPipeline updated) {
+    EntityMaskerFactory.getEntityMasker().unmaskIngestionPipeline(updated, original);
+    return updated;
   }
 
   protected boolean requiresRedeployment(IngestionPipeline original, IngestionPipeline updated) {
@@ -726,21 +770,81 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     return new IngestionPipelineUpdater(original, updated, operation);
   }
 
+  /**
+   * Removing the DAG from the orchestrator is irreversible, so it must only happen when the entity
+   * itself is going away for good. A soft delete is reversible and {@code restoreEntity} has no way
+   * to redeploy, so tearing the runner down there left a restored pipeline with no backing DAG —
+   * and, with {@code allowUnavailableRunner=false}, failed the whole soft delete outright whenever
+   * the runner happened to be down. The accepted trade-off is that nothing pauses the DAG either,
+   * so a soft-deleted pipeline keeps running on schedule and recording statuses until it is
+   * restored or hard-deleted; pausing it would need a restore-time redeploy hook that does not
+   * exist yet.
+   *
+   * <p>The teardown stays here rather than moving to {@link #entitySpecificCleanup} (where the
+   * pipeline's time series went) because it is a blocking remote call that must not run inside the
+   * real transaction {@code cleanup()} opens, and because {@code forceDelete} threads
+   * {@code allowUnavailableRunner} through the overload below and reads back the skip flag.
+   */
   @Override
   protected void postDelete(IngestionPipeline entity, boolean hardDelete) {
-    postDelete(entity, hardDelete, false);
+    // Inside an ancestor's cascade the user asked to delete a service, not this DAG. Letting an
+    // unreachable Airflow propagate here aborted the entire subtree delete and rolled the rows
+    // back, so a service with any ingestion pipeline under it became undeletable whenever the
+    // scheduler was down. A direct delete of the pipeline itself still surfaces the failure.
+    boolean cascading = EntityRepository.isInHardDeleteCascade();
+    if (postDelete(entity, hardDelete, cascading) && cascading) {
+      LOG.warn(
+          "Ingestion runner unreachable during cascade delete; DAG left behind [pipelineFqn={}, pipelineId={}]",
+          entity.getFullyQualifiedName(),
+          entity.getId());
+    }
   }
 
+  /**
+   * Variant of {@link #postDelete(IngestionPipeline, boolean)} for {@code forceDelete}: tolerates an
+   * unreachable ingestion runner when {@code allowUnavailableRunner} is set and reports back whether
+   * the runner cleanup was skipped, so the caller can warn about the DAG left behind.
+   */
   private boolean postDelete(
       IngestionPipeline entity, boolean hardDelete, boolean allowUnavailableRunner) {
     super.postDelete(entity, hardDelete);
-    boolean wasRunnerCleanupSkipped = deleteDeployedPipeline(entity, allowUnavailableRunner);
-    deletePipelineStatuses(entity);
+    boolean wasRunnerCleanupSkipped = false;
+    if (hardDelete) {
+      wasRunnerCleanupSkipped = deleteDeployedPipeline(entity, allowUnavailableRunner);
+    }
     return wasRunnerCleanupSkipped;
+  }
+
+  /**
+   * Pipeline run history is destroyed only on hard delete: {@code entitySpecificCleanup} is reached
+   * exclusively from {@code cleanup()}, which the delete path runs on the hard-delete branch only.
+   */
+  @Override
+  protected void entitySpecificCleanup(IngestionPipeline entity) {
+    deletePipelineStatuses(entity);
   }
 
   protected boolean deleteDeployedPipeline(
       IngestionPipeline entity, boolean allowUnavailableRunner) {
+    // Always ATTEMPT runner cleanup when the client is configured: a failed
+    // first-deploy can leave DAG/config files on the runner even though
+    // `deployed=false` (the deployer writes the files before the readiness
+    // check runs; a timeout there returns 500 but does not roll back the
+    // filesystem write). Skipping the runner call entirely would silently
+    // orphan those files.
+    //
+    // Exception handling splits by caller intent (allowUnavailableRunner):
+    //   * cascade / force delete: opt in to skipping unavailable runners
+    //   * direct hard delete of a DEPLOYED pipeline: surface the unavailable
+    //     runner (caller needs to know cleanup didn't happen)
+    //   * direct hard delete of an UNDEPLOYED pipeline: return false rather
+    //     than throwing — the pipeline may never have touched Airflow at all
+    //     (metadata-only intent), and requiring a live runner just to hard-
+    //     delete a metadata-only entity would leave it stuck. This is a
+    //     documented residual risk: a partially-deployed pipeline (files on
+    //     disk, deployed=false) can still be orphaned on this path when the
+    //     runner happens to be unreachable. The proper fix is a compensating
+    //     cleanup at deploy-readiness-timeout time, tracked separately.
     boolean wasRunnerCleanupSkipped = false;
     if (pipelineServiceClient != null) {
       try {
@@ -748,6 +852,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       } catch (IngestionRunnerUnavailableException exception) {
         if (allowUnavailableRunner) {
           wasRunnerCleanupSkipped = true;
+        } else if (Boolean.FALSE.equals(entity.getDeployed())) {
+          return false;
         } else {
           throw exception;
         }
@@ -791,7 +897,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   @Override
-  public EntityInterface getParentEntity(IngestionPipeline entity, String fields) {
+  public EntityInterface<?> getParentEntity(IngestionPipeline entity, String fields) {
     if (entity.getService() == null) {
       // Try to load the service if it's not set
       LOG.warn(
@@ -814,7 +920,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   protected ChangeEvent getChangeEvent(
-      EntityInterface updated, ChangeDescription change, String entityType, Double prevVersion) {
+      EntityInterface<?> updated, ChangeDescription change, String entityType, Double prevVersion) {
     return new ChangeEvent()
         .withId(UUID.randomUUID())
         .withEntity(updated)
@@ -854,6 +960,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
                     ingestionPipeline.getFullyQualifiedName(),
                     PIPELINE_STATUS_EXTENSION),
             PipelineStatus.class);
+    keepRecordedTriggeredBy(pipelineStatus, storedPipelineStatus);
     if (storedPipelineStatus != null) {
       daoCollection
           .entityExtensionTimeSeriesDao()
@@ -963,7 +1070,28 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
    * history can show it without polling the orchestrator. Best effort: the run is already going, so
    * failing to record its queued state must not fail the trigger.
    */
+  /**
+   * Once a run records who triggered it, that value is final. Both upsert paths replace the whole
+   * stored record and the worker's status reports carry no principal, so without this the value is
+   * lost as soon as the run starts. A non-null incoming value can only come from {@link
+   * #recordQueuedPipelineStatus} (the status endpoint drops client-supplied ones); it still fills
+   * the gap if the worker reported the run before the queued status was written.
+   */
+  static void keepRecordedTriggeredBy(PipelineStatus incoming, PipelineStatus stored) {
+    if (stored != null && stored.getTriggeredBy() != null) {
+      incoming.withTriggeredBy(stored.getTriggeredBy());
+    }
+  }
+
   public void recordQueuedPipelineStatus(UriInfo uriInfo, String pipelineFQN, String runId) {
+    recordQueuedPipelineStatus(uriInfo, pipelineFQN, runId, null);
+  }
+
+  /**
+   * @param triggeredBy principal that requested this run, or {@code null} if unknown.
+   */
+  public void recordQueuedPipelineStatus(
+      UriInfo uriInfo, String pipelineFQN, String runId, String triggeredBy) {
     if (nullOrEmpty(runId)) {
       return;
     }
@@ -973,7 +1101,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
             .withRunId(runId)
             .withPipelineState(PipelineStatusType.QUEUED)
             .withStartDate(now)
-            .withTimestamp(now);
+            .withTimestamp(now)
+            .withTriggeredBy(triggeredBy);
     try {
       addPipelineStatus(uriInfo, pipelineFQN, queuedStatus);
     } catch (RuntimeException e) {
@@ -1088,7 +1217,6 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   public void updatePipelineStatusByRunId(String fqn, PipelineStatus pipelineStatus) {
     IngestionPipeline ingestionPipeline = findByName(fqn, Include.NON_DELETED);
     String pipelineFqn = ingestionPipeline.getFullyQualifiedName();
-    String json = JsonUtils.pojoToJson(pipelineStatus);
     PipelineStatus storedPipelineStatus =
         JsonUtils.readValue(
             daoCollection
@@ -1099,6 +1227,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
                     pipelineFqn,
                     PIPELINE_STATUS_EXTENSION),
             PipelineStatus.class);
+    keepRecordedTriggeredBy(pipelineStatus, storedPipelineStatus);
+    String json = JsonUtils.pojoToJson(pipelineStatus);
     if (storedPipelineStatus != null) {
       daoCollection
           .entityExtensionTimeSeriesDao()
@@ -1398,6 +1528,11 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     Map<String, String> logs = pipelineServiceClient.getLastIngestionLogs(pipeline, afterCursor);
 
     Map<String, Object> result = new HashMap<>();
+    String error = logs.get(PipelineServiceClientInterface.LOGS_ERROR_KEY);
+    if (error != null) {
+      result.put(PipelineServiceClientInterface.LOGS_ERROR_KEY, error);
+      return result;
+    }
     result.put("logs", DefaultLogStorage.extractLogContent(logs));
     result.put("after", logs.get("after"));
     result.put("total", logs.getOrDefault("total", "0"));
@@ -1559,8 +1694,43 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   public PipelineServiceClientResponse deployIngestionPipeline(
       IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
+    validateSourceConfigHasType(ingestionPipeline);
     applyStreamableLogsConfig(ingestionPipeline);
     return pipelineServiceClient.deployPipeline(ingestionPipeline, service);
+  }
+
+  public PipelineServiceClientResponse runIngestionPipeline(
+      UriInfo uriInfo, IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
+    return runIngestionPipeline(uriInfo, ingestionPipeline, service, RunOptions.NONE);
+  }
+
+  /**
+   * For callers running the pipeline against its own service. The explicit-service overload stays
+   * for the callers that run a pipeline against something else - a data contract's test suite, or
+   * an app whose ingestion runner was set on the service first.
+   */
+  public PipelineServiceClientResponse runIngestionPipeline(
+      UriInfo uriInfo, IngestionPipeline ingestionPipeline, RunOptions options) {
+    ServiceEntityInterface service =
+        Entity.getEntity(ingestionPipeline.getService(), "ingestionRunner", Include.NON_DELETED);
+    return runIngestionPipeline(uriInfo, ingestionPipeline, service, options);
+  }
+
+  public PipelineServiceClientResponse runIngestionPipeline(
+      UriInfo uriInfo,
+      IngestionPipeline ingestionPipeline,
+      ServiceEntityInterface service,
+      RunOptions options) {
+    if (pipelineServiceClient == null) {
+      return new PipelineServiceClientResponse()
+          .withCode(200)
+          .withReason("Pipeline Client Disabled");
+    }
+    PipelineServiceClientResponse response =
+        pipelineServiceClient.runPipelineWithOptions(ingestionPipeline, service, options);
+    recordQueuedPipelineStatus(
+        uriInfo, ingestionPipeline.getFullyQualifiedName(), response.getRunId());
+    return response;
   }
 
   // Single deploy-time hook for enableStreamableLogs, shared by every deploy path.

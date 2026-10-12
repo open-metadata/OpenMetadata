@@ -3,6 +3,7 @@ package org.openmetadata.service.search.indexes;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -25,6 +26,8 @@ import org.openmetadata.service.search.SearchClient;
  *   <li>Replace {@code sqlQuery} on the edge with a {@code sqlQueryKey} reference.
  *   <li>If the same SQL already exists in the map, reuse the existing key.
  *   <li>Add the edge to {@code upstreamLineage} or update the existing entry by {@code docUniqueId}.
+ *   <li>Copy {@code params.lineageData} before mutating it — Painless script params are read-only.
+ *   <li>Initialize {@code upstreamLineage} when the matched doc carries no such field.
  * </ol>
  */
 class AddUpdateLineageScriptTest {
@@ -32,9 +35,13 @@ class AddUpdateLineageScriptTest {
   /**
    * Java implementation of ADD_UPDATE_LINEAGE — mirrors the Painless script exactly.
    * Update this whenever the script in SearchClient.java is changed.
+   *
+   * <p>The incoming edge is wrapped read-only to reproduce Painless' immutable script params: a
+   * mirror that writes through to it would throw here exactly as the script does in OpenSearch.
    */
   @SuppressWarnings("unchecked")
-  private void runScript(Map<String, Object> doc, Map<String, Object> lineageData) {
+  private void runScript(Map<String, Object> doc, Map<String, Object> incomingEdge) {
+    Map<String, Object> lineageData = Collections.unmodifiableMap(incomingEdge);
     String rawSql = (String) lineageData.get("sqlQuery");
     Map<String, Object> edgeData;
 
@@ -68,13 +75,20 @@ class AddUpdateLineageScriptTest {
 
     List<Map<String, Object>> upstreamLineage =
         (List<Map<String, Object>>) doc.get("upstreamLineage");
+    if (upstreamLineage == null) {
+      upstreamLineage = new ArrayList<>();
+      doc.put("upstreamLineage", upstreamLineage);
+    }
     String oldSqlQueryKey = null;
     boolean found = false;
     for (int i = 0; i < upstreamLineage.size(); i++) {
-      String existingId = (String) upstreamLineage.get(i).get("docUniqueId");
+      Map<String, Object> existing = upstreamLineage.get(i);
+      String existingId = (String) existing.get("docUniqueId");
       String incomingId = (String) lineageData.get("docUniqueId");
       if (existingId != null && existingId.equalsIgnoreCase(incomingId)) {
-        oldSqlQueryKey = (String) upstreamLineage.get(i).get("sqlQueryKey");
+        oldSqlQueryKey = (String) existing.get("sqlQueryKey");
+        carryForwardCreation(existing, edgeData);
+        carryForwardLastUpdate(existing, edgeData);
         upstreamLineage.set(i, edgeData);
         found = true;
         break;
@@ -101,10 +115,51 @@ class AddUpdateLineageScriptTest {
     }
   }
 
+  /** The stored edge keeps the earliest creation stamp when an update carries a later one. */
+  private void carryForwardCreation(Map<String, Object> old, Map<String, Object> edgeData) {
+    Long carryCreatedAt = asEpochMillis(old.get("createdAt"));
+    Long newCreatedAt = asEpochMillis(edgeData.get("createdAt"));
+    if (carryCreatedAt == null || (newCreatedAt != null && carryCreatedAt >= newCreatedAt)) {
+      return;
+    }
+    edgeData.put("createdAt", carryCreatedAt);
+    Object carryCreatedBy = old.get("createdBy");
+    if (carryCreatedBy != null) {
+      edgeData.put("createdBy", carryCreatedBy);
+    }
+  }
+
+  /** The stored edge keeps the latest update stamp when an update carries an earlier one. */
+  private void carryForwardLastUpdate(Map<String, Object> old, Map<String, Object> edgeData) {
+    Long carryUpdatedAt = asEpochMillis(old.get("updatedAt"));
+    Long newUpdatedAt = asEpochMillis(edgeData.get("updatedAt"));
+    if (carryUpdatedAt == null || (newUpdatedAt != null && carryUpdatedAt <= newUpdatedAt)) {
+      return;
+    }
+    edgeData.put("updatedAt", carryUpdatedAt);
+    Object carryUpdatedBy = old.get("updatedBy");
+    if (carryUpdatedBy != null) {
+      edgeData.put("updatedBy", carryUpdatedBy);
+    }
+  }
+
+  private Long asEpochMillis(Object value) {
+    return value == null ? null : ((Number) value).longValue();
+  }
+
   private Map<String, Object> emptyDoc() {
     Map<String, Object> doc = new HashMap<>();
     doc.put("upstreamLineage", new ArrayList<>());
     return doc;
+  }
+
+  private Map<String, Object> auditedEdge(String docUniqueId, long createdAt, long updatedAt) {
+    Map<String, Object> edge = edge(docUniqueId, null);
+    edge.put("createdAt", createdAt);
+    edge.put("createdBy", "user-" + createdAt);
+    edge.put("updatedAt", updatedAt);
+    edge.put("updatedBy", "user-" + updatedAt);
+    return edge;
   }
 
   private Map<String, Object> edge(String docUniqueId, String sql) {
@@ -129,6 +184,49 @@ class AddUpdateLineageScriptTest {
     assertTrue(
         SearchClient.ADD_UPDATE_LINEAGE.contains("sqlQuery"),
         "Script must read sqlQuery from the incoming edge");
+  }
+
+  @Test
+  void scriptConstantCopiesParamsAndGuardsMissingLineage() {
+    assertFalse(
+        SearchClient.ADD_UPDATE_LINEAGE.contains("edgeData = params.lineageData"),
+        "Script must copy params.lineageData before mutating it — Painless params are read-only");
+    assertTrue(
+        SearchClient.ADD_UPDATE_LINEAGE.contains("ctx._source.upstreamLineage == null"),
+        "Script must initialize upstreamLineage before dereferencing it");
+  }
+
+  // ── read-only params and missing-field guards ─────────────────────────────
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void missingUpstreamLineageField_initializedBeforeUse() {
+    Map<String, Object> doc = new HashMap<>();
+
+    runScript(doc, edge("edge-1", null));
+
+    List<Map<String, Object>> edges = (List<Map<String, Object>>) doc.get("upstreamLineage");
+    assertNotNull(edges, "upstreamLineage must be initialized when the doc carries no such field");
+    assertEquals(1, edges.size());
+    assertEquals("edge-1", edges.get(0).get("docUniqueId"));
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void updateEdgeWithoutSql_carriesAuditForwardWithoutTouchingParams() {
+    Map<String, Object> doc = emptyDoc();
+    runScript(doc, auditedEdge("edge-1", 1_000L, 5_000L));
+
+    Map<String, Object> update = auditedEdge("edge-1", 9_000L, 2_000L);
+    runScript(doc, update);
+
+    List<Map<String, Object>> edges = (List<Map<String, Object>>) doc.get("upstreamLineage");
+    assertEquals(1, edges.size(), "update must not add a second entry");
+    assertEquals(1_000L, edges.get(0).get("createdAt"), "earliest createdAt is preserved");
+    assertEquals("user-1000", edges.get(0).get("createdBy"));
+    assertEquals(5_000L, edges.get(0).get("updatedAt"), "latest updatedAt is preserved");
+    assertEquals("user-5000", edges.get(0).get("updatedBy"));
+    assertEquals(9_000L, update.get("createdAt"), "incoming edge params must not be mutated");
   }
 
   // ── deduplication logic tests ─────────────────────────────────────────────

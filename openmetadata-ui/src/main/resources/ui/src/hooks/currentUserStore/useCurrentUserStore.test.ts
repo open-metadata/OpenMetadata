@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { renderHook, waitFor } from '@testing-library/react';
+import { ApplicationStore } from '../../interface/store.interface';
 import { deleteUserPreference, putUserPreference } from '../../rest/userAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useApplicationStore } from '../useApplicationStore';
@@ -19,6 +20,7 @@ import {
   resetBackendSyncState,
   useCurrentUserPreferences,
   usePersistentStorage,
+  UserPreferences,
 } from './useCurrentUserStore';
 
 // Mock the useApplicationStore
@@ -62,7 +64,7 @@ const seedCurrentUser = ({
   mockUseApplicationStore.mockImplementation((selector) => {
     const mockState = {
       currentUser: { id, name },
-    } as any;
+    } as unknown as ApplicationStore;
 
     return selector(mockState);
   });
@@ -94,7 +96,7 @@ describe('useCurrentUserStore', () => {
       const mockState = {
         currentUser: null,
         // Add other properties as needed
-      } as any;
+      } as unknown as ApplicationStore;
 
       return selector(mockState);
     });
@@ -137,7 +139,7 @@ describe('useCurrentUserStore', () => {
       mockUseApplicationStore.mockImplementation((selector) => {
         const mockState = {
           currentUser: { name: 'testUser' },
-        } as any;
+        } as unknown as ApplicationStore;
 
         return selector(mockState);
       });
@@ -163,7 +165,7 @@ describe('useCurrentUserStore', () => {
       mockUseApplicationStore.mockImplementation((selector) => {
         const mockState = {
           currentUser: { name: 'oldUser' },
-        } as any;
+        } as unknown as ApplicationStore;
 
         return selector(mockState);
       });
@@ -176,7 +178,7 @@ describe('useCurrentUserStore', () => {
             isSidebarCollapsed: true,
             selectedEntityTableColumns: { table1: ['col1', 'col2'] },
             // Note: language key is missing - simulating old user data
-          } as any,
+          } as unknown as UserPreferences,
         },
       });
 
@@ -200,7 +202,7 @@ describe('useCurrentUserStore', () => {
       mockUseApplicationStore.mockImplementation((selector) => {
         const mockState = {
           currentUser: { name: 'userWithLanguage' },
-        } as any;
+        } as unknown as ApplicationStore;
 
         return selector(mockState);
       });
@@ -244,7 +246,7 @@ describe('useCurrentUserStore', () => {
       mockUseApplicationStore.mockImplementation((selector) => {
         const mockState = {
           currentUser: { name: 'stableUser' },
-        } as any;
+        } as unknown as ApplicationStore;
 
         return selector(mockState);
       });
@@ -357,9 +359,12 @@ describe('useCurrentUserStore', () => {
       });
       // Seed serverKnown so the DELETE is emitted — see the skip-remove test
       // below for the absent-key case.
-      hydrateBackendSyncedPreferences({ id: 'u1', name: 'alice' } as any, {
-        preferences: [{ type: 'appMode', config: { value: 'ai' } }],
-      });
+      hydrateBackendSyncedPreferences(
+        { id: 'u1', name: 'alice' },
+        {
+          preferences: [{ type: 'appMode', config: { value: 'ai' } }],
+        }
+      );
 
       const { setPreference } = renderUseCurrentUserPreferences();
       setPreference({ appMode: null });

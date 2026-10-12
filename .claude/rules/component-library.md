@@ -10,7 +10,7 @@ Applies to UI `*.{ts,tsx}`. Consumed via the bare package name
 
 - **Use `openmetadata-ui-core-components` for all new UI work** — it is the canonical component
   library, implementing the **UntitledUI + Tailwind** go-forward design system. **Do not use Ant
-  Design, and do not introduce new UI component-library dependencies.**
+  Design or MUI, and do not introduce new UI component-library dependencies.**
 - **Read the design-system spec before building a component.** The machine-readable specs live in
   `openmetadata-ui/src/main/resources/ui/specs/`: start at `specs/README.md` (it declares the two
   stacks — go-forward **UntitledUI + Tailwind (`tw:`)** vs legacy **Ant Design + Less**, deprecated),
@@ -45,11 +45,10 @@ Applies to UI `*.{ts,tsx}`. Consumed via the bare package name
   that a hand-rolled widget must at least be accessible: `jsx-a11y` blocks an invalid `role`, missing
   required ARIA props, and unusable tab order. Using the library component is how you satisfy that
   without writing the ARIA yourself.
+- **Modals: always `<Dialog dividers="scroll">`.** Dividers show only when the modal scrolls: no
+  line under the title, and the footer line appears only while `Dialog.Content` overflows. Do not
+  draw your own `border-t`/`border-b` or `<Divider>` around a dialog's header or footer. The
+  default (`always`) exists only for legacy modals. Spec: `specs/untitled/modal.md` → Dividers.
 - **Legacy**: Ant Design components remain in existing code but should be replaced with
   `openmetadata-ui-core-components` equivalents when refactoring. For forms, do not use the legacy
   Ant Design `getField`/`generateFormFields` (see `frontend-react.md` → Forms).
-
-> **Resolved contradiction (do not follow the old wording):** `AGENTS.md` still says the frontend is
-> "React + TypeScript + Ant Design" and to "use React/TypeScript with Ant Design components." The
-> code says otherwise — a blocking hook rejects `antd` imports and every other source forbids Ant
-> Design for new work — so **the code-supported rule wins: no Ant Design for new work.**

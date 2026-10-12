@@ -17,19 +17,32 @@ interface CoverImageProps {
   position?: { x?: string; y?: string }; // CSS percentage values like "-16%"
 }
 
+const deriveCoverImageState = (
+  imageUrl: string | undefined,
+  authenticatedResult: { imageSrc: string; isLoading: boolean } | undefined
+) => {
+  const imageSrc = authenticatedResult?.imageSrc ?? imageUrl ?? '';
+  const isLoading = authenticatedResult?.isLoading ?? false;
+
+  // Check if image is ready to display (prevent 401 errors on authenticated URLs)
+  const showImage = Boolean(
+    imageSrc &&
+      (!imageUrl?.includes('/api/v1/attachments/') ||
+        imageSrc.startsWith('blob:'))
+  );
+
+  return { imageSrc, isLoading, showImage };
+};
+
 export const CoverImage = ({ imageUrl, position }: CoverImageProps) => {
   const authenticatedImageUrl = imageClassBase.getAuthenticatedImageUrl();
 
   // Always call unconditionally to avoid React Hook Rules violation
   const authenticatedResult = authenticatedImageUrl?.(imageUrl ?? '');
-  const imageSrc = authenticatedResult?.imageSrc ?? imageUrl ?? '';
-  const isLoading = authenticatedResult?.isLoading ?? false;
-
-  // Check if image is ready to display (prevent 401 errors on authenticated URLs)
-  const showImage =
-    imageSrc &&
-    (!imageUrl?.includes('/api/v1/attachments/') ||
-      imageSrc.startsWith('blob:'));
+  const { imageSrc, isLoading, showImage } = deriveCoverImageState(
+    imageUrl,
+    authenticatedResult
+  );
 
   return (
     <div

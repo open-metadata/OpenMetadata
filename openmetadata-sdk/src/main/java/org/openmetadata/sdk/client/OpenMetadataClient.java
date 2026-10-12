@@ -42,7 +42,6 @@ import org.openmetadata.sdk.services.events.ChangeEventService;
 import org.openmetadata.sdk.services.events.EventSubscriptionService;
 import org.openmetadata.sdk.services.events.NotificationTemplateService;
 import org.openmetadata.sdk.services.feed.AnnouncementService;
-import org.openmetadata.sdk.services.feed.FeedService;
 import org.openmetadata.sdk.services.feed.TaskFormSchemaService;
 import org.openmetadata.sdk.services.glossary.GlossaryService;
 import org.openmetadata.sdk.services.glossary.GlossaryTermService;
@@ -52,6 +51,20 @@ import org.openmetadata.sdk.services.importexport.ImportExportAPI;
 import org.openmetadata.sdk.services.ingestion.IngestionPipelineService;
 import org.openmetadata.sdk.services.knowledge.PageService;
 import org.openmetadata.sdk.services.lineage.LineageAPI;
+import org.openmetadata.sdk.services.ontology.InferenceRuleService;
+import org.openmetadata.sdk.services.ontology.OntologyAiService;
+import org.openmetadata.sdk.services.ontology.OntologyAxiomService;
+import org.openmetadata.sdk.services.ontology.OntologyBulkService;
+import org.openmetadata.sdk.services.ontology.OntologyChangeSetService;
+import org.openmetadata.sdk.services.ontology.OntologyEditLockService;
+import org.openmetadata.sdk.services.ontology.OntologyImpactService;
+import org.openmetadata.sdk.services.ontology.OntologyModelingService;
+import org.openmetadata.sdk.services.ontology.OntologyPackService;
+import org.openmetadata.sdk.services.ontology.OntologyPatternService;
+import org.openmetadata.sdk.services.ontology.OntologyReasoningService;
+import org.openmetadata.sdk.services.ontology.OntologyStructureService;
+import org.openmetadata.sdk.services.ontology.OntologySubsetService;
+import org.openmetadata.sdk.services.ontology.RelationshipTypeService;
 import org.openmetadata.sdk.services.policies.PolicyService;
 import org.openmetadata.sdk.services.search.SearchAPI;
 import org.openmetadata.sdk.services.services.APIServiceService;
@@ -87,9 +100,6 @@ public class OpenMetadataClient {
   private final OpenMetadataConfig config;
   private final HttpClient httpClient;
   private UUID cachedUserId = null;
-
-  // Feeds
-  private final FeedService feed;
 
   // Data Assets
   private final TableService tables;
@@ -130,6 +140,22 @@ public class OpenMetadataClient {
   // Glossary
   private final GlossaryService glossaries;
   private final GlossaryTermService glossaryTerms;
+
+  // Ontology
+  private final RelationshipTypeService relationshipTypes;
+  private final OntologyAxiomService ontologyAxioms;
+  private final OntologyAiService ontologyAi;
+  private final OntologyBulkService ontologyBulk;
+  private final OntologyChangeSetService ontologyChangeSets;
+  private final OntologyEditLockService ontologyEditLocks;
+  private final OntologyImpactService ontologyImpacts;
+  private final OntologyModelingService ontologyModeling;
+  private final InferenceRuleService inferenceRules;
+  private final OntologyPackService ontologyPacks;
+  private final OntologyPatternService ontologyPatterns;
+  private final OntologyReasoningService ontologyReasoning;
+  private final OntologyStructureService ontologyStructure;
+  private final OntologySubsetService ontologySubsets;
 
   // System settings
   private final SystemSettingsService settings;
@@ -258,6 +284,22 @@ public class OpenMetadataClient {
     this.glossaryTerms = new GlossaryTermService(httpClient);
     this.settings = new SystemSettingsService(httpClient);
 
+    // Initialize Ontology services
+    this.relationshipTypes = new RelationshipTypeService(httpClient);
+    this.ontologyAxioms = new OntologyAxiomService(httpClient);
+    this.ontologyAi = new OntologyAiService(httpClient);
+    this.ontologyBulk = new OntologyBulkService(httpClient);
+    this.ontologyChangeSets = new OntologyChangeSetService(httpClient);
+    this.ontologyEditLocks = new OntologyEditLockService(httpClient);
+    this.ontologyImpacts = new OntologyImpactService(httpClient);
+    this.ontologyModeling = new OntologyModelingService(httpClient);
+    this.inferenceRules = new InferenceRuleService(httpClient);
+    this.ontologyPacks = new OntologyPackService(httpClient);
+    this.ontologyPatterns = new OntologyPatternService(httpClient);
+    this.ontologyReasoning = new OntologyReasoningService(httpClient);
+    this.ontologyStructure = new OntologyStructureService(httpClient);
+    this.ontologySubsets = new OntologySubsetService(httpClient);
+
     // Initialize classification services
     this.classifications = new ClassificationService(httpClient);
     this.tags = new TagService(httpClient);
@@ -336,14 +378,6 @@ public class OpenMetadataClient {
 
     // Initialize task form schema services
     this.taskFormSchemas = new TaskFormSchemaService(httpClient);
-
-    // Initialize feed service
-    this.feed = new FeedService(httpClient);
-  }
-
-  // Feed Service Getter
-  public FeedService feed() {
-    return feed;
   }
 
   public OpenMetadataConfig getConfig() {
@@ -462,6 +496,62 @@ public class OpenMetadataClient {
 
   public GlossaryTermService glossaryTerms() {
     return glossaryTerms;
+  }
+
+  public RelationshipTypeService relationshipTypes() {
+    return relationshipTypes;
+  }
+
+  public OntologyAxiomService ontologyAxioms() {
+    return ontologyAxioms;
+  }
+
+  public OntologyAiService ontologyAi() {
+    return ontologyAi;
+  }
+
+  public OntologyBulkService ontologyBulk() {
+    return ontologyBulk;
+  }
+
+  public OntologyChangeSetService ontologyChangeSets() {
+    return ontologyChangeSets;
+  }
+
+  public OntologyEditLockService ontologyEditLocks() {
+    return ontologyEditLocks;
+  }
+
+  public OntologyImpactService ontologyImpacts() {
+    return ontologyImpacts;
+  }
+
+  public OntologyModelingService ontologyModeling() {
+    return ontologyModeling;
+  }
+
+  public InferenceRuleService inferenceRules() {
+    return inferenceRules;
+  }
+
+  public OntologyPackService ontologyPacks() {
+    return ontologyPacks;
+  }
+
+  public OntologyPatternService ontologyPatterns() {
+    return ontologyPatterns;
+  }
+
+  public OntologyReasoningService ontologyReasoning() {
+    return ontologyReasoning;
+  }
+
+  public OntologyStructureService ontologyStructure() {
+    return ontologyStructure;
+  }
+
+  public OntologySubsetService ontologySubsets() {
+    return ontologySubsets;
   }
 
   public SystemSettingsService settings() {

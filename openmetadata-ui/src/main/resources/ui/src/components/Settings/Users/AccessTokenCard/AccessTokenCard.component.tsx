@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Card, Tooltip, Typography } from 'antd';
+import { Tooltip, Typography } from '@openmetadata/ui-core-components';
+import { Card } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 
@@ -41,6 +42,65 @@ import AuthMechanism from '../../Bot/BotDetails/AuthMechanism';
 import AuthMechanismForm from '../../Bot/BotDetails/AuthMechanismForm';
 import './access-token-card.less';
 import { MockProps } from './AccessTokenCard.interfaces';
+
+interface AccessTokenRevokeModalProps {
+  isSCIMBot: boolean;
+  confirmMessage: string;
+  isTokenRemoving: boolean;
+  isModalOpen: boolean;
+  disabled: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}
+
+const AccessTokenRevokeModal = ({
+  isSCIMBot,
+  confirmMessage,
+  isTokenRemoving,
+  isModalOpen,
+  disabled,
+  onCancel,
+  onConfirm,
+}: AccessTokenRevokeModalProps) => {
+  const { t } = useTranslation();
+
+  return (
+    <ConfirmationModal
+      bodyText={
+        isSCIMBot ? (
+          <div className="scim-token-delete-modal">
+            <div className="scim-modal-header  mb-4">
+              <span className="scim-modal-icon">
+                <TrashIcon height={22} />
+              </span>
+            </div>
+            <div className="flex flex-col gap-2">
+              <Typography className="scim-modal-delete-title text-md">
+                {t('message.delete-scim-token')}
+              </Typography>
+              <Typography className="scim-modal-delete-desc text-sm">
+                {t('message.are-you-sure-to-delete-scim-token')}
+              </Typography>
+            </div>
+          </div>
+        ) : (
+          confirmMessage
+        )
+      }
+      cancelButtonCss={isSCIMBot ? 'scim-modal-cancel-button' : ''}
+      cancelText={t('label.cancel')}
+      className={isSCIMBot ? 'scim-modal-delete' : ''}
+      confirmButtonCss={isSCIMBot ? 'scim-modal-delete-button' : ''}
+      confirmText={isSCIMBot ? t('label.delete') : t('label.confirm')}
+      footerClassName={isSCIMBot ? 'scim-modal-footer' : ''}
+      header={isSCIMBot ? '' : t('message.are-you-sure')}
+      isLoading={isTokenRemoving}
+      visible={isModalOpen}
+      onCancel={onCancel}
+      onConfirm={disabled ? noop : onConfirm}
+    />
+  );
+};
 
 const AccessTokenCard: FC<MockProps> = ({
   isBot,
@@ -270,50 +330,35 @@ const AccessTokenCard: FC<MockProps> = ({
       )}
       data-testid="center-panel">
       {!isDataLoaded ? <Loader /> : renderAuthComponent()}
-      <ConfirmationModal
-        bodyText={
-          isSCIMBot ? (
-            <div className="scim-token-delete-modal">
-              <div className="scim-modal-header  mb-4">
-                <span className="scim-modal-icon">
-                  <TrashIcon height={22} />
-                </span>
-              </div>
-              <div className="flex flex-col gap-2">
-                <Typography.Text className="scim-modal-delete-title text-md">
-                  {t('message.delete-scim-token')}
-                </Typography.Text>
-                <Typography.Text className="scim-modal-delete-desc text-sm">
-                  {t('message.are-you-sure-to-delete-scim-token')}
-                </Typography.Text>
-              </div>
-            </div>
-          ) : (
-            confirmMessage
-          )
-        }
-        cancelButtonCss={isSCIMBot ? 'scim-modal-cancel-button' : ''}
-        cancelText={t('label.cancel')}
-        className={isSCIMBot ? 'scim-modal-delete' : ''}
-        confirmButtonCss={isSCIMBot ? 'scim-modal-delete-button' : ''}
-        confirmText={isSCIMBot ? t('label.delete') : t('label.confirm')}
-        footerClassName={isSCIMBot ? 'scim-modal-footer' : ''}
-        header={isSCIMBot ? '' : t('message.are-you-sure')}
-        isLoading={isTokenRemoving}
-        visible={isModalOpen}
+      <AccessTokenRevokeModal
+        confirmMessage={confirmMessage}
+        disabled={disabled}
+        isModalOpen={isModalOpen}
+        isSCIMBot={isSCIMBot}
+        isTokenRemoving={isTokenRemoving}
         onCancel={() => setIsModalOpen(false)}
-        onConfirm={disabled ? noop : handleTokenRevoke}
+        onConfirm={handleTokenRevoke}
       />
     </Card>
   );
 
-  return isLoading ? (
-    <Loader />
-  ) : disabled ? (
-    <Tooltip title="Upgrade to use this feature">{tokenCard}</Tooltip>
-  ) : (
-    tokenCard
-  );
+  if (isLoading) {
+    return <Loader />;
+  }
+
+  if (disabled) {
+    return (
+      <Tooltip
+        arrow
+        excludeTriggerFromTabOrder
+        title="Upgrade to use this feature"
+        triggerClassName="tw:inline-flex">
+        {tokenCard}
+      </Tooltip>
+    );
+  }
+
+  return tokenCard;
 };
 
 export default AccessTokenCard;

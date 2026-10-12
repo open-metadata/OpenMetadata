@@ -289,8 +289,12 @@ logging:
       # logs/audit.log. Pin the level so audit capture does not depend on the global LOG_LEVEL.
       level: INFO
   appenders:
+    # Containers keep this on — stdout is how `docker logs` / `kubectl logs` see the server.
+    # `bin/openmetadata.sh start` exports CONSOLE_LOG_LEVEL=OFF instead, because it redirects
+    # stdout into logs/catalog.log, which has no rotation: leaving the console on there duplicates
+    # every rotated logs/openmetadata.log line into a file that grows for the life of the install.
     - type: console
-      threshold: TRACE
+      threshold: ${CONSOLE_LOG_LEVEL:-TRACE}
       timeZone: UTC
       layout:
         type: om-event-layout
@@ -429,10 +433,19 @@ migrationConfiguration:
 authorizerConfiguration:
   className: ${AUTHORIZER_CLASS_NAME:-org.openmetadata.service.security.DefaultAuthorizer}
   containerRequestFilter: ${AUTHORIZER_REQUEST_FILTER:-org.openmetadata.service.security.JwtFilter}
+
+  # Email-first admin configuration (recommended)
+  adminEmails: ${AUTHORIZER_ADMIN_EMAILS:-[]}
+  allowedEmailDomains: ${AUTHORIZER_ALLOWED_EMAIL_DOMAINS:-[]}
+  botDomain: ${AUTHORIZER_BOT_DOMAIN:-""}
+
+  # Deprecated - use adminEmails instead
   adminPrincipals: ${AUTHORIZER_ADMIN_PRINCIPALS:-[admin]}
+  # Deprecated - use botDomain for bots, allowedEmailDomains for user restrictions
+  principalDomain: ${AUTHORIZER_PRINCIPAL_DOMAIN:-"open-metadata.org"}
+
   # For MCP OAuth: Set to specific domains like ["company.com"] to restrict self-signup
   allowedEmailRegistrationDomains: ${AUTHORIZER_ALLOWED_REGISTRATION_DOMAIN:-["all"]}
-  principalDomain: ${AUTHORIZER_PRINCIPAL_DOMAIN:-"open-metadata.org"}
   allowedDomains: ${AUTHORIZER_ALLOWED_DOMAINS:-[]}
   enforcePrincipalDomain: ${AUTHORIZER_ENFORCE_PRINCIPAL_DOMAIN:-false}
   enableSecureSocketConnection : ${AUTHORIZER_ENABLE_SECURE_SOCKET:-false}
@@ -445,7 +458,9 @@ authenticationConfiguration:
   clientType: ${AUTHENTICATION_CLIENT_TYPE:-public}
   # For SSO: Set to "google", "okta", "azure", etc. and configure OIDC credentials
   provider: ${AUTHENTICATION_PROVIDER:-basic}
-  # This is used by auth provider provide response as either id_token or code
+  # Public (browser) client only: the response_type the UI's OIDC client requests. Confidential
+  # clients are driven by oidcConfiguration.responseType below and ignore this value — note that
+  # GET /api/v1/system/config/auth reports this field, not the oidcConfiguration one.
   responseType: ${AUTHENTICATION_RESPONSE_TYPE:-id_token}
   # This will only be valid when provider type specified is customOidc
   providerName: ${CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME:-""}
@@ -454,13 +469,24 @@ authenticationConfiguration:
   tokenValidationAlgorithm: ${AUTHENTICATION_TOKEN_VALIDATION_ALGORITHM:-"RS256"}
   authority: ${AUTHENTICATION_AUTHORITY:-https://accounts.google.com}
   clientId: ${AUTHENTICATION_CLIENT_ID:-""}
-  # For SSO: Set to your OAuth callback URL (e.g., "https://yourhost/api/v1/callback")
+  # Public (browser) client only: where the IdP returns the browser, handled by the UI
+  # at /callback (e.g., "https://yourhost/callback"). Confidential clients leave this blank
+  # and set oidcConfiguration.callbackUrl below instead.
   callbackUrl: ${AUTHENTICATION_CALLBACK_URL:-""}
   # Additional redirect URIs allowed for the login flow (beyond callbackUrl and the server callbacks).
   # Each entry must exactly match the requested redirect URI. Use for browser-extension logins,
   # e.g. ["https://<extension-id>.chromiumapp.org/auth0"].
   additionalTrustedRedirectUris: ${AUTHENTICATION_ADDITIONAL_TRUSTED_REDIRECT_URIS:-[]}
+
+  # Email-first claim configuration (recommended)
+  # Set these to opt in to email-first identity resolution.
+  # When unset, OpenMetadata continues using legacy jwtPrincipalClaims behavior.
+  emailClaim: ${AUTHENTICATION_EMAIL_CLAIM:-""}
+  displayNameClaim: ${AUTHENTICATION_DISPLAY_NAME_CLAIM:-""}
+
+  # Deprecated - use emailClaim instead
   jwtPrincipalClaims: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS:-[email,preferred_username,sub]}
+  # Deprecated - use emailClaim and displayNameClaim instead
   jwtPrincipalClaimsMapping: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS_MAPPING:-[]}
   enableSelfSignup : ${AUTHENTICATION_ENABLE_SELF_SIGNUP:-true}
   enableAutoRedirect: ${AUTHENTICATION_ENABLE_AUTO_REDIRECT:-false}
@@ -484,16 +510,21 @@ authenticationConfiguration:
     preferredJwsAlgorithm: ${OIDC_PREFERRED_JWS:-"RS256"}
     responseType: ${OIDC_RESPONSE_TYPE:-"code"}
     disablePkce: ${OIDC_DISABLE_PKCE:-true}
+    # The redirect_uri sent to the IdP, and the one to register in the IdP app. Must point at
+    # the server's /callback endpoint, which performs the code exchange. Do NOT register
+    # /auth/callback — that is the UI route the server redirects to afterwards.
     callbackUrl: ${OIDC_CALLBACK:-"http://localhost:8585/callback"}
+    # The deployment's externally reachable base URL, e.g. "https://openmetadata.example.com"
     serverUrl: ${OIDC_SERVER_URL:-"http://localhost:8585"}
     clientAuthenticationMethod: ${OIDC_CLIENT_AUTH_METHOD:-"client_secret_post"}
     tenant: ${OIDC_TENANT:-""}
     maxClockSkew: ${OIDC_MAX_CLOCK_SKEW:-""}
     tokenValidity: ${OIDC_OM_REFRESH_TOKEN_VALIDITY:-"3600"} # in seconds
     customParams: ${OIDC_CUSTOM_PARAMS:-}
-    maxAge: ${OIDC_MAX_AGE:-"0"}
-    prompt: ${OIDC_PROMPT_TYPE:-"consent"}
+    maxAge: ${OIDC_MAX_AGE:-""}
+    prompt: ${OIDC_PROMPT_TYPE:-""}
     sessionExpiry: ${OIDC_SESSION_EXPIRY:-"604800"} # Deprecated fallback; use AUTHENTICATION_SESSION_EXPIRY
+    endSessionWithProvider: ${OIDC_END_SESSION_WITH_PROVIDER:-false} # sign users out when the identity provider ends their session
   samlConfiguration:
     debugMode: ${SAML_DEBUG_MODE:-false}
     idp:
@@ -577,10 +608,11 @@ elasticsearch:
   connectionTimeoutSecs: ${ELASTICSEARCH_CONNECTION_TIMEOUT_SECS:-10}  # Increased from 5s for Docker networks
   connectionRequestTimeoutSecs: ${ELASTICSEARCH_CONNECTION_REQUEST_TIMEOUT_SECS:-5}
   socketTimeoutSecs: ${ELASTICSEARCH_SOCKET_TIMEOUT_SECS:-120}  # Increased from 60s for slow queries
+  requestCompressionEnabled: ${ELASTICSEARCH_REQUEST_COMPRESSION_ENABLED:-true}
   keepAliveTimeoutSecs: ${ELASTICSEARCH_KEEP_ALIVE_TIMEOUT_SECS:-600}
   # Connection pool settings for better load balancing and performance
-  maxConnTotal: ${ELASTICSEARCH_MAX_CONN_TOTAL:-30}  # Total connections across all hosts
-  maxConnPerRoute: ${ELASTICSEARCH_MAX_CONN_PER_ROUTE:-10}  # Keep below total for multi-host isolation
+  maxConnTotal: ${ELASTICSEARCH_MAX_CONN_TOTAL:-100}  # Total connections across all hosts
+  maxConnPerRoute: ${ELASTICSEARCH_MAX_CONN_PER_ROUTE:-50}  # Keep below total for multi-host isolation
   batchSize: ${ELASTICSEARCH_BATCH_SIZE:-100}
   payLoadSize: ${ELASTICSEARCH_PAYLOAD_BYTES_SIZE:-10485760}
   searchIndexMappingLanguage : ${ELASTICSEARCH_INDEX_MAPPING_LANG:-EN}
@@ -608,6 +640,13 @@ elasticsearch:
 llmConfiguration:
   enabled: ${LLM_ENABLED:-false}
   provider: ${LLM_PROVIDER:-noop}  # noop | openai | azureOpenAI | bedrock | google | anthropic
+  # Context Center memory extraction (files + articles -> knowledge pills). Independent of
+  # `enabled` above, which also gates embeddings: LLM features can stay on for semantic search
+  # with extraction off. Unmetered here, so opt-in.
+  memoryExtractionEnabled: ${LLM_MEMORY_EXTRACTION_ENABLED:-false}
+  ontologyMemoryDerivationEnabled: ${LLM_ONTOLOGY_MEMORY_DERIVATION_ENABLED:-false}
+  # FQCN of an alternate AiProvider for Context Center memory extraction; empty = built-in LLM provider
+  aiProviderClass: ${LLM_AI_PROVIDER_CLASS:-""}
   maxConcurrentRequests: ${LLM_MAX_CONCURRENT_REQUESTS:-5}
   openai:
     apiKey: ${LLM_OPENAI_API_KEY:-""}
@@ -658,6 +697,7 @@ eventMonitoringConfiguration:
   pathPattern: ${EVENT_MONITOR_PATH_PATTERN:-["/api/v1/tables/*", "/api/v1/health-check"]}
   latency: ${EVENT_MONITOR_LATENCY:-[0.99, 0.90]} # For value p99=0.99, p90=0.90, p50=0.50 etc.
   servicesHealthCheckInterval: ${EVENT_MONITOR_SERVICES_HEALTH_CHECK_INTERVAL:-300}
+  requestLatencyPercentileHistogram: ${REQUEST_LATENCY_PERCENTILE_HISTOGRAM:-false}
   # it will use the default auth provider for AWS services if parameters are not set
   # parameters:
   #   region: ${OM_MONITOR_REGION:-""}
@@ -798,6 +838,36 @@ bulkOperation:
   # Timeout in seconds for entire bulk operation
   timeoutSeconds: ${BULK_OPERATION_TIMEOUT_SECONDS:-300}
 
+alerting:
+  # A tick of an alert stops after the event it is processing once it has run this long, commits,
+  # and runs again at once, so one alert on a slow endpoint cannot keep a scheduler thread from the
+  # others. Every event is still processed, in order. 0 switches the budget off; otherwise 10 or more.
+  tickTimeBudgetSeconds: ${ALERTING_TICK_TIME_BUDGET_SECONDS:-60}
+  # When true, a target that could not be reached (connect timeout, connection refused, unknown
+  # host) is recorded as failed without another attempt for the rest of that tick.
+  skipUnreachableTargetWithinTick: ${ALERTING_SKIP_UNREACHABLE_TARGET_WITHIN_TICK:-false}
+  # When true, a webhook delivery uses the method its destination configures, POST or PUT. When
+  # false every delivery is a POST, which is what the server has always done.
+  honourWebhookMethod: ${ALERTING_HONOUR_WEBHOOK_METHOD:-false}
+  # When true, an event waits for the mail server's answer to each of its emails, up to the time
+  # left in the tick's budget, and a rejection or a wait that runs out is recorded as a failure.
+  # When false an email counts as delivered once it is handed to the mail library.
+  awaitEmailOutcome: ${ALERTING_AWAIT_EMAIL_OUTCOME:-false}
+  # How many of one event's targets are sent to at the same time, 1 to 8. With 1 they are sent one
+  # after another, so an event takes the sum of its targets' waits. The next event never starts
+  # before every target of the previous one is done.
+  targetSendConcurrency: ${ALERTING_TARGET_SEND_CONCURRENCY:-1}
+
+startupConfiguration:
+  # Compares bundled seed files and the server version with the last successful startup.
+  # Warm starts also verify rows for every bundled type and non-deletable policy and role. This
+  # does not validate soft deletions, row content, relationships, or other seed categories. Use
+  # STARTUP_FORCE_SEED_DATA=true to rerun all loaders; direct DB changes may need manual repair.
+  seedDataGateEnabled: ${STARTUP_SEED_DATA_GATE_ENABLED:-true}
+  forceSeedData: ${STARTUP_FORCE_SEED_DATA:-false}
+  searchTemplateGateEnabled: ${STARTUP_SEARCH_TEMPLATE_GATE_ENABLED:-true}
+  searchInitParallelism: ${STARTUP_SEARCH_INIT_PARALLELISM:-8}
+
 # Prevent background fan-out from exhausting the request connection pool.
 asyncOperations:
   maxConcurrentDbTasks: ${ASYNC_MAX_CONCURRENT_DB_TASKS:-25}
@@ -861,15 +931,33 @@ rdf:
   bulkEntityBatchSize: ${RDF_BULK_ENTITY_BATCH_SIZE:-100}
   bulkRelationshipSourceBatchSize: ${RDF_BULK_RELATIONSHIP_SOURCE_BATCH_SIZE:-100}
   bulkLineageEdgeBatchSize: ${RDF_BULK_LINEAGE_EDGE_BATCH_SIZE:-50}
+  maxUpdatePayloadBytes: ${RDF_MAX_UPDATE_PAYLOAD_BYTES:-4194304}
+  maxAppendPayloadBytes: ${RDF_MAX_APPEND_PAYLOAD_BYTES:-16777216}
+  bulkAppendEntityBatchSize: ${RDF_BULK_APPEND_ENTITY_BATCH_SIZE:-1000}
+  streamingAppendEnabled: ${RDF_STREAMING_APPEND_ENABLED:-true}
+  gzipRequests: ${RDF_GZIP_REQUESTS:-false}
+  maxInMemoryInferenceTriples: ${RDF_MAX_IN_MEMORY_INFERENCE_TRIPLES:-100000}
+  materializedInferenceEnabled: ${RDF_MATERIALIZED_INFERENCE_ENABLED:-false}
   username: ${RDF_REMOTE_USERNAME:-"admin"}
   password: ${RDF_REMOTE_PASSWORD:-"admin"}
   dataset: ${RDF_DATASET:-"openmetadata"}
   inferenceEnabled: ${RDF_INFERENCE_ENABLED:-false}
+  defaultInferenceLevel: ${RDF_DEFAULT_INFERENCE_LEVEL:-"NONE"}
+  cacheInferredTriples: ${RDF_CACHE_INFERRED_TRIPLES:-false}
+  shaclValidationMode: ${RDF_SHACL_VALIDATION_MODE:-"REPORT"}
+  dereferenceableIris: ${RDF_DEREFERENCEABLE_IRIS:-false}
+  strictOwlProfile: ${RDF_STRICT_OWL_PROFILE:-true}
+  # RDF_ASK_COLLATE_ENABLED is the deprecated name of RDF_AI_ENABLED.
+  aiEnabled: ${RDF_AI_ENABLED:-${RDF_ASK_COLLATE_ENABLED:-false}}
+  federation:
+    enabled: ${RDF_FEDERATION_ENABLED:-false}
+    allowedEndpoints: ${RDF_FEDERATION_ALLOWED_ENDPOINTS:-[]}
 
 # Cache Configuration
 # Caching layer for entity metadata, relationships, and tag usage to reduce database load
 # Default: none (no external dependency). Set CACHE_PROVIDER=redis to enable the
 # Redis L2 cache; it falls back to NoopCacheProvider if Redis is unreachable at startup.
+# Multi-server deployments must use Redis so credential revocations reach every server.
 cache:
   # Cache provider: none (default) or redis
   provider: ${CACHE_PROVIDER:-none}

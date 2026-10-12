@@ -19,43 +19,36 @@ import {
 } from '../../../src/generated/entity/data/file';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import {
+  createOrFetch,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { visitEntityPageByFqn } from '../../utils/entity';
+import type { DirectoryClass } from './DirectoryClass';
 import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
 import { EntityClass } from './EntityClass';
+import { resolveParents } from './ParentResolver';
+import { DriveServiceClass } from './service/DriveServiceClass';
+
+/**
+ * Without a parent the file sits in the shard's shared drive service →
+ * directory chain. Pass the deepest parent the test needs to own:
+ *   - `service` — own service page, unique service name or service-level
+ *     cascade;
+ *   - `directory` — mutates the directory or asserts on its file listing.
+ * Levels below the one passed are created fresh and deleted with the file.
+ */
+export type FileClassOptions = {
+  name?: string;
+  service?: DriveServiceClass;
+  directory?: DirectoryClass;
+  sharedInfraKey?: string;
+};
 
 export class FileClass extends EntityClass {
-  private readonly fileName = `pw-file-${uuid()}`;
-  private readonly directoryName = `pw-directory-${uuid()}`;
-  private readonly serviceName = `pw-directory-service-${uuid()}`;
-
-  service = {
-    name: this.serviceName,
-    serviceType: 'GoogleDrive',
-    connection: {
-      config: {
-        type: 'GoogleDrive',
-        driveId: '0APBVnJtQ-NLCUk9PVA',
-        credentials: {
-          gcpConfig: {
-            type: 'service_account',
-            authUri: 'https://accounts.google.com/o/oauth2/auth',
-            clientId: '123456789',
-            tokenUri: 'https://oauth2.googleapis.com/token',
-            projectId: 'sample-project-id',
-            privateKey: '1234567890',
-            clientEmail: 'sample-sa@sample-project.iam.gserviceaccount.com',
-            privateKeyId: 'sample-private-key-id',
-            clientX509CertUrl:
-              'https://www.googleapis.com/robot/v1/metadata/x509/sample-sa%40sample-project.iam.gserviceaccount.com',
-            authProviderX509CertUrl:
-              'https://www.googleapis.com/oauth2/v1/certs',
-          },
-        },
-        supportsMetadataExtraction: true,
-      },
-    },
-  };
+  service: DriveServiceClass['entity'];
 
   children: Column[];
   entity: {
@@ -70,13 +63,25 @@ export class FileClass extends EntityClass {
   directoryResponseData: ResponseDataType = {} as ResponseDataType;
   entityResponseData: File = {} as File;
 
-  constructor(name?: string) {
+  private readonly parentOverrides: Pick<
+    FileClassOptions,
+    'service' | 'directory'
+  >;
+
+  constructor(options: FileClassOptions = {}) {
     super(EntityTypeEndpoint.File);
-    this.service.name = name ?? this.service.name;
     this.type = 'File';
     this.serviceCategory = SERVICE_TYPE.DriveService;
     this.serviceType = ServiceTypes.DRIVE_SERVICES;
-    this.childrenSelectorId = `${this.service.name}.${this.fileName}`;
+    this.sharedInfraKey = options.sharedInfraKey;
+    this.parentOverrides = {
+      service: options.service,
+      directory: options.directory,
+    };
+    // Placeholder parent names until create() binds the resolved chain.
+    this.service = options.service?.entity ?? new DriveServiceClass().entity;
+    const fileName = options.name ?? `pw-file-${uuid()}`;
+    this.childrenSelectorId = `${this.service.name}.${fileName}`;
     this.children = [
       {
         name: 'sample_column_1',
@@ -108,46 +113,50 @@ export class FileClass extends EntityClass {
       },
     ];
     this.entity = {
-      name: this.fileName,
-      displayName: this.fileName,
+      name: fileName,
+      displayName: fileName,
       service: this.service.name,
       description: 'description',
       columns: this.children,
     };
   }
 
+  // createOrFetch, not a bare POST: these names are generated once, when the
+  // class is constructed. Specs that build their fixtures in the describe body
+  // (LineageFilters, for one) do not re-evaluate it on a retry, so beforeAll
+  // runs a second time with the same names and every create answers 409
+  // "Entity already exists" — the retry fails in the hook and takes the whole
+  // file with it. Treating the conflict as success and fetching the entity
+  // makes create idempotent, which is what a retry needs it to be.
   async create(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.post(
-      '/api/v1/services/driveServices',
-      {
-        data: this.service,
-      }
+    const { parents, ownedRootPath, ownedOverride } = await resolveParents(
+      apiContext,
+      'driveDirectory',
+      this.parentOverrides,
+      this.sharedInfraKey
     );
-    this.serviceResponseData = await serviceResponse.json();
+    const service = parents.service as ResponseDataType;
+    const directory = parents.directory as ResponseDataType;
+    this.adoptOwnership({ ownedRootPath, ownedOverride });
+    this.bindServiceName(service.name);
+    this.serviceResponseData = service;
+    this.directoryResponseData = directory;
 
-    // Create directory
-    const directoryResponse = await apiContext.post(
-      '/api/v1/drives/directories',
-      {
-        data: {
-          name: this.directoryName,
-          service: this.serviceResponseData.fullyQualifiedName,
-        },
-      }
-    );
-    this.directoryResponseData = await directoryResponse.json();
-
-    // Create file in directory
-    const entityResponse = await apiContext.post(
-      `/api/v1/${EntityTypeEndpoint.File}`,
-      {
-        data: {
-          ...this.entity,
-          directory: this.directoryResponseData.fullyQualifiedName,
-        },
-      }
-    );
-    this.entityResponseData = await entityResponse.json();
+    // Create file in directory. `columns` has to be requested explicitly: it is
+    // in FileResource.FIELDS, so the POST returns it but a by-name lookup does
+    // not, and the conflict path below reads columns[0] for childrenSelectorId.
+    // Without it a retry would quietly leave that selector empty and fail later,
+    // in a column test, rather than here.
+    this.entityResponseData = await createOrFetch<File>(apiContext, {
+      label: 'FileClass.create file',
+      createPath: `/api/v1/${EntityTypeEndpoint.File}`,
+      fqnSegments: [service.name, directory.name, this.entity.name],
+      fields: 'columns',
+      data: {
+        ...this.entity,
+        directory: directory.fullyQualifiedName,
+      },
+    });
 
     this.childrenSelectorId =
       this.entityResponseData.columns?.[0]?.fullyQualifiedName ?? '';
@@ -159,6 +168,11 @@ export class FileClass extends EntityClass {
     };
   }
 
+  private bindServiceName(serviceName: string) {
+    this.service = { ...this.service, name: serviceName };
+    this.entity.service = serviceName;
+  }
+
   async patch({
     apiContext,
     patchData,
@@ -166,17 +180,18 @@ export class FileClass extends EntityClass {
     apiContext: APIRequestContext;
     patchData: Operation[];
   }) {
-    const response = await apiContext.patch(
-      `/api/v1/${EntityTypeEndpoint.File}/name/${this.entityResponseData.fullyQualifiedName}`,
-      {
-        data: patchData,
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(
+        `/api/v1/${EntityTypeEndpoint.File}/name/${this.entityResponseData.fullyQualifiedName}`,
+        {
+          data: patchData,
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      )
     );
-
-    this.entityResponseData = await response.json();
+    this.entityResponseData = await okJson(response, 'FileClass.patch');
 
     return {
       entity: this.entityResponseData,
@@ -188,6 +203,7 @@ export class FileClass extends EntityClass {
       service: this.serviceResponseData,
       directory: this.directoryResponseData,
       entity: this.entityResponseData,
+      ownedRootPath: this.ownedRootPath,
     };
   }
 
@@ -195,10 +211,14 @@ export class FileClass extends EntityClass {
     entity: File;
     service: ResponseDataType;
     directory: ResponseDataType;
+    ownedRootPath?: string;
   }): void {
     this.entityResponseData = data.entity;
     this.serviceResponseData = data.service;
     this.directoryResponseData = data.directory;
+    this.ownedRootPath = data.ownedRootPath;
+    this.entity.name = data.entity.name;
+    this.bindServiceName(data.service.name);
   }
 
   async visitEntityPage(page: Page) {
@@ -210,14 +230,11 @@ export class FileClass extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.delete(
-      `/api/v1/services/driveServices/name/${encodeURIComponent(
-        this.serviceResponseData?.fullyQualifiedName ?? ''
-      )}?recursive=true&hardDelete=true`
+    await this.deleteOwnedOrLeaf(
+      apiContext,
+      `/api/v1/${EntityTypeEndpoint.File}/${this.entityResponseData?.id}`
     );
 
-    return {
-      service: serviceResponse.body,
-    };
+    return { entity: this.entityResponseData };
   }
 }

@@ -6,7 +6,8 @@
           "type": "custom",
           "char_filter": [],
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding"
           ]
         }
       },
@@ -15,6 +16,7 @@
           "tokenizer": "letter",
           "filter": [
             "lowercase",
+            "asciifolding",
             "om_stemmer",
             "om_plural_stemmer"
           ]
@@ -23,7 +25,8 @@
           "type": "custom",
           "tokenizer": "n_gram_tokenizer",
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding"
           ]
         },
         "om_compound_analyzer": {
@@ -31,6 +34,7 @@
           "filter": [
             "compound_word_delimiter_graph",
             "lowercase",
+            "asciifolding",
             "flatten_graph"
           ]
         }
@@ -165,77 +169,73 @@
               }
             }
           },
-          "resolved": {
+          "testCaseFailureReason": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 15
+              }
+            }
+          },
+          "testCaseFailureComment": {
+            "type": "text",
+            "analyzer": "ik_max_word",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer"
+              },
+              "ngram": {
+                "type": "text",
+                "analyzer": "om_ngram"
+              }
+            }
+          },
+          "resolvedBy": {
             "properties": {
-              "testCaseFailureReason": {
+              "id": {
                 "type": "keyword",
                 "fields": {
                   "keyword": {
                     "type": "keyword",
-                    "ignore_above": 15
+                    "ignore_above": 36
                   }
                 }
               },
-              "testCaseFailureComment": {
-                "type": "text",
-                "analyzer": "ik_max_word",
+              "type": {
+                "type": "keyword"
+              },
+              "name": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "fields": {
                   "keyword": {
                     "type": "keyword",
-                    "normalizer": "lowercase_normalizer"
-                  },
-                  "ngram": {
-                    "type": "text",
-                    "analyzer": "om_ngram"
+                    "ignore_above": 256
                   }
                 }
               },
-              "resolvedBy": {
-                "properties": {
-                  "id": {
+              "displayName": {
+                "type": "keyword",
+                "fields": {
+                  "keyword": {
                     "type": "keyword",
-                    "fields": {
-                      "keyword": {
-                        "type": "keyword",
-                        "ignore_above": 36
-                      }
-                    }
-                  },
-                  "type": {
-                    "type": "keyword"
-                  },
-                  "name": {
-                    "type": "keyword",
-                    "normalizer": "lowercase_normalizer",
-                    "fields": {
-                      "keyword": {
-                        "type": "keyword",
-                        "ignore_above": 256
-                      }
-                    }
-                  },
-                  "displayName": {
-                    "type": "keyword",
-                    "fields": {
-                      "keyword": {
-                        "type": "keyword",
-                        "ignore_above": 256
-                      }
-                    }
-                  },
-                  "fullyQualifiedName": {
-                    "type": "text"
-                  },
-                  "description": {
-                    "type": "text"
-                  },
-                  "deleted": {
-                    "type": "text"
-                  },
-                  "href": {
-                    "type": "text"
+                    "ignore_above": 256
                   }
                 }
+              },
+              "fullyQualifiedName": {
+                "type": "text"
+              },
+              "description": {
+                "type": "text"
+              },
+              "deleted": {
+                "type": "text"
+              },
+              "href": {
+                "type": "text"
               }
             }
           }

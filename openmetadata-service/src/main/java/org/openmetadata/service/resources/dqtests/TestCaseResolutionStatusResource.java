@@ -2,6 +2,8 @@ package org.openmetadata.service.resources.dqtests;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository.resolveFilterEntityId;
+import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -33,6 +35,7 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +47,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.IncidentGroupBy;
+import org.openmetadata.schema.tests.type.Severity;
 import org.openmetadata.schema.tests.type.TestCaseIncidentGroup;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
@@ -60,6 +64,9 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository;
+import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository.IncidentDateField;
+import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository.IncidentGroupSortField;
+import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository.IncidentListRange;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityTimeSeriesResource;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -71,6 +78,7 @@ import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.security.policyevaluator.TestCaseResourceContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -140,6 +148,14 @@ public class TestCaseResolutionStatusResource
           @QueryParam("offset")
           String offset,
       @Parameter(
+              description =
+                  "1-based page to return instead of a cursor: the page that starts at "
+                      + "`(page - 1) * limit`. Takes precedence over `offset`.",
+              schema = @Schema(type = "integer"))
+          @QueryParam("page")
+          @Min(value = 1, message = "must be greater than or equal to 1")
+          Integer page,
+      @Parameter(
               description = "Filter test case statuses after the given start timestamp",
               schema = @Schema(type = "number"))
           @QueryParam("startTs")
@@ -191,7 +207,36 @@ public class TestCaseResolutionStatusResource
                   "Filter incidents by a direct owner (user or team name) of their test case",
               schema = @Schema(type = "String"))
           @QueryParam("owner")
-          String owner) {
+          String owner,
+      @Parameter(
+              description =
+                  "Only list incidents of test cases with no direct owner, i.e. the `No Owner` "
+                      + "incident group. Cannot be combined with `owner`.",
+              schema = @Schema(type = "boolean"))
+          @QueryParam("unowned")
+          @DefaultValue("false")
+          boolean unowned,
+      @Parameter(
+              description =
+                  "Incident timestamp the `startTs`/`endTs` range applies to, as in "
+                      + "`incidentGroups`. When set, the range filters by when each incident was "
+                      + "opened or last updated instead of by status record timestamp.",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {
+                        TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_CREATED_AT,
+                        TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_UPDATED_AT
+                      }))
+          @QueryParam("dateField")
+          IncidentDateField dateField,
+      @Parameter(
+              description =
+                  "Filter incidents by their current severity. Repeatable or comma-separated; "
+                      + "`none` matches the incidents with no severity.",
+              schema = @Schema(type = "string"))
+          @QueryParam("severity")
+          List<String> severities) {
     ResourceContextInterface testCaseResourceContext = getTestCaseResourceContext(testCaseFQN);
     ResourceContextInterface entityResourceContext =
         buildEntityResourceContext(testCaseFQN, testCaseId, originEntityFQN);
@@ -203,19 +248,24 @@ public class TestCaseResolutionStatusResource
     ListFilter filter = new ListFilter(include);
     filter.addQueryParam("testCaseResolutionStatusType", testCaseResolutionStatusType);
     filter.addQueryParam("incidentAssignee", assignee);
+    filter.addQueryParam("incidentListSeverity", parseIncidentSeverities(severities));
     filter.addQueryParam("entityFQNHash", FullyQualifiedName.buildHash(testCaseFQN));
     filter.addQueryParam("originEntityFQN", originEntityFQN);
-    filter.addQueryParam("domain", domain);
+    UUID domainId = resolveFilterEntityId(Entity.DOMAIN, domain);
+    if (domainId != null) {
+      filter.addQueryParam("incidentListDomainId", domainId.toString());
+    }
     UUID testDefinitionId = resolveFilterEntityId(Entity.TEST_DEFINITION, testDefinition);
     if (testDefinitionId != null) {
       filter.addQueryParam("testDefinitionId", testDefinitionId.toString());
     }
-    UUID testCaseOwnerId = resolveOwnerFilterId(owner);
-    if (testCaseOwnerId != null) {
-      filter.addQueryParam("testCaseOwnerId", testCaseOwnerId.toString());
-    }
-
-    return repository.list(offset, startTs, endTs, limitParam, filter, latest);
+    repository.addTestCaseOwnerFilter(filter, owner, unowned);
+    return repository.listIncidentRecords(
+        cursorForPage(page, limitParam, offset),
+        limitParam,
+        filter,
+        latest,
+        new IncidentListRange(dateField, startTs, endTs));
   }
 
   @GET
@@ -257,6 +307,13 @@ public class TestCaseResolutionStatusResource
               schema = @Schema(type = "String"))
           @QueryParam("assignee")
           String assignee,
+      @Parameter(
+              description =
+                  "Filter incidents by their current severity. Repeatable or comma-separated; "
+                      + "`none` matches the incidents with no severity.",
+              schema = @Schema(type = "string"))
+          @QueryParam("severity")
+          List<String> severities,
       @Parameter(description = "Test case fully qualified name", schema = @Schema(type = "String"))
           @QueryParam("testCaseFQN")
           String testCaseFQN,
@@ -271,7 +328,7 @@ public class TestCaseResolutionStatusResource
                       }))
           @QueryParam("dateField")
           @DefaultValue(TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_CREATED_AT)
-          String dateField,
+          IncidentDateField dateField,
       @Parameter(
               description = "Filter incidents after the given start timestamp",
               schema = @Schema(type = "number"))
@@ -285,6 +342,14 @@ public class TestCaseResolutionStatusResource
       @Parameter(description = "Filter incidents by domain", schema = @Schema(type = "String"))
           @QueryParam("domain")
           String domain,
+      @Parameter(
+              description =
+                  "Return only the group with this key: the table's fully qualified name, the "
+                      + "test definition's or the owner's id, or empty for the test cases nobody "
+                      + "owns",
+              schema = @Schema(type = "String"))
+          @QueryParam("group")
+          String group,
       @Parameter(description = "Limit the number of groups returned. (1 to 1000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
@@ -299,7 +364,30 @@ public class TestCaseResolutionStatusResource
           @QueryParam("offset")
           String offset,
       @Parameter(
-              description = "Sort type for the incident count",
+              description =
+                  "1-based page to return instead of a cursor: the page that starts at "
+                      + "`(page - 1) * limit`. Takes precedence over `offset`.",
+              schema = @Schema(type = "integer"))
+          @QueryParam("page")
+          @Min(value = 1, message = "must be greater than or equal to 1")
+          Integer page,
+      @Parameter(
+              description =
+                  "What the groups are ordered by. `severity` descending puts the most severe "
+                      + "first, and the groups with no severity last",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {
+                        TestCaseResolutionStatusRepository.INCIDENT_GROUP_SORT_FIELD_INCIDENT_COUNT,
+                        TestCaseResolutionStatusRepository.INCIDENT_GROUP_SORT_FIELD_SEVERITY,
+                        TestCaseResolutionStatusRepository.INCIDENT_GROUP_SORT_FIELD_LAST_SEEN
+                      }))
+          @QueryParam("sortField")
+          @DefaultValue(TestCaseResolutionStatusRepository.INCIDENT_GROUP_SORT_FIELD_INCIDENT_COUNT)
+          IncidentGroupSortField sortField,
+      @Parameter(
+              description = "Direction of the `sortField` ordering",
               schema =
                   @Schema(
                       type = "string",
@@ -329,19 +417,22 @@ public class TestCaseResolutionStatusResource
               .collect(Collectors.joining(",")));
     }
     filter.addQueryParam("incidentAssignee", assignee);
+    filter.addQueryParam("incidentSeverity", parseIncidentSeverities(severities));
     filter.addQueryParam("entityFQNHash", FullyQualifiedName.buildHash(testCaseFQN));
     UUID domainId = resolveFilterEntityId(Entity.DOMAIN, domain);
     if (domainId != null) {
       filter.addQueryParam("incidentDomainId", domainId.toString());
     }
-    filter.addQueryParam("incidentDateField", dateField);
+    filter.addQueryParam("incidentDateField", dateField.value());
     if (startTs != null) {
       filter.addQueryParam("incidentStartTs", String.valueOf(startTs));
     }
     if (endTs != null) {
       filter.addQueryParam("incidentEndTs", String.valueOf(endTs));
     }
-    return repository.listIncidentGroups(groupByDimension, filter, sortType, limit, offset);
+    filter.addQueryParam("incidentGroupKey", group);
+    return repository.listIncidentGroups(
+        groupByDimension, filter, sortField, sortType, limit, cursorForPage(page, limit, offset));
   }
 
   @GET
@@ -385,7 +476,10 @@ public class TestCaseResolutionStatusResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = TestCaseResolutionStatus.class)))
+                    schema = @Schema(implementation = TestCaseResolutionStatus.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Test case failure status for instance {id} is not found")
       })
   public TestCaseResolutionStatus get(
       @Context SecurityContext securityContext,
@@ -393,7 +487,7 @@ public class TestCaseResolutionStatusResource
           @PathParam("id")
           UUID testCaseResolutionStatusId) {
     TestCaseResolutionStatus testCaseResolutionStatus =
-        repository.getById(testCaseResolutionStatusId);
+        repository.getByIdOrNotFound(testCaseResolutionStatusId);
     TestCase testCase =
         Entity.getEntityByName(
             Entity.TEST_CASE,
@@ -551,7 +645,7 @@ public class TestCaseResolutionStatusResource
           AuthorizationLogic.ANY);
 
       TestCaseResolutionStatus status = mapper.createToEntity(createRequest, updatedBy, testCase);
-      repository.createNewRecord(status, testCase.getFullyQualifiedName());
+      repository.applyBulkStatus(status, testCase.getFullyQualifiedName());
       successes.add(new BulkResponse().withRequest(createRequest));
     } catch (AuthorizationException e) {
       failures.add(
@@ -613,7 +707,7 @@ public class TestCaseResolutionStatusResource
                       }))
           JsonPatch patch) {
 
-    TestCaseResolutionStatus testCaseResolutionStatus = repository.getById(id);
+    TestCaseResolutionStatus testCaseResolutionStatus = repository.getByIdOrNotFound(id);
     TestCase testCase =
         Entity.getEntityByName(
             Entity.TEST_CASE,
@@ -771,22 +865,32 @@ public class TestCaseResolutionStatusResource
 
     authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
 
+    // The incident listing carries no single resource, so hasDomain() cannot be evaluated during
+    // authorization above; the caller's policies are enforced on the search query instead.
+    SubjectContext subjectContext = getSubjectContext(securityContext);
     if (latest) {
       // For latest results, use aggregation grouped by test case to get the latest status per test
       // case
       return repository.listLatestFromSearch(
           Fields.EMPTY_FIELDS,
           searchListFilter,
-          "testCase.fullyQualifiedName.keyword", // Group by test case to get latest status per test
-          // case
+          TestCaseResolutionStatusRepository.LATEST_PER_TEST_CASE,
           null,
           limit,
           offset,
           defaultSortField,
-          sortType);
+          sortType,
+          subjectContext);
     } else {
       return repository.listFromSearchWithOffset(
-          new Fields(null), searchListFilter, limit, offset, searchSortFilter, null, null);
+          new Fields(null),
+          searchListFilter,
+          limit,
+          offset,
+          searchSortFilter,
+          null,
+          null,
+          subjectContext);
     }
   }
 
@@ -826,6 +930,11 @@ public class TestCaseResolutionStatusResource
             entityResourceContext));
   }
 
+  /**
+   * Incident writes are allowed for {@code EditStatus} on the test case in addition to the
+   * historical {@code EditTests}/{@code EditAll} grants, so that a role can manage incidents
+   * (status, severity, assignment) without edit rights on the test case itself.
+   */
   protected static List<AuthRequest> buildEditAuthRequests(
       ResourceContextInterface testCaseResourceContext,
       ResourceContextInterface entityResourceContext) {
@@ -835,6 +944,9 @@ public class TestCaseResolutionStatusResource
             entityResourceContext),
         new AuthRequest(
             new OperationContext(Entity.TABLE, MetadataOperation.EDIT_ALL), entityResourceContext),
+        new AuthRequest(
+            new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_STATUS),
+            testCaseResourceContext),
         new AuthRequest(
             new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS),
             testCaseResourceContext),
@@ -857,6 +969,30 @@ public class TestCaseResolutionStatusResource
               groupBy, Stream.of(IncidentGroupBy.values()).map(IncidentGroupBy::value).toList()));
     }
     return result;
+  }
+
+  // The severities a filter names, comma-joined for ListFilter, or null for no filter. Every value
+  // is checked against the severities an incident can have, so nothing unexpected reaches the SQL
+  // binds.
+  private static String parseIncidentSeverities(List<String> severities) {
+    List<String> result =
+        listOrEmpty(severities).stream()
+            .flatMap(severityParam -> Arrays.stream(severityParam.split(",")))
+            .map(String::trim)
+            .map(TestCaseResolutionStatusResource::requireIncidentSeverity)
+            .toList();
+    return result.isEmpty() ? null : String.join(",", result);
+  }
+
+  private static String requireIncidentSeverity(String value) {
+    if (!ListFilter.NO_INCIDENT_SEVERITY.equals(value) && !isSeverity(value)) {
+      throw new IllegalArgumentException(String.format("Invalid severity '%s'", value));
+    }
+    return value;
+  }
+
+  private static boolean isSeverity(String value) {
+    return Arrays.stream(Severity.values()).anyMatch(severity -> severity.value().equals(value));
   }
 
   private static List<TestCaseResolutionStatusTypes> parseIncidentStatuses(List<String> statuses) {
@@ -885,28 +1021,14 @@ public class TestCaseResolutionStatusResource
     return result;
   }
 
-  private static UUID resolveFilterEntityId(String entityType, String name) {
-    UUID entityId = null;
-    if (!nullOrEmpty(name)) {
-      EntityReference result =
-          Entity.getEntityReferenceByName(entityType, name, Include.NON_DELETED);
-      if (!nullOrEmpty(result)) {
-        entityId = result.getId();
-      }
-    }
-    return entityId;
-  }
-
-  private static UUID resolveOwnerFilterId(String owner) {
-    UUID result = null;
-    if (!nullOrEmpty(owner)) {
-      try {
-        result = resolveFilterEntityId(Entity.USER, owner);
-      } catch (EntityNotFoundException e) {
-        result = resolveFilterEntityId(Entity.TEAM, owner);
-      }
-    }
-    return result;
+  // The cursors these listings hand out encode a row offset. A page number is turned into the same
+  // cursor here, so a client can jump to any page without decoding the cursors it is given. A page
+  // past what an int offset can hold lands past the end, as any page beyond the last does.
+  private static String cursorForPage(Integer page, int limit, String offset) {
+    return page == null
+        ? offset
+        : RestUtil.encodeCursor(
+            String.valueOf(Math.min((long) (page - 1) * limit, Integer.MAX_VALUE)));
   }
 
   protected static ResourceContextInterface buildEntityResourceContext(
@@ -922,7 +1044,7 @@ public class TestCaseResolutionStatusResource
           MessageParser.EntityLink.parse(testCase.getEntityLink());
       return TestCaseResourceContext.builder().entityLink(entityLink).build();
     } else if (originEntityFQN != null) {
-      EntityInterface entityInterface =
+      EntityInterface<?> entityInterface =
           Entity.getEntityByName(Entity.TABLE, originEntityFQN, "", Include.ALL);
       String entityLinkStr =
           EntityUtil.buildEntityLink(Entity.TABLE, entityInterface.getFullyQualifiedName());

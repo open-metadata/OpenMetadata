@@ -16,7 +16,7 @@ import datetime
 import io
 import json
 import uuid
-from typing import List  # noqa: UP035
+from copy import deepcopy
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -113,7 +113,7 @@ MOCK_S3_METADATA_FILE_RESPONSE = {
         }
     ]
 }
-EXPECTED_S3_BUCKETS: List[S3BucketResponse] = [  # noqa: UP006
+EXPECTED_S3_BUCKETS: list[S3BucketResponse] = [
     S3BucketResponse(
         Name="test_transactions",
         CreationDate=datetime.datetime(2000, 1, 1),
@@ -225,7 +225,7 @@ class StorageUnitTest(TestCase):
         self.assertListEqual(self.object_store_source.fetch_buckets(), EXPECTED_S3_BUCKETS)
 
     def test_load_metadata_file_s3(self):
-        metadata_entry: List[MetadataEntry] = self.return_metadata_entry()  # noqa: UP006
+        metadata_entry: list[MetadataEntry] = self.return_metadata_entry()
 
         self.assertEqual(1, len(metadata_entry))
         self.assertEqual(
@@ -282,7 +282,7 @@ class StorageUnitTest(TestCase):
     def test_generate_structured_container(self):
         self.object_store_source._get_sample_file_path = lambda bucket_name, metadata_entry: "transactions/file_1.csv"
         self.object_store_source._fetch_metric = lambda bucket_name, metric: 100.0
-        columns: List[Column] = [  # noqa: UP006
+        columns: list[Column] = [
             Column(
                 name=ColumnName("transaction_id"),
                 dataType=DataType.INT,
@@ -297,7 +297,9 @@ class StorageUnitTest(TestCase):
             ),
         ]
         self.object_store_source.extract_column_definitions = (
-            lambda bucket_name, sample_key, config_source, client, metadata_entry, session=None: columns
+            lambda bucket_name, sample_key, config_source, client, metadata_entry, session=None, limits=None, report=None: (
+                columns
+            )
         )
 
         entity_ref = EntityReference(id=uuid.uuid4(), type="container")
@@ -511,3 +513,69 @@ class StorageUnitTest(TestCase):
         content = json.loads(metadata_config_response)
         container_config = StorageContainerConfig.model_validate(content)
         return container_config.entries
+
+
+class TestStorageSchemaInferenceLimits:
+    """Issue #29832: the storage pipeline bounds the children inferred from a container's sample
+    file before the container data model is built, and adds one status warning for the file.
+    """
+
+    RECORDS = (
+        {"id": 1, "payload": {"c": {"x": 1}, "a": {"x": 1}, "d": {"x": 1}, "b": {"x": 1}}},
+        {"id": 2, "payload": {"e": {"x": 2}}},
+    )
+
+    @staticmethod
+    def _source(**limits) -> S3Source:
+        config = deepcopy(MOCK_OBJECT_STORE_CONFIG)
+        config["source"]["sourceConfig"]["config"].update(limits)
+        with (
+            patch(
+                "metadata.ingestion.source.storage.storage_service.StorageServiceSource.get_manifest_file",
+                return_value=None,
+            ),
+            patch("metadata.ingestion.source.storage.storage_service.StorageServiceSource.test_connection"),
+        ):
+            return S3Source.create(
+                config["source"],
+                OpenMetadataWorkflowConfig.model_validate(config).workflowConfig.openMetadataServerConfig,
+            )
+
+    def _payload(self, source: S3Source) -> Column:
+        with patch(
+            "metadata.ingestion.source.storage.storage_service.fetch_dataframe_first_chunk",
+            return_value=(iter([pd.DataFrame.from_records(self.RECORDS)]), None),
+        ):
+            columns = source._get_columns(
+                container_name="test_bucket",
+                sample_key="events/part-0.json",
+                metadata_entry=MetadataEntry(dataPath="events", structureFormat="json"),
+                config_source=None,
+                client=None,
+            )
+        return {col.name.root: col for col in columns}["payload"]
+
+    def test_configured_limits_bound_the_container_columns(self):
+        source = self._source(maxSchemaInferenceDepth=1, maxChildrenPerColumn=2)
+
+        payload = self._payload(source)
+
+        assert [(child.name.root, child.dataType, child.children) for child in payload.children] == [
+            ("a", DataType.JSON, []),
+            ("b", DataType.JSON, []),
+        ]
+        assert source.status.warnings == [
+            {
+                "test_bucket/events/part-0.json": "Schema inference limits dropped nested columns. "
+                "maxSchemaInferenceDepth=1 cut the children of 2 column(s): payload.a, payload.b. "
+                "maxChildrenPerColumn=2 cut the children of 1 column(s): payload."
+            }
+        ]
+
+    def test_unset_limits_keep_every_inferred_child(self):
+        source = self._source()
+
+        payload = self._payload(source)
+
+        assert [child.name.root for child in payload.children] == ["c", "a", "d", "b", "e"]
+        assert source.status.warnings == []

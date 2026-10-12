@@ -15,7 +15,7 @@ Defines the topology for ingesting sources
 import queue
 import threading
 from functools import cache, singledispatchmethod
-from typing import Annotated, Any, Dict, Generic, List, Optional, Type, TypeVar  # noqa: UP035
+from typing import Annotated, Any, Generic, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field, create_model
 
@@ -44,7 +44,7 @@ class NodeStage(BaseModel, Generic[T]):
     )
 
     # Required fields to define the yielded entity type and the function processing it
-    type_: Type[T] = Field(..., description="Entity Type. E.g., DatabaseService, Database or Table")  # noqa: UP006
+    type_: type[T] = Field(..., description="Entity Type. E.g., DatabaseService, Database or Table")
     processor: str = Field(
         ...,
         description="Has the producer results as an argument. Here is where filters happen. It will yield an Entity.",
@@ -60,13 +60,13 @@ class NodeStage(BaseModel, Generic[T]):
         True,
         description="If we want to update existing data from OM. E.g., we don't want to overwrite services.",
     )
-    consumer: Optional[List[str]] = Field(  # noqa: UP006, UP045
+    consumer: list[str] | None = Field(
         None,
         description="Stage dependency from parent nodes. Used to build the FQN of the processed Entity.",
     )
 
     # Context-related flags
-    context: Optional[str] = Field(None, description="Context key storing stage state, if needed")  # noqa: UP045
+    context: str | None = Field(None, description="Context key storing stage state, if needed")
     store_all_in_context: bool = Field(False, description="If we need to store all values being yielded in the context")
     clear_context: bool = Field(
         False,
@@ -94,7 +94,7 @@ class TopologyNode(BaseModel):
         ...,
         description="Method name in the source called to generate the data. Does not accept input parameters",
     )
-    stages: List[NodeStage] = Field(  # noqa: UP006
+    stages: list[NodeStage] = Field(
         ...,
         description=(
             "List of functions to execute - in order - for each element produced by the producer. "
@@ -145,11 +145,8 @@ class TopologyContext(BaseModel):
         :return: TopologyContext
         """
         nodes = get_topology_nodes(topology)
-        ctx_fields = {
-            stage.context: (Optional[stage.type_], None)  # noqa: UP045
-            for node in nodes
-            for stage in node.stages
-            if stage.context
+        ctx_fields: dict[str, Any] = {
+            stage.context: (stage.type_ | None, None) for node in nodes for stage in node.stages if stage.context
         }
         return create_model("GeneratedContext", **ctx_fields, __base__=TopologyContext)()
 
@@ -251,12 +248,12 @@ class TopologyContextManager:
         # Due to our code strucutre, the first time the ContextManager is called will be within the MainThread.
         # We can leverage this to guarantee we keep track of the MainThread ID.
         self.main_thread = self.get_current_thread_id()
-        self.contexts: Dict[int, TopologyContext] = {self.main_thread: TopologyContext.create(topology)}  # noqa: UP006
+        self.contexts: dict[int, TopologyContext] = {self.main_thread: TopologyContext.create(topology)}
 
         # Starts with the Multithreading disabled
         self.threads = 0
 
-    def set_threads(self, threads: Optional[int]):  # noqa: UP045
+    def set_threads(self, threads: int | None):
         self.threads = threads or 0
 
     def get_current_thread_id(self):
@@ -265,7 +262,7 @@ class TopologyContextManager:
     def get_global(self) -> TopologyContext:
         return self.contexts[self.main_thread]
 
-    def get(self, thread_id: Optional[int] = None) -> TopologyContext:  # noqa: UP045
+    def get(self, thread_id: int | None = None) -> TopologyContext:
         """Returns the TopologyContext of a given thread."""
         if thread_id:
             return self.contexts[thread_id]
@@ -274,7 +271,7 @@ class TopologyContextManager:
 
         return self.contexts[thread_id]
 
-    def pop(self, thread_id: Optional[int] = None):  # noqa: UP045
+    def pop(self, thread_id: int | None = None):
         """Cleans the TopologyContext of a given thread in order to lower the Memory Profile."""
         if not thread_id:
             self.contexts.pop(self.get_current_thread_id())
@@ -335,7 +332,7 @@ class Queue:
             self._stage_progress.record_put(self._name)
 
 
-def get_topology_nodes(topology: ServiceTopology) -> List[TopologyNode]:  # noqa: UP006
+def get_topology_nodes(topology: ServiceTopology) -> list[TopologyNode]:
     """
     Fetch all nodes from a ServiceTopology
     :param topology: ServiceTopology
@@ -354,7 +351,7 @@ def node_has_no_consumers(node: TopologyNode) -> bool:
     return all(consumer is None for consumer in stage_consumers)
 
 
-def get_topology_root(topology: ServiceTopology) -> List[TopologyNode]:  # noqa: UP006
+def get_topology_root(topology: ServiceTopology) -> list[TopologyNode]:
     """
     Fetch the roots from a ServiceTopology.
 
@@ -394,7 +391,7 @@ _UNKNOWN_DEPTH = 10**6
 
 def _build_hierarchy_from_topology(
     topology: "ServiceTopology", node_name: str, current_depth: int = 0
-) -> Dict[Type[BaseModel], int]:  # noqa: UP006
+) -> dict[type[BaseModel], int]:
     """
     Recursively build entity hierarchy from a topology node.
 
@@ -433,7 +430,7 @@ def _build_hierarchy_from_topology(
 
 
 @cache
-def get_entity_hierarchy() -> Dict[Type[BaseModel], int]:  # noqa: UP006
+def get_entity_hierarchy() -> dict[type[BaseModel], int]:
     """
     Get the complete entity hierarchy for all service topologies.
 
@@ -503,7 +500,7 @@ def get_entity_hierarchy() -> Dict[Type[BaseModel], int]:  # noqa: UP006
     return hierarchy
 
 
-def get_entity_hierarchy_depth(entity_type: Type[BaseModel]) -> int:  # noqa: UP006
+def get_entity_hierarchy_depth(entity_type: type[BaseModel]) -> int:
     """
     Get the hierarchy depth for a specific entity type.
 

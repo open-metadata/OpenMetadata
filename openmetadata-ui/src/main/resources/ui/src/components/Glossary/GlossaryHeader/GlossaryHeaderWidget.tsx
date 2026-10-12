@@ -10,12 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  Glossary as GlossaryIcon,
+  GlossaryTerm as GlossaryTermIcon,
+} from '@openmetadata/ui-core-components/icons';
 import { useMemo } from 'react';
-import { ReactComponent as IconTerm } from '../../../assets/svg/book.svg';
-import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { EntityHeader } from '../../Entity/EntityHeader/EntityHeader.component';
+
+const GLOSSARY_TERM = 'Glossary Term';
 
 export const GlossaryHeaderWidget = ({
   isGlossary = true,
@@ -25,24 +28,12 @@ export const GlossaryHeaderWidget = ({
   const icon = useMemo(() => {
     if (isGlossary) {
       return (
-        <GlossaryIcon
-          className="align-middle"
-          color={DE_ACTIVE_COLOR}
-          height={36}
-          name="folder"
-          width={32}
-        />
+        <GlossaryIcon className="align-middle tw:text-quaternary" size={36} />
       );
     }
 
     return (
-      <IconTerm
-        className="align-middle"
-        color={DE_ACTIVE_COLOR}
-        height={36}
-        name="doc"
-        width={32}
-      />
+      <GlossaryTermIcon className="align-middle tw:text-quaternary" size={36} />
     );
   }, [isGlossary]);
 
@@ -52,9 +43,9 @@ export const GlossaryHeaderWidget = ({
         showName
         breadcrumb={[
           { name: 'Glossaries', url: '#', activeTitle: false },
-          { name: 'Glossary Term', url: '#', activeTitle: false },
+          { name: GLOSSARY_TERM, url: '#', activeTitle: false },
         ]}
-        entityData={{ name: 'Glossary Term', displayName: 'Glossary Term' }}
+        entityData={{ name: GLOSSARY_TERM, displayName: GLOSSARY_TERM }}
         entityType={EntityType.GLOSSARY_TERM}
         icon={icon}
         serviceName=""

@@ -14,7 +14,7 @@ Validator for column value length to be between test case
 """
 
 import math
-from typing import List, Optional  # noqa: UP035
+from typing import cast
 
 from sqlalchemy import Column
 
@@ -38,7 +38,9 @@ from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.functions.length import LenFn
+from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.logger import test_suite_logger
+from metadata.utils.sqa_like_column import SQALikeColumn
 
 logger = test_suite_logger()
 
@@ -51,7 +53,7 @@ class ColumnValueLengthsToBeBetweenValidator(
 ):
     """Validator for column value length to be between test case"""
 
-    def _run_results(self, metric: Metrics, column: Column) -> Optional[int]:  # noqa: UP045
+    def _run_results(self, metric: Metrics, column: Column) -> int | None:
         """compute result of the test case
 
         Args:
@@ -59,6 +61,19 @@ class ColumnValueLengthsToBeBetweenValidator(
             column: column
         """
         return self.run_query_results(self.runner, metric, column)
+
+    def _run_violation_count(self, column: SQALikeColumn | Column, test_params: dict) -> tuple[int | None, int | None]:
+        """Count the rows read and the values whose length falls outside the window
+
+        Args:
+            column: column under test
+            test_params: test parameters including min and max bounds
+        """
+        checker = self._get_validation_checker(test_params)
+        return self._compute_row_violations(
+            cast(QueryRunner, self.runner),  # noqa: TC006
+            checker.build_row_level_violations_sqa(LenFn(column)),
+        )
 
     def compute_row_count(self, column: Column, min_bound: int, max_bound: int):
         """Compute row count for the given column
@@ -107,7 +122,7 @@ class ColumnValueLengthsToBeBetweenValidator(
         metrics_to_compute: dict,
         test_params: dict,
         top_n: int,
-    ) -> List[DimensionResult]:  # noqa: UP006
+    ) -> list[DimensionResult]:
         """Execute dimensional validation for max with proper aggregation
 
         Uses the statistical aggregation helper to:
@@ -124,38 +139,32 @@ class ColumnValueLengthsToBeBetweenValidator(
         Returns:
             List[DimensionResult]: Top N dimensions plus "Others"
         """
-        dimension_results = []
+        checker = self._get_validation_checker(test_params)
 
-        try:
-            checker = self._get_validation_checker(test_params)
+        metric_expressions = {
+            DIMENSION_TOTAL_COUNT_KEY: Metrics.rowCount().fn(),
+            Metrics.minLength.name: Metrics.minLength(column).fn(),
+            Metrics.maxLength.name: Metrics.maxLength(column).fn(),
+            DIMENSION_FAILED_COUNT_KEY: checker.build_row_level_violations_sqa(LenFn(column)),
+        }
 
-            metric_expressions = {
-                DIMENSION_TOTAL_COUNT_KEY: Metrics.rowCount().fn(),
-                Metrics.minLength.name: Metrics.minLength(column).fn(),
-                Metrics.maxLength.name: Metrics.maxLength(column).fn(),
-                DIMENSION_FAILED_COUNT_KEY: checker.build_row_level_violations_sqa(LenFn(column)),
-            }
+        normalized_dimension = self._get_normalized_dimension_expression(dimension_col)
 
-            normalized_dimension = self._get_normalized_dimension_expression(dimension_col)
+        result_rows = self._run_dimensional_validation_query(
+            source=self.runner.dataset,
+            dimension_expr=normalized_dimension,
+            metric_expressions=metric_expressions,
+            top_n=top_n,
+        )
 
-            result_rows = self._run_dimensional_validation_query(
-                source=self.runner.dataset,
-                dimension_expr=normalized_dimension,
-                metric_expressions=metric_expressions,
-                top_n=top_n,
-            )
-
-            return self._process_dimension_rows(result_rows, dimension_col.name, metrics_to_compute, test_params)
-
-        except Exception as exc:
-            logger.warning(f"Error executing dimensional query: {exc}")
-            logger.debug("Full error details: ", exc_info=True)
-
-        return dimension_results
+        return self._process_dimension_rows(result_rows, dimension_col.name, metrics_to_compute, test_params)
 
     def filter(self):
-        min_bound = self.get_min_bound("minLength")
-        max_bound = self.get_max_bound("maxLength")
+        # The window is the one the test case configured: the failure threshold is a row tolerance
+        # here, and a row it tolerates is still a value whose length fell outside the window, so it
+        # belongs in the sample of failing rows.
+        min_bound = self.get_min_bound(self.MIN_BOUND)
+        max_bound = self.get_max_bound(self.MAX_BOUND)
         filters = []
         if min_bound is not None and min_bound > float("-inf"):
             filters.append((LenFn(self.get_column()), "lt", min_bound))

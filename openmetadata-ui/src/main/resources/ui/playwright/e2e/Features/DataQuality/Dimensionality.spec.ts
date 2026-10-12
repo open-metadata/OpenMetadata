@@ -51,8 +51,6 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await afterAction();
 });
 
-test.slow();
-
 /**
  * Dimensionality Tests
  * @description Creates a dimension-level test case, edits dimension columns, and validates the dimension selector in the details view.
@@ -93,7 +91,6 @@ test(
       await page
         .getByRole('option')
         .filter({ hasText: NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.column })
-        .first()
         .click();
 
       await page.locator('[id="root\\/dimensionColumns"]').click();
@@ -108,11 +105,7 @@ test(
       ).not.toBeVisible();
 
       for (const dimension of NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.dimensions) {
-        await page
-          .getByRole('option')
-          .filter({ hasText: dimension })
-          .first()
-          .click();
+        await page.getByRole('option').filter({ hasText: dimension }).click();
       }
 
       await page.keyboard.press('Escape');
@@ -173,7 +166,6 @@ test(
         .filter({
           hasText: NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.editDimensions[0],
         })
-        .first()
         .click();
 
       await page.keyboard.press('Escape');

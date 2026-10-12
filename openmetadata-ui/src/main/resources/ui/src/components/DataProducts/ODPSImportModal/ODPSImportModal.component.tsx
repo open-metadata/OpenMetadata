@@ -231,6 +231,7 @@ const ODPSImportModal = ({
                     and keeps the YAML payload entirely in local state. */}
                 <input
                   accept=".yaml,.yml"
+                  aria-label={t('label.upload-yaml-file')}
                   data-testid="odps-yaml-file-input"
                   ref={fileInputRef}
                   style={{ display: 'none' }}

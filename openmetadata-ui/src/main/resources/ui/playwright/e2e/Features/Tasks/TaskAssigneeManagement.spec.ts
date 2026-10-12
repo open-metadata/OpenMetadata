@@ -24,9 +24,9 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
 import { TableClass } from '../../../support/entity/TableClass';
 import { TaskClass } from '../../../support/entity/TaskClass';
+import { expect, test } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { getApiContext } from '../../../utils/common';
@@ -79,12 +79,14 @@ test.describe('Task Assignee Management', () => {
   test('admin can reassign an existing metadata task from the task details page', async ({
     page,
   }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
     await table.visitEntityPage(page);
     await page.getByTestId('activity_feed').click();
     await waitForAllLoadersToDisappear(page);
 
-    const tasksMenuItem = page.getByRole('menuitem', { name: /tasks/i });
+    const tasksMenuItem = page
+      .getByTestId('global-setting-left-panel')
+      .getByRole('button', { name: /tasks/i });
     await expect(tasksMenuItem).toBeVisible();
     await tasksMenuItem.click();
     await waitForAllLoadersToDisappear(page);
@@ -98,7 +100,7 @@ test.describe('Task Assignee Management', () => {
 
     const existingAssigneeRemoveButton = page
       .locator(
-        '[data-testid="select-assignee"] .ant-select-selection-item-remove'
+        '[data-testid="select-assignee"] [data-testid="autocomplete-selected-item"] button'
       )
       .first();
 

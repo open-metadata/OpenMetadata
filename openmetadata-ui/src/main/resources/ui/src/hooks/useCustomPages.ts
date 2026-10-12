@@ -12,7 +12,7 @@
  */
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import { Page, PageType } from '../generated/system/ui/page';
+import { PageType } from '../generated/system/ui/page';
 import { NavigationItem } from '../generated/system/ui/uiCustomization';
 import {
   docStoreQueryFn,
@@ -20,6 +20,7 @@ import {
   personaDocFqn,
   PERSONA_DOC_STALE_TIME,
 } from '../rest/queries/docStoreQuery';
+import { getPersonaPage } from '../utils/CustomizePage/PersonaPage.utils';
 import { useApplicationStore } from './useApplicationStore';
 
 export const useCustomPages = (pageType: PageType | 'Navigation') => {
@@ -45,10 +46,7 @@ export const useCustomPages = (pageType: PageType | 'Navigation') => {
   }, []);
 
   return {
-    customizedPage:
-      (doc?.data?.pages?.find((p: Page | null) => p?.pageType === pageType) as
-        | Page
-        | undefined) ?? null,
+    customizedPage: getPersonaPage(doc, pageType) ?? null,
     // Reset to [] on error to clear stale navigation items, null when no persona selected.
     navigation: isError
       ? ([] as NavigationItem[])

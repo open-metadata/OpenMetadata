@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import os
 from datetime import datetime
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 from urllib.parse import parse_qs, quote, urlparse
 
 from google.api_core.exceptions import Forbidden, NotFound
@@ -252,7 +252,7 @@ def get_connection_args(connection: BigQueryConnectionConfig) -> dict:
     return connect_args
 
 
-def _get_first_project_id(connection: BigQueryConnectionConfig) -> Optional[str]:  # noqa: UP045
+def _get_first_project_id(connection: BigQueryConnectionConfig) -> str | None:
     """
     Return a single project id from the connection config to scope the
     impersonated client. Falls back to None when it cannot be determined.

@@ -11,21 +11,42 @@
  *  limitations under the License.
  */
 
-import { FormInstance } from 'antd';
-import { CreateGlossaryTerm } from '../../../generated/api/data/createGlossaryTerm';
+import { FormSelectItem } from '@openmetadata/ui-core-components';
+import { UseFormReturn } from 'react-hook-form';
 import {
   GlossaryTerm,
   TagLabel,
   TermReference,
 } from '../../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../../generated/type/entityLineage';
+import { GlossaryPickerValue } from '../../common/GlossaryTermPicker/GlossaryTagSuggestionUtils';
+import { EntityReferenceOption } from '../AddGlossary/AddGlossary.interface';
+import { GlossaryTermIntakeFormState } from '../hooks/useGlossaryTermIntakeForm';
+
+// Live form values; `buildGlossaryTermSavePayload` shapes them for the API.
+export interface GlossaryTermFormValues {
+  name: string;
+  displayName: string;
+  description: string;
+  tags: TagLabel[];
+  synonyms: FormSelectItem[];
+  relatedTerms: GlossaryPickerValue[];
+  references: TermReference[];
+  iconURL: string;
+  color: string;
+  mutuallyExclusive: boolean;
+  owners: EntityReferenceOption[];
+  reviewers: EntityReferenceOption[];
+  // Intake-form custom properties, keyed by `getExtensionFormKey`.
+  extensionFormValues?: Record<string, unknown>;
+}
 
 export interface AddGlossaryTermFormProps {
   editMode: boolean;
-  onSave: (value: GlossaryTermForm) => void | Promise<void>;
-  onCancel: () => void;
+  form: UseFormReturn<GlossaryTermFormValues>;
   glossaryTerm?: GlossaryTerm;
-  formRef: FormInstance<CreateGlossaryTerm>;
+  intake: GlossaryTermIntakeFormState;
+  onSubmit: (values: GlossaryTermFormValues) => Promise<void> | void;
 }
 
 export interface GlossaryTermForm {

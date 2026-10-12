@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { AxiosError, AxiosResponse } from 'axios';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 export interface CsvHeaderDocumentation {
   name: string;

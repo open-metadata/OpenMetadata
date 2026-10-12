@@ -77,6 +77,13 @@ public class TypeRepository extends EntityRepository<Type> {
         PATCH_FIELDS,
         UPDATE_FIELDS);
     Entity.setTypeRepository(this);
+    fieldFetchers.put("customProperties", this::fetchAndSetCustomProperties);
+  }
+
+  private void fetchAndSetCustomProperties(List<Type> types, Fields fields) {
+    if (fields.contains("customProperties")) {
+      types.forEach(type -> type.setCustomProperties(getCustomProperties(type)));
+    }
   }
 
   @Override
@@ -119,6 +126,10 @@ public class TypeRepository extends EntityRepository<Type> {
 
   public void addToRegistry(Type type) {
     updateTypeMap(type);
+  }
+
+  public void populateRegistryFromDatabase() {
+    listAll(getFields(UPDATE_FIELDS), new ListFilter(NON_DELETED)).forEach(this::addToRegistry);
   }
 
   @Override
