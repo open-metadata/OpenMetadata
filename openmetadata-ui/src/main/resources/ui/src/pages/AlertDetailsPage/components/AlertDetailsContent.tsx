@@ -12,8 +12,16 @@
  */
 
 import { SyncOutlined } from '@ant-design/icons';
-import { Box, Owner, Skeleton, Tabs } from '@openmetadata/ui-core-components';
-import { Button, Card, Tooltip } from 'antd';
+import {
+  Box,
+  Button,
+  ButtonUtility,
+  Owner,
+  Skeleton,
+  Tabs,
+  Tooltip,
+} from '@openmetadata/ui-core-components';
+import { Card } from 'antd';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -23,7 +31,7 @@ import Description from '../../../components/common/EntityDescription/Descriptio
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { UserTeamSelectableList } from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+
 import { AlertDetailTabs } from '../../../enums/Alerts.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { ProviderType } from '../../../generated/events/eventSubscription';
@@ -133,33 +141,31 @@ function AlertDetailsContent({
                 gap={2}
                 itemClassName="layout-space-item">
                 <Tooltip
+                  arrow
                   title={t('label.sync-alert-offset', {
                     entity: t('label.alert'),
                   })}>
                   <Button
-                    className="flex flex-center"
+                    color="secondary"
                     data-testid="sync-button"
-                    icon={<SyncOutlined height={16} width={16} />}
-                    loading={isSyncing}
-                    onClick={handleAlertSync}
+                    iconLeading={<SyncOutlined height={16} width={16} />}
+                    isLoading={isSyncing}
+                    size="sm"
+                    onPress={handleAlertSync}
                   />
                 </Tooltip>
                 {editPermission &&
                   alertDetails?.provider !== ProviderType.System && (
                     <Tooltip
+                      arrow
                       title={t('label.edit-entity', {
                         entity: t('label.alert'),
                       })}>
-                      <Button
-                        className="flex flex-center"
+                      <ButtonUtility
+                        color="secondary"
                         data-testid="edit-button"
-                        icon={
-                          <EditIcon
-                            color={DE_ACTIVE_COLOR}
-                            height={16}
-                            width={16}
-                          />
-                        }
+                        icon={EditIcon}
+                        size="sm"
                         onClick={handleAlertEdit}
                       />
                     </Tooltip>
@@ -167,13 +173,15 @@ function AlertDetailsContent({
                 {deletePermission &&
                   alertDetails?.provider !== ProviderType.System && (
                     <Tooltip
+                      arrow
                       title={t('label.delete-entity', {
                         entity: t('label.alert'),
                       })}>
-                      <Button
-                        className="flex flex-center"
+                      <ButtonUtility
+                        color="secondary"
                         data-testid="delete-button"
-                        icon={<DeleteIcon height={16} width={16} />}
+                        icon={DeleteIcon}
+                        size="sm"
                         onClick={() => setShowDeleteModal(true)}
                       />
                     </Tooltip>

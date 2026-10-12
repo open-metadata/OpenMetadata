@@ -23,6 +23,10 @@ import { isEmpty, isUndefined } from 'lodash';
 import { createElement, Fragment, FunctionComponent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ADVANCED_PROPERTIES } from '../../../constants/Services.constant';
+import {
+  SSO_AUTHENTICATION_FIELD_GROUPS,
+  SSO_AUTHORIZER_FIELD_GROUPS,
+} from '../../../constants/SSO.constant';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import './sso-grouped-field-template.less';
 import { FieldGroup, PropertyMap } from './SSOGroupedFieldTemplate.interface';
@@ -77,7 +81,7 @@ const buildAuthConfigRootGroups = (
 
   // Root authentication configuration grouping
   const basicConfigFields = visibleProperties.filter((prop) =>
-    ['provider', 'providerName'].includes(prop.name)
+    SSO_AUTHENTICATION_FIELD_GROUPS.basic.includes(prop.name)
   );
   if (basicConfigFields.length > 0) {
     groups.push({
@@ -88,9 +92,7 @@ const buildAuthConfigRootGroups = (
   }
 
   const clientFields = visibleProperties.filter((prop) =>
-    ['clientType', 'enableSelfSignup', 'clientId', 'callbackUrl'].includes(
-      prop.name
-    )
+    SSO_AUTHENTICATION_FIELD_GROUPS.client.includes(prop.name)
   );
   if (clientFields.length > 0) {
     groups.push({
@@ -101,7 +103,7 @@ const buildAuthConfigRootGroups = (
   }
 
   const authorityFields = visibleProperties.filter((prop) =>
-    ['authority', 'domain'].includes(prop.name)
+    SSO_AUTHENTICATION_FIELD_GROUPS.authority.includes(prop.name)
   );
   if (authorityFields.length > 0) {
     groups.push({
@@ -112,7 +114,7 @@ const buildAuthConfigRootGroups = (
   }
 
   const securityFields = visibleProperties.filter((prop) =>
-    ['publicKeyUrls', 'tokenValidationAlgorithm'].includes(prop.name)
+    SSO_AUTHENTICATION_FIELD_GROUPS.security.includes(prop.name)
   );
   if (securityFields.length > 0) {
     groups.push({
@@ -123,7 +125,7 @@ const buildAuthConfigRootGroups = (
   }
 
   const credentialsFields = visibleProperties.filter((prop) =>
-    ['secret', 'clientSecret'].includes(prop.name)
+    SSO_AUTHENTICATION_FIELD_GROUPS.credentials.includes(prop.name)
   );
   if (credentialsFields.length > 0) {
     groups.push({
@@ -134,9 +136,7 @@ const buildAuthConfigRootGroups = (
   }
 
   const configObjectFields = visibleProperties.filter((prop) =>
-    ['oidcConfiguration', 'ldapConfiguration', 'samlConfiguration'].includes(
-      prop.name
-    )
+    SSO_AUTHENTICATION_FIELD_GROUPS.providerConfigs.includes(prop.name)
   );
   configObjectFields.forEach((field) => {
     groups.push({
@@ -145,19 +145,8 @@ const buildAuthConfigRootGroups = (
     });
   });
 
-  const identityFieldNames = [
-    // Every provider honours these: LDAP maps them onto directory attributes (falling back to
-    // mailAttributeName/displayName) and SAML reads them as assertion attribute names, so the
-    // fields stay configurable for all of them.
-    'emailClaim',
-    'displayNameClaim',
-    'jwtPrincipalClaims',
-    'jwtPrincipalClaimsMapping',
-    'jwtTeamClaimMapping',
-  ];
-
   const identityFields = visibleProperties.filter((prop) =>
-    identityFieldNames.includes(prop.name)
+    SSO_AUTHENTICATION_FIELD_GROUPS.identity.includes(prop.name)
   );
   if (identityFields.length > 0) {
     groups.push({
@@ -198,7 +187,7 @@ const buildAuthorizerConfigGroups = (
 
   // Authorizer configuration grouping — new fields first, deprecated in separate group
   const adminFields = visibleProperties.filter((prop) =>
-    ['adminEmails'].includes(prop.name)
+    SSO_AUTHORIZER_FIELD_GROUPS.admin.includes(prop.name)
   );
   if (adminFields.length > 0) {
     groups.push({
@@ -209,7 +198,7 @@ const buildAuthorizerConfigGroups = (
   }
 
   const domainFields = visibleProperties.filter((prop) =>
-    ['allowedEmailDomains', 'botDomain'].includes(prop.name)
+    SSO_AUTHORIZER_FIELD_GROUPS.domain.includes(prop.name)
   );
   if (domainFields.length > 0) {
     groups.push({
@@ -220,12 +209,7 @@ const buildAuthorizerConfigGroups = (
   }
 
   const connectionFields = visibleProperties.filter((prop) =>
-    [
-      'enableSecureSocketConnection',
-      'className',
-      'containerRequestFilter',
-      'useRolesFromProvider',
-    ].includes(prop.name)
+    SSO_AUTHORIZER_FIELD_GROUPS.connection.includes(prop.name)
   );
   if (connectionFields.length > 0) {
     groups.push({
@@ -236,13 +220,7 @@ const buildAuthorizerConfigGroups = (
   }
 
   const deprecatedFields = visibleProperties.filter((prop) =>
-    [
-      'adminPrincipals',
-      'principalDomain',
-      'enforcePrincipalDomain',
-      'allowedDomains',
-      'botPrincipals',
-    ].includes(prop.name)
+    SSO_AUTHORIZER_FIELD_GROUPS.deprecated.includes(prop.name)
   );
   if (deprecatedFields.length > 0) {
     groups.push({

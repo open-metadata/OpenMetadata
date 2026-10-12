@@ -21,11 +21,11 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.BiFunction;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
@@ -152,7 +152,12 @@ public class RdfRepository {
   private final RdfStorageInterface materializationStorageService;
   private final JsonLdTranslator translator;
   private final Supplier<RelationshipTypeResolver> relationshipTypeResolverSupplier;
-  private final BiFunction<String, UUID, EntityInterface<?>> projectionEntityLoader;
+  private final RdfProjectionLoaders projectionLoaders;
+  private final AssertedOnlyQueries assertedOnlyQueries =
+      new AssertedOnlyQueries(
+          this::listAllGraphs,
+          () -> InferenceRuleRepository.inferredGraphPrefix(getBaseUri()),
+          AssertedOnlyQueries.GRAPH_LIST_TTL);
   private final Cache<String, String> entityGraphCache =
       Caffeine.newBuilder()
           .maximumSize(GRAPH_CACHE_MAX_SIZE)
@@ -181,7 +186,7 @@ public class RdfRepository {
     this.config = config;
     this.datasetNames = RdfDatasetNames.from(config);
     this.relationshipTypeResolverSupplier = RdfRepository::configuredRelationshipTypeResolver;
-    this.projectionEntityLoader = RdfRepository::loadProjectionEntity;
+    this.projectionLoaders = RdfProjectionLoaders.defaults();
     if (config.getEnabled() != null && config.getEnabled()) {
       final RdfStorageInterface configuredStorage = RdfStorageFactory.createStorage(config);
       this.datasetManager =
@@ -199,8 +204,11 @@ public class RdfRepository {
               Clock.systemUTC(),
               config.getBaseUri().toString());
       this.storageService =
-          new InferenceInvalidatingRdfStorage(
-              materializationStorageService, inferenceRuleRepository);
+          new AssertedGraphTrackingRdfStorage(
+              new InferenceInvalidatingRdfStorage(
+                  materializationStorageService, inferenceRuleRepository),
+              assertedOnlyQueries,
+              KNOWLEDGE_GRAPH);
       this.translator =
           new JsonLdTranslator(JsonUtils.getObjectMapper(), config.getBaseUri().toString());
       LOG.info("RDF Repository initialized with {} storage", config.getStorageType());
@@ -241,7 +249,7 @@ public class RdfRepository {
         storageService,
         translator,
         relationshipTypeResolverSupplier,
-        RdfRepository::loadProjectionEntity);
+        RdfProjectionLoaders.defaults());
   }
 
   RdfRepository(
@@ -249,7 +257,7 @@ public class RdfRepository {
       final RdfStorageInterface storageService,
       final JsonLdTranslator translator,
       final Supplier<RelationshipTypeResolver> relationshipTypeResolverSupplier,
-      final BiFunction<String, UUID, EntityInterface<?>> projectionEntityLoader) {
+      final RdfProjectionLoaders projectionLoaders) {
     this.config = config;
     this.datasetNames = RdfDatasetNames.from(config);
     this.datasetManager = null;
@@ -257,7 +265,7 @@ public class RdfRepository {
     this.materializationStorageService = storageService;
     this.translator = translator;
     this.relationshipTypeResolverSupplier = relationshipTypeResolverSupplier;
-    this.projectionEntityLoader = projectionEntityLoader;
+    this.projectionLoaders = projectionLoaders;
   }
 
   static int resolveBulkEntityBatchSize(RdfConfiguration config) {
@@ -319,7 +327,7 @@ public class RdfRepository {
             : requireDatasetManager().buildStorage(new BuildTarget(rebuildId, dataset));
     final RdfRepository view =
         new RdfRepository(
-            config, storage, translator, relationshipTypeResolverSupplier, projectionEntityLoader);
+            config, storage, translator, relationshipTypeResolverSupplier, projectionLoaders);
     view.setAppendPayloadBudgetOverride(appendBudget);
     return view;
   }
@@ -346,6 +354,7 @@ public class RdfRepository {
   /** Replay live mutations and atomically publish the completed rebuild generation. */
   public void activateDataset(String datasetName, String rebuildId, String updatedBy) {
     requireDatasetManager().promote(new BuildTarget(rebuildId, datasetName), updatedBy);
+    assertedOnlyQueries.graphsChanged();
     LOG.info("RDF serving dataset switched to '{}'", datasetName);
   }
 
@@ -482,7 +491,7 @@ public class RdfRepository {
   public void refreshEntity(final String entityType, final UUID entityId) {
     final EntityInterface<?> entity;
     try {
-      entity = projectionEntityLoader.apply(entityType, entityId);
+      entity = projectionLoaders.entityLoader().apply(entityType, entityId);
     } catch (EntityNotFoundException exception) {
       // A queued update can outlive a hard delete. Reconcile that tombstone instead of restoring
       // an obsolete snapshot or leaving an unrecoverable retry at the head of the queue.
@@ -492,14 +501,33 @@ public class RdfRepository {
     createOrUpdate(entity);
   }
 
-  private static EntityInterface<?> loadProjectionEntity(
-      final String entityType, final UUID entityId) {
-    return Entity.getEntity(
-        entityType,
-        entityId,
-        String.join(",", RdfIndexingFields.forEntityType(entityType)),
-        Include.ALL,
-        false);
+  /**
+   * Projects a lineage edge with the details stored for it now, including column lineage, so live
+   * edits and reindexing write the same triples. A replay that finds the edge gone, such as an add
+   * replayed after the edge was deleted, removes it instead of restoring it without details.
+   */
+  public void refreshLineage(final EntityRelationship lineage) {
+    final Optional<RdfProjectionLoaders.StoredLineageEdge> storedEdge =
+        projectionLoaders.lineageDetailsLoader().load(lineage.getFromId(), lineage.getToId());
+    if (storedEdge.isEmpty()) {
+      removeRelationship(lineage);
+    } else {
+      projectLineage(lineage, storedEdge.get().details());
+    }
+  }
+
+  private void projectLineage(final EntityRelationship lineage, final LineageDetails details) {
+    try {
+      addLineageWithDetails(
+          lineage.getFromEntity(),
+          lineage.getFromId(),
+          lineage.getToEntity(),
+          lineage.getToId(),
+          details);
+    } catch (RuntimeException exception) {
+      RdfProjectionHealth.markDegraded(exception);
+      throw exception;
+    }
   }
 
   public void createOrUpdate(EntityInterface<?> entity) {
@@ -1239,17 +1267,15 @@ public class RdfRepository {
               model.createResource("https://open-metadata.org/ontology/ColumnLineage"));
 
           if (colLineage.getFromColumns() != null) {
-            Property fromColumnProp =
-                model.createProperty("https://open-metadata.org/ontology/", "fromColumn");
             for (String fromCol : colLineage.getFromColumns()) {
-              colLineageResource.addProperty(fromColumnProp, fromCol);
+              addColumnLineageEndpoint(
+                  model, colLineageResource, ColumnLineageEndpoint.SOURCE, fromCol);
             }
           }
 
           if (colLineage.getToColumn() != null) {
-            colLineageResource.addProperty(
-                model.createProperty("https://open-metadata.org/ontology/", "toColumn"),
-                colLineage.getToColumn());
+            addColumnLineageEndpoint(
+                model, colLineageResource, ColumnLineageEndpoint.TARGET, colLineage.getToColumn());
           }
 
           if (colLineage.getFunction() != null) {
@@ -1312,6 +1338,39 @@ public class RdfRepository {
     }
 
     return model;
+  }
+
+  /**
+   * Column endpoints reference the same column IRIs the table projection mints, so rules can join
+   * column lineage with column tags; the FQN literal keeps string matching possible. Only the table
+   * projection describes the column itself, so deleting a lineage edge never leaves column triples.
+   */
+  private void addColumnLineageEndpoint(
+      final Model model,
+      final Resource columnLineage,
+      final ColumnLineageEndpoint endpoint,
+      final String columnFqn) {
+    final String columnUri = RdfUtils.columnUri(config.getBaseUri().toString(), columnFqn);
+    if (columnUri != null) {
+      columnLineage.addProperty(
+          model.createProperty(OPEN_METADATA_ONTOLOGY_NAMESPACE, endpoint.columnPredicate),
+          model.createResource(columnUri));
+      columnLineage.addProperty(
+          model.createProperty(OPEN_METADATA_ONTOLOGY_NAMESPACE, endpoint.fqnPredicate), columnFqn);
+    }
+  }
+
+  private enum ColumnLineageEndpoint {
+    SOURCE("fromColumn", "fromColumnFqn"),
+    TARGET("toColumn", "toColumnFqn");
+
+    private final String columnPredicate;
+    private final String fqnPredicate;
+
+    ColumnLineageEndpoint(final String columnPredicate, final String fqnPredicate) {
+      this.columnPredicate = columnPredicate;
+      this.fqnPredicate = fqnPredicate;
+    }
   }
 
   public record LineageEdgeData(
@@ -1597,6 +1656,24 @@ public class RdfRepository {
       throw new IllegalStateException("RDF not enabled");
     }
     return storageService.executeSparqlQuery(query, format);
+  }
+
+  /**
+   * Runs a read query against asserted data only. Fuseki's union default graph also holds the
+   * graphs materialized inference writes, so a query that must not see derived triples, such as
+   * one at inference level {@code none}, is restricted to the other graphs. A query that declares
+   * its own dataset with FROM or FROM NAMED runs as written.
+   */
+  public String executeAssertedSparqlQuery(final String query, final String format) {
+    return executeSparqlQueryDirect(assertedOnly(query), format);
+  }
+
+  private String assertedOnly(final String query) {
+    return supportsMaterializedInference(config) ? assertedOnlyQueries.restrict(query) : query;
+  }
+
+  private List<String> listAllGraphs() {
+    return storageService.getAllGraphs();
   }
 
   /**
@@ -3862,14 +3939,11 @@ public class RdfRepository {
     try {
       String fromUri = config.getBaseUri().toString() + "entity/glossaryTerm/" + fromTermId;
       String toUri = config.getBaseUri().toString() + "entity/glossaryTerm/" + toTermId;
-      String predicateUri = getGlossaryTermRelationPredicateUri(relationType);
+      final Set<String> predicateUris = getGlossaryTermRelationPredicateUris(relationType);
 
-      // Delete BOTH directions. The add path runs through
-      // EntityRepository.addRelationship which writes the reverse direction
-      // for bidirectional relationships, so a one-sided delete leaves a
-      // stale "<to> om:<predicate> <from>" triple — visible as a lingering
-      // edge in the relations graph after the user removed the relation.
-      String sparqlUpdate = buildGlossaryTermRelationDeleteUpdate(fromUri, toUri, predicateUri);
+      // The target term sees the inverse type, and live or rebuilt graphs may contain either
+      // predicate in either direction for the same SQL relation.
+      String sparqlUpdate = buildGlossaryTermRelationDeleteUpdate(fromUri, toUri, predicateUris);
 
       storageService.executeSparqlUpdate(sparqlUpdate);
       LOG.debug("Removed glossary term relation {} -> {} ({})", fromTermId, toTermId, relationType);
@@ -3885,16 +3959,31 @@ public class RdfRepository {
     }
   }
 
-  private String getGlossaryTermRelationPredicateUri(String relationType) {
-    String resolvedType = relationType == null ? "relatedTo" : relationType;
-    return relationshipTypeResolver().requireIgnoreCase(resolvedType).getRdfPredicate().toString();
+  private Set<String> getGlossaryTermRelationPredicateUris(final String relationType) {
+    final RelationshipTypeResolver resolver = relationshipTypeResolver();
+    final RelationshipType type =
+        resolver.requireIgnoreCase(relationType == null ? "relatedTo" : relationType);
+    final Set<String> predicateUris = new LinkedHashSet<>();
+    predicateUris.add(type.getRdfPredicate().toString());
+    if (type.getInverse() != null && !type.getName().equals(type.getInverse().getName())) {
+      predicateUris.add(resolver.require(type.getInverse().getName()).getRdfPredicate().toString());
+    }
+    return predicateUris;
   }
 
   static String buildGlossaryTermRelationDeleteUpdate(
-      String fromUri, String toUri, String predicateUri) {
-    return String.format(
-        "DELETE DATA { GRAPH <%s> { <%s> <%s> <%s> . <%s> <%s> <%s> . } }",
-        KNOWLEDGE_GRAPH, fromUri, predicateUri, toUri, toUri, predicateUri, fromUri);
+      final String fromUri, final String toUri, final Collection<String> predicateUris) {
+    final String triples =
+        String.join(
+            " ",
+            predicateUris.stream()
+                .map(
+                    predicateUri ->
+                        String.format(
+                            "<%s> <%s> <%s> . <%s> <%s> <%s> .",
+                            fromUri, predicateUri, toUri, toUri, predicateUri, fromUri))
+                .toList());
+    return String.format("DELETE DATA { GRAPH <%s> { %s } }", KNOWLEDGE_GRAPH, triples);
   }
 
   /**

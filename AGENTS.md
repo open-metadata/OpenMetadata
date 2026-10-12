@@ -173,7 +173,7 @@ on functionality over education. Do not add unnecessary blank lines between pros
 | `test-locally` | spinning up the full local Docker stack to test a change/connector |
 | `connector-standards` / `connector-building` / `connector-review` | building or reviewing an ingestion connector |
 | `playwright` / `writing-playwright-tests` / `playwright-validation` | authoring or validating Playwright E2E tests |
-| `pr-checklist` | opening/finalizing a PR (fills the repo PR template) |
+| `pr-checklist` / `ui-pr-recording` | creating a PR for a UI feature or feature task — run the PR build in Docker with sample data and upload its screen recording into the description |
 | `openmetadata-pr-review` | reviewing a real GitHub PR (number/URL/batch) — maintainer merge verdict: live diff, CI, meaningful-test rubric |
 
 > `openmetadata-workflow` is a meta-skill that routes tasks to the skills above; it is auto-loaded at

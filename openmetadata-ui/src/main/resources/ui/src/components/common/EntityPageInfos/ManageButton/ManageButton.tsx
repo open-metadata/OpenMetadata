@@ -11,8 +11,11 @@
  *  limitations under the License.
  */
 
-import { Tooltip, Typography } from '@openmetadata/ui-core-components';
-import { Button, Modal } from 'antd';
+import {
+  SimpleModal,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';
@@ -396,37 +399,27 @@ const ManageButton: FC<ManageButtonProps> = ({
       )}
 
       {showReactiveModal && (
-        // Used Button to stop click propagation event in the
-        // TeamDetailsV1 and User.component collapsible panel.
-        <Button
-          className="remove-button-default-styling"
-          onClick={(e) => e.stopPropagation()}>
-          <Modal
-            centered
-            cancelButtonProps={{
-              type: 'link',
-            }}
-            className="reactive-modal"
-            closable={false}
-            confirmLoading={isEntityRestoring}
+        // Stops click propagation (React bubbles through the modal portal) in
+        // the TeamDetailsV1 and User.component collapsible panels.
+        <div role="presentation" onClick={(e) => e.stopPropagation()}>
+          <SimpleModal
+            isOpen
             data-testid="restore-asset-modal"
-            maskClosable={false}
+            isDismissable={false}
+            isOkLoading={isEntityRestoring}
             okText={t('label.restore')}
-            open={showReactiveModal}
             title={t('label.restore-entity', {
               entity: entityType,
             })}
-            onCancel={() => {
-              setShowReactiveModal(false);
-            }}
+            onCancel={() => setShowReactiveModal(false)}
             onOk={handleRestore}>
             <Typography data-testid="restore-modal-body">
               {t('message.are-you-want-to-restore', {
                 entity: entityName,
               })}
             </Typography>
-          </Modal>
-        </Button>
+          </SimpleModal>
+        </div>
       )}
     </>
   );

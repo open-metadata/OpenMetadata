@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box } from '@openmetadata/ui-core-components';
-import { Button, Tooltip } from 'antd';
+import { Box, Button, Tooltip } from '@openmetadata/ui-core-components';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as LogsIcon } from '../../../../../../assets/svg/logs.svg';
@@ -21,9 +20,7 @@ import { EntityType } from '../../../../../../enums/entity.enum';
 import { Operation } from '../../../../../../generated/entity/policies/accessControl/rule';
 import { PipelineType } from '../../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useLogsModal } from '../../../../../../hooks/useLogsModal';
-import { getLayoutGutter } from '../../../../../../utils/common/layout.utils';
 import { getLoadingStatus } from '../../../../../../utils/EntityDisplayPureUtils';
-import './pipeline-actions.less';
 import { PipelineActionsProps } from './PipelineActions.interface';
 import PipelineActionsDropdown from './PipelineActionsDropdown';
 
@@ -98,99 +95,67 @@ function PipelineActions({
   );
 
   const playPauseButton = useMemo(() => {
-    if (editStatusPermission) {
-      return (
-        <Box className="layout-column tw:block">
-          {pipeline.enabled ? (
-            <Tooltip
-              title={
-                pipeline.deployed
-                  ? t('label.pause')
-                  : t('message.pipeline-not-deployed')
-              }>
-              <Button
-                data-testid="pause-button"
-                disabled={isDisabled || !pipeline.deployed}
-                icon={getLoadingStatus(
-                  currPauseId,
-                  pipeline.id,
-                  <PauseIcon height={12} width={12} />
-                )}
-                onClick={() => onPauseUnpauseClick(pipelineId)}>
-                {t('label.pause')}
-              </Button>
-            </Tooltip>
-          ) : (
-            <Tooltip
-              title={
-                pipeline.deployed
-                  ? t('label.resume')
-                  : t('message.pipeline-not-deployed')
-              }>
-              <Button
-                data-testid="resume-button"
-                disabled={isDisabled || !pipeline.deployed}
-                icon={getLoadingStatus(
-                  currPauseId,
-                  pipeline.id,
-                  <ResumeIcon height={12} width={12} />
-                )}
-                onClick={() => onPauseUnpauseClick(pipelineId)}>
-                {t('label.resume')}
-              </Button>
-            </Tooltip>
-          )}
-        </Box>
-      );
+    if (!editStatusPermission) {
+      return null;
     }
 
-    return null;
+    const label = pipeline.enabled ? t('label.pause') : t('label.resume');
+    const StatusIcon = pipeline.enabled ? PauseIcon : ResumeIcon;
+
+    return (
+      <Tooltip
+        title={pipeline.deployed ? label : t('message.pipeline-not-deployed')}>
+        <Button
+          color="secondary"
+          data-testid={pipeline.enabled ? 'pause-button' : 'resume-button'}
+          iconLeading={getLoadingStatus(
+            currPauseId,
+            pipeline.id,
+            <StatusIcon height={12} width={12} />
+          )}
+          isDisabled={isDisabled || !pipeline.deployed}
+          onPress={() => onPauseUnpauseClick(pipelineId)}>
+          {label}
+        </Button>
+      </Tooltip>
+    );
   }, [editStatusPermission, isDisabled, pipeline, currPauseId, pipelineId]);
 
   return (
     <Box
       align="center"
-      className="layout-row pipeline-actions-container"
+      className="pipeline-actions-container"
       data-tesid="pipeline-actions"
+      gap={2}
       justify="between"
-      style={{ ...getLayoutGutter(8, 8) }}
       wrap="nowrap">
       {playPauseButton}
-      <Box className="layout-column tw:block">
-        <Box
-          align="center"
-          className="layout-row"
-          style={{ ...getLayoutGutter(8, 8) }}
-          wrap="nowrap">
-          <Box className="layout-column tw:block">
-            <Button
-              data-testid="logs-button"
-              disabled={isDisabled}
-              icon={<LogsIcon height={12} width={12} />}
-              onClick={handleLogsClick}>
-              {t('label.log-plural')}
-            </Button>
-          </Box>
-          {hasDropdownPermission && (
-            <Box className="layout-column tw:block">
-              <PipelineActionsDropdown
-                deployIngestion={deployIngestion}
-                handleDeleteSelection={handleDeleteSelection}
-                handleEditClick={handleEditClick}
-                handleIsConfirmationModalOpen={handleIsConfirmationModalOpen}
-                ingestion={pipeline}
-                ingestionPipelinePermissions={ingestionPipelinePermissions}
-                moreActionButtonProps={{
-                  disabled: isDisabled || moreActionButtonProps?.disabled,
-                }}
-                serviceCategory={serviceCategory}
-                serviceName={serviceName}
-                triggerIngestion={triggerIngestion}
-                onIngestionWorkflowsUpdate={onIngestionWorkflowsUpdate}
-              />
-            </Box>
-          )}
-        </Box>
+      <Box align="center" gap={2} wrap="nowrap">
+        <Button
+          color="secondary"
+          data-testid="logs-button"
+          iconLeading={<LogsIcon height={12} width={12} />}
+          isDisabled={isDisabled}
+          onPress={handleLogsClick}>
+          {t('label.log-plural')}
+        </Button>
+        {hasDropdownPermission && (
+          <PipelineActionsDropdown
+            deployIngestion={deployIngestion}
+            handleDeleteSelection={handleDeleteSelection}
+            handleEditClick={handleEditClick}
+            handleIsConfirmationModalOpen={handleIsConfirmationModalOpen}
+            ingestion={pipeline}
+            ingestionPipelinePermissions={ingestionPipelinePermissions}
+            moreActionButtonProps={{
+              disabled: isDisabled || moreActionButtonProps?.disabled,
+            }}
+            serviceCategory={serviceCategory}
+            serviceName={serviceName}
+            triggerIngestion={triggerIngestion}
+            onIngestionWorkflowsUpdate={onIngestionWorkflowsUpdate}
+          />
+        )}
       </Box>
       {logsModal}
     </Box>
