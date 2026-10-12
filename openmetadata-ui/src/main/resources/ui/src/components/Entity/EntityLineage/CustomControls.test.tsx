@@ -546,6 +546,37 @@ describe('CustomControls', () => {
     expect(nodeDepthButton).toBeInTheDocument();
   });
 
+  it('resets the URL depth to the saved directional config in impact analysis mode', () => {
+    (useCustomLocation as jest.Mock).mockImplementation(() => ({
+      search: '?mode=impact_analysis&depth=5&dir=Downstream',
+    }));
+
+    render(<CustomControlsComponent {...defaultProps} />, {
+      wrapper: Wrapper,
+    });
+
+    fireEvent.click(screen.getByTestId('lineage-config'));
+    mockNavigate.mockClear();
+    fireEvent.click(screen.getByText('Save'));
+
+    expect(mockNavigate).toHaveBeenCalledTimes(1);
+    expect(mockNavigate.mock.calls[0][0].search).toContain(
+      `depth=${mockLineageConfig.downstreamDepth}`
+    );
+  });
+
+  it('does not write depth to the URL on config save in lineage mode', () => {
+    render(<CustomControlsComponent {...defaultProps} />, {
+      wrapper: Wrapper,
+    });
+
+    fireEvent.click(screen.getByTestId('lineage-config'));
+    mockNavigate.mockClear();
+    fireEvent.click(screen.getByText('Save'));
+
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
   it('writes the selected node depth to the URL via navigate(replace) when a Node Depth menu item is clicked', () => {
     (useCustomLocation as jest.Mock).mockImplementation(() => ({
       search: '?mode=impact_analysis&depth=3&dir=downstream',

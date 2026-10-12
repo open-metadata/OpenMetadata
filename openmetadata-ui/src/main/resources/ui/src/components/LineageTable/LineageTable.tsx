@@ -337,7 +337,13 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
           const value = [...(keys as Set<LineageDirection>)][0];
           if (value) {
             handlePageChange(1);
-            updateURLParams({ dir: value });
+            updateURLParams({
+              dir: value,
+              depth:
+                value === LineageDirection.Upstream
+                  ? lineageConfig.upstreamDepth
+                  : lineageConfig.downstreamDepth,
+            });
           }
         }}>
         {radioGroupOptions.map((option) => (
@@ -350,7 +356,14 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         ))}
       </ButtonGroup>
     );
-  }, [handlePageChange, lineageDirection, radioGroupOptions, updateURLParams]);
+  }, [
+    handlePageChange,
+    lineageConfig.downstreamDepth,
+    lineageConfig.upstreamDepth,
+    lineageDirection,
+    radioGroupOptions,
+    updateURLParams,
+  ]);
 
   // Column-level filter keys used for column_filter post-processing
   // On Table-level: only COLUMN goes to column_filter (for Column dropdown in post-processing)
@@ -635,27 +648,6 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
   useEffect(() => {
     updateEntityDataRef.current(entityType, entity, false);
   }, [entityType, entity]);
-
-  // Sync node depth with lineageConfig
-  useEffect(() => {
-    updateURLParams({
-      depth:
-        lineageDirection === LineageDirection.Upstream
-          ? lineageConfig.upstreamDepth
-          : lineageConfig.downstreamDepth,
-    });
-    // `updateURLParams` is intentionally excluded: it is a `useCallback`
-    // keyed on `location.search`, so its identity flips on every URL write
-    // (dropdown selection, fullscreen toggle, etc.). Including it would
-    // re-fire this effect and clobber a user-selected `depth` with the
-    // configured directional depth. We only want to react to real config
-    // or direction changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    lineageConfig.downstreamDepth,
-    lineageConfig.upstreamDepth,
-    lineageDirection,
-  ]);
 
   const nodeDepthOptions = useMemo(() => {
     return (

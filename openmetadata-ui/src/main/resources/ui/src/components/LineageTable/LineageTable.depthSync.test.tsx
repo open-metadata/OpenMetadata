@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
 import { EntityType } from '../../enums/entity.enum';
 import { usePaging } from '../../hooks/paging/usePaging';
@@ -292,43 +298,29 @@ describe('LineageTable depth sync', () => {
     currentSearch = '';
   });
 
-  it('writes the configured depth to the URL on mount', async () => {
-    render(buildTree('/?dir=Downstream'));
+  it('keeps a URL-supplied depth on mount (shared link)', async () => {
+    render(buildTree('/?dir=Downstream&depth=5'));
 
-    // The depth-sync effect runs on mount and pushes the configured
-    // directional depth (downstreamDepth = 3) into the URL.
-    await waitFor(() => expect(currentSearch).toContain('depth=3'));
+    await waitFor(() => expect(currentSearch).toContain('depth=5'));
+
+    expect(currentSearch).not.toMatch(/depth=3/);
   });
 
-  it('does NOT revert a depth written to the URL by the dropdown (dropdown persist)', async () => {
+  it('does NOT revert a depth written to the URL by the dropdown', async () => {
     render(buildTree('/?dir=Downstream'));
 
-    // Let the mount sync settle to the configured depth=3.
-    await waitFor(() => expect(currentSearch).toContain('depth=3'));
-
-    // Simulate the Node Depth dropdown writing depth=5 to the URL — exactly
-    // what CustomControls' `handleNodeDepthUpdate` produces (Test A in
-    // CustomControls.test.tsx proves that write happens).
     await act(async () => {
       navigateRef({ search: '?dir=Downstream&depth=5' }, { replace: true });
     });
 
-    // With the fix, the depth-sync effect must NOT re-fire for this URL write
-    // (only config/direction changes re-fire it), so depth=5 persists instead
-    // of being clobbered back to the configured depth=3.
     await waitFor(() => expect(currentSearch).toContain('depth=5'));
 
     expect(currentSearch).not.toMatch(/depth=3/);
   });
 
   it('does NOT reset depth when an unrelated control (fullscreen toggle) writes to the URL', async () => {
-    render(buildTree('/?dir=Downstream'));
+    render(buildTree('/?dir=Downstream&depth=5'));
 
-    await waitFor(() => expect(currentSearch).toContain('depth=3'));
-
-    // Simulate the fullscreen toggle merging `fullscreen=true` into the URL
-    // while a non-config depth=5 is already present — mirroring
-    // CustomControls' `updateURLParams({ [FULLSCREEN_QUERY_PARAM_KEY]: true })`.
     await act(async () => {
       navigateRef(
         { search: '?dir=Downstream&depth=5&fullscreen=true' },
@@ -336,64 +328,20 @@ describe('LineageTable depth sync', () => {
       );
     });
 
-    await waitFor(() => expect(currentSearch).toContain('depth=5'));
+    await waitFor(() => expect(currentSearch).toContain('fullscreen=true'));
 
-    expect(currentSearch).toContain('fullscreen=true');
-    expect(currentSearch).not.toMatch(/depth=3/);
+    expect(currentSearch).toContain('depth=5');
   });
 
-  it('re-syncs the URL depth when lineageConfig depth changes', async () => {
-    // Re-render with a *fresh* element (same MemoryRouter type/position) so
-    // React re-renders the subtree; reusing the same element reference would
-    // let React bail out and never observe the new mock config. The router's
-    // internal location state is preserved across this reconcile.
-    const { rerender } = render(buildTree('/?dir=Downstream'));
-
-    await waitFor(() => expect(currentSearch).toContain('depth=3'));
-
-    // Change the configured downstream depth (e.g. via the LineageConfig
-    // settings modal). The depth-sync effect's legitimate
-    // `lineageConfig.downstreamDepth` dependency must still re-fire it.
-    setupStore({ downstreamDepth: 7, upstreamDepth: 2 } as LineageConfig);
-    rerender(buildTree('/?dir=Downstream'));
-
-    await waitFor(() => expect(currentSearch).toContain('depth=7'));
-
-    expect(currentSearch).toContain('dir=Downstream');
-  });
-
-  it("re-syncs the URL depth to the new direction's configured depth when direction changes", async () => {
-    // Give upstream and downstream distinct configured depths so a direction
-    // change is observable in the URL.
+  it("resets depth to the new direction's configured depth when direction is switched", async () => {
     setupStore({ downstreamDepth: 3, upstreamDepth: 2 } as LineageConfig);
 
-    render(buildTree('/?dir=Downstream'));
-
-    // Mount sync writes the downstream configured depth (3).
-    await waitFor(() => expect(currentSearch).toContain('depth=3'));
-
-    // Toggle direction by writing `dir=Upstream` to the URL — the direction
-    // toggle's legitimate `lineageDirection` dependency re-fires the effect,
-    // which writes the upstream configured depth (2).
-    await act(async () => {
-      navigateRef({ search: '?dir=Upstream' }, { replace: true });
-    });
-
-    await waitFor(() => expect(currentSearch).toContain('depth=2'));
-
-    expect(currentSearch).toContain('dir=Upstream');
-  });
-
-  it('overwrites a URL-supplied depth with the configured depth on mount (shared-link clobber)', async () => {
-    // A URL carrying an explicit depth (e.g. a shared link) is clobbered on
-    // mount because the depth-sync effect always runs once on mount. This is
-    // the intended residual of the primary fix (the bug was the spurious
-    // RE-fire on every URL write, not the legitimate mount run) and is
-    // documented here as a regression guard for the mount behavior.
     render(buildTree('/?dir=Downstream&depth=5'));
 
-    await waitFor(() => expect(currentSearch).toContain('depth=3'));
+    fireEvent.click(screen.getByRole('radio', { name: /label.upstream/ }));
 
-    expect(currentSearch).not.toMatch(/depth=5/);
+    await waitFor(() => expect(currentSearch).toContain('dir=Upstream'));
+
+    expect(currentSearch).toContain('depth=2');
   });
 });
