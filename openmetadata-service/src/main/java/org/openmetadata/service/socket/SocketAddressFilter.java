@@ -43,8 +43,9 @@ import org.openmetadata.service.security.session.UserSession;
 
 @Slf4j
 public class SocketAddressFilter implements Filter {
-  private JwtFilter jwtFilter;
-  private final boolean enableSecureSocketConnection;
+  /** Null when sockets connect without a token. Replaced whole when security settings reload. */
+  private volatile JwtFilter jwtFilter;
+
   private SessionService sessionService;
 
   public SocketAddressFilter(
@@ -57,15 +58,28 @@ public class SocketAddressFilter implements Filter {
       AuthenticationConfiguration authenticationConfiguration,
       AuthorizerConfiguration authorizerConf,
       SessionService sessionService) {
-    enableSecureSocketConnection = authorizerConf.getEnableSecureSocketConnection();
-    if (enableSecureSocketConnection) {
-      jwtFilter = new JwtFilter(authenticationConfiguration, authorizerConf);
-    }
+    this.jwtFilter = jwtFilterFor(authenticationConfiguration, authorizerConf);
     this.sessionService = sessionService;
   }
 
   public SocketAddressFilter() {
-    enableSecureSocketConnection = false;
+    this.jwtFilter = null;
+  }
+
+  /** Applies reloaded security settings to sockets that connect from now on. */
+  public void updateConfiguration(
+      AuthenticationConfiguration authenticationConfiguration,
+      AuthorizerConfiguration authorizerConf) {
+    this.jwtFilter = jwtFilterFor(authenticationConfiguration, authorizerConf);
+  }
+
+  private static JwtFilter jwtFilterFor(
+      AuthenticationConfiguration authenticationConfiguration,
+      AuthorizerConfiguration authorizerConf) {
+    return authorizerConf != null
+            && Boolean.TRUE.equals(authorizerConf.getEnableSecureSocketConnection())
+        ? new JwtFilter(authenticationConfiguration, authorizerConf)
+        : null;
   }
 
   /**
@@ -92,9 +106,10 @@ public class SocketAddressFilter implements Filter {
       String socketUserId = requestedUserId;
       ValidatedTokenPrincipal tokenPrincipal = null;
 
-      if (enableSecureSocketConnection) {
+      JwtFilter currentJwtFilter = jwtFilter;
+      if (currentJwtFilter != null) {
         String tokenWithType = httpServletRequest.getHeader("Authorization");
-        tokenPrincipal = validatePrefixedTokenRequest(jwtFilter, tokenWithType);
+        tokenPrincipal = validatePrefixedTokenRequest(currentJwtFilter, tokenWithType);
         UUID resolvedUserId = getUserIdForPrincipal(tokenPrincipal.userName());
         if (requestedUserId != null && !requestedUserId.equals(resolvedUserId.toString())) {
           ((HttpServletResponse) response)

@@ -24,12 +24,14 @@ import type {
  * Puts the "Edit" action in the modal header for a read-only settings view,
  * after any page-specific `extraActions`. Memoize `extraActions`: a new node
  * every render re-runs the effect, which re-renders the panel and the page.
+ * `isEditable` false drops the action, e.g. when the deployment owns every field.
  */
 export const useEditHeaderAction = (
   page: PlatformSettingsPageId,
   isLoading: boolean,
   { onNavigate, onSetHeaderActions }: PlatformSettingsPageProps,
-  extraActions?: ReactNode
+  extraActions?: ReactNode,
+  isEditable = true
 ) => {
   const { t } = useTranslation();
 
@@ -38,18 +40,30 @@ export const useEditHeaderAction = (
       isLoading ? undefined : (
         <Box direction="row" gap={3}>
           {extraActions}
-          <Button
-            color="primary"
-            data-testid="edit-button"
-            iconLeading={Edit01}
-            size="xs"
-            onPress={() => onNavigate({ type: 'page', page, isEditing: true })}>
-            {t('label.edit')}
-          </Button>
+          {isEditable && (
+            <Button
+              color="primary"
+              data-testid="edit-button"
+              iconLeading={Edit01}
+              size="xs"
+              onPress={() =>
+                onNavigate({ type: 'page', page, isEditing: true })
+              }>
+              {t('label.edit')}
+            </Button>
+          )}
         </Box>
       )
     );
 
     return () => onSetHeaderActions(undefined);
-  }, [extraActions, isLoading, onNavigate, onSetHeaderActions, page, t]);
+  }, [
+    extraActions,
+    isEditable,
+    isLoading,
+    onNavigate,
+    onSetHeaderActions,
+    page,
+    t,
+  ]);
 };

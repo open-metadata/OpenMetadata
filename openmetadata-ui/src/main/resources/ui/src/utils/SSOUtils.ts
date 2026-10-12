@@ -498,8 +498,6 @@ const cleanupAuthenticationConfig = (
     const oidcConfig = authConfig.oidcConfiguration;
     cleanupOidcConfiguration(authConfig, oidcConfig);
   }
-
-  authConfig.enableSelfSignup ??= true;
 };
 
 /**
