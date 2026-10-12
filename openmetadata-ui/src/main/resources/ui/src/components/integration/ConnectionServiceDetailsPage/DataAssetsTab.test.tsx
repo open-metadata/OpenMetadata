@@ -13,10 +13,10 @@
 import { render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { ServicesType } from '../../../interface/service.interface';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
-import { EntityType } from '../../../enums/entity.enum';
 import DataProductsSection from '../../common/DataProductsSection/DataProductsSection';
 import DataAssetsTab from './DataAssetsTab';
 
