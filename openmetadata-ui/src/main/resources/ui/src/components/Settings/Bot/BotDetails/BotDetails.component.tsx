@@ -162,7 +162,9 @@ const BotDetails: FC<BotsDetailProps> = ({
                           <Button
                             className="text-sm mr-1"
                             data-testid="cancel-displayName"
-                            icon={<XClose />}
+                            icon={
+                              <XClose className="tw:size-3.5 tw:shrink-0" />
+                            }
                             size="small"
                             type="primary"
                             onMouseDown={() => setIsDisplayNameEdit(false)}
@@ -171,7 +173,7 @@ const BotDetails: FC<BotsDetailProps> = ({
                           <Button
                             className="text-sm mr-1"
                             data-testid="save-displayName"
-                            icon={<Check />}
+                            icon={<Check className="tw:size-3.5 tw:shrink-0" />}
                             size="small"
                             type="primary"
                             onClick={handleDisplayNameChange}

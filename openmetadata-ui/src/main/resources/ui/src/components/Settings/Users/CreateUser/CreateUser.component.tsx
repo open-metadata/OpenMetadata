@@ -87,10 +87,7 @@ const buildDomainsField = (
       <Button
         data-testid="add-domain"
         icon={
-          <Plus
-            className="tw:size-3 tw:shrink-0"
-            style={{ color: 'white', fontSize: '12px' }}
-          />
+          <Plus className="tw:size-3 tw:shrink-0" style={{ color: 'white' }} />
         }
         size="small"
         type="primary"

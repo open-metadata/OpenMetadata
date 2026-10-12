@@ -108,7 +108,7 @@ export const ObjectFieldTemplate: FunctionComponent<
             icon={
               <Plus
                 className="tw:size-3 tw:shrink-0"
-                style={{ color: 'white', fontSize: '12px' }}
+                style={{ color: 'white' }}
               />
             }
             id={`${idSchema.$id}`}

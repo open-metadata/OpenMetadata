@@ -145,7 +145,9 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
             filterOption={getFilterOptions}
             optionLabelProp="value"
             placeholder={t('label.select-tag')}
-            suffixIcon={<ChevronDown className="text-grey-muted" />}
+            suffixIcon={
+              <ChevronDown className="text-grey-muted tw:size-3.5 tw:shrink-0" />
+            }
             value={termBoostData.value || undefined}
             onChange={handleTagChange}
           />

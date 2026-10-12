@@ -122,7 +122,7 @@ function ObservabilityFormFiltersItem({
                       {!isViewMode && (
                         <Button
                           data-testid={`remove-filter-${name}`}
-                          icon={<XClose />}
+                          icon={<XClose className="tw:size-3.5 tw:shrink-0" />}
                           onClick={() => remove(name)}
                         />
                       )}

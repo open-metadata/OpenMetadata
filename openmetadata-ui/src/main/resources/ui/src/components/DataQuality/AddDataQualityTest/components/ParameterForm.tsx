@@ -371,7 +371,7 @@ const buildArraySetField = ({
             <span>{data.displayName}</span>
             <Button
               className="m-x-sm list-add-btn"
-              icon={<Plus />}
+              icon={<Plus className="tw:size-3.5 tw:shrink-0" />}
               size="small"
               type="primary"
               onClick={() => add()}

@@ -293,7 +293,9 @@ const ProfilerConfigurationPage = () => {
                               <Form.Item>
                                 <Button
                                   data-testid={`remove-filter-${name}`}
-                                  icon={<XClose />}
+                                  icon={
+                                    <XClose className="tw:size-3.5 tw:shrink-0" />
+                                  }
                                   size="small"
                                   onClick={() => remove(name)}
                                 />
