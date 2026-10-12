@@ -13,7 +13,6 @@ Generic Workflow entrypoint to execute Applications
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Optional  # noqa: UP035
 
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
@@ -65,7 +64,7 @@ class AppRunner(Step, ABC):
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,  # noqa: UP045
+        pipeline_name: str | None = None,
     ) -> "Step":
         config = OpenMetadataApplicationConfig.model_validate(config_dict)
         return cls(config=config, metadata=metadata)
@@ -75,7 +74,7 @@ class ApplicationWorkflow(BaseWorkflow, ABC):
     """Base Application Workflow implementation"""
 
     config: OpenMetadataApplicationConfig
-    runner: Optional[AppRunner]  # noqa: UP045
+    runner: AppRunner | None
 
     def __init__(self, config: OpenMetadataApplicationConfig):
         self.runner = None  # Will be passed in post-init
@@ -118,8 +117,8 @@ class ApplicationWorkflow(BaseWorkflow, ABC):
         """Workflow-specific logic to execute safely"""
         self.runner.run()
 
-    def get_failures(self) -> List[StackTraceError]:  # noqa: UP006
+    def get_failures(self) -> list[StackTraceError]:
         return self.workflow_steps()[0].get_status().failures
 
-    def workflow_steps(self) -> List[Step]:  # noqa: UP006
+    def workflow_steps(self) -> list[Step]:
         return [self.runner]

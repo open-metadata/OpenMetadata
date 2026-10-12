@@ -1,0 +1,28 @@
+{
+  "queryTemplates": [
+    {
+      "id": "692cb99a-96fd-4f47-8f28-3d7e471ff001",
+      "name": "All glossary terms",
+      "query": "PREFIX om: <https://open-metadata.org/ontology/>\n\nSELECT ?conceptFqn WHERE {\n  GRAPH <https://open-metadata.org/graph/knowledge> {\n    ?concept a om:GlossaryTerm ;\n             om:fullyQualifiedName ?conceptFqn .\n  }\n}\nORDER BY ?conceptFqn\nLIMIT 100",
+      "format": "json",
+      "inference": "none",
+      "savedAt": 0
+    },
+    {
+      "id": "692cb99a-96fd-4f47-8f28-3d7e471ff002",
+      "name": "Glossary term relationships",
+      "query": "PREFIX om: <https://open-metadata.org/ontology/>\nPREFIX skos: <http://www.w3.org/2004/02/skos/core#>\n\nSELECT ?sourceFqn ?relationship ?targetFqn WHERE {\n  GRAPH <https://open-metadata.org/graph/knowledge> {\n    ?source a om:GlossaryTerm ;\n            om:fullyQualifiedName ?sourceFqn ;\n            ?relationship ?target .\n    ?target a om:GlossaryTerm ;\n            om:fullyQualifiedName ?targetFqn .\n    VALUES ?relationship {\n      om:relatedTo om:antonym om:partOf om:hasPart\n      om:calculatedFrom om:usedToCalculate skos:broader skos:narrower\n      skos:exactMatch\n    }\n  }\n}\nORDER BY ?sourceFqn ?relationship ?targetFqn\nLIMIT 100",
+      "format": "json",
+      "inference": "none",
+      "savedAt": 0
+    },
+    {
+      "id": "692cb99a-96fd-4f47-8f28-3d7e471ff003",
+      "name": "Isolated glossary terms",
+      "query": "PREFIX om: <https://open-metadata.org/ontology/>\nPREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\n\nSELECT ?conceptFqn WHERE {\n  GRAPH <https://open-metadata.org/graph/knowledge> {\n    ?concept a om:GlossaryTerm ;\n             om:fullyQualifiedName ?conceptFqn .\n    FILTER NOT EXISTS {\n      ?concept ?outgoing ?target .\n      ?target a om:GlossaryTerm .\n      FILTER(?outgoing != rdf:type)\n    }\n    FILTER NOT EXISTS {\n      ?source ?incoming ?concept .\n      ?source a om:GlossaryTerm .\n      FILTER(?incoming != rdf:type)\n    }\n  }\n}\nORDER BY ?conceptFqn\nLIMIT 100",
+      "format": "json",
+      "inference": "none",
+      "savedAt": 0
+    }
+  ]
+}

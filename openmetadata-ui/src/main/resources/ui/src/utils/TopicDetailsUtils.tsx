@@ -13,9 +13,8 @@
 
 import { get } from 'lodash';
 import { lazy } from 'react';
-import withSuspenseFallback, {
-  TAB_CONTENT_FALLBACK,
-} from '../components/AppRouter/withSuspenseFallback';
+import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
+import { EntityDetailWidgetSkeleton } from '../components/common/Skeleton/EntityDetailWidgetSkeleton/EntityDetailWidgetSkeleton.component';
 import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
@@ -62,7 +61,7 @@ const ContractTab = withSuspenseFallback(
 );
 const TopicSchemaFields = withSuspenseFallback(
   lazy(() => import('../components/Topic/TopicSchema/TopicSchema')),
-  TAB_CONTENT_FALLBACK
+  <EntityDetailWidgetSkeleton lineCount={5} />
 );
 
 export const getTopicDetailsPageTabs = ({

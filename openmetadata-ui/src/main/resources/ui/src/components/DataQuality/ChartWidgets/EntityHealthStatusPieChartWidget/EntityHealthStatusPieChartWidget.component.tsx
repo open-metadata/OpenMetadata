@@ -11,15 +11,12 @@
  *  limitations under the License.
  */
 import { Card, Skeleton, Typography } from '@openmetadata/ui-core-components';
+import { useQuery } from '@tanstack/react-query';
 import { parseInt } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as HealthCheckIcon } from '../../../../assets/svg/ic-green-heart-border.svg';
-import {
-  DQ_CHART_FAILED_COLOR,
-  DQ_CHART_SUCCESS_COLOR,
-} from '../../../../constants/Color.constants';
 import { INITIAL_ENTITY_HEALTH_MATRIX } from '../../../../constants/profiler.constant';
 import { fetchEntityCoveredWithDQ } from '../../../../rest/dataQualityDashboardAPI';
 import { getTestCaseTabPath } from '../../../../utils/DataQuality/DataQualityPureUtils';
@@ -38,25 +35,37 @@ const EntityHealthStatusPieChartWidget = ({
   const { t } = useTranslation();
   const routerNavigate = useNavigate();
   const navigate = navigateProp ?? routerNavigate;
-  const [isLoading, setIsLoading] = useState(true);
-  const [entityHealthStates, setEntityHealthStates] = useState<{
-    healthy: number;
-    unhealthy: number;
-    total: number;
-  }>(INITIAL_ENTITY_HEALTH_MATRIX);
+  const { data: entityHealthStates = INITIAL_ENTITY_HEALTH_MATRIX, isLoading } =
+    useQuery({
+      queryKey: ['dq-dashboard', 'entity-health', chartFilter],
+      queryFn: async () => {
+        const [{ data: unhealthyData }, { data: totalData }] =
+          await Promise.all([
+            fetchEntityCoveredWithDQ(chartFilter, true),
+            fetchEntityCoveredWithDQ(chartFilter, false),
+          ]);
+        if (unhealthyData.length === 0 || totalData.length === 0) {
+          return INITIAL_ENTITY_HEALTH_MATRIX;
+        }
+        const unhealthy = parseInt(unhealthyData[0].originEntityFQN, 10);
+        const total = parseInt(totalData[0].originEntityFQN, 10);
+
+        return { unhealthy, healthy: total - unhealthy, total };
+      },
+    });
 
   const handleSegmentClick = useCallback(
     (_entry: CustomPieChartData, index: number) => {
       const status = BINARY_STATUS_PIE_SEGMENT_ORDER[index];
       if (status) {
-        const redirectPath = getTestCaseTabPath(status);
+        const redirectPath = getTestCaseTabPath(status, chartFilter);
         navigate({
           ...redirectPath,
           pathname: testCasesPath ?? redirectPath.pathname,
         });
       }
     },
-    [navigate, testCasesPath]
+    [chartFilter, navigate, testCasesPath]
   );
 
   const { data, chartLabel } = useMemo(
@@ -65,12 +74,12 @@ const EntityHealthStatusPieChartWidget = ({
         {
           name: t('label.healthy'),
           value: entityHealthStates.healthy,
-          color: DQ_CHART_SUCCESS_COLOR,
+          status: 'success' as const,
         },
         {
           name: t('label.unhealthy'),
           value: entityHealthStates.unhealthy,
-          color: DQ_CHART_FAILED_COLOR,
+          status: 'failed' as const,
         },
       ],
       chartLabel: getPieChartLabel(
@@ -80,37 +89,6 @@ const EntityHealthStatusPieChartWidget = ({
     }),
     [entityHealthStates]
   );
-
-  const fetchEntityHealthSummary = async () => {
-    setIsLoading(true);
-    try {
-      const { data: unhealthyData } = await fetchEntityCoveredWithDQ(
-        chartFilter,
-        true
-      );
-      const { data: totalData } = await fetchEntityCoveredWithDQ(
-        chartFilter,
-        false
-      );
-      if (unhealthyData.length === 0 || totalData.length === 0) {
-        setEntityHealthStates(INITIAL_ENTITY_HEALTH_MATRIX);
-
-        return;
-      }
-      const unhealthy = parseInt(unhealthyData[0].originEntityFQN, 10);
-      const total = parseInt(totalData[0].originEntityFQN, 10);
-
-      setEntityHealthStates({ unhealthy, healthy: total - unhealthy, total });
-    } catch {
-      setEntityHealthStates(INITIAL_ENTITY_HEALTH_MATRIX);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchEntityHealthSummary();
-  }, [chartFilter]);
 
   if (isLoading) {
     return (
@@ -133,6 +111,7 @@ const EntityHealthStatusPieChartWidget = ({
         </div>
         <CustomPieChart
           showLegends
+          ariaLabel={t('label.healthy-data-asset-plural')}
           data={data}
           label={chartLabel}
           name="healthy-data-assets"

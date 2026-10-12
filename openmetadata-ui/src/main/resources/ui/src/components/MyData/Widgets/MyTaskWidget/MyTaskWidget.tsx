@@ -16,7 +16,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as MyTaskNoDataIcon } from '../../../../assets/svg/add-placeholder.svg';
-import { ReactComponent as MyTaskIcon } from '../../../../assets/svg/ic-my-task.svg';
+import { ReactComponent as MyTaskIcon } from '../../../../assets/svg/widget/my-task.svg';
 import {
   PAGE_SIZE_BASE,
   PAGE_SIZE_MEDIUM,
@@ -26,6 +26,7 @@ import { SIZE } from '../../../../enums/common.enum';
 import { FeedFilter, MyTaskFilter } from '../../../../enums/mydata.enum';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { WidgetCommonProps } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
+import { TaskStatusGroup } from '../../../../rest/tasksAPI';
 import { getUserPath } from '../../../../utils/RouterUtils';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import TaskFeedCardFromTask from '../../../ActivityFeed/TaskFeedCard/TaskFeedCardFromTask.component';
@@ -61,31 +62,23 @@ const MyTaskWidget = ({
     setSelectedFilter(key);
   }, []);
 
+  // The initial load and the post-close refresh must agree on the status bucket.
+  // They were two separate call sites and drifted: the load asked for every
+  // status, so the widget listed closed tasks until you closed one from it.
+  const fetchOpenTasks = useCallback(() => {
+    getTaskData(
+      selectedFilter as unknown as FeedFilter,
+      undefined,
+      undefined,
+      undefined,
+      TaskStatusGroup.Open,
+      PAGE_SIZE_MEDIUM
+    );
+  }, [getTaskData, selectedFilter]);
+
   useEffect(() => {
-    getTaskData(
-      selectedFilter as unknown as FeedFilter,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      PAGE_SIZE_MEDIUM
-    );
-  }, [getTaskData, selectedFilter]);
-
-  const handleFeedFetchFromFeedList = useCallback(() => {
-    getTaskData(
-      selectedFilter as unknown as FeedFilter,
-      undefined,
-      undefined,
-      undefined,
-      'open',
-      PAGE_SIZE_MEDIUM
-    );
-  }, [getTaskData, selectedFilter]);
-
-  const handleAfterTaskClose = () => {
-    handleFeedFetchFromFeedList();
-  };
+    fetchOpenTasks();
+  }, [fetchOpenTasks]);
 
   const showWidgetFooterMoreButton = useMemo(
     () => Boolean(!loading) && tasks?.length > PAGE_SIZE_BASE,
@@ -107,7 +100,7 @@ const MyTaskWidget = ({
         currentLayout={currentLayout}
         handleLayoutUpdate={handleLayoutUpdate}
         handleRemoveWidget={handleRemoveWidget}
-        icon={<MyTaskIcon data-testid="task-icon" height={22} width={22} />}
+        icon={<MyTaskIcon data-testid="task-icon" height={24} width={24} />}
         isEditView={isEditView}
         selectedSortBy={selectedFilter}
         sortOptions={translatedSortOptions}
@@ -158,17 +151,21 @@ const MyTaskWidget = ({
             <div className="entity-list-body">
               {tasks.slice(0, PAGE_SIZE_BASE).map((task) => (
                 <TaskFeedCardFromTask
+                  className="tw:py-2!"
                   isOpenInDrawer={myTaskData?.w === 1}
                   key={task.id}
                   task={task}
-                  onAfterClose={handleAfterTaskClose}
+                  onAfterClose={fetchOpenTasks}
                 />
               ))}
             </div>
 
             {/* Widget Footer */}
             <WidgetFooter
-              moreButtonLink={`users/${currentUser?.name}/task`}
+              moreButtonLink={getUserPath(
+                currentUser?.name ?? '',
+                UserPageTabs.TASK
+              )}
               moreButtonText={t('label.view-more')}
               showMoreButton={showWidgetFooterMoreButton}
             />

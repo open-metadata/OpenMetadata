@@ -20,6 +20,7 @@ import {
 } from '@playwright/test';
 import { DBT, REDSHIFT } from '../../../constant/service';
 import { SidebarItem } from '../../../constant/sidebar';
+import { CODE_EDITOR, getCodeEditorText } from '../../../utils/codeEditor';
 import {
   getApiContext,
   redirectToHomePage,
@@ -30,11 +31,14 @@ import {
   waitForAllLoadersToDisappear,
 } from '../../../utils/entity';
 import { visitLineageTab } from '../../../utils/lineage';
+import { getCellByName } from '../../../utils/scopedLocators';
 import { visitServiceDetailsPage } from '../../../utils/service';
+import { selectOneOfOption } from '../../../utils/serviceFormUtils';
 import {
   checkServiceFieldSectionHighlighting,
   getAgentCard,
   Services,
+  waitForIngestionWorkflowForm,
 } from '../../../utils/serviceIngestion';
 import { sidebarClick } from '../../../utils/sidebar';
 import ServiceBaseClass from './ServiceBaseClass';
@@ -95,15 +99,38 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
     await checkServiceFieldSectionHighlighting(page, 'hostPort');
     await page.fill('#root\\/database', redshiftDatabase);
     await checkServiceFieldSectionHighlighting(page, 'database');
+
+    // The e2e Redshift cluster rejects non-SSL connections, and sslMode defaults to disable
+    await page
+      .getByTestId('connection-section-advanced')
+      .getByRole('button', { name: /Advanced Config/i })
+      .click();
+    const sslModeTrigger = page
+      .getByTestId('select-widget-root/sslMode')
+      .getByRole('button');
+
+    await sslModeTrigger.click();
+    await page
+      .locator('.core-select-widget-popover')
+      .getByRole('option', { name: 'require', exact: true })
+      .click();
+    await expect(sslModeTrigger).toContainText('require');
   }
 
   async fillIngestionDetails(page: Page) {
-    // no schema or database filters
+    await this.openIngestionFilterSection(page);
+    await page.getByTestId('filter-section-schemaFilterPattern').click();
+    await page.getByTestId('schemaFilterPattern-only-specific-button').click();
     await page
-      .locator('#root\\/schemaFilterPattern\\/includes')
+      .getByTestId('filter-section-schemaFilterPattern')
+      .getByTestId('include-filter-input')
+      .locator('input')
       .fill(this.schemaFilterPattern);
-
-    await page.locator('#root\\/schemaFilterPattern\\/includes').press('Enter');
+    await page
+      .getByTestId('filter-section-schemaFilterPattern')
+      .getByTestId('include-filter-input')
+      .locator('input')
+      .press('Enter');
   }
 
   async runAdditionalTests(
@@ -131,14 +158,13 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
         await metadataTab.click();
       }
       await page.click('[data-testid="add-new-ingestion-button"]');
-      await page
-        .locator('.ant-dropdown:visible [data-menu-id*="dbt"]')
-        .waitFor();
-      await page.click('[data-menu-id*="dbt"]');
+      await page.getByTestId('agent-item-dbt').click();
+      await waitForIngestionWorkflowForm(page);
 
-      await page.locator('#root\\/dbtConfigSource__oneof_select').waitFor();
-      await page.selectOption(
-        '#root\\/dbtConfigSource__oneof_select',
+      await selectOneOfOption(
+        page,
+        'root/dbtConfigSource',
+        'select-widget-root/dbtConfigSource__oneof_select',
         'DBT S3 Config'
       );
       await page.fill(
@@ -162,7 +188,7 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
         DBT.s3Prefix
       );
 
-      await page.click('[data-testid="submit-btn"]');
+      await page.click('[data-testid="next-button"]');
       // Make sure we create ingestion with None schedule to avoid conflict between Airflow and Argo behavior
       await this.scheduleIngestion(page);
 
@@ -176,10 +202,7 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
       if (await metadataTab2.isVisible()) {
         await metadataTab2.click();
       }
-      await page
-        .getByLabel('agents')
-        .getByTestId('loader')
-        .waitFor({ state: 'detached' });
+      await waitForAllLoadersToDisappear(page.getByLabel('agents'));
 
       const response = await apiContext
         .get(
@@ -188,19 +211,14 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
           )}&pipelineType=dbt&serviceType=databaseService&limit=1`
         )
         .then((res) => res.json());
-
-      // eslint-disable-next-line playwright/no-wait-for-timeout -- pipeline deployment settling time
-      await page.waitForTimeout(3000);
+      const startedAfter = Date.now();
       await getAgentCard(page, response.data[0].name)
         .getByTestId('run-agent-button')
         .click();
 
       await toastNotification(page, `Pipeline triggered successfully!`);
 
-      // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for latest pipeline run results
-      await page.waitForTimeout(2000);
-
-      await this.handleIngestionRetry('dbt', page);
+      await this.waitForIngestion(page, startedAfter, 'dbt');
     });
 
     await test.step('Validate DBT is ingested properly', async () => {
@@ -217,7 +235,7 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
 
       await page.getByTestId('table').waitFor();
 
-      await expect(page.getByRole('cell', { name: DBT.tagName })).toBeVisible();
+      await expect(getCellByName(page, DBT.tagName)).toBeVisible();
 
       // Verify DBT in table entity
       await visitEntityPage({
@@ -244,8 +262,8 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
       await page.click('[data-testid="dbt"]');
 
       // Verify query is present in the DBT tab
-      await page.locator('.CodeMirror').waitFor();
-      const codeMirrorText = await page.textContent('.CodeMirror');
+      await page.locator(CODE_EDITOR).waitFor();
+      const codeMirrorText = await getCodeEditorText(page);
 
       expect(codeMirrorText).toContain(DBT.dbtQuery);
 

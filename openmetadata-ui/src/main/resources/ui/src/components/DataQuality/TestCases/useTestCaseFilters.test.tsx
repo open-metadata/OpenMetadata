@@ -85,7 +85,6 @@ describe('useTestCaseFilters', () => {
     expect(typeof result.current.searchValue).toBe('string');
     expect(result.current.selectedFilter).toEqual(DEFAULT_SELECTED_FILTERS);
     expect(typeof result.current.setSelectedFilter).toBe('function');
-    expect(typeof result.current.form).toBe('object');
     expect(typeof result.current.handleMenuClick).toBe('function');
     expect(typeof result.current.handleSearchParam).toBe('function');
     expect(typeof result.current.handleFilterChange).toBe('function');
@@ -123,14 +122,60 @@ describe('useTestCaseFilters', () => {
     });
   });
 
+  it('should reset the page back to the first one when the search value changes while paginated', () => {
+    mockLocation.search = '?currentPage=2&pageSize=15';
+
+    const { result } = renderFilters();
+
+    act(() => {
+      result.current.handleSearchParam('searchValue', 'orders');
+    });
+
+    expect(mockNavigate).toHaveBeenCalledWith({
+      search: expect.stringContaining('currentPage=1'),
+    });
+    expect(mockNavigate).toHaveBeenCalledWith({
+      search: expect.stringContaining('searchValue=orders'),
+    });
+  });
+
+  it('should reset the page back to the first one when any other filter changes while paginated', () => {
+    mockLocation.search = '?currentPage=3&pageSize=15';
+
+    const { result } = renderFilters();
+
+    act(() => {
+      result.current.handleFilterChange({
+        testCaseStatus: TestCaseStatus.Failed,
+      });
+    });
+
+    expect(mockNavigate).toHaveBeenCalledWith({
+      search: expect.stringContaining('currentPage=1'),
+    });
+  });
+
+  it('should keep the current page when adding a filter that has no value yet', () => {
+    mockLocation.search = '?currentPage=3&pageSize=15';
+
+    const { result } = renderFilters();
+
+    act(() => {
+      result.current.handleMenuClick({ key: TEST_CASE_FILTERS.tier });
+    });
+
+    expect(mockNavigate).toHaveBeenCalledWith({
+      search: expect.stringContaining('currentPage=3'),
+    });
+  });
+
   it('should route a single changed value through handleSearchParam on handleFilterChange', () => {
     const { result } = renderFilters();
 
     act(() => {
-      result.current.handleFilterChange?.(
-        { testCaseStatus: TestCaseStatus.Failed },
-        {}
-      );
+      result.current.handleFilterChange({
+        testCaseStatus: TestCaseStatus.Failed,
+      });
     });
 
     expect(mockNavigate).toHaveBeenCalledWith({
@@ -151,11 +196,8 @@ describe('useTestCaseFilters', () => {
   });
 
   it('should remove an active filter and reset its form field when its menu item is clicked again', () => {
-    const { result } = renderFilters();
-
-    const setFieldsSpy = jest
-      .spyOn(result.current.form, 'setFieldsValue')
-      .mockImplementation(() => undefined);
+    const form = { setFieldsValue: jest.fn(), resetFields: jest.fn() };
+    const { result } = renderFilters({ form });
 
     act(() => {
       result.current.handleMenuClick({ key: TEST_CASE_FILTERS.status });
@@ -164,11 +206,9 @@ describe('useTestCaseFilters', () => {
     expect(result.current.selectedFilter).not.toContain(
       TEST_CASE_FILTERS.status
     );
-    expect(setFieldsSpy).toHaveBeenCalledWith({
+    expect(form.setFieldsValue).toHaveBeenCalledWith({
       [TEST_CASE_FILTERS.status]: undefined,
     });
-
-    setFieldsSpy.mockRestore();
   });
 
   it('should build the filterMenu from every TEST_CASE_FILTERS entry', () => {
@@ -231,7 +271,7 @@ describe('useTestCaseFilters', () => {
     expect(tagsDescriptor?.label).toBe(TEST_CASE_FILTERS_LABELS.tags);
 
     expect(tableDescriptor?.controlType).toBe('select');
-    expect(statusDescriptor?.controlType).toBe('select');
+    expect(statusDescriptor?.controlType).toBe('multiselect');
     expect(typeDescriptor?.controlType).toBe('select');
     expect(tagsDescriptor?.controlType).toBe('multiselect');
 
@@ -246,6 +286,9 @@ describe('useTestCaseFilters', () => {
     expect(statusDescriptor?.onSearch).toBeUndefined();
 
     expect(statusDescriptor?.options.length).toBeGreaterThan(0);
+    expect(statusDescriptor?.options).not.toContainEqual(
+      expect.objectContaining({ value: '' })
+    );
     expect(typeDescriptor?.options.length).toBeGreaterThan(0);
     expect(tagsDescriptor?.options).toEqual([]);
     expect(tableDescriptor?.options).toEqual([
@@ -338,18 +381,15 @@ describe('useTestCaseFilters', () => {
   it('should reset the selected filters and form and navigate preserving only the searchValue on clearAll', () => {
     mockLocation.search = 'searchValue=orders&tableFqn=svc.db.tbl';
 
-    const { result } = renderFilters();
-
-    const resetFieldsSpy = jest
-      .spyOn(result.current.form, 'resetFields')
-      .mockImplementation(() => undefined);
+    const form = { setFieldsValue: jest.fn(), resetFields: jest.fn() };
+    const { result } = renderFilters({ form });
 
     act(() => {
       result.current.clearAll();
     });
 
     expect(result.current.selectedFilter).toEqual(DEFAULT_SELECTED_FILTERS);
-    expect(resetFieldsSpy).toHaveBeenCalled();
+    expect(form.resetFields).toHaveBeenCalled();
     expect(mockNavigate).toHaveBeenLastCalledWith({
       search: 'searchValue=orders',
     });
@@ -357,7 +397,5 @@ describe('useTestCaseFilters', () => {
     const lastSearch = mockNavigate.mock.calls.at(-1)?.[0]?.search;
 
     expect(lastSearch).not.toContain('tableFqn');
-
-    resetFieldsSpy.mockRestore();
   });
 });

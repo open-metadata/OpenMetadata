@@ -11,9 +11,32 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
+import { AuthProvider } from '../../generated/settings/settings';
+import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
 import SettingsRouter from './SettingsRouter';
+
+let mockIsAiMode = false;
+
+jest.mock('../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../hooks/useAppMode'),
+  useIsAiMode: () => mockIsAiMode,
+}));
+
+jest.mock('../observability/Alerts/AlertsPage', () => ({
+  __esModule: true,
+  default: ({ kind }: { kind: { alertType: string } }) => (
+    <div>AI AlertsPage {kind.alertType}</div>
+  ),
+}));
+
+jest.mock('../observability/Alerts/AlertDetailsPage', () => ({
+  __esModule: true,
+  default: ({ kind }: { kind: { alertType: string } }) => (
+    <div>AI AlertDetailsPage {kind.alertType}</div>
+  ),
+}));
 
 jest.mock('../../pages/AddNotificationPage/AddNotificationPage', () => ({
   __esModule: true,
@@ -74,10 +97,23 @@ jest.mock(
 
 jest.mock(
   '../../pages/GlobalSettingPage/GlobalSettingCategory/GlobalSettingCategoryPage',
-  () => ({
-    __esModule: true,
-    default: jest.fn().mockReturnValue(<div>GlobalSettingCategoryPage</div>),
-  })
+  () => {
+    // Surfaces the route param because the real page resolves all of its content from it. A mock
+    // that ignores params renders the same for a working route and for one that dropped
+    // `:settingCategory` — which is exactly how a blank settings page slipped through.
+    const { useParams } = jest.requireActual('react-router-dom');
+
+    // Named, uppercase, so react-hooks/rules-of-hooks recognises it as a component rather than a
+    // bare arrow calling a hook.
+    const GlobalSettingCategoryPageMock = () => (
+      <div>GlobalSettingCategoryPage:{useParams().settingCategory}</div>
+    );
+
+    return {
+      __esModule: true,
+      default: GlobalSettingCategoryPageMock,
+    };
+  }
 );
 
 jest.mock('../../pages/GlobalSettingPage/GlobalSettingPage', () => ({
@@ -175,169 +211,121 @@ jest.mock('./AdminProtectedRoute', () => ({
   default: jest.fn().mockImplementation(({ children }) => children),
 }));
 
-describe.skip('SettingsRouter', () => {
-  it('should render GlobalSettingPage component for exact settings route', async () => {
+let mockAuthProvider: AuthProvider = AuthProvider.Basic;
+
+jest.mock('../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn((selector) =>
+    selector({ authConfig: { provider: mockAuthProvider } })
+  ),
+}));
+
+describe('SettingsRouter', () => {
+  beforeEach(() => {
+    mockAuthProvider = AuthProvider.Basic;
+  });
+
+  // SettingsRouter declares its routes relative to ROUTES.SETTINGS (the `/settings` prefix is
+  // stripped off each path), so it only resolves them when mounted under a parent route that
+  // consumes that prefix — rendering it bare at `/settings/...` matches nothing.
+  const renderAtSettingsPath = (entry: string) =>
     render(
-      <MemoryRouter initialEntries={['/settings']}>
-        <SettingsRouter />
+      <MemoryRouter initialEntries={[entry]}>
+        <Routes>
+          <Route element={<SettingsRouter />} path="/settings/*" />
+        </Routes>
       </MemoryRouter>
     );
+
+  it('should render GlobalSettingPage component for exact settings route', async () => {
+    renderAtSettingsPath('/settings');
 
     expect(await screen.findByText('GlobalSettingPage')).toBeInTheDocument();
   });
 
   it('should render AddRolePage component for add role route', async () => {
-    render(
-      <MemoryRouter initialEntries={[ROUTES.ADD_ROLE]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
+    renderAtSettingsPath(ROUTES.ADD_ROLE);
 
     expect(await screen.findByText('AddRolePage')).toBeInTheDocument();
   });
 
   it('should render RolesDetailPage component for roles details route', async () => {
-    render(
-      <MemoryRouter initialEntries={[`/settings/access/roles/testRole`]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
+    renderAtSettingsPath('/settings/access/roles/testRole');
 
     expect(await screen.findByText('RolesDetailPage')).toBeInTheDocument();
   });
 
   it('should render RolesListPage component for roles list route', async () => {
-    render(
-      <MemoryRouter initialEntries={[`/settings/access/roles`]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
+    renderAtSettingsPath('/settings/access/roles');
 
     expect(await screen.findByText('RolesListPage')).toBeInTheDocument();
   });
 
   it('should render AddPolicyPage component for add policy route', async () => {
-    render(
-      <MemoryRouter initialEntries={[ROUTES.ADD_POLICY]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
+    renderAtSettingsPath(ROUTES.ADD_POLICY);
 
     expect(await screen.findByText('AddPolicyPage')).toBeInTheDocument();
   });
 
   it('should render AddRulePage component for add rule route', async () => {
-    render(
-      <MemoryRouter initialEntries={[ROUTES.ADD_POLICY_RULE]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
+    renderAtSettingsPath(ROUTES.ADD_POLICY_RULE);
 
     expect(await screen.findByText('AddRulePage')).toBeInTheDocument();
   });
 
   it('should render EditRulePage component for edit rule route', async () => {
-    render(
-      <MemoryRouter initialEntries={[ROUTES.EDIT_POLICY_RULE]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
+    renderAtSettingsPath(ROUTES.EDIT_POLICY_RULE);
 
     expect(await screen.findByText('EditRulePage')).toBeInTheDocument();
   });
 
   it('should render PoliciesDetailPage component for policies details route', async () => {
-    render(
-      <MemoryRouter initialEntries={[`/settings/access/policies/testPolicy`]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
+    renderAtSettingsPath('/settings/access/policies/testPolicy');
 
     expect(await screen.findByText('PoliciesDetailPage')).toBeInTheDocument();
   });
 
   it('should render PoliciesListPage component for policies list route', async () => {
-    render(
-      <MemoryRouter initialEntries={['/settings/access/policies']}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
+    renderAtSettingsPath('/settings/access/policies');
 
     expect(await screen.findByText('PoliciesListPage')).toBeInTheDocument();
   });
 
   it('should render UserListPageV1 component for user list route', async () => {
-    render(
-      <MemoryRouter initialEntries={[`/settings/members/users`]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
+    renderAtSettingsPath('/settings/members/users');
 
     expect(await screen.findByText('UserListPageV1')).toBeInTheDocument();
   });
 
   it('should render ServicesPage component for services route', async () => {
-    render(
-      <MemoryRouter initialEntries={[`/settings/services/databases`]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
+    renderAtSettingsPath('/settings/services/databases');
 
     expect(await screen.findByText('ServicesPage')).toBeInTheDocument();
   });
 
   it('should render TeamsPage component for teams route', async () => {
-    render(
-      <MemoryRouter initialEntries={[`/settings/members/teams/Organization`]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
+    renderAtSettingsPath('/settings/members/teams/Organization');
 
     expect(await screen.findByText('TeamsPage')).toBeInTheDocument();
   });
 
   it('should render ImportTeamsPage component for import teams route', async () => {
-    render(
-      <MemoryRouter
-        initialEntries={[
-          `/settings/members/teams/Organization/import?type=teams`,
-        ]}>
-        <SettingsRouter />
-      </MemoryRouter>
+    renderAtSettingsPath(
+      '/settings/members/teams/Organization/import?type=teams'
     );
 
     expect(await screen.findByText('ImportTeamsPage')).toBeInTheDocument();
   });
 
   it('should render CustomPropertiesPageV1 component for custom properties route', async () => {
-    render(
-      <MemoryRouter initialEntries={[`/settings/customProperties/table`]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
+    renderAtSettingsPath('/settings/customProperties/table');
 
     expect(
       await screen.findByText('CustomPropertiesPageV1')
     ).toBeInTheDocument();
   });
 
-  it.skip('should render CustomPageSettings component for custom page settings route', async () => {
-    render(
-      <MemoryRouter
-        initialEntries={[`/settings/preferences/customizeLandingPage`]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
-
-    expect(await screen.findByText('CustomPageSettings')).toBeInTheDocument();
-  });
-
   it('should render EmailConfigSettingsPage component for email config settings route', async () => {
-    render(
-      <MemoryRouter initialEntries={[`/settings/preferences/email`]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
+    renderAtSettingsPath('/settings/preferences/email');
 
     expect(
       await screen.findByText('EmailConfigSettingsPage')
@@ -345,22 +333,13 @@ describe.skip('SettingsRouter', () => {
   });
 
   it('should render EditEmailConfigPage component for edit email config route', async () => {
-    render(
-      <MemoryRouter initialEntries={[ROUTES.SETTINGS_EDIT_EMAIL_CONFIG]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
+    renderAtSettingsPath(ROUTES.SETTINGS_EDIT_EMAIL_CONFIG);
 
     expect(await screen.findByText('EditEmailConfigPage')).toBeInTheDocument();
   });
 
   it('should render LoginConfigurationPage component for login configuration details route', async () => {
-    render(
-      <MemoryRouter
-        initialEntries={[`/settings/preferences/loginConfiguration`]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
+    renderAtSettingsPath('/settings/preferences/loginConfiguration');
 
     expect(
       await screen.findByText('LoginConfigurationPage')
@@ -368,85 +347,221 @@ describe.skip('SettingsRouter', () => {
   });
 
   it('should render EditLoginConfigurationPage component for edit login configuration route', async () => {
-    render(
-      <MemoryRouter initialEntries={[ROUTES.SETTINGS_EDIT_CUSTOM_LOGIN_CONFIG]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
+    renderAtSettingsPath(ROUTES.SETTINGS_EDIT_CUSTOM_LOGIN_CONFIG);
 
     expect(
       await screen.findByText('EditLoginConfigurationPage')
     ).toBeInTheDocument();
   });
 
+  it('should render LoginConfigurationPage component for LDAP, which the server also gates on', async () => {
+    mockAuthProvider = AuthProvider.LDAP;
+
+    renderAtSettingsPath('/settings/preferences/loginConfiguration');
+
+    expect(
+      await screen.findByText('LoginConfigurationPage')
+    ).toBeInTheDocument();
+  });
+
   it('should render NotificationListPage component for notification list route', async () => {
-    render(
-      <MemoryRouter initialEntries={[ROUTES.NOTIFICATION_ALERTS]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
+    renderAtSettingsPath(ROUTES.NOTIFICATION_ALERT_LIST);
 
     expect(await screen.findByText('NotificationListPage')).toBeInTheDocument();
   });
 
   it('should render AddNotificationPage component for add notification route', async () => {
-    render(
-      <MemoryRouter initialEntries={[ROUTES.EDIT_NOTIFICATION_ALERTS]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
+    renderAtSettingsPath(ROUTES.EDIT_NOTIFICATION_ALERTS);
 
     expect(await screen.findByText('AddNotificationPage')).toBeInTheDocument();
   });
 
   it('should render PersonaPage component for persona list route', async () => {
-    render(
-      <MemoryRouter initialEntries={[`/settings/persona`]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
+    renderAtSettingsPath('/settings/persona');
 
     expect(await screen.findByText('PersonaPage')).toBeInTheDocument();
   });
 
   it('should render PersonaDetailsPage component for persona details route', async () => {
-    render(
-      <MemoryRouter initialEntries={[`/settings/persona/testPersona`]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
+    renderAtSettingsPath('/settings/persona/testPersona');
 
     expect(await screen.findByText('PersonaDetailsPage')).toBeInTheDocument();
   });
 
   it('should render BotsPageV1 component for bots route', async () => {
-    render(
-      <MemoryRouter initialEntries={[`/settings/bots`]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
+    renderAtSettingsPath('/settings/bots');
 
     expect(await screen.findByText('BotsPageV1')).toBeInTheDocument();
   });
 
   it('should render ApplicationPage component for application route', async () => {
-    render(
-      <MemoryRouter initialEntries={[`/settings/apps`]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
+    renderAtSettingsPath('/settings/apps');
 
     expect(await screen.findByText('ApplicationPage')).toBeInTheDocument();
   });
 
   it('should render AlertDetailsPage component for alert details route', async () => {
-    render(
-      <MemoryRouter
-        initialEntries={[ROUTES.NOTIFICATION_ALERT_DETAILS_WITH_TAB]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
+    renderAtSettingsPath(ROUTES.NOTIFICATION_ALERT_DETAILS_WITH_TAB);
 
     expect(await screen.findByText('AlertDetailsPage')).toBeInTheDocument();
   });
+
+  describe('in AI mode', () => {
+    beforeEach(() => {
+      mockIsAiMode = true;
+    });
+
+    afterEach(() => {
+      mockIsAiMode = false;
+    });
+
+    it('renders the AI alerts page for the notification alert list', async () => {
+      renderAtSettingsPath(ROUTES.NOTIFICATION_ALERT_LIST);
+
+      expect(
+        await screen.findByText('AI AlertsPage Notification')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText('NotificationListPage')
+      ).not.toBeInTheDocument();
+    });
+
+    it('renders the AI alert details page for a notification alert', async () => {
+      renderAtSettingsPath(ROUTES.NOTIFICATION_ALERT_DETAILS_WITH_TAB);
+
+      expect(
+        await screen.findByText('AI AlertDetailsPage Notification')
+      ).toBeInTheDocument();
+      expect(screen.queryByText('AlertDetailsPage')).not.toBeInTheDocument();
+    });
+  });
+});
+
+// Mounts a sibling `/404` route so a guard's redirect lands somewhere assertable, rather than
+// being inferred from the guarded page merely being absent.
+const renderAt = (entry: string) =>
+  render(
+    <MemoryRouter initialEntries={[entry]}>
+      <Routes>
+        <Route element={<SettingsRouter />} path="/settings/*" />
+        <Route element={<div>NotFound</div>} path="/404" />
+      </Routes>
+    </MemoryRouter>
+  );
+
+// Kept as a separate suite because it additionally spies on connectionsRouterClassBase to
+// exercise the services route guard end to end.
+describe('SettingsRouter services routes', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  // Both paths, because they are matched by different routes: `services/:tab` by the explicit
+  // services route and bare `services` by the generic `/settings/:settingCategory` one. An earlier
+  // fix guarded only the first, so `/settings/services` still rendered the listing.
+  it.each(['/settings/services/databases', '/settings/services'])(
+    'treats %s as not found when an app mode has replaced the listing',
+    async (entry) => {
+      jest
+        .spyOn(connectionsRouterClassBase, 'isServicesSettingsRouteDisabled')
+        .mockReturnValue(true);
+
+      renderAt(entry);
+
+      expect(await screen.findByText('NotFound')).toBeInTheDocument();
+      expect(screen.queryByText('ServicesPage')).not.toBeInTheDocument();
+    }
+  );
+
+  it('still renders /settings/services/databases by default', async () => {
+    jest
+      .spyOn(connectionsRouterClassBase, 'isServicesSettingsRouteDisabled')
+      .mockReturnValue(false);
+
+    renderAt('/settings/services/databases');
+
+    expect(await screen.findByText('ServicesPage')).toBeInTheDocument();
+    expect(screen.queryByText('NotFound')).not.toBeInTheDocument();
+  });
+
+  // The guard must not cost the route its `:settingCategory` param — the category page has nothing
+  // to render without it, which looked like a blank settings page rather than a routing mistake.
+  it('still renders /settings/services with its category param intact', async () => {
+    jest
+      .spyOn(connectionsRouterClassBase, 'isServicesSettingsRouteDisabled')
+      .mockReturnValue(false);
+
+    renderAt('/settings/services');
+
+    expect(
+      await screen.findByText('GlobalSettingCategoryPage:services')
+    ).toBeInTheDocument();
+    expect(screen.queryByText('NotFound')).not.toBeInTheDocument();
+  });
+
+  // Regression: this was gated on isEmbeddedMode(), which is also true while Classic is merely
+  // showing an embedded experience. Classic's own Settings > Services 404'd from then on.
+  it('keeps the services page while an embedded experience is only being displayed', async () => {
+    jest
+      .spyOn(connectionsRouterClassBase, 'isEmbeddedMode')
+      .mockReturnValue(true);
+    jest
+      .spyOn(connectionsRouterClassBase, 'isServicesSettingsRouteDisabled')
+      .mockReturnValue(false);
+
+    renderAt('/settings/services/databases');
+
+    expect(await screen.findByText('ServicesPage')).toBeInTheDocument();
+    expect(screen.queryByText('NotFound')).not.toBeInTheDocument();
+  });
+});
+
+// The login configuration (failed-attempt lockout, access block time, JWT expiry) is enforced by
+// OpenMetadata's own login flow. Under an external IdP those settings are inert, so the pages are
+// 404'd rather than left to display placeholders and save values that never take effect.
+describe('SettingsRouter login configuration routes', () => {
+  // mockAuthProvider is module-scoped and every case here depends on its value, so reset it
+  // rather than let a case inherit whatever the previous one left behind.
+  beforeEach(() => {
+    mockAuthProvider = AuthProvider.Basic;
+  });
+
+  it.each([
+    [
+      'details',
+      '/settings/preferences/loginConfiguration',
+      'LoginConfigurationPage',
+    ],
+    [
+      'edit',
+      ROUTES.SETTINGS_EDIT_CUSTOM_LOGIN_CONFIG,
+      'EditLoginConfigurationPage',
+    ],
+  ])(
+    'treats the login configuration %s route as not found under an external SSO provider',
+    async (_, entry, pageText) => {
+      mockAuthProvider = AuthProvider.Google;
+
+      renderAt(entry);
+
+      expect(await screen.findByText('NotFound')).toBeInTheDocument();
+      expect(screen.queryByText(pageText)).not.toBeInTheDocument();
+    }
+  );
+
+  // `openmetadata` is a second name for the same native-password authenticator as `basic`, so the
+  // server enforces the login configuration for it and the route must stay reachable.
+  it.each([AuthProvider.Basic, AuthProvider.Openmetadata, AuthProvider.LDAP])(
+    'still renders the login configuration page under %s',
+    async (provider) => {
+      mockAuthProvider = provider;
+
+      renderAt('/settings/preferences/loginConfiguration');
+
+      expect(
+        await screen.findByText('LoginConfigurationPage')
+      ).toBeInTheDocument();
+      expect(screen.queryByText('NotFound')).not.toBeInTheDocument();
+    }
+  );
 });

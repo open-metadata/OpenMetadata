@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import { ContextMemory } from '../../../generated/entity/context/contextMemory';
+import {
+  ContextMemory,
+  ContextMemoryStatus,
+} from '../../../generated/entity/context/contextMemory';
 import MemoriesView from './MemoriesView.component';
 
 jest.mock('../../../components/common/ProfilePicture/ProfilePicture', () =>
@@ -19,7 +22,7 @@ jest.mock('../../../components/common/ProfilePicture/ProfilePicture', () =>
 );
 
 jest.mock('../../CopyLinkButton/CopyLinkButton.component', () =>
-  jest.fn(() => <button data-testid="copy-link-btn" />)
+  jest.fn(() => <button aria-label="Copy link" data-testid="copy-link-btn" />)
 );
 
 jest.mock('../../../assets/svg/edit-new.svg', () => ({
@@ -48,7 +51,12 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       isDisabled?: boolean;
       'data-testid'?: string;
     }) => (
-      <button data-testid={testId} disabled={isDisabled} onClick={onClick} />
+      <button
+        aria-label="Button utility"
+        data-testid={testId}
+        disabled={isDisabled}
+        onClick={onClick}
+      />
     )
   ),
   Dot: jest.fn(() => <span />),
@@ -129,6 +137,31 @@ describe('MemoriesView', () => {
 
     expect(
       screen.getByText('A unified metadata platform.')
+    ).toBeInTheDocument();
+  });
+
+  it.each<[ContextMemoryStatus, string]>([
+    [ContextMemoryStatus.Deprecated, 'label.deprecated'],
+    [ContextMemoryStatus.Rejected, 'label.rejected'],
+    [ContextMemoryStatus.Superseded, 'label.superseded'],
+    [ContextMemoryStatus.Invalidated, 'label.invalidated'],
+  ])('shows the %s memory status and its reason', (status, label) => {
+    render(
+      <MemoriesView
+        data={[
+          {
+            ...mockMemories[0],
+            entityStatus: status,
+            statusReason: 'The replacement has the corrected definition.',
+          },
+        ]}
+        isLoading={false}
+      />
+    );
+
+    expect(screen.getByText(label)).toBeInTheDocument();
+    expect(
+      screen.getByText(/The replacement has the corrected definition/)
     ).toBeInTheDocument();
   });
 

@@ -1,5 +1,6 @@
 package org.openmetadata.service.resources.drive;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.jdbi3.ContextFileRepository.CONTEXT_FILE_ENTITY;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -62,6 +63,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -69,7 +71,7 @@ import org.openmetadata.service.attachments.AssetService;
 import org.openmetadata.service.attachments.AssetServiceFactory;
 import org.openmetadata.service.attachments.AzureAssetService;
 import org.openmetadata.service.attachments.S3AssetService;
-import org.openmetadata.service.drive.ContextFileExtractionService;
+import org.openmetadata.service.context.center.ContextFileProcessingService;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ContextFileRepository;
@@ -99,12 +101,12 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
   public static final String COLLECTION_PATH = "v1/contextCenter/drive/files/";
   public static final String FIELDS = "owners,tags,folder,domains,followers,votes";
   private final ContextFileMapper mapper = new ContextFileMapper();
-  private final ContextFileExtractionService extractionService;
+  private final ContextFileProcessingService extractionService;
   private long maxFileSize = 5 * 1024 * 1024L;
 
   public ContextFileResource(Authorizer authorizer, Limits limits) {
     super(CONTEXT_FILE_ENTITY, authorizer, limits);
-    this.extractionService = new ContextFileExtractionService(repository);
+    this.extractionService = new ContextFileProcessingService(repository);
   }
 
   @Override
@@ -113,6 +115,7 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
     if (config.getObjectStorage() != null) {
       maxFileSize = config.getObjectStorage().getMaxFileSize();
     }
+    extractionService.recoverInterruptedProcessing();
   }
 
   public static class ContextFileList extends ResultList<ContextFile> {}
@@ -181,21 +184,38 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
                       + "include=deleted to scope the archive page to files archived by that user - "
                       + "an archived file cannot be edited, so updatedBy stays the user who archived it.")
           @QueryParam("updatedBy")
-          String updatedBy) {
+          String updatedBy,
+      @Parameter(
+              description =
+                  "Filter files by the stored asset they are a view of. A file uploaded to a chat "
+                      + "keeps its asset id, which is how a link from that chat finds the document.")
+          @QueryParam("assetId")
+          String assetId) {
     ListFilter filter = new ListFilter(include);
     if (folderId != null && !folderId.isBlank()) {
       filter.addQueryParam("folderId", folderId);
+    }
+    if (assetId != null && !assetId.isBlank()) {
+      filter.addQueryParam("assetId", assetId);
     }
     if (updatedBy != null && !updatedBy.isBlank()) {
       filter.addQueryParam("updatedBy", updatedBy);
     }
     if (orderBy == null || orderBy.isBlank()) {
-      return super.listInternal(
-          uriInfo, securityContext, fieldsParam, filter, limit, before, after);
+      return visibleOnly(
+          super.listInternal(
+              uriInfo,
+              securityContext,
+              ContextFileVisibility.guardFields(fieldsParam),
+              filter,
+              limit,
+              before,
+              after),
+          securityContext);
     }
 
     RestUtil.validateCursors(before, after);
-    Fields fields = getFields(fieldsParam);
+    Fields fields = getFields(ContextFileVisibility.guardFields(fieldsParam));
     OperationContext operationContext = new OperationContext(entityType, getViewOperations(fields));
     ResourceContextInterface resourceContext = filter.getResourceContext(entityType);
     authorizer.authorize(securityContext, operationContext, resourceContext);
@@ -203,7 +223,17 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
     ResultList<ContextFile> resultList =
         repository.listByUpdatedAt(
             uriInfo, fields, filter, limit, before, after, resolveOrderBy(orderBy));
-    return addHref(uriInfo, resultList);
+    return visibleOnly(addHref(uriInfo, resultList), securityContext);
+  }
+
+  /**
+   * Drops the files this caller may not see. A page is filtered after it is read, so it can come
+   * back shorter than {@code limit} — the paging cursors still walk every file, which is what keeps
+   * the next page from skipping any.
+   */
+  private ResultList<ContextFile> visibleOnly(
+      ResultList<ContextFile> files, SecurityContext securityContext) {
+    return ContextFileVisibility.filterByVisibility(files, securityContext);
   }
 
   @GET
@@ -215,7 +245,11 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
       @PathParam("id") UUID id,
       @QueryParam("fields") String fieldsParam,
       @QueryParam("include") @DefaultValue("non-deleted") Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    ContextFile file =
+        getInternal(
+            uriInfo, securityContext, id, ContextFileVisibility.guardFields(fieldsParam), include);
+    ContextFileVisibility.enforceVisibility(file, securityContext);
+    return file;
   }
 
   @GET
@@ -227,7 +261,11 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
       @PathParam("fqn") String fqn,
       @QueryParam("fields") String fieldsParam,
       @QueryParam("include") @DefaultValue("non-deleted") Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    ContextFile file =
+        getByNameInternal(
+            uriInfo, securityContext, fqn, ContextFileVisibility.guardFields(fieldsParam), include);
+    ContextFileVisibility.enforceVisibility(file, securityContext);
+    return file;
   }
 
   @POST
@@ -261,7 +299,23 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
       @Context SecurityContext securityContext,
       @PathParam("id") UUID id,
       @Valid jakarta.json.JsonPatch patch) {
+    // Sharing is edited through this endpoint, so the guard runs here too: a caller who cannot see
+    // a document must not be able to change who else can.
+    ContextFile file = visibleFile(uriInfo, securityContext, id, Include.NON_DELETED);
+    if (ContextFileVisibility.touchesSharing(patch)) {
+      ContextFileVisibility.requireOwnerToRestrict(
+          file, JsonUtils.applyPatch(file, patch, ContextFile.class), securityContext);
+    }
     return patchInternal(uriInfo, securityContext, id, patch);
+  }
+
+  /** The file, for a caller who may see it; anybody else is refused. */
+  private ContextFile visibleFile(
+      UriInfo uriInfo, SecurityContext securityContext, UUID id, Include include) {
+    ContextFile file =
+        getInternal(uriInfo, securityContext, id, ContextFileVisibility.guardFields(""), include);
+    ContextFileVisibility.enforceVisibility(file, securityContext);
+    return file;
   }
 
   @POST
@@ -326,8 +380,14 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
     }
 
     ContextFile file = mapper.createToEntity(createFile, user);
+    // Whoever uploads a file owns it, which is what lets them make it private and still see it.
+    if (nullOrEmpty(file.getOwners())) {
+      file.setOwners(
+          List.of(Entity.getEntityReferenceByName(Entity.USER, user, Include.NON_DELETED)));
+    }
+    // prepareInternal validates the name (incl. archived namesakes) before we stream to storage,
+    // so a duplicate upload fails fast without a wasted object-store write.
     repository.prepareInternal(file, false);
-    repository.validateNoDuplicateFileName(pageName, file.getFolder(), null);
 
     try (ContextFileUploadSupport.BufferedUpload bufferedUpload =
         ContextFileUploadSupport.bufferUpload(fileInputStream, maxFileSize)) {
@@ -414,7 +474,9 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
       @QueryParam("include") @DefaultValue("non-deleted") Include include,
       @QueryParam("redirect") @DefaultValue("true") boolean redirect,
       @QueryParam("expiry") @DefaultValue("300") int expirySeconds) {
-    ContextFile file = getInternal(uriInfo, securityContext, id, "", include);
+    ContextFile file =
+        getInternal(uriInfo, securityContext, id, ContextFileVisibility.guardFields(""), include);
+    ContextFileVisibility.enforceVisibility(file, securityContext);
     Asset asset = resolveAsset(file);
     if (asset == null) {
       return Response.status(Response.Status.NOT_FOUND)
@@ -527,6 +589,7 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
             securityContext,
             operationContext,
             getResourceContextById(id, ResourceContextInterface.Operation.PUT));
+        visibleFile(uriInfo, securityContext, id, Include.NON_DELETED);
         ContextFile moved =
             repository.moveContextFile(id, newFolder, securityContext.getUserPrincipal().getName());
         addHref(uriInfo, moved);
@@ -564,7 +627,7 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
 
     List<ResolvedDownloadEntry> resolvedEntries = new ArrayList<>();
     for (UUID id : ids) {
-      ContextFile file = getInternal(uriInfo, securityContext, id, "", include);
+      ContextFile file = visibleFile(uriInfo, securityContext, id, include);
       Asset asset = resolveAsset(file);
       if (asset == null) {
         throw new EntityNotFoundException("No current content found for file " + id);
@@ -655,6 +718,10 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete) {
+    ContextFileVisibility.enforceVisibility(
+        getInternal(
+            uriInfo, securityContext, id, ContextFileVisibility.guardFields(""), Include.ALL),
+        securityContext);
     if (hardDelete) {
       ContextFile file = getInternal(uriInfo, securityContext, id, "", Include.ALL);
       if (!Boolean.TRUE.equals(file.getDeleted())) {
@@ -706,6 +773,7 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
         securityContext,
         operationContext,
         getResourceContextById(id, ResourceContextInterface.Operation.PUT));
+    visibleFile(uriInfo, securityContext, id, Include.NON_DELETED);
     EntityReference newFolder = moveRequest == null ? null : moveRequest.getFolder();
     ContextFile moved =
         repository.moveContextFile(id, newFolder, securityContext.getUserPrincipal().getName());

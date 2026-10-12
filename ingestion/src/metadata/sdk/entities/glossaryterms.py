@@ -5,7 +5,8 @@ GlossaryTerms entity SDK with fluent API
 from __future__ import annotations
 
 import uuid
-from typing import Any, Optional, Sequence, Type, Union  # noqa: UP035
+from collections.abc import Sequence  # noqa: TC003
+from typing import Any
 from urllib.parse import urlencode
 
 from metadata.generated.schema.api.data.createGlossaryTerm import (
@@ -18,14 +19,14 @@ from metadata.sdk.types import UuidLike
 DEFAULT_RELATION_TYPE = "relatedTo"
 _GLOSSARY_TERM_TYPE = "glossaryTerm"
 
-TermRef = Union[str, GlossaryTerm, UuidLike]  # noqa: UP007
+TermRef = str | GlossaryTerm | UuidLike
 
 
 class GlossaryTerms(BaseEntity[GlossaryTerm, CreateGlossaryTermRequest]):
     """GlossaryTerms SDK class - plural to avoid conflict with generated GlossaryTerm entity"""
 
     @classmethod
-    def entity_type(cls) -> Type[GlossaryTerm]:  # noqa: UP006
+    def entity_type(cls) -> type[GlossaryTerm]:
         """Return the GlossaryTerm entity type"""
         return GlossaryTerm
 
@@ -62,7 +63,7 @@ class GlossaryTerms(BaseEntity[GlossaryTerm, CreateGlossaryTermRequest]):
         cls,
         from_term: TermRef,
         to_term: TermRef,
-        relation_type: Optional[str] = None,  # noqa: UP045
+        relation_type: str | None = None,
     ) -> GlossaryTerm:
         """Remove a relation from one glossary term to another.
 
@@ -84,7 +85,7 @@ class GlossaryTerms(BaseEntity[GlossaryTerm, CreateGlossaryTermRequest]):
         term: TermRef,
         *,
         depth: int = 1,
-        relation_types: Optional[Sequence[str]] = None,  # noqa: UP045
+        relation_types: Sequence[str] | None = None,
     ) -> dict[str, Any]:
         """Fetch the relation graph rooted at ``term`` (a ``nodes`` + ``edges`` map)."""
         rest_client, endpoint = cls._relations_context()

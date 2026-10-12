@@ -12,8 +12,6 @@
 Pydantic Model to validate Quick Sight responses
 """
 
-from typing import List, Optional, Union  # noqa: UP035
-
 from pydantic import BaseModel, Field
 
 
@@ -21,59 +19,59 @@ class DataSourceResp(BaseModel):
     datasource_arn: str = Field(alias="DataSourceArn")
     schema_name: str = Field(alias="Schema")
     table_name: str = Field(alias="Name")
-    columns: Optional[list] = Field(alias="InputColumns")  # noqa: UP045
+    columns: list | None = Field(alias="InputColumns")
 
 
 class DataSourceRespQuery(BaseModel):
     datasource_arn: str = Field(alias="DataSourceArn")
     query: str = Field(alias="SqlQuery")
     table_name: str = Field(alias="Name")
-    columns: Optional[list] = Field(alias="Columns")  # noqa: UP045
+    columns: list | None = Field(alias="Columns")
 
 
 class DataSourceRespS3(BaseModel):
     datasource_arn: str = Field(alias="DataSourceArn")
-    columns: Optional[list] = Field(alias="InputColumns")  # noqa: UP045
+    columns: list | None = Field(alias="InputColumns")
 
 
 class VersionSheet(BaseModel):
-    ChartId: Optional[str] = Field(None, alias="SheetId")  # noqa: UP045
-    Name: Optional[str] = None  # noqa: UP045
+    ChartId: str | None = Field(None, alias="SheetId")
+    Name: str | None = None
 
 
 class DashboardVersion(BaseModel):
-    Status: Optional[str] = None  # noqa: UP045
-    Arn: Optional[str] = None  # noqa: UP045
-    SourceEntityArn: Optional[str] = None  # noqa: UP045
-    DataSetArns: Optional[List] = None  # noqa: UP006, UP045
-    Description: Optional[str] = None  # noqa: UP045
-    Charts: Optional[List[VersionSheet]] = Field(None, alias="Sheets")  # noqa: UP006, UP045
+    Status: str | None = None
+    Arn: str | None = None
+    SourceEntityArn: str | None = None
+    DataSetArns: list | None = None
+    Description: str | None = None
+    Charts: list[VersionSheet] | None = Field(None, alias="Sheets")
 
 
 class DashboardDetail(BaseModel):
     DashboardId: str
-    Arn: Optional[str] = None  # noqa: UP045
+    Arn: str | None = None
     Name: str
-    Version: Optional[DashboardVersion] = None  # noqa: UP045
+    Version: DashboardVersion | None = None
 
 
 class DashboardResp(BaseModel):
     Dashboard: DashboardDetail
-    Status: Optional[int] = None  # noqa: UP045
-    RequestId: Optional[str] = None  # noqa: UP045
+    Status: int | None = None
+    RequestId: str | None = None
 
 
 class DataSourceModel(BaseModel):
     Name: str
     Type: str
     DataSourceId: str
-    DataSourceParameters: Optional[dict] = None  # noqa: UP045
-    data_source_resp: Optional[Union[DataSourceRespS3, DataSourceRespQuery, DataSourceResp]] = None  # noqa: UP007, UP045
+    DataSourceParameters: dict | None = None
+    data_source_resp: DataSourceRespS3 | DataSourceRespQuery | DataSourceResp | None = None
 
 
 class DescribeDataSourceResponse(BaseModel):
-    DataSource: Optional[DataSourceModel] = None  # noqa: UP045
-    RequestId: Optional[str] = None  # noqa: UP045
-    Status: Optional[int] = None  # noqa: UP045
-    dataset_id: Optional[str] = None  # noqa: UP045
-    dataset_name: Optional[str] = None  # noqa: UP045
+    DataSource: DataSourceModel | None = None
+    RequestId: str | None = None
+    Status: int | None = None
+    dataset_id: str | None = None
+    dataset_name: str | None = None

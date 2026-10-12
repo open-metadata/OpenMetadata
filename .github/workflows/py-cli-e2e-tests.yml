@@ -46,6 +46,12 @@ jobs:
       fail-fast: false
       matrix:
         e2e-test: ${{ fromJSON(inputs.e2e-tests || '["bigquery", "dbt_redshift", "metabase", "mssql", "mysql", "redash", "snowflake", "tableau", "python-unittests", "python-integration", "redshift", "quicksight", "datalake_s3", "postgres", "oracle", "athena", "bigquery_multiple_project", "exasol"]') }}
+    # Snowflake drops and recreates the E2E database that the v2 Snowflake job also uses, so both
+    # workflows put their Snowflake jobs in one group that runs one at a time. A newer pending job
+    # replaces an older one.
+    concurrency:
+      group: ${{ matrix.e2e-test == 'snowflake' && 'cli-e2e-snowflake-database' || format('{0}-{1}-{2}', github.workflow, github.run_id, matrix.e2e-test) }}
+      cancel-in-progress: false
     environment: test
 
     steps:
@@ -62,7 +68,7 @@ jobs:
         docker-images: false
 
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v7
 
     - name: configure aws credentials
       if: contains('quicksight', matrix.e2e-test) || contains('datalake_s3', matrix.e2e-test) || contains('athena', matrix.e2e-test)
@@ -216,7 +222,7 @@ jobs:
     - name: Upload coverage artifact for Python unit tests
       if: matrix.e2e-test == 'python-unittests' && steps.python-unittest.outcome == 'success' && env.DEBUG == 'false'
       continue-on-error: true
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: coverage-${{ matrix.e2e-test }}
         path: .coverage.python-unittests
@@ -230,7 +236,7 @@ jobs:
     - name: Upload coverage artifact for Python integration tests
       if: matrix.e2e-test == 'python-integration' && steps.python-integration-test.outcome == 'success' && env.DEBUG == 'false'
       continue-on-error: true
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: coverage-${{ matrix.e2e-test }}
         path: .coverage.python-integration
@@ -239,7 +245,7 @@ jobs:
     - name: Upload coverage artifact for CLI E2E tests
       if: matrix.e2e-test != 'python-unittests' && matrix.e2e-test != 'python-integration' && steps.e2e-test.outcome == 'success' && env.DEBUG == 'false'
       continue-on-error: true
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: coverage-${{ matrix.e2e-test }}
         path: .coverage.${{ matrix.e2e-test }}
@@ -279,7 +285,7 @@ jobs:
     - name: Upload tests artifact
       if: ${{ always() }}
       continue-on-error: true
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: tests-${{ matrix.e2e-test }}
         path: |
@@ -318,7 +324,7 @@ jobs:
     - name: Upload runner and service diagnostics
       if: ${{ failure() || cancelled() }}
       continue-on-error: true
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: py-cli-e2e-diagnostics-${{ matrix.e2e-test }}
         path: ${{ runner.temp }}/python-ci-diagnostics/
@@ -337,13 +343,16 @@ jobs:
     - name: Slack on Failure
       if: ${{ always() && !cancelled() && env.DEBUG == 'false' && failure() }}
       continue-on-error: true
-      uses: slackapi/slack-github-action@v4
+      uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
       with:
-        webhook: ${{ secrets.E2E_SLACK_WEBHOOK }}
-        webhook-type: incoming-webhook
+        method: chat.postMessage
+        token: ${{ secrets.COLLATE_BOT_SLACK_TOKEN }}
+        # Keep on — the action discards Slack API errors by default.
+        errors: true
         payload: |
           {
-            "text": "🔥 Failed E2E Test for: ${{ matrix.e2e-test }} 🔥\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            "channel": "C03EYBDDX17",
+            "text": "<!subteam^S0AH093PEQL> 🔥 Failed E2E Test for: ${{ matrix.e2e-test }} 🔥\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           }
 
   py-cli-e2e-tests-status:
@@ -373,7 +382,7 @@ jobs:
     steps:
 
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Set up Python 3.10
         uses: actions/setup-python@v6

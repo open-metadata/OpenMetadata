@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
@@ -22,10 +21,12 @@ import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
 import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
+import { expect, test } from '../../support/fixtures/base';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
 import { getEntityDisplayName } from '../../utils/entity';
+import { pickEntityMatrix } from '../../utils/entityMatrix';
 
-const entities = [
+const allEntities = [
   new ApiEndpointClass(),
   new TableClass(),
   new StoredProcedureClass(),
@@ -37,7 +38,13 @@ const entities = [
   new SearchIndexClass(),
   new DashboardDataModelClass(),
   new MetricClass(),
-] as const;
+];
+
+const entities = pickEntityMatrix(
+  __filename,
+  allEntities,
+  allEntities.filter((entity) => entity instanceof TableClass)
+);
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });

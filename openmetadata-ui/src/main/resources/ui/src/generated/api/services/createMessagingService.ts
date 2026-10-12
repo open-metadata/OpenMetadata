@@ -43,9 +43,14 @@ export interface CreateMessagingService {
     /**
      * Owners of this messaging service.
      */
-    owners?:     EntityReference[];
-    serviceType: MessagingServiceType;
-    style?:      Style;
+    owners?: EntityReference[];
+    /**
+     * Deployment attributes of this service: environment, region and deployment. Set once here
+     * rather than tagged onto every asset this service ingests.
+     */
+    serviceAttributes?: ServiceAttributes;
+    serviceType:        MessagingServiceType;
+    style?:             Style;
     /**
      * Tags for this Messaging Service.
      */
@@ -65,6 +70,8 @@ export interface MessagingConnection {
  * Redpanda Connection Config
  *
  * Kinesis Connection Config
+ *
+ * NATS Connection Config
  *
  * Google Cloud Pub/Sub Connection Config
  *
@@ -138,6 +145,8 @@ export interface Connection {
     supportsProfiler?:           boolean;
     /**
      * Regex to only fetch topics that matches the pattern.
+     *
+     * Regex to only fetch subjects/streams that match the pattern.
      */
     topicFilterPattern?: FilterPattern;
     /**
@@ -147,6 +156,27 @@ export interface Connection {
      */
     type?:      MessagingServiceType;
     awsConfig?: AWSCredentials;
+    /**
+     * Additional NATS client configuration options. See https://nats-io.github.io/nats.py/
+     */
+    additionalConfig?: { [key: string]: any };
+    /**
+     * NATS authentication method. Leave empty for anonymous authentication.
+     */
+    authType?: AuthenticationType;
+    /**
+     * NATS server URLs as comma-separated values. Ex: nats://host1:4222,nats://host2:4222
+     */
+    natsServers?: string;
+    /**
+     * Name of the JetStream KV bucket where schemas are stored. Keys must match stream names.
+     * Values should be Avro JSON, Protobuf (.proto) or JSON Schema text.
+     */
+    schemaKvBucket?: string;
+    /**
+     * TLS/SSL configuration for secure NATS connections.
+     */
+    tlsConfig?: Config;
     /**
      * GCP credentials configuration for authenticating with Pub/Sub.
      */
@@ -182,6 +212,34 @@ export interface Connection {
      */
     sourcePythonClass?: string;
     [property: string]: any;
+}
+
+/**
+ * NATS authentication method. Leave empty for anonymous authentication.
+ *
+ * Username and password authentication for NATS.
+ *
+ * Token-based authentication for NATS.
+ *
+ * NKey seed authentication for NATS.
+ */
+export interface AuthenticationType {
+    /**
+     * Password for NATS authentication.
+     */
+    password?: string;
+    /**
+     * Username for NATS authentication.
+     */
+    username?: string;
+    /**
+     * Token for NATS authentication.
+     */
+    token?: string;
+    /**
+     * NKey seed for NATS authentication.
+     */
+    nkeySeed?: string;
 }
 
 /**
@@ -244,6 +302,8 @@ export interface AWSCredentials {
  *
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
+ *
+ * TLS/SSL configuration for secure NATS connections.
  *
  * OpenMetadata Client configured to validate SSL certificates.
  */
@@ -408,6 +468,8 @@ export enum SecurityProtocol {
  * Regex to only fetch topics that matches the pattern.
  *
  * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex to only fetch subjects/streams that match the pattern.
  */
 export interface FilterPattern {
     /**
@@ -431,12 +493,13 @@ export interface FilterPattern {
  *
  * Custom messaging service type
  *
- * Type of messaging service - Kafka or Pulsar.
+ * Type of messaging service.
  */
 export enum MessagingServiceType {
     CustomMessaging = "CustomMessaging",
     Kafka = "Kafka",
     Kinesis = "Kinesis",
+    Nats = "Nats",
     PubSub = "PubSub",
     Redpanda = "Redpanda",
 }
@@ -497,6 +560,42 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+/**
+ * Deployment attributes of this service: environment, region and deployment. Set once here
+ * rather than tagged onto every asset this service ingests.
+ *
+ * Deployment attributes of a service, set once on the service rather than tagged onto each
+ * asset it ingests. Policy conditions can match on them to control who sees a service's
+ * assets.
+ */
+export interface ServiceAttributes {
+    /**
+     * Deployment or cluster identifier the source system belongs to, for example
+     * `prod-cluster-01`.
+     */
+    deployment?:  string;
+    environment?: Environment;
+    /**
+     * Geographic region the source system is hosted in, for example `us-east-1` or
+     * `europe-west2`.
+     */
+    region?: string;
+}
+
+/**
+ * Environment the source system runs in. A closed set so policies and filters can rely on
+ * it; use tags on the service for anything outside it.
+ */
+export enum Environment {
+    Development = "Development",
+    Other = "Other",
+    Production = "Production",
+    QA = "QA",
+    Sandbox = "Sandbox",
+    Staging = "Staging",
+    UAT = "UAT",
 }
 
 /**

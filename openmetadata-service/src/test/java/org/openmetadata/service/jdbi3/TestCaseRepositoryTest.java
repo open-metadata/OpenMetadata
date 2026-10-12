@@ -1,27 +1,58 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import jakarta.json.JsonObject;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.tests.type.TestCaseDimensionResult;
+import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.rdf.RdfUpdater;
+import org.openmetadata.service.search.SearchAggregation;
+import org.openmetadata.service.search.SearchListFilter;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 class TestCaseRepositoryTest {
+
+  private static final String TEST_CASE_FQN = "service.database.schema.table.row_count";
+  private static final String ASYNC_DELETE_THREAD_NAME = "om-test-case-async";
 
   @Test
   void readsPersistedTestSuiteRelationshipRevisions() {
@@ -48,6 +79,36 @@ class TestCaseRepositoryTest {
       assertEquals(
           Map.of(firstId, 7L, secondId, 11L),
           TestCaseRepository.getTestSuiteRelationshipRevisions(List.of(firstId, secondId)));
+    }
+  }
+
+  @Test
+  void readsRevisionsThroughTheCallersDaoRatherThanTheGlobalOne() {
+    // A repository writes revisions through the daoCollection it captured at construction and then
+    // reads them straight back. Resolving the mutable Entity.getCollectionDAO() for that read can
+    // land on a different Jdbi's connection, and MySQL pins its REPEATABLE READ snapshot at the
+    // transaction's first read, so the rows just written come back missing.
+    UUID testCaseId = UUID.randomUUID();
+    CollectionDAO callerDAO = mock(CollectionDAO.class);
+    CollectionDAO.EntityExtensionDAO extensionDAO = mock(CollectionDAO.EntityExtensionDAO.class);
+    when(callerDAO.entityExtensionDAO()).thenReturn(extensionDAO);
+    when(extensionDAO.getExtensionBatch(
+            List.of(testCaseId.toString()), TestCaseRepository.TEST_SUITES_REVISION_EXTENSION))
+        .thenReturn(
+            List.of(
+                new CollectionDAO.ExtensionRecordWithId(
+                    testCaseId,
+                    TestCaseRepository.TEST_SUITES_REVISION_EXTENSION,
+                    "{\"revision\":4}")));
+    CollectionDAO globalDAO = mock(CollectionDAO.class);
+
+    try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class)) {
+      entity.when(Entity::getCollectionDAO).thenReturn(globalDAO);
+
+      assertEquals(
+          Map.of(testCaseId, 4L),
+          TestCaseRepository.getTestSuiteRelationshipRevisions(callerDAO, List.of(testCaseId)));
+      verifyNoInteractions(globalDAO);
     }
   }
 
@@ -91,11 +152,253 @@ class TestCaseRepositoryTest {
     }
   }
 
+  @Test
+  void testCaseInheritsTheTestDefinitionDimensionWhenNoneIsGiven() {
+    TestDefinition testDefinition = new TestDefinition().withDataQualityDimension("Accuracy");
+    EntityReference accuracy =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.DATA_QUALITY_DIMENSION)
+            .withName("Accuracy");
+
+    try (MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
+      // The inherited case resolves the test definition's dimension by name, not from a reference.
+      entityMock
+          .when(
+              () ->
+                  Entity.getEntityReferenceByName(
+                      eq(Entity.DATA_QUALITY_DIMENSION), eq("Accuracy"), any()))
+          .thenReturn(accuracy);
+
+      TestCase withoutDimension = new TestCase();
+      TestCaseRepository.setDataQualityDimension(withoutDimension, testDefinition);
+
+      assertEquals(accuracy, withoutDimension.getDataQualityDimension());
+    }
+  }
+
+  @Test
+  void testCaseKeepsItsOwnDimension() {
+    TestDefinition testDefinition = new TestDefinition().withDataQualityDimension("Accuracy");
+    EntityReference timeliness =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.DATA_QUALITY_DIMENSION)
+            .withName("Timeliness");
+
+    try (MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
+      entityMock
+          .when(() -> Entity.getEntityReference(any(EntityReference.class), any()))
+          .thenReturn(timeliness);
+
+      TestCase testCase =
+          new TestCase()
+              .withDataQualityDimension(
+                  new EntityReference()
+                      .withType(Entity.DATA_QUALITY_DIMENSION)
+                      .withFullyQualifiedName("Timeliness"));
+      TestCaseRepository.setDataQualityDimension(testCase, testDefinition);
+
+      assertEquals(timeliness, testCase.getDataQualityDimension());
+    }
+  }
+
+  @Test
+  void testCaseWithoutAnyDimensionKeepsNone() {
+    TestCase noDimension = new TestCase();
+    TestCaseRepository.setDataQualityDimension(noDimension, new TestDefinition());
+
+    assertNull(noDimension.getDataQualityDimension());
+  }
+
+  @Test
+  void hardDeleteCleanupDeletesTestCaseResultsExactlyOnce() {
+    DeleteBoundaries boundaries = new DeleteBoundaries();
+
+    try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class)) {
+      TestCaseRepository repository = boundaries.registerRepositories(entity);
+
+      String callingThread = Thread.currentThread().getName();
+      repository.entitySpecificCleanup(
+          testCase(UUID.randomUUID(), "delete me", entityReference(Entity.TEST_SUITE, "suite")));
+
+      await().atMost(Duration.ofSeconds(5)).until(() -> boundaries.timeSeriesDeletes.get() > 0);
+      // A redundant second delete would push these past one, so the counts must *hold* at one for a
+      // window rather than merely reach it.
+      await()
+          .during(Duration.ofSeconds(1))
+          .atMost(Duration.ofSeconds(5))
+          .untilAsserted(
+              () -> {
+                assertEquals(
+                    1, boundaries.timeSeriesDeletes.get(), "test case result rows deleted");
+                assertEquals(1, boundaries.dimensionDeletes.get(), "dimension result rows deleted");
+                assertEquals(1, boundaries.searchDeletes.get(), "search index deletes issued");
+              });
+      assertTrue(
+          boundaries.deleteThreadNames.stream().noneMatch(callingThread::equals),
+          "delete must be dispatched asynchronously, never run on the calling thread");
+      assertTrue(
+          Thread.getAllStackTraces().keySet().stream()
+              .noneMatch(thread -> ASYNC_DELETE_THREAD_NAME.equals(thread.getName())),
+          "async delete must use the shared AsyncService, not a private thread pool");
+    }
+  }
+
+  @Test
+  void bulkHardDeleteCleanupUsesOneBatchedDelete() {
+    DeleteBoundaries boundaries = new DeleteBoundaries();
+    String secondFqn = TEST_CASE_FQN + "_two";
+
+    try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class)) {
+      TestCaseRepository repository = boundaries.registerRepositories(entity);
+      TestCase first =
+          testCase(UUID.randomUUID(), "first", entityReference(Entity.TEST_SUITE, "s"));
+      TestCase second =
+          testCase(UUID.randomUUID(), "second", entityReference(Entity.TEST_SUITE, "s"))
+              .withFullyQualifiedName(secondFqn);
+
+      repository.bulkEntitySpecificCleanup(List.of(first, second), "admin");
+
+      await().atMost(Duration.ofSeconds(5)).until(() -> boundaries.searchDeletes.get() == 1);
+      assertEquals(List.of(TEST_CASE_FQN, secondFqn), boundaries.deletedTestCaseFQNs.get());
+      assertEquals(1, boundaries.dimensionDeletes.get());
+      assertEquals(1, boundaries.searchDeletes.get());
+      assertEquals(
+          "!doc['testCaseFQN.keyword'].empty && "
+              + "params.fqns.contains(doc['testCaseFQN.keyword'].value)",
+          boundaries.searchDeleteScript.get());
+      assertEquals(
+          Map.of("fqns", List.of(TEST_CASE_FQN, secondFqn)), boundaries.searchDeleteParams.get());
+    }
+  }
+
+  @Test
+  void failingEntitiesAreLookedUpInBatchesAndMatchedExactly() throws Exception {
+    DeleteBoundaries boundaries = new DeleteBoundaries();
+    List<String> fqns = IntStream.range(0, 101).mapToObj(i -> "svc.db.schema.t" + i).toList();
+    Set<String> failing = Set.of("svc.db.schema.t57", "svc.db.schema.t100");
+    List<SearchListFilter> filters = new ArrayList<>();
+    when(boundaries.searchRepository.aggregate(
+            anyString(), eq(Entity.TEST_CASE), any(SearchAggregation.class), any()))
+        .thenAnswer(
+            invocation -> {
+              filters.add(invocation.getArgument(3));
+              return filterCounts(invocation.getArgument(0), failing);
+            });
+
+    try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class)) {
+      TestCaseRepository repository = boundaries.registerRepositories(entity);
+
+      assertEquals(failing, repository.getEntitiesWithFailingTests(fqns, Include.NON_DELETED));
+      assertEquals(2, filters.size(), "101 entities take two batches of at most 100");
+      assertEquals(Include.NON_DELETED, filters.get(0).getInclude());
+
+      filters.clear();
+      repository.getEntitiesWithFailingTests(List.of("svc.db.schema.t1"), Include.ALL);
+      assertEquals(Include.ALL, filters.get(0).getInclude());
+    }
+  }
+
+  @Test
+  void failingTestsQueryKeepsUnusualCharactersInEntityNames() {
+    String fqn = "svc.db.\"quoted.name\".back\\slash";
+
+    JsonNode query = JsonUtils.readTree(TestCaseRepository.failingTestsQuery(List.of(fqn)));
+
+    assertEquals(fqn, query.at("/bool/filter/0/terms/originEntityFQN/0").asText());
+    assertEquals("Failed", query.at("/bool/filter/1/term/testCaseResult.testCaseStatus").asText());
+  }
+
+  @Test
+  void aMissingFilterResultFailsInsteadOfReadingAsNoFailure() {
+    JsonObject empty = JsonUtils.readJson("{}").asJsonObject();
+
+    assertThrows(
+        IllegalStateException.class,
+        () -> TestCaseRepository.entitiesWithFailures(List.of("svc.db.schema.t"), empty));
+  }
+
+  /** A search response with one filter bucket per entity of the query's batch. */
+  private static JsonObject filterCounts(String query, Set<String> failing) {
+    JsonNode batch = JsonUtils.readTree(query).at("/bool/filter/0/terms/originEntityFQN");
+    Map<String, Object> aggregations = new HashMap<>();
+    for (int i = 0; i < batch.size(); i++) {
+      aggregations.put(
+          "filter#entity" + i,
+          Map.of("doc_count", failing.contains(batch.get(i).asText()) ? 1 : 0));
+    }
+    return JsonUtils.readJson(JsonUtils.pojoToJson(aggregations)).asJsonObject();
+  }
+
+  /**
+   * Mocks of the two boundaries a test case result delete reaches — the JDBI DAOs (the database) and
+   * {@link SearchRepository} (the search cluster) — each counting how many times it is called.
+   */
+  private static class DeleteBoundaries {
+    private final AtomicInteger timeSeriesDeletes = new AtomicInteger();
+    private final AtomicInteger dimensionDeletes = new AtomicInteger();
+    private final AtomicInteger searchDeletes = new AtomicInteger();
+    private final AtomicReference<List<String>> deletedTestCaseFQNs = new AtomicReference<>();
+    private final AtomicReference<String> searchDeleteScript = new AtomicReference<>();
+    private final AtomicReference<Map<String, Object>> searchDeleteParams = new AtomicReference<>();
+    private final Set<String> deleteThreadNames = ConcurrentHashMap.newKeySet();
+    private final CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    private final SearchRepository searchRepository = mock(SearchRepository.class);
+
+    private DeleteBoundaries() {
+      CollectionDAO.DataQualityDataTimeSeriesDAO dataQualityDao =
+          mock(CollectionDAO.DataQualityDataTimeSeriesDAO.class);
+      CollectionDAO.TestCaseDimensionResultTimeSeriesDAO dimensionDao =
+          mock(CollectionDAO.TestCaseDimensionResultTimeSeriesDAO.class);
+      when(collectionDAO.testCaseDAO()).thenReturn(mock(CollectionDAO.TestCaseDAO.class));
+      when(collectionDAO.testCaseResultTimeSeriesDao())
+          .thenReturn(mock(CollectionDAO.TestCaseResultTimeSeriesDAO.class));
+      when(collectionDAO.dataQualityDataTimeSeriesDao()).thenReturn(dataQualityDao);
+      when(collectionDAO.testCaseDimensionResultTimeSeriesDao()).thenReturn(dimensionDao);
+      doAnswer(
+              invocation -> {
+                deleteThreadNames.add(Thread.currentThread().getName());
+                List<String> testCaseFQNs = invocation.getArgument(0);
+                deletedTestCaseFQNs.set(List.copyOf(testCaseFQNs));
+                return timeSeriesDeletes.incrementAndGet();
+              })
+          .when(dataQualityDao)
+          .deleteAllBatch(anyList());
+      doAnswer(invocation -> dimensionDeletes.incrementAndGet())
+          .when(dimensionDao)
+          .deleteAllBatch(anyList());
+      doAnswer(
+              invocation -> {
+                searchDeleteScript.set(invocation.getArgument(1));
+                searchDeleteParams.set(Map.copyOf(invocation.getArgument(2)));
+                return searchDeletes.incrementAndGet();
+              })
+          .when(searchRepository)
+          .deleteByScript(eq(Entity.TEST_CASE_RESULT), anyString(), anyMap());
+    }
+
+    private TestCaseRepository registerRepositories(MockedStatic<Entity> entity) {
+      entity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+      entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      entity.when(() -> Entity.getEntityFields(TestCase.class)).thenCallRealMethod();
+      entity.when(() -> Entity.getEntityFields(TestCaseResult.class)).thenCallRealMethod();
+      entity.when(() -> Entity.getEntityFields(TestCaseDimensionResult.class)).thenCallRealMethod();
+      // Built before stubbing starts: its constructor itself drives Mockito, which would otherwise
+      // interleave with the in-progress when(...) call.
+      TestCaseResultRepository testCaseResultRepository = new TestCaseResultRepository();
+      entity
+          .when(() -> Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESULT))
+          .thenReturn(testCaseResultRepository);
+      return new TestCaseRepository();
+    }
+  }
+
   private static TestCase testCase(UUID id, String description, EntityReference basicSuiteRef) {
     return new TestCase()
         .withId(id)
         .withName("row_count")
-        .withFullyQualifiedName("service.database.schema.table.row_count")
+        .withFullyQualifiedName(TEST_CASE_FQN)
         .withDescription(description)
         .withEntityLink("<#E::table::service.database.schema.table>")
         .withTestSuite(basicSuiteRef);

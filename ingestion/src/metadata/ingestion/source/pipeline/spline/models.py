@@ -12,66 +12,64 @@
 Spline connector API response models
 """
 
-from typing import List, Optional  # noqa: UP035
-
 from pydantic import BaseModel, Field
 
 
 class ExecutionEvent(BaseModel):
-    executionEventId: Optional[str] = None  # noqa: N815, UP045
-    executionPlanId: Optional[str] = None  # noqa: N815, UP045
-    applicationName: Optional[str] = None  # noqa: N815, UP045
+    executionEventId: str | None = None  # noqa: N815
+    executionPlanId: str | None = None  # noqa: N815
+    applicationName: str | None = None  # noqa: N815
 
 
 class ExecutionEvents(BaseModel):
-    items: Optional[List[ExecutionEvent]] = []  # noqa: UP006, UP045
-    totalCount: Optional[int] = 0  # noqa: N815, UP045
-    pageNum: Optional[int] = 0  # noqa: N815, UP045
-    pageSize: Optional[int] = 0  # noqa: N815, UP045
+    items: list[ExecutionEvent] | None = []
+    totalCount: int | None = 0  # noqa: N815
+    pageNum: int | None = 0  # noqa: N815
+    pageSize: int | None = 0  # noqa: N815
 
 
 class Inputs(BaseModel):
-    source: Optional[str] = None  # noqa: UP045
+    source: str | None = None
 
 
 class Output(BaseModel):
-    source: Optional[str] = None  # noqa: UP045
+    source: str | None = None
 
 
 class AttributesNames(BaseModel):
-    id: Optional[str] = None  # noqa: UP045
+    id: str | None = None
 
 
 class Extra(BaseModel):
-    attributes: Optional[List[AttributesNames]] = []  # noqa: UP006, UP045
+    attributes: list[AttributesNames] | None = []
 
 
 class ExecutionPlan(BaseModel):
-    id: Optional[str] = Field(None, alias="_id")  # noqa: UP045
-    name: Optional[str] = None  # noqa: UP045
-    inputs: Optional[List[Inputs]] = []  # noqa: UP006, UP045
-    output: Optional[Output] = None  # noqa: UP045
-    extra: Optional[Extra] = None  # noqa: UP045
+    id: str | None = Field(None, alias="_id")
+    name: str | None = None
+    inputs: list[Inputs] | None = []
+    output: Output | None = None
+    extra: Extra | None = None
 
 
 class ExecutionDetail(BaseModel):
-    executionPlan: Optional[ExecutionPlan] = None  # noqa: N815, UP045
+    executionPlan: ExecutionPlan | None = None  # noqa: N815
 
 
 class ColNodes(BaseModel):
-    id: Optional[str] = Field(None, alias="_id")  # noqa: UP045
-    name: Optional[str] = None  # noqa: UP045
+    id: str | None = Field(None, alias="_id")
+    name: str | None = None
 
 
 class ColLineage(BaseModel):
-    source: Optional[str] = None  # noqa: UP045
-    target: Optional[str] = None  # noqa: UP045
+    source: str | None = None
+    target: str | None = None
 
 
 class Lineage(BaseModel):
-    edges: Optional[List[ColLineage]] = []  # noqa: UP006, UP045
-    nodes: Optional[List[ColNodes]] = []  # noqa: UP006, UP045
+    edges: list[ColLineage] | None = []
+    nodes: list[ColNodes] | None = []
 
 
 class AttributeDetail(BaseModel):
-    lineage: Optional[Lineage] = None  # noqa: UP045
+    lineage: Lineage | None = None

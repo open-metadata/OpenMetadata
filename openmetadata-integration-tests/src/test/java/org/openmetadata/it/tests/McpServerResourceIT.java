@@ -46,6 +46,8 @@ import org.openmetadata.schema.entity.ai.McpServerType;
 import org.openmetadata.schema.entity.ai.McpTool;
 import org.openmetadata.schema.entity.ai.McpToolCategory;
 import org.openmetadata.schema.entity.ai.McpTransportType;
+import org.openmetadata.schema.entity.ai.McpUsageMetrics;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 
@@ -77,6 +79,19 @@ public class McpServerResourceIT {
             "/v1/services/mcpServices",
             createService,
             RequestOptions.builder().build());
+  }
+
+  @Test
+  void testNewMcpServerStartsUnprocessed(TestNamespace ns) throws Exception {
+    McpServer created =
+        createMcpServer(
+            new CreateMcpServer()
+                .withName(ns.prefix("draft-mcp-server"))
+                .withServerType(McpServerType.DataAccess)
+                .withTransportType(McpTransportType.Stdio)
+                .withDescription("MCP Server with no registration status"));
+
+    assertEquals(EntityStatus.UNPROCESSED, created.getEntityStatus());
   }
 
   @Test
@@ -143,6 +158,36 @@ public class McpServerResourceIT {
     assertEquals("Test Server", created.getServerInfo().getServerName());
     assertNotNull(created.getCapabilities());
     assertTrue(created.getCapabilities().getToolsSupported());
+  }
+
+  @Test
+  void testPutMcpServerPreservesUsageMetrics(final TestNamespace ns) throws Exception {
+    final McpUsageMetrics usageMetrics = showcaseUsageMetrics();
+    final CreateMcpServer request = usageMetricsRequest(ns, usageMetrics);
+    final McpServer created = updateMcpServer(request);
+    final McpServer updated = updateMcpServer(request);
+    final McpServer fetched = getMcpServer(created.getId().toString());
+    assertEquals(created.getId(), updated.getId());
+    assertEquals(usageMetrics, fetched.getUsageMetrics());
+  }
+
+  private static McpUsageMetrics showcaseUsageMetrics() {
+    return new McpUsageMetrics()
+        .withTotalInvocations(42_100)
+        .withSuccessRate(0.991)
+        .withAverageLatencyMs(145.0)
+        .withP95LatencyMs(310.0)
+        .withLastInvokedAt(1_775_001_600_000L)
+        .withUniqueUsers(128)
+        .withDailyActiveUsers(47);
+  }
+
+  private static CreateMcpServer usageMetricsRequest(
+      final TestNamespace ns, final McpUsageMetrics usageMetrics) {
+    return new CreateMcpServer()
+        .withName(ns.prefix("mcp-usage-metrics"))
+        .withServerType(McpServerType.DataAccess)
+        .withUsageMetrics(usageMetrics);
   }
 
   @Test

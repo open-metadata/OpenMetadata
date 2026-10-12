@@ -75,6 +75,7 @@ jest.mock('../../../common/EntityDescription/Description', () => {
   return jest.fn().mockImplementation(({ onDescriptionUpdate }) => (
     <div>
       Description.component
+      {/* eslint-disable-next-line jsx-a11y/control-has-associated-label -- test mock */}
       <button
         data-testid="update-description-button"
         onClick={() => onDescriptionUpdate('new description')}
@@ -102,8 +103,9 @@ jest.mock('../../../common/ProfilePicture/ProfilePicture', () => {
   return jest.fn().mockImplementation(() => <>testProfilePicture</>);
 });
 
-jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn().mockImplementation(() => <>OwnerLabelComponent</>),
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  Owner: jest.fn().mockReturnValue(<div>OwnerLabelComponent</div>),
 }));
 
 jest.mock('../../../../hooks/useEntityRules', () => ({

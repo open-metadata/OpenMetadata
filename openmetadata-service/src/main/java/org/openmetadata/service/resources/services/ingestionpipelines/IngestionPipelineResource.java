@@ -17,7 +17,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.MetadataOperation.CREATE;
-import static org.openmetadata.sdk.PipelineServiceClientInterface.TYPE_TO_TASK;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.jdbi3.IngestionPipelineRepository.validateProfileSample;
 
@@ -36,6 +35,8 @@ import jakarta.json.JsonPatch;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
@@ -58,8 +59,12 @@ import jakarta.ws.rs.core.UriInfo;
 import jakarta.ws.rs.sse.Sse;
 import jakarta.ws.rs.sse.SseEventSink;
 import java.nio.charset.StandardCharsets;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -68,10 +73,12 @@ import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.configuration.LogStorageConfiguration;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
+import org.openmetadata.schema.api.services.ingestionPipelines.RunIngestionPipelineForEntity;
+import org.openmetadata.schema.entity.services.ingestionPipelines.AgentType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientPlatform;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
-import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
@@ -80,30 +87,34 @@ import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
+import org.openmetadata.sdk.RunOptions;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
+import org.openmetadata.service.jdbi3.IngestionPipelineRepository.ForcedDeleteResult;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.logstorage.LogStorageFactory;
 import org.openmetadata.service.logstorage.LogStorageInterface;
+import org.openmetadata.service.logstorage.stream.IngestionLogStreamFactory;
+import org.openmetadata.service.logstorage.stream.IngestionLogStreamManager;
 import org.openmetadata.service.monitoring.IngestionProgressTracker;
 import org.openmetadata.service.monitoring.MicrometerBundle;
 import org.openmetadata.service.monitoring.StreamableLogsMetrics;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
-import org.openmetadata.service.secrets.SecretsManager;
-import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.resources.services.ingestionpipelines.run.EntityPipelineRunner;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
-import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.AuthRequest;
+import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
+import org.openmetadata.service.util.RestUtil;
 
 // TODO merge with workflows
 @Slf4j
@@ -117,10 +128,18 @@ import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 public class IngestionPipelineResource
     extends EntityResource<IngestionPipeline, IngestionPipelineRepository> {
   private IngestionPipelineMapper mapper;
+  private final EntityPipelineRunner entityPipelineRunner;
   public static final String COLLECTION_PATH = "/v1/services/ingestionPipelines/";
+  static final String SORT_FIELD_DISPLAY_NAME = "displayName";
+  static final String RUNNER_CLEANUP_HEADER = "X-OpenMetadata-Runner-Cleanup";
+  static final String RUNNER_CLEANUP_SKIPPED = "skipped-unavailable";
   private PipelineServiceClientInterface pipelineServiceClient;
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
+  private IngestionLogStreamFactory logStreamFactory;
   static final String FIELDS = "owners,followers";
+  private static final String NO_LOG_BACKEND =
+      "No log backend is configured on this deployment, so ingestion logs cannot be streamed.";
+  private static final String LOG_STREAM_FIELDS = "pipelineStatuses,ingestionRunner";
 
   @Inject private StreamableLogsMetrics streamableLogsMetrics;
   @Inject private IngestionProgressTracker progressTracker;
@@ -134,6 +153,7 @@ public class IngestionPipelineResource
 
   public IngestionPipelineResource(Authorizer authorizer, Limits limits) {
     super(Entity.INGESTION_PIPELINE, authorizer, limits);
+    this.entityPipelineRunner = new EntityPipelineRunner(authorizer, limits, repository);
   }
 
   @Override
@@ -144,6 +164,7 @@ public class IngestionPipelineResource
         PipelineServiceClientFactory.createPipelineServiceClient(
             config.getPipelineServiceClientConfiguration());
     repository.setPipelineServiceClient(pipelineServiceClient);
+    this.logStreamFactory = new IngestionLogStreamFactory(repository, pipelineServiceClient);
 
     // Initialize log storage - always initialize with at least DefaultLogStorage
     LogStorageConfiguration logStorageConfig =
@@ -195,6 +216,7 @@ public class IngestionPipelineResource
     return listOf(
         MetadataOperation.CREATE_INGESTION_PIPELINE_AUTOMATOR,
         MetadataOperation.EDIT_INGESTION_PIPELINE_STATUS,
+        MetadataOperation.DEPLOY,
         MetadataOperation.TRIGGER);
   }
 
@@ -225,15 +247,34 @@ public class IngestionPipelineResource
   /**
    * Dynamically get the MetadataOperation based on the pipelineType (or application Type).
    * E.g., for the Automator, the Operation will be `CREATE_INGESTION_PIPELINE_AUTOMATOR`.
+   *
+   * <p>Deriving the workflow type is part of the lookup, not a precondition of it: an application
+   * pipeline can reach here with no `appConfig` to read the type from, and that has to fall back to
+   * the generic create permission like any other unrecognized type rather than fail the request.
    */
   private MetadataOperation getOperationForPipelineType(IngestionPipeline ingestionPipeline) {
-    String pipelineType = IngestionPipelineRepository.getPipelineWorkflowType(ingestionPipeline);
+    MetadataOperation operation = CREATE;
     try {
-      return MetadataOperation.valueOf(
-          String.format("CREATE_INGESTION_PIPELINE_%s", pipelineType.toUpperCase()));
+      String pipelineType = IngestionPipelineRepository.getPipelineWorkflowType(ingestionPipeline);
+      operation =
+          MetadataOperation.valueOf(
+              String.format("CREATE_INGESTION_PIPELINE_%s", pipelineType.toUpperCase(Locale.ROOT)));
     } catch (IllegalArgumentException | NullPointerException e) {
-      return CREATE;
+      LOG.debug(
+          "No specific create operation for ingestion pipeline [{}], falling back to {}",
+          ingestionPipeline.getName(),
+          CREATE);
     }
+    return operation;
+  }
+
+  // Sorting is optional and lenient: only `displayName` is supported, and any other value (or none)
+  // falls through to the default name-ordered listing rather than erroring. The repository reads
+  // the
+  // sort off the filter and swaps in the display-name keyset query, so the resource keeps a single
+  // listInternal path — auth, domain filter and cursor validation are shared, not forked.
+  private boolean isDisplayNameSort(String sortField) {
+    return SORT_FIELD_DISPLAY_NAME.equalsIgnoreCase(sortField);
   }
 
   @GET
@@ -278,6 +319,13 @@ public class IngestionPipelineResource
           @QueryParam("pipelineType")
           String pipelineType,
       @Parameter(
+              description =
+                  "Filter Ingestion Pipelines by agent type. Expands to the set of `pipelineType` "
+                      + "values that make up the group, and is intersected with `pipelineType` when both are given.",
+              schema = @Schema(implementation = AgentType.class))
+          @QueryParam("agentType")
+          AgentType agentType,
+      @Parameter(
               description = "Filter Ingestion Pipelines by service Type",
               schema = @Schema(type = "string", example = "messagingService"))
           @QueryParam("serviceType")
@@ -313,15 +361,38 @@ public class IngestionPipelineResource
               description = "List Ingestion Pipelines by provider..",
               schema = @Schema(implementation = ProviderType.class))
           @QueryParam("provider")
-          ProviderType provider) {
+          ProviderType provider,
+      @Parameter(
+              description =
+                  "Optionally order the list by a field instead of the default `name`. Only "
+                      + "`displayName` is supported — it orders by the effective display name "
+                      + "(`displayName` falling back to `name`), the value clients render. Any other "
+                      + "value (or none) falls through to the default `name` ordering rather than "
+                      + "erroring.",
+              schema = @Schema(type = "string", allowableValues = SORT_FIELD_DISPLAY_NAME))
+          @QueryParam("sortField")
+          String sortField,
+      @Parameter(
+              description = "Direction to apply to `sortField`.",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"asc", "desc"}))
+          @QueryParam("sortOrder")
+          @DefaultValue("asc")
+          String sortOrder) {
     ListFilter filter =
         new ListFilter(include)
             .addQueryParam("service", serviceParam)
-            .addQueryParam("pipelineType", pipelineType)
+            .addQueryParam(
+                "pipelineType", AgentTypeResolver.resolvePipelineTypes(agentType, pipelineType))
             .addQueryParam("serviceType", serviceType)
             .addQueryParam("testSuite", testSuiteParam)
             .addQueryParam("applicationType", applicationType)
             .addQueryParam("provider", provider == null ? null : provider.value());
+    if (isDisplayNameSort(sortField)) {
+      filter.withSort(SORT_FIELD_DISPLAY_NAME, sortOrder);
+    }
     ResultList<IngestionPipeline> ingestionPipelines =
         super.listInternal(
             uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
@@ -360,9 +431,7 @@ public class IngestionPipelineResource
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "string"))
           UUID userId) {
-    return repository
-        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return addFollowerInternal(securityContext, id, userId);
   }
 
   @DELETE
@@ -390,9 +459,7 @@ public class IngestionPipelineResource
               schema = @Schema(type = "string"))
           @PathParam("userId")
           String userId) {
-    return repository
-        .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
-        .toResponse();
+    return deleteFollowerInternal(securityContext, id, UUID.fromString(userId));
   }
 
   @GET
@@ -694,6 +761,7 @@ public class IngestionPipelineResource
           @PathParam("id")
           UUID id,
       @Context SecurityContext securityContext) {
+    authorizePipelineOperation(securityContext, id, MetadataOperation.DEPLOY);
     return deployPipelineInternal(id, uriInfo, securityContext);
   }
 
@@ -717,7 +785,10 @@ public class IngestionPipelineResource
   public List<PipelineServiceClientResponse> bulkDeployIngestion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Valid List<UUID> pipelineIdList) {
+      @NotNull @Valid List<UUID> pipelineIdList) {
+    validateBulkDeployPipelineIds(pipelineIdList);
+    pipelineIdList.forEach(
+        id -> authorizePipelineOperation(securityContext, id, MetadataOperation.DEPLOY));
 
     return pipelineIdList.stream()
         .map(
@@ -734,6 +805,19 @@ public class IngestionPipelineResource
               }
             })
         .collect(Collectors.toList());
+  }
+
+  private static void validateBulkDeployPipelineIds(List<UUID> pipelineIds) {
+    if (nullOrEmpty(pipelineIds)) {
+      throw new BadRequestException("pipeline IDs must not be empty");
+    }
+    if (pipelineIds.stream().anyMatch(Objects::isNull)) {
+      throw new BadRequestException("pipeline IDs must not contain null values");
+    }
+    Set<UUID> uniquePipelineIds = new HashSet<>(pipelineIds);
+    if (uniquePipelineIds.size() != pipelineIds.size()) {
+      throw new BadRequestException("pipeline IDs must not contain duplicates");
+    }
   }
 
   @POST
@@ -758,7 +842,40 @@ public class IngestionPipelineResource
           @PathParam("id")
           UUID id,
       @Context SecurityContext securityContext) {
-    return triggerPipelineInternal(id, uriInfo, securityContext, null);
+    return triggerPipelineInternal(id, uriInfo, securityContext);
+  }
+
+  @POST
+  @Path("/run")
+  @Operation(
+      operationId = "runIngestionPipelineForEntity",
+      summary = "Run the pipeline that owns an entity, scoped to that entity",
+      description =
+          "Run the enabled, deployed pipeline of the given type that owns the linked entity, scoped"
+              + " so that it processes only that entity: a test suite pipeline for a test case, or a"
+              + " profiler, metadata or auto classification pipeline for a table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Run request accepted by the pipeline service",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PipelineServiceClientResponse.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description =
+                "The pipeline type cannot be run scoped to the linked entity, or the scope is not"
+                    + " safe for its pipeline"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "The entity, or an enabled, deployed pipeline of the type that owns it")
+      })
+  public PipelineServiceClientResponse runIngestionPipelineForEntity(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid RunIngestionPipelineForEntity request) {
+    return entityPipelineRunner.run(uriInfo, securityContext, request);
   }
 
   @POST
@@ -783,6 +900,8 @@ public class IngestionPipelineResource
           @PathParam("id")
           UUID id,
       @Context SecurityContext securityContext) {
+    authorizePipelineOperation(
+        securityContext, id, MetadataOperation.EDIT_INGESTION_PIPELINE_STATUS);
     Fields fields = getFields(FIELD_OWNERS);
     IngestionPipeline pipeline = repository.get(uriInfo, id, fields);
     // This call updates the state in Airflow as well as the `enabled` field on the
@@ -792,7 +911,9 @@ public class IngestionPipelineResource
     }
     decryptOrNullify(securityContext, pipeline, true);
     pipelineServiceClient.toggleIngestion(pipeline);
-    Response response = createOrUpdate(uriInfo, securityContext, pipeline);
+    Response response =
+        createOrUpdateAfterPipelineOperation(
+            uriInfo, securityContext, pipeline, MetadataOperation.EDIT_INGESTION_PIPELINE_STATUS);
     decryptOrNullify(securityContext, (IngestionPipeline) response.getEntity(), false);
     return response;
   }
@@ -868,8 +989,11 @@ public class IngestionPipelineResource
   public PipelineServiceClientResponse getRESTStatus(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     if (pipelineServiceClient == null) {
+      // `platform` is required by the response schema, and on a 200 it is the only thing that tells
+      // the UI there is no client behind the deploy and run actions it offers.
       return new PipelineServiceClientResponse()
           .withCode(200)
+          .withPlatform(PipelineServiceClientPlatform.DISABLED.value())
           .withReason("Pipeline Client Disabled");
     }
     return pipelineServiceClient.getServiceStatus();
@@ -883,6 +1007,8 @@ public class IngestionPipelineResource
       description = "Delete an ingestion pipeline by `Id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "400", description = "Force requires hardDelete=true"),
+        @ApiResponse(responseCode = "403", description = "Force requires administrator access"),
         @ApiResponse(responseCode = "404", description = "Ingestion for instance {id} is not found")
       })
   public Response delete(
@@ -892,10 +1018,57 @@ public class IngestionPipelineResource
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
+      @Parameter(
+              description =
+                  "Allow an administrator to hard-delete metadata when the ingestion runner is unavailable. "
+                      + "The external workflow might require manual cleanup. (Default = `false`)")
+          @QueryParam("force")
+          @DefaultValue("false")
+          boolean force,
       @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, false, hardDelete);
+    Response response =
+        force
+            ? forceDelete(uriInfo, securityContext, id, hardDelete)
+            : delete(uriInfo, securityContext, id, false, hardDelete);
+    return response;
+  }
+
+  private Response forceDelete(
+      UriInfo uriInfo, SecurityContext securityContext, UUID id, boolean hardDelete) {
+    authorizeForceDelete(securityContext, id);
+    validateForceDelete(hardDelete);
+    String userName = securityContext.getUserPrincipal().getName();
+    ForcedDeleteResult result = repository.forceDelete(userName, id);
+    limits.invalidateCache(entityType);
+    addHref(uriInfo, result.response().entity());
+    return toForceDeleteResponse(result);
+  }
+
+  private void authorizeForceDelete(SecurityContext securityContext, UUID id) {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
+    authorizer.authorize(
+        securityContext,
+        operationContext,
+        getResourceContextById(id, ResourceContext.Operation.DELETE));
+    authorizer.authorizeAdmin(securityContext);
+  }
+
+  static void validateForceDelete(boolean hardDelete) {
+    if (!hardDelete) {
+      throw new BadRequestException(
+          "Force deleting an ingestion pipeline requires hardDelete=true");
+    }
+  }
+
+  private Response toForceDeleteResponse(ForcedDeleteResult result) {
+    RestUtil.DeleteResponse<IngestionPipeline> deleteResponse = result.response();
+    Response.ResponseBuilder responseBuilder = Response.fromResponse(deleteResponse.toResponse());
+    if (result.wasRunnerCleanupSkipped()) {
+      responseBuilder.header(RUNNER_CLEANUP_HEADER, RUNNER_CLEANUP_SKIPPED);
+    }
+    return responseBuilder.build();
   }
 
   @DELETE
@@ -1027,8 +1200,7 @@ public class IngestionPipelineResource
       return Response.status(200).entity("Pipeline Client Disabled").build();
     }
     IngestionPipeline ingestionPipeline =
-        getIngestionPipelineByIdOrName(
-            uriInfo, securityContext, id, "pipelineStatuses,ingestionRunner");
+        getIngestionPipelineByIdOrName(uriInfo, securityContext, id, LOG_STREAM_FIELDS);
     Map<String, String> lastIngestionLogs;
     boolean useStreamableLogs =
         ingestionPipeline.getEnableStreamableLogs()
@@ -1044,6 +1216,12 @@ public class IngestionPipelineResource
         Map<String, Object> lastIngestionLogsMap =
             repository.getLogs(
                 ingestionPipeline.getFullyQualifiedName(), UUID.fromString(runId), after, limit);
+        Object logError = lastIngestionLogsMap.get(PipelineServiceClientInterface.LOGS_ERROR_KEY);
+        if (logError != null) {
+          return Response.status(Response.Status.SERVICE_UNAVAILABLE)
+              .entity(Map.of(PipelineServiceClientInterface.LOGS_ERROR_KEY, logError))
+              .build();
+        }
         lastIngestionLogs =
             lastIngestionLogsMap.entrySet().stream()
                 .filter(entry -> entry.getValue() != null)
@@ -1051,7 +1229,9 @@ public class IngestionPipelineResource
         Object logs = lastIngestionLogs.remove("logs");
         if (logs != null) {
           lastIngestionLogs.put(
-              TYPE_TO_TASK.get(ingestionPipeline.getPipelineType().toString()), logs.toString());
+              PipelineServiceClientInterface.taskKeyOf(
+                  ingestionPipeline.getPipelineType().toString()),
+              logs.toString());
         }
       } else {
         throw new PipelineServiceClientException(
@@ -1060,6 +1240,12 @@ public class IngestionPipelineResource
     } else {
       // Get the logs from the service client
       lastIngestionLogs = pipelineServiceClient.getLastIngestionLogs(ingestionPipeline, after);
+      String logError = lastIngestionLogs.get(PipelineServiceClientInterface.LOGS_ERROR_KEY);
+      if (logError != null) {
+        return Response.status(Response.Status.SERVICE_UNAVAILABLE)
+            .entity(Map.of(PipelineServiceClientInterface.LOGS_ERROR_KEY, logError))
+            .build();
+      }
     }
 
     return Response.ok(lastIngestionLogs, MediaType.APPLICATION_JSON_TYPE).build();
@@ -1097,8 +1283,7 @@ public class IngestionPipelineResource
     // like getLastIngestionLogs. The streaming body below runs after this method returns, so its
     // failures were never caught here anyway.
     IngestionPipeline ingestionPipeline =
-        getIngestionPipelineByIdOrName(
-            uriInfo, securityContext, id, "pipelineStatuses,ingestionRunner");
+        getIngestionPipelineByIdOrName(uriInfo, securityContext, id, LOG_STREAM_FIELDS);
 
     String filename =
         String.format(
@@ -1140,15 +1325,27 @@ public class IngestionPipelineResource
                       .collect(
                           Collectors.toMap(
                               Map.Entry::getKey, entry -> entry.getValue().toString()));
+              String logError = logChunk.get(PipelineServiceClientInterface.LOGS_ERROR_KEY);
+              if (logError != null) {
+                throw new PipelineServiceClientException(logError);
+              }
               Object logs = logChunk.remove("logs");
               if (logs != null) {
                 logChunk.put(
-                    TYPE_TO_TASK.get(ingestionPipeline.getPipelineType().toString()),
+                    PipelineServiceClientInterface.taskKeyOf(
+                        ingestionPipeline.getPipelineType().toString()),
                     logs.toString());
               }
             } else {
               // Get the logs from the service client
               logChunk = pipelineServiceClient.getLastIngestionLogs(ingestionPipeline, cursor);
+              String logError =
+                  logChunk == null
+                      ? null
+                      : logChunk.get(PipelineServiceClientInterface.LOGS_ERROR_KEY);
+              if (logError != null) {
+                throw new PipelineServiceClientException(logError);
+              }
             }
 
             if (logChunk == null || logChunk.isEmpty()) {
@@ -1204,6 +1401,9 @@ public class IngestionPipelineResource
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_INGESTION_PIPELINE_STATUS);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
+    // triggeredBy is an audit field recorded from the trigger request itself; whoever reports
+    // run progress must not be able to set it or change it.
+    pipelineStatus.setTriggeredBy(null);
     return repository.addPipelineStatus(uriInfo, fqn, pipelineStatus).toResponse();
   }
 
@@ -1367,70 +1567,58 @@ public class IngestionPipelineResource
     PipelineServiceClientResponse status =
         repository.deployIngestionPipeline(ingestionPipeline, service);
     if (status.getCode() == 200) {
-      createOrUpdate(uriInfo, securityContext, ingestionPipeline);
+      createOrUpdateAfterPipelineOperation(
+          uriInfo, securityContext, ingestionPipeline, MetadataOperation.DEPLOY);
     }
     return status;
   }
 
+  private void authorizePipelineOperation(
+      SecurityContext securityContext, UUID id, MetadataOperation operation) {
+    authorizer.authorizeRequests(
+        securityContext, getPipelineOperationAuthRequests(id, operation), AuthorizationLogic.ANY);
+  }
+
+  // Preserve existing EditAll access while allowing roles to grant only the scoped action.
+  private List<AuthRequest> getPipelineOperationAuthRequests(UUID id, MetadataOperation operation) {
+    ResourceContext<IngestionPipeline> resourceContext = getResourceContextById(id);
+    return List.of(
+        new AuthRequest(new OperationContext(entityType, operation), resourceContext),
+        new AuthRequest(
+            new OperationContext(entityType, MetadataOperation.EDIT_ALL), resourceContext));
+  }
+
+  private Response createOrUpdateAfterPipelineOperation(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      IngestionPipeline ingestionPipeline,
+      MetadataOperation operation) {
+    return createOrUpdate(
+        uriInfo,
+        securityContext,
+        getPipelineOperationAuthRequests(ingestionPipeline.getId(), operation),
+        AuthorizationLogic.ANY,
+        ingestionPipeline);
+  }
+
   public PipelineServiceClientResponse triggerPipelineInternal(
-      UUID id, UriInfo uriInfo, SecurityContext securityContext, String botName) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.TRIGGER);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    if (pipelineServiceClient == null) {
-      return new PipelineServiceClientResponse()
-          .withCode(200)
-          .withReason("Pipeline Client Disabled");
-    }
-    Fields fields = getFields(FIELD_OWNERS);
-    IngestionPipeline ingestionPipeline = repository.get(uriInfo, id, fields);
-    CreateResourceContext<IngestionPipeline> createResourceContext =
-        new CreateResourceContext<>(entityType, ingestionPipeline);
-    limits.enforceLimits(securityContext, createResourceContext, operationContext);
-    if (CommonUtil.nullOrEmpty(botName)) {
-      // Use Default Ingestion Bot
-      ingestionPipeline.setOpenMetadataServerConnection(
-          new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build());
-    } else {
-      ingestionPipeline.setOpenMetadataServerConnection(
-          new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, botName).build());
-    }
+      UUID id, UriInfo uriInfo, SecurityContext securityContext) {
+    // FIELD_OWNERS is read because both checks in authorizeTrigger can be conditioned on owners.
+    IngestionPipeline ingestionPipeline = repository.get(uriInfo, id, getFields(FIELD_OWNERS));
+    IngestionPipelineTriggers.authorizeTrigger(
+        authorizer, limits, securityContext, ingestionPipeline);
     decryptOrNullify(securityContext, ingestionPipeline, true);
-    ServiceEntityInterface service =
-        Entity.getEntity(ingestionPipeline.getService(), "ingestionRunner", Include.NON_DELETED);
-    return pipelineServiceClient.runPipeline(ingestionPipeline, service);
+    return repository.runIngestionPipeline(uriInfo, ingestionPipeline, RunOptions.NONE);
   }
 
   private void decryptOrNullify(
       SecurityContext securityContext, IngestionPipeline ingestionPipeline, boolean forceNotMask) {
-    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
-    try {
-      authorizer.authorize(
-          securityContext,
-          new OperationContext(entityType, MetadataOperation.VIEW_ALL),
-          getResourceContextById(ingestionPipeline.getId()));
-    } catch (AuthorizationException e) {
-      ingestionPipeline.getSourceConfig().setConfig(null);
-    }
-    secretsManager.decryptIngestionPipeline(ingestionPipeline);
-
-    // SECURITY: Only include OpenMetadataServerConnection for deploy operations
-    // (forceNotMask=true).
-    // The connection contains the bot's JWT token which should NOT be exposed in GET/LIST
-    // responses.
-    // For API responses, we nullify this field to prevent token leakage.
-    if (forceNotMask) {
-      OpenMetadataConnection openMetadataServerConnection =
-          new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, ingestionPipeline)
-              .build();
-      ingestionPipeline.setOpenMetadataServerConnection(
-          secretsManager.encryptOpenMetadataConnection(openMetadataServerConnection, false));
-    } else {
-      ingestionPipeline.setOpenMetadataServerConnection(null);
-    }
-
-    if (authorizer.shouldMaskPasswords(securityContext) && !forceNotMask) {
-      EntityMaskerFactory.getEntityMasker().maskIngestionPipeline(ingestionPipeline);
-    }
+    IngestionPipelineSecrets.decryptOrNullify(
+        authorizer,
+        securityContext,
+        openMetadataApplicationConfig,
+        ingestionPipeline,
+        forceNotMask);
   }
 
   @POST
@@ -1663,46 +1851,57 @@ public class IngestionPipelineResource
 
   @GET
   @Path("/logs/{fqn}/stream/{runId}")
-  @Produces("text/event-stream")
+  @Produces(MediaType.SERVER_SENT_EVENTS)
   @Operation(
       operationId = "streamPipelineLogs",
       summary = "Stream logs for a pipeline run",
-      description = "Stream logs in real-time for a specific pipeline run using Server-Sent Events",
+      description =
+          "Tail a pipeline run's logs over Server-Sent Events so a client renders them as they are "
+              + "produced instead of polling. Reads from whichever backend holds the run's log — "
+              + "object storage when streamable logs are enabled for the pipeline, the pipeline "
+              + "service otherwise. Every event carries an `after` cursor; reconnect with "
+              + "`?after=<cursor>` to resume without re-reading what was already delivered. The "
+              + "server closes the stream with a `complete` event once the run finishes, and all "
+              + "viewers of the same run share a single reader against the log backend.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "Log stream",
-            content = @Content(mediaType = "text/event-stream")),
-        @ApiResponse(responseCode = "404", description = "Pipeline or logs not found")
+            description =
+                "Log stream of `logs`, `complete` and `error` events. A deployment with no log "
+                    + "backend, or a server at its stream capacity, answers on the stream itself "
+                    + "with a single `error` event.",
+            content = @Content(mediaType = MediaType.SERVER_SENT_EVENTS)),
+        @ApiResponse(responseCode = "404", description = "Ingestion pipeline not found")
       })
-  public Response streamPipelineLogs(
+  public void streamPipelineLogs(
+      @Context SseEventSink eventSink,
+      @Context Sse sse,
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
-              description = "Fully qualified name of the ingestion pipeline",
+              description = "Id (UUID) or fullyQualifiedName of the ingestion pipeline",
               schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn,
-      @Parameter(description = "Run ID", schema = @Schema(type = "string")) @PathParam("runId")
-          UUID runId) {
-    try {
-      // Validate that the pipeline exists first
-      IngestionPipeline pipeline =
-          getByNameInternal(uriInfo, securityContext, fqn, "", Include.NON_DELETED);
-
-      // Authorize the request
-      OperationContext operationContext =
-          new OperationContext(entityType, MetadataOperation.VIEW_ALL);
-      authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-
-      // Stream logs using the repository's log storage
-      return repository.streamLogs(fqn, runId);
-    } catch (Exception e) {
-      LOG.error("Failed to stream logs for pipeline: {}, runId: {}", fqn, runId, e);
-      return Response.status(Response.Status.NOT_FOUND)
-          .entity(Map.of("message", e.getMessage()))
-          .type(MediaType.APPLICATION_JSON_TYPE)
-          .build();
+      @Parameter(
+              description =
+                  "Run to stream. A UUID for a run whose logs are in object storage, or the "
+                      + "pipeline service's own run identifier.",
+              schema = @Schema(type = "string"))
+          @PathParam("runId")
+          String runId,
+      @Parameter(
+              description = "Resume the stream after this cursor, as returned by a previous event",
+              schema = @Schema(type = "string"))
+          @QueryParam("after")
+          String after) {
+    IngestionPipeline pipeline =
+        getIngestionPipelineByIdOrName(uriInfo, securityContext, fqn, LOG_STREAM_FIELDS);
+    IngestionLogStreamManager streams = IngestionLogStreamManager.getInstance();
+    if (logStreamFactory.hasLogBackend()) {
+      streams.stream(logStreamFactory.request(pipeline, runId, after), eventSink, sse);
+    } else {
+      streams.refuse(eventSink, sse, runId, NO_LOG_BACKEND);
     }
   }
 

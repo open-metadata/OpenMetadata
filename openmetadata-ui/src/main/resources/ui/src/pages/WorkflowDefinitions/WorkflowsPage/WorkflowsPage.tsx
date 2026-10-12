@@ -16,19 +16,25 @@ import {
   Button,
   EmptyPlaceholder,
   Input,
+  PageLayout,
   SlideoutMenu,
   TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { CursorClick01, Plus, Settings01, ZapFast } from '@untitledui/icons';
+import {
+  CursorClick01,
+  Plus,
+  Settings01,
+  ZapFast,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as WorkflowIcon } from '../../../assets/svg/workflow.svg';
 import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { getGlossaryHomeCrumb } from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
-import HeaderShell from '../../../components/common/HeaderShell/HeaderShell.component';
 import Loader from '../../../components/common/Loader/Loader';
 import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
@@ -307,18 +313,17 @@ const WorkflowsPage = () => {
   return (
     <PageLayoutV1
       fullHeight
-      className="workflow-page"
+      className={classNames('workflow-page', { 'tw:!px-0': !isAiMode })}
       mainContainerClassName="workflow-page-layout"
-      pageContainerStyle={{
-        paddingLeft: 0,
-        paddingRight: 0,
-        ...(isAiMode ? { paddingBottom: 0, height: 'calc(100vh - 16px)' } : {}),
-      }}
       pageTitle={t('label.workflow-plural')}
       variant={isAiMode ? 'compact' : 'default'}>
-      <div className="tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:mx-2 tw:gap-4">
+      <div
+        className={classNames(
+          'tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:gap-4',
+          { 'tw:mx-2': !isAiMode }
+        )}>
         {isAiMode ? (
-          <HeaderShell
+          <PageLayout.PageHeader
             actions={createWorkflowButton}
             badge={<LearningIcon pageId={LEARNING_PAGE_IDS.WORKFLOWS} />}
             breadcrumb={
@@ -332,13 +337,12 @@ const WorkflowsPage = () => {
               />
             }
             className="tw:mb-0!"
-            padding="comfortable"
             subtitle={t('message.workflow-subtitle')}
             title={t('label.workflow-plural')}
             variant="gradient"
           />
         ) : (
-          <div className="tw:px-6 tw:py-4 tw:bg-primary tw:rounded-xl tw:border tw:border-border-secondary">
+          <div className="tw:px-6 tw:py-4 tw:bg-surface tw:rounded-xl tw:border tw:border-border-secondary">
             <div className="tw:flex tw:items-center tw:justify-between">
               <PageHeader
                 data={{
@@ -356,8 +360,11 @@ const WorkflowsPage = () => {
         {isWorkflowsEmpty ? (
           emptyPlaceholder
         ) : (
-          <div className="tw:flex tw:flex-1 tw:min-h-0 tw:flex-col">
-            <div className="tw:flex-1 tw:min-h-0 tw:overflow-y-auto tw:rounded-t-xl tw:border-x tw:border-t tw:border-border-secondary tw:bg-primary tw:px-6 tw:pt-4">
+          <div
+            className={classNames('tw:flex tw:flex-1 tw:min-h-0 tw:flex-col', {
+              'tw:mx-2': isAiMode,
+            })}>
+            <div className="tw:flex-1 tw:min-h-0 tw:overflow-y-auto tw:pt-4">
               <div className="tw:grid tw:grid-cols-1 tw:sm:grid-cols-2 tw:lg:grid-cols-3 tw:gap-5 tw:pb-4">
                 {workflows.map((workflow) => (
                   <WorkflowCard
@@ -368,9 +375,7 @@ const WorkflowsPage = () => {
                 ))}
               </div>
             </div>
-            <div
-              className="tw:rounded-b-xl tw:border-x tw:border-b tw:border-border-secondary tw:bg-primary tw:px-6 tw:py-3"
-              data-testid="workflows-pagination">
+            <div className="tw:py-3" data-testid="workflows-pagination">
               <NextPrevious
                 currentPage={currentPage}
                 isLoading={loading}

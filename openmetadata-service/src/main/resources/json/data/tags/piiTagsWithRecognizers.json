@@ -233,7 +233,7 @@
             "patterns": [
               {
                 "name": "cvv_pattern",
-                "regex": "\\b\\d{3,4}\\b",
+                "regex": "\\A\\d{3,4}\\Z",
                 "score": 0.5
               }
             ],

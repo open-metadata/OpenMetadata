@@ -68,7 +68,7 @@ const ArchiveRow: FC<ArchiveRowProps> = ({
   return (
     <Box
       align="center"
-      className="tw:px-4 tw:py-3 tw:border-b tw:border-secondary tw:last:border-0"
+      className="tw:px-4 tw:py-3 tw:border-b tw:border-secondary"
       data-testid={`archive-row-${item.id}`}
       gap={4}>
       <FileIcon
@@ -151,9 +151,11 @@ const ArchiveView: FC<ArchiveViewProps> = ({
   if (isLoading) {
     return (
       <Card className="tw:flex tw:flex-col">
-        {Array.from({ length: 8 }).map((_, idx) => (
-          <ArchiveRowSkeleton key={idx} />
-        ))}
+        {Array.from({ length: 8 }, (_, idx) => `archive-skeleton-${idx}`).map(
+          (skeletonKey) => (
+            <ArchiveRowSkeleton key={skeletonKey} />
+          )
+        )}
       </Card>
     );
   }

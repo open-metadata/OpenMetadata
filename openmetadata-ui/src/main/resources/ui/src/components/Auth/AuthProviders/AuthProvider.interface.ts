@@ -33,10 +33,19 @@ export type OidcUser = {
 export interface AuthenticatorRef {
   invokeLogin: () => void;
   invokeLogout: () => Promise<void>;
+  // Legacy renewer method — kept on the ref for existing callers that
+  // still fire it manually. Silent-refresh no longer goes through this;
+  // it flows via AuthCoordinator, which each authenticator registers with
+  // from its own mount effect.
   renewIdToken: () =>
     | Promise<string>
     | Promise<AccessTokenResponse>
     | Promise<void>;
+  // Top-level redirect to the identity provider with prompt=none, used when
+  // the renewer throws ReauthRequiredError. While the provider session is
+  // alive it comes back signed in without user interaction. Absent for
+  // providers with no identity provider session to lean on (Basic, LDAP).
+  invokeSilentReauth?: () => Promise<void>;
 }
 
 export interface IAuthContext {
@@ -54,8 +63,4 @@ export interface IAuthContext {
   jwtPrincipalClaimsMapping: string[];
 }
 
-export type AuthenticationConfigurationWithScope =
-  AuthenticationConfiguration & {
-    responseType?: string;
-    scope: string;
-  };
+export type { AuthenticationConfigurationWithScope } from '../../../interface/auth.interface';

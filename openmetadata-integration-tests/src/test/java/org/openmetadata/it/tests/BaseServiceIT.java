@@ -35,7 +35,7 @@ import org.openmetadata.service.util.TestUtils;
  * @param <T> The service entity type (e.g., DatabaseService, DashboardService)
  * @param <K> The create request type (e.g., CreateDatabaseService)
  */
-public abstract class BaseServiceIT<T extends EntityInterface, K extends CreateEntity>
+public abstract class BaseServiceIT<T extends EntityInterface<?>, K extends CreateEntity>
     extends BaseEntityIT<T, K> {
 
   // Services typically don't support patch, don't have search indices, and don't need tag testing
@@ -49,6 +49,18 @@ public abstract class BaseServiceIT<T extends EntityInterface, K extends CreateE
   @Override
   protected String getResourcePath() {
     return "/v1/services/" + TestUtils.plurializeEntityType(getEntityType()) + "/";
+  }
+
+  @Test
+  void test_hrefUsesOwnCollectionPath(TestNamespace ns) {
+    T service = createEntity(createMinimalRequest(ns));
+
+    assertNotNull(service.getHref(), "Service href must be set");
+    assertTrue(
+        service.getHref().getPath().endsWith(getResourcePath() + service.getId()),
+        String.format(
+            "%s href '%s' must live under '%s'",
+            getEntityType(), service.getHref(), getResourcePath()));
   }
 
   @Test

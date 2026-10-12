@@ -12,7 +12,7 @@
  */
 @import (reference) '../../../styles/variables.less';
 
-@border-color: #0000001a;
+@border-color: var(--om-legacy-color-0-0-0-0-102);
 
 .knowledge-center-layout {
   flex: 1;
@@ -70,8 +70,8 @@
   position: absolute;
   top: 8px;
   right: -18px;
-  padding: 4px 8px;
-  z-index: 10;
+  padding: var(--om-space-4) var(--om-space-8);
+  z-index: var(--om-z-10);
   background: white;
 
   .collapse-icon {
@@ -90,12 +90,12 @@
   top: 8px;
   right: auto;
   left: -30px;
-  padding: 4px 16px;
-  z-index: 10;
+  padding: var(--om-space-4) var(--om-space-16);
+  z-index: var(--om-z-10);
   background: white;
 
   .collapse-icon {
-    margin-left: 4px;
+    margin-left: var(--om-space-4);
     width: 20px;
   }
 
@@ -120,8 +120,8 @@
   position: absolute;
   top: 8px;
   left: -18px;
-  padding: 4px 8px;
-  z-index: 10;
+  padding: var(--om-space-4) var(--om-space-8);
+  z-index: var(--om-z-10);
   background: white;
 
   .collapse-icon {
@@ -140,12 +140,12 @@
   top: 8px;
   left: auto;
   right: -22px;
-  padding: 4px 12px;
-  z-index: 10;
+  padding: var(--om-space-4) var(--om-space-12);
+  z-index: var(--om-z-10);
   background: white;
 
   .collapse-icon {
-    margin-left: 4px;
+    margin-left: var(--om-space-4);
     width: 20px;
   }
 
@@ -174,7 +174,7 @@ div[dir='rtl']#knowledge-center-layout-container {
       right: -16px;
 
       .collapse-icon {
-        margin-right: 4px;
+        margin-right: var(--om-space-4);
       }
     }
   }

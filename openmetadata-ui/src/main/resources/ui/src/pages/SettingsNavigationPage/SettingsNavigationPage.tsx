@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { HolderOutlined } from '@ant-design/icons';
-import { Card, Col, Row, Switch, Tree, TreeDataNode, TreeProps } from 'antd';
+import { Grid, Toggle } from '@openmetadata/ui-core-components';
+import { Card, Tree, TreeDataNode, TreeProps } from 'antd';
 import { cloneDeep, isEqual } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,6 +24,7 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { useApplicationsProvider } from '../../components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import { Persona } from '../../generated/entity/teams/persona';
 import { NavigationItem } from '../../generated/system/ui/uiCustomization';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
 import {
   getHiddenKeysFromNavigationItems,
   getTreeDataForNavigationItems,
@@ -79,15 +81,16 @@ export const SettingsNavigationPage = ({ onSave, persona }: Props) => {
         if (data[i].key === key) {
           return callback(data[i], i, data);
         }
-        if (data[i].children) {
-          loop(data[i].children!, key, callback);
+        const children = data[i].children;
+        if (children) {
+          loop(children, key, callback);
         }
       }
     };
     const tempData = cloneDeep(treeData);
 
     // Find dragObject
-    let dragObj: TreeDataNode;
+    let dragObj!: TreeDataNode;
     loop(tempData, dragKey, (item, index, arr) => {
       arr.splice(index, 1);
       dragObj = item;
@@ -102,17 +105,17 @@ export const SettingsNavigationPage = ({ onSave, persona }: Props) => {
       });
     } else {
       let ar: TreeDataNode[] = [];
-      let i: number;
+      let i = 0;
       loop(tempData, dropKey, (_item, index, arr) => {
         ar = arr;
         i = index;
       });
       if (dropPosition === -1) {
         // Drop on the top of the drop node
-        ar.splice(i!, 0, dragObj!);
+        ar.splice(i, 0, dragObj);
       } else {
         // Drop on the bottom of the drop node
-        ar.splice(i! + 1, 0, dragObj!);
+        ar.splice(i + 1, 0, dragObj);
       }
     }
 
@@ -137,28 +140,36 @@ export const SettingsNavigationPage = ({ onSave, persona }: Props) => {
   const titleRenderer = (node: TreeDataNode) => (
     <div className="space-between">
       {t(node.title as string)}
-      <Switch
-        checked={!hiddenKeys.includes(node.key as string)}
+      <Toggle
         data-testid={`navigation-switch-${node.key}`}
-        onChange={(checked) => handleRemoveToggle(checked, node.key as string)}
+        isSelected={!hiddenKeys.includes(node.key as string)}
+        onChange={(isSelected) =>
+          handleRemoveToggle(isSelected, node.key as string)
+        }
       />
     </div>
   );
 
   return (
     <NavigationBlocker enabled={!disableSave} onConfirm={handleSave}>
-      <PageLayoutV1 className="bg-grey" pageTitle="Settings Navigation Page">
-        <Row gutter={[0, 20]}>
-          <Col span={24}>
+      <PageLayoutV1
+        className="bg-grey"
+        pageTitle={t('label.customize-entity', {
+          entity: t('label.navigation'),
+        })}>
+        <Grid
+          className="layout-row layout-grid"
+          style={{ ...getLayoutGutter(0, 20) }}>
+          <Grid.Item className="layout-column" span={24}>
             <CustomizablePageHeader
               disableSave={disableSave}
               personaName={getEntityName(persona)}
               onReset={handleReset}
               onSave={handleSave}
             />
-          </Col>
+          </Grid.Item>
 
-          <Col span={24}>
+          <Grid.Item className="layout-column" span={24}>
             <Card
               bordered={false}
               className="custom-navigation-tree-container"
@@ -176,8 +187,8 @@ export const SettingsNavigationPage = ({ onSave, persona }: Props) => {
                 onDrop={onDrop}
               />
             </Card>
-          </Col>
-        </Row>
+          </Grid.Item>
+        </Grid>
       </PageLayoutV1>
     </NavigationBlocker>
   );

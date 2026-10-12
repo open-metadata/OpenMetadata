@@ -10,23 +10,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { FormInstance } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, uniq } from 'lodash';
+import { castArray, isEmpty, uniq } from 'lodash';
 import {
   Dispatch,
   SetStateAction,
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { INITIAL_PAGING_VALUE } from '../../../constants/constants';
 import { DEFAULT_SORT_ORDER } from '../../../constants/profiler.constant';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { TabSpecificField } from '../../../enums/entity.enum';
-import { Operation } from '../../../generated/entity/policies/policy';
+import { ResourcePermission } from '../../../generated/entity/policies/accessControl/resourcePermission';
 import { TestCase } from '../../../generated/tests/testCase';
+import { Include } from '../../../generated/type/include';
 import { UsePagingInterface } from '../../../hooks/paging/usePaging';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import {
@@ -34,17 +35,18 @@ import {
   ListTestCaseParamsBySearch,
 } from '../../../rest/testAPI';
 import { getTestCaseFiltersValue } from '../../../utils/DataQuality/DataQualityPureUtils';
-import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import { TestCaseSearchParams } from '../DataQuality.interface';
+import { TestCaseFilterForm } from './useTestCaseFilters';
 
 export interface UseTestCaseListProps {
   params: TestCaseSearchParams;
   selectedFilter: string[];
   setSelectedFilter: Dispatch<SetStateAction<string[]>>;
   searchValue: string;
-  form: FormInstance;
+  form?: TestCaseFilterForm;
   getInitialOptions: (key: string, isLengthCheck?: boolean) => void;
   tab: DataQualityPageTabs;
   testCasePermission: OperationPermission;
@@ -61,8 +63,8 @@ export interface UseTestCaseListProps {
  * Owns the DATA concern: the test-case rows, their loading flag, the sort
  * options and the fetch pipeline. The driving fetch effect stays co-located
  * with {@link fetchTestCases} and the paging handler so the fetch is issued
- * from a single place (no double-fetch). Filter state, the form and the paging
- * bag are injected.
+ * from a single place (no double-fetch). Filter state, the optional classic form
+ * and the paging bag are injected.
  */
 export const useTestCaseList = ({
   params,
@@ -82,9 +84,15 @@ export const useTestCaseList = ({
   showPagination,
 }: UseTestCaseListProps) => {
   const [testCase, setTestCase] = useState<TestCase[]>([]);
+  // Left undefined when the list API doesn't return inline permissions so the
+  // DataQualityTab falls back to its own per-row permission fetch.
+  const [entityPermissions, setEntityPermissions] =
+    useState<Record<string, ResourcePermission>>();
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [showDeleted, setShowDeleted] = useState(false);
   const [sortOptions, setSortOptions] =
     useState<ListTestCaseParamsBySearch>(DEFAULT_SORT_ORDER);
+  const latestRequestId = useRef(0);
 
   const fetchTestCases = useCallback(
     async (
@@ -92,6 +100,9 @@ export const useTestCaseList = ({
       activeFilters?: string[],
       apiParams?: ListTestCaseParamsBySearch
     ) => {
+      // Visibility, filters, and sorting can overlap requests; only the newest
+      // response may update the rows or clear the shared loading state.
+      const requestId = ++latestRequestId.current;
       const updatedParams = getTestCaseFiltersValue(
         params,
         activeFilters ?? selectedFilter
@@ -99,30 +110,43 @@ export const useTestCaseList = ({
 
       setIsLoading(true);
       try {
-        const { data, paging: pagingResponse } = await getListTestCaseBySearch({
+        const {
+          data,
+          paging: pagingResponse,
+          entityPermissions: listPermissions,
+        } = await getListTestCaseBySearch({
           ...updatedParams,
           ...sortOptions,
-          ...apiParams,
           testCaseStatus: isEmpty(params?.testCaseStatus)
             ? undefined
             : params?.testCaseStatus,
           limit: pageSize,
           includeAllTests: true,
+          includePermissions: true,
           fields: [
             TabSpecificField.TEST_CASE_RESULT,
             TabSpecificField.TESTSUITE,
             TabSpecificField.INCIDENT_ID,
             TabSpecificField.INCIDENT_STATUS,
           ],
-          q: searchValue ? `*${searchValue}*` : undefined,
+          q: searchValue || undefined,
           offset: (page - 1) * pageSize,
+          include: showDeleted ? Include.Deleted : Include.NonDeleted,
+          ...apiParams,
         });
-        setTestCase(data);
-        handlePagingChange(pagingResponse);
+        if (requestId === latestRequestId.current) {
+          setTestCase(data);
+          setEntityPermissions(listPermissions);
+          handlePagingChange(pagingResponse);
+        }
       } catch (error) {
-        showErrorToast(error as AxiosError);
+        if (requestId === latestRequestId.current) {
+          showErrorToast(error as AxiosError);
+        }
       } finally {
-        setIsLoading(false);
+        if (requestId === latestRequestId.current) {
+          setIsLoading(false);
+        }
       }
     },
     [
@@ -131,8 +155,23 @@ export const useTestCaseList = ({
       sortOptions,
       pageSize,
       searchValue,
+      showDeleted,
       handlePagingChange,
     ]
+  );
+
+  const handleShowDeletedChange = useCallback(
+    (value: boolean) => {
+      setShowDeleted(value);
+      if (currentPage === INITIAL_PAGING_VALUE) {
+        fetchTestCases(INITIAL_PAGING_VALUE, undefined, {
+          include: value ? Include.Deleted : Include.NonDeleted,
+        });
+      } else {
+        handlePageChange(INITIAL_PAGING_VALUE);
+      }
+    },
+    [currentPage, fetchTestCases, handlePageChange]
   );
 
   const sortTestCase = async (apiParams?: TestCaseSearchParams) => {
@@ -153,6 +192,18 @@ export const useTestCaseList = ({
     [handlePageChange, fetchTestCases]
   );
 
+  const handleAfterDeleteAction = useCallback(() => {
+    // Delete and restore both remove a row from the current result set. Move
+    // back when that row was the last one so pagination cannot point at an
+    // empty page that is now beyond the available results.
+    const targetPage =
+      currentPage > INITIAL_PAGING_VALUE && testCase.length === 1
+        ? currentPage - 1
+        : currentPage;
+
+    handlePagingClick({ currentPage: targetPage });
+  }, [currentPage, handlePagingClick, testCase.length]);
+
   const getTestCases = () => {
     if (!isEmpty(params) || !isEmpty(selectedFilter)) {
       const updatedValue = uniq([...selectedFilter, ...Object.keys(params)]);
@@ -161,7 +212,14 @@ export const useTestCaseList = ({
       }
       setSelectedFilter(updatedValue);
       fetchTestCases(currentPage, updatedValue);
-      form.setFieldsValue(params);
+      // AntD multi-select requires an array even when the URL contains the
+      // legacy single-value status format.
+      form?.setFieldsValue({
+        ...params,
+        testCaseStatus: params.testCaseStatus
+          ? castArray(params.testCaseStatus)
+          : undefined,
+      });
     } else {
       fetchTestCases(currentPage);
     }
@@ -169,7 +227,7 @@ export const useTestCaseList = ({
 
   useEffect(() => {
     if (
-      getPrioritizedViewPermission(testCasePermission, Operation.ViewBasic) &&
+      getDerivedPermissionFlags(testCasePermission).canViewBasic &&
       tab === DataQualityPageTabs.TEST_CASES
     ) {
       getTestCases();
@@ -193,10 +251,14 @@ export const useTestCaseList = ({
   return {
     testCase,
     setTestCase,
+    entityPermissions,
     isLoading,
     fetchTestCases,
     sortTestCase,
     pagingData,
     showPagination,
+    showDeleted,
+    handleShowDeletedChange,
+    handleAfterDeleteAction,
   };
 };

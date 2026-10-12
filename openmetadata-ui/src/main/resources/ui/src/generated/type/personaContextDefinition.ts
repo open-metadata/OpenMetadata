@@ -41,6 +41,12 @@ export interface PersonaContextDefinition {
      */
     lastGeneratedAt?: number;
     /**
+     * Instructions for the AI assistant serving this persona, such as who its users are, what
+     * they understand and what they are responsible for. Sent to the assistant as instructions
+     * while the context is enabled; never rendered into the context document.
+     */
+    prompt?: string;
+    /**
      * Ordered dynamic entity-selection rules. An entity matched by multiple rules is rendered
      * under the first rule only.
      */
@@ -82,6 +88,15 @@ export interface ContextRule {
      * metric.
      */
     entityType: string;
+    /**
+     * Deliver this rule as a search scope instead of preloading its entities. When true the
+     * rule contributes its entityType and queryFilter to the persona search scope handed to AI
+     * search tools, and alwaysInContext, fullyRendered, sections and maxAssets are ignored.
+     * Absent is read as false so rules stored before this field keep preloading; the rule
+     * creation API stamps true when the client omits it, making search scoping the default for
+     * new rules.
+     */
+    filteredInSearch?: boolean;
     /**
      * Serialized react-awesome-query-builder JSON tree used only to restore the rule editor UI.
      */

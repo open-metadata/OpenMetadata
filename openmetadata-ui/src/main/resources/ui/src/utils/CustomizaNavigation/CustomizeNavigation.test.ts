@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { LeftSidebarItemExample } from '../../components/Settings/Applications/plugins/AppPlugin';
 import { NavigationItem } from '../../generated/system/ui/uiCustomization';
 import leftSidebarClassBase from '../LeftSidebarClassBase';
 import {
@@ -1292,8 +1293,7 @@ describe('CustomizeNavigation Utils', () => {
 
       const result = mergePluginSidebarItems(
         mockBaseItems,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        pluginItems as any,
+        pluginItems as unknown as LeftSidebarItemExample[],
         navItems
       );
 

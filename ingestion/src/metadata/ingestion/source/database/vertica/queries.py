@@ -14,55 +14,42 @@ SQL Queries used during ingestion
 
 import textwrap
 
-# Fast path: column metadata is read from v_catalog.columns / v_catalog.view_columns
-# only. Column comments used to be resolved here with a per-table
-# `LEFT JOIN v_catalog.comments`, which cost 1-13s per table and dominated the
-# ingestion time (see issue #29429). They are now bulk-fetched per schema
-# (`VERTICA_SCHEMA_COLUMN_COMMENTS`) and looked up from an in-memory cache,
-# mirroring how table comments are handled by `get_all_table_comments`.
+# Issued by the dialect while it initializes, on the first engine.connect().
+# sqlalchemy-vertica hands both to Connection.scalar() as bare strings, which
+# SQLAlchemy 2.x refuses to execute, so we re-issue them wrapped in text().
+VERTICA_GET_SERVER_VERSION = "SELECT version()"
+
+VERTICA_GET_CURRENT_SCHEMA = "SELECT current_schema()"
+
+# Column comments in Vertica can only happen on Projections
+#   https://forum.vertica.com/discussion/238945/vertica-try-to-create-comment
+# And Vertica projections follow this naming:
+#   https://www.vertica.com/docs/9.2.x/HTML/Content/Authoring/AdministratorsGuide/Projections/WorkingWithProjections.htm
+# So to fetch column comments we need to concat the table_name + projection infix + column name.
+# Example: querying `v_catalog.comments` we find an object_name for a column in the table vendor_dimension as
+# `vendor_dimension_super.vendor_name`. Note how this is the `_super` projection.
+# Then, our join looks for the match in `vendor_dimension_super.vendor_name`.
+# In case there are more than one projections available for a table then we pick up
+# comments from any one projection available for table
+# Note: This might not suit for all column scenarios, but currently we did not find a better way to join
+# v_catalog.comments with v_catalog.columns.
 VERTICA_GET_COLUMNS = textwrap.dedent(
     """
-        SELECT
-          column_name,
-          data_type,
-          column_default,
-          is_nullable
-        FROM v_catalog.columns
-        WHERE lower(table_name) = '{table}'
-          AND {schema_condition}
-        UNION ALL
-        SELECT
-          column_name,
-          data_type,
-          '' AS column_default,
-          true AS is_nullable
-        FROM v_catalog.view_columns
-        WHERE lower(table_name) = '{table}'
-          AND {schema_condition}
-    """
-)
-
-# Fallback path: the original per-table join, still used when the schema-scoped
-# comment cache is unavailable -- either the schema holds more than
-# MAX_SCHEMA_COMMENTS comments (bulk-caching it would be unbounded memory), or
-# reflection was invoked without a schema so there is no schema to scope to.
-# Slower, but it always resolves every comment.
-VERTICA_GET_COLUMNS_WITH_COMMENTS = textwrap.dedent(
-    """
-        SELECT
+        select
           column_name,
           data_type,
           column_default,
           is_nullable,
-          comment
-        FROM
+          comment 
+        from 
           v_catalog.columns col
           LEFT JOIN v_catalog.comments cm
-            ON col.table_schema = cm.object_schema
-            AND col.table_name = cm.object_name
-            AND col.column_name = cm.child_object
-            AND cm.object_type = 'COLUMN'
-        WHERE lower(table_name) = '{table}'
+          ON col.table_schema = cm.object_schema
+          AND col.table_name = cm.object_name
+          AND col.column_name = cm.child_object
+          AND cm.object_type = 'COLUMN'
+        WHERE 
+          lower(table_name) = '{table}'
           AND {schema_condition}
         UNION ALL
         SELECT
@@ -70,30 +57,61 @@ VERTICA_GET_COLUMNS_WITH_COMMENTS = textwrap.dedent(
           data_type,
           '' AS column_default,
           true AS is_nullable,
-          '' AS comment
+          ''  AS comment
         FROM v_catalog.view_columns
         WHERE lower(table_name) = '{table}'
+        AND {schema_condition}
+    """  # noqa: W291
+)
+
+# v_catalog.comments gained child_object in Vertica 10. Before that the join
+# above cannot be expressed at all, and the whole column read fails rather than
+# just losing comments, which leaves tables with no schema definition. This
+# variant drops the join so older servers still reflect their columns.
+VERTICA_GET_COLUMNS_WITHOUT_COMMENTS = textwrap.dedent(
+    """
+        select
+          column_name,
+          data_type,
+          column_default,
+          is_nullable,
+          '' AS comment
+        from
+          v_catalog.columns col
+        WHERE
+          lower(table_name) = '{table}'
           AND {schema_condition}
+        UNION ALL
+        SELECT
+          column_name,
+          data_type,
+          '' AS column_default,
+          true AS is_nullable,
+          ''  AS comment
+        FROM v_catalog.view_columns
+        WHERE lower(table_name) = '{table}'
+        AND {schema_condition}
     """
 )
 
-# Bulk-fetch the column comments of a single schema. `v_catalog.comments` only
-# holds a row per object that actually has a comment, so the result set is bounded
-# by the number of commented columns (sparse) rather than the total column count.
-# For a COLUMN row: object_schema = schema, object_name = table, child_object = column.
-#
-# Filtering and limiting happen in the database so an oversized schema never
-# materialises client-side.
-VERTICA_SCHEMA_COLUMN_COMMENTS = textwrap.dedent(
+# Referencing the column is the only reliable probe. v_catalog.columns lists
+# user tables only, so looking the system catalog up there always reports
+# absent, on every version. Selecting no rows keeps this cheap.
+VERTICA_SUPPORTS_COLUMN_COMMENTS = textwrap.dedent(
     """
-    SELECT
-      object_name   AS table_name,
-      child_object  AS column_name,
-      comment       AS column_comment
-    FROM v_catalog.comments
-    WHERE object_type = 'COLUMN'
-      AND LOWER(object_schema) = LOWER(:schema)
-    LIMIT :limit
+        SELECT child_object
+        FROM v_catalog.comments
+        LIMIT 0
+    """
+)
+
+VERTICA_GET_PRIMARY_KEYS = textwrap.dedent(
+    """
+        SELECT column_name
+        FROM v_catalog.primary_keys
+        WHERE lower(table_name) = '{table}'
+        AND constraint_type = 'p'
+        AND {schema_condition}
     """
 )
 

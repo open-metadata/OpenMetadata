@@ -14,8 +14,6 @@ Mixin class containing ingestion pipeline specific methods
 To be used by OpenMetadata class
 """
 
-from typing import Dict, List, Optional  # noqa: UP035
-
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
     PipelineStatus,
@@ -51,7 +49,7 @@ class OMetaIngestionPipelineMixin:
         logger.debug(f"Created Pipeline Status for pipeline {ingestion_pipeline_fqn}: {pipeline_status}")
         return resp
 
-    def get_pipeline_status(self, ingestion_pipeline_fqn: str, pipeline_status_run_id: str) -> Optional[PipelineStatus]:  # noqa: UP045
+    def get_pipeline_status(self, ingestion_pipeline_fqn: str, pipeline_status_run_id: str) -> PipelineStatus | None:
         """
         GET pipeline status
 
@@ -81,7 +79,7 @@ class OMetaIngestionPipelineMixin:
         ingestion_pipeline_fqn: str,
         start_ts: int,
         end_ts: int,
-    ) -> Optional[List[PipelineStatus]]:  # noqa: UP006, UP045
+    ) -> list[PipelineStatus] | None:
         """Get pipeline status between timestamp
 
         Args:
@@ -103,9 +101,9 @@ class OMetaIngestionPipelineMixin:
 
     def get_ingestion_pipeline_by_name(
         self,
-        fields: Optional[List[str]] = None,  # noqa: UP006, UP045
-        params: Optional[Dict[str, str]] = None,  # noqa: UP006, UP045
-    ) -> Optional[IngestionPipeline]:  # noqa: UP045
+        fields: list[str] | None = None,
+        params: dict[str, str] | None = None,
+    ) -> IngestionPipeline | None:
         """
         Get ingestion pipeline statues based on name
 
@@ -124,7 +122,7 @@ class OMetaIngestionPipelineMixin:
 
         return None
 
-    def extract_pipeline_id_from_fqn(self, ingestion_pipeline_fqn: str) -> Optional[str]:  # noqa: UP045
+    def extract_pipeline_id_from_fqn(self, ingestion_pipeline_fqn: str) -> str | None:
         """
         Extract pipeline ID from FQN by fetching the pipeline entity
 

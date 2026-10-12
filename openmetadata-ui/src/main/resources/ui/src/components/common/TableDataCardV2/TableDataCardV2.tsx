@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Checkbox, Col, Row } from 'antd';
+import { Box, Owner } from '@openmetadata/ui-core-components';
+import { Checkbox } from 'antd';
 import classNames from 'classnames';
 import { isString, startCase } from 'lodash';
 import { ExtraInfo } from 'Models';
@@ -23,13 +24,13 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getEntityBreadcrumbs } from '../../../utils/EntityBreadcrumbPureUtils';
 import { getEntityLinkFromType } from '../../../utils/EntityLinkUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getServiceIcon } from '../../../utils/EntityServiceIconUtils';
+import { handleKeyboardActivation } from '../../../utils/KeyboardUtil';
 import { getUsagePercentile } from '../../../utils/TablePureUtils';
-import { getServiceIcon } from '../../../utils/TableUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import TableDataCardBody from '../../Database/TableDataCardBody/TableDataCardBody';
 import { EntityHeader } from '../../Entity/EntityHeader/EntityHeader.component';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
-import { OwnerLabel } from '../OwnerLabel/OwnerLabel.component';
 import './TableDataCardV2.less';
 
 export interface TableDataCardPropsV2 {
@@ -85,9 +86,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
       const _otherDetails: ExtraInfo[] = [
         {
           key: 'Owner',
-          value: (
-            <OwnerLabel owners={(source.owners as EntityReference[]) ?? []} />
-          ),
+          value: <Owner owners={(source.owners as EntityReference[]) ?? []} />,
         },
       ];
 
@@ -95,13 +94,12 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
         source.entityType !== EntityType.GLOSSARY_TERM &&
         source.entityType !== EntityType.TAG
       ) {
+        const tierName = isString(source.tier)
+          ? source.tier
+          : getEntityName(source.tier);
         _otherDetails.push({
           key: 'Tier',
-          value: source.tier
-            ? isString(source.tier)
-              ? source.tier
-              : getEntityName(source.tier)
-            : '',
+          value: source.tier ? tierName : '',
         });
       }
 
@@ -159,16 +157,27 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
         data-testid={'table-data-card_' + (source.fullyQualifiedName ?? '')}
         id={id}
         ref={ref}
+        role="button"
+        tabIndex={0}
         onClick={() => {
           handleSummaryPanelDisplay && handleSummaryPanelDisplay(source, tab);
-        }}>
-        <Row className="data-asset-info-row" wrap={false}>
+        }}
+        onKeyDown={handleKeyboardActivation(
+          () =>
+            handleSummaryPanelDisplay && handleSummaryPanelDisplay(source, tab),
+          true
+        )}>
+        <Box className="layout-row data-asset-info-row" wrap="nowrap">
           {showCheckboxes && (
-            <Col className="flex-center" flex="20px">
-              <Checkbox checked={checked} />
-            </Col>
+            <Box
+              className="layout-column tw:block flex-center"
+              style={{ flex: '0 0 20px' }}>
+              {/* Same test id as ExploreSearchCard's checkbox, so Playwright selects
+                assets in this modal and in the asset tabs the same way. */}
+              <Checkbox checked={checked} data-testid="asset-checkbox" />
+            </Box>
           )}
-          <Col flex="auto">
+          <Box className="layout-column tw:block" style={{ flex: 'auto' }}>
             <EntityHeader
               showOnlyDisplayName
               titleIsLink
@@ -184,8 +193,8 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
               showName={showName}
               titleColor={theme.primaryColor}
             />
-          </Col>
-        </Row>
+          </Box>
+        </Box>
         {showBody && (
           <div className="p-t-sm">
             <TableDataCardBody
@@ -199,7 +208,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
           <div className="p-t-xs" data-testid="matches-stats">
             <span className="text-grey-muted">{`${t('label.matches')}:`}</span>
             {matches.map((data, i) => (
-              <span className="m-t-xs" key={i}>
+              <span className="m-t-xs" key={data.key}>
                 {`${data.value} ${t('label.in-lowercase')} 
                 ${startCase(data.key)}${i !== matches.length - 1 ? ',' : ''}`}
               </span>

@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/services/connections/database/sapHanaConnection.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "SapHanaConnection",
   "description": "Sap Hana Database Connection Config",
   "type": "object",
@@ -85,10 +85,6 @@
     "supportsQueryComment": {
       "title": "Supports Query Comment",
       "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
-    },
-    "sampleDataStorageConfig": {
-      "title": "Storage Config for Sample Data",
-      "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
     },
     "supportsDataDiff": {
         "title": "Supports Data Diff Extraction.",

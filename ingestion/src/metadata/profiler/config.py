@@ -12,8 +12,6 @@
 Profiler configuration helpers
 """
 
-from typing import Optional
-
 from metadata.generated.schema.entity.data.database import (
     Database,
     DatabaseProfilerConfig,
@@ -25,16 +23,16 @@ from metadata.generated.schema.entity.data.databaseSchema import (
 
 
 def get_database_profiler_config(
-    database_entity: Optional[Database],  # noqa: UP045
-) -> Optional[DatabaseProfilerConfig]:  # noqa: UP045
+    database_entity: Database | None,
+) -> DatabaseProfilerConfig | None:
     if database_entity and database_entity.databaseProfilerConfig:
         return database_entity.databaseProfilerConfig
     return None
 
 
 def get_schema_profiler_config(
-    schema_entity: Optional[DatabaseSchema],  # noqa: UP045
-) -> Optional[DatabaseSchemaProfilerConfig]:  # noqa: UP045
+    schema_entity: DatabaseSchema | None,
+) -> DatabaseSchemaProfilerConfig | None:
     if schema_entity and schema_entity.databaseSchemaProfilerConfig:
         return schema_entity.databaseSchemaProfilerConfig
     return None

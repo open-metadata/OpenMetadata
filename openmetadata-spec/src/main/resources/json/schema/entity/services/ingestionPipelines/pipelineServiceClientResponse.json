@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/services/ingestionPipelines/pipelineServiceClientResponse.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "PipelineServiceClientResponse",
   "description": "Object to send Status responses about your Ingestion Pipelines ops.",
   "type": "object",
@@ -20,6 +20,10 @@
     },
     "version": {
       "description": "Ingestion version being used.",
+      "type": "string"
+    },
+    "runId": {
+      "description": "Identifier of the run that was just triggered. Only set by orchestrators that mint the run ID themselves, which lets the server record the `queued` status instead of polling the orchestrator for it.",
       "type": "string"
     }
   },

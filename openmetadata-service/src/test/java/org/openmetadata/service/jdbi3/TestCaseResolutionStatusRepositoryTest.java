@@ -38,7 +38,9 @@ class TestCaseResolutionStatusRepositoryTest {
     ListFilter filter = new ListFilter();
     filter.addQueryParam("originEntityFQN", "test.table");
 
-    String result = TestCaseResolutionStatusRepository.addOriginEntityFQNJoin(filter, "WHERE 1=1");
+    String result =
+        CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.addOriginEntityFQNJoin(
+            filter, "WHERE 1=1");
 
     assertTrue(result.contains("INNER JOIN"));
     assertTrue(result.contains("test_case"));
@@ -50,7 +52,9 @@ class TestCaseResolutionStatusRepositoryTest {
     ListFilter filter = new ListFilter();
     filter.addQueryParam("include", "non-deleted");
 
-    String result = TestCaseResolutionStatusRepository.addOriginEntityFQNJoin(filter, "WHERE 1=1");
+    String result =
+        CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.addOriginEntityFQNJoin(
+            filter, "WHERE 1=1");
 
     assertTrue(result.contains("INNER JOIN"));
     assertTrue(result.contains("test_case"));
@@ -63,7 +67,9 @@ class TestCaseResolutionStatusRepositoryTest {
     // Since include is always set by default, the JOIN is always added
     ListFilter filter = new ListFilter();
 
-    String result = TestCaseResolutionStatusRepository.addOriginEntityFQNJoin(filter, "WHERE 1=1");
+    String result =
+        CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.addOriginEntityFQNJoin(
+            filter, "WHERE 1=1");
 
     // With default ListFilter, JOIN is added because include is set to NON_DELETED
     assertTrue(result.contains("INNER JOIN"));
@@ -76,7 +82,8 @@ class TestCaseResolutionStatusRepositoryTest {
     filter.addQueryParam("originEntityFQN", "test.table");
 
     String result =
-        TestCaseResolutionStatusRepository.addOriginEntityFQNJoin(filter, "WHERE status = 'Open'");
+        CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.addOriginEntityFQNJoin(
+            filter, "WHERE status = 'Open'");
 
     assertTrue(result.contains("WHERE status = 'Open'"));
   }

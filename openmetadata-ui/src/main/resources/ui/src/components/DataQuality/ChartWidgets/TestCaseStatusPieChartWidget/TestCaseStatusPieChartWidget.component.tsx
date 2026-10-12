@@ -11,15 +11,11 @@
  *  limitations under the License.
  */
 import { Card, Skeleton, Typography } from '@openmetadata/ui-core-components';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as TestCaseIcon } from '../../../../assets/svg/all-activity-v2.svg';
-import {
-  DQ_CHART_FAILED_COLOR,
-  DQ_CHART_SUCCESS_COLOR,
-  DQ_CHART_WARNING_COLOR,
-} from '../../../../constants/Color.constants';
 import { INITIAL_TEST_SUMMARY } from '../../../../constants/TestSuite.constant';
 import { fetchTestCaseSummary } from '../../../../rest/dataQualityDashboardAPI';
 import {
@@ -42,39 +38,30 @@ const TestCaseStatusPieChartWidget = ({
   const routerNavigate = useNavigate();
   const navigate = navigateProp ?? routerNavigate;
 
-  const [testCaseSummary, setTestCaseSummary] = useState(INITIAL_TEST_SUMMARY);
-  const [isTestCaseSummaryLoading, setIsTestCaseSummaryLoading] =
-    useState(true);
-
-  const fetchTestSummary = async () => {
-    setIsTestCaseSummaryLoading(true);
-    try {
+  const {
+    data: testCaseSummary = INITIAL_TEST_SUMMARY,
+    isLoading: isTestCaseSummaryLoading,
+  } = useQuery({
+    queryKey: ['dq-dashboard', 'test-case-summary', chartFilter],
+    queryFn: async () => {
       const { data } = await fetchTestCaseSummary(chartFilter);
-      const updatedData = transformToTestCaseStatusObject(data);
-      setTestCaseSummary(updatedData);
-    } catch {
-      setTestCaseSummary(INITIAL_TEST_SUMMARY);
-    } finally {
-      setIsTestCaseSummaryLoading(false);
-    }
-  };
 
-  useEffect(() => {
-    fetchTestSummary();
-  }, [chartFilter]);
+      return transformToTestCaseStatusObject(data);
+    },
+  });
 
   const handleSegmentClick = useCallback(
     (_entry: CustomPieChartData, index: number) => {
       const status = TEST_CASE_STATUS_PIE_SEGMENT_ORDER[index];
       if (status) {
-        const redirectPath = getTestCaseTabPath(status);
+        const redirectPath = getTestCaseTabPath(status, chartFilter);
         navigate({
           ...redirectPath,
           pathname: testCasesPath ?? redirectPath.pathname,
         });
       }
     },
-    [navigate, testCasesPath]
+    [chartFilter, navigate, testCasesPath]
   );
 
   const { data, chartLabel } = useMemo(
@@ -83,17 +70,17 @@ const TestCaseStatusPieChartWidget = ({
         {
           name: t('label.success'),
           value: testCaseSummary.success,
-          color: DQ_CHART_SUCCESS_COLOR,
+          status: 'success' as const,
         },
         {
           name: t('label.failed'),
           value: testCaseSummary.failed,
-          color: DQ_CHART_FAILED_COLOR,
+          status: 'failed' as const,
         },
         {
           name: t('label.aborted'),
           value: testCaseSummary.aborted,
-          color: DQ_CHART_WARNING_COLOR,
+          status: 'warning' as const,
         },
       ],
       chartLabel: getPieChartLabel(
@@ -127,6 +114,7 @@ const TestCaseStatusPieChartWidget = ({
         </div>
         <CustomPieChart
           showLegends
+          ariaLabel={t('label.test-case-result')}
           data={data}
           label={chartLabel}
           name="test-case-result"

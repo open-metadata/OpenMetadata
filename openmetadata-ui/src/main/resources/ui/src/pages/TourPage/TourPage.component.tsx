@@ -14,10 +14,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Tour from '../../components/AppTour/Tour';
-import {
-  ExploreSearchIndex,
-  SearchHitCounts,
-} from '../../components/Explore/ExplorePage.interface';
+import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
+import { SearchHitCounts } from '../../components/Explore/ExplorePage.interface';
 import { TOUR_SEARCH_TERM } from '../../constants/constants';
 import {
   mockDatasetData,
@@ -27,7 +25,9 @@ import {
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { EntityTabs } from '../../enums/entity.enum';
 import { CurrentTourPageType } from '../../enums/tour.enum';
+import { ExploreSearchIndex } from '../../interface/discovery/explore.interface';
 import { SearchResponse } from '../../interface/search.interface';
+import { preloadTourTableTabs } from '../../utils/TableTabsUtils';
 import { getTourSteps } from '../../utils/TourUtils';
 import ExplorePageV1Component from '../ExplorePage/ExplorePageV1.component';
 import MyDataPage from '../MyDataPage/MyDataPage.component';
@@ -139,15 +139,25 @@ const TourPage = () => {
   }, [updateTourPage, updateActiveTab]);
 
   useEffect(() => {
+    let isCancelled = false;
     let tourMountFrameId = 0;
-    const cancelFeedWidgetWait = waitForTourFeedWidget(() => {
+    let cancelFeedWidgetWait: () => void = () => undefined;
+
+    const openTour = () => {
       updateIsTourOpen(true);
       tourMountFrameId = window.requestAnimationFrame(() => {
         setIsTourReady(true);
       });
+    };
+
+    preloadTourTableTabs().then(() => {
+      if (!isCancelled) {
+        cancelFeedWidgetWait = waitForTourFeedWidget(openTour);
+      }
     });
 
     return () => {
+      isCancelled = true;
       cancelFeedWidgetWait();
       window.cancelAnimationFrame(tourMountFrameId);
     };
@@ -191,9 +201,13 @@ const TourPage = () => {
     [clearSearchTerm, updateActiveTab, updateTourPage]
   );
 
+  // Rendered after the tour's page component so this Helmet wins: the tour
+  // reuses My Data / Explore / table pages, whose own titles would otherwise
+  // claim the tab.
   return (
     <>
       {currentPageComponent}
+      <DocumentTitle title={t('label.tour')} />
       {isTourReady && <Tour steps={tourSteps} />}
     </>
   );

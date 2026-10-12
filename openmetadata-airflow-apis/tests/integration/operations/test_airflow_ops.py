@@ -14,13 +14,18 @@ Test Airflow related operations
 
 import datetime
 import os
-import shutil
 import uuid
 from pathlib import Path
 from unittest import TestCase
 
-# We need to patch the environment before importing Airflow
-# At module load it already inits the configurations.
+from airflow import DAG
+from airflow.models import DagBag, DagModel
+from airflow.models.serialized_dag import SerializedDagModel
+from airflow.serialization.serialized_objects import LazyDeserializedDAG
+from airflow.utils import timezone
+from airflow.utils.state import DagRunState
+from airflow.utils.types import DagRunType
+
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
@@ -50,24 +55,6 @@ from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
 from metadata.generated.schema.type.basic import Markdown
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-
-if "AIRFLOW_HOME" not in os.environ:
-    os.environ["AIRFLOW_HOME"] = "/tmp/airflow"
-if "AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_GENERATED_CONFIGS" not in os.environ:
-    os.environ["AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_GENERATED_CONFIGS"] = "/tmp/airflow"
-if "AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_RUNNER_TEMPLATE" not in os.environ:
-    template_path = Path(__file__).parent.parent.parent.parent / "openmetadata_managed_apis/resources/dag_runner.j2"
-    if not template_path.exists():
-        template_path = Path(__file__).parent.parent.parent.parent / "src/plugins/dag_templates/dag_runner.j2"
-    os.environ["AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_RUNNER_TEMPLATE"] = str(template_path.absolute())
-
-from airflow import DAG
-from airflow.models import DagBag, DagModel
-from airflow.models.serialized_dag import SerializedDagModel
-from airflow.serialization.serialized_objects import LazyDeserializedDAG
-from airflow.utils import timezone
-from airflow.utils.state import DagRunState
-from airflow.utils.types import DagRunType
 
 try:
     from airflow.providers.standard.operators.bash import BashOperator
@@ -108,15 +95,6 @@ class TestAirflowOps(TestCase):
         cls._app_ctx = Flask(__name__).app_context()
         cls._app_ctx.push()
 
-        # Initialize Airflow database if it doesn't exist
-        from airflow.utils.db import initdb  # noqa: PLC0415
-
-        try:  # noqa: SIM105
-            initdb()
-        except Exception:
-            # Database might already be initialized
-            pass
-
         with DAG(
             "dag_status",
             description="A lineage test DAG",
@@ -131,11 +109,11 @@ class TestAirflowOps(TestCase):
         if hasattr(cls.dag, "sync_to_db"):
             cls.dag.sync_to_db()
         else:
-            from airflow.models.dag import DagModel  # noqa: PLC0415
-            from airflow.utils.session import create_session  # noqa: PLC0415
+            from airflow.models.dag import DagModel
+            from airflow.utils.session import create_session
 
             with create_session() as session:
-                from airflow.models.dagbundle import DagBundleModel  # noqa: PLC0415
+                from airflow.models.dagbundle import DagBundleModel
 
                 bundle = session.query(DagBundleModel).filter(DagBundleModel.name == "").first()
                 if not bundle:
@@ -151,12 +129,17 @@ class TestAirflowOps(TestCase):
                 session.merge(dag_model)
                 session.commit()
 
-        cls.dagbag = DagBag(include_examples=False)
+        import inspect
+
+        # Airflow 3.3 dropped `include_examples` from DagBag.__init__: DAG discovery
+        # is bundle based there, so example DAGs are no longer a constructor flag.
+        dagbag_kwargs = {}
+        if "include_examples" in inspect.signature(DagBag.__init__).parameters:
+            dagbag_kwargs["include_examples"] = False
+        cls.dagbag = DagBag(**dagbag_kwargs)
 
         # In Airflow 2.x, bag_dag() requires root_dag parameter
         # In Airflow 3.x, it doesn't accept root_dag parameter
-        import inspect  # noqa: PLC0415
-
         bag_dag_sig = inspect.signature(cls.dagbag.bag_dag)
         if "root_dag" in bag_dag_sig.parameters:
             # Airflow 2.x
@@ -189,9 +172,6 @@ class TestAirflowOps(TestCase):
         if hasattr(cls, "_temp_dag_file") and cls._temp_dag_file.exists():
             cls._temp_dag_file.unlink()
 
-        if os.path.exists("/tmp/airflow"):  # noqa: PTH110
-            shutil.rmtree("/tmp/airflow")
-
     def test_dag_status(self):
         """
         Validate:
@@ -201,8 +181,8 @@ class TestAirflowOps(TestCase):
             - Missing DAG
         """
 
-        from airflow.models import DagRun  # noqa: PLC0415
-        from airflow.utils.session import create_session  # noqa: PLC0415
+        from airflow.models import DagRun
+        from airflow.utils.session import create_session
 
         # Ensure a clean slate in case previous tests populated `dag_status`
         with create_session() as session:
@@ -326,7 +306,7 @@ class TestAirflowOps(TestCase):
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.json, {"message": "Workflow [my_new_dag] has been created"})
 
-        from airflow.configuration import conf as airflow_conf  # noqa: PLC0415
+        from airflow.configuration import conf as airflow_conf
 
         dags_folder = airflow_conf.get("core", "DAGS_FOLDER")
         dag_file = Path(dags_folder) / "my_new_dag.py"
@@ -343,13 +323,13 @@ class TestAirflowOps(TestCase):
         stub_dag.fileloc = str(dag_file)
 
         try:
-            from airflow.operators.empty import EmptyOperator  # noqa: PLC0415
+            from airflow.operators.empty import EmptyOperator
         except ImportError:
-            from airflow.operators.dummy import DummyOperator as EmptyOperator  # noqa: PLC0415
+            from airflow.operators.dummy import DummyOperator as EmptyOperator
 
         EmptyOperator(task_id="noop", dag=stub_dag)
-        from airflow.models.dagbundle import DagBundleModel  # noqa: PLC0415
-        from airflow.utils.session import create_session  # noqa: PLC0415
+        from airflow.models.dagbundle import DagBundleModel
+        from airflow.utils.session import create_session
 
         with create_session() as session:
             bundle = session.query(DagBundleModel).filter(DagBundleModel.name == "").first()

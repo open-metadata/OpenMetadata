@@ -18,6 +18,7 @@ from metadata.generated.schema.entity.data.table import TableType
 from metadata.ingestion.source.database.common_db_source import TableNameAndType
 from metadata.ingestion.source.database.trino.metadata import (
     TrinoSource,
+    _get_columns,
     get_view_definition,
 )
 
@@ -207,7 +208,7 @@ class TestTrinoMetadata(unittest.TestCase):
             )
 
 
-class TestTrinoIcebergDetection(unittest.TestCase):
+class TestTrinoIcebergDetection:
     def _make_mock_source(self, connector_name, table_names):
         mock_self = Mock()
         mock_self.context.get.return_value.database = "test_catalog"
@@ -230,6 +231,25 @@ class TestTrinoIcebergDetection(unittest.TestCase):
         result = TrinoSource.query_table_names_and_types(mock_self, "test_schema")
         assert result == [TableNameAndType(name="orders", type_=TableType.Regular)]
 
+    def test_delta_lake_catalog_returns_delta_lake_type(self):
+        mock_self = self._make_mock_source("delta_lake", ["delta_sales", "delta_events"])
+        result = TrinoSource.query_table_names_and_types(mock_self, "test_schema")
+        assert result == [
+            TableNameAndType(name="delta_sales", type_=TableType.DeltaLake),
+            TableNameAndType(name="delta_events", type_=TableType.DeltaLake),
+        ]
+
+    def test_hive_catalog_does_not_return_delta_lake_type(self):
+        mock_self = self._make_mock_source("hive", ["hive_orders"])
+        result = TrinoSource.query_table_names_and_types(mock_self, "test_schema")
+        assert result == [TableNameAndType(name="hive_orders", type_=TableType.Regular)]
+
+    def test_delta_substring_connector_is_not_delta_lake(self):
+        """`delta` is Presto's connector name, not Trino's; Trino must not match it."""
+        mock_self = self._make_mock_source("delta", ["t1"])
+        result = TrinoSource.query_table_names_and_types(mock_self, "test_schema")
+        assert result == [TableNameAndType(name="t1", type_=TableType.Regular)]
+
     def test_connection_error_falls_back_to_regular(self):
         mock_self = Mock()
         mock_self.context.get.return_value.database = "test_catalog"
@@ -237,6 +257,42 @@ class TestTrinoIcebergDetection(unittest.TestCase):
         mock_self.inspector.get_table_names.return_value = ["orders"]
         result = TrinoSource.query_table_names_and_types(mock_self, "test_schema")
         assert result == [TableNameAndType(name="orders", type_=TableType.Regular)]
+
+
+class TestTrinoColumnComments:
+    """`SHOW COLUMNS` reports an unset column comment as '', which must not become a description"""
+
+    @staticmethod
+    def _mock_connection(records):
+        connection = Mock()
+        connection.dialect.identifier_preparer.quote.side_effect = lambda value: f'"{value}"'
+        connection.execute.return_value = records
+        return connection
+
+    @staticmethod
+    def _record(name, comment):
+        record = Mock()
+        record.Column = name
+        record.Type = "varchar"
+        record.Comment = comment
+        return record
+
+    def _columns_for(self, records):
+        mock_self = Mock()
+        mock_self._get_default_schema_name.return_value = "test_schema"
+        return _get_columns(mock_self, self._mock_connection(records), "test_table", "test_schema")
+
+    def test_unset_comment_is_none(self):
+        columns = self._columns_for([self._record("id", "")])
+        assert columns[0]["comment"] is None
+
+    def test_populated_comment_is_preserved(self):
+        columns = self._columns_for([self._record("name", "Name of the student")])
+        assert columns[0]["comment"] == "Name of the student"
+
+    def test_null_comment_is_none(self):
+        columns = self._columns_for([self._record("age", None)])
+        assert columns[0]["comment"] is None
 
 
 if __name__ == "__main__":

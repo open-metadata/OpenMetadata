@@ -37,6 +37,12 @@ export interface TestCase {
      */
     dataProducts?: EntityReference[];
     /**
+     * Data quality dimension this test case belongs to. When not set at creation time, it
+     * defaults to the dimension of the test definition. Any dimension registered in Settings >
+     * Preferences > Data Quality can be used, system and custom alike.
+     */
+    dataQualityDimension?: EntityReference;
+    /**
      * When `true` indicates the entity has been soft deleted.
      */
     deleted?: boolean;
@@ -247,6 +253,10 @@ export interface FieldChange {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
+ * Data quality dimension this test case belongs to. When not set at creation time, it
+ * defaults to the dimension of the test definition. Any dimension registered in Settings >
+ * Preferences > Data Quality can be used, system and custom alike.
+ *
  * Test case reference
  *
  * User working on failure resolution.
@@ -320,8 +330,10 @@ export interface EntityReference {
 /**
  * Current status of the test case.
  *
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
+ * General lifecycle stage for entities that reference this vocabulary. Specialized entities
+ * can declare their own status schema and lifecycle policy. Entity types without an
+ * entityStatus property have no lifecycle. When a create request omits the stage, the
+ * server assigns the entity type's initial stage.
  */
 export enum EntityStatus {
     Approved = "Approved",
@@ -356,6 +368,11 @@ export interface TableData {
  * Schema to capture test case resolution status.
  */
 export interface TestCaseResolutionStatus {
+    /**
+     * Human-readable summary of the test failure that opened the incident, denormalized from
+     * the failed test case result so incident listings do not need a per-incident result lookup.
+     */
+    failureSummary?: string;
     /**
      * Unique identifier of this failure instance
      */
@@ -703,6 +720,14 @@ export interface TestCaseResult {
      */
     dimensionResults?: TestCaseDimensionResult[];
     /**
+     * Wall-clock time the test case run took, in milliseconds.
+     */
+    duration?: number;
+    /**
+     * Structured error details when the run was aborted by an error.
+     */
+    errorDetails?: TestCaseErrorDetails;
+    /**
      * Number of rows that failed.
      */
     failedRows?: number;
@@ -782,6 +807,12 @@ export interface TestCaseDimensionResult {
      */
     dimensionValues: DimensionValue[];
     /**
+     * Whether this dimension has fewer rows than the test case's `minRowsPerDimension`. Its
+     * status is still reported, but it does not fail the test case under the `ANY_DIMENSION`
+     * policy.
+     */
+    excludedFromRollUp?: boolean;
+    /**
      * Number of rows that failed for this dimension combination
      */
     failedRows?: number;
@@ -799,6 +830,16 @@ export interface TestCaseDimensionResult {
      * considering both failure rate and data volume.
      */
     impactScore?: number;
+    /**
+     * Upper bound this dimension was evaluated against: the configured bound, widened by the
+     * failure threshold or learned by dynamic assertion when either applies.
+     */
+    maxBound?: number;
+    /**
+     * Lower bound this dimension was evaluated against: the configured bound, widened by the
+     * failure threshold or learned by dynamic assertion when either applies.
+     */
+    minBound?: number;
     /**
      * Number of rows that passed for this dimension combination
      */
@@ -878,6 +919,26 @@ export interface TestResultValue {
      */
     value?: string;
     [property: string]: any;
+}
+
+/**
+ * Structured error details when the run was aborted by an error.
+ *
+ * Structured details of the error that aborted a test case run.
+ */
+export interface TestCaseErrorDetails {
+    /**
+     * Type of the error, e.g. the exception class name.
+     */
+    errorType?: string;
+    /**
+     * Human-readable error message.
+     */
+    message?: string;
+    /**
+     * Formatted stack trace of the error.
+     */
+    stackTrace?: string;
 }
 
 /**

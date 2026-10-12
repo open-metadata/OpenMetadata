@@ -13,9 +13,9 @@
 Source connection handler
 """
 
+import shutil
 import ssl
 from pathlib import Path
-from typing import Optional
 
 from elasticsearch8 import Elasticsearch
 from httpx import create_ssl_context
@@ -103,7 +103,7 @@ def _handle_ssl_context_by_path(ssl_config: SslConfig):
     return ca_cert, client_cert, private_key
 
 
-def get_ssl_context(ssl_config: SslConfig) -> ssl.SSLContext:
+def get_ssl_context(ssl_config: SslConfig) -> ssl.SSLContext | None:
     """
     Method to get SSL Context
     """
@@ -128,13 +128,20 @@ def get_ssl_context(ssl_config: SslConfig) -> ssl.SSLContext:
         cert_chain = None
 
     if ca_cert or cert_chain:
+        verify = str(ca_cert) if ca_cert else True
         ssl_context = create_ssl_context(
             cert=cert_chain,
-            verify=ca_cert,
+            verify=verify,
         )
         return ssl_context  # noqa: RET504
 
-    return ssl._create_unverified_context()  # pylint: disable=protected-access
+    return create_ssl_context(verify=True)
+
+
+def _cleanup_staging_dir(staging_dir: str | None) -> None:
+    """Remove the staging dir holding the cert/key files written by value."""
+    if staging_dir and Path(staging_dir).exists():
+        shutil.rmtree(staging_dir, ignore_errors=True)
 
 
 class ElasticsearchConnection(BaseConnection[ElasticsearchConnectionConfig, Elasticsearch]):
@@ -162,6 +169,10 @@ class ElasticsearchConnection(BaseConnection[ElasticsearchConnectionConfig, Elas
             connection.connectionArguments = init_empty_connection_arguments()
 
         if connection.sslConfig:
+            certificates = connection.sslConfig.certificates
+            if isinstance(certificates, SslCertificatesByValues):
+                staging_dir = certificates.stagingDir
+                self._on_close(lambda: _cleanup_staging_dir(staging_dir))
             ssl_context = get_ssl_context(connection.sslConfig)
 
         return Elasticsearch(
@@ -175,8 +186,8 @@ class ElasticsearchConnection(BaseConnection[ElasticsearchConnectionConfig, Elas
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part

@@ -14,10 +14,13 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
+import { SORT_ORDER } from '../enums/common.enum';
 import {
   CreateIngestionPipeline,
   PipelineType,
 } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import { RunIngestionPipelineForEntity } from '../generated/api/services/ingestionPipelines/runIngestionPipelineForEntity';
+import { AgentType } from '../generated/entity/services/ingestionPipelines/agentType';
 import {
   IngestionPipeline,
   PipelineStatus,
@@ -28,7 +31,7 @@ import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
 import { IngestionPipelineLogByIdInterface } from '../interface/IngestionPipelineLogs.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 export const addIngestionPipeline = async (data: CreateIngestionPipeline) => {
   const response = await APIClient.post<
@@ -56,11 +59,16 @@ export const getIngestionPipelines = async (data: {
   serviceFilter?: string;
   paging?: Omit<Paging, 'total'>;
   pipelineType?: PipelineType[];
+  agentType?: AgentType;
   provider?: ProviderType;
   testSuite?: string;
   serviceType?: string;
   limit?: number;
   applicationType?: PipelineType;
+  // Order by the effective display name (`displayName` falling back to `name`) — the value the
+  // Name column renders — instead of the endpoint's default `name` order.
+  sortField?: 'displayName';
+  sortOrder?: SORT_ORDER;
 }) => {
   const { arrQueryFields, serviceFilter, paging, pipelineType, ...rest } = data;
 
@@ -85,6 +93,18 @@ export const triggerIngestionPipelineById = async (id: string) => {
     unknown,
     AxiosResponse<IngestionPipeline>
   >(`/services/ingestionPipelines/trigger/${id}`);
+
+  return response.data;
+};
+
+/** Runs the pipeline of a type that owns an entity, scoped to that entity alone. */
+export const runIngestionPipelineForEntity = async (
+  data: RunIngestionPipelineForEntity
+) => {
+  const response = await APIClient.post<
+    RunIngestionPipelineForEntity,
+    AxiosResponse<PipelineServiceClientResponse>
+  >('/services/ingestionPipelines/run', data);
 
   return response.data;
 };

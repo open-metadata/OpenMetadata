@@ -48,12 +48,13 @@ class VectorEmbeddingHandlerTest {
 
   @Test
   void testOnEntityCreatedForSupportedType() {
-    EntityInterface entity = createMockEntity("table");
+    EntityInterface<?> entity = createMockEntity("table");
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       SearchRepository searchRepository = mock(SearchRepository.class);
       IndexMapping indexMapping = mock(IndexMapping.class);
       entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      entityMock.when(() -> Entity.isVectorEmbeddable(entity)).thenReturn(true);
       when(searchRepository.getIndexMapping("table")).thenReturn(indexMapping);
       when(searchRepository.getClusterAlias()).thenReturn("");
       when(indexMapping.getIndexName("")).thenReturn("table_search_index");
@@ -66,7 +67,7 @@ class VectorEmbeddingHandlerTest {
 
   @Test
   void testOnEntityCreatedForUnsupportedType() {
-    EntityInterface entity = createMockEntity("unsupportedType");
+    EntityInterface<?> entity = createMockEntity("unsupportedType");
 
     handler.onEntityCreated(entity, subjectContext);
 
@@ -75,13 +76,14 @@ class VectorEmbeddingHandlerTest {
 
   @Test
   void testOnEntityUpdatedCallsUpdate() {
-    EntityInterface entity = createMockEntity("table");
+    EntityInterface<?> entity = createMockEntity("table");
     when(entity.getDeleted()).thenReturn(false);
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       SearchRepository searchRepository = mock(SearchRepository.class);
       IndexMapping indexMapping = mock(IndexMapping.class);
       entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      entityMock.when(() -> Entity.isVectorEmbeddable(entity)).thenReturn(true);
       when(searchRepository.getIndexMapping("table")).thenReturn(indexMapping);
       when(searchRepository.getClusterAlias()).thenReturn("");
       when(indexMapping.getIndexName("")).thenReturn("table_search_index");
@@ -93,8 +95,32 @@ class VectorEmbeddingHandlerTest {
   }
 
   @Test
+  void testOnEntityUpdatedDropsChunksAndEmbeddingForNonEmbeddableEntity() {
+    EntityInterface<?> entity = createMockEntity("contextMemory");
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    IndexMapping indexMapping = mock(IndexMapping.class);
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock.when(() -> Entity.isVectorEmbeddable(entity)).thenReturn(false);
+      entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      when(searchRepository.getIndexMapping("contextMemory")).thenReturn(indexMapping);
+      when(searchRepository.getClusterAlias()).thenReturn("");
+      when(indexMapping.getIndexName("")).thenReturn("context_memory_search_index");
+
+      handler.onEntityUpdated(entity, null, subjectContext);
+
+      verify(vectorIndexService).deleteEntityChunks(entity.getId().toString());
+      // The entity doc keeps its embedding across partial merges, so it has to be cleared
+      // explicitly or a memory flipped to Private stays matchable by kNN.
+      verify(vectorIndexService)
+          .clearEntityEmbedding("context_memory_search_index", entity.getId().toString());
+      verify(vectorIndexService, never()).updateEntityEmbeddings(any(), anyString());
+    }
+  }
+
+  @Test
   void testOnEntityUpdatedSkipsDeleted() {
-    EntityInterface entity = createMockEntity("table");
+    EntityInterface<?> entity = createMockEntity("table");
     when(entity.getDeleted()).thenReturn(true);
 
     handler.onEntityUpdated(entity, null, subjectContext);
@@ -111,7 +137,7 @@ class VectorEmbeddingHandlerTest {
 
   @Test
   void testOnEntityDeletedIsNoOp() {
-    EntityInterface entity = createMockEntity("table");
+    EntityInterface<?> entity = createMockEntity("table");
 
     handler.onEntityDeleted(entity, subjectContext);
 
@@ -120,7 +146,7 @@ class VectorEmbeddingHandlerTest {
 
   @Test
   void testOnEntitySoftDeletedIsNoOp() {
-    EntityInterface entity = createMockEntity("table");
+    EntityInterface<?> entity = createMockEntity("table");
 
     handler.onEntitySoftDeletedOrRestored(entity, true, subjectContext);
 
@@ -129,7 +155,7 @@ class VectorEmbeddingHandlerTest {
 
   @Test
   void testOnEntityRestoredIsNoOp() {
-    EntityInterface entity = createMockEntity("table");
+    EntityInterface<?> entity = createMockEntity("table");
 
     handler.onEntitySoftDeletedOrRestored(entity, false, subjectContext);
 
@@ -143,8 +169,8 @@ class VectorEmbeddingHandlerTest {
     verify(vectorIndexService, never()).updateEntityEmbeddings(any(), anyString());
   }
 
-  private EntityInterface createMockEntity(String entityType) {
-    EntityInterface entity = mock(EntityInterface.class);
+  private EntityInterface<?> createMockEntity(String entityType) {
+    EntityInterface<?> entity = mock(EntityInterface.class);
     UUID id = UUID.randomUUID();
     EntityReference ref = new EntityReference();
     ref.setType(entityType);

@@ -31,5 +31,15 @@ class SnowflakeSettings(OMSettings):
         ),
     )
 
+    semantic_catalog_cache_size: int = Field(
+        default=2,
+        ge=1,
+        description=(
+            "Per-thread LRU cache size for the schema-wide semantic view catalog "
+            "(dimensions/facts/metrics). Bounds memory on schemas with very many "
+            "semantic objects; total retained schemas is this value per worker thread."
+        ),
+    )
+
 
 snowflake_settings = SnowflakeSettings()

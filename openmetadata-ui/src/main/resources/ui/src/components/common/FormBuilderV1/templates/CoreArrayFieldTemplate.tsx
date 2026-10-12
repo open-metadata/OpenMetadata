@@ -12,8 +12,8 @@
  */
 
 import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { ArrayFieldTemplateProps } from '@rjsf/utils';
-import { Plus, Trash01 } from '@untitledui/icons';
 import { Fragment, FunctionComponent } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -49,7 +49,7 @@ export const CoreArrayFieldTemplate: FunctionComponent<
           className={`tw:flex tw:w-full tw:items-center${
             index > 0 ? ' tw:mt-2' : ''
           }`}
-          key={`${element.key}-${index}`}>
+          key={element.key}>
           <div className="tw:flex-1">{element.children}</div>
           {element.hasRemove && (
             <Button

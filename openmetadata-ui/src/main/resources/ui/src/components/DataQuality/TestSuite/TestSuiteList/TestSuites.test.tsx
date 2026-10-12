@@ -10,8 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { MemoryRouter, useNavigate, useParams } from 'react-router-dom';
+import { Operation } from '../../../../generated/entity/policies/policy';
 import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
 import { getListTestSuitesBySearch } from '../../../../rest/testAPI';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
@@ -110,7 +117,10 @@ jest.mock('@openmetadata/ui-core-components', () => {
     sortDescriptor?: { column?: string; direction?: string };
     [key: string]: unknown;
   }>) => {
-    const value = { sortDescriptor, onSortChange };
+    const value = React.useMemo(
+      () => ({ sortDescriptor, onSortChange }),
+      [sortDescriptor, onSortChange]
+    );
 
     return (
       <SortContext.Provider value={value}>
@@ -229,6 +239,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     onChange?: (value: string) => void;
   }) => (
     <input
+      aria-label={placeholder}
       placeholder={placeholder}
       value={value}
       onChange={(e) => onChange?.(e.target.value)}
@@ -263,11 +274,20 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
+    Typography: jest.requireActual('@openmetadata/ui-core-components')
+      .Typography,
     Box: MockBox,
     EmptyPlaceholder: MockEmptyPlaceholder,
     Input: MockInput,
+    Owner: jest.fn().mockReturnValue(<div data-testid="owner-label" />),
+    Skeleton: ({ 'data-testid': testId }: { 'data-testid'?: string }) => (
+      <div data-testid={testId} />
+    ),
     Tabs: MockTabs,
     Table: MockTable,
+    toOwnerRef: jest.fn().mockReturnValue({}),
+    toOwnerRefs: jest.fn().mockReturnValue([]),
   };
 });
 
@@ -369,8 +389,8 @@ jest.mock(
   })
 );
 
-jest.mock('@untitledui/icons', () => ({
-  SearchLg: () => <span data-testid="search-icon" />,
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
+  Search: () => <span data-testid="search-icon" />,
 }));
 
 jest.mock('../../SummaryPannel/PieChartSummaryPanel.component', () => ({
@@ -401,12 +421,6 @@ jest.mock(
   })
 );
 
-jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest
-    .fn()
-    .mockImplementation(() => <div data-testid="owner-label" />),
-}));
-
 jest.mock(
   '../../../Database/Profiler/TableProfiler/ProfilerProgressWidget/ProfilerProgressWidget',
   () =>
@@ -418,7 +432,7 @@ jest.mock(
 describe('TestSuites component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    testSuitePermission.ViewAll = true;
+    testSuitePermission[Operation.ViewAll] = true;
     mockLocation.search = '';
     mockDataQualityContext.createActions = undefined;
     (useParams as jest.Mock).mockReturnValue({
@@ -485,7 +499,7 @@ describe('TestSuites component', () => {
       limit: 15,
       offset: 0,
       owner: 'admin',
-      q: '*sales*',
+      q: 'sales',
       sortField: 'lastResultTimestamp',
       sortType: 'desc',
       testSuiteType: 'basic',
@@ -502,6 +516,46 @@ describe('TestSuites component', () => {
     expect(
       await screen.findByText('NextPrevious.component')
     ).toBeInTheDocument();
+  });
+
+  it('should land on the page from a shared URL without rewriting it', async () => {
+    mockLocation.search = '?currentPage=2&pageSize=15';
+    const mockGetListTestSuites = getListTestSuitesBySearch as jest.Mock;
+
+    render(<TestSuites />);
+
+    await waitFor(() => {
+      expect(mockGetListTestSuites).toHaveBeenCalledWith(
+        expect.objectContaining({ limit: 15, offset: 15 })
+      );
+    });
+
+    const mockNavigate = (useNavigate as jest.Mock).mock.results[0].value;
+
+    expect(mockGetListTestSuites).not.toHaveBeenCalledWith(
+      expect.objectContaining({ offset: 0 })
+    );
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('should keep the shared page when the shared URL also carries a search', async () => {
+    mockLocation.search = '?searchValue=sales&currentPage=2&pageSize=15';
+    const mockGetListTestSuites = getListTestSuitesBySearch as jest.Mock;
+
+    render(<TestSuites />);
+
+    await waitFor(() => {
+      expect(mockGetListTestSuites).toHaveBeenCalledWith(
+        expect.objectContaining({ q: 'sales', limit: 15, offset: 15 })
+      );
+    });
+
+    const mockNavigate = (useNavigate as jest.Mock).mock.results[0].value;
+
+    expect(mockGetListTestSuites).not.toHaveBeenCalledWith(
+      expect.objectContaining({ offset: 0 })
+    );
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 
   it('should render the sub-tab toggle with table and bundle suite options', async () => {
@@ -568,7 +622,7 @@ describe('TestSuites component', () => {
   });
 
   it('should render no data placeholder, if there is no permission', async () => {
-    testSuitePermission.ViewAll = false;
+    testSuitePermission[Operation.ViewAll] = false;
 
     render(<TestSuites />, { wrapper: MemoryRouter });
 
@@ -662,7 +716,7 @@ describe('TestSuites component', () => {
   describe('observabilityRouterClassBase migration', () => {
     it('logical test suite name link should use observabilityRouterClassBase.getTestSuitePath', async () => {
       // Restore permission for this test
-      testSuitePermission.ViewAll = true;
+      testSuitePermission[Operation.ViewAll] = true;
       mockLocation.search = '';
 
       const logicalSuiteName = 'svc.suite';

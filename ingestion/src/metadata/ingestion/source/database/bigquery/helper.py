@@ -16,13 +16,18 @@ Source connection helper
 import re
 import traceback
 from copy import deepcopy
-from typing import Any, List, Tuple  # noqa: UP035
+from typing import Any
 
+from google.cloud.datacatalog_v1 import PolicyTagManagerClient
 from pydantic import BaseModel
 from sqlalchemy import inspect, text
 
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
+)
+from metadata.generated.schema.security.credentials.gcpCredentials import (
+    GcpADC,
+    GcpCredentialsPath,
 )
 from metadata.generated.schema.security.credentials.gcpValues import (
     GcpCredentialsValues,
@@ -31,6 +36,7 @@ from metadata.generated.schema.security.credentials.gcpValues import (
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.bigquery.queries import BIGQUERY_CONSTRAINTS
 from metadata.utils.bigquery_utils import get_bigquery_client
+from metadata.utils.credentials import get_gcp_impersonate_credentials
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -64,9 +70,17 @@ def clone_connection_for_project(database_name: str, service_connection: BigQuer
     """
     Return a copy of the service connection scoped to a single project, so each
     project in a multi-project connection can be inspected/tested independently.
+
+    Every ``gcpConfig`` variant that supports a multi-project ``projectId``
+    (a raw key via ``GcpCredentialsValues``, Application Default Credentials
+    via ``GcpADC``, or a key file path via ``GcpCredentialsPath``) needs this
+    override - without it, a multi-project connection using ADC or a key path
+    silently re-scans the first configured project on every iteration instead
+    of actually switching projects, since ``get_connection_url`` only ever
+    resolves those two variants' ``MultipleProjectId`` to their first entry.
     """
     new_service_connection = deepcopy(service_connection)
-    if isinstance(new_service_connection.credentials.gcpConfig, GcpCredentialsValues):
+    if isinstance(new_service_connection.credentials.gcpConfig, (GcpCredentialsValues, GcpADC, GcpCredentialsPath)):
         new_service_connection.credentials.gcpConfig.projectId = SingleProjectId(database_name)
     return new_service_connection
 
@@ -90,6 +104,27 @@ def get_impersonate_client_kwargs(service_connection: BigQueryConnection) -> dic
             kwargs["impersonate_service_account"] = target_service_account
             kwargs["lifetime"] = impersonate.lifetime
     return kwargs
+
+
+def get_policy_tag_client(service_connection: BigQueryConnection) -> PolicyTagManagerClient:
+    """
+    Build the Data Catalog client used to read policy tags and taxonomies.
+
+    ``PolicyTagManagerClient()`` with no credentials falls back to
+    ``google.auth.default()``, i.e. the source service account, so a connection
+    configured with ``gcpImpersonateServiceAccount`` would read policy tags under
+    the wrong identity while every other BigQuery call impersonates correctly.
+    Without impersonation the credential-less client is returned unchanged so the
+    ADC / JSON-key / external-account paths keep their existing behaviour.
+    """
+    kwargs = get_impersonate_client_kwargs(service_connection)
+    if not kwargs:
+        return PolicyTagManagerClient()
+    credentials = get_gcp_impersonate_credentials(
+        impersonate_service_account=kwargs["impersonate_service_account"],
+        lifetime=kwargs["lifetime"],
+    )
+    return PolicyTagManagerClient(credentials=credentials)
 
 
 def get_bigquery_client_for_project(database_name: str, service_connection: BigQueryConnection):
@@ -173,7 +208,7 @@ def get_foreign_keys(self, connection, table_name, schema=None, **kw):  # pylint
         return []
 
 
-def parse_bigqeury_labels(labels: str) -> List[Tuple[str, str]]:  # noqa: UP006
+def parse_bigqeury_labels(labels: str) -> list[tuple[str, str]]:
     """
     This function is used to parse BigQuery label string into a list of tuples.
     """

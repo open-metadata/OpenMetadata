@@ -29,15 +29,15 @@ import java.util.List;
 import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.schema.entity.feed.FeedInfo;
-import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
+import org.openmetadata.service.formatter.util.FormattedMessage;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
 public class DefaultFieldFormatter implements FieldFormatter {
-  protected final Thread thread;
+  protected final FormattedMessage thread;
   protected String fieldChangeName;
   protected final FieldChange fieldChange;
   protected final String fieldOldValue;
@@ -45,7 +45,7 @@ public class DefaultFieldFormatter implements FieldFormatter {
   protected final MessageDecorator<?> messageDecorator;
 
   public DefaultFieldFormatter(
-      MessageDecorator<?> messageDecorator, Thread thread, FieldChange fieldChange) {
+      MessageDecorator<?> messageDecorator, FormattedMessage thread, FieldChange fieldChange) {
     this.messageDecorator = messageDecorator;
     this.fieldChangeName = getFieldNameChange(fieldChange.getName(), thread);
     this.fieldOldValue = getFieldValue(fieldChange.getOldValue());
@@ -133,10 +133,10 @@ public class DefaultFieldFormatter implements FieldFormatter {
   }
 
   public static void populateThreadFeedInfo(
-      Thread thread,
+      FormattedMessage thread,
       String threadMessage,
-      Thread.CardStyle cardStyle,
-      Thread.FieldOperation operation,
+      FormattedMessage.CardStyle cardStyle,
+      FormattedMessage.FieldOperation operation,
       FeedInfo feedInfo) {
     thread.withMessage(threadMessage);
     thread.withCardStyle(cardStyle);
@@ -191,7 +191,7 @@ public class DefaultFieldFormatter implements FieldFormatter {
     return fieldValue.toString();
   }
 
-  public static String getFieldNameChange(String fieldChangeName, Thread thread) {
+  public static String getFieldNameChange(String fieldChangeName, FormattedMessage thread) {
     MessageParser.EntityLink link = getEntityLinkForFieldName(fieldChangeName, thread);
     String arrayFieldName = link.getArrayFieldName();
     String arrayFieldValue = link.getArrayFieldValue();

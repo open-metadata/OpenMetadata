@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.util;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -22,7 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.governance.IntakeForm;
-import org.openmetadata.schema.entity.governance.IntakeFormRequiredField;
+import org.openmetadata.schema.entity.governance.IntakeFormField;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.IntakeFormRepository;
 import org.slf4j.Logger;
@@ -55,7 +54,7 @@ public final class IntakeFormValidator {
    *
    * @throws IllegalArgumentException if any intake-form required field is unset.
    */
-  public static void validate(EntityInterface entity, String entityType) {
+  public static void validate(EntityInterface<?> entity, String entityType) {
     IntakeForm form = loadIntakeForm(entityType);
     if (form == null) return;
 
@@ -70,23 +69,36 @@ public final class IntakeFormValidator {
   }
 
   private static List<String> checkIntakeFormRequiredFields(
-      EntityInterface entity, IntakeForm form) {
+      EntityInterface<?> entity, IntakeForm form) {
     List<String> missing = new ArrayList<>();
-    for (IntakeFormRequiredField field : listOrEmpty(form.getRequiredFields())) {
+    for (IntakeFormField field : IntakeFormUtil.getEffectiveFormFields(form)) {
+      if (!Boolean.TRUE.equals(field.getRequired())) continue;
       if (field.getFieldPath() == null || field.getFieldPath().isBlank()) continue;
       if (!isFieldSet(entity, field)) {
-        missing.add(
-            field.getErrorMessage() != null && !field.getErrorMessage().isBlank()
-                ? field.getErrorMessage()
-                : (field.getFieldLabel() != null ? field.getFieldLabel() : field.getFieldPath()));
+        missing.add(describe(field));
       }
     }
     return missing;
   }
 
-  private static boolean isFieldSet(EntityInterface entity, IntakeFormRequiredField field) {
+  /**
+   * How a missing field is named in the error. Falls through to the field path when the label is
+   * blank as well as when it is absent: a form field configured with an empty label would otherwise
+   * contribute an empty entry, leaving the caller an error that names nothing.
+   */
+  private static String describe(IntakeFormField field) {
+    String described = field.getFieldPath();
+    if (field.getErrorMessage() != null && !field.getErrorMessage().isBlank()) {
+      described = field.getErrorMessage();
+    } else if (field.getFieldLabel() != null && !field.getFieldLabel().isBlank()) {
+      described = field.getFieldLabel();
+    }
+    return described;
+  }
+
+  private static boolean isFieldSet(EntityInterface<?> entity, IntakeFormField field) {
     boolean isCustomProperty =
-        IntakeFormRequiredField.FieldKind.CUSTOM_PROPERTY.equals(field.getFieldKind())
+        IntakeFormField.FieldKind.CUSTOM_PROPERTY.equals(field.getFieldKind())
             || field.getFieldPath().startsWith(EXTENSION_PREFIX);
     if (isCustomProperty) {
       return isExtensionFieldSet(entity, field.getFieldPath());
@@ -94,7 +106,7 @@ public final class IntakeFormValidator {
     return isNativeFieldSet(entity, field.getFieldPath());
   }
 
-  private static boolean isNativeFieldSet(EntityInterface entity, String fieldName) {
+  private static boolean isNativeFieldSet(EntityInterface<?> entity, String fieldName) {
     try {
       JsonNode node = MAPPER.valueToTree(entity);
       return hasMeaningfulValue(node.get(fieldName));
@@ -104,7 +116,7 @@ public final class IntakeFormValidator {
     }
   }
 
-  private static boolean isExtensionFieldSet(EntityInterface entity, String path) {
+  private static boolean isExtensionFieldSet(EntityInterface<?> entity, String path) {
     String propertyName =
         path.startsWith(EXTENSION_PREFIX) ? path.substring(EXTENSION_PREFIX.length()) : path;
     Object ext = entity.getExtension();

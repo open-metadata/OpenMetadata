@@ -21,12 +21,7 @@ import { ProgressBar } from '@/components/base/progress-indicators/progress-indi
 import { FeaturedIcon } from '@/components/foundations/featured-icon/featured-icon';
 import { cx } from '@/utils/cx';
 import { FileIcon as FileIconBase } from '@untitledui/file-icons';
-import {
-  CheckCircle,
-  Trash01,
-  UploadCloud02,
-  XCircle,
-} from '@untitledui/icons';
+import { CheckCircle, Trash01, UploadCloud02, XCircle } from '../../../icons';
 import type {
   ChangeEvent,
   ComponentProps,
@@ -101,6 +96,9 @@ const isFileTypeAccepted = (file: File, accept?: string): boolean => {
 
     if (acceptedType.endsWith('/*')) {
       const typePrefix = acceptedType.split('/')[0];
+      if (typePrefix === '*') {
+        return true;
+      }
 
       return file.type.startsWith(`${typePrefix}/`);
     }
@@ -351,7 +349,7 @@ export const FileListItemProgressBar = ({
         className
       )}>
       <FileIcon
-        className="tw:size-10 tw:shrink-0 dark:tw:hidden"
+        className="tw:size-10 tw:shrink-0 tw:dark:hidden"
         theme="light"
         type={type ?? 'empty'}
         variant={fileIconVariant ?? 'default'}
@@ -477,7 +475,7 @@ export const FileListItemProgressFill = ({
         )}
       />
       <FileIcon
-        className="tw:relative tw:size-10 tw:shrink-0 dark:tw:hidden"
+        className="tw:relative tw:size-10 tw:shrink-0 tw:dark:hidden"
         theme="light"
         type={type ?? 'empty'}
         variant={fileIconVariant ?? 'solid'}

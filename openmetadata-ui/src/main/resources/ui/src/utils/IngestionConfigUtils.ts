@@ -12,7 +12,7 @@
  */
 
 import { isEmpty, isUndefined, startCase, uniq } from 'lodash';
-import type { ServicesUpdateRequest, ServiceTypes } from 'Models';
+import type { ServicesUpdateRequest } from 'Models';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -34,8 +34,10 @@ import {
   type IngestionPipeline,
   type StepSummary,
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { PipelineServiceType } from '../generated/entity/services/pipelineService';
 import type { SearchSourceAlias } from '../interface/search.interface';
 import type { DataObj, ServicesType } from '../interface/service.interface';
+import connectionsRouterClassBase from './ConnectionsRouterClassBase';
 import { getDayCron } from './CronExpressionUtils';
 import i18n from './i18next/LocalUtil';
 import { getSchemaByWorkflowType } from './IngestionWorkflowUtils';
@@ -47,7 +49,7 @@ import {
 import { getFilteredSchema } from './ServiceConnectionUtils';
 import {
   getReadableCountString,
-  getServiceRouteFromServiceType,
+  getServiceCategoryLabel,
 } from './ServicePureUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 
@@ -111,10 +113,9 @@ export const getBreadCrumbsArray = (
     breadCrumbsArray.push(
       ...[
         {
-          name: startCase(serviceCategory),
-          url: getSettingPath(
-            GlobalSettingsMenuCategory.SERVICES,
-            getServiceRouteFromServiceType(serviceCategory as ServiceTypes)
+          name: getServiceCategoryLabel(serviceCategory),
+          url: connectionsRouterClassBase.getSettingsServicesPath(
+            serviceCategory
           ),
         },
         {
@@ -149,6 +150,10 @@ export const getSupportedPipelineTypes = (
 ) => {
   const pipelineType: PipelineType[] = [];
   const config = serviceDetails?.connection?.config as Connection;
+
+  if (serviceDetails.serviceType === PipelineServiceType.Spark) {
+    return pipelineType;
+  }
 
   if (isUndefined(config)) {
     return [PipelineType.Metadata];
@@ -304,7 +309,12 @@ export const getTypeAndStatusMenuItems = () => {
 export const getIngestionStatusCountData = (summary?: StepSummary) => [
   {
     label: i18n.t('label.success'),
-    value: getReadableCountString(summary?.records ?? 0, 1),
+    // Success = created + updated records (e.g. the Automator reports only
+    // updated_records), matching the ingestion's own record_count + updated_records.
+    value: getReadableCountString(
+      (summary?.records ?? 0) + (summary?.updated_records ?? 0),
+      1
+    ),
     type: 'success',
   },
   {

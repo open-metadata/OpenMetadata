@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { TestCaseStatus } from '../../../../generated/tests/testCase';
 import { getTestCaseDimensionResultsByFqn } from '../../../../rest/testAPI';
 import DimensionalityTab from './DimensionalityTab';
 
@@ -33,13 +34,69 @@ const PRESET_RANGE = {
   title: 'Last 7 days',
 };
 
-jest.mock('@openmetadata/ui-core-components', () => ({
-  Select: Object.assign(
-    jest.fn().mockImplementation(() => <div data-testid="dimension-select" />),
-    { Item: jest.fn() }
-  ),
-  Skeleton: jest.fn().mockImplementation(() => <div data-testid="skeleton" />),
-  Table: jest.fn(),
+jest.mock('@openmetadata/ui-core-components', () => {
+  const Table = Object.assign(
+    jest.fn().mockImplementation(({ children }) => <table>{children}</table>),
+    {
+      Body: jest
+        .fn()
+        .mockImplementation(({ children, items }) => (
+          <tbody>{items.map(children)}</tbody>
+        )),
+      Cell: jest.fn().mockImplementation(({ children }) => <td>{children}</td>),
+      Head: jest.fn().mockImplementation(({ label }) => <th>{label}</th>),
+      Header: jest.fn().mockImplementation(({ children, columns }) => (
+        <thead>
+          <tr>{columns.map(children)}</tr>
+        </thead>
+      )),
+      Row: jest
+        .fn()
+        .mockImplementation(({ children, columns }) => (
+          <tr>{columns.map(children)}</tr>
+        )),
+    }
+  );
+
+  return {
+    Badge: jest
+      .fn()
+      .mockImplementation(({ children, ...props }) => (
+        <span data-testid={props['data-testid']}>{children}</span>
+      )),
+    Select: Object.assign(
+      jest
+        .fn()
+        .mockImplementation(() => <div data-testid="dimension-select" />),
+      { Item: jest.fn() }
+    ),
+    Skeleton: jest
+      .fn()
+      .mockImplementation(() => <div data-testid="skeleton" />),
+    Table,
+  };
+});
+
+const mockNavigationState = {
+  breadcrumbData: [
+    {
+      name: 'Data Quality',
+      url: '/data-quality/test-cases',
+    },
+  ],
+};
+
+jest.mock('../../../../hooks/useCustomLocation/useCustomLocation', () =>
+  jest.fn().mockImplementation(() => ({ state: mockNavigationState }))
+);
+
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  Link: jest.fn().mockImplementation(({ children, state, to }) => (
+    <a data-state={JSON.stringify(state)} href={to}>
+      {children}
+    </a>
+  )),
 }));
 
 jest.mock('react-i18next', () => ({
@@ -89,6 +146,10 @@ jest.mock('../../../common/DatePickerMenu/DatePickerMenu.component', () =>
   ))
 );
 
+jest.mock('../../../common/DateTimeDisplay/DateTimeDisplay', () =>
+  jest.fn().mockImplementation(() => <span>Last run</span>)
+);
+
 jest.mock('../../../common/ErrorWithPlaceholder/NoDataPlaceholderNew', () =>
   jest.fn().mockImplementation(({ children }) => <div>{children}</div>)
 );
@@ -98,6 +159,59 @@ jest.mock('./DimensionalityHeatmap/DimensionalityHeatmap.component', () =>
 );
 
 describe('DimensionalityTab', () => {
+  it('preserves the origin when opening dimension details', async () => {
+    mockGetTestCaseDimensionResultsByFqn.mockResolvedValueOnce({
+      data: [
+        {
+          dimensionKey: 'country=US',
+          dimensionValues: [{ name: 'country', value: 'US' }],
+          timestamp: 1709576999999,
+        },
+      ],
+    });
+
+    render(<DimensionalityTab />);
+
+    const link = await screen.findByRole('link', { name: 'US' });
+
+    expect(JSON.parse(link.getAttribute('data-state') ?? '{}')).toEqual(
+      mockNavigationState
+    );
+  });
+
+  it('marks a dimension excluded from the roll-up next to its status', async () => {
+    mockGetTestCaseDimensionResultsByFqn.mockResolvedValueOnce({
+      data: [
+        {
+          id: 'ad',
+          testCaseResultId: 'result',
+          dimensionKey: 'country=AD',
+          dimensionValues: [{ name: 'country', value: 'AD' }],
+          testCaseStatus: TestCaseStatus.Failed,
+          excludedFromRollUp: true,
+          timestamp: 1709576999999,
+        },
+        {
+          id: 'us',
+          testCaseResultId: 'result',
+          dimensionKey: 'country=US',
+          dimensionValues: [{ name: 'country', value: 'US' }],
+          testCaseStatus: TestCaseStatus.Failed,
+          timestamp: 1709576999999,
+        },
+      ],
+      paging: { total: 2 },
+    });
+
+    render(<DimensionalityTab />);
+
+    expect(await screen.findAllByTestId('status-badge')).toHaveLength(2);
+    expect(screen.getAllByTestId('excluded-from-roll-up-badge')).toHaveLength(
+      1
+    );
+    expect(screen.getByText('label.excluded-from-roll-up')).toBeInTheDocument();
+  });
+
   it('preserves the picker boundaries for a custom date range', async () => {
     render(<DimensionalityTab />);
 

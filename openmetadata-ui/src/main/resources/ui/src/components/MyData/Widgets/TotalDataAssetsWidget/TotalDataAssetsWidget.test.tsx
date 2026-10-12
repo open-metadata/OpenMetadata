@@ -11,6 +11,10 @@
  *  limitations under the License.
  */
 import {
+  PieChart,
+  type PieChartProps,
+} from '@openmetadata/ui-core-components/charts';
+import {
   act,
   fireEvent,
   render,
@@ -19,12 +23,14 @@ import {
 } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { MemoryRouter } from 'react-router-dom';
+import { DEFAULT_THEME } from '../../../../constants/Appearance.constants';
 import { CHART_WIDGET_DAYS_DURATION } from '../../../../constants/constants';
 import { SystemChartType } from '../../../../enums/DataInsight.enum';
 import {
   DataInsightCustomChartResult,
   getChartPreviewByName,
 } from '../../../../rest/DataInsightAPI';
+import { generatePalette } from '../../../../styles/colorPallet';
 import {
   getCurrentMillis,
   getEpochMillisForPastDays,
@@ -33,6 +39,20 @@ import { showErrorToast } from '../../../../utils/ToastUtils';
 import TotalDataAssetsWidget from './TotalDataAssetsWidget.component';
 import { DATA_ASSETS_SORT_BY_KEYS } from './TotalDataAssetsWidget.constant';
 import { TotalDataAssetsWidgetProps } from './TotalDataAssetsWidget.interface';
+
+const mockFirstDay = new Date(2022, 0, 1).getTime();
+const mockSecondDay = new Date(2022, 0, 2).getTime();
+
+const mockNavigate = jest.fn();
+
+const mockPieChart = PieChart as unknown as jest.Mock<null, [PieChartProps]>;
+const pieProps = () =>
+  mockPieChart.mock.calls[mockPieChart.mock.calls.length - 1]?.[0];
+
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useNavigate: () => mockNavigate,
+}));
 
 // Mock dependencies
 jest.mock('../../../../rest/DataInsightAPI', () => ({
@@ -63,9 +83,9 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
 
     return date.toLocaleDateString();
   }),
-  getCurrentMillis: jest.fn(() => 1640995200000), // 2022-01-01
+  getCurrentMillis: jest.fn(() => mockFirstDay),
   getEpochMillisForPastDays: jest.fn(
-    (days: number) => 1640995200000 - days * 24 * 60 * 60 * 1000
+    (days: number) => mockFirstDay - days * 24 * 60 * 60 * 1000
   ),
 }));
 
@@ -95,9 +115,17 @@ jest.mock('../Common/WidgetHeader/WidgetHeader', () => {
         sortOptions,
         selectedSortBy,
         onSortChange,
+        onTitleClick,
       }) => (
         <div data-testid="widget-header">
-          <span>{title}</span>
+          <span
+            data-testid="widget-title"
+            role="button"
+            tabIndex={0}
+            onClick={onTitleClick}
+            onKeyDown={onTitleClick}>
+            {title}
+          </span>
           {isEditView && (
             <button
               data-testid="remove-widget-button"
@@ -111,11 +139,13 @@ jest.mock('../Common/WidgetHeader/WidgetHeader', () => {
                 data-testid="sort-by-dropdown"
                 value={selectedSortBy}
                 onChange={(e) => onSortChange?.(e.target.value)}>
-                {sortOptions.map((option: any) => (
-                  <option key={option.key} value={option.key}>
-                    {option.label}
-                  </option>
-                ))}
+                {sortOptions.map(
+                  (option: { key: string; label: React.ReactNode }) => (
+                    <option key={option.key} value={option.key}>
+                      {option.label}
+                    </option>
+                  )
+                )}
               </select>
             </div>
           )}
@@ -136,57 +166,36 @@ jest.mock('../Common/WidgetEmptyState/WidgetEmptyState', () => {
     ));
 });
 
-// Mock Recharts components
-jest.mock('recharts', () => ({
-  ResponsiveContainer: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="responsive-container">{children}</div>
-  ),
-  PieChart: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="pie-chart">{children}</div>
-  ),
-  Pie: ({ data }: { data: any[] }) => (
-    <div data-length={data.length} data-testid="pie">
-      {data.map((item, index) => (
-        <div data-testid={`pie-cell-${item.name}`} key={index}>
-          {item.name}: {item.value}
-        </div>
-      ))}
-    </div>
-  ),
-  Cell: () => <div data-testid="cell" />,
-  Tooltip: () => <div data-testid="tooltip" />,
-}));
-
 // Mock chart data
 const mockChartData: DataInsightCustomChartResult = {
   results: [
     {
       count: 150,
-      day: 1640995200000, // 2022-01-01
+      day: mockFirstDay,
       group: 'table',
       term: 'table',
     },
     {
       count: 75,
-      day: 1640995200000,
+      day: mockFirstDay,
       group: 'dashboard',
       term: 'dashboard',
     },
     {
       count: 200,
-      day: 1641081600000, // 2022-01-02
+      day: mockSecondDay,
       group: 'table',
       term: 'table',
     },
     {
       count: 100,
-      day: 1641081600000,
+      day: mockSecondDay,
       group: 'dashboard',
       term: 'dashboard',
     },
     {
       count: 50,
-      day: 1641081600000,
+      day: mockSecondDay,
       group: 'pipeline',
       term: 'pipeline',
     },
@@ -224,6 +233,20 @@ describe('TotalDataAssetsWidget', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (getChartPreviewByName as jest.Mock).mockResolvedValue(mockChartData);
+  });
+
+  describe('Navigation', () => {
+    it('should navigate to the data assets tab on title click', async () => {
+      // The bare /data-insights route has no tab segment, which leaves the page
+      // dependent on an in-page redirect. Link straight to the real tab.
+      await act(async () => {
+        renderTotalDataAssetsWidget();
+      });
+
+      fireEvent.click(screen.getByTestId('widget-title'));
+
+      expect(mockNavigate).toHaveBeenCalledWith('/data-insights/data-assets');
+    });
   });
 
   describe('Component Rendering', () => {
@@ -416,9 +439,53 @@ describe('TotalDataAssetsWidget', () => {
         renderTotalDataAssetsWidget();
       });
 
-      expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
-      expect(screen.getByTestId('pie-chart')).toBeInTheDocument();
-      expect(screen.getByTestId('pie')).toBeInTheDocument();
+      expect(screen.getByTestId('core-pie-chart')).toBeInTheDocument();
+      expect(pieProps()).toEqual(
+        expect.objectContaining({
+          innerRadius: '64%',
+          outerRadius: '94%',
+          padAngle: 1,
+          height: 250,
+          legend: { show: false },
+        })
+      );
+    });
+
+    it('should draw one slice per entity type, highest count first, in brand shades matching the legend', async () => {
+      await act(async () => {
+        renderTotalDataAssetsWidget({
+          currentLayout: [{ i: 'test-widget-key', x: 0, y: 0, w: 2, h: 4 }],
+        });
+      });
+
+      const slices = pieProps()?.data ?? [];
+      const values = slices.map((slice) => slice.value);
+      const legendDots = screen.getAllByTestId(/^legend-color-/);
+
+      expect(slices.length).toBeGreaterThan(1);
+      expect(values).toEqual([...values].sort((a, b) => b - a));
+      expect(legendDots).toHaveLength(slices.length);
+
+      // Shades of the brand colour, darkest for the largest count; the legend
+      // dot beside each slice takes the same shade.
+      const brandShades = generatePalette(DEFAULT_THEME.primaryColor).reverse();
+
+      slices.forEach((slice, index) => {
+        expect(slice.color).toBe(brandShades[index]);
+        expect(legendDots[index]).toHaveStyle({
+          backgroundColor: brandShades[index],
+        });
+      });
+    });
+
+    it('should label slices with the readable entity name', async () => {
+      await act(async () => {
+        renderTotalDataAssetsWidget();
+      });
+
+      expect((pieProps()?.data ?? []).map((slice) => slice.name)).toEqual(
+        expect.arrayContaining(['Table', 'Dashboard', 'Pipeline'])
+      );
     });
 
     it('should display total data assets count in center of donut chart', async () => {
@@ -426,7 +493,6 @@ describe('TotalDataAssetsWidget', () => {
         renderTotalDataAssetsWidget();
       });
 
-      // For the latest date (1641081600000), total should be 200 + 100 + 50 = 350
       expect(screen.getByText('350')).toBeInTheDocument();
     });
 
@@ -498,12 +564,14 @@ describe('TotalDataAssetsWidget', () => {
       });
 
       // Find and click on the first date
-      const firstDateBox = screen.getByText('01').closest('.date-box');
+      const firstDateBox = screen
+        .getByText('01')
+        .closest('.date-box') as HTMLElement;
 
       expect(firstDateBox).toBeInTheDocument();
 
       await act(async () => {
-        fireEvent.click(firstDateBox!);
+        fireEvent.click(firstDateBox);
       });
 
       // Should now show data for the first date (150 + 75 = 225)
@@ -552,19 +620,19 @@ describe('TotalDataAssetsWidget', () => {
         results: [
           {
             count: 50,
-            day: 1640995200000,
+            day: mockFirstDay,
             group: 'dashboard',
             term: 'dashboard',
           },
           {
             count: 200,
-            day: 1640995200000,
+            day: mockFirstDay,
             group: 'table',
             term: 'table',
           },
           {
             count: 100,
-            day: 1640995200000,
+            day: mockFirstDay,
             group: 'topic',
             term: 'topic',
           },
@@ -626,9 +694,11 @@ describe('TotalDataAssetsWidget', () => {
       });
 
       // Verify that data is processed correctly for different dates
-      const firstDateBox = screen.getByText('01').closest('.date-box');
+      const firstDateBox = screen
+        .getByText('01')
+        .closest('.date-box') as HTMLElement;
       await act(async () => {
-        fireEvent.click(firstDateBox!);
+        fireEvent.click(firstDateBox);
       });
 
       // First date should show 150 + 75 = 225
@@ -640,13 +710,13 @@ describe('TotalDataAssetsWidget', () => {
         results: [
           {
             count: 100,
-            day: 1640995200000,
+            day: mockFirstDay,
             group: 'table',
             term: 'table',
           },
           {
             count: 50,
-            day: 1640995200000,
+            day: mockFirstDay,
             group: '',
             term: '',
           },
@@ -662,7 +732,7 @@ describe('TotalDataAssetsWidget', () => {
       });
 
       // Should still render without errors
-      expect(screen.getByTestId('pie-chart')).toBeInTheDocument();
+      expect(screen.getByTestId('core-pie-chart')).toBeInTheDocument();
     });
   });
 

@@ -42,6 +42,103 @@ assert Table.model_config.get("defer_build") is False, "OM_PYDANTIC_DEFER_BUILD=
 print("OK")
 """
 
+_SERIALIZE_PROBE = """
+import warnings
+
+warnings.filterwarnings("ignore")
+from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
+    SnowflakeConnection,
+)
+from metadata.generated.schema.metadataIngestion.workflow import Source
+
+assert SnowflakeConnection.__pydantic_complete__ is False, "connection schema was built eagerly at import"
+
+# Nothing here builds the nested models' own schema: validating Source goes through
+# the members pydantic inlined into the parent. Dumping the parent then falls back to
+# reading the serializer off the nested class, which is where a deferred model that was
+# never built surfaces as a MockValSer.
+source = Source.model_validate(
+    {
+        "type": "snowflake",
+        "serviceName": "test",
+        "serviceConnection": {
+            "config": {
+                "type": "Snowflake",
+                "account": "account",
+                "username": "username",
+                "password": "password",
+                "warehouse": "warehouse",
+            }
+        },
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
+    }
+)
+dumped = source.model_dump()
+assert dumped["serviceConnection"]["config"]["account"] == "account"
+print("OK")
+"""
+
+_CONCURRENT_REBUILD_PROBE = """
+import sys
+import threading
+import time
+import warnings
+
+from pydantic import ConfigDict
+
+from metadata.ingestion.models.custom_pydantic import BaseModel
+
+warnings.filterwarnings("ignore")
+thread_count = 8
+wait_seconds = 10
+expected = {"value": "ok"}
+original_interval = sys.getswitchinterval()
+sys.setswitchinterval(1e-6)
+try:
+    for round_number in range(200):
+        class DeferredModel(BaseModel):
+            model_config = ConfigDict(defer_build=True)
+
+            value: str
+
+        assert DeferredModel.__pydantic_complete__ is False
+        start_gate = threading.Barrier(thread_count + 1, timeout=wait_seconds)
+        results = [None] * thread_count
+        failures = []
+
+        def validate(worker_number):
+            try:
+                start_gate.wait()
+                results[worker_number] = DeferredModel.model_validate(expected).model_dump()
+            except Exception as exc:
+                failures.append(f"worker {worker_number}: {exc!r}")
+
+        workers = [
+            threading.Thread(target=validate, args=(worker_number,), daemon=True)
+            for worker_number in range(thread_count)
+        ]
+        for worker in workers:
+            worker.start()
+        try:
+            start_gate.wait()
+        except threading.BrokenBarrierError as exc:
+            failures.append(f"main thread: {exc!r}")
+
+        deadline = time.monotonic() + wait_seconds
+        for worker in workers:
+            worker.join(timeout=max(0, deadline - time.monotonic()))
+
+        stuck_workers = [worker.name for worker in workers if worker.is_alive()]
+        assert not stuck_workers, f"round {round_number}: workers did not finish: {stuck_workers}"
+        assert not failures, f"round {round_number}: concurrent rebuild failed: {failures[:3]}"
+        assert results == [expected] * thread_count
+        assert DeferredModel.__pydantic_complete__ is True
+finally:
+    sys.setswitchinterval(original_interval)
+
+print("OK")
+"""
+
 
 def _collect_generated_model_classes() -> dict:
     """Return {qualified_name: class} for importable generated BaseModel subclasses."""
@@ -95,6 +192,38 @@ def test_generated_models_defer_build_is_enabled():
         env=env,
     )
     assert result.returncode == 0, f"defer_build probe failed:\n{result.stdout}\n{result.stderr}"
+    assert result.stdout.strip().endswith("OK")
+
+
+def test_deferred_nested_models_are_serializable():
+    """Dumping a parent reaches nested models whose own schema was never built."""
+    # Fresh interpreter with the toggle unset, for the same reasons as the probe above:
+    # completeness flips on first use, and this has to assert the default.
+    env = {key: value for key, value in os.environ.items() if key != "OM_PYDANTIC_DEFER_BUILD"}
+    result = subprocess.run(
+        [sys.executable, "-c", _SERIALIZE_PROBE],
+        capture_output=True,
+        text=True,
+        check=False,
+        env=env,
+    )
+    assert result.returncode == 0, f"serialization probe failed:\n{result.stdout}\n{result.stderr}"
+    assert result.stdout.strip().endswith("OK")
+
+
+def test_concurrent_first_instantiation_is_safe():
+    """Threads racing a deferred model's first build never observe a half-rebuilt class."""
+    # Keep the forced scheduler pressure from racing Python 3.10's coverage thread hook.
+    env = {key: value for key, value in os.environ.items() if not key.startswith(("COV_CORE_", "COVERAGE_"))}
+    result = subprocess.run(
+        [sys.executable, "-c", _CONCURRENT_REBUILD_PROBE],
+        capture_output=True,
+        text=True,
+        check=False,
+        env=env,
+        timeout=60,
+    )
+    assert result.returncode == 0, f"concurrent rebuild probe failed:\n{result.stdout}\n{result.stderr}"
     assert result.stdout.strip().endswith("OK")
 
 

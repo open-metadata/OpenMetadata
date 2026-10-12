@@ -321,7 +321,9 @@ describe('ContainerDataModel', () => {
     });
 
     expect(mockWriteText).toHaveBeenCalledWith(
-      expect.stringContaining(props.dataModel.columns[0].fullyQualifiedName!)
+      expect.stringContaining(
+        props.dataModel.columns[0].fullyQualifiedName as string
+      )
     );
   });
 });

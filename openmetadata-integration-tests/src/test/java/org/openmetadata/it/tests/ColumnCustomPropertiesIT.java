@@ -5,8 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -21,11 +23,13 @@ import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.factories.DashboardServiceTestFactory;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.util.BulkApi;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.SharedResourceLocks;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateDashboardDataModel;
+import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.UpdateColumn;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
@@ -34,10 +38,13 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.type.CustomProperty;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.CustomPropertyConfig;
 import org.openmetadata.schema.type.DataModelType;
+import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.customProperties.EnumConfig;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.Columns;
@@ -64,6 +71,7 @@ public class ColumnCustomPropertiesIT {
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private static final String TABLE_COLUMN = "tableColumn";
   private static final String DASHBOARD_DATA_MODEL_COLUMN = "dashboardDataModelColumn";
+  private static final String DEEP_EXTENSION_VALUE = "deep-inline-value";
 
   private static Type STRING_TYPE;
   private static Type INT_TYPE;
@@ -184,6 +192,35 @@ public class ColumnCustomPropertiesIT {
           assertEquals("inline-on-create-name", ext.get(propName));
         }
       }
+    } finally {
+      deleteCustomPropertyFromColumnType(client, TABLE_COLUMN, propName);
+    }
+  }
+
+  @Test
+  void test_tableColumn_deeplyNestedInlineExtensionPersists(TestNamespace ns) throws Exception {
+    String propName = ns.prefix("deepInlineCreateProp");
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    try {
+      addCustomPropertyToColumnType(client, TABLE_COLUMN, propName, STRING_TYPE, null);
+      DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+      DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+      CreateTable request =
+          new CreateTable()
+              .withName(ns.prefix("deepInlineCpTable"))
+              .withDatabaseSchema(schema.getFullyQualifiedName())
+              .withColumns(List.of(createDeeplyNestedColumn(propName)));
+
+      Table created = client.tables().create(request);
+      Table reloaded = client.tables().get(created.getId().toString(), "columns,extension");
+      assertFalse(nullOrEmpty(reloaded.getColumns()), "reloaded table must contain columns");
+      Column leaf = getDeepestColumn(reloaded.getColumns().getFirst());
+
+      assertNotNull(leaf.getExtension());
+      @SuppressWarnings("unchecked")
+      Map<String, Object> extension = (Map<String, Object>) leaf.getExtension();
+      assertEquals(DEEP_EXTENSION_VALUE, extension.get(propName));
     } finally {
       deleteCustomPropertyFromColumnType(client, TABLE_COLUMN, propName);
     }
@@ -1183,6 +1220,162 @@ public class ColumnCustomPropertiesIT {
   }
 
   // ========================================================================
+  // CHANGE-DESCRIPTION / WORKFLOW-TRIGGER TESTS
+  // ========================================================================
+
+  @Test
+  void test_tableColumn_extensionChange_recordedInTableChangeDescription(TestNamespace ns)
+      throws Exception {
+    String propName = ns.prefix("triggerProp");
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    try {
+      addCustomPropertyToColumnType(client, TABLE_COLUMN, propName, STRING_TYPE, null);
+
+      Table table = createTestTable(ns);
+      Double versionBefore = table.getVersion();
+      String columnFQN = table.getFullyQualifiedName() + ".id";
+
+      Map<String, Object> extension = new HashMap<>();
+      extension.put(propName, "trigger-me");
+      updateColumn(client, columnFQN, "table", extension);
+
+      Table afterSet = client.tables().get(table.getId().toString(), "columns,extension");
+      assertTrue(
+          afterSet.getVersion() > versionBefore,
+          "setting a column custom property must bump the table version so workflows can trigger");
+      assertNotNull(
+          findColumnExtensionChange(afterSet.getChangeDescription(), "id"),
+          "table change description must record the column extension change");
+
+      Double versionAfterSet = afterSet.getVersion();
+      updateColumn(client, columnFQN, "table", extension);
+      Table afterNoop = client.tables().get(table.getId().toString(), "columns,extension");
+      assertEquals(
+          versionAfterSet,
+          afterNoop.getVersion(),
+          "re-setting the identical column custom property must not bump the version");
+    } finally {
+      deleteCustomPropertyFromColumnType(client, TABLE_COLUMN, propName);
+    }
+  }
+
+  @Test
+  void test_tableColumn_nestedExtensionUnchangedReingest_noVersionBump(TestNamespace ns)
+      throws Exception {
+    String propName = ns.prefix("nestedTriggerProp");
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    try {
+      addCustomPropertyToColumnType(client, TABLE_COLUMN, propName, STRING_TYPE, null);
+      DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+      DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+      CreateTable request =
+          new CreateTable()
+              .withName(ns.prefix("nestedReingestTable"))
+              .withDatabaseSchema(schema.getFullyQualifiedName())
+              .withColumns(List.of(createDeeplyNestedColumn(propName)));
+      Table created = client.tables().create(request);
+      Table withExtension = client.tables().get(created.getId().toString(), "columns,extension");
+      Double versionAfterCreate = withExtension.getVersion();
+
+      // Re-ingest the identical table via PUT. The nested leaf column's extension must hydrate as
+      // the baseline (flattened read); an unchanged value must not record a FieldChange or bump the
+      // version. Without the flattened read the nested baseline is null and a spurious change
+      // fires.
+      Table reingested = client.tables().update(created.getId().toString(), withExtension);
+      assertEquals(
+          versionAfterCreate,
+          reingested.getVersion(),
+          "re-ingesting an unchanged nested column custom property must not bump the version");
+    } finally {
+      deleteCustomPropertyFromColumnType(client, TABLE_COLUMN, propName);
+    }
+  }
+
+  @Test
+  void test_tableColumn_extensionUnchangedBulkReingest_noVersionBump(TestNamespace ns)
+      throws Exception {
+    String propName = ns.prefix("bulkReingestProp");
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    try {
+      addCustomPropertyToColumnType(client, TABLE_COLUMN, propName, STRING_TYPE, null);
+      DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+      DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+      Map<String, Object> idExtension = new HashMap<>();
+      idExtension.put(propName, "unchanged-bulk-value");
+      CreateTable request =
+          new CreateTable()
+              .withName(ns.prefix("bulkReingestTable"))
+              .withDatabaseSchema(schema.getFullyQualifiedName())
+              .withColumns(
+                  List.of(
+                      new Column()
+                          .withName("id")
+                          .withDataType(ColumnDataType.BIGINT)
+                          .withExtension(idExtension),
+                      createDeeplyNestedColumn(propName)));
+      Table created = client.tables().create(request);
+      Double versionAfterCreate =
+          client.tables().get(created.getId().toString(), "columns,extension").getVersion();
+
+      // Re-ingest the identical table through the bulk upsert path. The bulk path hydrates its
+      // originals separately from the single-entity PUT, so the stored column extensions (top-level
+      // and nested) must be loaded there too; an unchanged value must not record a FieldChange.
+      BulkOperationResult result =
+          BulkApi.upsert("tables", List.of(request), false, BulkApi.botToken());
+      assertEquals(1, result.getNumberOfRowsPassed(), "bulk re-ingest row must succeed");
+
+      Table reingested = client.tables().get(created.getId().toString(), "columns,extension");
+      assertEquals(
+          versionAfterCreate,
+          reingested.getVersion(),
+          "bulk re-ingesting an unchanged column custom property must not bump the version");
+
+      // A changed value through the same bulk path must still be recorded, so the assertion above
+      // reflects a correct baseline rather than the bulk path ignoring column extensions.
+      idExtension.put(propName, "changed-bulk-value");
+      BulkOperationResult changedResult =
+          BulkApi.upsert("tables", List.of(request), false, BulkApi.botToken());
+      assertEquals(1, changedResult.getNumberOfRowsPassed(), "bulk change row must succeed");
+      Table changed = client.tables().get(created.getId().toString(), "columns,extension");
+      assertTrue(
+          changed.getVersion() > versionAfterCreate,
+          "bulk-changing a column custom property must bump the version");
+      assertNotNull(
+          findColumnExtensionChange(changed.getChangeDescription(), "id"),
+          "bulk-changing a column custom property must record the column extension change");
+    } finally {
+      deleteCustomPropertyFromColumnType(client, TABLE_COLUMN, propName);
+    }
+  }
+
+  private static FieldChange findColumnExtensionChange(ChangeDescription cd, String columnName) {
+    if (cd == null) {
+      return null;
+    }
+    List<FieldChange> allChanges = new ArrayList<>();
+    if (cd.getFieldsAdded() != null) {
+      allChanges.addAll(cd.getFieldsAdded());
+    }
+    if (cd.getFieldsUpdated() != null) {
+      allChanges.addAll(cd.getFieldsUpdated());
+    }
+    return allChanges.stream()
+        .filter(
+            fc ->
+                fc.getName() != null
+                    && fc.getName().startsWith("columns")
+                    && fc.getName().endsWith("extension")
+                    && fc.getName().contains(columnName))
+        .findFirst()
+        .orElse(null);
+  }
+
+  // ========================================================================
   // HELPER METHODS
   // ========================================================================
 
@@ -1200,6 +1393,33 @@ public class ColumnCustomPropertiesIT {
         .withColumns(List.of(idColumn, nameColumn))
         .withDescription("Test table for custom properties")
         .execute();
+  }
+
+  private Column createDeeplyNestedColumn(String propertyName) {
+    Column leaf =
+        new Column()
+            .withName("level4")
+            .withDataType(ColumnDataType.VARCHAR)
+            .withDataLength(64)
+            .withExtension(Map.of(propertyName, DEEP_EXTENSION_VALUE));
+    Column level3 = structColumn("level3", leaf);
+    Column level2 = structColumn("level2", level3);
+    return structColumn("level1", level2);
+  }
+
+  private Column structColumn(String name, Column child) {
+    return new Column()
+        .withName(name)
+        .withDataType(ColumnDataType.STRUCT)
+        .withChildren(List.of(child));
+  }
+
+  private Column getDeepestColumn(Column column) {
+    Column deepest = column;
+    while (!nullOrEmpty(deepest.getChildren())) {
+      deepest = deepest.getChildren().getFirst();
+    }
+    return deepest;
   }
 
   private DashboardDataModel createTestDashboardDataModel(TestNamespace ns) {

@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { test } from '@playwright/test';
 import { DashboardClass } from '../../../support/entity/DashboardClass';
+import { DashboardServiceClass } from '../../../support/entity/service/DashboardServiceClass';
+import { test } from '../../../support/fixtures/base';
 import { registerFilterSeparationSuite } from './SearchSeparationSuite';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -20,5 +21,7 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 registerFilterSeparationSuite({
   suiteName: 'Dashboard',
   reindexEntityType: 'dashboard',
-  entityFactory: () => new DashboardClass(),
+  // The service facet only isolates this entity if it owns its service.
+  entityFactory: () =>
+    new DashboardClass({ service: new DashboardServiceClass() }),
 });

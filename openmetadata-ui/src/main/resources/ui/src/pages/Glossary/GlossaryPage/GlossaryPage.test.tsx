@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,8 +14,14 @@
 import { act, fireEvent, screen } from '@testing-library/react';
 import ResizableLeftPanels from '../../../components/common/ResizablePanels/ResizableLeftPanels';
 import * as useGlossaryStoreModule from '../../../components/Glossary/useGlossary.store';
+import { Glossary } from '../../../generated/entity/data/glossary';
+import { useFqn } from '../../../hooks/useFqn';
 import { MOCK_GLOSSARY } from '../../../mocks/Glossary.mock';
-import { patchGlossaryTerm } from '../../../rest/glossaryAPI';
+import {
+  getGlossariesByName,
+  getGlossariesList,
+  patchGlossaryTerm,
+} from '../../../rest/glossaryAPI';
 import { renderWithQueryClient } from '../../../test/unit/test-utils';
 import GlossaryPage from './GlossaryPage.component';
 
@@ -23,7 +29,7 @@ const mockNavigate = jest.fn();
 const mockLocationPathname = '/mock-path';
 
 jest.mock('../../../hooks/useFqn', () => ({
-  useFqn: jest.fn().mockReturnValue({ fqn: 'Business Glossary' }),
+  useFqn: jest.fn().mockReturnValue({ fqn: 'Business glossary' }),
 }));
 
 jest.mock('react-router-dom', () => ({
@@ -36,11 +42,13 @@ jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
+const mockHandlePagingChange = jest.fn();
+
 jest.mock('../../../hooks/paging/usePaging', () => ({
   usePaging: jest.fn(() => ({
     paging: {},
     pageSize: 15,
-    handlePagingChange: jest.fn(),
+    handlePagingChange: mockHandlePagingChange,
   })),
 }));
 
@@ -86,6 +94,7 @@ jest.mock('../../../context/AsyncDeleteProvider/AsyncDeleteProvider', () => ({
 const mockSetGlossaries = jest.fn();
 const mockSetActiveGlossary = jest.fn();
 const mockUpdateActiveGlossary = jest.fn();
+const mockUpdateGlossaryInList = jest.fn();
 
 jest.mock('../../../components/Glossary/useGlossary.store', () => ({
   useGlossaryStore: jest.fn(() => ({
@@ -94,6 +103,7 @@ jest.mock('../../../components/Glossary/useGlossary.store', () => ({
     activeGlossary: MOCK_GLOSSARY,
     setActiveGlossary: mockSetActiveGlossary,
     updateActiveGlossary: mockUpdateActiveGlossary,
+    updateGlossary: mockUpdateGlossaryInList,
   })),
 }));
 
@@ -145,6 +155,9 @@ jest.mock('../../../rest/glossaryAPI', () => ({
       paging: { total: 1 },
     })
   ),
+  getGlossariesByName: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(MOCK_GLOSSARY)),
   patchGlossaryTerm: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: MOCK_GLOSSARY })),
@@ -176,6 +189,77 @@ jest.mock('../../../components/common/ResizablePanels/ResizablePanels', () =>
 const mockProps = {
   pageTitle: 'glossary',
 };
+
+describe('Glossary list paging', () => {
+  const pageOneGlossary = {
+    ...MOCK_GLOSSARY,
+    id: 'page-one-glossary-id',
+    name: 'Page One Glossary',
+    fullyQualifiedName: 'Page One Glossary',
+  };
+  const pageTwoGlossary = {
+    ...MOCK_GLOSSARY,
+    id: 'page-two-glossary-id',
+    name: 'Business Glossary',
+    fullyQualifiedName: 'Business Glossary',
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (getGlossariesByName as jest.Mock).mockResolvedValue(MOCK_GLOSSARY);
+    (getGlossariesList as jest.Mock).mockResolvedValue({
+      data: [MOCK_GLOSSARY],
+      paging: { total: 1 },
+    });
+  });
+
+  it('should publish paging once the whole list has settled', async () => {
+    (getGlossariesList as jest.Mock)
+      .mockResolvedValueOnce({
+        data: [pageOneGlossary],
+        paging: { after: 'page-two-cursor', total: 2 },
+      })
+      .mockResolvedValueOnce({
+        data: [pageTwoGlossary],
+        paging: { total: 2 },
+      });
+
+    renderWithQueryClient(<GlossaryPage {...mockProps} />);
+
+    await screen.findByText(/Glossary.component/i);
+
+    expect(getGlossariesList).toHaveBeenCalledTimes(2);
+    expect(mockHandlePagingChange).toHaveBeenCalledTimes(1);
+    expect(mockHandlePagingChange).toHaveBeenCalledWith({ total: 2 });
+
+    const settledList = mockSetGlossaries.mock.calls.at(-1)?.[0];
+
+    expect(settledList).toHaveLength(2);
+    expect(
+      new Set(settledList.map((item: Glossary) => item.fullyQualifiedName)).size
+    ).toBe(2);
+  });
+
+  it('should refresh only the owning glossary after a term delete', async () => {
+    renderWithQueryClient(<GlossaryPage {...mockProps} />);
+
+    await screen.findByText(/Glossary.component/i);
+
+    const listCallsAfterMount = (getGlossariesList as jest.Mock).mock.calls
+      .length;
+
+    await act(async () => {
+      fireEvent.click(await screen.findByTestId('handleGlossaryTermDelete'));
+    });
+
+    expect(getGlossariesByName).toHaveBeenCalledWith(
+      'Business glossary',
+      expect.anything()
+    );
+    expect(mockUpdateGlossaryInList).toHaveBeenCalledWith(MOCK_GLOSSARY);
+    expect(getGlossariesList).toHaveBeenCalledTimes(listCallsAfterMount);
+  });
+});
 
 describe('Test GlossaryComponent page', () => {
   it('GlossaryComponent Page Should render', async () => {
@@ -310,6 +394,7 @@ describe('Test GlossaryComponent page', () => {
         fullyQualifiedName: 'Glossary 3',
       };
 
+      (useFqn as jest.Mock).mockReturnValue({ fqn: 'Glossary 2' });
       (
         useGlossaryStoreModule.useGlossaryStore as unknown as jest.Mock
       ).mockImplementation(() => ({
@@ -349,5 +434,47 @@ describe('Test GlossaryComponent page', () => {
       }),
       expect.anything()
     );
+  });
+});
+
+describe('GlossaryPage nonexistent glossary FQN', () => {
+  const NON_EXISTENT_FQN = 'NonExistentGlossary_1789732487181';
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (useFqn as jest.Mock).mockReturnValue({ fqn: NON_EXISTENT_FQN });
+    (getGlossariesByName as jest.Mock).mockRejectedValue({
+      response: { status: 404 },
+    });
+    (
+      useGlossaryStoreModule.useGlossaryStore as unknown as jest.Mock
+    ).mockImplementation(() => ({
+      glossaries: [MOCK_GLOSSARY],
+      setGlossaries: mockSetGlossaries,
+      activeGlossary: MOCK_GLOSSARY,
+      setActiveGlossary: mockSetActiveGlossary,
+      updateActiveGlossary: mockUpdateActiveGlossary,
+    }));
+  });
+
+  it('should fetch the glossary by FQN instead of relying on the list', async () => {
+    await act(async () => {
+      renderWithQueryClient(<GlossaryPage {...mockProps} />);
+    });
+
+    expect(getGlossariesByName).toHaveBeenCalledWith(
+      NON_EXISTENT_FQN,
+      expect.anything()
+    );
+  });
+
+  it('should render not-found and not fall back to the first glossary on 404', async () => {
+    await act(async () => {
+      renderWithQueryClient(<GlossaryPage {...mockProps} />);
+    });
+
+    expect(screen.queryByText(/Glossary.component/i)).not.toBeInTheDocument();
+    expect(mockSetActiveGlossary).not.toHaveBeenCalled();
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 });

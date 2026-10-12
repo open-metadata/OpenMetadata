@@ -22,6 +22,7 @@ describe('InlineEdit component', () => {
   it('Component should render', async () => {
     render(
       <InlineEdit {...mockProps}>
+        {/* eslint-disable-next-line jsx-a11y/control-has-associated-label -- test mock */}
         <input data-testid="children" />
       </InlineEdit>
     );
@@ -37,6 +38,7 @@ describe('InlineEdit component', () => {
   it('onCancel function should be called when cancel button is clicked', async () => {
     render(
       <InlineEdit {...mockProps}>
+        {/* eslint-disable-next-line jsx-a11y/control-has-associated-label -- test mock */}
         <input data-testid="children" />
       </InlineEdit>
     );
@@ -53,6 +55,7 @@ describe('InlineEdit component', () => {
   it('onSave function should be called when Save button is clicked', async () => {
     render(
       <InlineEdit {...mockProps}>
+        {/* eslint-disable-next-line jsx-a11y/control-has-associated-label -- test mock */}
         <input data-testid="children" />
       </InlineEdit>
     );
@@ -69,6 +72,7 @@ describe('InlineEdit component', () => {
   it('should show the loading when isLoading is true', async () => {
     render(
       <InlineEdit {...mockProps} isLoading>
+        {/* eslint-disable-next-line jsx-a11y/control-has-associated-label -- test mock */}
         <input data-testid="children" />
       </InlineEdit>
     );
@@ -76,7 +80,7 @@ describe('InlineEdit component', () => {
     const saveBtn = await screen.findByTestId('inline-save-btn');
     const cancelBtn = await screen.findByTestId('inline-cancel-btn');
 
-    expect(saveBtn).toHaveClass('ant-btn-loading');
+    expect(saveBtn).toHaveAttribute('data-loading', 'true');
 
     expect(cancelBtn).toBeDisabled();
   });

@@ -54,9 +54,9 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   }),
 }));
 
-jest.mock('../../Settings/Services/AddIngestion/Steps/ScheduleIntervalV1', () =>
+jest.mock('../../Settings/Services/AddIngestion/Steps/ScheduleInterval', () =>
   jest.fn().mockImplementation(({ onChange }) => (
-    <div data-testid="schedule-interval-v1">
+    <div data-testid="schedule-interval">
       <button
         data-testid="schedule-change-btn"
         onClick={() => onChange?.('0 0 * * *')}>
@@ -189,9 +189,7 @@ describe('BundleSuiteFormBody', () => {
     });
 
     expect(screen.queryByTestId('pipeline-name')).not.toBeInTheDocument();
-    expect(
-      screen.queryByTestId('schedule-interval-v1')
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId('schedule-interval')).not.toBeInTheDocument();
     expect(screen.queryByTestId('enable-debug-log')).not.toBeInTheDocument();
     expect(screen.queryByTestId('raise-on-error')).not.toBeInTheDocument();
   });
@@ -206,9 +204,7 @@ describe('BundleSuiteFormBody', () => {
     });
 
     expect(await screen.findByTestId('pipeline-name')).toBeInTheDocument();
-    expect(
-      await screen.findByTestId('schedule-interval-v1')
-    ).toBeInTheDocument();
+    expect(await screen.findByTestId('schedule-interval')).toBeInTheDocument();
     expect(await screen.findByTestId('enable-debug-log')).toBeInTheDocument();
     expect(await screen.findByTestId('raise-on-error')).toBeInTheDocument();
   });

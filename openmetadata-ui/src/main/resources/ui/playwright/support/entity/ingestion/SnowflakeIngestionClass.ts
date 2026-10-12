@@ -76,8 +76,19 @@ class SnowflakeIngestionClass extends ServiceBaseClass {
   }
 
   async fillIngestionDetails(page: Page) {
-    await page.fill('#root\\/schemaFilterPattern\\/includes', `${this.schema}`);
-    await page.locator('#root\\/schemaFilterPattern\\/includes').press('Enter');
+    await this.openIngestionFilterSection(page);
+    await page.getByTestId('filter-section-schemaFilterPattern').click();
+    await page.getByTestId('schemaFilterPattern-only-specific-button').click();
+    await page
+      .getByTestId('filter-section-schemaFilterPattern')
+      .getByTestId('include-filter-input')
+      .locator('input')
+      .fill(this.schema);
+    await page
+      .getByTestId('filter-section-schemaFilterPattern')
+      .getByTestId('include-filter-input')
+      .locator('input')
+      .press('Enter');
   }
 
   async deleteService(page: Page) {

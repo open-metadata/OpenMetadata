@@ -18,6 +18,7 @@ from metadata.generated.schema.type.entityReferenceList import EntityReferenceLi
 from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.models.barrier import Barrier
+from metadata.ingestion.models.topology import TopologyContextManager
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.powerbi.metadata import PowerbiSource
 from metadata.ingestion.source.dashboard.powerbi.models import (
@@ -110,6 +111,14 @@ MOCK_DATABRICKS_EXP = """let
     test_table = test_schema{[Name="STG_CUSTOMERS",Kind="Table"]}[Data]
 in 
     Source"""  # noqa: W291
+
+MOCK_DATABRICKS_MULTICLOUD_EXP = """let
+    Source = DatabricksMultiCloud.Catalogs(Databricks_Server, Databricks_HTTP_Path, [Catalog = "", Database = ""]),
+    test_database = Source{[Name="DEMO_STAGE",Kind="Database"]}[Data],
+    test_schema = test_database{[Name="PUBLIC",Kind="Schema"]}[Data],
+    test_table = test_schema{[Name="STG_CUSTOMERS",Kind="Table"]}[Data]
+in
+    Source"""
 
 MOCK_DATABRICKS_NATIVE_EXP = """let
     Source = Value.NativeQuery(Databricks.Catalogs(Databricks_Server, Databricks_HTTP_Path, [Catalog="DEMO_CATALOG", Database=null, EnableAutomaticProxyDiscovery=null]){[Name="DEMO_STAGE",Kind="Database"]}[Data], "PUBLIC.STG_CUSTOMERS", null, [EnableFolding=true])
@@ -715,6 +724,7 @@ class PowerBIUnitTest(TestCase):
             mock_config["source"],
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
+        self.powerbi.context = TopologyContextManager(self.powerbi.topology)
 
     @pytest.mark.order(1)
     @patch.object(
@@ -768,6 +778,9 @@ class PowerBIUnitTest(TestCase):
         self.assertEqual(result, EXPECTED_DATABRICKS_RESULT)
 
         result = self.powerbi._parse_databricks_source(MOCK_DATABRICKS_EXP, MOCK_DASHBOARD_DATA_MODEL)
+        self.assertEqual(result, EXPECTED_DATABRICKS_RESULT)
+
+        result = self.powerbi._parse_databricks_source(MOCK_DATABRICKS_MULTICLOUD_EXP, MOCK_DASHBOARD_DATA_MODEL)
         self.assertEqual(result, EXPECTED_DATABRICKS_RESULT)
 
         result = self.powerbi._parse_databricks_source(
@@ -1625,7 +1638,7 @@ class PowerBIUnitTest(TestCase):
         from the report datasources API response by parsing the
         connectionDetails.database field with pattern sobe_wowvirtualserver-{DATASET_ID}
         """
-        from unittest.mock import MagicMock, PropertyMock
+        from unittest.mock import MagicMock
 
         mock_api_client = MagicMock()
         self.powerbi.client = MagicMock()
@@ -1634,8 +1647,8 @@ class PowerBIUnitTest(TestCase):
         mock_context = MagicMock()
         mock_context.workspace.id = "test-workspace-id"
 
-        with patch.object(type(self.powerbi), "context", new_callable=PropertyMock) as mock_ctx:
-            mock_ctx.return_value.get.return_value = mock_context
+        with patch.object(self.powerbi, "context") as mock_ctx:
+            mock_ctx.get.return_value = mock_context
 
             mock_api_client.fetch_report_datasources.return_value = [
                 Datasource(

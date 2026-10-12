@@ -64,6 +64,34 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     children: React.ReactNode;
     isOpen: boolean;
   }) => (isOpen ? <>{children}</> : null),
+  PageLayout: {
+    PageHeader: ({
+      actions,
+      badge,
+      breadcrumb,
+      icon,
+      subtitle,
+      title,
+      'data-testid': dataTestId,
+    }: {
+      actions?: React.ReactNode;
+      badge?: React.ReactNode;
+      breadcrumb?: React.ReactNode;
+      icon?: React.ReactNode;
+      subtitle?: React.ReactNode;
+      title?: React.ReactNode;
+      'data-testid'?: string;
+    }) => (
+      <div data-testid={dataTestId}>
+        {breadcrumb}
+        {icon}
+        {title}
+        {badge}
+        {subtitle}
+        {actions}
+      </div>
+    ),
+  },
   Tooltip: ({
     children,
     title,
@@ -244,5 +272,22 @@ describe('WorkflowHeader — System badge', () => {
     expect(
       screen.queryByTestId('edit-workflow-title-button')
     ).not.toBeInTheDocument();
+  });
+
+  it('renders the AI-mode header with the breadcrumb when isAiMode is true', () => {
+    mockUseWorkflowModeContext.mockReturnValue(buildContextMock());
+
+    render(
+      <WorkflowHeader
+        {...defaultProps}
+        isAiMode
+        breadcrumb={<div data-testid="ai-breadcrumb">crumb</div>}
+      />
+    );
+
+    expect(screen.getByTestId('ai-breadcrumb')).toBeInTheDocument();
+    expect(screen.getByTestId('workflow-title')).toHaveTextContent(
+      'Glossary Approval Workflow'
+    );
   });
 });

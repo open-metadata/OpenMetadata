@@ -30,6 +30,7 @@ import org.openmetadata.schema.api.lineage.RelationshipRef;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.lineage.NodeInformation;
+import org.openmetadata.service.security.policyevaluator.DomainAccessFilter;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 /**
@@ -47,10 +48,7 @@ public final class LineageDomainFilter {
   private LineageDomainFilter() {}
 
   public static boolean shouldApply(SubjectContext subjectContext) {
-    return subjectContext != null
-        && !subjectContext.isAdmin()
-        && !subjectContext.isBot()
-        && subjectContext.hasDomainOnlyAccessRole();
+    return DomainAccessFilter.shouldApply(subjectContext);
   }
 
   /**

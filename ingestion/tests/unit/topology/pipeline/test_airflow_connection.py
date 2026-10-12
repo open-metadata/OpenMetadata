@@ -21,11 +21,15 @@ These tests verify every auth path in auth.py and the AirflowApiClient construct
 """
 
 import base64
+import contextlib
+import sys
+import types
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
 import requests
+from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.entity.utils.common.accessTokenConfig import AccessToken
 from metadata.generated.schema.entity.utils.common.basicAuthConfig import BasicAuth
@@ -1058,3 +1062,116 @@ class TestDecoratedCheckAccess:
         ):
             _decorated_check_access(client, None, None, True)
         assert "transport closed" in str(exc_info.value)
+
+
+# ── Backend engine disposal ──────────────────────────────────────────────────
+
+
+def _fake_airflow_modules():
+    """Minimal fake airflow package tree so the connection module can be imported
+    when the real dependency is absent (light dev env; CI has real airflow)."""
+    airflow = types.ModuleType("airflow")
+    airflow.__version__ = "2.9.0"
+    settings = types.ModuleType("airflow.settings")
+    settings.engine = None
+    settings.Session = None
+    airflow.settings = settings
+    models = types.ModuleType("airflow.models")
+    serialized_dag = types.ModuleType("airflow.models.serialized_dag")
+    serialized_dag.SerializedDagModel = MagicMock()
+    models.serialized_dag = serialized_dag
+    return {
+        "airflow": airflow,
+        "airflow.settings": settings,
+        "airflow.models": models,
+        "airflow.models.serialized_dag": serialized_dag,
+    }
+
+
+@contextlib.contextmanager
+def _airflow_connection_module():
+    """Yield the airflow connection module, faking the airflow package only when
+    it is not installed. Tests exercise the disposal guard by patching settings
+    and _get_connection, so the module's Airflow-version branch is irrelevant."""
+    try:
+        import airflow  # noqa: F401
+
+        airflow_installed = True
+    except ImportError:
+        airflow_installed = False
+
+    if airflow_installed:
+        from metadata.ingestion.source.pipeline.airflow import connection
+
+        yield connection
+    else:
+        with patch.dict(sys.modules, _fake_airflow_modules()):
+            sys.modules.pop("metadata.ingestion.source.pipeline.airflow.connection", None)
+            from metadata.ingestion.source.pipeline.airflow import connection
+
+            try:
+                yield connection
+            finally:
+                sys.modules.pop("metadata.ingestion.source.pipeline.airflow.connection", None)
+
+
+def _backend_config():
+    from metadata.generated.schema.entity.services.connections.pipeline.airflowConnection import (
+        AirflowConnection as AirflowConnectionConfig,
+    )
+    from metadata.generated.schema.entity.services.connections.pipeline.backendConnection import (
+        BackendConnection,
+    )
+
+    return AirflowConnectionConfig(hostPort="http://airflow.example.com:8080", connection=BackendConnection())
+
+
+def _sqlite_backend_config():
+    from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
+        SQLiteConnection as SQLiteConnectionConfig,
+    )
+    from metadata.generated.schema.entity.services.connections.pipeline.airflowConnection import (
+        AirflowConnection as AirflowConnectionConfig,
+    )
+
+    return AirflowConnectionConfig(hostPort="http://airflow.example.com:8080", connection=SQLiteConnectionConfig())
+
+
+def _settings_bound_to(engine):
+    """A stand-in for airflow.settings whose Session().get_bind() returns engine,
+    matching how the Airflow 2.x backend path reaches the process-global engine."""
+    session = MagicMock()
+    session.get_bind.return_value = engine
+    session_ctx = MagicMock()
+    session_ctx.__enter__.return_value = session
+    settings = MagicMock()
+    settings.engine = engine
+    settings.Session = MagicMock(return_value=session_ctx)
+    return settings
+
+
+class TestBackendEngineDisposal:
+    def test_borrowed_backend_engine_is_not_disposed(self):
+        borrowed_engine = MagicMock(spec=Engine)
+        settings = _settings_bound_to(borrowed_engine)
+        with _airflow_connection_module() as airflow_connection:
+            owner = airflow_connection.AirflowConnection(_backend_config())
+            with (
+                patch.object(airflow_connection, "IS_AIRFLOW_3", False),
+                patch.object(airflow_connection, "settings", settings),
+            ):
+                assert owner.client is borrowed_engine
+                owner.close()
+
+        borrowed_engine.dispose.assert_not_called()
+
+    def test_om_built_engine_is_disposed(self):
+        with _airflow_connection_module() as airflow_connection:
+            owner = airflow_connection.AirflowConnection(_sqlite_backend_config())
+            with patch.object(Engine, "dispose", autospec=True) as mock_dispose:
+                engine = owner.client
+                assert isinstance(engine, Engine)
+                owner.close()
+
+        mock_dispose.assert_called_once()
+        assert mock_dispose.call_args[0][0] is engine

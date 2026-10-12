@@ -1,17 +1,38 @@
 package org.openmetadata.service.security;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.mockingDetails;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
+import static org.openmetadata.service.Entity.ADMIN_ROLE;
 
+import com.nimbusds.common.contenttype.ContentType;
+import com.nimbusds.oauth2.sdk.TokenRequest;
+import com.nimbusds.oauth2.sdk.auth.ClientSecretBasic;
+import com.nimbusds.oauth2.sdk.auth.Secret;
+import com.nimbusds.oauth2.sdk.http.HTTPResponse;
+import com.nimbusds.oauth2.sdk.id.ClientID;
+import com.nimbusds.oauth2.sdk.token.BearerAccessToken;
+import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -21,39 +42,82 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.auth.JWTAuthMechanism;
+import org.openmetadata.schema.auth.RefreshToken;
+import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.security.client.OidcClientConfig;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.AuthenticationException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.session.SessionService;
+import org.openmetadata.service.security.session.SessionStatus;
 import org.openmetadata.service.security.session.UserSession;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.pac4j.core.exception.TechnicalException;
 import org.pac4j.oidc.client.OidcClient;
 import org.pac4j.oidc.config.OidcConfiguration;
+import org.pac4j.oidc.credentials.OidcCredentials;
+import org.pac4j.oidc.metadata.IOidcOpMetadataResolver;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 class AuthenticationCodeFlowHandlerTest {
+
+  private static final String TEST_SERVER_URL = "https://om.test";
+  private static final String MCP_CALLBACK = "/mcp/callback";
+  private static final String DISCOVERY_DOCUMENT =
+      """
+      {
+        "issuer": "https://idp.test",
+        "authorization_endpoint": "https://idp.test/authorize",
+        "token_endpoint": "https://idp.test/token",
+        "jwks_uri": "https://idp.test/keys",
+        "response_types_supported": ["code"],
+        "subject_types_supported": ["public"],
+        "id_token_signing_alg_values_supported": ["RS256"],
+        "token_endpoint_auth_methods_supported": ["client_secret_post"]
+      }
+      """;
 
   @Mock private SessionService sessionService;
   @Mock private HttpServletRequest request;
@@ -68,11 +132,13 @@ class AuthenticationCodeFlowHandlerTest {
     captureOutputStream = new CaptureServletOutputStream();
     when(response.getOutputStream()).thenReturn(captureOutputStream);
     AuthenticationCodeFlowHandler.setMcpStateChecker(null);
+    AuthenticationCodeFlowHandler.setMcpPendingStatePersister(null);
   }
 
   @AfterEach
   void tearDown() {
     AuthenticationCodeFlowHandler.setMcpStateChecker(null);
+    AuthenticationCodeFlowHandler.setMcpPendingStatePersister(null);
   }
 
   @Test
@@ -96,17 +162,69 @@ class AuthenticationCodeFlowHandlerTest {
   }
 
   @Test
-  void handleCallback_noPendingSession_writesErrorResponse() throws Exception {
+  void handleCallback_noPendingSession_redirectsToSignin() throws Exception {
     when(sessionService.getPendingSession(request, response)).thenReturn(Optional.empty());
 
     AuthenticationCodeFlowHandler handler =
         createHandlerWithMockedInternals(sessionService, oidcClient);
+    setField(handler, "serverUrl", TEST_SERVER_URL);
+
+    handler.handleCallback(request, response);
+
+    verify(response).sendRedirect(TEST_SERVER_URL + "/signin");
+    verify(response, never()).setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+  }
+
+  @Test
+  void handleCallback_silentAuthError_redirectsToSignin() throws Exception {
+    UserSession pendingSession =
+        UserSession.builder().id("pending-session").state("state-abc").build();
+    when(sessionService.getPendingSession(request, response))
+        .thenReturn(Optional.of(pendingSession));
+    when(oidcClient.getCallbackUrl()).thenReturn(TEST_SERVER_URL + "/callback");
+    when(request.getParameterMap())
+        .thenReturn(
+            Map.of(
+                "state", new String[] {"state-abc"},
+                "error", new String[] {"login_required"},
+                "error_description",
+                    new String[] {
+                      "The client specified not to prompt, but the user is not logged in."
+                    }));
+
+    AuthenticationCodeFlowHandler handler =
+        createHandlerWithMockedInternals(sessionService, oidcClient);
+    setField(handler, "serverUrl", TEST_SERVER_URL);
+
+    handler.handleCallback(request, response);
+
+    verify(response).sendRedirect(TEST_SERVER_URL + "/signin");
+    verify(response, never()).setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+  }
+
+  @Test
+  void handleCallback_nonSilentAuthError_writesErrorResponse() throws Exception {
+    UserSession pendingSession =
+        UserSession.builder().id("pending-session").state("state-abc").build();
+    when(sessionService.getPendingSession(request, response))
+        .thenReturn(Optional.of(pendingSession));
+    when(oidcClient.getCallbackUrl()).thenReturn(TEST_SERVER_URL + "/callback");
+    when(request.getParameterMap())
+        .thenReturn(
+            Map.of(
+                "state", new String[] {"state-abc"},
+                "error", new String[] {"server_error"}));
+
+    AuthenticationCodeFlowHandler handler =
+        createHandlerWithMockedInternals(sessionService, oidcClient);
+    setField(handler, "serverUrl", TEST_SERVER_URL);
 
     handler.handleCallback(request, response);
 
     verify(response).setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
     String body = captureOutputStream.getCapturedOutput();
-    assertTrue(body.contains("No pending session found for callback"));
+    assertTrue(body.contains("Bad authentication response"));
+    verify(response, never()).sendRedirect(anyString());
   }
 
   @Test
@@ -410,6 +528,163 @@ class AuthenticationCodeFlowHandlerTest {
     }
   }
 
+  @Test
+  void requireRedirectUri_allowsConfiguredBrowserExtensionRedirect() throws Exception {
+    String extensionRedirect = "https://ndjnpiadedlmgddlpeklbnobebkpkdgb.chromiumapp.org/auth0";
+    AuthenticationCodeFlowHandler handler =
+        createRedirectHandler("https://app.example.com", "", List.of(extensionRedirect));
+
+    assertEquals(extensionRedirect, invokeRequireRedirectUri(handler, extensionRedirect));
+  }
+
+  @Test
+  void requireRedirectUri_rejectsUnconfiguredBrowserExtensionRedirect() throws Exception {
+    AuthenticationCodeFlowHandler handler =
+        createRedirectHandler("https://app.example.com", "", List.of());
+
+    IllegalArgumentException thrown =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> invokeRequireRedirectUri(handler, "https://evil.chromiumapp.org/auth0"));
+
+    assertEquals("Redirect URI must exactly match a trusted redirect URI", thrown.getMessage());
+  }
+
+  /**
+   * Issue #26311: the deployment is served at https://om.example.org but serverUrl still holds the
+   * default localhost value, which made every SSO login fail with "Redirect URI must exactly match a
+   * trusted redirect URI". The configured OIDC callback URL has to be right for login to work at
+   * all, so the landing page is trusted on its host.
+   */
+  @Test
+  void requireRedirectUri_trustsTheLandingOnTheCallbackHostWhenServerUrlIsStale() throws Exception {
+    AuthenticationCodeFlowHandler handler =
+        createRedirectHandler("http://localhost:8585", "https://om.example.org/callback");
+
+    assertEquals(
+        "https://om.example.org/auth/callback",
+        invokeRequireRedirectUri(handler, "https://om.example.org/auth/callback"));
+  }
+
+  @Test
+  void requireRedirectUri_keepsTheConfiguredCallbackPort() throws Exception {
+    AuthenticationCodeFlowHandler handler =
+        createRedirectHandler("http://localhost:8585", "http://om.example.org:8080/callback");
+
+    assertEquals(
+        "http://om.example.org:8080/auth/callback",
+        invokeRequireRedirectUri(handler, "http://om.example.org:8080/auth/callback"));
+    assertRejectedRedirect(handler, "http://om.example.org/auth/callback");
+  }
+
+  /** Only OpenMetadata's own landing page is trusted on the callback host, not any path on it. */
+  @Test
+  void requireRedirectUri_rejectsAnyOtherPathOnTheCallbackHost() throws Exception {
+    AuthenticationCodeFlowHandler handler =
+        createRedirectHandler("http://localhost:8585", "https://om.example.org/callback");
+
+    assertRejectedRedirect(handler, "https://om.example.org/steal?token=leak");
+  }
+
+  /** The MCP flow stays anchored to serverUrl, exactly as before #26311. */
+  @Test
+  void requireRedirectUri_doesNotTrustTheMcpCallbackOnTheCallbackHost() throws Exception {
+    AuthenticationCodeFlowHandler handler =
+        createRedirectHandler("http://localhost:8585", "https://om.example.org/callback");
+
+    assertRejectedRedirect(handler, "https://om.example.org" + MCP_CALLBACK);
+  }
+
+  /** #26311: logout and the signin fallbacks follow the callback host, not a stale serverUrl. */
+  @Test
+  void deploymentUrl_usesTheCallbackHostWhenServerUrlIsStale() throws Exception {
+    AuthenticationCodeFlowHandler handler =
+        createRedirectHandler("http://localhost:8585", "https://om.example.org/callback");
+
+    assertEquals("https://om.example.org/logout", invokeDeploymentUrl(handler, "/logout"));
+  }
+
+  /** serverUrl carries a deployment's base path, so the callback URL's base must keep it too. */
+  @Test
+  void deploymentUrl_keepsTheBasePathOfTheCallbackUrl() throws Exception {
+    AuthenticationCodeFlowHandler handler =
+        createRedirectHandler(
+            "http://localhost:8585", "https://om.example.org/openmetadata/callback");
+
+    assertEquals(
+        "https://om.example.org/openmetadata/signin", invokeDeploymentUrl(handler, "/signin"));
+  }
+
+  /** A callback URL that is not the /callback servlet has no base to derive, so serverUrl stays. */
+  @Test
+  void deploymentUrl_fallsBackToServerUrlWhenTheCallbackUrlIsNotTheCallbackServlet()
+      throws Exception {
+    AuthenticationCodeFlowHandler handler =
+        createRedirectHandler(
+            "https://om-internal.example.org", "https://om.example.org/oidc/return");
+
+    assertEquals("https://om-internal.example.org/signin", invokeDeploymentUrl(handler, "/signin"));
+  }
+
+  private AuthenticationCodeFlowHandler createRedirectHandler(
+      String serverUrl, String callbackUrl, List<String> additionalTrustedRedirectUris)
+      throws Exception {
+    AuthenticationConfiguration authConfig = mock(AuthenticationConfiguration.class);
+    when(authConfig.getCallbackUrl()).thenReturn(callbackUrl);
+    when(authConfig.getAdditionalTrustedRedirectUris()).thenReturn(additionalTrustedRedirectUris);
+
+    AuthenticationCodeFlowHandler handler =
+        createRedirectHandler(serverUrl, serverUrl + "/callback");
+    setField(handler, "authenticationConfiguration", authConfig);
+    return handler;
+  }
+
+  private AuthenticationCodeFlowHandler createRedirectHandler(
+      String serverUrl, String oidcCallbackUrl) throws Exception {
+    OidcClient oidcClientForCallback = new OidcClient();
+    oidcClientForCallback.setCallbackUrl(oidcCallbackUrl);
+    AuthenticationCodeFlowHandler handler =
+        (AuthenticationCodeFlowHandler)
+            getUnsafe().allocateInstance(AuthenticationCodeFlowHandler.class);
+    setField(handler, "client", oidcClientForCallback);
+    setField(handler, "serverUrl", serverUrl);
+    setField(handler, "authenticationConfiguration", new AuthenticationConfiguration());
+    return handler;
+  }
+
+  private void assertRejectedRedirect(AuthenticationCodeFlowHandler handler, String redirectUri) {
+    IllegalArgumentException thrown =
+        assertThrows(
+            IllegalArgumentException.class, () -> invokeRequireRedirectUri(handler, redirectUri));
+    assertEquals("Redirect URI must exactly match a trusted redirect URI", thrown.getMessage());
+  }
+
+  private String invokeDeploymentUrl(AuthenticationCodeFlowHandler handler, String path)
+      throws Exception {
+    Method method =
+        AuthenticationCodeFlowHandler.class.getDeclaredMethod("deploymentUrl", String.class);
+    method.setAccessible(true);
+    return (String) method.invoke(handler, path);
+  }
+
+  private String invokeRequireRedirectUri(AuthenticationCodeFlowHandler handler, String redirectUri)
+      throws Exception {
+    Method method =
+        AuthenticationCodeFlowHandler.class.getDeclaredMethod("requireRedirectUri", String.class);
+    method.setAccessible(true);
+    String result;
+    try {
+      result = (String) method.invoke(handler, redirectUri);
+    } catch (InvocationTargetException e) {
+      Throwable cause = e.getCause();
+      if (cause instanceof RuntimeException runtimeException) {
+        throw runtimeException;
+      }
+      throw e;
+    }
+    return result;
+  }
+
   private AuthenticationCodeFlowHandler createSelfSignupHandler(Set<String> allowedDomains)
       throws Exception {
     AuthenticationConfiguration authConfig = mock(AuthenticationConfiguration.class);
@@ -473,10 +748,1051 @@ class AuthenticationCodeFlowHandlerTest {
     return result;
   }
 
+  @Test
+  void handleLogin_mcpFlow_skipsActiveSessionShortcut() throws Exception {
+    stubOidcConfigForLogin();
+    when(request.getParameter(AuthenticationCodeFlowHandler.REDIRECT_URI_KEY))
+        .thenReturn(TEST_SERVER_URL + MCP_CALLBACK);
+
+    createLoginHandler().handleLogin(request, response);
+
+    // MCP must always run the full OIDC round-trip so the id_token is provider-issued; taking the
+    // active-session shortcut would mint an OpenMetadata JWT and fail the MCP issuer check.
+    verify(sessionService, never()).getActiveSession(any(), any());
+  }
+
+  @Test
+  void handleLogin_webFlow_stillUsesActiveSessionShortcut() throws Exception {
+    stubOidcConfigForLogin();
+    when(request.getParameter(AuthenticationCodeFlowHandler.REDIRECT_URI_KEY))
+        .thenReturn(TEST_SERVER_URL + "/auth/callback");
+    when(sessionService.getActiveSession(request, response)).thenReturn(Optional.empty());
+
+    createLoginHandler().handleLogin(request, response);
+
+    verify(sessionService).getActiveSession(request, response);
+  }
+
+  @Test
+  void handleLogin_mcpFlow_persistsPendingStateBeforeProviderRedirect() throws Exception {
+    stubOidcConfigForLogin();
+    when(request.getParameter(AuthenticationCodeFlowHandler.REDIRECT_URI_KEY))
+        .thenReturn(TEST_SERVER_URL + MCP_CALLBACK);
+
+    Map<String, String> persisted = new HashMap<>();
+    AtomicBoolean redirectAlreadySent = new AtomicBoolean(false);
+    AuthenticationCodeFlowHandler.setMcpPendingStatePersister(
+        (req, state, nonce, codeVerifier) -> {
+          redirectAlreadySent.set(
+              mockingDetails(response).getInvocations().stream()
+                  .anyMatch(invocation -> "sendRedirect".equals(invocation.getMethod().getName())));
+          persisted.put("state", state);
+          persisted.put("nonce", nonce);
+          persisted.put("codeVerifier", codeVerifier);
+        });
+
+    createLoginHandler().handleLogin(request, response);
+
+    assertFalse(persisted.isEmpty(), "persister must run for the MCP flow");
+    assertNotNull(persisted.get("state"), "state must be linked to the pending MCP request");
+    assertNotNull(persisted.get("nonce"));
+    assertNotNull(persisted.get("codeVerifier"));
+    assertFalse(
+        redirectAlreadySent.get(),
+        "state must be persisted BEFORE the provider redirect, otherwise a fast round-trip "
+            + "can return to /callback before the state is resolvable");
+  }
+
+  @Test
+  void handleLogin_webFlow_doesNotPersistMcpPendingState() throws Exception {
+    stubOidcConfigForLogin();
+    when(request.getParameter(AuthenticationCodeFlowHandler.REDIRECT_URI_KEY))
+        .thenReturn(TEST_SERVER_URL + "/auth/callback");
+    when(sessionService.getActiveSession(request, response)).thenReturn(Optional.empty());
+
+    AtomicBoolean persisterCalled = new AtomicBoolean(false);
+    AuthenticationCodeFlowHandler.setMcpPendingStatePersister(
+        (req, state, nonce, codeVerifier) -> persisterCalled.set(true));
+
+    createLoginHandler().handleLogin(request, response);
+
+    assertFalse(persisterCalled.get(), "web login must not touch MCP pending state");
+  }
+
+  @Test
+  void handleLogin_mcpFlow_withNoPersisterRegistered_doesNotThrow() throws Exception {
+    stubOidcConfigForLogin();
+    when(request.getParameter(AuthenticationCodeFlowHandler.REDIRECT_URI_KEY))
+        .thenReturn(TEST_SERVER_URL + MCP_CALLBACK);
+    AuthenticationCodeFlowHandler.setMcpPendingStatePersister(null);
+
+    AuthenticationCodeFlowHandler handler = createLoginHandler();
+
+    assertDoesNotThrow(() -> handler.handleLogin(request, response));
+  }
+
+  @Test
+  void handleLogin_mcpFlow_dropsPromptNone() throws Exception {
+    // prompt=none tells the IdP to fail rather than interact. An MCP client just opened a fresh
+    // browser context so the user can log in, so propagating it guarantees login_required and
+    // the MCP OAuth flow can never complete (#32671).
+    stubOidcConfigForLogin();
+    stubProviderMetadataForLogin();
+    when(request.getParameter(AuthenticationCodeFlowHandler.REDIRECT_URI_KEY))
+        .thenReturn(TEST_SERVER_URL + MCP_CALLBACK);
+    AuthenticationCodeFlowHandler handler = createLoginHandler();
+    setField(handler, "promptType", "none");
+
+    handler.handleLogin(request, response);
+
+    assertFalse(capturedLoginRedirect().contains("prompt=none"));
+  }
+
+  @Test
+  void handleLogin_webFlow_keepsPromptNone() throws Exception {
+    // Silent auth stays available to the browser app, where the /signin fallback handles a
+    // login_required response.
+    stubOidcConfigForLogin();
+    stubProviderMetadataForLogin();
+    when(request.getParameter(AuthenticationCodeFlowHandler.REDIRECT_URI_KEY))
+        .thenReturn(TEST_SERVER_URL + "/auth/callback");
+    when(sessionService.getActiveSession(request, response)).thenReturn(Optional.empty());
+    AuthenticationCodeFlowHandler handler = createLoginHandler();
+    setField(handler, "promptType", "none");
+
+    handler.handleLogin(request, response);
+
+    assertTrue(capturedLoginRedirect().contains("prompt=none"));
+  }
+
+  @Test
+  void handleLogin_mcpFlow_keepsNonSilentPromptValues() throws Exception {
+    // prompt=login/consent are deliberate admin policy (force re-auth or re-consent). Only the
+    // silent-auth value is suppressed for MCP; suppressing all of them would silently bypass a
+    // compliance setting.
+    stubOidcConfigForLogin();
+    stubProviderMetadataForLogin();
+    when(request.getParameter(AuthenticationCodeFlowHandler.REDIRECT_URI_KEY))
+        .thenReturn(TEST_SERVER_URL + MCP_CALLBACK);
+    AuthenticationCodeFlowHandler handler = createLoginHandler();
+    setField(handler, "promptType", "consent");
+
+    handler.handleLogin(request, response);
+
+    assertTrue(capturedLoginRedirect().contains("prompt=consent"));
+  }
+
+  @Test
+  void normalizeMaxAge_treatsBlankAndZeroAsUnsetAndKeepsPositiveValues() {
+    // max_age=0 makes the IdP demand a fresh login on every authorize request, so the "0" older
+    // configurations ship with would turn every silent re-authentication into a password prompt.
+    assertNull(AuthenticationCodeFlowHandler.normalizeMaxAge(null));
+    assertNull(AuthenticationCodeFlowHandler.normalizeMaxAge(""));
+    assertNull(AuthenticationCodeFlowHandler.normalizeMaxAge("  "));
+    assertNull(AuthenticationCodeFlowHandler.normalizeMaxAge("0"));
+    assertNull(AuthenticationCodeFlowHandler.normalizeMaxAge(" 0 "));
+    assertEquals("3600", AuthenticationCodeFlowHandler.normalizeMaxAge("3600"));
+  }
+
+  @Test
+  void normalizePrompt_treatsBlankAsUnset() {
+    assertNull(AuthenticationCodeFlowHandler.normalizePrompt(null));
+    assertNull(AuthenticationCodeFlowHandler.normalizePrompt(" "));
+    assertEquals("login", AuthenticationCodeFlowHandler.normalizePrompt("login"));
+  }
+
+  @Test
+  void handleLogin_shippedDefaults_sendNeitherPromptNorMaxAge() throws Exception {
+    AuthenticationCodeFlowHandler handler = createWebLoginHandler();
+    setField(handler, "maxAge", AuthenticationCodeFlowHandler.normalizeMaxAge("0"));
+    setField(handler, "promptType", AuthenticationCodeFlowHandler.normalizePrompt(""));
+
+    handler.handleLogin(request, response);
+
+    String location = capturedLoginRedirect();
+    assertFalse(location.contains("prompt="), location);
+    assertFalse(location.contains("max_age="), location);
+  }
+
+  @Test
+  void handleLogin_keepsAConfiguredPositiveMaxAge() throws Exception {
+    AuthenticationCodeFlowHandler handler = createWebLoginHandler();
+    setField(handler, "maxAge", AuthenticationCodeFlowHandler.normalizeMaxAge("3600"));
+
+    handler.handleLogin(request, response);
+
+    assertTrue(capturedLoginRedirect().contains("max_age=3600"));
+  }
+
+  @Test
+  void handleLogin_promptNoneRequest_overridesTheConfiguredPromptForWebLogin() throws Exception {
+    // The browser asks for prompt=none when it silently re-authenticates a user whose
+    // OpenMetadata session ended; a configured prompt=consent would otherwise force a dialog.
+    AuthenticationCodeFlowHandler handler = createWebLoginHandler();
+    setField(handler, "promptType", "consent");
+    when(request.getParameter(AuthenticationCodeFlowHandler.PROMPT_KEY)).thenReturn("none");
+
+    handler.handleLogin(request, response);
+
+    String location = capturedLoginRedirect();
+    assertTrue(location.contains("prompt=none"), location);
+    assertFalse(location.contains("prompt=consent"), location);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"login", "consent login"})
+  void handleLogin_promptNoneRequest_keepsAConfiguredLoginPrompt(String configuredPrompt)
+      throws Exception {
+    // prompt=login is the admin asking for credentials on every sign-in. The re-login after an
+    // OpenMetadata session ends must honour it rather than signing the user back in silently.
+    AuthenticationCodeFlowHandler handler = createWebLoginHandler();
+    setField(handler, "promptType", configuredPrompt);
+    when(request.getParameter(AuthenticationCodeFlowHandler.PROMPT_KEY)).thenReturn("none");
+
+    handler.handleLogin(request, response);
+
+    String location = capturedLoginRedirect();
+    assertTrue(
+        location.contains("prompt=" + configuredPrompt.replace(" ", "+"))
+            || location.contains("prompt=" + configuredPrompt.replace(" ", "%20")),
+        location);
+    assertFalse(location.contains("prompt=none"), location);
+  }
+
+  @Test
+  void handleLogin_promptRequest_isIgnoredOnTheMcpFlow() throws Exception {
+    stubOidcConfigForLogin();
+    stubProviderMetadataForLogin();
+    when(request.getParameter(AuthenticationCodeFlowHandler.REDIRECT_URI_KEY))
+        .thenReturn(TEST_SERVER_URL + MCP_CALLBACK);
+    when(request.getParameter(AuthenticationCodeFlowHandler.PROMPT_KEY)).thenReturn("none");
+    AuthenticationCodeFlowHandler handler = createLoginHandler();
+    setField(handler, "promptType", "consent");
+
+    handler.handleLogin(request, response);
+
+    String location = capturedLoginRedirect();
+    assertTrue(location.contains("prompt=consent"), location);
+    assertFalse(location.contains("prompt=none"), location);
+  }
+
+  @Test
+  void handleLogin_unsupportedPromptRequest_isIgnored() throws Exception {
+    // Only prompt=none may be requested by the caller; anything else (login, consent, ...) is
+    // admin policy, so an unknown value falls back to the configured prompt.
+    AuthenticationCodeFlowHandler handler = createWebLoginHandler();
+    setField(handler, "promptType", "select_account");
+    when(request.getParameter(AuthenticationCodeFlowHandler.PROMPT_KEY)).thenReturn("login");
+
+    handler.handleLogin(request, response);
+
+    String location = capturedLoginRedirect();
+    assertTrue(location.contains("prompt=select_account"), location);
+    assertFalse(location.contains("prompt=login"), location);
+  }
+
+  @Test
+  void handleRefresh_expiredOmRefreshToken_returns401AndRevokesTheSession() throws Exception {
+    stubLeasedRefreshSession();
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      TokenRepository tokens = stubRefreshEntities(entity, Instant.now().minusSeconds(60));
+
+      createRefreshHandler().handleRefresh(request, response);
+
+      // A 401 lets the browser re-authenticate at the IdP; the old 500 only signed it out.
+      verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+      verify(sessionService).revokeSession(request, response);
+      verify(sessionService, never()).releaseRefreshLease(any());
+      verify(tokens, never()).insertToken(any());
+      assertTrue(captureOutputStream.getCapturedOutput().contains("Expired token"));
+    }
+  }
+
+  @Test
+  void handleRefresh_unknownOmRefreshToken_returns401AndRevokesTheSession() throws Exception {
+    stubLeasedRefreshSession();
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      TokenRepository tokens = stubRefreshEntities(entity, Instant.now().plusSeconds(3600));
+      when(tokens.findByToken(OM_REFRESH_TOKEN))
+          .thenThrow(new EntityNotFoundException("Invalid Request Token"));
+
+      createRefreshHandler().handleRefresh(request, response);
+
+      verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+      verify(sessionService).revokeSession(request, response);
+      verify(sessionService, never()).releaseRefreshLease(any());
+    }
+  }
+
+  @Test
+  void handleRefresh_unexpectedFailure_releasesTheLeaseAndHidesTheCause() throws Exception {
+    UserSession session = stubLeasedRefreshSession();
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      TokenRepository tokens = stubRefreshEntities(entity, Instant.now().plusSeconds(3600));
+      when(tokens.findByToken(OM_REFRESH_TOKEN))
+          .thenThrow(new IllegalStateException("token table unavailable"));
+
+      createRefreshHandler().handleRefresh(request, response);
+
+      verify(response).setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+      verify(sessionService).releaseRefreshLease(session);
+      verify(sessionService, never()).revokeSession(any(), any());
+      assertFalse(captureOutputStream.getCapturedOutput().contains("token table unavailable"));
+    }
+  }
+
+  @Test
+  void handleRefresh_validSession_rotatesTheRefreshTokenAndIssuesASessionJwt() throws Exception {
+    stubLeasedRefreshSession();
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class);
+        MockedStatic<JWTTokenGenerator> jwt = mockStatic(JWTTokenGenerator.class)) {
+      TokenRepository tokens = stubRefreshEntities(entity, Instant.now().plusSeconds(3600));
+      stubSessionJwt(jwt);
+
+      createRefreshHandler().handleRefresh(request, response);
+
+      verify(tokens).deleteToken(OM_REFRESH_TOKEN);
+      verify(tokens).insertToken(any());
+      verify(sessionService, never()).revokeSession(any(), any());
+      verify(response).setStatus(HttpServletResponse.SC_OK);
+      assertTrue(captureOutputStream.getCapturedOutput().contains("om-session-jwt"));
+    }
+  }
+
+  @Test
+  void handleRefresh_providerRenewalDue_renewsItAndEndsTheTokenBeforeTheProvidersLapse()
+      throws Exception {
+    UserSession session =
+        stubLeasedRefreshSession("provider-refresh", System.currentTimeMillis() - 1_000);
+    AtomicInteger providerCalls = new AtomicInteger();
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class);
+        MockedStatic<JWTTokenGenerator> jwt = mockStatic(JWTTokenGenerator.class)) {
+      stubRefreshEntities(entity, Instant.now().plusSeconds(3600));
+      JWTTokenGenerator generator = stubSessionJwt(jwt);
+      long before = System.currentTimeMillis();
+
+      createRefreshHandler(
+              providerAnswering(providerCalls, renewedResponse("provider-rotated", 300)))
+          .handleRefresh(request, response);
+
+      assertEquals(1, providerCalls.get());
+      SessionService.ProviderTokenUpdate.Replaced renewed =
+          assertInstanceOf(
+              SessionService.ProviderTokenUpdate.Replaced.class, completedProviderTokens(session));
+      assertEquals("provider-rotated", renewed.refreshToken());
+      assertTrue(renewed.renewalDueAt() >= before + 300_000);
+      // The browser comes back before the provider's 5-minute tokens lapse, so a provider session
+      // with a short idle timeout stays alive while the user is active here.
+      assertTrue(issuedTokenValidity(generator) <= 300);
+      verify(response).setStatus(HttpServletResponse.SC_OK);
+    }
+  }
+
+  @Test
+  void handleRefresh_providerRejectsTheGrant_endsTheSessionWith401() throws Exception {
+    stubLeasedRefreshSession("provider-refresh", null);
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      TokenRepository tokens = stubRefreshEntities(entity, Instant.now().plusSeconds(3600));
+
+      createRefreshHandler(
+              providerAnswering(
+                  new AtomicInteger(), jsonResponse(400, "{\"error\":\"invalid_grant\"}")))
+          .handleRefresh(request, response);
+
+      // Checked before rotation: nothing new is minted, and the ended session's own refresh
+      // token is dropped with it.
+      verify(tokens, never()).insertToken(any());
+      verify(tokens).deleteToken(OM_REFRESH_TOKEN);
+      verify(sessionService, never()).completeRefresh(any(), any(), any());
+      verify(sessionService).revokeSession(request, response);
+      verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+      assertTrue(
+          captureOutputStream.getCapturedOutput().contains("Identity provider session ended"));
+    }
+  }
+
+  @Test
+  void handleRefresh_providerGivesNoVerdict_keepsTheSessionAndAsksAgainSoon() throws Exception {
+    UserSession session = stubLeasedRefreshSession("provider-refresh", null);
+    HTTPResponse outage = new HTTPResponse(503);
+    outage.setEntityContentType(ContentType.TEXT_PLAIN);
+    outage.setBody("upstream unavailable");
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class);
+        MockedStatic<JWTTokenGenerator> jwt = mockStatic(JWTTokenGenerator.class)) {
+      stubRefreshEntities(entity, Instant.now().plusSeconds(3600));
+      JWTTokenGenerator generator = stubSessionJwt(jwt);
+      long before = System.currentTimeMillis();
+
+      createRefreshHandler(providerAnswering(new AtomicInteger(), outage))
+          .handleRefresh(request, response);
+
+      // The provider's refresh token stays valid; only the next attempt moves.
+      SessionService.ProviderTokenUpdate.Rescheduled retry =
+          assertInstanceOf(
+              SessionService.ProviderTokenUpdate.Rescheduled.class,
+              completedProviderTokens(session));
+      long retryAfterMillis = TimeUnit.SECONDS.toMillis(ProviderTokenSchedule.RETRY_AFTER_SECONDS);
+      assertTrue(retry.renewalDueAt() >= before + retryAfterMillis);
+      assertTrue(issuedTokenValidity(generator) <= ProviderTokenSchedule.RETRY_AFTER_SECONDS);
+      verify(sessionService, never()).revokeSession(any(), any());
+      verify(response).setStatus(HttpServletResponse.SC_OK);
+    }
+  }
+
+  @Test
+  void handleRefresh_providerTokensOutliveTheNextToken_neverContactsTheProvider() throws Exception {
+    UserSession session =
+        stubLeasedRefreshSession(
+            "provider-refresh", System.currentTimeMillis() + TimeUnit.HOURS.toMillis(2));
+    AtomicInteger providerCalls = new AtomicInteger();
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class);
+        MockedStatic<JWTTokenGenerator> jwt = mockStatic(JWTTokenGenerator.class)) {
+      stubRefreshEntities(entity, Instant.now().plusSeconds(3600));
+      JWTTokenGenerator generator = stubSessionJwt(jwt);
+
+      createRefreshHandler(providerAnswering(providerCalls, renewedResponse(null, 300)))
+          .handleRefresh(request, response);
+
+      assertEquals(0, providerCalls.get());
+      verify(sessionService)
+          .completeRefresh(eq(session), anyString(), eq(SessionService.ProviderTokenUpdate.NONE));
+      assertEquals(3600, issuedTokenValidity(generator));
+    }
+  }
+
+  @Test
+  void handleRefresh_providerRenewsWithoutRotating_keepsTheStoredProviderToken() throws Exception {
+    UserSession session =
+        stubLeasedRefreshSession("provider-refresh", System.currentTimeMillis() - 1_000);
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class);
+        MockedStatic<JWTTokenGenerator> jwt = mockStatic(JWTTokenGenerator.class)) {
+      stubRefreshEntities(entity, Instant.now().plusSeconds(3600));
+      stubSessionJwt(jwt);
+      long before = System.currentTimeMillis();
+
+      createRefreshHandler(providerAnswering(new AtomicInteger(), renewedResponse(null, 300)))
+          .handleRefresh(request, response);
+
+      SessionService.ProviderTokenUpdate.Rescheduled renewed =
+          assertInstanceOf(
+              SessionService.ProviderTokenUpdate.Rescheduled.class,
+              completedProviderTokens(session));
+      assertTrue(renewed.renewalDueAt() >= before + 300_000);
+      verify(response).setStatus(HttpServletResponse.SC_OK);
+    }
+  }
+
+  @Test
+  void handleRefresh_withoutProviderRefreshToken_neverContactsTheProvider() throws Exception {
+    // Providers that issue no refresh token keep the session's fixed expiry; the browser's silent
+    // re-authentication covers the end of it.
+    UserSession session = stubLeasedRefreshSession(null, null);
+    AtomicInteger providerCalls = new AtomicInteger();
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class);
+        MockedStatic<JWTTokenGenerator> jwt = mockStatic(JWTTokenGenerator.class)) {
+      stubRefreshEntities(entity, Instant.now().plusSeconds(3600));
+      JWTTokenGenerator generator = stubSessionJwt(jwt);
+
+      createRefreshHandler(providerAnswering(providerCalls, renewedResponse(null, 300)))
+          .handleRefresh(request, response);
+
+      assertEquals(0, providerCalls.get());
+      verify(sessionService)
+          .completeRefresh(eq(session), anyString(), eq(SessionService.ProviderTokenUpdate.NONE));
+      assertEquals(3600, issuedTokenValidity(generator));
+    }
+  }
+
+  @Test
+  void providerTokensAtLogin_schedulesTheFirstRenewalFromTheLoginsExpiresIn() throws Exception {
+    long now = System.currentTimeMillis();
+
+    SessionService.ProviderTokenUpdate.Replaced providerTokens =
+        assertInstanceOf(
+            SessionService.ProviderTokenUpdate.Replaced.class,
+            endingSessionsWithProvider(createRefreshHandler())
+                .providerTokensAtLogin(providerLoginCredentials(), now));
+
+    assertEquals("idp-refresh", providerTokens.refreshToken());
+    assertEquals(now + 300_000, providerTokens.renewalDueAt());
+  }
+
+  @Test
+  void providerTokensAtLogin_byDefault_storesNothingFromTheProvider() throws Exception {
+    // Unless the admin opts in, a session lasts sessionExpiry whatever the provider does, so there
+    // is no provider token to keep and no renewal to schedule.
+    assertEquals(
+        SessionService.ProviderTokenUpdate.NONE,
+        createRefreshHandler()
+            .providerTokensAtLogin(providerLoginCredentials(), System.currentTimeMillis()));
+  }
+
+  @Test
+  void providerTokensAtLogin_followsTheConfiguredEndSessionWithProvider(@TempDir Path directory)
+      throws Exception {
+    // Startup and every SSO settings save build a new handler from the saved configuration.
+    Path discoveryDocument =
+        Files.writeString(directory.resolve("openid-configuration"), DISCOVERY_DOCUMENT);
+    OidcClientConfig oidcConfig =
+        new OidcClientConfig()
+            .withId("om-client")
+            .withSecret("om-secret")
+            .withDiscoveryUri("file:" + discoveryDocument.toAbsolutePath())
+            .withServerUrl(TEST_SERVER_URL)
+            .withCallbackUrl(TEST_SERVER_URL + "/callback");
+    long now = System.currentTimeMillis();
+
+    assertEquals(
+        SessionService.ProviderTokenUpdate.NONE,
+        configuredHandler(oidcConfig).providerTokensAtLogin(providerLoginCredentials(), now));
+
+    oidcConfig.setEndSessionWithProvider(true);
+
+    assertInstanceOf(
+        SessionService.ProviderTokenUpdate.Replaced.class,
+        configuredHandler(oidcConfig).providerTokensAtLogin(providerLoginCredentials(), now));
+  }
+
+  @Test
+  void handleRefresh_byDefault_neverContactsTheProviderAndIssuesFullLengthTokens()
+      throws Exception {
+    // A session from while the setting was on still holds an overdue renewal. With it off, the
+    // provider is left alone and the token is no longer cut short to that schedule.
+    UserSession session =
+        stubLeasedRefreshSession("provider-refresh", System.currentTimeMillis() - 1_000);
+    AtomicInteger providerCalls = new AtomicInteger();
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class);
+        MockedStatic<JWTTokenGenerator> jwt = mockStatic(JWTTokenGenerator.class)) {
+      stubRefreshEntities(entity, Instant.now().plusSeconds(3600));
+      JWTTokenGenerator generator = stubSessionJwt(jwt);
+      AuthenticationCodeFlowHandler handler = createRefreshHandler();
+      setField(
+          handler,
+          "providerTokenRefresher",
+          providerAnswering(providerCalls, jsonResponse(400, "{\"error\":\"invalid_grant\"}")));
+
+      handler.handleRefresh(request, response);
+
+      assertEquals(0, providerCalls.get());
+      verify(sessionService)
+          .completeRefresh(eq(session), anyString(), eq(SessionService.ProviderTokenUpdate.NONE));
+      verify(sessionService, never()).revokeSession(any(), any());
+      assertEquals(3600, issuedTokenValidity(generator));
+      verify(response).setStatus(HttpServletResponse.SC_OK);
+    }
+  }
+
+  @Test
+  void providerTokensAtLogin_withoutAProviderRefreshToken_hasNothingToRenew() throws Exception {
+    OidcCredentials credentials = new OidcCredentials();
+    credentials.setAccessTokenObject(new BearerAccessToken("idp-access", 300, null));
+
+    assertEquals(
+        SessionService.ProviderTokenUpdate.NONE,
+        endingSessionsWithProvider(createRefreshHandler())
+            .providerTokensAtLogin(credentials, System.currentTimeMillis()));
+  }
+
+  @Test
+  void handleRefresh_sessionEndedWhileRefreshing_dropsTheRotatedTokenAndAnswers401()
+      throws Exception {
+    // The session was revoked or expired while this refresh held its lease, so the rotated refresh
+    // token belongs to no session.
+    stubLeasedRefreshSession();
+    doReturn(Optional.empty()).when(sessionService).completeRefresh(any(), anyString(), any());
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      TokenRepository tokens = stubRefreshEntities(entity, Instant.now().plusSeconds(3600));
+
+      createRefreshHandler().handleRefresh(request, response);
+
+      ArgumentCaptor<TokenInterface> rotated = ArgumentCaptor.forClass(TokenInterface.class);
+      verify(tokens).insertToken(rotated.capture());
+      verify(tokens).deleteToken(rotated.getValue().getToken().toString());
+      verify(sessionService).revokeSession(request, response);
+      verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+      assertTrue(
+          captureOutputStream
+              .getCapturedOutput()
+              .contains(AuthenticationCodeFlowHandler.SESSION_REVOKED_DURING_REFRESH));
+    }
+  }
+
+  @Test
+  void handleRefresh_revokedSession_answersSessionRevoked() throws Exception {
+    // The browser signs out on this answer instead of re-authenticating silently, which would
+    // evict another of the user's sessions under the per-user cap.
+    when(sessionService.acquireRefreshLease(request, response)).thenReturn(Optional.empty());
+    when(sessionService.describeMissingSession(request)).thenReturn(SessionService.SESSION_REVOKED);
+
+    createRefreshHandler().handleRefresh(request, response);
+
+    verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+    assertTrue(captureOutputStream.getCapturedOutput().contains(SessionService.SESSION_REVOKED));
+  }
+
+  private static final String OM_REFRESH_TOKEN = "om-refresh-token";
+  private static final String SESSION_USERNAME = "alice";
+
+  /** Web-flow handler wired to reach the provider redirect, with no active session to reuse. */
+  private AuthenticationCodeFlowHandler createWebLoginHandler() throws Exception {
+    stubOidcConfigForLogin();
+    stubProviderMetadataForLogin();
+    when(request.getParameter(AuthenticationCodeFlowHandler.REDIRECT_URI_KEY))
+        .thenReturn(TEST_SERVER_URL + "/auth/callback");
+    when(sessionService.getActiveSession(request, response)).thenReturn(Optional.empty());
+    return createLoginHandler();
+  }
+
+  private AuthenticationCodeFlowHandler createRefreshHandler() throws Exception {
+    AuthenticationCodeFlowHandler handler =
+        createHandlerWithMockedInternals(sessionService, oidcClient);
+    setField(handler, "tokenValidity", 3600);
+    return handler;
+  }
+
+  /**
+   * A REFRESHING session whose stored refresh token the mocked SessionService "decrypts" as-is, and
+   * whose completeRefresh persists what it is given.
+   */
+  private UserSession stubLeasedRefreshSession() {
+    return stubLeasedRefreshSession(null, null);
+  }
+
+  /**
+   * A REFRESHING session whose stored tokens the mocked SessionService "decrypts" as-is, and whose
+   * completeRefresh persists what it is given.
+   */
+  private UserSession stubLeasedRefreshSession(
+      String providerRefreshToken, Long providerRenewalDueAt) {
+    UserSession session =
+        UserSession.builder()
+            .id("r".repeat(43))
+            .status(SessionStatus.REFRESHING)
+            .username(SESSION_USERNAME)
+            .omRefreshToken(OM_REFRESH_TOKEN)
+            .providerRefreshToken(providerRefreshToken)
+            .providerRenewalDueAt(providerRenewalDueAt)
+            .version(1L)
+            .build();
+    when(sessionService.acquireRefreshLease(request, response)).thenReturn(Optional.of(session));
+    when(sessionService.decryptOmRefreshToken(any()))
+        .thenAnswer(invocation -> invocation.getArgument(0, UserSession.class).getOmRefreshToken());
+    when(sessionService.decryptProviderRefreshToken(any()))
+        .thenAnswer(
+            invocation -> invocation.getArgument(0, UserSession.class).getProviderRefreshToken());
+    when(sessionService.completeRefresh(any(), anyString(), any()))
+        .thenAnswer(
+            invocation -> {
+              UserSession leased = invocation.getArgument(0, UserSession.class);
+              SessionService.ProviderTokenUpdate providerTokens = invocation.getArgument(2);
+              return Optional.of(
+                  leased.toBuilder()
+                      .status(SessionStatus.ACTIVE)
+                      .omRefreshToken(invocation.getArgument(1, String.class))
+                      .providerRenewalDueAt(renewalDueAtAfter(leased, providerTokens))
+                      .build());
+            });
+    return session;
+  }
+
+  private static Long renewalDueAtAfter(
+      UserSession leased, SessionService.ProviderTokenUpdate providerTokens) {
+    return switch (providerTokens) {
+      case SessionService.ProviderTokenUpdate.None none -> leased.getProviderRenewalDueAt();
+      case SessionService.ProviderTokenUpdate.Rescheduled rescheduled -> rescheduled.renewalDueAt();
+      case SessionService.ProviderTokenUpdate.Replaced replaced -> replaced.renewalDueAt();
+    };
+  }
+
+  private SessionService.ProviderTokenUpdate completedProviderTokens(UserSession session) {
+    ArgumentCaptor<SessionService.ProviderTokenUpdate> providerTokens =
+        ArgumentCaptor.forClass(SessionService.ProviderTokenUpdate.class);
+    verify(sessionService).completeRefresh(eq(session), anyString(), providerTokens.capture());
+    return providerTokens.getValue();
+  }
+
+  private static long issuedTokenValidity(JWTTokenGenerator generator) {
+    ArgumentCaptor<Long> validitySeconds = ArgumentCaptor.forClass(Long.class);
+    verify(generator)
+        .generateJWTTokenForSession(
+            anyString(),
+            any(),
+            anyBoolean(),
+            anyString(),
+            validitySeconds.capture(),
+            any(),
+            anyString());
+    return validitySeconds.getValue();
+  }
+
+  private TokenRepository stubRefreshEntities(MockedStatic<Entity> entity, Instant expiry) {
+    TokenRepository tokens = mock(TokenRepository.class);
+    RefreshToken stored =
+        new RefreshToken()
+            .withToken(UUID.randomUUID())
+            .withExpiryDate(expiry.truncatedTo(ChronoUnit.MILLIS).toEpochMilli());
+    when(tokens.findByToken(OM_REFRESH_TOKEN)).thenReturn(stored);
+    entity.when(Entity::getTokenRepository).thenReturn(tokens);
+    entity
+        .when(
+            () ->
+                Entity.getEntityByName(
+                    eq(Entity.USER), eq(SESSION_USERNAME), anyString(), eq(NON_DELETED)))
+        .thenReturn(
+            new User()
+                .withId(UUID.randomUUID())
+                .withName(SESSION_USERNAME)
+                .withEmail(SESSION_USERNAME + "@example.com"));
+    return tokens;
+  }
+
+  private static JWTTokenGenerator stubSessionJwt(MockedStatic<JWTTokenGenerator> jwt) {
+    JWTTokenGenerator generator = mock(JWTTokenGenerator.class);
+    jwt.when(JWTTokenGenerator::getInstance).thenReturn(generator);
+    when(generator.generateJWTTokenForSession(
+            anyString(), any(), anyBoolean(), anyString(), anyLong(), any(), anyString()))
+        .thenReturn(
+            new JWTAuthMechanism()
+                .withJWTToken("om-session-jwt")
+                .withJWTTokenExpiresAt(Instant.now().plusSeconds(3600).toEpochMilli()));
+    return generator;
+  }
+
+  /** A handler whose sessions end with the identity provider's, renewing through the refresher. */
+  private AuthenticationCodeFlowHandler createRefreshHandler(
+      OidcProviderTokenRefresher providerTokenRefresher) throws Exception {
+    AuthenticationCodeFlowHandler handler = endingSessionsWithProvider(createRefreshHandler());
+    setField(handler, "providerTokenRefresher", providerTokenRefresher);
+    return handler;
+  }
+
+  /** Turns on {@code endSessionWithProvider} for a handler built without its constructor. */
+  private static AuthenticationCodeFlowHandler endingSessionsWithProvider(
+      AuthenticationCodeFlowHandler handler) throws Exception {
+    setField(handler, "endsSessionWithProvider", true);
+    return handler;
+  }
+
+  private AuthenticationCodeFlowHandler configuredHandler(OidcClientConfig oidcConfig) {
+    AuthenticationConfiguration authConfig =
+        new AuthenticationConfiguration()
+            .withProvider(AuthProvider.CUSTOM_OIDC)
+            .withOidcConfiguration(oidcConfig);
+    return new AuthenticationCodeFlowHandler(
+        authConfig, new AuthorizerConfiguration(), sessionService);
+  }
+
+  private static OidcCredentials providerLoginCredentials() {
+    OidcCredentials credentials = new OidcCredentials();
+    credentials.setAccessTokenObject(new BearerAccessToken("idp-access", 300, null));
+    credentials.setRefreshTokenObject(
+        new com.nimbusds.oauth2.sdk.token.RefreshToken("idp-refresh"));
+    return credentials;
+  }
+
+  /** A real refresher whose only stub is the identity provider's token endpoint. */
+  private static OidcProviderTokenRefresher providerAnswering(
+      AtomicInteger calls, HTTPResponse tokenEndpointResponse) {
+    return new OidcProviderTokenRefresher(
+        grant ->
+            new TokenRequest(
+                URI.create("https://idp.example.com/token"),
+                new ClientSecretBasic(new ClientID("om-client"), new Secret("om-secret")),
+                grant),
+        request -> {
+          calls.incrementAndGet();
+          return tokenEndpointResponse;
+        });
+  }
+
+  private static HTTPResponse renewedResponse(String rotatedRefreshToken, int expiresInSeconds) {
+    String refreshToken =
+        rotatedRefreshToken == null ? "" : ",\"refresh_token\":\"" + rotatedRefreshToken + "\"";
+    return jsonResponse(
+        200,
+        "{\"access_token\":\"idp-access\",\"token_type\":\"Bearer\",\"expires_in\":"
+            + expiresInSeconds
+            + refreshToken
+            + "}");
+  }
+
+  private static HTTPResponse jsonResponse(int status, String body) {
+    HTTPResponse tokenResponse = new HTTPResponse(status);
+    tokenResponse.setEntityContentType(ContentType.APPLICATION_JSON);
+    tokenResponse.setBody(body);
+    return tokenResponse;
+  }
+
+  @Test
+  void isMcpRedirectUri_matchesOnlyTheMcpCallback() throws Exception {
+    AuthenticationCodeFlowHandler handler = createLoginHandler();
+    Method method =
+        AuthenticationCodeFlowHandler.class.getDeclaredMethod("isMcpRedirectUri", String.class);
+    method.setAccessible(true);
+
+    // Drives the handleCallback gate that decides whether provider credentials are handed to MCP.
+    assertTrue((Boolean) method.invoke(handler, TEST_SERVER_URL + MCP_CALLBACK));
+    assertFalse((Boolean) method.invoke(handler, TEST_SERVER_URL + "/auth/callback"));
+    assertFalse((Boolean) method.invoke(handler, "https://evil.example.com" + MCP_CALLBACK));
+    assertFalse((Boolean) method.invoke(handler, (Object) null));
+  }
+
+  @Test
+  void resolveProviderMetadata_initializesResolverAndReturnsLoadedMetadata() throws Exception {
+    IOidcOpMetadataResolver resolver = mock(IOidcOpMetadataResolver.class);
+    OIDCProviderMetadata metadata = mock(OIDCProviderMetadata.class);
+    when(oidcConfiguration.getOpMetadataResolver()).thenReturn(resolver);
+    when(resolver.load()).thenReturn(metadata);
+
+    Method method =
+        AuthenticationCodeFlowHandler.class.getDeclaredMethod(
+            "resolveProviderMetadata", OidcConfiguration.class);
+    method.setAccessible(true);
+
+    Object result = method.invoke(null, oidcConfiguration);
+
+    // pac4j 6 removed getProviderMetadata(); the helper must initialize the resolver, then load().
+    assertEquals(metadata, result);
+    verify(oidcConfiguration).ensuresMetadataResolverInitialized();
+    verify(resolver).load();
+  }
+
+  private void stubOidcConfigForLogin() {
+    when(oidcClient.getConfiguration()).thenReturn(oidcConfiguration);
+    when(oidcClient.getCallbackUrl()).thenReturn(TEST_SERVER_URL + "/callback");
+    when(oidcConfiguration.getScope()).thenReturn("openid email profile");
+    when(oidcConfiguration.getResponseType()).thenReturn("code");
+    when(oidcConfiguration.getCustomParams()).thenReturn(new HashMap<>());
+    when(oidcConfiguration.getClientId()).thenReturn("test-client-id");
+    when(oidcConfiguration.isWithState()).thenReturn(true);
+    when(oidcConfiguration.isUseNonce()).thenReturn(true);
+    when(oidcConfiguration.isDisablePkce()).thenReturn(false);
+  }
+
+  /** Lets handleLogin() build the provider authorize URL and reach resp.sendRedirect(). */
+  private void stubProviderMetadataForLogin() {
+    IOidcOpMetadataResolver resolver = mock(IOidcOpMetadataResolver.class);
+    OIDCProviderMetadata metadata = mock(OIDCProviderMetadata.class);
+    when(oidcConfiguration.getOpMetadataResolver()).thenReturn(resolver);
+    when(resolver.load()).thenReturn(metadata);
+    when(metadata.getAuthorizationEndpointURI())
+        .thenReturn(URI.create("https://idp.example.com/authorize"));
+  }
+
+  /** The provider authorize URL handleLogin() redirected the browser to. */
+  private String capturedLoginRedirect() throws IOException {
+    ArgumentCaptor<String> location = ArgumentCaptor.forClass(String.class);
+    verify(response).sendRedirect(location.capture());
+    return location.getValue();
+  }
+
+  /** Handler wired up far enough to drive handleLogin() through state generation. */
+  private AuthenticationCodeFlowHandler createLoginHandler() throws Exception {
+    AuthenticationCodeFlowHandler handler =
+        createHandlerWithMockedInternals(sessionService, oidcClient);
+    AuthenticationConfiguration authConfig = mock(AuthenticationConfiguration.class);
+    when(authConfig.getCallbackUrl()).thenReturn(TEST_SERVER_URL + "/callback");
+    when(authConfig.getProvider()).thenReturn(AuthProvider.GOOGLE);
+    setField(handler, "serverUrl", TEST_SERVER_URL);
+    setField(handler, "authenticationConfiguration", authConfig);
+    return handler;
+  }
+
   /**
    * Allocates an AuthenticationCodeFlowHandler without invoking its constructor (which requires a
    * real OIDC provider for discovery), then injects the mocked collaborators via reflection.
    */
+
+  // Regression coverage for issue #32960: the callback mints an OpenMetadata token
+  // carrying OpenMetadata's own roles, so unless the provider's roles are applied here they are
+  // never seen again and the downstream sync just compares the database against itself.
+
+  @Test
+  void syncRolesFromProvider_assignsProviderRolesToTheUser() throws Exception {
+    User user = userWithRoles("alice");
+    UserRepository userRepository = mock(UserRepository.class);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      stubRoleLookup(mockedEntity, userRepository, "DataSteward");
+
+      invokeSyncRolesFromProvider(
+          handlerWithRolesFromProvider(true), user, claims("roles", List.of("DataSteward")));
+    }
+
+    assertEquals(List.of("DataSteward"), roleNames(user));
+  }
+
+  @Test
+  void syncRolesFromProvider_revokesRolesWhenProviderSendsAnEmptyClaim() throws Exception {
+    User user = userWithRoles("alice", "DataSteward");
+    UserRepository userRepository = mock(UserRepository.class);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      stubRoleLookup(mockedEntity, userRepository);
+
+      invokeSyncRolesFromProvider(
+          handlerWithRolesFromProvider(true), user, claims("roles", List.of()));
+
+      verify(userRepository).patch(eq(null), eq(user.getId()), eq("alice"), any());
+    }
+
+    assertEquals(List.of(), roleNames(user));
+  }
+
+  @Test
+  void syncRolesFromProvider_replacesStaleRolesWhenTheProviderChangesThem() throws Exception {
+    User user = userWithRoles("alice", "DataSteward");
+    UserRepository userRepository = mock(UserRepository.class);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      stubRoleLookup(mockedEntity, userRepository, "DataConsumer");
+
+      invokeSyncRolesFromProvider(
+          handlerWithRolesFromProvider(true), user, claims("roles", List.of("DataConsumer")));
+    }
+
+    assertEquals(List.of("DataConsumer"), roleNames(user));
+  }
+
+  @Test
+  void syncRolesFromProvider_leavesRolesAloneWhenTheTokenHasNoRolesClaim() throws Exception {
+    User user = userWithRoles("alice", "DataSteward");
+    UserRepository userRepository = mock(UserRepository.class);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      stubRoleLookup(mockedEntity, userRepository);
+
+      invokeSyncRolesFromProvider(
+          handlerWithRolesFromProvider(true), user, claims("email", "alice@om.test"));
+
+      verifyNoInteractions(userRepository);
+    }
+
+    assertEquals(List.of("DataSteward"), roleNames(user));
+  }
+
+  @Test
+  void syncRolesFromProvider_doesNothingWhenUseRolesFromProviderIsOff() throws Exception {
+    User user = userWithRoles("alice", "DataSteward");
+    UserRepository userRepository = mock(UserRepository.class);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      stubRoleLookup(mockedEntity, userRepository, "DataConsumer");
+
+      invokeSyncRolesFromProvider(
+          handlerWithRolesFromProvider(false), user, claims("roles", List.of("DataConsumer")));
+
+      verifyNoInteractions(userRepository);
+    }
+
+    assertEquals(List.of("DataSteward"), roleNames(user));
+  }
+
+  @Test
+  void syncRolesFromProvider_matchesTheRolesClaimCaseInsensitively() throws Exception {
+    User user = userWithRoles("alice");
+    UserRepository userRepository = mock(UserRepository.class);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      stubRoleLookup(mockedEntity, userRepository, "DataSteward");
+
+      invokeSyncRolesFromProvider(
+          handlerWithRolesFromProvider(true), user, claims("Roles", List.of("DataSteward")));
+    }
+
+    assertEquals(List.of("DataSteward"), roleNames(user));
+  }
+
+  @Test
+  void syncRolesFromProvider_promotesToAdminWhenTheProviderSendsTheAdminRole() throws Exception {
+    User user = userWithRoles("alice");
+    UserRepository userRepository = mock(UserRepository.class);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      stubRoleLookup(mockedEntity, userRepository);
+
+      invokeSyncRolesFromProvider(
+          handlerWithRolesFromProvider(true), user, claims("roles", List.of(ADMIN_ROLE)));
+    }
+
+    assertTrue(user.getIsAdmin());
+  }
+
+  private AuthenticationCodeFlowHandler handlerWithRolesFromProvider(boolean useRolesFromProvider)
+      throws Exception {
+    AuthenticationCodeFlowHandler handler =
+        createHandlerWithMockedInternals(sessionService, oidcClient);
+    setField(
+        handler,
+        "authorizerConfiguration",
+        new AuthorizerConfiguration().withUseRolesFromProvider(useRolesFromProvider));
+    return handler;
+  }
+
+  private static void invokeSyncRolesFromProvider(
+      AuthenticationCodeFlowHandler handler, User user, Map<String, Object> claims)
+      throws Exception {
+    Method method =
+        AuthenticationCodeFlowHandler.class.getDeclaredMethod(
+            "syncRolesFromProvider", User.class, Map.class);
+    method.setAccessible(true);
+    try {
+      method.invoke(handler, user, claims);
+    } catch (InvocationTargetException e) {
+      throw (Exception) e.getCause();
+    }
+  }
+
+  // The callback builds its claims map case-insensitively; mirror that here so the tests exercise
+  // the same lookup behaviour the real flow has.
+  private static Map<String, Object> claims(String key, Object value) {
+    Map<String, Object> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+    claims.put(key, value);
+    return claims;
+  }
+
+  private static void stubRoleLookup(
+      MockedStatic<Entity> mockedEntity, UserRepository userRepository, String... roleNames) {
+    mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(userRepository);
+    for (String roleName : roleNames) {
+      mockedEntity
+          .when(() -> Entity.getEntityByName(Entity.ROLE, roleName, "id", NON_DELETED, true))
+          .thenReturn(
+              new Role()
+                  .withId(java.util.UUID.randomUUID())
+                  .withName(roleName)
+                  .withFullyQualifiedName(roleName));
+    }
+  }
+
+  private static User userWithRoles(String name, String... roleNames) {
+    return new User()
+        .withId(java.util.UUID.randomUUID())
+        .withName(name)
+        .withFullyQualifiedName(name)
+        .withIsAdmin(false)
+        .withRoles(
+            java.util.Arrays.stream(roleNames)
+                .map(roleName -> new EntityReference().withName(roleName))
+                .toList());
+  }
+
+  private static List<String> roleNames(User user) {
+    return user.getRoles().stream().map(EntityReference::getName).toList();
+  }
+
   private AuthenticationCodeFlowHandler createHandlerWithMockedInternals(
       SessionService sessionService, OidcClient client) throws Exception {
     sun.misc.Unsafe unsafe = getUnsafe();
@@ -530,5 +1846,150 @@ class AuthenticationCodeFlowHandlerTest {
     String getCapturedOutput() {
       return buffer.toString(java.nio.charset.StandardCharsets.UTF_8);
     }
+  }
+
+  @Test
+  void resolveOidcIdentity_fallsBackToLegacyClaimsWhenEmailClaimMissing() throws Exception {
+    AuthenticationCodeFlowHandler handler = createEmailFirstHandler(null);
+    setField(handler, "claimsMapping", Map.of());
+    setField(handler, "claimsOrder", List.of("preferred_username"));
+    setField(handler, "principalDomain", "openmetadata.org");
+
+    Object identity =
+        invokePrivateMethod(
+            handler, "resolveOidcIdentity", Map.class, Map.of("preferred_username", "legacy-user"));
+
+    assertFalse((Boolean) readRecordComponent(identity, "emailFirstFlow"));
+    assertEquals("legacy-user", readRecordComponent(identity, "userName"));
+    assertEquals("legacy-user@openmetadata.org", readRecordComponent(identity, "email"));
+  }
+
+  @Test
+  void getOrCreateEmailFirstOidcUser_looksUpExistingUserByExactEmail() throws Exception {
+    AuthenticationCodeFlowHandler handler = createEmailFirstHandler(null);
+    User existing =
+        new User()
+            .withId(UUID.randomUUID())
+            .withName("john_a1b2")
+            .withEmail("john@y.com")
+            .withDisplayName("John Y");
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      UserRepository userRepository = mock(UserRepository.class);
+      mockedEntity.when(Entity::getUserRepository).thenReturn(userRepository);
+      when(userRepository.getActiveUserByEmailForAuth(eq("john@y.com"), any()))
+          .thenReturn(existing);
+
+      User resolved = invokeGetOrCreateEmailFirstOidcUser(handler, "john@y.com", "John Y");
+
+      assertSame(existing, resolved);
+      verify(userRepository).getActiveUserByEmailForAuth(eq("john@y.com"), any());
+    }
+  }
+
+  @Test
+  void getOrCreateEmailFirstOidcUser_rejectsUnregisteredUserWhenSelfSignupDisabled()
+      throws Exception {
+    AuthenticationCodeFlowHandler handler = createEmailFirstHandler(null);
+    setField(handler, "authenticationConfiguration", selfSignupDisabledAuthConfig());
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      UserRepository userRepository = mock(UserRepository.class);
+      mockedEntity.when(Entity::getUserRepository).thenReturn(userRepository);
+      when(userRepository.getActiveUserByEmailForAuth(any(), any()))
+          .thenThrow(new EntityNotFoundException("user not found"));
+
+      org.openmetadata.service.security.AuthenticationException exception =
+          assertThrows(
+              org.openmetadata.service.security.AuthenticationException.class,
+              () ->
+                  invokeGetOrCreateEmailFirstOidcUser(handler, "newuser@company.com", "New User"));
+
+      assertTrue(exception.getMessage().contains("User not registered"));
+    }
+  }
+
+  @Test
+  void getOrCreateEmailFirstOidcUser_rejectsDisallowedRegistrationDomain() throws Exception {
+    AuthenticationCodeFlowHandler handler = createEmailFirstHandler(Set.of("company.com"));
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      UserRepository userRepository = mock(UserRepository.class);
+      mockedEntity.when(Entity::getUserRepository).thenReturn(userRepository);
+      when(userRepository.getActiveUserByEmailForAuth(any(), any()))
+          .thenThrow(new EntityNotFoundException("user not found"));
+
+      org.openmetadata.service.security.AuthenticationException exception =
+          assertThrows(
+              org.openmetadata.service.security.AuthenticationException.class,
+              () -> invokeGetOrCreateEmailFirstOidcUser(handler, "intruder@other.org", "Intruder"));
+
+      assertTrue(exception.getMessage().contains("not allowed for self-signup"));
+    }
+  }
+
+  private AuthenticationConfiguration selfSignupDisabledAuthConfig() {
+    AuthenticationConfiguration authConfig = mock(AuthenticationConfiguration.class);
+    when(authConfig.getEnableSelfSignup()).thenReturn(false);
+    when(authConfig.getEmailClaim()).thenReturn("email");
+    return authConfig;
+  }
+
+  private AuthenticationCodeFlowHandler createEmailFirstHandler(Set<String> registrationDomains)
+      throws Exception {
+    AuthenticationConfiguration authConfig = mock(AuthenticationConfiguration.class);
+    when(authConfig.getEnableSelfSignup()).thenReturn(true);
+    when(authConfig.getEmailClaim()).thenReturn("email");
+
+    AuthorizerConfiguration authzConfig = mock(AuthorizerConfiguration.class);
+    when(authzConfig.getAdminPrincipals()).thenReturn(Set.of());
+    when(authzConfig.getAllowedEmailRegistrationDomains()).thenReturn(registrationDomains);
+    when(authzConfig.getDefaultOAuthRole()).thenReturn(null);
+
+    sun.misc.Unsafe unsafe = getUnsafe();
+    AuthenticationCodeFlowHandler handler =
+        (AuthenticationCodeFlowHandler)
+            unsafe.allocateInstance(AuthenticationCodeFlowHandler.class);
+    setField(handler, "authenticationConfiguration", authConfig);
+    setField(handler, "authorizerConfiguration", authzConfig);
+    return handler;
+  }
+
+  private User invokeGetOrCreateEmailFirstOidcUser(
+      AuthenticationCodeFlowHandler handler, String email, String displayName) throws Exception {
+    Method method =
+        AuthenticationCodeFlowHandler.class.getDeclaredMethod(
+            "getOrCreateEmailFirstOidcUser", String.class, String.class, Map.class);
+    method.setAccessible(true);
+    try {
+      return (User) method.invoke(handler, email, displayName, new HashMap<String, Object>());
+    } catch (InvocationTargetException e) {
+      Throwable cause = e.getCause();
+      if (cause instanceof RuntimeException runtimeException) {
+        throw runtimeException;
+      }
+      throw e;
+    }
+  }
+
+  private Object invokePrivateMethod(
+      Object target, String methodName, Class<?> paramType, Object arg) throws Exception {
+    Method method = target.getClass().getDeclaredMethod(methodName, paramType);
+    method.setAccessible(true);
+    try {
+      return method.invoke(target, arg);
+    } catch (InvocationTargetException e) {
+      Throwable cause = e.getCause();
+      if (cause instanceof RuntimeException runtimeException) {
+        throw runtimeException;
+      }
+      throw e;
+    }
+  }
+
+  private Object readRecordComponent(Object record, String component) throws Exception {
+    Method accessor = record.getClass().getDeclaredMethod(component);
+    accessor.setAccessible(true);
+    return accessor.invoke(record);
   }
 }

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
-import { Button, Tooltip } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -26,7 +26,6 @@ import {
   getEntityField,
   getEntityFQN,
   getEntityType,
-  getFeedPanelHeaderText,
 } from '../../../utils/FeedUtilsPure';
 import { FeedPanelHeaderProp } from './ActivityFeedPanel.interface';
 const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
@@ -35,7 +34,6 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
   noun,
   feed,
   onShowNewConversation,
-  threadType,
   onCancel,
   hideCloseIcon = false,
 }) => {
@@ -52,8 +50,7 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
       )}>
       <p data-testid="header-title">
         <span data-testid="header-noun">
-          {noun ? noun : getFeedPanelHeaderText(threadType)}{' '}
-          {t('label.on-lowercase')}{' '}
+          {noun ?? t('label.conversation')} {t('label.on-lowercase')}{' '}
         </span>
         <span className="font-medium" data-testid="entity-attribute">
           {entityField ? (
@@ -74,22 +71,22 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
       </p>
       <div className="d-flex items-center">
         {onShowNewConversation ? (
-          <Tooltip
-            placement="bottom"
-            title={t('label.start-entity', {
+          <Button
+            aria-label={t('label.start-entity', {
               entity: t('label.conversation-lowercase'),
             })}
-            trigger="hover">
-            <Button
-              data-testid="add-new-conversation"
-              icon={<PlusOutlined />}
-              size="small"
-              type="primary"
-              onClick={() => {
-                onShowNewConversation(true);
-              }}
-            />
-          </Tooltip>
+            color="primary"
+            data-testid="add-new-conversation"
+            iconLeading={Plus}
+            size="sm"
+            tooltip={t('label.start-entity', {
+              entity: t('label.conversation-lowercase'),
+            })}
+            tooltipPlacement="bottom"
+            onPress={() => {
+              onShowNewConversation(true);
+            }}
+          />
         ) : null}
         {hideCloseIcon ? null : (
           <CloseIcon dataTestId="closeDrawer" handleCancel={onCancel} />

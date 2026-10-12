@@ -11,10 +11,12 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Select } from 'antd';
+import { Box } from '@openmetadata/ui-core-components';
+import { Button, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { capitalize, debounce, get } from 'lodash';
 import {
+  ComponentRef,
   FC,
   HTMLAttributes,
   useCallback,
@@ -29,13 +31,14 @@ import { PAGE_SIZE } from '../../../constants/constants';
 import { EntityType, FqnPart } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
+import { ExploreSearchIndex } from '../../../interface/discovery/explore.interface';
 import { searchQuery } from '../../../rest/searchAPI';
-import { getEntityNodeIcon } from '../../../utils/EntityLineageNodeUtils';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
+import { getEntityIcon } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { ExploreSearchIndex } from '../../Explore/ExplorePage.interface';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import './node-suggestion.less';
 
@@ -51,7 +54,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
   onSelectHandler,
 }) => {
   const { t } = useTranslation();
-  const selectRef = useRef<any>(null);
+  const selectRef = useRef<ComponentRef<typeof Select>>(null);
 
   const [data, setData] = useState<Array<SourceType>>([]);
   const [searchValue, setSearchValue] = useState<string>('');
@@ -156,19 +159,21 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
     getSearchResults(searchValue);
   }, []);
 
-  const Icon = getEntityNodeIcon(entityType);
+  const entityIcon = useMemo(
+    () => getEntityIcon(entityType, 'tw:h-4 tw:w-4'),
+    [entityType]
+  );
 
   return (
-    <Row
-      className="p-md items-center"
+    <Box
+      className="layout-row p-md items-center"
       data-testid="suggestion-node"
-      gutter={8}
-      wrap={false}>
-      <Col>
-        <Icon height={16} name="entity-icon" width={16} />
-      </Col>
-      <Col flex="1">
+      style={{ ...getLayoutGutter(8) }}
+      wrap="nowrap">
+      <Box className="layout-column tw:block">{entityIcon}</Box>
+      <Box className="layout-column tw:block" style={{ flex: '1 1 auto' }}>
         <Select
+          // eslint-disable-next-line jsx-a11y/no-autofocus -- focus required for inline node search
           autoFocus
           showSearch
           className="lineage-node-searchbox"
@@ -186,8 +191,8 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
           onFocus={() => setIsOpen(true)}
           onSearch={handleChange}
         />
-      </Col>
-    </Row>
+      </Box>
+    </Box>
   );
 };
 

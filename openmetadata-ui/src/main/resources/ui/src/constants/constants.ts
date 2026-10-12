@@ -147,6 +147,7 @@ export const ROUTES = {
   EXPLORE: '/explore',
   EXPLORE_WITH_TAB: `/explore/${PLACEHOLDER_ROUTE_TAB}`,
   ONTOLOGY_EXPLORER: '/governance/ontology',
+  SPARQL_PLAYGROUND: '/governance/sparql',
   WORKFLOWS: '/workflows',
   WORKFLOWS_WITH_FQN_TAB: `/workflows/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   SQL_BUILDER: '/sql-builder',
@@ -156,7 +157,7 @@ export const ROUTES = {
   KNOWLEDGE_PAGE_VERSION: `/knowledge-center/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
   CONTEXT_CENTER: '/context-center',
   CONTEXT_CENTER_WITH_TAB: `/context-center/${PLACEHOLDER_ROUTE_TAB}`,
-  CONTEXT_CENTER_DASHBOARD: '/context-center/dashboard',
+  CONTEXT_CENTER_OVERVIEW: '/context-center/overview',
   CONTEXT_CENTER_ARTICLES: '/context-center/articles',
   CONTEXT_CENTER_ARTICLE_DETAIL: `/context-center/articles/${PLACEHOLDER_ROUTE_FQN}`,
   CONTEXT_CENTER_ARTICLE_DETAIL_WITH_TAB: `/context-center/articles/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
@@ -166,6 +167,8 @@ export const ROUTES = {
   CONTEXT_CENTER_FILTER: '/context-center/filter',
   CONTEXT_CENTER_MEMORIES: '/context-center/memories',
   CONTEXT_CENTER_INTEGRATIONS: '/context-center/integrations',
+  CONTEXT_CENTER_AI_CONTEXT: '/context-center/ai-context',
+  CONTEXT_CENTER_AI_CONTEXT_DETAIL: `/context-center/ai-context/${PLACEHOLDER_ROUTE_FQN}`,
   CONTEXT_CENTER_ARCHIVE: '/context-center/archive',
   SETTINGS_WITH_CATEGORY: `/settings/${PLACEHOLDER_SETTING_CATEGORY}`,
   SETTINGS_WITH_CATEGORY_FQN: `/settings/${PLACEHOLDER_SETTING_CATEGORY}/${PLACEHOLDER_ROUTE_FQN}`,
@@ -228,6 +231,8 @@ export const ROUTES = {
 
   DATA_MARKETPLACE_SECTION: '/data-marketplace-section',
   DATA_MARKETPLACE: '/data-marketplace',
+  DATA_MARKETPLACE_DATA_ACCESS_REQUESTS:
+    '/data-marketplace/data-access-requests',
 
   APP_DETAILS: `/apps/${PLACEHOLDER_ROUTE_FQN}`,
   APP_DETAILS_WITH_TAB: `/apps/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
@@ -326,7 +331,6 @@ export const ROUTES = {
 
   // Metric Entity
   METRICS: '/metrics',
-  ADD_METRIC: '/metrics/add-metric',
 
   // Entity Import
   ENTITY_IMPORT: `/bulk/import/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
@@ -360,12 +364,15 @@ export const SOCKET_EVENTS = {
 
 export const CACHE_WARMUP_APPLICATION_NAME = 'CacheWarmupApplication';
 
+export const MCP_APPLICATION_NAME = 'McpApplication';
+
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
   '/database/': [i18n.t('message.in-this-database')],
 };
 
 export const NOTIFICATION_READ_TIMER = 2500;
 export const TIER_CATEGORY = 'Tier';
+export const CERTIFICATION_CATEGORY = 'Certification';
 
 export const ENTITY_PATH = {
   tables: 'table',
@@ -403,6 +410,8 @@ export const ENTITY_PATH = {
   agentExecutions: 'agentExecution',
   mcpExecutions: 'mcpExecution',
   promptTemplates: 'promptTemplate',
+  teams: 'team',
+  users: 'user',
 };
 
 export const CUSTOM_PROPERTIES_DOCS =
@@ -493,6 +502,7 @@ export const VALIDATION_MESSAGES = {
 
 export const ERROR_MESSAGE = {
   alreadyExist: 'already exists',
+  mutuallyExclusive: 'mutually exclusive',
 };
 
 export const ICON_DIMENSION = {

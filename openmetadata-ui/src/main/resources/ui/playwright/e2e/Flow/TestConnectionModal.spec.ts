@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test } from '@playwright/test';
+import { Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
+import { expect, test } from '../../support/fixtures/base';
 import { redirectToHomePage, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
@@ -98,7 +100,9 @@ async function setupWorkflowApiMocks(page: Page, workflowGetResponse: object) {
 }
 
 async function navigateToMysqlConnectionForm(page: Page) {
-  await page.goto('/databaseServices/add-service');
+  await page.goto('/databaseServices/add-service', {
+    waitUntil: 'domcontentloaded',
+  });
   await waitForAllLoadersToDisappear(page);
   await selectServiceConnector(page, 'Mysql');
   await fillServiceNameAndWaitForValidation(page, `pw-tc-modal-test-${uuid()}`);
@@ -124,7 +128,9 @@ async function fillServiceNameAndWaitForValidation(
 }
 
 async function navigateToMysqlFormWithoutFilling(page: Page) {
-  await page.goto('/databaseServices/add-service');
+  await page.goto('/databaseServices/add-service', {
+    waitUntil: 'domcontentloaded',
+  });
   await waitForAllLoadersToDisappear(page);
   await selectServiceConnector(page, 'Mysql');
   await advanceToServiceConnectionStep(page);
@@ -222,12 +228,57 @@ test.describe(
       await page.getByTestId('test-connection-btn').click();
 
       await expect(page.getByRole('button', { name: /done/i })).toBeVisible({
-        timeout: 30000,
+        timeout: ACTION_TIMEOUT,
       });
       await expect(
         page.getByTestId('edit-connection-button')
       ).not.toBeVisible();
       await expect(page.getByTestId('retry-test-button')).not.toBeVisible();
+    });
+
+    test('changing a form field after a successful test resets the connection badge', async ({
+      page,
+    }) => {
+      const successResponse = {
+        id: MOCK_WORKFLOW_ID,
+        status: 'Successful',
+        response: {
+          status: 'Successful',
+          steps: [
+            { name: 'CheckAccess', passed: true, mandatory: true },
+            { name: 'GetDatabases', passed: true, mandatory: true },
+          ],
+        },
+      };
+
+      await navigateToMysqlConnectionForm(page);
+      await setupWorkflowApiMocks(page, successResponse);
+
+      await page.getByTestId('test-connection-btn').click();
+
+      await expect(page.getByRole('button', { name: /done/i })).toBeVisible({
+        timeout: ACTION_TIMEOUT,
+      });
+      await page.getByRole('button', { name: /done/i }).click();
+
+      await expect(
+        page.getByTestId('test-connection-card-Successful')
+      ).toBeVisible();
+      await expect(page.getByTestId('test-connection-btn')).toHaveText(
+        'Re-test Connection'
+      );
+
+      await page.fill('[id="root\\/hostPort"]', 'localhost:3307');
+
+      await expect(
+        page.getByTestId('test-connection-card-Successful')
+      ).not.toBeVisible();
+      await expect(
+        page.getByTestId('test-connection-card-ready-to-test')
+      ).toBeVisible();
+      await expect(page.getByTestId('test-connection-btn')).toHaveText(
+        'Test Connection'
+      );
     });
 
     test('failure state shows Edit Connection button and Retry Test button', async ({
@@ -255,7 +306,7 @@ test.describe(
       await page.getByTestId('test-connection-btn').click();
 
       await expect(page.getByTestId('edit-connection-button')).toBeVisible({
-        timeout: 30000,
+        timeout: ACTION_TIMEOUT,
       });
       await expect(page.getByTestId('retry-test-button')).toBeVisible();
     });
@@ -285,7 +336,7 @@ test.describe(
       await page.getByTestId('test-connection-btn').click();
 
       await expect(page.getByTestId('connection-remediation-card')).toBeVisible(
-        { timeout: 30000 }
+        { timeout: ACTION_TIMEOUT }
       );
     });
 
@@ -312,7 +363,7 @@ test.describe(
       await page.getByTestId('test-connection-btn').click();
 
       await expect(page.getByTestId('edit-connection-button')).toBeVisible({
-        timeout: 30000,
+        timeout: ACTION_TIMEOUT,
       });
 
       await page.getByTestId('edit-connection-button').click();
@@ -344,7 +395,7 @@ test.describe(
       await page.getByTestId('test-connection-btn').click();
 
       await expect(page.getByText(/show.*raw.*connection.*log/i)).toBeVisible({
-        timeout: 30000,
+        timeout: ACTION_TIMEOUT,
       });
 
       await page.getByText(/show.*raw.*connection.*log/i).click();

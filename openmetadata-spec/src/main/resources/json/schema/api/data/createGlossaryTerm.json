@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/api/data/createGlossaryTerm.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "CreateGlossaryTermRequest",
   "description": "Create Glossary term entity request",
   "type": "object",
@@ -61,7 +61,21 @@
       "description": "Optional mappings to external concepts (e.g., SKOS alignments).",
       "type": "array",
       "items": {
-        "$ref": "../../entity/data/glossaryTerm.json#/definitions/conceptMapping"
+        "$ref": "../../type/conceptMapping.json"
+      }
+    },
+    "attributes": {
+      "description": "Typed properties governed by this ontology concept.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/ontologyAttribute.json"
+      }
+    },
+    "realizedIn": {
+      "description": "Data assets that physically realize this concept.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/assetRealization.json"
       }
     },
     "reviewers": {

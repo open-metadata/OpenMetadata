@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Form, Input, Row } from 'antd';
+import { Box } from '@openmetadata/ui-core-components';
+import { Button, Form, Input } from 'antd';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -36,6 +37,7 @@ import {
   getSettingsConfigFromConfigType,
   updateSettingsConfig,
 } from '../../../rest/settingConfigAPI';
+import { getHyperlinkUrlValidationErrorKey } from '../../../utils/CustomProperty.utils';
 import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
@@ -140,22 +142,35 @@ const EditUrlConfigurationPage = () => {
         <Item
           label={t('label.brand-name-url')}
           name="openMetadataUrl"
-          rules={[{ required: true }]}>
+          rules={[
+            { required: true },
+            {
+              validator: (_, value) => {
+                const errorKey = getHyperlinkUrlValidationErrorKey(
+                  typeof value === 'string' ? value : undefined
+                );
+
+                return errorKey
+                  ? Promise.reject(new Error(t(errorKey)))
+                  : Promise.resolve();
+              },
+            },
+          ]}>
           <Input
             data-testid="open-metadata-url-input"
             id="root/openMetadataUrl-input"
           />
         </Item>
-        <Row justify="end">
-          <Col>
+        <Box className="layout-row" justify="end" wrap="wrap">
+          <Box className="layout-column tw:block">
             <Button
               data-testid="cancel-button"
               type="link"
               onClick={handleGoBack}>
               {t('label.cancel')}
             </Button>
-          </Col>
-          <Col>
+          </Box>
+          <Box className="layout-column tw:block">
             <Button
               data-testid="save-button"
               htmlType="submit"
@@ -163,8 +178,8 @@ const EditUrlConfigurationPage = () => {
               type="primary">
               {t('label.save')}
             </Button>
-          </Col>
-        </Row>
+          </Box>
+        </Box>
       </Form>
     </>
   );

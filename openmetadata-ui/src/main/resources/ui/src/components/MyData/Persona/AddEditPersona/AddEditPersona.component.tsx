@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Form, Space } from 'antd';
+import { Box } from '@openmetadata/ui-core-components';
+import { Button, Form } from 'antd';
 import { useForm } from 'antd/es/form/Form';
 import Modal from 'antd/lib/modal/Modal';
 import { AxiosError } from 'axios';
@@ -199,11 +200,14 @@ export const AddEditPersonaForm = ({
         <div>
           {getField(usersField)}
           {Boolean(usersList.length) && (
-            <Space
-              wrap
-              className="m--t-md"
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal m--t-md"
               data-testid="users-container"
-              size={[8, 8]}>
+              gap={2}
+              itemClassName="layout-space-item"
+              wrap="wrap">
               {usersList.map((d) => (
                 <UserTag
                   id={d.name ?? d.id}
@@ -212,7 +216,7 @@ export const AddEditPersonaForm = ({
                   size={UserTagSize.small}
                 />
               ))}
-            </Space>
+            </Box>
           )}
         </div>
       </Form>

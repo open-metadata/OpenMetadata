@@ -18,7 +18,6 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
   navigateToMarketplace,
-  searchMarketplace,
   verifyGreetingBanner,
 } from '../../utils/dataMarketplace';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
@@ -40,7 +39,7 @@ const test = base.extend<{
   },
   consumerPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await consumerUser.login(page);
+    await consumerUser.signIn(page);
     await use(page);
     await page.close();
   },
@@ -95,7 +94,9 @@ test.describe(
       test.slow();
 
       await test.step('Navigate to marketplace as consumer', async () => {
-        await consumerPage.goto('/data-marketplace');
+        await consumerPage.goto('/data-marketplace', {
+          waitUntil: 'domcontentloaded',
+        });
         await waitForAllLoadersToDisappear(consumerPage);
       });
 
@@ -128,32 +129,6 @@ test.describe(
           consumerUser.responseData.displayName ??
           consumerUser.responseData.name;
         await verifyGreetingBanner(consumerPage, name);
-      });
-    });
-
-    test.skip('Data consumer can search and view results', async ({
-      consumerPage,
-    }) => {
-      test.slow();
-
-      await test.step('Navigate to marketplace as consumer', async () => {
-        await consumerPage.goto('/data-marketplace');
-        await waitForAllLoadersToDisappear(consumerPage);
-      });
-
-      await test.step('Search and verify results appear', async () => {
-        await searchMarketplace(consumerPage, dp.data.displayName);
-        await expect(
-          consumerPage.getByTestId(`search-result-dp-${dp.responseData.id}`)
-        ).toBeVisible();
-      });
-
-      await test.step('Click result and verify navigation', async () => {
-        const resultItem = consumerPage.getByTestId(
-          `search-result-dp-${dp.responseData.id}`
-        );
-        await resultItem.dispatchEvent('click');
-        await consumerPage.waitForURL('**/data-marketplace/data-products/**');
       });
     });
   }

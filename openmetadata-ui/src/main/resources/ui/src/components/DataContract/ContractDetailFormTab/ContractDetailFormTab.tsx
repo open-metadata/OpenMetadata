@@ -11,17 +11,36 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button, Card, Form, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Card, Form } from 'antd';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as RightIcon } from '../../../assets/svg/right-arrow.svg';
 import { EntityType } from '../../../enums/entity.enum';
-import { DataContract } from '../../../generated/entity/data/dataContract';
+import {
+  DataContract,
+  EntityStatus,
+} from '../../../generated/entity/data/dataContract';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { generateFormFields } from '../../../utils/formUtils';
 import './contract-detail-form-tab.less';
+
+const DATA_CONTRACT_STATUS_OPTION_KEYS = [
+  {
+    labelKey: 'label.draft',
+    value: EntityStatus.Draft,
+  },
+  {
+    labelKey: 'label.in-review',
+    value: EntityStatus.InReview,
+  },
+  {
+    labelKey: 'label.approved',
+    value: EntityStatus.Approved,
+  },
+];
 
 export const ContractDetailFormTab: React.FC<{
   initialValues?: Partial<DataContract>;
@@ -40,6 +59,12 @@ export const ContractDetailFormTab: React.FC<{
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const { entityRules } = useEntityRules(EntityType.TABLE);
+  const dataContractStatusOptions = DATA_CONTRACT_STATUS_OPTION_KEYS.map(
+    ({ labelKey, value }) => ({
+      label: t(labelKey),
+      value,
+    })
+  );
 
   const fields: FieldProp[] = [
     {
@@ -53,6 +78,22 @@ export const ContractDetailFormTab: React.FC<{
       }),
       props: {
         'data-testid': 'contract-name',
+      },
+    },
+    {
+      label: t('label.status'),
+      id: 'entityStatus',
+      name: 'entityStatus',
+      type: FieldTypes.SELECT,
+      required: false,
+      placeholder: t('label.select-field', { field: t('label.status') }),
+      props: {
+        'data-testid': 'contract-status',
+        options: dataContractStatusOptions,
+        popupClassName: 'contract-status-dropdown',
+      },
+      formItemProps: {
+        initialValue: initialValues?.entityStatus ?? EntityStatus.Draft,
       },
     },
     {
@@ -95,6 +136,7 @@ export const ContractDetailFormTab: React.FC<{
       form.setFieldsValue({
         name: getEntityName(initialValues),
         description: initialValues.description,
+        entityStatus: initialValues.entityStatus ?? EntityStatus.Draft,
         owners: initialValues.owners,
       });
     }
@@ -104,12 +146,12 @@ export const ContractDetailFormTab: React.FC<{
     <>
       <Card className="container bg-grey p-box">
         <div>
-          <Typography.Text className="contract-detail-form-tab-title">
+          <Typography className="contract-detail-form-tab-title">
             {t('label.contract-detail-plural')}
-          </Typography.Text>
-          <Typography.Paragraph className="contract-detail-form-tab-description">
+          </Typography>
+          <Typography as="p" className="contract-detail-form-tab-description">
             {t('message.contract-detail-plural-description')}
-          </Typography.Paragraph>
+          </Typography>
         </div>
 
         <div className="contract-form-content-container">

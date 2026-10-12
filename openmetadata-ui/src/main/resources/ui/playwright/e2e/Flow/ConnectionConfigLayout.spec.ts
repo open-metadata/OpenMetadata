@@ -11,9 +11,12 @@
  *  limitations under the License.
  */
 
-import { expect, Locator, Page, test } from '@playwright/test';
+import { Locator, Page } from '@playwright/test';
+import { COLLATE_SAAS_RUNNER } from '../../constant/serviceForm';
+import { expect, test } from '../../support/fixtures/base';
 import { redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { selectIngestionRunnerFromDropdown } from '../../utils/serviceFormUtils';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -49,15 +52,6 @@ const getGridColumnCount = async (locator: Locator) =>
       getComputedStyle(element).gridTemplateColumns.split(' ').filter(Boolean)
         .length
   );
-
-const chooseSelectOption = async (
-  page: Page,
-  select: Locator,
-  optionName: string
-) => {
-  await select.getByRole('button').click();
-  await page.getByRole('option', { exact: true, name: optionName }).click();
-};
 
 const mockSuccessfulSnowflakeTestConnection = async (page: Page) => {
   const workflowId = 'pw-snowflake-test-workflow';
@@ -190,17 +184,17 @@ const openSnowflakeConnectionConfig = async (page: Page) => {
     await advancedSection.waitFor({ state: 'visible' });
   }
 
-  const sampleStorageSelect = page.locator(
-    '[data-testid^="select-widget-root/sampleDataStorageConfig/config__"]'
+  const advancedPrimaryGrid = advancedSection.locator(
+    '.connection-advanced-primary-grid'
   );
 
-  if (!(await sampleStorageSelect.isVisible())) {
+  if (!(await advancedPrimaryGrid.isVisible())) {
     await advancedSection
       .getByRole('button', { name: /Advanced Config/i })
       .click();
   }
 
-  await sampleStorageSelect.waitFor({ state: 'visible' });
+  await advancedPrimaryGrid.waitFor({ state: 'visible' });
 };
 
 const openAddDatabaseServicePage = async (page: Page) => {
@@ -244,9 +238,47 @@ test.describe('Connection config layout', () => {
     }
   });
 
-  test('should align nested sample data storage config fields without overlap', async ({
+  test('should scroll the form when the wheel is over the blank margin beside it', async ({
     page,
   }) => {
+    // On a wide screen the form is capped at max-w-screen-lg and centred, leaving a blank strip on
+    // either side. Those strips belong to the panel, which must own the scroll — when the centred
+    // body owned it instead, wheeling over them did nothing.
+    // Wide enough to leave the blank margins, short enough that the connector grid overflows.
+    await page.setViewportSize({ width: 1920, height: 700 });
+    await openAddDatabaseServicePage(page);
+
+    const panel = page.locator('.resizable-first-panel');
+    const formBody = panel.locator('> div').first();
+    const panelBox = await getBox(panel);
+    const formBox = await getBox(formBody);
+    const marginWidth =
+      panelBox.x + panelBox.width - (formBox.x + formBox.width);
+    const overflow = await panel.evaluate(
+      (element) => element.scrollHeight - element.clientHeight
+    );
+
+    expect(
+      marginWidth,
+      'no blank margin to test at this width'
+    ).toBeGreaterThan(40);
+    expect(
+      overflow,
+      'the panel is not the scroll port, so the margins cannot scroll'
+    ).toBeGreaterThan(0);
+
+    await page.mouse.move(
+      formBox.x + formBox.width + marginWidth / 2,
+      panelBox.y + panelBox.height / 2
+    );
+    await page.mouse.wheel(0, 600);
+
+    await expect
+      .poll(() => panel.evaluate((element) => element.scrollTop))
+      .toBeGreaterThan(0);
+  });
+
+  test('should keep advanced fields aligned', async ({ page }) => {
     await openSnowflakeConnectionConfig(page);
 
     const scopeSection = page.getByTestId('connection-section-scope');
@@ -305,9 +337,6 @@ test.describe('Connection config layout', () => {
       '[data-field-name="connectionOptions"]'
     );
     const addConnectionOption = page.getByTestId('add-item-Connection Options');
-    const sampleStorageSelect = page.locator(
-      '[data-testid^="select-widget-root/sampleDataStorageConfig/config__"]'
-    );
 
     expect(await getGridColumnCount(primaryGrid)).toBe(3);
     await expectNoOverlap(
@@ -315,10 +344,6 @@ test.describe('Connection config layout', () => {
       accessHistoryChunk,
       'Use Access History and chunk size fields overlap'
     );
-
-    const sampleSelectBox = await getBox(sampleStorageSelect);
-
-    expect(sampleSelectBox.width).toBeLessThanOrEqual(530);
 
     const addButtonCenter = await addConnectionOption.evaluate((button) => {
       const icon = button.querySelector('[data-icon]');
@@ -354,164 +379,6 @@ test.describe('Connection config layout', () => {
         '.core-wrap-if-additional-value .design-field-label'
       )
     ).toBeHidden();
-
-    await chooseSelectOption(
-      page,
-      sampleStorageSelect,
-      'Sample Data Storage Config'
-    );
-
-    const samplePanel = page.locator(
-      '[data-field-id$="/sampleDataStorageConfig/config"]'
-    );
-    const sampleBody = samplePanel
-      .locator('.core-object-field-template-body-grid')
-      .first();
-    const sampleField = (name: string) =>
-      sampleBody.locator(`:scope > [data-field-name="${name}"]`);
-
-    await expect(samplePanel).toBeVisible();
-    expect(await getGridColumnCount(sampleBody)).toBe(2);
-
-    const bucket = sampleField('bucketName');
-    const prefix = sampleField('prefix');
-    const filePathPattern = sampleField('filePathPattern');
-    const overwriteData = sampleField('overwriteData');
-    const storageConfig = sampleField('storageConfig');
-
-    const bucketBox = await getBox(bucket);
-    const prefixBox = await getBox(prefix);
-    const filePathBox = await getBox(filePathPattern);
-    const overwriteBox = await getBox(overwriteData);
-
-    expect(Math.abs(bucketBox.y - prefixBox.y)).toBeLessThan(8);
-    expect(filePathBox.y).toBeGreaterThan(
-      Math.max(bucketBox.y + bucketBox.height, prefixBox.y + prefixBox.height)
-    );
-    expect(filePathBox.width).toBeGreaterThan(
-      bucketBox.width + prefixBox.width
-    );
-    expect(overwriteBox.y).toBeGreaterThan(filePathBox.y + filePathBox.height);
-
-    await expectNoOverlap(bucket, prefix, 'Bucket and prefix fields overlap');
-    await expectNoOverlap(
-      prefix,
-      filePathPattern,
-      'Prefix and file path fields overlap'
-    );
-    await expectNoOverlap(
-      filePathPattern,
-      overwriteData,
-      'File path and overwrite fields overlap'
-    );
-    await expectNoOverlap(
-      overwriteData,
-      storageConfig,
-      'Overwrite and storage config fields overlap'
-    );
-
-    await chooseSelectOption(
-      page,
-      page.locator(
-        '[data-testid^="select-widget-root/sampleDataStorageConfig/config/storageConfig__"]'
-      ),
-      'AWS S3 Storage Config'
-    );
-
-    const storagePanel = page.locator(
-      '[data-field-id$="/sampleDataStorageConfig/config/storageConfig"]'
-    );
-    const storageBody = storagePanel
-      .locator('.core-object-field-template-credential-field-grid')
-      .first();
-    const storageField = (name: string) =>
-      storagePanel.locator(`[data-field-name="${name}"]`);
-
-    await expect(storagePanel).toBeVisible();
-    await expect(
-      storagePanel.getByTestId('storage-config-title-icon')
-    ).toBeVisible();
-    expect(await getGridColumnCount(storageBody)).toBe(2);
-
-    const enabled = storageField('enabled');
-    const accessKey = storageField('awsAccessKeyId');
-    const secretKey = storageField('awsSecretAccessKey');
-    const region = storageField('awsRegion');
-    const accessKeyInput = accessKey.locator('input');
-
-    const enabledBox = await getBox(enabled);
-    const accessKeyBox = await getBox(accessKey);
-    const secretKeyBox = await getBox(secretKey);
-    const regionBox = await getBox(region);
-
-    expect(accessKeyBox.y).toBeGreaterThan(enabledBox.y + enabledBox.height);
-    expect(Math.abs(accessKeyBox.y - secretKeyBox.y)).toBeLessThan(8);
-    expect(regionBox.y).toBeGreaterThan(
-      Math.max(
-        accessKeyBox.y + accessKeyBox.height,
-        secretKeyBox.y + secretKeyBox.height
-      )
-    );
-
-    await expectNoOverlap(
-      enabled,
-      accessKey,
-      'IAM auth and access key fields overlap'
-    );
-    await expectNoOverlap(
-      accessKey,
-      secretKey,
-      'AWS access key and secret key fields overlap'
-    );
-    await expectNoOverlap(
-      accessKey,
-      region,
-      'AWS access key and region fields overlap'
-    );
-
-    await storagePanel
-      .getByRole('button', { name: /Show Advanced Config/ })
-      .click();
-
-    const sessionToken = storageField('awsSessionToken');
-    const endpoint = storageField('endPointURL');
-    const profile = storageField('profileName');
-    const currentRegionBox = await getBox(region);
-    const sessionTokenBox = await getBox(sessionToken);
-
-    expect(sessionTokenBox.y).toBeGreaterThan(
-      currentRegionBox.y + currentRegionBox.height
-    );
-    await expectNoOverlap(
-      region,
-      sessionToken,
-      'AWS region and session token fields overlap'
-    );
-    await expectNoOverlap(
-      endpoint,
-      profile,
-      'AWS endpoint and profile fields overlap'
-    );
-
-    await accessKeyInput.focus();
-
-    await enabled
-      .locator(
-        '[for="root/sampleDataStorageConfig/config/storageConfig/enabled"]'
-      )
-      .click();
-
-    await expect(
-      enabled
-        .locator('[data-selected="true"]')
-        .locator(
-          String.raw`#root\/sampleDataStorageConfig\/config\/storageConfig\/enabled`
-        )
-    ).toBeAttached();
-    await expect(accessKeyInput).toBeDisabled();
-    await expect(secretKey.locator('input')).toBeDisabled();
-    await expect(sessionToken.locator('input')).toBeDisabled();
-    await expect(accessKey).toHaveAttribute('aria-disabled', 'true');
   });
 
   test('should clear inactive Snowflake auth fields before test connection and unlock ingestion filters', async ({
@@ -534,6 +401,7 @@ test.describe('Connection config layout', () => {
     }
 
     await page.locator('#service-name').fill('pw-snowflake-auth-payload');
+    await selectIngestionRunnerFromDropdown(page, COLLATE_SAAS_RUNNER);
     await expect(page.getByTestId('connection-schema-loader')).toBeHidden({
       timeout: 10000,
     });
@@ -599,6 +467,8 @@ test.describe('Connection config layout', () => {
     await tableSection
       .getByRole('button', { name: 'Show equivalent regex' })
       .click();
-    await expect(tableSection.getByText('includes += orders')).toBeVisible();
+    await expect(
+      tableSection.getByText('includes += .*orders.*')
+    ).toBeVisible();
   });
 });

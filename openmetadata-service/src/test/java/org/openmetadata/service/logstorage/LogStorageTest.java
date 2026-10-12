@@ -19,14 +19,22 @@ import static org.mockito.Mockito.*;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.exception.UnhandledServerException;
 
 @ExtendWith(MockitoExtension.class)
 public class LogStorageTest {
@@ -34,6 +42,7 @@ public class LogStorageTest {
   @Mock private PipelineServiceClientInterface mockPipelineServiceClient;
 
   private DefaultLogStorage defaultLogStorage;
+  private MockedStatic<Entity> entityMock;
   private final String testPipelineFQN = "service.database.pipeline";
   private final UUID testRunId = UUID.randomUUID();
 
@@ -43,6 +52,133 @@ public class LogStorageTest {
     Map<String, Object> config = new HashMap<>();
     config.put("pipelineServiceClient", mockPipelineServiceClient);
     defaultLogStorage.initialize(config);
+    // The storage loads the real pipeline so the runner can locate its run by service.
+    entityMock = mockStatic(Entity.class);
+    entityMock
+        .when(
+            () ->
+                Entity.getEntityByName(
+                    eq(Entity.INGESTION_PIPELINE),
+                    eq(testPipelineFQN),
+                    anyString(),
+                    any(Include.class)))
+        .thenReturn(new IngestionPipeline().withFullyQualifiedName(testPipelineFQN));
+  }
+
+  @AfterEach
+  void tearDown() {
+    entityMock.close();
+  }
+
+  @Test
+  void getLogsPassesThePipelineServiceToTheRunner() {
+    // Regression: a name-only pipeline made Argo's label selector NPE, and the catch in getLogs
+    // turned that into "no logs", so every Argo log fetch silently returned empty.
+    IngestionPipeline withService =
+        new IngestionPipeline()
+            .withFullyQualifiedName(testPipelineFQN)
+            .withService(
+                new EntityReference().withName("service").withType(Entity.DATABASE_SERVICE));
+    entityMock
+        .when(
+            () ->
+                Entity.getEntityByName(
+                    eq(Entity.INGESTION_PIPELINE),
+                    eq(testPipelineFQN),
+                    anyString(),
+                    any(Include.class)))
+        .thenReturn(withService);
+    when(mockPipelineServiceClient.getLastIngestionLogs(any(IngestionPipeline.class), isNull()))
+        .thenReturn(Map.of("ingestion_task", "content", "total", "1"));
+
+    defaultLogStorage.getLogs(testPipelineFQN, testRunId, null, 10);
+
+    ArgumentCaptor<IngestionPipeline> sent = ArgumentCaptor.forClass(IngestionPipeline.class);
+    verify(mockPipelineServiceClient).getLastIngestionLogs(sent.capture(), isNull());
+    assertNotNull(sent.getValue().getService(), "runner cannot locate the run without the service");
+    assertEquals("service", sent.getValue().getService().getName());
+  }
+
+  @Test
+  void getLogsSurfacesAnUnknownPipelineInsteadOfReportingNoLogs() {
+    // A wrong FQN is the caller's error. Swallowing it into empty logs sends the user hunting a
+    // runner outage that is not there.
+    entityMock
+        .when(
+            () ->
+                Entity.getEntityByName(
+                    eq(Entity.INGESTION_PIPELINE),
+                    eq(testPipelineFQN),
+                    anyString(),
+                    any(Include.class)))
+        .thenThrow(new EntityNotFoundException("pipeline not found"));
+
+    assertThrows(
+        EntityNotFoundException.class,
+        () -> defaultLogStorage.getLogs(testPipelineFQN, testRunId, null, 10));
+  }
+
+  @Test
+  void getLogsReadsContentKeyedByTaskName() {
+    // Runners key content by task name (TYPE_TO_TASK); only "total" and "after" are fixed, so a
+    // literal "logs" key came back empty for every real response.
+    when(mockPipelineServiceClient.getLastIngestionLogs(any(IngestionPipeline.class), isNull()))
+        .thenReturn(Map.of("lineage_task", "InvalidPrivateKeyException: bad PEM", "total", "1"));
+
+    Map<String, Object> result = defaultLogStorage.getLogs(testPipelineFQN, testRunId, null, 10);
+
+    assertEquals("InvalidPrivateKeyException: bad PEM", result.get("logs"));
+    assertEquals("1", result.get("total"));
+  }
+
+  @Test
+  void getLogsPreservesPipelineServiceErrorsOutsideLogContent() {
+    when(mockPipelineServiceClient.getLastIngestionLogs(any(IngestionPipeline.class), isNull()))
+        .thenReturn(
+            Map.of(
+                PipelineServiceClientInterface.LOGS_ERROR_KEY,
+                "Kubernetes pod status could not be parsed"));
+
+    Map<String, Object> result = defaultLogStorage.getLogs(testPipelineFQN, testRunId, null, 10);
+
+    assertEquals(
+        "Kubernetes pod status could not be parsed",
+        result.get(PipelineServiceClientInterface.LOGS_ERROR_KEY));
+    assertFalse(result.containsKey("logs"));
+  }
+
+  @Test
+  void getLogsSurfacesAPipelineServiceFailure() {
+    // An unreachable pipeline service used to be reported as a run with no logs, which reads as
+    // "this run produced nothing" rather than "we could not reach the runner".
+    when(mockPipelineServiceClient.getLastIngestionLogs(any(IngestionPipeline.class), isNull()))
+        .thenThrow(new RuntimeException("pipeline service unreachable"));
+
+    assertThrows(
+        UnhandledServerException.class,
+        () -> defaultLogStorage.getLogs(testPipelineFQN, testRunId, null, 10));
+  }
+
+  @Test
+  void getLogsIsDeterministicWhenTheRunnerSendsMoreThanOneTask() {
+    // A response carries one task today, so map order never mattered. Order by key anyway: picking
+    // an arbitrary entry would make the log text change between identical calls.
+    when(mockPipelineServiceClient.getLastIngestionLogs(any(IngestionPipeline.class), isNull()))
+        .thenReturn(Map.of("lineage_task", "second", "ingestion_task", "first", "total", "2"));
+
+    Map<String, Object> result = defaultLogStorage.getLogs(testPipelineFQN, testRunId, null, 10);
+
+    assertEquals("first\nsecond", result.get("logs"));
+  }
+
+  @Test
+  void getLogsReturnsEmptyStringWhenTheRunnerSendsOnlyPagingKeys() {
+    when(mockPipelineServiceClient.getLastIngestionLogs(any(IngestionPipeline.class), isNull()))
+        .thenReturn(Map.of("total", "0"));
+
+    Map<String, Object> result = defaultLogStorage.getLogs(testPipelineFQN, testRunId, null, 10);
+
+    assertEquals("", result.get("logs"));
   }
 
   @Test

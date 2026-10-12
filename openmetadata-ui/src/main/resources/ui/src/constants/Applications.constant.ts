@@ -23,6 +23,7 @@ export const STEPS_FOR_APP_INSTALL: Array<StepperStepType> = [
 ];
 
 export const AUTO_PILOT_APP_NAME = 'AutoPilotApplication';
+export const RDF_INDEX_APP_NAME = 'RdfIndexApp';
 // AutoPilot's Collate agents run as AI Automations instantiated per service,
 // named `{serviceName}_{template}`. These template suffixes identify each agent
 // and key the widget's ordering, labels and icons.

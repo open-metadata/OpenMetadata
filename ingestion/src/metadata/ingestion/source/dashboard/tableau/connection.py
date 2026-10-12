@@ -15,7 +15,7 @@ Source connection handler
 from __future__ import annotations
 
 import traceback
-from typing import TYPE_CHECKING, Any, Dict, Optional, Union  # noqa: UP035
+from typing import TYPE_CHECKING
 
 import tableauserverclient as TSC  # noqa: N812
 from requests.exceptions import SSLError
@@ -52,6 +52,7 @@ from metadata.ingestion.source.dashboard.tableau.client import (
     TableauClient,
     TableauDataModelsException,
     TableauOwnersNotFound,
+    TableauUpstreamTablesRedacted,
     TableauWorkBookException,
 )
 from metadata.utils.constants import THREE_MIN
@@ -61,6 +62,9 @@ from metadata.utils.ssl_manager import SSLManager
 if TYPE_CHECKING:
     from metadata.core.connections.lifetime import Borrowed
     from metadata.core.connections.test_connection import ChecksProvider
+    from metadata.generated.schema.entity.services.connections.pipeline.tableauPipelineConnection import (
+        TableauPipelineConnection,
+    )
 
 logger = ingestion_logger()
 
@@ -129,6 +133,14 @@ TABLEAU_ERRORS = ErrorPack(
         fix="Owners could not be resolved. Grant the user permission to read users on the site, or "
         "disable owner ingestion in the service configuration.",
     ),
+    when(Matchers.exception(TableauUpstreamTablesRedacted)).diagnose(
+        "Source table names are hidden from this account",
+        fix="Tableau returned one or more source tables without their names, which happens "
+        "when the account cannot see those database and table details in Tableau Catalog. "
+        "Data sources and dashboards will still be ingested, but lineage cannot be built "
+        "for the tables it cannot see. In Tableau, grant this account the View capability "
+        "on those external assets, or use an account that already has it.",
+    ),
     when(Matchers.exception(TableauDataModelsException)).diagnose(
         "Data sources could not be read",
         fix="The Tableau Metadata API returned no data sources for the workbook. Enable the "
@@ -163,8 +175,8 @@ def get_connection(connection: TableauConnectionConfig) -> TableauClient:
 
 
 def set_verify_ssl(
-    connection: TableauConnectionConfig,
-) -> tuple[Union[bool, str], Optional[SSLManager]]:  # noqa: UP007, UP045
+    connection: TableauConnectionConfig | TableauPipelineConnection,
+) -> tuple[bool | str, SSLManager | None]:
     """
     Set verify ssl based on connection configuration
     ref: https://tableau.github.io/server-client-python/docs/sign-in-out#handling-ssl-certificates-for-tableau-server
@@ -198,7 +210,9 @@ def set_verify_ssl(
     )
 
 
-def build_server_config(connection: TableauConnectionConfig) -> Dict[str, Dict[str, Any]]:  # noqa: UP006
+def build_server_config(
+    connection: TableauConnectionConfig | TableauPipelineConnection,
+) -> TSC.TableauAuth | TSC.PersonalAccessTokenAuth:
     """
     Build client configuration
     Args:
@@ -281,6 +295,12 @@ class TableauChecks:
         command = "query the Metadata API for the data sources of a workbook"
         call_endpoint(lambda: self._server.client.test_get_datamodels(), command=command)  # noqa: PLW0108
         return Evidence(summary="data sources are readable", command=command)
+
+    @check(DashboardStep.GetSourceTables)
+    def get_source_tables(self) -> Evidence:
+        command = "read the source tables of a workbook data source"
+        call_endpoint(lambda: self._server.client.test_get_source_tables(), command=command)  # noqa: PLW0108
+        return Evidence(summary="source tables are named, so lineage can be built", command=command)
 
 
 def _sign_out(client: TableauClient) -> None:

@@ -10,16 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Space, Typography } from 'antd';
+import { Box, Button, Typography } from '@openmetadata/ui-core-components';
+import { Check, XClose } from '@openmetadata/ui-core-components/icons';
+import { isEmpty } from 'lodash';
 
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ExitIcon } from '../../../assets/svg/ic-exit.svg';
+import { SuggestionAction } from '../../../enums/Suggestion.enum';
 import { SuggestionType } from '../../../types/taskSuggestion';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import AvatarCarousel from '../../common/AvatarCarousel/AvatarCarousel';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { useSuggestionsContext } from '../SuggestionsProvider/SuggestionsProvider';
-import { SuggestionAction } from '../SuggestionsProvider/SuggestionsProvider.interface';
 
 const SuggestionsSlider = () => {
   const {
@@ -33,7 +36,22 @@ const SuggestionsSlider = () => {
     loadingReject,
     onUpdateActiveUser,
   } = useSuggestionsContext();
+  const { permissions } = useGenericContext();
   const { t } = useTranslation();
+
+  // Accept/Reject all resolves every pending suggestion of the selected user, including
+  // the column level ones rendered inside the entity tables. Only offer the actions when
+  // the user may apply each kind of suggestion present, otherwise the API rejects the
+  // call and the entity silently reverts to its original state on the next fetch.
+  const hasSuggestionEditAccess = useMemo(() => {
+    const { canEditDescription, canEditTags } =
+      getDerivedPermissionFlags(permissions);
+
+    return (
+      (isEmpty(selectedUserSuggestions?.description) || canEditDescription) &&
+      (isEmpty(selectedUserSuggestions?.tags) || canEditTags)
+    );
+  }, [permissions, selectedUserSuggestions]);
 
   const suggestionLabel = useMemo(() => {
     switch (dataSuggestionType) {
@@ -46,62 +64,69 @@ const SuggestionsSlider = () => {
       default:
         return t('label.suggested-description-tag-plural');
     }
-  }, [dataSuggestionType]);
+  }, [dataSuggestionType, t]);
 
   return (
-    <div className="d-flex items-center gap-2 m-r-md">
-      <Typography.Text className="right-panel-label">
-        {suggestionLabel}
-      </Typography.Text>
+    <Box align="center" className="m-r-md" gap={2}>
+      <Typography className="right-panel-label">{suggestionLabel}</Typography>
       <AvatarCarousel />
       {suggestionPendingCount > 0 && (
         <Button
           className="suggestion-pending-btn"
+          color="primary"
           data-testid="more-suggestion-button"
-          loading={loading}
-          type="primary"
-          onClick={() => fetchSuggestions()}>
+          isLoading={loading}
+          size="xs"
+          onPress={() => fetchSuggestions()}>
           {t('label.plus-count-more', {
             count: suggestionPendingCount,
           })}
         </Button>
       )}
       {selectedUserSuggestions?.combinedData.length > 0 && (
-        <Space className="slider-btn-container m-l-xs">
+        <Box align="center" className="slider-btn-container m-l-xs" gap={2}>
+          {hasSuggestionEditAccess && (
+            <>
+              <Button
+                className="text-xs font-medium"
+                color="secondary-brand"
+                data-testid="accept-all-suggestions"
+                iconLeading={Check}
+                isDisabled={loadingAccept}
+                isLoading={loadingAccept}
+                size="xs"
+                onPress={() =>
+                  acceptRejectAllSuggestions(SuggestionAction.Accept)
+                }>
+                {t('label.accept-all')}
+              </Button>
+              <Button
+                className="text-xs font-medium"
+                color="secondary-brand"
+                data-testid="reject-all-suggestions"
+                iconLeading={XClose}
+                isDisabled={loadingReject}
+                isLoading={loadingReject}
+                size="xs"
+                onPress={() =>
+                  acceptRejectAllSuggestions(SuggestionAction.Reject)
+                }>
+                {t('label.reject-all')}
+              </Button>
+            </>
+          )}
           <Button
-            ghost
-            className="text-xs text-primary font-medium"
-            data-testid="accept-all-suggestions"
-            disabled={loadingAccept}
-            icon={<CheckOutlined />}
-            loading={loadingAccept}
-            type="primary"
-            onClick={() => acceptRejectAllSuggestions(SuggestionAction.Accept)}>
-            {t('label.accept-all')}
-          </Button>
-          <Button
-            ghost
-            className="text-xs text-primary font-medium"
-            data-testid="reject-all-suggestions"
-            disabled={loadingReject}
-            icon={<CloseOutlined />}
-            loading={loadingReject}
-            type="primary"
-            onClick={() => acceptRejectAllSuggestions(SuggestionAction.Reject)}>
-            {t('label.reject-all')}
-          </Button>
-          <Button
-            ghost
-            className="text-xs text-primary font-medium close-suggestion-btn flex-center"
+            className="text-xs font-medium close-suggestion-btn"
+            color="secondary-brand"
             data-testid="close-suggestion"
-            type="primary"
-            onClick={() => onUpdateActiveUser()}>
-            <ExitIcon />
+            iconLeading={<ExitIcon />}
+            size="xs"
+            onPress={() => onUpdateActiveUser()}>
             {t('label.close')}
           </Button>
-        </Space>
+        </Box>
       )}
-    </div>
+    </Box>
   );
 };
 

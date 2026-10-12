@@ -10,9 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Select, Skeleton, Table } from '@openmetadata/ui-core-components';
-import { format } from 'date-fns';
+import {
+  Badge,
+  Select,
+  Skeleton,
+  Table,
+} from '@openmetadata/ui-core-components';
 import { isEmpty, split, toLower } from 'lodash';
+import { DateTime } from 'luxon';
 import { DateRangeObject } from 'Models';
 import type { ComponentType, ReactElement } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -25,6 +30,7 @@ import {
 } from '../../../../constants/profiler.constant';
 import { SIZE } from '../../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
+import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import { getTestCaseDimensionResultsByFqn } from '../../../../rest/testAPI';
 import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
@@ -47,8 +53,42 @@ const TransWithComponents = ReactI18nextTrans as unknown as ComponentType<{
   i18nKey: string;
 }>;
 
+const DimensionStatusCell = ({
+  result,
+}: {
+  result?: DimensionResultWithTimestamp;
+}) => {
+  const { t } = useTranslation();
+
+  if (!result?.testCaseStatus) {
+    return <span className="tw:text-sm">--</span>;
+  }
+
+  return (
+    <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-2">
+      <StatusBadge
+        dataTestId="status-badge"
+        label={TEST_CASE_STATUS_LABELS[result.testCaseStatus]}
+        status={toLower(result.testCaseStatus) as StatusType}
+      />
+      {/* Below minRowsPerDimension: its status does not fail the test case,
+          which would otherwise look like a missed failure. */}
+      {result.excludedFromRollUp && (
+        <Badge
+          color="gray"
+          data-testid="excluded-from-roll-up-badge"
+          size="sm"
+          type="pill-color">
+          {t('label.excluded-from-roll-up')}
+        </Badge>
+      )}
+    </div>
+  );
+};
+
 const DimensionalityTab = () => {
   const { t } = useTranslation();
+  const location = useCustomLocation();
   const { dimensionKey } = useRequiredParams<{ dimensionKey?: string }>();
   const { testCase } = useTestCaseStore();
   const [dateRange, setDateRange] = useState(DEFAULT_RANGE_DATA);
@@ -142,13 +182,17 @@ const DimensionalityTab = () => {
         return;
       }
 
-      const resultDate = format(new Date(result.timestamp), 'yyyy-MM-dd');
+      const resultDate = DateTime.fromJSDate(
+        new Date(result.timestamp)
+      ).toFormat('yyyy-MM-dd');
       const existing = dimensionMap.get(dimensionValue);
 
       if (!existing || !existing.timestamp) {
         dimensionMap.set(dimensionValue, result);
       } else {
-        const existingDate = format(new Date(existing.timestamp), 'yyyy-MM-dd');
+        const existingDate = DateTime.fromJSDate(
+          new Date(existing.timestamp)
+        ).toFormat('yyyy-MM-dd');
         const existingTime = existing.timestamp;
         const currentTime = result.timestamp;
 
@@ -196,15 +240,7 @@ const DimensionalityTab = () => {
     ) => {
       switch (col.id) {
         case 'status':
-          return row.result?.testCaseStatus ? (
-            <StatusBadge
-              dataTestId="status-badge"
-              label={TEST_CASE_STATUS_LABELS[row.result.testCaseStatus]}
-              status={toLower(row.result.testCaseStatus) as StatusType}
-            />
-          ) : (
-            <span className="tw:text-sm">--</span>
-          );
+          return <DimensionStatusCell result={row.result} />;
         case 'impactScore':
           return (
             <span className="tw:text-sm">
@@ -215,6 +251,7 @@ const DimensionalityTab = () => {
           return (
             <Link
               className="tw:text-text-brand-secondary"
+              state={location.state}
               to={getTestCaseDimensionsDetailPagePath(
                 testCase?.fullyQualifiedName || '',
                 row.result.dimensionKey || ''
@@ -232,7 +269,7 @@ const DimensionalityTab = () => {
           return null;
       }
     },
-    [testCase?.fullyQualifiedName]
+    [location.state, testCase?.fullyQualifiedName]
   );
 
   const noDataPlaceholder = useMemo(() => {

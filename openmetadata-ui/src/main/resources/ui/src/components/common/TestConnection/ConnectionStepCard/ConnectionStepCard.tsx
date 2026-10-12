@@ -10,13 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { InfoCircleOutlined } from '@ant-design/icons';
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { LazyLog } from '@melloware/react-logviewer';
-import { Button, Collapse, Divider, Space, Tooltip, Typography } from 'antd';
+import {
+  AccordionHeader,
+  AccordionItem,
+  AccordionPanel,
+  Box,
+  Button,
+  Divider,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
+  ChevronRight,
+  InfoCircle,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AttentionIcon } from '../../../../assets/svg/attention.svg';
 import { ReactComponent as FailIcon } from '../../../../assets/svg/fail-badge.svg';
@@ -28,20 +38,16 @@ import { useClipboard } from '../../../../hooks/useClipBoard';
 import { requiredField } from '../../../../utils/EntityDisplayPureUtils';
 import './connection-step-card.less';
 
-const { Panel } = Collapse;
-
 interface ConnectionStepCardProp {
   testConnectionStep: TestConnectionStep;
   testConnectionStepResult?: TestConnectionStepResult;
   isTestingConnection: boolean;
 }
 
-const ConnectionStepCard = ({
-  testConnectionStep,
-  testConnectionStepResult,
-  isTestingConnection,
-}: ConnectionStepCardProp) => {
-  const { t } = useTranslation();
+const getConnectionStepStatus = (
+  testConnectionStepResult: TestConnectionStepResult | undefined,
+  isTestingConnection: boolean
+) => {
   const isSkipped =
     isUndefined(testConnectionStepResult) && !isTestingConnection;
   const hasPassed = !isSkipped && testConnectionStepResult?.passed;
@@ -51,19 +57,112 @@ const ConnectionStepCard = ({
   const isNonMandatoryStepsFailing =
     failed && !testConnectionStepResult?.mandatory;
 
+  return {
+    isSkipped,
+    success,
+    isMandatoryStepsFailing,
+    isNonMandatoryStepsFailing,
+  };
+};
+
+const ConnectionStepStatusBadge = ({
+  isTestingConnection,
+  success,
+  isMandatoryStepsFailing,
+  isNonMandatoryStepsFailing,
+  isSkipped,
+}: {
+  isTestingConnection: boolean;
+  success: boolean | undefined;
+  isMandatoryStepsFailing: boolean | undefined;
+  isNonMandatoryStepsFailing: boolean | undefined;
+  isSkipped: boolean;
+}) => {
+  const { t } = useTranslation();
+
+  if (isTestingConnection) {
+    return (
+      <Typography className="awaiting-status">
+        {`${t('label.awaiting-status')}...`}
+      </Typography>
+    );
+  }
+
+  if (success) {
+    return (
+      <Box align="center" gap={2}>
+        <Typography className="success-status">
+          {`${t('label.success')}`}
+        </Typography>
+        <SuccessIcon
+          data-testid="success-badge"
+          fill="currentColor"
+          height={20}
+          width={20}
+        />
+      </Box>
+    );
+  }
+
+  if (isMandatoryStepsFailing) {
+    return (
+      <Box align="center" gap={2}>
+        <Typography className="failure-status">
+          {`${t('label.failed')}`}
+        </Typography>
+        <FailIcon
+          data-testid="fail-badge"
+          fill="currentColor"
+          height={20}
+          width={20}
+        />
+      </Box>
+    );
+  }
+
+  if (isNonMandatoryStepsFailing) {
+    return (
+      <Box align="center" gap={2}>
+        <Typography className="warning-status">
+          {`${t('label.attention')}`}
+        </Typography>
+        <AttentionIcon
+          data-testid="warning-badge"
+          fill="currentColor"
+          height={20}
+          width={20}
+        />
+      </Box>
+    );
+  }
+
+  if (isSkipped) {
+    return (
+      <Typography className="skipped-status">{t('label.skipped')}</Typography>
+    );
+  }
+
+  return null;
+};
+
+const ConnectionStepCard = ({
+  testConnectionStep,
+  testConnectionStepResult,
+  isTestingConnection,
+}: ConnectionStepCardProp) => {
+  const { t } = useTranslation();
+  const {
+    isSkipped,
+    success,
+    isMandatoryStepsFailing,
+    isNonMandatoryStepsFailing,
+  } = getConnectionStepStatus(testConnectionStepResult, isTestingConnection);
+
   const logs =
     testConnectionStepResult?.errorLog ??
     t('label.no-entity', { entity: t('label.log-plural') });
 
   const { onCopyToClipBoard } = useClipboard(logs ?? '');
-
-  const handleCopyToClipBoard = (
-    event: React.MouseEvent<HTMLButtonElement, MouseEvent>
-  ) => {
-    event.preventDefault();
-    event.stopPropagation();
-    onCopyToClipBoard();
-  };
 
   return (
     <div
@@ -78,94 +177,62 @@ const ConnectionStepCard = ({
           failure: isMandatoryStepsFailing,
           warning: isNonMandatoryStepsFailing,
         })}>
-        <Space className="w-full justify-between">
-          <Space>
-            <Typography.Text className="text-body text-600">
+        <Box align="center" className="tw:w-full" gap={2} justify="between">
+          <Box align="center" gap={2}>
+            <Typography className="text-body text-600 tw:text-primary">
               {testConnectionStep.mandatory
                 ? requiredField(testConnectionStep.name, true)
                 : testConnectionStep.name}
-            </Typography.Text>
+            </Typography>
             <Tooltip
               placement="bottom"
-              showArrow={false}
-              title={testConnectionStep.description}>
-              <InfoCircleOutlined />
+              title={testConnectionStep.description}
+              triggerClassName="tw:flex">
+              <InfoCircle className="tw:size-3.5" />
             </Tooltip>
-          </Space>
-          {isTestingConnection && (
-            <Typography.Text className="awaiting-status">
-              {`${t('label.awaiting-status')}...`}
-            </Typography.Text>
-          )}
-          {success && (
-            <div className="d-flex gap-2 align-center">
-              <Typography.Text className="success-status">
-                {`${t('label.success')}`}
-              </Typography.Text>
-              <Icon
-                component={SuccessIcon}
-                data-testid="success-badge"
-                style={{ fontSize: '20px' }}
-              />
-            </div>
-          )}
-          {isMandatoryStepsFailing && (
-            <div className="d-flex gap-2 align-center">
-              <Typography.Text className="failure-status">
-                {`${t('label.failed')}`}
-              </Typography.Text>
-              <Icon
-                component={FailIcon}
-                data-testid="fail-badge"
-                style={{ fontSize: '20px' }}
-              />
-            </div>
-          )}
-          {isNonMandatoryStepsFailing && (
-            <div className="d-flex gap-2 align-center">
-              <Typography.Text className="warning-status">
-                {`${t('label.attention')}`}
-              </Typography.Text>
-              <Icon
-                component={AttentionIcon}
-                data-testid="warning-badge"
-                style={{ fontSize: '20px' }}
-              />
-            </div>
-          )}
-          {isSkipped && (
-            <Typography.Text className="skipped-status">
-              {t('label.skipped')}
-            </Typography.Text>
-          )}
-        </Space>
+          </Box>
+          <ConnectionStepStatusBadge
+            isMandatoryStepsFailing={isMandatoryStepsFailing}
+            isNonMandatoryStepsFailing={isNonMandatoryStepsFailing}
+            isSkipped={isSkipped}
+            isTestingConnection={isTestingConnection}
+            success={success}
+          />
+        </Box>
       </div>
       {(isMandatoryStepsFailing ||
         isNonMandatoryStepsFailing ||
         testConnectionStepResult?.message) && (
         <div className="connection-step-card-content">
-          <Typography.Text className="text-body">
+          <Typography className="text-body">
             {testConnectionStepResult?.message}
-          </Typography.Text>
+          </Typography>
           {testConnectionStepResult?.errorLog && (
             <>
               <Divider className="connection-step-card-content-divider" />
-              <Collapse ghost>
-                <Panel
-                  className="connection-step-card-content-logs"
-                  data-testid="lazy-log"
-                  extra={
-                    <Tooltip title={t('message.copy-to-clipboard')}>
-                      <Button
-                        className="flex-center bg-white"
-                        data-testid="query-entity-copy-button"
-                        icon={<CopyIcon height={16} width={16} />}
-                        onClick={handleCopyToClipBoard}
-                      />
-                    </Tooltip>
-                  }
-                  header={t('label.show-log-plural')}
-                  key="show-log">
+              <AccordionItem
+                className="connection-step-card-content-logs tw:bg-transparent"
+                data-testid="lazy-log">
+                <Box align="center" gap={3}>
+                  <AccordionHeader
+                    className="tw:min-w-0 tw:flex-1 tw:justify-start tw:p-0 tw:font-normal tw:text-link tw:hover:bg-transparent"
+                    showChevron={false}>
+                    <ChevronRight
+                      aria-hidden="true"
+                      className="tw:size-3 tw:shrink-0 tw:transition-transform tw:group-data-expanded/item:rotate-90"
+                    />
+                    {t('label.show-log-plural')}
+                  </AccordionHeader>
+                  <Button
+                    aria-label={t('message.copy-to-clipboard')}
+                    color="secondary"
+                    data-testid="query-entity-copy-button"
+                    iconLeading={<CopyIcon height={16} width={16} />}
+                    tooltip={t('message.copy-to-clipboard')}
+                    onPress={() => onCopyToClipBoard()}
+                  />
+                </Box>
+                <AccordionPanel className="tw:border-t-0 tw:pt-1 tw:pr-4 tw:pb-0 tw:pl-6">
                   <LazyLog
                     caseInsensitive
                     enableSearch
@@ -174,8 +241,8 @@ const ConnectionStepCard = ({
                     height={300}
                     text={logs}
                   />
-                </Panel>
-              </Collapse>
+                </AccordionPanel>
+              </AccordionItem>
             </>
           )}
         </div>

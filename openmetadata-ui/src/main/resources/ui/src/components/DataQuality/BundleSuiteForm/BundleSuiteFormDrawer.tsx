@@ -154,6 +154,7 @@ const BundleSuiteFormDrawer: FC<BundleSuiteFormDrawerProps> = ({
         selectAll: values.testCaseSelection?.selectAll,
         includeIds: values.testCaseSelection?.includeIds,
         excludeIds: values.testCaseSelection?.excludeIds,
+        filter: values.testCaseSelection?.filter,
       });
 
       if (values.enableScheduler && ingestionPipeline.Create) {
@@ -269,6 +270,7 @@ const BundleSuiteFormDrawer: FC<BundleSuiteFormDrawerProps> = ({
       <AiFormModal
         cancelTestId="cancel-button"
         headerActions={headerActions}
+        isSubmitting={form.formState.isSubmitting}
         open={open}
         submitTestId="submit-button"
         subtitle={t('message.page-sub-header-for-data-quality')}

@@ -11,16 +11,15 @@
  *  limitations under the License.
  */
 
-import { Tooltip } from 'antd';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { ReactComponent as IconComments } from '../assets/svg/comment.svg';
 import { EntityField } from '../constants/Feeds.constants';
 import { EntityType } from '../enums/entity.enum';
-import { ThreadType } from '../generated/entity/feed/thread';
 import { ENTITY_LINK_SEPARATOR, getEntityFeedLink } from './EntityPureUtils';
 import { t } from './i18next/LocalUtil';
 
 export const getFieldThreadElement = (
-  onThreadLinkSelect: (value: string, threadType?: ThreadType) => void,
+  onThreadLinkSelect: (value: string) => void,
   entityType: EntityType,
   entityFqn: string,
   columnName: string,
@@ -35,11 +34,12 @@ export const getFieldThreadElement = (
 
   return (
     <Tooltip
-      destroyTooltipOnHide
-      overlayClassName="ant-popover-request-description"
+      arrow
+      excludeTriggerFromTabOrder
       title={t('label.list-entity', {
         entity: t('label.conversation'),
-      })}>
+      })}
+      triggerClassName="tw:inline-flex">
       <IconComments
         className="table-action-icon hover-cell-icon"
         data-testid="field-thread"

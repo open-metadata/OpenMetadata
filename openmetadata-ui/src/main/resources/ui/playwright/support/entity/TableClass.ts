@@ -14,40 +14,57 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import {
+  AssetCertification,
   Column,
   DataType,
   Table,
 } from '../../../src/generated/entity/data/table';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
-import { fullUuid, uuid } from '../../utils/common';
 import {
-  visitEntityPage,
-  waitForAllLoadersToDisappear,
-} from '../../utils/entity';
+  createOrFetch,
+  deleteFixtureEntity,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
+import { fullUuid, uuid } from '../../utils/common';
+import { visitEntityPage, visitEntityPageByFqn } from '../../utils/entity';
+import type { DatabaseClass } from './DatabaseClass';
+import type { DatabaseSchemaClass } from './DatabaseSchemaClass';
 import {
   EntityTypeEndpoint,
   ResponseDataType,
   ResponseDataWithServiceType,
+  ServiceEntity,
   TestCaseData,
   TestSuiteData,
 } from './Entity.interface';
 import { EntityClass } from './EntityClass';
+import { resolveParents } from './ParentResolver';
+import { DatabaseServiceClass } from './service/DatabaseServiceClass';
 
 /**
- * Database service shape used when creating tables in tests. `connection.config` is intentionally
- * loose so tests can override with MySQL, BigQuery, or other connector configs.
+ * Without a parent the table sits in the shard's shared service → database →
+ * schema chain. Pass the deepest parent the test needs to own:
+ *   - `service` — own service page, unique service name, service-level
+ *     cascade, or a non-Mysql connector config
+ *     (`new DatabaseServiceClass(name, config)`);
+ *   - `database` — mutates the database (owners, domain) or asserts on its
+ *     schema listing;
+ *   - `schema` — asserts on the schema's table listing.
+ * Levels below the one passed are created fresh and deleted with the table.
  */
-export type TableServiceConfig = {
-  name: string;
-  serviceType: string;
-  connection: {
-    config: Record<string, unknown>;
-  };
+export type TableClassOptions = {
+  name?: string;
+  tableType?: string;
+  service?: DatabaseServiceClass;
+  database?: DatabaseClass;
+  schema?: DatabaseSchemaClass;
+  sharedInfraKey?: string;
 };
 
 export class TableClass extends EntityClass {
-  service: TableServiceConfig;
+  service: ServiceEntity;
   database: { name: string; service: string };
   schema: { name: string; database: string };
   columnsName: string[];
@@ -60,6 +77,7 @@ export class TableClass extends EntityClass {
     columns: Column[];
     tableType: string;
     databaseSchema: string;
+    certification?: AssetCertification;
   };
 
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
@@ -74,49 +92,32 @@ export class TableClass extends EntityClass {
   queryResponseData: ResponseDataType[] = [];
   additionalEntityTableResponseData: ResponseDataType[] = [];
 
-  constructor(
-    name?: string,
-    tableType?: string,
-    service?: Partial<TableServiceConfig>
-  ) {
+  private readonly parentOverrides: Pick<
+    TableClassOptions,
+    'service' | 'database' | 'schema'
+  >;
+
+  constructor(options: TableClassOptions = {}) {
     super(EntityTypeEndpoint.Table);
     this.serviceCategory = SERVICE_TYPE.Database;
     this.serviceType = ServiceTypes.DATABASE_SERVICES;
     this.type = 'Table';
     this.childrenTabId = 'schema';
-
-    const serviceName = service?.name ?? `pw-database-service-${uuid()}`;
-    const databaseName = `pw-database-${uuid()}`;
-    const schemaName = `pw-database-schema-${uuid()}`;
-
-    this.service = {
-      name: serviceName,
-      serviceType: 'Mysql',
-      connection: {
-        config: {
-          type: 'Mysql',
-          scheme: 'mysql+pymysql',
-          username: 'username',
-          authType: {
-            password: 'password',
-          },
-          hostPort: 'mysql:3306',
-          supportsMetadataExtraction: true,
-          supportsDBTExtraction: true,
-          supportsProfiler: true,
-          supportsQueryComment: true,
-        },
-      },
-      ...service,
+    this.sharedInfraKey = options.sharedInfraKey;
+    this.parentOverrides = {
+      service: options.service,
+      database: options.database,
+      schema: options.schema,
     };
 
+    // Placeholder parent names until create() binds the resolved chain.
+    this.service = options.service?.entity ?? new DatabaseServiceClass().entity;
     this.database = {
-      name: databaseName,
+      name: `pw-database-${uuid()}`,
       service: this.service.name,
     };
-
     this.schema = {
-      name: schemaName,
+      name: `pw-database-schema-${uuid()}`,
       database: `${this.service.name}.${this.database.name}`,
     };
 
@@ -216,92 +217,47 @@ export class TableClass extends EntityClass {
     ];
 
     this.entity = {
-      name: name ?? `pw-table-${fullUuid()}`,
+      name: options.name ?? `pw-table-${fullUuid()}`,
       displayName: `pw table ${fullUuid()}`,
       description: 'description',
       columns: this.children,
-      tableType: tableType ?? 'SecureView',
+      tableType: options.tableType ?? 'SecureView',
       databaseSchema: `${this.service.name}.${this.database.name}.${this.schema.name}`,
     };
 
     this.childrenSelectorId = `${this.entity.databaseSchema}.${this.entity.name}.${this.children[0]['name']}`;
   }
 
-  private async createOrFetch<T>(
-    apiContext: APIRequestContext,
-    createPath: string,
-    fetchPath: string,
-    entityFqn: string,
-    entityName: string,
-    data: object
-  ): Promise<T> {
-    const createResponse = await apiContext.post(createPath, { data });
-
-    if (createResponse.status() === 409) {
-      const getResponse = await apiContext.get(
-        `${fetchPath}/${encodeURIComponent(entityFqn)}`
-      );
-
-      if (!getResponse.ok()) {
-        throw new Error(
-          `TableClass: failed to fetch existing ${entityName} "${entityFqn}" (${getResponse.status()}): ${await getResponse.text()}`
-        );
-      }
-
-      return await getResponse.json();
-    }
-
-    if (!createResponse.ok()) {
-      throw new Error(
-        `TableClass: ${entityName} create failed (${createResponse.status()}): ${await createResponse.text()}`
-      );
-    }
-
-    return await createResponse.json();
-  }
-
   async create(apiContext: APIRequestContext) {
-    const service = await this.createOrFetch<ResponseDataType>(
+    const { parents, ownedRootPath, ownedOverride } = await resolveParents(
       apiContext,
-      '/api/v1/services/databaseServices',
-      '/api/v1/services/databaseServices/name',
-      this.service.name,
-      'service',
-      this.service
-    );
-
-    const databaseFqn = `${service.fullyQualifiedName}.${this.database.name}`;
-    const database = await this.createOrFetch<ResponseDataWithServiceType>(
-      apiContext,
-      '/api/v1/databases',
-      '/api/v1/databases/name',
-      databaseFqn,
       'database',
-      { ...this.database, service: service.fullyQualifiedName }
+      this.parentOverrides,
+      this.sharedInfraKey
     );
+    const service = parents.service as ResponseDataType;
+    const database = {
+      ...parents.database,
+      service,
+    } as ResponseDataWithServiceType;
+    const schema = {
+      ...parents.schema,
+      service,
+    } as ResponseDataWithServiceType;
 
-    const schemaFqn = `${database.fullyQualifiedName}.${this.schema.name}`;
-    const schema = await this.createOrFetch<ResponseDataWithServiceType>(
-      apiContext,
-      '/api/v1/databaseSchemas',
-      '/api/v1/databaseSchemas/name',
-      schemaFqn,
-      'schema',
-      { ...this.schema, database: database.fullyQualifiedName }
-    );
+    this.adoptOwnership({ ownedRootPath, ownedOverride });
+    this.bindParentNames(service, database, schema);
 
-    const tableFqn = `${schema.fullyQualifiedName}.${this.entity.name}`;
-    const entity = await this.createOrFetch<Table>(
-      apiContext,
-      '/api/v1/tables',
-      '/api/v1/tables/name',
-      tableFqn,
-      'table',
-      {
-        ...this.entity,
-        databaseSchema: schema.fullyQualifiedName,
-      }
-    );
+    // Relationship fields on the 409 lookup: a bare fetch reports
+    // `domains: null` on an entity that already has one, and a caller that
+    // re-applies `add /domains/0` is then rejected with "Multiple Domains".
+    const entity = await createOrFetch<Table>(apiContext, {
+      label: 'TableClass.create',
+      createPath: '/api/v1/tables',
+      fqnSegments: [service.name, database.name, schema.name, this.entity.name],
+      data: this.entity,
+      fields: 'domains,owners,tags',
+    });
 
     this.serviceResponseData = service;
     this.databaseResponseData = database;
@@ -317,6 +273,20 @@ export class TableClass extends EntityClass {
       schema,
       entity,
     };
+  }
+
+  private bindParentNames(
+    service: ResponseDataType,
+    database: ResponseDataType,
+    schema: ResponseDataType
+  ) {
+    this.service = { ...this.service, name: service.name };
+    this.database = { name: database.name, service: service.name };
+    this.schema = {
+      name: schema.name,
+      database: `${service.name}.${database.name}`,
+    };
+    this.entity.databaseSchema = schema.fullyQualifiedName;
   }
 
   async createAdditionalTable(
@@ -335,7 +305,10 @@ export class TableClass extends EntityClass {
         ...tableData,
       },
     });
-    const entity = await entityResponse.json();
+    const entity = await okJson(
+      entityResponse,
+      'TableClass.createAdditionalTable'
+    );
     this.additionalEntityTableResponseData = [
       ...this.additionalEntityTableResponseData,
       entity,
@@ -350,6 +323,7 @@ export class TableClass extends EntityClass {
       database: this.databaseResponseData,
       schema: this.schemaResponseData,
       entity: this.entityResponseData,
+      ownedRootPath: this.ownedRootPath,
     };
   }
 
@@ -358,11 +332,19 @@ export class TableClass extends EntityClass {
     service: ResponseDataType;
     database: ResponseDataWithServiceType;
     schema: ResponseDataWithServiceType;
+    ownedRootPath?: string;
   }) {
     this.serviceResponseData = entityData.service;
     this.databaseResponseData = entityData.database;
     this.schemaResponseData = entityData.schema;
     this.entityResponseData = entityData.entity;
+    this.ownedRootPath = entityData.ownedRootPath;
+    this.entity.name = entityData.entity.name;
+    this.bindParentNames(
+      entityData.service,
+      entityData.database,
+      entityData.schema
+    );
   }
 
   async visitEntityPage(page: Page, searchTerm?: string) {
@@ -389,14 +371,11 @@ export class TableClass extends EntityClass {
       !searchTerm || (tableFqn.length > 0 && searchTerm === tableFqn);
 
     if (canUseDirectNavigation && tableFqn.length > 0) {
-      const tableResponse = page.waitForResponse(
-        `/api/v1/tables/name/${encodeURIComponent(tableFqn)}?**`
-      );
-      await page.goto(`/table/${encodeURIComponent(tableFqn)}`, {
-        waitUntil: 'domcontentloaded',
+      await visitEntityPageByFqn({
+        page,
+        endpoint: EntityTypeEndpoint.Table,
+        fqn: tableFqn,
       });
-      await tableResponse;
-      await waitForAllLoadersToDisappear(page);
 
       return;
     }
@@ -422,7 +401,7 @@ export class TableClass extends EntityClass {
       },
     });
 
-    const query = await queryResponse.json();
+    const query = await okJson(queryResponse, 'TableClass.createQuery');
 
     this.queryResponseData.push(query);
 
@@ -431,7 +410,8 @@ export class TableClass extends EntityClass {
 
   async createTestSuiteAndPipelines(
     apiContext: APIRequestContext,
-    testSuite?: TestSuiteData
+    testSuite?: TestSuiteData,
+    scheduleInterval?: string | null
   ) {
     if (isEmpty(this.entityResponseData)) {
       await this.create(apiContext);
@@ -450,7 +430,11 @@ export class TableClass extends EntityClass {
 
     this.testSuiteResponseData = testSuiteData;
 
-    const pipeline = await this.createTestSuitePipeline(apiContext);
+    const pipeline = await this.createTestSuitePipeline(
+      apiContext,
+      undefined,
+      scheduleInterval
+    );
 
     return {
       testSuiteData,
@@ -460,14 +444,13 @@ export class TableClass extends EntityClass {
 
   async createTestSuitePipeline(
     apiContext: APIRequestContext,
-    testCases?: string[]
+    testCases?: string[],
+    scheduleInterval: string | null = '0 * * * *'
   ) {
     const pipelineData = await apiContext
       .post(`/api/v1/services/ingestionPipelines`, {
         data: {
-          airflowConfig: {
-            scheduleInterval: '0 * * * *',
-          },
+          airflowConfig: scheduleInterval === null ? {} : { scheduleInterval },
           name: `pw-test-suite-pipeline-${uuid()}`,
           loggerLevel: 'INFO',
           pipelineType: 'TestSuite',
@@ -500,8 +483,14 @@ export class TableClass extends EntityClass {
       await this.create(apiContext);
     }
 
-    const testCase = await apiContext
-      .post('/api/v1/dataQuality/testCases', {
+    // Checked, not bare .json(): a failed create used to be pushed onto
+    // testCasesResponseData as an error body, so callers read `undefined` for
+    // the name and failed much later somewhere unrelated -- a search that waits
+    // for `q === undefined` simply never resolves.
+    const testCase = await okJson<
+      ResponseDataType & { testSuite?: ResponseDataType }
+    >(
+      await apiContext.post('/api/v1/dataQuality/testCases', {
         data: {
           name: `pw_test_case_${uuid()}`,
           entityLink: `<#E::table::${this.entityResponseData?.fullyQualifiedName}>`,
@@ -512,11 +501,14 @@ export class TableClass extends EntityClass {
           ],
           ...testCaseData,
         },
-      })
-      .then((res) => res.json());
+      }),
+      'TableClass.createTestCase'
+    );
 
-    if (isEmpty(this.testSuiteResponseData)) {
-      this.testSuiteResponseData = testCase?.testSuite;
+    // okJson guarantees testCase now, so only the optional testSuite needs a
+    // guard -- assigning undefined here used to be masked by the untyped read.
+    if (isEmpty(this.testSuiteResponseData) && testCase.testSuite) {
+      this.testSuiteResponseData = testCase.testSuite;
     }
 
     this.testCasesResponseData.push(testCase);
@@ -536,7 +528,7 @@ export class TableClass extends EntityClass {
       { data: testCaseResult }
     );
 
-    return await testCaseResultResponse.json();
+    return await okJson(testCaseResultResponse, 'TableClass.addTestCaseResult');
   }
 
   async patch({
@@ -576,19 +568,23 @@ export class TableClass extends EntityClass {
       ? `?${new URLSearchParams(queryParams).toString()}`
       : '';
 
-    const response = await apiContext.patch(
-      tableId
-        ? `/api/v1/tables/${tableId}${queryString}`
-        : `/api/v1/tables/name/${encodeURIComponent(tableFqn!)}${queryString}`,
-      {
-        data: patchData,
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(
+        tableId
+          ? `/api/v1/tables/${tableId}${queryString}`
+          : `/api/v1/tables/name/${encodeURIComponent(
+              tableFqn!
+            )}${queryString}`,
+        {
+          data: patchData,
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      )
     );
 
-    this.entityResponseData = await response.json();
+    this.entityResponseData = await okJson(response, 'TableClass.patch');
 
     return {
       entity: this.entityResponseData,
@@ -608,20 +604,18 @@ export class TableClass extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext, hardDelete = true) {
-    const serviceResponse = await apiContext.delete(
-      `/api/v1/services/databaseServices/name/${encodeURIComponent(
-        this.serviceResponseData?.fullyQualifiedName ?? ''
-      )}?recursive=true&hardDelete=${hardDelete}`
+    await this.deleteOwnedOrLeaf(
+      apiContext,
+      `/api/v1/tables/${this.entityResponseData?.id}`,
+      hardDelete
     );
 
-    return {
-      service: serviceResponse.body,
-      entity: this.entityResponseData,
-    };
+    return { entity: this.entityResponseData };
   }
 
   async deleteTable(apiContext: APIRequestContext, hardDelete = true) {
-    const tableResponse = await apiContext.delete(
+    const tableResponse = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/tables/${this.entityResponseData?.id}?recursive=true&hardDelete=${hardDelete}`
     );
 

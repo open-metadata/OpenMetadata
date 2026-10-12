@@ -15,17 +15,17 @@ Interface for sampler
 import traceback
 from abc import ABC, abstractmethod
 from functools import cached_property
-from typing import Any, List, Optional  # noqa: UP035
+from typing import Any
 
 from metadata.generated.schema.configuration.profilerConfiguration import (
     SampleDataIngestionConfig,
 )
 from metadata.generated.schema.entity.data.table import TableData
+from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.generated.schema.type.samplingConfig import SampleConfigType
 from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.pii.types import ClassifiableEntityType
-from metadata.profiler.processor.sample_data_handler import upload_sample_data
 from metadata.sampler.config import resolve_static_sampling_config
 from metadata.sampler.sampler_config import SamplerConfig
 from metadata.utils.constants import (
@@ -49,7 +49,7 @@ class SamplerInterface(ABC):
         service_connection_config: Any,
         ometa_client: OpenMetadata,
         entity: ClassifiableEntityType,
-        config: Optional[SamplerConfig] = None,  # noqa: UP045
+        config: SamplerConfig | None = None,
         **__,
     ):
         resolved_config = config or SamplerConfig()
@@ -58,12 +58,11 @@ class SamplerInterface(ABC):
         self.service_connection_config = service_connection_config
         self.sample_config = resolved_config.sample_config
         self.sample_limit = resolved_config.sample_data_count or SAMPLE_DATA_DEFAULT_COUNT
-        self.upload_sample_storage_config = resolved_config.upload_sample_storage_config
-        self._columns: List[SQALikeColumn] = []  # noqa: UP006
+        self._columns: list[SQALikeColumn] = []
         self._row_count = None
         self._sample_config: StaticSamplingConfig | None = None
         self.partition_details: Any = None
-        self.sample_query: Optional[str] = None  # noqa: UP045
+        self.sample_query: str | None = None
 
     @classmethod
     def create(
@@ -71,7 +70,7 @@ class SamplerInterface(ABC):
         service_connection_config: Any,
         ometa_client: OpenMetadata,
         entity: ClassifiableEntityType,
-        config: Optional[SamplerConfig] = None,  # noqa: UP045
+        config: SamplerConfig | None = None,
         **kwargs,
     ) -> "SamplerInterface":
         """Create sampler from a pre-built SamplerConfig."""
@@ -82,6 +81,11 @@ class SamplerInterface(ABC):
             config=config or SamplerConfig(),
             **kwargs,
         )
+
+    @classmethod
+    def is_skippable_sampling_error(cls, exc: Exception) -> bool:
+        """Whether sampling can skip this error and continue with the next entity."""
+        return False
 
     @cached_property
     def _resolve_sample_config(self) -> StaticSamplingConfig | None:
@@ -101,6 +105,28 @@ class SamplerInterface(ABC):
             ),
         )
         return self._sample_config
+
+    @property
+    def applies_sampling(self) -> bool:
+        """Whether reading the dataset returns a subset of the asset rather than all of it.
+
+        A configured sample amount does not answer that on its own: a 100% percentage that is
+        not randomized resolves to the asset itself. `get_dataset` is the authority on that, so
+        both implementations read this rather than repeating the rule, and so does the data
+        quality evaluation scope, which reports the sample a verdict was measured on.
+        """
+        if self.sample_query:
+            return True
+
+        static = self._resolve_sample_config
+        if not static or not static.profileSample:
+            return False
+
+        return not (
+            static.profileSampleType == ProfileSampleType.PERCENTAGE
+            and static.profileSample == 100
+            and self.sample_config.randomizedSample is not True
+        )
 
     @property
     @abstractmethod
@@ -129,12 +155,12 @@ class SamplerInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def fetch_sample_data(self, columns: Optional[List[SQALikeColumn]]) -> TableData:  # noqa: UP006, UP045
+    def fetch_sample_data(self, columns: list[SQALikeColumn] | None) -> TableData:
         """Fetch sample data"""
         raise NotImplementedError
 
     @abstractmethod
-    def get_columns(self) -> List[SQALikeColumn]:  # noqa: UP006
+    def get_columns(self) -> list[SQALikeColumn]:
         """get columns"""
         raise NotImplementedError
 
@@ -153,7 +179,7 @@ class SamplerInterface(ABC):
             return value[:SAMPLE_DATA_MAX_CELL_LENGTH]
         return value
 
-    def generate_sample_data(self, sample_data_config: Optional[SampleDataIngestionConfig] = None) -> TableData:  # noqa: UP045
+    def generate_sample_data(self, sample_data_config: SampleDataIngestionConfig | None = None) -> TableData:
         """Fetch and ingest sample data
 
         Returns:
@@ -175,12 +201,6 @@ class SamplerInterface(ABC):
                     [self._truncate_cell(cell) for cell in row]
                     for row in table_data.rows[: min(SAMPLE_DATA_DEFAULT_COUNT, self.sample_limit)]
                 ]
-                if self.upload_sample_storage_config and sample_data_config.storeSampleData:
-                    upload_sample_data(
-                        data=table_data,
-                        entity=self.entity,
-                        sample_storage_config=self.upload_sample_storage_config,
-                    )
                 return table_data
 
             return TableData(rows=[], columns=[])
@@ -191,7 +211,7 @@ class SamplerInterface(ABC):
             raise err  # noqa: TRY201
 
     @property
-    def columns(self) -> List[SQALikeColumn]:  # noqa: UP006
+    def columns(self) -> list[SQALikeColumn]:
         """Return the sampled columns list. Subclasses with include/exclude
         column filtering (database samplers) override this property."""
         if not self._columns:

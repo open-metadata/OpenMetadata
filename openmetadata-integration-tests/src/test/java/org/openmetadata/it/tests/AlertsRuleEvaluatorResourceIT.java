@@ -23,6 +23,7 @@ import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
@@ -37,6 +38,7 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.subscription.AlertsRuleEvaluator;
@@ -79,6 +81,55 @@ public class AlertsRuleEvaluatorResourceIT {
     String ownerName = SharedEntities.get().USER1.getName();
     assertTrue(evaluateExpression("matchAnyOwnerName('" + ownerName + "')", evaluationContext));
     assertFalse(evaluateExpression("matchAnyOwnerName('nonExistentOwner')", evaluationContext));
+  }
+
+  // #30555: a thread event carries the Thread, so owner and domain must resolve its parent entity.
+  @Test
+  void test_matchAnyOwnerName_threadAboutOwnedEntity(TestNamespace ns) {
+    Table createdTable = createTableWithOwner(ns);
+    EvaluationContext evaluationContext =
+        threadEvaluationContext(createdTable.getEntityReference());
+
+    String ownerName = SharedEntities.get().USER1.getName();
+    assertTrue(evaluateExpression("matchAnyOwnerName('" + ownerName + "')", evaluationContext));
+    assertFalse(evaluateExpression("matchAnyOwnerName('nonExistentOwner')", evaluationContext));
+  }
+
+  @Test
+  void test_matchAnyDomain_threadAboutEntityInDomain(TestNamespace ns) {
+    Table createdTable = createTableInDomain(ns);
+    EvaluationContext evaluationContext =
+        threadEvaluationContext(createdTable.getEntityReference());
+
+    String domainFqn = SharedEntities.get().DOMAIN.getFullyQualifiedName();
+    assertTrue(evaluateExpression("matchAnyDomain({'" + domainFqn + "'})", evaluationContext));
+    assertFalse(evaluateExpression("matchAnyDomain({'nonExistentDomain'})", evaluationContext));
+  }
+
+  @Test
+  void test_matchAnyEntityFqn_threadAboutEntity(TestNamespace ns) {
+    Table createdTable = createTable(ns);
+    EvaluationContext evaluationContext =
+        threadEvaluationContext(createdTable.getEntityReference());
+
+    String tableFqn = createdTable.getFullyQualifiedName();
+    assertTrue(evaluateExpression("matchAnyEntityFqn({'" + tableFqn + "'})", evaluationContext));
+    assertFalse(evaluateExpression("matchAnyEntityFqn({'nonExistentFqn'})", evaluationContext));
+  }
+
+  @Test
+  void test_scopingFilters_threadAboutUnresolvableEntity() {
+    EntityReference missing =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.TABLE)
+            .withFullyQualifiedName("service.db.schema.missingTable");
+    EvaluationContext evaluationContext = threadEvaluationContext(missing);
+
+    String ownerName = SharedEntities.get().USER1.getName();
+    String domainFqn = SharedEntities.get().DOMAIN.getFullyQualifiedName();
+    assertFalse(evaluateExpression("matchAnyOwnerName('" + ownerName + "')", evaluationContext));
+    assertFalse(evaluateExpression("matchAnyDomain({'" + domainFqn + "'})", evaluationContext));
   }
 
   @Test
@@ -263,7 +314,7 @@ public class AlertsRuleEvaluatorResourceIT {
   @Test
   void test_filterByTableNameTestCaseBelongsTo_happyPath() {
     String tableFqn = "service.db.schema.orders";
-    TestCase testCase = new TestCase().withName("tc").withEntityFQN(tableFqn);
+    TestCase testCase = tableTestCase(tableFqn);
 
     ChangeEvent changeEvent = new ChangeEvent();
     changeEvent.setEntityType(Entity.TEST_CASE);
@@ -285,8 +336,7 @@ public class AlertsRuleEvaluatorResourceIT {
 
   @Test
   void test_filterByTableNameTestCaseBelongsTo_rejectsPrefixCollision() {
-    TestCase testCase =
-        new TestCase().withName("tc").withEntityFQN("service.db.schema.customer_archive");
+    TestCase testCase = tableTestCase("service.db.schema.customer_archive");
 
     ChangeEvent changeEvent = new ChangeEvent();
     changeEvent.setEntityType(Entity.TEST_CASE);
@@ -315,7 +365,7 @@ public class AlertsRuleEvaluatorResourceIT {
         "service.db.schema.t(paren)",
       })
   void test_filterByTableNameTestCaseBelongsTo_treatsRegexMetacharsAsLiteral(String tableFqn) {
-    TestCase testCase = new TestCase().withName("tc").withEntityFQN(tableFqn);
+    TestCase testCase = tableTestCase(tableFqn);
 
     ChangeEvent changeEvent = new ChangeEvent();
     changeEvent.setEntityType(Entity.TEST_CASE);
@@ -336,10 +386,13 @@ public class AlertsRuleEvaluatorResourceIT {
   }
 
   @Test
-  void test_filterByTableNameTestCaseBelongsTo_fallbackToEntityLink() {
-    String tableFqn = "service.db.schema.fallback";
+  void test_filterByTableNameTestCaseBelongsTo_columnLevelTestMatchesItsTable() {
+    String tableFqn = "service.db.schema.orders";
     TestCase testCase =
-        new TestCase().withName("tc").withEntityLink("<#E::table::" + tableFqn + ">");
+        new TestCase()
+            .withName("tc")
+            .withEntityLink("<#E::table::" + tableFqn + "::columns::id>")
+            .withEntityFQN(tableFqn + ".id");
 
     ChangeEvent changeEvent = new ChangeEvent();
     changeEvent.setEntityType(Entity.TEST_CASE);
@@ -354,10 +407,21 @@ public class AlertsRuleEvaluatorResourceIT {
     assertTrue(
         evaluateExpression(
             "filterByTableNameTestCaseBelongsTo({'" + tableFqn + "'})", evaluationContext));
+    assertFalse(
+        evaluateExpression(
+            "filterByTableNameTestCaseBelongsTo({'" + tableFqn + ".id'})", evaluationContext));
   }
 
+  private TestCase tableTestCase(String tableFqn) {
+    return new TestCase()
+        .withName("tc")
+        .withEntityLink("<#E::table::" + tableFqn + ">")
+        .withEntityFQN(tableFqn);
+  }
+
+  // #31330: a filter that cannot evaluate an event must answer "does not match", never "deliver".
   @Test
-  void test_filterByTableNameTestCaseBelongsTo_nonTestCaseEntityPassesThrough() {
+  void test_filterByTableNameTestCaseBelongsTo_nonTestCaseEntityDoesNotMatch() {
     Table table = new Table().withName("t").withFullyQualifiedName("service.db.schema.t");
 
     ChangeEvent changeEvent = new ChangeEvent();
@@ -370,9 +434,12 @@ public class AlertsRuleEvaluatorResourceIT {
             .withRootObject(alertsRuleEvaluator)
             .build();
 
-    assertTrue(
+    assertFalse(
         evaluateExpression(
             "filterByTableNameTestCaseBelongsTo({'unrelated.fqn'})", evaluationContext));
+    assertFalse(
+        evaluateExpression(
+            "filterByTableNameTestCaseBelongsTo({'service.db.schema.t'})", evaluationContext));
   }
 
   @Test
@@ -692,6 +759,35 @@ public class AlertsRuleEvaluatorResourceIT {
     tableRequest.setOwners(List.of(SharedEntities.get().USER1_REF));
 
     return SdkClients.adminClient().tables().create(tableRequest);
+  }
+
+  private Table createTableInDomain(TestNamespace ns) {
+    Table table = createTable(ns);
+    CreateTable update =
+        new CreateTable()
+            .withName(table.getName())
+            .withDatabaseSchema(table.getDatabaseSchema().getFullyQualifiedName())
+            .withColumns(table.getColumns())
+            .withDomains(List.of(SharedEntities.get().DOMAIN.getFullyQualifiedName()));
+
+    return SdkClients.adminClient().tables().createOrUpdate(update);
+  }
+
+  private EvaluationContext threadEvaluationContext(EntityReference parent) {
+    Thread thread =
+        new Thread()
+            .withId(UUID.randomUUID())
+            .withType(ThreadType.Conversation)
+            .withEntityRef(parent);
+    ChangeEvent changeEvent = new ChangeEvent();
+    changeEvent.setEntityType(Entity.THREAD);
+    changeEvent.setEventType(EventType.THREAD_CREATED);
+    changeEvent.setEntity(thread);
+
+    return SimpleEvaluationContext.forReadOnlyDataBinding()
+        .withInstanceMethods()
+        .withRootObject(new AlertsRuleEvaluator(changeEvent))
+        .build();
   }
 
   private TestCase createTestCase(TestNamespace ns, Table table) {

@@ -13,52 +13,44 @@
 
 @import (reference) '../../styles/variables.less';
 
-@label-color: #6b7280;
-@summary-card-bg-hover: #f0f1f3;
+@label-color: var(--om-color-text-tertiary);
+@summary-card-bg-hover: var(--om-color-interactive-hover);
 
 .data-insight-card {
   border-radius: @border-rad-md;
 
   .ant-card-head {
     border-bottom: none;
-    padding: @padding-sm @padding-md 0px;
-  }
-  .custom-data-insight-tooltip {
-    .ant-card-head {
-      border-bottom: 1px solid @border-color;
-      .ant-card-head-title {
-        padding: 0px;
-      }
-    }
-    .custom-data-insight-tooltip-container {
-      max-height: 250px;
-      overflow-y: auto;
-    }
+    padding: @padding-sm @padding-md 0;
   }
   .ant-card-body {
     padding: @padding-mlg;
   }
 }
 
-.data-insight-active-user .summary-card .ant-space-item {
+.data-insight-active-user
+  .summary-card
+  :is(.ant-space-item, .layout-space-item) {
   max-width: 100%;
 }
-.ant-typography.data-insight-label-text {
+.ant-typography.data-insight-label-text,
+.data-insight-label-text {
   color: @label-color;
 }
-.ant-typography.summary-card-description {
-  font-weight: 500;
-  font-size: 18px;
+.ant-typography.summary-card-description,
+.summary-card-description {
+  font-weight: var(--om-font-weight-medium);
+  font-size: var(--om-font-size-lg);
   margin-bottom: 0;
 }
 
 .summary-card-item {
   cursor: pointer;
   border: @global-border;
-  border-radius: 10px;
-  padding: 16px;
+  border-radius: var(--om-radius-10);
+  padding: var(--om-space-16);
   &:hover {
     background-color: @summary-card-bg-hover;
-    border-radius: 6px;
+    border-radius: var(--om-radius-md);
   }
 }

@@ -12,26 +12,14 @@
  */
 
 import { HTMLAttributes } from 'react';
-import { Post } from '../../generated/entity/feed/thread';
-import { EntityReference } from '../../generated/type/entityReference';
+import { Conversation } from '../../generated/entity/feed/conversation';
 import { Task } from '../../rest/tasksAPI';
-
-export interface MentionNotification {
-  id: string;
-  about?: string;
-  createdBy?: string;
-  entityRef?: EntityReference;
-  message?: string;
-  posts?: Post[];
-  reactions?: Post['reactions'];
-  threadTs?: number;
-}
 
 export interface NotificationFeedProp extends HTMLAttributes<HTMLDivElement> {
   createdBy: string;
   entityType: string;
   entityFQN: string;
   timestamp?: number;
-  mentionNotification?: MentionNotification;
+  mentionNotification?: Conversation;
   taskEntity?: Task;
 }

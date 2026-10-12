@@ -28,9 +28,11 @@ import java.time.Duration;
 import java.util.List;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.service.rdf.RdfUpdater;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,6 +59,36 @@ public final class RdfTestUtils {
   }
 
   /**
+   * Turns the server's RDF updater on for a class that needs it, unless the run already has it
+   * on, and reports whether this call turned it on. Pass the result to {@link
+   * #disableServerRdf(boolean)}: the updater is shared by every class on the server, so only the
+   * class that turned it on may turn it off.
+   */
+  public static boolean enableServerRdf(RdfConfiguration config) {
+    if (RdfUpdater.isEnabled()) {
+      return false;
+    }
+    RdfUpdater.initialize(config);
+    return true;
+  }
+
+  public static void disableServerRdf(boolean enabledByCaller) {
+    if (enabledByCaller) {
+      RdfUpdater.disable();
+    }
+  }
+
+  /** Puts the server's RDF updater back to the configuration the test suite started it with. */
+  public static void restoreSuiteRdf() {
+    RdfConfiguration suiteConfig = TestSuiteBootstrap.getRdfConfiguration();
+    if (suiteConfig != null && Boolean.TRUE.equals(suiteConfig.getEnabled())) {
+      RdfUpdater.initialize(suiteConfig);
+    } else {
+      RdfUpdater.disable();
+    }
+  }
+
+  /**
    * Escape a string value for use in SPARQL queries.
    */
   private static String escapeSparqlString(String value) {
@@ -73,7 +105,7 @@ public final class RdfTestUtils {
    * @param entity The entity to verify
    * @param rdfType The expected RDF type (e.g., "dcat:Dataset", "foaf:Agent")
    */
-  public static void verifyEntityInRdf(EntityInterface entity, String rdfType) {
+  public static void verifyEntityInRdf(EntityInterface<?> entity, String rdfType) {
     String escapedName = escapeSparqlString(entity.getName());
     String escapedFqn = entity.getFullyQualifiedName().replace("\\", "\\\\").replace("\"", "\\\"");
 
@@ -101,7 +133,7 @@ public final class RdfTestUtils {
         entity.getName(),
         rdfType);
 
-    boolean exists = executeSparqlAsk(sparql);
+    boolean exists = awaitAsk(sparql);
 
     if (!exists) {
       logDebugInfo(entity, rdfType);
@@ -112,6 +144,22 @@ public final class RdfTestUtils {
         String.format(
             "Entity '%s' (FQN: %s) should exist in RDF as type %s",
             entity.getName(), entity.getFullyQualifiedName(), rdfType));
+  }
+
+  /**
+   * RDF projection writes run asynchronously after the database commit, so a single ASK races the
+   * projection queue. Poll until the statement appears or the bounded wait elapses.
+   */
+  private static boolean awaitAsk(final String sparql) {
+    try {
+      org.awaitility.Awaitility.await()
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofMillis(500))
+          .until(() -> executeSparqlAsk(sparql));
+      return true;
+    } catch (org.awaitility.core.ConditionTimeoutException e) {
+      return false;
+    }
   }
 
   /**
@@ -140,14 +188,15 @@ public final class RdfTestUtils {
    *
    * @param entity The updated entity
    */
-  public static void verifyEntityUpdatedInRdf(EntityInterface entity) {
+  public static void verifyEntityUpdatedInRdf(EntityInterface<?> entity) {
     String sparql =
         String.format(
             "PREFIX om: <https://open-metadata.org/ontology/> "
+                + "PREFIX dct: <http://purl.org/dc/terms/> "
                 + "ASK { "
                 + "  GRAPH ?g { "
                 + "    ?entity om:fullyQualifiedName %s ; "
-                + "           om:version ?version . "
+                + "           dct:hasVersion ?version . "
                 + "  } "
                 + "}",
             escapeSparqlString(entity.getFullyQualifiedName()));
@@ -376,7 +425,7 @@ public final class RdfTestUtils {
   /**
    * Log debug information when entity is not found in RDF.
    */
-  private static void logDebugInfo(EntityInterface entity, String rdfType) {
+  private static void logDebugInfo(EntityInterface<?> entity, String rdfType) {
     String debugQuery =
         String.format(
             "PREFIX om: <https://open-metadata.org/ontology/> "

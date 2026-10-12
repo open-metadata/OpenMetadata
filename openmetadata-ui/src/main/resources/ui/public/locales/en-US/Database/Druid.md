@@ -11,7 +11,9 @@ You can find further information on the Druid connector in the <a href="https://
 $$section
 ### Scheme $(id="scheme")
 
-SQLAlchemy driver scheme options.
+SQLAlchemy driver scheme options. Keep the default `druid` for a plaintext broker, or pick `druid+http` to state the plaintext transport explicitly.
+
+Select `druid+https` when the Druid broker serves HTTPS. If the broker presents a self-signed or private-CA certificate, add `ssl_verify_cert` under **Connection Arguments** — set it to the path of a CA bundle to validate against, or to `false` to skip verification.
 $$
 
 $$section

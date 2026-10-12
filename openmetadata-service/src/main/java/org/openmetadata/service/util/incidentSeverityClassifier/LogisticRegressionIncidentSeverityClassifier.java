@@ -27,7 +27,7 @@ public class LogisticRegressionIncidentSeverityClassifier
   };
 
   @Override
-  public Severity classifyIncidentSeverity(EntityInterface entity) {
+  public Severity classifyIncidentSeverity(EntityInterface<?> entity) {
     double[] vectorX = getVectorX(entity);
     if (vectorX.length == 0) {
       return null;
@@ -57,8 +57,8 @@ public class LogisticRegressionIncidentSeverityClassifier
   private double[] dotProduct(double[] vectorX) {
     // compute the dot product of the input vector and the coef. matrix
     double[] result = new double[coefMatrix[0].length];
-    for (int i = 0; i < coefMatrix.length; i++) {
-      int sum = 0;
+    for (int i = 0; i < coefMatrix[0].length; i++) {
+      double sum = 0;
       for (int j = 0; j < vectorX.length; j++) {
         sum += vectorX[j] * coefMatrix[j][i];
       }
@@ -92,7 +92,7 @@ public class LogisticRegressionIncidentSeverityClassifier
     return maxIndex;
   }
 
-  private double[] getVectorX(EntityInterface entity) {
+  private double[] getVectorX(EntityInterface<?> entity) {
     // get the input vector for the logistic regression model
     double hasOwner = !nullOrEmpty(entity.getOwners()) ? 1 : 0;
     double followers = entity.getFollowers() != null ? entity.getFollowers().size() : 0;

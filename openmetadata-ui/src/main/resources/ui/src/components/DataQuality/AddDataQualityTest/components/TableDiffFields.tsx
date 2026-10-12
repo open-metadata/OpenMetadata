@@ -20,7 +20,7 @@ import {
   getField,
   HelperTextType,
 } from '@openmetadata/ui-core-components';
-import { Plus, Trash01 } from '@untitledui/icons';
+import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { debounce } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFieldArray, UseFormReturn, useWatch } from 'react-hook-form';
@@ -429,6 +429,7 @@ const TableDiffFields: React.FC<TableDiffFieldsProps> = ({
           },
         } as FieldProp);
       case KEY_COLUMNS:
+      case USE_COLUMNS:
         return (
           <ColumnArrayField
             columns={table?.columns}
@@ -443,15 +444,6 @@ const TableDiffFields: React.FC<TableDiffFieldsProps> = ({
             columns={table2Columns}
             data={data}
             disabled={!table2Fqn}
-            form={form}
-          />
-        );
-      case USE_COLUMNS:
-        return (
-          <ColumnArrayField
-            columns={table?.columns}
-            data={data}
-            excludedColumns={crossListExcludedColumns}
             form={form}
           />
         );

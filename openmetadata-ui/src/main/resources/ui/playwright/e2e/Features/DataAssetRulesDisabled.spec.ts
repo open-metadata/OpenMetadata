@@ -49,13 +49,13 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
   assignDataProduct,
-  assignDomain,
   descriptionBoxReadOnly,
   redirectToHomePage,
   toastNotification,
 } from '../../utils/common';
 import { DATA_ASSET_RULES } from '../../utils/dataAssetRules';
-import { assignDomainWidget } from '../../utils/domain';
+import { addAssetsToDataProduct } from '../../utils/domain';
+import { setDomain } from '../../utils/domainPicker';
 import {
   addMultiOwner,
   assignGlossaryTerm,
@@ -117,6 +117,7 @@ const glossaryTerm = new GlossaryTerm(glossary);
 const glossaryTerm2 = new GlossaryTerm(glossary);
 
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
+  createdDataProducts.length = 0;
   test.slow(true);
 
   const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -195,20 +196,18 @@ test.describe(
           page.locator("[data-testid='select-owner-tabs']")
         ).toBeVisible();
 
-        await page
-          .getByRole('tabpanel', { name: /Users/ })
-          .getByTestId('loader')
-          .waitFor({ state: 'hidden' });
+        await waitForAllLoadersToDisappear(
+          page.getByRole('tabpanel', { name: /Users/ })
+        );
 
         await page
           .locator("[data-testid='select-owner-tabs']")
           .getByRole('tab', { name: 'Teams' })
           .click();
 
-        await page
-          .getByRole('tabpanel', { name: 'Teams' })
-          .getByTestId('loader')
-          .waitFor({ state: 'hidden' });
+        await waitForAllLoadersToDisappear(
+          page.getByRole('tabpanel', { name: 'Teams' })
+        );
 
         const teamsSearchBar = page.getByTestId(
           'owner-select-teams-search-bar'
@@ -221,10 +220,9 @@ test.describe(
         await teamsSearchBar.fill(teamName);
         await searchUser;
 
-        const ownerItem = page.getByRole('listitem', {
-          name: teamName,
-          exact: true,
-        });
+        const ownerItem = page
+          .locator('[data-testid="owner-option"]')
+          .filter({ hasText: teamName });
 
         await ownerItem.waitFor({ state: 'visible' });
         await ownerItem.click();
@@ -232,7 +230,7 @@ test.describe(
           `/api/v1/${entity.endpoint}/*`
         );
         await page
-          .locator('[id^="rc-tabs-"][id$="-panel-teams"]')
+          .locator('[data-testid="owner-select-teams-panel"]')
           .getByTestId('selectable-list-update-btn')
           .click();
         await patchRequest;
@@ -247,10 +245,10 @@ test.describe(
           ).toBeVisible();
         }
 
-        await assignDomain(page, domain.responseData);
-        await assignDomain(page, domain2.responseData, false);
+        await setDomain(page, domain.responseData);
+        await setDomain(page, domain2.responseData, { verify: 'none' });
 
-        await expect(page.getByTestId('domain-count-button')).toBeVisible();
+        await expect(page.getByTestId('show-all-domains')).toBeVisible();
 
         // Add Multiple DataProduct, since default single select is off
         if (!entityName.includes('Service')) {
@@ -312,7 +310,10 @@ test.describe(
     test('Database service', async ({ page, browser }) => {
       test.slow(true);
 
-      const table = new TableClass();
+      // Bulk-edit-import runs at the service level with recursive=false and
+      // asserts passed/processed counts — a shared service would contain
+      // other workers' databases and break the count.
+      const table = new TableClass({ service: new DatabaseServiceClass() });
 
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await table.create(apiContext);
@@ -400,7 +401,7 @@ test.describe(
         );
 
         await expect(
-          page.locator(`.ant-table-cell ${descriptionBoxReadOnly}`)
+          page.locator(`td ${descriptionBoxReadOnly}`)
         ).toContainText('Playwright Database description.');
 
         // Verify Owners
@@ -412,7 +413,7 @@ test.describe(
         ).toBeVisible();
 
         await expect(
-          page.getByRole('link', { name: team.responseData?.['displayName'] })
+          page.getByTestId(team.responseData?.['displayName'])
         ).toBeVisible();
 
         // Verify Tags
@@ -450,7 +451,10 @@ test.describe(
     test('Database', async ({ page, browser }) => {
       test.slow(true);
 
-      const table = new TableClass();
+      // Navigates the service page and picks the database row by name — a
+      // shared databaseService listing contains other workers' databases
+      // and hides the target row under pagination.
+      const table = new TableClass({ service: new DatabaseServiceClass() });
 
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await table.create(apiContext);
@@ -544,7 +548,7 @@ test.describe(
         );
 
         await expect(
-          page.locator(`.ant-table-cell ${descriptionBoxReadOnly}`)
+          page.locator(`td ${descriptionBoxReadOnly}`)
         ).toContainText('Playwright Database Schema description.');
 
         // Verify Owners
@@ -557,7 +561,7 @@ test.describe(
         ).toBeVisible();
 
         await expect(
-          page.getByRole('link', { name: team.responseData?.['displayName'] })
+          page.getByTestId(team.responseData?.['displayName'])
         ).toBeVisible();
 
         await page.getByTestId('column-display-name').click();
@@ -599,7 +603,9 @@ test.describe(
     test('Database Schema', async ({ page, browser }) => {
       test.slow(true);
 
-      const table = new TableClass();
+      // Navigates service → database → schema; the shared listing pollutes
+      // every hop with other workers' rows.
+      const table = new TableClass({ service: new DatabaseServiceClass() });
 
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await table.create(apiContext);
@@ -683,7 +689,7 @@ test.describe(
         );
 
         await expect(
-          page.locator(`.ant-table-cell ${descriptionBoxReadOnly}`)
+          page.locator(`td ${descriptionBoxReadOnly}`)
         ).toContainText('Playwright Table description');
 
         // Go to Table Page
@@ -694,9 +700,11 @@ test.describe(
         await waitForAllLoadersToDisappear(page);
 
         // Verify Domain
-        await expect(page.getByTestId('domain-link')).toContainText(
-          domain.responseData.displayName
-        );
+        await expect(
+          page.getByTestId(
+            `domain-tag-${domain.responseData.fullyQualifiedName}`
+          )
+        ).toBeVisible();
 
         // Verify Owners
         await expect(
@@ -708,7 +716,7 @@ test.describe(
         ).toBeVisible();
 
         await expect(
-          page.getByRole('link', { name: team.responseData?.['displayName'] })
+          page.getByTestId(team.responseData?.['displayName'])
         ).toBeVisible();
 
         // Verify Tags
@@ -771,7 +779,8 @@ test.describe(
         await page.goto(
           `/glossary/${encodeURIComponent(
             testGlossaryTerm.responseData.fullyQualifiedName
-          )}`
+          )}`,
+          { waitUntil: 'domcontentloaded' }
         );
 
         // Wait for page to be fully loaded
@@ -782,36 +791,40 @@ test.describe(
         await page.getByTestId('add-domain').click();
         await waitForAllLoadersToDisappear(page);
 
-        // Verify checkboxes ARE visible (multi-select mode)
+        // Verify checkboxes ARE present (multi-select mode)
         await expect(
-          page.locator('.domain-selectable-tree .ant-tree-checkbox').first()
-        ).toBeVisible();
+          page
+            .getByTestId('domain-selectable-tree-popover')
+            .locator('[data-testid^="checkbox-"]')
+        ).not.toHaveCount(0);
 
         // Close the selector by clicking cancel btn
-        await page.getByTestId('cancelAssociatedTag').click();
+        await page.getByTestId('close-btn').click();
 
         // Wait for domain selector to be fully closed
-        await page.getByTestId('domain-selectable-tree').waitFor({
+        await page.getByTestId('domain-selectable-tree-search').waitFor({
           state: 'detached',
         });
 
         // Assign first domain (multi-select mode)
-        await assignDomainWidget(page, testDomain1.responseData, true);
+        await setDomain(page, testDomain1.responseData);
 
         // Assign second domain (should ADD to first, not replace)
-        await assignDomainWidget(page, testDomain2.responseData, true);
+        await setDomain(page, testDomain2.responseData, {
+          trigger: 'edit-domain',
+        });
 
         // Verify both domains are visible (multi-select mode allows multiple)
         // Use filter to find specific domain links
         await expect(
-          page
-            .getByTestId('domain-link')
-            .filter({ hasText: testDomain1.data.displayName })
+          page.getByTestId(
+            `domain-tag-${testDomain1.responseData.fullyQualifiedName}`
+          )
         ).toBeVisible();
         await expect(
-          page
-            .getByTestId('domain-link')
-            .filter({ hasText: testDomain2.data.displayName })
+          page.getByTestId(
+            `domain-tag-${testDomain2.responseData.fullyQualifiedName}`
+          )
         ).toBeVisible();
       } finally {
         await testGlossaryTerm.delete(apiContext);
@@ -820,6 +833,105 @@ test.describe(
         await testDomain2.delete(apiContext);
         await afterAction();
       }
+    });
+  }
+);
+
+test.describe(
+  `Data Product Domain Validation Rule Disabled`,
+  {
+    tag: '@dataAssetRules',
+  },
+  () => {
+    const assetDomain = new Domain();
+    const productDomain = new Domain();
+    const crossDomainDataProduct = new DataProduct([productDomain]);
+    const crossTable = new TableClass();
+    // Dedicated fixtures for the "Add Assets" picker test so its precondition
+    // (the Data Product starts with zero assets) is not affected by the
+    // asset-level assignment performed by the first test.
+    const pickerDataProduct = new DataProduct([productDomain]);
+    const pickerTable = new TableClass();
+
+    test.beforeAll('Setup cross-domain data', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await assetDomain.create(apiContext);
+      await productDomain.create(apiContext);
+      await crossDomainDataProduct.create(apiContext);
+      await crossTable.create(apiContext);
+      await pickerDataProduct.create(apiContext);
+      await pickerTable.create(apiContext);
+      // The picker table lives in a different domain than the Data Product.
+      await pickerTable.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/domains',
+            value: [{ id: assetDomain.responseData.id, type: 'domain' }],
+          },
+        ],
+      });
+      await afterAction();
+    });
+
+    test.afterAll('Cleanup cross-domain data', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await pickerTable.delete(apiContext);
+      await pickerDataProduct.delete(apiContext);
+      await crossTable.delete(apiContext);
+      await crossDomainDataProduct.delete(apiContext);
+      await productDomain.delete(apiContext);
+      await assetDomain.delete(apiContext);
+      await afterAction();
+    });
+
+    // With the "Data Product Domain Validation" rule disabled, the Data Product
+    // dropdown is no longer scoped to the asset's domain, so an asset can be
+    // assigned a Data Product that belongs to a different domain.
+    test('should allow assigning a Data Product from a different domain', async ({
+      page,
+    }) => {
+      await redirectToHomePage(page);
+      await crossTable.visitEntityPage(page);
+
+      // Asset belongs to assetDomain only.
+      await setDomain(page, assetDomain.responseData);
+
+      // The Data Product from productDomain can be assigned even though the
+      // asset is in assetDomain, because the domain validation rule is disabled
+      // and the dropdown lists Data Products across all domains.
+      await assignDataProduct(page, assetDomain.responseData, [
+        crossDomainDataProduct.responseData,
+      ]);
+
+      await expect(
+        page
+          .getByTestId('KnowledgePanel.DataProducts')
+          .getByTestId('data-products-list')
+          .getByTestId(
+            `data-product-${crossDomainDataProduct.responseData.fullyQualifiedName}`
+          )
+      ).toBeVisible();
+    });
+
+    // With the rule disabled, the "Add Assets" picker on a Data Product must
+    // surface assets from every domain, not only the Data Product's own domain,
+    // so a cross-domain asset can be added. This mirrors the asset-side fix from
+    // the reverse direction (#32297).
+    test('should list cross-domain assets in the Add Assets picker', async ({
+      page,
+    }) => {
+      await redirectToHomePage(page);
+      await pickerDataProduct.visitEntityPage(page);
+
+      // pickerTable belongs to assetDomain while pickerDataProduct belongs to
+      // productDomain; the helper fails if the card never appears in the picker.
+      await addAssetsToDataProduct(
+        page,
+        pickerDataProduct.responseData.fullyQualifiedName,
+        [pickerTable]
+      );
     });
   }
 );

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
-import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
+import { AssetsOfEntity } from '../../../enums/Assets.enum';
 import { AssetSelectionDrawer } from './AssetSelectionDrawer';
 import { useAssetSelectionState } from './useAssetSelectionState';
 
@@ -50,7 +50,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       }) => (
         <div data-testid={testId}>
           {children}
-          <button data-testid="drawer-close-icon" onClick={onClose} />
+          <button
+            aria-label="drawer-close-icon"
+            data-testid="drawer-close-icon"
+            onClick={onClose}
+          />
         </div>
       ),
       Content: ({ children }: { children: React.ReactNode }) => (

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { StateValue } from '../components/Settings/Services/AddIngestion/Steps/ScheduleInterval.interface';
+import { StateValue } from '../components/Settings/Services/AddIngestion/Steps/ScheduleInterval.types';
 
 export const mockOldState1: StateValue = {
   selectedPeriod: 'custom',

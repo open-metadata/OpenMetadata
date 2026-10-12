@@ -9,3 +9,4 @@ Every OpenMetadata-owned environment variable is `OM_`-prefixed and declared as 
 | `OM_PYDANTIC_DEFER_BUILD` | bool | `True` | Build pydantic model schemas lazily on first use instead of at import, cutting import RSS. Read directly by the generated-model base class for import-safety; declared here for documentation and enforcement. |
 | `OM_SAS_VERIFY_SSL` | bool | `True` | Verify TLS certificates when calling the SAS Information Catalog. Disable only for dev deployments with self-signed certs. |
 | `OM_SNOWFLAKE_SCHEMA_COLUMNS_CACHE_SIZE` | int | `2` | LRU cache size for per-schema column reflection; caps memory on pathologically wide schemas that can OOM small pods. |
+| `OM_SNOWFLAKE_SEMANTIC_CATALOG_CACHE_SIZE` | int | `2` | Per-thread LRU cache size for the schema-wide semantic view catalog (dimensions/facts/metrics). Bounds memory on schemas with very many semantic objects; total retained schemas is this value per worker thread. |

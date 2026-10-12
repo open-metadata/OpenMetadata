@@ -401,7 +401,7 @@ describe('ImportOntologyModal', () => {
     });
 
     it('should show the validating state while the dry run is in flight', async () => {
-      let resolveValidation: (value: unknown) => void = () => undefined;
+      let resolveValidation: (value: unknown) => void = (_value) => undefined;
       mockImport.mockReturnValueOnce(
         new Promise((resolve) => {
           resolveValidation = resolve;

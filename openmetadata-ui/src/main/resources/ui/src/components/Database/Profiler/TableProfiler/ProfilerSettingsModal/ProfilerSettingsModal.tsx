@@ -14,22 +14,20 @@
 import { PlusOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
-  Button,
-  Drawer,
-  Input,
-  InputNumber,
-  Select,
-  Space,
-  Switch,
-  TreeSelect,
+  Box,
+  Button as CoreButton,
+  Grid,
+  SlideoutMenu,
+  Toggle,
   Typography,
-} from 'antd';
+} from '@openmetadata/ui-core-components';
+import { Button, Input, InputNumber, Select, TreeSelect } from 'antd';
 import Form from 'antd/lib/form';
 import { FormProps, List } from 'antd/lib/form/Form';
-import { Col, Row } from 'antd/lib/grid';
+import { getLayoutGutter } from '../../../../../utils/common/layout.utils';
+
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import 'codemirror/addon/fold/foldgutter.css';
 import { isEmpty, isEqual, isNil, isUndefined, pick, startCase } from 'lodash';
 import {
   lazy,
@@ -41,13 +39,12 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CloseIcon } from '../../../../../assets/svg/close.svg';
 import { ReactComponent as IconDelete } from '../../../../../assets/svg/ic-delete.svg';
 import {
   DEFAULT_INCLUDE_PROFILE,
   INTERVAL_TYPE_OPTIONS,
   INTERVAL_UNIT_OPTIONS,
-  PROFILER_METRIC,
+  MIN_PROFILE_SAMPLE,
   PROFILER_MODAL_LABEL_STYLE,
   PROFILE_SAMPLE_OPTIONS,
   SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL,
@@ -65,6 +62,7 @@ import {
   putTableProfileConfig,
 } from '../../../../../rest/tableAPI';
 import { reducerWithoutAction } from '../../../../../utils/ObjectUtils';
+import profilerMetricsClassBase from '../../../../../utils/ProfilerMetricsClassBase';
 import {
   showErrorToast,
   showSuccessToast,
@@ -82,6 +80,10 @@ import {
 const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../../../SchemaEditor/SchemaEditor'))
 );
+
+// Legacy dropdowns must stay inside the modal's focus and accessibility boundary.
+const getPopupContainer = (triggerNode: HTMLElement) =>
+  triggerNode.parentElement ?? document.body;
 
 const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   tableId,
@@ -104,7 +106,6 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       excludeCol: [],
       includeCol: DEFAULT_INCLUDE_PROFILE,
       enablePartition: false,
-      partitionData: undefined,
       selectedProfileSampleType: ProfileSampleType.Percentage,
     }),
     []
@@ -136,12 +137,13 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
     return { columnOptions, columnWithAllOption };
   }, [columns]);
   const metricsOptions = useMemo(() => {
+    const profilerMetrics = profilerMetricsClassBase.getProfilerMetricOptions();
     const metricsOptions = [
       {
         title: t('label.all'),
         value: 'all',
         key: 'all',
-        children: PROFILER_METRIC.map((metric) => ({
+        children: profilerMetrics.map((metric) => ({
           title: startCase(metric),
           value: metric,
           key: metric,
@@ -189,30 +191,27 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
     const staticConfig = profileSampleConfig?.config;
     const profileSample = staticConfig?.profileSample;
     const profileSampleType = staticConfig?.profileSampleType;
-    handleStateChange({
-      sqlQuery: profileQuery ?? '',
-      profileSample: profileSample,
-      excludeCol: excludeColumns ?? [],
-      selectedProfileSampleType: profileSampleType,
-      sampleDataCount,
-    });
-    form.setFieldsValue({
-      sampleDataCount: sampleDataCount ?? initialState.sampleDataCount,
-    });
 
-    form.setFieldsValue({
-      profileSampleType,
-      profileSamplePercentage:
-        profileSample && profileSampleType === ProfileSampleType.Percentage
-          ? profileSample
-          : undefined,
-      profileSampleRows:
-        profileSample && profileSampleType === ProfileSampleType.Rows
-          ? profileSample
-          : undefined,
-    });
+    const applyProfileSampleFields = () => {
+      form.setFieldsValue({
+        profileSampleType,
+        profileSamplePercentage:
+          !isNil(profileSample) &&
+          profileSampleType === ProfileSampleType.Percentage
+            ? profileSample
+            : undefined,
+        profileSampleRows:
+          !isNil(profileSample) && profileSampleType === ProfileSampleType.Rows
+            ? profileSample
+            : undefined,
+      });
+    };
 
-    if (includeColumns && includeColumns?.length > 0) {
+    const applyIncludeColumns = () => {
+      if (!includeColumns || includeColumns.length === 0) {
+        return;
+      }
+
       const includeColValue = includeColumns.map((col) => {
         if (
           isUndefined(col.metrics) ||
@@ -227,8 +226,13 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       handleStateChange({
         includeCol: includeColValue,
       });
-    }
-    if (partitioning) {
+    };
+
+    const applyPartitioning = () => {
+      if (!partitioning) {
+        return;
+      }
+
       handleStateChange({
         enablePartition: partitioning.enablePartitioning || false,
       });
@@ -236,7 +240,22 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       form.setFieldsValue({
         ...partitioning,
       });
-    }
+    };
+
+    handleStateChange({
+      sqlQuery: profileQuery ?? '',
+      profileSample: profileSample,
+      excludeCol: excludeColumns ?? [],
+      selectedProfileSampleType: profileSampleType,
+      sampleDataCount,
+    });
+    form.setFieldsValue({
+      sampleDataCount: sampleDataCount ?? initialState.sampleDataCount,
+    });
+
+    applyProfileSampleFields();
+    applyIncludeColumns();
+    applyPartitioning();
 
     Promise.resolve();
   };
@@ -285,61 +304,80 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
 
   const handleSave: FormProps['onFinish'] = useCallback(
     async (data: ProfilerForm) => {
-      const {
-        excludeCol,
-        sqlQuery,
-        includeCol,
-        enablePartition,
-        partitionData,
-      } = state;
+      const buildPartitioning = (): TableProfilerConfig['partitioning'] => {
+        if (!state.enablePartition) {
+          return undefined;
+        }
+
+        // Read straight from the form: the loaded config is pushed into the
+        // form with `setFieldsValue`, which never fires `onValuesChange`, so
+        // any state copy is stale until the user edits a partition field.
+        const partitionData = pick(
+          data,
+          'partitionColumnName',
+          'partitionIntegerRangeEnd',
+          'partitionIntegerRangeStart',
+          'partitionInterval',
+          'partitionIntervalType',
+          'partitionIntervalUnit',
+          'partitionValues'
+        );
+
+        return {
+          ...partitionData,
+          partitionValues:
+            data.partitionIntervalType === PartitionIntervalTypes.ColumnValue
+              ? partitionData.partitionValues?.filter(
+                  (value) => !isEmpty(value)
+                )
+              : undefined,
+          enablePartitioning: state.enablePartition,
+        };
+      };
+
+      const buildProfileConfig = (): TableProfilerConfig => {
+        const { excludeCol, sqlQuery, includeCol } = state;
+        const {
+          profileSamplePercentage,
+          profileSampleRows,
+          profileSampleType,
+          sampleDataCount,
+        } = data;
+
+        const profileSampleValue =
+          profileSampleType === ProfileSampleType.Percentage
+            ? profileSamplePercentage
+            : profileSampleRows;
+        const profileSample = profileSampleType
+          ? profileSampleValue
+          : undefined;
+
+        return {
+          excludeColumns: excludeCol.length > 0 ? excludeCol : undefined,
+          profileQuery: !isEmpty(sqlQuery) ? sqlQuery : undefined,
+          profileSampleConfig:
+            !isNil(profileSampleType) && !isNil(profileSample)
+              ? {
+                  sampleConfigType: SampleConfigType.Static,
+                  config: {
+                    profileSample,
+                    profileSampleType,
+                  },
+                }
+              : undefined,
+          includeColumns: !isEqual(includeCol, DEFAULT_INCLUDE_PROFILE)
+            ? getIncludesColumns()
+            : undefined,
+          partitioning: buildPartitioning(),
+          sampleDataCount,
+        };
+      };
 
       setIsLoading(true);
-      const {
-        profileSamplePercentage,
-        profileSampleRows,
-        profileSampleType,
-        sampleDataCount,
-      } = data;
-
-      const profileSample = profileSampleType
-        ? profileSampleType === ProfileSampleType.Percentage
-          ? profileSamplePercentage
-          : profileSampleRows
-        : undefined;
-
-      const profileConfig: TableProfilerConfig = {
-        excludeColumns: excludeCol.length > 0 ? excludeCol : undefined,
-        profileQuery: !isEmpty(sqlQuery) ? sqlQuery : undefined,
-        profileSampleConfig:
-          profileSampleType && profileSample
-            ? {
-                sampleConfigType: SampleConfigType.Static,
-                config: {
-                  profileSample,
-                  profileSampleType,
-                },
-              }
-            : undefined,
-        includeColumns: !isEqual(includeCol, DEFAULT_INCLUDE_PROFILE)
-          ? getIncludesColumns()
-          : undefined,
-        partitioning: enablePartition
-          ? {
-              ...partitionData,
-              partitionValues:
-                partitionIntervalType === PartitionIntervalTypes.ColumnValue
-                  ? partitionData?.partitionValues?.filter(
-                      (value) => !isEmpty(value)
-                    )
-                  : undefined,
-              enablePartitioning: enablePartition,
-            }
-          : undefined,
-        sampleDataCount,
-      };
+      const profileConfig = buildProfileConfig();
       try {
-        const data = await putTableProfileConfig(tableId, profileConfig);
-        if (data) {
+        const response = await putTableProfileConfig(tableId, profileConfig);
+        if (response) {
           showSuccessToast(
             t('server.update-entity-success', {
               entity: t('label.profile-config'),
@@ -414,16 +452,6 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
 
       handleStateChange({
         includeCol: data.includeColumns,
-        partitionData: pick(
-          data,
-          'partitionColumnName',
-          'partitionIntegerRangeEnd',
-          'partitionIntegerRangeStart',
-          'partitionInterval',
-          'partitionIntervalType',
-          'partitionIntervalUnit',
-          'partitionValues'
-        ),
       });
     },
     []
@@ -450,18 +478,22 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
 
   const drawerFooter = (
     <div className="drawer-footer-actions">
-      <Space size={16}>
-        <Button type="link" onClick={handleCancel}>
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal"
+        gap={4}
+        itemClassName="layout-space-item">
+        <CoreButton color="secondary" onPress={handleCancel}>
           {t('label.cancel')}
-        </Button>
-        <Button
+        </CoreButton>
+        <CoreButton
           form="profiler-setting-form"
-          htmlType="submit"
-          loading={isLoading}
-          type="primary">
+          isLoading={isLoading}
+          type="submit">
           {t('label.save')}
-        </Button>
-      </Space>
+        </CoreButton>
+      </Box>
     </div>
   );
 
@@ -471,8 +503,13 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
     </div>
   ) : (
     <div className="profiler-settings-drawer-content new-form-style">
-      <Row gutter={[16, 16]}>
-        <Col data-testid="profile-sample-container" span={24}>
+      <Grid
+        className="layout-row layout-grid"
+        style={{ ...getLayoutGutter(16, 16) }}>
+        <Grid.Item
+          className="layout-column"
+          data-testid="profile-sample-container"
+          span={24}>
           <Form<ProfilerForm>
             className="profiler-settings-form new-form-style"
             data-testid="configure-ingestion-container"
@@ -490,9 +527,11 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
               name="profileSampleType">
               <Select
                 allowClear
+                // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the first field when the settings modal opens
                 autoFocus
                 className="w-full"
                 data-testid="profile-sample"
+                getPopupContainer={getPopupContainer}
                 options={PROFILE_SAMPLE_OPTIONS}
                 placeholder={t('label.please-select-entity', {
                   entity: t('label.profile-sample-type', {
@@ -512,6 +551,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                 name="profileSamplePercentage">
                 <SliderWithInput
                   className="p-x-xs"
+                  min={MIN_PROFILE_SAMPLE}
                   value={state?.profileSample}
                   onChange={handleProfileSample}
                 />
@@ -527,7 +567,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                 <InputNumber
                   className="w-full"
                   data-testid="metric-number-input"
-                  min={0}
+                  min={MIN_PROFILE_SAMPLE}
                   placeholder={t('label.please-enter-value', {
                     name: t('label.row-count-lowercase'),
                   })}
@@ -548,8 +588,11 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
               />
             </Form.Item>
           </Form>
-        </Col>
-        <Col data-testid="sql-editor-container" span={24}>
+        </Grid.Item>
+        <Grid.Item
+          className="layout-column"
+          data-testid="sql-editor-container"
+          span={24}>
           <p className="m-b-xs">
             {t('label.profile-sample-type', {
               type: t('label.query'),
@@ -564,17 +607,19 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
             value={state?.sqlQuery ?? ''}
             onChange={handleCodeMirrorChange}
           />
-        </Col>
-        <Col data-testid="exclude-column-container" span={24}>
-          <Typography.Paragraph>
-            {t('message.enable-column-profile')}
-          </Typography.Paragraph>
+        </Grid.Item>
+        <Grid.Item
+          className="layout-column"
+          data-testid="exclude-column-container"
+          span={24}>
+          <Typography as="p">{t('message.enable-column-profile')}</Typography>
           <p className="text-xs m-b-xss">{t('label.exclude')}:</p>
           <Select
             allowClear
             className="w-full"
             data-testid="exclude-column-select"
             dropdownStyle={{ maxHeight: 200, overflowY: 'auto' }}
+            getPopupContainer={getPopupContainer}
             mode="multiple"
             options={columnOptions}
             placeholder={t('label.select-column-plural-to-exclude')}
@@ -582,9 +627,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
             value={state?.excludeCol}
             onChange={handleExcludeCol}
           />
-        </Col>
+        </Grid.Item>
 
-        <Col span={24}>
+        <Grid.Item className="layout-column" span={24}>
           <Form<ProfilerForm>
             autoComplete="off"
             className="new-form-style"
@@ -620,8 +665,11 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                     })}
                     data-testid="include-column-container">
                     {fields.map(({ key, name, ...restField }) => (
-                      <Row gutter={16} key={key}>
-                        <Col span={12}>
+                      <Grid
+                        className="layout-row layout-grid"
+                        key={key}
+                        style={{ ...getLayoutGutter(16) }}>
+                        <Grid.Item className="layout-column" span={12}>
                           <Form.Item
                             className="w-full m-b-md"
                             {...restField}
@@ -631,6 +679,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                               showSearch
                               className="w-full"
                               data-testid="include-column-select"
+                              getPopupContainer={getPopupContainer}
                               options={columnWithAllOption}
                               placeholder={t(
                                 'label.select-column-plural-to-include'
@@ -638,8 +687,8 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                               size="middle"
                             />
                           </Form.Item>
-                        </Col>
-                        <Col className="flex" span={12}>
+                        </Grid.Item>
+                        <Grid.Item className="layout-column flex" span={12}>
                           <Form.Item
                             className="w-full m-b-md"
                             {...restField}
@@ -647,6 +696,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                             <TreeSelect
                               treeCheckable
                               className="w-full"
+                              getPopupContainer={getPopupContainer}
                               maxTagCount={2}
                               placeholder={t('label.please-select')}
                               showCheckedStrategy="SHOW_PARENT"
@@ -665,27 +715,35 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                             type="text"
                             onClick={() => remove(name)}
                           />
-                        </Col>
-                      </Row>
+                        </Grid.Item>
+                      </Grid>
                     ))}
                   </div>
                 </>
               )}
             </List>
-            <Row gutter={[16, 16]}>
-              <Col span={24}>
-                <Space align="center" size={12}>
+            <Grid
+              className="layout-row layout-grid"
+              style={{ ...getLayoutGutter(16, 16) }}>
+              <Grid.Item className="layout-column" span={24}>
+                <Box
+                  inline
+                  align="center"
+                  className="layout-space layout-space-horizontal"
+                  gap={3}
+                  itemClassName="layout-space-item">
                   <p>{t('label.enable-partition')}</p>
                   <Form.Item className="m-b-0" name="enablePartitioning">
-                    <Switch
-                      checked={state?.enablePartition}
+                    <Toggle
                       data-testid="enable-partition-switch"
+                      isSelected={state?.enablePartition}
+                      size="sm"
                       onChange={handleEnablePartition}
                     />
                   </Form.Item>
-                </Space>
-              </Col>
-              <Col span={12}>
+                </Box>
+              </Grid.Item>
+              <Grid.Item className="layout-column" span={12}>
                 <Form.Item
                   className="m-b-0"
                   label={
@@ -706,13 +764,14 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                     className="w-full"
                     data-testid="interval-type"
                     disabled={!state?.enablePartition}
+                    getPopupContainer={getPopupContainer}
                     options={INTERVAL_TYPE_OPTIONS}
                     placeholder={t('message.select-interval-type')}
                     size="middle"
                   />
                 </Form.Item>
-              </Col>
-              <Col span={12}>
+              </Grid.Item>
+              <Grid.Item className="layout-column" span={12}>
                 <Form.Item
                   className="m-b-0"
                   label={
@@ -740,16 +799,17 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                     className="w-full"
                     data-testid="column-name"
                     disabled={!state?.enablePartition}
+                    getPopupContainer={getPopupContainer}
                     options={partitionColumnOptions}
                     placeholder={t('message.select-column-name')}
                     size="middle"
                   />
                 </Form.Item>
-              </Col>
+              </Grid.Item>
               {partitionIntervalType &&
               TIME_BASED_PARTITION.includes(partitionIntervalType) ? (
                 <>
-                  <Col span={12}>
+                  <Grid.Item className="layout-column" span={12}>
                     <Form.Item
                       className="m-b-0"
                       label={
@@ -773,8 +833,8 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                         size="middle"
                       />
                     </Form.Item>
-                  </Col>
-                  <Col span={12}>
+                  </Grid.Item>
+                  <Grid.Item className="layout-column" span={12}>
                     <Form.Item
                       className="m-b-0"
                       label={
@@ -797,17 +857,18 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                         className="w-full"
                         data-testid="select-interval-unit"
                         disabled={!state?.enablePartition}
+                        getPopupContainer={getPopupContainer}
                         options={INTERVAL_UNIT_OPTIONS}
                         placeholder={t('message.select-interval-unit')}
                         size="middle"
                       />
                     </Form.Item>
-                  </Col>
+                  </Grid.Item>
                 </>
               ) : null}
               {PartitionIntervalTypes.IntegerRange === partitionIntervalType ? (
                 <>
-                  <Col span={12}>
+                  <Grid.Item className="layout-column" span={12}>
                     <Form.Item
                       className="m-b-0"
                       label={
@@ -841,8 +902,8 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                         size="middle"
                       />
                     </Form.Item>
-                  </Col>
-                  <Col span={12}>
+                  </Grid.Item>
+                  <Grid.Item className="layout-column" span={12}>
                     <Form.Item
                       className="m-b-0"
                       label={
@@ -876,12 +937,12 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                         size="middle"
                       />
                     </Form.Item>
-                  </Col>
+                  </Grid.Item>
                 </>
               ) : null}
 
               {PartitionIntervalTypes.ColumnValue === partitionIntervalType ? (
-                <Col span={24}>
+                <Grid.Item className="layout-column" span={24}>
                   <List name="partitionValues">
                     {(fields, { add, remove }) => (
                       <>
@@ -899,8 +960,11 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                         </div>
 
                         {fields.map(({ key, name, ...restField }) => (
-                          <Row gutter={16} key={key}>
-                            <Col className="flex" span={24}>
+                          <Grid
+                            className="layout-row layout-grid"
+                            key={key}
+                            style={{ ...getLayoutGutter(16) }}>
+                            <Grid.Item className="layout-column flex" span={24}>
                               <Form.Item
                                 className="w-full m-b-md"
                                 {...restField}
@@ -937,44 +1001,42 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                                 type="text"
                                 onClick={() => remove(name)}
                               />
-                            </Col>
-                          </Row>
+                            </Grid.Item>
+                          </Grid>
                         ))}
                       </>
                     )}
                   </List>
-                </Col>
+                </Grid.Item>
               ) : null}
-            </Row>
+            </Grid>
           </Form>
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
     </div>
   );
 
   return (
-    <Drawer
-      destroyOnClose
-      className="custom-drawer-style profiler-settings-drawer"
-      closable={false}
+    <SlideoutMenu
+      aria-label={t('label.setting-plural')}
+      // Keep the overlay above positioned chart labels without covering form popovers.
+      className="profiler-settings-drawer tw:min-w-96 tw:z-50"
       data-testid="profiler-settings-modal"
-      extra={
-        <Button
-          className="drawer-close-icon flex-center"
-          icon={<CloseIcon />}
-          type="link"
-          onClick={handleCancel}
-        />
-      }
-      footer={drawerFooter}
-      maskClosable={false}
-      open={visible}
-      placement="right"
-      title={t('label.setting-plural')}
+      dialogClassName="tw:gap-0"
+      isDismissable={false}
+      isOpen={visible}
       width="40%"
-      onClose={handleCancel}>
-      {renderContent}
-    </Drawer>
+      onOpenChange={(isOpen) => !isOpen && handleCancel()}>
+      <SlideoutMenu.Header onClose={handleCancel}>
+        <Typography size="text-md" weight="semibold">
+          {t('label.setting-plural')}
+        </Typography>
+      </SlideoutMenu.Header>
+      <SlideoutMenu.Content className="tw:py-6">
+        {renderContent}
+      </SlideoutMenu.Content>
+      <SlideoutMenu.Footer>{drawerFooter}</SlideoutMenu.Footer>
+    </SlideoutMenu>
   );
 };
 

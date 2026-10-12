@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Divider, Space, Typography } from 'antd';
+import { Box, Divider, Typography } from '@openmetadata/ui-core-components';
+
 import { get, isUndefined } from 'lodash';
 import { lazy, Suspense } from 'react';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
@@ -22,6 +23,7 @@ import type {
   CustomPropertyProps,
   ExtentionEntitiesKeys,
 } from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
+import { EntityDetailWidgetSkeleton } from '../components/common/Skeleton/EntityDetailWidgetSkeleton/EntityDetailWidgetSkeleton.component';
 import type { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import type { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
@@ -69,7 +71,7 @@ const CommonWidgets = withSuspenseFallback(
       (module) => ({ default: module.CommonWidgets })
     )
   ),
-  TAB_CONTENT_FALLBACK
+  <EntityDetailWidgetSkeleton />
 );
 
 const CustomPropertyTable = withSuspenseFallback(
@@ -87,7 +89,7 @@ const SchemaTable = withSuspenseFallback(
   lazy(
     () => import('../components/Database/SchemaTable/SchemaTable.component')
   ),
-  TAB_CONTENT_FALLBACK
+  <EntityDetailWidgetSkeleton lineCount={5} />
 );
 
 const AssetHealthWidget = withSuspenseFallback(
@@ -99,11 +101,11 @@ const AssetHealthWidget = withSuspenseFallback(
   )
 );
 
+const importSampleDataTable = () =>
+  import('../components/Database/SampleDataTable/SampleDataTable.component');
+
 const SampleDataTableComponent = withSuspenseFallback(
-  lazy(
-    () =>
-      import('../components/Database/SampleDataTable/SampleDataTable.component')
-  ),
+  lazy(importSampleDataTable),
   TAB_CONTENT_FALLBACK
 );
 
@@ -121,35 +123,50 @@ const ContractTab = withSuspenseFallback(
   TAB_CONTENT_FALLBACK
 );
 
+const importDataObservabilityTab = () =>
+  import(
+    '../components/Database/Profiler/DataObservability/DataObservabilityTab'
+  );
+
 const DataObservabilityTab = withSuspenseFallback(
-  lazy(
-    () =>
-      import(
-        '../components/Database/Profiler/DataObservability/DataObservabilityTab'
-      )
+  lazy(importDataObservabilityTab),
+  TAB_CONTENT_FALLBACK
+);
+
+const importEntityLineageTab = () =>
+  import('../components/Lineage/EntityLineageTab/EntityLineageTab');
+
+const EntityLineageTab = withSuspenseFallback(
+  lazy(() =>
+    importEntityLineageTab().then((module) => ({
+      default: module.EntityLineageTab,
+    }))
   ),
   TAB_CONTENT_FALLBACK
 );
 
-const EntityLineageTab = withSuspenseFallback(
-  lazy(() =>
-    import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
-      (module) => ({ default: module.EntityLineageTab })
-    )
-  ),
-  TAB_CONTENT_FALLBACK
-);
+/**
+ * The product tour highlights elements rendered inside these lazy tabs, and react-tour closes
+ * itself when a step's selector is still missing once its fixed stepWaitTimer elapses. Loading
+ * the chunks before the tour starts keeps a slow chunk download from ending the tour.
+ */
+export const preloadTourTableTabs = () =>
+  Promise.allSettled([
+    importSampleDataTable(),
+    importDataObservabilityTab(),
+    importEntityLineageTab(),
+  ]);
 
 const TableConstraints = withSuspenseFallback(
   lazy(
     () =>
       import('../pages/TableDetailsPageV1/TableConstraints/TableConstraints')
   ),
-  TAB_CONTENT_FALLBACK
+  <EntityDetailWidgetSkeleton lineCount={5} />
 );
 
 const KnowledgeGraph = withSuspenseFallback(
-  lazy(() => import('../components/KnowledgeGraph3D/KnowledgeGraph3D')),
+  lazy(() => import('../components/discovery/knowledge-graph/KnowledgeGraph')),
   TAB_CONTENT_FALLBACK
 );
 
@@ -164,7 +181,7 @@ const FrequentlyJoinedTables = withSuspenseFallback(
       '../pages/TableDetailsPageV1/FrequentlyJoinedTables/FrequentlyJoinedTables.component'
     ).then((module) => ({ default: module.FrequentlyJoinedTables }))
   ),
-  TAB_CONTENT_FALLBACK
+  <EntityDetailWidgetSkeleton lineCount={5} />
 );
 
 const PartitionedKeys = withSuspenseFallback(
@@ -173,11 +190,82 @@ const PartitionedKeys = withSuspenseFallback(
       '../pages/TableDetailsPageV1/PartitionedKeys/PartitionedKeys.component'
     ).then((module) => ({ default: module.PartitionedKeys }))
   ),
-  TAB_CONTENT_FALLBACK
+  <EntityDetailWidgetSkeleton lineCount={5} />
 );
+
+const TableAliases = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../pages/TableDetailsPageV1/TableAliases/TableAliases.component'
+    ).then((module) => ({ default: module.TableAliases }))
+  ),
+  <EntityDetailWidgetSkeleton lineCount={5} />
+);
+
+const isDbtTabHidden = (
+  tableDetails?: TableDetailPageTabProps['tableDetails']
+): boolean =>
+  !(
+    tableDetails?.dataModel?.sql ||
+    tableDetails?.dataModel?.rawSql ||
+    tableDetails?.dataModel?.path ||
+    tableDetails?.dataModel?.dbtSourceProject
+  );
+
+const getSampleDataTabChildren = ({
+  isTourOpen,
+  viewSampleDataPermission,
+  deleted,
+  tableDetails,
+  tablePermissions,
+}: Pick<
+  TableDetailPageTabProps,
+  | 'isTourOpen'
+  | 'viewSampleDataPermission'
+  | 'deleted'
+  | 'tableDetails'
+  | 'tablePermissions'
+>) =>
+  !isTourOpen && !viewSampleDataPermission ? (
+    <ErrorPlaceHolder
+      className="border-none"
+      permissionValue={t('label.view-entity', {
+        entity: t('label.sample-data'),
+      })}
+      type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+    />
+  ) : (
+    <SampleDataTableComponent
+      isTableDeleted={deleted}
+      owners={tableDetails?.owners ?? []}
+      permissions={tablePermissions}
+      tableId={tableDetails?.id ?? ''}
+    />
+  );
+
+const getTableQueriesTabChildren = ({
+  viewQueriesPermission,
+  deleted,
+  tableDetails,
+}: Pick<
+  TableDetailPageTabProps,
+  'viewQueriesPermission' | 'deleted' | 'tableDetails'
+>) =>
+  viewQueriesPermission ? (
+    <TableQueries isTableDeleted={deleted} tableId={tableDetails?.id ?? ''} />
+  ) : (
+    <ErrorPlaceHolder
+      className="border-none"
+      permissionValue={t('label.view-entity', {
+        entity: t('label.query-plural'),
+      })}
+      type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+    />
+  );
 
 export const getTableDetailPageBaseTabs = ({
   queryCount,
+  isQueryCountLoading,
   isTourOpen,
   tablePermissions,
   activeTab,
@@ -246,23 +334,13 @@ export const getTableDetailPageBaseTabs = ({
       ),
 
       key: EntityTabs.SAMPLE_DATA,
-      children:
-        !isTourOpen && !viewSampleDataPermission ? (
-          <ErrorPlaceHolder
-            className="border-none"
-            permissionValue={t('label.view-entity', {
-              entity: t('label.sample-data'),
-            })}
-            type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-          />
-        ) : (
-          <SampleDataTableComponent
-            isTableDeleted={deleted}
-            owners={tableDetails?.owners ?? []}
-            permissions={tablePermissions}
-            tableId={tableDetails?.id ?? ''}
-          />
-        ),
+      children: getSampleDataTabChildren({
+        isTourOpen,
+        viewSampleDataPermission,
+        deleted,
+        tableDetails,
+        tablePermissions,
+      }),
     },
     {
       label: (
@@ -270,6 +348,7 @@ export const getTableDetailPageBaseTabs = ({
           count={queryCount}
           id={EntityTabs.TABLE_QUERIES}
           isActive={activeTab === EntityTabs.TABLE_QUERIES}
+          isLoading={isQueryCountLoading}
           name={get(
             labelMap,
             EntityTabs.TABLE_QUERIES,
@@ -278,20 +357,11 @@ export const getTableDetailPageBaseTabs = ({
         />
       ),
       key: EntityTabs.TABLE_QUERIES,
-      children: viewQueriesPermission ? (
-        <TableQueries
-          isTableDeleted={deleted}
-          tableId={tableDetails?.id ?? ''}
-        />
-      ) : (
-        <ErrorPlaceHolder
-          className="border-none"
-          permissionValue={t('label.view-entity', {
-            entity: t('label.query-plural'),
-          })}
-          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-        />
-      ),
+      children: getTableQueriesTabChildren({
+        viewQueriesPermission,
+        deleted,
+        tableDetails,
+      }),
     },
     {
       label: (
@@ -347,7 +417,6 @@ export const getTableDetailPageBaseTabs = ({
       children: (
         <Suspense fallback={TAB_CONTENT_FALLBACK}>
           <KnowledgeGraph
-            depth={1}
             entity={
               tableDetails
                 ? {
@@ -369,12 +438,7 @@ export const getTableDetailPageBaseTabs = ({
           name={get(labelMap, EntityTabs.DBT, t('label.dbt-lowercase'))}
         />
       ),
-      isHidden: !(
-        tableDetails?.dataModel?.sql ||
-        tableDetails?.dataModel?.rawSql ||
-        tableDetails?.dataModel?.path ||
-        tableDetails?.dataModel?.dbtSourceProject
-      ),
+      isHidden: isDbtTabHidden(tableDetails),
       key: EntityTabs.DBT,
       children: (
         <QueryViewer
@@ -384,31 +448,36 @@ export const getTableDetailPageBaseTabs = ({
             get(tableDetails, 'dataModel.rawSql', '')
           }
           title={
-            <Space className="p-y-xss" size="small">
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal p-y-xss"
+              gap={2}
+              itemClassName="layout-space-item">
               <div>
-                <Typography.Text className="text-grey-muted">
+                <Typography color="secondary">
                   {`${t('label.dbt-source-project')}: `}
-                </Typography.Text>
-                <Typography.Text data-testid="dbt-source-project-id">
+                </Typography>
+                <Typography data-testid="dbt-source-project-id">
                   {tableDetails?.dataModel?.dbtSourceProject ??
                     NO_DATA_PLACEHOLDER}
-                </Typography.Text>
+                </Typography>
               </div>
 
               <Divider
-                className="self-center vertical-divider"
-                type="vertical"
+                className="tw:mx-2 tw:h-[0.9em] tw:self-center"
+                orientation="vertical"
               />
 
               <div>
-                <Typography.Text className="text-grey-muted">
+                <Typography color="secondary">
                   {`${t('label.path')}: `}
-                </Typography.Text>
-                <Typography.Text>
+                </Typography>
+                <Typography className="tw:wrap-break-word">
                   {tableDetails?.dataModel?.path}
-                </Typography.Text>
+                </Typography>
               </div>
-            </Space>
+            </Box>
           }
         />
       ),
@@ -490,6 +559,8 @@ export const getTableWidgetFromKey = (
     return <FrequentlyJoinedTables />;
   } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.PARTITIONED_KEYS)) {
     return <PartitionedKeys />;
+  } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.TABLE_ALIASES)) {
+    return <TableAliases />;
   } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.ASSET_HEALTH)) {
     return <AssetHealthWidget />;
   } else {

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Optional, Union, cast
+from typing import Any, cast
 
 from metadata.ingestion.ometa.client import APIError
 from metadata.sdk.client import OpenMetadata
@@ -25,10 +25,10 @@ class Settings:
     updates. It never reads or writes other system setting types.
     """
 
-    _default_client: Optional[OMetaClient] = None  # noqa: UP045
+    _default_client: OMetaClient | None = None
 
     @classmethod
-    def use_client(cls, client: Union[OpenMetadata, OMetaClient]) -> None:  # noqa: UP007
+    def use_client(cls, client: OpenMetadata | OMetaClient) -> None:
         """Register a default client for settings calls."""
         cls._default_client = client.ometa if isinstance(client, OpenMetadata) else client
 
@@ -81,7 +81,7 @@ class Settings:
     def define_glossary_relation_type(
         cls,
         relation_type: dict[str, Any],
-    ) -> Optional[dict[str, Any]]:  # noqa: UP045
+    ) -> dict[str, Any] | None:
         """Register a glossary term relation type.
 
         Preserves the current ``relationTypes`` representation when building the

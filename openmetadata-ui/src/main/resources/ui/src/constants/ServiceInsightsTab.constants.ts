@@ -36,3 +36,8 @@ export const LIVE_CHARTS_LIST = [
 
 export const SERVICE_INSIGHTS_WORKFLOW_DEFINITION_NAME = 'AutoPilotWorkflow';
 export const NO_RUNS_STATUS = 'NO_RUNS';
+
+// The chart data stream closes with a payload-less frame — `COMPLETED` when the session ends, and
+// `FAILED` when the server could not fetch the data. Both carry empty lists for every field, so
+// they report nothing about the service rather than reporting that it has nothing.
+export const TERMINAL_CHART_STREAM_STATUSES = ['COMPLETED', 'FAILED'];

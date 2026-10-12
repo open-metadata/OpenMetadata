@@ -43,9 +43,14 @@ export interface CreateDatabaseService {
     /**
      * Owners of this database service.
      */
-    owners?:     EntityReference[];
-    serviceType: DatabaseServiceType;
-    style?:      Style;
+    owners?: EntityReference[];
+    /**
+     * Deployment attributes of this service: environment, region and deployment. Set once here
+     * rather than tagged onto every asset this service ingests.
+     */
+    serviceAttributes?: ServiceAttributes;
+    serviceType:        DatabaseServiceType;
+    style?:             Style;
     /**
      * Tags for this Database Service.
      */
@@ -70,7 +75,11 @@ export interface DatabaseConnection {
  *
  * Clickhouse Connection Config
  *
+ * ClickZetta Database Connection Config
+ *
  * Databricks Connection Config
+ *
+ * Databend Database Connection Config
  *
  * Db2 Connection Config
  *
@@ -174,6 +183,8 @@ export interface DatabaseConnection {
  *
  * QuestDB Connection Config
  *
+ * Salesforce Data 360 (formerly DataCloud) Connection Config
+ *
  * SAP BW/4HANA Database Connection Config
  */
 export interface Connection {
@@ -185,7 +196,12 @@ export interface Connection {
      * If using Metastore, Key-Value pairs that will be used to add configs to the SparkSession.
      */
     connectionArguments?: { [key: string]: any };
-    connectionOptions?:   { [key: string]: string };
+    /**
+     * Additional options appended to the Databend SQLAlchemy connection URL. For a non-TLS HTTP
+     * endpoint, such as the default self-hosted port 8000, set sslmode to disable. For a TLS
+     * endpoint, set sslmode to enable.
+     */
+    connectionOptions?: { [key: string]: string };
     /**
      * Cost per TiB for BigQuery usage
      */
@@ -196,6 +212,11 @@ export interface Connection {
     credentials?: GCPCredentials;
     /**
      * Regex to only include/exclude databases that matches the pattern.
+     *
+     * Regex to only include or exclude matching databases.
+     *
+     * Regex to include or exclude Databend catalogs. Only the `default` catalog is currently
+     * ingested.
      *
      * Regex to only include/exclude namespaces (sources/spaces) that match the pattern. In
      * Dremio Cloud, namespaces are mapped as databases.
@@ -208,7 +229,11 @@ export interface Connection {
      *
      * Host and port of the Clickhouse service.
      *
+     * Complete ClickZetta instance and service host, with an optional port.
+     *
      * Host and port of the Databricks service.
+     *
+     * Host and port of the Databend HTTP query service. The default self-hosted port is 8000.
      *
      * Host and port of the DB2 service.
      *
@@ -280,10 +305,13 @@ export interface Connection {
     /**
      * Option to include policy tags as part of column description.
      */
-    includePolicyTags?:       boolean;
-    sampleDataStorageConfig?: SampleDataStorageConfig;
+    includePolicyTags?: boolean;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
+     *
+     * Regex to only include or exclude matching schemas.
+     *
+     * Regex to include or exclude Databend databases.
      *
      * Regex to only include/exclude schemas that matches the pattern. System schemas
      * (information_schema, _statistics_, sys) are excluded by default.
@@ -330,6 +358,10 @@ export interface Connection {
     /**
      * Regex to only include/exclude tables that matches the pattern.
      *
+     * Regex to only include or exclude matching tables.
+     *
+     * Regex to include or exclude tables and views.
+     *
      * Regex to include/exclude FHIR resource types
      *
      * Regex to only include/exclude tables that match the pattern.
@@ -370,6 +402,12 @@ export interface Connection {
     /**
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
      * as the database name.
+     *
+     * ClickZetta workspace to ingest.
+     *
+     * Optional name to give to the database in OpenMetadata. If left blank, the Glue Catalog ID
+     * (your AWS account ID) is used. This only names the database in OpenMetadata, it does not
+     * select which Glue database to ingest.
      *
      * Optional name to give to the database in OpenMetadata. If left blank, we will use 'epic'
      * as the database name.
@@ -460,6 +498,8 @@ export interface Connection {
      *
      * Password to connect to Clickhouse.
      *
+     * Password to connect to Databend.
+     *
      * Password to connect to DB2.
      *
      * Password to connect to Druid.
@@ -524,6 +564,11 @@ export interface Connection {
      *
      * Username to connect to Clickhouse. This user should have privileges to read all the
      * metadata in Clickhouse.
+     *
+     * Username to connect to ClickZetta.
+     *
+     * Username to connect to Databend. The user must be able to read system and
+     * information_schema metadata.
      *
      * Username to connect to DB2. This user should have privileges to read all the metadata in
      * DB2.
@@ -641,6 +686,12 @@ export interface Connection {
      * restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion
      * attempts to scan all the schemas.
      *
+     * Optional schema restriction. When omitted, OpenMetadata attempts to scan all schemas.
+     *
+     * Optional Databend database to ingest. It is also used as the initial database of the
+     * connection. When omitted, the connection starts in the `default` database and all
+     * accessible Databend databases are scanned as OpenMetadata schemas.
+     *
      * databaseSchema of the data source. This is optional parameter, if you would like to
      * restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata
      * Ingestion attempts to scan all the databaseSchema.
@@ -670,6 +721,8 @@ export interface Connection {
      */
     secure?: boolean;
     /**
+     * Choose the ClickZetta authentication configuration.
+     *
      * Choose between different authentication types for Databricks.
      *
      * Choose Auth Config Type.
@@ -679,8 +732,36 @@ export interface Connection {
      * Choose how to authenticate with SAP SuccessFactors OData API.
      *
      * Choose between Dremio Cloud (SaaS) or Dremio Software (self-hosted) authentication.
+     *
+     * Credential the service principal uses to obtain Microsoft Entra ID access tokens for the
+     * Fabric SQL endpoint.
      */
     authType?: AuthenticationType | NoConfigAuthenticationTypes;
+    /**
+     * Protocol used to connect to ClickZetta.
+     *
+     * Protocol ( Connection Argument ) to connect to Presto.
+     */
+    protocol?: string;
+    /**
+     * Optional ClickZetta table or view used for usage and query-lineage extraction. Set this
+     * to information_schema.job_history for workspace-local native history or
+     * sys.information_schema.job_history for cross-workspace native history; the connector maps
+     * their native columns and scopes them to the configured workspace and schema. Custom
+     * tables or views must expose query_text, query_type, user_name, database_name,
+     * schema_name, start_time, end_time, duration, aborted, and cost columns.
+     *
+     * Table name to fetch the query history.
+     *
+     * Table name to fetch the query history. When set, this overrides the default
+     * 'mysql.general_log' (or 'mysql.slow_log' when 'useSlowLogs' is enabled). The custom table
+     * must expose columns compatible with the selected log path.
+     */
+    queryHistoryTable?: string;
+    /**
+     * ClickZetta virtual cluster used for metadata extraction.
+     */
+    virtualCluster?: string;
     /**
      * Catalog of the data source(Example: hive_metastore). This is optional parameter, if you
      * would like to restrict the metadata reading to a single catalog. When left blank,
@@ -708,14 +789,6 @@ export interface Connection {
      * Policy agent configuration for access control extraction.
      */
     policyAgentConfig?: PolicyAgentConfig;
-    /**
-     * Table name to fetch the query history.
-     *
-     * Table name to fetch the query history. When set, this overrides the default
-     * 'mysql.general_log' (or 'mysql.slow_log' when 'useSlowLogs' is enabled). The custom table
-     * must expose columns compatible with the selected log path.
-     */
-    queryHistoryTable?: string;
     /**
      * CLI Driver version to connect to DB2. If not provided, the latest version will be used.
      */
@@ -784,13 +857,22 @@ export interface Connection {
      */
     authMechanism?: AuthMechanismEnum;
     /**
-     * Enable SSL/TLS encryption for the MSSQL connection. When enabled, all data transmitted
-     * between the client and server will be encrypted.
+     * Request SSL/TLS encryption for the MSSQL connection. Honoured directly by mssql+pyodbc.
+     * mssql+pytds encrypts only when a CA certificate is supplied in SSL Configuration, and
+     * logs a warning otherwise. mssql+pymssql takes no TLS settings at all - encryption is
+     * decided by FreeTDS configuration.
      */
     encrypt?: boolean;
     /**
+     * Discover SQL Server synonyms and record them as alternate names (aliases) on the table
+     * they resolve to. Also enables alias resolution when building lineage.
+     */
+    includeSynonyms?: boolean;
+    /**
      * Trust the server certificate without validation. Set to false in production to validate
-     * server certificates against the certificate authority.
+     * server certificates against the certificate authority. On mssql+pytds the certificate
+     * chain is always validated against the supplied CA certificate and only the host name
+     * check is dropped.
      */
     trustServerCertificate?: boolean;
     /**
@@ -851,10 +933,6 @@ export interface Connection {
      */
     queryStatementSource?: string;
     /**
-     * Protocol ( Connection Argument ) to connect to Presto.
-     */
-    protocol?: string;
-    /**
      * Verify ( Connection Argument for SSL ) to connect to Presto.
      *
      * Verify ( Connection Argument for SSL ) to connect to Trino.
@@ -879,12 +957,16 @@ export interface Connection {
      * Salesforce Consumer Key (Client ID) for OAuth 2.0 authentication. This is obtained from
      * your Salesforce Connected App configuration. Required along with Consumer Secret for
      * OAuth authentication.
+     *
+     * Consumer key provided when you setup your Salesforce connected app
      */
     consumerKey?: string;
     /**
      * Salesforce Consumer Secret (Client Secret) for OAuth 2.0 authentication. This is obtained
      * from your Salesforce Connected App configuration. Required along with Consumer Key for
      * OAuth authentication.
+     *
+     * Consumer secret provided when you setup your Salesforce connected app
      */
     consumerSecret?: string;
     /**
@@ -974,6 +1056,10 @@ export interface Connection {
      * Cost of credit for the Snowflake account.
      */
     creditCost?: number;
+    /**
+     * Ingest Snowflake semantic views as data assets.
+     */
+    includeSemanticViews?: boolean;
     /**
      * Ingest external and internal stages.
      */
@@ -1065,6 +1151,11 @@ export interface Connection {
      */
     hostport?: string;
     /**
+     * Ingest the measures of a Unity Catalog metric view as Metric entities, and the lineage
+     * from the relations it reads.
+     */
+    includeMetricViews?: boolean;
+    /**
      * Enable dataflow for ingestion
      */
     dataflows?: boolean;
@@ -1113,12 +1204,13 @@ export interface Connection {
     apiKey?: string;
     /**
      * Pagination limit used while querying the SAP ERP API for fetching the entities
+     *
+     * Pagination limit used when fetching Data 360 objects. The default value is 10, and the
+     * valid range is 1-100
      */
     paginationLimit?: number;
     /**
      * Azure Application client secret for service principal authentication.
-     *
-     * Azure Application client secret for Service Principal authentication.
      */
     clientSecret?: string;
     /**
@@ -1218,6 +1310,12 @@ export enum AuthMechanismEnum {
 }
 
 /**
+ * Choose the ClickZetta authentication configuration.
+ *
+ * Choose Auth Config Type.
+ *
+ * Common Database Connection Config
+ *
  * Choose between different authentication types for Databricks.
  *
  * Personal Access Token authentication for Databricks.
@@ -1227,10 +1325,6 @@ export enum AuthMechanismEnum {
  *
  * Azure Active Directory authentication for Azure Databricks workspaces using Service
  * Principal.
- *
- * Choose Auth Config Type.
- *
- * Common Database Connection Config
  *
  * IAM Auth Database Connection Config
  *
@@ -1249,8 +1343,25 @@ export enum AuthMechanismEnum {
  *
  * Authentication configuration for self-hosted Dremio Software using username and password.
  * Dremio Software is deployed on-premises or in your own cloud infrastructure.
+ *
+ * Credential the service principal uses to obtain Microsoft Entra ID access tokens for the
+ * Fabric SQL endpoint.
+ *
+ * Authenticate the service principal with a client secret of its Microsoft Entra ID
+ * application.
+ *
+ * Authenticate the service principal with an X.509 certificate registered on its Microsoft
+ * Entra ID application.
  */
 export interface AuthenticationType {
+    /**
+     * Password to connect to source.
+     *
+     * Database user password. Leave empty if using IAM database authentication.
+     *
+     * Password for the Dremio Software user account.
+     */
+    password?: string;
     /**
      * Generated Personal Access Token for Databricks workspace authentication. This token is
      * created from User Settings -> Developer -> Access Tokens in your Databricks workspace.
@@ -1264,6 +1375,9 @@ export interface AuthenticationType {
     /**
      * OAuth Secret generated for the Service Principal in Databricks Account Console. Used for
      * secure OAuth2 authentication.
+     *
+     * Client secret value (not the secret ID) from the application's Certificates & secrets
+     * page in Microsoft Entra ID.
      */
     clientSecret?: string;
     /**
@@ -1278,16 +1392,8 @@ export interface AuthenticationType {
      * Azure Active Directory Tenant ID where your Service Principal is registered.
      */
     azureTenantId?: string;
-    /**
-     * Password to connect to source.
-     *
-     * Database user password. Leave empty if using IAM database authentication.
-     *
-     * Password for the Dremio Software user account.
-     */
-    password?:    string;
-    awsConfig?:   AWSCredentials;
-    azureConfig?: AzureCredentials;
+    awsConfig?:     AWSCredentials;
+    azureConfig?:   AzureCredentials;
     /**
      * Use GCP IAM for database authentication instead of a password.
      */
@@ -1329,6 +1435,21 @@ export interface AuthenticationType {
      * permissions to access metadata.
      */
     username?: string;
+    /**
+     * PEM-encoded X.509 certificate uploaded to the application's Certificates & secrets page
+     * in Microsoft Entra ID. It may be followed by its issuing certificate chain.
+     */
+    certificate?: string;
+    /**
+     * PEM-encoded private key of the certificate, as PKCS#8 (`BEGIN PRIVATE KEY` or `BEGIN
+     * ENCRYPTED PRIVATE KEY`) or PKCS#1 (`BEGIN RSA PRIVATE KEY`). A single PEM file holding
+     * both the key and the certificate can be supplied in both fields.
+     */
+    privateKey?: string;
+    /**
+     * Passphrase of an encrypted private key. Leave empty when the private key is not encrypted.
+     */
+    privateKeyPassphrase?: string;
 }
 
 /**
@@ -1878,6 +1999,19 @@ export interface AccessDatabaseLocationLocalPathOrS3 {
  *
  * Regex to only include/exclude tables that matches the pattern.
  *
+ * Regex to only include or exclude matching databases.
+ *
+ * Regex to only include or exclude matching schemas.
+ *
+ * Regex to only include or exclude matching tables.
+ *
+ * Regex to include or exclude Databend catalogs. Only the `default` catalog is currently
+ * ingested.
+ *
+ * Regex to include or exclude Databend databases.
+ *
+ * Regex to include or exclude tables and views.
+ *
  * Regex to only fetch containers that matches the pattern.
  *
  * Regex to only include/exclude schemas that matches the pattern. System schemas
@@ -1993,8 +2127,7 @@ export interface HiveMetastoreConnectionDetails {
      * my_schema.custom_pg_stat_statements) when direct access to pg_stat_statements is
      * restricted.
      */
-    queryStatementSource?:    string;
-    sampleDataStorageConfig?: SampleDataStorageConfig;
+    queryStatementSource?: string;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      */
@@ -2087,90 +2220,6 @@ export interface AuthTypeClass {
      * GCP credentials to use. If not provided, Application Default Credentials will be used.
      */
     gcpConfig?: GCPCredentials;
-}
-
-/**
- * Storage config to store sample data
- */
-export interface SampleDataStorageConfig {
-    config?: DataStorageConfig;
-}
-
-/**
- * Storage config to store sample data
- */
-export interface DataStorageConfig {
-    /**
-     * Bucket Name
-     */
-    bucketName?: string;
-    /**
-     * Provide the pattern of the path where the generated sample data file needs to be stored.
-     */
-    filePathPattern?: string;
-    /**
-     * When this field enabled a single parquet file will be created to store sample data,
-     * otherwise we will create a new file per day
-     */
-    overwriteData?: boolean;
-    /**
-     * Prefix of the data source.
-     */
-    prefix?:        string;
-    storageConfig?: AwsCredentials;
-    [property: string]: any;
-}
-
-/**
- * AWS credentials configs.
- */
-export interface AwsCredentials {
-    /**
-     * The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume
-     * Role
-     */
-    assumeRoleArn?: string;
-    /**
-     * An identifier for the assumed role session. Use the role session name to uniquely
-     * identify a session when the same role is assumed by different principals or for different
-     * reasons. Required Field in case of Assume Role
-     */
-    assumeRoleSessionName?: string;
-    /**
-     * The Amazon Resource Name (ARN) of the role to assume. Optional Field in case of Assume
-     * Role
-     */
-    assumeRoleSourceIdentity?: string;
-    /**
-     * AWS Access key ID.
-     */
-    awsAccessKeyId?: string;
-    /**
-     * AWS Region
-     */
-    awsRegion?: string;
-    /**
-     * AWS Secret Access Key.
-     */
-    awsSecretAccessKey?: string;
-    /**
-     * AWS Session Token.
-     */
-    awsSessionToken?: string;
-    /**
-     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
-     * (environment variables, instance profile, etc.). Defaults to false for backward
-     * compatibility.
-     */
-    enabled?: boolean;
-    /**
-     * EndPoint URL for the AWS
-     */
-    endPointURL?: string;
-    /**
-     * The name of a profile to use with the boto session.
-     */
-    profileName?: string;
 }
 
 /**
@@ -2296,12 +2345,16 @@ export enum ConfigScheme {
     Bigquery = "bigquery",
     ClickhouseHTTP = "clickhouse+http",
     ClickhouseNative = "clickhouse+native",
+    Clickzetta = "clickzetta",
     CockroachdbPsycopg2 = "cockroachdb+psycopg2",
     Couchbase = "couchbase",
+    Databend = "databend",
     Databricks = "databricks",
     Db2IBMDB = "db2+ibm_db",
     Doris = "doris",
     Druid = "druid",
+    DruidHTTP = "druid+http",
+    DruidHTTPS = "druid+https",
     ExaWebsocket = "exa+websocket",
     Hana = "hana",
     Hive = "hive",
@@ -2318,6 +2371,7 @@ export enum ConfigScheme {
     MssqlPytds = "mssql+pytds",
     MysqlPymysql = "mysql+pymysql",
     OracleCxOracle = "oracle+cx_oracle",
+    OracleOracledb = "oracle+oracledb",
     PgspiderPsycopg2 = "pgspider+psycopg2",
     Pinot = "pinot",
     PinotHTTP = "pinot+http",
@@ -2367,9 +2421,12 @@ export enum ConfigType {
     BurstIQ = "BurstIQ",
     Cassandra = "Cassandra",
     Clickhouse = "Clickhouse",
+    Clickzetta = "Clickzetta",
     Cockroach = "Cockroach",
     Couchbase = "Couchbase",
     CustomDatabase = "CustomDatabase",
+    Data360 = "Data360",
+    Databend = "Databend",
     Databricks = "Databricks",
     Datalake = "Datalake",
     Db2 = "Db2",
@@ -2490,6 +2547,42 @@ export interface EntityReference {
 }
 
 /**
+ * Deployment attributes of this service: environment, region and deployment. Set once here
+ * rather than tagged onto every asset this service ingests.
+ *
+ * Deployment attributes of a service, set once on the service rather than tagged onto each
+ * asset it ingests. Policy conditions can match on them to control who sees a service's
+ * assets.
+ */
+export interface ServiceAttributes {
+    /**
+     * Deployment or cluster identifier the source system belongs to, for example
+     * `prod-cluster-01`.
+     */
+    deployment?:  string;
+    environment?: Environment;
+    /**
+     * Geographic region the source system is hosted in, for example `us-east-1` or
+     * `europe-west2`.
+     */
+    region?: string;
+}
+
+/**
+ * Environment the source system runs in. A closed set so policies and filters can rely on
+ * it; use tags on the service for anything outside it.
+ */
+export enum Environment {
+    Development = "Development",
+    Other = "Other",
+    Production = "Production",
+    QA = "QA",
+    Sandbox = "Sandbox",
+    Staging = "Staging",
+    UAT = "UAT",
+}
+
+/**
  * Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...
  */
 export enum DatabaseServiceType {
@@ -2500,9 +2593,12 @@ export enum DatabaseServiceType {
     BurstIQ = "BurstIQ",
     Cassandra = "Cassandra",
     Clickhouse = "Clickhouse",
+    Clickzetta = "Clickzetta",
     Cockroach = "Cockroach",
     Couchbase = "Couchbase",
     CustomDatabase = "CustomDatabase",
+    Data360 = "Data360",
+    Databend = "Databend",
     Databricks = "Databricks",
     Datalake = "Datalake",
     Db2 = "Db2",

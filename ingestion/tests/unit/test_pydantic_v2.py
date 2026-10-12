@@ -10,6 +10,8 @@
 #  limitations under the License.
 """Test pydantic v2 models serialize data as pydantic v1"""
 
+import subprocess
+import sys
 from datetime import datetime
 
 from pydantic import AnyUrl
@@ -17,6 +19,27 @@ from pydantic.v1 import BaseModel as BaseModelV1
 
 from metadata.generated.schema.type.basic import DateTime
 from metadata.ingestion.models.custom_pydantic import BaseModel
+
+
+def test_custom_base_model_imports_without_pydantic_212_deprecations():
+    """Keep import-time validators on supported Pydantic APIs."""
+    script = """
+import warnings
+
+from pydantic.warnings import PydanticDeprecatedSince212
+
+warnings.simplefilter("error", PydanticDeprecatedSince212)
+import metadata.ingestion.models.custom_pydantic
+"""
+
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
 
 
 def test_simple_dump():
@@ -74,6 +97,24 @@ def test_nested_dump():
     json_v2 = model_v2.model_dump_json()
 
     assert json_v1 == json_v2
+
+
+def test_serialize_as_any_includes_subclass_fields():
+    """Preserve polymorphic serialization exposed by the custom base model."""
+
+    class Parent(BaseModel):
+        name: str
+
+    class Child(Parent):
+        token: str
+
+    class Container(BaseModel):
+        user: Parent
+
+    model = Container(user=Child(name="name", token="token"))
+
+    assert model.model_dump() == {"user": {"name": "name"}}
+    assert model.model_dump(serialize_as_any=True) == {"user": {"name": "name", "token": "token"}}
 
 
 def test_tz_aware_date():

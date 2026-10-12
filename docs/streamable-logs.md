@@ -165,7 +165,12 @@ There is also a download endpoint that streams the full file (or composes from s
 |----------|-------------|---------------|
 | `GET /logs/{fqn}/{runId}` | Reads `partial.txt` + appends `pendingFlush` snapshot. Apply cursor pagination. | Reads `logs.txt`. |
 | `GET /logs/{fqn}/{runId}/download` | Streams `partial.txt`. | Streams `logs.txt`. |
-| `GET /logs/{fqn}/stream/{runId}` (SSE) | Registers a listener; replays last 100 buffered lines, then live-streams new lines. | (Not used post-close; the run is over.) |
+| `GET /logs/{fqn}/stream/{runId}` (SSE) | Live tail with resume cursors and an explicit end-of-stream event. One shared reader per run. | Streams the finished log, then closes with `reason: runFinished`. |
+| `GET /logs/{fqn}/stream/{runId}` (SSE) | Same engine, but each frame is one raw log line with no cursor. Legacy shape. | Same. |
+
+The SSE read path is documented on its own in
+[ingestion-log-streaming.md](ingestion-log-streaming.md) — event schema, resume cursors, and the
+limits that bound it.
 
 Legacy `partial.txt` files written by older code (without S3 metadata) read normally; the new flush logic treats them as "no prior offset" and merges any new content correctly.
 

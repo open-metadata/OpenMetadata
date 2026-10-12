@@ -11,58 +11,91 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
-import { act } from 'react';
-import { MemoryRouter } from 'react-router-dom';
+import { fireEvent, render, screen } from '@testing-library/react';
 import loginClassBase from '../../constants/LoginClassBase';
 import LoginCarousel from './LoginCarousel';
 
-const LOGIN_SLIDE = loginClassBase.getLoginCarouselContent();
-
 describe('Test LoginCarousel component', () => {
-  it('renders the carousel container', () => {
+  let playSpy: jest.SpyInstance;
+  let videoSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    playSpy = jest
+      .spyOn(HTMLMediaElement.prototype, 'play')
+      .mockResolvedValue(undefined);
+    videoSpy = jest
+      .spyOn(loginClassBase, 'getLoginVideo')
+      .mockReturnValue('test-video.mp4');
+  });
+
+  afterEach(() => {
+    playSpy.mockRestore();
+    videoSpy.mockRestore();
+    jest.restoreAllMocks();
+  });
+
+  it('does not autoplay or preload the video from markup', () => {
     render(<LoginCarousel />);
 
-    expect(screen.queryAllByTestId('slider-container')).toHaveLength(
-      LOGIN_SLIDE.length
-    );
+    const video = screen.getByTestId('login-video');
+
+    expect(video.hasAttribute('autoplay')).toBe(false);
+    expect(video.getAttribute('preload')).toBe('none');
   });
 
-  it('renders a carousel with the correct number of slides', async () => {
-    await act(async () => {
-      render(<LoginCarousel />, {
-        wrapper: MemoryRouter,
-      });
-    });
+  it('starts playback right away when the page has already loaded', () => {
+    render(<LoginCarousel />);
 
-    const sliderContainers = await screen.findAllByTestId('slider-container');
-
-    const slides = sliderContainers.map(
-      (slider) => slider.parentElement?.parentElement as HTMLElement
-    );
-
-    const slackList = slides.filter(
-      (slide) => !slide.classList.contains('slick-cloned')
-    );
-
-    expect(slackList).toHaveLength(LOGIN_SLIDE.length);
+    expect(playSpy).toHaveBeenCalledTimes(1);
   });
 
-  it('renders the correct slide description for each slide', async () => {
-    await act(async () => {
-      render(<LoginCarousel />, {
-        wrapper: MemoryRouter,
-      });
-    });
+  it('waits for the window load event before starting playback', () => {
+    jest.spyOn(document, 'readyState', 'get').mockReturnValue('loading');
 
-    const slideDescriptions = await screen.findAllByTestId(
-      'carousel-slide-description'
-    );
-    const descriptions = LOGIN_SLIDE.map((d) => `message.${d.descriptionKey}`);
-    slideDescriptions.forEach((description) => {
-      expect(
-        descriptions.includes(description.textContent as string)
-      ).toBeTruthy();
-    });
+    render(<LoginCarousel />);
+
+    expect(playSpy).not.toHaveBeenCalled();
+
+    fireEvent.load(window);
+
+    expect(playSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not play when the user prefers reduced motion', () => {
+    jest.spyOn(window, 'matchMedia').mockReturnValue({
+      matches: true,
+    } as MediaQueryList);
+
+    render(<LoginCarousel />);
+
+    expect(playSpy).not.toHaveBeenCalled();
+  });
+
+  it('renders the login video when a video is configured', () => {
+    const videoSpy = jest
+      .spyOn(loginClassBase, 'getLoginVideo')
+      .mockReturnValue('test-video.mp4');
+
+    render(<LoginCarousel />);
+
+    const videos = screen.queryAllByTestId('login-video');
+
+    expect(videos).toHaveLength(1);
+    expect(videos[0].getAttribute('src')).toBe('test-video.mp4');
+
+    videoSpy.mockRestore();
+  });
+
+  it('renders nothing when no video is configured', () => {
+    const videoSpy = jest
+      .spyOn(loginClassBase, 'getLoginVideo')
+      .mockReturnValue(undefined);
+
+    const { container } = render(<LoginCarousel />);
+
+    expect(screen.queryAllByTestId('login-video')).toHaveLength(0);
+    expect(container.childElementCount).toBe(0);
+
+    videoSpy.mockRestore();
   });
 });

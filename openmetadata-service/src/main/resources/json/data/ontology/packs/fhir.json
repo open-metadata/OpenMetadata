@@ -1,0 +1,50 @@
+{
+  "abbreviation": "FHIR",
+  "bundled": true,
+  "description": "A terminology-safe HL7 FHIR R5 starter subset without third-party terminologies.",
+  "id": "fhir",
+  "license": "CC0 1.0; excludes third-party terminologies",
+  "licenseUrl": "https://fhir.hl7.org/fhir/license.html",
+  "modules": [
+    {
+      "conceptCount": 4,
+      "dependencies": [],
+      "description": "Core FHIR resource and reference concepts.",
+      "format": "turtle",
+      "id": "core",
+      "name": "Core resources",
+      "relationshipCount": 3,
+      "resourcePath": "rdf/ontology-packs/fhir/core.ttl",
+      "selectedByDefault": true,
+      "sha256": "3b296bd1c87d2045f9f892334c08c776494adb0b4bfa2a75cebc0180cd56bcd3"
+    },
+    {
+      "conceptCount": 4,
+      "dependencies": ["core"],
+      "description": "Clinical record concepts with no externally licensed codes.",
+      "format": "turtle",
+      "id": "clinical",
+      "name": "Clinical records",
+      "relationshipCount": 3,
+      "resourcePath": "rdf/ontology-packs/fhir/clinical.ttl",
+      "selectedByDefault": true,
+      "sha256": "df01964095283156add90820ac53a3cb26e4538df3f46048e724d7b9f39feaea"
+    },
+    {
+      "conceptCount": 4,
+      "dependencies": ["core"],
+      "description": "FHIR workflow request, event, and definition concepts.",
+      "format": "turtle",
+      "id": "workflow",
+      "name": "Workflow",
+      "relationshipCount": 3,
+      "resourcePath": "rdf/ontology-packs/fhir/workflow.ttl",
+      "selectedByDefault": false,
+      "sha256": "a768dbb3e5493d98587324789e48b7e701d472e3ddc5e88047f5c523787696aa"
+    }
+  ],
+  "name": "HL7 FHIR Starter",
+  "sourceUrl": "https://hl7.org/fhir/",
+  "standard": "HL7 FHIR R5",
+  "version": "5.0.0-om1"
+}

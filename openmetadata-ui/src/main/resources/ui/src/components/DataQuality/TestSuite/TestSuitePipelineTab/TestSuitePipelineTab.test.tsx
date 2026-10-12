@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import React from 'react';
 import { PAGE_SIZE_BASE } from '../../../../constants/constants';
 import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider';
@@ -64,6 +70,12 @@ const mockPaging = {
 };
 
 jest.mock('@openmetadata/ui-core-components', () => {
+  const MockBox = ({ children }: React.PropsWithChildren) => (
+    <div>{children}</div>
+  );
+
+  const MockEmptyPlaceholder = () => <div />;
+
   const MockTable = ({
     children,
     'data-testid': testId,
@@ -117,13 +129,19 @@ jest.mock('@openmetadata/ui-core-components', () => {
     items?: unknown[];
     children: (item: unknown) => React.ReactNode;
     renderEmptyState?: () => React.ReactNode;
-  }) => (
-    <tbody>
-      {items && items.length > 0
-        ? items.map((item) => children(item))
-        : renderEmptyState?.()}
-    </tbody>
-  );
+  }) => {
+    if (items && items.length > 0) {
+      return <tbody>{items.map((item) => children(item))}</tbody>;
+    }
+
+    return (
+      <tbody>
+        <tr>
+          <td>{renderEmptyState?.()}</td>
+        </tr>
+      </tbody>
+    );
+  };
 
   MockTable.Row = ({
     children,
@@ -152,7 +170,19 @@ jest.mock('@openmetadata/ui-core-components', () => {
     <span {...props}>{children}</span>
   );
 
+  const MockSkeleton = () => (
+    <span aria-hidden="true" data-testid="table-loading-skeleton" />
+  );
+
   return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
+    Typography: jest.requireActual('@openmetadata/ui-core-components')
+      .Typography,
+    Badge: jest.requireActual('@openmetadata/ui-core-components').Badge,
+    Box: MockBox,
+    Button: jest.requireActual('@openmetadata/ui-core-components').Button,
+    EmptyPlaceholder: MockEmptyPlaceholder,
+    Skeleton: MockSkeleton,
     Table: MockTable,
     TableCard: MockTableCard,
     Tooltip: MockTooltip,
@@ -186,8 +216,10 @@ jest.mock(
   })
 );
 
+const mockNavigate = jest.fn();
+
 jest.mock('react-router-dom', () => ({
-  useNavigate: jest.fn().mockReturnValue(jest.fn()),
+  useNavigate: () => mockNavigate,
 }));
 
 jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
@@ -295,6 +327,36 @@ describe('TestSuite Pipeline component', () => {
     });
   });
 
+  it('should show row skeletons while pipeline data is loading', async () => {
+    let resolvePipelines!: (value: {
+      data: IngestionPipeline[];
+      paging: typeof mockPaging;
+    }) => void;
+    (getIngestionPipelines as jest.Mock).mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolvePipelines = resolve;
+      })
+    );
+
+    render(<TestSuitePipelineTab testSuite={mockTestSuite} />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('pipeline-table-loading-skeletons')
+      ).toBeInTheDocument();
+    });
+
+    expect(screen.getAllByTestId('table-loading-skeleton')).toHaveLength(5);
+
+    await act(async () => {
+      resolvePipelines({ data: [], paging: mockPaging });
+    });
+
+    expect(
+      screen.queryByTestId('pipeline-table-loading-skeletons')
+    ).not.toBeInTheDocument();
+  });
+
   it('should call getIngestionPipelines with correct paging parameters', async () => {
     const mockGetIngestionPipelines = getIngestionPipelines as jest.Mock;
     await act(async () => {
@@ -366,6 +428,18 @@ describe('TestSuite Pipeline component', () => {
     ).toBeInTheDocument();
     expect(screen.getByTestId('test-cases-info-tooltip-icon')).toHaveClass(
       'tw:size-3'
+    );
+  });
+
+  it('should navigate to the add pipeline page on add pipeline button press', async () => {
+    await act(async () => {
+      render(<TestSuitePipelineTab testSuite={mockTestSuite} />);
+    });
+
+    fireEvent.click(screen.getByTestId('add-pipeline-button'));
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      expect.objectContaining({ search: undefined })
     );
   });
 });

@@ -30,6 +30,7 @@ import jakarta.json.JsonPatch;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
@@ -138,6 +139,11 @@ public class DatabaseSchemaResource
           @QueryParam("fields")
           String fieldsParam,
       @Parameter(
+              description = "Filter schemas by database service name",
+              schema = @Schema(type = "string", example = "snowflakeWestCoast"))
+          @QueryParam("service")
+          String serviceParam,
+      @Parameter(
               description = "Filter schemas by database name",
               schema = @Schema(type = "string", example = "customerDatabase"))
           @QueryParam("database")
@@ -185,6 +191,9 @@ public class DatabaseSchemaResource
           @DefaultValue("include")
           RegexMode regexMode) {
     ListFilter filter = new ListFilter(include).addQueryParam("database", databaseParam);
+    if (serviceParam != null) {
+      filter.addQueryParam("service", serviceParam);
+    }
     if (regexFilterByFqn) {
       filter.addQueryParam("regexFilterByFqn", true);
     }
@@ -400,9 +409,7 @@ public class DatabaseSchemaResource
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "string"))
           UUID userId) {
-    return repository
-        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return addFollowerInternal(securityContext, id, userId);
   }
 
   @DELETE
@@ -430,9 +437,7 @@ public class DatabaseSchemaResource
               schema = @Schema(type = "string"))
           @PathParam("userId")
           String userId) {
-    return repository
-        .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
-        .toResponse();
+    return deleteFollowerInternal(securityContext, id, UUID.fromString(userId));
   }
 
   @PATCH
@@ -565,7 +570,7 @@ public class DatabaseSchemaResource
     return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
   }
 
-  @PUT
+  @DELETE
   @Path("/deleteStale")
   @Operation(
       operationId = "bulkDeleteStaleDatabaseSchemas",
@@ -591,7 +596,17 @@ public class DatabaseSchemaResource
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response deleteStale(
-      @Context SecurityContext securityContext, @Valid BulkDeleteStaleRequest request) {
+      @Context SecurityContext securityContext,
+      @RequestBody(
+              required = true,
+              description =
+                  "Scope to reconcile and the FQNs the connector saw this run. Carried as a"
+                      + " request body on DELETE; a topology that strips it is rejected with 400"
+                      + " rather than being read as an empty seen-set.",
+              content = @Content(schema = @Schema(implementation = BulkDeleteStaleRequest.class)))
+          @NotNull
+          @Valid
+          BulkDeleteStaleRequest request) {
     return deleteStaleEntities(securityContext, request);
   }
 

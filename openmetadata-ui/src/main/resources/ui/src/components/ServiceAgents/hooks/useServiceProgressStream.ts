@@ -15,47 +15,28 @@ import { fetchEventSource } from '@microsoft/fetch-event-source';
 import { useEffect, useRef, useState } from 'react';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { ServiceProgressEvent } from '../../../generated/entity/services/ingestionPipelines/serviceProgressEvent';
-import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
 import { getBasePath } from '../../../utils/HistoryUtils';
 import { getEntityTypeFromServiceCategory } from '../../../utils/ServicePureUtils';
+import {
+  abortableSleep,
+  createStreamOpenHandler,
+  createStreamRetryState,
+  FatalStreamError,
+  getBackoffDelay,
+  nextRetryHealth,
+  RetriableStreamError,
+  StreamHealth,
+} from '../../../utils/SseStreamUtils';
 import { getEncodedFqn } from '../../../utils/StringUtils';
 import { getOidcToken } from '../../../utils/SwTokenStorageUtils';
 
-export type StreamHealth = 'connecting' | 'live' | 'unavailable' | 'down';
+export type { StreamHealth };
 
 interface UseServiceProgressStreamProps {
   serviceCategory: ServiceCategory;
   serviceFqn?: string;
   onEvent: (event: ServiceProgressEvent) => void;
 }
-
-const MAX_ATTEMPTS_BEFORE_DOWN = 5;
-const MAX_BACKOFF_MS = 30000;
-const BASE_BACKOFF_MS = 1000;
-
-class FatalStreamError extends Error {
-  constructor(public readonly health: StreamHealth) {
-    super(`Stream terminated: ${health}`);
-  }
-}
-
-class RetriableStreamError extends Error {}
-
-const getBackoffDelay = (attempt: number): number =>
-  Math.min(BASE_BACKOFF_MS * 2 ** (attempt - 1), MAX_BACKOFF_MS);
-
-const abortableSleep = (ms: number, signal: AbortSignal): Promise<void> =>
-  new Promise((resolve) => {
-    const timeoutId = setTimeout(resolve, ms);
-    signal.addEventListener(
-      'abort',
-      () => {
-        clearTimeout(timeoutId);
-        resolve();
-      },
-      { once: true }
-    );
-  });
 
 export const getServiceProgressStreamUrl = (
   serviceCategory: ServiceCategory,
@@ -94,6 +75,21 @@ interface StreamConnection {
  * in-flight run, which the next live frame reconciles.
  */
 const activeStreams = new Map<string, StreamConnection>();
+
+/**
+ * Forgets a connection whose read loop has exited for good. Leaving it in
+ * activeStreams would hand every future subscriber a permanently silent
+ * stream; dropping it lets the next subscriber reconnect fresh. Guards
+ * against deleting a replacement connection registered under the same URL.
+ */
+const dropTerminatedConnection = (
+  url: string,
+  connection: StreamConnection
+): void => {
+  if (activeStreams.get(url) === connection) {
+    activeStreams.delete(url);
+  }
+};
 
 const broadcastHealth = (
   connection: StreamConnection,
@@ -137,30 +133,10 @@ const runStream = (url: string, connection: StreamConnection): void => {
     }
   };
 
-  let attempt = 0;
-  let consecutiveUnauthorized = 0;
-
-  const handleOpen = async (response: Response): Promise<void> => {
-    if (response.ok) {
-      attempt = 0;
-      consecutiveUnauthorized = 0;
-      updateHealth('live');
-
-      return;
-    }
-    if (response.status === 503) {
-      throw new FatalStreamError('unavailable');
-    }
-    if (response.status === 401) {
-      consecutiveUnauthorized += 1;
-      if (consecutiveUnauthorized > 1) {
-        throw new FatalStreamError('down');
-      }
-      await TokenService.getInstance().refreshToken();
-    }
-
-    throw new RetriableStreamError();
-  };
+  const retryState = createStreamRetryState();
+  const handleOpen = createStreamOpenHandler(retryState, () =>
+    updateHealth('live')
+  );
 
   const connectOnce = async () => {
     const token = await getOidcToken();
@@ -191,14 +167,12 @@ const runStream = (url: string, connection: StreamConnection): void => {
         }
         if (error instanceof FatalStreamError) {
           updateHealth(error.health);
+          dropTerminatedConnection(url, connection);
 
           return;
         }
-        attempt += 1;
-        updateHealth(
-          attempt >= MAX_ATTEMPTS_BEFORE_DOWN ? 'down' : 'connecting'
-        );
-        await abortableSleep(getBackoffDelay(attempt), signal);
+        updateHealth(nextRetryHealth(retryState));
+        await abortableSleep(getBackoffDelay(retryState.attempt), signal);
       }
     }
   };

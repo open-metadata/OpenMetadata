@@ -29,6 +29,7 @@ import jakarta.json.JsonPatch;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
@@ -47,6 +48,7 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.List;
 import java.util.UUID;
+import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateWorksheet;
 import org.openmetadata.schema.api.data.RestoreEntity;
@@ -55,6 +57,8 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.api.BulkDeleteStaleRequest;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -98,6 +102,78 @@ public class WorksheetResource extends EntityResource<Worksheet, WorksheetReposi
 
   public WorksheetResource(Authorizer authorizer, Limits limits) {
     super(Entity.WORKSHEET, authorizer, limits);
+  }
+
+  public static class WorksheetColumnList extends ResultList<FieldInterface> {
+    /* Required for serde */
+  }
+
+  @GET
+  @Path("/name/{fqn}/columns")
+  @Operation(
+      operationId = "getWorksheetColumnsByFQN",
+      summary = "Get paginated columns of a worksheet by fully qualified name",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Paginated columns",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = WorksheetColumnList.class))),
+        @ApiResponse(responseCode = "404", description = "Worksheet not found")
+      })
+  public WorksheetColumnList getColumnsByFQN(
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fully qualified name of the worksheet",
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @Parameter(description = "Limit the number of columns returned (1 to 1000, default = 50)")
+          @DefaultValue("50")
+          @Min(1)
+          @Max(1000)
+          @QueryParam("limit")
+          int limit,
+      @Parameter(description = "Offset for pagination (default = 0)")
+          @DefaultValue("0")
+          @Min(0)
+          @QueryParam("offset")
+          int offset,
+      @Parameter(description = "Fields requested in the returned columns (tags)")
+          @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(description = "Include all, deleted, or non-deleted entities.")
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include,
+      @Parameter(
+              description =
+                  "Sort columns by. Supported values: 'name' (default), 'ordinalPosition'",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"name", "ordinalPosition"}))
+          @QueryParam("sortBy")
+          @DefaultValue("name")
+          String sortBy,
+      @Parameter(
+              description = "Sort order. Supported values: 'asc' (default), 'desc'",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"asc", "desc"}))
+          @QueryParam("sortOrder")
+          @DefaultValue("asc")
+          String sortOrder) {
+    ResultList<FieldInterface> page =
+        getChildFieldPage(
+            securityContext, fqn, limit, offset, fieldsParam, include, sortBy, sortOrder);
+    WorksheetColumnList result = new WorksheetColumnList();
+    result.setData(page.getData());
+    result.setPaging(page.getPaging());
+    return result;
   }
 
   public static class WorksheetList extends ResultList<Worksheet> {
@@ -315,6 +391,42 @@ public class WorksheetResource extends EntityResource<Worksheet, WorksheetReposi
       @DefaultValue("false") @QueryParam("async") boolean async,
       List<CreateWorksheet> createRequests) {
     return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
+  }
+
+  @DELETE
+  @Path("/deleteStale")
+  @Operation(
+      operationId = "bulkDeleteStaleWorksheets",
+      summary = "Delete stale worksheets within a scope",
+      description =
+          "Delete entities within the given scope that the ingestion connector did not report in "
+              + "the current run. The connector sends the set of FQNs it saw; entities in scope not "
+              + "in that set are considered stale. By default the deletion is soft; pass "
+              + "hardDelete=true to hard-delete instead. Returns a BulkOperationResult of deleted "
+              + "(or, for dryRun, would-be-deleted) entities.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Stale deletion results",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = BulkOperationResult.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response deleteStale(
+      @Context SecurityContext securityContext,
+      @RequestBody(
+              required = true,
+              description =
+                  "Scope to reconcile and the FQNs the connector saw this run. Carried as a"
+                      + " request body on DELETE; a topology that strips it is rejected with 400"
+                      + " rather than being read as an empty seen-set.",
+              content = @Content(schema = @Schema(implementation = BulkDeleteStaleRequest.class)))
+          @NotNull
+          @Valid
+          BulkDeleteStaleRequest request) {
+    return deleteStaleEntities(securityContext, request);
   }
 
   @PATCH
@@ -553,9 +665,7 @@ public class WorksheetResource extends EntityResource<Worksheet, WorksheetReposi
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "UUID"))
           UUID userId) {
-    return repository
-        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return addFollowerInternal(securityContext, id, userId);
   }
 
   @DELETE
@@ -584,9 +694,7 @@ public class WorksheetResource extends EntityResource<Worksheet, WorksheetReposi
               schema = @Schema(type = "UUID"))
           @PathParam("userId")
           UUID userId) {
-    return repository
-        .deleteFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return deleteFollowerInternal(securityContext, id, userId);
   }
 
   @PUT

@@ -12,36 +12,22 @@
  */
 @import (reference) '../../../styles/variables.less';
 
-.tier-card-popover {
-  width: 350px !important;
-  .ant-card-body {
-    padding: 0;
-    padding-bottom: 16px;
-  }
-  .tier-card-footer-action-buttons {
-    padding-right: 16px;
-  }
-}
-.edit-icon {
-  cursor: pointer;
-  height: 20px;
-}
 .tier-section {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 0px 14px;
+  gap: var(--om-space-10);
+  padding: 0 var(--om-space-14);
   border-bottom: 0.6px solid @grey-15;
-  padding-bottom: 16px;
+  padding-bottom: var(--om-space-16);
 
   .tier-header {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--om-space-8);
 
     .tier-title {
-      font-size: 13px;
-      font-weight: 600;
+      font-size: var(--om-font-size-13);
+      font-weight: var(--om-font-weight-semibold);
       color: @grey-900;
     }
   }
@@ -52,42 +38,13 @@
       align-items: center;
       justify-content: center;
       min-height: 40px;
-
-      .tier-loading-spinner {
-        .loading-spinner {
-          width: 20px;
-          height: 20px;
-          border-radius: 50%;
-          animation: spin 1s linear infinite;
-        }
-      }
-    }
-
-    .inline-edit-container {
-      .tier-selector-display {
-        align-content: center;
-        min-height: 40px !important;
-        border-radius: 6px !important;
-        border: 1px solid @grey-22 !important;
-        background-color: @white !important;
-        padding: 4px 2px !important;
-      }
     }
 
     .tier-display {
       .no-data-placeholder {
         color: @grey-500;
-        font-size: 12px;
+        font-size: var(--om-font-size-xs);
       }
     }
-  }
-}
-
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
   }
 }

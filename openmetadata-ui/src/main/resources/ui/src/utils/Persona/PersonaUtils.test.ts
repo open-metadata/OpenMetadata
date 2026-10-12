@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { AppLayout } from '@openmetadata/ui-core-components/icons';
 import { PageType } from '../../generated/system/ui/uiCustomization';
 import {
   getCustomizePageCategories,
@@ -28,8 +29,13 @@ describe('PersonaUtils', () => {
           icon: 'svg-mock',
         }),
         expect.objectContaining({
-          key: 'app-mode',
-          label: 'label.app-mode',
+          key: 'app-layout',
+          label: 'label.app-layout',
+          icon: AppLayout,
+        }),
+        expect.objectContaining({
+          key: 'askCollateSidebar',
+          label: 'label.app-mode-sidebar',
           icon: 'svg-mock',
         }),
         expect.objectContaining({

@@ -20,7 +20,6 @@ import { ReactComponent as MSTeamsIcon } from '../../assets/svg/ms-teams.svg';
 import { ReactComponent as SlackIcon } from '../../assets/svg/slack.svg';
 import { ReactComponent as WebhookIcon } from '../../assets/svg/webhook.svg';
 import { AlertEventDetailsToDisplay } from '../../components/Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab.interface';
-import { DESTINATION_DROPDOWN_TABS } from '../../constants/Alerts.constants';
 import { AlertRecentEventFilters } from '../../enums/Alerts.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { EventType, Status } from '../../generated/events/api/typedEvent';
@@ -29,7 +28,6 @@ import {
   SubscriptionType,
 } from '../../generated/events/eventSubscription';
 import {
-  mockExternalDestinationOptions,
   mockTypedEvent1,
   mockTypedEvent2,
   mockTypedEvent3,
@@ -39,13 +37,12 @@ import { ModifiedDestination } from '../../pages/AddObservabilityPage/AddObserva
 import { searchContracts } from '../../rest/contractAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { getTermQuery } from '../SearchPureUtils';
+import { getAlertSourceSearch } from './AlertSourceSearch';
 import {
   getAlertExtraInfo,
   getAlertRecentEventsFilterOptions,
   getAlertsActionTypeIcon,
   getAlertStatusIcon,
-  getConnectionTimeoutField,
-  getDestinationConfigField,
   getFieldByArgumentType,
   getFqnSearchIndexes,
   searchEntity,
@@ -59,7 +56,6 @@ import {
   getConfigQueryParamsArrayFromObject,
   getConfigQueryParamsObjectFromArray,
   getDisplayNameForEntities,
-  getFilteredDestinationOptions,
   getFormattedDestinations,
   getFunctionDisplayName,
   getLabelsForEventDetails,
@@ -67,12 +63,10 @@ import {
   normalizeDestinationConfig,
 } from './AlertsUtilPure';
 
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Skeleton: {
-    Button: jest.fn().mockImplementation(() => <div>Skeleton.Button</div>),
-  },
-}));
+const searchOf = (
+  sources: string | string[],
+  containerEntities: string[] = []
+) => getAlertSourceSearch([sources].flat(), containerEntities);
 
 jest.mock('../../components/common/AsyncSelect/AsyncSelect', () => ({
   AsyncSelect: jest
@@ -213,138 +207,16 @@ describe('AlertsUtil tests', () => {
 
     expect(getDisplayNameForEntities('unknown')).toBe('Unknown');
   });
-
-  it('getFilteredDestinationOptions should return all options for external tab key', () => {
-    const resultTask = getFilteredDestinationOptions(
-      DESTINATION_DROPDOWN_TABS.external,
-      'task'
-    );
-
-    const resultTable = getFilteredDestinationOptions(
-      DESTINATION_DROPDOWN_TABS.external,
-      'table'
-    );
-
-    [resultTask, resultTable].forEach((results) => {
-      expect(results).toHaveLength(5);
-
-      results.forEach((result) =>
-        expect(
-          mockExternalDestinationOptions.includes(
-            result.value as Exclude<
-              SubscriptionType,
-              SubscriptionType.ActivityFeed
-            >
-          )
-        ).toBeTruthy()
-      );
-    });
-  });
-
-  it('getFilteredDestinationOptions should return correct internal options for "task" source', () => {
-    const resultTask = getFilteredDestinationOptions(
-      DESTINATION_DROPDOWN_TABS.internal,
-      'task'
-    );
-
-    expect(resultTask).toHaveLength(3);
-
-    const taskCategories = resultTask.map(
-      (result) => result.value as SubscriptionCategory
-    );
-
-    expect(taskCategories).toContain(SubscriptionCategory.Owners);
-    expect(taskCategories).toContain(SubscriptionCategory.Assignees);
-    expect(taskCategories).toContain(SubscriptionCategory.Mentions);
-    expect(taskCategories).not.toContain(SubscriptionCategory.Followers);
-    expect(taskCategories).not.toContain(SubscriptionCategory.Admins);
-    expect(taskCategories).not.toContain(SubscriptionCategory.Users);
-    expect(taskCategories).not.toContain(SubscriptionCategory.Teams);
-  });
-
-  it('getFilteredDestinationOptions should return correct internal options for "conversation" source', () => {
-    const resultConversation = getFilteredDestinationOptions(
-      DESTINATION_DROPDOWN_TABS.internal,
-      'conversation'
-    );
-
-    expect(resultConversation).toHaveLength(2);
-
-    const conversationCategories = resultConversation.map(
-      (result) => result.value as SubscriptionCategory
-    );
-
-    expect(conversationCategories).toContain(SubscriptionCategory.Owners);
-    expect(conversationCategories).toContain(SubscriptionCategory.Mentions);
-    expect(conversationCategories).not.toContain(
-      SubscriptionCategory.Followers
-    );
-    expect(conversationCategories).not.toContain(SubscriptionCategory.Admins);
-    expect(conversationCategories).not.toContain(SubscriptionCategory.Users);
-    expect(conversationCategories).not.toContain(SubscriptionCategory.Teams);
-    expect(conversationCategories).not.toContain(
-      SubscriptionCategory.Assignees
-    );
-  });
-
-  it('getFilteredDestinationOptions should return correct internal options for "announcement" source', () => {
-    const resultAnnouncement = getFilteredDestinationOptions(
-      DESTINATION_DROPDOWN_TABS.internal,
-      'announcement'
-    );
-
-    expect(resultAnnouncement).toHaveLength(6);
-
-    const announcementCategories = resultAnnouncement.map(
-      (result) => result.value as SubscriptionCategory
-    );
-
-    expect(announcementCategories).toContain(SubscriptionCategory.Owners);
-    expect(announcementCategories).toContain(SubscriptionCategory.Followers);
-    expect(announcementCategories).toContain(SubscriptionCategory.Admins);
-    expect(announcementCategories).toContain(SubscriptionCategory.Users);
-    expect(announcementCategories).toContain(SubscriptionCategory.Teams);
-    expect(announcementCategories).toContain(SubscriptionCategory.Mentions);
-    expect(announcementCategories).not.toContain(
-      SubscriptionCategory.Assignees
-    );
-  });
-
-  it('getFilteredDestinationOptions should return correct internal options for default/other sources', () => {
-    const resultContainer = getFilteredDestinationOptions(
-      DESTINATION_DROPDOWN_TABS.internal,
-      'container'
-    );
-    const resultTestSuite = getFilteredDestinationOptions(
-      DESTINATION_DROPDOWN_TABS.internal,
-      'testSuite'
-    );
-
-    [resultContainer, resultTestSuite].forEach((results) => {
-      expect(results).toHaveLength(5);
-
-      const defaultCategories = results.map(
-        (result) => result.value as SubscriptionCategory
-      );
-
-      expect(defaultCategories).toContain(SubscriptionCategory.Owners);
-      expect(defaultCategories).toContain(SubscriptionCategory.Followers);
-      expect(defaultCategories).toContain(SubscriptionCategory.Admins);
-      expect(defaultCategories).toContain(SubscriptionCategory.Users);
-      expect(defaultCategories).toContain(SubscriptionCategory.Teams);
-      expect(defaultCategories).not.toContain(SubscriptionCategory.Assignees);
-      expect(defaultCategories).not.toContain(SubscriptionCategory.Mentions);
-    });
-  });
 });
 
 describe('getFieldByArgumentType tests', () => {
   it('should return correct fields for argumentType fqnList', async () => {
-    const field = getFieldByArgumentType(0, 'fqnList', 0, 'table', [
-      'databaseService',
-      'database',
-      'databaseSchema',
-    ]);
+    const field = getFieldByArgumentType(
+      0,
+      'fqnList',
+      0,
+      searchOf('table', ['databaseService', 'database', 'databaseSchema'])
+    );
 
     render(field);
 
@@ -378,7 +250,7 @@ describe('getFieldByArgumentType tests', () => {
       },
     ]);
 
-    render(getFieldByArgumentType(0, 'fqnList', 0, 'dataContract'));
+    render(getFieldByArgumentType(0, 'fqnList', 0, searchOf('dataContract')));
 
     const api = MockedAsyncSelect.mock.calls[0][0].api as (
       query: string
@@ -394,8 +266,54 @@ describe('getFieldByArgumentType tests', () => {
     expect(searchQuery).not.toHaveBeenCalled();
   });
 
+  it('should search contracts and tables together when both are selected', async () => {
+    const { AsyncSelect: MockedAsyncSelect } = jest.requireMock(
+      '../../components/common/AsyncSelect/AsyncSelect'
+    );
+    MockedAsyncSelect.mockClear();
+    (searchQuery as jest.Mock).mockClear();
+    (searchQuery as jest.Mock).mockResolvedValue({
+      hits: {
+        hits: [{ _source: { fullyQualifiedName: 'svc.db.schema.orders' } }],
+      },
+    });
+    (searchContracts as jest.Mock).mockResolvedValue([
+      { fullyQualifiedName: 'svc.db.schema.orders.contract' },
+    ]);
+
+    render(
+      getFieldByArgumentType(
+        0,
+        'fqnList',
+        0,
+        searchOf(['table', 'dataContract'])
+      )
+    );
+
+    const api = MockedAsyncSelect.mock.calls[0][0].api as (
+      query: string
+    ) => Promise<unknown>;
+
+    await expect(api('orders')).resolves.toEqual([
+      {
+        label: 'svc.db.schema.orders.contract',
+        value: 'svc.db.schema.orders.contract',
+      },
+      { label: 'svc.db.schema.orders', value: 'svc.db.schema.orders' },
+    ]);
+    expect(searchContracts).toHaveBeenCalledWith('orders', 50);
+    expect(searchQuery).toHaveBeenCalledWith(
+      expect.objectContaining({ searchIndex: [SearchIndex.TABLE] })
+    );
+  });
+
   it('should return correct fields for argumentType domainList', async () => {
-    const field = getFieldByArgumentType(0, 'domainList', 0, 'container');
+    const field = getFieldByArgumentType(
+      0,
+      'domainList',
+      0,
+      searchOf('container')
+    );
 
     render(field);
 
@@ -417,7 +335,7 @@ describe('getFieldByArgumentType tests', () => {
       0,
       'tableNameList',
       0,
-      'selectedTrigger'
+      searchOf('selectedTrigger')
     );
 
     render(field);
@@ -440,7 +358,7 @@ describe('getFieldByArgumentType tests', () => {
       0,
       'ownerNameList',
       0,
-      'selectedTrigger'
+      searchOf('selectedTrigger')
     );
 
     render(field);
@@ -463,7 +381,7 @@ describe('getFieldByArgumentType tests', () => {
       0,
       'updateByUserList',
       0,
-      'selectedTrigger'
+      searchOf('selectedTrigger')
     );
 
     render(field);
@@ -482,7 +400,12 @@ describe('getFieldByArgumentType tests', () => {
   });
 
   it('should return correct fields for argumentType userList', async () => {
-    const field = getFieldByArgumentType(0, 'userList', 0, 'selectedTrigger');
+    const field = getFieldByArgumentType(
+      0,
+      'userList',
+      0,
+      searchOf('selectedTrigger')
+    );
 
     render(field);
 
@@ -504,7 +427,7 @@ describe('getFieldByArgumentType tests', () => {
       0,
       'eventTypeList',
       0,
-      'selectedTrigger'
+      searchOf('selectedTrigger')
     );
 
     render(field);
@@ -514,13 +437,67 @@ describe('getFieldByArgumentType tests', () => {
     expect(selectDiv).toBeInTheDocument();
   });
 
+  it('should offer only the event types the resource declares', async () => {
+    const field = getFieldByArgumentType(
+      0,
+      'eventTypeList',
+      0,
+      searchOf('glossaryTerm'),
+      [EventType.EntityCreated, EventType.ThreadCreated]
+    );
+
+    render(field);
+    const select = screen.getByTestId('event-type-select');
+    fireEvent.mouseDown(
+      select.querySelector('.ant-select-selector') as HTMLElement
+    );
+
+    fireEvent.change(select.querySelector('input') as HTMLElement, {
+      target: { value: 'Thread' },
+    });
+
+    expect(await screen.findByTitle('Thread Created')).toBeInTheDocument();
+
+    fireEvent.change(select.querySelector('input') as HTMLElement, {
+      target: { value: 'Entity Deleted' },
+    });
+
+    expect(screen.queryByTitle('Entity Deleted')).not.toBeInTheDocument();
+  });
+
+  it('should fall back to every event type when the resource declares none', async () => {
+    const field = getFieldByArgumentType(
+      0,
+      'eventTypeList',
+      0,
+      searchOf('glossaryTerm')
+    );
+
+    render(field);
+    const select = screen.getByTestId('event-type-select');
+    fireEvent.mouseDown(
+      select.querySelector('.ant-select-selector') as HTMLElement
+    );
+
+    fireEvent.change(select.querySelector('input') as HTMLElement, {
+      target: { value: 'Ontology' },
+    });
+
+    expect(await screen.findByTitle('Ontology Imported')).toBeInTheDocument();
+  });
+
   it('should return correct fields for argumentType entityIdList', async () => {
     const { AsyncSelect: MockedAsyncSelect } = jest.requireMock(
       '../../components/common/AsyncSelect/AsyncSelect'
     );
     MockedAsyncSelect.mockClear();
 
-    const field = getFieldByArgumentType(0, 'entityIdList', 0, 'table');
+    const field = getFieldByArgumentType(
+      0,
+      'entityIdList',
+      0,
+      searchOf('table')
+    );
 
     render(field);
 
@@ -541,8 +518,30 @@ describe('getFieldByArgumentType tests', () => {
       pageNumber: 1,
       pageSize: 50,
       queryFilter: undefined,
-      searchIndex: SearchIndex.TABLE,
+      searchIndex: [SearchIndex.TABLE],
     });
+  });
+
+  it('entityIdList: an id is looked up in the index of every selected source', async () => {
+    const { AsyncSelect: MockedAsyncSelect } = jest.requireMock(
+      '../../components/common/AsyncSelect/AsyncSelect'
+    );
+    MockedAsyncSelect.mockClear();
+    (searchQuery as jest.Mock).mockClear();
+
+    render(
+      getFieldByArgumentType(0, 'entityIdList', 0, searchOf(['table', 'topic']))
+    );
+    const apiFn = MockedAsyncSelect.mock.calls[0][0].api as (
+      s: string
+    ) => Promise<unknown>;
+    await apiFn('orders');
+
+    expect(searchQuery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        searchIndex: [SearchIndex.TABLE, SearchIndex.TOPIC],
+      })
+    );
   });
 
   it('entityIdList: UUID-format input adds a term filter on the id field', async () => {
@@ -552,7 +551,12 @@ describe('getFieldByArgumentType tests', () => {
     MockedAsyncSelect.mockClear();
     (searchQuery as jest.Mock).mockClear();
 
-    const field = getFieldByArgumentType(0, 'entityIdList', 0, 'table');
+    const field = getFieldByArgumentType(
+      0,
+      'entityIdList',
+      0,
+      searchOf('table')
+    );
 
     render(field);
 
@@ -567,7 +571,7 @@ describe('getFieldByArgumentType tests', () => {
       pageNumber: 1,
       pageSize: 50,
       queryFilter: getTermQuery({ id: uuid }),
-      searchIndex: SearchIndex.TABLE,
+      searchIndex: [SearchIndex.TABLE],
     });
   });
 
@@ -577,7 +581,7 @@ describe('getFieldByArgumentType tests', () => {
     );
     MockedAsyncSelect.mockClear();
 
-    const field = getFieldByArgumentType(0, 'fqnList', 0, 'table');
+    const field = getFieldByArgumentType(0, 'fqnList', 0, searchOf('table'));
 
     render(field);
 
@@ -596,7 +600,12 @@ describe('getFieldByArgumentType tests', () => {
     );
     MockedAsyncSelect.mockClear();
 
-    const field = getFieldByArgumentType(0, 'tableNameList', 0, 'testCase');
+    const field = getFieldByArgumentType(
+      0,
+      'tableNameList',
+      0,
+      searchOf('testCase')
+    );
 
     render(field);
 
@@ -619,7 +628,7 @@ describe('getFieldByArgumentType tests', () => {
       0,
       'entityNameList',
       0,
-      'dataContract'
+      searchOf('dataContract')
     );
 
     render(field);
@@ -638,7 +647,7 @@ describe('getFieldByArgumentType tests', () => {
       0,
       'pipelineStateList',
       0,
-      'selectedTrigger'
+      searchOf('selectedTrigger')
     );
 
     render(field);
@@ -653,7 +662,7 @@ describe('getFieldByArgumentType tests', () => {
       0,
       'ingestionPipelineStateList',
       0,
-      'selectedTrigger'
+      searchOf('selectedTrigger')
     );
 
     render(field);
@@ -668,7 +677,7 @@ describe('getFieldByArgumentType tests', () => {
       0,
       'testStatusList',
       0,
-      'selectedTrigger'
+      searchOf('selectedTrigger')
     );
 
     render(field);
@@ -683,7 +692,7 @@ describe('getFieldByArgumentType tests', () => {
       0,
       'testResultList',
       0,
-      'selectedTrigger'
+      searchOf('selectedTrigger')
     );
 
     render(field);
@@ -698,7 +707,7 @@ describe('getFieldByArgumentType tests', () => {
       0,
       'testSuiteList',
       0,
-      'selectedTrigger'
+      searchOf('selectedTrigger')
     );
 
     render(field);
@@ -717,57 +726,18 @@ describe('getFieldByArgumentType tests', () => {
   });
 
   it('should not return select component for random argumentType', () => {
-    const field = getFieldByArgumentType(0, 'unknown', 0, 'selectedTrigger');
+    const field = getFieldByArgumentType(
+      0,
+      'unknown',
+      0,
+      searchOf('selectedTrigger')
+    );
 
     render(field);
 
     const selectDiv = screen.queryByText('AsyncSelect');
 
     expect(selectDiv).toBeNull();
-  });
-
-  it('getDestinationConfigField should return advanced configurations for webhook type', async () => {
-    const field = getDestinationConfigField(SubscriptionType.Webhook, 4) ?? (
-      <></>
-    );
-
-    render(field);
-
-    const secretKeyInput = screen.getByText('label.advanced-configuration');
-
-    expect(secretKeyInput).toBeInTheDocument();
-
-    fireEvent.click(secretKeyInput);
-
-    expect(
-      await screen.findByTestId('webhook-4-headers-list')
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByTestId('webhook-4-query-params-list')
-    ).toBeInTheDocument();
-    expect(await screen.findByTestId('http-method-4')).toBeInTheDocument();
-  });
-
-  it('getDestinationConfigField should not return advanced configurations for other type', () => {
-    const field = getDestinationConfigField(SubscriptionType.Email, 4) ?? <></>;
-
-    render(field);
-
-    const secretKeyInput = screen.queryByText('label.advanced-configuration');
-
-    expect(secretKeyInput).toBeNull();
-  });
-
-  it('getConnectionTimeoutField should return the connection timeout field', () => {
-    const field = getConnectionTimeoutField();
-
-    render(field);
-
-    expect(screen.getByTestId('connection-timeout')).toBeInTheDocument();
-
-    const input = screen.getByTestId('connection-timeout-input');
-
-    expect(input).toHaveValue(10);
   });
 });
 
@@ -952,11 +922,12 @@ describe('getAlertExtraInfo', () => {
   it('should return skeletons when alertEventCountsLoading is true', () => {
     const alertExtraInfo = getAlertExtraInfo(true);
 
-    render(alertExtraInfo);
+    const { container } = render(alertExtraInfo);
 
-    const skeletons = screen.getAllByText('Skeleton.Button');
-
-    expect(skeletons).toHaveLength(3);
+    expect(screen.getAllByRole('separator')).toHaveLength(3);
+    expect(container.querySelectorAll('span[aria-hidden="true"]')).toHaveLength(
+      3
+    );
   });
 
   it('should return correct extra info when alertEventCountsLoading is false', () => {
@@ -1522,6 +1493,19 @@ describe('handleAlertSave - downstream notification fields', () => {
 });
 
 describe('normalizeDestinationConfig', () => {
+  it('should preserve form-style header and query parameter arrays', () => {
+    const config = {
+      endpoint: 'https://hooks.slack.com/services/xxx',
+      headers: [{ key: 'header1', value: 'value1' }],
+      queryParams: [{ key: 'param1', value: 'value1' }],
+      httpMethod: 'POST',
+    };
+
+    const result = normalizeDestinationConfig(config);
+
+    expect(result).toEqual(config);
+  });
+
   it('should normalize config with headers and queryParams as objects to arrays', () => {
     const config = {
       endpoint: 'https://example.com/webhook',
@@ -1566,7 +1550,7 @@ describe('normalizeDestinationConfig', () => {
     });
   });
 
-  it('should handle config with empty headers and queryParams objects', () => {
+  it('should omit empty headers and queryParams from normalized config', () => {
     const config = {
       endpoint: 'https://example.com/webhook',
       headers: {},
@@ -1578,8 +1562,6 @@ describe('normalizeDestinationConfig', () => {
 
     expect(result).toEqual({
       endpoint: 'https://example.com/webhook',
-      headers: [],
-      queryParams: [],
       timeout: 30,
     });
   });

@@ -35,6 +35,9 @@ const LogsViewerModalContainer: FunctionComponent<
     title,
     downloading,
     isLive,
+    streamHealth,
+    streamTruncated,
+    streamError,
     loadMore,
     download,
   } = useEntityLogs({ logEntityType, fqn, runId });
@@ -48,6 +51,9 @@ const LogsViewerModalContainer: FunctionComponent<
       loadingMore={loadingMore}
       logs={logs}
       mode={isLive ? 'stream' : 'static'}
+      streamError={streamError}
+      streamHealth={streamHealth}
+      streamTruncated={streamTruncated}
       title={
         title ? `${title} · ${t('label.log-plural')}` : t('label.log-plural')
       }

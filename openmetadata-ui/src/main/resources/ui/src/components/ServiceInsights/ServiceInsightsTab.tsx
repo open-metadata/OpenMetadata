@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
+import { Grid } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
+
 import { AxiosError } from 'axios';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty, isUndefined, noop } from 'lodash';
 import { Bucket, ServiceTypes } from 'Models';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { SOCKET_EVENTS } from '../../constants/constants';
@@ -21,6 +23,7 @@ import {
   LIVE_CHARTS_LIST,
   PLATFORM_INSIGHTS_CHARTS,
   PLATFORM_INSIGHTS_LIVE_CHARTS,
+  TERMINAL_CHART_STREAM_STATUSES,
 } from '../../constants/ServiceInsightsTab.constants';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { SystemChartType } from '../../enums/DataInsight.enum';
@@ -50,6 +53,7 @@ import {
   getCurrentMillis,
   getDayAgoStartGMTinMillis,
 } from '../../utils/date-time/DateTimeUtils';
+import { getEntityIcon } from '../../utils/EntityIconUtils';
 import { getEntityNameLabel } from '../../utils/EntityNameUtils';
 import { getEntityFeedLink } from '../../utils/EntityPureUtils';
 import {
@@ -64,7 +68,6 @@ import {
   getServiceNameQueryFilter,
 } from '../../utils/ServicePureUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
-import { getEntityIcon } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { AgentsInfo } from './AgentsStatusWidget/AgentsStatusWidget.interface';
@@ -96,6 +99,12 @@ const ServiceInsightsTab = ({
     WorkflowInstance | undefined
   >(workflowStatesData?.mainInstanceState);
   const sessionIdRef = useRef<string>();
+
+  // The page fetches the workflow state after this tab mounts, so seeding the
+  // state once at mount would leave the AutoPilot status empty.
+  useEffect(() => {
+    setLiveAutoPilotStatusData(workflowStatesData?.mainInstanceState);
+  }, [workflowStatesData?.mainInstanceState]);
 
   const serviceName = serviceDetails.name;
 
@@ -270,6 +279,14 @@ const ServiceInsightsTab = ({
       if (newActivity) {
         const data = JSON.parse(newActivity);
 
+        // A frame that closes the stream carries no payload at all, so applying it would blank
+        // every widget — killing a run ends the stream, and the agents stayed off the list until
+        // the page was reloaded. A live frame still applies, so a deleted metadata agent does leave
+        // the widget.
+        if (TERMINAL_CHART_STREAM_STATUSES.includes(data.status)) {
+          return;
+        }
+
         // Only update the data if the service name is the same as the service details
         if (data.serviceName === serviceDetails.name) {
           const platformInsightsChart = PLATFORM_INSIGHTS_LIVE_CHARTS.map(
@@ -313,13 +330,17 @@ const ServiceInsightsTab = ({
     if (
       workflowStatesData?.mainInstanceState.status === WorkflowStatus.Running
     ) {
-      triggerSocketConnection();
+      // The stream is best-effort, widgets fall back to the polled chart data,
+      // so a failed handshake must not surface as an unhandled rejection
+      triggerSocketConnection().catch(noop);
     }
 
     return () => {
       // Stop the socket connection if it is started and set the sessionId to undefined
       if (sessionIdRef.current) {
-        stopChartDataStreamConnection(sessionIdRef.current);
+        // The server may have already reaped the session (404 on teardown), and
+        // an unmount has nobody left to report to, so swallow the failure
+        stopChartDataStreamConnection(sessionIdRef.current).catch(noop);
         sessionIdRef.current = undefined;
       }
     };
@@ -344,10 +365,14 @@ const ServiceInsightsTab = ({
   }, [socket]);
 
   return (
-    <Row className="service-insights-tab" gutter={[16, 16]}>
-      <Col span={18}>
-        <Row gutter={[16, 16]}>
-          <Col span={24}>
+    <Grid
+      className="layout-row layout-grid service-insights-tab"
+      style={getLayoutGutter(16, 16)}>
+      <Grid.Item className="layout-column" span={18}>
+        <Grid
+          className="layout-row layout-grid"
+          style={getLayoutGutter(16, 16)}>
+          <Grid.Item className="layout-column" span={24}>
             <AgentsStatusWidget
               agentsInfo={agentsInfo}
               isLoading={
@@ -357,8 +382,8 @@ const ServiceInsightsTab = ({
               }
               liveAutoPilotStatusData={liveAutoPilotStatusData}
             />
-          </Col>
-          <Col span={24}>
+          </Grid.Item>
+          <Grid.Item className="layout-column" span={24}>
             <PlatformInsightsWidget
               chartsData={getChartsDataFromWidgetName(
                 'PlatformInsightsWidget',
@@ -366,20 +391,21 @@ const ServiceInsightsTab = ({
               )}
               isLoading={isLoading}
             />
-          </Col>
-        </Row>
-      </Col>
-      <Col span={6}>
+          </Grid.Item>
+        </Grid>
+      </Grid.Item>
+      <Grid.Item className="layout-column" span={6}>
         <TotalDataAssetsWidget
           isLoading={isLoading}
           totalAssetsCount={totalAssetsCount}
         />
-      </Col>
+      </Grid.Item>
 
       {arrayOfWidgets.map(
         ({ Widget, name }) =>
           !isUndefined(Widget) && (
-            <Col
+            <Grid.Item
+              className="layout-column"
               key={name}
               span={
                 ['PIIDistributionWidget', 'TierDistributionWidget'].includes(
@@ -394,10 +420,10 @@ const ServiceInsightsTab = ({
                 serviceDetails={serviceDetails}
                 workflowStatesData={workflowStatesData}
               />
-            </Col>
+            </Grid.Item>
           )
       )}
-    </Row>
+    </Grid>
   );
 };
 

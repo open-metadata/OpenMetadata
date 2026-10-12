@@ -92,12 +92,13 @@ export default defineConfig({
       external: [
         'react',
         'react-dom',
+        'react-dom/server',
         'react/jsx-runtime',
-        '@untitledui/icons',
         'react-aria',
         'react-aria-components',
         'react-stately',
         'react-hook-form',
+        'react-helmet-async',
         'tailwind-merge',
         'input-otp',
         '@react-aria/utils',
@@ -105,6 +106,13 @@ export default defineConfig({
         '@react-types/shared',
         '@internationalized/date',
         'tailwindcss-react-aria-components',
+        'i18next',
+        'react-i18next',
+        // Charts: `/charts` imports echarts' modular entries (echarts/core,
+        // echarts/charts, ...) and echarts-for-react/esm/core. Keep every
+        // sub-path external so consumers resolve their own single copy.
+        /^echarts(\/.*)?$/,
+        /^echarts-for-react(\/.*)?$/,
       ],
       output: {
         entryFileNames: (chunkInfo) => {
@@ -114,6 +122,11 @@ export default defineConfig({
           return `${chunkInfo.name}.[format].js`;
         },
         chunkFileNames: `[name].[format].js`,
+        // One output file per source module. Consumers bundle ui-core with their own
+        // chunking; a single shared chunk can't be split, so every component or
+        // icon any route used would load on every route.
+        preserveModules: true,
+        preserveModulesRoot: 'src',
         globals: {
           react: 'React',
           'react-dom': 'ReactDOM',

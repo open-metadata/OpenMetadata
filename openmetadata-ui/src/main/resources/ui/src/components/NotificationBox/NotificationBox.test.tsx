@@ -13,6 +13,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { NOTIFICATION_READ_TIMER } from '../../constants/constants';
 import { NotificationTabsKey } from '../../enums/notification.enum';
+import { listConversations } from '../../rest/conversationsAPI';
 import { listMyAssignedTasks } from '../../rest/tasksAPI';
 import NotificationBox from './NotificationBox.component';
 
@@ -60,8 +61,8 @@ jest.mock('../../rest/tasksAPI', () => ({
     .mockImplementation(() => Promise.resolve({ data: mockTask })),
 }));
 
-jest.mock('../../rest/feedsAPI', () => ({
-  getFeedsWithFilter: jest
+jest.mock('../../rest/conversationsAPI', () => ({
+  listConversations: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: [] })),
 }));
@@ -123,11 +124,26 @@ describe('Test NotificationBox Component', () => {
     });
     const tabs = await screen.findAllByRole('tab');
     await act(async () => {
+      fireEvent.click(tabs[1]);
+    });
+    await act(async () => {
       fireEvent.click(tabs[0]);
     });
     jest.advanceTimersByTime(NOTIFICATION_READ_TIMER);
 
     expect(mockOnMarkTaskNotificationRead).toHaveBeenCalled();
+  });
+
+  it('loads mention notifications from Conversation V2', async () => {
+    await act(async () => {
+      render(<NotificationBox {...mockProps} />);
+    });
+    const tabs = await screen.findAllByRole('tab');
+    await act(async () => fireEvent.click(tabs[1]));
+
+    expect(listConversations).toHaveBeenCalledWith(
+      expect.objectContaining({ filterType: 'MENTIONS', limit: 10 })
+    );
   });
 
   it('should render no data in case of no notification', async () => {

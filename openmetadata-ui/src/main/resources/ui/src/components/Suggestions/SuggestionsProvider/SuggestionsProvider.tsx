@@ -25,6 +25,8 @@ import {
 import { useTranslation } from 'react-i18next';
 import { PAGE_SIZE } from '../../../constants/constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import { EntityType } from '../../../enums/entity.enum';
+import { SuggestionAction } from '../../../enums/Suggestion.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { useFqn } from '../../../hooks/useFqn';
 import { usePub } from '../../../hooks/usePubSub';
@@ -41,17 +43,16 @@ import {
   getUniqueSuggestions,
 } from '../../../utils/Suggestion/SuggestionUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import {
-  SuggestionAction,
-  SuggestionsContextType,
-} from './SuggestionsProvider.interface';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
+import { SuggestionsContextType } from './SuggestionsProvider.interface';
 
 export const SuggestionsContext = createContext({} as SuggestionsContextType);
 
 const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
   const { t } = useTranslation();
   const publish = usePub();
-  const { fqn: entityFqn } = useFqn();
+  const { entityType } = useRequiredParams<{ entityType: EntityType }>();
+  const { entityFqn } = useFqn({ type: entityType });
   const { permissions } = usePermissionProvider();
   const [activeUser, setActiveUser] = useState<EntityReference>();
   const [loadingAccept, setLoadingAccept] = useState(false);

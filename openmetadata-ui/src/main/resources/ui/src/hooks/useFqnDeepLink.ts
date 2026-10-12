@@ -45,12 +45,11 @@ export const useFqnDeepLink = <
     }
 
     const matchedField = findFieldByFQN(data, fullColumnFqn);
-    if (matchedField) {
-      if (
-        selectedColumn?.fullyQualifiedName !== matchedField.fullyQualifiedName
-      ) {
-        openColumnDetailPanel(matchedField);
-      }
+    if (
+      matchedField &&
+      selectedColumn?.fullyQualifiedName !== matchedField.fullyQualifiedName
+    ) {
+      openColumnDetailPanel(matchedField);
     }
   }, [
     columnPart,

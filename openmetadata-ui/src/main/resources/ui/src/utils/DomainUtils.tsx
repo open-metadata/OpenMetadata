@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Divider, Space, Tooltip as AntDTooltip, Typography } from 'antd';
+import {
+  Box,
+  Divider,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Icon } from '@openmetadata/ui-core-components/icon';
 import classNames from 'classnames';
 import { get, isEmpty, isUndefined, noop } from 'lodash';
 import { Fragment, lazy, ReactNode } from 'react';
@@ -27,9 +33,9 @@ import { TreeListItem } from '../components/common/DomainSelectableTree/DomainSe
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
-import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { DE_ACTIVE_COLOR } from '../constants/constants';
 import { DOMAIN_TYPE_DATA } from '../constants/Domain.constants';
+import { AssetsOfEntity } from '../enums/Assets.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { Domain } from '../generated/entity/domains/domain';
@@ -40,7 +46,6 @@ import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interfa
 import { DomainDetailPageTabProps } from './Domain/DomainClassBase';
 import { getEntityName } from './EntityNameUtils';
 import { t } from './i18next/LocalUtil';
-import { renderIcon } from './IconUtils';
 import {
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,
@@ -119,22 +124,34 @@ const ResizablePanels = withSuspenseFallback(
 
 // Domain type description which will be shown in tooltip
 export const domainTypeTooltipDataRender = () => (
-  <Space direction="vertical" size="middle">
+  <Box
+    inline
+    align="stretch"
+    className="layout-space"
+    direction="col"
+    gap={4}
+    itemClassName="layout-space-item">
     {DOMAIN_TYPE_DATA.map(({ type, description }, index) => (
       <Fragment key={type}>
-        <Space direction="vertical" size={0}>
-          <Typography.Text className="tw:text-primary_on-brand">{`${t(
+        <Box
+          inline
+          align="stretch"
+          className="layout-space"
+          direction="col"
+          gap={0}
+          itemClassName="layout-space-item">
+          <Typography className="tw:text-primary_on-brand">{`${t(
             type
-          )} :`}</Typography.Text>
-          <Typography.Paragraph className="m-0 tw:text-primary_on-brand">
+          )} :`}</Typography>
+          <Typography as="p" className="m-0 tw:text-primary_on-brand">
             {t(description)}
-          </Typography.Paragraph>
-        </Space>
+          </Typography>
+        </Box>
 
         {index !== 2 && <Divider className="m-0" />}
       </Fragment>
     ))}
-  </Space>
+  </Box>
 );
 
 export const renderDomainLink = (
@@ -149,7 +166,11 @@ export const renderDomainLink = (
     : domainDisplayName;
 
   return (
-    <AntDTooltip title={domainDisplayName ?? getEntityName(domain)}>
+    <Tooltip
+      arrow
+      excludeTriggerFromTabOrder
+      title={domainDisplayName ?? getEntityName(domain)}
+      triggerClassName="tw:inline-flex tw:min-w-0 tw:max-w-full">
       <Link
         className={classNames(
           'no-underline domain-link domain-link-text font-medium',
@@ -162,16 +183,16 @@ export const renderDomainLink = (
         data-testid="domain-link"
         to={getDomainPath(domain?.fullyQualifiedName)}>
         {trimLink ? (
-          <Typography.Text
+          <Typography
             className="domain-link-name"
-            ellipsis={{ tooltip: false }}>
+            ellipsis={{ tooltip: false, excludeTriggerFromTabOrder: true }}>
             {displayName}
-          </Typography.Text>
+          </Typography>
         ) : (
           <>{displayName}</>
         )}
       </Link>
-    </AntDTooltip>
+    </Tooltip>
   );
 };
 
@@ -214,7 +235,7 @@ export const convertDomainsToTreeOptions = (
             />
           )}
 
-          <Typography.Text ellipsis>{getEntityName(option)}</Typography.Text>
+          <Typography ellipsis>{getEntityName(option)}</Typography>
         </div>
       ),
       'data-testid': `tag-${option.fullyQualifiedName}`,
@@ -269,7 +290,7 @@ export const getDomainDetailTabs = ({
         />
       ),
       key: EntityTabs.DOCUMENTATION,
-      children: <GenericTab type={PageType.Domain} />,
+      children: <GenericTab type={PageType.Domain} variant="flat" />,
     },
     ...(isVersionsView
       ? []
@@ -447,18 +468,11 @@ export const getDomainWidgetsFromKey = (widgetConfig: WidgetConfig) => {
   );
 };
 
-export const getDomainIcon = (iconURL?: string) => {
-  // Try to render the icon using the utility (handles both URLs and icon names)
-  const iconElement = renderIcon(iconURL, {
-    size: 24,
-    className: 'tw:h-6 tw:w-6 tw:text-quaternary',
-  });
-
-  // If we got an icon element, return it
-  if (iconElement) {
-    return iconElement;
-  }
-
-  // Otherwise return the default domain icon
-  return <DomainIcon className="tw:text-quaternary" />;
-};
+export const getDomainIcon = (iconURL?: string) => (
+  <Icon
+    fallback={<DomainIcon className="tw:text-quaternary" />}
+    iconValue={iconURL}
+    imageClassName="tw:h-6 tw:w-6 tw:text-quaternary"
+    size={24}
+  />
+);

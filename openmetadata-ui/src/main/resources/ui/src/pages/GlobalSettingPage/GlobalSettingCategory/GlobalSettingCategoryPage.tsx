@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Tooltip } from '@openmetadata/ui-core-components';
-import { Col, Row, Space } from 'antd';
+import { Box, Button, Grid, Tooltip } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
+
 import { isEmpty } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -27,27 +28,26 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../../constants/GlobalSettings.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
+import { ALL_SERVICES_CATEGORY } from '../../../constants/Services.constant';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ELASTIC_SEARCH_RE_INDEX_PAGE_TABS } from '../../../enums/ElasticSearch.enum';
-import { ServiceCategory } from '../../../enums/service.enum';
-import { Operation } from '../../../generated/entity/policies/policy';
 import { TeamType } from '../../../generated/entity/teams/team';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useAuth } from '../../../hooks/authHooks';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
 import globalSettingsClassBase from '../../../utils/GlobalSettingsClassBase';
 import {
   getSettingPageEntityBreadCrumb,
   SettingMenuItem,
 } from '../../../utils/GlobalSettingsUtils';
-import { checkPermission } from '../../../utils/PermissionsUtils';
 import {
   getSettingPath,
   getSettingsPathWithFqn,
   getTeamsWithFqnPath,
 } from '../../../utils/RouterUtils';
-import { getResourceEntityFromServiceCategory } from '../../../utils/ServicePureUtils';
+import { canCreateAnyServiceCategory } from '../../../utils/ServicePureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import '../global-setting-page.style.less';
 
@@ -60,14 +60,17 @@ const GlobalSettingCategoryPage = () => {
   }>();
   const { permissions } = usePermissionProvider();
   const { isAdminUser } = useAuth();
+  const authProvider = useApplicationStore(
+    (state) => state.authConfig?.provider
+  );
 
   const { pathname } = useLocation();
   const isEmbedded = pathname.startsWith('/askCollate');
+  // This landing page spans every service category, so the wizard opens on the `all` sentinel:
+  // every category's connectors in one grid, none pre-selected.
   const handleAddServiceClick = () => {
     navigate(
-      connectionsRouterClassBase.getAddServicePath(
-        ServiceCategory.DATABASE_SERVICES
-      )
+      connectionsRouterClassBase.getAddServicePath(ALL_SERVICES_CATEGORY)
     );
   };
 
@@ -98,7 +101,11 @@ const GlobalSettingCategoryPage = () => {
 
   const settingCategoryData: SettingMenuItem | undefined = useMemo(() => {
     let categoryItem = globalSettingsClassBase
-      .getGlobalSettingsMenuWithPermission(permissions, isAdminUser)
+      .getGlobalSettingsMenuWithPermission(
+        permissions,
+        isAdminUser,
+        authProvider
+      )
       .find((item) => item.key === settingCategory);
 
     if (categoryItem) {
@@ -109,16 +116,12 @@ const GlobalSettingCategoryPage = () => {
     }
 
     return categoryItem;
-  }, [settingCategory, permissions, isAdminUser]);
+  }, [settingCategory, permissions, isAdminUser, authProvider]);
 
+  // Being able to create any one category is enough for this page's button — checking a single
+  // hardcoded category would hide it from a user who can only create, say, API services.
   const addServicePermission = useMemo(
-    () =>
-      !isEmpty(permissions) &&
-      checkPermission(
-        Operation.Create,
-        getResourceEntityFromServiceCategory(ServiceCategory.DATABASE_SERVICES),
-        permissions
-      ),
+    () => !isEmpty(permissions) && canCreateAnyServiceCategory(permissions),
     [permissions]
   );
 
@@ -127,7 +130,14 @@ const GlobalSettingCategoryPage = () => {
 
     switch (option) {
       case GlobalSettingOptions.TEAMS:
-        navigate(getTeamsWithFqnPath(TeamType.Organization));
+        // `teams` is an option under both Members (the hierarchy, which opens on
+        // Organization) and Custom Properties (the property definitions page), so the
+        // category has to disambiguate — the option alone no longer identifies the target.
+        if (category === GlobalSettingsMenuCategory.MEMBERS) {
+          navigate(getTeamsWithFqnPath(TeamType.Organization));
+        } else {
+          navigate(getSettingPath(category, option));
+        }
 
         break;
       case GlobalSettingOptions.ONLINE_USERS:
@@ -165,13 +175,19 @@ const GlobalSettingCategoryPage = () => {
   return (
     <PageLayoutV1 pageTitle={t('label.setting-plural')}>
       {isEmbedded && <div className="tw:h-4" />}
-      <Row gutter={[0, 20]}>
-        <Col span={24}>
+      <Grid
+        className="layout-row layout-grid"
+        style={{ ...getLayoutGutter(0, 20) }}>
+        <Grid.Item className="layout-column" span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
-        </Col>
+        </Grid.Item>
 
-        <Col span={24}>
-          <Space className="w-full d-flex justify-between">
+        <Grid.Item className="layout-column" span={24}>
+          <Box
+            align="center"
+            className="layout-space layout-space-horizontal w-full d-flex justify-between"
+            gap={2}
+            itemClassName="layout-space-item">
             <PageHeader
               data={{
                 header: settingCategoryData?.category,
@@ -210,23 +226,27 @@ const GlobalSettingCategoryPage = () => {
                 )}
               </>
             )}
-          </Space>
-        </Col>
+          </Box>
+        </Grid.Item>
 
-        <Col span={24}>
-          <Row className={settingCategoryData?.key} gutter={[20, 20]}>
+        <Grid.Item className="layout-column" span={24}>
+          <Grid
+            className={`layout-row layout-grid ${settingCategoryData?.key}`}
+            style={{ ...getLayoutGutter(20, 20) }}>
             {settingCategoryData?.items?.map((category) => (
-              <Col key={category?.key} lg={8} md={12} sm={24}>
+              <Grid.Item
+                className="layout-column tw:col-span-24 tw:min-[576px]:col-span-24 tw:min-[768px]:col-span-12 tw:min-[992px]:col-span-8"
+                key={category?.key}>
                 <SettingItemCard
                   className="global-setting-card"
                   data={category}
                   onClick={handleSettingItemClick}
                 />
-              </Col>
+              </Grid.Item>
             ))}
-          </Row>
-        </Col>
-      </Row>
+          </Grid>
+        </Grid.Item>
+      </Grid>
     </PageLayoutV1>
   );
 };

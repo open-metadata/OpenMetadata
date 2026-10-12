@@ -41,6 +41,22 @@ jest.mock('../../../rest/queries/topicQuery', () => ({
   prefetchTopic: (...args: unknown[]) => mockPrefetchTopic(...args),
 }));
 
+jest.mock('react-router-dom', () => {
+  const actual = jest.requireActual('react-router-dom');
+
+  return {
+    ...actual,
+    Link: jest.fn(({ children, to, state, ...rest }) => (
+      <a
+        {...rest}
+        data-state={JSON.stringify(state)}
+        href={typeof to === 'string' ? to : to?.pathname}>
+        {children}
+      </a>
+    )),
+  };
+});
+
 jest.mock('../../../utils/RouterUtils', () => ({
   getDomainPath: jest.fn().mockReturnValue('/mock-domain'),
 }));
@@ -53,6 +69,7 @@ jest.mock('../../../utils/EntityNameUtils', () => ({
 }));
 jest.mock('../../../utils/EntitySearchUtils', () => ({
   highlightSearchText: jest.fn().mockReturnValue(''),
+  renderHighlightedText: jest.fn((text) => text ?? ''),
   highlightEntityNameAndDescription: jest.fn((source, highlight) => {
     if (!highlight) {
       return source;
@@ -88,40 +105,69 @@ jest.mock('../../../utils/SearchClassBase', () => ({
   },
 }));
 
-jest.mock('../../common/DomainDisplay/DomainDisplay.component', () => ({
-  DomainDisplay: jest
+jest.mock('../../common/CertificationTag/CertificationTag', () =>
+  jest.fn(({ certification }) => (
+    <div data-testid={`certification-${certification.tagLabel.tagFQN}`} />
+  ))
+);
+
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
+  jest
+    .fn()
+    .mockImplementation(({ markdown }) => (
+      <span data-testid="previewer">{markdown}</span>
+    ))
+);
+
+jest.mock('../../common/DomainTags/DomainTags', () => ({
+  __esModule: true,
+  default: jest
     .fn()
     .mockReturnValue(<div data-testid="domain-display">Domain Display</div>),
 }));
 
-jest.mock('@openmetadata/ui-core-components', () => ({
-  Breadcrumbs: jest.fn(({ items = [] }) => (
-    <nav data-testid="breadcrumbs">
-      {items.map(
-        (item: {
-          id: string;
-          label: string;
-          href: string;
-          icon?: (props: { className?: string }) => ReactElement;
-        }) => {
-          const Icon = item.icon;
+jest.mock('@openmetadata/ui-core-components', () => {
+  const actual = jest.requireActual('@openmetadata/ui-core-components');
 
-          return (
-            <a data-testid="breadcrumb-item" href={item.href} key={item.id}>
-              {Icon && (
-                <span data-testid="breadcrumb-icon">
-                  <Icon className="breadcrumb-icon" />
-                </span>
-              )}
-              {item.label}
-            </a>
-          );
-        }
-      )}
-    </nav>
-  )),
-  Card: jest.fn(({ children, ...props }) => <div {...props}>{children}</div>),
-}));
+  return {
+    // StatusBadge renders the core Badge; keep the real one (a plain span).
+    Badge: actual.Badge,
+    Box: actual.Box,
+    Divider: actual.Divider,
+    Breadcrumbs: jest.fn(({ items = [] }) => (
+      <nav data-testid="breadcrumbs">
+        {items.map(
+          (item: {
+            id: string;
+            label: string;
+            href: string;
+            icon?: (props: { className?: string }) => ReactElement;
+          }) => {
+            const Icon = item.icon;
+
+            return (
+              <a data-testid="breadcrumb-item" href={item.href} key={item.id}>
+                {Icon && (
+                  <span data-testid="breadcrumb-icon">
+                    <Icon className="breadcrumb-icon" />
+                  </span>
+                )}
+                {item.label}
+              </a>
+            );
+          }
+        )}
+      </nav>
+    )),
+    Button: actual.Button,
+    Card: jest.fn(({ children, ...props }) => <div {...props}>{children}</div>),
+    Checkbox: actual.Checkbox,
+    Owner: jest.fn().mockReturnValue(null),
+    toOwnerRef: actual.toOwnerRef,
+    toOwnerRefs: actual.toOwnerRefs,
+    Typography: actual.Typography,
+  };
+});
 
 const baseSource: ExploreSearchCardProps['source'] = {
   id: 'base-1',
@@ -168,7 +214,7 @@ describe('ExploreSearchCard - Domain section', () => {
     jest.clearAllMocks();
   });
 
-  it('renders  DomainDisplay component', () => {
+  it('renders the domain chips', () => {
     renderCard({
       domains: [{ id: '1', fullyQualifiedName: 'domain.test', type: 'domain' }],
     });
@@ -196,6 +242,38 @@ describe('ExploreSearchCard - Domain section', () => {
     renderCard({ domains: [] });
 
     expect(screen.queryByText('Domain')).not.toBeInTheDocument();
+  });
+});
+
+describe('ExploreSearchCard - navigation breadcrumb state', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('passes the full breadcrumb trail including the current entity, without dropping any crumb', () => {
+    const fullTrail = [
+      { name: 'svc', url: '/service/svc' },
+      { name: 'db', url: '/database/db' },
+      { name: 'schema', url: '/schema/schema' },
+      { name: 'table', url: '' },
+    ];
+    (searchClassBase.getEntityBreadcrumbs as jest.Mock).mockReturnValue(
+      fullTrail
+    );
+
+    renderCard({ fullyQualifiedName: 'svc.db.schema.table' });
+
+    expect(searchClassBase.getEntityBreadcrumbs).toHaveBeenCalledWith(
+      expect.anything(),
+      'table',
+      true
+    );
+
+    const state = JSON.parse(
+      screen.getByTestId('entity-link').getAttribute('data-state') ?? '{}'
+    );
+
+    expect(state.breadcrumbData).toEqual(fullTrail);
   });
 });
 
@@ -299,6 +377,133 @@ describe('ExploreSearchCard - Card container', () => {
       screen.getByTestId('ranking-score-explanation')
     ).not.toHaveTextContent('avgdl');
   });
+
+  it('breaks the function_score subtree out into per-signal boosts', () => {
+    renderCard(
+      { fullyQualifiedName: 'svc.db.schema.users' },
+      {
+        matchedQueries: ['ranking:exactName:name.keyword:0'],
+        score: 35.847,
+        scoreExplanation: {
+          description: 'sum of:',
+          value: 35.847,
+          details: [
+            {
+              description: 'max plus 0.05 times others of:',
+              value: 33.975,
+            },
+            {
+              description: 'min of:',
+              value: 1.872,
+              details: [
+                {
+                  description: 'function score, score mode [sum]',
+                  value: 1.872,
+                  details: [
+                    { description: 'product of:', value: 1 },
+                    {
+                      description: 'function score, product of:',
+                      value: 0.5,
+                      details: [
+                        {
+                          description:
+                            'match filter: ConstantScore(tier.tagFQN:tier.tier1)',
+                          value: 1,
+                        },
+                      ],
+                    },
+                    {
+                      description:
+                        "field value function: none(doc['usageSummary.weeklyStats.percentileRank'].value?:0.0 * factor=0.005)",
+                      value: 0.125,
+                    },
+                  ],
+                },
+                { description: 'maxBoost', value: 2 },
+              ],
+            },
+          ],
+        },
+      }
+    );
+
+    const boosts = screen.getByTestId('ranking-signal-boosts');
+
+    expect(boosts).toHaveTextContent('label.signal-boost-plural');
+    expect(boosts).toHaveTextContent('tier.tagFQN: tier.tier1');
+    expect(boosts).toHaveTextContent('usageSummary.weeklyStats.percentileRank');
+    expect(boosts).toHaveTextContent('label.baseline');
+    expect(screen.getByTestId('ranking-signal-total')).toHaveTextContent(
+      '+1.8720'
+    );
+    expect(screen.getByTestId('ranking-score-breakdown')).toHaveTextContent(
+      'message.search-ranking-score-breakdown'
+    );
+  });
+
+  it('reports the max_boost cap when the raw signal total exceeds it', () => {
+    renderCard(
+      { fullyQualifiedName: 'svc.db.schema.users' },
+      {
+        matchedQueries: ['ranking:exactName:name.keyword:0'],
+        score: 12,
+        scoreExplanation: {
+          description: 'sum of:',
+          value: 12,
+          details: [
+            { description: 'max plus 0.05 times others of:', value: 10 },
+            {
+              description: 'min of:',
+              value: 2,
+              details: [
+                {
+                  description: 'function score, score mode [sum]',
+                  value: 3.4,
+                  details: [
+                    {
+                      description: 'function score, product of:',
+                      value: 3.4,
+                      details: [
+                        {
+                          description:
+                            'match filter: ConstantScore(tier.tagFQN:tier.tier1)',
+                          value: 1,
+                        },
+                      ],
+                    },
+                  ],
+                },
+                { description: 'maxBoost', value: 2 },
+              ],
+            },
+          ],
+        },
+      }
+    );
+
+    expect(screen.getByTestId('ranking-signal-total')).toHaveTextContent(
+      'message.search-ranking-signal-capped'
+    );
+  });
+
+  it('omits the signal section when the explanation has no function_score', () => {
+    renderCard(
+      { fullyQualifiedName: 'svc.db.schema.users' },
+      {
+        matchedQueries: ['ranking:exactName:name.keyword:0'],
+        score: 10,
+        scoreExplanation: {
+          description: 'max plus 0.05 times others of:',
+          value: 10,
+          details: [
+            { description: 'ConstantScore(name.keyword:users)', value: 10 },
+          ],
+        },
+      }
+    );
+
+    expect(screen.queryByTestId('ranking-signal-boosts')).toBeNull();
+  });
 });
 
 describe('ExploreSearchCard - Entity type tags', () => {
@@ -335,6 +540,29 @@ describe('ExploreSearchCard - Entity type tags', () => {
 
     expect(screen.queryByTestId('label.constraint')).not.toBeInTheDocument();
     expect(screen.queryByText(Constraint.PrimaryKey)).not.toBeInTheDocument();
+  });
+});
+
+describe('ExploreSearchCard - Certification badge', () => {
+  const certification = { tagLabel: { tagFQN: 'Certification.Gold' } };
+
+  it('renders the certification badge for a certified table', () => {
+    renderCard({ certification } as Partial<ExploreSearchCardProps['source']>);
+
+    expect(
+      screen.getByTestId('certification-Certification.Gold')
+    ).toBeInTheDocument();
+  });
+
+  it('does not render the table certification inherited by a column', () => {
+    renderCard({
+      entityType: 'tableColumn',
+      certification,
+    } as Partial<ExploreSearchCardProps['source']>);
+
+    expect(
+      screen.queryByTestId('certification-Certification.Gold')
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -417,7 +645,8 @@ describe('ExploreSearchCard - Highlight functionality', () => {
         name: 'test-table',
         displayName: 'Test Table',
       }),
-      highlightData
+      highlightData,
+      true
     );
   });
 
@@ -443,7 +672,8 @@ describe('ExploreSearchCard - Highlight functionality', () => {
       expect.objectContaining({
         name: 'test-table',
       }),
-      highlightData
+      highlightData,
+      true
     );
   });
 
@@ -471,7 +701,8 @@ describe('ExploreSearchCard - Highlight functionality', () => {
       expect.objectContaining({
         description: 'This is a test description',
       }),
-      highlightData
+      highlightData,
+      true
     );
   });
 
@@ -500,7 +731,8 @@ describe('ExploreSearchCard - Highlight functionality', () => {
         name: 'name',
         displayName: 'Display Name',
       }),
-      highlightData
+      highlightData,
+      true
     );
   });
 
@@ -534,7 +766,8 @@ describe('ExploreSearchCard - Highlight functionality', () => {
         displayName: 'Highlighted Display',
         description: 'Highlighted description text',
       }),
-      highlightData
+      highlightData,
+      true
     );
   });
 
@@ -560,7 +793,8 @@ describe('ExploreSearchCard - Highlight functionality', () => {
         name: 'test-table',
         description: 'Test description',
       }),
-      highlightData
+      highlightData,
+      true
     );
   });
 
@@ -598,6 +832,53 @@ describe('ExploreSearchCard - Highlight functionality', () => {
     );
 
     expect(highlightEntityNameAndDescription).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('ExploreSearchCard - Description markdown stripping', () => {
+  it('strips markdown syntax from description before rendering', () => {
+    renderCard({
+      description: '**bold text** and `code` and [link](http://example.com)',
+    });
+
+    const body = screen.getByTestId('table-body');
+
+    expect(body).toHaveTextContent('bold text and code and link');
+    expect(body).not.toHaveTextContent('**bold text**');
+    expect(body).not.toHaveTextContent('`code`');
+  });
+
+  it('renders plain text description as-is', () => {
+    renderCard({ description: 'Simple plain text description' });
+
+    expect(screen.getByTestId('table-body')).toHaveTextContent(
+      'Simple plain text description'
+    );
+  });
+
+  it('preserves search highlight spans after stripping markdown', () => {
+    renderWithQueryClient(
+      <MemoryRouter>
+        <ExploreSearchCard
+          {...defaultProps}
+          highlight={{
+            description: [
+              'bold text and <span class="text-highlighter">code</span> and link',
+            ],
+          }}
+          source={{
+            ...baseSource,
+            description:
+              '**bold text** and `code` and [link](http://example.com)',
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    const body = screen.getByTestId('table-body');
+
+    expect(body).toHaveTextContent('code');
+    expect(body).not.toHaveTextContent('**bold text**');
   });
 });
 

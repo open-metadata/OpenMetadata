@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { Modal } from 'antd';
+import {
+  Button,
+  Dialog,
+  Modal,
+  ModalOverlay,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -20,12 +26,14 @@ import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getTermQuery } from '../../../utils/SearchPureUtils';
+import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
+import { useGenericDomainLabel } from '../../common/DomainLabel/useGenericDomainLabel';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
-import { DomainLabelV2 } from '../../DataAssets/DomainLabelV2/DomainLabelV2';
 
 export const DataProductDomainWidget = () => {
   const { t } = useTranslation();
   const { data: dataProduct, onUpdate } = useGenericContext<DataProduct>();
+  const domainProps = useGenericDomainLabel<DataProduct>();
   const [assetCount, setAssetCount] = useState<number>(0);
   const [pendingDomains, setPendingDomains] = useState<
     EntityReference | EntityReference[] | null
@@ -66,11 +74,14 @@ export const DataProductDomainWidget = () => {
 
       setIsLoading(true);
       try {
-        const rawDomains = Array.isArray(selectedDomain)
-          ? selectedDomain
-          : isEmpty(selectedDomain)
-          ? []
-          : [selectedDomain];
+        let rawDomains: EntityReference[];
+        if (Array.isArray(selectedDomain)) {
+          rawDomains = selectedDomain;
+        } else if (isEmpty(selectedDomain)) {
+          rawDomains = [];
+        } else {
+          rawDomains = [selectedDomain];
+        }
 
         const domains: EntityReference[] = rawDomains.map((d) => ({
           id: d.id,
@@ -125,31 +136,50 @@ export const DataProductDomainWidget = () => {
 
   return (
     <>
-      <DomainLabelV2
+      <DomainLabel
+        {...domainProps}
         showDomainHeading
         isClearable={false}
+        multiple={false}
+        variant="widget"
         onUpdate={handleDomainUpdate}
       />
 
-      <Modal
-        centered
-        closable={false}
-        confirmLoading={isLoading}
-        data-testid="domain-change-confirmation-modal"
-        maskClosable={false}
-        okButtonProps={{ danger: false }}
-        okText={t('label.confirm')}
-        open={isConfirmModalOpen}
-        title={t('label.change-entity', { entity: t('label.domain') })}
-        onCancel={handleCancel}
-        onOk={handleConfirm}>
-        <p>
-          {t('message.domain-change-asset-migration-warning', {
-            count: assetCount,
-            domain: getNewDomainName(),
-          })}
-        </p>
-      </Modal>
+      <ModalOverlay
+        isDismissable={false}
+        isOpen={isConfirmModalOpen}
+        onOpenChange={(open) => !open && !isLoading && handleCancel()}>
+        <Modal data-testid="domain-change-confirmation-modal">
+          <Dialog
+            dividers="scroll"
+            title={t('label.change-entity', { entity: t('label.domain') })}
+            width={520}>
+            <Dialog.Content>
+              <Typography as="p" size="text-sm">
+                {t('message.domain-change-asset-migration-warning', {
+                  count: assetCount,
+                  domain: getNewDomainName(),
+                })}
+              </Typography>
+            </Dialog.Content>
+            <Dialog.Footer>
+              <Button
+                color="secondary"
+                isDisabled={isLoading}
+                onPress={handleCancel}>
+                {t('label.cancel')}
+              </Button>
+              <Button
+                showTextWhileLoading
+                color="primary"
+                isLoading={isLoading}
+                onPress={handleConfirm}>
+                {t('label.confirm')}
+              </Button>
+            </Dialog.Footer>
+          </Dialog>
+        </Modal>
+      </ModalOverlay>
     </>
   );
 };

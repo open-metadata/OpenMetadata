@@ -13,14 +13,9 @@
 
 import { useMemo } from 'react';
 import { TABLE_CARD_PAGE_SIZE } from '../../../../../constants/constants';
-import {
-  DOMAIN_DEFAULT_QUICK_FILTERS,
-  DOMAIN_FILTERS,
-  SUBDOMAIN_DEFAULT_QUICK_FILTERS,
-  SUB_DOMAIN_FILTERS,
-} from '../../../../../constants/Domain.constants';
 import { SearchIndex } from '../../../../../enums/search.enum';
 import { Domain } from '../../../../../generated/entity/domains/domain';
+import domainClassBase from '../../../../../utils/Domain/DomainClassBase';
 import { useListingData } from '../../compositions/useListingData';
 import { CellRenderer, ColumnConfig, ListingData } from '../../shared/types';
 import { useDomainColumns } from '../ui/useDomainColumns';
@@ -28,6 +23,8 @@ import { useDomainRenderers } from '../ui/useDomainRenderers';
 
 interface UseDomainListingConfig {
   baseFilter?: string;
+  /** Run the search as a natural-language query while the NLQ toggle is on. */
+  enableNlq?: boolean;
   nameLabelKey?: string;
   pageSize?: number;
   basePath?: string;
@@ -47,6 +44,7 @@ export const useDomainListing = (
   const {
     searchKey = 'q',
     baseFilter = '',
+    enableNlq = false,
     nameLabelKey = 'label.domain',
     pageSize = TABLE_CARD_PAGE_SIZE,
     basePath = '/domain',
@@ -92,14 +90,11 @@ export const useDomainListing = (
   const { renderers } = useDomainRenderers(domainRenderersConfig);
   // Define filterKeys for domain filters
   const filterKeys = useMemo(
-    () =>
-      isSubDomain
-        ? SUBDOMAIN_DEFAULT_QUICK_FILTERS
-        : DOMAIN_DEFAULT_QUICK_FILTERS,
+    () => domainClassBase.getListingQuickFilterKeys(isSubDomain),
     [isSubDomain]
   );
   const filterConfigs = useMemo(
-    () => (isSubDomain ? SUB_DOMAIN_FILTERS : DOMAIN_FILTERS),
+    () => domainClassBase.getListingFilters(isSubDomain),
     [isSubDomain]
   );
 
@@ -114,6 +109,7 @@ export const useDomainListing = (
     renderers,
     basePath,
     searchKey,
+    enableNlq,
   });
 
   return listingData;

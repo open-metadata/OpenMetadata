@@ -25,21 +25,22 @@ import { performAdminLogin } from '../../utils/admin';
 import { selectOption, selectRange } from '../../utils/advancedSearch';
 import {
   assignDataProduct,
-  assignSingleSelectDomain,
   redirectToHomePage,
   removeDataProduct,
-  removeSingleSelectDomain,
 } from '../../utils/common';
 import {
   clickEditContractButton,
   performInitialStepForRules,
+  reloadContractPage,
   saveAndTriggerDataContractValidation,
+  triggerContractValidation,
 } from '../../utils/dataContracts';
 import {
   customFormatDateTime,
   getCurrentMillis,
   getEpochMillisForFutureDays,
 } from '../../utils/dateTime';
+import { setDomain } from '../../utils/domainPicker';
 import {
   addOwner,
   removeOwnersFromList,
@@ -64,6 +65,8 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
   });
 
   test('Validate Owner Rule Is', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -98,27 +101,32 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
-        ruleLocator.locator('.group--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Owners',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator .ant-select'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.is
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--value .ant-select'),
+        ruleLocator.getByTestId('advanced-search-value'),
         team.responseData.displayName,
         true
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
+      expect(contractId).toBeTruthy();
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -137,21 +145,9 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         dataTestId: 'data-assets-header',
       });
 
-      await page.getByTestId('manage-contract-actions').click();
+      await triggerContractValidation(page, contractId);
 
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
-
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -164,6 +160,8 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
   });
 
   test('Validate Owner Rule Is_Not', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -195,27 +193,32 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
-        ruleLocator.locator('.group--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Owners',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator .ant-select'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.is_not
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--value .ant-select'),
+        ruleLocator.getByTestId('advanced-search-value'),
         user.getUserDisplayName(),
         true
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
+      expect(contractId).toBeTruthy();
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -241,21 +244,9 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         dataTestId: 'data-assets-header',
       });
 
-      await page.getByTestId('manage-contract-actions').click();
+      await triggerContractValidation(page, contractId);
 
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
-
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -268,6 +259,8 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
   });
 
   test('Validate Owner Rule Any_In', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -299,27 +292,31 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
-        ruleLocator.locator('.group--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Owners',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator .ant-select'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.any_in
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--value .ant-select'),
+        ruleLocator.getByTestId('advanced-search-value'),
         user.getUserDisplayName(),
         true
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -346,21 +343,9 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         dataTestId: 'data-assets-header',
       });
 
-      await page.getByTestId('manage-contract-actions').click();
+      await triggerContractValidation(page, contractId);
 
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
-
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -372,6 +357,8 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
   });
 
   test('Validate Owner Rule Not_In', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -403,27 +390,32 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
-        ruleLocator.locator('.group--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Owners',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator .ant-select'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.not_in
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--value .ant-select'),
+        ruleLocator.getByTestId('advanced-search-value'),
         user.getUserDisplayName(),
         true
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
+      expect(contractId).toBeTruthy();
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -449,21 +441,9 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         dataTestId: 'data-assets-header',
       });
 
-      await page.getByTestId('manage-contract-actions').click();
+      await triggerContractValidation(page, contractId);
 
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
-
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -476,6 +456,8 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
   });
 
   test('Validate Owner Rule Is_Set', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -499,21 +481,25 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
-        ruleLocator.locator('.group--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Owners',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator .ant-select'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.is_set
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -533,21 +519,9 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         dataTestId: 'data-assets-header',
       });
 
-      await page.getByTestId('manage-contract-actions').click();
+      await triggerContractValidation(page, contractId);
 
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
-
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -558,7 +532,9 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
     });
   });
 
-  test.fixme('Validate Owner Rule Is_Not_Set', async ({ page, browser }) => {
+  test('Validate Owner Rule Is_Not_Set', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -582,21 +558,26 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
-        ruleLocator.locator('.group--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Owners',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator .ant-select'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.is_not_set
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
+      expect(contractId).toBeTruthy();
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -615,21 +596,9 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         dataTestId: 'data-assets-header',
       });
 
-      await page.getByTestId('manage-contract-actions').click();
+      await triggerContractValidation(page, contractId);
 
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
-
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -644,6 +613,8 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
 test.describe('Data Contracts Semantics Rule Description', () => {
   test('Validate Description Rule Contains', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -666,26 +637,31 @@ test.describe('Data Contracts Semantics Rule Description', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
-        ruleLocator.locator('.group--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Description',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator .ant-select'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.contains
       );
 
       const inputElement = ruleLocator.locator(
-        '.rule--widget--TEXT input[type="text"]'
+        '[data-testid=advanced-search-value] input[type="text"]:not([role="combobox"])'
       );
       await inputElement.fill('description');
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
+      expect(contractId).toBeTruthy();
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -706,21 +682,9 @@ test.describe('Data Contracts Semantics Rule Description', () => {
       await page.click('[data-testid="contract"]');
       await waitForAllLoadersToDisappear(page);
 
-      await page.getByTestId('manage-contract-actions').click();
+      await triggerContractValidation(page, contractId);
 
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
-
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -733,6 +697,8 @@ test.describe('Data Contracts Semantics Rule Description', () => {
   });
 
   test('Validate Description Rule Not Contains', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -756,25 +722,30 @@ test.describe('Data Contracts Semantics Rule Description', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
-        ruleLocator.locator('.group--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Description',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator .ant-select'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.not_contains
       );
       const inputElement = ruleLocator.locator(
-        '.rule--widget--TEXT input[type="text"]'
+        '[data-testid=advanced-search-value] input[type="text"]:not([role="combobox"])'
       );
       await inputElement.fill('description');
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
+      expect(contractId).toBeTruthy();
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -795,21 +766,9 @@ test.describe('Data Contracts Semantics Rule Description', () => {
 
       await page.click('[data-testid="contract"]');
       await waitForAllLoadersToDisappear(page);
-      await page.getByTestId('manage-contract-actions').click();
+      await triggerContractValidation(page, contractId);
 
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
-
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -821,6 +780,8 @@ test.describe('Data Contracts Semantics Rule Description', () => {
   });
 
   test('Validate Description Rule Is_Set', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -844,25 +805,28 @@ test.describe('Data Contracts Semantics Rule Description', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
-        ruleLocator.locator('.group--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Description',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator .ant-select'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.is_set
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
 
       await expect(async () => {
-        await page.reload();
-        await waitForAllLoadersToDisappear(page);
+        await reloadContractPage(page);
         await expect(
           page.getByTestId('contract-status-card-item-semantics-status')
         ).toContainText('Passed', { timeout: 5_000 });
@@ -883,25 +847,13 @@ test.describe('Data Contracts Semantics Rule Description', () => {
 
       await page.click('[data-testid="contract"]');
       await waitForAllLoadersToDisappear(page);
-      await page.getByTestId('manage-contract-actions').click();
+      await triggerContractValidation(page, contractId);
 
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      const response = await runNowResponse;
-      expect(response.ok()).toBe(true);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
       ).toContainText('Failed');
-
-      await page.reload();
-      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.getByTestId('data-contract-latest-result-btn')
@@ -910,6 +862,8 @@ test.describe('Data Contracts Semantics Rule Description', () => {
   });
 
   test('Validate Description Rule Is_Not_Set', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -933,21 +887,25 @@ test.describe('Data Contracts Semantics Rule Description', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
-        ruleLocator.locator('.group--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Description',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator .ant-select'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.is_not_set
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -969,21 +927,9 @@ test.describe('Data Contracts Semantics Rule Description', () => {
       await page.click('[data-testid="contract"]');
       await waitForAllLoadersToDisappear(page);
 
-      await page.getByTestId('manage-contract-actions').click();
+      await triggerContractValidation(page, contractId);
 
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
-
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1003,12 +949,46 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     domain1 = new Domain();
     domain2 = new Domain();
-    await domain1.create(apiContext);
-    await domain2.create(apiContext);
+
+    // When a test is retried on a new worker the beforeAll re-runs with the
+    // same domain objects (same UUID in data.name). If the first run already
+    // created them the POST returns 409; in that case fetch the existing entity
+    // so responseData is populated and the tests can proceed normally.
+    for (const domain of [domain1, domain2]) {
+      try {
+        await domain.create(apiContext);
+      } catch (err) {
+        if ((err as Error).message?.includes('409')) {
+          const encodedName = encodeURIComponent(
+            domain.data.fullyQualifiedName ?? domain.data.name
+          );
+          const res = await apiContext.get(
+            `/api/v1/domains/name/${encodedName}`
+          );
+          if (res.ok()) {
+            domain.responseData = await res.json();
+          } else {
+            throw err;
+          }
+        } else {
+          throw err;
+        }
+      }
+    }
+
+    await afterAction();
+  });
+
+  test.afterAll('Cleanup domains', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await domain1.delete(apiContext).catch(() => {});
+    await domain2.delete(apiContext).catch(() => {});
     await afterAction();
   });
 
   test('Validate Domain Rule Is', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -1020,7 +1000,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
       await redirectToHomePage(page);
       await table.visitEntityPage(page);
 
-      await assignSingleSelectDomain(page, domain1.responseData);
+      await setDomain(page, domain1.responseData);
 
       await performInitialStepForRules(page);
     });
@@ -1034,27 +1014,32 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
-        ruleLocator.locator('.group--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Domain',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator .ant-select'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.is
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--value .ant-select'),
+        ruleLocator.getByTestId('advanced-search-value'),
         domain1.responseData.name,
         true
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
+      expect(contractId).toBeTruthy();
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1065,24 +1050,12 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
     });
 
     await test.step('Domain with Is condition should failed', async () => {
-      await removeSingleSelectDomain(page, domain1.responseData);
-      await assignSingleSelectDomain(page, domain2.responseData);
+      await setDomain(page, domain1.responseData, { verify: 'cleared' });
+      await setDomain(page, domain2.responseData);
 
-      await page.getByTestId('manage-contract-actions').click();
+      await triggerContractValidation(page, contractId);
 
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
-
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1095,6 +1068,8 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
   });
 
   test('Validate Domain Rule Is Not', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -1105,7 +1080,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
     await test.step('Open contract section and start adding contract', async () => {
       await redirectToHomePage(page);
       await table.visitEntityPage(page);
-      await assignSingleSelectDomain(page, domain1.responseData);
+      await setDomain(page, domain1.responseData);
 
       await performInitialStepForRules(page);
     });
@@ -1119,27 +1094,32 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
-        ruleLocator.locator('.group--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Domain',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator .ant-select'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.is_not
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--value .ant-select'),
+        ruleLocator.getByTestId('advanced-search-value'),
         domain2.responseData.name,
         true
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
+      expect(contractId).toBeTruthy();
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1150,24 +1130,12 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
     });
 
     await test.step('Domain with IsNot condition should failed', async () => {
-      await removeSingleSelectDomain(page, domain1.responseData);
-      await assignSingleSelectDomain(page, domain2.responseData);
+      await setDomain(page, domain1.responseData, { verify: 'cleared' });
+      await setDomain(page, domain2.responseData);
 
-      await page.getByTestId('manage-contract-actions').click();
+      await triggerContractValidation(page, contractId);
 
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
-
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1180,6 +1148,8 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
   });
 
   test('Validate Domain Rule Any_In', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -1191,7 +1161,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
       await redirectToHomePage(page);
       await table.visitEntityPage(page);
 
-      await assignSingleSelectDomain(page, domain1.responseData);
+      await setDomain(page, domain1.responseData);
 
       await performInitialStepForRules(page);
     });
@@ -1205,27 +1175,32 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
-        ruleLocator.locator('.group--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Domain',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator .ant-select'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.any_in
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--value .ant-select'),
+        ruleLocator.getByTestId('advanced-search-value'),
         domain1.responseData.name,
         true
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
+      expect(contractId).toBeTruthy();
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1236,24 +1211,12 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
     });
 
     await test.step('Domain with AnyIn condition should failed', async () => {
-      await removeSingleSelectDomain(page, domain1.responseData);
-      await assignSingleSelectDomain(page, domain2.responseData);
+      await setDomain(page, domain1.responseData, { verify: 'cleared' });
+      await setDomain(page, domain2.responseData);
 
-      await page.getByTestId('manage-contract-actions').click();
+      await triggerContractValidation(page, contractId);
 
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
-
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1266,6 +1229,8 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
   });
 
   test('Validate Domain Rule Not_In', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -1276,7 +1241,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
     await test.step('Open contract section and start adding contract', async () => {
       await redirectToHomePage(page);
       await table.visitEntityPage(page);
-      await assignSingleSelectDomain(page, domain2.responseData);
+      await setDomain(page, domain2.responseData);
       await performInitialStepForRules(page);
     });
 
@@ -1289,27 +1254,32 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
-        ruleLocator.locator('.group--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Domain',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator .ant-select'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.not_in
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--value .ant-select'),
+        ruleLocator.getByTestId('advanced-search-value'),
         domain1.responseData.name,
         true
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
+      expect(contractId).toBeTruthy();
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1320,24 +1290,12 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
     });
 
     await test.step('Domain with NotIn condition should failed', async () => {
-      await removeSingleSelectDomain(page, domain2.responseData);
-      await assignSingleSelectDomain(page, domain1.responseData);
+      await setDomain(page, domain2.responseData, { verify: 'cleared' });
+      await setDomain(page, domain1.responseData);
 
-      await page.getByTestId('manage-contract-actions').click();
+      await triggerContractValidation(page, contractId);
 
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
-
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1350,6 +1308,8 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
   });
 
   test('Validate Domain Rule Is_Set', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -1360,7 +1320,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
     await test.step('Open contract section and start adding contract', async () => {
       await redirectToHomePage(page);
       await table.visitEntityPage(page);
-      await assignSingleSelectDomain(page, domain1.responseData);
+      await setDomain(page, domain1.responseData);
       await performInitialStepForRules(page);
     });
 
@@ -1373,21 +1333,26 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
-        ruleLocator.locator('.group--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Domain',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator .ant-select'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.is_set
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
+      expect(contractId).toBeTruthy();
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1398,23 +1363,11 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
     });
 
     await test.step('Domain with IsSet condition should failed', async () => {
-      await removeSingleSelectDomain(page, domain1.responseData);
+      await setDomain(page, domain1.responseData, { verify: 'cleared' });
 
-      await page.getByTestId('manage-contract-actions').click();
+      await triggerContractValidation(page, contractId);
 
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
-
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1426,7 +1379,9 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
     });
   });
 
-  test.fixme('Validate Domain Rule Is_Not_Set', async ({ page, browser }) => {
+  test('Validate Domain Rule Is_Not_Set', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -1449,21 +1404,26 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
-        ruleLocator.locator('.group--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Domain',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator .ant-select'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.is_not_set
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
+      expect(contractId).toBeTruthy();
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1474,23 +1434,11 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
     });
 
     await test.step('Domain with IsNotSet condition should failed', async () => {
-      await assignSingleSelectDomain(page, domain1.responseData);
+      await setDomain(page, domain1.responseData);
 
-      await page.getByTestId('manage-contract-actions').click();
+      await triggerContractValidation(page, contractId);
 
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
-
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1507,6 +1455,8 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
 // deterministic regardless of how many background version bumps CI introduces.
 test.describe('Data Contracts Semantics Rule Version', () => {
   test('Validate Entity Version Is', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -1531,16 +1481,16 @@ test.describe('Data Contracts Semantics Rule Version', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
-        ruleLocator.locator('.group--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Version',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator .ant-select'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.is
       );
 
@@ -1553,10 +1503,16 @@ test.describe('Data Contracts Semantics Rule Version', () => {
       // (which starts at 0.1), ensuring the second edit always produces a diff
       // and the save button stays enabled.
       await ruleLocator
-        .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input')
+        .locator(
+          '[data-testid=advanced-search-value] input[data-testid="qb-number-input"]'
+        )
         .fill('99.9');
 
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
 
       // After the reload inside saveAndTriggerDataContractValidation, the
       // version button in the header reflects the entity's current version.
@@ -1578,9 +1534,11 @@ test.describe('Data Contracts Semantics Rule Version', () => {
       await page.getByRole('tab', { name: 'Semantics' }).click();
 
       const versionInput = page
-        .locator('.group')
+        .getByTestId('query-builder-group-card')
         .first()
-        .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input');
+        .locator(
+          '[data-testid=advanced-search-value] input[data-testid="qb-number-input"]'
+        );
       await versionInput.clear();
       await versionInput.fill(actualVersion);
 
@@ -1595,23 +1553,11 @@ test.describe('Data Contracts Semantics Rule Version', () => {
     });
 
     await test.step('Non-Correct entity version should failed', async () => {
-      await assignSingleSelectDomain(page, domain.responseData);
+      await setDomain(page, domain.responseData);
 
-      await page.getByTestId('manage-contract-actions').click();
+      await triggerContractValidation(page, contractId);
 
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
-
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1624,6 +1570,8 @@ test.describe('Data Contracts Semantics Rule Version', () => {
   });
 
   test('Validate Entity Version Is Not', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -1648,16 +1596,16 @@ test.describe('Data Contracts Semantics Rule Version', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
-        ruleLocator.locator('.group--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Version',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator .ant-select'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.is_not
       );
 
@@ -1670,10 +1618,16 @@ test.describe('Data Contracts Semantics Rule Version', () => {
       // (which starts at 0.1), ensuring the second edit always produces a diff
       // and the save button stays enabled.
       await ruleLocator
-        .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input')
+        .locator(
+          '[data-testid=advanced-search-value] input[data-testid="qb-number-input"]'
+        )
         .fill('99.9');
 
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
 
       // After the reload inside saveAndTriggerDataContractValidation, the
       // version button in the header reflects the entity's current version.
@@ -1700,9 +1654,11 @@ test.describe('Data Contracts Semantics Rule Version', () => {
       await page.getByRole('tab', { name: 'Semantics' }).click();
 
       const versionInput = page
-        .locator('.group')
+        .getByTestId('query-builder-group-card')
         .first()
-        .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input');
+        .locator(
+          '[data-testid=advanced-search-value] input[data-testid="qb-number-input"]'
+        );
       await versionInput.clear();
       await versionInput.fill(domainBumpedVersion);
 
@@ -1717,23 +1673,11 @@ test.describe('Data Contracts Semantics Rule Version', () => {
     });
 
     await test.step('Contract with is_not condition for version should failed', async () => {
-      await assignSingleSelectDomain(page, domain.responseData);
+      await setDomain(page, domain.responseData);
 
-      await page.getByTestId('manage-contract-actions').click();
+      await triggerContractValidation(page, contractId);
 
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
-
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1768,23 +1712,25 @@ test.describe('Data Contracts Semantics Rule Version', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
-        ruleLocator.locator('.group--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Version',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator .ant-select'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.less
       );
 
       // Use 99.9 — any realistic entity version is always below this, so the
       // check passes regardless of how many version bumps CI introduces.
       await ruleLocator
-        .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input')
+        .locator(
+          '[data-testid=advanced-search-value] input[data-testid="qb-number-input"]'
+        )
         .fill('99.9');
 
       await saveAndTriggerDataContractValidation(page, true);
@@ -1804,9 +1750,11 @@ test.describe('Data Contracts Semantics Rule Version', () => {
       await page.getByRole('tab', { name: 'Semantics' }).click();
 
       const versionInput = page
-        .locator('.group')
+        .getByTestId('query-builder-group-card')
         .first()
-        .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input');
+        .locator(
+          '[data-testid=advanced-search-value] input[data-testid="qb-number-input"]'
+        );
       await versionInput.clear();
       await versionInput.fill('0.01');
 
@@ -1845,23 +1793,25 @@ test.describe('Data Contracts Semantics Rule Version', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
-        ruleLocator.locator('.group--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Version',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator .ant-select'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.greater
       );
 
       // Use 99.9 — any realistic entity version is always below this, so
       // entity_version > 99.9 always fails regardless of version bumps in CI.
       await ruleLocator
-        .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input')
+        .locator(
+          '[data-testid=advanced-search-value] input[data-testid="qb-number-input"]'
+        )
         .fill('99.9');
 
       await saveAndTriggerDataContractValidation(page, true);
@@ -1882,9 +1832,11 @@ test.describe('Data Contracts Semantics Rule Version', () => {
       await page.getByRole('tab', { name: 'Semantics' }).click();
 
       const versionInput = page
-        .locator('.group')
+        .getByTestId('query-builder-group-card')
         .first()
-        .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input');
+        .locator(
+          '[data-testid=advanced-search-value] input[data-testid="qb-number-input"]'
+        );
       await versionInput.clear();
       await versionInput.fill('0.01');
 
@@ -1925,23 +1877,25 @@ test.describe('Data Contracts Semantics Rule Version', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
-        ruleLocator.locator('.group--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Version',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator .ant-select'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.less_equal
       );
 
       // Use 99.9 — any realistic entity version is always below this, so
       // entity_version <= 99.9 always passes regardless of version bumps in CI.
       await ruleLocator
-        .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input')
+        .locator(
+          '[data-testid=advanced-search-value] input[data-testid="qb-number-input"]'
+        )
         .fill('99.9');
 
       await saveAndTriggerDataContractValidation(page, true);
@@ -1961,9 +1915,11 @@ test.describe('Data Contracts Semantics Rule Version', () => {
       await page.getByRole('tab', { name: 'Semantics' }).click();
 
       const versionInput = page
-        .locator('.group')
+        .getByTestId('query-builder-group-card')
         .first()
-        .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input');
+        .locator(
+          '[data-testid=advanced-search-value] input[data-testid="qb-number-input"]'
+        );
       await versionInput.clear();
       await versionInput.fill('0.01');
 
@@ -2005,23 +1961,25 @@ test.describe('Data Contracts Semantics Rule Version', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
-        ruleLocator.locator('.group--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Version',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator .ant-select'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.greater_equal
       );
 
       // Use 99.9 — any realistic entity version is always below this, so
       // entity_version >= 99.9 always fails regardless of version bumps in CI.
       await ruleLocator
-        .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input')
+        .locator(
+          '[data-testid=advanced-search-value] input[data-testid="qb-number-input"]'
+        )
         .fill('99.9');
 
       await saveAndTriggerDataContractValidation(page, true);
@@ -2041,9 +1999,11 @@ test.describe('Data Contracts Semantics Rule Version', () => {
       await page.getByRole('tab', { name: 'Semantics' }).click();
 
       const versionInput = page
-        .locator('.group')
+        .getByTestId('query-builder-group-card')
         .first()
-        .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input');
+        .locator(
+          '[data-testid=advanced-search-value] input[data-testid="qb-number-input"]'
+        );
       await versionInput.clear();
       await versionInput.fill('0.01');
 
@@ -2081,6 +2041,8 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
   });
 
   test('Validate DataProduct Rule Is', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -2091,7 +2053,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
     await test.step('Open contract section and start adding contract', async () => {
       await redirectToHomePage(page);
       await table.visitEntityPage(page);
-      await assignSingleSelectDomain(page, domain.responseData);
+      await setDomain(page, domain.responseData);
       await assignDataProduct(page, domain.responseData, [
         createdDataProducts[0].responseData,
       ]);
@@ -2107,28 +2069,33 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
-        ruleLocator.locator('.group--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Data Product',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator .ant-select'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.is
       );
 
       await selectOption(
         page,
-        ruleLocator.locator('.rule--value .ant-select'),
+        ruleLocator.getByTestId('advanced-search-value'),
         createdDataProducts[0].responseData.name,
         true
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
+      expect(contractId).toBeTruthy();
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2152,21 +2119,9 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
       await page.click('[data-testid="contract"]');
       await waitForAllLoadersToDisappear(page);
 
-      await page.getByTestId('manage-contract-actions').click();
+      await triggerContractValidation(page, contractId);
 
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
-
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2179,6 +2134,8 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
   });
 
   test('Validate DataProduct Rule Is Not', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -2189,7 +2146,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
     await test.step('Open contract section and start adding contract', async () => {
       await redirectToHomePage(page);
       await table.visitEntityPage(page);
-      await assignSingleSelectDomain(page, domain.responseData);
+      await setDomain(page, domain.responseData);
       await assignDataProduct(page, domain.responseData, [
         createdDataProducts[1].responseData,
       ]);
@@ -2205,28 +2162,33 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
-        ruleLocator.locator('.group--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Data Product',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator .ant-select'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.is_not
       );
 
       await selectOption(
         page,
-        ruleLocator.locator('.rule--value .ant-select'),
+        ruleLocator.getByTestId('advanced-search-value'),
         createdDataProducts[0].responseData.name,
         true
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
+      expect(contractId).toBeTruthy();
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2250,21 +2212,9 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
       await page.click('[data-testid="contract"]');
       await waitForAllLoadersToDisappear(page);
 
-      await page.getByTestId('manage-contract-actions').click();
+      await triggerContractValidation(page, contractId);
 
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
-
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2277,6 +2227,8 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
   });
 
   test('Validate DataProduct Rule Any_In', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -2287,7 +2239,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
     await test.step('Open contract section and start adding contract', async () => {
       await redirectToHomePage(page);
       await table.visitEntityPage(page);
-      await assignSingleSelectDomain(page, domain.responseData);
+      await setDomain(page, domain.responseData);
       await assignDataProduct(page, domain.responseData, [
         createdDataProducts[1].responseData,
       ]);
@@ -2303,27 +2255,31 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
-        ruleLocator.locator('.group--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Data Product',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator .ant-select'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.any_in
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--value .ant-select'),
+        ruleLocator.getByTestId('advanced-search-value'),
         createdDataProducts[0].responseData.name,
         true
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2348,21 +2304,9 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
       await page.click('[data-testid="contract"]');
       await waitForAllLoadersToDisappear(page);
 
-      await page.getByTestId('manage-contract-actions').click();
+      await triggerContractValidation(page, contractId);
 
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
-
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2374,6 +2318,8 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
   });
 
   test('Validate DataProduct Rule Not_In', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -2384,7 +2330,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
     await test.step('Open contract section and start adding contract', async () => {
       await redirectToHomePage(page);
       await table.visitEntityPage(page);
-      await assignSingleSelectDomain(page, domain.responseData);
+      await setDomain(page, domain.responseData);
       await assignDataProduct(page, domain.responseData, [
         createdDataProducts[1].responseData,
       ]);
@@ -2400,27 +2346,32 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
-        ruleLocator.locator('.group--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Data Product',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator .ant-select'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.not_in
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--value .ant-select'),
+        ruleLocator.getByTestId('advanced-search-value'),
         createdDataProducts[0].responseData.name,
         true
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
+      expect(contractId).toBeTruthy();
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2444,21 +2395,9 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
       await page.click('[data-testid="contract"]');
       await waitForAllLoadersToDisappear(page);
 
-      await page.getByTestId('manage-contract-actions').click();
+      await triggerContractValidation(page, contractId);
 
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
-
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2488,21 +2427,9 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
       await page.click('[data-testid="contract"]');
       await waitForAllLoadersToDisappear(page);
 
-      await page.getByTestId('manage-contract-actions').click();
+      await triggerContractValidation(page, contractId);
 
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
-
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2515,6 +2442,8 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
   });
 
   test('Validate DataProduct Rule Is_Set', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -2525,7 +2454,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
     await test.step('Open contract section and start adding contract', async () => {
       await redirectToHomePage(page);
       await table.visitEntityPage(page);
-      await assignSingleSelectDomain(page, domain.responseData);
+      await setDomain(page, domain.responseData);
       await assignDataProduct(page, domain.responseData, [
         createdDataProducts[1].responseData,
       ]);
@@ -2541,21 +2470,26 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
-        ruleLocator.locator('.group--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Data Product',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator .ant-select'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.is_set
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
+      expect(contractId).toBeTruthy();
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2576,21 +2510,9 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
       await page.click('[data-testid="contract"]');
       await waitForAllLoadersToDisappear(page);
 
-      await page.getByTestId('manage-contract-actions').click();
+      await triggerContractValidation(page, contractId);
 
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
-
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2602,100 +2524,94 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
     });
   });
 
-  test.fixme(
-    'Validate DataProduct Rule Is_Not_Set',
-    async ({ page, browser }) => {
-      test.slow();
+  test('Validate DataProduct Rule Is_Not_Set', async ({ page, browser }) => {
+    let contractId: string | undefined;
 
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-      const table = new TableClass();
-      await table.create(apiContext);
-      await afterAction();
+    test.slow();
 
-      await test.step('Open contract section and start adding contract', async () => {
-        await redirectToHomePage(page);
-        await table.visitEntityPage(page);
-        await performInitialStepForRules(page);
-      });
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const table = new TableClass();
+    await table.create(apiContext);
+    await afterAction();
 
-      await test.step('DataProduct with IsNotSet condition should passed', async () => {
-        await page.getByRole('tab', { name: 'Semantics' }).click();
+    await test.step('Open contract section and start adding contract', async () => {
+      await redirectToHomePage(page);
+      await table.visitEntityPage(page);
+      await performInitialStepForRules(page);
+    });
 
-        await page.fill('#semantics_0_name', DATA_CONTRACT_SEMANTICS1.name);
-        await page.fill(
-          '#semantics_0_description',
-          DATA_CONTRACT_SEMANTICS1.description
-        );
+    await test.step('DataProduct with IsNotSet condition should passed', async () => {
+      await page.getByRole('tab', { name: 'Semantics' }).click();
 
-        const ruleLocator = page.locator('.group').nth(0);
-        await selectOption(
-          page,
-          ruleLocator.locator('.group--field .ant-select'),
-          'Data Product',
-          true
-        );
-        await selectOption(
-          page,
-          ruleLocator.locator('.rule--operator .ant-select'),
-          DATA_CONTRACT_SEMANTIC_OPERATIONS.is_not_set
-        );
+      await page.fill('#semantics_0_name', DATA_CONTRACT_SEMANTICS1.name);
+      await page.fill(
+        '#semantics_0_description',
+        DATA_CONTRACT_SEMANTICS1.description
+      );
 
-        // save and trigger contract validation
-        await saveAndTriggerDataContractValidation(page, true);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
+      await selectOption(
+        page,
+        ruleLocator.getByTestId('advanced-search-field-select'),
+        'Data Product',
+        true
+      );
+      await selectOption(
+        page,
+        ruleLocator.getByTestId('advanced-search-operator-select'),
+        DATA_CONTRACT_SEMANTIC_OPERATIONS.is_not_set
+      );
 
-        await expect(
-          page.getByTestId('contract-status-card-item-semantics-status')
-        ).toContainText('Passed');
-        await expect(
-          page.getByTestId('data-contract-latest-result-btn')
-        ).not.toBeVisible();
-      });
+      // save and trigger contract validation
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
+      expect(contractId).toBeTruthy();
 
-      await test.step('DataProduct with IsNotSet condition should failed', async () => {
-        // Move to Schema Tab
-        await page.getByTestId('schema').click();
+      await expect(
+        page.getByTestId('contract-status-card-item-semantics-status')
+      ).toContainText('Passed');
+      await expect(
+        page.getByTestId('data-contract-latest-result-btn')
+      ).not.toBeVisible();
+    });
 
-        await waitForAllLoadersToDisappear(page);
+    await test.step('DataProduct with IsNotSet condition should failed', async () => {
+      // Move to Schema Tab
+      await page.getByTestId('schema').click();
 
-        await assignSingleSelectDomain(page, domain.responseData);
+      await waitForAllLoadersToDisappear(page);
 
-        await assignDataProduct(page, domain.responseData, [
-          createdDataProducts[1].responseData,
-        ]);
+      await setDomain(page, domain.responseData);
 
-        await page.click('[data-testid="contract"]');
-        await waitForAllLoadersToDisappear(page);
+      await assignDataProduct(page, domain.responseData, [
+        createdDataProducts[1].responseData,
+      ]);
 
-        await page.getByTestId('manage-contract-actions').click();
+      await page.click('[data-testid="contract"]');
+      await waitForAllLoadersToDisappear(page);
 
-        await page.getByTestId('contract-action-dropdown').waitFor({
-          state: 'visible',
-        });
+      await triggerContractValidation(page, contractId);
 
-        const runNowResponse = page.waitForResponse(
-          '/api/v1/dataContracts/*/validate'
-        );
-        await page.getByTestId('contract-run-now-button').click();
-        await runNowResponse;
+      await reloadContractPage(page);
 
-        await page.reload();
+      await expect(
+        page.getByTestId('contract-status-card-item-semantics-status')
+      ).toContainText('Failed');
 
-        await waitForAllLoadersToDisappear(page);
-
-        await expect(
-          page.getByTestId('contract-status-card-item-semantics-status')
-        ).toContainText('Failed');
-
-        await expect(
-          page.getByTestId('data-contract-latest-result-btn')
-        ).toContainText('Contract Failed');
-      });
-    }
-  );
+      await expect(
+        page.getByTestId('data-contract-latest-result-btn')
+      ).toContainText('Contract Failed');
+    });
+  });
 });
 
 test.describe('Data Contracts Semantics Rule DisplayName', () => {
   test('Validate DisplayName Rule Is', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -2718,28 +2634,33 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
-        ruleLocator.locator('.group--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Display Name',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator .ant-select'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.is
       );
 
       await selectOption(
         page,
-        ruleLocator.locator('.rule--value .ant-select'),
+        ruleLocator.getByTestId('advanced-search-value'),
         table.entityResponseData.displayName || '',
         true
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
+      expect(contractId).toBeTruthy();
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2759,21 +2680,9 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
       await page.click('[data-testid="contract"]');
       await waitForAllLoadersToDisappear(page);
 
-      await page.getByTestId('manage-contract-actions').click();
+      await triggerContractValidation(page, contractId);
 
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
-
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2786,6 +2695,8 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
   });
 
   test('Validate DisplayName Rule Is Not', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -2808,28 +2719,32 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
-        ruleLocator.locator('.group--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Display Name',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator .ant-select'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.is_not
       );
 
       await selectOption(
         page,
-        ruleLocator.locator('.rule--value .ant-select'),
+        ruleLocator.getByTestId('advanced-search-value'),
         table.entityResponseData.displayName || '',
         true
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2850,21 +2765,9 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
       await page.click('[data-testid="contract"]');
       await waitForAllLoadersToDisappear(page);
 
-      await page.getByTestId('manage-contract-actions').click();
+      await triggerContractValidation(page, contractId);
 
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
-
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2876,6 +2779,8 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
   });
 
   test('Validate DisplayName Rule Any_In', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -2898,27 +2803,32 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
-        ruleLocator.locator('.group--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Display Name',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator .ant-select'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.any_in
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--value .ant-select'),
+        ruleLocator.getByTestId('advanced-search-value'),
         table.entityResponseData.displayName || '',
         true
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
+      expect(contractId).toBeTruthy();
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2938,21 +2848,9 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
       await page.click('[data-testid="contract"]');
       await waitForAllLoadersToDisappear(page);
 
-      await page.getByTestId('manage-contract-actions').click();
+      await triggerContractValidation(page, contractId);
 
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
-
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2965,6 +2863,8 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
   });
 
   test('Validate DisplayName Rule Not_In', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -2987,27 +2887,31 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
-        ruleLocator.locator('.group--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Display Name',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator .ant-select'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.not_in
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--value .ant-select'),
+        ruleLocator.getByTestId('advanced-search-value'),
         table.entityResponseData.displayName || '',
         true
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -3028,21 +2932,9 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
       await page.click('[data-testid="contract"]');
       await waitForAllLoadersToDisappear(page);
 
-      await page.getByTestId('manage-contract-actions').click();
+      await triggerContractValidation(page, contractId);
 
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
-
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -3054,6 +2946,8 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
   });
 
   test('Validate DisplayName Rule Is_Set', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -3076,21 +2970,26 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
-        ruleLocator.locator('.group--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Display Name',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator .ant-select'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.is_set
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
+      expect(contractId).toBeTruthy();
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -3111,21 +3010,9 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
       await page.click('[data-testid="contract"]');
       await waitForAllLoadersToDisappear(page);
 
-      await page.getByTestId('manage-contract-actions').click();
+      await triggerContractValidation(page, contractId);
 
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
-
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -3138,6 +3025,8 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
   });
 
   test('Validate DisplayName Rule Is_Not_Set', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -3160,21 +3049,25 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
-        ruleLocator.locator('.group--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Display Name',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator .ant-select'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.is_not_set
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -3196,21 +3089,9 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
       await page.click('[data-testid="contract"]');
       await waitForAllLoadersToDisappear(page);
 
-      await page.getByTestId('manage-contract-actions').click();
+      await triggerContractValidation(page, contractId);
 
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
-
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -3246,23 +3127,23 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
-        ruleLocator.locator('.group--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Updated on',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator .ant-select'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.between
       );
 
-      const startDate = customFormatDateTime(getCurrentMillis(), 'dd.MM.yyyy');
+      const startDate = customFormatDateTime(getCurrentMillis(), 'yyyy-MM-dd');
       const endDate = customFormatDateTime(
         getEpochMillisForFutureDays(5),
-        'dd.MM.yyyy'
+        'yyyy-MM-dd'
       );
 
       await selectRange(page, ruleLocator, startDate, endDate);
@@ -3291,11 +3172,9 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
 
       const newStart = customFormatDateTime(
         getEpochMillisForFutureDays(1),
-        'dd.MM.yyyy'
+        'yyyy-MM-dd'
       );
-      page.getByRole('textbox', { name: 'Enter date from' }).fill(newStart);
-      await page.press('.ant-picker-input-active input', 'Enter');
-      await page.press('.ant-picker-input-active input', 'Enter');
+      await page.getByTestId('query-date-value-0').fill(newStart);
 
       // save and trigger contract validation
       await saveAndTriggerDataContractValidation(page, true);
@@ -3333,23 +3212,23 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
-        ruleLocator.locator('.group--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Updated on',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator .ant-select'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.not_between
       );
 
-      const startDate = customFormatDateTime(getCurrentMillis(), 'dd.MM.yyyy');
+      const startDate = customFormatDateTime(getCurrentMillis(), 'yyyy-MM-dd');
       const endDate = customFormatDateTime(
         getEpochMillisForFutureDays(5),
-        'dd.MM.yyyy'
+        'yyyy-MM-dd'
       );
 
       await selectRange(page, ruleLocator, startDate, endDate);
@@ -3379,23 +3258,9 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
 
       const newStart = customFormatDateTime(
         getEpochMillisForFutureDays(1),
-        'dd.MM.yyyy'
+        'yyyy-MM-dd'
       );
-      await page
-        .locator('.group')
-        .nth(0)
-        .locator('.rule--value .ant-picker-range')
-        .click();
-
-      await page.locator('.ant-picker-dropdown-range').waitFor({
-        state: 'visible',
-      });
-
-      await page
-        .getByRole('textbox', { name: 'Enter date from' })
-        .fill(newStart);
-      await page.press('.ant-picker-input-active input', 'Enter');
-      await page.press('.ant-picker-input-active input', 'Enter');
+      await page.getByTestId('query-date-value-0').fill(newStart);
 
       // save and trigger contract validation
       await saveAndTriggerDataContractValidation(page, true);
@@ -3432,27 +3297,24 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
-        ruleLocator.locator('.group--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Updated on',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator .ant-select'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.less
       );
 
-      const date = customFormatDateTime(getCurrentMillis(), 'dd.MM.yyyy');
+      const date = customFormatDateTime(getCurrentMillis(), 'yyyy-MM-dd');
 
-      await ruleLocator.locator('.rule--value .ant-picker').click();
-      await page.locator('.ant-picker-dropdown').waitFor({
-        state: 'visible',
-      });
-      await page.locator('.ant-picker-input input').fill(date);
-      await page.press('.ant-picker-input input', 'Enter');
+      await ruleLocator
+        .locator('[data-testid=advanced-search-value] input[type="date"]')
+        .fill(date);
 
       // save and trigger contract validation
       await saveAndTriggerDataContractValidation(page, true);
@@ -3479,19 +3341,13 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
 
       const newDate = customFormatDateTime(
         getEpochMillisForFutureDays(1),
-        'dd.MM.yyyy'
+        'yyyy-MM-dd'
       );
 
       await page
-        .locator('.group')
-        .nth(0)
-        .locator('.rule--value .ant-picker')
-        .click();
-      await page.locator('.ant-picker-dropdown').waitFor({
-        state: 'visible',
-      });
-      await page.locator('.ant-picker-input input').fill(newDate);
-      await page.press('.ant-picker-input input', 'Enter');
+        .getByTestId('query-builder-group-card')
+        .locator('[data-testid=advanced-search-value] input[type="date"]')
+        .fill(newDate);
 
       // save and trigger contract validation
       await saveAndTriggerDataContractValidation(page, true);
@@ -3528,30 +3384,27 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
-        ruleLocator.locator('.group--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Updated on',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator .ant-select'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.greater
       );
 
       const date = customFormatDateTime(
         getEpochMillisForFutureDays(1),
-        'dd.MM.yyyy'
+        'yyyy-MM-dd'
       );
 
-      await ruleLocator.locator('.rule--value .ant-picker').click();
-      await page.locator('.ant-picker-dropdown').waitFor({
-        state: 'visible',
-      });
-      await page.locator('.ant-picker-input input').fill(date);
-      await page.press('.ant-picker-input input', 'Enter');
+      await ruleLocator
+        .locator('[data-testid=advanced-search-value] input[type="date"]')
+        .fill(date);
 
       // save and trigger contract validation
       await saveAndTriggerDataContractValidation(page, true);
@@ -3578,19 +3431,13 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
 
       const newDate = customFormatDateTime(
         getEpochMillisForFutureDays(-1),
-        'dd.MM.yyyy'
+        'yyyy-MM-dd'
       );
 
       await page
-        .locator('.group')
-        .nth(0)
-        .locator('.rule--value .ant-picker')
-        .click();
-      await page.locator('.ant-picker-dropdown').waitFor({
-        state: 'visible',
-      });
-      await page.locator('.ant-picker-input input').fill(newDate);
-      await page.press('.ant-picker-input input', 'Enter');
+        .getByTestId('query-builder-group-card')
+        .locator('[data-testid=advanced-search-value] input[type="date"]')
+        .fill(newDate);
 
       // save and trigger contract validation
       await saveAndTriggerDataContractValidation(page, true);
@@ -3627,30 +3474,27 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
-        ruleLocator.locator('.group--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Updated on',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator .ant-select'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.less_equal
       );
 
       const date = customFormatDateTime(
         getEpochMillisForFutureDays(1),
-        'dd.MM.yyyy'
+        'yyyy-MM-dd'
       );
 
-      await ruleLocator.locator('.rule--value .ant-picker').click();
-      await page.locator('.ant-picker-dropdown').waitFor({
-        state: 'visible',
-      });
-      await page.locator('.ant-picker-input input').fill(date);
-      await page.press('.ant-picker-input input', 'Enter');
+      await ruleLocator
+        .locator('[data-testid=advanced-search-value] input[type="date"]')
+        .fill(date);
 
       // save and trigger contract validation
       await saveAndTriggerDataContractValidation(page, true);
@@ -3676,19 +3520,13 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
 
       const newDate = customFormatDateTime(
         getEpochMillisForFutureDays(-1),
-        'dd.MM.yyyy'
+        'yyyy-MM-dd'
       );
 
       await page
-        .locator('.group')
-        .nth(0)
-        .locator('.rule--value .ant-picker')
-        .click();
-      await page.locator('.ant-picker-dropdown').waitFor({
-        state: 'visible',
-      });
-      await page.locator('.ant-picker-input input').fill(newDate);
-      await page.press('.ant-picker-input input', 'Enter');
+        .getByTestId('query-builder-group-card')
+        .locator('[data-testid=advanced-search-value] input[type="date"]')
+        .fill(newDate);
 
       // save and trigger contract validation
       await saveAndTriggerDataContractValidation(page, true);
@@ -3729,30 +3567,27 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
-        ruleLocator.locator('.group--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Updated on',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator .ant-select'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.greater_equal
       );
 
       const date = customFormatDateTime(
         getEpochMillisForFutureDays(-1),
-        'dd.MM.yyyy'
+        'yyyy-MM-dd'
       );
 
-      await ruleLocator.locator('.rule--value .ant-picker').click();
-      await page.locator('.ant-picker-dropdown').waitFor({
-        state: 'visible',
-      });
-      await page.locator('.ant-picker-input input').fill(date);
-      await page.press('.ant-picker-input input', 'Enter');
+      await ruleLocator
+        .locator('[data-testid=advanced-search-value] input[type="date"]')
+        .fill(date);
 
       // save and trigger contract validation
       await saveAndTriggerDataContractValidation(page, true);
@@ -3778,19 +3613,13 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
 
       const newDate = customFormatDateTime(
         getEpochMillisForFutureDays(1),
-        'dd.MM.yyyy'
+        'yyyy-MM-dd'
       );
 
       await page
-        .locator('.group')
-        .nth(0)
-        .locator('.rule--value .ant-picker')
-        .click();
-      await page.locator('.ant-picker-dropdown').waitFor({
-        state: 'visible',
-      });
-      await page.locator('.ant-picker-input input').fill(newDate);
-      await page.press('.ant-picker-input input', 'Enter');
+        .getByTestId('query-builder-group-card')
+        .locator('[data-testid=advanced-search-value] input[type="date"]')
+        .fill(newDate);
 
       // save and trigger contract validation
       await saveAndTriggerDataContractValidation(page, true);
@@ -3832,7 +3661,9 @@ test.describe('Data Contract - Semantics Fields Validation', () => {
     });
 
     await test.step('Verify delete button is not visible with only one rule', async () => {
-      await expect(page.locator('.action--DELETE')).not.toBeVisible();
+      await expect(
+        page.getByTestId('delete-condition-button')
+      ).not.toBeVisible();
     });
 
     await test.step('fill the first rule completely', async () => {
@@ -3842,16 +3673,16 @@ test.describe('Data Contract - Semantics Fields Validation', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
-        ruleLocator.locator('.group--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Owners',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator .ant-select'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         'Is Set'
       );
     });
@@ -3859,27 +3690,31 @@ test.describe('Data Contract - Semantics Fields Validation', () => {
     await test.step('Add a second rule condition', async () => {
       await page.getByTestId('add-new-rule-btn').click();
 
-      await expect(page.locator('.action--DELETE').first()).toBeVisible();
+      // Two rules means two delete buttons — asserting the count states what
+      // the step actually proves, and no longer depends on DOM order.
+      await expect(page.getByTestId('delete-condition-button')).toHaveCount(2);
     });
 
     await test.step('Delete the filled rule condition and verify rule error is shown', async () => {
-      const deleteButtons = page.locator('.action--DELETE');
+      const deleteButtons = page.getByTestId('delete-condition-button');
       await deleteButtons.first().click();
 
-      await expect(page.locator('.action--DELETE')).not.toBeVisible();
+      await expect(
+        page.getByTestId('delete-condition-button')
+      ).not.toBeVisible();
       await expect(page.getByText(/rule is required/i)).toBeVisible();
     });
 
     await test.step('select Is Set operator and error is hidden', async () => {
       await selectOption(
         page,
-        page.locator('.rule--field .ant-select'),
+        page.getByTestId('advanced-search-field-select'),
         'Owners',
         true
       );
       await selectOption(
         page,
-        page.locator('.rule--operator .ant-select'),
+        page.getByTestId('advanced-search-operator-select'),
         'Is Set'
       );
       await expect(page.getByText(/rule is required/i)).not.toBeVisible();

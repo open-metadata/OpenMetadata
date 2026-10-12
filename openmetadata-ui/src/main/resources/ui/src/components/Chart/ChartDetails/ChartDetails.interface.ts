@@ -12,8 +12,8 @@
  */
 
 import { Chart } from '../../../generated/entity/data/chart';
+import { QueryVote } from '../../../interface/entity/vote.interface';
 import { DataAssetWithDomains } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
-import { QueryVote } from '../../Database/TableQueries/TableQueries.interface';
 
 export interface ChartDetailsProps {
   chartDetails: Chart;

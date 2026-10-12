@@ -10,14 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Typography } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DomainNoDataPlaceholder } from '../../../../assets/svg/domain-no-data-placeholder.svg';
-import { ReactComponent as DomainIcon } from '../../../../assets/svg/ic-domains-widget.svg';
+import { ReactComponent as DomainIcon } from '../../../../assets/svg/entity/domain.svg';
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_BASE,
@@ -172,16 +172,20 @@ const DomainsWidget = ({
       <div className="entity-list-body">
         <div className="domains-widget-grid">
           {domains.slice(0, PAGE_SIZE_BASE).map((domain) => (
-            <Button
-              className={classNames('domain-card', {
-                'domain-card-full': isFullSize,
-                'p-0': !isFullSize,
-              })}
+            <button
+              className={classNames(
+                'domain-card tw:border tw:border-primary tw:bg-surface tw:text-secondary tw:transition-colors tw:duration-300',
+                {
+                  'domain-card-full': isFullSize,
+                  'p-0': !isFullSize,
+                }
+              )}
               data-testid={`domain-card-${domain.id || domain.name}`}
               key={domain.id}
+              type="button"
               onClick={() => handleDomainClick(domain)}>
               {isFullSize ? (
-                <div className="d-flex gap-2">
+                <Box gap={2}>
                   <div
                     className="domain-card-full-icon"
                     style={{ background: domain.style?.color }}>
@@ -189,46 +193,50 @@ const DomainsWidget = ({
                   </div>
                   <div className="domain-card-full-content">
                     <div className="domain-card-full-title-row">
-                      <Typography.Text
-                        className="font-semibold"
+                      <Typography
+                        className="domain-card-full-name font-semibold"
                         ellipsis={{
                           tooltip: true,
+                          excludeTriggerFromTabOrder: true,
                         }}>
                         {domain.displayName || domain.name}
-                      </Typography.Text>
+                      </Typography>
                       <span className="domain-card-full-count">
                         {assetsCounts[domain.fullyQualifiedName ?? ''] ?? 0}
                       </span>
                     </div>
                   </div>
-                </div>
+                </Box>
               ) : (
-                <div
-                  className="d-flex domain-card-bar"
+                <Box
+                  className="domain-card-bar"
                   style={{ borderLeftColor: domain.style?.color }}>
                   <div className="domain-card-content">
                     <span className="domain-card-title">
                       <div className="domain-card-icon">
                         {getDomainIcon(domain.style?.iconURL)}
                       </div>
-                      <Typography.Text
+                      <Typography
                         className="domain-card-name"
-                        ellipsis={{ tooltip: true }}>
+                        ellipsis={{
+                          tooltip: true,
+                          excludeTriggerFromTabOrder: true,
+                        }}>
                         {domain.displayName || domain.name}
-                      </Typography.Text>
+                      </Typography>
                     </span>
                     <span className="domain-card-count">
                       {assetsCounts[domain.fullyQualifiedName ?? ''] ?? 0}
                     </span>
                   </div>
-                </div>
+                </Box>
               )}
-            </Button>
+            </button>
           ))}
         </div>
       </div>
     ),
-    [domains, isFullSize]
+    [domains, isFullSize, assetsCounts, handleDomainClick]
   );
 
   const showWidgetFooterMoreButton = useMemo(
@@ -254,7 +262,7 @@ const DomainsWidget = ({
         handleLayoutUpdate={handleLayoutUpdate}
         handleRemoveWidget={handleRemoveWidget}
         icon={
-          <DomainIcon className="domains-widget-globe" height={22} width={22} />
+          <DomainIcon className="domains-widget-globe" height={24} width={24} />
         }
         isEditView={isEditView}
         selectedSortBy={selectedSortBy}
@@ -278,6 +286,8 @@ const DomainsWidget = ({
     ]
   );
 
+  const domainsContent = isEmpty(domains) ? emptyState : domainsList;
+
   return (
     <WidgetWrapper
       dataTestId="KnowledgePanel.Domains"
@@ -291,10 +301,8 @@ const DomainsWidget = ({
               type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
               {error}
             </ErrorPlaceHolder>
-          ) : isEmpty(domains) ? (
-            emptyState
           ) : (
-            domainsList
+            domainsContent
           )}
         </div>
         {!isEmpty(domains) && footer}

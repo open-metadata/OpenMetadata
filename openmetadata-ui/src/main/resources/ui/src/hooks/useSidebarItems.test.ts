@@ -12,10 +12,10 @@
  */
 import { renderHook } from '@testing-library/react-hooks';
 import { ReactNode } from 'react';
-import { LeftSidebarItem } from '../components/MyData/LeftSidebar/LeftSidebar.interface';
-import { useApplicationsProvider } from '../components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
-import { AppPlugin } from '../components/Settings/Applications/plugins/AppPlugin';
+import { useApplicationsProvider } from '../context/ApplicationsProvider/ApplicationsContext';
 import { NavigationItem } from '../generated/system/ui/uiCustomization';
+import { AppPlugin } from '../interface/app-plugin.interface';
+import { LeftSidebarItem } from '../interface/sidebar.interface';
 import { filterHiddenNavigationItems } from '../utils/CustomizaNavigation/CustomizeNavigation';
 import { useCustomPages } from './useCustomPages';
 import { useSidebarItems } from './useSidebarItems';
@@ -36,12 +36,9 @@ jest.mock('./useCustomPages', () => ({
   useCustomPages: jest.fn(),
 }));
 
-jest.mock(
-  '../components/Settings/Applications/ApplicationsProvider/ApplicationsProvider',
-  () => ({
-    useApplicationsProvider: jest.fn(),
-  })
-);
+jest.mock('../context/ApplicationsProvider/ApplicationsContext', () => ({
+  useApplicationsProvider: jest.fn(),
+}));
 
 jest.mock('../utils/CustomizaNavigation/CustomizeNavigation', () => ({
   filterHiddenNavigationItems: jest.fn(),

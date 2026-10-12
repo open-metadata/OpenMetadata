@@ -2,9 +2,6 @@ package org.openmetadata.it.tests.search.scale;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeAll;
@@ -15,9 +12,11 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
+import org.openmetadata.it.bench.BenchmarkMetrics;
 import org.openmetadata.it.factories.EntityLoadSpec;
 import org.openmetadata.it.factories.EntityLoadSpec.EntityKind;
 import org.openmetadata.it.factories.SeedData;
+import org.openmetadata.it.search.IndexAliasInspector;
 import org.openmetadata.it.search.ReindexHelpers;
 import org.openmetadata.it.search.SearchAssertions;
 import org.openmetadata.it.server.ServerHandle;
@@ -27,6 +26,7 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.sdk.fluent.Apps;
+import org.openmetadata.service.Entity;
 
 /**
  * Reindex throughput benchmark — seeds 10k tables, runs reindex three times
@@ -43,7 +43,6 @@ import org.openmetadata.sdk.fluent.Apps;
 @ResourceLock(value = "SEARCH_INDEX_APP", mode = ResourceAccessMode.READ_WRITE)
 class ReindexBenchmarkIT {
 
-  private static final String TABLE_ALIAS = "table_search_index";
   private static final int SEED_TABLES = 10_000;
   private static final int COLUMNS_PER_TABLE = 5;
   private static final int LOAD_WORKERS = 16;
@@ -52,12 +51,18 @@ class ReindexBenchmarkIT {
 
   private static ServerHandle server;
   private static SearchAssertions search;
+  private static String tableAlias;
 
   @BeforeAll
   static void setup() {
     server = OssTestServer.defaultHandle();
     search = new SearchAssertions(server);
     Apps.setDefaultClient(SdkClients.adminClient());
+    // Counts go straight to the engine through the test-support passthrough, which takes the
+    // PHYSICAL index name - a server running with a cluster alias prefixes it
+    // (<alias>_table_search_index), so a hardcoded "table_search_index" 404s there. Same
+    // resolution the sibling scale ITs use.
+    tableAlias = new IndexAliasInspector(server).indexNameFor(Entity.TABLE);
   }
 
   @Test
@@ -86,7 +91,7 @@ class ReindexBenchmarkIT {
       final AppRunRecord run = ReindexHelpers.triggerSearchIndexAndWait(server);
       assertThat(run.getStatus().value()).isIn("success", "completed");
       final long elapsed = System.currentTimeMillis() - start;
-      final long docs = search.count(TABLE_ALIAS);
+      final long docs = search.count(tableAlias);
       final long heap = usedHeap();
       if (i >= warmupRuns) {
         totalMs += elapsed;
@@ -120,12 +125,7 @@ class ReindexBenchmarkIT {
     return rt.totalMemory() - rt.freeMemory();
   }
 
-  static void writeMetrics(final Map<String, Object> metrics, final String filename)
-      throws Exception {
-    final Path dir = Path.of("target", "benchmark");
-    Files.createDirectories(dir);
-    new ObjectMapper()
-        .writerWithDefaultPrettyPrinter()
-        .writeValue(dir.resolve(filename).toFile(), metrics);
+  static void writeMetrics(final Object metrics, final String filename) throws Exception {
+    BenchmarkMetrics.write(metrics, filename);
   }
 }

@@ -1,7 +1,5 @@
 package org.openmetadata.service.search.elasticsearch.dataInsightAggregators;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import es.co.elastic.clients.elasticsearch._types.aggregations.Aggregate;
 import es.co.elastic.clients.elasticsearch._types.aggregations.Aggregation;
 import es.co.elastic.clients.elasticsearch._types.aggregations.CardinalityAggregate;
@@ -9,7 +7,6 @@ import es.co.elastic.clients.elasticsearch._types.aggregations.DateHistogramBuck
 import es.co.elastic.clients.elasticsearch._types.aggregations.FilterAggregate;
 import es.co.elastic.clients.elasticsearch._types.aggregations.SingleMetricAggregateBase;
 import es.co.elastic.clients.elasticsearch._types.aggregations.StringTermsBucket;
-import es.co.elastic.clients.elasticsearch._types.aggregations.ValueCountAggregate;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import es.co.elastic.clients.elasticsearch.core.SearchRequest;
 import es.co.elastic.clients.elasticsearch.core.SearchResponse;
@@ -22,7 +19,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import org.apache.jena.atlas.logging.Log;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResult;
@@ -30,12 +26,12 @@ import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultLi
 import org.openmetadata.schema.dataInsight.custom.FormulaHolder;
 import org.openmetadata.schema.dataInsight.custom.Function;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
+import org.openmetadata.service.search.DataInsightMetricFilter;
 import org.openmetadata.service.util.DataInsightFormulaEvaluator;
 
 public interface ElasticSearchDynamicChartAggregatorInterface {
 
   long MILLISECONDS_IN_DAY = 24L * 60 * 60 * 1000;
-  ObjectMapper mapper = new ObjectMapper();
 
   private static Aggregation getSubAggregationsByFunction(
       Function function, String field, int index) {
@@ -68,7 +64,15 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
     return formulas;
   }
 
-  static void getDateHistogramByFormula(
+  /**
+   * Builds one aggregation per formula term and returns, in precedence order, the wrapper
+   * aggregations a categorical axis may rank itself by.
+   *
+   * <p>Only a metric-level filter yields order keys. A term's own {@code q=} narrows that term
+   * alone, so ranking by it would pick the categories satisfying one operand of the formula rather
+   * than the population the formula is evaluated over.
+   */
+  static List<String> getDateHistogramByFormula(
       String formula,
       Query filter,
       Map<String, Aggregation> aggregationsMap,
@@ -76,6 +80,8 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
       List<FormulaHolder> formulas) {
     Pattern pattern = Pattern.compile(DataInsightSystemChartRepository.FORMULA_FUNC_REGEX);
     Matcher matcher = pattern.matcher(formula);
+    List<String> unnarrowed = new ArrayList<>();
+    List<String> narrowed = new ArrayList<>();
     int index = 0;
     while (matcher.find()) {
       FormulaHolder holder = new FormulaHolder();
@@ -113,14 +119,18 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
         Map<String, Aggregation> subAggMap = new HashMap<>();
         subAggMap.put(field + index, subAgg);
         aggregationsMap.put(
-            "filter" + index, Aggregation.of(a -> a.filter(queryBuilder).aggregations(subAggMap)));
+            DataInsightMetricFilter.FILTER_AGG_KEY + index,
+            Aggregation.of(a -> a.filter(queryBuilder).aggregations(subAggMap)));
+        narrowed.add(DataInsightMetricFilter.FILTER_AGG_KEY + index);
         holder.setQuery(matcher.group(5));
       } else {
         if (filter != null) {
           Map<String, Aggregation> subAggMap = new HashMap<>();
           subAggMap.put(field + index, subAgg);
           aggregationsMap.put(
-              "filter" + index, Aggregation.of(a -> a.filter(filter).aggregations(subAggMap)));
+              DataInsightMetricFilter.FILTER_AGG_KEY + index,
+              Aggregation.of(a -> a.filter(filter).aggregations(subAggMap)));
+          unnarrowed.add(DataInsightMetricFilter.FILTER_AGG_KEY + index);
         } else {
           aggregationsMap.put(field + index, subAgg);
         }
@@ -128,6 +138,11 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
       formulas.add(holder);
       index++;
     }
+    if (filter == null) {
+      return List.of();
+    }
+    unnarrowed.addAll(narrowed);
+    return unnarrowed;
   }
 
   private List<DataInsightCustomChartResult> processMultiAggregations(
@@ -186,7 +201,41 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
     return finalList;
   }
 
-  default void populateDateHistogram(
+  /**
+   * Engine query for a filter's extracted query text, or null only when the metric declares none.
+   *
+   * <p>A filter that was declared but cannot be mapped is an error, not an absent filter. Returning
+   * null for both would leave {@link #populateDateHistogram} building the metric as an unfiltered
+   * leaf, so the chart reports a plausible number counted over every document instead of the subset
+   * the filter asked for. That is the failure the whole filter path exists to prevent, and it is
+   * silent: the request still returns 200.
+   *
+   * <p>This parses client side where the OpenSearch wrapper sends the query verbatim and lets the
+   * cluster reject it. Failing here keeps the two engines answering the same way rather than one
+   * erroring and the other quietly widening the aggregation.
+   */
+  static Query queryFromJson(String queryJson) {
+    if (queryJson == null) {
+      return null;
+    }
+    try {
+      return Query.of(q -> q.withJson(new StringReader(queryJson)));
+    } catch (RuntimeException e) {
+      throw new IllegalArgumentException(
+          "Data Insight metric filter cannot be mapped by the Elasticsearch client: " + queryJson,
+          e);
+    }
+  }
+
+  /**
+   * Builds a metric's sub-aggregations and returns the wrapper aggregations a categorical axis may
+   * rank itself by, in precedence order — empty when the metric declares no filter.
+   *
+   * <p>The keys come from the same pass that builds the wrappers, so an order path can only name an
+   * aggregation that is really in the request. Deciding separately from the chart definition would
+   * name a wrapper for a filter this client silently drops, and the engine rejects the whole search.
+   */
+  default List<String> populateDateHistogram(
       Function function,
       String formula,
       String field,
@@ -198,42 +247,23 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
       throw new IllegalArgumentException(
           "Data Insight chart metric must define either a function or a formula");
     }
+    Query queryFilter = queryFromJson(DataInsightMetricFilter.queryJson(filter));
     if (formula != null) {
-      if (filter != null && !filter.equals("{}")) {
-        try {
-          JsonNode rootNode = mapper.readTree(filter);
-          JsonNode queryNode = rootNode.get("query");
-
-          Query queryFilter = Query.of(q -> q.withJson(new StringReader(queryNode.toString())));
-          getDateHistogramByFormula(formula, queryFilter, aggregationsMap, parentAggName, formulas);
-        } catch (Exception e) {
-          Log.error("Error while parsing query string so using fallback: {}", e.getMessage(), e);
-          getDateHistogramByFormula(formula, null, aggregationsMap, parentAggName, formulas);
-        }
-      } else {
-        getDateHistogramByFormula(formula, null, aggregationsMap, parentAggName, formulas);
-      }
-      return;
+      return getDateHistogramByFormula(
+          formula, queryFilter, aggregationsMap, parentAggName, formulas);
     }
 
     Aggregation subAgg = getSubAggregationsByFunction(function, field, 0);
-    if (filter != null && !filter.equals("{}")) {
-      try {
-        JsonNode rootNode = mapper.readTree(filter);
-        JsonNode queryNode = rootNode.get("query");
-
-        Query queryFilter = Query.of(q -> q.withJson(new StringReader(queryNode.toString())));
-        Map<String, Aggregation> subAggMap = new HashMap<>();
-        subAggMap.put(field + "0", subAgg);
-        aggregationsMap.put(
-            "filter", Aggregation.of(a -> a.filter(queryFilter).aggregations(subAggMap)));
-      } catch (Exception e) {
-        Log.error("Error while parsing query string so using fallback: {}", e.getMessage(), e);
-        aggregationsMap.put(field + "0", subAgg);
-      }
-    } else {
+    if (queryFilter == null) {
       aggregationsMap.put(field + "0", subAgg);
+      return List.of();
     }
+    Map<String, Aggregation> subAggMap = new HashMap<>();
+    subAggMap.put(field + "0", subAgg);
+    aggregationsMap.put(
+        DataInsightMetricFilter.FILTER_AGG_KEY,
+        Aggregation.of(a -> a.filter(queryFilter).aggregations(subAggMap)));
+    return List.of(DataInsightMetricFilter.FILTER_AGG_KEY);
   }
 
   SearchRequest prepareSearchRequest(
@@ -379,21 +409,6 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
   }
 
   private void addProcessedSubResult(
-      ValueCountAggregate aggregation,
-      List<DataInsightCustomChartResult> diChartResults,
-      String key,
-      String group,
-      boolean isTimeStamp,
-      String metric) {
-    double value = aggregation.value();
-    if (!Double.isInfinite(value) && !Double.isNaN(value)) {
-      DataInsightCustomChartResult diChartResult =
-          getDIChartResult(value, key, group, isTimeStamp, metric);
-      diChartResults.add(diChartResult);
-    }
-  }
-
-  private void addProcessedSubResult(
       CardinalityAggregate aggregation,
       List<DataInsightCustomChartResult> diChartResults,
       String key,
@@ -415,8 +430,11 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
       String group,
       boolean isTimeStamp,
       String metric) {
-    double value = aggregation.value();
-    if (!Double.isInfinite(value) && !Double.isNaN(value)) {
+    // Covers value_count as well: ValueCountAggregate extends this type, so both bind here.
+    // avg/min/max over a bucket the metric filter emptied return a null value, not NaN.
+    // Unboxing that throws, and the whole chart request dies with a 500.
+    Double value = aggregation.value();
+    if (value != null && !value.isInfinite() && !value.isNaN()) {
       DataInsightCustomChartResult diChartResult =
           getDIChartResult(value, key, group, isTimeStamp, metric);
       diChartResults.add(diChartResult);

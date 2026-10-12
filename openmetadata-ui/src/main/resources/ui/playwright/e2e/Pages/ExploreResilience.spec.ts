@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
+import { expect, test } from '../../support/fixtures/base';
 import { redirectToHomePage } from '../../utils/common';
 import { sidebarClick } from '../../utils/sidebar';
 
@@ -57,7 +58,7 @@ test.describe(
       // Recovers once the backend responds normally again.
       await page.unroute(SEARCH_QUERY_API);
       const recovered = page.waitForResponse(SEARCH_QUERY_API);
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await recovered;
 
       await expect(page.getByTestId('search-container')).toBeVisible();
@@ -85,7 +86,9 @@ test.describe(
       test.slow();
 
       const queryRes = page.waitForResponse(SEARCH_QUERY_API);
-      await page.goto('/explore/tables?browsePath=not-valid-json');
+      await page.goto('/explore/tables?browsePath=not-valid-json', {
+        waitUntil: 'domcontentloaded',
+      });
       await queryRes;
 
       // The garbage param is ignored, the page loads, and no browse chip leaks.
@@ -99,7 +102,9 @@ test.describe(
       test.slow();
 
       const queryRes = page.waitForResponse(SEARCH_QUERY_API);
-      await page.goto('/explore/tables?quickFilter=%7Bbroken-json');
+      await page.goto('/explore/tables?quickFilter=%7Bbroken-json', {
+        waitUntil: 'domcontentloaded',
+      });
       await queryRes;
 
       // The unparseable filter is dropped and results still load.

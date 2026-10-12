@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test } from '@playwright/test';
-import { getCurrentMillis } from '../../../../src/utils/date-time/DateTimeUtils';
+import { Page } from '@playwright/test';
 import { Domain } from '../../../support/domain/Domain';
 import { TableClass } from '../../../support/entity/TableClass';
+import { expect, test } from '../../../support/fixtures/base';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { ClassificationClass } from '../../../support/tag/ClassificationClass';
@@ -27,6 +27,7 @@ import {
   isDashboardReportBatchResponse,
   TEST_CASE_STATUS_PIE_CHART_TEST_ID,
 } from '../../../utils/dataQuality';
+import { getCurrentMillis } from '../../../utils/dateTime';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -97,13 +98,15 @@ test.beforeAll('setup', async ({ browser }) => {
       },
       {
         op: 'add',
-        path: '/domains/0',
-        value: {
-          id: domain.responseData.id,
-          type: 'domain',
-          name: domain.responseData.name,
-          displayName: domain.responseData.displayName,
-        },
+        path: '/domains',
+        value: [
+          {
+            id: domain.responseData.id,
+            type: 'domain',
+            name: domain.responseData.name,
+            displayName: domain.responseData.displayName,
+          },
+        ],
       },
     ],
   });
@@ -142,7 +145,8 @@ test.describe('Tag detail page — Data Observability tab', () => {
   }) => {
     await test.step('Data Observability tab is visible', async () => {
       await page.goto(
-        `/tag/${encodeURIComponent(tag.responseData.fullyQualifiedName)}`
+        `/tag/${encodeURIComponent(tag.responseData.fullyQualifiedName)}`,
+        { waitUntil: 'domcontentloaded' }
       );
       await waitForAllLoadersToDisappear(page);
 
@@ -177,7 +181,8 @@ test.describe('Tag detail page — Data Observability tab', () => {
 
     await test.step('navigate to tag page', async () => {
       await page.goto(
-        `/tag/${encodeURIComponent(tag.responseData.fullyQualifiedName)}`
+        `/tag/${encodeURIComponent(tag.responseData.fullyQualifiedName)}`,
+        { waitUntil: 'domcontentloaded' }
       );
       await waitForAllLoadersToDisappear(page);
     });
@@ -198,7 +203,8 @@ test.describe('Tag detail page — Data Observability tab', () => {
   }) => {
     await test.step('navigate to tag Data Observability tab', async () => {
       await page.goto(
-        `/tag/${encodeURIComponent(tag.responseData.fullyQualifiedName)}`
+        `/tag/${encodeURIComponent(tag.responseData.fullyQualifiedName)}`,
+        { waitUntil: 'domcontentloaded' }
       );
       await waitForAllLoadersToDisappear(page);
       await page.getByRole('tab', { name: /data observability/i }).click();
@@ -216,7 +222,8 @@ test.describe('Tag detail page — Data Observability tab', () => {
   }) => {
     await test.step('navigate to tag Data Observability tab', async () => {
       await page.goto(
-        `/tag/${encodeURIComponent(tag.responseData.fullyQualifiedName)}`
+        `/tag/${encodeURIComponent(tag.responseData.fullyQualifiedName)}`,
+        { waitUntil: 'domcontentloaded' }
       );
       await waitForAllLoadersToDisappear(page);
       await page.getByRole('tab', { name: /data observability/i }).click();
@@ -250,7 +257,8 @@ test.describe('GlossaryTerm detail page — Data Observability tab', () => {
       await page.goto(
         `/glossary/${encodeURIComponent(
           glossaryTerm.responseData.fullyQualifiedName
-        )}`
+        )}`,
+        { waitUntil: 'domcontentloaded' }
       );
       await waitForAllLoadersToDisappear(page);
 
@@ -292,7 +300,8 @@ test.describe('GlossaryTerm detail page — Data Observability tab', () => {
       await page.goto(
         `/glossary/${encodeURIComponent(
           glossaryTerm.responseData.fullyQualifiedName
-        )}`
+        )}`,
+        { waitUntil: 'domcontentloaded' }
       );
       await waitForAllLoadersToDisappear(page);
       await page.getByRole('tab', { name: /data observability/i }).click();
@@ -316,7 +325,8 @@ test.describe('GlossaryTerm detail page — Data Observability tab', () => {
       await page.goto(
         `/glossary/${encodeURIComponent(
           glossaryTerm.responseData.fullyQualifiedName
-        )}`
+        )}`,
+        { waitUntil: 'domcontentloaded' }
       );
       await waitForAllLoadersToDisappear(page);
       await page.getByRole('tab', { name: /data observability/i }).click();
@@ -338,7 +348,8 @@ test.describe('GlossaryTerm detail page — Data Observability tab', () => {
       await page.goto(
         `/glossary/${encodeURIComponent(
           glossaryTerm.responseData.fullyQualifiedName
-        )}`
+        )}`,
+        { waitUntil: 'domcontentloaded' }
       );
       await waitForAllLoadersToDisappear(page);
     });
@@ -372,7 +383,9 @@ test.describe('Domain detail page — Data Observability tab', () => {
       domain.responseData.fullyQualifiedName ?? domain.data.name;
 
     await test.step('Data Observability tab is visible on domain page', async () => {
-      await page.goto(`/domain/${encodeURIComponent(domainFqn)}`);
+      await page.goto(`/domain/${encodeURIComponent(domainFqn)}`, {
+        waitUntil: 'domcontentloaded',
+      });
       await waitForAllLoadersToDisappear(page);
       await expect(
         page.getByRole('tab', { name: /data observability/i })
@@ -385,7 +398,8 @@ test.describe('Domain detail page — Data Observability tab', () => {
         encodeURIComponent(domainFqn)
       );
       await page.goto(
-        `/domain/${encodeURIComponent(domainFqn)}/data_observability`
+        `/domain/${encodeURIComponent(domainFqn)}/data_observability`,
+        { waitUntil: 'domcontentloaded' }
       );
       expect((await apiResponse).ok()).toBeTruthy();
       await waitForAllLoadersToDisappear(page);
@@ -412,7 +426,8 @@ test.describe('Domain detail page — Data Observability tab', () => {
 
     await test.step('navigate to domain Data Observability tab', async () => {
       await page.goto(
-        `/domain/${encodeURIComponent(domainFqn)}/data_observability`
+        `/domain/${encodeURIComponent(domainFqn)}/data_observability`,
+        { waitUntil: 'domcontentloaded' }
       );
     });
 
@@ -432,7 +447,8 @@ test.describe('Domain detail page — Data Observability tab', () => {
       const domainFqn =
         domain.responseData.fullyQualifiedName ?? domain.data.name;
       await page.goto(
-        `/domain/${encodeURIComponent(domainFqn)}/data_observability`
+        `/domain/${encodeURIComponent(domainFqn)}/data_observability`,
+        { waitUntil: 'domcontentloaded' }
       );
       await waitForAllLoadersToDisappear(page);
     });
@@ -454,7 +470,8 @@ test.describe('Domain detail page — Data Observability tab', () => {
       await page.goto(
         `/domain/${encodeURIComponent(
           domain.responseData.fullyQualifiedName ?? domain.data.name
-        )}`
+        )}`,
+        { waitUntil: 'domcontentloaded' }
       );
       await waitForAllLoadersToDisappear(page);
     });

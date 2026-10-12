@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { FilterValue } from 'antd/lib/table/interface';
 import { isEmpty } from 'lodash';
 import { TagsData } from 'Models';
 import { useCallback, useMemo, useState } from 'react';
 import { TABLE_COLUMNS_KEYS } from '../constants/TableKeys.constants';
+import { FilterValue } from '../interface/table.interface';
 import { getFilteredTagsData } from '../utils/TableTags/TableTags.utils';
 
 /**

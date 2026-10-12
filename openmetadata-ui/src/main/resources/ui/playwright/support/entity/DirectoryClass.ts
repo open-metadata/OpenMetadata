@@ -14,6 +14,11 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import {
+  createOrFetch,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { visitEntityPageByFqn } from '../../utils/entity';
 import {
@@ -22,83 +27,85 @@ import {
   ResponseDataWithServiceType,
 } from './Entity.interface';
 import { EntityClass } from './EntityClass';
+import type { ParentNode, ParentSnapshot } from './ParentChain';
+import { parentDeletePath } from './ParentChain';
+import { resolveParents } from './ParentResolver';
+import { DriveServiceClass } from './service/DriveServiceClass';
 
-export class DirectoryClass extends EntityClass {
-  private directoryName = `pw-directory-${uuid()}`;
-  private serviceName = `pw-directory-service-${uuid()}`;
+/**
+ * Without `service` the directory sits in the shard's shared drive service.
+ * Pass a DriveServiceClass when the test visits, mutates or asserts on the
+ * service itself (service page, service-level cascade, unique service name).
+ */
+export type DirectoryClassOptions = {
+  name?: string;
+  service?: DriveServiceClass;
+  sharedInfraKey?: string;
+};
 
-  service = {
-    name: this.serviceName,
-    serviceType: 'GoogleDrive',
-    connection: {
-      config: {
-        type: 'GoogleDrive',
-        driveId: '0APBVnJtQ-NLCUk9PVA',
-        credentials: {
-          gcpConfig: {
-            type: 'service_account',
-            authUri: 'https://accounts.google.com/o/oauth2/auth',
-            clientId: '123456789',
-            tokenUri: 'https://oauth2.googleapis.com/token',
-            projectId: 'sample-project-id',
-            privateKey: '1234567890',
-            clientEmail: 'sample-sa@sample-project.iam.gserviceaccount.com',
-            privateKeyId: 'sample-private-key-id',
-            clientX509CertUrl:
-              'https://www.googleapis.com/robot/v1/metadata/x509/sample-sa%40sample-project.iam.gserviceaccount.com',
-            authProviderX509CertUrl:
-              'https://www.googleapis.com/oauth2/v1/certs',
-          },
-        },
-        supportsMetadataExtraction: true,
-      },
-    },
-  };
-
-  entity = {
-    name: this.directoryName,
-    displayName: this.directoryName,
-    description: 'description',
-    service: this.service.name,
+export class DirectoryClass extends EntityClass implements ParentNode {
+  readonly parentLevel = 'directory' as const;
+  private readonly serviceOverride?: DriveServiceClass;
+  service: DriveServiceClass['entity'];
+  entity: {
+    name: string;
+    displayName: string;
+    description: string;
+    service: string;
   };
 
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
   entityResponseData: ResponseDataWithServiceType =
     {} as ResponseDataWithServiceType;
 
-  constructor(name?: string) {
+  constructor(options: DirectoryClassOptions = {}) {
     super(EntityTypeEndpoint.Directory);
-    this.service.name = name ?? this.service.name;
     this.type = 'Directory';
     this.serviceCategory = SERVICE_TYPE.DriveService;
     this.serviceType = ServiceTypes.DRIVE_SERVICES;
+    this.serviceOverride = options.service;
+    this.sharedInfraKey = options.sharedInfraKey;
+    this.service = options.service?.entity ?? new DriveServiceClass().entity;
+    const name = options.name ?? `pw-directory-${uuid()}`;
+    this.entity = {
+      name,
+      displayName: name,
+      description: 'description',
+      service: this.service.name,
+    };
+  }
+
+  private bindServiceName(serviceName: string) {
+    this.service = { ...this.service, name: serviceName };
+    this.entity.service = serviceName;
   }
 
   async create(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.post(
-      '/api/v1/services/driveServices',
-      {
-        data: this.service,
-      }
+    const { parents, ownedRootPath, ownedOverride } = await resolveParents(
+      apiContext,
+      'drive',
+      { service: this.serviceOverride },
+      this.sharedInfraKey
     );
-    this.serviceResponseData = await serviceResponse.json();
+    const service = parents.service as ResponseDataType;
+    this.adoptOwnership({ ownedRootPath, ownedOverride });
+    this.bindServiceName(service.name);
+    this.serviceResponseData = service;
 
-    // Create directories
-    const entityResponse = await apiContext.post(
-      `/api/v1/${EntityTypeEndpoint.Directory}`,
-      {
-        data: {
-          name: this.directoryName,
-          description: this.entity.description,
-          service: this.serviceResponseData.fullyQualifiedName,
-        },
-      }
-    );
-    this.entityResponseData = await entityResponse.json();
+    this.entityResponseData = await createOrFetch(apiContext, {
+      label: 'DirectoryClass.create directory',
+      createPath: `/api/v1/${EntityTypeEndpoint.Directory}`,
+      fqnSegments: [service.name, this.entity.name],
+      data: {
+        name: this.entity.name,
+        description: this.entity.description,
+        service: service.fullyQualifiedName,
+      },
+    });
 
     return {
-      service: serviceResponse.body,
-      entity: entityResponse.body,
+      service: this.serviceResponseData,
+      entity: this.entityResponseData,
     };
   }
 
@@ -109,17 +116,18 @@ export class DirectoryClass extends EntityClass {
     apiContext: APIRequestContext;
     patchData: Operation[];
   }) {
-    const response = await apiContext.patch(
-      `/api/v1/${EntityTypeEndpoint.Directory}/name/${this.entityResponseData.fullyQualifiedName}`,
-      {
-        data: patchData,
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(
+        `/api/v1/${EntityTypeEndpoint.Directory}/name/${this.entityResponseData.fullyQualifiedName}`,
+        {
+          data: patchData,
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      )
     );
-
-    this.entityResponseData = await response.json();
+    this.entityResponseData = await okJson(response, 'DirectoryClass.patch');
 
     return {
       entity: this.entityResponseData,
@@ -130,15 +138,47 @@ export class DirectoryClass extends EntityClass {
     return {
       service: this.serviceResponseData,
       entity: this.entityResponseData,
+      ownedRootPath: this.ownedRootPath,
     };
   }
 
   public set(data: {
     entity: ResponseDataWithServiceType;
     service: ResponseDataType;
+    ownedRootPath?: string;
   }): void {
     this.entityResponseData = data.entity;
     this.serviceResponseData = data.service;
+    this.ownedRootPath = data.ownedRootPath;
+    this.entity.name = data.entity.name;
+    this.bindServiceName(data.service.name);
+  }
+
+  isCreated() {
+    return Boolean(this.entityResponseData?.id);
+  }
+
+  forget() {
+    this.entityResponseData = {} as typeof this.entityResponseData;
+    this.forgetOwnership();
+  }
+
+  parentSnapshot(): ParentSnapshot {
+    return {
+      service: this.serviceResponseData,
+      directory: this.entityResponseData,
+    };
+  }
+
+  rootDeletePath() {
+    return this.ownedRootPath ?? this.directoryPath();
+  }
+
+  private directoryPath() {
+    return parentDeletePath(
+      EntityTypeEndpoint.Directory,
+      this.entityResponseData?.fullyQualifiedName ?? ''
+    );
   }
 
   async visitEntityPage(page: Page) {
@@ -150,14 +190,8 @@ export class DirectoryClass extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.delete(
-      `/api/v1/services/driveServices/name/${encodeURIComponent(
-        this.serviceResponseData?.['fullyQualifiedName']
-      )}?recursive=true&hardDelete=true`
-    );
+    await this.deleteOwnedOrLeaf(apiContext, this.directoryPath());
 
-    return {
-      service: serviceResponse.body,
-    };
+    return { entity: this.entityResponseData };
   }
 }

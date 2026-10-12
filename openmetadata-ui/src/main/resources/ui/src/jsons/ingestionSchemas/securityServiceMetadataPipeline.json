@@ -1,0 +1,23 @@
+{
+  "title": "SecurityServiceMetadataPipeline",
+  "description": "SecurityService Metadata Pipeline Configuration.",
+  "type": "object",
+  "definitions": {
+    "securityMetadataConfigType": {
+      "description": "Security Source Config Metadata Pipeline type",
+      "type": "string",
+      "enum": [
+        "SecurityMetadata"
+      ],
+      "default": "SecurityMetadata"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Pipeline type",
+      "$ref": "#/definitions/securityMetadataConfigType",
+      "default": "SecurityMetadata"
+    }
+  },
+  "additionalProperties": false
+}

@@ -15,7 +15,6 @@ Google Drive connection and helpers
 
 import traceback
 from functools import partial
-from typing import Optional
 
 from google.auth import default
 from googleapiclient.discovery import Resource, build
@@ -75,7 +74,7 @@ class GoogleDriveConnection(BaseConnection[GoogleDriveConnectionConfig, GoogleDr
             connection.credentials.gcpImpersonateServiceAccount
             and connection.credentials.gcpImpersonateServiceAccount.impersonateServiceAccount
         ):
-            from google.auth import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+            from google.auth import (  # pylint: disable=import-outside-toplevel
                 impersonated_credentials,
             )
 
@@ -95,8 +94,8 @@ class GoogleDriveConnection(BaseConnection[GoogleDriveConnectionConfig, GoogleDr
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         """
         Test connection to Google Drive

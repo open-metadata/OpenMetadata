@@ -18,10 +18,12 @@ import {
   Page,
   Response,
 } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../constant/common';
 import { SLASH_COMMANDS } from '../constant/KnowledgeCenter.constant';
 import { PolicyRulesType } from '../support/access-control/PoliciesClass';
 import { KnowledgeCenterResponseDataType } from '../support/entity/KnowledgeCenter.interface';
 import { UserClass } from '../support/user/UserClass';
+import { deleteFixtureEntity, okJson } from './apiResponse';
 import { createNewPage, uuid } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { executeSlashCommand } from './KnowledgeCenter';
@@ -108,7 +110,7 @@ export const getDocumentRowByName = (page: Page, fileName: string): Locator =>
     .filter({ hasText: fileName });
 
 export const selectDocumentByName = async (page: Page, fileName: string) => {
-  const row = getDocumentRowByName(page, fileName);
+  const row = await searchAndGetDocumentRow(page, fileName);
   await expect(row).toBeVisible();
   await row.scrollIntoViewIfNeeded();
   await row.getByTestId('document-checkbox').click();
@@ -182,14 +184,24 @@ export const expectCapturedDownload = async (page: Page, fileName: string) => {
   expect(download.href.startsWith('blob:')).toBe(true);
 };
 
-export const DASHBOARD_URL = '/context-center/dashboard';
+export const DASHBOARD_URL = '/context-center/overview';
 export const ARTICLES_URL = '/context-center/articles';
 export const DOCUMENTS_URL = '/context-center/documents';
 export const MEMORIES_URL = '/context-center/memories';
 export const MEMORIES_API = '/api/v1/contextCenter/memories';
 
+/**
+ * The per-page `data-testid` wait that follows every navigation is the real
+ * readiness signal; waiting for `load` on a slow CI runner just burns the goto
+ * timeout on in-flight XHRs that the test does not depend on.
+ */
+const PAGE_GOTO_OPTIONS = {
+  timeout: 90_000,
+  waitUntil: 'domcontentloaded',
+} as const;
+
 export const navigateToDashboard = async (page: Page) => {
-  await page.goto(DASHBOARD_URL);
+  await page.goto(DASHBOARD_URL, PAGE_GOTO_OPTIONS);
   await page
     .getByTestId('context-center-dashboard-page')
     .waitFor({ state: 'visible' });
@@ -199,16 +211,100 @@ export const navigateToDashboard = async (page: Page) => {
   await section.waitFor({ state: 'visible' });
 };
 
+/**
+ * Recently-viewed is client-only state: the article detail page pushes it into
+ * the zustand `user-preferences-store` slice in localStorage, and that write
+ * lands after the render that triggered it. Navigating away before it flushes
+ * means the Recently Viewed panel renders from a store that never saw the
+ * article, so the panel assertion has nothing to auto-wait for and only passes
+ * once a retry warms the cache. Waiting on the persisted entry is the real
+ * signal, so no fixed delay is needed.
+ *
+ * The Knowledge Center panel reads `recentlyViewedQuickLinks`, which is a
+ * different slice from the landing page's generic `recentlyViewed` — see
+ * `addToKnowledgeCenterRecentViewed` in `src/utils/KnowledgePageUtils.tsx`.
+ * The match mirrors `getLink` in that file, which builds the panel's test id
+ * from `displayName || fullyQualifiedName`.
+ */
+export const readRecentlyViewed = async (
+  page: Page
+): Promise<{ displayName?: string; fullyQualifiedName?: string }[]> => {
+  const raw = await page.evaluate(
+    (key: string) => localStorage.getItem(key),
+    'user-preferences-store'
+  );
+
+  if (!raw) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as {
+      state?: {
+        preferences?: Record<
+          string,
+          {
+            recentlyViewedQuickLinks?: {
+              displayName?: string;
+              fullyQualifiedName?: string;
+            }[];
+          }
+        >;
+      };
+    };
+
+    return Object.values(parsed?.state?.preferences ?? {}).flatMap(
+      (slice) => slice?.recentlyViewedQuickLinks ?? []
+    );
+  } catch {
+    return [];
+  }
+};
+
+export const waitForRecentlyViewed = async (
+  page: Page,
+  displayName: string
+) => {
+  await expect
+    .poll(
+      async () => {
+        const entries = await readRecentlyViewed(page);
+
+        return entries.some(
+          (entry) =>
+            (entry?.displayName || entry?.fullyQualifiedName) === displayName
+        );
+      },
+      {
+        message: `Wait for "${displayName}" to be persisted into recentlyViewed`,
+        timeout: 15_000,
+        intervals: [50, 100, 200, 500],
+      }
+    )
+    .toBe(true);
+};
+
 export const navigateToArticles = async (page: Page) => {
-  await page.goto(ARTICLES_URL);
+  const hierarchyLoaded = page
+    .waitForResponse(
+      (res) =>
+        res.url().includes('/api/v1/contextCenter/pages') &&
+        !res.url().includes('/name/') &&
+        res.request().method() === 'GET',
+      { timeout: 30_000 }
+    )
+    .catch(() => null);
+  await page.goto(ARTICLES_URL, PAGE_GOTO_OPTIONS);
   await page
     .getByTestId('context-center-articles-page')
     .waitFor({ state: 'visible' });
+  await hierarchyLoaded;
   await waitForAllLoadersToDisappear(page);
+  await waitForAllLoadersToDisappear(page, 'knowledge-page-skeleton');
 };
 
 export const navigateToDocuments = async (page: Page) => {
-  await page.goto(DOCUMENTS_URL);
+  await page.goto(DOCUMENTS_URL, PAGE_GOTO_OPTIONS);
   await page
     .getByTestId('context-center-documents-page')
     .waitFor({ state: 'visible' });
@@ -216,7 +312,7 @@ export const navigateToDocuments = async (page: Page) => {
 };
 
 export const navigateToMemories = async (page: Page) => {
-  await page.goto(MEMORIES_URL);
+  await page.goto(MEMORIES_URL, PAGE_GOTO_OPTIONS);
   await page
     .getByTestId('context-center-memories-page')
     .waitFor({ state: 'visible' });
@@ -224,7 +320,7 @@ export const navigateToMemories = async (page: Page) => {
 };
 
 export const navigateToArchive = async (page: Page) => {
-  await page.goto('/context-center/archive');
+  await page.goto('/context-center/archive', PAGE_GOTO_OPTIONS);
   await page
     .getByTestId('context-center-archive-page')
     .waitFor({ state: 'visible' });
@@ -234,15 +330,12 @@ export const navigateToArchive = async (page: Page) => {
 // ─── Archive page test helpers ─────────────────────────────────────────────────
 
 export const getFolderTreeItem = (page: Page, folderName: string): Locator =>
-  page
-    .getByRole('treegrid', { name: 'Folders' })
-    .getByRole('row', {
-      name: folderName,
-    })
-    .first();
+  page.getByRole('treegrid', { name: 'Folders' }).getByRole('row', {
+    name: folderName,
+  });
 
 export const getFolderExpandBtn = (page: Page, folderName: string): Locator =>
-  getFolderTreeItem(page, folderName).locator('button[slot="chevron"]').first();
+  getFolderTreeItem(page, folderName).locator('button[slot="chevron"]');
 
 /**
  * The sidebar folder tree is paginated (FOLDER_PAGE_SIZE), so a folder
@@ -285,7 +378,8 @@ export const getDocumentSearchInput = (page: Page): Locator =>
  */
 export const searchAndGetDocumentRow = async (
   page: Page,
-  fileName: string
+  fileName: string,
+  documentId?: string
 ): Promise<Locator> => {
   const searchResPromise = page.waitForResponse(
     (res) =>
@@ -297,10 +391,15 @@ export const searchAndGetDocumentRow = async (
   await searchResPromise;
   await waitForAllLoadersToDisappear(page);
 
-  return page
-    .getByTestId('documents-view')
-    .locator('[data-testid^="document-row-"]')
-    .filter({ hasText: fileName });
+  // Same file name can exist in multiple folders, so prefer the id when known.
+  return documentId
+    ? page
+        .getByTestId('documents-view')
+        .getByTestId(`document-row-${documentId}`)
+    : page
+        .getByTestId('documents-view')
+        .locator('[data-testid^="document-row-"]')
+        .filter({ hasText: fileName });
 };
 
 export const selectFolderInSidebar = async (
@@ -314,7 +413,7 @@ export const selectFolderInSidebar = async (
 
 export const openUploadModal = async (page: Page): Promise<void> => {
   await page
-    .getByTestId('header-shell')
+    .getByTestId('page-header')
     .getByRole('button', { name: /upload file/i })
     .click();
   await expect(
@@ -336,7 +435,9 @@ export const uploadFileViaModal = async (
     name: fileName,
   });
 
-  await expect(modal.getByText(fileName).first()).toBeVisible();
+  await expect(
+    modal.getByText(fileName).filter({ visible: true })
+  ).not.toHaveCount(0);
 
   const uploadResPromise = page.waitForResponse(
     '/api/v1/contextCenter/drive/files/upload'
@@ -387,7 +488,7 @@ export const loginAsUser = async (
   user: UserClass
 ): Promise<Page> => {
   const page = await browser.newPage();
-  await user.login(page);
+  await user.signIn(page);
 
   return page;
 };
@@ -530,6 +631,54 @@ export async function waitForDocumentPermanentlyDeleted(
   );
 }
 
+export async function waitForDocumentAbsentFromSearch(
+  apiContext: APIRequestContext,
+  documentName: string,
+  timeout = 60_000,
+  interval = 2_000
+) {
+  const start = Date.now();
+
+  while (Date.now() - start < timeout) {
+    const response = await apiContext.get('/api/v1/search/query', {
+      params: {
+        q: documentName,
+        index: 'contextFile',
+        deleted: false,
+        size: 100,
+      },
+    });
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Unexpected response while polling search for absence of ${documentName}: ${response.status()} ${body}`
+      );
+    }
+
+    const body = await response.json();
+    const hits: Array<{ _source?: { name?: string; displayName?: string } }> =
+      body.hits?.hits ?? [];
+    // Check by exact name match rather than hits.length === 0 to avoid false
+    // exits caused by full-text tokenisation misses (document still indexed but
+    // not ranked by the relevance query).
+    const stillPresent = hits.some(
+      (h) =>
+        h._source?.name === documentName ||
+        h._source?.displayName === documentName
+    );
+    if (!stillPresent) {
+      return;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, interval));
+  }
+
+  throw new Error(
+    `Document ${documentName} was still present in search results after ${timeout}ms`
+  );
+}
+
 interface WaitForDocumentInArchiveOptions {
   updatedBy?: string;
   timeout?: number;
@@ -595,19 +744,21 @@ export const deleteArticleByFqn = async (
     `/api/v1/contextCenter/pages/name/${encodeURIComponent(fqn)}?fields=id`
   );
 
-  if (!res.ok()) {
+  if (res.status() === 404) {
     return;
   }
 
-  const data = await res.json();
-
-  if (data.id) {
-    await apiContext
-      .delete(
-        `/api/v1/contextCenter/pages/${data.id}?hardDelete=true&recursive=true`
-      )
-      .catch(() => undefined);
+  const data = await okJson<{ id: string }>(
+    res,
+    `Find article ${fqn} for cleanup`
+  );
+  if (!data.id) {
+    throw new Error(`Article ${fqn} cleanup response has no ID`);
   }
+  await deleteFixtureEntity(
+    apiContext,
+    `/api/v1/contextCenter/pages/${data.id}?hardDelete=true&recursive=true`
+  );
 };
 
 export const createArticleViaApi = async (
@@ -712,58 +863,62 @@ export const scrollHierarchyToNode = async (
 ) => {
   const hierarchy = page.getByTestId('knowledge-pages-hierarchy');
   const node = hierarchy.getByTestId(`page-node-${displayName}`);
+  // The hierarchy scroll container fires a native `scroll` event handled by
+  // KnowledgePagesHierarchy's handleScroll — it is NOT IntersectionObserver-based.
+  // We must dispatch a real scroll event after setting scrollTop, otherwise
+  // React's handler never runs and no pagination request is issued.
+  const container = page.getByTestId('article-list-container');
 
   await hierarchy.waitFor({ state: 'visible' });
 
-  const getLastNode = () =>
-    hierarchy
-      .locator('[data-testid^="page-node-"]')
-      .last()
-      .getAttribute('data-testid');
+  const nodes = hierarchy.locator('[data-testid^="page-node-"]');
+  let total = Infinity;
+  let fetched = 0;
 
-  let previousLastNode = '';
-  // Require 3 consecutive unchanged readings before concluding end-of-list.
-  // A single unchanged reading can be a false positive when the scroll lands
-  // just before the next infinite-scroll fetch threshold.
-  let staleCount = 0;
-
-  for (let attempt = 0; attempt < 100 && !(await node.isVisible()); attempt++) {
-    await scrollNearestScrollableAncestor(hierarchy);
-    await expect(
-      hierarchy.locator('[data-testid^="page-node-"]').first()
-    ).toBeVisible();
-
-    let lastNode = await getLastNode();
-
-    if (lastNode === previousLastNode) {
-      // The last node may look unchanged because the scroll has only just
-      // flipped the observer element into view — the component still needs
-      // a render tick before its effect fires and issues the pagination
-      // fetch. Register the response wait now (not before the scroll) so
-      // its timeout window covers that render+effect+network latency
-      // instead of racing against it.
-      await page
-        .waitForResponse((res) => res.url().includes('/hierarchy'), {
-          timeout: 5000,
-        })
-        .catch(() => null);
-
-      lastNode = await getLastNode();
-
-      if (lastNode === previousLastNode) {
-        staleCount += 1;
-        await page.waitForTimeout(1000);
-        if (staleCount >= 5) {
-          break;
-        }
-      } else {
-        staleCount = 0;
-      }
-    } else {
-      staleCount = 0;
+  for (let attempt = 0; attempt < 50; attempt++) {
+    if (await node.isVisible()) {
+      break;
     }
 
-    previousLastNode = lastNode ?? '';
+    if (fetched >= total) {
+      break;
+    }
+
+    const countBefore = await nodes.count();
+
+    // Hoist listener before the scroll so no response is missed
+    const responsePromise = page.waitForResponse(
+      (res) => res.url().includes('/hierarchy'),
+      { timeout: 15000 }
+    );
+
+    // Set scrollTop to the absolute bottom and dispatch a synthetic scroll
+    // event in the same evaluate call. handleScroll checks
+    // scrollTop + clientHeight >= scrollHeight - 1 to decide whether to
+    // fetch the next page — setting scrollTop alone (without the event) is
+    // silent to React because it listens via onScroll, not a MutationObserver.
+    await container.evaluate((el) => {
+      el.scrollTop = el.scrollHeight;
+      el.dispatchEvent(new Event('scroll'));
+    });
+
+    const response = await responsePromise.catch(() => null);
+    if (response) {
+      const json = await response.json().catch(() => null);
+      if (json?.paging?.total !== undefined) {
+        total = json.paging.total;
+      }
+    }
+    fetched = await nodes.count();
+
+    await expect
+      .poll(() => nodes.count(), { timeout: 5000 })
+      .toBeGreaterThan(countBefore)
+      .catch(() => null);
+
+    if ((await nodes.count()) === countBefore) {
+      break;
+    }
   }
 
   await expect(node).toBeVisible();
@@ -794,20 +949,52 @@ export const cleanupCurrentArticle = async (page: Page) => {
   await afterAction();
 };
 
-export const verifyArticleSearch = async (page: Page, searchTerm: string) => {
+// Waits for the search/query response for the given article display name.
+// `displayName` must be the card's exact display name — partial terms will
+// produce a predicate mismatch and a 30 s timeout.
+export const waitForArticleSearchResponse = (page: Page, displayName: string) =>
+  page.waitForResponse((res) => {
+    const url = new URL(res.url());
+
+    return (
+      url.pathname.includes('/api/v1/search/query') &&
+      url.searchParams.get('index') === 'page' &&
+      url.searchParams.get('q') ===
+        displayName.replaceAll(/["']/g, String.raw`\$&`)
+    );
+  });
+
+export const verifyArticleSearch = async (page: Page, displayName: string) => {
   const header = page.getByTestId('context-center-header');
   const searchInput = header
     .getByTestId('search-input')
     .getByLabel('Search Articles');
-  const searchResPromise = page.waitForResponse(
-    (res) =>
-      res.url().includes('/api/v1/search/query') &&
-      res.url().includes('index=page')
-  );
+  const card = page
+    .getByTestId('knowledge-page-listing')
+    .getByTestId(`knowledge-card-${displayName}`);
 
-  await searchInput.fill(searchTerm);
-  const searchRes = await searchResPromise;
-  expect(searchRes.status()).toBe(200);
+  await expect(async () => {
+    const currentValue = await searchInput.inputValue();
+    if (currentValue) {
+      const clearResPromise = page.waitForResponse((res) => {
+        const url = new URL(res.url());
+
+        return (
+          url.pathname.includes('/api/v1/contextCenter/pages') &&
+          !url.pathname.includes('/name/') &&
+          res.request().method() === 'GET'
+        );
+      });
+      await searchInput.clear();
+      await clearResPromise;
+    }
+
+    const searchResPromise = waitForArticleSearchResponse(page, displayName);
+    await searchInput.fill(displayName);
+    const searchRes = await searchResPromise;
+    expect(searchRes.status()).toBe(200);
+    await expect(card).toBeVisible({ timeout: 3000 });
+  }).toPass({ timeout: 30000 });
 
   return searchInput;
 };
@@ -819,59 +1006,97 @@ export const assertArticleEditorSaved = async (page: Page) => {
 export const scrollListingToCard = async (page: Page, displayName: string) => {
   const listing = page.getByTestId('knowledge-page-listing');
   const card = listing.getByTestId(`knowledge-card-${displayName}`);
+  const observer = page.getByTestId('observer-element');
+  const loader = page.getByTestId('knowledge-page-loader');
 
   await listing.waitFor({ state: 'visible' });
 
-  const getLastCard = () =>
-    listing
-      .locator('[data-testid^="knowledge-card-"]')
-      .last()
-      .getAttribute('data-testid');
+  const cards = listing.locator('[data-testid^="knowledge-card-"]');
+  let total = Infinity;
+  let fetched = 0;
 
-  let previousLastCard = '';
-  // Require 3 consecutive unchanged readings before concluding end-of-list.
-  // A single unchanged reading can be a false positive when the scroll lands
-  // just before the next infinite-scroll fetch threshold.
-  let staleCount = 0;
-
-  for (let attempt = 0; attempt < 50 && !(await card.isVisible()); attempt++) {
-    await scrollNearestScrollableAncestor(listing);
-    await expect(
-      listing.locator('[data-testid^="knowledge-card-"]').first()
-    ).toBeVisible();
-
-    let lastCard = await getLastCard();
-
-    if (lastCard === previousLastCard) {
-      // The last card may look unchanged because the scroll has only just
-      // flipped the observer element into view — the component still needs
-      // a render tick before its effect fires and issues the pagination
-      // fetch. Register the response wait now (not before the scroll) so
-      // its timeout window covers that render+effect+network latency
-      // instead of racing against it.
-      await page
-        .waitForResponse(
-          (res) => res.url().includes('/api/v1/contextCenter/pages'),
-          { timeout: 5000 }
-        )
-        .catch(() => null);
-
-      lastCard = await getLastCard();
-
-      if (lastCard === previousLastCard) {
-        staleCount += 1;
-        await page.waitForTimeout(1000);
-        if (staleCount >= 5) {
-          break;
-        }
-      } else {
-        staleCount = 0;
-      }
-    } else {
-      staleCount = 0;
+  for (let attempt = 0; attempt < 50; attempt++) {
+    if (await card.isVisible()) {
+      break;
     }
 
-    previousLastCard = lastCard ?? '';
+    if (fetched >= total) {
+      break;
+    }
+
+    // sentinel removed from DOM = last page already rendered
+    if ((await observer.count()) === 0) {
+      break;
+    }
+
+    const countBefore = await cards.count();
+
+    // Hoist listener before any scroll so no response is missed
+    const responsePromise = page.waitForResponse(
+      (res) =>
+        res.url().includes('/api/v1/contextCenter/pages') &&
+        res.url().includes('offset='),
+      { timeout: 15000 }
+    );
+
+    // The observer element (2 px sentinel) lives inside an anonymous Box with
+    // tw:overflow-auto (no testid). We walk up from the observer element itself
+    // to find that scrollable ancestor, then:
+    //   Step 1: scroll it back to top so the observer leaves the viewport.
+    //   Step 2: scroll to absolute bottom so the observer re-enters viewport.
+    // This hidden→visible transition is the only reliable IntersectionObserver
+    // trigger. scrollBy on an already-bottomed container is a no-op, and
+    // scrollIntoViewIfNeeded() is a no-op when the element is already visible —
+    // so both prior approaches silently failed after the first page.
+    await observer.evaluate((el) => {
+      let current: HTMLElement | null = el.parentElement;
+      while (current && current.scrollHeight <= current.clientHeight) {
+        current = current.parentElement;
+      }
+      if (current) {
+        current.scrollTop = 0;
+      }
+    });
+    await observer.evaluate((el) => {
+      let current: HTMLElement | null = el.parentElement;
+      while (current && current.scrollHeight <= current.clientHeight) {
+        current = current.parentElement;
+      }
+      if (current) {
+        current.scrollTop = current.scrollHeight;
+      }
+    });
+
+    const response = await responsePromise.catch(() => null);
+    if (response) {
+      const json = await response.json().catch(() => null);
+      if (json?.paging?.total !== undefined) {
+        total = json.paging.total;
+      }
+    }
+    fetched = await cards.count();
+
+    // Wait for the loader to appear then disappear (loader may flash quickly)
+    await expect(loader)
+      .toBeVisible({ timeout: 3000 })
+      .catch(() => null);
+    await loader.waitFor({ state: 'hidden', timeout: 30000 }).catch(() => null);
+
+    await expect
+      .poll(() => cards.count(), { timeout: 5000 })
+      .toBeGreaterThan(countBefore)
+      .catch(() => null);
+
+    if ((await cards.count()) === countBefore) {
+      break;
+    }
+  }
+
+  // Lazy-loading can stall (sentinel never re-intersects, a page of results is
+  // dropped on a slow runner). Search is deterministic, so fall back to it
+  // rather than failing on a card that exists but was never paged in.
+  if (!(await card.isVisible())) {
+    await verifyArticleSearch(page, displayName);
   }
 
   await expect(card).toBeVisible();
@@ -894,7 +1119,7 @@ export const waitForArticleInFollows = async (
   apiContext: APIRequestContext,
   userId: string,
   articleId: string,
-  timeout = 30_000,
+  timeout = ACTION_TIMEOUT,
   interval = 1_000
 ) => {
   const start = Date.now();
@@ -938,7 +1163,7 @@ export const navigateToArticle = async (page: Page, articleFqn: string) => {
   );
 
   const articlePath = ARTICLE_DETAIL_ROUTE.replace(':fqn', articleFqn);
-  await page.goto(articlePath);
+  await page.goto(articlePath, PAGE_GOTO_OPTIONS);
   await getArticleResponse;
   await waitForAllLoadersToDisappear(page);
 };
@@ -1051,6 +1276,78 @@ export const readDraftStore = async (
 };
 
 /**
+ * The draft-content debounce (300ms in KnowledgePageDetailComponent) means the
+ * "Unsaved" badge appearing gives no guarantee the debounced write to
+ * localStorage has actually landed yet. Polling the real draft store removes
+ * that race instead of guessing a fixed timeout that can lose the race under
+ * CI load.
+ *
+ * The timeout is deliberately kept well under the real-save debounce
+ * (SHORT_DELAY, 3000ms): once that autosave completes it clears the draft
+ * from localStorage (see endTrackedSave -> removeDraft), so a long poll here
+ * risks racing the autosave itself and observing the draft after it has
+ * already been removed rather than confirming it landed in time.
+ */
+export const waitForDraftPersisted = async (
+  page: Page,
+  articleId: string,
+  expectedDescription: string
+) => {
+  await expect
+    .poll(
+      async () => {
+        const drafts = await readDraftStore(page);
+        const draft = drafts[articleId] as { description?: string } | undefined;
+
+        // The draft stores the editor's HTML output (e.g. wrapped in <p>...</p>),
+        // not the plain text that was typed, so match on substring containment.
+        return draft?.description?.includes(expectedDescription) ?? false;
+      },
+      { timeout: 2000, intervals: [50, 100, 200] }
+    )
+    .toBe(true);
+};
+
+/**
+ * Blocks the debounced autosave PATCH for a single article so a test can hold an
+ * article in a genuinely unsaved state.
+ *
+ * Typing schedules two independent writes: the draft stash (300ms debounce, into
+ * localStorage) and the real autosave PATCH (SHORT_DELAY, 3000ms). A test that
+ * stashes a draft and then reloads is racing that 3s debounce -- and a reload does
+ * not cancel an already in-flight XHR. If the PATCH lands, the server version goes
+ * N -> N+1 while the stashed draft still carries version N, so on the next load
+ * getDraftMergeCandidate() sees serverChangedSinceDraft, discards the draft and
+ * calls removeDraft(). The editor then renders the server's old description and the
+ * assertion fails against the pre-edit text.
+ *
+ * Aborting the PATCH removes the race instead of hoping to win it: the draft keeps
+ * the version it was stamped with, so the post-reload merge is deterministic.
+ *
+ * Returns a function that stops blocking, for tests that later need the real save.
+ */
+export const blockArticleAutoSave = async (
+  page: Page,
+  articleId: string
+): Promise<() => Promise<void>> => {
+  const pattern = `**/api/v1/contextCenter/pages/${articleId}`;
+
+  await page.route(pattern, async (route) => {
+    if (route.request().method() === 'PATCH') {
+      await route.abort();
+
+      return;
+    }
+
+    await route.fallback();
+  });
+
+  return async () => {
+    await page.unroute(pattern);
+  };
+};
+
+/**
  * A minimal valid 1x1 transparent PNG, used as an in-memory upload fixture
  * since this repo has no binary image fixtures under playwright/test-data/.
  */
@@ -1086,6 +1383,100 @@ export const insertImageViaUrl = async (
   url: string
 ): Promise<void> => {
   await executeSlashCommand(page, SLASH_COMMANDS.image);
+  await page.getByTestId('add-image-container').last().click();
+  const embedForm = page.getByTestId('embed-link-form');
+  await expect(embedForm).toBeVisible();
+  await embedForm.getByTestId('embed-input').fill(url);
+  await embedForm.getByRole('button', { name: /embed/i }).click();
+
+  await expect(embedForm).not.toBeVisible();
+};
+
+/** A minimal valid MP4 container (ftyp + mdat boxes only), enough for the browser to accept it as a video source. */
+const MINIMAL_MP4_BASE64 = 'AAAAGGZ0eXBpc29tAAACAGlzb21pc28y';
+
+/** A minimal valid MP3 frame header, enough for the browser to accept it as an audio source. */
+const MINIMAL_MP3_BASE64 = '//uQxAAAAAAAAAAAAAAAAAAAAAAA';
+
+export const insertFileViaUpload = async (
+  page: Page,
+  fileName: string,
+  mimeType = 'application/pdf',
+  buffer: Buffer = Buffer.from('playwright file attachment upload test')
+): Promise<void> => {
+  await executeSlashCommand(page, SLASH_COMMANDS.file);
+  await page.getByTestId('add-image-container').last().click();
+  await page.getByRole('tab', { name: 'Upload' }).click();
+
+  const uploadResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/attachments/upload') &&
+      response.request().method() === 'POST'
+  );
+
+  await page.getByTestId('upload-file-input').setInputFiles({
+    name: fileName,
+    mimeType,
+    buffer,
+  });
+
+  const uploadResponse = await uploadResponsePromise;
+  expect(uploadResponse.status()).toBe(201);
+};
+
+export const insertVideoViaUpload = async (
+  page: Page,
+  fileName: string
+): Promise<void> => {
+  await executeSlashCommand(page, SLASH_COMMANDS.video);
+  await page.getByTestId('add-image-container').last().click();
+  await page.getByRole('tab', { name: 'Upload' }).click();
+
+  const uploadResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/attachments/upload') &&
+      response.request().method() === 'POST'
+  );
+
+  await page.getByTestId('upload-file-input').setInputFiles({
+    name: fileName,
+    mimeType: 'video/mp4',
+    buffer: Buffer.from(MINIMAL_MP4_BASE64, 'base64'),
+  });
+
+  const uploadResponse = await uploadResponsePromise;
+  expect(uploadResponse.status()).toBe(201);
+};
+
+export const insertAudioViaUpload = async (
+  page: Page,
+  fileName: string
+): Promise<void> => {
+  await executeSlashCommand(page, SLASH_COMMANDS.audio);
+  await page.getByTestId('add-image-container').last().click();
+  await page.getByRole('tab', { name: 'Upload' }).click();
+
+  const uploadResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/attachments/upload') &&
+      response.request().method() === 'POST'
+  );
+
+  await page.getByTestId('upload-file-input').setInputFiles({
+    name: fileName,
+    mimeType: 'audio/mpeg',
+    buffer: Buffer.from(MINIMAL_MP3_BASE64, 'base64'),
+  });
+
+  const uploadResponse = await uploadResponsePromise;
+  expect(uploadResponse.status()).toBe(201);
+};
+
+export const insertFileWithUrl = async (
+  page: Page,
+  url: string
+): Promise<void> => {
+  await executeSlashCommand(page, SLASH_COMMANDS.file);
   await page.getByTestId('add-image-container').last().click();
   const embedForm = page.getByTestId('embed-link-form');
   await expect(embedForm).toBeVisible();

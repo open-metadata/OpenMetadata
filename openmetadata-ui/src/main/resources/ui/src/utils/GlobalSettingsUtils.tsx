@@ -42,56 +42,34 @@ export const getGlobalSettingMenuItem = (
   };
 };
 
-export const getSettingOptionByEntityType = (entityType: EntityType) => {
-  switch (entityType) {
-    case EntityType.TOPIC:
-      return GlobalSettingOptions.TOPICS;
-    case EntityType.DASHBOARD:
-      return GlobalSettingOptions.DASHBOARDS;
-    case EntityType.PIPELINE:
-      return GlobalSettingOptions.PIPELINES;
-    case EntityType.MLMODEL:
-      return GlobalSettingOptions.MLMODELS;
-    case EntityType.CONTAINER:
-      return GlobalSettingOptions.CONTAINERS;
-    case EntityType.DATABASE:
-      return GlobalSettingOptions.DATABASES;
-    case EntityType.DATABASE_SCHEMA:
-      return GlobalSettingOptions.DATABASE_SCHEMA;
-    case EntityType.GLOSSARY_TERM:
-      return GlobalSettingOptions.GLOSSARY_TERM;
-    case EntityType.CHART:
-      return GlobalSettingOptions.CHARTS;
-    case EntityType.DOMAIN:
-      return GlobalSettingOptions.DOMAINS;
-    case EntityType.STORED_PROCEDURE:
-      return GlobalSettingOptions.STORED_PROCEDURES;
-    case EntityType.SEARCH_INDEX:
-      return GlobalSettingOptions.SEARCH_INDEXES;
-    case EntityType.DASHBOARD_DATA_MODEL:
-      return GlobalSettingOptions.DASHBOARD_DATA_MODEL;
-    case EntityType.API_ENDPOINT:
-      return GlobalSettingOptions.API_ENDPOINTS;
-    case EntityType.API_COLLECTION:
-      return GlobalSettingOptions.API_COLLECTIONS;
-    case EntityType.DATA_PRODUCT:
-      return GlobalSettingOptions.DATA_PRODUCT;
-    case EntityType.METRIC:
-      return GlobalSettingOptions.METRICS;
-    case EntityType.DIRECTORY:
-      return GlobalSettingOptions.DIRECTORIES;
-    case EntityType.FILE:
-      return GlobalSettingOptions.FILES;
-    case EntityType.SPREADSHEET:
-      return GlobalSettingOptions.SPREADSHEETS;
-    case EntityType.WORKSHEET:
-      return GlobalSettingOptions.WORKSHEETS;
-
-    case EntityType.TABLE:
-    default:
-      return GlobalSettingOptions.TABLES;
-  }
+const SETTING_OPTION_BY_ENTITY_TYPE: Partial<
+  Record<EntityType, GlobalSettingOptions>
+> = {
+  [EntityType.TOPIC]: GlobalSettingOptions.TOPICS,
+  [EntityType.DASHBOARD]: GlobalSettingOptions.DASHBOARDS,
+  [EntityType.PIPELINE]: GlobalSettingOptions.PIPELINES,
+  [EntityType.MLMODEL]: GlobalSettingOptions.MLMODELS,
+  [EntityType.CONTAINER]: GlobalSettingOptions.CONTAINERS,
+  [EntityType.DATABASE]: GlobalSettingOptions.DATABASES,
+  [EntityType.DATABASE_SCHEMA]: GlobalSettingOptions.DATABASE_SCHEMA,
+  [EntityType.GLOSSARY_TERM]: GlobalSettingOptions.GLOSSARY_TERM,
+  [EntityType.CHART]: GlobalSettingOptions.CHARTS,
+  [EntityType.DOMAIN]: GlobalSettingOptions.DOMAINS,
+  [EntityType.STORED_PROCEDURE]: GlobalSettingOptions.STORED_PROCEDURES,
+  [EntityType.SEARCH_INDEX]: GlobalSettingOptions.SEARCH_INDEXES,
+  [EntityType.DASHBOARD_DATA_MODEL]: GlobalSettingOptions.DASHBOARD_DATA_MODEL,
+  [EntityType.API_ENDPOINT]: GlobalSettingOptions.API_ENDPOINTS,
+  [EntityType.API_COLLECTION]: GlobalSettingOptions.API_COLLECTIONS,
+  [EntityType.DATA_PRODUCT]: GlobalSettingOptions.DATA_PRODUCT,
+  [EntityType.METRIC]: GlobalSettingOptions.METRICS,
+  [EntityType.DIRECTORY]: GlobalSettingOptions.DIRECTORIES,
+  [EntityType.FILE]: GlobalSettingOptions.FILES,
+  [EntityType.SPREADSHEET]: GlobalSettingOptions.SPREADSHEETS,
+  [EntityType.WORKSHEET]: GlobalSettingOptions.WORKSHEETS,
 };
+
+export const getSettingOptionByEntityType = (entityType: EntityType) =>
+  SETTING_OPTION_BY_ENTITY_TYPE[entityType] ?? GlobalSettingOptions.TABLES;
 
 export const getCustomizePagePath = (personaFqn: string, pageFqn: string) => {
   const path = ROUTES.CUSTOMIZE_PAGE;

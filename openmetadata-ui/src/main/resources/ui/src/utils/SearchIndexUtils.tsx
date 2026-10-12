@@ -22,6 +22,7 @@ import type {
   ExtentionEntitiesKeys,
 } from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { EntityDetailWidgetSkeleton } from '../components/common/Skeleton/EntityDetailWidgetSkeleton/EntityDetailWidgetSkeleton.component';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
@@ -29,12 +30,8 @@ import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
-import {
-  SearchIndex as SearchIndexEntity,
-  SearchIndexField,
-} from '../generated/entity/data/searchIndex';
+import { SearchIndexField } from '../generated/entity/data/searchIndex';
 import { PageType } from '../generated/system/ui/page';
-import { EntityReference } from '../generated/type/entityReference';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { t } from './i18next/LocalUtil';
 import { SearchIndexDetailPageTabProps } from './SearchIndexDetailsClassBase';
@@ -82,7 +79,7 @@ const SearchIndexFieldsTab = withSuspenseFallback(
         '../pages/SearchIndexDetailsPage/SearchIndexFieldsTab/SearchIndexFieldsTab'
       )
   ),
-  TAB_CONTENT_FALLBACK
+  <EntityDetailWidgetSkeleton lineCount={5} />
 );
 const EntityLineageTab = lazy(() =>
   import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
@@ -260,17 +257,5 @@ export const getSearchIndexWidgetsFromKey = (widgetConfig: WidgetConfig) => {
       entityType={EntityType.SEARCH_INDEX}
       widgetConfig={widgetConfig}
     />
-  );
-};
-
-export const extractSearchIndexFields = <
-  T extends Omit<EntityReference, 'type'>
->(
-  data: T
-): SearchIndexField[] => {
-  const searchIndex = data as Partial<SearchIndexEntity>;
-
-  return (searchIndex.fields ?? []).map(
-    (field) => ({ ...field, tags: field.tags ?? [] } as SearchIndexField)
   );
 };

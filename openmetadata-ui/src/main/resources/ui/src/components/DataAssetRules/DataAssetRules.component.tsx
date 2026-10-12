@@ -13,17 +13,12 @@
 
 import { PlusOutlined } from '@ant-design/icons';
 import {
-  Button,
-  Col,
-  Form,
-  Input,
-  Modal,
-  Row,
-  Space,
-  Switch,
-  Table,
+  Box,
+  Grid,
+  Toggle,
   Typography,
-} from 'antd';
+} from '@openmetadata/ui-core-components';
+import { Button, Form, Input, Modal, Table } from 'antd';
 import { FormInstance } from 'antd/es/form/Form';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -283,36 +278,36 @@ export const useSemanticsRuleList = ({
   const [deleteSemanticsRule, setDeleteSemanticsRule] =
     useState<SemanticsRule | null>(null);
 
-  const handleSave = async (
-    semanticsRule: SemanticsRule,
-    previousName?: string
-  ) => {
-    // previousName: pass this if editing and the name was changed
-    let updatedSemanticsRules = [...semanticsRules];
+  const handleSave = useCallback(
+    async (semanticsRule: SemanticsRule, previousName?: string) => {
+      // previousName: pass this if editing and the name was changed
+      let updatedSemanticsRules = [...semanticsRules];
 
-    // Remove the old rule if editing and the name has changed
-    if (previousName && previousName !== semanticsRule.name) {
-      updatedSemanticsRules = updatedSemanticsRules.filter(
-        (rule) => rule.name !== previousName
+      // Remove the old rule if editing and the name has changed
+      if (previousName && previousName !== semanticsRule.name) {
+        updatedSemanticsRules = updatedSemanticsRules.filter(
+          (rule) => rule.name !== previousName
+        );
+      }
+
+      // Check if a rule with the new name already exists
+      const existingIndex = updatedSemanticsRules.findIndex(
+        (rule) => rule.name === semanticsRule.name
       );
-    }
 
-    // Check if a rule with the new name already exists
-    const existingIndex = updatedSemanticsRules.findIndex(
-      (rule) => rule.name === semanticsRule.name
-    );
+      if (existingIndex > -1) {
+        // Replace the existing rule
+        updatedSemanticsRules[existingIndex] = semanticsRule;
+      } else {
+        // Add as new rule in the beginning
+        updatedSemanticsRules.unshift(semanticsRule);
+      }
 
-    if (existingIndex > -1) {
-      // Replace the existing rule
-      updatedSemanticsRules[existingIndex] = semanticsRule;
-    } else {
-      // Add as new rule in the beginning
-      updatedSemanticsRules.unshift(semanticsRule);
-    }
-
-    await onSemanticsRuleChange(updatedSemanticsRules);
-    setAddEditSemanticsRule(null);
-  };
+      await onSemanticsRuleChange(updatedSemanticsRules);
+      setAddEditSemanticsRule(null);
+    },
+    [semanticsRules, onSemanticsRuleChange]
+  );
 
   const handleAddDataAssetRule = () => {
     setAddEditSemanticsRule({
@@ -331,38 +326,42 @@ export const useSemanticsRuleList = ({
     setDeleteSemanticsRule(null);
   };
 
-  const columns = [
-    {
-      title: t('label.name'),
-      dataIndex: 'name',
-      className: 'col-name',
-    },
-    {
-      title: t('label.description'),
-      dataIndex: 'description',
-      className: 'col-description',
-      render: (description: string) => (
-        <RichTextEditorPreviewerNew markdown={description} />
-      ),
-    },
-    {
-      title: t('label.enabled'),
-      dataIndex: 'enabled',
-      render: (enabled: boolean, record: SemanticsRule) => (
-        <Switch
-          checked={enabled}
-          onChange={() => {
-            handleSave({ ...record, enabled: !enabled });
-          }}
-        />
-      ),
-    },
-  ];
+  const columns = useMemo(
+    () => [
+      {
+        title: t('label.name'),
+        dataIndex: 'name',
+        className: 'col-name',
+      },
+      {
+        title: t('label.description'),
+        dataIndex: 'description',
+        className: 'col-description',
+        render: (description: string) => (
+          <RichTextEditorPreviewerNew markdown={description} />
+        ),
+      },
+      {
+        title: t('label.enabled'),
+        dataIndex: 'enabled',
+        render: (enabled: boolean, record: SemanticsRule) => (
+          <Toggle
+            isSelected={enabled}
+            size="sm"
+            onChange={() => {
+              handleSave({ ...record, enabled: !enabled });
+            }}
+          />
+        ),
+      },
+    ],
+    [t, handleSave]
+  );
 
   const dataAssetRuleList = useMemo(() => {
     return (
-      <Row className="m-t-md table-container">
-        <Col span={24}>
+      <Grid className="layout-row layout-grid m-t-md table-container">
+        <Grid.Item className="layout-column" span={24}>
           <Table
             columns={columns}
             dataSource={semanticsRules}
@@ -373,29 +372,35 @@ export const useSemanticsRuleList = ({
             pagination={false}
             rowKey="name"
           />
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
     );
   }, [semanticsRules, isLoading, isSaveLoading, columns]);
 
   const quickAddSemanticsRule = !isLoading && semanticsRules.length === 0 && (
-    <Row align="middle" className="h-full" justify="center">
-      <Col>
-        <Space
+    <Box
+      align="center"
+      className="layout-row h-full"
+      justify="center"
+      wrap="wrap">
+      <Box className="layout-column tw:block">
+        <Box
+          inline
           align="center"
-          className="w-full custom-icon-button"
-          direction="vertical"
-          size={0}>
+          className="layout-space w-full custom-icon-button"
+          direction="col"
+          gap={0}
+          itemClassName="layout-space-item">
           <AddPlaceHolderIcon
             data-testid="no-data-image"
             height={SIZE.MEDIUM}
             width={SIZE.MEDIUM}
           />
-          <Typography.Text>
+          <Typography>
             {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
               entity: t('label.data-asset-rules'),
             })}
-          </Typography.Text>
+          </Typography>
           <Button
             ghost
             className="add-button"
@@ -405,9 +410,9 @@ export const useSemanticsRuleList = ({
             onClick={handleAddDataAssetRule}>
             {t('label.add')}
           </Button>
-        </Space>
-      </Col>
-    </Row>
+        </Box>
+      </Box>
+    </Box>
   );
 
   return {

@@ -62,11 +62,19 @@ public class MigrationUtil {
                           row.get("appid").toString(),
                           AppExtension.ExtensionType.STATUS.toString());
                 } catch (Exception ex) {
-                  LOG.warn("Error migrating app extension [{}] due to ", row, ex);
+                  // Propagate so the migration step is recorded as FAILED and the workflow stops
+                  // before the post-DDL `ALTER ... appName ... GENERATED ALWAYS AS ... NOT NULL`,
+                  // which would otherwise fail for a row left without `appName` in its JSON.
+                  LOG.error("Error migrating app extension [{}] due to ", row, ex);
+                  throw new RuntimeException(
+                      "Failed to migrate app extension for appId " + row.get("appid"), ex);
                 }
               });
     } catch (Exception ex) {
-      LOG.warn("Error running app extension migration ", ex);
+      // Propagate iteration-level errors (mid-loop ResultSet failures or exceptions escaping the
+      // orphan-cleanup delete) for the same reason as the per-row catch above.
+      LOG.error("Error running app extension migration ", ex);
+      throw ex;
     }
   }
 

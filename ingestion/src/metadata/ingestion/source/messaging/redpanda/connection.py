@@ -13,8 +13,6 @@
 Source connection handler
 """
 
-from typing import Optional
-
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
@@ -41,13 +39,15 @@ logger = ingestion_logger()
 
 class RedpandaConnection(BaseConnection[RedpandaConnectionConfig, KafkaClient]):
     def _get_client(self) -> KafkaClient:
-        return get_kafka_connection(self.service_connection)
+        client = get_kafka_connection(self.service_connection)
+        self._on_close(client.close_consumer)
+        return client
 
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         return test_kafka_connection(
             metadata=metadata,

@@ -12,12 +12,66 @@
  */
 // ─── File type badge ──────────────────────────────────────────────────────────
 
+import { EntityFields } from '../enums/AdvancedSearch.enum';
 import {
+  ContextMemoryStatus,
   MemoryType,
   ShareVisibility,
 } from '../generated/entity/context/contextMemory';
+import { ExploreQuickFilterField } from '../interface/quickFilter.interface';
 
 export const DOCUMENT_MAX_FILE_SIZE = 5 * 1024 * 1024;
+
+// Quick-filter fields shown above the Context Center Articles list. Options are
+// fetched from the `page` search-index aggregations by ExploreQuickFilters.
+export const ARTICLE_QUICK_FILTER_FIELDS: ExploreQuickFilterField[] = [
+  { label: 'label.domain-plural', key: EntityFields.DOMAINS },
+  { label: 'label.owner-plural', key: EntityFields.OWNERS },
+  { label: 'label.tag', key: EntityFields.TAG },
+  { label: 'label.tier', key: EntityFields.TIER },
+];
+
+export interface ArticleSortOption {
+  id: string;
+  label: string;
+  // ES search index field (search path). The REST list endpoint only allows
+  // sortBy in {name, createdAt, updatedAt}; options without a `restSortBy` are
+  // sortable only via ES, so they force the search path even when unfiltered.
+  esSortField: string;
+  restSortBy?: string;
+  sortOrder: 'asc' | 'desc';
+}
+
+export const ARTICLE_SORT_OPTIONS: ArticleSortOption[] = [
+  {
+    id: 'updatedAt',
+    label: 'label.recently-updated',
+    esSortField: 'updatedAt',
+    restSortBy: 'updatedAt',
+    sortOrder: 'desc',
+  },
+  {
+    id: 'name',
+    label: 'label.alphabetical',
+    esSortField: 'displayName.keyword',
+    restSortBy: 'displayName',
+    sortOrder: 'asc',
+  },
+  {
+    id: 'publicationDate',
+    label: 'label.publication-date',
+    esSortField: 'page.publicationDate',
+    sortOrder: 'desc',
+  },
+  {
+    id: 'popularity',
+    label: 'label.popularity',
+    esSortField: 'totalVotes',
+    sortOrder: 'desc',
+  },
+];
+
+export const DEFAULT_ARTICLE_SORT_OPTION = ARTICLE_SORT_OPTIONS[0];
 
 export const ARCHIVE_PAGE_SIZE = 15;
 export const RECENT_DASHBOARD_ARTICLES_LIMIT = 3;
@@ -50,9 +104,16 @@ export const MEMORY_TYPE_OPTIONS = [
 
 export const VISIBILITY_OPTIONS = [
   {
+    id: ShareVisibility.Public,
+    labelKey: 'label.visibility-public',
+    descriptionKey: 'message.visible-to-everyone-in-workspace',
+    badgeColor: 'blue' as const,
+    iconName: 'Share07' as const,
+  },
+  {
     id: ShareVisibility.Shared,
     labelKey: 'label.shared',
-    descriptionKey: 'message.visible-to-everyone-in-workspace',
+    descriptionKey: 'message.visible-to-specific-people',
     badgeColor: 'brand' as const,
     iconName: 'Share07' as const,
   },
@@ -74,9 +135,30 @@ export const VISIBILITY_OPTIONS = [
 
 export const MEMORIES_PER_PAGE = 10;
 export const MEMORY_FIELDS =
-  'owners,tags,domains,primaryEntity,relatedEntities,sourceEntity';
+  'owners,tags,domains,primaryEntity,relatedEntities,derivedEntities,sourceEntity';
+
+export const DEFAULT_MEMORY_STATUSES = [
+  ContextMemoryStatus.Approved,
+  ContextMemoryStatus.Unprocessed,
+];
+
+export const MEMORY_STATUS_LABEL_KEYS: Record<string, string> = {
+  [ContextMemoryStatus.Unprocessed]: 'label.unprocessed',
+  [ContextMemoryStatus.Approved]: 'label.approved',
+  [ContextMemoryStatus.Archived]: 'label.archived',
+  [ContextMemoryStatus.Draft]: 'label.draft',
+  [ContextMemoryStatus.Deprecated]: 'label.deprecated',
+  [ContextMemoryStatus.Rejected]: 'label.rejected',
+  [ContextMemoryStatus.Superseded]: 'label.superseded',
+  [ContextMemoryStatus.Invalidated]: 'label.invalidated',
+};
 
 export const FILTER_TABS = [
   { id: 'all', label: 'label.all' },
   { id: 'created-by-me', label: 'label.created-by-me' },
 ] as const;
+
+// utility-gray-blue-50 resolves to gray-blue-950 in dark, which reads as a
+// black hole on a gray-800 card, so dark swaps to the translucent active fill.
+export const PANEL_ICON_BOX_CLASS =
+  'tw:rounded-lg tw:leading-0 tw:bg-utility-gray-blue-50 tw:dark:bg-active';

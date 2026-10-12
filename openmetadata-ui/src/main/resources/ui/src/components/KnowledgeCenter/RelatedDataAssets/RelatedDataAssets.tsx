@@ -29,9 +29,9 @@ import WidgetCard from '../../../components/common/WidgetCard/WidgetCard';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import { EntityReference } from '../../../generated/entity/type';
 import { KnowledgePage } from '../../../interface/knowledge-center.interface';
+import { getEntityIcon } from '../../../utils/EntityIconUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { getEntityIcon } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { RelatedDataAssetsForm } from './RelatedDataAssetsForm';
 
@@ -52,48 +52,41 @@ const RelatedDataAssets: FC<RelatedDataAssetsProps> = ({
   const [isEdit, setIsEdit] = useState(false);
   const [isShowMore, setIsShowMore] = useState(false);
 
-  const {
-    filteredRelatedDataAssets,
-    defaultValue,
-    initialOptions,
-    restRelatedDataAssets,
-  } = useMemo(() => {
-    const { filteredRelatedDataAssets, restRelatedDataAssets } =
-      relatedDataAssets.reduce(
-        (acc, item) => {
-          // filter out team and user as they are not data assets
-          if (!['team', 'user'].includes(item.type)) {
-            acc.filteredRelatedDataAssets.push(item);
-          } else {
-            acc.restRelatedDataAssets.push(item);
-          }
+  const { filteredRelatedDataAssets, initialOptions, restRelatedDataAssets } =
+    useMemo(() => {
+      const { filteredRelatedDataAssets, restRelatedDataAssets } =
+        relatedDataAssets.reduce(
+          (acc, item) => {
+            // filter out team and user as they are not data assets
+            if (!['team', 'user'].includes(item.type)) {
+              acc.filteredRelatedDataAssets.push(item);
+            } else {
+              acc.restRelatedDataAssets.push(item);
+            }
 
-          return acc;
-        },
-        {
-          filteredRelatedDataAssets: [] as EntityReference[],
-          restRelatedDataAssets: [] as EntityReference[],
-        }
+            return acc;
+          },
+          {
+            filteredRelatedDataAssets: [] as EntityReference[],
+            restRelatedDataAssets: [] as EntityReference[],
+          }
+        );
+
+      const initialOptions: DataAssetOption[] = filteredRelatedDataAssets.map(
+        (item) => ({
+          displayName: getEntityName(item),
+          reference: item,
+          label: getEntityName(item),
+          value: item.fullyQualifiedName,
+        })
       );
 
-    const initialOptions: DataAssetOption[] = filteredRelatedDataAssets.map(
-      (item) => ({
-        displayName: getEntityName(item),
-        reference: item,
-        label: getEntityName(item),
-        value: item.id,
-      })
-    );
-
-    const defaultValue = filteredRelatedDataAssets.map((item) => item.id);
-
-    return {
-      initialOptions,
-      defaultValue,
-      filteredRelatedDataAssets,
-      restRelatedDataAssets,
-    };
-  }, [relatedDataAssets]);
+      return {
+        initialOptions,
+        filteredRelatedDataAssets,
+        restRelatedDataAssets,
+      };
+    }, [relatedDataAssets]);
 
   const { visibleDataAssets, hiddenDataAssets } = useMemo(() => {
     const visibleDataAssets = filteredRelatedDataAssets.slice(0, 5);
@@ -196,13 +189,12 @@ const RelatedDataAssets: FC<RelatedDataAssetsProps> = ({
         onClick={() => setIsEdit(true)}
       />
     );
-  }, [isEdit, hasPermission, filteredRelatedDataAssets]);
+  }, [t, isEdit, hasPermission, filteredRelatedDataAssets]);
 
   const content = useMemo(() => {
     if (isEdit) {
       return (
         <RelatedDataAssetsForm
-          defaultValue={defaultValue}
           initialOptions={initialOptions}
           onCancel={() => setIsEdit(false)}
           onSubmit={handleAssetsUpdate}

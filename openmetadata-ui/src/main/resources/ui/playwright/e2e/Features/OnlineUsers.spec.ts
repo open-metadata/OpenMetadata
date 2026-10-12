@@ -11,18 +11,41 @@
  *  limitations under the License.
  */
 
-import { expect } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
-import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
-import { settingClick, sidebarClick } from '../../utils/sidebar';
+import { getCellByName } from '../../utils/scopedLocators';
+import { sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
 
 let testUser: UserClass;
+
+const ONLINE_USERS_PATH = '/settings/members/online-users';
+
+const navigateToOnlineUsersPage = async (page: Page) => {
+  const onlineUsersRes = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/users/online') &&
+      response.request().method() === 'GET'
+  );
+
+  await page.goto(ONLINE_USERS_PATH, { waitUntil: 'domcontentloaded' });
+  await page.waitForURL(`**${ONLINE_USERS_PATH}**`, {
+    waitUntil: 'domcontentloaded',
+  });
+  const onlineUsersResponse = await onlineUsersRes;
+
+  expect(onlineUsersResponse.status()).toBe(200);
+
+  await waitForAllLoadersToDisappear(page);
+
+  await expect(page.getByTestId('online-users-page')).toBeVisible();
+  await expect(page.getByTestId('online-users-table')).toBeVisible();
+};
 
 test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.beforeAll(async ({ browser }) => {
@@ -39,18 +62,10 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await afterAction();
   });
 
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-  });
-
   test('Should show online users under Settings > Members > Online Users for admins', async ({
     page,
   }) => {
-    const onlineUsersRes = page.waitForResponse('/api/v1/users/online?*');
-    await settingClick(page, GlobalSettingOptions.ONLINE_USERS);
-    await onlineUsersRes;
-
-    await waitForAllLoadersToDisappear(page);
+    await navigateToOnlineUsersPage(page);
 
     // Verify we're on the Online Users page
     await expect(
@@ -62,16 +77,16 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     // Verify table headers
     await expect(
-      page.getByRole('columnheader', { name: 'Username' })
+      page.getByRole('columnheader').filter({ hasText: 'Username' })
     ).toBeVisible();
     await expect(
-      page.getByRole('columnheader', { name: 'Last Activity' })
+      page.getByRole('columnheader').filter({ hasText: 'Last Activity' })
     ).toBeVisible();
     await expect(
-      page.getByRole('columnheader', { name: 'Teams' })
+      page.getByRole('columnheader').filter({ hasText: 'Teams' })
     ).toBeVisible();
     await expect(
-      page.getByRole('columnheader', { name: 'Roles' })
+      page.getByRole('columnheader').filter({ hasText: 'Roles' })
     ).toBeVisible();
 
     // Check for time filter dropdown (labeled as "Time window:")
@@ -89,7 +104,7 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   }) => {
     const userPage = await browser.newPage();
     try {
-      await testUser.login(userPage);
+      await testUser.signIn(userPage);
       await redirectToHomePage(userPage);
       await sidebarClick(userPage, SidebarItem.EXPLORE);
       await waitForAllLoadersToDisappear(userPage);
@@ -97,13 +112,7 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await userPage.close();
     }
 
-    const onlineUsersRes = page.waitForResponse('/api/v1/users/online?*');
-    await settingClick(page, GlobalSettingOptions.ONLINE_USERS);
-    await onlineUsersRes;
-
-    await waitForAllLoadersToDisappear(page);
-
-    await expect(page.getByTestId('online-users-table')).toBeVisible();
+    await navigateToOnlineUsersPage(page);
 
     const displayName = testUser.responseData.displayName;
     const searchResponse = page.waitForResponse(
@@ -113,7 +122,7 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await searchResponse;
     await waitForAllLoadersToDisappear(page);
 
-    const userCell = page.getByRole('cell', { name: displayName }).first();
+    const userCell = getCellByName(page, displayName).first();
     await expect(userCell).toBeVisible();
 
     const userRow = page.locator('tr').filter({ has: userCell });
@@ -125,32 +134,19 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test('Should not show bots in online users list', async ({ page }) => {
-    const onlineUsersRes = page.waitForResponse('/api/v1/users/online?*');
-    await settingClick(page, GlobalSettingOptions.ONLINE_USERS);
-    await onlineUsersRes;
-
-    await waitForAllLoadersToDisappear(page);
-
-    await expect(page.getByTestId('online-users-table')).toBeVisible();
+    await navigateToOnlineUsersPage(page);
 
     // Verify bot users are not shown (ingestion-bot should not be visible)
-    const tableRows = page.locator('tbody tr');
-    const rowCount = await tableRows.count();
+    const rowTexts = await page.locator('tbody tr').allTextContents();
 
     // Check each row doesn't contain bot users
-    for (let i = 0; i < rowCount; i++) {
-      const rowText = await tableRows.nth(i).textContent();
-
+    for (const rowText of rowTexts) {
       expect(rowText).not.toContain('ingestion-bot');
     }
   });
 
   test('Should filter users by time window', async ({ page }) => {
-    const onlineUsersRes = page.waitForResponse('/api/v1/users/online?*');
-    await settingClick(page, GlobalSettingOptions.ONLINE_USERS);
-    await onlineUsersRes;
-
-    await waitForAllLoadersToDisappear(page);
+    await navigateToOnlineUsersPage(page);
 
     const timeFilterDropdown = page.getByTestId('time-window-select');
 
@@ -161,9 +157,7 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await timeFilterDropdown.click();
 
     // Wait for dropdown to fully render
-    await page.locator('.ant-select-dropdown:visible').waitFor({
-      state: 'visible',
-    });
+    await expect(page.locator('.ant-select-dropdown:visible')).toBeVisible();
 
     await expect(
       page.locator('.ant-select-dropdown:visible [title="Last 5 minutes"]')
@@ -183,7 +177,9 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await page
       .locator('.ant-select-dropdown:visible [title="Last hour"]')
       .click();
-    await onlineRes;
+    const onlineResponse = await onlineRes;
+
+    expect(onlineResponse.status()).toBe(200);
 
     // Verify the filter has changed
     await expect(timeFilterDropdown).toContainText('Last hour');
@@ -207,11 +203,7 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test('Should show correct last activity format', async ({ page }) => {
-    const onlineUsersRes = page.waitForResponse('/api/v1/users/online?*');
-    await settingClick(page, GlobalSettingOptions.ONLINE_USERS);
-    await onlineUsersRes;
-
-    await waitForAllLoadersToDisappear(page);
+    await navigateToOnlineUsersPage(page);
     // Check various time formats in the Last Activity column
     const activityCells = page.locator('tbody tr td:nth-child(3)');
     const count = await activityCells.count();
@@ -225,9 +217,9 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     }
 
     // Check first few activity times
-    for (let i = 0; i < Math.min(count, 3); i++) {
-      const text = await activityCells.nth(i).textContent();
+    const activityTexts = (await activityCells.allTextContents()).slice(0, 3);
 
+    for (const text of activityTexts) {
       // Should contain either "Online now" or time format like "51 minutes ago"
       expect(text).toMatch(/(Online now|\d+\s+(minutes?|hours?|days?)\s+ago)/);
     }
@@ -240,7 +232,7 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     test.slow(); // Mark this test as slow since it involves multiple logins and navigation
     await test.step('Visit Explore Page as New User', async () => {
       const userPage = await browser.newPage();
-      await testUser.login(userPage);
+      await testUser.signIn(userPage);
       await redirectToHomePage(userPage);
 
       // 1 step - go to explore page using new user
@@ -254,9 +246,7 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const displayName = testUser.responseData.displayName;
 
       // 2 step - go to online user page and check that user display name should present
-      await settingClick(page, GlobalSettingOptions.ONLINE_USERS);
-
-      await waitForAllLoadersToDisappear(page);
+      await navigateToOnlineUsersPage(page);
 
       // Search for the user to ensure it is visible in the list
       const searchResponse = page.waitForResponse(
@@ -268,8 +258,8 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await waitForAllLoadersToDisappear(page);
 
       await expect(
-        page.getByRole('cell', { name: displayName }).first()
-      ).toBeVisible();
+        getCellByName(page, displayName).filter({ visible: true })
+      ).not.toHaveCount(0);
 
       // Search by email should surface the same user
       const emailSearchResponse = page.waitForResponse(
@@ -281,8 +271,8 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await waitForAllLoadersToDisappear(page);
 
       await expect(
-        page.getByRole('cell', { name: displayName }).first()
-      ).toBeVisible();
+        getCellByName(page, displayName).filter({ visible: true })
+      ).not.toHaveCount(0);
     });
   });
 });

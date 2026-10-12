@@ -56,7 +56,9 @@ export interface UpdateConfigParams {
     | 'keywordWeight'
     | 'semanticWeight'
     | 'enableAccessControl'
+    | 'enableColumnIndexing'
     | 'termBoosts'
     | 'fieldValueBoosts';
   value?: number | TermBoost[] | FieldValueBoost[];
+  successMessage?: string;
 }

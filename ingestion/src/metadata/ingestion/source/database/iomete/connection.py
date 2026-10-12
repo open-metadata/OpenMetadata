@@ -15,8 +15,6 @@ Uses the iomete-sqlalchemy dialect which is
 registered automatically via its setuptools entry point.
 """
 
-from typing import Optional
-
 import sqlalchemy
 from sqlalchemy.engine import URL, Engine
 
@@ -75,8 +73,8 @@ class IometeConnection(BaseConnection[IometeConnectionConfig, Engine]):
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         return test_connection_db_schema_sources(
             metadata=metadata,

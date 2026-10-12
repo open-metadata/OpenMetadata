@@ -2,7 +2,6 @@ package org.openmetadata.service.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.when;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 
 import jakarta.json.Json;
@@ -17,9 +16,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
@@ -66,7 +67,7 @@ class JsonPatchUtilsTest {
 
     originalTable.setColumns(listOf(column));
 
-    when(resourceContextMock.getEntity()).thenReturn(originalTable);
+    Mockito.<EntityInterface<?>>when(resourceContextMock.getEntity()).thenReturn(originalTable);
   }
 
   @Test

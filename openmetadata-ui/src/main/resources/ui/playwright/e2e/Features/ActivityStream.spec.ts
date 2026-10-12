@@ -11,10 +11,16 @@
  *  limitations under the License.
  */
 
-import { expect, test as base } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { TableClass } from '../../support/entity/TableClass';
+import { expect, test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
+import {
+  insertActivityEventForTest,
+  visitTableActivityFeed,
+} from '../../utils/activityAPI';
 import { performAdminLogin } from '../../utils/admin';
+import { uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { waitForPageLoaded } from '../../utils/polling';
 
@@ -22,6 +28,7 @@ const test = base;
 
 const adminUser = new UserClass();
 const testTable = new TableClass();
+const seededActivitySummary = `Activity stream seeded event ${uuid()}`;
 
 test.describe('Activity Stream on Entity Pages', () => {
   test.beforeAll('setup: create entities and users', async ({ browser }) => {
@@ -33,6 +40,14 @@ test.describe('Activity Stream on Entity Pages', () => {
       await adminUser.create(apiContext);
       await adminUser.setAdminRole(apiContext);
       await testTable.create(apiContext);
+      // Seed a change-event explicitly rather than leaning on the implicit
+      // entityCreated one: its wording is not part of any contract and it is
+      // written asynchronously, so asserting on it is both vague and racy.
+      await insertActivityEventForTest(
+        apiContext,
+        testTable,
+        seededActivitySummary
+      );
     } finally {
       await afterAction();
     }
@@ -50,7 +65,7 @@ test.describe('Activity Stream on Entity Pages', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
   });
 
   test('activity feed tab shows activity events for entity', async ({
@@ -71,19 +86,17 @@ test.describe('Activity Stream on Entity Pages', () => {
 
     await expect(activityTabContent).toBeVisible();
 
-    // Check for activity feed content - left panel structure may vary
-    const leftPanel = activityTabContent.locator('.left-container');
+    await expect(page.getByTestId('global-setting-left-panel')).toBeVisible();
 
-    if (await leftPanel.isVisible()) {
-      // The left panel with tabs (All/Tasks) should be visible
-      const leftPanelContent = leftPanel.locator(
-        '[data-testid="global-setting-left-panel"], [data-testid="activity-feed-tabs"]'
-      );
-
-      if ((await leftPanelContent.count()) > 0) {
-        await expect(leftPanelContent.first()).toBeVisible();
-      }
-    }
+    // Scoped to #feedData: the right-hand panel renders message-container for
+    // the auto-selected item too, so an unscoped match could pass on the panel
+    // without the event ever appearing in the list this test is about.
+    await expect(
+      page
+        .locator('#feedData [data-testid="message-container"]')
+        .filter({ hasText: seededActivitySummary })
+        .filter({ visible: true })
+    ).not.toHaveCount(0, { timeout: ACTION_TIMEOUT });
   });
 
   test('activity events are created when entity description is updated', async ({
@@ -148,30 +161,33 @@ test.describe('Activity Stream on Entity Pages', () => {
     if (await addTagButton.isVisible()) {
       await addTagButton.click();
 
-      const tagSearch = page.getByTestId('tag-selector');
+      const pickerSearch = page.getByTestId('classification-tag-picker-search');
 
-      await expect(tagSearch).toBeVisible();
-      await tagSearch.fill('PII');
-
-      const tagOption = page
-        .locator('[data-testid="tag-PII.Sensitive"]')
-        .first();
-
-      if (await tagOption.isVisible()) {
-        await tagOption.click();
-
-        const saveButton = page.locator(
-          '[data-testid="inline-save-btn"], [data-testid="saveAssociatedTag"]'
+      if (await pickerSearch.isVisible({ timeout: 5000 }).catch(() => false)) {
+        const searchResponse = page.waitForResponse(
+          `/api/v1/search/query?q=*${encodeURIComponent('PII')}*`
         );
+        await pickerSearch.fill('PII');
+        await searchResponse;
 
-        if (await saveButton.isVisible()) {
-          const updateResponse = page.waitForResponse(
-            (response) =>
-              response.url().includes('/api/v1/tables/') &&
-              response.request().method() === 'PATCH'
-          );
-          await saveButton.click();
-          await updateResponse;
+        const tagNode = page.getByTestId('tree-node-PII.Sensitive');
+
+        if (await tagNode.isVisible({ timeout: 3000 }).catch(() => false)) {
+          await tagNode.click();
+
+          const saveButton = page.getByTestId('update-btn');
+
+          if (
+            await saveButton.isVisible({ timeout: 3000 }).catch(() => false)
+          ) {
+            const updateResponse = page.waitForResponse(
+              (response) =>
+                response.url().includes('/api/v1/tables/') &&
+                response.request().method() === 'PATCH'
+            );
+            await saveButton.click();
+            await updateResponse;
+          }
         }
       }
     }
@@ -208,41 +224,25 @@ test.describe('Activity Stream on Entity Pages', () => {
 
     await expect(activityFeedTab).toBeVisible();
 
+    // The badge is feedCount.totalCount = conversations + activity + tasks.
+    // The seeded table has no conversations or tasks but does have its own
+    // entityCreated change-event, so the only correct value here is >= 1 —
+    // asserting >= 0 passed even when activity was left out of the total.
     const countBadge = activityFeedTab.getByTestId('count');
-    const countText = await countBadge.textContent();
-    const count = parseInt(countText ?? '0', 10);
 
-    expect(count).toBeGreaterThanOrEqual(0);
+    await expect(countBadge).toBeVisible();
+    await expect(countBadge).toHaveText(/^[1-9]\d*$/, {
+      timeout: ACTION_TIMEOUT,
+    });
   });
 
   test('activity stream API is called when visiting entity page', async ({
     page,
   }) => {
-    const activityApiPromise = page
-      .waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/activity') &&
-          response.status() === 200,
-        { timeout: 10000 }
-      )
-      .catch(() => null);
+    const responseBody = await visitTableActivityFeed(page, testTable);
 
-    await testTable.visitEntityPage(page);
-    await waitForAllLoadersToDisappear(page);
-
-    const activityFeedTab = page.getByRole('tab', {
-      name: 'Activity Feeds & Tasks',
-    });
-    await activityFeedTab.click();
-
-    const response = await activityApiPromise;
-
-    if (response) {
-      const responseBody = await response.json();
-
-      expect(responseBody).toHaveProperty('data');
-      expect(Array.isArray(responseBody.data)).toBe(true);
-    }
+    expect(responseBody).toHaveProperty('data');
+    expect(Array.isArray(responseBody.data)).toBe(true);
   });
 
   test('activity feed left panel shows All and Tasks options', async ({

@@ -11,7 +11,6 @@
 """A client for Google Cloud Storage that supports multiple projects."""
 
 from functools import partial
-from typing import List, Optional, Type, Union  # noqa: UP035
 
 from google import auth
 from google.cloud.monitoring_v3 import MetricServiceClient
@@ -32,8 +31,8 @@ class MultiProjectClient:
 
     def __init__(
         self,
-        client_class: Union[Type[Client], Type[MetricServiceClient]],  # noqa: UP006, UP007
-        project_ids: Optional[List[str]] = None,  # noqa: UP006, UP045
+        client_class: type[Client] | type[MetricServiceClient],
+        project_ids: list[str] | None = None,
         **client_kwargs,
     ):
         self.default_project = None

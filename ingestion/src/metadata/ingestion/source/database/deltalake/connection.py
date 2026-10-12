@@ -15,7 +15,6 @@ Source connection handler
 
 from dataclasses import dataclass
 from functools import singledispatch
-from typing import Optional
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
@@ -59,7 +58,7 @@ def get_deltalake_client(connection, config):
 
 @get_deltalake_client.register
 def _(connection: MetastoreConfig, config: DeltaLakeConnectionConfig):
-    from metadata.ingestion.source.database.deltalake.clients.pyspark import (  # noqa: PLC0415
+    from metadata.ingestion.source.database.deltalake.clients.pyspark import (
         DeltalakePySparkClient,
     )
 
@@ -68,7 +67,7 @@ def _(connection: MetastoreConfig, config: DeltaLakeConnectionConfig):
 
 @get_deltalake_client.register  # noqa: RET503
 def _(connection: StorageConfig, config: DeltaLakeConnectionConfig):
-    from metadata.ingestion.source.database.deltalake.clients.s3 import (  # noqa: PLC0415
+    from metadata.ingestion.source.database.deltalake.clients.s3 import (
         DeltalakeS3Client,
     )
 
@@ -87,8 +86,8 @@ class DeltaLakeConnection(BaseConnection[DeltaLakeConnectionConfig, DeltalakeCli
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part

@@ -11,33 +11,27 @@
  *  limitations under the License.
  */
 
-import { Label } from '@openmetadata/ui-core-components';
 import {
-  Button,
-  Col,
+  Button as CoreButton,
+  ButtonUtility,
   Dropdown,
-  Row,
-  Select,
-  TableProps,
+  Grid,
+  Label,
   Tooltip,
   Typography,
-} from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import { ColumnsType } from 'antd/lib/table';
-import { ExpandableConfig } from 'antd/lib/table/interface';
+} from '@openmetadata/ui-core-components';
+import { Button, Select } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { groupBy, isEmpty, isEqual, isUndefined, omit } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
+import { Key, lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconSortIndicator } from '../../../assets/svg/ic-down-up-arrow.svg';
 import { ReactComponent as IconSort } from '../../../assets/svg/ic-sort-both.svg';
 import {
-  DE_ACTIVE_COLOR,
-  ICON_DIMENSION,
   INITIAL_PAGING_VALUE,
   NO_DATA_PLACEHOLDER,
   PAGE_SIZE_LARGE,
@@ -53,6 +47,7 @@ import {
   TABLE_COLUMNS_KEYS,
 } from '../../../constants/TableKeys.constants';
 import { EntityType } from '../../../enums/entity.enum';
+import { DefaultColumnOrder } from '../../../generated/api/configuration/appConfiguration';
 import {
   Column,
   Constraint,
@@ -62,6 +57,7 @@ import { TestSummary } from '../../../generated/tests/testCase';
 import { TagSource } from '../../../generated/type/schema';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { usePaging } from '../../../hooks/paging/usePaging';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { useSub } from '../../../hooks/usePubSub';
@@ -74,6 +70,7 @@ import {
 } from '../../../rest/tableAPI';
 import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
 import { Suggestion, SuggestionType } from '../../../types/taskSuggestion';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { getBulkEditButton } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import { getFrequentlyJoinedColumns } from '../../../utils/EntityColumnUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -81,9 +78,10 @@ import { getEntityBulkEditPath } from '../../../utils/EntityPureUtils';
 import {
   highlightSearchArrayElement,
   highlightSearchText,
+  renderHighlightedText,
 } from '../../../utils/EntitySearchUtils';
 import { getEntityColumnFQN } from '../../../utils/FeedUtilsPure';
-import { stringToHTML } from '../../../utils/StringUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
   findColumnByEntityLink,
@@ -103,7 +101,12 @@ import CopyLinkButton from '../../common/CopyLinkButton/CopyLinkButton';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
-import Table from '../../common/Table/Table';
+import {
+  ColumnsType,
+  ExpandableConfig,
+  TableProps,
+} from '../../common/Table/Table.interface';
+import Table from '../../common/Table/TableV2';
 import TestCaseStatusSummaryIndicator from '../../common/TestCaseStatusSummaryIndicator/TestCaseStatusSummaryIndicator.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
@@ -126,7 +129,16 @@ const SchemaTable = () => {
   const [testCaseSummary, setTestCaseSummary] = useState<TestSummary>();
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [editColumn, setEditColumn] = useState<Column>();
-  const [sortBy, setSortBy] = useState<'name' | 'ordinalPosition'>('name');
+  const defaultColumnOrder = useApplicationStore(
+    (state) => state.appPreferences.defaultColumnOrder
+  );
+  // The tenant default only picks the starting order; the Sort menu still
+  // changes it for this view without saving.
+  const [sortBy, setSortBy] = useState<'name' | 'ordinalPosition'>(() =>
+    defaultColumnOrder === DefaultColumnOrder.SourceOrder
+      ? 'ordinalPosition'
+      : 'name'
+  );
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [activeTagFilter, setActiveTagFilter] = useState<{
     tags: string[];
@@ -206,25 +218,20 @@ const SchemaTable = () => {
     [fqn]
   );
 
+  // Named-flag derivation (Task 8): `tablePermissions` is the raw OperationPermission read
+  // off useGenericContext(). Every field below was a raw `(EditX || EditAll) && !deleted` OR
+  // — kept under its original local name (consumed throughout this file) but now sourced from
+  // the prioritized named flag, a documented explicit-deny-wins fix (Task 6 Finding 1 /
+  // Task 8 Batch 2 precedent): an explicit `EditX: false` now wins over a bare
+  // `EditAll: true` grant, where the old raw OR granted regardless.
   const {
-    editTagsPermission,
-    editGlossaryTermsPermission,
-    editDescriptionPermission,
-    editDisplayNamePermission,
+    canEditTags: editTagsPermission,
+    canEditGlossaryTerms: editGlossaryTermsPermission,
+    canEditDescription: editDescriptionPermission,
+    canEditDisplayName: editDisplayNamePermission,
+    canEditAll,
   } = useMemo(
-    () => ({
-      editTagsPermission:
-        (tablePermissions.EditTags || tablePermissions.EditAll) && !deleted,
-      editDescriptionPermission:
-        (tablePermissions.EditDescription || tablePermissions.EditAll) &&
-        !deleted,
-      editGlossaryTermsPermission:
-        (tablePermissions.EditGlossaryTerms || tablePermissions.EditAll) &&
-        !deleted,
-      editDisplayNamePermission:
-        (tablePermissions.EditDisplayName || tablePermissions.EditAll) &&
-        !deleted,
-    }),
+    () => getDerivedPermissionFlags(tablePermissions, deleted),
     [tablePermissions, deleted]
   );
 
@@ -544,11 +551,12 @@ const SchemaTable = () => {
         }
 
         return (
-          <Typography.Paragraph
-            className="cursor-pointer"
+          <Typography
+            as="p"
+            className="cursor-pointer tw:mb-3.5! tw:text-primary"
             ellipsis={{ tooltip: displayValue, rows: 3 }}>
             {highlightSearchArrayElement(dataTypeDisplay, searchText)}
-          </Typography.Paragraph>
+          </Typography>
         );
       },
       [searchText]
@@ -659,36 +667,8 @@ const SchemaTable = () => {
     [openColumnDetailPanel]
   );
 
-  const sortMenuItems: ItemType[] = useMemo(
-    () => [
-      {
-        key: 'name',
-        label: (
-          <span data-testid="sort-alphabetical">
-            {t('label.alphabetical')} (A → Z)
-          </span>
-        ),
-        icon:
-          sortBy === 'name' ? <span className="text-primary">✓</span> : null,
-      },
-      {
-        key: 'ordinalPosition',
-        label: (
-          <span data-testid="sort-original-order">
-            {t('label.original-order')}
-          </span>
-        ),
-        icon:
-          sortBy === 'ordinalPosition' ? (
-            <span className="text-primary">✓</span>
-          ) : null,
-      },
-    ],
-    [sortBy, t]
-  );
-
   const handleSortMenuClick = useCallback(
-    ({ key }: { key: string }) => {
+    (key: Key) => {
       const newSortBy = key as 'name' | 'ordinalPosition';
       if (newSortBy !== sortBy) {
         setSortBy(newSortBy);
@@ -719,33 +699,25 @@ const SchemaTable = () => {
                 columnConstraint: record.constraint,
                 tableConstraints,
               })}
-              <Typography.Text
+              <Typography
                 className={classNames(
                   'm-b-0 d-block break-word cursor-pointer text-link-color'
                 )}
                 data-testid="column-name">
-                {stringToHTML(highlightSearchText(name, searchText))}
-              </Typography.Text>
+                {renderHighlightedText(highlightSearchText(name, searchText))}
+              </Typography>
             </div>
             <div className="d-flex items-center">
               {editDisplayNamePermission && (
-                <Tooltip placement="top" title={t('label.edit')}>
-                  <Button
-                    className="cursor-pointer hover-cell-icon flex-center"
+                <Tooltip arrow placement="top" title={t('label.edit')}>
+                  <ButtonUtility
+                    className="hover-cell-icon"
+                    color="tertiary"
                     data-testid="edit-displayName-button"
-                    style={{
-                      color: DE_ACTIVE_COLOR,
-                      padding: 0,
-                      border: 'none',
-                      background: 'transparent',
-                      width: '24px',
-                      height: '24px',
-                    }}
-                    onClick={() => handleEditDisplayNameClick(record)}>
-                    <IconEdit
-                      style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
-                    />
-                  </Button>
+                    icon={IconEdit}
+                    size="xs"
+                    onClick={() => handleEditDisplayNameClick(record)}
+                  />
                 </Tooltip>
               )}
               {record.fullyQualifiedName && (
@@ -758,13 +730,13 @@ const SchemaTable = () => {
             </div>
           </div>
           {isEmpty(displayName) ? null : (
-            <Typography.Text
+            <Typography
               className="m-b-0 d-block break-word"
               data-testid="column-display-name">
-              {stringToHTML(
+              {renderHighlightedText(
                 highlightSearchText(getEntityName(record), searchText)
               )}
-            </Typography.Text>
+            </Typography>
           )}
         </div>
       );
@@ -1004,8 +976,10 @@ const SchemaTable = () => {
   );
 
   return (
-    <Row gutter={[0, 16]}>
-      <Col id="schemaDetails" span={24}>
+    <Grid
+      className="layout-row layout-grid"
+      style={{ ...getLayoutGutter(0, 16) }}>
+      <Grid.Item className="layout-column" id="schemaDetails" span={24}>
         <Table
           className="align-table-filter-left"
           columns={columns}
@@ -1016,22 +990,38 @@ const SchemaTable = () => {
           expandable={expandableConfig}
           extraTableFilters={
             <div className="d-flex items-center gap-4">
-              <Dropdown
-                menu={{ items: sortMenuItems, onClick: handleSortMenuClick }}
-                trigger={['click']}>
-                <Button
-                  className="flex-center gap-2"
+              <Dropdown.Root>
+                <CoreButton
+                  color="tertiary"
                   data-testid="sort-dropdown"
-                  icon={<IconSort height={14} width={14} />}
-                  size="small"
-                  type="text">
+                  iconLeading={<IconSort height={14} width={14} />}
+                  size="sm">
                   {t('label.sort')}
-                </Button>
-              </Dropdown>
-              {getBulkEditButton(
-                tablePermissions.EditAll && !deleted,
-                handleEditTable
-              )}
+                </CoreButton>
+                <Dropdown.Popover className="tw:w-auto">
+                  <Dropdown.Menu
+                    aria-label={t('label.sort')}
+                    selectedKeys={[sortBy]}
+                    onAction={handleSortMenuClick}>
+                    <Dropdown.Item
+                      id="name"
+                      textValue={t('label.alphabetical')}>
+                      <span data-testid="sort-alphabetical">
+                        {/* eslint-disable-next-line i18next/no-literal-string -- decorative sort-direction glyph */}
+                        {t('label.alphabetical')} (A → Z)
+                      </span>
+                    </Dropdown.Item>
+                    <Dropdown.Item
+                      id="ordinalPosition"
+                      textValue={t('label.original-order')}>
+                      <span data-testid="sort-original-order">
+                        {t('label.original-order')}
+                      </span>
+                    </Dropdown.Item>
+                  </Dropdown.Menu>
+                </Dropdown.Popover>
+              </Dropdown.Root>
+              {getBulkEditButton(canEditAll, handleEditTable)}
             </div>
           }
           loading={columnsLoading}
@@ -1047,7 +1037,7 @@ const SchemaTable = () => {
           staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
           onChange={handleColumnFilterChange}
         />
-      </Col>
+      </Grid.Item>
       {editColumn && (
         <EntityAttachmentProvider
           entityFqn={editColumn.fullyQualifiedName}
@@ -1076,7 +1066,7 @@ const SchemaTable = () => {
           onSave={handleEditColumnData}
         />
       )}
-    </Row>
+    </Grid>
   );
 };
 

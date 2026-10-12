@@ -15,16 +15,18 @@
 .file-dragger-wrapper {
   padding: @padding-lg;
   background: var(--tw-color-bg-primary);
-  .ant-typography {
-    font-weight: 500;
-    font-size: 16px;
+  .file-dragger-text {
+    font-weight: var(--om-font-weight-medium);
+    font-size: var(--om-font-size-md);
 
     .browse-text {
       color: @primary-color;
     }
   }
   .ant-upload-disabled {
-    .ant-typography {
+    .file-dragger-text,
+    .file-dragger-compact-title,
+    .file-dragger-compact-description {
       color: @grey-300;
 
       .browse-text {
@@ -41,8 +43,9 @@
   &.ant-upload-wrapper .ant-upload-drag {
     background: @grey-26;
     border: 1.5px dashed @grey-15;
-    border-radius: 12px;
-    transition: background 180ms ease, border-color 180ms ease;
+    border-radius: var(--om-radius-xl);
+    transition: background var(--om-duration-180) ease,
+      border-color var(--om-duration-180) ease;
 
     &:hover {
       background: @primary-50;
@@ -51,11 +54,7 @@
   }
 
   &.ant-upload-wrapper .ant-upload-drag .ant-upload {
-    padding: 38px 24px;
-  }
-
-  .ant-typography {
-    margin: 0;
+    padding: var(--om-space-38) var(--om-space-24);
   }
 }
 
@@ -63,7 +62,7 @@
   align-items: center;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--om-space-8);
   justify-content: center;
   min-height: 136px;
   text-align: center;
@@ -72,18 +71,18 @@
 .file-dragger-compact-icon {
   align-items: center;
   background: @primary-50;
-  border-radius: 999px;
+  border-radius: var(--om-radius-999);
   color: @primary-6;
   display: inline-flex;
   height: 40px;
   justify-content: center;
-  margin-bottom: 6px;
+  margin-bottom: var(--om-space-6);
   width: 40px;
 }
 
-.file-dragger-compact-title.ant-typography {
+.file-dragger-compact-title {
   color: @grey-900;
-  font-size: 15px;
+  font-size: var(--om-font-size-15);
   font-weight: @font-semibold;
   line-height: 22px;
 
@@ -92,9 +91,9 @@
   }
 }
 
-.file-dragger-compact-description.ant-typography {
+.file-dragger-compact-description {
   color: @grey-600;
-  font-size: 13px;
+  font-size: var(--om-font-size-13);
   font-weight: @font-regular;
   line-height: 18px;
 }

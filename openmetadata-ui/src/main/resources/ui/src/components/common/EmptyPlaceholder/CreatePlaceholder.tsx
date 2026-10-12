@@ -12,7 +12,7 @@
  */
 
 import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
-import { Plus } from '@untitledui/icons';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { CreatePlaceholderProps } from './EmptyPlaceholder.interface';
@@ -76,7 +76,12 @@ const CreatePlaceholder = ({
                 <Transi18next
                   i18nKey="message.refer-to-our-doc"
                   renderElement={
-                    <a href={doc} rel="noopener noreferrer" target="_blank" />
+                    <a
+                      aria-label={t('label.documentation')}
+                      href={doc}
+                      rel="noopener noreferrer"
+                      target="_blank"
+                    />
                   }
                   values={{ doc: t('label.doc-plural-lowercase') }}
                 />

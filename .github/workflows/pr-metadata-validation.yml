@@ -58,7 +58,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check linked issue and Shipping project fields
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           PROJECTS_TOKEN: ${{ secrets.PROJECTS_TOKEN }}
         with:
@@ -81,7 +81,7 @@ jobs:
             // for these same-org repos, so untrusted fork PRs can never drive the
             // privileged token at arbitrary repositories or probe private issues.
             const CLOSING_KEYWORDS = '(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)';
-            const ALLOWED_CROSS_REPOS = new Set(['openmetadata-collate']);
+            const ALLOWED_CROSS_REPOS = new Set(['openmetadata-collate', 'ai-platform']);
             const TRUSTED_ASSOCIATIONS = new Set(['OWNER', 'MEMBER', 'COLLABORATOR']);
 
             const PR_LINKS_QUERY = `

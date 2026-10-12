@@ -38,7 +38,7 @@ test.beforeAll('Setup workflow and article', async ({ browser }) => {
 
 test.describe(
   'User Approval Workflow - Context Center Article',
-  { tag: ['@Governance'] },
+  { tag: ['@Governance', '@workflow'] },
   () => {
     test('Context Center article reviewer approval flow', async ({
       page,
@@ -63,7 +63,9 @@ test.describe(
       const encodedFqn = encodeURIComponent(article.fullyQualifiedName);
 
       await test.step('Navigate to Context Center Article', async () => {
-        await page.goto(`/context-center/articles/${encodedFqn}`);
+        await page.goto(`/context-center/articles/${encodedFqn}`, {
+          waitUntil: 'domcontentloaded',
+        });
         await waitForAllLoadersToDisappear(page);
       });
 
@@ -89,7 +91,10 @@ test.describe(
 
       await test.step('Reviewer - Check notification and approve task', async () => {
         await checkNotificationAndApproveTask(dataConsumerPage, async () => {
-          await dataConsumerPage.goto(`/context-center/articles/${encodedFqn}`);
+          await dataConsumerPage.goto(
+            `/context-center/articles/${encodedFqn}`,
+            { waitUntil: 'domcontentloaded' }
+          );
         });
       });
 

@@ -49,6 +49,15 @@ const shouldShowRunButton = (
   return isPeriodicBatchEntity && isOnDemand;
 };
 
+const getIsNoOpTrigger = (workflowDefinition?: WorkflowDefinition): boolean => {
+  const trigger = workflowDefinition?.trigger;
+  const isTriggerObject =
+    typeof trigger === 'object' && trigger !== null && !Array.isArray(trigger);
+  const triggerType = isTriggerObject ? trigger.type : undefined;
+
+  return triggerType === Type.NoOp;
+};
+
 export interface UseWorkflowModeReturn {
   mode: WorkflowMode;
   isViewMode: boolean;
@@ -136,21 +145,13 @@ export const useWorkflowMode = (
   const derivedStates = useMemo(() => {
     const isViewMode = internalMode === 'view';
     const isEditMode = internalMode === 'edit';
-    const trigger = workflowDefinition?.trigger;
-    const isTriggerObject =
-      typeof trigger === 'object' &&
-      trigger !== null &&
-      !Array.isArray(trigger);
-    const triggerType = isTriggerObject ? trigger.type : undefined;
-    const isNoOpTrigger = triggerType === Type.NoOp;
+    const isNoOpTrigger = getIsNoOpTrigger(workflowDefinition);
     const caps = workflowClassBase.getCapabilities();
     const structural = caps.allowStructuralGraphEdits;
-    const showWorkflowNodePalette = caps.showWorkflowNodePalette;
-    const allowFullStartNodeConfiguration =
-      caps.allowFullStartNodeConfiguration;
-    const allowStartNodeFilterScheduleAndBatchEdit =
-      caps.allowStartNodeFilterScheduleAndBatchEdit;
-    const allowScheduledTrigger = caps.allowScheduledTrigger;
+
+    const editEnabled = isEditMode && !isNoOpTrigger;
+    const viewEnabled = isViewMode && !isNoOpTrigger;
+    const deleteEnabled = viewEnabled && caps.allowDeleteWorkflow;
 
     return {
       mode: internalMode,
@@ -158,24 +159,24 @@ export const useWorkflowMode = (
       isEditMode,
       isNoOp: isNoOpTrigger,
 
-      canEdit: isEditMode && !isNoOpTrigger,
-      canSave: isEditMode && !isNoOpTrigger,
-      canDelete: isViewMode && !isNoOpTrigger && caps.allowDeleteWorkflow,
+      canEdit: editEnabled,
+      canSave: editEnabled,
+      canDelete: deleteEnabled,
       canDragNodes: isEditMode && structural,
       canDragNodesInViewMode: isViewMode && caps.allowViewModeDrag,
       canAccessSidebar: isEditMode,
-      allowStructuralGraphEdits: structural && isEditMode && !isNoOpTrigger,
-      showWorkflowNodePalette,
-      allowFullStartNodeConfiguration,
-      allowStartNodeFilterScheduleAndBatchEdit,
-      allowScheduledTrigger,
+      allowStructuralGraphEdits: structural && editEnabled,
+      showWorkflowNodePalette: caps.showWorkflowNodePalette,
+      allowFullStartNodeConfiguration: caps.allowFullStartNodeConfiguration,
+      allowStartNodeFilterScheduleAndBatchEdit:
+        caps.allowStartNodeFilterScheduleAndBatchEdit,
+      allowScheduledTrigger: caps.allowScheduledTrigger,
 
-      showEditButton: isViewMode && !isNoOpTrigger,
-      showSaveButton: isEditMode && !isNoOpTrigger,
-      showCancelButton: isEditMode && !isNoOpTrigger,
-      showTestButton: isEditMode && !isNoOpTrigger,
-      showDeleteButton:
-        isViewMode && !isNoOpTrigger && caps.allowDeleteWorkflow,
+      showEditButton: viewEnabled,
+      showSaveButton: editEnabled,
+      showCancelButton: editEnabled,
+      showTestButton: editEnabled,
+      showDeleteButton: deleteEnabled,
       showRunButton:
         isViewMode && !!workflowFqn && shouldShowRunButton(workflowDefinition),
 

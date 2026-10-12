@@ -48,6 +48,22 @@ class TeamsMarkdownFormatterTest {
   }
 
   @Test
+  void renderInlineChildrenLinkifiesUrlOnlyCodeSpans() {
+    TeamsMarkdownFormatter formatter = new TeamsMarkdownFormatter();
+
+    assertEquals(
+        "[https://example.com/a](https://example.com/a)",
+        formatter.renderInlineChildren(MarkdownParser.parse("`https://example.com/a`")).trim());
+    assertEquals(
+        "`not a url`", formatter.renderInlineChildren(MarkdownParser.parse("`not a url`")).trim());
+    assertEquals(
+        "`curl https://example.com/a`",
+        formatter
+            .renderInlineChildren(MarkdownParser.parse("`curl https://example.com/a`"))
+            .trim());
+  }
+
+  @Test
   void renderInlineChildrenResetsAccumulatorAcrossCalls() {
     TeamsMarkdownFormatter formatter = new TeamsMarkdownFormatter();
 

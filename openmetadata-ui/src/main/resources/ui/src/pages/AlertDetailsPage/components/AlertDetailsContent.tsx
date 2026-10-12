@@ -12,19 +12,31 @@
  */
 
 import { SyncOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Row, Skeleton, Space, Tabs, Tooltip } from 'antd';
+import {
+  Box,
+  Button,
+  ButtonUtility,
+  Owner,
+  Skeleton,
+  Tabs,
+  Tooltip,
+} from '@openmetadata/ui-core-components';
+import { Card } from 'antd';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import Description from '../../../components/common/EntityDescription/Description';
-import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { UserTeamSelectableList } from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+
+import { AlertDetailTabs } from '../../../enums/Alerts.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { ProviderType } from '../../../generated/events/eventSubscription';
+import { useVisitedTabs } from '../../../hooks/useVisitedTabs';
+import { getRenderedActiveTab } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { hardDeleteEntity } from '../../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { AlertDetailsContentProps } from '../AlertDetailsPage.interface';
@@ -54,6 +66,13 @@ function AlertDetailsContent({
 }: Readonly<AlertDetailsContentProps>) {
   const { t } = useTranslation();
   const [isDeleting, setIsDeleting] = useState(false);
+  const activeTab = getRenderedActiveTab(
+    tabItems,
+    tab,
+    AlertDetailTabs.CONFIGURATION
+  );
+  // Keeps the recent events filter and page when switching tabs.
+  const visitedTabs = useVisitedTabs(activeTab);
 
   const handleAlertHardDelete = useCallback(async () => {
     setIsDeleting(true);
@@ -73,69 +92,80 @@ function AlertDetailsContent({
     <Card
       className="steps-form-container"
       data-testid="alert-details-container">
-      <Row className="add-notification-container" gutter={[0, 16]}>
-        <Col span={24}>
+      <Box className="add-notification-container" direction="col" gap={4}>
+        <div>
           <TitleBreadcrumb titleLinks={breadcrumb} />
-        </Col>
+        </div>
 
-        <Col span={24}>
-          <Row justify="space-between">
-            <Col span={20}>
-              <Row gutter={[16, 16]}>
-                <Col span={24}>
+        <div>
+          <Box justify="between">
+            <div className="tw:w-5/6">
+              <Box direction="col" gap={4}>
+                <div>
                   <EntityHeaderTitle
                     displayName={alertDetails?.displayName}
                     icon={alertIcon}
                     name={alertDetails?.name ?? ''}
                     serviceName=""
                   />
-                </Col>
-                <Col span={24}>
+                </div>
+                <div>
                   <div className="d-flex items-center flex-wrap gap-2">
                     {ownerLoading ? (
-                      <Skeleton.Button active className="extra-info-skeleton" />
+                      <Skeleton height={40} variant="rounded" width={80} />
                     ) : (
-                      <OwnerLabel
+                      <Owner
                         hasPermission={editOwnersPermission}
-                        owners={alertDetails?.owners}
-                        onUpdate={onOwnerUpdate}
+                        isCompactView={false}
+                        owners={alertDetails?.owners ?? []}
+                        selectorContent={
+                          <UserTeamSelectableList
+                            hasPermission={Boolean(editOwnersPermission)}
+                            multiple={{ user: true, team: false }}
+                            owner={alertDetails?.owners}
+                            onUpdate={onOwnerUpdate}
+                          />
+                        }
                       />
                     )}
                     {extraInfo}
                   </div>
-                </Col>
-              </Row>
-            </Col>
-            <Col>
-              <Space align="center" size={8}>
+                </div>
+              </Box>
+            </div>
+            <div>
+              <Box
+                inline
+                align="center"
+                className="layout-space layout-space-horizontal"
+                gap={2}
+                itemClassName="layout-space-item">
                 <Tooltip
+                  arrow
                   title={t('label.sync-alert-offset', {
                     entity: t('label.alert'),
                   })}>
                   <Button
-                    className="flex flex-center"
+                    color="secondary"
                     data-testid="sync-button"
-                    icon={<SyncOutlined height={16} width={16} />}
-                    loading={isSyncing}
-                    onClick={handleAlertSync}
+                    iconLeading={<SyncOutlined height={16} width={16} />}
+                    isLoading={isSyncing}
+                    size="sm"
+                    onPress={handleAlertSync}
                   />
                 </Tooltip>
                 {editPermission &&
                   alertDetails?.provider !== ProviderType.System && (
                     <Tooltip
+                      arrow
                       title={t('label.edit-entity', {
                         entity: t('label.alert'),
                       })}>
-                      <Button
-                        className="flex flex-center"
+                      <ButtonUtility
+                        color="secondary"
                         data-testid="edit-button"
-                        icon={
-                          <EditIcon
-                            color={DE_ACTIVE_COLOR}
-                            height={16}
-                            width={16}
-                          />
-                        }
+                        icon={EditIcon}
+                        size="sm"
                         onClick={handleAlertEdit}
                       />
                     </Tooltip>
@@ -143,26 +173,25 @@ function AlertDetailsContent({
                 {deletePermission &&
                   alertDetails?.provider !== ProviderType.System && (
                     <Tooltip
+                      arrow
                       title={t('label.delete-entity', {
                         entity: t('label.alert'),
                       })}>
-                      <Button
-                        className="flex flex-center"
+                      <ButtonUtility
+                        color="secondary"
                         data-testid="delete-button"
-                        icon={<DeleteIcon height={16} width={16} />}
+                        icon={DeleteIcon}
+                        size="sm"
                         onClick={() => setShowDeleteModal(true)}
                       />
                     </Tooltip>
                   )}
-              </Space>
-            </Col>
-          </Row>
-        </Col>
+              </Box>
+            </div>
+          </Box>
+        </div>
 
-        <Col
-          className="alert-description"
-          data-testid="alert-description"
-          span={24}>
+        <div className="alert-description" data-testid="alert-description">
           <Description
             description={alertDetails?.description}
             entityType={EntityType.EVENT_SUBSCRIPTION}
@@ -170,17 +199,30 @@ function AlertDetailsContent({
             showCommentsIcon={false}
             onDescriptionUpdate={onDescriptionUpdate}
           />
-        </Col>
+        </div>
 
-        <Col span={24}>
-          <Tabs
-            activeKey={tab}
-            className="tabs-new"
-            items={tabItems}
-            onTabClick={handleTabChange}
-          />
-        </Col>
-      </Row>
+        <Tabs
+          className="tw:gap-3"
+          selectedKey={activeTab}
+          onSelectionChange={(key) => handleTabChange(String(key))}>
+          <Tabs.List size="sm" type="underline" variant="card">
+            {tabItems.map(({ key, label }) => (
+              <Tabs.Item id={key} key={key}>
+                {label}
+              </Tabs.Item>
+            ))}
+          </Tabs.List>
+          {tabItems.map(({ key, children }) => (
+            <Tabs.Panel
+              className="tw:data-inert:hidden"
+              id={key}
+              key={key}
+              shouldForceMount={visitedTabs.has(key)}>
+              {children}
+            </Tabs.Panel>
+          ))}
+        </Tabs>
+      </Box>
       <DeleteModal
         entityTitle={getEntityName(alertDetails)}
         isDeleting={isDeleting}

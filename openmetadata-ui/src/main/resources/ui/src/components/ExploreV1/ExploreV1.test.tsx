@@ -20,12 +20,13 @@ import {
 import { SearchIndex } from '../../enums/search.enum';
 import { exportSearchResultsAsync, searchQuery } from '../../rest/searchAPI';
 
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
+import { ExploreSearchIndex } from '../../interface/discovery/explore.interface';
 import { useAdvanceSearch } from '../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import {
   MOCK_EXPLORE_SEARCH_RESULTS,
   MOCK_EXPLORE_TAB_ITEMS,
 } from '../Explore/Explore.mock';
-import { ExploreSearchIndex } from '../Explore/ExplorePage.interface';
 import ExploreTree from '../Explore/ExploreTree/ExploreTree';
 import SearchedData from '../SearchedData/SearchedData';
 import ExploreV1 from './ExploreV1.component';
@@ -33,19 +34,33 @@ import ExploreV1 from './ExploreV1.component';
 jest.mock('@openmetadata/ui-core-components', () => {
   const Button = ({
     children,
+    hideFocusOutline,
     iconLeading,
     iconTrailing,
+    isDisabled,
+    isLoading: _isLoading,
     onClick,
     onPress,
+    size,
     ...rest
   }: {
     children?: import('react').ReactNode;
+    hideFocusOutline?: boolean;
     iconLeading?: import('react').ReactNode;
     iconTrailing?: import('react').ReactNode;
+    isDisabled?: boolean;
+    isLoading?: boolean;
     onClick?: () => void;
     onPress?: () => void;
+    size?: string;
   } & Record<string, unknown>) => (
-    <button type="button" onClick={onPress ?? onClick} {...rest}>
+    <button
+      data-hide-focus-outline={hideFocusOutline}
+      data-size={size}
+      disabled={isDisabled}
+      type="button"
+      onClick={onPress ?? onClick}
+      {...rest}>
       {iconLeading}
       {children}
       {iconTrailing}
@@ -133,7 +148,12 @@ jest.mock('@openmetadata/ui-core-components', () => {
       onClick?: () => void;
       onPress?: () => void;
     } & Record<string, unknown>) => (
-      <div role="menuitem" onClick={onPress ?? onClick} {...props}>
+      <div
+        role="menuitem"
+        tabIndex={0}
+        onClick={onPress ?? onClick}
+        onKeyDown={onPress ?? onClick}
+        {...props}>
         {label ?? children}
       </div>
     ),
@@ -167,20 +187,35 @@ jest.mock('@openmetadata/ui-core-components', () => {
     <div data-testid="explore-pagination" />
   );
 
+  const { Badge, Tabs } = jest.requireActual(
+    '@openmetadata/ui-core-components'
+  );
+
+  const actual = jest.requireActual('@openmetadata/ui-core-components');
+
   return {
     Alert,
+    Badge,
+    BadgeWithButton: actual.BadgeWithButton,
     Box,
     Button,
     Card,
+    Dialog: actual.Dialog,
     Divider,
     Dropdown,
+    Modal: actual.Modal,
+    ModalOverlay: actual.ModalOverlay,
     PaginationCardWithControls,
+    RadioButton: actual.RadioButton,
+    RadioGroup: actual.RadioGroup,
+    Skeleton: actual.Skeleton,
+    Tabs,
     Toggle,
     Typography,
   };
 });
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   ChevronDown: () => <span>ChevronDown</span>,
   Download01: () => <span data-testid="download-01-icon" />,
   Edit05: () => <span data-testid="edit-05-icon" />,
@@ -240,7 +275,23 @@ jest.mock('../common/ResizablePanels/ResizablePanels', () => {
 jest.mock('../common/ResizablePanels/ResizableLeftPanels', () => {
   return jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
     <div>
-      <div>{firstPanel.children}</div>
+      <div className={firstPanel.className} data-testid="resizable-left-panel">
+        <div
+          className={firstPanel.cardClassName}
+          data-testid="resizable-left-panel-card">
+          <div
+            className={firstPanel.titleContainerClassName}
+            data-testid="resizable-left-panel-title">
+            <span
+              className={firstPanel.titleClassName}
+              data-testid="resizable-left-panel-title-text"
+              data-title-strong={String(firstPanel.titleStrong)}>
+              {firstPanel.title}
+            </span>
+          </div>
+        </div>
+        {firstPanel.children}
+      </div>
       <div>{secondPanel.children}</div>
     </div>
   ));
@@ -273,54 +324,6 @@ jest.mock(
   })
 );
 
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Modal: jest
-    .fn()
-    .mockImplementation(
-      ({
-        children,
-        open,
-        onCancel,
-        onOk,
-        okButtonProps,
-        okText,
-        cancelText,
-        className,
-        'data-testid': dataTestId,
-      }: {
-        children?: React.ReactNode;
-        open?: boolean;
-        onCancel?: () => void;
-        onOk?: () => void;
-        okButtonProps?: { disabled?: boolean };
-        okText?: React.ReactNode;
-        cancelText?: React.ReactNode;
-        className?: string;
-        'data-testid'?: string;
-      }) =>
-        open ? (
-          <div className={className} data-testid={dataTestId} role="dialog">
-            {children}
-            <button type="button" onClick={onCancel}>
-              {cancelText}
-            </button>
-            <button
-              disabled={okButtonProps?.disabled}
-              type="button"
-              onClick={onOk}>
-              {okText}
-            </button>
-          </div>
-        ) : null
-    ),
-  Alert: jest
-    .fn()
-    .mockImplementation(({ message }: { message?: React.ReactNode }) => (
-      <span>{message ?? 'Index Not Found Alert'}</span>
-    )),
-}));
-
 jest.mock('../SearchedData/SearchedData', () =>
   jest.fn().mockReturnValue(<div>SearchedData</div>)
 );
@@ -336,6 +339,7 @@ jest.mock('../Explore/EntitySummaryPanel/EntitySummaryPanel.component', () =>
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn().mockReturnValue({
     t: (key: string) => key,
+    i18n: { language: 'en-US', dir: jest.fn().mockReturnValue('ltr') },
   }),
   Trans: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
@@ -348,6 +352,7 @@ jest.mock('../../utils/EntitySearchUtils', () => ({
   highlightEntityNameAndDescription: jest
     .fn()
     .mockImplementation((entity) => entity),
+  renderHighlightedText: jest.fn((text) => text ?? ''),
 }));
 
 jest.mock('../../utils/RouterUtils', () => ({
@@ -432,6 +437,9 @@ describe('ExploreV1', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     window.location.search = '';
+    (useCustomLocation as jest.Mock).mockImplementation(() => ({
+      search: '',
+    }));
     (useAdvanceSearch as jest.Mock).mockImplementation(() => ({
       toggleModal: jest.fn(),
       sqlQuery: '',
@@ -452,6 +460,31 @@ describe('ExploreV1', () => {
     render(<ExploreV1 {...props} />, { wrapper: Wrapper });
 
     expect(screen.getByText('ExploreTree')).toBeInTheDocument();
+  });
+
+  it('lists entity types as selectable tabs while searching', () => {
+    (useCustomLocation as jest.Mock).mockImplementation(() => ({
+      search: '?search=customer',
+    }));
+
+    render(<ExploreV1 {...props} />, { wrapper: Wrapper });
+
+    const leftPanel = screen.getByTestId('explore-left-panel');
+    const tablesTab = within(leftPanel).getByTestId('tables-tab');
+
+    expect(leftPanel).toHaveAttribute('role', 'tablist');
+    expect(tablesTab).toHaveAttribute('aria-selected', 'true');
+    expect(within(tablesTab).getByTestId('filter-count')).toHaveTextContent(
+      '60'
+    );
+
+    fireEvent.click(tablesTab);
+
+    expect(onChangeSearchIndex).not.toHaveBeenCalled();
+
+    fireEvent.click(within(leftPanel).getByTestId('databases-tab'));
+
+    expect(onChangeSearchIndex).toHaveBeenCalledWith('database');
   });
 
   it('normalizes out-of-range current page to the last available page', async () => {
@@ -540,10 +573,46 @@ describe('ExploreV1', () => {
     expect(onChangeSortOder).toHaveBeenCalled();
   });
 
+  it('uses parent header spacing and actions without persistent focus styles', () => {
+    render(<ExploreV1 {...props} />, { wrapper: Wrapper });
+
+    expect(screen.getByTestId('resizable-left-panel-title')).toHaveClass(
+      'tw:items-center',
+      'tw:pb-2'
+    );
+    expect(screen.getByTestId('resizable-left-panel-title-text')).toHaveClass(
+      'tw:capitalize',
+      'tw:font-medium'
+    );
+    expect(
+      screen.getByTestId('resizable-left-panel-title-text')
+    ).toHaveAttribute('data-title-strong', 'false');
+    expect(screen.getByTestId('sorting-dropdown-label')).toHaveAttribute(
+      'data-size',
+      'sm'
+    );
+    expect(screen.getByTestId('sorting-dropdown-label')).toHaveAttribute(
+      'data-hide-focus-outline',
+      'true'
+    );
+    expect(screen.getByTestId('sorting-dropdown-label')).not.toHaveClass(
+      'quick-filter-dropdown-trigger-btn'
+    );
+    expect(
+      screen.getByText('label.tool-plural').closest('button')
+    ).toHaveAttribute('data-size', 'sm');
+    expect(
+      screen.getByText('label.tool-plural').closest('button')
+    ).toHaveAttribute('data-hide-focus-outline', 'true');
+    expect(
+      screen.getByText('label.tool-plural').closest('button')
+    ).not.toHaveClass('quick-filter-dropdown-trigger-btn');
+  });
+
   it('should show the index not found alert, if get isElasticSearchIssue true in prop', () => {
     render(<ExploreV1 {...props} isElasticSearchIssue />, { wrapper: Wrapper });
 
-    expect(screen.getByText('Index Not Found Alert')).toBeInTheDocument();
+    expect(screen.getByText('server.indexing-error')).toBeInTheDocument();
 
     expect(screen.queryByText('SearchedData')).not.toBeInTheDocument();
   });

@@ -9,6 +9,25 @@ import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearch
 class SearchClientConfigurationTest {
 
   @Test
+  void testConnectionPoolDefaults() {
+    ElasticSearchConfiguration config = new ElasticSearchConfiguration();
+
+    assertEquals(5, config.getConnectionRequestTimeoutSecs());
+    assertEquals(30, config.getMaxConnTotal());
+    assertEquals(10, config.getMaxConnPerRoute());
+    assertTrue(config.getRequestCompressionEnabled());
+  }
+
+  @Test
+  void testRequestCompressionCanBeDisabled() {
+    ElasticSearchConfiguration config = new ElasticSearchConfiguration();
+
+    config.setRequestCompressionEnabled(false);
+
+    assertFalse(config.getRequestCompressionEnabled());
+  }
+
+  @Test
   void testValidSingleHostConfiguration() {
     ElasticSearchConfiguration config = new ElasticSearchConfiguration();
     config.setHost("localhost");

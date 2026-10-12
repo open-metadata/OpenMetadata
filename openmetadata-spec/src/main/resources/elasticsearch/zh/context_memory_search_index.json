@@ -20,7 +20,8 @@
           "type": "custom",
           "char_filter": [],
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding"
           ]
         }
       },
@@ -28,16 +29,19 @@
         "om_analyzer": {
           "tokenizer": "standard",
           "filter": [
-            "lowercase",
             "word_delimiter_filter",
-            "om_stemmer"
+            "lowercase",
+            "asciifolding",
+            "om_stemmer",
+            "om_plural_stemmer"
           ]
         },
         "om_ngram": {
           "type": "custom",
           "tokenizer": "n_gram_tokenizer",
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding"
           ]
         }
       },
@@ -49,6 +53,10 @@
         "word_delimiter_filter": {
           "type": "word_delimiter",
           "preserve_original": true
+        },
+        "om_plural_stemmer": {
+          "type": "stemmer",
+          "name": "minimal_english"
         }
       }
     }
@@ -167,9 +175,57 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
-      "status": {
-        "type": "keyword",
-        "normalizer": "lowercase_normalizer"
+      "statusReason": {
+        "type": "text",
+        "analyzer": "om_analyzer"
+      },
+      "supersededBy": {
+        "properties": {
+          "id": {
+            "type": "keyword"
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
+          },
+          "fullyQualifiedName": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
+          }
+        }
+      },
+      "disputes": {
+        "properties": {
+          "memory": {
+            "properties": {
+              "id": {
+                "type": "keyword"
+              },
+              "type": {
+                "type": "keyword"
+              },
+              "name": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer"
+              },
+              "fullyQualifiedName": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer"
+              }
+            }
+          },
+          "reason": {
+            "type": "text",
+            "analyzer": "om_analyzer"
+          },
+          "detectedAt": {
+            "type": "date",
+            "format": "epoch_millis"
+          }
+        }
       },
       "pinned": {
         "type": "boolean"
@@ -192,6 +248,9 @@
         "normalizer": "lowercase_normalizer"
       },
       "sharedWithIds": {
+        "type": "keyword"
+      },
+      "anchorId": {
         "type": "keyword"
       },
       "primaryEntity": {
@@ -310,9 +369,38 @@
           }
         }
       },
+      "sourceFile": {
+        "properties": {
+          "id": {
+            "type": "keyword"
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
+          },
+          "displayName": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
+          },
+          "fullyQualifiedName": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
+          },
+          "deleted": {
+            "type": "boolean"
+          }
+        }
+      },
       "usageCount": {
         "type": "long",
         "null_value": 0
+      },
+      "lastReviewedAt": {
+        "type": "date",
+        "format": "epoch_millis||epoch_second||strict_date_optional_time"
       },
       "lastUsedAt": {
         "type": "date",
@@ -626,6 +714,9 @@
       },
       "fingerprint": {
         "type": "keyword"
+      },
+      "textToLLMContext": {
+        "type": "text"
       },
       "textToEmbed": {
         "type": "text"

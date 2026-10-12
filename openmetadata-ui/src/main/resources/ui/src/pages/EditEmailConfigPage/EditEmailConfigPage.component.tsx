@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Skeleton } from 'antd';
+import { Skeleton } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { FocusEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -24,6 +24,7 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../constants/GlobalSettings.constants';
+import { MASKED_PASSWORD_VALUE } from '../../constants/Secrets.constants';
 import {
   EMAIL_CONFIG_SERVICE_CATEGORY,
   OPEN_METADATA,
@@ -38,6 +39,15 @@ import {
 } from '../../rest/settingConfigAPI';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+
+const withoutMaskedPassword = (configValues: SMTPSettings) => {
+  const updateValues = { ...configValues };
+  if (updateValues.password === MASKED_PASSWORD_VALUE) {
+    delete updateValues.password;
+  }
+
+  return updateValues;
+};
 
 function EditEmailConfigPage() {
   const navigate = useNavigate();
@@ -106,7 +116,7 @@ function EditEmailConfigPage() {
         setIsSaveLoading(true);
         const settingsConfigData: Settings = {
           config_type: SettingType.EmailConfiguration,
-          config_value: configValues,
+          config_value: withoutMaskedPassword(configValues),
         };
         await updateSettingsConfig(settingsConfigData);
 
@@ -143,7 +153,17 @@ function EditEmailConfigPage() {
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
       <div className="m-t-md">
         {loading ? (
-          <Skeleton title paragraph={{ rows: 8 }} />
+          <div className="tw:flex tw:flex-col tw:gap-3">
+            <Skeleton animation={false} height={16} width="40%" />
+            {Array.from({ length: 8 }, (_, index) => (
+              <Skeleton
+                animation={false}
+                height={16}
+                key={index}
+                width={index === 7 ? '60%' : '100%'}
+              />
+            ))}
+          </div>
         ) : (
           <EmailConfigForm
             emailConfigValues={emailConfigValues}

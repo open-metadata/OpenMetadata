@@ -88,6 +88,11 @@ export interface DashboardService {
      */
     pipelines?: EntityReference[];
     /**
+     * Deployment attributes of this service: environment, region and deployment. Set once here
+     * rather than tagged onto every asset this service ingests.
+     */
+    serviceAttributes?: ServiceAttributes;
+    /**
      * Type of dashboard service such as Looker or Superset...
      */
     serviceType: DashboardServiceType;
@@ -230,7 +235,11 @@ export interface DashboardConnection {
  * SQL Server Reporting Services (SSRS) provides a set of on-premises tools and services to
  * create, deploy, and manage paginated reports
  *
+ * Rill Connection Config
+ *
  * SAP S/4HANA Connection Config for Embedded Analytics
+ *
+ * Omni BI connector: models, topics, workbooks/dashboards and lineage
  */
 export interface Connection {
     /**
@@ -263,8 +272,17 @@ export interface Connection {
     dashboardFilterPattern?: FilterPattern;
     /**
      * Regex exclude or include data models that matches the pattern.
+     *
+     * Regex to exclude or include data models (Omni topics) that matches the pattern.
      */
     dataModelFilterPattern?: FilterPattern;
+    /**
+     * Optional URL for human-facing Looker links when the API URL differs from the browser
+     * URL.
+     *
+     * Qlik Sense Base URL, used for genrating dashboard & chat url
+     */
+    displayUrl?: string;
     /**
      * Credentials to extract the .lkml files from a repository. This is required to get all the
      * lineage and definitions.
@@ -305,7 +323,12 @@ export interface Connection {
      *
      * Host and Port of the Ssrs instance.
      *
+     * URL of a Rill Developer runtime or Rill Cloud project endpoint.
+     *
      * Base URL of the SAP S/4HANA instance (e.g. https://s4hana.example.com).
+     *
+     * URL of the Omni instance, e.g. `https://your-org.omniapp.co`. The `/api` path is added
+     * automatically.
      */
     hostPort?: string;
     /**
@@ -444,6 +467,8 @@ export interface Connection {
      *
      * Client SSL verification.
      *
+     * Boolean marking if we need to verify the SSL certs for Rill. Default to True.
+     *
      * Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate
      * validation, 'validate' to verify against a CA certificate.
      */
@@ -499,10 +524,6 @@ export interface Connection {
     namespace?:    string;
     certificates?: QlikCertificatesBy;
     /**
-     * Qlik Sense Base URL, used for genrating dashboard & chat url
-     */
-    displayUrl?: string;
-    /**
      * User Directory.
      */
     userDirectory?: string;
@@ -545,6 +566,10 @@ export interface Connection {
      * token to connect to Qlik Cloud.
      *
      * Hex API token for authentication. Can be personal or workspace token.
+     *
+     * API token to authenticate with Rill.
+     *
+     * API token to authenticate with Omni.
      */
     token?: string;
     /**
@@ -778,6 +803,8 @@ export interface CertificatesSSLConfig {
  * Regex to only include/exclude tables that matches the pattern.
  *
  * Regex to exclude or include charts that matches the pattern.
+ *
+ * Regex to exclude or include data models (Omni topics) that matches the pattern.
  */
 export interface FilterPattern {
     /**
@@ -863,8 +890,7 @@ export interface SupersetConnection {
      * my_schema.custom_pg_stat_statements) when direct access to pg_stat_statements is
      * restricted.
      */
-    queryStatementSource?:    string;
-    sampleDataStorageConfig?: SampleDataStorageConfig;
+    queryStatementSource?: string;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      */
@@ -1104,90 +1130,6 @@ export interface GCPImpersonateServiceAccountValues {
 export enum Provider {
     DB = "db",
     LDAP = "ldap",
-}
-
-/**
- * Storage config to store sample data
- */
-export interface SampleDataStorageConfig {
-    config?: DataStorageConfig;
-}
-
-/**
- * Storage config to store sample data
- */
-export interface DataStorageConfig {
-    /**
-     * Bucket Name
-     */
-    bucketName?: string;
-    /**
-     * Provide the pattern of the path where the generated sample data file needs to be stored.
-     */
-    filePathPattern?: string;
-    /**
-     * When this field enabled a single parquet file will be created to store sample data,
-     * otherwise we will create a new file per day
-     */
-    overwriteData?: boolean;
-    /**
-     * Prefix of the data source.
-     */
-    prefix?:        string;
-    storageConfig?: AwsCredentials;
-    [property: string]: any;
-}
-
-/**
- * AWS credentials configs.
- */
-export interface AwsCredentials {
-    /**
-     * The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume
-     * Role
-     */
-    assumeRoleArn?: string;
-    /**
-     * An identifier for the assumed role session. Use the role session name to uniquely
-     * identify a session when the same role is assumed by different principals or for different
-     * reasons. Required Field in case of Assume Role
-     */
-    assumeRoleSessionName?: string;
-    /**
-     * The Amazon Resource Name (ARN) of the role to assume. Optional Field in case of Assume
-     * Role
-     */
-    assumeRoleSourceIdentity?: string;
-    /**
-     * AWS Access key ID.
-     */
-    awsAccessKeyId?: string;
-    /**
-     * AWS Region
-     */
-    awsRegion?: string;
-    /**
-     * AWS Secret Access Key.
-     */
-    awsSecretAccessKey?: string;
-    /**
-     * AWS Session Token.
-     */
-    awsSessionToken?: string;
-    /**
-     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
-     * (environment variables, instance profile, etc.). Defaults to false for backward
-     * compatibility.
-     */
-    enabled?: boolean;
-    /**
-     * EndPoint URL for the AWS
-     */
-    endPointURL?: string;
-    /**
-     * The name of a profile to use with the boto session.
-     */
-    profileName?: string;
 }
 
 /**
@@ -1533,12 +1475,14 @@ export enum DashboardServiceType {
     Metabase = "Metabase",
     MicroStrategy = "MicroStrategy",
     Mode = "Mode",
+    Omni = "Omni",
     PowerBI = "PowerBI",
     PowerBIReportServer = "PowerBIReportServer",
     QlikCloud = "QlikCloud",
     QlikSense = "QlikSense",
     QuickSight = "QuickSight",
     Redash = "Redash",
+    Rill = "Rill",
     SapS4Hana = "SapS4Hana",
     Sigma = "Sigma",
     Ssrs = "Ssrs",
@@ -1610,8 +1554,10 @@ export interface EntityReference {
 /**
  * Status of the entity.
  *
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
+ * General lifecycle stage for entities that reference this vocabulary. Specialized entities
+ * can declare their own status schema and lifecycle policy. Entity types without an
+ * entityStatus property have no lifecycle. When a create request omits the stage, the
+ * server assigns the entity type's initial stage.
  */
 export enum EntityStatus {
     Approved = "Approved",
@@ -1621,6 +1567,42 @@ export enum EntityStatus {
     InReview = "In Review",
     Rejected = "Rejected",
     Unprocessed = "Unprocessed",
+}
+
+/**
+ * Deployment attributes of this service: environment, region and deployment. Set once here
+ * rather than tagged onto every asset this service ingests.
+ *
+ * Deployment attributes of a service, set once on the service rather than tagged onto each
+ * asset it ingests. Policy conditions can match on them to control who sees a service's
+ * assets.
+ */
+export interface ServiceAttributes {
+    /**
+     * Deployment or cluster identifier the source system belongs to, for example
+     * `prod-cluster-01`.
+     */
+    deployment?:  string;
+    environment?: Environment;
+    /**
+     * Geographic region the source system is hosted in, for example `us-east-1` or
+     * `europe-west2`.
+     */
+    region?: string;
+}
+
+/**
+ * Environment the source system runs in. A closed set so policies and filters can rely on
+ * it; use tags on the service for anything outside it.
+ */
+export enum Environment {
+    Development = "Development",
+    Other = "Other",
+    Production = "Production",
+    QA = "QA",
+    Sandbox = "Sandbox",
+    Staging = "Staging",
+    UAT = "UAT",
 }
 
 /**

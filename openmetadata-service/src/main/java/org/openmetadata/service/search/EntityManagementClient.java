@@ -137,6 +137,23 @@ public interface EntityManagementClient {
       throws IOException;
 
   /**
+   * Updates child entities whose {@code field} matches ANY of {@code values} with a script across
+   * multiple indices, in a single update-by-query. Lets a caller fan a change out to the children of
+   * many parents at once instead of issuing one update-by-query per parent.
+   *
+   * @param indexNames list of index names
+   * @param field field to match documents on
+   * @param values parent values to match (any-of / terms)
+   * @param updates pair of script text and parameters
+   */
+  void updateChildren(
+      List<String> indexNames,
+      String field,
+      List<String> values,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException;
+
+  /**
    * Gets a document by ID from the specified index.
    *
    * @param indexName the name of the index
@@ -254,6 +271,13 @@ public interface EntityManagementClient {
    * @param deletedColumns list of column FQNs to be deleted
    */
   void deleteColumnsInUpstreamLineage(String indexName, List<String> deletedColumns);
+
+  /**
+   * Applies a column diff in one search write per matching document, so a rename cannot invalidate
+   * the snapshot used to delete another column in the same diff.
+   */
+  void reconcileColumnsInUpstreamLineage(
+      String indexName, Map<String, String> renamedColumns, List<String> deletedColumns);
 
   /**
    * Updates glossary term tags by FQN prefix in the specified index.

@@ -14,7 +14,6 @@ import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
-import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.util.EntityUtil;
 
 /**
@@ -35,12 +34,11 @@ import org.openmetadata.service.util.EntityUtil;
 @Slf4j
 public class SearchSettingsMergeUtil {
 
-  private static final SystemRepository systemRepository = Entity.getSystemRepository();
   private static final String SEARCH_SETTINGS_KEY = "searchSettings";
 
   /** Retrieves search settings from the database. */
   public static Settings getSearchSettingsFromDatabase() {
-    return systemRepository.getConfigWithKey(SEARCH_SETTINGS_KEY);
+    return Entity.getSystemRepository().getConfigWithKey(SEARCH_SETTINGS_KEY);
   }
 
   /** Converts database Settings object to SearchSettings object. */
@@ -69,7 +67,7 @@ public class SearchSettingsMergeUtil {
   /** Saves updated SearchSettings back to the database. */
   public static void saveSearchSettings(Settings searchSettings, SearchSettings updatedSettings) {
     searchSettings.withConfigValue(updatedSettings);
-    systemRepository.updateSetting(searchSettings);
+    Entity.getSystemRepository().updateSetting(searchSettings);
   }
 
   /**

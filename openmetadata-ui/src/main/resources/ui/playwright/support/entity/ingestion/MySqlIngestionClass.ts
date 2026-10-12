@@ -20,6 +20,7 @@ import {
 import { env } from 'process';
 import { resetTokenFromBotPage } from '../../../utils/bot';
 import {
+  chooseSelectOption,
   getApiContext,
   redirectToHomePage,
   toastNotification,
@@ -35,8 +36,15 @@ import {
   checkServiceFieldSectionHighlighting,
   getAgentCard,
   Services,
+  waitForIngestionWorkflowForm,
 } from '../../../utils/serviceIngestion';
 import ServiceBaseClass from './ServiceBaseClass';
+
+interface MysqlConnection {
+  username: string;
+  password: string;
+  hostPort: string;
+}
 
 class MysqlIngestionClass extends ServiceBaseClass {
   name = '';
@@ -44,17 +52,22 @@ class MysqlIngestionClass extends ServiceBaseClass {
   tableFilter: string[];
   excludeSchemas: string[];
   profilerTable = 'alert_entity';
+  private readonly connection?: MysqlConnection;
   constructor(extraParams?: {
     shouldTestConnection?: boolean;
     shouldAddIngestion?: boolean;
     shouldAddDefaultFilters?: boolean;
     tableFilter?: string[];
+    excludeSchemas?: string[];
+    connection?: MysqlConnection;
   }) {
     const {
       shouldTestConnection = true,
       shouldAddIngestion = true,
       shouldAddDefaultFilters = false,
       tableFilter = ['bot_entity', 'alert_entity', 'chart_entity'],
+      excludeSchemas = ['openmetadata'],
+      connection,
     } = extraParams ?? {};
 
     const serviceName = `pw-mysql-with-%-${uuid()}`;
@@ -69,7 +82,8 @@ class MysqlIngestionClass extends ServiceBaseClass {
     );
     this.name = serviceName;
     this.tableFilter = tableFilter;
-    this.excludeSchemas = ['openmetadata'];
+    this.excludeSchemas = excludeSchemas;
+    this.connection = connection;
   }
 
   async createService(page: Page) {
@@ -81,9 +95,12 @@ class MysqlIngestionClass extends ServiceBaseClass {
   }
 
   async fillConnectionDetails(page: Page) {
-    const username = env.PLAYWRIGHT_MYSQL_USERNAME ?? '';
-    const password = env.PLAYWRIGHT_MYSQL_PASSWORD ?? '';
-    const hostPort = env.PLAYWRIGHT_MYSQL_HOST_PORT ?? '';
+    const username =
+      this.connection?.username ?? env.PLAYWRIGHT_MYSQL_USERNAME ?? '';
+    const password =
+      this.connection?.password ?? env.PLAYWRIGHT_MYSQL_PASSWORD ?? '';
+    const hostPort =
+      this.connection?.hostPort ?? env.PLAYWRIGHT_MYSQL_HOST_PORT ?? '';
 
     await page.fill('#root\\/username', username);
     await checkServiceFieldSectionHighlighting(page, 'username');
@@ -95,13 +112,7 @@ class MysqlIngestionClass extends ServiceBaseClass {
 
   async fillIngestionDetails(page: Page) {
     for (const filter of this.tableFilter) {
-      await waitForAllLoadersToDisappear(page);
-      const ingestionFilterSection = page.getByTestId(
-        'ingestion-section-filters'
-      );
-      if (await ingestionFilterSection.isVisible()) {
-        ingestionFilterSection.click();
-      }
+      await this.openIngestionFilterSection(page);
       await page.getByTestId('filter-section-tableFilterPattern').click();
       await page.getByTestId('tableFilterPattern-only-specific-button').click();
       await page
@@ -161,21 +172,21 @@ class MysqlIngestionClass extends ServiceBaseClass {
       }
       await page.click('[data-testid="add-new-ingestion-button"]');
 
-      const profilerMenuItem = page
-        .locator('.ant-dropdown:visible')
-        .getByTestId('agent-item-profiler');
+      const profilerMenuItem = page.getByTestId('agent-item-profiler');
       await expect(profilerMenuItem).toBeVisible();
       await profilerMenuItem.click();
 
-      await waitForAllLoadersToDisappear(page);
+      await waitForIngestionWorkflowForm(page);
       await expandAdvancedConfig(page);
 
       const sampleConfigTypeSelect = page.getByTestId(
         'sample-config-type-select'
       );
       await expect(sampleConfigTypeSelect).toBeVisible();
-      await sampleConfigTypeSelect.click();
-      await page.locator('[data-key="STATIC"]').click();
+      await chooseSelectOption(
+        sampleConfigTypeSelect,
+        page.getByRole('listbox').locator('[data-key="STATIC"]')
+      );
 
       await page.getByTestId('profile-sample-input').waitFor();
       await page
@@ -197,10 +208,7 @@ class MysqlIngestionClass extends ServiceBaseClass {
         await metadataTab2.click();
       }
 
-      await page
-        .getByLabel('agents')
-        .getByTestId('loader')
-        .waitFor({ state: 'detached' });
+      await waitForAllLoadersToDisappear(page.getByLabel('agents'));
 
       const response = await apiContext
         .get(
@@ -210,19 +218,14 @@ class MysqlIngestionClass extends ServiceBaseClass {
         )
         .then((res) => res.json());
 
-      // eslint-disable-next-line playwright/no-wait-for-timeout -- pipeline deployment settling time
-      await page.waitForTimeout(3000);
-
+      const startedAfter = Date.now();
       await getAgentCard(page, response.data[0].name)
         .getByTestId('run-agent-button')
         .click();
 
       await toastNotification(page, `Pipeline triggered successfully!`);
 
-      // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for latest pipeline run results
-      await page.waitForTimeout(2000);
-
-      await this.handleIngestionRetry('profiler', page);
+      await this.waitForIngestion(page, startedAfter, 'profiler');
     });
 
     await test.step('Validate profiler ingestion', async () => {
@@ -258,7 +261,7 @@ class MysqlIngestionClass extends ServiceBaseClass {
 
     for (const filter of this.tableFilter) {
       await expect(
-        tableIncludes.getByTestId(`include-chip-contains:${filter}`)
+        tableIncludes.getByTestId(`include-chip-contains:.*${filter}.*`)
       ).toBeVisible();
     }
 

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,17 +12,9 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Actions, JsonTree } from '@react-awesome-query-builder/antd';
-import {
-  Button,
-  Col,
-  Form,
-  FormListFieldData,
-  Input,
-  Row,
-  Switch,
-  Typography,
-} from 'antd';
+import { Grid, Toggle, Typography } from '@openmetadata/ui-core-components';
+import { Actions, JsonTree } from '@react-awesome-query-builder/ui';
+import { Button, Form, FormListFieldData, Input } from 'antd';
 import Card from 'antd/lib/card/Card';
 import TextArea from 'antd/lib/input/TextArea';
 import classNames from 'classnames';
@@ -46,7 +38,7 @@ import {
 import jsonLogicSearchClassBase from '../../../utils/JSONLogicSearchClassBase';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
-import QueryBuilderWidgetV1 from '../../common/QueryBuilderWidgetV1/QueryBuilderWidgetV1';
+import QueryBuilder from '../../common/QueryBuilder/QueryBuilder';
 import { SearchOutputType } from '../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import './contract-semantic-form-tab.less';
 
@@ -185,12 +177,12 @@ export const ContractSemanticFormTab: React.FC<{
       <Card className="contract-semantic-form-container container bg-grey p-box">
         <div className="d-flex justify-between items-center">
           <div>
-            <Typography.Text className="contract-detail-form-tab-title">
+            <Typography className="contract-detail-form-tab-title">
               {t('label.semantic-plural')}
-            </Typography.Text>
-            <Typography.Text className="contract-detail-form-tab-description">
+            </Typography>
+            <Typography className="contract-detail-form-tab-description">
               {t('message.semantics-description')}
-            </Typography.Text>
+            </Typography>
           </div>
 
           <Button
@@ -232,22 +224,22 @@ export const ContractSemanticFormTab: React.FC<{
                                   {...field}
                                   className="enable-form-item"
                                   name={[field.name, 'enabled']}
-                                  valuePropName="checked">
-                                  <Switch />
+                                  valuePropName="isSelected">
+                                  <Toggle size="md" />
                                 </Form.Item>
 
                                 <div className="d-flex flex-column">
-                                  <Typography.Text className="semantic-form-item-title">
+                                  <Typography className="semantic-form-item-title">
                                     {semanticsFormData?.[field.key]?.name ||
                                       t('label.untitled')}
-                                  </Typography.Text>
-                                  <Typography.Text
+                                  </Typography>
+                                  <Typography
                                     ellipsis
                                     className="semantic-form-item-description">
                                     {semanticsFormData?.[field.key]
                                       ?.description ||
                                       t('label.no-description')}
-                                  </Typography.Text>
+                                  </Typography>
                                 </div>
                               </div>
                               <div className="d-flex items-center gap-2">
@@ -280,8 +272,8 @@ export const ContractSemanticFormTab: React.FC<{
                     key={field.name}>
                     {editingKey === field.name ? (
                       <>
-                        <Row className="semantic-form-item-content">
-                          <Col span={24}>
+                        <Grid className="layout-row layout-grid semantic-form-item-content">
+                          <Grid.Item className="layout-column" span={24}>
                             <Form.Item
                               {...field}
                               label={t('label.name')}
@@ -300,8 +292,8 @@ export const ContractSemanticFormTab: React.FC<{
                                 )}
                               />
                             </Form.Item>
-                          </Col>
-                          <Col span={24}>
+                          </Grid.Item>
+                          <Grid.Item className="layout-column" span={24}>
                             <Form.Item
                               {...field}
                               label={t('label.description')}
@@ -318,8 +310,8 @@ export const ContractSemanticFormTab: React.FC<{
                                 rows={4}
                               />
                             </Form.Item>
-                          </Col>
-                          <Col span={24}>
+                          </Grid.Item>
+                          <Grid.Item className="layout-column" span={24}>
                             <Form.Item
                               {...field}
                               label={t('label.rule')}
@@ -330,10 +322,10 @@ export const ContractSemanticFormTab: React.FC<{
                                   validator: semanticRuleValidator,
                                 },
                               ]}>
-                              <QueryBuilderWidgetV1
+                              <QueryBuilder
                                 entityType={EntityType.TABLE}
                                 fields={queryBuilderFields}
-                                getQueryActions={handleAddQueryBuilderRule}
+                                groupMode="flat"
                                 key={field.name}
                                 outputType={SearchOutputType.JSONLogic}
                                 tree={
@@ -342,13 +334,14 @@ export const ContractSemanticFormTab: React.FC<{
                                     : undefined
                                 }
                                 value={editFieldData?.rule ?? ''}
+                                onActionsReady={handleAddQueryBuilderRule}
                                 onChange={(rule: string, tree?: JsonTree) =>
                                   handleQueryBuilderChange(field, rule, tree)
                                 }
                               />
                             </Form.Item>
-                          </Col>
-                        </Row>
+                          </Grid.Item>
+                        </Grid>
 
                         <div className="semantic-form-item-actions">
                           <Button
@@ -379,10 +372,11 @@ export const ContractSemanticFormTab: React.FC<{
                       </>
                     ) : (
                       <div className="semantic-rule-editor-view-only">
-                        <QueryBuilderWidgetV1
+                        <QueryBuilder
                           readonly
                           entityType={EntityType.TABLE}
                           fields={queryBuilderFields}
+                          groupMode="flat"
                           key={field.name}
                           outputType={SearchOutputType.JSONLogic}
                           tree={

@@ -12,8 +12,8 @@
  */
 
 import test, { expect, Page } from '@playwright/test';
-import { DataQualityDimensions } from '../../../../src/generated/tests/testDefinition';
-import { getCurrentMillis } from '../../../../src/utils/date-time/DateTimeUtils';
+import { DataQualityDimensions } from '../../../../src/enums/DataQuality.enum';
+import { TestCaseResolutionStatusTypes } from '../../../../src/generated/tests/testCaseResolutionStatus';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import { DataProduct } from '../../../support/domain/DataProduct';
 import { Domain } from '../../../support/domain/Domain';
@@ -23,7 +23,7 @@ import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { ClassificationClass } from '../../../support/tag/ClassificationClass';
 import { TagClass } from '../../../support/tag/TagClass';
 import { UserClass } from '../../../support/user/UserClass';
-import { createNewPage, uuid } from '../../../utils/common';
+import { createNewPage, getApiContext, uuid } from '../../../utils/common';
 import {
   applyDashboardCertificationFilter,
   applyDashboardTagFilter,
@@ -40,6 +40,7 @@ import {
   TEST_CASE_STATUS_PIE_CHART_TEST_ID,
   waitForIncidentToBeIndexed,
 } from '../../../utils/dataQuality';
+import { getCurrentMillis } from '../../../utils/dateTime';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { visitDataQualityTab } from '../../../utils/testCases';
 
@@ -451,7 +452,8 @@ test.describe(
           user1.responseData.name
         );
         await page
-          .getByRole('listitem', { name: user1.getUserDisplayName() })
+          .locator('[data-testid="owner-option"]')
+          .filter({ hasText: user1.getUserDisplayName() })
           .click();
         for (const apiRes of ownerApiResponse) {
           const responseData = await apiRes;
@@ -559,20 +561,28 @@ test.describe(
 
         await waitForAllLoadersToDisappear(page);
         await expect(
-          page.locator('[data-testid="status-data-widget"]').first()
-        ).toBeVisible();
+          page
+            .locator('[data-testid="status-data-widget"]')
+            .filter({ visible: true })
+        ).not.toHaveCount(0);
       });
 
       await test.step('Filter by Glossary Term and verify all API responses succeed', async () => {
         await page.getByRole('button', { name: 'Glossary Term' }).click();
-        await page.getByTestId('search-input').click();
+        // The tree picker owns its search box and keys rows by FQN.
+        const glossarySearch = page.getByTestId(
+          'search-dropdown-Glossary Term-search'
+        );
+        await glossarySearch.click();
         const glossaryTermSearchApi = page.waitForResponse(
           '/api/v1/search/query?*q=*index=glossaryTerm*'
         );
-        await page.getByTestId('search-input').fill(glossaryTerm.data.name);
+        await glossarySearch.fill(glossaryTerm.data.name);
         await glossaryTermSearchApi;
         await page
-          .getByText(glossaryTerm.responseData.fullyQualifiedName)
+          .getByTestId(
+            `tree-node-${glossaryTerm.responseData.fullyQualifiedName}`
+          )
           .click();
         const glossaryTermApiResponse = waitForDashboardApiResponses(
           page,
@@ -587,8 +597,10 @@ test.describe(
 
         await waitForAllLoadersToDisappear(page);
         await expect(
-          page.locator('[data-testid="status-data-widget"]').first()
-        ).toBeVisible();
+          page
+            .locator('[data-testid="status-data-widget"]')
+            .filter({ visible: true })
+        ).not.toHaveCount(0);
       });
 
       await test.step('Filter by Data Product and verify all API responses succeed', async () => {
@@ -621,11 +633,15 @@ test.describe(
 
         await waitForAllLoadersToDisappear(page);
         await expect(
-          page.locator('[data-testid="status-data-widget"]').first()
-        ).toBeVisible();
+          page
+            .locator('[data-testid="status-data-widget"]')
+            .filter({ visible: true })
+        ).not.toHaveCount(0);
       });
 
-      await test.step('Verify New incident for Consistency test case on table3 DQ tab', async () => {
+      // table3 is given an owner in beforeAll, so the incident raised by the
+      // Consistency failure is auto-assigned on creation instead of opening as New.
+      await test.step('Verify Assigned incident for Consistency test case on table3 DQ tab', async () => {
         await visitDataQualityTab(page, table3);
         await expect(
           page.locator(
@@ -634,20 +650,17 @@ test.describe(
         ).toContainText('Failed');
         await expect(
           page.locator(`[data-testid="${consistencyTestCaseName}-status"]`)
-        ).toContainText('New');
+        ).toContainText('Assigned');
       });
 
-      await test.step('Verify no active incident for resolved Uniqueness test case on table4 DQ tab', async () => {
+      await test.step('Verify Resolved incident chip for Uniqueness test case on table4 DQ tab', async () => {
         await visitDataQualityTab(page, table4);
         await expect(
           page.locator(`[data-testid="status-badge-${uniquenessTestCaseName}"]`)
         ).toContainText('Failed');
         await expect(
-          page
-            .getByRole('row', { name: uniquenessTestCaseName })
-            .getByRole('gridcell', { exact: true, name: '--' })
-            .last()
-        ).toHaveText('--');
+          page.locator(`[data-testid="${uniquenessTestCaseName}-status"]`)
+        ).toContainText('Resolved');
       });
 
       await test.step('Filter by Certification and verify Uniqueness widget shows 1 Failed test case', async () => {
@@ -671,6 +684,96 @@ test.describe(
           failed: '1',
           aborted: '0',
         });
+      });
+    });
+
+    // Regression for #30455: a resolved incident must stay visible with its
+    // edit affordance so it can be reopened in place, continuing the SAME
+    // incident (stateId) instead of forking a new one.
+    test('Reopen resolved incident in place from the Test Case page', async ({
+      page,
+    }) => {
+      let resolvedStateId = '';
+
+      await test.step('Open the resolved test case from the DQ tab', async () => {
+        await visitDataQualityTab(page, table4);
+        await page
+          .getByTestId(uniquenessTestCaseName)
+          .getByText(uniquenessTestCaseName)
+          .click();
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step('Test Case page shows the resolved incident with its edit affordance', async () => {
+        const { apiContext } = await getApiContext(page);
+        const fetchLatestIncident = () =>
+          apiContext
+            .get(
+              `/api/v1/dataQuality/testCases/testCaseIncidentStatus?latest=true` +
+                `&startTs=0&endTs=${getCurrentMillis()}` +
+                `&testCaseFQN=${uniquenessTestCaseFqn}`
+            )
+            .then((res) => res.json());
+
+        let latest = await fetchLatestIncident();
+        // A failed earlier attempt may have left the incident reopened;
+        // restore the resolved precondition so retries stay deterministic.
+        if (
+          latest.data?.[0]?.testCaseResolutionStatusType !==
+          TestCaseResolutionStatusTypes.Resolved
+        ) {
+          await apiContext.post(
+            '/api/v1/dataQuality/testCases/testCaseIncidentStatus',
+            {
+              data: {
+                testCaseReference: uniquenessTestCaseFqn,
+                testCaseResolutionStatusType:
+                  TestCaseResolutionStatusTypes.Resolved,
+              },
+            }
+          );
+          await page.reload();
+          await waitForAllLoadersToDisappear(page);
+          latest = await fetchLatestIncident();
+        }
+        resolvedStateId = latest.data?.[0]?.stateId ?? '';
+
+        expect(resolvedStateId).not.toBe('');
+
+        await expect(
+          page.locator(`[data-testid="${uniquenessTestCaseName}-status"]`)
+        ).toContainText('Resolved');
+        await expect(
+          page.locator('[data-testid="edit-resolution-icon"]')
+        ).toBeVisible();
+      });
+
+      await test.step('Reopen the incident as Acknowledged from the header', async () => {
+        await page.click('[data-testid="edit-resolution-icon"]');
+        await page
+          .getByTestId('test-case-resolution-status-type')
+          .getByRole('button')
+          .click();
+        await page.getByRole('option', { name: 'Ack', exact: true }).click();
+
+        const reopenResponse = page.waitForResponse(
+          (response) =>
+            response
+              .url()
+              .includes('/dataQuality/testCases/testCaseIncidentStatus') &&
+            response.request().method() === 'POST'
+        );
+        await page.click('#update-status-button');
+        const reopened = await (await reopenResponse).json();
+
+        expect(reopened.stateId).toBe(resolvedStateId);
+        expect(reopened.testCaseResolutionStatusType).toBe(
+          TestCaseResolutionStatusTypes.ACK
+        );
+
+        await expect(
+          page.locator(`[data-testid="${uniquenessTestCaseName}-status"]`)
+        ).toContainText('Ack');
       });
     });
 
@@ -829,8 +932,10 @@ test.describe(
       await test.step('Navigate to Data Quality dashboard', async () => {
         await goToDataQualityDashboard(page);
         await expect(
-          page.locator('[data-testid="status-data-widget"]').first()
-        ).toBeVisible();
+          page
+            .locator('[data-testid="status-data-widget"]')
+            .filter({ visible: true })
+        ).not.toHaveCount(0);
         await waitForAllLoadersToDisappear(page);
       });
 
@@ -850,8 +955,10 @@ test.describe(
           if (!page.url().includes('/data-quality/dashboard')) {
             await goToDataQualityDashboard(page);
             await expect(
-              page.locator('[data-testid="status-data-widget"]').first()
-            ).toBeVisible();
+              page
+                .locator('[data-testid="status-data-widget"]')
+                .filter({ visible: true })
+            ).not.toHaveCount(0);
             await waitForAllLoadersToDisappear(page);
           }
 
@@ -895,17 +1002,28 @@ test.describe(
       });
 
       await test.step('Click failed segment and verify redirect to failed test cases', async () => {
-        const navFailed = page.waitForURL(
-          /\/data-quality\/test-cases.*testCaseStatus=Failed/
-        );
+        const expectedStatuses = [
+          TestCaseStatus.Failed,
+          TestCaseStatus.Aborted,
+        ];
         await clickPieChartSegmentByIndex(
           page,
           ENTITY_HEALTH_PIE_CHART_TEST_ID,
           1
         );
-        await navFailed;
-        await expect(page).toHaveURL(/\/data-quality\/test-cases/);
-        expect(page.url()).toContain('testCaseStatus=Failed');
+        await expect(page).toHaveURL((url) => {
+          const selectedStatuses = url.searchParams.getAll('testCaseStatus[]');
+
+          return (
+            url.pathname === '/data-quality/test-cases' &&
+            expectedStatuses.every((status) =>
+              selectedStatuses.includes(status)
+            )
+          );
+        });
+        expect(
+          new URL(page.url()).searchParams.getAll('testCaseStatus[]')
+        ).toEqual(expectedStatuses);
       });
     });
 
@@ -921,17 +1039,16 @@ test.describe(
       });
 
       await test.step('Click success segment and verify redirect', async () => {
-        const navSuccess = page.waitForURL(
-          /\/data-quality\/test-cases.*testCaseStatus=Success/
-        );
         await clickPieChartSegmentByIndex(
           page,
           TEST_CASE_STATUS_PIE_CHART_TEST_ID,
           0
         );
-        await navSuccess;
-        await expect(page).toHaveURL(/\/data-quality\/test-cases/);
-        expect(page.url()).toContain('testCaseStatus=Success');
+        await expect(page).toHaveURL(
+          (url) =>
+            url.pathname === '/data-quality/test-cases' &&
+            url.searchParams.get('testCaseStatus') === TestCaseStatus.Success
+        );
       });
 
       await test.step('Navigate back to Data Quality dashboard', async () => {
@@ -943,17 +1060,16 @@ test.describe(
       });
 
       await test.step('Click failed segment and verify redirect', async () => {
-        const navFailed = page.waitForURL(
-          /\/data-quality\/test-cases.*testCaseStatus=Failed/
-        );
         await clickPieChartSegmentByIndex(
           page,
           TEST_CASE_STATUS_PIE_CHART_TEST_ID,
           1
         );
-        await navFailed;
-        await expect(page).toHaveURL(/\/data-quality\/test-cases/);
-        expect(page.url()).toContain('testCaseStatus=Failed');
+        await expect(page).toHaveURL(
+          (url) =>
+            url.pathname === '/data-quality/test-cases' &&
+            url.searchParams.get('testCaseStatus') === TestCaseStatus.Failed
+        );
       });
 
       await test.step('Navigate back to Data Quality dashboard', async () => {
@@ -965,17 +1081,16 @@ test.describe(
       });
 
       await test.step('Click aborted segment and verify redirect', async () => {
-        const navAborted = page.waitForURL(
-          /\/data-quality\/test-cases.*testCaseStatus=Aborted/
-        );
         await clickPieChartSegmentByIndex(
           page,
           TEST_CASE_STATUS_PIE_CHART_TEST_ID,
           2
         );
-        await navAborted;
-        await expect(page).toHaveURL(/\/data-quality\/test-cases/);
-        expect(page.url()).toContain('testCaseStatus=Aborted');
+        await expect(page).toHaveURL(
+          (url) =>
+            url.pathname === '/data-quality/test-cases' &&
+            url.searchParams.get('testCaseStatus') === TestCaseStatus.Aborted
+        );
       });
     });
 
@@ -991,13 +1106,11 @@ test.describe(
       });
 
       await test.step('Click covered segment and verify redirect to Test Suites', async () => {
-        const navTestSuites = page.waitForURL(/\/data-quality\/test-suites/);
         await clickPieChartSegmentByIndex(
           page,
           DATA_ASSETS_COVERAGE_PIE_CHART_TEST_ID,
           0
         );
-        await navTestSuites;
         await expect(page).toHaveURL(/\/data-quality\/test-suites/);
       });
 
@@ -1010,13 +1123,11 @@ test.describe(
       });
 
       await test.step('Click not covered segment and verify redirect to Explore', async () => {
-        const navExplore = page.waitForURL(/\/explore/);
         await clickPieChartSegmentByIndex(
           page,
           DATA_ASSETS_COVERAGE_PIE_CHART_TEST_ID,
           1
         );
-        await navExplore;
         await expect(page).toHaveURL(/\/explore/);
       });
     });
@@ -1036,7 +1147,7 @@ test.describe(
           '/api/v1/search/query?*index=dataProduct*'
         );
         await page.click('[data-testid="advanced-filter"]');
-        await page.click('[value="dataProductFqn"]');
+        await page.getByTestId('advanced-filter-option-dataProductFqn').click();
         await dataProductOptionsRes;
 
         await expect(
@@ -1073,7 +1184,7 @@ test.describe(
           '/api/v1/dataQuality/testCases/search/list?*'
         );
         await page.click('[data-testid="advanced-filter"]');
-        await page.click('[value="dataProductFqn"]');
+        await page.getByTestId('advanced-filter-option-dataProductFqn').click();
         await getTestCases;
 
         await expect(

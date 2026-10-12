@@ -564,7 +564,7 @@ describe('BundleSuiteFormDrawer', () => {
       await screen.findByRole('dialog');
 
       await act(async () => {
-        fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+        fireEvent.click(screen.getByRole('button', { name: 'label.close' }));
       });
 
       expect(onClose).toHaveBeenCalledTimes(1);
@@ -593,6 +593,36 @@ describe('BundleSuiteFormDrawer', () => {
 
       await waitFor(() => {
         expect(onClose).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    it('shows a loader on the create button while the modal submit is pending', async () => {
+      let resolveCreate!: (value: TestSuite) => void;
+      mockCreateTestSuites.mockReturnValueOnce(
+        new Promise<TestSuite>((resolve) => {
+          resolveCreate = resolve;
+        })
+      );
+      await act(async () => {
+        renderDrawer({ variant: 'modal' });
+      });
+
+      await screen.findByRole('dialog');
+
+      const createButton = screen.getByTestId('submit-button');
+      fireEvent.click(createButton);
+
+      await waitFor(() => {
+        expect(mockCreateTestSuites).toHaveBeenCalledTimes(1);
+      });
+
+      expect(createButton).toHaveAttribute('data-loading', 'true');
+      expect(
+        createButton.querySelector('[data-icon="loading"]')
+      ).toBeInTheDocument();
+
+      await act(async () => {
+        resolveCreate(mockTestSuite);
       });
     });
 

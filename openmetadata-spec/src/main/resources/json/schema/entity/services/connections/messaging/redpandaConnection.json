@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/services/connections/messaging/RedpandaConnection.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "RedpandaConnection",
   "description": "Redpanda Connection Config",
   "type": "object",
@@ -84,7 +84,11 @@
     "topicFilterPattern": {
       "description": "Regex to only fetch topics that matches the pattern.",
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
-      "title": "Default Topic Filter Pattern"
+      "title": "Default Topic Filter Pattern",
+      "default": {
+        "includes": [],
+        "excludes": ["^__.*", "^_schemas$", "^_confluent.*"]
+      }
     },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",

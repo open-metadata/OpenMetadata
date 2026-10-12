@@ -18,6 +18,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -43,8 +44,8 @@ import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdent
 import org.openmetadata.service.exception.AppException;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexJobDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexJobDAO.SearchIndexJobRecord;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexJobDAO;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexJobDAO.SearchIndexJobRecord;
 import org.openmetadata.service.search.SearchRepository;
 import org.quartz.JobExecutionContext;
 
@@ -98,19 +99,24 @@ class SearchIndexAppTest {
     EventPublisherJob updatedJob = new EventPublisherJob().withEntities(Set.of("table", "user"));
     setField(searchIndexApp, "jobData", initialJob);
 
+    List<ReindexStopSignal> stopSignals = new ArrayList<>();
     try (MockedConstruction<ReindexingOrchestrator> mocked =
         Mockito.mockConstruction(
             ReindexingOrchestrator.class,
-            (orchestrator, context) -> when(orchestrator.getJobData()).thenReturn(updatedJob))) {
+            (orchestrator, context) -> {
+              stopSignals.add((ReindexStopSignal) context.arguments().get(3));
+              when(orchestrator.getJobData()).thenReturn(updatedJob);
+            })) {
       searchIndexApp.execute(mock(JobExecutionContext.class));
 
       ReindexingOrchestrator orchestrator = mocked.constructed().get(0);
       verify(orchestrator).run(initialJob);
       assertSame(updatedJob, searchIndexApp.getJobData());
+      assertFalse(stopSignals.getFirst().isStopRequested());
 
       searchIndexApp.stop();
 
-      verify(orchestrator).stop();
+      assertTrue(stopSignals.getFirst().isStopRequested());
       assertSame(updatedJob, searchIndexApp.getJobData());
     }
   }
@@ -286,7 +292,7 @@ class SearchIndexAppTest {
             null,
             System.currentTimeMillis(),
             1);
-    when(jobDAO.findByStatuses(List.of("RUNNING", "READY", "INITIALIZING")))
+    when(jobDAO.findByStatuses(List.of("RUNNING", "PROMOTING", "READY", "INITIALIZING")))
         .thenReturn(List.of(activeJob));
 
     App appEntity = new App();
@@ -367,7 +373,7 @@ class SearchIndexAppTest {
             null,
             System.currentTimeMillis(),
             1);
-    when(jobDAO.findByStatuses(List.of("RUNNING", "READY", "INITIALIZING")))
+    when(jobDAO.findByStatuses(List.of("RUNNING", "PROMOTING", "READY", "INITIALIZING")))
         .thenReturn(List.of(activeJob));
     doThrow(new RuntimeException("DB error"))
         .when(jobDAO)

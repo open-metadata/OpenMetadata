@@ -30,6 +30,9 @@ test.describe('Glossary tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   const siblingTerms: GlossaryTerm[] = [];
 
   test.beforeAll(async ({ browser }) => {
+    glossaryTerms.length = 0;
+    childTerms.length = 0;
+    siblingTerms.length = 0;
     const { apiContext, afterAction } = await createNewPage(browser);
     await glossary.create(apiContext);
     for (let i = 1; i <= 15; i++) {
@@ -71,15 +74,13 @@ test.describe('Glossary tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test('should check for glossary term search', async ({ page }) => {
-    test.slow(true);
-
     await glossary.visitEntityPage(page);
 
     // Wait for terms to load
     await page.getByTestId('glossary-terms-table').waitFor();
 
     // Test 1: Search for specific term
-    const searchInput = page.getByPlaceholder(/search.*term/i);
+    const searchInput = page.getByTestId('search-glossary-terms-input');
     const searchResponse = page.waitForResponse(
       '**/api/v1/glossaryTerms/search?*'
     );
@@ -125,8 +126,6 @@ test.describe('Glossary tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test('should check for nested glossary term search', async ({ page }) => {
-    test.slow(true);
-
     // Navigate to glossary
     await glossary.visitEntityPage(page);
 
@@ -138,11 +137,19 @@ test.describe('Glossary tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       `[data-testid="glossary-terms-table"] >> text="${parentTerm.responseData.displayName}"`
     );
 
-    // Click on Terms tab to see child terms
+    // Click on Terms tab to see child terms and wait for the tab body to
+    // mount — the search input below only exists once `GlossaryTermTab`
+    // renders, and filling it before the mount silently misses the input
+    // (the `waitForResponse` then hangs to the test-level timeout).
     await page.click('[data-testid="terms"]');
+    await page
+      .getByTestId('glossary-terms-scroll-container')
+      .waitFor({ state: 'visible' });
 
-    // Test 1: Search within parent term for child terms
-    const searchInput = page.getByPlaceholder(/search.*term/i);
+    // Test 1: Search within parent term for child terms — use the specific
+    // testid rather than a placeholder regex; the regex previously matched
+    // an ambiguous input, causing the fill to hit the wrong element.
+    const searchInput = page.getByTestId('search-glossary-terms-input');
     const searchRes1 = page.waitForResponse('**/api/v1/glossaryTerms/search?*');
     await searchInput.fill('ChildSearchTerm');
     await searchRes1;
@@ -192,7 +199,7 @@ test.describe('Glossary tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     // Wait for terms to load
     await page.getByTestId('glossary-terms-table').waitFor();
 
-    const searchInput = page.getByPlaceholder(/search.*term/i);
+    const searchInput = page.getByTestId('search-glossary-terms-input');
 
     // Search with lowercase
     const lowerRes = page.waitForResponse('**/api/v1/glossaryTerms/search?*');
@@ -244,7 +251,7 @@ test.describe('Glossary tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     // Wait for terms to load
     await page.getByTestId('glossary-terms-table').waitFor();
 
-    const searchInput = page.getByPlaceholder(/search.*term/i);
+    const searchInput = page.getByTestId('search-glossary-terms-input');
 
     // Search for a term that doesn't exist
     const noResultsRes = page.waitForResponse(
@@ -253,8 +260,11 @@ test.describe('Glossary tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await searchInput.fill('NonExistentTermXYZ12345');
     await noResultsRes;
 
-    // Verify empty state message is shown (uses ErrorPlaceHolder component)
-    await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
+    // Verify empty state message is shown (uses NoSearchResultsPlaceholder,
+    // since a real search term is active)
+    await expect(
+      page.getByTestId('no-search-results-placeholder')
+    ).toBeVisible();
 
     // Clear search and verify terms return
     const clearRes = page.waitForResponse('**/api/v1/glossaryTerms?*');
@@ -262,7 +272,9 @@ test.describe('Glossary tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await clearRes;
 
     // Verify terms are visible again after clearing search
-    await expect(page.getByTestId('no-data-placeholder')).not.toBeVisible();
+    await expect(
+      page.getByTestId('no-search-results-placeholder')
+    ).not.toBeVisible();
     await expect(page.getByTestId('glossary-terms-table')).toBeVisible();
   });
 

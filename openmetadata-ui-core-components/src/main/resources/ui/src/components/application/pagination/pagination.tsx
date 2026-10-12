@@ -5,13 +5,14 @@ import {
 import { Button } from '@/components/base/buttons/button';
 import { Select } from '@/components/base/select/select';
 import { useBreakpoint } from '@/hooks/use-breakpoint';
+import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import {
   ArrowLeft,
   ArrowRight,
   ChevronLeft,
   ChevronRight,
-} from '@untitledui/icons';
+} from '../../../icons';
 import type { ChangeEvent, KeyboardEvent } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import type { PaginationRootProps } from './pagination-base';
@@ -105,15 +106,17 @@ const MobilePagination = ({
   className,
   onPageChange,
 }: MobilePaginationProps) => {
+  const { t } = useCoreTranslation();
+
   return (
     <nav
-      aria-label="Pagination"
+      aria-label={t('label.pagination', 'Pagination')}
       className={cx(
         'tw:flex tw:items-center tw:justify-between tw:md:hidden',
         className
       )}>
       <Button
-        aria-label="Go to previous page"
+        aria-label={t('label.previous-page', 'Go to previous page')}
         color="secondary"
         iconLeading={ArrowLeft}
         size="sm"
@@ -126,7 +129,7 @@ const MobilePagination = ({
       </span>
 
       <Button
-        aria-label="Go to next page"
+        aria-label={t('label.next-page', 'Go to next page')}
         color="secondary"
         iconLeading={ArrowRight}
         size="sm"
@@ -349,6 +352,8 @@ export const PaginationCardMinimal = ({
   onPageChange,
   className,
 }: PaginationCardMinimalProps) => {
+  const { t } = useCoreTranslation();
+
   return (
     <div
       className={cx(
@@ -358,7 +363,7 @@ export const PaginationCardMinimal = ({
       <MobilePagination page={page} total={total} onPageChange={onPageChange} />
 
       <nav
-        aria-label="Pagination"
+        aria-label={t('label.pagination', 'Pagination')}
         className={cx(
           'tw:hidden tw:items-center tw:gap-3 tw:md:flex',
           align === 'center' && 'tw:justify-between'
@@ -405,6 +410,8 @@ interface PaginationCardWithControlsProps extends PaginationProps {
   pageSizeOptions?: number[];
   /** The function to call when rows per page changes. */
   onPageSizeChange?: (pageSize: number) => void;
+  /** Hide the page input and numbered pages, leaving only prev/next + records. */
+  minimal?: boolean;
 }
 
 export const PaginationCardWithControls = ({
@@ -413,10 +420,12 @@ export const PaginationCardWithControls = ({
   pageSize = 10,
   pageSizeOptions = [10, 25, 50],
   className,
+  minimal = false,
   onPageChange,
   onPageSizeChange,
   ...props
 }: PaginationCardWithControlsProps) => {
+  const { t } = useCoreTranslation();
   const totalPages = Math.max(total, 1);
   const currentPage = Math.min(Math.max(page, 1), totalPages);
   const [pageInput, setPageInput] = useState(String(currentPage));
@@ -492,30 +501,38 @@ export const PaginationCardWithControls = ({
     <Pagination.Root
       {...props}
       className={cx(
-        'tw:relative tw:z-[1] tw:m-0 tw:flex tw:w-full tw:rounded-b-xl tw:border-x tw:border-b tw:border-gray-blue-100 tw:bg-primary tw:px-4 tw:py-3 tw:shadow-[0_-1px_4px_0_rgba(0,0,0,0.05)]',
+        'tw:relative tw:z-[1] tw:m-0 tw:flex tw:w-full tw:rounded-b-xl tw:border-x tw:border-b tw:border-subtle tw:bg-surface tw:px-4 tw:py-3 tw:shadow-[0_-1px_4px_0_rgba(0,0,0,0.05)]',
         className
       )}
       page={currentPage}
       total={totalPages}
       onPageChange={handlePageChange}>
-      <div className="tw:m-0 tw:flex tw:w-full tw:max-w-full tw:flex-wrap tw:items-center tw:justify-between tw:gap-x-5 tw:gap-y-3">
-        <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-[5px]">
-          <span className={compactTextClassName}>Page</span>
-          <input
-            aria-label="Current page"
-            className={compactPageInputClassName}
-            inputMode="numeric"
-            max={totalPages}
-            min={1}
-            style={{ width: pageInputWidth }}
-            type="text"
-            value={pageInput}
-            onBlur={commitPageInput}
-            onChange={handlePageInputChange}
-            onKeyDown={handlePageInputKeyDown}
-          />
-          <span className={compactTextClassName}>of {totalPages}</span>
-        </div>
+      <div
+        className={cx(
+          'tw:m-0 tw:flex tw:w-full tw:max-w-full tw:flex-wrap tw:items-center tw:gap-x-5 tw:gap-y-3',
+          minimal ? 'tw:justify-center' : 'tw:justify-between'
+        )}>
+        {!minimal && (
+          <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-[5px]">
+            <span className={compactTextClassName}>
+              {t('label.page', 'Page')}
+            </span>
+            <input
+              aria-label={t('label.current-page', 'Current page')}
+              className={compactPageInputClassName}
+              inputMode="numeric"
+              max={totalPages}
+              min={1}
+              style={{ width: pageInputWidth }}
+              type="text"
+              value={pageInput}
+              onBlur={commitPageInput}
+              onChange={handlePageInputChange}
+              onKeyDown={handlePageInputKeyDown}
+            />
+            <span className={compactTextClassName}>of {totalPages}</span>
+          </div>
+        )}
 
         <div className="tw:flex tw:min-w-0 tw:flex-wrap tw:items-center tw:gap-2 tw:px-1">
           <Pagination.PrevTrigger asChild>
@@ -527,29 +544,37 @@ export const PaginationCardWithControls = ({
             </button>
           </Pagination.PrevTrigger>
 
-          <Pagination.Context>
-            {({ pages }) => (
-              <div className="tw:flex tw:min-w-0 tw:flex-wrap tw:items-center tw:gap-1">
-                {pages.map((page, index) =>
-                  page.type === 'page' ? (
-                    <Pagination.Item
-                      className={compactPageItemClassName}
-                      key={index}
-                      {...page}
-                      asChild>
-                      <button type="button">{page.value}</button>
-                    </Pagination.Item>
-                  ) : (
-                    <Pagination.Ellipsis
-                      className="tw:mx-0 tw:flex tw:h-6 tw:w-4 tw:shrink-0 tw:items-center tw:justify-center tw:px-0 tw:text-sm tw:font-medium tw:leading-5 tw:text-quaternary"
-                      key={index}>
-                      &#8230;
-                    </Pagination.Ellipsis>
-                  )
-                )}
-              </div>
-            )}
-          </Pagination.Context>
+          {minimal && (
+            <span className={cx(compactTextClassName, 'tw:whitespace-nowrap')}>
+              {t('label.page', 'Page')} {currentPage} of {totalPages}
+            </span>
+          )}
+
+          {!minimal && (
+            <Pagination.Context>
+              {({ pages }) => (
+                <div className="tw:flex tw:min-w-0 tw:flex-wrap tw:items-center tw:gap-1">
+                  {pages.map((page, index) =>
+                    page.type === 'page' ? (
+                      <Pagination.Item
+                        className={compactPageItemClassName}
+                        key={index}
+                        {...page}
+                        asChild>
+                        <button type="button">{page.value}</button>
+                      </Pagination.Item>
+                    ) : (
+                      <Pagination.Ellipsis
+                        className="tw:mx-0 tw:flex tw:h-6 tw:w-4 tw:shrink-0 tw:items-center tw:justify-center tw:px-0 tw:text-sm tw:font-medium tw:leading-5 tw:text-quaternary"
+                        key={index}>
+                        &#8230;
+                      </Pagination.Ellipsis>
+                    )
+                  )}
+                </div>
+              )}
+            </Pagination.Context>
+          )}
 
           <Pagination.NextTrigger asChild>
             <button
@@ -561,31 +586,37 @@ export const PaginationCardWithControls = ({
           </Pagination.NextTrigger>
         </div>
 
-        <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-[5px]">
-          <span className={compactTextClassName}>Records</span>
-          <Select
-            aria-label="Records"
-            className={compactRowsPerPageSelectClassName}
-            data-testid="rows-per-page-dropdown"
-            fontSize="xs"
-            items={pageSizeItems}
-            placeholder={String(pageSize)}
-            popoverClassName="tw:min-w-16!"
-            selectedKey={String(pageSize)}
-            size="sm"
-            onSelectionChange={(key) => onPageSizeChange?.(Number(key))}>
-            {(item) => (
-              <Select.Item
-                className={compactRowsPerPageItemClassName}
-                data-testid={`rows-per-page-option-${item.id}`}
-                id={item.id}
-                key={item.id}
-                textValue={item.label}>
-                {item.label}
-              </Select.Item>
-            )}
-          </Select>
-        </div>
+        {onPageSizeChange && (
+          // A size picker with nothing wired to it is dead UI, and AntD
+          // hides its own unless the caller asks for it.
+          <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-[5px]">
+            <span className={compactTextClassName}>
+              {t('label.records', 'Records')}
+            </span>
+            <Select
+              aria-label={t('label.records', 'Records')}
+              className={compactRowsPerPageSelectClassName}
+              data-testid="rows-per-page-dropdown"
+              fontSize="xs"
+              items={pageSizeItems}
+              placeholder={String(pageSize)}
+              popoverClassName="tw:min-w-16!"
+              selectedKey={String(pageSize)}
+              size="sm"
+              onSelectionChange={(key) => onPageSizeChange?.(Number(key))}>
+              {(item) => (
+                <Select.Item
+                  className={compactRowsPerPageItemClassName}
+                  data-testid={`rows-per-page-option-${item.id}`}
+                  id={item.id}
+                  key={item.id}
+                  textValue={item.label}>
+                  {item.label}
+                </Select.Item>
+              )}
+            </Select>
+          </div>
+        )}
       </div>
     </Pagination.Root>
   );

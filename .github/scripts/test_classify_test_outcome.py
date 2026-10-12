@@ -78,6 +78,36 @@ def test_failsafe_fork_timeout_is_a_hung_test(tmp_path: Path) -> None:
     assert result["diagnostics"][0]["sha256"]
 
 
+def test_pytest_timeout_is_a_hung_test(tmp_path: Path) -> None:
+    report = write_report(
+        tmp_path / "TEST-timeout.xml",
+        '<testsuite tests="1" failures="1" errors="0" skipped="0">'
+        '<testcase classname="TestWorker" name="test_stuck">'
+        '<failure message="Timeout (&gt;300.0s) from pytest-timeout."/>'
+        "</testcase></testsuite>",
+    )
+    diagnostic = write_report(
+        tmp_path / "unit-test-run.log",
+        "FAILED test_worker.py::test_stuck - Failed: Timeout (>300.0s) from pytest-timeout.",
+    )
+
+    result = CLASSIFIER.classify_outcome("failure", 1, [report], [diagnostic])
+
+    assert result["classification"] == "hung_test"
+    assert result["failedTests"][0]["id"] == "TestWorker#test_stuck"
+
+
+def test_pytest_timeout_at_end_of_large_log_is_a_hung_test(tmp_path: Path) -> None:
+    diagnostic = write_report(
+        tmp_path / "unit-test-run.log",
+        "x" * (2 * 1024 * 1024) + "\nTimeout (>300.0s) from pytest-timeout.",
+    )
+
+    result = CLASSIFIER.classify_outcome("failure", 1, [], [diagnostic])
+
+    assert result["classification"] == "hung_test"
+
+
 def test_passing_report_is_passed(tmp_path: Path) -> None:
     report = write_report(
         tmp_path / "TEST-pass.xml",

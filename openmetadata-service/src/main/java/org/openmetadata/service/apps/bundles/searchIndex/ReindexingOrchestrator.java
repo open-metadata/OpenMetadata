@@ -26,6 +26,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.listeners.LoggingProgre
 import org.openmetadata.service.apps.bundles.searchIndex.listeners.SlackProgressListener;
 import org.openmetadata.service.apps.scheduler.OmAppJobListener;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
@@ -36,23 +37,28 @@ public class ReindexingOrchestrator {
   private final CollectionDAO collectionDAO;
   private final SearchRepository searchRepository;
   private final OrchestratorContext context;
+  private final ReindexStopSignal stopSignal;
 
   @Getter private EventPublisherJob jobData;
-  private volatile boolean stopped = false;
   private volatile DistributedIndexingStrategy activeStrategy;
   private volatile Map<String, Object> resultMetadata = Collections.emptyMap();
 
   public ReindexingOrchestrator(
-      CollectionDAO collectionDAO, SearchRepository searchRepository, OrchestratorContext context) {
+      CollectionDAO collectionDAO,
+      SearchRepository searchRepository,
+      OrchestratorContext context,
+      ReindexStopSignal stopSignal) {
     this.collectionDAO = collectionDAO;
     this.searchRepository = searchRepository;
     this.context = context;
+    this.stopSignal = stopSignal;
   }
 
   public void run(EventPublisherJob initialJobData) {
     this.jobData = initialJobData;
     initializeState();
     initializeJobData();
+    stopSignal.onStop(this::recordStop);
 
     String jobId = UUID.randomUUID().toString().substring(0, 8);
     MDC.put("reindexJobId", jobId);
@@ -90,18 +96,8 @@ public class ReindexingOrchestrator {
     }
   }
 
-  public void stop() {
+  private void recordStop() {
     LOG.info("Reindexing job is being stopped.");
-    stopped = true;
-
-    DistributedIndexingStrategy strategy = this.activeStrategy;
-    if (strategy != null) {
-      try {
-        strategy.stop();
-      } catch (Exception e) {
-        LOG.error("Error stopping indexing strategy", e);
-      }
-    }
 
     if (jobData != null) {
       jobData.setStatus(EventPublisherJob.Status.STOPPED);
@@ -119,7 +115,6 @@ public class ReindexingOrchestrator {
   }
 
   private void initializeState() {
-    stopped = false;
     activeStrategy = null;
     resultMetadata = Collections.emptyMap();
   }
@@ -201,8 +196,8 @@ public class ReindexingOrchestrator {
   }
 
   private void cleanupOrphanedIndicesPreFlight() {
+    OrphanedIndexCleaner cleaner = new OrphanedIndexCleaner();
     try {
-      OrphanedIndexCleaner cleaner = new OrphanedIndexCleaner();
       OrphanedIndexCleaner.CleanupResult result =
           cleaner.cleanupOrphanedIndices(searchRepository.getSearchClient());
       if (result.found() > 0) {
@@ -214,6 +209,24 @@ public class ReindexingOrchestrator {
       }
     } catch (Exception e) {
       LOG.warn("Preflight: failed to cleanup orphaned indices: {}", e.getMessage());
+    }
+    detachOrphanedIndexesPreFlight(cleaner);
+  }
+
+  /**
+   * An upgrade that renames or drops an entity type leaves its index behind still attached to the
+   * parent aliases the old release gave it, and {@code index=all} keeps querying it with this
+   * release's clauses. Reindexing is the point at which the cluster is reconciled against the
+   * registry, so it is the point at which the stale alias links go.
+   */
+  private void detachOrphanedIndexesPreFlight(OrphanedIndexCleaner cleaner) {
+    try {
+      int detached = cleaner.detachOrphanedIndexesFromAliases(searchRepository);
+      if (detached > 0) {
+        LOG.info("Preflight: detached {} orphaned index-to-alias links", detached);
+      }
+    } catch (Exception e) {
+      LOG.warn("Preflight: failed to detach orphaned indexes from aliases: {}", e.getMessage());
     }
   }
 
@@ -260,7 +273,8 @@ public class ReindexingOrchestrator {
         jobData,
         appRecord.getAppId(),
         appRecord.getStartTime(),
-        context.getJobName());
+        context.getJobName(),
+        stopSignal);
   }
 
   private void registerProgressListeners(DistributedIndexingStrategy strategy) {
@@ -371,7 +385,7 @@ public class ReindexingOrchestrator {
       }
     }
 
-    if (stopped) {
+    if (stopSignal.isStopRequested()) {
       if (jobData != null) {
         jobData.setStatus(EventPublisherJob.Status.STOPPED);
       }
@@ -392,7 +406,7 @@ public class ReindexingOrchestrator {
   private void finalizeJobExecution() {
     sendUpdates();
 
-    if (stopped) {
+    if (stopSignal.isStopRequested()) {
       AppRunRecord appRecord = context.getJobRecord();
       appRecord.setStatus(AppRunRecord.Status.STOPPED);
       sanitizeRunRecordConfig(appRecord);
@@ -508,7 +522,7 @@ public class ReindexingOrchestrator {
   }
 
   private Set<String> getAll() {
-    return new HashSet<>(searchRepository.getEntityIndexMap().keySet());
+    return new HashSet<>(searchRepository.getIndexedEntityTypes());
   }
 
   private boolean hasSlackConfig() {
@@ -524,12 +538,8 @@ public class ReindexingOrchestrator {
       try {
         String normalizedEntityType = SearchIndexEntityTypes.normalizeEntityType(entityType);
         if (!SearchIndexEntityTypes.isTimeSeriesEntity(normalizedEntityType)) {
-          total +=
-              Entity.getEntityRepository(normalizedEntityType)
-                  .getDao()
-                  .listCount(
-                      new org.openmetadata.service.jdbi3.ListFilter(
-                          org.openmetadata.schema.type.Include.ALL));
+          EntityRepository<?> repository = Entity.getEntityRepository(normalizedEntityType);
+          total += repository.getDao().listCount(repository.getReindexFilter());
         }
       } catch (Exception e) {
         LOG.debug("Could not count entities for {}: {}", entityType, e.getMessage());

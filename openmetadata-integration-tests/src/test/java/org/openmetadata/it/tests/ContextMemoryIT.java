@@ -6,10 +6,14 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -26,9 +30,13 @@ import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ForbiddenException;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.fluent.Users;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.services.context.ContextMemoryService;
 
 /**
@@ -57,6 +65,7 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
   // ABSTRACT METHOD IMPLEMENTATIONS (Required by BaseEntityIT)
   // ===================================================================
 
+  // Without shareConfig these fixtures use PRIVATE visibility.
   @Override
   protected CreateContextMemory createMinimalRequest(TestNamespace ns) {
     return new CreateContextMemory()
@@ -115,6 +124,25 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
   @Override
   protected String getEntityType() {
     return "contextMemory";
+  }
+
+  @Override
+  protected ContextMemoryStatus expectedInitialEntityStatus() {
+    return ContextMemoryStatus.UNPROCESSED;
+  }
+
+  // Ordinary search returns trusted memories. Keep search fixtures explicitly approved while
+  // creation and lifecycle tests continue to exercise requests that omit the stage.
+  @Override
+  protected CreateContextMemory createSearchRequest(TestNamespace ns) {
+    return createMinimalRequest(ns).withEntityStatus(ContextMemoryStatus.APPROVED);
+  }
+
+  /** A memory can never go back to Draft, so its path moves between in use and archived. */
+  @Override
+  protected List<ContextMemoryStatus> entityStatusPath() {
+    return List.of(
+        ContextMemoryStatus.ARCHIVED, ContextMemoryStatus.APPROVED, ContextMemoryStatus.ARCHIVED);
   }
 
   @Override
@@ -289,23 +317,23 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
             .withName(ns.prefix("status-valid"))
             .withDescription("Valid status transitions")
             .withQuestion("What is the status flow?")
-            .withAnswer("Draft to Active to Archived and back to Active.")
-            .withStatus(ContextMemoryStatus.DRAFT);
+            .withAnswer("Draft to Approved to Archived and back to Approved.")
+            .withEntityStatus(ContextMemoryStatus.DRAFT);
 
     ContextMemory memory = createEntity(request);
-    assertEquals(ContextMemoryStatus.DRAFT, memory.getStatus());
+    assertEquals(ContextMemoryStatus.DRAFT, memory.getEntityStatus());
 
-    request.withStatus(ContextMemoryStatus.ACTIVE);
+    request.withEntityStatus(ContextMemoryStatus.APPROVED);
     ContextMemory active = getContextMemoryService().put(request);
-    assertEquals(ContextMemoryStatus.ACTIVE, active.getStatus());
+    assertEquals(ContextMemoryStatus.APPROVED, active.getEntityStatus());
 
-    request.withStatus(ContextMemoryStatus.ARCHIVED);
+    request.withEntityStatus(ContextMemoryStatus.ARCHIVED);
     ContextMemory archived = getContextMemoryService().put(request);
-    assertEquals(ContextMemoryStatus.ARCHIVED, archived.getStatus());
+    assertEquals(ContextMemoryStatus.ARCHIVED, archived.getEntityStatus());
 
-    request.withStatus(ContextMemoryStatus.ACTIVE);
+    request.withEntityStatus(ContextMemoryStatus.APPROVED);
     ContextMemory reactivated = getContextMemoryService().put(request);
-    assertEquals(ContextMemoryStatus.ACTIVE, reactivated.getStatus());
+    assertEquals(ContextMemoryStatus.APPROVED, reactivated.getEntityStatus());
   }
 
   @Test
@@ -314,18 +342,37 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
         new CreateContextMemory()
             .withName(ns.prefix("status-invalid"))
             .withDescription("Invalid status transition")
-            .withQuestion("Can Active go back to Draft?")
-            .withAnswer("No, Active cannot revert to Draft.")
-            .withStatus(ContextMemoryStatus.ACTIVE);
+            .withQuestion("Can an Archived memory go back to Draft?")
+            .withAnswer("No, only an Approved one can return to review.")
+            .withEntityStatus(ContextMemoryStatus.APPROVED);
 
     ContextMemory memory = createEntity(request);
-    assertEquals(ContextMemoryStatus.ACTIVE, memory.getStatus());
+    assertEquals(ContextMemoryStatus.APPROVED, memory.getEntityStatus());
+    request.withEntityStatus(ContextMemoryStatus.ARCHIVED);
+    getContextMemoryService().put(request);
 
-    request.withStatus(ContextMemoryStatus.DRAFT);
+    request.withEntityStatus(ContextMemoryStatus.DRAFT);
     assertThrows(
         Exception.class,
         () -> getContextMemoryService().put(request),
-        "Transition from Active to Draft should be rejected");
+        "Transition from Archived to Draft should be rejected");
+  }
+
+  @Test
+  void post_contextMemoryInStageOutsideItsLifecycle_400(TestNamespace ns) {
+    Map<String, Object> request =
+        Map.of(
+            "name", ns.prefix("status-outside-lifecycle"),
+            "question", "Can a memory be In Review?",
+            "answer", "A memory uses its own status vocabulary.",
+            "entityStatus", "In Review");
+
+    assertThrows(
+        InvalidRequestException.class,
+        () ->
+            SdkClients.adminClient()
+                .getHttpClient()
+                .executeForString(HttpMethod.POST, "/v1/contextCenter/memories", request));
   }
 
   @Test
@@ -336,19 +383,19 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
             .withDescription("Status-only update persistence test")
             .withQuestion("Does the status persist?")
             .withAnswer("Yes, after a status-only PUT.")
-            .withStatus(ContextMemoryStatus.DRAFT);
+            .withEntityStatus(ContextMemoryStatus.DRAFT);
 
     ContextMemory memory = createEntity(request);
-    assertEquals(ContextMemoryStatus.DRAFT, memory.getStatus());
+    assertEquals(ContextMemoryStatus.DRAFT, memory.getEntityStatus());
 
-    request.withStatus(ContextMemoryStatus.ACTIVE);
+    request.withEntityStatus(ContextMemoryStatus.APPROVED);
     ContextMemory putResponse = getContextMemoryService().put(request);
-    assertEquals(ContextMemoryStatus.ACTIVE, putResponse.getStatus());
+    assertEquals(ContextMemoryStatus.APPROVED, putResponse.getEntityStatus());
 
     ContextMemory fetched = getEntity(memory.getId().toString());
     assertEquals(
-        ContextMemoryStatus.ACTIVE,
-        fetched.getStatus(),
+        ContextMemoryStatus.APPROVED,
+        fetched.getEntityStatus(),
         "Status should persist after a status-only PUT update");
     assertTrue(
         fetched.getVersion() > memory.getVersion(),
@@ -363,14 +410,14 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
             .withDescription("Status change history test")
             .withQuestion("Are status changes versioned?")
             .withAnswer("Yes, each transition bumps the version.")
-            .withStatus(ContextMemoryStatus.DRAFT);
+            .withEntityStatus(ContextMemoryStatus.DRAFT);
 
     ContextMemory memory = createEntity(request);
 
-    request.withStatus(ContextMemoryStatus.ACTIVE);
+    request.withEntityStatus(ContextMemoryStatus.APPROVED);
     getContextMemoryService().put(request);
 
-    request.withStatus(ContextMemoryStatus.ARCHIVED);
+    request.withEntityStatus(ContextMemoryStatus.ARCHIVED);
     getContextMemoryService().put(request);
 
     EntityHistory history = getVersionHistory(memory.getId());
@@ -412,6 +459,177 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
     ContextMemory memory = createEntity(request);
     assertNotNull(memory.getShareConfig());
     assertEquals(MemoryVisibility.PRIVATE, memory.getShareConfig().getVisibility());
+  }
+
+  @Test
+  void get_privateContextMemoryByOwnerWithoutFields_200_OK(TestNamespace ns) {
+    ContextMemory memory =
+        createEntity(
+            memoryWithVisibility(ns, "owner-direct-read", MemoryVisibility.PRIVATE)
+                .withOwners(List.of(testUser1Ref())));
+    ContextMemoryService ownerService =
+        new ContextMemoryService(SdkClients.user1Client().getHttpClient());
+
+    ContextMemory fetched = ownerService.get(memory.getId().toString());
+
+    assertEquals(memory.getId(), fetched.getId());
+  }
+
+  @Test
+  void getByName_privateContextMemoryByOwnerWithoutFields_200_OK(TestNamespace ns) {
+    ContextMemory memory =
+        createEntity(
+            memoryWithVisibility(ns, "owner-name-read", MemoryVisibility.PRIVATE)
+                .withOwners(List.of(testUser1Ref())));
+    ContextMemoryService ownerService =
+        new ContextMemoryService(SdkClients.user1Client().getHttpClient());
+
+    ContextMemory fetched = ownerService.getByName(memory.getFullyQualifiedName());
+
+    assertEquals(memory.getId(), fetched.getId());
+  }
+
+  @Test
+  void get_publicContextMemoryWithoutAssetByAnotherUser_200_OK(TestNamespace ns) {
+    ContextMemory memory =
+        createEntity(memoryWithVisibility(ns, "public-direct-read", MemoryVisibility.PUBLIC));
+    ContextMemoryService otherUserService =
+        new ContextMemoryService(SdkClients.user1Client().getHttpClient());
+
+    assertEquals(memory.getId(), otherUserService.get(memory.getId().toString()).getId());
+  }
+
+  @Test
+  void versions_ofAnotherUsersPrivateMemory_areForbidden(TestNamespace ns) {
+    ContextMemory memory =
+        createEntity(
+            memoryWithVisibility(ns, "private-history", MemoryVisibility.PRIVATE)
+                .withOwners(List.of(testUser1Ref())));
+    ContextMemoryService owner = new ContextMemoryService(SdkClients.user1Client().getHttpClient());
+    ContextMemoryService other = new ContextMemoryService(SdkClients.user2Client().getHttpClient());
+    String id = memory.getId().toString();
+
+    assertFalse(owner.getVersionList(memory.getId()).getVersions().isEmpty());
+    assertEquals(memory.getId(), owner.getVersion(id, memory.getVersion()).getId());
+    assertThrows(ForbiddenException.class, () -> other.getVersionList(memory.getId()));
+    assertThrows(ForbiddenException.class, () -> other.getVersion(id, memory.getVersion()));
+  }
+
+  /**
+   * The ContextCenter serves its listing from search whenever it passes a query, filter, sort or
+   * offset — which it always does. Restricted memories must therefore reach the search index and be
+   * filtered per subject at query time: an owner and a shared principal see their own restricted
+   * memories, everyone else sees only the org-wide ones.
+   */
+  @Test
+  void restrictedMemoriesAreSearchableByOwnerAndSharedPrincipalOnly(TestNamespace ns) {
+    ContextMemory ownedByUser1 =
+        createEntity(
+            memoryWithVisibility(ns, "owned-private", MemoryVisibility.PRIVATE)
+                .withOwners(List.of(testUser1Ref())));
+    ContextMemory sharedWithUser1 =
+        createEntity(
+            memoryWithVisibility(ns, "shared-with-user1", MemoryVisibility.SHARED)
+                .withShareConfig(
+                    new MemoryShareConfig()
+                        .withVisibility(MemoryVisibility.SHARED)
+                        .withSharedWith(
+                            List.of(new MemorySharedPrincipal().withPrincipal(testUser1Ref())))));
+    ContextMemory ownedByAdmin =
+        createEntity(memoryWithVisibility(ns, "admin-private", MemoryVisibility.PRIVATE));
+    ContextMemory orgWide =
+        createEntity(memoryWithVisibility(ns, "org-wide", MemoryVisibility.ENTITY));
+    ContextMemory publicMemory =
+        createEntity(memoryWithVisibility(ns, "public-no-asset", MemoryVisibility.PUBLIC));
+
+    // Admin bypasses the visibility filter, so an admin-visible listing containing all four is the
+    // barrier proving every document — restricted ones included — reached the index.
+    awaitSearchBackedListContains(
+        SdkClients.adminClient(),
+        List.of(ownedByUser1, sharedWithUser1, ownedByAdmin, orgWide, publicMemory),
+        "every memory must be indexed regardless of visibility");
+
+    Set<String> visibleToUser1 = searchBackedListIds(SdkClients.user1Client());
+
+    assertTrue(
+        visibleToUser1.contains(ownedByUser1.getId().toString()),
+        "an owner must find their own PRIVATE memory through the search-backed listing");
+    assertTrue(
+        visibleToUser1.contains(sharedWithUser1.getId().toString()),
+        "a shared principal must find the SHARED memory through the search-backed listing");
+    assertTrue(
+        visibleToUser1.contains(orgWide.getId().toString()),
+        "org-wide memories stay visible to everyone");
+    assertTrue(
+        visibleToUser1.contains(publicMemory.getId().toString()),
+        "a Public memory without an asset is visible to everyone");
+    assertFalse(
+        visibleToUser1.contains(ownedByAdmin.getId().toString()),
+        "another user's PRIVATE memory must never surface");
+  }
+
+  @Test
+  void memoryStaysInSearchIndexAcrossVisibilityFlips(TestNamespace ns) throws Exception {
+    ContextMemory memory = createEntity(memoryWithVisibility(ns, "flip", MemoryVisibility.ENTITY));
+    String id = memory.getId().toString();
+    awaitSearchPresence(id, "ENTITY-visibility memory must be searchable");
+
+    ContextMemory toPrivate = getEntity(id);
+    toPrivate.setShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE));
+    patchEntity(id, toPrivate);
+    awaitSearchPresence(id, "a memory flipped to PRIVATE stays indexed for its owner");
+
+    ContextMemory toEntity = getEntity(id);
+    toEntity.setShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.ENTITY));
+    patchEntity(id, toEntity);
+    awaitSearchPresence(id, "a memory flipped back to ENTITY stays searchable");
+  }
+
+  private void awaitSearchPresence(String id, String message) {
+    Awaitility.await(message)
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(180))
+        .ignoreExceptions()
+        .untilAsserted(() -> assertTrue(searchForEntity(id).contains(id), message));
+  }
+
+  private void awaitSearchBackedListContains(
+      OpenMetadataClient client, List<ContextMemory> memories, String message) {
+    Awaitility.await(message)
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(180))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              Set<String> listed = searchBackedListIds(client);
+              for (ContextMemory memory : memories) {
+                assertTrue(listed.contains(memory.getId().toString()), message);
+              }
+            });
+  }
+
+  /** Lists memories through the search-backed branch of the endpoint (offset forces it). */
+  private Set<String> searchBackedListIds(OpenMetadataClient client) {
+    ListParams params = new ListParams();
+    params.setLimit(1000);
+    params.setOffset(0);
+    return new ContextMemoryService(client.getHttpClient())
+        .list(params).getData().stream()
+            .map(memory -> memory.getId().toString())
+            .collect(Collectors.toSet());
+  }
+
+  private CreateContextMemory memoryWithVisibility(
+      TestNamespace ns, String name, MemoryVisibility visibility) {
+    return new CreateContextMemory()
+        .withName(ns.prefix(name))
+        .withDescription("Visibility indexing test")
+        .withEntityStatus(ContextMemoryStatus.APPROVED)
+        .withQuestion("Is this memory searchable?")
+        .withAnswer("Visibility is enforced at query time, not at index time.")
+        .withShareConfig(new MemoryShareConfig().withVisibility(visibility));
   }
 
   // ===================================================================

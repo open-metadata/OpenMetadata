@@ -11,7 +11,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.system.EventPublisherJob;
@@ -20,10 +19,10 @@ import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.DistributedSearchIndexExecutor;
-import org.openmetadata.service.apps.bundles.searchIndex.distributed.IndexJobStatus;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.SearchIndexJob;
 import org.openmetadata.service.apps.bundles.searchIndex.promotion.RatioPromotionPolicy;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.DefaultRecreateHandler;
@@ -42,10 +41,10 @@ public class DistributedIndexingStrategy {
   private final UUID appId;
   private final Long appStartTime;
   private final String createdBy;
+  private final ReindexStopSignal stopSignal;
   private final DistributedReindexStatsMapper statsMapper;
 
   private final CompositeProgressListener listeners = new CompositeProgressListener();
-  private final AtomicBoolean stopped = new AtomicBoolean(false);
   private final AtomicReference<Stats> currentStats = new AtomicReference<>();
 
   private volatile DistributedSearchIndexExecutor distributedExecutor;
@@ -58,13 +57,15 @@ public class DistributedIndexingStrategy {
       EventPublisherJob jobData,
       UUID appId,
       Long appStartTime,
-      String createdBy) {
+      String createdBy,
+      ReindexStopSignal stopSignal) {
     this.collectionDAO = collectionDAO;
     this.searchRepository = searchRepository;
     this.jobData = jobData;
     this.appId = appId;
     this.appStartTime = appStartTime;
     this.createdBy = createdBy;
+    this.stopSignal = stopSignal;
     this.statsMapper = new DistributedReindexStatsMapper(collectionDAO);
   }
 
@@ -102,7 +103,8 @@ public class DistributedIndexingStrategy {
     currentStats.set(stats);
 
     int partitionSize = jobData.getPartitionSize() != null ? jobData.getPartitionSize() : 10000;
-    distributedExecutor = new DistributedSearchIndexExecutor(collectionDAO, partitionSize);
+    distributedExecutor =
+        new DistributedSearchIndexExecutor(collectionDAO, partitionSize, stopSignal);
     distributedExecutor.performStartupRecovery();
 
     distributedExecutor.addListener(listeners);
@@ -160,13 +162,23 @@ public class DistributedIndexingStrategy {
 
     currentStats.set(stats);
 
-    boolean success =
+    boolean allPromoted =
         finalizeAllEntityReindex(
             stagedIndexHandler,
             stagedIndexContext,
-            !stopped.get() && !hasIncompleteProcessing(stats));
+            !isStopped() && !hasIncompleteProcessing(stats));
+
+    // Promotion sweep is done; flip the job from PROMOTING to its terminal status. The job stayed
+    // non-terminal until now, so the pod was not torn down mid-promotion.
+    distributedExecutor.markPromotionComplete(distributedJob.getId(), allPromoted);
 
     ExecutionResult.Status resultStatus = determineStatus(stats);
+    if (!allPromoted && resultStatus == ExecutionResult.Status.COMPLETED) {
+      LOG.error(
+          "Reindex finished but one or more staged indexes could not be promoted; reporting "
+              + "COMPLETED_WITH_ERRORS so the stale indexes are not treated as a clean rebuild");
+      resultStatus = ExecutionResult.Status.COMPLETED_WITH_ERRORS;
+    }
 
     StatsReconciler.reconcile(stats);
 
@@ -221,7 +233,7 @@ public class DistributedIndexingStrategy {
       monitor.scheduleAtFixedRate(
           () -> {
             try {
-              if (stopped.get()) {
+              if (isStopped()) {
                 LOG.info("Stop signal received, stopping distributed job");
                 distributedExecutor.stop();
                 completionLatch.countDown();
@@ -234,12 +246,11 @@ public class DistributedIndexingStrategy {
                 return;
               }
 
-              IndexJobStatus status = job.getStatus();
-              if (status == IndexJobStatus.COMPLETED
-                  || status == IndexJobStatus.COMPLETED_WITH_ERRORS
-                  || status == IndexJobStatus.FAILED
-                  || status == IndexJobStatus.STOPPED) {
-                LOG.info("Distributed job {} completed with status: {}", jobId, status);
+              // PROMOTING counts as processing-complete: stop monitoring and let the strategy run
+              // the
+              // promotion sweep, then flip the job terminal via markPromotionComplete().
+              if (job.isProcessingComplete()) {
+                LOG.info("Distributed job {} reached status: {}", jobId, job.getStatus());
                 completionLatch.countDown();
                 return;
               }
@@ -275,7 +286,7 @@ public class DistributedIndexingStrategy {
   }
 
   private ExecutionResult.Status determineStatus(Stats stats) {
-    if (stopped.get()) {
+    if (isStopped()) {
       return ExecutionResult.Status.STOPPED;
     }
     if (hasIncompleteProcessing(stats)) {
@@ -386,25 +397,8 @@ public class DistributedIndexingStrategy {
     return Optional.ofNullable(currentStats.get());
   }
 
-  public void stop() {
-    if (stopped.compareAndSet(false, true)) {
-      LOG.info("Stopping distributed indexing strategy");
-
-      if (distributedExecutor != null) {
-        try {
-          distributedExecutor.stop();
-        } catch (Exception e) {
-          LOG.error("Error stopping distributed executor", e);
-        }
-      }
-      // Do NOT close the sink here — workers may still be writing to it.
-      // The sink is properly flushed and closed by flushAndAwaitSink() in doExecute()
-      // after the monitor exits and the executor's finally block completes.
-    }
-  }
-
   public boolean isStopped() {
-    return stopped.get();
+    return stopSignal.isStopRequested();
   }
 
   Stats initializeTotalRecords(Set<String> entities) {
@@ -429,7 +423,9 @@ public class DistributedIndexingStrategy {
       stats.getEntityStats().getAdditionalProperties().put(entityType, entityStats);
     }
 
-    if (entities.contains(Entity.TABLE) && !entities.contains(Entity.TABLE_COLUMN)) {
+    if (entities.contains(Entity.TABLE)
+        && !entities.contains(Entity.TABLE_COLUMN)
+        && searchRepository.isColumnIndexingEnabled()) {
       StepStats columnEntityStats = new StepStats();
       columnEntityStats.setTotalRecords(0);
       columnEntityStats.setSuccessRecords(0);
@@ -466,9 +462,8 @@ public class DistributedIndexingStrategy {
       String correctedType = SearchIndexEntityTypes.normalizeEntityType(entityType);
 
       if (!SearchIndexEntityTypes.isTimeSeriesEntity(correctedType)) {
-        return Entity.getEntityRepository(correctedType)
-            .getDao()
-            .listCount(new ListFilter(Include.ALL));
+        EntityRepository<?> repository = Entity.getEntityRepository(correctedType);
+        return repository.getDao().listCount(repository.getReindexFilter());
       } else {
         // Include.ALL to match PartitionCalculator.getTimeSeriesEntityCount — the two counts
         // must use identical filters or the job total and the partition plan drift apart.

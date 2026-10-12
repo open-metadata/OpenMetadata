@@ -115,7 +115,7 @@ class ElasticSearchBulkSinkBehaviorTest {
 
   @Test
   void addEntityRecordsSuccessAndProcessStats() throws Exception {
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     StageStatsTracker tracker = mock(StageStatsTracker.class);
     UUID entityId = UUID.randomUUID();
     when(entity.getId()).thenReturn(entityId);
@@ -168,7 +168,7 @@ class ElasticSearchBulkSinkBehaviorTest {
   @Test
   void relationshipPartialUpdateUsesFullDocumentUpsertWithoutRewritingOtherFields()
       throws Exception {
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     UUID entityId = UUID.randomUUID();
     when(entity.getId()).thenReturn(entityId);
     when(entity.getEntityReference())
@@ -336,7 +336,7 @@ class ElasticSearchBulkSinkBehaviorTest {
 
   @Test
   void fullTestCaseDocumentUsesRelationshipPreservingUpdate() throws Exception {
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     UUID entityId = UUID.randomUUID();
     when(entity.getId()).thenReturn(entityId);
     SearchRepository.ScriptedPartialUpdate documentUpdate =
@@ -403,7 +403,7 @@ class ElasticSearchBulkSinkBehaviorTest {
 
   @Test
   void addEntityRecordsEntityNotFoundWarningsWithoutCallback() throws Exception {
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     StageStatsTracker tracker = mock(StageStatsTracker.class);
     BulkSink.FailureCallback failureCallback = mock(BulkSink.FailureCallback.class);
     UUID entityId = UUID.randomUUID();
@@ -609,7 +609,7 @@ class ElasticSearchBulkSinkBehaviorTest {
 
   @Test
   void addEntityLooksUpEntityContextFromMap() throws Exception {
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     UUID entityId = UUID.randomUUID();
     when(entity.getId()).thenReturn(entityId);
     List<EsLineageData> edges = List.of(new EsLineageData());
@@ -658,7 +658,7 @@ class ElasticSearchBulkSinkBehaviorTest {
 
   @Test
   void addEntityFallsBackToEmptyContextWhenEntityNotInMap() throws Exception {
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     when(entity.getId()).thenReturn(UUID.randomUUID());
 
     try (MockedConstruction<ElasticSearchBulkSink.CustomBulkProcessor> ignored =
@@ -705,9 +705,12 @@ class ElasticSearchBulkSinkBehaviorTest {
     // P1 guard: on an incremental reindex the doc is re-indexed via a full index op, so a
     // state-matched entity must carry its cached embedding spliced back in — never embedding-less
     // (which would wipe the stored vector). Mirrors the OpenSearch sink test.
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     UUID entityId = UUID.randomUUID();
     when(entity.getId()).thenReturn(entityId);
+    // A real entity always resolves a reference; the bulk sink consults it via
+    // Entity.isVectorEmbeddable to keep restricted ContextMemory out of the vector index.
+    when(entity.getEntityReference()).thenReturn(new EntityReference().withType("table"));
 
     StageStatsTracker tracker = mock(StageStatsTracker.class);
     ElasticSearchVectorService vectorService = mock(ElasticSearchVectorService.class);
@@ -748,8 +751,11 @@ class ElasticSearchBulkSinkBehaviorTest {
 
   @Test
   void enrichWithEmbeddingRecomputesWhenNoCachedEntryAvailable() throws Exception {
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     when(entity.getId()).thenReturn(UUID.randomUUID());
+    // A real entity always resolves a reference; the bulk sink consults it via
+    // Entity.isVectorEmbeddable to keep restricted ContextMemory out of the vector index.
+    when(entity.getEntityReference()).thenReturn(new EntityReference().withType("table"));
 
     StageStatsTracker tracker = mock(StageStatsTracker.class);
     ElasticSearchVectorService vectorService = mock(ElasticSearchVectorService.class);
@@ -783,9 +789,12 @@ class ElasticSearchBulkSinkBehaviorTest {
 
   @Test
   void enrichWithEmbeddingRecomputesWhenCachedDimensionMismatchesClient() throws Exception {
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     UUID entityId = UUID.randomUUID();
     when(entity.getId()).thenReturn(entityId);
+    // A real entity always resolves a reference; the bulk sink consults it via
+    // Entity.isVectorEmbeddable to keep restricted ContextMemory out of the vector index.
+    when(entity.getEntityReference()).thenReturn(new EntityReference().withType("table"));
 
     StageStatsTracker tracker = mock(StageStatsTracker.class);
     EmbeddingClient embeddingClient = mock(EmbeddingClient.class);

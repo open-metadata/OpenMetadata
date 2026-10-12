@@ -60,6 +60,13 @@ describe('useAuthenticatedImage', () => {
     expect(mockDownloadAsset).not.toHaveBeenCalled();
   });
 
+  it('starts with the raw src as imageSrc', () => {
+    const src = attachmentSrc('attachment-id-initial');
+    const { result } = renderHook(() => useAuthenticatedImage(src));
+
+    expect(result.current.imageSrc).toBe(src);
+  });
+
   it('fetches the attachment and sets imageSrc to the created object URL', async () => {
     const src = attachmentSrc('attachment-id-fetch');
     const { result } = renderHook(() => useAuthenticatedImage(src));
@@ -120,7 +127,7 @@ describe('useAuthenticatedImage', () => {
     expect(result.current.imageSrc).toBe(src);
   });
 
-  it('revokes the object URL on unmount once resolved', async () => {
+  it('revokes the blob URL on unmount', async () => {
     const src = attachmentSrc('attachment-id-unmount');
     const { unmount, result } = renderHook(() => useAuthenticatedImage(src));
 
@@ -135,57 +142,6 @@ describe('useAuthenticatedImage', () => {
     unmount();
 
     expect(revokeObjectURLMock).toHaveBeenCalledWith(BLOB_URL);
-  });
-
-  it('does not revoke a blob URL still referenced by another mounted instance, and revokes it once all instances unmount', async () => {
-    const src = attachmentSrc('attachment-id-shared');
-    const first = renderHook(() => useAuthenticatedImage(src));
-    const second = renderHook(() => useAuthenticatedImage(src));
-
-    await act(async () => {
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-
-    expect(first.result.current.imageSrc).toBe(BLOB_URL);
-    expect(second.result.current.imageSrc).toBe(BLOB_URL);
-
-    first.unmount();
-
-    expect(revokeObjectURLMock).not.toHaveBeenCalled();
-
-    second.unmount();
-
-    expect(revokeObjectURLMock).toHaveBeenCalledWith(BLOB_URL);
-    expect(revokeObjectURLMock).toHaveBeenCalledTimes(1);
-  });
-
-  it('fetches again on a fresh mount after a prior instance for the same src has unmounted', async () => {
-    const src = attachmentSrc('attachment-id-remount');
-    const first = renderHook(() => useAuthenticatedImage(src));
-
-    await act(async () => {
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-
-    first.unmount();
-
-    expect(revokeObjectURLMock).toHaveBeenCalledTimes(1);
-
-    const second = renderHook(() => useAuthenticatedImage(src));
-
-    await act(async () => {
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-
-    expect(mockDownloadAsset).toHaveBeenCalledTimes(2);
-    expect(second.result.current.imageSrc).toBe(BLOB_URL);
-
-    second.unmount();
-
-    expect(revokeObjectURLMock).toHaveBeenCalledTimes(2);
   });
 
   it('does not revoke anything on unmount when the src was never resolved to a blob URL', async () => {
@@ -209,51 +165,5 @@ describe('useAuthenticatedImage', () => {
     });
 
     expect(mockDownloadAsset).toHaveBeenCalledTimes(1);
-  });
-
-  it('ignores a stale request that resolves after src has changed to a newer attachment', async () => {
-    const srcA = attachmentSrc('attachment-id-a');
-    const srcB = attachmentSrc('attachment-id-b');
-    const blobA = 'blob:http://localhost/blob-a';
-    const blobB = 'blob:http://localhost/blob-b';
-
-    let resolveA: (blob: Blob) => void = () => undefined;
-    const deferredA = new Promise<Blob>((resolve) => {
-      resolveA = resolve;
-    });
-
-    mockDownloadAsset.mockImplementation((id: string) =>
-      id === 'attachment-id-a' ? deferredA : Promise.resolve(new Blob(['b']))
-    );
-    mockGetAttachmentId.mockImplementation((src: string) =>
-      src === srcA ? 'attachment-id-a' : 'attachment-id-b'
-    );
-    createObjectURLMock.mockImplementation((blob: Blob) =>
-      blob === undefined ? BLOB_URL : blobB
-    );
-
-    const { result, rerender } = renderHook(
-      ({ src }) => useAuthenticatedImage(src),
-      { initialProps: { src: srcA } }
-    );
-
-    rerender({ src: srcB });
-
-    await act(async () => {
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-
-    expect(result.current.imageSrc).toBe(blobB);
-
-    createObjectURLMock.mockReturnValueOnce(blobA);
-    await act(async () => {
-      resolveA(new Blob(['a']));
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-
-    expect(result.current.imageSrc).toBe(blobB);
-    expect(revokeObjectURLMock).toHaveBeenCalledWith(blobA);
   });
 });

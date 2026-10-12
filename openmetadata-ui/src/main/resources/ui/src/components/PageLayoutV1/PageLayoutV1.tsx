@@ -11,16 +11,10 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
+import { Box, Grid } from '@openmetadata/ui-core-components';
+
 import classNames from 'classnames';
-import {
-  CSSProperties,
-  FC,
-  Fragment,
-  HTMLAttributes,
-  ReactNode,
-  useMemo,
-} from 'react';
+import { FC, Fragment, HTMLAttributes, ReactNode, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { FULLSCREEN_QUERY_PARAM_KEY } from '../../constants/constants';
 import DocumentTitle from '../common/DocumentTitle/DocumentTitle';
@@ -29,67 +23,17 @@ import './../../styles/layout/page-layout.less';
 export type PageLayoutVariant = 'default' | 'compact';
 
 interface PageLayoutProp extends HTMLAttributes<HTMLDivElement> {
+  children?: ReactNode;
   leftPanel?: ReactNode;
   rightPanel?: ReactNode;
   center?: boolean;
   pageTitle: string;
   mainContainerClassName?: string;
-  pageContainerStyle?: React.CSSProperties;
   rightPanelWidth?: number;
   leftPanelWidth?: number;
   fullHeight?: boolean;
   variant?: PageLayoutVariant;
 }
-
-export const pageContainerStyles: CSSProperties = {
-  marginTop: 0,
-  marginBottom: 0,
-  marginLeft: 0,
-  marginRight: 0,
-  overflow: 'hidden',
-};
-
-const FullHeightWrapper: FC<{
-  $wrapperClassName?: string;
-  children: ReactNode;
-}> = ({ $wrapperClassName, children }) => {
-  const scopedStyles = useMemo(() => {
-    if (!$wrapperClassName) {
-      return '';
-    }
-
-    return `
-      .full-height-wrapper .page-layout-v1-vertical-scroll.${$wrapperClassName} {
-        overflow: hidden;
-        min-height: 0;
-        display: flex;
-        flex-direction: column;
-      }
-      .full-height-wrapper .${$wrapperClassName} > .ant-row {
-        flex: 1;
-        min-height: 0;
-        display: flex;
-        flex-direction: column;
-      }
-      .full-height-wrapper .${$wrapperClassName} .ant-row .ant-col {
-        flex: none;
-      }
-      .full-height-wrapper .${$wrapperClassName} .ant-row .ant-col:last-child {
-        min-height: 0;
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-      }
-    `;
-  }, [$wrapperClassName]);
-
-  return (
-    <div className="full-height-wrapper">
-      {scopedStyles && <style>{scopedStyles}</style>}
-      {children}
-    </div>
-  );
-};
 
 const PageLayoutV1: FC<PageLayoutProp> = ({
   leftPanel,
@@ -101,13 +45,15 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   leftPanelWidth = 230,
   rightPanelWidth = 284,
   mainContainerClassName = '',
-  pageContainerStyle = {},
   fullHeight = false,
   variant = 'default',
 }: PageLayoutProp) => {
   const location = useLocation();
 
-  const paddingClassName = variant === 'compact' ? 'tw:p-2' : 'p-x-box';
+  // `compact` (uniform 8px) is for pages whose header is a core PageLayout.PageHeader —
+  // the calling component decides. Everything else gets the default 16px
+  // horizontal gutter.
+  const paddingClassName = variant === 'compact' ? 'tw:p-2' : 'tw:px-4';
 
   const contentWidth = useMemo(() => {
     if (leftPanel && rightPanel) {
@@ -121,75 +67,63 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
     }
   }, [leftPanel, rightPanel, leftPanelWidth, rightPanelWidth]);
 
-  const finalPageContainerStyle = useMemo(() => {
-    if (fullHeight && !pageContainerStyle.height) {
-      return {
-        height: 'calc(100vh - 64px)',
-        overflow: 'hidden',
-        ...pageContainerStyle,
-      };
-    }
-
-    return pageContainerStyle;
-  }, [fullHeight, pageContainerStyle]);
-
   const isFullScreen = useMemo(() => {
     const queryParams = new URLSearchParams(location.search);
 
     return queryParams.get(FULLSCREEN_QUERY_PARAM_KEY) === 'true';
   }, [location.search]);
 
-  const content = (
+  return (
     <Fragment>
       <DocumentTitle title={pageTitle} />
-      <Row
-        className={classNames(paddingClassName, className)}
+      <Box
+        className={`layout-row ${classNames(
+          'page-layout-v1',
+          paddingClassName,
+          { 'page-layout-v1-full-height': fullHeight },
+          className
+        )}`}
         data-testid="page-layout-v1"
         data-variant={variant}
-        style={{ ...pageContainerStyles, ...finalPageContainerStyle }}
-        wrap={false}>
+        wrap="nowrap">
         {leftPanel && (
-          <Col
-            className="page-layout-leftpanel"
-            flex={leftPanelWidth + 'px'}
-            id="left-panelV1">
+          <Box
+            className="layout-column tw:block page-layout-leftpanel"
+            id="left-panelV1"
+            style={{ flex: `0 0 ${leftPanelWidth + 'px'}` }}>
             {leftPanel}
-          </Col>
+          </Box>
         )}
-        <Col
-          className={classNames(
+        <Box
+          className={`layout-column tw:block ${classNames(
             `page-layout-v1-center page-layout-v1-vertical-scroll`,
             {
               'flex justify-center': center,
               'full-screen-view': isFullScreen,
             },
             mainContainerClassName
-          )}
-          flex={contentWidth}
-          offset={center ? 3 : 0}
-          span={center ? 18 : 24}>
-          <Row>
-            <Col span={24}>{children}</Col>
-          </Row>
-        </Col>
+          )}`}
+          style={{
+            maxWidth: `${((center ? 18 : 24) / 24) * 100}%`,
+            flex: `0 0 ${contentWidth}`,
+            marginInlineStart: `${((center ? 3 : 0) / 24) * 100}%`,
+          }}>
+          <Grid className="layout-row layout-grid">
+            <Grid.Item className="layout-column" span={24}>
+              {children}
+            </Grid.Item>
+          </Grid>
+        </Box>
         {rightPanel && (
-          <Col
-            className="page-layout-rightpanel page-layout-v1-vertical-scroll"
-            flex={rightPanelWidth + 'px'}
-            id="right-panelV1">
+          <Box
+            className="layout-column tw:block page-layout-rightpanel page-layout-v1-vertical-scroll"
+            id="right-panelV1"
+            style={{ flex: `0 0 ${rightPanelWidth + 'px'}` }}>
             {rightPanel}
-          </Col>
+          </Box>
         )}
-      </Row>
+      </Box>
     </Fragment>
-  );
-
-  return fullHeight ? (
-    <FullHeightWrapper $wrapperClassName={mainContainerClassName}>
-      {content}
-    </FullHeightWrapper>
-  ) : (
-    content
   );
 };
 

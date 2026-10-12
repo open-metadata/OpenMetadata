@@ -296,7 +296,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     searchListFilter.addQueryParam("excludeFields", SEARCH_FIELDS_EXCLUDE);
     searchListFilter.addQueryParam("domains", domain);
     if (!nullOrEmpty(owner)) {
-      EntityInterface entity;
+      EntityInterface<?> entity;
       try {
         entity = Entity.getEntityByName(Entity.USER, owner, "", ALL);
       } catch (Exception e) {
@@ -426,8 +426,18 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
+    return getByNameInternal(
+        uriInfo, securityContext, name, fieldsParam, include, includeRelations);
   }
 
   @GET

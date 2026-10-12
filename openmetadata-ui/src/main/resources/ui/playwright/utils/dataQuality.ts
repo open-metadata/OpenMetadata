@@ -11,20 +11,23 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page, Response } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../constant/common';
 import { SidebarItem } from '../constant/sidebar';
 import { TableClass } from '../support/entity/TableClass';
-import { redirectToHomePage } from './common';
+import { redirectToHomePage, uuid } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
+import { expectScheduleFrequencySelected } from './scheduleInterval';
 import { sidebarClick } from './sidebar';
 import { submitTestCaseForm } from './testCases';
+import { waitForResponseWithStatus } from './waitHelpers';
 
-/** Recharts PieChart id for the Test Case Result pie on the Data Quality dashboard. */
+/** Wrapper id of the Test Case Result pie on the Data Quality dashboard. */
 export const TEST_CASE_STATUS_PIE_CHART_TEST_ID = 'test-case-result-pie-chart';
 
-/** Recharts PieChart id for the Entity Health Status pie on the Data Quality dashboard. */
+/** Wrapper id of the Entity Health Status pie on the Data Quality dashboard. */
 export const ENTITY_HEALTH_PIE_CHART_TEST_ID = 'healthy-data-assets-pie-chart';
 
-/** Recharts PieChart id for the Data Assets Coverage pie on the Data Quality dashboard. */
+/** Wrapper id of the Data Assets Coverage pie on the Data Quality dashboard. */
 export const DATA_ASSETS_COVERAGE_PIE_CHART_TEST_ID =
   'data-assets-coverage-pie-chart';
 
@@ -43,15 +46,14 @@ export const selectTestType = async (page: Page, label: string) => {
 };
 
 /**
- * Dismiss an open tag/glossary suggestion dropdown by moving focus to the form
- * heading. This is a deterministic outside-click that closes the react-aria
- * combobox popover without the ambiguity of a page-level Escape — which, when
- * the menu happens to already be closed, would bubble up and dismiss the whole
- * drawer.
+ * Escape must target an open picker: otherwise it bubbles to the parent drawer.
  */
 export const dismissTagSuggestions = async (page: Page) => {
-  await page.getByTestId('form-heading').click();
-  await expect(page.locator('[role="listbox"]')).toBeHidden();
+  const pickerSearch = page.getByTestId('search-input');
+  if (await pickerSearch.isVisible()) {
+    await pickerSearch.press('Escape');
+  }
+  await expect(pickerSearch).toBeHidden();
 };
 
 /**
@@ -107,7 +109,12 @@ export async function goToDataQualityDashboard(page: Page): Promise<void> {
   await dataQualityReportResponse;
 }
 
-/** Clicks a segment by 0-based index (targets .custom-pie-chart-clickable path). */
+/**
+ * Clicks a pie slice by 0-based index. ECharts hit-tests pointer
+ * coordinates, so this waits for the slice to settle before clicking an interior
+ * point with the real mouse; a synthetic DOM click would miss. The first path is the
+ * grey track ring; slices follow in data order (zero slices are not drawn).
+ */
 export async function clickPieChartSegmentByIndex(
   page: Page,
   chartTestId: string,
@@ -115,13 +122,75 @@ export async function clickPieChartSegmentByIndex(
 ): Promise<void> {
   const chart = page.locator(`#${chartTestId}`);
   await expect(chart).toBeVisible();
-  const segmentPath = chart
-    .locator('.custom-pie-chart-clickable path')
-    .nth(segmentIndex);
-  await expect(segmentPath).toBeVisible();
-  await segmentPath.evaluate((el) => {
-    el.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  const slice = chart.locator('svg path').nth(segmentIndex + 1);
+  await expect(slice).toBeVisible();
+  await slice.scrollIntoViewIfNeeded();
+
+  let previousGeometry: string | undefined;
+  let stableSamples = 0;
+  // Visibility and a stable bounding box do not mean the SVG arc has stopped animating.
+  await expect
+    .poll(
+      async () => {
+        const geometry = await slice.evaluate((el) => {
+          const path = el as SVGPathElement;
+
+          return JSON.stringify({
+            path: path.getAttribute('d'),
+            matrix: path.getScreenCTM(),
+          });
+        });
+        stableSamples = geometry === previousGeometry ? stableSamples + 1 : 0;
+        previousGeometry = geometry;
+
+        return stableSamples;
+      },
+      {
+        message: 'Pie slice is still animating',
+        timeout: 10_000,
+        intervals: [100],
+      }
+    )
+    .toBeGreaterThanOrEqual(2);
+
+  const point = await slice.evaluate((el) => {
+    const path = el as SVGPathElement;
+    const svg = path.ownerSVGElement as SVGSVGElement;
+    const box = path.getBBox();
+    const matrix = path.getScreenCTM() as DOMMatrix;
+    const probe = svg.createSVGPoint();
+    const length = path.getTotalLength();
+    const boundary = Array.from({ length: 64 }, (_, index) =>
+      path.getPointAtLength((length * index) / 64)
+    );
+    const steps = 24;
+    let bestPoint: { x: number; y: number } | null = null;
+    let bestClearance = -1;
+    for (let i = 1; i < steps; i++) {
+      for (let j = 1; j < steps; j++) {
+        probe.x = box.x + (box.width * i) / steps;
+        probe.y = box.y + (box.height * j) / steps;
+        if (path.isPointInFill(probe)) {
+          const clearance = Math.min(
+            ...boundary.map(
+              (edge) => (probe.x - edge.x) ** 2 + (probe.y - edge.y) ** 2
+            )
+          );
+          if (clearance > bestClearance) {
+            const screen = probe.matrixTransform(matrix);
+            bestPoint = { x: screen.x, y: screen.y };
+            bestClearance = clearance;
+          }
+        }
+      }
+    }
+
+    return bestPoint;
   });
+  if (!point) {
+    throw new Error(`No clickable point in pie slice ${segmentIndex}`);
+  }
+  await page.mouse.click(point.x, point.y);
 }
 
 export enum ObservabilityFeature {
@@ -189,7 +258,7 @@ export const visitCreateTestCasePanelFromEntityPage = async (
       table.entityResponseData?.['fullyQualifiedName'] ?? ''
     )}/tableProfile/latest?includeColumnProfile=false`
   );
-  await page.getByText('Data Observability').click();
+  await page.getByTestId('profiler').getByText('Data Observability').click();
   await profileResponse;
   await page.getByRole('tab', { name: 'Table Profile' }).click();
 
@@ -206,7 +275,9 @@ export const addTestCaseToLogicalTestSuite = async (
   testSuiteName: string,
   testCaseName: string
 ) => {
-  await page.goto(`test-suites/${testSuiteName}`);
+  await page.goto(`test-suites/${testSuiteName}`, {
+    waitUntil: 'domcontentloaded',
+  });
   await waitForAllLoadersToDisappear(page);
   const testCaseResponse = page.waitForResponse(
     '/api/v1/dataQuality/testCases/search/list*'
@@ -279,11 +350,13 @@ export const addTestSuitePipeline = async (page: Page) => {
   const pipelineTab = page.getByRole('tab', { name: 'Pipeline' });
   await expect(pipelineTab).toBeVisible();
   await pipelineTab.click();
-  const testSuiteByNameResponse = page.waitForResponse(
+  const testSuiteByNameResponse = waitForResponseWithStatus(
+    page,
     (res) =>
+      res.request().method() === 'GET' &&
       res.url().includes('/api/v1/dataQuality/testSuites/name/') &&
-      res.url().includes('fields=owners') &&
-      res.status() === 200
+      res.url().includes('fields=owners'),
+    200
   );
   const emptyStateAddButton = page
     .getByTestId('empty-placeholder')
@@ -294,19 +367,22 @@ export const addTestSuitePipeline = async (page: Page) => {
   await addButton.click();
   await testSuiteByNameResponse;
 
+  // The pipeline form's toggle shares this testid with the test-case list's
+  // checkbox; the toggle's wrapper is the one holding a switch.
   const selectAllTestCases = page
     .getByTestId('select-all-test-cases')
-    .and(page.getByRole('switch'));
+    .filter({ has: page.getByRole('switch') });
   await expect(selectAllTestCases).toBeVisible();
   await selectAllTestCases.click();
 
-  await expect(page.getByTestId('cron-type').getByText('Day')).toBeAttached();
+  await expectScheduleFrequencySelected(page, 'day');
 
-  const deployResponse = page.waitForResponse(
+  const deployResponse = waitForResponseWithStatus(
+    page,
     (res) =>
       res.url().includes('/api/v1/services/ingestionPipelines/deploy') &&
-      res.request().method() === 'POST' &&
-      res.status() === 200
+      res.request().method() === 'POST',
+    200
   );
   await page.getByTestId('deploy-button').click();
   await deployResponse;
@@ -316,10 +392,12 @@ export const addTestSuitePipeline = async (page: Page) => {
     /has been created and deployed successfully/
   );
 
-  const testSuiteDetailsResponse = page.waitForResponse(
+  const testSuiteDetailsResponse = waitForResponseWithStatus(
+    page,
     (res) =>
-      res.url().includes('/api/v1/dataQuality/testSuites/name/') &&
-      res.status() === 200
+      res.request().method() === 'GET' &&
+      res.url().includes('/api/v1/dataQuality/testSuites/name/'),
+    200
   );
   await page.getByTestId('view-service-button').click();
   await testSuiteDetailsResponse;
@@ -342,12 +420,120 @@ export const selectTestCasesByCheckbox = async (
   const rows = page.locator(
     '[data-testid="test-case-table"] tbody tr[data-key]'
   );
-  await expect(rows.first()).toBeVisible();
+  await expect(rows.filter({ visible: true })).not.toHaveCount(0);
 
-  for (let i = 0; i < count; i++) {
-    const checkboxLabel = rows.nth(i).locator('label[slot="selection"]');
-    await checkboxLabel.click();
+  for (const row of (await rows.all()).slice(0, count)) {
+    await row.locator('label[slot="selection"]').click();
   }
+};
+
+/**
+ * A test case the calling spec created, together with a term that finds it --
+ * and only it -- in the Test Cases list search.
+ */
+export type OwnedTestCase = {
+  name: string;
+  /**
+   * A substring of `name` that is unique across the server. The list search is
+   * Elasticsearch-backed and tokenises names on `_`, so searching a whole
+   * `test_column_values_not_null_<uuid>` name matches *every*
+   * `test_column_values_not_null_*` test case on the server. On a shared server
+   * that is dozens of rows, ranked by relevance rather than exactness, and the
+   * one we want drops off page 1. The uuid segment is the part that narrows it.
+   */
+  searchTerm: string;
+};
+
+/**
+ * Names a test case the calling spec will own, so it can be found again by a
+ * term that cannot collide with another spec's test cases.
+ */
+export const ownedTestCase = (namePrefix: string): OwnedTestCase => {
+  const searchTerm = uuid();
+
+  return { name: `${namePrefix}_${searchTerm}`, searchTerm };
+};
+
+/**
+ * Polls the test case search endpoint until every one of `testCases` is visible
+ * to it.
+ *
+ * The Data Quality > Test Cases list is Elasticsearch-backed, so a test case
+ * created over the API is not immediately findable. Call this after creating
+ * them and before any UI search. Mirrors the query the list page issues
+ * (`q=*term*` + `includeAllTests`) so the poll and the UI agree on what is
+ * visible.
+ */
+export async function waitForTestCasesToBeIndexed(
+  apiContext: APIRequestContext,
+  testCases: OwnedTestCase[]
+): Promise<void> {
+  await expect
+    .poll(
+      async () => {
+        for (const testCase of testCases) {
+          const res = await apiContext.get(
+            `/api/v1/dataQuality/testCases/search/list` +
+              `?q=*${testCase.searchTerm}*&includeAllTests=true&limit=50`
+          );
+
+          if (!res.ok()) {
+            throw new Error(`HTTP ${res.status()} querying ${res.url()}`);
+          }
+
+          const body = await res.json();
+          const isIndexed = (body.data ?? []).some(
+            (indexed: { name?: string }) => indexed.name === testCase.name
+          );
+
+          if (!isIndexed) {
+            return false;
+          }
+        }
+
+        return true;
+      },
+      { timeout: 45_000, intervals: [1_000, 2_000, 5_000] }
+    )
+    .toBe(true);
+}
+
+/**
+ * Filters the Test Cases list down to `testCase` and ticks its checkbox.
+ *
+ * Always prefer this over `selectTestCasesByCheckbox` when the test goes on to
+ * act on the selection (adding to a Bundle Suite, asserting a suite's contents,
+ * ...). The unfiltered list is sorted by most-recent result descending and is
+ * shared with every other spec running against the same server, so row 1 is
+ * whichever test case some other worker created seconds ago -- and is liable to
+ * be hard-deleted by that worker's cleanup while this test is still using it.
+ * Selecting by name keeps a test on entities it owns and controls the lifetime
+ * of.
+ */
+export const searchAndSelectTestCase = async (
+  page: Page,
+  testCase: OwnedTestCase
+) => {
+  const searchResponse = waitForResponseWithStatus(
+    page,
+    (res) =>
+      res.request().method() === 'GET' &&
+      res.url().includes('/api/v1/dataQuality/testCases/search/list') &&
+      res.url().includes(testCase.searchTerm),
+    200
+  );
+  await page.getByTestId('searchbar').fill(testCase.searchTerm);
+  await searchResponse;
+
+  const row = page
+    .locator('[data-testid="test-case-table"] tbody tr[data-key]')
+    .filter({ hasText: testCase.name });
+
+  // `searchTerm` is unique, so the filter resolves to exactly one row. Assert it
+  // here rather than relying on `.first()`, so a search that silently returns
+  // the wrong set fails on the search instead of somewhere downstream.
+  await expect(row).toHaveCount(1);
+  await row.locator('label[slot="selection"]').click();
 };
 
 export const verifyTestCaseSelectionCount = async (
@@ -401,14 +587,13 @@ export const selectExistingBundleSuite = async (
   await dropdownInput.click();
   await dropdownInput.fill(suiteName);
 
-  // AddToBundleSuiteModal still renders an antd Select (not migrated to the
-  // react-aria stack), so scope to the visible antd dropdown and its option
-  // rows. A generic `[role="listbox"]` matches multiple listboxes on the page
-  // (e.g. the header asset search) and resolves ambiguously.
-  const dropdown = page.locator('.ant-select-dropdown:visible');
-  const option = dropdown.locator('.ant-select-item-option', {
-    hasText: suiteName,
-  });
+  // Scope to the popover owned by this combobox: a generic listbox locator
+  // also matches other listboxes on the page (e.g. the header asset search).
+  await expect(dropdownInput).toHaveAttribute('aria-controls', /.+/);
+  const listboxId = (await dropdownInput.getAttribute('aria-controls')) ?? '';
+  const option = page
+    .locator(`[role="listbox"][id="${listboxId}"]`)
+    .getByRole('option', { name: suiteName });
 
   await expect(option).toBeVisible();
   await option.click();
@@ -424,7 +609,15 @@ export const submitAddToExistingBundleSuite = async (page: Page) => {
   );
 
   await modal.getByRole('button', { name: 'Add', exact: true }).click();
-  await addResponse;
+  const response = await addResponse;
+
+  // The modal stays open on a rejected add, so without this the failure only
+  // surfaces further down as a confusing "URL never changed" timeout. Surface
+  // the server's reason instead.
+  expect(
+    response.ok(),
+    `Adding test cases to the Bundle Suite failed: ${response.status()} ${await response.text()}`
+  ).toBe(true);
 };
 
 export const verifyBundleSuitePageLoaded = async (
@@ -443,7 +636,7 @@ export const verifyBundleSuitePageLoaded = async (
     .getByRole('row');
 
   await expect(testCaseRows).toHaveCount(expectedTestCaseCount, {
-    timeout: 30000,
+    timeout: ACTION_TIMEOUT,
   });
 };
 
@@ -567,40 +760,68 @@ export async function applyDashboardCertificationFilter(
 }
 
 /**
- * Polls the incident status API until an incident for `testCaseFqn` appears
- * within the [failTs-60s, failTs+120s] window.
- * Call this immediately after `addTestCaseResult` to guarantee the incident
- * document is indexed before any UI assertions.
- * Pass `expectedStatus` to also wait until the incident reaches that resolution
- * status (e.g. "Resolved") — useful after posting a status transition.
+ * Polls the incident search API until an incident for `testCaseFqn` appears
+ * within the [eventTs-60s, eventTs+120s] window.
+ * Call this after creating or updating an incident to guarantee the search
+ * document contains the state required by subsequent UI assertions.
+ * Assignee transitions filter on `updatedAt` because they update an existing
+ * incident whose original `timestamp` remains unchanged.
  */
 export async function waitForIncidentToBeIndexed(
   apiContext: APIRequestContext,
   testCaseFqn: string,
-  failTs: number,
-  expectedStatus?: string
+  eventTs: number,
+  expectedStatus?: string,
+  expectedAssignee?: string
 ): Promise<void> {
   await expect
     .poll(
       async () => {
         const res = await apiContext.get(
-          `/api/v1/dataQuality/testCases/testCaseIncidentStatus?latest=true` +
-            `&startTs=${failTs - 60_000}` +
-            `&endTs=${failTs + 120_000}`
+          '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list',
+          {
+            params: {
+              latest: true,
+              startTs: eventTs - 60_000,
+              endTs: eventTs + 120_000,
+              dateField: expectedAssignee ? 'updatedAt' : 'timestamp',
+              testCaseFQN: testCaseFqn,
+              ...(expectedStatus && {
+                testCaseResolutionStatusType: expectedStatus,
+              }),
+              ...(expectedAssignee && { assignee: expectedAssignee }),
+            },
+          }
         );
+
+        if (!res.ok()) {
+          throw new Error(`HTTP ${res.status()} querying ${res.url()}`);
+        }
+
         const body = await res.json();
 
         return (body.data ?? []).some(
           (i: {
             testCaseReference?: { fullyQualifiedName?: string };
             testCaseResolutionStatusType?: string;
+            testCaseResolutionStatusDetails?: {
+              assignee?: { name?: string };
+            };
           }) => {
             if (i.testCaseReference?.fullyQualifiedName !== testCaseFqn) {
               return false;
             }
 
-            return expectedStatus
-              ? i.testCaseResolutionStatusType === expectedStatus
+            if (
+              expectedStatus &&
+              i.testCaseResolutionStatusType !== expectedStatus
+            ) {
+              return false;
+            }
+
+            return expectedAssignee
+              ? i.testCaseResolutionStatusDetails?.assignee?.name ===
+                  expectedAssignee
               : true;
           }
         );

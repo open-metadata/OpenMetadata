@@ -2,6 +2,8 @@
 
 In this section, we provide guides and references to use the MicroStrategy connector.
 
+You can find further information on the MicroStrategy connector in the <a href="https://docs.open-metadata.org/connectors/dashboard/microstrategy" target="_blank">docs</a>.
+
 ## Connection Details
 
 $$section

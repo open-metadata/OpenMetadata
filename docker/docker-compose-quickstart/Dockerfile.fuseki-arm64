@@ -1,5 +1,5 @@
 # Multi-architecture Dockerfile for Apache Jena Fuseki
-FROM eclipse-temurin:17-jre-jammy
+FROM eclipse-temurin:21-jre-jammy
 
 # Fix for GPG signature issues and install dependencies
 RUN apt-get update || true && \
@@ -14,7 +14,7 @@ RUN apt-get update || true && \
     rm -rf /var/lib/apt/lists/*
 
 # Set Fuseki version
-ENV FUSEKI_VERSION=5.6.0
+ENV FUSEKI_VERSION=6.2.0
 ENV FUSEKI_HOME=/fuseki
 
 # Download and install Fuseki

@@ -14,7 +14,6 @@ Hex-specific query templates for fetching queries from various data warehouses
 
 import textwrap
 from enum import Enum
-from typing import Dict  # noqa: UP035
 
 
 class WarehouseType(Enum):
@@ -192,7 +191,7 @@ HEX_CLICKHOUSE_QUERY = textwrap.dedent(
 
 
 # Mapping of warehouse types to their query templates
-HEX_WAREHOUSE_QUERIES: Dict[WarehouseType, str] = {  # noqa: UP006
+HEX_WAREHOUSE_QUERIES: dict[WarehouseType, str] = {
     WarehouseType.SNOWFLAKE: HEX_SNOWFLAKE_QUERY,
     WarehouseType.BIGQUERY: HEX_BIGQUERY_QUERY,
     WarehouseType.DATABRICKS: HEX_DATABRICKS_QUERY,

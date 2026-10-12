@@ -9,6 +9,7 @@ public class GlossaryMapper implements EntityMapper<Glossary, CreateGlossary> {
   public Glossary createToEntity(CreateGlossary create, String user) {
     return copy(new Glossary(), create, user)
         .withProvider(create.getProvider())
-        .withMutuallyExclusive(create.getMutuallyExclusive());
+        .withMutuallyExclusive(create.getMutuallyExclusive())
+        .withOntologyConfiguration(create.getOntologyConfiguration());
   }
 }

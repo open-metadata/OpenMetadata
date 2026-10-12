@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/type/basic.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Basic",
   "description": "This schema defines basic common types that are used by other schemas.",
   "definitions": {
@@ -158,6 +158,12 @@
       "$comment" : "@om-field-type",
       "description": "Text in Markdown format.",
       "type": "string"
+    },
+    "nonBlankMarkdown": {
+      "description": "Nonblank text in Markdown format.",
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[\\s\\S]*\\S[\\s\\S]*$"
     },
     "expression": {
       "description": "Expression in SpEL.",

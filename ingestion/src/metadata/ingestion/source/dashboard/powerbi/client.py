@@ -17,7 +17,7 @@ import math
 import traceback
 from copy import deepcopy
 from time import sleep
-from typing import Any, List, Optional, Tuple  # noqa: UP035
+from typing import Any
 
 import msal
 from pydantic import BaseModel, ConfigDict
@@ -62,6 +62,13 @@ API_RESPONSE_MESSAGE_KEY = "message"
 AUTH_TOKEN_MAX_RETRIES = 5
 AUTH_TOKEN_RETRY_WAIT = 120
 
+# GetGroupsAsAdmin caps $top at 5000 and is rate limited to 50 requests/hour per
+# tenant, so paging in the largest allowed chunks keeps the shared quota intact.
+# https://learn.microsoft.com/en-us/rest/api/power-bi/admin/groups-get-groups-as-admin#limitations
+MAX_PAGINATION_ENTITY_PER_PAGE = 5000
+# Mirrors the schema default, applied when the connection sets the field to null.
+DEFAULT_PAGINATION_ENTITY_PER_PAGE = 100
+
 # Bounds the error body kept in the step's error log.
 ERROR_DETAIL_LIMIT = 200
 
@@ -94,7 +101,10 @@ class PowerBiApiClient:
 
     def __init__(self, config: PowerBIConnection):
         self.config = config
-        self.pagination_entity_per_page = min(100, self.config.pagination_entity_per_page)
+        self.pagination_entity_per_page = min(
+            MAX_PAGINATION_ENTITY_PER_PAGE,
+            self.config.pagination_entity_per_page or DEFAULT_PAGINATION_ENTITY_PER_PAGE,
+        )
         self.msal_client = msal.ConfidentialClientApplication(
             client_id=self.config.clientId,
             client_credential=self.config.clientSecret.get_secret_value(),
@@ -112,7 +122,7 @@ class PowerBiApiClient:
         )
         self.client = TrackedREST(client_config, source_name="powerbi")
 
-    def get_auth_token(self) -> Tuple[str, str]:  # noqa: UP006
+    def get_auth_token(self) -> tuple[str, str]:
         """
         Method to generate PowerBi access token
         """
@@ -132,7 +142,7 @@ class PowerBiApiClient:
         logger.info("PowerBi Access Token generated successfully")
         return auth_response.access_token, auth_response.expires_in
 
-    def generate_new_auth_token(self) -> Optional[dict]:  # noqa: UP045
+    def generate_new_auth_token(self) -> dict | None:
         """generate new auth token"""
         retry = AUTH_TOKEN_MAX_RETRIES
         while retry:
@@ -154,7 +164,7 @@ class PowerBiApiClient:
                     logger.warning("Could not generate new token after maximum retries, Please check provided configs")
         return None
 
-    def get_auth_token_from_cache(self) -> Optional[dict]:  # noqa: UP045
+    def get_auth_token_from_cache(self) -> dict | None:
         """fetch auth token from cache"""
         retry = AUTH_TOKEN_MAX_RETRIES
         while retry:
@@ -177,7 +187,7 @@ class PowerBiApiClient:
                     )
         return None
 
-    def fetch_dashboards(self) -> Optional[List[PowerBIDashboard]]:  # noqa: UP006, UP045
+    def fetch_dashboards(self) -> list[PowerBIDashboard] | None:
         """Get dashboards method
         Returns:
             List[PowerBIDashboard]
@@ -193,7 +203,7 @@ class PowerBiApiClient:
         group = self.fetch_all_workspaces()[0]
         return self.fetch_all_org_dashboards(group_id=group.id)
 
-    def _test_get(self, path: str, params: Optional[dict] = None) -> Any:  # noqa: UP045
+    def _test_get(self, path: str, params: dict | None = None) -> Any:
         """Authenticated GET that raises PowerBiApiError on a non-success status.
 
         Test-connection's accessor. ``get`` decides a body is an error by looking for
@@ -231,7 +241,7 @@ class PowerBiApiClient:
             raise PowerBiApiError(response.status_code, path, str(data[API_RESPONSE_MESSAGE_KEY])[:ERROR_DETAIL_LIMIT])
         return data
 
-    def test_fetch_dashboards(self) -> Optional[List[PowerBIDashboard]]:  # noqa: UP006, UP045
+    def test_fetch_dashboards(self) -> list[PowerBIDashboard] | None:
         """Fetch dashboards for the test-connection GetDashboards step.
 
         Separate from ``fetch_dashboards``, which is the ingestion path: that one
@@ -247,7 +257,7 @@ class PowerBiApiClient:
         group_id = groups.value[0].id
         return DashboardsResponse(**self._test_get(f"/myorg/groups/{group_id}/dashboards")).value
 
-    def fetch_all_org_dashboards(self, group_id: str) -> Optional[List[PowerBIDashboard]]:  # noqa: UP006, UP045
+    def fetch_all_org_dashboards(self, group_id: str) -> list[PowerBIDashboard] | None:
         """Method to fetch all powerbi dashboards within the group
         Returns:
             List[PowerBIDashboard]
@@ -266,7 +276,7 @@ class PowerBiApiClient:
 
         return None
 
-    def fetch_all_org_reports(self, group_id: str) -> Optional[List[PowerBIReport]]:  # noqa: UP006, UP045
+    def fetch_all_org_reports(self, group_id: str) -> list[PowerBIReport] | None:
         """Method to fetch all powerbi reports within the group
         Returns:
             List[PowerBIReport]
@@ -285,7 +295,7 @@ class PowerBiApiClient:
 
         return None
 
-    def fetch_all_org_datasets(self, group_id: str) -> Optional[List[Dataset]]:  # noqa: UP006, UP045
+    def fetch_all_org_datasets(self, group_id: str) -> list[Dataset] | None:
         """Method to fetch all powerbi datasets within the group
         Returns:
             List[Dataset]
@@ -304,7 +314,7 @@ class PowerBiApiClient:
 
         return None
 
-    def fetch_all_org_tiles(self, group_id: str, dashboard_id: str) -> Optional[List[Tile]]:  # noqa: UP006, UP045
+    def fetch_all_org_tiles(self, group_id: str, dashboard_id: str) -> list[Tile] | None:
         """Method to fetch all powerbi dashboard tiles
         Returns:
             List[Tile]
@@ -323,7 +333,7 @@ class PowerBiApiClient:
 
         return None
 
-    def fetch_dataset_tables(self, group_id: str, dataset_id: str) -> Optional[List[PowerBiTable]]:  # noqa: UP006, UP045
+    def fetch_dataset_tables(self, group_id: str, dataset_id: str) -> list[PowerBiTable] | None:
         """Method to fetch dataset tables
         Returns:
             List[PowerBiTable]
@@ -343,7 +353,7 @@ class PowerBiApiClient:
 
         return None
 
-    def fetch_report_pages(self, group_id: str, report_id: str) -> Optional[List[dict]]:  # noqa: UP006, UP045
+    def fetch_report_pages(self, group_id: str, report_id: str) -> list[dict] | None:
         # get report pages for report url formation
         try:
             # https://api.powerbi.com/v1.0/myorg/groups/4e57dcbb-***/reports/a2902011-***/pages
@@ -356,7 +366,7 @@ class PowerBiApiClient:
             logger.warning(f"Error fetching report pages: {exc}")
         return []
 
-    def fetch_report_datasources(self, group_id: str, report_id: str) -> Optional[List[Datasource]]:  # noqa: UP006, UP045
+    def fetch_report_datasources(self, group_id: str, report_id: str) -> list[Datasource] | None:
         """Fetch datasources for a report in a group
         API: https://learn.microsoft.com/en-us/rest/api/power-bi/reports/get-datasources-in-group
         """
@@ -413,7 +423,7 @@ class PowerBiApiClient:
             logger.warning(f"Error converting regex '{regex}' to OData condition: {exc}")
             return ""
 
-    def create_filter_query(self, filter_pattern) -> Optional[str]:  # noqa: UP045
+    def create_filter_query(self, filter_pattern) -> str | None:
         """
         Create a complete filter query for workspaces from filter_pattern
         """
@@ -453,7 +463,7 @@ class PowerBiApiClient:
             return None
 
     # pylint: disable=too-many-branches,too-many-statements
-    def fetch_all_workspaces(self, filter_pattern: Optional[FilterPattern] = None) -> Optional[List[Group]]:  # noqa: C901, UP006, UP045
+    def fetch_all_workspaces(self, filter_pattern: FilterPattern | None = None) -> list[Group] | None:  # noqa: C901
         """Method to fetch all powerbi workspace details
         Returns:
             Group
@@ -569,7 +579,7 @@ class PowerBiApiClient:
             logger.warning(f"Error fetching workspaces: {exc}")
         return None
 
-    def initiate_workspace_scan(self, workspace_ids: List[str]) -> Optional[WorkSpaceScanResponse]:  # noqa: UP006, UP045
+    def initiate_workspace_scan(self, workspace_ids: list[str]) -> WorkSpaceScanResponse | None:
         """Method to initiate workspace scan
         Args:
             workspace_ids:
@@ -595,7 +605,7 @@ class PowerBiApiClient:
 
         return None
 
-    def fetch_workspace_scan_status(self, scan_id: str) -> Optional[WorkSpaceScanResponse]:  # noqa: UP045
+    def fetch_workspace_scan_status(self, scan_id: str) -> WorkSpaceScanResponse | None:
         """Get Workspace scan status by id method
         Args:
             scan_id:
@@ -615,7 +625,7 @@ class PowerBiApiClient:
 
         return None
 
-    def fetch_workspace_scan_result(self, scan_id: str) -> Optional[Workspaces]:  # noqa: UP045
+    def fetch_workspace_scan_result(self, scan_id: str) -> Workspaces | None:
         """Get Workspace scan result by id method.
 
         Parse each workspace individually so a single malformed workspace
@@ -630,7 +640,7 @@ class PowerBiApiClient:
             response_data = self.client.get(f"/myorg/admin/workspaces/scanResult/{scan_id}")
             if not response_data:
                 return None
-            parsed_workspaces: List[Group] = []  # noqa: UP006
+            parsed_workspaces: list[Group] = []
             for raw_ws in response_data.get("workspaces", []) or []:  # pyright: ignore[reportAttributeAccessIssue]
                 if isinstance(raw_ws, dict) and raw_ws.get("id") is not None:
                     try:
@@ -684,7 +694,7 @@ class PowerBiApiClient:
 
         return False
 
-    def fetch_dataflow_export(self, dataflow_id: str) -> Optional[DataflowExportResponse]:  # noqa: UP045
+    def fetch_dataflow_export(self, dataflow_id: str) -> DataflowExportResponse | None:
         """Method to export dataflow definition using admin API
         API: https://api.powerbi.com/v1.0/myorg/admin/dataflows/{dataflowId}/export
         API doc: https://learn.microsoft.com/en-us/rest/api/power-bi/admin/dataflows-export-dataflow-as-admin
@@ -712,4 +722,4 @@ class PowerBiClient(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     api_client: PowerBiApiClient
-    file_client: Optional[PowerBiFileClient]  # noqa: UP045
+    file_client: PowerBiFileClient | None

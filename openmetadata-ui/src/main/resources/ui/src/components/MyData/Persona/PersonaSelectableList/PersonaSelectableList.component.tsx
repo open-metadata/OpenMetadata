@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 import {
-  Button,
+  Box,
+  ButtonUtility,
   Popover,
-  RefSelectProps,
-  Select,
-  Space,
-  Tooltip,
+  PopoverTrigger,
   Typography,
-} from 'antd';
+} from '@openmetadata/ui-core-components';
+import { Button, RefSelectProps, Select } from 'antd';
 import classNames from 'classnames';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { debounce } from 'lodash';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as PersonaIcon } from '../../../../assets/svg/ic-persona-new.svg';
@@ -30,7 +30,7 @@ import { ReactComponent as SavePopoverIcon } from '../../../../assets/svg/ic-pop
 import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference } from '../../../../generated/entity/type';
-import { getAllPersonas } from '../../../../rest/PersonaAPI';
+import { getAllPersonas, searchPersonas } from '../../../../rest/PersonaAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getEntityReferenceListFromEntities } from '../../../../utils/EntityReferenceUtils';
 import { normalizeToArray } from '../../../../utils/ObjectUtils';
@@ -41,33 +41,40 @@ export const PersonaListItemRenderer = (props: EntityReference) => {
   const { t } = useTranslation();
 
   return (
-    <Space>
+    <Box
+      inline
+      align="center"
+      className="layout-space layout-space-horizontal"
+      gap={2}
+      itemClassName="layout-space-item">
       {props ? (
-        <Typography.Text>{getEntityName(props)}</Typography.Text>
+        <Typography>{getEntityName(props)}</Typography>
       ) : (
-        <Typography.Text className="text-grey-body">
+        <Typography className="text-grey-body">
           {t('message.no-data-available')}
-        </Typography.Text>
+        </Typography>
       )}
-    </Space>
+    </Box>
   );
 };
+
+const renderMaxTagPlaceholder = (
+  count: number,
+  t: ReturnType<typeof useTranslation>['t']
+) => (
+  <span className="max-tag-text">{t('label.plus-count-more', { count })}</span>
+);
 
 export const PersonaSelectableList = ({
   hasPermission,
   selectedPersonas = [],
   onUpdate,
-  children,
-  popoverProps,
   personaList,
   isDefaultPersona,
   multiSelect,
 }: PersonaSelectableListProps) => {
   const [popupVisible, setPopupVisible] = useState(false);
   const { t } = useTranslation();
-  const [allPersona, setAllPersona] = useState<EntityReference[]>(
-    personaList ?? []
-  );
   const [isSaving, setIsSaving] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
   const [currentlySelectedPersonas, setCurrentlySelectedPersonas] = useState<
@@ -107,58 +114,96 @@ export const PersonaSelectableList = ({
     return () => observer.disconnect();
   }, [isDropdownOpen, isDefaultPersona]);
 
-  const fetchOptions = async (searchText: string, after?: string) => {
-    if (searchText) {
-      try {
-        const filteredData = allPersona.filter(
-          (persona) =>
-            persona.displayName?.includes(searchText) ||
-            persona.name?.includes(searchText) ||
-            persona.description?.includes(searchText)
-        );
+  const [selectOptions, setSelectOptions] = useState<EntityReference[]>([]);
+  // Server-side search replaces selectOptions per query, so the selected FQNs are
+  // resolved against this cache of every persona ever seen — otherwise a persona
+  // picked under a previous query is dropped on save.
+  const personaByFqnRef = useRef<Map<string, EntityReference>>(new Map());
+  const latestRequestIdRef = useRef(0);
 
-        return { data: filteredData, paging: { total: filteredData.length } };
-      } catch (error) {
-        return { data: [], paging: { total: 0 } };
+  const cachePersonasByFqn = useCallback((personas: EntityReference[]) => {
+    personas.forEach((persona) => {
+      if (persona.fullyQualifiedName) {
+        personaByFqnRef.current.set(persona.fullyQualifiedName, persona);
       }
-    } else {
+    });
+  }, []);
+
+  useEffect(() => {
+    cachePersonasByFqn(selectedPersonas);
+    if (personaList) {
+      cachePersonasByFqn(personaList);
+    }
+  }, [selectedPersonas, personaList, cachePersonasByFqn]);
+
+  // A caller-provided `personaList` is a fixed set filtered locally (case-
+  // insensitively, like the server); otherwise search hits the server endpoint.
+  const fetchOptions = useCallback(
+    async (searchText: string): Promise<EntityReference[]> => {
+      let options: EntityReference[] = [];
       try {
         if (personaList) {
-          return { data: personaList, paging: { total: personaList.length } };
+          const query = searchText.toLowerCase();
+          options = searchText
+            ? personaList.filter(
+                (persona) =>
+                  persona.displayName?.toLowerCase().includes(query) ||
+                  persona.name?.toLowerCase().includes(query)
+              )
+            : personaList;
+        } else if (searchText) {
+          const results = await searchPersonas(searchText, PAGE_SIZE_LARGE);
+          options = getEntityReferenceListFromEntities(
+            results,
+            EntityType.PERSONA
+          );
+        } else {
+          const { data } = await getAllPersonas({ limit: PAGE_SIZE_LARGE });
+          options = getEntityReferenceListFromEntities(
+            data,
+            EntityType.PERSONA
+          );
         }
-        const { data, paging } = await getAllPersonas({
-          limit: PAGE_SIZE_LARGE,
-          after: after ?? undefined,
-        });
-        const filterData = getEntityReferenceListFromEntities(
-          data,
-          EntityType.PERSONA
-        );
-
-        setAllPersona(filterData);
-
-        return { data: filterData, paging };
       } catch (error) {
-        return { data: [], paging: { total: 0 } };
+        options = [];
       }
-    }
-  };
-  const [selectOptions, setSelectOptions] = useState<EntityReference[]>([]);
+      cachePersonasByFqn(options);
 
-  const loadOptions = async () => {
-    const { data } = await fetchOptions('');
-    setSelectOptions(data);
-  };
+      return options;
+    },
+    [personaList, cachePersonasByFqn]
+  );
+
+  const runSearch = useCallback(
+    async (searchText: string) => {
+      const requestId = ++latestRequestIdRef.current;
+      const options = await fetchOptions(searchText);
+      // Drop a slow earlier response that resolves after a newer query.
+      if (requestId === latestRequestIdRef.current) {
+        setSelectOptions(options);
+      }
+    },
+    [fetchOptions]
+  );
+
+  const loadOptions = useCallback(() => runSearch(''), [runSearch]);
+
+  const handleSearch = useMemo(
+    () => debounce((searchText: string) => runSearch(searchText), 300),
+    [runSearch]
+  );
+
+  useEffect(() => () => handleSearch.cancel(), [handleSearch]);
 
   useEffect(() => {
     loadOptions();
-  }, [personaList]);
+  }, [loadOptions]);
 
   useEffect(() => {
     if (popupVisible) {
       loadOptions();
     }
-  }, [popupVisible]);
+  }, [popupVisible, loadOptions]);
 
   const handlePersonaUpdate = () => {
     setIsSaving(true);
@@ -176,19 +221,13 @@ export const PersonaSelectableList = ({
     }
   };
 
-  const handleChange = useCallback(
-    (selectedPersonas: string | string[]) => {
-      const selectedArr = normalizeToArray(selectedPersonas);
-
-      const selectedPersonasList = selectOptions.filter(
-        (persona) =>
-          persona.fullyQualifiedName &&
-          selectedArr.includes(persona.fullyQualifiedName)
-      );
-      setCurrentlySelectedPersonas(selectedPersonasList);
-    },
-    [selectOptions]
-  );
+  const handleChange = useCallback((selected: string | string[]) => {
+    const selectedFqns = normalizeToArray(selected);
+    const selectedPersonasList = selectedFqns
+      .map((fqn) => personaByFqnRef.current.get(fqn))
+      .filter((persona): persona is EntityReference => Boolean(persona));
+    setCurrentlySelectedPersonas(selectedPersonasList);
+  }, []);
 
   if (!hasPermission) {
     return null;
@@ -198,9 +237,21 @@ export const PersonaSelectableList = ({
   };
 
   return (
-    <Popover
-      destroyTooltipOnHide
-      content={
+    <PopoverTrigger isOpen={popupVisible} onOpenChange={setPopupVisible}>
+      <ButtonUtility
+        color="tertiary"
+        data-testid={`${isDefaultPersona ? 'default-' : ''}edit-user-persona`}
+        icon={<EditIcon height={16} width={16} />}
+        size="xs"
+        tooltip={t('label.edit-entity', {
+          entity: t('label.persona'),
+        })}
+      />
+      <Popover
+        className="profile-edit-popover-card"
+        containerClassName="tw:w-95 tw:p-5"
+        data-testid="persona-popover"
+        placement="bottom start">
         <div
           className="user-profile-edit-popover-card relative"
           style={{
@@ -211,16 +262,17 @@ export const PersonaSelectableList = ({
               <PersonaIcon height={16} />
             </div>
 
-            <Typography.Text className="user-profile-edit-popover-card-title">
+            <Typography className="user-profile-edit-popover-card-title">
               {isDefaultPersona
                 ? t('label.default-persona')
                 : t('label.persona')}
-            </Typography.Text>
+            </Typography>
           </div>
 
           <div className="border" id="area" style={{ borderRadius: '5px' }}>
             <Select
               allowClear
+              showSearch
               className={classNames('profile-edit-popover', {
                 'single-select': isDefaultPersona,
               })}
@@ -234,12 +286,14 @@ export const PersonaSelectableList = ({
                 maxHeight: 'fit-content',
                 overflow: 'auto',
               }}
+              filterOption={false}
+              getPopupContainer={(trigger) =>
+                trigger.parentElement ?? document.body
+              }
               maxTagCount={3}
-              maxTagPlaceholder={(omittedValues) => (
-                <span className="max-tag-text">
-                  {t('label.plus-count-more', { count: omittedValues.length })}
-                </span>
-              )}
+              maxTagPlaceholder={(omittedValues) =>
+                renderMaxTagPlaceholder(omittedValues.length, t)
+              }
               mode={isDefaultPersona ? undefined : 'multiple'}
               open={isDropdownOpen}
               options={selectOptions?.map((persona) => ({
@@ -256,6 +310,7 @@ export const PersonaSelectableList = ({
               onDropdownVisibleChange={(open) => {
                 setIsDropdownOpen(open);
               }}
+              onSearch={handleSearch}
             />
           </div>
 
@@ -283,30 +338,7 @@ export const PersonaSelectableList = ({
             />
           </div>
         </div>
-      }
-      data-testid="persona-popover"
-      open={popupVisible}
-      overlayClassName="profile-edit-popover-card"
-      placement="bottomLeft"
-      showArrow={false}
-      style={{ borderRadius: '12px' }}
-      trigger="click"
-      onOpenChange={setPopupVisible}
-      {...popoverProps}>
-      {children ?? (
-        <Tooltip
-          title={t('label.edit-entity', {
-            entity: t('label.persona'),
-          })}>
-          <EditIcon
-            className="cursor-pointer"
-            data-testid={`${
-              isDefaultPersona ? 'default-' : ''
-            }edit-user-persona`}
-            height={16}
-          />
-        </Tooltip>
-      )}
-    </Popover>
+      </Popover>
+    </PopoverTrigger>
   );
 };

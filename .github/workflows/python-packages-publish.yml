@@ -14,12 +14,15 @@ name: Publish Python Packages
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   publish:
     runs-on: ubuntu-latest
     environment: release
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Set up Python 3.10
         uses: actions/setup-python@v6
         with:

@@ -10,7 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Typography } from 'antd';
+
+import { Grid, Typography } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
+
 import classNames from 'classnames';
 import { isEmpty, map } from 'lodash';
 import { FC, useEffect, useState } from 'react';
@@ -32,6 +35,7 @@ import {
 import { getListKnowledgePages } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getSafeHttpUrl } from '../../../utils/StringUtils';
 
 const KnowledgePages: FC = () => {
   const { t } = useTranslation();
@@ -86,14 +90,16 @@ const KnowledgePages: FC = () => {
         const quickLink = knowledgePage.page as QuickLink;
 
         return (
-          <Row
-            className={classNames({
+          <Grid
+            className={`layout-row layout-grid ${classNames({
               'm-b-sm': knowledgePages.length - 1 !== index,
-            })}
+            })}`}
             data-testid="article-entry"
-            gutter={[0, 4]}
-            key={knowledgePage.id}>
-            <Col className="d-flex items-center gap-2" span={24}>
+            key={knowledgePage.id}
+            style={{ ...getLayoutGutter(0, 4) }}>
+            <Grid.Item
+              className="layout-column d-flex items-center gap-2"
+              span={24}>
               <span>
                 {isQuickLink ? (
                   <LinkIcon
@@ -117,21 +123,24 @@ const KnowledgePages: FC = () => {
                 target={isQuickLink ? '_blank' : '_self'}
                 to={
                   isQuickLink
-                    ? quickLink.url
+                    ? getSafeHttpUrl(quickLink.url) ?? '#'
                     : {
                         pathname: contextCenterClassBase.getArticlePath(
                           knowledgePage.fullyQualifiedName
                         ),
                       }
                 }>
-                <Typography.Text
+                <Typography
                   className="article-header"
-                  ellipsis={{ tooltip: true }}>
+                  ellipsis={{
+                    tooltip: true,
+                    excludeTriggerFromTabOrder: true,
+                  }}>
                   {getEntityName(knowledgePage)}
-                </Typography.Text>
+                </Typography>
               </Link>
-            </Col>
-          </Row>
+            </Grid.Item>
+          </Grid>
         );
       })}
     </div>
@@ -155,7 +164,7 @@ const KnowledgePages: FC = () => {
     <WidgetCard
       dataTestId="knowledge-center"
       headerExtra={headerExtra}
-      title={t('label.knowledge-center')}>
+      title={t('label.context-center')}>
       {content}
     </WidgetCard>
   );

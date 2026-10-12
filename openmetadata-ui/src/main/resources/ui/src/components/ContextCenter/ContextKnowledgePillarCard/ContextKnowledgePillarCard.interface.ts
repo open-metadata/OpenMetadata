@@ -19,6 +19,7 @@ export interface PillarRecentItem {
   title: string;
   meta: string[];
   icon?: ReactElement;
+  onClick: () => void;
 }
 
 export interface ContextKnowledgePillarCardProps {

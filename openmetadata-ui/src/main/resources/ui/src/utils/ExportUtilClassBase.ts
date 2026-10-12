@@ -13,7 +13,6 @@
 
 import { ExportData } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { ExportTypes } from '../constants/Export.constants';
-import { exportPNGImageFromElement } from './Export/ExportUtils';
 
 class ExportUtilClassBase {
   public getExportTypeOptions(): {
@@ -26,12 +25,16 @@ class ExportUtilClassBase {
     }));
   }
 
-  public exportMethodBasedOnType(data: {
+  public async exportMethodBasedOnType(data: {
     exportType: ExportTypes;
     exportData: ExportData;
   }) {
     const { exportType, exportData } = data;
     if (exportType === ExportTypes.PNG) {
+      const { exportPNGImageFromElement } = await import(
+        './Export/ExportUtils'
+      );
+
       return exportPNGImageFromElement(exportData);
     }
 

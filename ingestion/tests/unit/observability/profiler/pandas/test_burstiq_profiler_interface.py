@@ -517,3 +517,14 @@ class TestBurstIQProfilerIntegration:
             col_prof = profile_results["columns"][col_name]
             assert col_prof["name"] == col_name
             assert "timestamp" in col_prof
+
+    def test_no_object_store_stats_are_emitted(self):
+        """BurstIQ is not backed by an object store, so the table metrics carry no storage stats."""
+        df_factory = lambda: iter([DF_NORMAL.copy()])  # noqa: E731
+        with _make_interface(df_factory) as interface:
+            all_metrics = _build_all_threadpool_metrics(interface, FULL_TABLE_ENTITY)
+            profile_results = interface.get_all_metrics(all_metrics)
+
+        assert "rowCount" in profile_results["table"]
+        assert "sizeInBytes" not in profile_results["table"]
+        assert "createDateTime" not in profile_results["table"]

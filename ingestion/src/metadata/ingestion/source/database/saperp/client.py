@@ -14,7 +14,7 @@ Client to interact with SAP ERP APIs
 
 import math
 import traceback
-from typing import Any, List, Optional, Union  # noqa: UP035
+from typing import Any
 
 from metadata.generated.schema.entity.services.connections.database.sapErpConnection import (
     SapErpConnection,
@@ -95,7 +95,7 @@ class SapErpClient:
 
     def paginate(
         self, api_url: str, params_data: dict, entities_per_page: int, model_class: Any
-    ) -> List[Union[SapErpTable, SapErpColumn]]:  # noqa: UP006, UP007
+    ) -> list[SapErpTable | SapErpColumn]:
         """
         Method to paginate the APIs
         """
@@ -121,7 +121,7 @@ class SapErpClient:
                 logger.warning(f"Error fetching entities for pagination: {exc}")
         return entities_list
 
-    def list_tables(self) -> Optional[List[SapErpTable]]:  # noqa: UP006, UP045
+    def list_tables(self) -> list[SapErpTable] | None:
         """
         List all tables on the SAP ERP instance
         """
@@ -137,7 +137,7 @@ class SapErpClient:
         )
         return table_list or None
 
-    def list_columns(self, table_name: str) -> Optional[List[SapErpColumn]]:  # noqa: UP006, UP045
+    def list_columns(self, table_name: str) -> list[SapErpColumn] | None:
         """
         List all the columns on the SAP ERP instance
         """

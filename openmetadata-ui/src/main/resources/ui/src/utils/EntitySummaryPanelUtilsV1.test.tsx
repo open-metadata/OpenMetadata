@@ -84,8 +84,37 @@ jest.mock('./ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-jest.mock('../components/common/FieldCard', () => ({
-  FieldCard: jest.fn(({ fieldName, dataType, description }) => (
+jest.mock('./ColorUtils', () => ({
+  reduceColorOpacity: jest.fn().mockReturnValue('rgba(0,0,0,0.05)'),
+}));
+
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  ClassificationTag: jest
+    .fn()
+    .mockImplementation(({ label, color, icon, ...props }) => (
+      <span
+        data-color={color}
+        data-icon={icon}
+        data-testid={props['data-testid'] ?? 'tag-chip'}>
+        {label}
+      </span>
+    )),
+  GlossaryTag: jest
+    .fn()
+    .mockImplementation(({ label, color, icon, ...props }) => (
+      <span
+        data-color={color}
+        data-icon={icon}
+        data-testid={props['data-testid'] ?? 'tag-chip'}>
+        {label}
+      </span>
+    )),
+}));
+
+jest.mock('../components/common/FieldCard/FieldCard', () => ({
+  __esModule: true,
+  default: jest.fn(({ fieldName, dataType, description }) => (
     <div data-testid={`field-card-${fieldName}`}>
       <div data-testid={`field-name-${fieldName}`}>{fieldName}</div>
       <div data-testid={`field-type-${fieldName}`}>{dataType}</div>

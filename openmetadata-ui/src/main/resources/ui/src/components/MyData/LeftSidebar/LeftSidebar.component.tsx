@@ -11,10 +11,12 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Layout, Menu, MenuProps, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Layout, Menu, MenuProps } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
 import classNames from 'classnames';
 import { noop } from 'lodash';
+import { MenuInfo } from 'rc-menu/lib/interface';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -27,6 +29,10 @@ import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCu
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useSidebarItems } from '../../../hooks/useSidebarItems';
 import leftSidebarClassBase from '../../../utils/LeftSidebarClassBase';
+import {
+  getSidebarActiveKeys,
+  getSidebarPathname,
+} from '../../../utils/LeftSidebarUtils';
 import { useAuthProvider } from '../../Auth/AuthProviders/AuthProvider';
 import BrandImage from '../../common/BrandImage/BrandImage';
 import './left-sidebar.less';
@@ -49,14 +55,14 @@ const LeftSidebar = () => {
 
   const sideBarItems = useSidebarItems();
 
-  const selectedKeys = useMemo(() => {
-    const pathArray = location.pathname.split('/');
-    const deepPath = [...pathArray].splice(0, 3).join('/');
-
-    return leftSidebarClassBase.getSidebarNestedKeys()[deepPath]
-      ? [deepPath]
-      : [pathArray.splice(0, 2).join('/')];
-  }, [location.pathname]);
+  const selectedKeys = useMemo(
+    () =>
+      getSidebarActiveKeys(
+        getSidebarPathname(location.pathname, location.state),
+        leftSidebarClassBase.getSidebarNestedKeys()
+      ),
+    [location.pathname, location.state]
+  );
 
   const handleLogoutClick = useCallback(() => {
     setIsConfirmLogoutModalOpen(true);
@@ -92,9 +98,14 @@ const LeftSidebar = () => {
     }));
   }, [sideBarItems]);
 
-  const handleMenuClick: MenuProps['onClick'] = useCallback(() => {
-    setOpenKeys([]);
-  }, []);
+  const handleMenuClick: MenuProps['onClick'] = useCallback(
+    (info: MenuInfo) => {
+      // keyPath is [childKey, ...ancestorKeys]; keep the active item's submenu
+      // open (empty for a top-level item, which collapses any open submenu).
+      setOpenKeys(info.keyPath.slice(1));
+    },
+    []
+  );
 
   return (
     <Sider
@@ -165,10 +176,12 @@ const LeftSidebar = () => {
           open={isConfirmLogoutModalOpen}
           width={360}
           onCancel={hideConfirmLogoutModal}>
-          <Typography.Title level={5}>{t('label.logout')}</Typography.Title>
-          <Typography.Text className="text-grey-muted">
+          <Typography as="h5" size="text-md" weight="semibold">
+            {t('label.logout')}
+          </Typography>
+          <Typography color="secondary">
             {t('message.logout-confirmation')}
-          </Typography.Text>
+          </Typography>
 
           <div className="d-flex gap-2 w-full m-t-md justify-center">
             <Button className="confirm-btn" onClick={hideConfirmLogoutModal}>

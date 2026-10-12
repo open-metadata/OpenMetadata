@@ -82,7 +82,7 @@ describe('NextPreviousWithOffset', () => {
     expect(screen.getByText('10 / label.page')).toBeInTheDocument();
   });
 
-  it.skip('should call onShowSizeChange with correct size when page size is changed', async () => {
+  it('should call onShowSizeChange with correct size when page size is changed', async () => {
     const mockOnShowSizeChange = jest.fn();
     const props = {
       ...defaultProps,
@@ -91,14 +91,14 @@ describe('NextPreviousWithOffset', () => {
     };
     render(<NextPreviousWithOffset {...props} />);
 
-    const pageSizeButton = screen.getByText('15 / label.page');
+    const pageSizeButton = screen.getByTestId('page-size-change-button');
 
     await act(async () => {
       fireEvent.click(pageSizeButton);
     });
 
-    const pageOption25 = screen.getByText('25 / label.page', {
-      selector: '.ant-dropdown-menu-item',
+    const pageOption25 = await screen.findByRole('menuitem', {
+      name: '25 / label.page',
     });
 
     await act(async () => {
@@ -107,13 +107,13 @@ describe('NextPreviousWithOffset', () => {
 
     expect(mockOnShowSizeChange).toHaveBeenCalledWith(25);
 
-    const pageSizeButton2 = screen.getByText('25 / label.page');
-
     await act(async () => {
-      fireEvent.click(pageSizeButton2);
+      fireEvent.click(pageSizeButton);
     });
 
-    const pageOption50 = await screen.findByText('50 / label.page');
+    const pageOption50 = await screen.findByRole('menuitem', {
+      name: '50 / label.page',
+    });
 
     await act(async () => {
       fireEvent.click(pageOption50);

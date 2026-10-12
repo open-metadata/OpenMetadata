@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 import { Dropdown } from '@/components/base/dropdown/dropdown';
+import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx, sortCx } from '@/utils/cx';
-import { ChevronRight, DotsHorizontal } from '@untitledui/icons';
+import { ChevronRight, DotsHorizontal } from '../../../icons';
 import type { FC, HTMLAttributes, Key, ReactNode } from 'react';
 import {
   useEffect,
@@ -26,6 +27,7 @@ import {
   Breadcrumbs as AriaBreadcrumbs,
   Button as AriaButton,
   Link as AriaLink,
+  LinkContext,
 } from 'react-aria-components';
 
 export type BreadcrumbsType = 'text' | 'button-white' | 'button-gray';
@@ -48,7 +50,7 @@ export interface BreadcrumbItemType {
 }
 
 export interface BreadcrumbsProps extends HTMLAttributes<HTMLElement> {
-  /** Ordered list of crumbs; the last item is treated as the current page. */
+  /** Ordered list of crumbs. */
   items: BreadcrumbItemType[];
   /** Visual style of the crumbs. */
   type?: BreadcrumbsType;
@@ -216,28 +218,36 @@ const EllipsisMenu = ({
   size,
   padding,
   onAction,
-}: EllipsisMenuProps) => (
-  <Dropdown.Root>
-    <AriaButton
-      aria-label="Show hidden breadcrumbs"
-      className={cx(linkClassName, styles[type].link, padding)}>
-      <DotsHorizontal className={cx('tw:shrink-0', sizes[size].dots)} />
-    </AriaButton>
-    <Dropdown.Popover>
-      <Dropdown.Menu aria-label="Hidden breadcrumbs">
-        {hidden.map((item, index) => (
-          <Dropdown.Item
-            href={onAction ? undefined : item.href}
-            icon={item.icon}
-            key={item.id}
-            label={toText(item.label, `Item ${index + 1}`)}
-            onAction={() => onAction?.(item.id)}
-          />
-        ))}
-      </Dropdown.Menu>
-    </Dropdown.Popover>
-  </Dropdown.Root>
-);
+}: EllipsisMenuProps) => {
+  const { t } = useCoreTranslation();
+
+  return (
+    <Dropdown.Root>
+      <AriaButton
+        aria-label={t(
+          'label.show-hidden-breadcrumbs',
+          'Show hidden breadcrumbs'
+        )}
+        className={cx(linkClassName, styles[type].link, padding)}>
+        <DotsHorizontal className={cx('tw:shrink-0', sizes[size].dots)} />
+      </AriaButton>
+      <Dropdown.Popover>
+        <Dropdown.Menu
+          aria-label={t('label.hidden-breadcrumbs', 'Hidden breadcrumbs')}>
+          {hidden.map((item, index) => (
+            <Dropdown.Item
+              href={onAction ? undefined : item.href}
+              icon={item.icon}
+              key={item.id}
+              label={toText(item.label, `Item ${index + 1}`)}
+              onAction={() => onAction?.(item.id)}
+            />
+          ))}
+        </Dropdown.Menu>
+      </Dropdown.Popover>
+    </Dropdown.Root>
+  );
+};
 
 export const Breadcrumbs = ({
   items,
@@ -280,23 +290,35 @@ export const Breadcrumbs = ({
     }
   }, [autoCollapse, fittedCount, items, measureKey]);
 
-  // Reset to the full trail and re-measure on mount, on a container resize, and
-  // once web fonts load (label widths can change after the first layout, which
-  // would otherwise leave a stale measurement). The reset lets the trail
-  // re-expand when there is more room.
+  // Reset to the full trail and re-measure on mount, when the container grows,
+  // and once web fonts load (label widths can change after the first layout,
+  // which would otherwise leave a stale measurement). The reset lets the trail
+  // re-expand when there is more room. A shrink only re-measures: in a
+  // content-sized container (a flex `auto` column) collapsing shrinks the
+  // container, and resetting on that would expand it again — a loop that
+  // keeps the trail and everything beside it moving.
   useEffect(() => {
     const el = containerRef.current;
     if (!autoCollapse || !el) {
       return undefined;
     }
 
-    const remeasure = () => {
+    let lastWidth = -1;
+    const reset = () => {
       setFittedCount(items.length);
       requestMeasure();
     };
-    const observer = new ResizeObserver(remeasure);
+    const observer = new ResizeObserver(([entry]) => {
+      const width = entry?.contentRect.width ?? el.clientWidth;
+      if (width > lastWidth) {
+        reset();
+      } else if (width < lastWidth) {
+        requestMeasure();
+      }
+      lastWidth = width;
+    });
     observer.observe(el);
-    document.fonts?.ready.then(remeasure).catch(() => undefined);
+    document.fonts?.ready.then(reset).catch(() => undefined);
 
     return () => observer.disconnect();
   }, [autoCollapse, items.length]);
@@ -329,18 +351,22 @@ export const Breadcrumbs = ({
                   type={type}
                   onAction={onAction}
                 />
-              ) : !isCurrent && (item.href || onAction) ? (
-                <AriaLink
-                  aria-label={item.ariaLabel}
-                  className={cx(linkClassName, styles[type].link, padding)}
-                  href={onAction ? undefined : item.href}
-                  onPress={() => onAction?.(item.id)}>
-                  <CrumbLabel
-                    item={item}
-                    maxItemWidth={maxItemWidth}
-                    size={size}
-                  />
-                </AriaLink>
+              ) : item.href || (onAction && !isCurrent) ? (
+                // React Aria disables the physical last crumb, so clear its
+                // context when href marks that crumb as a destination.
+                <LinkContext.Provider value={{}}>
+                  <AriaLink
+                    aria-label={item.ariaLabel}
+                    className={cx(linkClassName, styles[type].link, padding)}
+                    href={onAction ? undefined : item.href}
+                    onPress={() => onAction?.(item.id)}>
+                    <CrumbLabel
+                      item={item}
+                      maxItemWidth={maxItemWidth}
+                      size={size}
+                    />
+                  </AriaLink>
+                </LinkContext.Provider>
               ) : (
                 <span
                   aria-current={isCurrent ? 'page' : undefined}

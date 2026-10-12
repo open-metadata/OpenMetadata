@@ -13,7 +13,6 @@ S3 sampler implementation
 """
 
 import secrets
-from typing import Optional
 
 from metadata.generated.schema.entity.services.connections.storage.s3Connection import (
     S3Connection,
@@ -72,7 +71,7 @@ class S3Sampler(StorageSampler):
             if entry and entry.get("Key") and self._is_valid_sample_file(entry.get("Key"))
         ]
 
-    def _get_sample_file_path(self) -> Optional[str]:  # noqa: UP045
+    def _get_sample_file_path(self) -> str | None:
         """Get a sample file path from the container"""
         bucket_name = self._get_bucket_name()
         prefix = self.entity.prefix  # pyright: ignore[reportAttributeAccessIssue]

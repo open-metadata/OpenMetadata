@@ -1,10 +1,10 @@
 # MongoDB
-In this section, we provide guides and references to use the MongoDB connector. You can view the full documentation for MongoDB <a href="https://docs.open-metadata.org/connectors/database/mongo" target="_blank">here</a>.
+In this section, we provide guides and references to use the MongoDB connector. You can view the full documentation for MongoDB <a href="https://docs.open-metadata.org/connectors/database/mongodb" target="_blank">here</a>.
 
 ## Requirements
 To extract metadata, the user used in the connection needs to be able to perform `find` operation on collection and `listCollection` operations on database available in MongoDB.
 
-You can find further information on the Hive connector in the <a href="https://docs.open-metadata.org/connectors/database/mongo" target="_blank">here</a>.
+You can find further information on the MongoDB connector in the <a href="https://docs.open-metadata.org/connectors/database/mongodb" target="_blank">docs</a>.
 
 ## Connection Details
 

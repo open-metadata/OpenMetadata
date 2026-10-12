@@ -15,8 +15,10 @@ from presidio_analyzer import EntityRecognizer, RecognizerResult
 from presidio_analyzer.nlp_engine import NlpArtifacts
 
 from metadata.pii.algorithms.presidio_utils import (
+    MIN_SCORE_FOR_ENHANCEMENT,
     apply_confidence_threshold,
     build_analyzer_engine,
+    context_matches,
     decorate_recognizer,
     enhance_using_context,
     load_nlp_engine,
@@ -209,6 +211,44 @@ class TestLoadNlpEngine:
         assert mock_spacy_engine_class.call_count == 1
 
 
+CVV_CONTEXT = ["cvv", "cvc", "security", "code", "verification", "card", "cvv2", "cid", "csc"]
+
+
+class TestContextMatches:
+    @pytest.mark.parametrize(
+        "column_parts",
+        [
+            ["cvv"],
+            ["security", "code"],
+            ["card", "verification", "code"],
+            ["scenario", "code"],
+        ],
+    )
+    def test_whole_token_matches(self, column_parts):
+        assert context_matches(CVV_CONTEXT, column_parts) is True
+
+    @pytest.mark.parametrize(
+        "column_parts",
+        [
+            ["acid", "level"],  # "cid" is a substring of "acid"
+            ["incident", "count"],  # "cid" is a substring of "incident"
+            ["decoder", "ring"],  # "code" is a substring of "decoder"
+            ["discount", "pct"],
+        ],
+    )
+    def test_substring_of_a_token_does_not_match(self, column_parts):
+        assert context_matches(CVV_CONTEXT, column_parts) is False
+
+    def test_multi_word_entries_keep_substring_semantics(self):
+        assert context_matches(["indian passport", "passport number"], ["passport", "number"]) is True
+
+    def test_no_recognizer_context_never_matches(self):
+        assert context_matches([], ["cvv"]) is False
+
+    def test_matching_is_case_insensitive(self):
+        assert context_matches(["CVV"], ["Cvv", "Column"]) is True
+
+
 class TestEnhanceUsingContext:
     @pytest.fixture
     def mock_recognizer(self):
@@ -311,6 +351,55 @@ class TestEnhanceUsingContext:
 
         assert len(results) == 1
         assert results[0].score == 0.6
+        assert RecognizerResult.IS_SCORE_ENHANCED_BY_CONTEXT_KEY not in results[0].recognition_metadata
+
+    def test_context_word_that_is_only_a_substring_does_not_boost(self, mock_recognizer, nlp_artifacts):
+        """`cid` must not boost a column named `acid_level` -- that turned the 0.5 CVV pattern into 1.0."""
+        mock_recognizer.context = CVV_CONTEXT
+        raw_results = [
+            RecognizerResult(
+                entity_type="CREDIT_CARD",
+                start=0,
+                end=3,
+                score=0.5,
+                recognition_metadata={},
+            ),
+        ]
+        mock_recognizer.enhance_using_context = Mock(return_value=raw_results)
+
+        enhance_using_context(mock_recognizer)
+
+        results = mock_recognizer.enhance_using_context("107", raw_results, [], nlp_artifacts, ["acid", "level"])
+
+        assert len(results) == 1
+        assert results[0].score == 0.5
+        assert RecognizerResult.IS_SCORE_ENHANCED_BY_CONTEXT_KEY not in results[0].recognition_metadata
+
+    def test_score_below_minimum_is_not_boosted(self, mock_recognizer, nlp_artifacts):
+        """Weak patterns (US/IN passport score 0.05-0.1) stay weak even on an exact context hit."""
+        raw_results = [
+            RecognizerResult(
+                entity_type="EMAIL_ADDRESS",
+                start=0,
+                end=16,
+                score=MIN_SCORE_FOR_ENHANCEMENT - 0.01,
+                recognition_metadata={},
+            ),
+        ]
+        mock_recognizer.enhance_using_context = Mock(return_value=raw_results)
+
+        enhance_using_context(mock_recognizer)
+
+        results = mock_recognizer.enhance_using_context(
+            "test@example.com",
+            raw_results,
+            [],
+            nlp_artifacts,
+            ["email"],
+        )
+
+        assert len(results) == 1
+        assert results[0].score == MIN_SCORE_FOR_ENHANCEMENT - 0.01
         assert RecognizerResult.IS_SCORE_ENHANCED_BY_CONTEXT_KEY not in results[0].recognition_metadata
 
     def test_already_enhanced_results_are_not_boosted_again(self, mock_recognizer, nlp_artifacts):

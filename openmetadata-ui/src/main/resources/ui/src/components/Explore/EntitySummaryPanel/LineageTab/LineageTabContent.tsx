@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 
-import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
-import { Button, Typography } from 'antd';
+import {
+  Owner,
+  Tabs,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { capitalize } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -31,8 +35,6 @@ import { FormattedDatabaseServiceType } from '../../../../utils/EntityUtils.inte
 import { renderTruncatedPath } from '../../../../utils/Lineage/LineageUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
-import { NoOwnerFound } from '../../../common/NoOwner/NoOwnerFound';
-import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import SearchBarComponent from '../../../common/SearchBarComponent/SearchBar.component';
 import { BULLET_SEPARATOR } from './LineageTabContent.constants';
 import { LineageTabContentProps } from './LineageTabContent.interface';
@@ -143,52 +145,65 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
     });
   }, [lineageItems, searchText]);
 
+  const renderEntityTypeInfo = (entityType: string | undefined) => {
+    if (!entityType) {
+      return null;
+    }
+
+    return (
+      <>
+        {searchClassBase.getEntityIcon(entityType) && (
+          <span className="w-4 d-inline-flex align-middle entity-type-icon">
+            {searchClassBase.getEntityIcon(entityType)}
+          </span>
+        )}
+        <Typography className="item-entity-type-text">
+          {capitalize(entityType)}
+        </Typography>
+      </>
+    );
+  };
+
+  const renderOwnerInfo = (owners: EntityReference[] | undefined) => {
+    if (owners && owners.length > 0) {
+      return (
+        <Owner
+          avatarSize={16}
+          className="item-owner-label-text"
+          isCompactView={false}
+          owners={owners}
+          showLabel={false}
+        />
+      );
+    }
+
+    return <Owner className="item-owner-label-text" owners={[]} />;
+  };
+
   return (
     <div className="lineage-tab-content">
-      <div className="lineage-filter-buttons">
-        <Button
-          className={`lineage-filter-button ${
-            filter === 'upstream' ? 'active' : ''
-          }`}
-          data-testid={`upstream-button-${
-            filter === 'upstream' ? 'active' : ''
-          }`}
-          size="small"
-          onClick={() => onFilterChange('upstream')}>
-          <span
-            className="lineage-filter-button-text"
-            data-testid="upstream-button-text">
-            {t('label.upstream')}
-          </span>
-          <span
-            className={`lineage-filter-button-count ${
-              filter === 'upstream' ? 'active' : ''
-            }`}>
-            {upstreamCount}
-          </span>
-        </Button>
-        <Button
-          className={`lineage-filter-button ${
-            filter === 'downstream' ? 'active' : ''
-          }`}
-          data-testid={`downstream-button-${
-            filter === 'downstream' ? 'active' : ''
-          }`}
-          size="small"
-          onClick={() => onFilterChange('downstream')}>
-          <span
-            className="lineage-filter-button-text"
-            data-testid="downstream-button-text">
-            {t('label.downstream')}
-          </span>
-          <span
-            className={`lineage-filter-button-count ${
-              filter === 'downstream' ? 'active' : ''
-            }`}>
-            {downstreamCount}
-          </span>
-        </Button>
-      </div>
+      <Tabs
+        className="tw:sticky tw:top-0 tw:z-2 tw:mb-3 tw:pt-2"
+        selectedKey={filter}
+        onSelectionChange={(key) =>
+          onFilterChange(key as LineageTabContentProps['filter'])
+        }>
+        <Tabs.List size="sm" type="button-border">
+          {(['upstream', 'downstream'] as const).map((direction) => (
+            <Tabs.Item
+              badge={direction === 'upstream' ? upstreamCount : downstreamCount}
+              data-testid={`${direction}-button-${
+                filter === direction ? 'active' : ''
+              }`}
+              id={direction}
+              key={direction}>
+              <span data-testid={`${direction}-button-text`}>
+                {t(`label.${direction}`)}
+              </span>
+            </Tabs.Item>
+          ))}
+        </Tabs.List>
+      </Tabs>
       <SearchBarComponent
         containerClassName="searchbar-container"
         placeholder={t('label.search-for-type', {
@@ -235,62 +250,32 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
                   </div>
                   <div className="lineage-item-direction">
                     {item.direction === 'upstream' ? (
-                      <Tooltip placement="top" title={t('label.upstream')}>
-                        <TooltipTrigger>
-                          <UpstreamIcon height={18} width={18} />
-                        </TooltipTrigger>
+                      <Tooltip
+                        placement="top"
+                        title={t('label.upstream')}
+                        triggerClassName="tw:inline-flex">
+                        <UpstreamIcon height={18} width={18} />
                       </Tooltip>
                     ) : (
-                      <Tooltip placement="top" title={t('label.downstream')}>
-                        <TooltipTrigger>
-                          <DownstreamIcon height={18} width={18} />
-                        </TooltipTrigger>
+                      <Tooltip
+                        placement="top"
+                        title={t('label.downstream')}
+                        triggerClassName="tw:inline-flex">
+                        <DownstreamIcon height={18} width={18} />
                       </Tooltip>
                     )}
                   </div>
                 </div>
                 <div className="lineage-card-content">
-                  <Typography.Text className="item-name-text">
+                  <Typography className="item-name-text">
                     {getEntityName(item.entity)}
-                  </Typography.Text>
+                  </Typography>
                   <div className="d-flex align-items-center gap-1 lineage-info-container">
-                    {item.entity.entityType && (
-                      <>
-                        {searchClassBase.getEntityIcon(
-                          item.entity.entityType ?? ''
-                        ) && (
-                          <span className="w-4 d-inline-flex align-middle entity-type-icon">
-                            {searchClassBase.getEntityIcon(
-                              item.entity.entityType ?? ''
-                            )}
-                          </span>
-                        )}
-                        <Typography.Text className="item-entity-type-text">
-                          {capitalize(item.entity.entityType)}
-                        </Typography.Text>
-                      </>
-                    )}
+                    {renderEntityTypeInfo(item.entity.entityType)}
                     <span className="item-bullet-separator">
                       {BULLET_SEPARATOR}
                     </span>
-                    {item.entity.owners && item.entity.owners.length > 0 ? (
-                      <OwnerLabel
-                        avatarSize={16}
-                        className="item-owner-label-text"
-                        isCompactView={false}
-                        owners={item.entity.owners}
-                        showLabel={false}
-                      />
-                    ) : (
-                      <NoOwnerFound
-                        isCompactView
-                        showLabel
-                        className="item-owner-label-text"
-                        multiple={{ user: false, team: false }}
-                        owners={[]}
-                        showDashPlaceholder={false}
-                      />
-                    )}
+                    {renderOwnerInfo(item.entity.owners)}
                   </div>
                 </div>
               </div>
@@ -302,9 +287,9 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
               className="text-grey-14 m-t-lg"
               icon={<AddPlaceHolderIcon height={100} width={100} />}
               type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-              <Typography.Paragraph className="text-center  no-data-placeholder">
+              <Typography as="p" className="text-center  no-data-placeholder">
                 {t('label.lineage-not-found')}
-              </Typography.Paragraph>
+              </Typography>
             </ErrorPlaceHolderNew>
           </div>
         )}

@@ -14,7 +14,6 @@ Unique Count Metric functions
 """
 
 from collections import defaultdict
-from typing import Tuple  # noqa: UP035
 
 from sqlalchemy import NVARCHAR, TEXT, Column, case, func, literal_column, select
 from sqlalchemy.sql import ColumnElement
@@ -25,8 +24,16 @@ from metadata.profiler.orm.functions.count import CountFn
 from metadata.profiler.orm.registry import Dialects
 from metadata.profiler.orm.types.custom_image import CustomImage
 
+# Alias for the per-value occurrence count exposed by the grouped sub-select/CTE that the
+# unique-count implementations read back from. It must never be derived from the column name:
+# BigQuery profiles nested STRUCT subfields under a dotted name (``customer.email``), and its
+# dialect renders that name two incompatible ways - ``format_label`` substitutes the dot
+# (``customer_email``) while ``quote_column`` splits it into ``\`customer\`.\`email\```. A derived
+# label therefore can never be referenced back. Issue #30152.
+UNIQUE_COUNT_GROUP_ALIAS = "value_occurrences"
 
-def _get_unique_count_expressions(col: Column, dialect: str) -> Tuple[ColumnElement, ColumnElement]:  # noqa: UP006
+
+def _get_unique_count_expressions(col: Column, dialect: str) -> tuple[ColumnElement, ColumnElement]:
     """
     Get dialect-specific expressions for unique count computation.
 
@@ -105,7 +112,7 @@ _unique_count_query_mapper[Dialects.Oracle] = _unique_count_query_oracle
 # ============================================================================
 
 
-def _unique_count_dimensional_cte(col: Column, table, dimension_col: Column, dialect: str) -> Tuple[CTE, ColumnElement]:  # noqa: UP006
+def _unique_count_dimensional_cte(col: Column, table, dimension_col: Column, dialect: str) -> tuple[CTE, ColumnElement]:
     """
     Build CTE for dimensional unique count validation.
 
@@ -132,6 +139,9 @@ def _unique_count_dimensional_cte(col: Column, table, dimension_col: Column, dia
         select(
             dimension_col.label("dim_value"),
             group_by_expr.label("col_value"),
+            # Deliberately independent of UNIQUE_COUNT_GROUP_ALIAS: this CTE is read back by
+            # attribute (value_counts.c.occurrence_count below), never by the profiled column's
+            # name, so it never had the dotted-STRUCT-path clash that alias exists to solve.
             func.count(count_expr).label("occurrence_count"),
             func.count().label("row_count"),  # Total rows for this (dimension, value) pair
         )

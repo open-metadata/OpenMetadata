@@ -69,6 +69,7 @@ class EntityFieldUtilsTest {
               eq("alice"),
               any(JsonPatch.class),
               isNull(),
+              eq("*"),
               eq("workflow-bot"));
 
       ArgumentCaptor<String> jsonCaptor = ArgumentCaptor.forClass(String.class);
@@ -455,11 +456,13 @@ class EntityFieldUtilsTest {
     String approvedValue = EntityStatus.APPROVED.value();
 
     EntityFieldUtils.setEntityStatus(entity, approvedValue);
-    EntityFieldUtils.setEntityStatus(entity, "legacy-state");
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> EntityFieldUtils.setEntityStatus(entity, "Superseded"));
     EntityFieldUtils.setEntityStatus(legacyEntity, approvedValue);
 
     assertEquals(EntityStatus.APPROVED, entity.getEntityStatus());
-    assertEquals("legacy-state", entity.getStatus());
+    assertNull(entity.getStatus());
     assertEquals(approvedValue, legacyEntity.getStatus());
   }
 
@@ -512,7 +515,7 @@ class EntityFieldUtilsTest {
     }
   }
 
-  private static class TestEntity implements EntityInterface {
+  private static class TestEntity implements EntityInterface<EntityStatus> {
     private UUID id;
     private String description;
     private String displayName;

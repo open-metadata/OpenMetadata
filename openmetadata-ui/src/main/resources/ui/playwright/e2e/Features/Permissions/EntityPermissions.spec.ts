@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { PolicyClass } from '../../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../../support/access-control/RolesClass';
 import { EntityClass } from '../../../support/entity/EntityClass';
 import { TableClass } from '../../../support/entity/TableClass';
+import { expect, test as base } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { getApiContext } from '../../../utils/common';
@@ -108,7 +109,7 @@ const test = base.extend<{
   page: async ({ browser }, use) => {
     const adminPage = await browser.newPage();
     try {
-      await adminUser.login(adminPage);
+      await adminUser.signIn(adminPage);
       await use(adminPage);
     } finally {
       await adminPage.close();
@@ -117,7 +118,7 @@ const test = base.extend<{
   testUserPage: async ({ browser }, use) => {
     const page = await browser.newPage();
     try {
-      await testUser.login(page);
+      await testUser.signIn(page);
       await use(page);
     } finally {
       await page.close();
@@ -158,7 +159,7 @@ const headerPermTest = base.extend<{
   editAllPage: async ({ browser }, use) => {
     const page = await browser.newPage();
     try {
-      await editAllUser.login(page);
+      await editAllUser.signIn(page);
       await use(page);
     } finally {
       await page.close();
@@ -167,7 +168,7 @@ const headerPermTest = base.extend<{
   specificEditsPage: async ({ browser }, use) => {
     const page = await browser.newPage();
     try {
-      await specificEditsUser.login(page);
+      await specificEditsUser.signIn(page);
       await use(page);
     } finally {
       await page.close();
@@ -226,16 +227,20 @@ headerPermTest.describe(
       }
     );
 
-    headerPermTest.skip(
+    headerPermTest(
       'EditTier, EditOwners, EditCertification allowed but EditAll denied – edit buttons not visible',
       async ({ specificEditsPage }) => {
         await headerPermTable.visitEntityPage(specificEditsPage);
 
-        await expect(specificEditsPage.getByTestId('edit-tier')).toBeVisible();
-        await expect(specificEditsPage.getByTestId('edit-owner')).toBeVisible();
+        await expect(
+          specificEditsPage.getByTestId('edit-tier')
+        ).not.toBeVisible();
+        await expect(
+          specificEditsPage.getByTestId('edit-owner')
+        ).not.toBeVisible();
         await expect(
           specificEditsPage.getByTestId('edit-certification')
-        ).toBeVisible();
+        ).not.toBeVisible();
       }
     );
   }
@@ -264,7 +269,7 @@ Object.entries(entityConfig).forEach(([, config]) => {
     test.describe('Allow permissions', () => {
       test.beforeAll('Initialize allow permissions', async ({ browser }) => {
         const page = await browser.newPage();
-        await adminUser.login(page);
+        await adminUser.signIn(page);
         await initializePermissions(page, 'allow', ALL_OPERATIONS);
         await assignRoleToUser(page, testUser);
         await page.close();
@@ -300,7 +305,7 @@ Object.entries(entityConfig).forEach(([, config]) => {
 
       test.afterAll('Cleanup allow permissions', async ({ browser }) => {
         const page = await browser.newPage();
-        await adminUser.login(page);
+        await adminUser.signIn(page);
         const { apiContext } = await getApiContext(page);
         await cleanupPermissions(apiContext);
         await page.close();
@@ -311,7 +316,7 @@ Object.entries(entityConfig).forEach(([, config]) => {
     test.describe('Deny permissions', () => {
       test.beforeAll('Initialize deny permissions', async ({ browser }) => {
         const page = await browser.newPage();
-        await adminUser.login(page);
+        await adminUser.signIn(page);
         await initializePermissions(page, 'deny', ALL_OPERATIONS);
         await assignRoleToUser(page, testUser);
         await page.close();
@@ -347,7 +352,7 @@ Object.entries(entityConfig).forEach(([, config]) => {
 
       test.afterAll('Cleanup deny permissions', async ({ browser }) => {
         const page = await browser.newPage();
-        await adminUser.login(page);
+        await adminUser.signIn(page);
         const { apiContext } = await getApiContext(page);
         await cleanupPermissions(apiContext);
         await page.close();

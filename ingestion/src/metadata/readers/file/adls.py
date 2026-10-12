@@ -14,7 +14,6 @@ Read files as string from S3
 """
 
 import traceback
-from typing import Dict, List  # noqa: UP035
 
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
     AzureConfig,
@@ -28,7 +27,7 @@ logger = ingestion_logger()
 AZURE_PATH = "abfs://{bucket_name}@{account_name}.dfs.core.windows.net/{key}"
 
 
-def return_azure_storage_options(config_source: AzureConfig) -> Dict[str, str]:  # noqa: UP006
+def return_azure_storage_options(config_source: AzureConfig) -> dict[str, str]:
     """
     Build the Azure Storage options to pass to the readers.
     We are not adding the `account_name` since it is added in the path.
@@ -60,7 +59,7 @@ class ADLSReader(Reader):
                 logger.debug(traceback.format_exc())
             raise ReadException(f"Error fetching file [{path}] from ADLS: {err}")  # noqa: B904
 
-    def _get_tree(self) -> List[str]:  # noqa: UP006
+    def _get_tree(self) -> list[str]:
         """
         We are not implementing this yet. This should
         only be needed for now for the Datalake where we don't need

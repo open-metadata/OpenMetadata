@@ -8,6 +8,7 @@ import io.dropwizard.lifecycle.Managed;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
@@ -22,6 +23,8 @@ import org.openmetadata.service.fernet.Fernet;
 
 @Slf4j
 public class SessionService implements Managed {
+  public static final String NO_ACTIVE_SESSION = "No active session";
+  public static final String SESSION_REVOKED = "Session revoked";
   private static final int PENDING_SESSION_TIMEOUT_SECONDS = 10 * 60;
   private static final long REFRESH_LEASE_MILLIS = 15_000L;
   private static final long CLEANUP_INTERVAL_MINUTES = 15L;
@@ -32,6 +35,8 @@ public class SessionService implements Managed {
   private static final int SESSION_LIMIT_MAX_ITERATIONS = 20;
   private static final int SESSION_LIMIT_LOOKUP_MULTIPLIER = 4;
   private static final long SESSION_ACCESS_UPDATE_INTERVAL_MILLIS = TimeUnit.MINUTES.toMillis(5);
+  private static final List<SessionStatus> REVOCABLE_STATUSES =
+      List.of(SessionStatus.ACTIVE, SessionStatus.REFRESHING);
 
   private volatile AuthenticationConfiguration authConfig;
   private final SessionStore repository;
@@ -44,6 +49,27 @@ public class SessionService implements Managed {
   // (republishes to Redis so other pods do the same). Failures in a listener are logged and
   // do not block the revocation result.
   private final List<Consumer<UserSession>> revocationListeners = new CopyOnWriteArrayList<>();
+
+  /**
+   * What a sign-in or a refresh learned about the identity provider's side of a confidential OIDC
+   * session. Renewal times are epoch millis by which a refresh has to renew the provider's tokens.
+   */
+  public sealed interface ProviderTokenUpdate {
+    ProviderTokenUpdate NONE = new None();
+
+    /** The session keeps the provider refresh token and renewal time it already has. */
+    record None() implements ProviderTokenUpdate {}
+
+    /** The provider refresh token stays; only the next renewal moves. */
+    record Rescheduled(long renewalDueAt) implements ProviderTokenUpdate {}
+
+    /** A provider refresh token to store, persisted encrypted, replacing any the session had. */
+    record Replaced(String refreshToken, long renewalDueAt) implements ProviderTokenUpdate {
+      public Replaced {
+        Objects.requireNonNull(refreshToken, "refreshToken");
+      }
+    }
+  }
 
   public SessionService(AuthenticationConfiguration authConfig) {
     this(authConfig, SessionStoreFactory.create());
@@ -193,7 +219,7 @@ public class SessionService implements Managed {
       UserSession pendingSession,
       User user,
       String omRefreshToken,
-      String providerRefreshToken) {
+      ProviderTokenUpdate providerTokens) {
     long now = System.currentTimeMillis();
     long expectedVersion = safeVersion(pendingSession);
 
@@ -216,7 +242,7 @@ public class SessionService implements Managed {
     int sessionExpirySeconds = getSessionExpirySeconds();
     long expiresAt = now + TimeUnit.SECONDS.toMillis(sessionExpirySeconds);
     String newSessionId = SessionIdGenerator.newSessionId();
-    UserSession activated =
+    UserSession.UserSessionBuilder activatedBuilder =
         UserSession.builder()
             .id(newSessionId)
             .type(pendingSession.getType())
@@ -226,15 +252,14 @@ public class SessionService implements Managed {
             .username(user.getName())
             .email(user.getEmail())
             .omRefreshToken(encryptIfPresent(omRefreshToken))
-            .providerRefreshToken(encryptIfPresent(providerRefreshToken))
             .redirectUri(pendingSession.getRedirectUri())
             .lastAccessedAt(now)
             .createdAt(now)
             .updatedAt(now)
             .expiresAt(expiresAt)
             .idleExpiresAt(expiresAt)
-            .version(0L)
-            .build();
+            .version(0L);
+    UserSession activated = withProviderTokens(activatedBuilder, providerTokens).build();
     repository.create(activated);
     cache.put(activated.getId(), activated);
     applySessionLimit(user.getId().toString(), activated.getId());
@@ -245,6 +270,19 @@ public class SessionService implements Managed {
 
   public Optional<UserSession> getSession(jakarta.servlet.http.HttpServletRequest request) {
     return SessionCookieUtil.getSessionId(request).flatMap(this::getSessionById);
+  }
+
+  /**
+   * Why a refresh found no active session behind the request's session cookie. A session revoked on
+   * purpose (the per-user session cap, an administrator, a logout) must not be signed straight back
+   * in: under the cap, the new session would evict another one.
+   */
+  public String describeMissingSession(jakarta.servlet.http.HttpServletRequest request) {
+    boolean isRevoked =
+        getSession(request)
+            .map(session -> session.getStatus() == SessionStatus.REVOKED)
+            .orElse(false);
+    return isRevoked ? SESSION_REVOKED : NO_ACTIVE_SESSION;
   }
 
   public Optional<UserSession> getPendingSession(
@@ -318,6 +356,13 @@ public class SessionService implements Managed {
     int maxAttempts = 5;
     for (int attempt = 0; attempt < maxAttempts && current != null; attempt++) {
       long now = now();
+      if (current.getStatus() == SessionStatus.PENDING && !current.isExpired(now)) {
+        // A login is in flight on this session: the cookie is written at /login but the
+        // session only becomes ACTIVE at /callback. A concurrent refresh (another tab's
+        // expiry timer) must not clear the cookie, or it breaks the pending login at the
+        // IdP round-trip and loops the user. Report "no active session" and leave it be.
+        return Optional.empty();
+      }
       if (current.isExpired(now)
           || current.getStatus() == SessionStatus.REVOKED
           || current.getStatus() == SessionStatus.EXPIRED
@@ -365,27 +410,30 @@ public class SessionService implements Managed {
     return Optional.empty();
   }
 
+  /**
+   * Returns a leased session to {@code ACTIVE}. The absolute {@code expiresAt} never moves: only a
+   * new sign-in starts a new session lifetime.
+   *
+   * @param providerTokens what a confidential OIDC refresh learned from the identity provider, or
+   *     {@link ProviderTokenUpdate#NONE} when it did not contact the provider
+   */
   public Optional<UserSession> completeRefresh(
-      UserSession leasedSession, String omRefreshToken, String providerRefreshToken) {
+      UserSession leasedSession, String omRefreshToken, ProviderTokenUpdate providerTokens) {
     long now = System.currentTimeMillis();
     long expectedVersion = safeVersion(leasedSession);
-    UserSession refreshed =
+    UserSession.UserSessionBuilder refreshedBuilder =
         leasedSession.toBuilder()
             .status(SessionStatus.ACTIVE)
             .omRefreshToken(
                 omRefreshToken == null
                     ? leasedSession.getOmRefreshToken()
                     : encryptIfPresent(omRefreshToken))
-            .providerRefreshToken(
-                providerRefreshToken == null
-                    ? leasedSession.getProviderRefreshToken()
-                    : encryptIfPresent(providerRefreshToken))
             .refreshLeaseUntil(null)
             .lastAccessedAt(now)
             .updatedAt(now)
             .idleExpiresAt(refreshedIdleExpiresAt(now, leasedSession))
-            .version(expectedVersion + 1)
-            .build();
+            .version(expectedVersion + 1);
+    UserSession refreshed = withProviderTokens(refreshedBuilder, providerTokens).build();
     if (!repository.updateIfVersion(refreshed, expectedVersion)) {
       return reloadSession(refreshed.getId());
     }
@@ -599,6 +647,65 @@ public class SessionService implements Managed {
         : DEFAULT_MAX_ACTIVE_SESSIONS_PER_USER;
   }
 
+  /**
+   * Revokes every revocable session for a user. Called when the user is deleted (soft or hard) or
+   * otherwise off-boarded — without it a soft-deleted user keeps API access until their token
+   * expires. Bounded: each pass reads at most {@link #CLEANUP_BATCH_SIZE} sessions per status and the
+   * loop is capped, so a user with a pathological session count degrades rather than spinning.
+   */
+  public int revokeSessionsForUser(String userId) {
+    int revoked = 0;
+    if (!nullOrEmpty(userId)) {
+      java.util.Set<String> previousBatchIds = java.util.Collections.emptySet();
+      for (int attempt = 0; attempt < SESSION_LIMIT_MAX_ITERATIONS; attempt++) {
+        List<UserSession> sessions = findRevocableSessions(userId);
+        if (sessions.isEmpty()) {
+          break;
+        }
+        java.util.Set<String> currentBatchIds =
+            sessions.stream().map(UserSession::getId).collect(java.util.stream.Collectors.toSet());
+        // A revoke that loses every compare-and-set leaves the session where it was, so the next
+        // pass
+        // reads the same batch back. Stop instead of burning every remaining pass on rows that will
+        // not move; the cleanup sweep expires them at their timeout.
+        if (currentBatchIds.equals(previousBatchIds)) {
+          LOG.warn(
+              "Unable to revoke {} session(s) for user {}; leaving them to session cleanup",
+              currentBatchIds.size(),
+              userId);
+          break;
+        }
+        for (UserSession session : sessions) {
+          if (revokeSession(session.getId()).filter(SessionService::isTerminal).isPresent()) {
+            revoked++;
+          }
+        }
+        previousBatchIds = currentBatchIds;
+      }
+    }
+    return revoked;
+  }
+
+  /**
+   * {@code REFRESHING} has to be included, not just {@code ACTIVE}: a session mid-refresh holds a
+   * lease and is invisible to an ACTIVE-only lookup, and {@code completeRefresh} /
+   * {@link #releaseRefreshLease} put it back to {@code ACTIVE} afterwards — so a user deleted inside
+   * that window would keep a live session. {@code PENDING} is not revocable by user because a login
+   * in flight has no user attached yet ({@code createPendingSession} sets no {@code userId}).
+   */
+  private List<UserSession> findRevocableSessions(String userId) {
+    List<UserSession> sessions = new ArrayList<>();
+    for (SessionStatus status : REVOCABLE_STATUSES) {
+      sessions.addAll(repository.findByUserIdAndStatus(userId, status, CLEANUP_BATCH_SIZE));
+    }
+    return sessions;
+  }
+
+  private static boolean isTerminal(UserSession session) {
+    return session.getStatus() == SessionStatus.REVOKED
+        || session.getStatus() == SessionStatus.EXPIRED;
+  }
+
   private int sessionLookupLimit(int maxActiveSessionsPerUser) {
     long lookupLimit = (long) maxActiveSessionsPerUser * SESSION_LIMIT_LOOKUP_MULTIPLIER;
     return lookupLimit > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) lookupLimit;
@@ -683,6 +790,18 @@ public class SessionService implements Managed {
     } else {
       repository.findById(session.getId()).ifPresent(value -> cache.put(value.getId(), value));
     }
+  }
+
+  private UserSession.UserSessionBuilder withProviderTokens(
+      UserSession.UserSessionBuilder builder, ProviderTokenUpdate providerTokens) {
+    return switch (providerTokens) {
+      case ProviderTokenUpdate.None none -> builder;
+      case ProviderTokenUpdate.Rescheduled rescheduled -> builder.providerRenewalDueAt(
+          rescheduled.renewalDueAt());
+      case ProviderTokenUpdate.Replaced replaced -> builder
+          .providerRefreshToken(encryptIfPresent(replaced.refreshToken()))
+          .providerRenewalDueAt(replaced.renewalDueAt());
+    };
   }
 
   private String encryptIfPresent(String value) {

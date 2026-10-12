@@ -10,12 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Skeleton, Space } from 'antd';
+import {
+  Box,
+  EmptyPlaceholder,
+  Grid,
+  Skeleton,
+  SkeletonParagraph,
+} from '@openmetadata/ui-core-components';
+import { Lock01 } from '@openmetadata/ui-core-components/icons';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
+
 import { AxiosError } from 'axios';
 import { isEmpty, map, uniqBy, uniqueId } from 'lodash';
 import { RefObject, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import KnowledgeCard from '../../components/KnowledgeCenter/KnowledgeCard/KnowledgeCard';
@@ -23,12 +31,9 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { PAGE_SIZE_BASE, ROUTES } from '../../constants/constants';
 import { getKnowledgePageFields } from '../../constants/KnowledgeCenter.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { Paging } from '../../generated/type/paging';
 import { useLocationSearch } from '../../hooks/LocationSearch/useLocationSearch';
 import { useElementInView } from '../../hooks/useElementInView';
@@ -36,6 +41,8 @@ import { KnowledgePage } from '../../interface/knowledge-center.interface';
 import { getListKnowledgePages } from '../../rest/knowledgeCenterAPI';
 import { getEntityLinkFromType } from '../../utils/EntityLinkUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
+import { Transi18next } from '../../utils/i18next/LocalUtil';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -97,8 +104,12 @@ const KnowledgeCenterFilterPage = () => {
     }
   };
 
+  // Resource-level permission (usePermissionProvider().getResourcePermission(KNOWLEDGE_PAGE),
+  // itself OperationPermission-shaped) run through getDerivedPermissionFlags per the Batch 3
+  // DatabaseSchemaTable.tsx / Batch 8 ContextCenter-trio precedent. `hasViewAccess` is a
+  // byte-for-byte match of the old bare `ViewAll || ViewBasic` OR.
   const hasViewPermission = useMemo(
-    () => permissions.ViewAll || permissions.ViewBasic,
+    () => getDerivedPermissionFlags(permissions).hasViewAccess,
     [permissions]
   );
 
@@ -115,7 +126,7 @@ const KnowledgeCenterFilterPage = () => {
 
     return [
       {
-        name: t('label.knowledge-center'),
+        name: t('label.context-center'),
         url: ROUTES.CONTEXT_CENTER,
       },
       {
@@ -137,11 +148,19 @@ const KnowledgeCenterFilterPage = () => {
     fetchPermission();
   }, []);
 
+  // The filter identity (entityId/entityType) is read from the query string via
+  // useLocationSearch, so a same-path navigation to a different entity re-renders
+  // this instance without remounting it (notably under KeepAliveRoutes in AI app
+  // mode, which caches by path and ignores the query string). Reset the listing
+  // and paging state and refetch whenever the entity changes so stale articles
+  // from the previous entity are never shown.
   useEffect(() => {
     if (hasViewPermission) {
+      setKnowledgePages([]);
+      setPaging({ total: 0 });
       fetchKnowledgePages();
     }
-  }, [hasViewPermission]);
+  }, [hasViewPermission, entityId, entityType]);
 
   /**
    * Handle infinite scrolling
@@ -155,53 +174,64 @@ const KnowledgeCenterFilterPage = () => {
 
   if (isLoading) {
     return (
-      <PageLayoutV1 pageTitle={t('label.knowledge-center')}>
+      <PageLayoutV1 pageTitle={t('label.context-center')}>
         <div className="knowledge-center-filter-page">
-          <Row data-testid="knowledge-page-listing" gutter={[0, 56]}>
+          <Grid
+            className="layout-row layout-grid"
+            data-testid="knowledge-page-listing"
+            style={{ ...getLayoutGutter(0, 56) }}>
             {Array.from({ length: 4 }).map(() => (
-              <Col className="knowledge-card-col" key={uniqueId()} span={24}>
-                <Row gutter={[16, 16]}>
-                  <Col span={24}>
-                    <Space>
-                      <Skeleton avatar paragraph={{ rows: 1 }} title={false} />
-                      <Skeleton
-                        paragraph={{ rows: 1, width: 150 }}
-                        title={false}
-                      />
-                    </Space>
-                  </Col>
-                  <Col span={24}>
-                    <Skeleton
-                      active
+              <Grid.Item
+                className="layout-column knowledge-card-col"
+                key={uniqueId()}
+                span={24}>
+                <Grid
+                  className="layout-row layout-grid"
+                  style={{ ...getLayoutGutter(16, 16) }}>
+                  <Grid.Item className="layout-column" span={24}>
+                    <Box
+                      inline
+                      align="center"
+                      className="layout-space layout-space-horizontal"
+                      gap={2}
+                      itemClassName="layout-space-item">
+                      <div className="tw:flex tw:gap-4">
+                        <Skeleton
+                          animation={false}
+                          variant="circular"
+                          width={40}
+                        />
+                        <div className="tw:flex-1">
+                          <Skeleton animation={false} height={16} />
+                        </div>
+                      </div>
+                      <Skeleton animation={false} height={16} width={150} />
+                    </Box>
+                  </Grid.Item>
+                  <Grid.Item className="layout-column" span={24}>
+                    <SkeletonParagraph
                       className="m-b-sm"
-                      paragraph={{ rows: 1 }}
+                      rows={1}
                       title={false}
                     />
-                    <Skeleton active paragraph={{ rows: 2 }} title={false} />
-                  </Col>
-                  <Col span={24}>
-                    <Space>
-                      <Skeleton
-                        active
-                        paragraph={{ rows: 1, width: 100 }}
-                        title={false}
-                      />
-                      <Skeleton
-                        active
-                        paragraph={{ rows: 1, width: 100 }}
-                        title={false}
-                      />
-                      <Skeleton
-                        active
-                        paragraph={{ rows: 1, width: 100 }}
-                        title={false}
-                      />
-                    </Space>
-                  </Col>
-                </Row>
-              </Col>
+                    <SkeletonParagraph rows={2} title={false} />
+                  </Grid.Item>
+                  <Grid.Item className="layout-column" span={24}>
+                    <Box
+                      inline
+                      align="center"
+                      className="layout-space layout-space-horizontal"
+                      gap={2}
+                      itemClassName="layout-space-item">
+                      <Skeleton height={16} width={100} />
+                      <Skeleton height={16} width={100} />
+                      <Skeleton height={16} width={100} />
+                    </Box>
+                  </Grid.Item>
+                </Grid>
+              </Grid.Item>
             ))}
-          </Row>
+          </Grid>
         </div>
       </PageLayoutV1>
     );
@@ -209,38 +239,53 @@ const KnowledgeCenterFilterPage = () => {
 
   if (!hasViewPermission) {
     return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view-entity', {
-          entity: t('label.knowledge-center'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:flex-1 tw:h-[calc(100vh-80px)]">
+        <EmptyPlaceholder
+          description={
+            <Transi18next
+              i18nKey="message.no-access-placeholder"
+              renderElement={<b />}
+              values={{
+                entity: t('label.view-entity', {
+                  entity: t('label.context-center'),
+                }),
+              }}
+            />
+          }
+          icon={<Lock01 className="tw:text-secondary" />}
+          title={t('label.access-denied')}
+        />
+      </div>
     );
   }
 
   return (
-    <PageLayoutV1 pageTitle={t('label.knowledge-center')}>
+    <PageLayoutV1 pageTitle={t('label.context-center')}>
       <div className="knowledge-center-filter-page">
-        <Row gutter={[0, 24]}>
+        <Grid
+          className="layout-row layout-grid"
+          style={{ ...getLayoutGutter(0, 24) }}>
           {!isEmpty(breadcrumbs) && (
-            <Col className="d-flex items-center" span={16}>
+            <Grid.Item className="layout-column d-flex items-center" span={16}>
               <TitleBreadcrumb titleLinks={breadcrumbs} />
-            </Col>
+            </Grid.Item>
           )}
-          <Col span={24}>
-            <Row data-testid="knowledge-page-listing" gutter={[0, 56]}>
+          <Grid.Item className="layout-column" span={24}>
+            <Grid
+              className="layout-row layout-grid"
+              data-testid="knowledge-page-listing"
+              style={{ ...getLayoutGutter(0, 56) }}>
               {map(knowledgePages, (knowledgePage) => (
-                <Col
-                  className="knowledge-card-col"
+                <Grid.Item
+                  className="layout-column knowledge-card-col"
                   key={knowledgePage.id}
                   span={24}>
                   <KnowledgeCard readonly knowledgeItem={knowledgePage} />
-                </Col>
+                </Grid.Item>
               ))}
-            </Row>
-          </Col>
-        </Row>
+            </Grid>
+          </Grid.Item>
+        </Grid>
 
         {isLoadingMore ? <Loader /> : null}
         <div

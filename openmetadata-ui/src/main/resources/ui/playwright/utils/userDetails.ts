@@ -11,15 +11,14 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../constant/common';
 import { clickOutside, redirectToHomePage } from './common';
+import { waitForResponseWithStatus } from './waitHelpers';
 
 export const redirectToUserPage = async (page: Page) => {
   await redirectToHomePage(page);
 
   await page.getByTestId('dropdown-profile').click();
-
-  // Hover on the profile avatar to close the name tooltip
-  await page.getByTestId('profile-avatar').first().hover();
 
   await page.locator('.profile-dropdown').waitFor({ state: 'visible' });
 
@@ -34,10 +33,12 @@ export const redirectToUserPage = async (page: Page) => {
 };
 
 export const openTeamEditorAndSelect = async (page: Page, teamName: string) => {
-  const teamHierarchyResponse = page.waitForResponse(
+  const teamHierarchyResponse = waitForResponseWithStatus(
+    page,
     (response) =>
-      response.url().includes('/api/v1/teams/hierarchy?isJoinable=false') &&
-      response.ok()
+      response.request().method() === 'GET' &&
+      response.url().includes('/api/v1/teams/hierarchy?isJoinable=false'),
+    'ok'
   );
   await page.getByTestId('edit-teams-button').click();
   await teamHierarchyResponse;
@@ -47,7 +48,7 @@ export const openTeamEditorAndSelect = async (page: Page, teamName: string) => {
   await teamSelect.click();
 
   const teamDropdown = page.locator('.ant-tree-select-dropdown').last();
-  await expect(teamDropdown).toBeVisible({ timeout: 30000 });
+  await expect(teamDropdown).toBeVisible({ timeout: ACTION_TIMEOUT });
 
   const directTeamOption = teamDropdown
     .locator('.ant-select-tree-title')
@@ -64,13 +65,15 @@ export const openTeamEditorAndSelect = async (page: Page, teamName: string) => {
   await teamSelect.locator('input:not([disabled])').first().click();
   await page.keyboard.type(teamName);
 
-  await expect(teamDropdown).toContainText(teamName, { timeout: 30000 });
+  await expect(teamDropdown).toContainText(teamName, {
+    timeout: ACTION_TIMEOUT,
+  });
 
   const teamOption = teamDropdown.getByText(teamName, {
     exact: true,
   });
 
-  await expect(teamOption).toBeVisible({ timeout: 30000 });
+  await expect(teamOption).toBeVisible({ timeout: ACTION_TIMEOUT });
   // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
   await teamOption.click({ force: true });
 };

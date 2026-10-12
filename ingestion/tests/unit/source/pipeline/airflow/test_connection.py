@@ -192,12 +192,46 @@ def test_rest_pipeline_details_lists_one_dag():
     assert evidence.summary == "authenticated"
 
 
-def test_rest_task_detail_access_is_a_noop_pass():
+def test_rest_task_detail_access_reads_one_dags_tasks():
     client = _rest_client()
+    client.list_dags.return_value = {"dags": [{"dag_id": "d"}]}
+    client.get_dag_tasks.return_value = {"tasks": [{"task_id": "t"}]}
 
     evidence = _rest_checks(client).task_detail_access()
 
-    assert "per-DAG" in evidence.summary
+    client.get_dag_tasks.assert_called_once_with("d")
+    assert evidence is not None
+    assert evidence.summary == "authenticated"
+
+
+def test_rest_task_detail_access_passes_when_no_dags_to_probe():
+    client = _rest_client()
+    client.list_dags.return_value = {"dags": []}
+
+    _rest_checks(client).task_detail_access()
+
+    client.get_dag_tasks.assert_not_called()
+
+
+def test_rest_task_detail_access_passes_on_any_reachable_response():
+    client = _rest_client()
+    client.list_dags.return_value = {"dags": [{"dag_id": "d"}]}
+    client.get_dag_tasks.return_value = {}
+
+    evidence = _rest_checks(client).task_detail_access()
+
+    client.get_dag_tasks.assert_called_once_with("d")
+    assert evidence is not None
+    assert evidence.summary == "authenticated"
+
+
+def test_rest_task_detail_access_fails_when_the_tasks_endpoint_errors():
+    client = _rest_client()
+    client.list_dags.return_value = {"dags": [{"dag_id": "d"}]}
+    client.get_dag_tasks.side_effect = RuntimeError("403 Forbidden")
+
+    with pytest.raises(CheckError):
+        _rest_checks(client).task_detail_access()
 
 
 # ── REST path, driving the real AirflowApiClient ─────────────────────────────

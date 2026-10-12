@@ -4,6 +4,7 @@ import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
 import static jakarta.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static jakarta.ws.rs.core.Response.Status.UNAUTHORIZED;
 import static org.openmetadata.service.security.SecurityUtil.writeErrorResponse;
+import static org.openmetadata.service.security.SecurityUtil.writeFailureResponse;
 import static org.openmetadata.service.security.SecurityUtil.writeJsonResponse;
 import static org.openmetadata.service.security.SecurityUtil.writeMessageResponse;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
@@ -126,7 +127,7 @@ public class LdapAuthServletHandler implements AuthServeletHandler {
       sendError(resp, statusCode, e.getMessage());
     } catch (Exception e) {
       LOG.error("Unexpected error handling LDAP login", e);
-      sendError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Authentication service error");
+      writeFailureResponse(resp, e);
     }
   }
 
@@ -197,7 +198,7 @@ public class LdapAuthServletHandler implements AuthServeletHandler {
     } catch (Exception e) {
       sessionService.releaseRefreshLease(leasedSession);
       LOG.error("Error handling refresh", e);
-      sendError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
+      writeFailureResponse(resp, e);
     }
   }
 
@@ -234,6 +235,11 @@ public class LdapAuthServletHandler implements AuthServeletHandler {
       LOG.error("Error handling logout", e);
       sendError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
     }
+  }
+
+  @Override
+  public void close() {
+    authenticator.close();
   }
 
   private LoginRequest parseLoginRequest(HttpServletRequest req) throws IOException {
@@ -284,7 +290,8 @@ public class LdapAuthServletHandler implements AuthServeletHandler {
       String previousRefreshToken,
       String updatedRefreshToken) {
     Optional<UserSession> completedSession =
-        sessionService.completeRefresh(session, updatedRefreshToken, null);
+        sessionService.completeRefresh(
+            session, updatedRefreshToken, SessionService.ProviderTokenUpdate.NONE);
     if (completedSession.isEmpty() || completedSession.get().getStatus() != SessionStatus.ACTIVE) {
       deleteOrphanedRefreshToken(previousRefreshToken, updatedRefreshToken);
       sessionService.revokeSession(req, resp);

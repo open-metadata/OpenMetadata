@@ -11,10 +11,8 @@
  *  limitations under the License.
  */
 
-import { startCase } from 'lodash';
 import type { EntityWithServices } from '../components/Explore/ExplorePage.interface';
 import type { SourceType } from '../components/SearchedData/SearchedData.interface';
-import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
 import { EntityType } from '../enums/entity.enum';
 import { ServiceCategory, ServiceCategoryPlural } from '../enums/service.enum';
 import type { APICollection } from '../generated/entity/data/apiCollection';
@@ -25,14 +23,11 @@ import type { Directory } from '../generated/entity/data/directory';
 import type { File } from '../generated/entity/data/file';
 import type { Table } from '../generated/entity/data/table';
 import type { EntityReference } from '../generated/type/entityUsage';
+import connectionsRouterClassBase from './ConnectionsRouterClassBase';
 import { getEntityLinkFromType } from './EntityLinkUtils';
 import { getEntityName } from './EntityNameUtils';
-import {
-  getEntityDetailsPath,
-  getServiceDetailsPath,
-  getSettingPath,
-} from './RouterUtils';
-import { getServiceRouteFromServiceType } from './ServicePureUtils';
+import { getEntityDetailsPath, getServiceDetailsPath } from './RouterUtils';
+import { getServiceCategoryLabel } from './ServicePureUtils';
 
 export const getBreadcrumbForTable = (
   entity: Table,
@@ -107,10 +102,12 @@ export const getBreadCrumbForAPICollection = (entity: APICollection) => {
 
   return [
     {
-      name: startCase(ServiceCategory.API_SERVICES),
-      url: getSettingPath(
-        GlobalSettingsMenuCategory.SERVICES,
-        getServiceRouteFromServiceType(ServiceCategory.API_SERVICES)
+      name: getServiceCategoryLabel(ServiceCategory.API_SERVICES),
+      // Delegated rather than built here so the crumb follows whatever surface owns the service
+      // listing. The base implementation returns the same settings path; an embedded experience
+      // that lists services elsewhere overrides it, category and all.
+      url: connectionsRouterClassBase.getSettingsServicesPath(
+        ServiceCategory.API_SERVICES
       ),
       iconType: EntityType.API_SERVICE,
     },
@@ -134,10 +131,12 @@ export const getBreadCrumbForAPIEndpoint = (entity: APIEndpoint) => {
 
   return [
     {
-      name: startCase(ServiceCategory.API_SERVICES),
-      url: getSettingPath(
-        GlobalSettingsMenuCategory.SERVICES,
-        getServiceRouteFromServiceType(ServiceCategory.API_SERVICES)
+      name: getServiceCategoryLabel(ServiceCategory.API_SERVICES),
+      // Delegated rather than built here so the crumb follows whatever surface owns the service
+      // listing. The base implementation returns the same settings path; an embedded experience
+      // that lists services elsewhere overrides it, category and all.
+      url: connectionsRouterClassBase.getSettingsServicesPath(
+        ServiceCategory.API_SERVICES
       ),
       iconType: EntityType.API_SERVICE,
     },

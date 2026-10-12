@@ -47,4 +47,7 @@ export const SLASH_COMMANDS = {
   table: 'Table',
   task: 'Task',
   image: 'Image',
+  video: 'Video',
+  audio: 'Audio',
+  file: 'File',
 } as const;

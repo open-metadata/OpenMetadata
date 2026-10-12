@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { AxiosError, AxiosResponse } from 'axios';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 export interface CsvHeaderDocumentation {
   name: string;
@@ -63,6 +63,8 @@ export interface CsvAsyncJob {
   completedAt?: number;
   logs?: CsvAsyncJobLog[];
 }
+
+export const isPollableCsvAsyncJobId = (jobId: string) => /^\d+$/.test(jobId);
 
 const CSV_DOCUMENTATION_FALLBACK_PATHS: Record<string, string> = {
   glossary: '/glossaries/documentation/csv',

@@ -12,17 +12,17 @@
  */
 @import '../../../styles/variables.less';
 .summary-card {
-  padding: 16px;
+  padding: var(--om-space-16);
   min-width: 200px;
   width: 100%;
   border: @global-border;
-  border-radius: 10px;
+  border-radius: var(--om-radius-10);
   background: var(--tw-color-bg-primary);
   justify-content: space-between;
 
   .summary-card-title {
     color: @text-grey-muted;
-    margin-bottom: 4px;
+    margin-bottom: var(--om-space-4);
   }
 
   .inverse-label {
@@ -31,14 +31,14 @@
   }
 
   .summary-card-description {
-    font-weight: 500;
-    font-size: 18px;
+    font-weight: var(--om-font-weight-medium);
+    font-size: var(--om-font-size-lg);
     margin-bottom: 0;
   }
 
   .ant-progress-circle {
     .ant-progress-text {
-      font-weight: 500;
+      font-weight: var(--om-font-weight-medium);
     }
   }
 

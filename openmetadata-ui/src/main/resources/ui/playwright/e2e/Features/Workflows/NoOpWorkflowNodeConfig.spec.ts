@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { expect, test as base, type Page } from '@playwright/test';
+import { type Page } from '@playwright/test';
+import { expect, test as base } from '../../../support/fixtures/base';
 import { performAdminLogin } from '../../../utils/admin';
 import { redirectToHomePage, uuid } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
@@ -90,7 +91,9 @@ async function navigateToWorkflowDetailPage(page: Page, name: string) {
     '/api/v1/governance/workflowDefinitions/name/*'
   );
 
-  await page.goto(`/workflows/${encodeURIComponent(name)}/workflow`);
+  await page.goto(`/workflows/${encodeURIComponent(name)}/workflow`, {
+    waitUntil: 'domcontentloaded',
+  });
   await detailResponse;
   await waitForAllLoadersToDisappear(page);
 }

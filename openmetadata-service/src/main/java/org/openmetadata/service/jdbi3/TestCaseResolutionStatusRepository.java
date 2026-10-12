@@ -1,9 +1,13 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.Entity.INGESTION_BOT_NAME;
 import static org.openmetadata.service.Entity.getEntityReferenceByName;
+import static org.openmetadata.service.util.jdbi.JdbiUtils.getAfterOffset;
+import static org.openmetadata.service.util.jdbi.JdbiUtils.getBeforeOffset;
+import static org.openmetadata.service.util.jdbi.JdbiUtils.getOffset;
 
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
@@ -11,10 +15,19 @@ import java.beans.BeanInfo;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
+import java.util.function.UnaryOperator;
+import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -23,9 +36,13 @@ import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.Assigned;
+import org.openmetadata.schema.tests.type.IncidentGroupBy;
+import org.openmetadata.schema.tests.type.IncidentStatusCount;
+import org.openmetadata.schema.tests.type.IncidentTrendDirection;
 import org.openmetadata.schema.tests.type.Metric;
 import org.openmetadata.schema.tests.type.Resolved;
 import org.openmetadata.schema.tests.type.Severity;
+import org.openmetadata.schema.tests.type.TestCaseIncidentGroup;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.type.EntityReference;
@@ -40,11 +57,15 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.TimeSeriesDAOs.TestCaseResolutionStatusTimeSeriesDAO.IncidentGroupPage;
 import org.openmetadata.service.resources.dqtests.TestCaseResolutionStatusMapper;
 import org.openmetadata.service.resources.dqtests.TestCaseResolutionStatusResource;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.search.SearchListFilter;
+import org.openmetadata.service.tasks.IncidentWorkflowStages;
+import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
 
@@ -53,6 +74,106 @@ public class TestCaseResolutionStatusRepository
     extends EntityTimeSeriesRepository<TestCaseResolutionStatus> {
   public static final String TIME_TO_RESPONSE = "timeToResponse";
   public static final String TIME_TO_RESOLUTION = "timeToResolution";
+  public static final String INCIDENT_DATE_FIELD_CREATED_AT = "createdAt";
+  public static final String INCIDENT_DATE_FIELD_UPDATED_AT = "updatedAt";
+  public static final String INCIDENT_SORT_TYPE_ASC = "asc";
+  public static final String INCIDENT_SORT_TYPE_DESC = "desc";
+  public static final String INCIDENT_GROUP_SORT_FIELD_INCIDENT_COUNT = "incidentCount";
+  public static final String INCIDENT_GROUP_SORT_FIELD_SEVERITY = "severity";
+  public static final String INCIDENT_GROUP_SORT_FIELD_LAST_SEEN = "lastSeen";
+  private static final String SQL_ASCENDING = "ASC";
+  private static final String SQL_DESCENDING = "DESC";
+  private static final String INCIDENT_COUNT_COLUMN = "incidentCount";
+  private static final String LAST_SEEN_EXPR = "MAX(i.updatedAt)";
+  private static final String LARGER_GROUP_FIRST = INCIDENT_COUNT_COLUMN + " " + SQL_DESCENDING;
+  // Severity1 is the most severe and the values compare as strings, so the worst first is the
+  // lowest value first. Groups with no severity come after every graded one, and before them in
+  // the reverse ordering.
+  private static final String SEVERITY_WORST_FIRST = "MIN(i.severity) IS NULL, MIN(i.severity) ASC";
+  private static final String SEVERITY_MILDEST_FIRST =
+      "MIN(i.severity) IS NOT NULL, MIN(i.severity) DESC";
+  private static final int TREND_BUCKET_COUNT = 8;
+  // A record range that holds every record, for listings whose range applies to the incidents.
+  // Boxed, as a listing without a range passes null bounds through the same expression.
+  private static final Long ALL_RECORDS_START_TS = 0L;
+  private static final Long ALL_RECORDS_END_TS = Long.MAX_VALUE;
+
+  // Open statuses from the most actionable to the least. Shared with the query rather than
+  // restated here, so the breakdown order, the statusRank expression and the set of statuses a
+  // group is counted over cannot drift apart.
+  private static final List<TestCaseResolutionStatusTypes> STATUS_TRIAGE_ORDER =
+      CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.OPEN_STATUSES;
+
+  // Name the owner dimension gives the group of incidents whose test cases have no owner.
+  public static final String NO_OWNER_GROUP_NAME = "No Owner";
+
+  /** Group-by field of the latest-status-per-test-case incident listings. */
+  public static final String LATEST_PER_TEST_CASE = "testCase.fullyQualifiedName.keyword";
+
+  private static final UnaryOperator<String> USER_FQN_NAME = name -> name.toLowerCase(Locale.ROOT);
+
+  // An incident's test case, and the asset that test case belongs to, never change.
+  private static final Set<String> TEST_CASE_INVARIANT_PARAMS =
+      Set.of("testCaseFqn", "originEntityFQN");
+
+  /**
+   * Incident timestamp a date range applies to. Each value is also the name of the {@code
+   * test_case_incident} column holding that timestamp.
+   */
+  public enum IncidentDateField {
+    CREATED_AT(INCIDENT_DATE_FIELD_CREATED_AT),
+    UPDATED_AT(INCIDENT_DATE_FIELD_UPDATED_AT);
+
+    private final String value;
+
+    IncidentDateField(String value) {
+      this.value = value;
+    }
+
+    public String value() {
+      return value;
+    }
+
+    // Query params bind through toString, so it is the API value rather than the constant name.
+    @Override
+    public String toString() {
+      return value;
+    }
+
+    public static IncidentDateField fromValue(String value) {
+      return Arrays.stream(values())
+          .filter(field -> field.value.equals(value))
+          .findFirst()
+          .orElseThrow(
+              () ->
+                  new IllegalArgumentException(
+                      String.format(
+                          "Invalid dateField '%s'. Must be one of %s",
+                          value, Arrays.toString(values()))));
+    }
+  }
+
+  /** What the incident groups are ordered by. */
+  public enum IncidentGroupSortField {
+    INCIDENT_COUNT(INCIDENT_GROUP_SORT_FIELD_INCIDENT_COUNT),
+    SEVERITY(INCIDENT_GROUP_SORT_FIELD_SEVERITY),
+    LAST_SEEN(INCIDENT_GROUP_SORT_FIELD_LAST_SEEN);
+
+    private final String value;
+
+    IncidentGroupSortField(String value) {
+      this.value = value;
+    }
+
+    // Query params bind through toString, so it is the API value rather than the constant name.
+    @Override
+    public String toString() {
+      return value;
+    }
+  }
+
+  /** A flat incident listing's range, and the incident timestamp it applies to if any. */
+  public record IncidentListRange(IncidentDateField dateField, Long startTs, Long endTs) {}
 
   public TestCaseResolutionStatusRepository() {
     super(
@@ -60,6 +181,11 @@ public class TestCaseResolutionStatusRepository
         Entity.getCollectionDAO().testCaseResolutionStatusTimeSeriesDao(),
         TestCaseResolutionStatus.class,
         Entity.TEST_CASE_RESOLUTION_STATUS);
+  }
+
+  @Override
+  protected Set<String> getGroupInvariantParams(String groupBy) {
+    return LATEST_PER_TEST_CASE.equals(groupBy) ? TEST_CASE_INVARIANT_PARAMS : Set.of();
   }
 
   // {@code testSuites} stays on the exclude list to scrub legacy docs written before the
@@ -136,9 +262,77 @@ public class TestCaseResolutionStatusRepository
     validatePatchFields(updated, original);
 
     timeSeriesDao.update(JsonUtils.pojoToJson(updated), id);
+    syncIncidentSeverity(updated);
     setInheritedFields(updated);
     postUpdate(updated);
     return new RestUtil.PatchResponse<>(Response.Status.OK, updated, ENTITY_UPDATED);
+  }
+
+  // The incident groups read severity off the denormalized incident row, which is only written
+  // when a record is created; a severity edited afterwards has to be carried over by hand.
+  private void syncIncidentSeverity(TestCaseResolutionStatus record) {
+    if (record.getStateId() != null) {
+      ((CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO) timeSeriesDao)
+          .updateIncidentSeverity(
+              record.getStateId().toString(),
+              record.getId().toString(),
+              record.getSeverity() != null ? record.getSeverity().value() : null);
+    }
+  }
+
+  /**
+   * Applies one entry of a bulk status change. An entry that keeps the open incident's status as
+   * it is only edits its severity; one that would change nothing at all — or that sends an open
+   * incident back to New, which the status flow ignores — is rejected, so the bulk result reports
+   * it instead of counting it as applied.
+   */
+  public void applyBulkStatus(TestCaseResolutionStatus incoming, String testCaseFqn) {
+    TestCaseResolutionStatus latest = getLatestRecord(testCaseFqn);
+    boolean isOpen = Boolean.TRUE.equals(unresolvedIncident(latest));
+    if (isOpen && isSameStatus(incoming, latest)) {
+      if (incoming.getSeverity() == null || incoming.getSeverity() == latest.getSeverity()) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Incident is already %s", latest.getTestCaseResolutionStatusType().value()));
+      }
+      updateSeverity(latest, incoming.getSeverity(), incoming.getUpdatedBy());
+    } else if (isOpen
+        && incoming.getTestCaseResolutionStatusType() == TestCaseResolutionStatusTypes.New) {
+      throw new IllegalArgumentException("An open incident cannot be moved back to New");
+    } else {
+      createNewRecord(incoming, testCaseFqn);
+    }
+  }
+
+  private static boolean isSameStatus(
+      TestCaseResolutionStatus incoming, TestCaseResolutionStatus latest) {
+    return incoming.getTestCaseResolutionStatusType() == latest.getTestCaseResolutionStatusType()
+        && isSameAssignee(extractAssignee(incoming), extractAssignee(latest));
+  }
+
+  // A request may name its assignee by id alone, while the stored record carries both.
+  private static boolean isSameAssignee(EntityReference incoming, EntityReference stored) {
+    if (incoming == null || stored == null) {
+      return incoming == stored;
+    }
+    return incoming.getId() != null
+        ? incoming.getId().equals(stored.getId())
+        : Objects.equals(incoming.getName(), stored.getName());
+  }
+
+  // Same write as a PATCH of the severity: the stored record, without its inherited test case.
+  private void updateSeverity(
+      TestCaseResolutionStatus latest, Severity severity, EntityReference updatedBy) {
+    TestCaseResolutionStatus stored =
+        JsonUtils.readValue(timeSeriesDao.getById(latest.getId()), entityClass);
+    stored
+        .withSeverity(severity)
+        .withUpdatedAt(System.currentTimeMillis())
+        .withUpdatedBy(updatedBy);
+    timeSeriesDao.update(JsonUtils.pojoToJson(stored), stored.getId());
+    syncIncidentSeverity(stored);
+    setInheritedFields(stored);
+    postUpdate(stored);
   }
 
   @Override
@@ -221,19 +415,29 @@ public class TestCaseResolutionStatusRepository
       // If there is an unresolved incident update the state ID
       recordEntity.setStateId(lastIncident.getStateId());
       // If the last incident had a severity assigned and the incoming incident does not, inherit
-      // the old severity
+      // the old severity; same for the denormalized failure summary so the chain's latest record
+      // never loses the failure reason on a status transition.
       recordEntity.setSeverity(
           recordEntity.getSeverity() == null
               ? lastIncident.getSeverity()
               : recordEntity.getSeverity());
+      recordEntity.setFailureSummary(
+          recordEntity.getFailureSummary() == null
+              ? lastIncident.getFailureSummary()
+              : recordEntity.getFailureSummary());
     } else if (lastIncident != null && isReopeningStatus(recordEntity)) {
-      // Ack/Assigned/Resolved after a Resolved incident reopens it: reuse the stateId and severity
-      // so the timeline stays contiguous. New is excluded — a new failure starts a fresh incident.
+      // Ack/Assigned/Resolved after a Resolved incident reopens it: reuse the stateId, severity,
+      // and failure summary so the timeline stays contiguous. New is excluded — a new failure
+      // starts a fresh incident.
       recordEntity.setStateId(lastIncident.getStateId());
       recordEntity.setSeverity(
           recordEntity.getSeverity() == null
               ? lastIncident.getSeverity()
               : recordEntity.getSeverity());
+      recordEntity.setFailureSummary(
+          recordEntity.getFailureSummary() == null
+              ? lastIncident.getFailureSummary()
+              : recordEntity.getFailureSummary());
     }
 
     setResolutionMetrics(lastIncident, recordEntity);
@@ -267,10 +471,56 @@ public class TestCaseResolutionStatusRepository
       default -> throw new IllegalArgumentException(
           String.format("Invalid status %s", recordEntity.getTestCaseResolutionStatusType()));
     }
+    persistRecord(recordFQN, recordEntity);
+  }
+
+  private void persistRecord(String recordFQN, TestCaseResolutionStatus recordEntity) {
     EntityReference testCaseReference = recordEntity.getTestCaseReference();
     recordEntity.withTestCaseReference(null);
-    timeSeriesDao.insert(recordFQN, entityType, JsonUtils.pojoToJson(recordEntity));
+    String recordJson = JsonUtils.pojoToJson(recordEntity);
     recordEntity.withTestCaseReference(testCaseReference);
+    DeadlockRetry.execute(
+        () ->
+            Entity.getJdbi()
+                .inTransaction(
+                    handle -> {
+                      timeSeriesDao.insert(recordFQN, entityType, recordJson);
+                      ((CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO) timeSeriesDao)
+                          .upsertIncident(
+                              recordEntity.getStateId().toString(),
+                              recordFQN,
+                              recordEntity.getTestCaseResolutionStatusType().value(),
+                              extractAssigneeName(recordEntity),
+                              recordEntity.getSeverity() != null
+                                  ? recordEntity.getSeverity().value()
+                                  : null,
+                              recordEntity.getTimestamp(),
+                              recordEntity.getId().toString());
+                      storeRelationship(recordEntity);
+                      return null;
+                    }));
+  }
+
+  // The PARENT_OF relationship is written inside persistRecord's transaction. The base
+  // createNewRecord's post-insert hook must not insert it a second time
+  @Override
+  protected void storeRelationshipInternal(TestCaseResolutionStatus recordEntity) {
+    // Relationship persisted atomically in persistRecord.
+  }
+
+  private static String extractAssigneeName(TestCaseResolutionStatus recordEntity) {
+    EntityReference assignee = extractAssignee(recordEntity);
+    return assignee != null ? assignee.getName() : null;
+  }
+
+  private static EntityReference extractAssignee(TestCaseResolutionStatus recordEntity) {
+    if (recordEntity.getTestCaseResolutionStatusType() != TestCaseResolutionStatusTypes.Assigned
+        || recordEntity.getTestCaseResolutionStatusDetails() == null) {
+      return null;
+    }
+    Assigned assigned =
+        JsonUtils.convertValue(recordEntity.getTestCaseResolutionStatusDetails(), Assigned.class);
+    return assigned != null ? assigned.getAssignee() : null;
   }
 
   @Override
@@ -489,7 +739,7 @@ public class TestCaseResolutionStatusRepository
             "",
             Include.ALL);
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(testCase.getEntityLink());
-    EntityInterface entity =
+    EntityInterface<?> entity =
         Entity.getEntityByName(
             entityLink.getEntityType(),
             entityLink.getEntityFQN(),
@@ -499,22 +749,8 @@ public class TestCaseResolutionStatusRepository
     incident.setSeverity(severity);
   }
 
-  public static String addOriginEntityFQNJoin(ListFilter filter, String condition) {
-    // if originEntityFQN is present, we need to join with test_case table
-    if ((filter.getQueryParam("originEntityFQN") != null)
-        || (filter.getQueryParam("include") != null)) {
-      condition =
-          """
-              INNER JOIN (SELECT entityFQN AS testCaseEntityFQN,fqnHash AS testCaseHash, deleted FROM test_case) tc \
-              ON entityFQNHash = testCaseHash
-              """
-              + condition;
-    }
-
-    return condition;
-  }
-
-  protected static UUID getOrCreateIncident(TestCase testCase, String updatedBy) {
+  protected static UUID getOrCreateIncident(
+      TestCase testCase, String updatedBy, String failureReason) {
     TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
 
     Task existing =
@@ -526,10 +762,11 @@ public class TestCaseResolutionStatusRepository
       return existing.getId();
     }
 
-    return createIncidentTask(testCase, updatedBy);
+    return createIncidentTask(testCase, updatedBy, failureReason);
   }
 
-  private static UUID createIncidentTask(TestCase testCase, String updatedBy) {
+  private static UUID createIncidentTask(
+      TestCase testCase, String updatedBy, String failureReason) {
     TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
 
     TestCase fullTestCase =
@@ -552,7 +789,10 @@ public class TestCaseResolutionStatusRepository
             .withType(TaskEntityType.TestCaseResolution)
             .withStatus(TaskEntityStatus.Open)
             .withAbout(fullTestCase.getEntityReference())
-            .withPayload(new TestCaseResolutionPayload().withTestCaseResolutionStatusId(taskId))
+            .withPayload(
+                new TestCaseResolutionPayload()
+                    .withTestCaseResolutionStatusId(taskId)
+                    .withFailureReason(failureReason))
             .withCreatedBy(updatedByRef)
             .withAssignees(assignees)
             .withCreatedAt(System.currentTimeMillis())
@@ -568,7 +808,57 @@ public class TestCaseResolutionStatusRepository
         "Incident task created on test failure: id={}, testCase={}",
         task.getId(),
         fullTestCase.getFullyQualifiedName());
+    advanceAutoAssignedIncident(taskRepository, task.getId(), assignees, updatedBy);
     return task.getId();
+  }
+
+  /**
+   * Moves an incident that was auto-assigned from the test case owners out of the workflow's {@code
+   * new} stage and into {@code assigned}, by driving the same {@code assign} transition a manual
+   * assignment uses.
+   *
+   * <p>Without this the incident stays in {@code New}, and because the TCRS mirror only carries
+   * assignee details on {@code Assigned} records, the Incident Manager renders it as unassigned even
+   * though the task itself has assignees.
+   */
+  private static void advanceAutoAssignedIncident(
+      TaskRepository taskRepository,
+      UUID taskId,
+      List<EntityReference> assignees,
+      String updatedBy) {
+    if (!nullOrEmpty(assignees)) {
+      try {
+        Task current = taskRepository.get(null, taskId, taskRepository.getFields("*"));
+        if (canAdvanceToAssignedStage(current)) {
+          taskRepository.resolveTaskWithWorkflow(
+              current,
+              IncidentWorkflowStages.ASSIGN_TRANSITION_ID,
+              null,
+              null,
+              null,
+              null,
+              updatedBy);
+          LOG.info("Incident task {} auto-advanced to the assigned stage", taskId);
+        } else {
+          LOG.warn(
+              "Incident task {} has assignees but sits at stage '{}' instead of '{}'; it stays New and renders as unassigned",
+              taskId,
+              current.getWorkflowStageId(),
+              IncidentWorkflowStages.NEW_STAGE_ID);
+        }
+      } catch (Exception e) {
+        // Best effort: an incident that fails to advance is still a usable incident sitting in
+        // New, so never fail test result ingestion over it.
+        LOG.warn("Failed to auto-advance incident task {} to the assigned stage", taskId, e);
+      }
+    }
+  }
+
+  private static boolean canAdvanceToAssignedStage(Task task) {
+    return IncidentWorkflowStages.NEW_STAGE_ID.equals(task.getWorkflowStageId())
+        && TaskWorkflowLifecycleResolver.findTransition(
+                task, IncidentWorkflowStages.ASSIGN_TRANSITION_ID)
+            != null;
   }
 
   private void setResolutionMetrics(
@@ -667,12 +957,20 @@ public class TestCaseResolutionStatusRepository
       recordEntity.setUpdatedAt(incomingTimestamp);
     }
 
-    // Inherit severity from the previous record for this stateId if the caller didn't set one
-    if (recordEntity.getSeverity() == null && recordEntity.getStateId() != null) {
+    // Inherit severity and failure summary from the previous record for this stateId if the
+    // caller didn't set them (e.g. tasks created before the payload carried a failure reason)
+    if ((recordEntity.getSeverity() == null || recordEntity.getFailureSummary() == null)
+        && recordEntity.getStateId() != null) {
       TestCaseResolutionStatus priorForStateId =
           getLatestRecordForStateId(recordEntity.getStateId());
-      if (priorForStateId != null && priorForStateId.getSeverity() != null) {
-        recordEntity.setSeverity(priorForStateId.getSeverity());
+      if (priorForStateId != null) {
+        if (recordEntity.getSeverity() == null && priorForStateId.getSeverity() != null) {
+          recordEntity.setSeverity(priorForStateId.getSeverity());
+        }
+        if (recordEntity.getFailureSummary() == null
+            && priorForStateId.getFailureSummary() != null) {
+          recordEntity.setFailureSummary(priorForStateId.getFailureSummary());
+        }
       }
     }
 
@@ -685,12 +983,7 @@ public class TestCaseResolutionStatusRepository
         recordEntity.getStateId(),
         recordFQN);
 
-    EntityReference testCaseReference = recordEntity.getTestCaseReference();
-    recordEntity.withTestCaseReference(null);
-    timeSeriesDao.insert(recordFQN, entityType, JsonUtils.pojoToJson(recordEntity));
-    recordEntity.withTestCaseReference(testCaseReference);
-
-    storeRelationship(recordEntity);
+    persistRecord(recordFQN, recordEntity);
     postCreate(recordEntity);
   }
 
@@ -713,5 +1006,394 @@ public class TestCaseResolutionStatusRepository
         .filter(r -> r.getTimestamp() != null)
         .max((a, b) -> Long.compare(a.getTimestamp(), b.getTimestamp()))
         .orElse(records.get(records.size() - 1));
+  }
+
+  /**
+   * The flat incident listing. With a date field the range applies to the incidents themselves, the
+   * way the groups apply it, so the records are no longer filtered by their own timestamp. The
+   * record range is opened up rather than dropped: {@code latest} is only honoured over a range.
+   */
+  public ResultList<TestCaseResolutionStatus> listIncidentRecords(
+      String offset, int limit, ListFilter filter, boolean latest, IncidentListRange range) {
+    boolean isIncidentRange = range.dateField() != null;
+    if (isIncidentRange) {
+      addIncidentListRange(filter, range);
+    }
+    return list(
+        offset,
+        isIncidentRange ? ALL_RECORDS_START_TS : range.startTs(),
+        isIncidentRange ? ALL_RECORDS_END_TS : range.endTs(),
+        limit,
+        filter,
+        latest);
+  }
+
+  private static void addIncidentListRange(ListFilter filter, IncidentListRange range) {
+    filter.addQueryParam("incidentListDateField", range.dateField().value());
+    if (range.startTs() != null) {
+      filter.addQueryParam("incidentListStartTs", String.valueOf(range.startTs()));
+    }
+    if (range.endTs() != null) {
+      filter.addQueryParam("incidentListEndTs", String.valueOf(range.endTs()));
+    }
+  }
+
+  /**
+   * Scopes the flat incident listing to the test cases a user or team owns directly, or to those
+   * nobody owns — the owner dimension's "No Owner" group.
+   */
+  public void addTestCaseOwnerFilter(ListFilter filter, String owner, boolean unowned) {
+    if (unowned && !nullOrEmpty(owner)) {
+      throw new IllegalArgumentException("`owner` and `unowned` cannot be combined");
+    }
+    UUID ownerId = resolveOwnerFilterId(owner);
+    if (ownerId != null) {
+      filter.addQueryParam("testCaseOwnerId", ownerId.toString());
+    }
+    if (unowned) {
+      filter.addQueryParam("testCaseUnowned", Boolean.TRUE.toString());
+    }
+  }
+
+  public static UUID resolveFilterEntityId(String entityType, String name) {
+    UUID entityId = null;
+    if (!nullOrEmpty(name)) {
+      EntityReference result = getEntityReferenceByName(entityType, name, Include.NON_DELETED);
+      if (!nullOrEmpty(result)) {
+        entityId = result.getId();
+      }
+    }
+    return entityId;
+  }
+
+  private static UUID resolveOwnerFilterId(String owner) {
+    UUID result = null;
+    if (!nullOrEmpty(owner)) {
+      try {
+        result = resolveFilterEntityId(Entity.USER, owner);
+      } catch (EntityNotFoundException e) {
+        result = resolveFilterEntityId(Entity.TEAM, owner);
+      }
+    }
+    return result;
+  }
+
+  public ResultList<TestCaseIncidentGroup> listIncidentGroups(
+      IncidentGroupBy groupBy,
+      ListFilter filter,
+      IncidentGroupSortField sortField,
+      String sortType,
+      int limit,
+      String offset) {
+    int offsetInt = getOffset(offset);
+    IncidentGroupPage page =
+        ((CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO) timeSeriesDao)
+            .listIncidentGroups(
+                groupBy, filter, incidentGroupOrderBy(sortField, sortType), limit, offsetInt);
+    return new ResultList<>(
+        toIncidentGroups(groupBy, page),
+        getBeforeOffset(offsetInt, limit),
+        getAfterOffset(offsetInt, limit, page.total()),
+        page.total());
+  }
+
+  // The ordering is rendered into the SQL, so it is spelled out here from fixed strings and never
+  // taken from the request. Ties under severity or last seen fall back to the larger group first.
+  private static String incidentGroupOrderBy(IncidentGroupSortField sortField, String sortType) {
+    String direction = incidentGroupSortOrder(sortType);
+    String severityOrder =
+        SQL_DESCENDING.equals(direction) ? SEVERITY_WORST_FIRST : SEVERITY_MILDEST_FIRST;
+    return switch (sortField) {
+      case INCIDENT_COUNT -> INCIDENT_COUNT_COLUMN + " " + direction;
+      case SEVERITY -> String.join(", ", severityOrder, LARGER_GROUP_FIRST);
+      case LAST_SEEN -> String.join(", ", LAST_SEEN_EXPR + " " + direction, LARGER_GROUP_FIRST);
+    };
+  }
+
+  private static List<TestCaseIncidentGroup> toIncidentGroups(
+      IncidentGroupBy groupBy, IncidentGroupPage page) {
+    IncidentGroupReferences references = resolveIncidentGroupReferences(page);
+    return page.counts().stream()
+        .map(
+            count ->
+                withRelatedEntities(
+                    toIncidentGroup(
+                        groupBy,
+                        count,
+                        parseIncidentCreatedAt(count),
+                        references.groups().get(count.groupKey())),
+                    count,
+                    page,
+                    references))
+        .toList();
+  }
+
+  // The entities a page of groups names, each looked up once for the whole page.
+  private record IncidentGroupReferences(
+      Map<String, EntityReference> groups,
+      Map<String, EntityReference> tables,
+      Map<String, EntityReference> assignees,
+      Map<String, EntityReference> testDefinitions) {}
+
+  private static IncidentGroupReferences resolveIncidentGroupReferences(IncidentGroupPage page) {
+    return new IncidentGroupReferences(
+        resolveIncidentGroupEntities(page.counts()),
+        findReferences(Entity.TABLE, relatedKeys(page.tables())),
+        findAssignees(
+            page.counts().stream()
+                .flatMap(count -> parseAssignees(count.assignees()).stream())
+                .collect(Collectors.toSet())),
+        findReferences(Entity.TEST_DEFINITION, relatedKeys(page.testDefinitions())));
+  }
+
+  private static Set<String> relatedKeys(Map<String, List<String>> keysByGroup) {
+    return keysByGroup.values().stream().flatMap(List::stream).collect(Collectors.toSet());
+  }
+
+  private static TestCaseIncidentGroup withRelatedEntities(
+      TestCaseIncidentGroup group,
+      CollectionDAO.TestCaseIncidentGroupCount count,
+      IncidentGroupPage page,
+      IncidentGroupReferences references) {
+    List<String> testDefinitionIds =
+        page.testDefinitions().getOrDefault(count.groupKey(), List.of());
+    return group
+        .withAssigneeReferences(
+            knownReferences(parseAssignees(count.assignees()), references.assignees()))
+        .withTableCount(count.tableCount())
+        .withTables(
+            relatedTables(page.tables().getOrDefault(count.groupKey(), List.of()), references))
+        .withTestDefinitionCount(count.testDefinitionCount())
+        .withTestDefinitions(knownReferences(testDefinitionIds, references.testDefinitions()));
+  }
+
+  private static List<EntityReference> knownReferences(
+      List<String> keys, Map<String, EntityReference> references) {
+    return keys.stream().map(references::get).filter(Objects::nonNull).toList();
+  }
+
+  private static String incidentGroupSortOrder(String sortType) {
+    return switch (sortType == null ? INCIDENT_SORT_TYPE_DESC : sortType) {
+      case INCIDENT_SORT_TYPE_ASC -> SQL_ASCENDING;
+      case INCIDENT_SORT_TYPE_DESC -> SQL_DESCENDING;
+      default -> throw new IllegalArgumentException(
+          String.format(
+              "Invalid sortType '%s'. Must be one of [%s, %s]",
+              sortType, INCIDENT_SORT_TYPE_ASC, INCIDENT_SORT_TYPE_DESC));
+    };
+  }
+
+  private static TestCaseIncidentGroup toIncidentGroup(
+      IncidentGroupBy groupBy,
+      CollectionDAO.TestCaseIncidentGroupCount count,
+      List<Long> incidentCreatedAt,
+      EntityReference reference) {
+    TestCaseIncidentGroup group =
+        new TestCaseIncidentGroup()
+            .withGroupBy(groupBy)
+            .withIncidentCount(count.incidentCount())
+            .withStatus(statusFromRank(count.statusRank()))
+            .withStatusCounts(statusCounts(count))
+            .withAssigneeCount(count.assigneeCount())
+            .withFirstSeen(count.firstSeen())
+            .withLastSeen(count.lastSeen());
+    if (count.severity() != null) {
+      group.withSeverity(Severity.fromValue(count.severity()));
+    }
+    List<String> assignees = parseAssignees(count.assignees());
+    if (!assignees.isEmpty()) {
+      group.withAssignees(assignees);
+    }
+    setIncidentTrend(group, incidentCreatedAt);
+    if (reference != null) {
+      group
+          .withId(reference.getId())
+          .withName(reference.getName())
+          .withDisplayName(reference.getDisplayName())
+          .withFullyQualifiedName(reference.getFullyQualifiedName());
+    } else {
+      setFallbackIncidentGroupIdentity(group, count);
+    }
+    return group;
+  }
+
+  private static List<String> parseAssignees(String assigneesJson) {
+    List<String> result = List.of();
+    if (!nullOrEmpty(assigneesJson)) {
+      result =
+          Arrays.stream(JsonUtils.readValue(assigneesJson, String[].class))
+              .filter(assignee -> !nullOrEmpty(assignee))
+              .distinct()
+              .toList();
+    }
+    return result;
+  }
+
+  private static List<Long> parseIncidentCreatedAt(CollectionDAO.TestCaseIncidentGroupCount count) {
+    List<Long> result = List.of();
+    if (!nullOrEmpty(count.incidentCreatedAt())) {
+      result = Arrays.asList(JsonUtils.readValue(count.incidentCreatedAt(), Long[].class));
+    }
+    return result;
+  }
+
+  // The group's open incidents split across the statuses they currently sit in, ordered the way
+  // the triage order ranks them. A status no incident is in is left out rather than reported as a
+  // zero, so the breakdown only ever names statuses that are actually occupied.
+  private static List<IncidentStatusCount> statusCounts(
+      CollectionDAO.TestCaseIncidentGroupCount count) {
+    return STATUS_TRIAGE_ORDER.stream()
+        .filter(status -> count.statusCounts().getOrDefault(status.value(), 0) > 0)
+        .map(
+            status ->
+                new IncidentStatusCount()
+                    .withStatus(status)
+                    .withCount(count.statusCounts().get(status.value())))
+        .toList();
+  }
+
+  // The query ranks a group by the 1-based position of its most actionable status in the triage
+  // order; anything past the end falls to the least actionable one, as the old CASE default did.
+  private static TestCaseResolutionStatusTypes statusFromRank(int statusRank) {
+    int index = Math.min(Math.max(statusRank, 1), STATUS_TRIAGE_ORDER.size()) - 1;
+    return STATUS_TRIAGE_ORDER.get(index);
+  }
+
+  private static void setIncidentTrend(TestCaseIncidentGroup group, List<Long> incidentCreatedAt) {
+    List<Long> timestamps = listOrEmpty(incidentCreatedAt);
+    if (!timestamps.isEmpty()) {
+      long min = Collections.min(timestamps);
+      long max = Collections.max(timestamps);
+      List<Integer> buckets = bucketIncidentCreatedAt(timestamps, min, max);
+      group.withTrend(buckets).withTrendDirection(trendDirection(buckets, max > min));
+    }
+  }
+
+  private static List<Integer> bucketIncidentCreatedAt(List<Long> timestamps, long min, long max) {
+    int[] buckets = new int[TREND_BUCKET_COUNT];
+    long span = max - min;
+    for (long timestamp : timestamps) {
+      int bucket = span == 0 ? 0 : (int) ((timestamp - min) * TREND_BUCKET_COUNT / span);
+      buckets[Math.min(bucket, TREND_BUCKET_COUNT - 1)]++;
+    }
+    return Arrays.stream(buckets).boxed().toList();
+  }
+
+  private static IncidentTrendDirection trendDirection(List<Integer> buckets, boolean hasSpan) {
+    IncidentTrendDirection result = IncidentTrendDirection.Steady;
+    if (hasSpan) {
+      int half = TREND_BUCKET_COUNT / 2;
+      int firstHalf = buckets.subList(0, half).stream().mapToInt(Integer::intValue).sum();
+      int lastHalf =
+          buckets.subList(half, TREND_BUCKET_COUNT).stream().mapToInt(Integer::intValue).sum();
+      if (lastHalf > firstHalf) {
+        result = IncidentTrendDirection.Rising;
+      } else if (lastHalf < firstHalf) {
+        result = IncidentTrendDirection.Falling;
+      }
+    }
+    return result;
+  }
+
+  // A table can be gone while incidents raised on it are still open; it is then named after its
+  // FQN, the way a table group whose table is gone is.
+  private static List<EntityReference> relatedTables(
+      List<String> tableFqns, IncidentGroupReferences references) {
+    return tableFqns.stream()
+        .map(
+            fqn ->
+                references
+                    .tables()
+                    .getOrDefault(
+                        fqn,
+                        new EntityReference()
+                            .withType(Entity.TABLE)
+                            .withName(List.of(FullyQualifiedName.split(fqn)).getLast())
+                            .withFullyQualifiedName(fqn)))
+        .toList();
+  }
+
+  // Tables are keyed by FQN — that is what an incident row knows them by — everything else by id.
+  private static Map<String, EntityReference> findReferences(
+      String entityType, Collection<String> keys) {
+    Map<String, EntityReference> result = new HashMap<>();
+    if (!keys.isEmpty()) {
+      EntityDAO<?> entityDAO = Entity.getEntityRepository(entityType).getDao();
+      if (Entity.TABLE.equals(entityType)) {
+        for (EntityReference reference :
+            entityDAO.findReferencesByFqns(List.copyOf(keys), Include.ALL)) {
+          result.put(reference.getFullyQualifiedName(), reference);
+        }
+      } else {
+        List<UUID> ids = keys.stream().map(UUID::fromString).toList();
+        for (EntityReference reference : entityDAO.findReferencesByIds(ids, Include.ALL)) {
+          result.put(reference.getId().toString(), reference);
+        }
+      }
+    }
+    return result;
+  }
+
+  // An incident row keeps only its assignee's name, which a user or a team holds. Their references
+  // carry the type and display name the groups show; users are looked up first, as the incident
+  // workflow assigns users far more often than teams.
+  private static Map<String, EntityReference> findAssignees(Collection<String> names) {
+    Map<String, EntityReference> result =
+        new HashMap<>(findAssigneesByName(Entity.USER, names, USER_FQN_NAME));
+    List<String> unresolved = names.stream().filter(name -> !result.containsKey(name)).toList();
+    result.putAll(findAssigneesByName(Entity.TEAM, unresolved, UnaryOperator.identity()));
+    return result;
+  }
+
+  // A user's FQN is its lowercased name, while a record written before assignees were resolved
+  // keeps the name in the case it was sent. The references are keyed by the row's own names.
+  private static Map<String, EntityReference> findAssigneesByName(
+      String entityType, Collection<String> names, UnaryOperator<String> toFqnName) {
+    Map<String, List<String>> namesByFqnName =
+        names.stream().collect(Collectors.groupingBy(toFqnName));
+    List<String> fqns =
+        namesByFqnName.keySet().stream().map(FullyQualifiedName::quoteName).toList();
+    Map<String, EntityReference> result = new HashMap<>();
+    for (EntityReference reference :
+        Entity.getEntityRepository(entityType)
+            .getDao()
+            .findReferencesByFqns(fqns, Include.NON_DELETED)) {
+      namesByFqnName
+          .getOrDefault(toFqnName.apply(reference.getName()), List.of())
+          .forEach(name -> result.put(name, reference));
+    }
+    return result;
+  }
+
+  private static Map<String, EntityReference> resolveIncidentGroupEntities(
+      List<CollectionDAO.TestCaseIncidentGroupCount> counts) {
+    Map<String, EntityReference> result = new HashMap<>();
+    Map<String, List<String>> keysByType =
+        counts.stream()
+            // The owner dimension buckets incidents whose test case has no owner under an empty
+            // key; there is no entity to look that group up by.
+            .filter(count -> !nullOrEmpty(count.groupKey()))
+            .collect(
+                Collectors.groupingBy(
+                    CollectionDAO.TestCaseIncidentGroupCount::groupType,
+                    Collectors.mapping(
+                        CollectionDAO.TestCaseIncidentGroupCount::groupKey, Collectors.toList())));
+    keysByType.forEach(
+        (groupType, groupKeys) -> result.putAll(findReferences(groupType, groupKeys)));
+    return result;
+  }
+
+  private static void setFallbackIncidentGroupIdentity(
+      TestCaseIncidentGroup group, CollectionDAO.TestCaseIncidentGroupCount count) {
+    if (nullOrEmpty(count.groupKey())) {
+      // The owner dimension's catch-all bucket: real incidents on test cases nobody owns. It
+      // stands for no entity, so it carries only a name.
+      group.withName(NO_OWNER_GROUP_NAME);
+    } else if (Entity.TABLE.equals(count.groupType())) {
+      List<String> fqnParts = List.of(FullyQualifiedName.split(count.groupKey()));
+      group.withName(fqnParts.getLast()).withFullyQualifiedName(count.groupKey());
+    } else {
+      group.withName(count.groupKey());
+    }
   }
 }

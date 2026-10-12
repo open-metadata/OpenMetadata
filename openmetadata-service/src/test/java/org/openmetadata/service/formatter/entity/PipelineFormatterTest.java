@@ -10,7 +10,6 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
-import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
@@ -18,6 +17,7 @@ import org.openmetadata.schema.type.StatusType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.formatter.TestMessageDecorator;
+import org.openmetadata.service.formatter.util.FormattedMessage;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 
 class PipelineFormatterTest {
@@ -25,7 +25,7 @@ class PipelineFormatterTest {
   @Test
   void formatHandlesPipelineStatusUpdatesAndMalformedPayloads() {
     Pipeline pipeline = new Pipeline().withName("etl_daily");
-    Thread thread = pipelineThread();
+    FormattedMessage thread = pipelineMessage();
     PipelineFormatter formatter = new PipelineFormatter();
     long timestamp = 1_700_000_000_000L;
     String expectedDate = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss").format(new Date(timestamp));
@@ -78,8 +78,8 @@ class PipelineFormatterTest {
     assertEquals("Added <b>description</b>: <ins>new description</ins>", defaultMessage);
   }
 
-  private static Thread pipelineThread() {
-    return new Thread()
+  private static FormattedMessage pipelineMessage() {
+    return new FormattedMessage()
         .withId(UUID.randomUUID())
         .withEntityRef(
             new EntityReference()

@@ -12,7 +12,7 @@
 Entity Fetcher Configuration Models
 """
 
-from typing import Optional, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 from metadata.generated.schema.type.filterPattern import FilterPattern
 
@@ -24,19 +24,19 @@ class EntityFilterConfigInterface(Protocol):
     """Interface for the OM workflow source configs that allow filtering"""
 
     @property
-    def classificationFilterPattern(self) -> Optional[FilterPattern]: ...  # noqa: N802, UP045
+    def classificationFilterPattern(self) -> FilterPattern | None: ...  # noqa: N802
 
     @property
-    def databaseFilterPattern(self) -> Optional[FilterPattern]: ...  # noqa: N802, UP045
+    def databaseFilterPattern(self) -> FilterPattern | None: ...  # noqa: N802
 
     @property
-    def schemaFilterPattern(self) -> Optional[FilterPattern]: ...  # noqa: N802, UP045
+    def schemaFilterPattern(self) -> FilterPattern | None: ...  # noqa: N802
 
     @property
-    def tableFilterPattern(self) -> Optional[FilterPattern]: ...  # noqa: N802, UP045
+    def tableFilterPattern(self) -> FilterPattern | None: ...  # noqa: N802
 
     @property
-    def useFqnForFiltering(self) -> Optional[bool]: ...  # noqa: N802, UP045
+    def useFqnForFiltering(self) -> bool | None: ...  # noqa: N802
 
     @property
-    def includeViews(self) -> Optional[bool]: ...  # noqa: N802, UP045
+    def includeViews(self) -> bool | None: ...  # noqa: N802

@@ -24,6 +24,13 @@ public enum IndexJobStatus {
   /** Job is actively being processed by servers */
   RUNNING,
 
+  /**
+   * All partitions processed; staged indexes are being promoted onto their aliases. Deliberately
+   * non-terminal so the coordinator and its pod stay alive (and external watchers do not tear the
+   * pod down) until every staged index is promoted. Only then does the job move to COMPLETED.
+   */
+  PROMOTING,
+
   /** Job completed successfully */
   COMPLETED,
 

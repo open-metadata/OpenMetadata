@@ -61,7 +61,7 @@ describe('KnowledgePages', () => {
     });
 
     expect(screen.getByTestId('knowledge-pages')).toBeInTheDocument();
-    expect(screen.getByText('label.knowledge-center')).toBeInTheDocument();
+    expect(screen.getByText('label.context-center')).toBeInTheDocument();
 
     // article page
     expect(screen.getByText('Data Collaboration')).toBeInTheDocument();
@@ -97,6 +97,32 @@ describe('KnowledgePages', () => {
       'https://blog.open-metadata.org/openmetadata-release-1-2-531f0e3c6d9a'
     );
     expect(pageLink).toHaveAttribute('target', '_blank');
+  });
+
+  it('should neutralise a javascript: quick link url (XSS guard)', async () => {
+    (getListKnowledgePages as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        data: [
+          {
+            ...MOCK_KNOWLEDGE_PAGES[1],
+            page: { url: 'javascript:alert(document.domain)' },
+          },
+        ],
+        paging: {
+          total: 10,
+        },
+      })
+    );
+    await act(async () => {
+      render(<KnowledgePages />, { wrapper: MemoryRouter });
+    });
+
+    const pageLink = screen.getByTestId('page-link');
+
+    // getSafeHttpUrl drops the javascript: scheme, so the '#' fallback is used —
+    // React Router renders that as href="/", never the script url.
+    expect(pageLink.getAttribute('href')).not.toContain('javascript:');
+    expect(pageLink).toHaveAttribute('href', '/');
   });
 
   it('should not render when data is empty', async () => {

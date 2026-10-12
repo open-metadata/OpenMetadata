@@ -27,9 +27,11 @@ import type {
   QuickLink,
 } from '../interface/knowledge-center.interface';
 import { PageType } from '../interface/knowledge-center.interface';
+import { queryClient } from '../queryClient';
 import { downloadDriveFile, listAssetsByFqn } from '../rest/assetAPI';
 import { postKnowledgePage } from '../rest/knowledgeCenterAPI';
 import contextCenterClassBase from './ContextCenterClassBase';
+import { CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY } from './ContextCenterQueryKeys';
 import EntityLink from './EntityLink';
 import { getEntityName } from './EntityNameUtils';
 import { showErrorToast } from './ToastUtils';
@@ -40,6 +42,14 @@ export const CONTEXT_CENTER_DOCUMENTS_ENTITY_LINK = EntityLink.getEntityLink(
   EntityType.KNOWLEDGE_PAGE,
   CONTEXT_CENTER_DOCUMENTS_FQN
 );
+
+export const getContextCenterHeaderPresentation = (isAiMode: boolean) => ({
+  // OSS does not override the extension hooks, so AI mode itself must opt into
+  // the same embedded header treatment used by downstream applications.
+  breadcrumbInsideCard:
+    isAiMode || contextCenterClassBase.isBreadcrumbInsideCard(),
+  isEmbedded: isAiMode || contextCenterClassBase.isEmbeddedMode(),
+});
 
 export const formatBytes = (bytes?: number): string => {
   if (isUndefined(bytes) || isNull(bytes)) {
@@ -76,21 +86,25 @@ export const knowledgePageToArticleItem = (
     page?: QuickLink | unknown;
   },
   untitledLabel: string
-): KnowledgePageArticleItem => ({
-  description: data.description ?? '',
-  href:
-    data.pageType === PageType.QUICK_LINK
-      ? (data.page as QuickLink)?.url
-      : data.fullyQualifiedName
-      ? contextCenterClassBase.getArticlePath(data.fullyQualifiedName)
-      : undefined,
-  id: data.id,
-  lastEditedAt: data.updatedAt,
-  tags: (data.tags ?? []).map((tag) => ({
-    label: tag.tagFQN.split('.').pop() ?? tag.tagFQN,
-  })),
-  title: getEntityName(data) || untitledLabel,
-});
+): KnowledgePageArticleItem => {
+  let href: string | undefined;
+  if (data.pageType === PageType.QUICK_LINK) {
+    href = (data.page as QuickLink)?.url;
+  } else if (data.fullyQualifiedName) {
+    href = contextCenterClassBase.getArticlePath(data.fullyQualifiedName);
+  }
+
+  return {
+    description: data.description ?? '',
+    href,
+    id: data.id,
+    lastEditedAt: data.updatedAt,
+    tags: (data.tags ?? []).map((tag) => ({
+      label: tag.tagFQN.split('.').pop() ?? tag.tagFQN,
+    })),
+    title: getEntityName(data) || untitledLabel,
+  };
+};
 
 export const fetchContextCenterDocuments = async (
   params?: ListParams
@@ -120,6 +134,9 @@ export const createArticleKnowledgePage = async (
       pageType: PageType.ARTICLE,
     };
     const response = await postKnowledgePage(data);
+    queryClient.invalidateQueries({
+      queryKey: CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY,
+    });
     onResourceLimit?.();
     navigate({
       hash: CREATE_PAGE_HASH,
@@ -173,3 +190,14 @@ export const getSortConfig = (
 
   return { sortBy: 'updatedAt', sortOrder: 'desc' };
 };
+
+export const getFilterTabClassName = ({
+  isSelected,
+}: {
+  isSelected: boolean;
+}): string =>
+  `tw:rounded-md tw:border tw:px-3 tw:py-2 tw:text-sm tw:font-medium tw:cursor-pointer ${
+    isSelected
+      ? 'tw:border-utility-brand-100 tw:bg-brand-primary tw:text-brand-secondary'
+      : 'tw:border-primary tw:bg-surface tw:text-secondary'
+  }`;

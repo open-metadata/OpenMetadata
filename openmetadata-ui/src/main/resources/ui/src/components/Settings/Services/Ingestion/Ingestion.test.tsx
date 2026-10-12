@@ -11,13 +11,42 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import {
+  act,
+  fireEvent,
+  render,
+  RenderResult,
+  screen,
+} from '@testing-library/react';
+import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { DISABLED } from '../../../../constants/constants';
+import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
-import { ingestionProps } from '../../../../mocks/Ingestion.mock';
+import { ServiceAgentSubTabs } from '../../../../enums/service.enum';
+import { ingestionProps, mockAgent } from '../../../../mocks/Ingestion.mock';
 import { ENTITY_PERMISSIONS } from '../../../../mocks/Permissions.mock';
+import { Agent } from '../../../ServiceAgents/AgentsPage.interface';
 import Ingestion from './Ingestion.component';
+
+// Ingestion renders MetadataAgentsView, whose useAgentPermissions now derives its
+// per-agent flags through useBulkEntityPermissions (React Query) instead of reading
+// PermissionProvider's context directly. React Query hooks throw without a client, so
+// every render here needs a QueryClientProvider alongside the existing MemoryRouter. A
+// fresh client per wrapper keeps cached permissions from leaking between tests.
+const TestWrapper = ({ children }: { children: ReactNode }) => (
+  <QueryClientProvider
+    client={
+      new QueryClient({
+        defaultOptions: {
+          queries: { retry: false, refetchOnWindowFocus: false, gcTime: 0 },
+        },
+      })
+    }>
+    <MemoryRouter>{children}</MemoryRouter>
+  </QueryClientProvider>
+);
 
 jest.mock(
   '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion',
@@ -50,14 +79,126 @@ jest.mock('../../../../rest/ingestionPipelineAPI', () => ({
   triggerIngestionPipelineById: jest.fn().mockResolvedValue({}),
 }));
 
+// The FQN comes from the route, and one of the cases below is what happens when it changes under a
+// component instance React Router has reused.
+let mockServiceFQN = 'sample_data';
+
+jest.mock('../../../../hooks/useFqn', () => ({
+  useFqn: jest.fn().mockImplementation(() => ({
+    fqn: mockServiceFQN,
+    ingestionFQN: '',
+    ruleName: '',
+    entityFqn: mockServiceFQN,
+  })),
+}));
+
 jest.mock('../../../../hoc/LimitWrapper', () => {
   return jest
     .fn()
     .mockImplementation(({ children }) => <>LimitWrapper{children}</>);
 });
 
+jest.mock(
+  '../../../ServiceAgents/components/DeploymentSummaryCard.component',
+  () => jest.fn().mockImplementation(() => <div>DeploymentSummaryCard</div>)
+);
+
+jest.mock('../../../common/AirflowMessageBanner/AirflowMessageBanner', () =>
+  jest
+    .fn()
+    .mockImplementation(
+      ({ unreachableFallbackMessage, disabledFallbackMessage }) => (
+        <div
+          data-disabled-fallback={disabledFallbackMessage}
+          data-fallback={unreachableFallbackMessage}>
+          AirflowMessageBanner
+        </div>
+      )
+    )
+);
+
+// `Ingestion` takes the status as a prop, but the agent controls below it read the same status from
+// the context, so both have to be driven for a case to be realistic.
+jest.mock(
+  '../../../../context/AirflowStatusProvider/AirflowStatusProvider',
+  () => ({
+    useAirflowStatus: jest.fn().mockImplementation(() => ({
+      isAirflowAvailable: true,
+      isFetchingStatus: false,
+      platform: 'airflow',
+    })),
+  })
+);
+
 describe('Ingestion', () => {
-  it('should render the error placeHolder if airflow is not available', async () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockServiceFQN = 'sample_data';
+    (useAirflowStatus as jest.Mock).mockImplementation(() => ({
+      isAirflowAvailable: true,
+      isFetchingStatus: false,
+      platform: 'airflow',
+    }));
+  });
+
+  it('should give the banner a fallback message for a status call that carries no reason', async () => {
+    await act(async () => {
+      render(<Ingestion {...ingestionProps} />, { wrapper: TestWrapper });
+    });
+
+    // The fallback is opt-in, so a call site that forgets it silently loses the only explanation
+    // for why the agent controls below are disabled.
+    expect(screen.getByText('AirflowMessageBanner')).toHaveAttribute(
+      'data-fallback',
+      'message.pipeline-service-unreachable-agent-actions'
+    );
+  });
+
+  it('should give the banner a message for a deployment with the pipeline client switched off', async () => {
+    await act(async () => {
+      render(<Ingestion {...ingestionProps} />, { wrapper: TestWrapper });
+    });
+
+    // A disabled client answers every call with a healthy 200, so the banner is the only thing
+    // that can say the agents listed below will not deploy or run.
+    expect(screen.getByText('AirflowMessageBanner')).toHaveAttribute(
+      'data-disabled-fallback',
+      'message.pipeline-service-disabled-agent-actions'
+    );
+  });
+
+  it('should keep listing the agents when the pipeline client is disabled', async () => {
+    // A disabled client reports itself *available* — a healthy 200 — so this is a different status
+    // shape from the unreachable case below, and the list has to survive it too.
+    (useAirflowStatus as jest.Mock).mockImplementation(() => ({
+      isAirflowAvailable: true,
+      isFetchingStatus: false,
+      platform: DISABLED,
+    }));
+    await act(async () => {
+      render(
+        <Ingestion
+          {...ingestionProps}
+          airflowInformation={{
+            ...ingestionProps.airflowInformation,
+            platform: DISABLED,
+          }}
+        />,
+        { wrapper: TestWrapper }
+      );
+    });
+
+    expect(screen.getByTestId('metadata-agent-group')).toBeInTheDocument();
+    expect(screen.getByText('AirflowMessageBanner')).toBeInTheDocument();
+    expect(screen.queryByText('ErrorPlaceHolderIngestion')).toBeNull();
+  });
+
+  it('should keep listing the agents when the pipeline service is unavailable', async () => {
+    (useAirflowStatus as jest.Mock).mockImplementation(() => ({
+      isAirflowAvailable: false,
+      isFetchingStatus: false,
+      platform: 'airflow',
+    }));
     await act(async () => {
       render(
         <Ingestion
@@ -67,16 +208,75 @@ describe('Ingestion', () => {
             isAirflowAvailable: false,
           }}
         />,
-        { wrapper: MemoryRouter }
+        { wrapper: TestWrapper }
       );
     });
 
-    expect(screen.getByText('ErrorPlaceHolderIngestion')).toBeInTheDocument();
+    expect(screen.getByTestId('metadata-agent-group')).toBeInTheDocument();
+    expect(screen.getByText('AirflowMessageBanner')).toBeInTheDocument();
+    expect(screen.queryByText('ErrorPlaceHolderIngestion')).toBeNull();
+  });
+
+  it('should list the agents while the status call is still in flight', async () => {
+    (useAirflowStatus as jest.Mock).mockImplementation(() => ({
+      isAirflowAvailable: false,
+      isFetchingStatus: true,
+      platform: 'airflow',
+    }));
+    await act(async () => {
+      render(
+        <Ingestion
+          {...ingestionProps}
+          airflowInformation={{
+            ...ingestionProps.airflowInformation,
+            isAirflowAvailable: false,
+            isFetchingStatus: true,
+          }}
+        />,
+        { wrapper: TestWrapper }
+      );
+    });
+
+    expect(screen.getByTestId('metadata-agent-group')).toBeInTheDocument();
+    expect(screen.queryByTestId('agent-group-skeleton')).toBeNull();
+    expect(screen.queryByText('ErrorPlaceHolderIngestion')).toBeNull();
+  });
+
+  it('should replace the add-agent control with a placeholder while the status call is in flight', async () => {
+    (useAirflowStatus as jest.Mock).mockImplementation(() => ({
+      isAirflowAvailable: false,
+      isFetchingStatus: true,
+      platform: 'airflow',
+    }));
+    await act(async () => {
+      render(<Ingestion {...ingestionProps} />, { wrapper: TestWrapper });
+    });
+
+    expect(screen.getByTestId('add-agent-skeleton')).toBeInTheDocument();
+    expect(screen.queryByText('AddIngestionButton')).toBeNull();
+  });
+
+  it('should hide the deployment summary card while the agent list is loading', async () => {
+    await act(async () => {
+      render(<Ingestion {...ingestionProps} isLoading />, {
+        wrapper: TestWrapper,
+      });
+    });
+
+    expect(screen.queryByText('DeploymentSummaryCard')).toBeNull();
+  });
+
+  it('should render the deployment summary card once the list has loaded', async () => {
+    await act(async () => {
+      render(<Ingestion {...ingestionProps} />, { wrapper: TestWrapper });
+    });
+
+    expect(screen.getByText('DeploymentSummaryCard')).toBeInTheDocument();
   });
 
   it('should render the AddIngestionButton when create permission is granted', async () => {
     await act(async () => {
-      render(<Ingestion {...ingestionProps} />, { wrapper: MemoryRouter });
+      render(<Ingestion {...ingestionProps} />, { wrapper: TestWrapper });
     });
 
     expect(screen.getByText('AddIngestionButton')).toBeInTheDocument();
@@ -92,11 +292,34 @@ describe('Ingestion', () => {
             platform: DISABLED,
           }}
         />,
-        { wrapper: MemoryRouter }
+        { wrapper: TestWrapper }
       );
     });
 
     expect(screen.queryByText('AddIngestionButton')).toBeNull();
+  });
+
+  it('should refresh only the visible sub-tab list', async () => {
+    await act(async () => {
+      render(<Ingestion {...ingestionProps} />, { wrapper: TestWrapper });
+    });
+
+    fireEvent.click(screen.getByTestId('agent-group-refresh'));
+
+    expect(ingestionProps.refreshAgentsList).toHaveBeenCalledTimes(1);
+    expect(ingestionProps.refreshAgentsList).toHaveBeenCalledWith(
+      ServiceAgentSubTabs.METADATA
+    );
+  });
+
+  it('should disable the refresh control while the list is loading', async () => {
+    await act(async () => {
+      render(<Ingestion {...ingestionProps} isLoading />, {
+        wrapper: TestWrapper,
+      });
+    });
+
+    expect(screen.getByTestId('agent-group-refresh')).toBeDisabled();
   });
 
   it('should not render the AddIngestionButton if no Create ingestion pipeline permission', async () => {
@@ -110,9 +333,107 @@ describe('Ingestion', () => {
       getEntityPermissionByFqn: jest.fn().mockResolvedValue(ENTITY_PERMISSIONS),
     }));
     await act(async () => {
-      render(<Ingestion {...ingestionProps} />, { wrapper: MemoryRouter });
+      render(<Ingestion {...ingestionProps} />, { wrapper: TestWrapper });
     });
 
     expect(screen.queryByText('AddIngestionButton')).toBeNull();
+  });
+
+  // Every agent action refetches the list — killing a run included. Treating that refetch as a
+  // first load swapped the cards for skeletons, so the agents dropped off the list until the
+  // request came back.
+  describe('refetching an already loaded list', () => {
+    // Mounts on the first load, lands the response, then reopens the request — the only way to
+    // reach the refetch state, since the flag alone cannot tell the two apart.
+    const renderThenRefetch = async (agents: Agent[]) => {
+      let view!: RenderResult;
+
+      await act(async () => {
+        view = render(<Ingestion {...ingestionProps} isLoading agents={[]} />, {
+          wrapper: TestWrapper,
+        });
+      });
+
+      await act(async () => {
+        view.rerender(
+          <Ingestion {...ingestionProps} agents={agents} isLoading={false} />
+        );
+      });
+
+      await act(async () => {
+        view.rerender(
+          <Ingestion {...ingestionProps} isLoading agents={agents} />
+        );
+      });
+    };
+
+    it('should keep the agent cards while the list refetches', async () => {
+      await renderThenRefetch([mockAgent]);
+
+      expect(
+        screen.getByTestId(`agent-card-${mockAgent.fqn}`)
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId('agent-group-skeleton')).toBeNull();
+    });
+
+    it('should keep the deployment summary card while the list refetches', async () => {
+      await renderThenRefetch([mockAgent]);
+
+      expect(screen.getByText('DeploymentSummaryCard')).toBeInTheDocument();
+    });
+
+    // A service with no agents is a loaded answer too, so its refetches must not fall back to
+    // skeletons — the emptiness of the list says nothing about whether it has been fetched.
+    it('should keep the empty state while a list with no agents refetches', async () => {
+      await renderThenRefetch([]);
+
+      expect(screen.queryByTestId('agent-group-skeleton')).toBeNull();
+      expect(screen.getByText('DeploymentSummaryCard')).toBeInTheDocument();
+    });
+
+    it('should still show skeletons on the first load, before any agent is known', async () => {
+      await act(async () => {
+        render(<Ingestion {...ingestionProps} isLoading agents={[]} />, {
+          wrapper: TestWrapper,
+        });
+      });
+
+      expect(screen.getByTestId('agent-group-skeleton')).toBeInTheDocument();
+    });
+
+    // `ServiceDetailsPage` renders this component without a key, so React Router reuses the
+    // instance when the service FQN changes. "A response has already landed" belongs to the
+    // service it landed for: carried over, the next service's first fetch would be shown against
+    // the agents of the one before it.
+    it('should show skeletons again for the first load of another service', async () => {
+      let view!: RenderResult;
+
+      await act(async () => {
+        view = render(<Ingestion {...ingestionProps} isLoading agents={[]} />, {
+          wrapper: TestWrapper,
+        });
+      });
+
+      await act(async () => {
+        view.rerender(
+          <Ingestion
+            {...ingestionProps}
+            agents={[mockAgent]}
+            isLoading={false}
+          />
+        );
+      });
+
+      mockServiceFQN = 'another_service';
+
+      await act(async () => {
+        view.rerender(
+          <Ingestion {...ingestionProps} isLoading agents={[mockAgent]} />
+        );
+      });
+
+      expect(screen.getByTestId('agent-group-skeleton')).toBeInTheDocument();
+      expect(screen.queryByTestId(`agent-card-${mockAgent.fqn}`)).toBeNull();
+    });
   });
 });

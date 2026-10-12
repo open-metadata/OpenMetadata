@@ -11,15 +11,12 @@
  *  limitations under the License.
  */
 import { Card, Skeleton, Typography } from '@openmetadata/ui-core-components';
+import { useQuery } from '@tanstack/react-query';
 import { parseInt } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DataAssetsCoverageIcon } from '../../../../assets/svg/ic-data-assets-coverage.svg';
-import {
-  DQ_CHART_FAILED_COLOR,
-  DQ_CHART_SUCCESS_COLOR,
-} from '../../../../constants/Color.constants';
 import { ROUTES } from '../../../../constants/constants';
 import { INITIAL_DATA_ASSETS_COVERAGE_STATES } from '../../../../constants/profiler.constant';
 import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
@@ -43,12 +40,30 @@ const DataAssetsCoveragePieChartWidget = ({
   const { t } = useTranslation();
   const routerNavigate = useNavigate();
   const navigate = navigateProp ?? routerNavigate;
-  const [isLoading, setIsLoading] = useState(true);
-  const [dataAssetsCoverageStates, setDataAssetsCoverageStates] = useState<{
-    covered: number;
-    notCovered: number;
-    total: number;
-  }>(INITIAL_DATA_ASSETS_COVERAGE_STATES);
+  const {
+    data: dataAssetsCoverageStates = INITIAL_DATA_ASSETS_COVERAGE_STATES,
+    isLoading,
+  } = useQuery({
+    queryKey: ['dq-dashboard', 'data-assets-coverage', chartFilter],
+    queryFn: async () => {
+      const [{ data: coverageData }, { data: totalData }] = await Promise.all([
+        fetchEntityCoveredWithDQ(chartFilter, false),
+        fetchTotalEntityCount(chartFilter),
+      ]);
+      if (coverageData.length === 0 || totalData.length === 0) {
+        return INITIAL_DATA_ASSETS_COVERAGE_STATES;
+      }
+
+      const covered = parseInt(coverageData[0].originEntityFQN, 10);
+      let total = parseInt(totalData[0].fullyQualifiedName, 10);
+
+      if (covered > total) {
+        total = covered;
+      }
+
+      return { covered, notCovered: total - covered, total };
+    },
+  });
 
   const handleSegmentClick = useCallback(
     (_entry: CustomPieChartData, index: number) => {
@@ -71,12 +86,12 @@ const DataAssetsCoveragePieChartWidget = ({
         {
           name: t('label.covered'),
           value: dataAssetsCoverageStates.covered,
-          color: DQ_CHART_SUCCESS_COLOR,
+          status: 'success' as const,
         },
         {
           name: t('label.not-covered'),
           value: dataAssetsCoverageStates.notCovered,
-          color: DQ_CHART_FAILED_COLOR,
+          status: 'failed' as const,
         },
       ],
       chartLabel: getPieChartLabel(
@@ -86,43 +101,6 @@ const DataAssetsCoveragePieChartWidget = ({
     }),
     [dataAssetsCoverageStates]
   );
-
-  const fetchDataAssetsCoverage = async () => {
-    setIsLoading(true);
-    try {
-      const { data: coverageData } = await fetchEntityCoveredWithDQ(
-        chartFilter,
-        false
-      );
-      const { data: totalData } = await fetchTotalEntityCount(chartFilter);
-      if (coverageData.length === 0 || totalData.length === 0) {
-        setDataAssetsCoverageStates(INITIAL_DATA_ASSETS_COVERAGE_STATES);
-
-        return;
-      }
-
-      const covered = parseInt(coverageData[0].originEntityFQN, 10);
-      let total = parseInt(totalData[0].fullyQualifiedName, 10);
-
-      if (covered > total) {
-        total = covered;
-      }
-
-      setDataAssetsCoverageStates({
-        covered,
-        notCovered: total - covered,
-        total: total,
-      });
-    } catch {
-      setDataAssetsCoverageStates(INITIAL_DATA_ASSETS_COVERAGE_STATES);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchDataAssetsCoverage();
-  }, [chartFilter]);
 
   if (isLoading) {
     return (
@@ -149,6 +127,7 @@ const DataAssetsCoveragePieChartWidget = ({
         </div>
         <CustomPieChart
           showLegends
+          ariaLabel={t('label.data-asset-plural-coverage')}
           data={data}
           label={chartLabel}
           name="data-assets-coverage"

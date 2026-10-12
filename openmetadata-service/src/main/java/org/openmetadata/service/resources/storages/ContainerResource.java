@@ -16,6 +16,7 @@ import jakarta.json.JsonPatch;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
@@ -34,6 +35,7 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.List;
 import java.util.UUID;
+import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateContainer;
 import org.openmetadata.schema.api.data.RestoreEntity;
@@ -89,6 +91,78 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
     addViewOperation("parent,dataModel", MetadataOperation.VIEW_BASIC);
     addViewOperation("sampleData", MetadataOperation.VIEW_SAMPLE_DATA);
     return listOf(MetadataOperation.VIEW_SAMPLE_DATA, MetadataOperation.EDIT_SAMPLE_DATA);
+  }
+
+  public static class ContainerDataModelColumnList extends ResultList<FieldInterface> {
+    /* Required for serde */
+  }
+
+  @GET
+  @Path("/name/{fqn}/columns")
+  @Operation(
+      operationId = "getContainerDataModelColumnsByFQN",
+      summary = "Get paginated data model columns of a container by fully qualified name",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Paginated data model columns",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ContainerDataModelColumnList.class))),
+        @ApiResponse(responseCode = "404", description = "Container not found")
+      })
+  public ContainerDataModelColumnList getDataModelColumnsByFQN(
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fully qualified name of the container",
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @Parameter(description = "Limit the number of columns returned (1 to 1000, default = 50)")
+          @DefaultValue("50")
+          @Min(1)
+          @Max(1000)
+          @QueryParam("limit")
+          int limit,
+      @Parameter(description = "Offset for pagination (default = 0)")
+          @DefaultValue("0")
+          @Min(0)
+          @QueryParam("offset")
+          int offset,
+      @Parameter(description = "Fields requested in the returned columns (tags)")
+          @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(description = "Include all, deleted, or non-deleted entities.")
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include,
+      @Parameter(
+              description =
+                  "Sort columns by. Supported values: 'name' (default), 'ordinalPosition'",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"name", "ordinalPosition"}))
+          @QueryParam("sortBy")
+          @DefaultValue("name")
+          String sortBy,
+      @Parameter(
+              description = "Sort order. Supported values: 'asc' (default), 'desc'",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"asc", "desc"}))
+          @QueryParam("sortOrder")
+          @DefaultValue("asc")
+          String sortOrder) {
+    ResultList<FieldInterface> page =
+        getChildFieldPage(
+            securityContext, fqn, limit, offset, fieldsParam, include, sortBy, sortOrder);
+    ContainerDataModelColumnList result = new ContainerDataModelColumnList();
+    result.setData(page.getData());
+    result.setPaging(page.getPaging());
+    return result;
   }
 
   public static class ContainerList extends ResultList<Container> {
@@ -320,7 +394,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
     return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
   }
 
-  @PUT
+  @DELETE
   @Path("/deleteStale")
   @Operation(
       operationId = "bulkDeleteStaleContainers",
@@ -346,7 +420,17 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response deleteStale(
-      @Context SecurityContext securityContext, @Valid BulkDeleteStaleRequest request) {
+      @Context SecurityContext securityContext,
+      @RequestBody(
+              required = true,
+              description =
+                  "Scope to reconcile and the FQNs the connector saw this run. Carried as a"
+                      + " request body on DELETE; a topology that strips it is rejected with 400"
+                      + " rather than being read as an empty seen-set.",
+              content = @Content(schema = @Schema(implementation = BulkDeleteStaleRequest.class)))
+          @NotNull
+          @Valid
+          BulkDeleteStaleRequest request) {
     return deleteStaleEntities(securityContext, request);
   }
 
@@ -458,9 +542,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "UUID"))
           UUID userId) {
-    return repository
-        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return addFollowerInternal(securityContext, id, userId);
   }
 
   @DELETE
@@ -489,12 +571,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
               schema = @Schema(type = "string"))
           @PathParam("userId")
           String userId) {
-    return repository
-        .deleteFollower(
-            securityContext.getUserPrincipal().getName(),
-            UUID.fromString(id),
-            UUID.fromString(userId))
-        .toResponse();
+    return deleteFollowerInternal(securityContext, UUID.fromString(id), UUID.fromString(userId));
   }
 
   @GET

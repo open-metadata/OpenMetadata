@@ -13,24 +13,9 @@
 
 @import '../../../../styles/variables.less';
 .feeds-widget-container {
-  background: #ffffff;
+  background: var(--om-color-white);
   border: 1px solid @border-color;
-  border-radius: 10px;
-
-  .ant-tabs-tab-btn {
-    padding: 0 12px;
-  }
-  .ant-tabs-content {
-    height: 100%;
-    overflow: hidden;
-  }
-  .ant-tabs-content:hover {
-    overflow-y: auto;
-  }
-  .ant-tabs-nav {
-    padding: 8px 16px 0 28px;
-    margin-bottom: 0 !important;
-  }
+  border-radius: var(--om-radius-10);
 
   .widget-manage-dropdown .ant-dropdown-trigger {
     display: flex;
@@ -39,5 +24,5 @@
   }
 }
 .feed-card-body {
-  padding-left: 32px;
+  padding-left: var(--om-space-32);
 }

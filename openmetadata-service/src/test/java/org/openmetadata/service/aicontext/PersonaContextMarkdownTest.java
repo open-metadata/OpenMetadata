@@ -34,9 +34,36 @@ import org.openmetadata.schema.type.aicontext.Observability;
 import org.openmetadata.schema.type.aicontext.TableContext;
 import org.openmetadata.schema.type.personaContext.ContextRule;
 import org.openmetadata.schema.type.personaContext.ContextSection;
+import org.openmetadata.schema.type.personaContext.SearchScope;
 import org.openmetadata.schema.type.personaContext.SharedKnowledge;
 
 class PersonaContextMarkdownTest {
+
+  @Test
+  void searchScopeDescribesARelevanceDefault() {
+    Persona persona = persona();
+    PersonaContext context =
+        new PersonaContext()
+            .withPersona(persona.getEntityReference())
+            .withGeneratedAt(1782864000000L)
+            .withSearchScope(new SearchScope().withEntityTypes(Set.of("table")))
+            .withSharedKnowledge(new SharedKnowledge());
+
+    String markdown =
+        PersonaContextMarkdown.render(
+                persona,
+                new PersonaContextDefinition().withCharacterBudget(50_000),
+                List.of(),
+                context,
+                false)
+            .markdown();
+
+    assertTrue(markdown.contains("Search tools are asked to apply this scope by default"));
+    assertTrue(markdown.contains("results may be narrowed"));
+    assertTrue(markdown.contains("not a permission boundary"));
+    assertTrue(markdown.contains("tool may search outside it"));
+    assertFalse(markdown.contains("will not appear in results"));
+  }
 
   @Test
   void renderReservesFullKnowledgeBeforeAssetsEvenWhenKnowledgeExceedsTheBudget() {
@@ -66,6 +93,52 @@ class PersonaContextMarkdownTest {
     assertTrue(result.markdown().length() > 300);
     assertTrue(Boolean.TRUE.equals(result.context().getTruncated()));
     assertEquals(1, result.context().getManifest().size());
+  }
+
+  @Test
+  void anInlineImageInAnArticleDoesNotStarveTheAssetRulesOfBudget() {
+    // Reproduces divisionsinc: one article carried a base64 architecture diagram that was larger
+    // than the whole character budget, so every asset rule fell through to the manifest.
+    String article =
+        "<p>The semantic layer unifies definitions.</p>"
+            + "<p><img src=\"data:image/png;base64,"
+            + "A".repeat(20_000)
+            + "\"></p>";
+    Persona persona = persona();
+    ContextRule assetRule = rule();
+    PersonaContextDefinition definition =
+        new PersonaContextDefinition().withCharacterBudget(4_000).withRules(List.of(assetRule));
+    PersonaContext context =
+        new PersonaContext()
+            .withPersona(persona.getEntityReference())
+            .withGeneratedAt(1782864000000L)
+            .withSharedKnowledge(
+                new SharedKnowledge()
+                    .withArticles(
+                        List.of(
+                            new KnowledgeItem()
+                                .withType(KnowledgeItem.Type.PAGE)
+                                .withName("Semantic Layer")
+                                .withFullyQualifiedName("kb.semantic-layer")
+                                .withContent(article))));
+
+    PersonaContextBuilder.MaterializedPersonaContext result =
+        PersonaContextMarkdown.render(
+            persona,
+            definition,
+            List.of(
+                new PersonaContextBuilder.RuleMaterialization(
+                    assetRule, 1, List.of(selectedEntity()))),
+            context,
+            false);
+
+    assertFalse(result.markdown().contains("base64"));
+    assertTrue(result.markdown().contains("The semantic layer unifies definitions."));
+    // The budget the image was consuming now reaches the asset rule, which renders in full.
+    assertTrue(result.markdown().contains("### Schema"));
+    assertEquals(1, result.context().getRules().getFirst().getRenderedFull());
+    assertTrue(result.context().getManifest().isEmpty());
+    assertFalse(Boolean.TRUE.equals(result.context().getTruncated()));
   }
 
   @Test

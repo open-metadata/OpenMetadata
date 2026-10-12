@@ -28,6 +28,8 @@ export type DataAssetSummaryPanelProps = {
     dataProducts: DataProduct[];
   };
   entityType: EntityType;
+  /** Selects an existing summary layout without changing the entity's API type. */
+  summaryEntityType?: EntityType;
   isDomainVisible?: boolean;
   isLineageView?: boolean;
   onOwnerUpdate?: (updatedOwners: EntityReference[]) => void;

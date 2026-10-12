@@ -1,3 +1,4 @@
+import { Tooltip } from '@/components/base/tooltip/tooltip';
 import { cx, sortCx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
 import { borderAfter } from '@/utils/tailwindClasses';
@@ -8,26 +9,33 @@ import type {
   FC,
   ReactNode,
 } from 'react';
-import { isValidElement } from 'react';
+import { forwardRef, isValidElement } from 'react';
 import type {
   ButtonProps as AriaButtonProps,
   LinkProps as AriaLinkProps,
 } from 'react-aria-components';
+import type { Placement } from 'react-aria';
 import { Button as AriaButton, Link as AriaLink } from 'react-aria-components';
 
 export const styles = sortCx({
   common: {
+    // A link button drops the button box by default; `boxed` keeps it.
+    linkUnboxed: 'tw:justify-normal tw:rounded tw:p-0!',
     root: [
-      'tw:group tw:relative tw:inline-flex tw:h-max tw:cursor-pointer tw:items-center tw:justify-center tw:whitespace-nowrap tw:outline-brand tw:transition tw:duration-100 tw:ease-linear tw:before:absolute tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2',
+      'tw:group tw:relative tw:inline-flex tw:h-max tw:cursor-pointer tw:items-center tw:justify-center tw:whitespace-nowrap tw:transition tw:duration-100 tw:ease-linear tw:before:absolute',
       // When button is used within `InputGroup`
       'tw:in-data-input-wrapper:shadow-xs tw:in-data-input-wrapper:focus:!z-50 tw:in-data-input-wrapper:in-data-leading:-mr-px tw:in-data-input-wrapper:in-data-leading:rounded-r-none tw:in-data-input-wrapper:in-data-leading:before:rounded-r-none tw:in-data-input-wrapper:in-data-trailing:-ml-px tw:in-data-input-wrapper:in-data-trailing:rounded-l-none tw:in-data-input-wrapper:in-data-trailing:before:rounded-l-none',
       // Disabled styles
       'tw:disabled:cursor-not-allowed tw:disabled:text-fg-disabled',
+      // The masked highlight fades the disabled border into dark surfaces.
+      'tw:dark:disabled:before:hidden tw:dark:disabled:after:outline-disabled',
       // Icon styles
       'tw:disabled:*:data-icon:text-fg-disabled_subtle',
       // Same as `icon` but for SSR icons that cannot be passed to the client as functions.
       'tw:*:data-icon:pointer-events-none tw:*:data-icon:size-5 tw:*:data-icon:shrink-0 tw:*:data-icon:transition-inherit-all',
     ].join(' '),
+    focusOutline:
+      'tw:outline-brand tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2',
     icon: 'tw:pointer-events-none tw:size-5 tw:shrink-0 tw:transition-inherit-all',
   },
   sizes: {
@@ -85,7 +93,7 @@ export const styles = sortCx({
     },
     secondary: {
       root: [
-        'tw:bg-primary tw:text-secondary tw:shadow-xs-skeuomorphic tw:hover:bg-primary_hover tw:hover:text-secondary_hover tw:data-loading:bg-primary_hover',
+        'tw:bg-surface tw:text-secondary tw:shadow-xs-skeuomorphic tw:hover:bg-primary_hover tw:dark:hover:bg-raised tw:hover:text-secondary_hover tw:data-loading:bg-primary_hover tw:dark:data-loading:bg-raised',
         `${borderAfter} tw:after:outline-primary`,
         // Disabled styles
         'tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
@@ -102,7 +110,7 @@ export const styles = sortCx({
     },
     'link-gray': {
       root: [
-        'tw:justify-normal tw:rounded tw:p-0! tw:text-tertiary tw:hover:text-tertiary_hover',
+        'tw:text-tertiary tw:hover:text-tertiary_hover',
         // Inner text underline
         'tw:*:data-text:underline tw:*:data-text:decoration-transparent tw:*:data-text:underline-offset-2 tw:hover:*:data-text:decoration-current',
         // Icon styles
@@ -111,16 +119,22 @@ export const styles = sortCx({
     },
     'link-color': {
       root: [
-        'tw:justify-normal tw:rounded tw:p-0! tw:text-brand-secondary tw:hover:text-brand-secondary_hover',
+        // Dark keeps light frozen (brand-secondary) but flips to the blue link
+        // tone (blue-300) per the dark-mode palette guideline — links are blue,
+        // not the gray brand-secondary text step.
+        'tw:text-brand-secondary tw:hover:text-brand-secondary_hover tw:dark:text-link tw:dark:hover:text-link-hover',
         // Inner text underline
         'tw:*:data-text:underline tw:*:data-text:decoration-transparent tw:*:data-text:underline-offset-2 tw:hover:*:data-text:decoration-current',
         // Icon styles
-        'tw:*:data-icon:text-fg-brand-secondary_alt tw:hover:*:data-icon:text-fg-brand-secondary_hover',
+        'tw:*:data-icon:text-fg-brand-secondary_alt tw:hover:*:data-icon:text-fg-brand-secondary_hover tw:dark:*:data-icon:text-link tw:dark:hover:*:data-icon:text-link-hover',
       ].join(' '),
     },
     'primary-destructive': {
       root: [
-        'tw:bg-error-solid tw:text-white tw:shadow-xs-skeuomorphic tw:outline-error tw:hover:bg-error-solid_hover tw:data-loading:bg-error-solid_hover',
+        // Dark fill softened to 90% opacity per the palette guideline — scoped to
+        // this button so the shared `bg-error-solid` token stays opaque for
+        // badges, error FeaturedIcons, and other solid-error consumers.
+        'tw:bg-error-solid tw:text-white tw:shadow-xs-skeuomorphic tw:outline-error tw:hover:bg-error-solid_hover tw:data-loading:bg-error-solid_hover tw:dark:bg-error-solid/90 tw:dark:hover:bg-error-solid_hover/90 tw:dark:data-loading:bg-error-solid_hover/90',
         `${borderAfter} tw:after:outline-transparent`,
         // Inner border gradient
         'tw:before:absolute tw:before:inset-px tw:before:border tw:before:border-white/12 tw:before:mask-b-from-0%',
@@ -132,10 +146,10 @@ export const styles = sortCx({
     },
     'secondary-destructive': {
       root: [
-        'tw:bg-primary tw:text-error-primary tw:shadow-xs-skeuomorphic tw:outline-error tw:hover:bg-error-primary tw:hover:text-error-primary_hover tw:data-loading:bg-error-primary',
+        'tw:bg-surface tw:text-error-primary tw:shadow-xs-skeuomorphic tw:outline-error tw:hover:bg-error-primary tw:hover:text-error-primary_hover tw:data-loading:bg-error-primary',
         `${borderAfter} tw:after:outline-error_subtle`,
         // Disabled styles
-        'tw:disabled:bg-primary tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
+        'tw:disabled:bg-surface tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
         // Icon styles
         'tw:*:data-icon:text-fg-error-secondary tw:hover:*:data-icon:text-fg-error-primary',
       ].join(' '),
@@ -149,7 +163,7 @@ export const styles = sortCx({
     },
     'link-destructive': {
       root: [
-        'tw:justify-normal tw:rounded tw:p-0! tw:text-error-primary tw:outline-error tw:hover:text-error-primary_hover',
+        'tw:text-error-primary tw:outline-error tw:hover:text-error-primary_hover',
         // Inner text underline
         'tw:*:data-text:underline tw:*:data-text:decoration-transparent tw:*:data-text:underline-offset-2 tw:hover:*:data-text:decoration-current',
         // Icon styles
@@ -158,28 +172,28 @@ export const styles = sortCx({
     },
     'secondary-success': {
       root: [
-        'tw:bg-primary tw:text-success-primary tw:shadow-xs-skeuomorphic',
+        'tw:bg-surface tw:text-success-primary tw:shadow-xs-skeuomorphic',
         `${borderAfter} tw:after:outline-utility-success-300`,
         'tw:hover:bg-success-primary tw:hover:text-success-primary tw:data-loading:bg-success-primary',
-        'tw:disabled:bg-primary tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
+        'tw:disabled:bg-surface tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
         'tw:*:data-icon:text-success-primary',
       ].join(' '),
     },
     'secondary-warning': {
       root: [
-        'tw:bg-primary tw:text-warning-primary tw:shadow-xs-skeuomorphic',
+        'tw:bg-surface tw:text-warning-primary tw:shadow-xs-skeuomorphic',
         `${borderAfter} tw:after:outline-utility-warning-300`,
         'tw:hover:bg-warning-primary tw:hover:text-warning-primary tw:data-loading:bg-warning-primary',
-        'tw:disabled:bg-primary tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
+        'tw:disabled:bg-surface tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
         'tw:*:data-icon:text-warning-primary',
       ].join(' '),
     },
     'secondary-brand': {
       root: [
-        'tw:bg-primary tw:text-brand-secondary tw:shadow-xs-skeuomorphic',
+        'tw:bg-surface tw:text-brand-secondary tw:shadow-xs-skeuomorphic',
         `${borderAfter} tw:after:outline-brand`,
         'tw:hover:bg-brand-primary tw:hover:text-brand-secondary_hover tw:data-loading:bg-brand-primary',
-        'tw:disabled:bg-primary tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
+        'tw:disabled:bg-surface tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
         'tw:*:data-icon:text-brand-secondary',
       ].join(' '),
     },
@@ -206,8 +220,20 @@ export interface CommonProps {
   noTextPadding?: boolean;
   /** When true, keeps the text visible during loading state */
   showTextWhileLoading?: boolean;
+  /**
+   * Keeps a `link-*` button's size padding, height and radius instead of
+   * collapsing it to an inline text box, so it lines up with regular buttons
+   * beside it (antd's `type="link"`).
+   */
+  boxed?: boolean;
   /** Truncates the button text with an ellipsis when it overflows */
   ellipsis?: boolean;
+  /** Omits the default focus outline when the surrounding UI intentionally does not use one */
+  hideFocusOutline?: boolean;
+  /** Tooltip text shown on hover/focus */
+  tooltip?: string;
+  /** Placement of the tooltip relative to the button */
+  tooltipPlacement?: Placement;
 }
 
 /**
@@ -251,123 +277,158 @@ interface LinkProps
 /** Union type of button and link props */
 export type Props = ButtonProps | LinkProps;
 
-export const Button = ({
-  size = 'sm',
-  color = 'primary',
-  children,
-  className,
-  noTextPadding,
-  ellipsis,
-  iconLeading: IconLeading,
-  iconTrailing: IconTrailing,
-  isDisabled: disabled,
-  isLoading: loading,
-  showTextWhileLoading,
-  ...otherProps
-}: Props) => {
-  const href = 'href' in otherProps ? otherProps.href : undefined;
-  const Component = href ? AriaLink : AriaButton;
+export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
+  function Button(
+    {
+      size = 'sm',
+      color = 'primary',
+      children,
+      className,
+      hideFocusOutline,
+      noTextPadding,
+      boxed,
+      ellipsis,
+      iconLeading: IconLeading,
+      iconTrailing: IconTrailing,
+      isDisabled: disabled,
+      isLoading: loading,
+      showTextWhileLoading,
+      tooltip,
+      tooltipPlacement = 'top',
+      ...otherProps
+    }: Props,
+    ref
+  ) {
+    const href = 'href' in otherProps ? otherProps.href : undefined;
+    const Component = href ? AriaLink : AriaButton;
 
-  const isIcon = (IconLeading || IconTrailing) && !children;
-  const isLinkType = ['link-gray', 'link-color', 'link-destructive'].includes(
-    color
-  );
-  noTextPadding = isLinkType || noTextPadding;
+    const isIcon = (IconLeading || IconTrailing) && !children;
+    const isLinkType = ['link-gray', 'link-color', 'link-destructive'].includes(
+      color
+    );
+    const isUnboxedLink = isLinkType && !boxed;
+    noTextPadding = isUnboxedLink || noTextPadding;
 
-  let props = {};
+    let props = {};
 
-  if (href) {
-    props = {
-      ...otherProps,
+    if (href) {
+      props = {
+        ...otherProps,
 
-      href: disabled ? undefined : href,
-    };
-  } else {
-    props = {
-      ...otherProps,
+        href: disabled ? undefined : href,
+      };
+    } else {
+      props = {
+        ...otherProps,
 
-      type: otherProps.type || 'button',
-      isPending: loading,
-    };
+        type: otherProps.type || 'button',
+        isPending: loading,
+      };
+    }
+
+    const button = (
+      <Component
+        data-icon-only={isIcon ? true : undefined}
+        data-loading={loading ? true : undefined}
+        // `Component` is `typeof AriaButton | typeof AriaLink`, chosen at runtime by
+        // `href`. TS can't narrow which branch applies here, so it wants a ref that
+        // satisfies both `RefObject<HTMLButtonElement>` and `RefObject<HTMLAnchorElement>`
+        // simultaneously (an intersection), which `ref`'s real type — a union — can never
+        // satisfy. The cast is safe: at runtime the ref always lands on whichever concrete
+        // DOM node `Component` actually renders.
+        ref={ref as never}
+        {...props}
+        className={cx(
+          styles.common.root,
+          // A base reset also suppresses the native outline when React Aria's
+          // data-focus-visible state is absent, such as a forced browser pseudo-state.
+          hideFocusOutline ? 'tw:outline-none' : styles.common.focusOutline,
+          styles.sizes[size].root,
+          styles.colors[color].root,
+          isUnboxedLink && styles.common.linkUnboxed,
+          isUnboxedLink && styles.sizes[size].linkRoot,
+          ellipsis && 'tw:min-w-0',
+          (loading || (href && (disabled || loading))) &&
+            'tw:pointer-events-none',
+          // If in `loading` state, hide everything except the loading icon
+          // (and text if `showTextWhileLoading` is true).
+          loading &&
+            (showTextWhileLoading
+              ? 'tw:[&>*:not([data-icon=loading]):not([data-text])]:hidden'
+              : 'tw:[&>*:not([data-icon=loading])]:invisible'),
+          className
+        )}
+        isDisabled={disabled}>
+        {/* Leading icon */}
+        {isValidElement(IconLeading) && IconLeading}
+        {isReactComponent(IconLeading) && (
+          <IconLeading className={styles.common.icon} data-icon="leading" />
+        )}
+
+        {loading && (
+          <svg
+            className={cx(
+              styles.common.icon,
+              !showTextWhileLoading &&
+                'tw:absolute tw:top-1/2 tw:left-1/2 tw:-translate-x-1/2 tw:-translate-y-1/2'
+            )}
+            data-icon="loading"
+            fill="none"
+            viewBox="0 0 20 20">
+            {/* Background circle */}
+            <circle
+              className="tw:stroke-current tw:opacity-30"
+              cx="10"
+              cy="10"
+              fill="none"
+              r="8"
+              strokeWidth="2"
+            />
+            {/* Spinning circle */}
+            <circle
+              className="tw:origin-center tw:animate-spin tw:stroke-current"
+              cx="10"
+              cy="10"
+              fill="none"
+              r="8"
+              strokeDasharray="12.5 50"
+              strokeLinecap="round"
+              strokeWidth="2"
+            />
+          </svg>
+        )}
+
+        {children && (
+          <span
+            data-text
+            className={cx(
+              'tw:transition-inherit-all',
+              !noTextPadding && 'tw:px-0.5',
+              ellipsis && 'tw:truncate tw:min-w-0'
+            )}>
+            {children}
+          </span>
+        )}
+
+        {/* Trailing icon */}
+        {isValidElement(IconTrailing) && IconTrailing}
+        {isReactComponent(IconTrailing) && (
+          <IconTrailing className={styles.common.icon} data-icon="trailing" />
+        )}
+      </Component>
+    );
+
+    if (tooltip) {
+      return (
+        <Tooltip
+          isDisabled={disabled}
+          placement={tooltipPlacement}
+          title={tooltip}>
+          {button}
+        </Tooltip>
+      );
+    }
+
+    return button;
   }
-
-  return (
-    <Component
-      data-icon-only={isIcon ? true : undefined}
-      data-loading={loading ? true : undefined}
-      {...props}
-      className={cx(
-        styles.common.root,
-        styles.sizes[size].root,
-        styles.colors[color].root,
-        isLinkType && styles.sizes[size].linkRoot,
-        ellipsis && 'tw:min-w-0',
-        (loading || (href && (disabled || loading))) &&
-          'tw:pointer-events-none',
-        // If in `loading` state, hide everything except the loading icon (and text if `showTextWhileLoading` is true).
-        loading &&
-          (showTextWhileLoading
-            ? 'tw:[&>*:not([data-icon=loading]):not([data-text])]:hidden'
-            : 'tw:[&>*:not([data-icon=loading])]:invisible'),
-        className
-      )}
-      isDisabled={disabled}>
-      {/* Leading icon */}
-      {isValidElement(IconLeading) && IconLeading}
-      {isReactComponent(IconLeading) && (
-        <IconLeading className={styles.common.icon} data-icon="leading" />
-      )}
-
-      {loading && (
-        <svg
-          className={cx(
-            styles.common.icon,
-            !showTextWhileLoading &&
-              'tw:absolute tw:top-1/2 tw:left-1/2 tw:-translate-x-1/2 tw:-translate-y-1/2'
-          )}
-          data-icon="loading"
-          fill="none"
-          viewBox="0 0 20 20">
-          {/* Background circle */}
-          <circle
-            className="tw:stroke-current tw:opacity-30"
-            cx="10"
-            cy="10"
-            fill="none"
-            r="8"
-            strokeWidth="2"
-          />
-          {/* Spinning circle */}
-          <circle
-            className="tw:origin-center tw:animate-spin tw:stroke-current"
-            cx="10"
-            cy="10"
-            fill="none"
-            r="8"
-            strokeDasharray="12.5 50"
-            strokeLinecap="round"
-            strokeWidth="2"
-          />
-        </svg>
-      )}
-
-      {children && (
-        <span
-          data-text
-          className={cx(
-            'tw:transition-inherit-all',
-            !noTextPadding && 'tw:px-0.5',
-            ellipsis && 'tw:truncate tw:min-w-0'
-          )}>
-          {children}
-        </span>
-      )}
-
-      {/* Trailing icon */}
-      {isValidElement(IconTrailing) && IconTrailing}
-      {isReactComponent(IconTrailing) && (
-        <IconTrailing className={styles.common.icon} data-icon="trailing" />
-      )}
-    </Component>
-  );
-};
+);

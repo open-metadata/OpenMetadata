@@ -20,25 +20,33 @@ import {
 } from '../../utils/entity';
 import {
   addSampleDataViaApi,
+  buildReservedNameColumns,
   navigateToSampleDataTab,
+  RESERVED_SAMPLE_COLUMN_NAMES,
 } from '../../utils/sampleData';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 import { test } from '../fixtures/pages';
 
 test.describe('Sample Data Tab - Download and Delete Functionality', () => {
   const tableWithData = new TableClass();
   const tableForDelete = new TableClass();
   const tableEmpty = new TableClass();
+  const tableWithReservedColumns = new TableClass();
 
   test.beforeAll('Setup tables with sample data', async ({ browser }) => {
     test.slow();
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
+    tableWithReservedColumns.entity.columns = buildReservedNameColumns();
+
     await tableWithData.create(apiContext);
     await tableForDelete.create(apiContext);
     await tableEmpty.create(apiContext);
+    await tableWithReservedColumns.create(apiContext);
 
     await addSampleDataViaApi(apiContext, tableWithData);
     await addSampleDataViaApi(apiContext, tableForDelete);
+    await addSampleDataViaApi(apiContext, tableWithReservedColumns);
 
     await afterAction();
   });
@@ -50,6 +58,7 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
     await tableWithData.delete(apiContext);
     await tableForDelete.delete(apiContext);
     await tableEmpty.delete(apiContext);
+    await tableWithReservedColumns.delete(apiContext);
 
     await afterAction();
   });
@@ -73,6 +82,50 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
       await expect(
         page.getByTestId('sample-data-table').getByRole('row').nth(1)
       ).toBeVisible();
+    });
+  });
+
+  test('should render sample data for columns with reserved names', async ({
+    page,
+  }) => {
+    test.slow();
+
+    await test.step('Navigate to sample data tab', async () => {
+      await navigateToSampleDataTab(page, tableWithReservedColumns);
+    });
+
+    await test.step('Verify the tab renders instead of crashing', async () => {
+      await expect(page.getByTestId('sample-data')).toBeVisible();
+      await expect(page.getByTestId('sample-data-table')).toBeVisible();
+    });
+
+    await test.step('Verify every reserved column header is rendered in order', async () => {
+      // A single ordered assertion covers both the contents and the order,
+      // and fails with the whole header row rather than one cell at a time.
+      await expect(
+        page.getByTestId('sample-data-table').locator('thead th')
+      ).toHaveText(
+        RESERVED_SAMPLE_COLUMN_NAMES.map((name) => new RegExp(name))
+      );
+    });
+
+    await test.step('Verify each cell value sits under its own column', async () => {
+      const rows = await page
+        .getByTestId('sample-data-table')
+        .locator('tbody tr')
+        .all();
+
+      // Assert the row's cells as one ordered list: the point of the check is
+      // that each value sits under its own column, which an ordered
+      // whole-row assertion states directly.
+      for (const rowIndex of [0, 2]) {
+        await expect(rows[rowIndex].locator('td')).toHaveText(
+          RESERVED_SAMPLE_COLUMN_NAMES.map(
+            (_, columnIndex) =>
+              new RegExp(`sample_value_${columnIndex}_${rowIndex}`)
+          )
+        );
+      }
     });
   });
 
@@ -131,7 +184,7 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
     });
 
     await test.step('Close the dropdown', async () => {
-      await page.getByTestId('sample-data').click();
+      await page.keyboard.press('Escape');
       await expect(page.getByTestId('export-button')).not.toBeVisible();
     });
   });
@@ -228,26 +281,26 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
     });
 
     await test.step('Type DELETE and confirm deletion', async () => {
-      const deleteResponse = page.waitForResponse(
+      const deleteResponse = waitForResponseWithStatus(
+        page,
         (response) =>
           response
             .url()
             .includes(
               `/api/v1/tables/${tableForDelete.entityResponseData.id}/sampleData`
-            ) &&
-          response.request().method() === 'DELETE' &&
-          response.status() === 200
+            ) && response.request().method() === 'DELETE',
+        200
       );
 
-      const refetchResponse = page.waitForResponse(
+      const refetchResponse = waitForResponseWithStatus(
+        page,
         (response) =>
           response
             .url()
             .includes(
               `/api/v1/tables/${tableForDelete.entityResponseData.id}/sampleData`
-            ) &&
-          response.request().method() === 'GET' &&
-          response.status() === 200
+            ) && response.request().method() === 'GET',
+        200
       );
 
       await fillDeleteConfirmationIfPresent(page);

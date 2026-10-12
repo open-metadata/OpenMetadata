@@ -110,7 +110,7 @@ def _(config: StorageMetadataS3Config) -> ManifestMetadataConfig:
 
         path = f"{prefix}/{STORAGE_METADATA_MANIFEST_FILE_NAME}" if prefix else STORAGE_METADATA_MANIFEST_FILE_NAME
 
-        from metadata.clients.aws_client import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+        from metadata.clients.aws_client import (  # pylint: disable=import-outside-toplevel
             AWSClient,
         )
 
@@ -162,7 +162,7 @@ def _(config: StorageMetadataGcsConfig) -> ManifestMetadataConfig:
 
         path = f"{prefix}/{STORAGE_METADATA_MANIFEST_FILE_NAME}" if prefix else STORAGE_METADATA_MANIFEST_FILE_NAME
 
-        from google.cloud.storage import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+        from google.cloud.storage import (  # pylint: disable=import-outside-toplevel
             Client,
         )
 
