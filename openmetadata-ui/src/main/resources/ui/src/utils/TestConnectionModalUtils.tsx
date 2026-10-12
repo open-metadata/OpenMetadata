@@ -47,6 +47,7 @@ import {
 } from '../generated/entity/automations/workflow';
 import { TestConnectionStep } from '../generated/entity/services/connections/testConnectionDefinition';
 
+const TEXT_UTILITY_SUCCESS_300_CLASS = 'tw:text-utility-success-300';
 const TEXT_UTILITY_ERROR_300_CLASS = 'tw:text-utility-error-300';
 const TEXT_UTILITY_WARNING_300_CLASS = 'tw:text-utility-warning-300';
 
@@ -298,7 +299,7 @@ export function getConnectionStepIcon(state: ConnectionStepState) {
 // "this step passed", so a failed step gets the advisory colour instead.
 function getSummaryColorClass(passed: boolean | undefined): string {
   return passed
-    ? 'tw:text-utility-success-300'
+    ? TEXT_UTILITY_SUCCESS_300_CLASS
     : TEXT_UTILITY_WARNING_300_CLASS;
 }
 
