@@ -107,10 +107,11 @@ const WhatsNewAlert = () => {
             data-testid="whats-new-alert-card">
             <Box className="layout-row" wrap="nowrap">
               <Box
-                className={`layout-column tw:block whats-new-alert-left${
-                  releaseDate ? '' : ' whats-new-alert-left--centered'
-                }`}
-                style={{ flex: releaseDate ? '0 0 220px' : '0 0 140px' }}>
+                className={`layout-column tw:block whats-new-alert-left ${
+                  releaseDate
+                    ? 'tw:flex-[0_0_220px]'
+                    : 'tw:flex-[0_0_140px] whats-new-alert-left--centered'
+                }`}>
                 <div className="whats-new-alert-version-block">
                   <div className="whats-new-alert-meta">
                     <Typography className="whats-new-alert-meta-label">
@@ -135,9 +136,7 @@ const WhatsNewAlert = () => {
                   )}
                 </div>
               </Box>
-              <Box
-                className="layout-column tw:block whats-new-alert-right"
-                style={{ flex: 'auto' }}>
+              <Box className="layout-column tw:block tw:flex-auto whats-new-alert-right">
                 <Typography className="text-md font-semibold">
                   {t('label.new-update-announcement')}
                 </Typography>
@@ -168,9 +167,7 @@ const WhatsNewAlert = () => {
                   )}
                 </div>
               </Box>
-              <Box
-                className="layout-column tw:block"
-                style={{ flex: '0 0 48px' }}>
+              <Box className="layout-column tw:block tw:flex-[0_0_48px]">
                 <Icon
                   className="whats-new-alert-close"
                   component={CloseIcon}
