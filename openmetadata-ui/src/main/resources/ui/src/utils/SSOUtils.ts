@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
+import { Auth0 as Auth0Icon } from '@openmetadata/ui-core-components/icons';
+import type { FC } from 'react';
 import CognitoIcon from '../assets/img/icon-aws-cognito.png';
 import AzureIcon from '../assets/img/icon-azure.png';
 import GoogleIcon from '../assets/img/icon-google.png';
 import OktaIcon from '../assets/img/icon-okta.png';
-import Auth0Icon from '../assets/svg/ic-auth0.svg';
 import CustomOIDCIcon from '../assets/svg/ic-custom-oidc.svg';
 import LdapIcon from '../assets/svg/ic-ldap.svg';
 import SamlIcon from '../assets/svg/ic-saml.svg';
@@ -56,10 +57,12 @@ export const isValidUrl = (urlString: string): boolean => {
   return urlRegex.test(urlString.trim());
 };
 
+export type ProviderIcon = string | FC<{ size?: number }>;
+
 export interface ProviderOption {
   key: AuthProvider;
   label: string;
-  icon: string;
+  icon: ProviderIcon;
 }
 
 /**
@@ -95,7 +98,7 @@ export const getProviderDisplayName = (provider: string): string => {
  * @param provider - The authentication provider
  * @returns The icon component or null
  */
-export const getProviderIcon = (provider: string): string | null => {
+export const getProviderIcon = (provider: string): ProviderIcon | null => {
   switch (provider) {
     case AuthProvider.Azure:
       return AzureIcon;

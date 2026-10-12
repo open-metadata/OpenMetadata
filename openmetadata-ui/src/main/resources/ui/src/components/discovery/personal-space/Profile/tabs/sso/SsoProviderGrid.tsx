@@ -17,6 +17,7 @@ import { Radio, RadioGroup } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { AuthProvider } from '../../../../../../generated/settings/settings';
 import { PROVIDER_OPTIONS } from '../../../../../../utils/SSOUtils';
+import SsoProviderIcon from '../../../../../SettingsSso/SsoProviderIcon/SsoProviderIcon';
 
 interface SsoProviderGridProps {
   selectedProvider?: AuthProvider;
@@ -60,7 +61,7 @@ const SsoProviderGrid = ({
             key={provider.key}
             value={provider.key}>
             <span className="tw:flex tw:size-12 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg tw:border tw:border-secondary tw:bg-surface">
-              <img alt="" height={24} src={provider.icon} width={24} />
+              <SsoProviderIcon icon={provider.icon} />
             </span>
             <Typography size="text-md" weight="semibold">
               {provider.label}

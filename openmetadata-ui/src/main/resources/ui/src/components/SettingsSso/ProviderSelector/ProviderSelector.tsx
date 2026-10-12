@@ -20,6 +20,7 @@ import { AuthProvider } from '../../../generated/settings/settings';
 import { PROVIDER_OPTIONS } from '../../../utils/SSOUtils';
 import './provider-selector.less';
 import { ProviderSelectorProps } from './ProviderSelector.interface';
+import SsoProviderIcon from '../SsoProviderIcon/SsoProviderIcon';
 
 const ProviderSelector: React.FC<ProviderSelectorProps> = ({
   selectedProvider: initialSelectedProvider,
@@ -72,16 +73,7 @@ const ProviderSelector: React.FC<ProviderSelectorProps> = ({
             }}>
             <div className="provider-icon">
               <div className="provider-icon-inner">
-                {typeof provider.icon === 'string' ? (
-                  <img
-                    alt={provider.label}
-                    height="24"
-                    src={provider.icon}
-                    width="24"
-                  />
-                ) : (
-                  provider.icon
-                )}
+                <SsoProviderIcon alt={provider.label} icon={provider.icon} />
               </div>
             </div>
             <span className="provider-name">{provider.label}</span>

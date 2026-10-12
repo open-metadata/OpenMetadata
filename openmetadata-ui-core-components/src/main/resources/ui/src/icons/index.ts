@@ -426,6 +426,7 @@ export { Zap } from './Zap';
 export { ZoomIn } from './ZoomIn';
 export { ZoomOut } from './ZoomOut';
 export { AppLayout } from './AppLayout';
+export { Auth0 } from './Auth0';
 export { Bronze } from './Bronze';
 export { ColumnCustomize } from './ColumnCustomize';
 export { DataQualityAlarmUpstream } from './DataQualityAlarmUpstream';

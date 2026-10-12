@@ -12,8 +12,8 @@
  */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { useState } from 'react';
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import { useState } from 'react';
 import type { Type } from '../../../../../../generated/entity/type';
 import type { CustomProperty } from '../../../../../../generated/type/customProperty';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';

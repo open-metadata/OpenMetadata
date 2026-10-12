@@ -54,6 +54,7 @@ import {
   viewToSubPath,
 } from './SsoPanel.utils';
 import SsoProviderGrid from './SsoProviderGrid';
+import SsoProviderIcon from '../../../../../SettingsSso/SsoProviderIcon/SsoProviderIcon';
 
 interface SsoPanelProps {
   onHeaderChange?: (override: ProfileHeaderOverride | null) => void;
@@ -67,7 +68,7 @@ const ProviderLogo = ({ provider }: { provider: string }) => {
       className="tw:flex tw:size-12 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-xl tw:border tw:border-secondary tw:bg-surface"
       data-testid="sso-provider-logo">
       {icon ? (
-        <img alt="" height={24} src={icon} width={24} />
+        <SsoProviderIcon icon={icon} />
       ) : (
         <SingleSignOn className="tw:size-6 tw:text-fg-quaternary" />
       )}

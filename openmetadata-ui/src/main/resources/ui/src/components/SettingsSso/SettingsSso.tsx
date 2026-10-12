@@ -26,7 +26,11 @@ import '../../styles/variables.less';
 import { getRenderedActiveTab } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
-import { getProviderDisplayName, getProviderIcon } from '../../utils/SSOUtils';
+import {
+  getProviderDisplayName,
+  getProviderIcon,
+  ProviderIcon,
+} from '../../utils/SSOUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Loader from '../common/Loader/Loader';
 import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -36,6 +40,7 @@ import ProviderSelector from './ProviderSelector/ProviderSelector';
 import './settings-sso.less';
 import SSOConfigurationForm from './SSOConfigurationForm/SSOConfigurationForm';
 import { useSecuritySettingsSource } from './useSecuritySettingsSource';
+import SsoProviderIcon from './SsoProviderIcon/SsoProviderIcon';
 
 const SettingsSso = () => {
   const { t } = useTranslation();
@@ -427,11 +432,10 @@ const SettingsSso = () => {
               <div className="flex items-center gap-2">
                 <div className="provider-icon-container">
                   {getProviderIcon(currentProvider) && (
-                    <img
+                    <SsoProviderIcon
                       alt={getProviderDisplayName(currentProvider)}
-                      height="22"
-                      src={getProviderIcon(currentProvider) as string}
-                      width="22"
+                      icon={getProviderIcon(currentProvider) as ProviderIcon}
+                      size={22}
                     />
                   )}
                 </div>

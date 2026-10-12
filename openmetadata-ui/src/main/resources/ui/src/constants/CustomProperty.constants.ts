@@ -12,6 +12,7 @@
  */
 
 import {
+  Clock,
   ClockStopwatch,
   DateTimeType,
   DateType,
@@ -28,7 +29,6 @@ import {
   StringType,
   Table,
   TimestampType,
-  Clock,
 } from '@openmetadata/ui-core-components/icons';
 
 export const PROPERTY_TYPES_WITH_FORMAT = ['date-cp', 'dateTime-cp', 'time-cp'];
