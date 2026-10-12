@@ -31,6 +31,8 @@ import org.openmetadata.it.util.GovernanceWorkflowActions;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateDashboard;
+import org.openmetadata.schema.api.data.CreateDatabase;
+import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTopic;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
@@ -41,6 +43,8 @@ import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.tasks.CreateTask;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Dashboard;
+import org.openmetadata.schema.entity.data.Database;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.domains.DataProduct;
@@ -872,110 +876,74 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
   }
 
   @Test
-  void test_clearingDataProductDomainOverInheritingAssetDoesNotOverDetach(TestNamespace ns)
+  void test_domainRemovalKeepsDataProductsOnAssetsWithInheritedDomain(TestNamespace ns)
       throws Exception {
-    // Regression: clearing a data product's domains must NOT detach data products from assets that
-    // still carry a domain by inheritance. The detach handler used explicit-only DOMAIN edges, so
-    // an inheriting direct asset (no explicit DOMAIN HAS asset edge — the normal bulk-add state)
-    // was misclassified as domain-less and unrelated data products were silently detached, down to
-    // every descendant that inherits its domain.
-    Domain finance = createTestDomain(ns, "finance_inherit");
-
-    // Database WITH an explicit domain. The schema and table below omit domains and inherit it.
-    DatabaseService service = getOrCreateDatabaseService(ns);
-    org.openmetadata.schema.entity.data.Database database =
+    Domain finance = createTestDomain(ns, "finance_inherited");
+    Database database =
         SdkClients.adminClient()
             .databases()
             .create(
-                new org.openmetadata.schema.api.data.CreateDatabase()
-                    .withName(ns.prefix("db_inherit"))
-                    .withService(service.getFullyQualifiedName())
+                new CreateDatabase()
+                    .withName(ns.prefix("db_inherited"))
+                    .withService(getOrCreateDatabaseService(ns).getFullyQualifiedName())
                     .withDomains(List.of(finance.getFullyQualifiedName())));
-
-    // Schema with NO explicit domain — inherits finance from the database at read time.
-    org.openmetadata.schema.entity.data.DatabaseSchema schema =
+    // Neither the schema nor its table has a domain of its own: both inherit finance.
+    DatabaseSchema schema =
         SdkClients.adminClient()
             .databaseSchemas()
             .create(
-                new org.openmetadata.schema.api.data.CreateDatabaseSchema()
-                    .withName(ns.prefix("schema_inherit"))
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("schema_inherited"))
                     .withDatabase(database.getFullyQualifiedName()));
+    Table table = createChildTable(ns, "table_inherited", schema, null);
 
-    // Table with NO explicit domain — inherits finance from schema -> database.
-    Table childTable = createChildTable(ns, "table_inherit", schema, null);
-
-    DataProduct productToClear =
-        createEntity(
-            new CreateDataProduct()
-                .withName(ns.prefix("dp_clear_inherit"))
-                .withDescription("Data product whose domains will be cleared")
-                .withDomains(List.of(finance.getFullyQualifiedName())));
-    DataProduct productToKeep =
-        createEntity(
-            new CreateDataProduct()
-                .withName(ns.prefix("dp_keep_inherit"))
-                .withDescription("A different finance data product on the inheriting table")
-                .withDomains(List.of(finance.getFullyQualifiedName())));
-
-    // Bulk-add never writes a DOMAIN HAS asset edge, so the schema has no explicit domain edge.
+    DataProduct clearedProduct = createFinanceDataProduct(ns, "dp_cleared", finance);
+    DataProduct schemaProduct = createFinanceDataProduct(ns, "dp_on_schema", finance);
+    DataProduct tableProduct = createFinanceDataProduct(ns, "dp_on_table", finance);
     bulkAddAssets(
-        productToClear.getFullyQualifiedName(),
+        clearedProduct.getFullyQualifiedName(),
         new BulkAssets().withAssets(List.of(schema.getEntityReference())));
     bulkAddAssets(
-        productToKeep.getFullyQualifiedName(),
-        new BulkAssets().withAssets(List.of(childTable.getEntityReference())));
+        schemaProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(schema.getEntityReference())));
+    bulkAddAssets(
+        tableProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table.getEntityReference())));
 
-    // Sanity: the schema/table resolve their inherited domain before the clear.
-    assertEquals(
-        List.of(finance.getId()),
-        SdkClients.adminClient()
-            .databaseSchemas()
-            .get(schema.getId().toString(), "domains")
-            .getDomains()
-            .stream()
-            .map(EntityReference::getId)
-            .toList(),
-        "Schema with no explicit domain must inherit finance from its database");
-
-    // Clear productToClear's domains (move to none) — this is the trigger for the detach handler.
     DataProduct current =
-        SdkClients.adminClient().dataProducts().get(productToClear.getId().toString(), "domains");
+        SdkClients.adminClient().dataProducts().get(clearedProduct.getId().toString(), "domains");
     current.setDomains(List.of());
     SdkClients.adminClient().dataProducts().update(current.getId().toString(), current);
 
-    // Symptom 1 (direct-asset): a domain-less data product never conflicts
-    // (LogicOps validateDataProductDomainMatch skips data products with no domains), and the
-    // schema is NOT domain-less (it still inherits finance). The assignment must be kept.
+    // The schema and table still resolve finance by inheritance, so every assignment still passes
+    // "Data Product Domain Validation" (a data product with no domains never conflicts).
     List<EntityReference> schemaDataProducts =
         SdkClients.adminClient()
             .databaseSchemas()
             .get(schema.getId().toString(), "dataProducts")
             .getDataProducts();
     assertTrue(
-        hasDataProduct(schemaDataProducts, productToClear.getId()),
-        "A domain-less data product must remain on an asset that still inherits a domain");
-
-    // Symptom 2 (descendant): productToKeep (finance) must stay on the inheriting table. Before
-    // the fix the direct asset's empty explicit set was propagated down the subtree, detaching
-    // every data product on every inheriting descendant — conflicts({finance}, {}) returned true.
-    List<EntityReference> childDataProducts =
+        hasDataProduct(schemaDataProducts, clearedProduct.getId()),
+        "The cleared data product must stay on a schema that still inherits a domain");
+    assertTrue(
+        hasDataProduct(schemaDataProducts, schemaProduct.getId()),
+        "An unrelated finance data product must stay on a schema that still inherits finance");
+    List<EntityReference> tableDataProducts =
         SdkClients.adminClient()
             .tables()
-            .get(childTable.getId().toString(), "dataProducts")
+            .get(table.getId().toString(), "dataProducts")
             .getDataProducts();
     assertTrue(
-        hasDataProduct(childDataProducts, productToKeep.getId()),
-        "A finance data product must remain on a table that still inherits finance after a "
-            + "DIFFERENT data product's domains are cleared");
+        hasDataProduct(tableDataProducts, tableProduct.getId()),
+        "A finance data product must stay on a descendant table that still inherits finance");
+  }
 
-    // The schema must stay writable — the inherited domain keeps it valid for the kept DP.
-    var editableSchema =
-        SdkClients.adminClient().databaseSchemas().get(schema.getId().toString(), "dataProducts");
-    editableSchema.setDescription(
-        "edited after clearing an inheriting asset's data product domain");
-    SdkClients.adminClient()
-        .databaseSchemas()
-        .update(editableSchema.getId().toString(), editableSchema);
+  private DataProduct createFinanceDataProduct(TestNamespace ns, String suffix, Domain finance) {
+    return createEntity(
+        new CreateDataProduct()
+            .withName(ns.prefix(suffix))
+            .withDescription("Data product in finance")
+            .withDomains(List.of(finance.getFullyQualifiedName())));
   }
 
   private void moveDataProductDomain(DataProduct dataProduct, Domain targetDomain) {

@@ -30,6 +30,7 @@ import static org.openmetadata.service.util.LineageUtil.addDomainLineage;
 import static org.openmetadata.service.util.LineageUtil.removeDataProductsLineage;
 import static org.openmetadata.service.util.LineageUtil.removeDomainLineage;
 
+import com.google.common.collect.Lists;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -90,11 +91,12 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   private static final String DATA_PRODUCT_DOMAIN_VALIDATION_RULE =
       "Data Product Domain Validation";
 
-  // Max descendants whose domains/data-products are hydrated at once while reconciling a level.
+  // Max assets whose domains/data-products are hydrated at once while reconciling (a level of
+  // descendants, or the direct assets that inherit their domain).
   // Bounds peak heap to ~O(chunk * tree-depth) instead of O(widest level) — the same reason
   // bulkHardDeleteSubtree chunks each level (a database with hundreds of thousands of tables would
   // otherwise load the whole level into the heap in one shot).
-  private static final int DESCENDANT_RECONCILE_CHUNK_SIZE = 200;
+  private static final int RECONCILE_CHUNK_SIZE = 200;
 
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
 
@@ -1173,14 +1175,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     // subtree. Detached assets are reindexed once at the end (a single batched search write) rather
     // than one call per asset, which matters when a mass-detach touches many descendants.
     List<EntityReference> reindexQueue = new ArrayList<>();
-    Map<UUID, Set<UUID>> explicitDomains = batchFetchDomainIds(refIds(assets));
-    // An asset with no explicit DOMAIN HAS asset edge may still carry a domain inherited from its
-    // containment parent — the read path resolves this via inheritDomains, and bulk-add never
-    // writes a DOMAIN edge for such assets. Such an asset is NOT "left with no domains", so resolve
-    // its effective (explicit-or-inherited) set before reconciling. Otherwise the detach policy
-    // fires on an inheriting direct asset and propagates an empty set down its whole subtree,
-    // silently detaching unrelated data products.
-    Map<UUID, Set<UUID>> directDomains = resolveEffectiveDomains(assets, explicitDomains);
+    Map<UUID, Set<UUID>> directDomains = fetchEffectiveDomainIds(assets);
     reconcileConflicts(assets, directDomains, reindexQueue);
     reconcileInheritingDescendants(assets, directDomains, reindexQueue);
     if (searchRepository != null && !reindexQueue.isEmpty()) {
@@ -1224,10 +1219,9 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       Map<UUID, Set<UUID>> nextInherited = new HashMap<>();
       // Hydrate domains/data-products and detach in bounded chunks so peak heap stays ~O(chunk),
       // not O(widest level) — mirroring bulkHardDeleteSubtree's per-level chunking.
-      for (int start = 0; start < candidates.size(); start += DESCENDANT_RECONCILE_CHUNK_SIZE) {
+      for (int start = 0; start < candidates.size(); start += RECONCILE_CHUNK_SIZE) {
         List<EntityReference> chunk =
-            candidates.subList(
-                start, Math.min(start + DESCENDANT_RECONCILE_CHUNK_SIZE, candidates.size()));
+            candidates.subList(start, Math.min(start + RECONCILE_CHUNK_SIZE, candidates.size()));
         Map<UUID, Set<UUID>> chunkOwnDomains = batchFetchDomainIds(refIds(chunk));
         List<EntityReference> inheritingChunk = new ArrayList<>();
         Map<UUID, Set<UUID>> chunkEffective = new HashMap<>();
@@ -1343,41 +1337,36 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   }
 
   /**
-   * Resolve each asset's effective domains: keep explicit domains where present, and for assets
-   * with no explicit {@code DOMAIN HAS asset} edge resolve the inherited set through the same
-   * read-time path ({@link Entity#getEntitiesForInheritance}, which runs {@code inheritDomains}
-   * against the containment parent chain). Mirrors what {@code validateDataProductDomainMatch} and
-   * a {@code GET ?fields=domains} see, so the detach policy's "left with no domains" test matches
-   * the rule's view of the asset: an inheriting asset with a non-empty parent domain is NOT
-   * domain-less and must not be detached. {@code getEntitiesForInheritance} resolves a single
-   * entity type, so mixed-type direct assets are grouped per type.
+   * Each direct asset's domains as the "Data Product Domain Validation" rule sees them: explicit, or
+   * inherited from its container when it has none. Clearing a data product's domains writes no new
+   * DOMAIN edge, so an asset that inherits its domain would otherwise read as domain-less and lose
+   * every data product, down its whole subtree. Inheriting assets go through the regular read path
+   * so each repository's own inheritance logic applies, in bounded chunks per entity type.
    */
-  private Map<UUID, Set<UUID>> resolveEffectiveDomains(
-      List<EntityReference> assets, Map<UUID, Set<UUID>> explicit) {
-    List<EntityReference> needInherited =
-        assets.stream()
-            .filter(a -> explicit.getOrDefault(a.getId(), Set.of()).isEmpty())
-            .collect(Collectors.toList());
-    if (needInherited.isEmpty()) {
-      return explicit;
+  private Map<UUID, Set<UUID>> fetchEffectiveDomainIds(List<EntityReference> assets) {
+    Map<UUID, Set<UUID>> domainsByAsset = batchFetchDomainIds(refIds(assets));
+    assets.stream()
+        .filter(asset -> !domainsByAsset.containsKey(asset.getId()))
+        .collect(Collectors.groupingBy(EntityReference::getType))
+        .values()
+        .forEach(
+            sameType ->
+                Lists.partition(sameType, RECONCILE_CHUNK_SIZE)
+                    .forEach(chunk -> putInheritedDomainIds(chunk, domainsByAsset)));
+    return domainsByAsset;
+  }
+
+  private static void putInheritedDomainIds(
+      List<EntityReference> sameTypeAssets, Map<UUID, Set<UUID>> domainsByAsset) {
+    List<EntityInterface<?>> entities =
+        Entity.getEntities(sameTypeAssets, FIELD_DOMAINS, NON_DELETED);
+    for (EntityInterface<?> entity : entities) {
+      domainsByAsset.put(
+          entity.getId(),
+          listOrEmpty(entity.getDomains()).stream()
+              .map(EntityReference::getId)
+              .collect(Collectors.toSet()));
     }
-    Map<UUID, Set<UUID>> result = new HashMap<>(explicit);
-    Map<String, List<EntityReference>> byType =
-        needInherited.stream().collect(Collectors.groupingBy(EntityReference::getType));
-    for (List<EntityReference> sameTypeRefs : byType.values()) {
-      List<? extends EntityInterface<?>> hydrated =
-          Entity.getEntitiesForInheritance(sameTypeRefs, FIELD_DOMAINS, NON_DELETED);
-      for (EntityInterface<?> entity : hydrated) {
-        Set<UUID> effective =
-            nullOrEmpty(entity.getDomains())
-                ? Set.of()
-                : entity.getDomains().stream()
-                    .map(EntityReference::getId)
-                    .collect(Collectors.toSet());
-        result.put(entity.getId(), effective);
-      }
-    }
-    return result;
   }
 
   private Map<UUID, Set<UUID>> batchFetchDataProductDomainIds(List<String> dataProductIds) {
