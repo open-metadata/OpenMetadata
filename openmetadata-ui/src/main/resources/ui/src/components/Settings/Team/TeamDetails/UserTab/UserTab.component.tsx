@@ -15,10 +15,11 @@ import {
   Box,
   Button as CoreButton,
   ButtonUtility,
+  SimpleModal,
   Tooltip,
 } from '@openmetadata/ui-core-components';
 import { Plus } from '@openmetadata/ui-core-components/icons';
-import { Button, Modal } from 'antd';
+import { Button } from 'antd';
 import { isEmpty, orderBy } from 'lodash';
 import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -505,11 +506,11 @@ export const UserTab = ({
         }}
         size="small"
       />
-      <Modal
+      <SimpleModal
         cancelText={t('label.cancel')}
         data-testid="confirmation-modal"
+        isOpen={Boolean(deletingUser)}
         okText={t('label.confirm')}
-        open={Boolean(deletingUser)}
         title={t('label.removing-user')}
         onCancel={() => setDeletingUser(undefined)}
         onOk={handleRemoveUser}>
@@ -518,7 +519,7 @@ export const UserTab = ({
             entity: getEntityName(deletingUser),
           }),
         })}
-      </Modal>
+      </SimpleModal>
     </div>
   );
 };

@@ -820,7 +820,7 @@
   },
   "playwright/utils/team.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 2
+      "count": 1
     }
   },
   "playwright/utils/testCases.ts": {
@@ -839,11 +839,6 @@
     }
   },
   "src/components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanelBody.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
-    }
-  },
-  "src/components/ActivityFeed/Shared/AnnouncementBadge.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 1
     }
@@ -930,7 +925,7 @@
   },
   "src/components/DataAssetRules/DataAssetRules.component.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 7
+      "count": 6
     }
   },
   "src/components/DataAssets/AssetsSelectionModal/AssetSelectionContentBody.tsx": {
@@ -1100,7 +1095,7 @@
   },
   "src/components/DataQuality/IncidentManager/SqlQueryTab/AddSqlQueryFormModal/AddSqlQueryFormModal.component.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 4
+      "count": 3
     }
   },
   "src/components/DataQuality/IncidentManager/SqlQueryTab/SqlQueryTab.component.tsx": {
@@ -1138,14 +1133,9 @@
       "count": 2
     }
   },
-  "src/components/Database/Profiler/ProfilerSettings/ProfilerSettings.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
-    }
-  },
   "src/components/Database/Profiler/TableProfiler/CustomMetricGraphs/CustomMetricGraphs.component.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 2
+      "count": 1
     }
   },
   "src/components/Database/Profiler/TableProfiler/ProfilerSettingsModal/ProfilerSettingsModal.tsx": {
@@ -1215,7 +1205,7 @@
   },
   "src/components/Entity/EntityLineage/AppPipelineModel/AddPipeLineModal.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 3
+      "count": 2
     }
   },
   "src/components/Entity/EntityLineage/EdgeInteractionOverlay.component.tsx": {
@@ -1235,7 +1225,7 @@
   },
   "src/components/Entity/EntityLineage/LineageConfigModal.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 3
+      "count": 2
     }
   },
   "src/components/Entity/EntityLineage/LineageSearchSelect/LineageSearchSelect.tsx": {
@@ -1305,42 +1295,37 @@
   },
   "src/components/Modals/DeployIngestionLoaderModal/DeployIngestionLoaderModal.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 2
+      "count": 1
     }
   },
   "src/components/Modals/ModalWithCustomProperty/ModalWithCustomPropertyEditor.component.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 2
+      "count": 1
     }
   },
   "src/components/Modals/ModalWithFunctionEditor/ModalWithFunctionEditor.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 6
+      "count": 5
     }
   },
   "src/components/Modals/ModalWithQueryEditor/ModalWithQueryEditor.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 5
+      "count": 4
     }
   },
   "src/components/Modals/ProfileEditModal/ProfileEditModal.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 4
+      "count": 3
     }
   },
   "src/components/Modals/SchemaModal/SchemaModal.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 2
-    }
-  },
-  "src/components/Modals/StopScheduleRun/StopScheduleRunModal.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 1
     }
   },
   "src/components/Modals/TourEndModal/TourEndModal.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 3
+      "count": 2
     }
   },
   "src/components/Modals/WhatsNewModal/WhatsNewAlert/WhatsNewAlert.component.tsx": {
@@ -1355,7 +1340,7 @@
   },
   "src/components/MyData/LeftSidebar/LeftSidebar.component.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 6
+      "count": 5
     }
   },
   "src/components/MyData/LeftSidebar/LeftSidebarItem.component.tsx": {
@@ -1365,7 +1350,7 @@
   },
   "src/components/MyData/Persona/AddEditPersona/AddEditPersona.component.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 5
+      "count": 4
     }
   },
   "src/components/MyData/Persona/PersonaDetailsCard/PersonaDetailsCard.tsx": {
@@ -1430,7 +1415,7 @@
   },
   "src/components/ProfileCard/ProfileSectionUserDetailsCard.component.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 4
+      "count": 3
     }
   },
   "src/components/SearchSettings/EntitySeachSettings/EntitySearchSettings.tsx": {
@@ -1450,7 +1435,7 @@
   },
   "src/components/SearchSettings/FieldValueBoostModal/FieldValueBoostModal.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 6
+      "count": 5
     }
   },
   "src/components/SearchSettings/GlobalSettingsItem/GlobalSettingsItem.tsx": {
@@ -1500,7 +1485,7 @@
   },
   "src/components/Settings/Applications/AppRunsHistory/AppRunsHistory.component.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 2
+      "count": 1
     }
   },
   "src/components/Settings/Applications/AppRunsHistory/AppRunsHistory.test.tsx": {
@@ -1510,7 +1495,7 @@
   },
   "src/components/Settings/Applications/AppSchedule/AppSchedule.component.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 2
+      "count": 1
     }
   },
   "src/components/Settings/Applications/ApplicationCard/ApplicationCard.component.tsx": {
@@ -1555,7 +1540,7 @@
   },
   "src/components/Settings/Email/TestEmail/TestEmail.component.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 4
+      "count": 3
     }
   },
   "src/components/Settings/Services/Ingestion/AddIngestionButton.interface.ts": {
@@ -1600,12 +1585,12 @@
   },
   "src/components/Settings/Team/TeamDetails/TeamDetailsV1.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 4
+      "count": 3
     }
   },
   "src/components/Settings/Team/TeamDetails/TeamHierarchy.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 2
+      "count": 1
     }
   },
   "src/components/Settings/Team/TeamDetails/TeamsHeaderSection/TeamsHeadingLabel.component.tsx": {
@@ -1620,12 +1605,12 @@
   },
   "src/components/Settings/Team/TeamDetails/TeamsHeaderSection/TeamsSubscription.component.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 6
+      "count": 5
     }
   },
   "src/components/Settings/Team/TeamDetails/UserTab/UserTab.component.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 2
+      "count": 1
     }
   },
   "src/components/Settings/Team/TeamsSelectable/TeamsSelectable.tsx": {
@@ -1650,7 +1635,7 @@
   },
   "src/components/Settings/Users/ChangePasswordForm.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 3
+      "count": 2
     }
   },
   "src/components/Settings/Users/CreateUser/CreateUser.component.tsx": {
@@ -1679,11 +1664,6 @@
     }
   },
   "src/components/Settings/Users/UsersProfile/UserProfileTeams/UserProfileTeams.component.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
-    }
-  },
-  "src/components/Settings/Users/UsersTab/UsersTabs.component.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 1
     }
@@ -2025,7 +2005,7 @@
   },
   "src/pages/AuditLogsPage/AuditLogsPage.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 2
+      "count": 1
     }
   },
   "src/pages/Configuration/EditLoginConfiguration/EditLoginConfigurationPage.tsx": {
@@ -2155,7 +2135,7 @@
   },
   "src/pages/Persona/PersonaDetailsPage/PersonaDetailsPage.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 3
+      "count": 2
     }
   },
   "src/pages/Persona/PersonaListPage/PersonaPage.tsx": {
@@ -2190,7 +2170,7 @@
   },
   "src/pages/PoliciesPage/PoliciesDetailPage/PoliciesDetailPage.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 4
+      "count": 3
     }
   },
   "src/pages/PoliciesPage/PoliciesListPage/PoliciesListPage.tsx": {
@@ -2215,7 +2195,7 @@
   },
   "src/pages/RolesPage/AddAttributeModal/AddAttributeModal.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 4
+      "count": 3
     }
   },
   "src/pages/RolesPage/AddRolePage/AddRolePage.tsx": {
@@ -2225,7 +2205,7 @@
   },
   "src/pages/RolesPage/RolesDetailPage/RolesDetailPage.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 4
+      "count": 3
     }
   },
   "src/pages/RolesPage/RolesListPage/RolesListPage.tsx": {
@@ -2265,7 +2245,7 @@
   },
   "src/pages/TableDetailsPageV1/TableConstraints/TableConstraintsModal/TableConstraintsModal.component.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 6
+      "count": 5
     }
   },
   "src/pages/TableDetailsPageV1/TableDetailsPageSkeleton.component.tsx": {
@@ -2290,12 +2270,12 @@
   },
   "src/pages/TeamsPage/AddTeamForm.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 7
+      "count": 6
     }
   },
   "src/pages/UserListPage/UserListPageV1.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 2
+      "count": 1
     }
   },
   "src/utils/Alerts/AlertsUtil.tsx": {

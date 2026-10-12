@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Modal } from 'antd';
+import { SimpleModal, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -53,14 +52,12 @@ const StopScheduleModal: FC<StopScheduleRunModalProps> = ({
   };
 
   return (
-    <Modal
-      destroyOnClose
+    <SimpleModal
       cancelText={t('label.cancel')}
-      closable={false}
-      confirmLoading={isLoading}
-      maskClosable={false}
+      isDismissable={false}
+      isOkLoading={isLoading}
+      isOpen={isModalOpen}
       okText={t('label.confirm')}
-      open={isModalOpen}
       title={`${t('label.stop')} ${displayName} ?`}
       onCancel={onClose}
       onOk={handleConfirm}>
@@ -72,7 +69,7 @@ const StopScheduleModal: FC<StopScheduleRunModalProps> = ({
           })}
         </Typography>
       </div>
-    </Modal>
+    </SimpleModal>
   );
 };
 

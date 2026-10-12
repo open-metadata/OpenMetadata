@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Box, Typography } from '@openmetadata/ui-core-components';
-import { Button, Modal } from 'antd';
+import { Box, SimpleModal, Typography } from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -296,17 +296,31 @@ const AppSchedule = ({
           {appRunHistory}
         </Box>
       </Box>
-      <Modal
-        destroyOnClose
-        className="update-schedule-modal"
-        closable={false}
+      <SimpleModal
         data-testid="update-schedule-modal"
-        footer={null}
-        maskClosable={false}
-        okText={t('label.save')}
-        open={showModal}
+        footer={
+          <>
+            <Button
+              data-testid="back-button"
+              type="link"
+              onClick={onDialogCancel}>
+              {t('label.cancel')}
+            </Button>
+            <Button
+              data-testid="deploy-button"
+              disabled={!isScheduleValid}
+              loading={isSaveLoading}
+              type="primary"
+              onClick={onDialogSave}>
+              {t('label.save')}
+            </Button>
+          </>
+        }
+        isDismissable={false}
+        isOpen={showModal}
         title={t('label.update-entity', { entity: t('label.schedule') })}
-        width={650}>
+        width={650}
+        onCancel={onDialogCancel}>
         <ScheduleInterval
           defaultSchedule={defaultCron}
           includePeriodOptions={initialOptions}
@@ -314,23 +328,7 @@ const AppSchedule = ({
           onChange={setScheduleValue}
           onValidityChange={setIsScheduleValid}
         />
-        <div className="d-flex justify-end gap-2 m-t-md">
-          <Button
-            data-testid="back-button"
-            type="link"
-            onClick={onDialogCancel}>
-            {t('label.cancel')}
-          </Button>
-          <Button
-            data-testid="deploy-button"
-            disabled={!isScheduleValid}
-            loading={isSaveLoading}
-            type="primary"
-            onClick={onDialogSave}>
-            {t('label.save')}
-          </Button>
-        </div>
-      </Modal>
+      </SimpleModal>
     </>
   );
 };

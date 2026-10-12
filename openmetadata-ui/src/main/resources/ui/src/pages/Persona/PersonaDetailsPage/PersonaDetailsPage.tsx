@@ -13,11 +13,12 @@
 import {
   FeaturedIcon,
   Grid,
+  SimpleModal,
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { User03 } from '@openmetadata/ui-core-components/icons';
-import { Button, Modal } from 'antd';
+import { Button } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -426,14 +427,11 @@ export const PersonaDetailsPage = () => {
       </Grid>
 
       {/* Set Default Persona Confirmation Modal */}
-      <Modal
+      <SimpleModal
         data-testid="default-persona-confirmation-modal"
-        okButtonProps={{
-          loading: isConfirmModalLoading,
-        }}
+        isOkLoading={isConfirmModalLoading}
+        isOpen={isConfirmModalVisible}
         okText={t('label.yes')}
-        okType="primary"
-        open={isConfirmModalVisible}
         title={
           personaDetails?.default
             ? t('label.remove-default')
@@ -450,7 +448,7 @@ export const PersonaDetailsPage = () => {
                 persona: getEntityName(personaDetails),
               })}
         </Typography>
-      </Modal>
+      </SimpleModal>
     </PageLayoutV1>
   );
 };

@@ -12,8 +12,8 @@
  */
 
 import { CheckOutlined, SearchOutlined } from '@ant-design/icons';
-import { Grid } from '@openmetadata/ui-core-components';
-import { Input, Modal } from 'antd';
+import { Grid, SimpleModal } from '@openmetadata/ui-core-components';
+import { Input } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
@@ -135,30 +135,20 @@ const AddAttributeModal: FC<Props> = ({
   }, []);
 
   return (
-    <Modal
-      centered
-      className="ant-attribute-modal"
-      closable={false}
-      confirmLoading={isModalLoading}
+    <SimpleModal
       data-testid="modal-container"
-      maskClosable={false}
+      isDismissable={false}
+      isOkLoading={isModalLoading}
+      isOpen={isOpen}
       okText={t('label.save')}
-      open={isOpen}
-      title={
-        <span data-testid="modal-title">
-          {title}{' '}
-          <span className="text-grey-muted text-sm">
-            {`(${selectedValues.length}/${data.length} selected)`}
-          </span>
-        </span>
-      }
+      title={`${title} (${selectedValues.length}/${data.length} selected)`}
       width={750}
       onCancel={onCancel}
       onOk={() => onSave(selectedValues)}>
       {isLoading ? (
         <Loader />
       ) : (
-        <>
+        <div className="attribute-modal-body">
           <Grid className="layout-row layout-grid ant-search-box-row">
             <Grid.Item className="layout-column" span={24}>
               <Input
@@ -207,9 +197,9 @@ const AddAttributeModal: FC<Props> = ({
               </Grid>
             ))
           )}
-        </>
+        </div>
       )}
-    </Modal>
+    </SimpleModal>
   );
 };
 

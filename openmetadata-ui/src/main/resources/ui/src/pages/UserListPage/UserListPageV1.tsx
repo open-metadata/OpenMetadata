@@ -15,10 +15,11 @@ import {
   Box,
   ButtonUtility,
   Grid,
+  SimpleModal,
   Toggle,
   Tooltip,
 } from '@openmetadata/ui-core-components';
-import { Button, Modal } from 'antd';
+import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -571,16 +572,12 @@ const UserListPageV1 = () => {
           />
         </Grid.Item>
 
-        <Modal
-          cancelButtonProps={{
-            type: 'link',
-          }}
-          className="reactive-modal"
-          closable={false}
-          confirmLoading={isLoading}
-          maskClosable={false}
+        <SimpleModal
+          data-testid="restore-user-modal"
+          isDismissable={false}
+          isOkLoading={isLoading}
+          isOpen={showReactiveModal}
           okText={t('label.restore')}
-          open={showReactiveModal}
           title={t('label.restore-entity', {
             entity: t('label.user'),
           })}
@@ -594,7 +591,7 @@ const UserListPageV1 = () => {
               entity: getEntityName(selectedUser),
             })}
           </p>
-        </Modal>
+        </SimpleModal>
 
         <DeleteEntityModal
           afterDeleteAction={async () => {

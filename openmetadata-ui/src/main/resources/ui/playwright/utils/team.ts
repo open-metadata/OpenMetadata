@@ -38,7 +38,6 @@ import { waitForResponseWithStatus } from './waitHelpers';
 
 const TEAM_TYPES = ['Department', 'Division', 'Group'];
 
-const ADD_TEAM_MODAL = '[role="dialog"].ant-modal';
 // A success toast self-dismisses after 3.5s; give it a beat past that.
 const TOAST_DISMISS_TIMEOUT = 6_000;
 const MODAL_OPEN_TIMEOUT = 10_000;
@@ -50,7 +49,7 @@ export const openAddTeamModal = async (
   trigger: AddTeamTrigger = 'add-team'
 ) => {
   const addButton = page.getByTestId(trigger);
-  const addTeamModal = page.locator(ADD_TEAM_MODAL).last();
+  const addTeamModal = page.getByTestId('add-team-modal');
 
   await expect(page.getByTestId('alert-bar')).toHaveCount(0, {
     timeout: TOAST_DISMISS_TIMEOUT,
@@ -224,7 +223,7 @@ export const createTeam = async (
     ...overrides,
   };
 
-  const teamModal = page.locator('[role="dialog"].ant-modal');
+  const teamModal = page.getByTestId('add-team-modal');
 
   await teamModal.waitFor();
 

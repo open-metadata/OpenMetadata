@@ -55,16 +55,6 @@ jest.mock('../AppRunsHistory/AppRunsHistory.component', () =>
   jest.fn().mockImplementation(() => <div>AppRunsHistory</div>)
 );
 
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Modal: jest.fn().mockImplementation(({ open, children }) => (
-    <div>
-      {open ? 'Modal is open' : 'Modal is close'}
-      {children}
-    </div>
-  )),
-}));
-
 const mockProps1 = {
   appData: {
     ...mockApplicationData,
@@ -131,15 +121,17 @@ describe('AppSchedule component', () => {
       await screen.findByText('label.schedule-interval')
     ).toBeInTheDocument();
     expect(await screen.findByTestId('cron-string')).toBeInTheDocument();
-    expect(screen.getByText('Modal is close')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: 'label.edit' }));
-
-    expect(screen.getByText('Modal is open')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('update-schedule-modal')
+    ).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'label.run-now' }));
 
     expect(mockOnDemandTrigger).toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'label.edit' }));
+
+    expect(screen.getByTestId('update-schedule-modal')).toBeInTheDocument();
   });
 
   it('should render necessary elements based on mockProps2', async () => {
@@ -167,11 +159,13 @@ describe('AppSchedule component', () => {
   it('check methods in AppSchedule component', () => {
     render(<AppSchedule {...mockProps1} />);
 
-    expect(screen.getByText('Modal is close')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('update-schedule-modal')
+    ).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'label.edit' }));
 
-    expect(screen.getByText('Modal is open')).toBeInTheDocument();
+    expect(screen.getByTestId('update-schedule-modal')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Change schedule' }));
     fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
@@ -180,7 +174,9 @@ describe('AppSchedule component', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'label.cancel' }));
 
-    expect(screen.getByText('Modal is close')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('update-schedule-modal')
+    ).not.toBeInTheDocument();
   });
 
   it('should show application disable message if appData.deleted is true', () => {

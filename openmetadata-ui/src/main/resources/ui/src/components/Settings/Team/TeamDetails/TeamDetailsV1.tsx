@@ -15,13 +15,14 @@ import {
   Box,
   Button as CoreButton,
   Grid,
+  SimpleModal,
   Tabs,
   ToggleBase,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Plus } from '@openmetadata/ui-core-components/icons';
-import { Avatar, Button, Modal } from 'antd';
+import { Avatar, Button } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -1348,10 +1349,11 @@ const TeamDetailsV1 = ({
           ))}
         </Tabs>
 
-        <Modal
+        <SimpleModal
           cancelText={t('label.cancel')}
+          data-testid="remove-team-user-modal"
+          isOpen={deletingUser.state}
           okText={t('label.confirm')}
-          open={deletingUser.state}
           title={
             deletingUser.leave
               ? t('label.leave-team')
@@ -1360,7 +1362,7 @@ const TeamDetailsV1 = ({
           onCancel={() => setDeletingUser(DELETE_USER_INITIAL_STATE)}
           onOk={handleRemoveUser}>
           {removeUserBodyText(deletingUser.leave)}
-        </Modal>
+        </SimpleModal>
         {addAttribute && (
           <AddAttributeModal
             isModalLoading={isModalLoading}
@@ -1373,13 +1375,11 @@ const TeamDetailsV1 = ({
           />
         )}
         {selectedEntity && (
-          <Modal
-            centered
-            closable={false}
-            confirmLoading={isModalLoading}
-            maskClosable={false}
+          <SimpleModal
+            isDismissable={false}
+            isOkLoading={isModalLoading}
+            isOpen={!isUndefined(selectedEntity.record)}
             okText={t('label.confirm')}
-            open={!isUndefined(selectedEntity.record)}
             title={`${t('label.remove-entity', {
               entity: getEntityName(selectedEntity?.record),
             })} ${t('label.from-lowercase')} ${getEntityName(currentTeam)}`}
@@ -1397,7 +1397,7 @@ const TeamDetailsV1 = ({
                 parent: getEntityName(currentTeam),
               })}
             </Typography>
-          </Modal>
+          </SimpleModal>
         )}
       </Box>
     </div>

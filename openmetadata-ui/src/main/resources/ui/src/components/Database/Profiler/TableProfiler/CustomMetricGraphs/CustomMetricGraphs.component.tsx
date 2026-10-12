@@ -10,14 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Dropdown } from '@openmetadata/ui-core-components';
+import {
+  Button,
+  Dropdown,
+  SimpleModal,
+} from '@openmetadata/ui-core-components';
 import {
   AreaChart,
   type ChartTooltipRenderProps,
   type ChartYAxisProps,
 } from '@openmetadata/ui-core-components/charts';
 import { DotsVertical } from '@openmetadata/ui-core-components/icons';
-import { Form, Modal } from 'antd';
+import { Form } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, last, omit, toPairs } from 'lodash';
 import { useMemo, useState } from 'react';
@@ -43,6 +47,7 @@ import {
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
 import DeleteModal from '../../../../common/DeleteModal/DeleteModal';
+import { DrawerPopupContainerProvider } from '../../../../common/DrawerPopupContainerProvider/DrawerPopupContainerProvider';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import CustomMetricForm from '../../../../DataQuality/CustomMetricForm/CustomMetricForm.component';
 import { MetricChartType } from '../../ProfilerDashboard/profilerDashboard.interface';
@@ -287,27 +292,26 @@ const CustomMetricGraphs = ({
         onDelete={handleDeleteClick}
       />
       {isEditModalVisible && !isUndefined(selectedMetrics) && (
-        <Modal
-          centered
-          destroyOnClose
-          cancelButtonProps={{ disabled: isActionLoading }}
-          closable={false}
-          okButtonProps={{ loading: isActionLoading }}
+        <SimpleModal
+          isOpen
+          isDismissable={false}
+          isOkLoading={isActionLoading}
           okText={t('label.save')}
-          open={isEditModalVisible}
           title={t('label.edit-entity', { entity: selectedMetrics.name })}
           width={650}
           onCancel={handleModalCancel}
           onOk={() => form.submit()}>
-          <CustomMetricForm
-            isEditMode
-            form={form}
-            initialValues={selectedMetrics}
-            isColumnMetric={!isUndefined(selectedMetrics.columnName)}
-            table={tableDetails}
-            onFinish={handleEditFormSubmit}
-          />
-        </Modal>
+          <DrawerPopupContainerProvider>
+            <CustomMetricForm
+              isEditMode
+              form={form}
+              initialValues={selectedMetrics}
+              isColumnMetric={!isUndefined(selectedMetrics.columnName)}
+              table={tableDetails}
+              onFinish={handleEditFormSubmit}
+            />
+          </DrawerPopupContainerProvider>
+        </SimpleModal>
       )}
     </div>
   );

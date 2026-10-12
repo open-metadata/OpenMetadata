@@ -12,8 +12,12 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Grid, Typography } from '@openmetadata/ui-core-components';
-import { Button, Modal } from 'antd';
+import {
+  Grid,
+  SimpleModal,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import { useTranslation } from 'react-i18next';
 import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
@@ -25,8 +29,7 @@ const TourEndModal = ({ onSave, visible }: TourEndModalProps) => {
   const { svg } = brandClassBase.getMonogram();
 
   return (
-    <Modal
-      closable={false}
+    <SimpleModal
       data-testid="modal-container"
       footer={
         <Button
@@ -37,8 +40,9 @@ const TourEndModal = ({ onSave, visible }: TourEndModalProps) => {
           {t('label.explore-now')}
         </Button>
       }
-      maskClosable={false}
-      open={visible}>
+      isDismissable={false}
+      isOpen={visible}
+      onCancel={onSave}>
       <Grid
         className="layout-row layout-grid text-center"
         style={getLayoutGutter(16, 16)}>
@@ -62,7 +66,7 @@ const TourEndModal = ({ onSave, visible }: TourEndModalProps) => {
           </Typography>
         </Grid.Item>
       </Grid>
-    </Modal>
+    </SimpleModal>
   );
 };
 

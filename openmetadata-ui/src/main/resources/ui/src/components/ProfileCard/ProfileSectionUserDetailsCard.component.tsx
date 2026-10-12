@@ -15,9 +15,10 @@ import {
   ButtonUtility,
   Popover,
   PopoverTrigger,
+  SimpleModal,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Badge, Button, Modal } from 'antd';
+import { Badge, Button } from 'antd';
 import { AxiosError } from 'axios';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -362,22 +363,12 @@ const ProfileSectionUserDetailsCard = ({
         <Button
           className="remove-button-default-styling"
           onClick={(e) => e.stopPropagation()}>
-          <Modal
-            centered
-            cancelButtonProps={{
-              type: 'link',
-              disabled: isRestoring,
-            }}
-            className="reactive-modal"
-            closable={false}
-            confirmLoading={isRestoring}
+          <SimpleModal
             data-testid="restore-user-modal"
-            maskClosable={false}
-            okButtonProps={{
-              loading: isRestoring,
-            }}
+            isDismissable={false}
+            isOkLoading={isRestoring}
+            isOpen={showRestoreModal}
             okText={t('label.restore')}
-            open={showRestoreModal}
             title={t('label.restore-entity', {
               entity: EntityType.USER,
             })}
@@ -388,7 +379,7 @@ const ProfileSectionUserDetailsCard = ({
                 entity: getEntityName(userData),
               })}
             </Typography>
-          </Modal>
+          </SimpleModal>
         </Button>
       )}
     </div>

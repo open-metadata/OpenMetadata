@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Box, Typography } from '@openmetadata/ui-core-components';
-import { Button, Empty, Form, Modal, Select } from 'antd';
+import { Box, SimpleModal, Typography } from '@openmetadata/ui-core-components';
+import { Button, Empty, Form, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, isEmpty } from 'lodash';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as PlusIcon } from '../../../../assets/svg/plus-primary.svg';
+import { DrawerPopupContainerProvider } from '../../../../components/common/DrawerPopupContainerProvider/DrawerPopupContainerProvider';
 import Loader from '../../../../components/common/Loader/Loader';
 import { PAGE_SIZE } from '../../../../constants/constants';
 import {
@@ -283,11 +284,8 @@ const TableConstraintsModal = ({
   );
 
   return (
-    <Modal
-      centered
-      destroyOnClose
-      open
-      closable={false}
+    <SimpleModal
+      isOpen
       data-testid="table-constraint-modal"
       footer={[
         <Button
@@ -306,281 +304,285 @@ const TableConstraintsModal = ({
           {t('label.save')}
         </Button>,
       ]}
-      maskClosable={false}
+      isDismissable={false}
       title={t(`label.${isEmpty(constraint) ? 'add' : 'update'}-entity`, {
         entity: t('label.table-constraint-plural'),
       })}
       onCancel={onClose}>
-      <Form
-        className="table-constraint-form"
-        form={form}
-        layout="vertical"
-        onFinish={handleSubmit}>
-        <Form.Item
-          className="w-full"
-          label={t('label.constraint-type')}
-          name="constraintType">
-          <Select
-            allowClear
-            autoClearSearchValue
-            data-testid="constraint-type-select"
-            options={translatedTableConstrantTypeOptions}
-            placeholder={t('label.select-entity', {
-              entity: t('label.constraint-type'),
-            })}
-          />
-        </Form.Item>
-
-        {constraintType === ConstraintType.PrimaryKey && (
-          <div className="table-constraint-form-container">
-            <Form.Item
-              className="w-full"
-              label={t('label.entity-key-plural', {
-                entity: t('label.primary'),
+      <DrawerPopupContainerProvider>
+        <Form
+          className="table-constraint-form"
+          form={form}
+          layout="vertical"
+          onFinish={handleSubmit}>
+          <Form.Item
+            className="w-full"
+            label={t('label.constraint-type')}
+            name="constraintType">
+            <Select
+              allowClear
+              autoClearSearchValue
+              data-testid="constraint-type-select"
+              options={translatedTableConstrantTypeOptions}
+              placeholder={t('label.select-entity', {
+                entity: t('label.constraint-type'),
               })}
-              name="primaryConstraints">
-              <Select
-                allowClear
-                autoClearSearchValue
-                data-testid="primary-constraint-type-select"
-                mode="multiple"
-                options={tableColumnNameOptions}
-                placeholder={t('label.select-entity', {
-                  entity: t('label.primary-key-plural'),
-                })}
-              />
-            </Form.Item>
-          </div>
-        )}
+            />
+          </Form.Item>
 
-        {constraintType === ConstraintType.Unique && (
-          <div className="table-constraint-form-container">
-            <Form.Item
-              className="w-full"
-              label={t('label.unique')}
-              name="uniqueConstraints">
-              <Select
-                allowClear
-                autoClearSearchValue
-                data-testid="unique-constraint-type-select"
-                mode="multiple"
-                options={tableColumnNameOptions}
-                placeholder={t('label.select-entity', {
-                  entity: t('label.entity-key-plural', {
-                    entity: t('label.unique'),
-                  }),
+          {constraintType === ConstraintType.PrimaryKey && (
+            <div className="table-constraint-form-container">
+              <Form.Item
+                className="w-full"
+                label={t('label.entity-key-plural', {
+                  entity: t('label.primary'),
                 })}
-              />
-            </Form.Item>
-          </div>
-        )}
-
-        {constraintType === ConstraintType.SortKey && (
-          <div className="table-constraint-form-container">
-            <Form.Item
-              className="w-full"
-              label={t('label.entity-key-plural', {
-                entity: t('label.sort'),
-              })}
-              name="sortConstraints">
-              <Select
-                allowClear
-                autoClearSearchValue
-                data-testid="sort-constraint-type-select"
-                mode="multiple"
-                options={tableColumnNameOptions}
-                placeholder={t('label.select-entity', {
-                  entity: t('label.entity-key-plural', {
-                    entity: t('label.sort'),
-                  }),
-                })}
-              />
-            </Form.Item>
-          </div>
-        )}
-
-        {constraintType === ConstraintType.DistKey && (
-          <div className="table-constraint-form-container">
-            <Form.Item
-              className="w-full"
-              label={t('label.entity-key-plural', {
-                entity: t('label.dist'),
-              })}
-              name="distConstraints">
-              <Select
-                allowClear
-                autoClearSearchValue
-                data-testid="dist-constraint-type-select"
-                mode="multiple"
-                options={tableColumnNameOptions}
-                placeholder={t('label.select-entity', {
-                  entity: t('label.entity-key-plural', {
-                    entity: t('label.dist'),
-                  }),
-                })}
-              />
-            </Form.Item>
-          </div>
-        )}
-
-        {constraintType === ConstraintType.ClusterKey && (
-          <div className="table-constraint-form-container">
-            <Form.Item
-              className="w-full"
-              label={t('label.entity-key-plural', {
-                entity: t('label.cluster'),
-              })}
-              name="clusterConstraints">
-              <Select
-                allowClear
-                autoClearSearchValue
-                data-testid="cluster-constraint-type-select"
-                mode="multiple"
-                options={tableColumnNameOptions}
-                placeholder={t('label.select-entity', {
-                  entity: t('label.entity-key-plural', {
-                    entity: t('label.cluster'),
-                  }),
-                })}
-              />
-            </Form.Item>
-          </div>
-        )}
-
-        {constraintType === ConstraintType.ForeignKey && (
-          <Form.List name="foreignConstraints">
-            {(fields, { add, remove }) => (
-              <>
-                {fields.map(({ key, name, ...restField }) => (
-                  <div className="table-constraint-form-container" key={key}>
-                    <Form.Item
-                      className="w-full"
-                      {...restField}
-                      label={t('label.entity-name', {
-                        entity: t('label.column'),
-                      })}
-                      name={[name, 'columns']}
-                      rules={[
-                        {
-                          required: true,
-                          message: t('label.field-required', {
-                            field: t('label.entity-name', {
-                              entity: t('label.column'),
-                            }),
-                          }),
-                        },
-                      ]}>
-                      <Select
-                        data-testid={`${key}-column-type-select`}
-                        options={tableColumnNameOptions}
-                        placeholder={t('label.select-entity', {
-                          entity: t('label.table-entity-text', {
-                            entityText: t('label.column'),
-                          }),
-                        })}
-                      />
-                    </Form.Item>
-                    <Form.Item
-                      {...restField}
-                      className="w-full"
-                      label={t('label.entity-type-plural', {
-                        entity: t('label.relationship'),
-                      })}
-                      name={[name, 'relationshipType']}
-                      rules={[
-                        {
-                          required: true,
-                          message: t('label.field-required', {
-                            field: t('label.entity-type-plural', {
-                              entity: t('label.relationship'),
-                            }),
-                          }),
-                        },
-                      ]}>
-                      <Select
-                        data-testid={`${key}-relationship-type-select`}
-                        options={translatedRelationShipTypeOptions}
-                        placeholder={t('label.select-entity', {
-                          entity: t('label.relationship-type'),
-                        })}
-                      />
-                    </Form.Item>
-                    <Form.Item
-                      {...restField}
-                      className="w-full"
-                      label={t('label.related-column')}
-                      name={[name, 'referredColumns']}
-                      rules={[
-                        {
-                          required: true,
-                          message: t('label.field-required', {
-                            field: t('label.related-column'),
-                          }),
-                        },
-                      ]}>
-                      <Select
-                        allowClear
-                        showSearch
-                        data-testid={`${key}-related-column-select`}
-                        notFoundContent={
-                          isRelatedColumnLoading ? (
-                            <Loader size="small" />
-                          ) : (
-                            <Empty
-                              description={t('label.no-entity-available', {
-                                entity: t('label.column-plural'),
-                              })}
-                              image={Empty.PRESENTED_IMAGE_SIMPLE}
-                            />
-                          )
-                        }
-                        optionLabelProp="label"
-                        placeholder={t('label.select-entity', {
-                          entity: t('label.related-column'),
-                        })}
-                        onSearch={debounceFetcher}>
-                        {relatedColumnOptions.map(({ label, value, data }) => (
-                          <Select.Option
-                            data-testid={`option-label-${data.label}`}
-                            key={value}
-                            value={value}>
-                            {label}
-                          </Select.Option>
-                        ))}
-                      </Select>
-                    </Form.Item>
-                    <Button
-                      className="delete-constraint-button"
-                      data-testid={`${key}-delete-constraint-button`}
-                      icon={
-                        <Icon
-                          className="align-middle text-grey-muted"
-                          component={IconDelete}
-                          style={{ fontSize: '16px' }}
-                        />
-                      }
-                      size="small"
-                      type="text"
-                      onClick={() => remove(name)}
-                    />
-                  </div>
-                ))}
-                <Button
-                  className="text-primary d-flex items-center m-t-md"
-                  data-testid="add-constraint-button"
-                  icon={<PlusIcon className="anticon" />}
-                  size="small"
-                  onClick={() => add()}>
-                  {t('label.add-entity', {
-                    entity: t('label.constraint-plural'),
+                name="primaryConstraints">
+                <Select
+                  allowClear
+                  autoClearSearchValue
+                  data-testid="primary-constraint-type-select"
+                  mode="multiple"
+                  options={tableColumnNameOptions}
+                  placeholder={t('label.select-entity', {
+                    entity: t('label.primary-key-plural'),
                   })}
-                </Button>
-              </>
-            )}
-          </Form.List>
-        )}
-      </Form>
-    </Modal>
+                />
+              </Form.Item>
+            </div>
+          )}
+
+          {constraintType === ConstraintType.Unique && (
+            <div className="table-constraint-form-container">
+              <Form.Item
+                className="w-full"
+                label={t('label.unique')}
+                name="uniqueConstraints">
+                <Select
+                  allowClear
+                  autoClearSearchValue
+                  data-testid="unique-constraint-type-select"
+                  mode="multiple"
+                  options={tableColumnNameOptions}
+                  placeholder={t('label.select-entity', {
+                    entity: t('label.entity-key-plural', {
+                      entity: t('label.unique'),
+                    }),
+                  })}
+                />
+              </Form.Item>
+            </div>
+          )}
+
+          {constraintType === ConstraintType.SortKey && (
+            <div className="table-constraint-form-container">
+              <Form.Item
+                className="w-full"
+                label={t('label.entity-key-plural', {
+                  entity: t('label.sort'),
+                })}
+                name="sortConstraints">
+                <Select
+                  allowClear
+                  autoClearSearchValue
+                  data-testid="sort-constraint-type-select"
+                  mode="multiple"
+                  options={tableColumnNameOptions}
+                  placeholder={t('label.select-entity', {
+                    entity: t('label.entity-key-plural', {
+                      entity: t('label.sort'),
+                    }),
+                  })}
+                />
+              </Form.Item>
+            </div>
+          )}
+
+          {constraintType === ConstraintType.DistKey && (
+            <div className="table-constraint-form-container">
+              <Form.Item
+                className="w-full"
+                label={t('label.entity-key-plural', {
+                  entity: t('label.dist'),
+                })}
+                name="distConstraints">
+                <Select
+                  allowClear
+                  autoClearSearchValue
+                  data-testid="dist-constraint-type-select"
+                  mode="multiple"
+                  options={tableColumnNameOptions}
+                  placeholder={t('label.select-entity', {
+                    entity: t('label.entity-key-plural', {
+                      entity: t('label.dist'),
+                    }),
+                  })}
+                />
+              </Form.Item>
+            </div>
+          )}
+
+          {constraintType === ConstraintType.ClusterKey && (
+            <div className="table-constraint-form-container">
+              <Form.Item
+                className="w-full"
+                label={t('label.entity-key-plural', {
+                  entity: t('label.cluster'),
+                })}
+                name="clusterConstraints">
+                <Select
+                  allowClear
+                  autoClearSearchValue
+                  data-testid="cluster-constraint-type-select"
+                  mode="multiple"
+                  options={tableColumnNameOptions}
+                  placeholder={t('label.select-entity', {
+                    entity: t('label.entity-key-plural', {
+                      entity: t('label.cluster'),
+                    }),
+                  })}
+                />
+              </Form.Item>
+            </div>
+          )}
+
+          {constraintType === ConstraintType.ForeignKey && (
+            <Form.List name="foreignConstraints">
+              {(fields, { add, remove }) => (
+                <>
+                  {fields.map(({ key, name, ...restField }) => (
+                    <div className="table-constraint-form-container" key={key}>
+                      <Form.Item
+                        className="w-full"
+                        {...restField}
+                        label={t('label.entity-name', {
+                          entity: t('label.column'),
+                        })}
+                        name={[name, 'columns']}
+                        rules={[
+                          {
+                            required: true,
+                            message: t('label.field-required', {
+                              field: t('label.entity-name', {
+                                entity: t('label.column'),
+                              }),
+                            }),
+                          },
+                        ]}>
+                        <Select
+                          data-testid={`${key}-column-type-select`}
+                          options={tableColumnNameOptions}
+                          placeholder={t('label.select-entity', {
+                            entity: t('label.table-entity-text', {
+                              entityText: t('label.column'),
+                            }),
+                          })}
+                        />
+                      </Form.Item>
+                      <Form.Item
+                        {...restField}
+                        className="w-full"
+                        label={t('label.entity-type-plural', {
+                          entity: t('label.relationship'),
+                        })}
+                        name={[name, 'relationshipType']}
+                        rules={[
+                          {
+                            required: true,
+                            message: t('label.field-required', {
+                              field: t('label.entity-type-plural', {
+                                entity: t('label.relationship'),
+                              }),
+                            }),
+                          },
+                        ]}>
+                        <Select
+                          data-testid={`${key}-relationship-type-select`}
+                          options={translatedRelationShipTypeOptions}
+                          placeholder={t('label.select-entity', {
+                            entity: t('label.relationship-type'),
+                          })}
+                        />
+                      </Form.Item>
+                      <Form.Item
+                        {...restField}
+                        className="w-full"
+                        label={t('label.related-column')}
+                        name={[name, 'referredColumns']}
+                        rules={[
+                          {
+                            required: true,
+                            message: t('label.field-required', {
+                              field: t('label.related-column'),
+                            }),
+                          },
+                        ]}>
+                        <Select
+                          allowClear
+                          showSearch
+                          data-testid={`${key}-related-column-select`}
+                          notFoundContent={
+                            isRelatedColumnLoading ? (
+                              <Loader size="small" />
+                            ) : (
+                              <Empty
+                                description={t('label.no-entity-available', {
+                                  entity: t('label.column-plural'),
+                                })}
+                                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                              />
+                            )
+                          }
+                          optionLabelProp="label"
+                          placeholder={t('label.select-entity', {
+                            entity: t('label.related-column'),
+                          })}
+                          onSearch={debounceFetcher}>
+                          {relatedColumnOptions.map(
+                            ({ label, value, data }) => (
+                              <Select.Option
+                                data-testid={`option-label-${data.label}`}
+                                key={value}
+                                value={value}>
+                                {label}
+                              </Select.Option>
+                            )
+                          )}
+                        </Select>
+                      </Form.Item>
+                      <Button
+                        className="delete-constraint-button"
+                        data-testid={`${key}-delete-constraint-button`}
+                        icon={
+                          <Icon
+                            className="align-middle text-grey-muted"
+                            component={IconDelete}
+                            style={{ fontSize: '16px' }}
+                          />
+                        }
+                        size="small"
+                        type="text"
+                        onClick={() => remove(name)}
+                      />
+                    </div>
+                  ))}
+                  <Button
+                    className="text-primary d-flex items-center m-t-md"
+                    data-testid="add-constraint-button"
+                    icon={<PlusIcon className="anticon" />}
+                    size="small"
+                    onClick={() => add()}>
+                    {t('label.add-entity', {
+                      entity: t('label.constraint-plural'),
+                    })}
+                  </Button>
+                </>
+              )}
+            </Form.List>
+          )}
+        </Form>
+      </DrawerPopupContainerProvider>
+    </SimpleModal>
   );
 };
 

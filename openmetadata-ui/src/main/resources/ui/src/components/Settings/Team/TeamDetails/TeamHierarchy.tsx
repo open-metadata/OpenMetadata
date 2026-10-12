@@ -13,11 +13,12 @@
 
 import {
   Box,
+  SimpleModal,
   Skeleton,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Modal } from 'antd';
+import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -361,15 +362,12 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         />
       </DropZone>
 
-      <Modal
-        centered
-        destroyOnClose
-        closable={false}
-        confirmLoading={isTableLoading}
+      <SimpleModal
         data-testid="confirmation-modal"
-        maskClosable={false}
+        isDismissable={false}
+        isOkLoading={isTableLoading}
+        isOpen={isModalOpen}
         okText={t('label.confirm')}
-        open={isModalOpen}
         title={t('label.move-the-entity', { entity: t('label.team') })}
         onCancel={onDragConfirmationModalClose}
         onOk={handleChangeTeam}>
@@ -382,7 +380,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
             entity: t('label.team-lowercase'),
           }}
         />
-      </Modal>
+      </SimpleModal>
     </div>
   );
 };

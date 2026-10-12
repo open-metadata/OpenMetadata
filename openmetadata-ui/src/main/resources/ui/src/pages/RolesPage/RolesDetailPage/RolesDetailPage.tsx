@@ -12,8 +12,13 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Box, Tabs, Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Modal } from 'antd';
+import {
+  Box,
+  SimpleModal,
+  Tabs,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Button, Card } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
@@ -439,13 +444,11 @@ const RolesDetailPage = () => {
         )}
 
         {selectedEntity && (
-          <Modal
-            centered
-            closable={false}
-            confirmLoading={isLoadingOnSave}
-            maskClosable={false}
+          <SimpleModal
+            isDismissable={false}
+            isOkLoading={isLoadingOnSave}
+            isOpen={!isUndefined(selectedEntity.record)}
             okText={t('label.confirm')}
-            open={!isUndefined(selectedEntity.record)}
             title={`${t('label.remove-entity', {
               entity: getEntityName(selectedEntity.record),
             })} ${t('label.from-lowercase')} ${roleName}`}
@@ -463,7 +466,7 @@ const RolesDetailPage = () => {
                 parent: roleName,
               })}
             </Typography>
-          </Modal>
+          </SimpleModal>
         )}
         {addAttribute && (
           <AddAttributeModal

@@ -167,7 +167,7 @@ test('Query Entity', async ({ page }) => {
     );
     await page.click(`[data-testid="save"]`);
     await updateDescriptionResponse;
-    await page.locator('.ant-modal-body').waitFor({
+    await page.getByRole('dialog').waitFor({
       state: 'detached',
     });
 

@@ -14,10 +14,11 @@
 import {
   Box,
   ButtonUtility,
+  SimpleModal,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Form, Input, Modal, Select } from 'antd';
+import { Button, Form, Input, Select } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -30,6 +31,8 @@ import {
 } from '../../../../../constants/Teams.constants';
 import { Webhook } from '../../../../../generated/type/profile';
 import { getWebhookIcon } from '../../../../../utils/TeamUtils';
+import { DrawerPopupContainerProvider } from '../../../../common/DrawerPopupContainerProvider/DrawerPopupContainerProvider';
+
 import { SubscriptionWebhook, TeamsSubscriptionProps } from '../team.interface';
 import './teams-subscription.less';
 
@@ -194,60 +197,56 @@ const TeamsSubscription = ({
         <Button
           className="remove-button-default-styling"
           onClick={(e) => e.stopPropagation()}>
-          <Modal
-            centered
-            open
-            closable={false}
-            confirmLoading={isLoading}
-            maskClosable={false}
-            okButtonProps={{
-              form: 'subscription-form',
-              type: 'primary',
-              htmlType: 'submit',
-            }}
+          <SimpleModal
+            isOpen
+            isDismissable={false}
+            isOkLoading={isLoading}
             okText={t('label.confirm')}
             title={t('label.add-entity', {
               entity: t('label.subscription'),
             })}
-            onCancel={() => setEditSubscription(false)}>
-            <Form
-              data-testid="subscription-modal"
-              form={form}
-              id="subscription-form"
-              layout="vertical"
-              onFinish={handleSave}>
-              <Form.Item label={t('label.webhook')} name="webhook">
-                <Select
-                  options={subscriptionWebhookTranslated}
-                  placeholder={t('label.select-field', {
-                    field: t('label.condition'),
-                  })}
-                />
-              </Form.Item>
-              <Form.Item
-                label={t('label.endpoint')}
-                name="endpoint"
-                rules={[
-                  {
-                    required: !isWebhookEmpty,
-                    message: t('label.field-required-plural', {
-                      field: t('label.endpoint'),
-                    }),
-                  },
-                  {
-                    type: 'url',
-                    message: t('message.endpoint-should-be-valid'),
-                  },
-                ]}>
-                <Input
-                  disabled={isWebhookEmpty}
-                  placeholder={t('label.enter-entity-value', {
-                    entity: t('label.endpoint'),
-                  })}
-                />
-              </Form.Item>
-            </Form>
-          </Modal>
+            onCancel={() => setEditSubscription(false)}
+            onOk={form.submit}>
+            <DrawerPopupContainerProvider>
+              <Form
+                data-testid="subscription-modal"
+                form={form}
+                id="subscription-form"
+                layout="vertical"
+                onFinish={handleSave}>
+                <Form.Item label={t('label.webhook')} name="webhook">
+                  <Select
+                    options={subscriptionWebhookTranslated}
+                    placeholder={t('label.select-field', {
+                      field: t('label.condition'),
+                    })}
+                  />
+                </Form.Item>
+                <Form.Item
+                  label={t('label.endpoint')}
+                  name="endpoint"
+                  rules={[
+                    {
+                      required: !isWebhookEmpty,
+                      message: t('label.field-required-plural', {
+                        field: t('label.endpoint'),
+                      }),
+                    },
+                    {
+                      type: 'url',
+                      message: t('message.endpoint-should-be-valid'),
+                    },
+                  ]}>
+                  <Input
+                    disabled={isWebhookEmpty}
+                    placeholder={t('label.enter-entity-value', {
+                      entity: t('label.endpoint'),
+                    })}
+                  />
+                </Form.Item>
+              </Form>
+            </DrawerPopupContainerProvider>
+          </SimpleModal>
         </Button>
       )}
     </Box>

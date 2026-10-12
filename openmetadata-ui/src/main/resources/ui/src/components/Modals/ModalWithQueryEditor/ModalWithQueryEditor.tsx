@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Form, Modal } from 'antd';
+import { SimpleModal } from '@openmetadata/ui-core-components';
+import { Button, Form } from 'antd';
 import { FormProps, useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { lazy, useEffect, useState } from 'react';
@@ -32,7 +32,6 @@ export const ModalWithQueryEditor = ({
   onSave,
   onCancel,
   visible,
-  getContainer,
 }: ModalWithQueryEditorProps) => {
   const { t } = useTranslation();
   const [form] = useForm();
@@ -58,11 +57,7 @@ export const ModalWithQueryEditor = ({
   }, [form, visible]);
 
   return (
-    <Modal
-      centered
-      destroyOnClose
-      className="description-markdown-editor"
-      closable={false}
+    <SimpleModal
       data-testid="markdown-editor"
       footer={[
         <Button
@@ -81,12 +76,11 @@ export const ModalWithQueryEditor = ({
           {isSaving ? <Loader size="small" type="white" /> : t('label.save')}
         </Button>,
       ]}
-      getContainer={getContainer}
-      maskClosable={false}
-      open={visible}
-      title={<Typography data-testid="header">{header}</Typography>}
-      width="90%"
-      onCancel={onCancel}>
+      isDismissable={false}
+      isOpen={visible}
+      title={header}
+      width={1200}
+      onCancel={() => onCancel?.()}>
       {isLoading ? (
         <Loader />
       ) : (
@@ -112,6 +106,6 @@ export const ModalWithQueryEditor = ({
           </Form.Item>
         </Form>
       )}
-    </Modal>
+    </SimpleModal>
   );
 };

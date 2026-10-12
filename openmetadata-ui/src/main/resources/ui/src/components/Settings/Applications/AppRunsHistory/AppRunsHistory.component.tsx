@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Box, Typography } from '@openmetadata/ui-core-components';
+import { SimpleModal, Typography } from '@openmetadata/ui-core-components';
 import validator from '@rjsf/validator-ajv8';
-import { Button, Modal } from 'antd';
+import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import { isNull, noop } from 'lodash';
 import {
@@ -68,7 +68,6 @@ import Table from '../../../common/Table/TableV2';
 import StopScheduleModal from '../../../Modals/StopScheduleRun/StopScheduleRunModal';
 import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
 import AppLogsViewer from '../AppLogsViewer/AppLogsViewer.component';
-import './app-run-history.less';
 import {
   AppRunRecordWithId,
   AppRunsHistoryProps,
@@ -542,41 +541,23 @@ const AppRunsHistory = forwardRef(
           onClose={() => setLogsModalRecord(null)}
         />
         {logsModal}
-        <Modal
-          centered
-          destroyOnClose
-          bodyStyle={{
-            maxHeight: 700,
-            overflowY: 'scroll',
-          }}
-          className="app-config-modal"
-          closable={false}
+        <SimpleModal
           data-testid="edit-table-type-property-modal"
           footer={
-            <Box
-              inline
-              align="center"
-              className="layout-space layout-space-horizontal w-full justify-end"
-              gap={2}
-              itemClassName="layout-space-item">
-              <Button
-                data-testid="app-run-config-close"
-                type="primary"
-                onClick={() => setShowConfigModal(false)}>
-                {t('label.close')}
-              </Button>
-            </Box>
+            <Button
+              data-testid="app-run-config-close"
+              type="primary"
+              onClick={() => setShowConfigModal(false)}>
+              {t('label.close')}
+            </Button>
           }
-          maskClosable={false}
-          open={showConfigModal}
-          title={
-            <Typography>
-              {t('label.entity-configuration', {
-                entity: getEntityName(appData) ?? t('label.application'),
-              })}
-            </Typography>
-          }
-          width={800}>
+          isDismissable={false}
+          isOpen={showConfigModal}
+          title={t('label.entity-configuration', {
+            entity: getEntityName(appData) ?? t('label.application'),
+          })}
+          width={800}
+          onCancel={() => setShowConfigModal(false)}>
           {jsonSchema && (
             <FormBuilder
               capitalizeOptionLabel
@@ -595,7 +576,7 @@ const AppRunsHistory = forwardRef(
               onSubmit={noop}
             />
           )}
-        </Modal>
+        </SimpleModal>
       </>
     );
   }

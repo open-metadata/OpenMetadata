@@ -39,7 +39,9 @@ const MIGRATED_ANTD_COMPONENTS = [
   'Col',
   'Divider',
   'Dropdown',
+  'Modal',
   'Popover',
+
   'Row',
   'Skeleton',
   'Space',

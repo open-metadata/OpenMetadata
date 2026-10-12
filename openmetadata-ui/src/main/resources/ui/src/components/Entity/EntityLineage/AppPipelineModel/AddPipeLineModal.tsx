@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Input, Modal } from 'antd';
+import { SimpleModal } from '@openmetadata/ui-core-components';
+import { Button, Input } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 
@@ -120,8 +121,7 @@ const AddPipeLineModal = ({
   }, []);
 
   return (
-    <Modal
-      destroyOnClose
+    <SimpleModal
       data-testid="add-edge-modal"
       footer={[
         <Button
@@ -143,8 +143,8 @@ const AddPipeLineModal = ({
           {t('label.save')}
         </Button>,
       ]}
-      maskClosable={false}
-      open={showAddEdgeModal}
+      isDismissable={false}
+      isOpen={showAddEdgeModal}
       title={t(`label.${isUndefined(selectedEdge) ? 'add' : 'edit'}-entity`, {
         entity: t('label.edge'),
       })}
@@ -195,7 +195,7 @@ const AddPipeLineModal = ({
 
         {errorPlaceholderEdge}
       </div>
-    </Modal>
+    </SimpleModal>
   );
 };
 

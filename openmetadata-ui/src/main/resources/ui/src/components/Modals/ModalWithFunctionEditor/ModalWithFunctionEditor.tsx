@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Form, Input, Modal } from 'antd';
+import { SimpleModal } from '@openmetadata/ui-core-components';
+import { Button, Form, Input } from 'antd';
 import { FormProps, useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { useEffect, useState } from 'react';
@@ -26,7 +26,6 @@ export const ModalWithFunctionEditor = ({
   onSave,
   onCancel,
   visible,
-  getContainer,
 }: ModalWithFunctionEditorProps) => {
   const { t } = useTranslation();
   const [form] = useForm();
@@ -52,11 +51,7 @@ export const ModalWithFunctionEditor = ({
   }, [form, visible]);
 
   return (
-    <Modal
-      centered
-      destroyOnClose
-      className="function-editor"
-      closable={false}
+    <SimpleModal
       data-testid="function-editor-modal"
       footer={[
         <Button
@@ -75,11 +70,10 @@ export const ModalWithFunctionEditor = ({
           {isSaving ? <Loader size="small" type="white" /> : t('label.save')}
         </Button>,
       ]}
-      getContainer={getContainer}
-      maskClosable={false}
-      open={visible}
-      title={<Typography data-testid="header">{header}</Typography>}
-      width="700px"
+      isDismissable={false}
+      isOpen={visible}
+      title={header}
+      width={700}
       onCancel={onCancel}>
       {isLoading ? (
         <Loader />
@@ -107,7 +101,7 @@ export const ModalWithFunctionEditor = ({
           </Form.Item>
         </Form>
       )}
-    </Modal>
+    </SimpleModal>
   );
 };
 
