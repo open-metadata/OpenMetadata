@@ -432,7 +432,7 @@ const AppRunsHistory = forwardRef(
             item.appId === updatedRecord.appId &&
             item.startTime === updatedRecord.startTime
           ) {
-            return { ...updatedRecord, id: item.id };
+            return { ...item, ...updatedRecord, id: item.id };
           }
 
           return item;

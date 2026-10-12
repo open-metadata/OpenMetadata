@@ -129,7 +129,7 @@ class RdfGraphServiceTest {
     final RdfRepository repository = mock(RdfRepository.class);
     final String lineage = "{\"head\":{},\"results\":{\"bindings\":[]}}";
     when(repository.getBaseUri()).thenReturn("https://open-metadata.org/");
-    when(repository.executeSparqlQueryDirect(anyString(), eq("application/sparql-results+json")))
+    when(repository.executeAssertedSparqlQuery(anyString(), eq("application/sparql-results+json")))
         .thenReturn(lineage);
 
     final String body =

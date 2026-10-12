@@ -19,8 +19,10 @@ import jakarta.ws.rs.core.Response;
 /** Another materialization run, on this server or another, holds the run lock. */
 public final class InferenceRunInProgressException extends ClientErrorException {
   public InferenceRunInProgressException() {
-    super(
-        "Another inference materialization run is in progress. Try again once it finishes.",
-        Response.Status.CONFLICT);
+    this("Another inference materialization run is in progress. Try again once it finishes.");
+  }
+
+  public InferenceRunInProgressException(final String message) {
+    super(message, Response.Status.CONFLICT);
   }
 }

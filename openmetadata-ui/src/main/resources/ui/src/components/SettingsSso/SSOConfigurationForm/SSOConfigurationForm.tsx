@@ -13,6 +13,7 @@
 
 import {
   Button as CoreButton,
+  Card,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
@@ -23,7 +24,7 @@ import {
 import Form from '@rjsf/core';
 import { RegistryFieldsType, WidgetProps } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
-import { Button, Card, Upload } from 'antd';
+import { Button, Upload } from 'antd';
 import classNames from 'classnames';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';

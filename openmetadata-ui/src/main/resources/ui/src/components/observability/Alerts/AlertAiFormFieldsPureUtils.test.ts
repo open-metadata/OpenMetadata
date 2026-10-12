@@ -26,6 +26,7 @@ import { ModifiedDestination } from '../../../pages/AddObservabilityPage/AddObse
 import { ALERT_AI_DEFAULT_DOWNSTREAM_DEPTH } from './AlertAiFormFields.constants';
 import { AlertAiFormValue } from './AlertAiFormFields.interface';
 import {
+  getAlertAiSectionInputs,
   getAlertAiSectionVisibility,
   getDestinationTypeUpdate,
   getDestinationWithNotifyDownstream,
@@ -73,6 +74,137 @@ describe('AlertAiFormFieldsPureUtils', () => {
       shouldRenderActionsSection: true,
       shouldRenderFiltersSection: true,
       shouldRenderSourceSection: true,
+    });
+  });
+
+  describe('getAlertAiSectionInputs view-mode descriptor availability', () => {
+    const viewValueWithRules = {
+      input: {
+        actions: [{ effect: Effect.Include, name: 'testResultTrigger' }],
+        filters: [{ effect: Effect.Include, name: 'domainList' }],
+      },
+    } as unknown as AlertAiFormValue;
+
+    it('preserves parent flags in view mode when supported lists are unavailable (regression)', () => {
+      const inputs = getAlertAiSectionInputs({
+        shouldShowActionsSection: true,
+        shouldShowFiltersSection: true,
+        value: viewValueWithRules,
+        isViewOnly: true,
+        selectedFilterResource: undefined,
+        selectedSource: 'table',
+        supportedFilters: undefined,
+        supportedTriggers: undefined,
+      });
+      const visibility = getAlertAiSectionVisibility({
+        isViewOnly: true,
+        selectedFilters: inputs.selectedFilters,
+        selectedSource: 'table',
+        selectedTriggers: inputs.selectedTriggers,
+        shouldShowActionsSection: inputs.shouldDisplayActionsSection,
+        shouldShowFiltersSection: inputs.shouldDisplayFiltersSection,
+      });
+
+      expect(inputs.selectedFilters).toHaveLength(1);
+      expect(inputs.shouldDisplayFiltersSection).toBe(true);
+      expect(inputs.shouldDisplayActionsSection).toBe(true);
+      expect(visibility.shouldRenderFiltersSection).toBe(true);
+      expect(visibility.shouldRenderActionsSection).toBe(true);
+    });
+
+    it('renders configured rules in view mode once supported lists are populated (contrast)', () => {
+      const inputs = getAlertAiSectionInputs({
+        shouldShowActionsSection: true,
+        shouldShowFiltersSection: true,
+        value: viewValueWithRules,
+        isViewOnly: true,
+        selectedFilterResource: undefined,
+        selectedSource: 'table',
+        supportedFilters: [
+          {
+            condition: '',
+            effect: Effect.Include,
+            name: 'domainList',
+          },
+        ],
+        supportedTriggers: [
+          {
+            condition: '',
+            effect: Effect.Include,
+            name: 'testResultTrigger',
+          },
+        ],
+      });
+      const visibility = getAlertAiSectionVisibility({
+        isViewOnly: true,
+        selectedFilters: inputs.selectedFilters,
+        selectedSource: 'table',
+        selectedTriggers: inputs.selectedTriggers,
+        shouldShowActionsSection: inputs.shouldDisplayActionsSection,
+        shouldShowFiltersSection: inputs.shouldDisplayFiltersSection,
+      });
+
+      expect(visibility.shouldRenderFiltersSection).toBe(true);
+      expect(visibility.shouldRenderActionsSection).toBe(true);
+    });
+
+    it('hides sections in view mode when the server explicitly returns an empty list', () => {
+      const inputs = getAlertAiSectionInputs({
+        shouldShowActionsSection: true,
+        shouldShowFiltersSection: true,
+        value: viewValueWithRules,
+        isViewOnly: true,
+        selectedFilterResource: undefined,
+        selectedSource: 'table',
+        supportedFilters: [],
+        supportedTriggers: [],
+      });
+
+      expect(inputs.shouldDisplayFiltersSection).toBe(false);
+      expect(inputs.shouldDisplayActionsSection).toBe(false);
+    });
+
+    it('still applies the descriptor override in edit mode when lists are unavailable', () => {
+      const inputs = getAlertAiSectionInputs({
+        shouldShowActionsSection: true,
+        shouldShowFiltersSection: true,
+        value: viewValueWithRules,
+        isViewOnly: false,
+        selectedFilterResource: undefined,
+        selectedSource: 'table',
+        supportedFilters: undefined,
+        supportedTriggers: undefined,
+      });
+
+      expect(inputs.shouldDisplayFiltersSection).toBe(false);
+      expect(inputs.shouldDisplayActionsSection).toBe(false);
+    });
+
+    it('hides sections with no configured rules in view mode even when lists are unavailable', () => {
+      const emptyValue = {
+        input: { actions: [], filters: [] },
+      } as unknown as AlertAiFormValue;
+      const inputs = getAlertAiSectionInputs({
+        shouldShowActionsSection: true,
+        shouldShowFiltersSection: true,
+        value: emptyValue,
+        isViewOnly: true,
+        selectedFilterResource: undefined,
+        selectedSource: 'table',
+        supportedFilters: undefined,
+        supportedTriggers: undefined,
+      });
+      const visibility = getAlertAiSectionVisibility({
+        isViewOnly: true,
+        selectedFilters: inputs.selectedFilters,
+        selectedSource: 'table',
+        selectedTriggers: inputs.selectedTriggers,
+        shouldShowActionsSection: inputs.shouldDisplayActionsSection,
+        shouldShowFiltersSection: inputs.shouldDisplayFiltersSection,
+      });
+
+      expect(visibility.shouldRenderFiltersSection).toBe(false);
+      expect(visibility.shouldRenderActionsSection).toBe(false);
     });
   });
 

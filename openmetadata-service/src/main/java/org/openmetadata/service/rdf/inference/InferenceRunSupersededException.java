@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2026 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,11 +11,17 @@
  *  limitations under the License.
  */
 
-@import '../../../styles/variables.less';
+package org.openmetadata.service.rdf.inference;
 
-.form-card-section-container {
-  background-color: @grey-6;
-  .ant-card-body {
-    padding: var(--om-space-20);
+import jakarta.ws.rs.ClientErrorException;
+import jakarta.ws.rs.core.Response;
+
+/**
+ * A materialization run stopped because the data or rules it read changed before it converged. The
+ * rules stay dirty, so the next run recomputes them from the newer state.
+ */
+public final class InferenceRunSupersededException extends ClientErrorException {
+  public InferenceRunSupersededException(final String message) {
+    super(message, Response.Status.CONFLICT);
   }
 }

@@ -1,6 +1,7 @@
 # Reasoning inside the OpenMetadata Fuseki image
 
-Status: proposed design and phased implementation plan; phases 0 and 2 are implemented. Date:
+Status: proposed design and phased implementation plan; phases 0 and 2 are merged, phase 1 is
+in review, and phase 3 has started. Date:
 2026-10-07. Revised the same day after a review that checked each current-state claim against the
 code, and again to package all reasoning in the existing image without a sidecar;
 [Open decisions](#open-decisions) lists what remains.
@@ -407,6 +408,10 @@ journal replays writes into a blue/green target. Reuse these instead of a Fuseki
   when any of them does not. The metadata commit and queue insert are separate transactions, so a
   crash between them is invisible to freshness, exactly as it is to projection; a full rebuild
   repairs both.
+- **Rolling upgrades.** Servers before 2.1.0 enqueue without recording the enqueued watermark,
+  so delivering or dead-lettering a row records its ID too. An older server that drains its own
+  write, or promotes a blue/green build without assigning a generation, can still leave an earlier
+  result `CURRENT`; results are trustworthy again after a refresh once every server runs 2.1.0.
 - **Dirty flags** use a captured-revision compare-and-set instead of the unconditional
   `markMaterialized`. Changes during a run stay pending and coalesce into the next refresh.
 
@@ -714,8 +719,12 @@ Measure with concurrent serving traffic before promising latency improvements or
 
 ## Phased implementation plan
 
-Phases 0 and 2 are implemented; the others are **planned**. Each phase ends with a working, verified
-capability; split its numbered tasks into focused changes rather than one PR for the whole phase.
+Phases 0 and 2 are merged: #34963 and #34970 (phase 0) and #34975 (phase 2). Phase 1 is in review
+as open-metadata/jena#1; the HermiT build it packages, open-metadata/hermit-reasoner#1, is merged.
+The phase 0 and 2 follow-ups #35199 and #35201 are in review. Phase 3 has started with a DL-valid
+glossary ontology projection (see [phase 3](#phase-3--project-dl-valid-ontology-semantics-and-asset-associations));
+phases 4 to 8 are **planned**. Each phase ends with a working, verified capability; split its
+numbered tasks into focused changes rather than one PR for the whole phase.
 Phase 0 corrects existing behavior and can ship on its own. The first complete reasoning release
 includes both governance and full authorable ontology semantics; intermediate governance-only
 execution is a development milestone, not a reduction of that requirement.
@@ -857,6 +866,14 @@ distinguish execution state, entailment outcome, and freshness.
 
 **Outcome:** Fuseki contains everything the reasoner needs without OM exporting whole glossaries
 for individual reasoning requests.
+
+**Status:** the first slice makes the glossary ontology projection (exporter and expression writer)
+OWL 2 DL-valid, gated by OWL API 5.5.1 round-trip and OWL 2 DL profile tests in test scope:
+[semantic projection](#semantic-projection-into-jena) item 1, item 4 as an explicit class-IRI rule
+for OWL class axioms (the live projection keeps the entity IRI as the record's identity), and item 8
+for terms whose concept type is `SKOS_CONCEPT`. Per-axiom graphs, property and attribute axioms in
+the live projection, realization roles live, lifecycle activation, imports, and versions remain.
+[rdf-ontology-contract.md](../rdf-ontology-contract.md) describes the projection.
 
 1. Apply the [semantic projection](#semantic-projection-into-jena) steps. Share per-axiom semantics
    between `rdf/OntologyExpressionRdfWriter.java`, `rdf/GlossaryOntologyExporter.java`, and
@@ -1143,3 +1160,13 @@ triples. These are unnecessary for the confirmed catalog-and-mapping scope.
 8. **HermiT ownership.** Name the engine owner, and agree with the `owlcs` maintainers how releases
    of upstream fixes will be cut. Our build ships until an upstream release contains everything
    we need.
+9. **Subclass from parent links.** The projection asserts `rdfs:subClassOf` for a parent link only
+   when both terms are OWL classes. Terms created in OpenMetadata have concept type `BOTH`, so their
+   parent links still become subclass axioms, and the importer does not record whether the source
+   used `skos:broader` or `rdfs:subClassOf` for the structural parent. Decide whether `BOTH` parent
+   links stay subsumption, or record the authored predicate and assert subclass only from it.
+10. **Characteristics on reserved relationship types.** The seeded `subClassOf`, `broader`,
+    `narrower`, `seeAlso`, and `synonym` types carry `TRANSITIVE` or `SYMMETRIC`, which the
+    projection now ignores because their predicates are RDFS or SKOS vocabulary. Decide whether to
+    remove them from the seed data (with a migration) or keep them as navigation hints, and whether
+    to reject property chains and disjointness that name reserved predicates at write time.
