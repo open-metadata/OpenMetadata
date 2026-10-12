@@ -12,13 +12,14 @@
  */
 import Icon from '@ant-design/icons';
 import {
+  Button,
   ButtonUtility,
   Popover,
   PopoverTrigger,
   SimpleModal,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Badge, Button } from 'antd';
+import { Badge } from 'antd';
 import { AxiosError } from 'axios';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -81,7 +82,8 @@ const ProfileManageOptions = ({
   <div style={{ width: '180px' }}>
     {isLoggedInUser && (
       <Button
-        className="profile-manage-item d-flex item-center w-full text-left border-0  bg-transparent remove-button-default-styling"
+        className="profile-manage-item w-full"
+        color="secondary"
         data-testid="edit-displayname"
         onClick={onEditDisplayName}>
         <EditProfileIcon
@@ -98,7 +100,8 @@ const ProfileManageOptions = ({
     )}
     {showChangePasswordComponent && (isLoggedInUser || isAdminUser) && (
       <Button
-        className="profile-manage-item d-flex item-center w-full text-left border-0  bg-transparent remove-button-default-styling"
+        className="profile-manage-item w-full"
+        color="secondary"
         data-testid="change-password-button"
         onClick={onChangePassword}>
         <ChangePassword
@@ -115,7 +118,8 @@ const ProfileManageOptions = ({
     )}
     {userData?.deleted ? (
       <Button
-        className="profile-manage-item d-flex item-center w-full text-left border-0 bg-transparent remove-button-default-styling"
+        className="profile-manage-item w-full"
+        color="secondary"
         onClick={onRestore}>
         <DeleteIcon
           className="m-r-xss"
@@ -129,7 +133,8 @@ const ProfileManageOptions = ({
     ) : (
       isAdminUser && (
         <Button
-          className="remove-button-default-styling profile-manage-item d-flex item-center w-full text-left border-0  bg-transparent"
+          className="profile-manage-item w-full"
+          color="secondary"
           onClick={onDelete}>
           <DeleteIcon
             className="m-r-xss"
@@ -360,9 +365,7 @@ const ProfileSectionUserDetailsCard = ({
       )}
 
       {showRestoreModal && (
-        <Button
-          className="remove-button-default-styling"
-          onClick={(e) => e.stopPropagation()}>
+        <div role="presentation" onClick={(e) => e.stopPropagation()}>
           <SimpleModal
             data-testid="restore-user-modal"
             isDismissable={false}
@@ -380,7 +383,7 @@ const ProfileSectionUserDetailsCard = ({
               })}
             </Typography>
           </SimpleModal>
-        </Button>
+        </div>
       )}
     </div>
   );

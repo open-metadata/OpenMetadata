@@ -13,13 +13,12 @@
 
 import Icon from '@ant-design/icons';
 import {
-  Button as CoreButton,
+  Button,
   Card,
   Dropdown,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { ChevronDown } from '@openmetadata/ui-core-components/icons';
-import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import { toLower } from 'lodash';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
@@ -230,8 +229,9 @@ export const ContractQualityFormTab: React.FC<{
 
         <Button
           className="contract-export-button"
+          color="secondary"
           data-testid="add-test-button"
-          icon={<Icon className="anticon" component={PlusIcon} />}
+          iconLeading={<Icon className="anticon" component={PlusIcon} />}
           onClick={handleOpenTestCaseDrawer}>
           {t('label.add-entity', {
             entity: t('label.test'),
@@ -246,12 +246,12 @@ export const ContractQualityFormTab: React.FC<{
           dataSource={allTestCases}
           extraTableFilters={
             <Dropdown.Root>
-              <CoreButton
+              <Button
                 color="secondary"
                 iconTrailing={<ChevronDown size={14} />}
                 size="sm">
                 {t('label.filter-plural')}
-              </CoreButton>
+              </Button>
               <Dropdown.Popover className="tw:w-auto">
                 <Dropdown.Menu
                   aria-label={t('label.filter-plural')}
@@ -294,13 +294,14 @@ export const ContractQualityFormTab: React.FC<{
       <div className="d-flex justify-between m-t-md">
         <Button
           className="contract-prev-button"
-          icon={<LeftOutlined height={22} width={20} />}
+          color="secondary"
+          iconLeading={<LeftOutlined height={22} width={20} />}
           onClick={onPrev}>
           {buttonProps.prevLabel ?? t('label.previous')}
         </Button>
         <Button
           className="contract-next-button"
-          type="primary"
+          color="primary"
           onClick={onNext}>
           {buttonProps.nextLabel ?? t('label.next')}
           <Icon component={RightIcon} />

@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 
-import { Box, Divider, Typography } from '@openmetadata/ui-core-components';
-import { Button, Form, Input } from 'antd';
+import {
+  Box,
+  Button,
+  Divider,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Form, Input } from 'antd';
 import { AxiosError } from 'axios';
 import { trim } from 'lodash';
 import { useMemo, useState } from 'react';
@@ -180,17 +185,17 @@ const AddPolicyPage = () => {
                   gap={2}
                   itemClassName="layout-space-item">
                   <Button
+                    color="link-color"
                     data-testid="cancel-btn"
-                    type="link"
                     onClick={handleCancel}>
                     {t('label.cancel')}
                   </Button>
                   <Button
+                    color="primary"
                     data-testid="submit-btn"
                     form="policy-form"
-                    htmlType="submit"
-                    loading={isSaveLoading}
-                    type="primary">
+                    isLoading={isSaveLoading}
+                    type="submit">
                     {t('label.create')}
                   </Button>
                 </Box>

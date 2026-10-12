@@ -13,13 +13,12 @@
 
 import {
   Box,
-  Button as CoreButton,
+  Button,
   ButtonUtility,
   SimpleModal,
   Tooltip,
 } from '@openmetadata/ui-core-components';
 import { Plus } from '@openmetadata/ui-core-components/icons';
-import { Button } from 'antd';
 import { isEmpty, orderBy } from 'lodash';
 import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -401,14 +400,14 @@ export const UserTab = ({
               selectedUsers={currentTeam?.users ?? []}
               onUpdate={onAddUser}>
               <Tooltip arrow placement="top right" title={addUserButtonTitle}>
-                <CoreButton
+                <Button
                   color="secondary"
                   data-testid="add-new-user"
                   iconLeading={Plus}
                   isDisabled={!editUserPermission || isTeamDeleted}
                   size="sm">
                   {t('label.add')}
-                </CoreButton>
+                </Button>
               </Tooltip>
             </UserSelectableList>
             {!isTeamDeleted && (
@@ -453,7 +452,7 @@ export const UserTab = ({
               includeBot
               selectedUsers={currentTeam?.users ?? []}
               onUpdate={onAddUser}>
-              <Button data-testid="add-new-user" type="primary">
+              <Button color="primary" data-testid="add-new-user">
                 {t('label.add-entity', { entity: t('label.user') })}
               </Button>
             </UserSelectableList>

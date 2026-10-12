@@ -12,12 +12,12 @@
  */
 import {
   Box,
+  Button,
   Card,
   Grid,
   SkeletonParagraph,
   Toggle,
 } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, uniqueId } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -192,8 +192,8 @@ const ApplicationPage = () => {
             </div>
             <LimitWrapper resource="app">
               <Button
+                color="primary"
                 data-testid="add-application"
-                type="primary"
                 onClick={handleAddApplication}>
                 {t('label.add-entity', {
                   entity: t('label.app-plural'),

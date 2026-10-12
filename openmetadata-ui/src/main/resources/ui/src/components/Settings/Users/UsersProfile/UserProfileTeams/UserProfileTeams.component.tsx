@@ -12,13 +12,13 @@
  */
 
 import {
+  Button,
   ButtonUtility,
   Divider,
   Popover,
   PopoverTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
@@ -178,34 +178,25 @@ const UserProfileTeams = ({
                   <div className="flex justify-end gap-2 mt-4">
                     <Button
                       className="profile-edit-save"
+                      color="primary"
                       data-testid="teams-edit-close-btn"
-                      icon={<ClosePopoverIcon height={24} />}
-                      size="small"
+                      iconLeading={<ClosePopoverIcon height={24} />}
+                      size="xs"
                       style={{
-                        width: '30px',
-                        height: '30px',
-                        background: '#0950C5',
                         position: 'absolute',
                         bottom: '0px',
                         right: '38px',
                       }}
-                      type="primary"
                       onClick={handleCloseEditTeam}
                     />
                     <Button
                       className="profile-edit-cancel"
+                      color="primary"
                       data-testid="teams-edit-save-btn"
-                      icon={<SavePopoverIcon height={24} />}
-                      loading={isLoading}
-                      size="small"
-                      style={{
-                        width: '30px',
-                        height: '30px',
-                        background: '#0950C5',
-                        position: 'absolute',
-                        bottom: '0px',
-                      }}
-                      type="primary"
+                      iconLeading={<SavePopoverIcon height={24} />}
+                      isLoading={isLoading}
+                      size="xs"
+                      style={{ position: 'absolute', bottom: '0px' }}
                       onClick={handleTeamsSave}
                     />
                   </div>

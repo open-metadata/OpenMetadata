@@ -17,13 +17,14 @@ import {
 } from '@ant-design/icons';
 import {
   Box,
+  Button,
   ButtonUtility,
   Divider,
   Owner,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Form, Input } from 'antd';
+import { Form, Input } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, last } from 'lodash';
 import { MouseEvent, useCallback, useMemo, useState } from 'react';
@@ -249,21 +250,19 @@ const TeamsInfo = ({
                 gap={1}
                 itemClassName="layout-space-item">
                 <Button
-                  className="h-8 p-x-xss"
+                  color="primary"
                   data-testid="cancel-edit-email"
-                  disabled={isLoading}
-                  size="small"
-                  type="primary"
+                  isDisabled={isLoading}
+                  size="xs"
                   onClick={() => setIsEmailEdit(false)}>
                   <CloseOutlined />
                 </Button>
                 <Button
-                  className="h-8 p-x-xss"
+                  color="primary"
                   data-testid="save-edit-email"
-                  htmlType="submit"
-                  loading={isLoading}
-                  size="small"
-                  type="primary">
+                  isLoading={isLoading}
+                  size="xs"
+                  type="submit">
                   <CheckOutlined />
                 </Button>
               </Box>

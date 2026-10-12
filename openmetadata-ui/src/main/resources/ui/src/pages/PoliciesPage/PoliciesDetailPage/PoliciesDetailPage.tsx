@@ -14,6 +14,7 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Box,
+  Button,
   ButtonUtility,
   Card,
   Dropdown,
@@ -23,7 +24,6 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { DotsVertical } from '@openmetadata/ui-core-components/icons';
-import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase } from 'lodash';
@@ -330,8 +330,8 @@ const PoliciesDetailPage = () => {
             <>
               <div className="flex justify-end m-b-md">
                 <Button
+                  color="primary"
                   data-testid="add-rule"
-                  type="primary"
                   onClick={() => navigate(getAddPolicyRulePath(fqn))}>
                   {t('label.add-entity', {
                     entity: t('label.rule'),
@@ -529,8 +529,8 @@ const PoliciesDetailPage = () => {
                   })}
                 </p>
                 <Button
-                  size="small"
-                  type="primary"
+                  color="primary"
+                  size="xs"
                   onClick={() => navigate(policiesPath)}>
                   {t('label.go-back')}
                 </Button>

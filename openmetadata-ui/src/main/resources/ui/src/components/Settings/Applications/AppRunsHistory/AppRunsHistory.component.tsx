@@ -11,9 +11,12 @@
  *  limitations under the License.
  */
 
-import { SimpleModal, Typography } from '@openmetadata/ui-core-components';
+import {
+  Button,
+  SimpleModal,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import validator from '@rjsf/validator-ajv8';
-import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import { isNull, noop } from 'lodash';
 import {
@@ -217,29 +220,28 @@ const AppRunsHistory = forwardRef(
         return (
           <>
             <Button
-              className="p-0"
+              color="link-color"
               data-testid="logs"
-              disabled={showLogAction(record)}
-              size="small"
-              type="link"
+              isDisabled={showLogAction(record)}
+              size="xs"
               onClick={() => handleRowExpandable(record.id, record)}>
               {t('label.log-plural')}
             </Button>
             <Button
-              className="m-l-xs p-0"
+              className="m-l-xs"
+              color="link-color"
               data-testid="app-historical-config"
-              disabled={!jsonSchema}
-              size="small"
-              type="link"
+              isDisabled={!jsonSchema}
+              size="xs"
               onClick={() => showAppRunConfig(record)}>
               {t('label.config')}
             </Button>
             {canStopAppRun && (
               <Button
-                className="m-l-xs p-0"
+                className="m-l-xs"
+                color="link-color"
                 data-testid="stop-button"
-                size="small"
-                type="link"
+                size="xs"
                 onClick={() => {
                   const rawRunId = record.properties?.pipelineRunId;
                   setSelectedRunId(
@@ -545,8 +547,8 @@ const AppRunsHistory = forwardRef(
           data-testid="edit-table-type-property-modal"
           footer={
             <Button
+              color="primary"
               data-testid="app-run-config-close"
-              type="primary"
               onClick={() => setShowConfigModal(false)}>
               {t('label.close')}
             </Button>

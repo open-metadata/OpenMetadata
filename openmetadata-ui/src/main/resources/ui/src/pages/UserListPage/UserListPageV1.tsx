@@ -13,13 +13,13 @@
 
 import {
   Box,
+  Button,
   ButtonUtility,
   Grid,
   SimpleModal,
   Toggle,
   Tooltip,
 } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -523,8 +523,8 @@ const UserListPageV1 = () => {
             {isAdminUser && (
               <LimitWrapper resource="user">
                 <Button
+                  color="primary"
                   data-testid="add-user"
-                  type="primary"
                   onClick={handleAddNewUser}>
                   {t('label.add-entity', {
                     entity: t(`label.${isAdminPage ? 'admin' : 'user'}`),

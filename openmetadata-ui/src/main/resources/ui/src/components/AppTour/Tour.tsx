@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Button } from '@openmetadata/ui-core-components';
 
 import type { TourSteps } from '@deuex-solutions/react-tour';
-import { Button } from 'antd';
 import { lazy, Suspense, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
@@ -58,8 +58,9 @@ const Tour = ({ steps }: { steps: TourSteps[] }) => {
             inViewThreshold={200}
             lastStepNextButton={
               <Button
+                color="tertiary"
                 data-testid="last-step-button"
-                icon={
+                iconLeading={
                   <svg viewBox="0 0 18.4 14.4" width={16}>
                     <path
                       d="M17 7.2H1M10.8 1 17 7.2l-6.2 6.2"
@@ -71,7 +72,6 @@ const Tour = ({ steps }: { steps: TourSteps[] }) => {
                     />
                   </svg>
                 }
-                type="text"
                 onClick={() => setShowTourEndModal(true)}
               />
             }

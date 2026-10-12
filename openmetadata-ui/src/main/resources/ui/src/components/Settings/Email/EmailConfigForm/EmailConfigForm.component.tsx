@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Box, Grid, Toggle } from '@openmetadata/ui-core-components';
-import { Button, Form, Input, Select } from 'antd';
+import { Box, Button, Grid, Toggle } from '@openmetadata/ui-core-components';
+import { Form, Input, Select } from 'antd';
 import { FocusEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VALIDATION_MESSAGES } from '../../../../constants/constants';
@@ -121,12 +121,12 @@ function EmailConfigForm({
       </Item>
       <Box className="layout-row" justify="end" wrap="wrap">
         <Box className="layout-column tw:block">
-          <Button type="link" onClick={onCancel}>
+          <Button color="link-color" onClick={onCancel}>
             {t('label.cancel')}
           </Button>
         </Box>
         <Box className="layout-column tw:block">
-          <Button htmlType="submit" loading={isLoading} type="primary">
+          <Button color="primary" isLoading={isLoading} type="submit">
             {t('label.save')}
           </Button>
         </Box>

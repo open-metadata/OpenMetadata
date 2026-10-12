@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { SimpleModal, Typography } from '@openmetadata/ui-core-components';
-import { Button, Layout, Menu, MenuProps } from 'antd';
+import {
+  Button,
+  SimpleModal,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Layout, Menu, MenuProps } from 'antd';
 
 import classNames from 'classnames';
 import { noop } from 'lodash';
@@ -171,12 +175,12 @@ const LeftSidebar = () => {
           isOpen
           footer={
             <>
-              <Button onClick={hideConfirmLogoutModal}>
+              <Button color="secondary" onClick={hideConfirmLogoutModal}>
                 {t('label.cancel')}
               </Button>
               <Button
+                color="primary"
                 data-testid="confirm-logout"
-                type="primary"
                 onClick={onLogoutHandler}>
                 {t('label.logout')}
               </Button>

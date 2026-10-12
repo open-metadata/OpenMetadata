@@ -18,7 +18,7 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Form, Input, Select } from 'antd';
+import { Form, Input, Select } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -193,10 +193,8 @@ const TeamsSubscription = ({
       {subscriptionRenderElement}
 
       {editSubscription && (
-        // Used Button to stop click propagation event anywhere in the form to parent TeamDetailV1 collapsible panel
-        <Button
-          className="remove-button-default-styling"
-          onClick={(e) => e.stopPropagation()}>
+        // Stops clicks in the form reaching the parent TeamDetailV1 collapsible panel
+        <div role="presentation" onClick={(e) => e.stopPropagation()}>
           <SimpleModal
             isOpen
             isDismissable={false}
@@ -247,7 +245,7 @@ const TeamsSubscription = ({
               </Form>
             </DrawerPopupContainerProvider>
           </SimpleModal>
-        </Button>
+        </div>
       )}
     </Box>
   );

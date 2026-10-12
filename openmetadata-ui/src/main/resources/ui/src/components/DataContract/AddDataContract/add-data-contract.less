@@ -14,36 +14,10 @@
 @import (reference) '../../../styles/variables.less';
 
 .contract-tabs {
-  .contract-prev-button,
-  .contract-next-button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: @size-xs @size-sm;
-    border: 1px solid @grey-300;
-    border-radius: var(--om-radius-lg);
-    font-weight: var(--om-font-weight-semibold);
-    gap: var(--om-space-4);
-    box-shadow: 0px 1px 2px 0px @grey-27, 0px -2px 0px 0px @grey-27 inset,
-      0px 0px 0px 1px @grey-27 inset;
-
+  .contract-prev-button {
     .anticon {
       margin-top: var(--om-space-2);
       margin-left: var(--om-space-6);
-    }
-  }
-  .contract-prev-button {
-    color: @grey-700;
-    svg {
-      color: @grey-400;
-    }
-
-    &:hover {
-      background: @grey-100;
-
-      svg {
-        color: @grey-700;
-      }
     }
   }
   .ant-checkbox-checked {
@@ -203,21 +177,6 @@
 }
 
 .add-contract-card {
-  .add-contract-card-header {
-    .ant-btn.add-contract-cancel-button {
-      margin-right: var(--om-space-8);
-      border: 1px solid @grey-300;
-      color: @grey-700;
-      font-weight: var(--om-font-weight-semibold);
-      box-shadow: 0px 1px 2px 0px @grey-27, 0px -2px 0px 0px @grey-27 inset,
-        0px 0px 0px 1px @grey-27 inset;
-    }
-
-    .ant-btn.add-contract-save-button {
-      font-weight: var(--om-font-weight-semibold);
-    }
-  }
-
   .add-contract-card-title {
     font-size: var(--om-font-size-lg);
     font-weight: var(--om-font-weight-semibold);

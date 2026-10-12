@@ -13,11 +13,11 @@
 
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
+  Button,
   Grid,
   SimpleModal,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
 import { useTranslation } from 'react-i18next';
 import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
@@ -33,9 +33,9 @@ const TourEndModal = ({ onSave, visible }: TourEndModalProps) => {
       data-testid="modal-container"
       footer={
         <Button
+          color="primary"
           data-testid="saveButton"
-          size="large"
-          type="primary"
+          size="md"
           onClick={onSave}>
           {t('label.explore-now')}
         </Button>

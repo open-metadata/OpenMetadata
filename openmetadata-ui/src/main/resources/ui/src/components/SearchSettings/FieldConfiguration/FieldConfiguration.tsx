@@ -12,14 +12,15 @@
  */
 import Icon from '@ant-design/icons';
 import {
+  Button,
   Divider,
   Toggle,
   Tooltip,
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Badge, Button, Collapse, Select, Slider } from 'antd';
-import { useEffect, useState } from 'react';
+import { Badge, Collapse, Select, Slider } from 'antd';
+import { MouseEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as Delete } from '../../../assets/svg/delete-colored.svg';
 import { ReactComponent as FilterIcon } from '../../../assets/svg/setting-colored.svg';
@@ -124,10 +125,10 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
                 )}
               </div>
               <Button
-                className="delete-search-field"
+                color="secondary"
                 data-testid="delete-search-field"
-                icon={<Icon className="text-md" component={Delete} />}
-                onClick={(e) => {
+                iconLeading={<Icon className="text-md" component={Delete} />}
+                onClick={(e: MouseEvent) => {
                   e.stopPropagation();
                   onDeleteSearchField(field.fieldName);
                 }}

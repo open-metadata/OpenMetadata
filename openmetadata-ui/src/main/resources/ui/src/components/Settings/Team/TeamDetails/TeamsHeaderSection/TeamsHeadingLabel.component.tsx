@@ -18,11 +18,12 @@ import {
 } from '@ant-design/icons';
 import {
   Box,
+  Button,
   ButtonUtility,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Input } from 'antd';
+import { Input } from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -170,18 +171,16 @@ const TeamsHeadingLabel = ({
           gap={1}
           itemClassName="layout-space-item">
           <Button
-            className="rounded-4 text-sm p-xss"
+            color="primary"
             data-testid="cancelAssociatedTag"
-            disabled={isLoading}
-            type="primary"
+            isDisabled={isLoading}
             onMouseDown={handleClose}>
             <CloseOutlined />
           </Button>
           <Button
-            className="rounded-4 text-sm p-xss"
+            color="primary"
             data-testid="saveAssociatedTag"
-            loading={isLoading}
-            type="primary"
+            isLoading={isLoading}
             onMouseDown={onHeadingSave}>
             <CheckOutlined />
           </Button>

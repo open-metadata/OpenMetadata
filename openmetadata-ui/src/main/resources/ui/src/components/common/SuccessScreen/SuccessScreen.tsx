@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 
-import { Box, Card, Typography } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import {
+  Box,
+  Button,
+  Card,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { isUndefined } from 'lodash';
 import { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -147,9 +151,8 @@ const SuccessScreen = ({
 
       <div className="mt-7 text-center">
         <Button
-          ghost
+          color="secondary-brand"
           data-testid="view-service-button"
-          type="primary"
           onClick={handleViewServiceClick}>
           <span>
             {viewServiceText ??
@@ -160,9 +163,9 @@ const SuccessScreen = ({
         {showIngestionButton && (
           <Button
             className="m-l-3.5"
+            color="primary"
             data-testid="add-ingestion-button"
-            disabled={!isAirflowAvailable}
-            type="primary"
+            isDisabled={!isAirflowAvailable}
             onClick={handleIngestionClick}>
             <span>
               {t('label.add-entity', { entity: t('label.ingestion') })}
@@ -173,9 +176,9 @@ const SuccessScreen = ({
         {showDeployButton && (
           <Button
             className="m-l-3.5"
+            color="primary"
             data-testid="deploy-ingestion-button"
-            disabled={!isAirflowAvailable}
-            type="primary"
+            isDisabled={!isAirflowAvailable}
             onClick={handleDeployClick}>
             <span>{t('label.deploy')}</span>
           </Button>

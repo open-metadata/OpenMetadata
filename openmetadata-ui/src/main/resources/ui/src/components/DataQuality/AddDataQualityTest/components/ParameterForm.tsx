@@ -13,8 +13,13 @@
 
 import { PlusOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Toggle, Tooltip, Typography } from '@openmetadata/ui-core-components';
-import { Button, Form, FormItemProps, Input, InputNumber, Select } from 'antd';
+import {
+  Button,
+  Toggle,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Form, FormItemProps, Input, InputNumber, Select } from 'antd';
 import { FormListProps, RuleRender } from 'antd/lib/form';
 import { debounce, isUndefined } from 'lodash';
 import {
@@ -372,9 +377,9 @@ const buildArraySetField = ({
             <span>{data.displayName}</span>
             <Button
               className="m-x-sm list-add-btn"
-              icon={<PlusOutlined />}
-              size="small"
-              type="primary"
+              color="primary"
+              iconLeading={<PlusOutlined />}
+              size="xs"
               onClick={() => add()}
             />
           </>
@@ -404,14 +409,10 @@ const buildArraySetField = ({
               )}
             </Form.Item>
             <Button
-              icon={
-                <Icon
-                  className="align-middle"
-                  component={IconDelete}
-                  style={{ fontSize: '16px' }}
-                />
+              color="tertiary"
+              iconLeading={
+                <Icon component={IconDelete} style={{ fontSize: '16px' }} />
               }
-              type="text"
               onClick={() => remove(name)}
             />
           </div>

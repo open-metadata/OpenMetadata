@@ -11,8 +11,14 @@
  *  limitations under the License.
  */
 
-import { Box, Card, Grid, Typography } from '@openmetadata/ui-core-components';
-import { AutoComplete, Button, Form, Input, Select, Spin } from 'antd';
+import {
+  Box,
+  Button,
+  Card,
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { AutoComplete, Form, Input, Select, Spin } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -493,9 +499,9 @@ const AdminPermissionDebugger: React.FC = () => {
 
                     <Form.Item>
                       <Button
-                        htmlType="submit"
-                        loading={loadingEvaluation}
-                        type="primary">
+                        color="primary"
+                        isLoading={loadingEvaluation}
+                        type="submit">
                         {t('label.evaluate')}
                       </Button>
                     </Form.Item>

@@ -13,12 +13,12 @@
 
 import {
   Box,
+  Button,
   SimpleModal,
   Skeleton,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -343,8 +343,8 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
 
               {createTeamPermission && !isTeamDeleted && (
                 <Button
+                  color="primary"
                   data-testid="add-team"
-                  type="primary"
                   onClick={handleAddTeamButtonClick}>
                   {t('label.add-entity', { entity: t('label.team') })}
                 </Button>

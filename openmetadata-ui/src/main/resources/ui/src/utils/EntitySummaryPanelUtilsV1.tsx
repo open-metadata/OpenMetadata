@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 import {
+  Button,
   ButtonGroup,
   ButtonGroupItem,
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Table } from 'antd';
+import { Table } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -127,10 +128,10 @@ const NestedFieldCard: React.FC<NestedFieldCardProps> = ({
               </span>
             )}
             <Button
-              className="d-flex p-0 h-auto m-b-xs"
+              className="m-b-xs"
+              color="link-color"
               data-testid="expand-icon"
-              size="small"
-              type="link"
+              size="xs"
               onClick={() => onToggleExpand(column.fullyQualifiedName ?? '')}>
               <Typography as="span" className="tw:text-xs tw:text-primary">
                 {getExpandToggleLabel(isExpanded, childrenCount)}
@@ -206,10 +207,10 @@ const NestedSchemaFieldCard: React.FC<{
               </span>
             )}
             <Button
-              className="d-flex p-0 h-auto m-b-xs"
+              className="m-b-xs"
+              color="link-color"
               data-testid="expand-icon"
-              size="small"
-              type="link"
+              size="xs"
               onClick={() => onToggleExpand(rowKey)}>
               <Typography as="span" className="tw:text-xs tw:text-primary">
                 {isExpanded
@@ -363,9 +364,9 @@ const SchemaFieldCardsV1: React.FC<{
 
     return (
       <Button
-        block
-        loading={isLoading && currentPage > 1}
-        type="link"
+        className="tw:w-full"
+        color="link-color"
+        isLoading={isLoading && currentPage > 1}
         onClick={handleLoadMore}>
         {t('label.show-more')}
       </Button>
@@ -1135,7 +1136,7 @@ const APIEndpointSchemaV1: React.FC<{
             </ButtonGroupItem>
           ))}
         </ButtonGroup>
-        <Button size="small" type="link" onClick={handleToggleExpandAll}>
+        <Button color="link-color" size="xs" onClick={handleToggleExpandAll}>
           {expandedRowKeys.length < allRowKeys.length
             ? t('label.expand-all')
             : t('label.collapse-all')}

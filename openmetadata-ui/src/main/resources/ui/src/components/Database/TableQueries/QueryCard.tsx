@@ -13,6 +13,7 @@
 
 import {
   Box,
+  Button,
   ButtonUtility,
   Card,
   Grid,
@@ -20,7 +21,6 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Copy01 } from '@openmetadata/ui-core-components/icons';
-import { Button } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import classNames from 'classnames';
 import { isUndefined, split } from 'lodash';
@@ -227,19 +227,20 @@ const QueryCard: FC<QueryCardProp> = ({
         gap={4}
         itemClassName="layout-space-item">
         <Button
+          color="secondary"
           data-testid="cancel-query-btn"
           key="cancel"
-          size="small"
+          size="xs"
           onClick={() => setIsEditMode(false)}>
           {t('label.cancel')}
         </Button>
 
         <Button
+          color="primary"
           data-testid="save-query-btn"
+          isLoading={sqlQuery.isLoading}
           key="save"
-          loading={sqlQuery.isLoading}
-          size="small"
-          type="primary"
+          size="xs"
           onClick={updateSqlQuery}>
           {t('label.save')}
         </Button>
@@ -289,9 +290,9 @@ const QueryCard: FC<QueryCardProp> = ({
               gap={2}
               itemClassName="layout-space-item">
               <Button
-                className="flex-center"
+                color="secondary"
                 data-testid="query-entity-expand-button"
-                icon={renderExpandIcon()}
+                iconLeading={renderExpandIcon()}
                 onClick={handleExpandClick}
               />
               <Tooltip arrow title={t('message.copy-to-clipboard')}>

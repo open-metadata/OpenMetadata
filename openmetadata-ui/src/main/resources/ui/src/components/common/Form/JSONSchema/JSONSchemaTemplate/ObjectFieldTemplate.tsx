@@ -12,12 +12,12 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Box } from '@openmetadata/ui-core-components';
+import { Box, Button } from '@openmetadata/ui-core-components';
 import {
   ObjectFieldTemplatePropertyType,
   ObjectFieldTemplateProps,
 } from '@rjsf/utils';
-import { Button, Collapse } from 'antd';
+import { Collapse } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
 import { createElement, Fragment, FunctionComponent } from 'react';
@@ -104,11 +104,13 @@ export const ObjectFieldTemplate: FunctionComponent<
           </label>
 
           <Button
+            color="primary"
             data-testid={`add-item-${title}`}
-            icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
+            iconLeading={
+              <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
+            }
             id={`${idSchema.$id}`}
-            size="small"
-            type="primary"
+            size="xs"
             onClick={() => {
               onAddClick(schema)();
             }}
