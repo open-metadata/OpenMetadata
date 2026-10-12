@@ -550,52 +550,48 @@ const AppearanceConfigSettingsPage = () => {
                               style={{ placeSelf: 'center' }}>
                               <Card className="theme-preview">
                                 <Card.Content className="tw:flex tw:flex-row tw:gap-4">
-                                  <Button
-                                    color="secondary"
+                                  {/* Colour swatches, not buttons: they preview an arbitrary
+                                      brand colour that core Button colours can't express. */}
+                                  <span
+                                    className="tw:inline-flex tw:h-9 tw:items-center tw:justify-center tw:rounded-lg tw:border tw:px-3 tw:text-sm tw:font-semibold"
                                     style={{
                                       background: currentColor,
+                                      borderColor: currentColor,
                                       color: 'white',
-                                      width: '86px',
                                     }}>
                                     {startCase(
                                       toString(field.name).replace('Color', '')
                                     )}
-                                  </Button>
-
-                                  <Button
-                                    color="secondary"
-                                    iconLeading={<Icon component={ShareIcon} />}
+                                  </span>
+                                  <span
+                                    className="tw:inline-flex tw:h-9 tw:items-center tw:justify-center tw:rounded-lg tw:border tw:px-3 tw:text-sm tw:font-semibold"
                                     style={{
-                                      width: '56px',
-                                      color: currentColor,
                                       borderColor: currentColor,
-                                    }}
-                                  />
-                                  <Button
-                                    color="secondary"
+                                      color: currentColor,
+                                    }}>
+                                    <Icon component={ShareIcon} />
+                                  </span>
+                                  <span
+                                    className="tw:inline-flex tw:h-9 tw:items-center tw:justify-center tw:rounded-lg tw:border tw:px-3 tw:text-sm tw:font-semibold"
                                     style={{
-                                      color: currentColor,
                                       borderColor: currentColor,
-                                      width: '86px',
+                                      color: currentColor,
                                     }}>
                                     {startCase(
                                       toString(field.name).replace('Color', '')
                                     )}
-                                  </Button>
+                                  </span>
                                   <DomainIcon
                                     style={{
                                       color: currentColor,
                                     }}
                                     width={32}
                                   />
-                                  <Button
-                                    color="link-color"
-                                    style={{
-                                      color: currentColor,
-                                      padding: 0,
-                                    }}>
+                                  <span
+                                    className="tw:inline-flex tw:items-center tw:text-sm tw:font-semibold"
+                                    style={{ color: currentColor }}>
                                     {t('label.link')}
-                                  </Button>
+                                  </span>
                                 </Card.Content>
                               </Card>
                             </Box>

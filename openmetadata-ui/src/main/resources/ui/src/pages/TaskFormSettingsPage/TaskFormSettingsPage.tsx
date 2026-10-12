@@ -215,7 +215,7 @@ const SchemaSidebarCard: FC<{
       )}
 
       <Button
-        className="task-form-settings-sidebar-action tw:w-full"
+        className="tw:w-full"
         color="primary"
         data-testid="task-form-add-button"
         onClick={onAddNew}>

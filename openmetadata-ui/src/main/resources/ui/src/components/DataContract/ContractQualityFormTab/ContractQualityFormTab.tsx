@@ -18,14 +18,13 @@ import {
   Dropdown,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ChevronDown } from '@openmetadata/ui-core-components/icons';
+import { ChevronDown, Plus } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { toLower } from 'lodash';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as LeftOutlined } from '../../../assets/svg/left-arrow.svg';
 import { ReactComponent as RightIcon } from '../../../assets/svg/right-arrow.svg';
-import { ReactComponent as PlusIcon } from '../../../assets/svg/x-colored.svg';
 import {
   DEFAULT_SORT_ORDER,
   TEST_CASE_STATUS_LABELS,
@@ -53,7 +52,6 @@ import { ColumnsType } from '../../common/Table/Table.interface';
 import Table from '../../common/Table/TableV2';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { TestLevel } from '../../DataQuality/AddDataQualityTest/components/TestCaseFormV1.interface';
-import './contract-quality-form-tab.less';
 
 const TestCaseFormDrawer = withSuspenseFallback(
   lazy(
@@ -228,10 +226,9 @@ export const ContractQualityFormTab: React.FC<{
         </div>
 
         <Button
-          className="contract-export-button"
           color="secondary"
           data-testid="add-test-button"
-          iconLeading={<Icon className="anticon" component={PlusIcon} />}
+          iconLeading={Plus}
           onClick={handleOpenTestCaseDrawer}>
           {t('label.add-entity', {
             entity: t('label.test'),
@@ -293,16 +290,12 @@ export const ContractQualityFormTab: React.FC<{
 
       <div className="d-flex justify-between m-t-md">
         <Button
-          className="contract-prev-button"
           color="secondary"
           iconLeading={<LeftOutlined height={22} width={20} />}
           onClick={onPrev}>
           {buttonProps.prevLabel ?? t('label.previous')}
         </Button>
-        <Button
-          className="contract-next-button"
-          color="primary"
-          onClick={onNext}>
+        <Button color="primary" onClick={onNext}>
           {buttonProps.nextLabel ?? t('label.next')}
           <Icon component={RightIcon} />
         </Button>

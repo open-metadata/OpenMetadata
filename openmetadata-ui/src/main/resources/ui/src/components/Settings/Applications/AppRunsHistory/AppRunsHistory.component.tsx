@@ -228,7 +228,7 @@ const AppRunsHistory = forwardRef(
               {t('label.log-plural')}
             </Button>
             <Button
-              className="m-l-xs"
+              className="tw:ml-2"
               color="link-color"
               data-testid="app-historical-config"
               isDisabled={!jsonSchema}
@@ -238,7 +238,7 @@ const AppRunsHistory = forwardRef(
             </Button>
             {canStopAppRun && (
               <Button
-                className="m-l-xs"
+                className="tw:ml-2"
                 color="link-color"
                 data-testid="stop-button"
                 size="xs"

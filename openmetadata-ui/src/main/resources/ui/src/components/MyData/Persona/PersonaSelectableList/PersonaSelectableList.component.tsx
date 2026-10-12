@@ -317,7 +317,6 @@ export const PersonaSelectableList = ({
 
           <div className="flex justify-end gap-2">
             <Button
-              className="persona-profile-edit-save"
               color="primary"
               data-testid={`user-profile${
                 isDefaultPersona ? '-default' : ''
@@ -327,7 +326,6 @@ export const PersonaSelectableList = ({
               onClick={handleCloseEditTeam}
             />
             <Button
-              className="persona-profile-edit-cancel"
               color="primary"
               data-testid={`user-profile${
                 isDefaultPersona ? '-default' : ''

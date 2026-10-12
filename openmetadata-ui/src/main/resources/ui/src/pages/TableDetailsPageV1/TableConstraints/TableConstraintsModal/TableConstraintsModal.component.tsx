@@ -556,7 +556,7 @@ const TableConstraintsModal = ({
                         </Select>
                       </Form.Item>
                       <Button
-                        className="delete-constraint-button"
+                        className="tw:absolute tw:top-2.5 tw:right-3"
                         color="tertiary"
                         data-testid={`${key}-delete-constraint-button`}
                         iconLeading={
@@ -572,7 +572,7 @@ const TableConstraintsModal = ({
                     </div>
                   ))}
                   <Button
-                    className="m-t-md"
+                    className="tw:mt-4"
                     color="secondary"
                     data-testid="add-constraint-button"
                     iconLeading={<PlusIcon className="anticon" />}

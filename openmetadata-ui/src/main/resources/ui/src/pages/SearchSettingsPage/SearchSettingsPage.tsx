@@ -129,9 +129,7 @@ const SearchBoostsSection = ({
                 <Button
                   color="primary"
                   data-testid="term-boost-add-btn"
-                  iconLeading={
-                    <Icon className="text-sm" component={PlusOutlined} />
-                  }
+                  iconLeading={<Icon component={PlusOutlined} />}
                   isDisabled={isUpdating || showNewTermBoost}
                   onClick={onAddNewTermBoost}>
                   {t('label.add')}
@@ -166,7 +164,6 @@ const SearchBoostsSection = ({
               </Box>
               <Box className="layout-column d-flex items-center gap-2">
                 <Button
-                  className="field-value-boost-add-btn"
                   color="secondary"
                   data-testid="add-field-value-boost-btn"
                   iconLeading={

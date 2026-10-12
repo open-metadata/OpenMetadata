@@ -230,7 +230,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
     return (
       <Fragment>
         <Button
-          className="m-b-sm"
+          className="tw:mb-3"
           color="link-color"
           size="xs"
           onClick={onBack}>
@@ -250,7 +250,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
 
   const renderActiveConversationView = () => (
     <Fragment>
-      <Button className="m-b-sm" color="link-color" size="xs" onClick={onBack}>
+      <Button className="tw:mb-3" color="link-color" size="xs" onClick={onBack}>
         {t('label.back')}
       </Button>
       <ActivityFeedCardNew

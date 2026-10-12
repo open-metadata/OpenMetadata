@@ -12,14 +12,13 @@
  */
 import {
   Avatar,
-  ButtonUtility,
   Popover,
   Tabs,
   Tag,
   TagGroup,
   TagList,
 } from '@openmetadata/ui-core-components';
-import { Edit02, Users01 } from '@openmetadata/ui-core-components/icons';
+import { Users01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isArray, isEmpty, noop, toString } from 'lodash';
 import React, {
@@ -45,6 +44,7 @@ import {
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceListFromEntities } from '../../../utils/EntityReferenceUtils';
 import { getTermQuery } from '../../../utils/SearchPureUtils';
+import { EditIconButton } from '../IconButtons/EditIconButton';
 import { SelectableList } from '../SelectableList/SelectableList.component';
 import { UserSelectDropdownProps } from './UserTeamSelectableList.interface';
 
@@ -381,12 +381,11 @@ export const UserTeamSelectableList = ({
 
   const defaultTrigger = hasPermission ? (
     <span ref={triggerRef}>
-      <ButtonUtility
-        color="tertiary"
+      <EditIconButton
+        newLook
         data-testid={triggerDataTestId}
-        icon={Edit02}
-        size="xs"
-        tooltip={getEditTriggerTitle()}
+        size="small"
+        title={getEditTriggerTitle()}
         onClick={handleTriggerClick}
       />
     </span>

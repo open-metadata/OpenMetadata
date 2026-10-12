@@ -368,7 +368,7 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
 
         {!readonly && (
           <Button
-            className="add-mapping-btn tw:w-full"
+            className="tw:w-full"
             color="secondary"
             data-testid="add-mapping-btn"
             iconLeading={<PlusOutlined />}

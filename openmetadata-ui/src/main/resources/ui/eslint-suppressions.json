@@ -918,11 +918,6 @@
       "count": 4
     }
   },
-  "src/components/DataContract/AddDataContract/AddDataContract.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
-    }
-  },
   "src/components/DataContract/ContractDetailFormTab/ContractDetailFormTab.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 2

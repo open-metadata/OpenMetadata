@@ -368,7 +368,7 @@ const RolesDetailPage = () => {
                 })}
               </p>
               <Button
-                className="m-t-sm"
+                className="tw:mt-3"
                 color="secondary-brand"
                 onClick={() => navigate(rolesPath)}>
                 {t('label.go-back')}

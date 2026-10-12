@@ -70,7 +70,6 @@ const NextPreviousWithOffset = ({
   return (
     <div className="flex-center gap-3" data-testid="pagination">
       <Button
-        className="hover-button"
         color="secondary-brand"
         data-testid="previous"
         iconLeading={<ArrowLeftOutlined />}
@@ -82,7 +81,6 @@ const NextPreviousWithOffset = ({
         'label.page'
       )}`}</span>
       <Button
-        className="hover-button"
         color="secondary-brand"
         data-testid="next"
         isDisabled={nextButtonDisabled || isLoading}

@@ -196,7 +196,7 @@ const TaskFeedCardFromTask = ({
       isEntityDetailsAvailable ? (
         <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
           <Button
-            className="task-feed-header"
+            className="tw:w-[98%]"
             color="link-color"
             data-testid="redirect-task-button-link"
             onClick={handleTaskLinkClick}>
@@ -352,7 +352,7 @@ const TaskFeedCardFromTask = ({
           />
           {commentsCount > 0 ? (
             <Button
-              className="posts-length m-r-xss"
+              className="tw:mr-1"
               color="link-gray"
               data-testid="replies-count"
               onPress={showReplies}>

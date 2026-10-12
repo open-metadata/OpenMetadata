@@ -128,7 +128,7 @@ const NestedFieldCard: React.FC<NestedFieldCardProps> = ({
               </span>
             )}
             <Button
-              className="m-b-xs"
+              className="tw:mb-2"
               color="link-color"
               data-testid="expand-icon"
               size="xs"
@@ -207,7 +207,7 @@ const NestedSchemaFieldCard: React.FC<{
               </span>
             )}
             <Button
-              className="m-b-xs"
+              className="tw:mb-2"
               color="link-color"
               data-testid="expand-icon"
               size="xs"

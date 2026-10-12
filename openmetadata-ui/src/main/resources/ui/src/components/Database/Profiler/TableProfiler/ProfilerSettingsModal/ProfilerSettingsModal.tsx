@@ -652,7 +652,6 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                       {`${t('label.include')}:`}
                     </p>
                     <Button
-                      className="include-columns-add-button"
                       color="primary"
                       iconLeading={<PlusOutlined />}
                       size="xs"
@@ -707,7 +706,6 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                             color="tertiary"
                             iconLeading={
                               <Icon
-                                className="align-middle"
                                 component={IconDelete}
                                 style={{ fontSize: '16px' }}
                               />
@@ -950,7 +948,6 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                             {`${t('label.value')}:`}
                           </p>
                           <Button
-                            className="include-columns-add-button"
                             color="primary"
                             iconLeading={<PlusOutlined />}
                             size="xs"
@@ -992,7 +989,6 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                                 color="tertiary"
                                 iconLeading={
                                   <Icon
-                                    className="align-middle"
                                     component={IconDelete}
                                     style={{ fontSize: '16px' }}
                                   />

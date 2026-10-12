@@ -127,7 +127,7 @@ const RolesCard = ({
                 />
                 <div className="flex justify-end" data-testid="buttons">
                   <Button
-                    className="mr-1"
+                    className="tw:mr-1"
                     color="primary"
                     data-testid="cancel-roles"
                     iconLeading={<CloseOutlined />}

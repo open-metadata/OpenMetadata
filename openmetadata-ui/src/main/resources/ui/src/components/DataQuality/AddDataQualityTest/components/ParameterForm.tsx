@@ -376,7 +376,7 @@ const buildArraySetField = ({
           <>
             <span>{data.displayName}</span>
             <Button
-              className="m-x-sm list-add-btn"
+              className="tw:mx-3"
               color="primary"
               iconLeading={<PlusOutlined />}
               size="xs"

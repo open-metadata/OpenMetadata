@@ -162,7 +162,6 @@ const SuccessScreen = ({
 
         {showIngestionButton && (
           <Button
-            className="m-l-3.5"
             color="primary"
             data-testid="add-ingestion-button"
             isDisabled={!isAirflowAvailable}
@@ -175,7 +174,6 @@ const SuccessScreen = ({
 
         {showDeployButton && (
           <Button
-            className="m-l-3.5"
             color="primary"
             data-testid="deploy-ingestion-button"
             isDisabled={!isAirflowAvailable}

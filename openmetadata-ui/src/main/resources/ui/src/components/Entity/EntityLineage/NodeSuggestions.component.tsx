@@ -109,7 +109,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
       value: entity.fullyQualifiedName,
       label: (
         <Button
-          className="node-suggestion-option-btn tw:w-full"
+          className="tw:w-full"
           color="tertiary"
           data-testid={`node-suggestion-${entity.fullyQualifiedName}`}
           key={entity.fullyQualifiedName}

@@ -236,7 +236,6 @@ const SSOConfigurationFormRJSF = ({
           </Button>
           {canTestLogin && (
             <Button
-              className="test-login-sso-configuration"
               color="secondary"
               data-testid="test-login-sso-configuration"
               isDisabled={isLoading || isTestingLogin || !currentProvider}

@@ -98,13 +98,13 @@ const FieldValueBoostList: React.FC<FieldValueBoostListProps> = ({
             <Button
               color="tertiary"
               data-testid="edit-field-value-boost-btn"
-              iconLeading={<Icon className="text-md" component={EditIcon} />}
+              iconLeading={<Icon component={EditIcon} />}
               onClick={() => handleEditFieldValueBoost(record)}
             />
             <Button
               color="tertiary"
               data-testid="delete-field-value-boost-btn"
-              iconLeading={<Icon className="text-md" component={Delete} />}
+              iconLeading={<Icon component={Delete} />}
               onClick={() => handleDeleteFieldValueBoost(record.field)}
             />
           </div>

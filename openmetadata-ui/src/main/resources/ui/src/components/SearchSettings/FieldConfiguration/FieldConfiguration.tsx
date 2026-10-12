@@ -127,7 +127,7 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
               <Button
                 color="secondary"
                 data-testid="delete-search-field"
-                iconLeading={<Icon className="text-md" component={Delete} />}
+                iconLeading={<Icon component={Delete} />}
                 onClick={(e: MouseEvent) => {
                   e.stopPropagation();
                   onDeleteSearchField(field.fieldName);

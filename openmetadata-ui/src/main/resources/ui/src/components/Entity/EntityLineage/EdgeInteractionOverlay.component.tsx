@@ -74,7 +74,6 @@ export const EdgeInteractionOverlay: React.FC<EdgeInteractionOverlayProps> = ({
           iconLeading={
             <Icon
               alt="edit-circle"
-              className="align-middle"
               component={IconEditCircle}
               style={{ fontSize: '16px' }}
             />
@@ -100,7 +99,6 @@ export const EdgeInteractionOverlay: React.FC<EdgeInteractionOverlayProps> = ({
           iconLeading={
             <Icon
               alt="times-circle"
-              className="align-middle"
               component={IconTimesCircle}
               style={{ fontSize: '16px' }}
             />

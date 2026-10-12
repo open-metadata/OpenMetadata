@@ -17,7 +17,6 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { RadioChangeEvent } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -150,7 +149,7 @@ const AddDataContract: React.FC<{
   contract?: DataContract;
 }> = ({ onCancel, onSave, contract }) => {
   const { t } = useTranslation();
-  const [mode, setMode] = useState<DataContractMode>(DataContractMode.UI);
+  const [mode] = useState<DataContractMode>(DataContractMode.UI);
   const [yaml, setYaml] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { data: entityData } = useGenericContext<Table>();
@@ -535,48 +534,32 @@ const AddDataContract: React.FC<{
     currentTabInfo,
   ]);
 
-  const handleModeChange = useCallback((e: RadioChangeEvent) => {
-    setMode(e.target.value);
-  }, []);
+  const cardTitle = (
+    <div>
+      <Typography className="add-contract-card-title">
+        {t('label.add-contract-detail-plural')}
+      </Typography>
+      <Typography as="p" className="add-contract-card-description">
+        {t('message.add-contract-detail-description')}
+      </Typography>
+    </div>
+  );
 
-  const cardTitle = useMemo(() => {
-    return (
-      <div className="add-contract-card-header d-flex items-center justify-between">
-        <div>
-          <Typography className="add-contract-card-title">
-            {t('label.add-contract-detail-plural')}
-          </Typography>
-          <Typography as="p" className="add-contract-card-description">
-            {t('message.add-contract-detail-description')}
-          </Typography>
-        </div>
-        <div>
-          <Button
-            className="add-contract-cancel-button"
-            color="secondary"
-            onClick={onCancel}>
-            {t('label.cancel')}
-          </Button>
-          <Button
-            className="add-contract-save-button"
-            color="primary"
-            data-testid="save-contract-btn"
-            isDisabled={isSaveDisabled}
-            isLoading={isSubmitting}
-            onClick={handleSave}>
-            {t('label.save')}
-          </Button>
-        </div>
-      </div>
-    );
-  }, [
-    mode,
-    isSubmitting,
-    isSaveDisabled,
-    handleModeChange,
-    onCancel,
-    handleSave,
-  ]);
+  const cardActions = (
+    <div className="tw:flex tw:gap-2">
+      <Button color="secondary" onClick={onCancel}>
+        {t('label.cancel')}
+      </Button>
+      <Button
+        color="primary"
+        data-testid="save-contract-btn"
+        isDisabled={isSaveDisabled}
+        isLoading={isSubmitting}
+        onClick={handleSave}>
+        {t('label.save')}
+      </Button>
+    </div>
+  );
 
   const cardContent = useMemo(() => {
     if (mode === DataContractMode.YAML) {
@@ -621,7 +604,7 @@ const AddDataContract: React.FC<{
 
   return (
     <Card className="add-contract-card" data-testid="add-contract-card">
-      <Card.Header title={cardTitle} />
+      <Card.Header extra={cardActions} title={cardTitle} />
       <Card.Content>{cardContent}</Card.Content>
     </Card>
   );

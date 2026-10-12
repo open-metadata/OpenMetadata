@@ -56,7 +56,7 @@ const SearchOptions: FunctionComponent<SearchOptionsProp> = ({
       </Link>
       {options.map((option) => (
         <Button
-          className="w-full"
+          className="tw:w-full"
           color="tertiary"
           data-testid="InPage"
           key={option}

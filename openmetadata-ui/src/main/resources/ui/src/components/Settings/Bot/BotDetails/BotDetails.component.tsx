@@ -161,7 +161,7 @@ const BotDetails: FC<BotsDetailProps> = ({
                         />
                         <div className="flex justify-end" data-testid="buttons">
                           <Button
-                            className="mr-1"
+                            className="tw:mr-1"
                             color="primary"
                             data-testid="cancel-displayName"
                             iconLeading={<CloseOutlined />}
@@ -170,7 +170,7 @@ const BotDetails: FC<BotsDetailProps> = ({
                           />
 
                           <Button
-                            className="mr-1"
+                            className="tw:mr-1"
                             color="primary"
                             data-testid="save-displayName"
                             iconLeading={<CheckOutlined />}

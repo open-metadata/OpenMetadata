@@ -335,7 +335,6 @@ const UserProfileRoles = ({
 
                   <div className="flex justify-end gap-2 mt-4">
                     <Button
-                      className="profile-edit-save"
                       color="primary"
                       data-testid="user-profile-edit-roles-cancel-button"
                       iconLeading={<ClosePopoverIcon height={24} />}
@@ -348,7 +347,6 @@ const UserProfileRoles = ({
                       onClick={handleCloseEditRole}
                     />
                     <Button
-                      className="profile-edit-cancel"
                       color="primary"
                       data-testid="user-profile-edit-roles-save-button"
                       iconLeading={<SavePopoverIcon height={24} />}

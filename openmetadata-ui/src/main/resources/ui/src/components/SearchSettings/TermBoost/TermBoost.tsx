@@ -182,7 +182,7 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
           <Button
             color="secondary"
             data-testid="delete-term-boost"
-            iconLeading={<Icon className="text-md" component={Delete} />}
+            iconLeading={<Icon component={Delete} />}
             onClick={() => onDeleteBoost(termBoost.value)}
           />
         </Box>

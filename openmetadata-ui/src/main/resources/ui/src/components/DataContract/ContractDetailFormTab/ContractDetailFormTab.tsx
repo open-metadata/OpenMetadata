@@ -166,11 +166,7 @@ export const ContractDetailFormTab: React.FC<{
       </Card>
       {isNextVisible && (
         <div className="d-flex justify-end m-t-md">
-          <Button
-            className="contract-next-button"
-            color="primary"
-            type="submit"
-            onClick={onNext}>
+          <Button color="primary" type="submit" onClick={onNext}>
             {nextLabel ?? t('label.next')}
             <Icon component={RightIcon} />
           </Button>

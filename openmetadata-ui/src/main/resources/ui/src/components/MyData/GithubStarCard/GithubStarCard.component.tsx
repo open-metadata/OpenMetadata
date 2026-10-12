@@ -153,7 +153,7 @@ const GithubStarCard = () => {
               </Typography>
             </Box>
             <Button
-              className="m--t-xss"
+              className="tw:-mt-1"
               color="tertiary"
               data-testid="close-github-star-popup-card"
               iconLeading={

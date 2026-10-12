@@ -133,7 +133,6 @@ const AuthMechanismForm: FC<Props> = ({
         </Typography>
       </div>
       <Button
-        className="generate-scim-token-btn"
         color="primary"
         data-testid="generate-scim-token"
         size="xs"

@@ -194,7 +194,7 @@ function EmailConfigSettingsPage() {
                 <ButtonSkeleton />
               ) : (
                 <Button
-                  className="m-l-md"
+                  className="tw:ml-4"
                   color="secondary"
                   iconLeading={
                     !isUndefined(emailConfigValues) && (

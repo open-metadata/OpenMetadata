@@ -418,7 +418,6 @@ export const ContractSLAFormTab: React.FC<{
       </Card>
       <div className="d-flex justify-between m-t-md">
         <Button
-          className="contract-prev-button"
           color="secondary"
           iconLeading={<LeftOutlined height={22} width={20} />}
           onClick={onPrev}>
