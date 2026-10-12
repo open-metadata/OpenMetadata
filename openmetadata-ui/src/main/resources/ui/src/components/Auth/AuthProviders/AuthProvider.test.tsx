@@ -27,6 +27,7 @@ import { useAppModeStore } from '../../../hooks/useAppMode';
 import axiosClient from '../../../rest/axiosClient';
 import { getDocumentByFQN } from '../../../rest/DocStoreAPI';
 import { fetchAuthenticationConfig } from '../../../rest/miscAPI';
+import { getAppConfiguration } from '../../../rest/settingConfigAPI';
 import { getLoggedInUser } from '../../../rest/userAPI';
 import {
   decideReauth,
@@ -219,6 +220,7 @@ jest.mock('../../../hooks/useApplicationStore', () => {
   const setIsAuthenticated = jest.fn();
   const setIsAuthenticating = jest.fn();
   const setApplicationLoading = jest.fn();
+  const setAppPreferences = jest.fn();
   const useApplicationStoreMock = Object.assign(
     jest.fn().mockImplementation(() => ({
       setCurrentUser: jest.fn(),
@@ -253,7 +255,11 @@ jest.mock('../../../hooks/useApplicationStore', () => {
     // `handledVerifiedUser` reads `useApplicationStore.getState()` directly
     // (outside the hook call) — provide it so any code path that exercises
     // that branch doesn't blow up with "getState is not a function".
-    { getState: jest.fn().mockReturnValue({ currentUser: { name: 'test' } }) }
+    {
+      getState: jest
+        .fn()
+        .mockReturnValue({ currentUser: { name: 'test' }, setAppPreferences }),
+    }
   );
 
   return {
@@ -261,6 +267,7 @@ jest.mock('../../../hooks/useApplicationStore', () => {
     __mockSetIsAuthenticated: setIsAuthenticated,
     __mockSetIsAuthenticating: setIsAuthenticating,
     __mockSetApplicationLoading: setApplicationLoading,
+    __mockSetAppPreferences: setAppPreferences,
   };
 });
 
@@ -305,6 +312,7 @@ const {
   __mockSetIsAuthenticated: mockSetIsAuthenticated,
   __mockSetIsAuthenticating: mockSetIsAuthenticating,
   __mockSetApplicationLoading: mockSetApplicationLoading,
+  __mockSetAppPreferences: mockSetAppPreferences,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 } = jest.requireMock('../../../hooks/useApplicationStore') as any;
 
@@ -941,6 +949,7 @@ describe('Test AuthCoordinator wiring (auth-coordinator-refactor Task 12)', () =
 
     afterEach(() => {
       applicationStore.getState.mockReturnValue({
+        setAppPreferences: mockSetAppPreferences,
         currentUser: { name: 'test' },
       });
     });
@@ -960,6 +969,7 @@ describe('Test AuthCoordinator wiring (auth-coordinator-refactor Task 12)', () =
 
     it('signs this tab out locally when another tab signs out', async () => {
       applicationStore.getState.mockReturnValue({
+        setAppPreferences: mockSetAppPreferences,
         currentUser: { name: 'test' },
         isAuthenticated: true,
       });
@@ -981,6 +991,7 @@ describe('Test AuthCoordinator wiring (auth-coordinator-refactor Task 12)', () =
 
     it('ignores another tab signing out when this tab is not signed in', async () => {
       applicationStore.getState.mockReturnValue({
+        setAppPreferences: mockSetAppPreferences,
         currentUser: {},
         isAuthenticated: false,
       });
@@ -1438,6 +1449,26 @@ describe('Sign-in routing', () => {
     });
 
     await waitFor(() => expect(useNavigate()).toHaveBeenCalledWith('/'));
+  });
+
+  it('stores the tenant default column order from the app configuration at login', async () => {
+    (getAppConfiguration as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        defaultAppMode: null,
+        defaultColumnOrder: 'sourceOrder',
+      })
+    );
+    renderProvider();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('login'));
+    });
+
+    await waitFor(() =>
+      expect(mockSetAppPreferences).toHaveBeenCalledWith({
+        defaultColumnOrder: 'sourceOrder',
+      })
+    );
   });
 });
 

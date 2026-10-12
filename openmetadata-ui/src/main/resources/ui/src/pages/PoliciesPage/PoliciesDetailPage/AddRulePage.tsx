@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Form, Space } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Button, Card, Form } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { trim } from 'lodash';
@@ -163,7 +163,12 @@ const AddRulePage = () => {
           layout="vertical"
           onFinish={handleSubmit}>
           <RuleForm ruleData={ruleData} setRuleData={setRuleData} />
-          <Space align="center" className="w-full justify-end">
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal w-full justify-end"
+            gap={2}
+            itemClassName="layout-space-item">
             <Button data-testid="cancel-btn" type="link" onClick={handleBack}>
               {t('label.cancel')}
             </Button>
@@ -174,7 +179,7 @@ const AddRulePage = () => {
               type="primary">
               {t('label.create')}
             </Button>
-          </Space>
+          </Box>
         </Form>
       </Card>
     </PageLayoutV1>

@@ -86,6 +86,41 @@ const mockTableSearchResponse = {
 describe('searchAPI tests', () => {
   beforeEach(() => jest.resetModules());
 
+  describe.each(['searchQuery', 'nlqSearch'] as const)(
+    '%s pagination',
+    (method) => {
+      it.each([
+        { pageNumber: 0, pageSize: 25, from: 0 },
+        { pageNumber: -1, pageSize: 25, from: 0 },
+        { pageNumber: 1, pageSize: 25, from: 0 },
+        { pageNumber: 2, pageSize: 25, from: 25 },
+        { pageNumber: undefined, pageSize: 25, from: 0 },
+        { pageNumber: 0, pageSize: 0, from: 0 },
+      ])(
+        'uses offset $from for page $pageNumber with size $pageSize',
+        async ({ pageNumber, pageSize, from }) => {
+          const mockGet = jest
+            .fn()
+            .mockResolvedValue({ data: mockTableSearchResponse });
+
+          jest.doMock('./axiosClient', () => ({ get: mockGet }));
+
+          const searchAPI: typeof import('./searchAPI') = require('./searchAPI');
+
+          await searchAPI[method]({
+            searchIndex: SearchIndex.TABLE,
+            pageNumber,
+            pageSize,
+          });
+
+          const [, config] = mockGet.mock.calls[0];
+
+          expect(config.params).toMatchObject({ from, size: pageSize });
+        }
+      );
+    }
+  );
+
   it('searchQuery should not return nulls', async () => {
     jest.mock('./axiosClient', () => ({
       get: jest

@@ -14,7 +14,6 @@ import {
   ButtonUtility,
   Card,
   Tooltip,
-  TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { InfoCircle } from '@openmetadata/ui-core-components/icons';
@@ -119,13 +118,13 @@ const WidgetCard = ({
               )}
               {helperText && (
                 <Tooltip title={helperText}>
-                  <TooltipTrigger className="tw:leading-0">
-                    <InfoCircle
-                      className="tw:cursor-pointer tw:text-utility-gray-400"
-                      size={14}
-                      strokeWidth={2}
-                    />
-                  </TooltipTrigger>
+                  <ButtonUtility
+                    aria-label={t('label.info')}
+                    className="tw:p-1"
+                    color="tertiary"
+                    icon={InfoCircle}
+                    size="xs"
+                  />
                 </Tooltip>
               )}
               {headerExtra}

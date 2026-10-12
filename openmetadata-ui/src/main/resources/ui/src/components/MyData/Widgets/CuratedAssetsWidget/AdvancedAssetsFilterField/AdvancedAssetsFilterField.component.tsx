@@ -11,15 +11,14 @@
  *  limitations under the License.
  */
 
-import { Grid, Skeleton } from '@openmetadata/ui-core-components';
+import { Box, Skeleton, Typography } from '@openmetadata/ui-core-components';
 import { JsonTree, Utils as QbUtils } from '@react-awesome-query-builder/ui';
-import { Form, Input } from 'antd';
 import { debounce, isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useFormContext, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { useFqn } from '../../../../../hooks/useFqn';
-import { getLayoutGutter } from '../../../../../utils/common/layout.utils';
 import {
   getExpandedResourceList,
   getExploreURLForAdvancedFilter,
@@ -33,7 +32,6 @@ import { getJsonTreeFromQueryFilter } from '../../../../../utils/QueryBuilderPur
 import QueryBuilder from '../../../../common/QueryBuilder/QueryBuilder';
 import { useAdvanceSearch } from '../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import { CuratedAssetsConfig } from '../CuratedAssetsModal/CuratedAssetsModal.interface';
-import './advanced-assets-filter-field.less';
 
 export const AdvancedAssetsFilterField = ({
   fetchEntityCount,
@@ -49,9 +47,9 @@ export const AdvancedAssetsFilterField = ({
   const { fqn } = useFqn();
   const { t } = useTranslation();
   const isMounting = useRef(true);
-  const form = Form.useFormInstance<CuratedAssetsConfig>();
+  const { control, setValue } = useFormContext<CuratedAssetsConfig>();
 
-  const queryFilterValue = form.getFieldValue('queryFilter');
+  const queryFilterValue = useWatch({ control, name: 'queryFilter' });
 
   const [queryFilter, setQueryFilter] = useState<string>(
     queryFilterValue ?? ''
@@ -61,8 +59,11 @@ export const AdvancedAssetsFilterField = ({
   const { config, treeInternal, onTreeUpdate, onReset, searchIndex } =
     useAdvanceSearch();
 
-  const selectedResource: Array<string> =
-    Form.useWatch('resources', form) || [];
+  const watchedResources = useWatch({ control, name: 'resources' });
+  const selectedResource = useMemo(
+    () => watchedResources ?? [],
+    [watchedResources]
+  );
 
   const queryURL = useMemo(() => {
     return getExploreURLForAdvancedFilter({
@@ -85,10 +86,10 @@ export const AdvancedAssetsFilterField = ({
       // getModifiedQueryFilterWithSelectedAssets.
       const queryFilter = nextValue || JSON.stringify({ query: '' });
 
-      form.setFieldValue('queryFilter', queryFilter);
+      setValue('queryFilter', queryFilter);
       setQueryFilter(queryFilter);
     },
-    [onTreeUpdate, form, config]
+    [onTreeUpdate, setValue, config]
   );
 
   const handleEntityCount = useCallback(
@@ -115,7 +116,7 @@ export const AdvancedAssetsFilterField = ({
         setIsCountLoading(false);
       }
     },
-    [fetchEntityCount, selectedResource, getExpandedResourceList]
+    [fetchEntityCount, selectedResource]
   );
 
   const debouncedFetchEntityCount = useCallback(
@@ -138,7 +139,7 @@ export const AdvancedAssetsFilterField = ({
   );
 
   useEffect(() => {
-    setQueryFilter(queryFilterValue);
+    setQueryFilter(queryFilterValue ?? '');
     if (!queryFilterValue) {
       onReset();
     }
@@ -174,50 +175,37 @@ export const AdvancedAssetsFilterField = ({
   }, []);
 
   return (
-    <>
-      <Form.Item hidden name="queryFilter">
-        <Input />
-      </Form.Item>
-      <Grid
-        className="layout-row layout-grid advanced-filter-form-field"
-        style={getLayoutGutter(8, 8)}>
-        <Grid.Item
-          className="layout-column"
-          data-testid="advanced-filter-container"
-          span={24}>
-          <div className="ant-form-item-label advanced-filter-label">
-            {/* eslint-disable-next-line jsx-a11y/label-has-for -- query-builder caption, not a form control */}
-            <label>{t('label.advance-filter')}</label>
-          </div>
-          <QueryBuilder
-            entityType={EntityType.ALL}
-            fields={config.fields}
-            groupMode="flat"
-            key={searchIndex.toLocaleString()}
-            // Counting and the Explore link are done here, scoped to the selected resources, so the builder's own
-            // preview stays off.
-            showCountPreview={false}
-            tree={treeJson}
-            onChange={handleChange}
-          />
-        </Grid.Item>
+    <Box className="tw:mt-2" direction="col" gap={2}>
+      <Box data-testid="advanced-filter-container" direction="col" gap={2}>
+        <Typography
+          as="span"
+          className="tw:text-secondary"
+          size="text-sm"
+          weight="medium">
+          {t('label.advance-filter')}
+        </Typography>
+        <QueryBuilder
+          entityType={EntityType.ALL}
+          fields={config.fields}
+          groupMode="flat"
+          key={searchIndex.toLocaleString()}
+          // Counting and the Explore link are done here, scoped to the selected resources, so the builder's own
+          // preview stays off.
+          showCountPreview={false}
+          tree={treeJson}
+          onChange={handleChange}
+        />
+      </Box>
 
-        {isCountLoading && (
-          <Grid.Item className="layout-column" span={24}>
-            <Skeleton height={32} />
-          </Grid.Item>
-        )}
+      {isCountLoading && <Skeleton height={32} />}
 
-        {showFilteredResourceCount && (
-          <Grid.Item className="layout-column" span={24}>
-            <AlertMessage
-              assetCount={selectedAssetsInfo?.filteredResourceCount}
-              href={queryURL}
-              target="_blank"
-            />
-          </Grid.Item>
-        )}
-      </Grid>
-    </>
+      {showFilteredResourceCount && (
+        <AlertMessage
+          assetCount={selectedAssetsInfo?.filteredResourceCount}
+          href={queryURL}
+          target="_blank"
+        />
+      )}
+    </Box>
   );
 };
