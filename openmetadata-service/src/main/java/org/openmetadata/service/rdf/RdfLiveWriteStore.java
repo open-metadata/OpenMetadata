@@ -58,8 +58,7 @@ public final class RdfLiveWriteStore {
         handle -> {
           lockEnqueue(handle);
           final long id = insert(handle, "");
-          handle.execute("DELETE FROM rdf_live_write_queue WHERE id = ?", id);
-          handle.execute(RECORD_ENQUEUED, id);
+          retire(handle, id);
           return id;
         });
   }
@@ -141,8 +140,19 @@ public final class RdfLiveWriteStore {
     } catch (RuntimeException exception) {
       return recordFailure(handle, entry, exception);
     }
-    handle.execute("DELETE FROM rdf_live_write_queue WHERE id = ?", entry.id());
+    retire(handle, entry.id());
     return true;
+  }
+
+  /**
+   * Removes a delivered or dead-lettered row, keeping its ID in the enqueued watermark. Servers that
+   * predate the column enqueue without recording it, so the queue row is the only trace of their
+   * write until it is retired here. No other code deletes queue rows; see
+   * ADR:2026-10-11-rdf-freshness-watermarks-have-one-writer-per-table.
+   */
+  private static void retire(final Handle handle, final long id) {
+    handle.execute("DELETE FROM rdf_live_write_queue WHERE id = ?", id);
+    handle.execute(RECORD_ENQUEUED, id);
   }
 
   private boolean recordFailure(
@@ -176,7 +186,7 @@ public final class RdfLiveWriteStore {
         attempts,
         clock.millis(),
         reason);
-    handle.execute("DELETE FROM rdf_live_write_queue WHERE id = ?", entry.id());
+    retire(handle, entry.id());
     LOG.error(
         "Live RDF write {} exhausted {} attempts; dead-lettered for reconciliation",
         entry.id(),

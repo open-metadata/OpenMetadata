@@ -102,6 +102,16 @@ class InferenceRuleRepositoryTest {
   }
 
   @Test
+  void reportsTripleCountsBeyondTheIntRange() {
+    final long beyondInt = Integer.MAX_VALUE + 1L;
+    repository.upsert(RULE, rule(RULE, 10));
+
+    repository.recordMaterialized(snapshot(RULE), NOW, beyondInt);
+
+    assertEquals(beyondInt, repository.get(RULE).getTripleCount());
+  }
+
+  @Test
   void anInvalidationAfterTheSnapshotKeepsTheRuleDirty() {
     repository.upsert(RULE, rule(RULE, 10));
     final RuleSnapshot snapshot = snapshot(RULE);
@@ -117,6 +127,35 @@ class InferenceRuleRepositoryTest {
     repository.upsert(RULE, rule(RULE, 20));
 
     assertTrue(repository.recordMaterialized(snapshot, NOW, 7).orElseThrow().getDirty());
+  }
+
+  @Test
+  void aRunSeesNoChangeWhenNothingTouchedTheRules() {
+    repository.upsert(RULE, rule(RULE, 10));
+
+    assertFalse(repository.hasChangedSince(repository.listForRun()));
+  }
+
+  @Test
+  void invalidatingRulesAfterTheSnapshotIsAChange() {
+    repository.upsert(RULE, rule(RULE, 10));
+    final List<RuleSnapshot> run = repository.listForRun();
+
+    repository.markAllDirty();
+
+    assertTrue(repository.hasChangedSince(run));
+  }
+
+  @Test
+  void addingOrDeletingARuleAfterTheSnapshotIsAChange() {
+    final List<RuleSnapshot> beforeAddition = repository.listForRun();
+    repository.upsert(RULE, rule(RULE, 10));
+    final boolean additionSeen = repository.hasChangedSince(beforeAddition);
+    final List<RuleSnapshot> beforeDeletion = repository.listForRun();
+    repository.delete(RULE);
+
+    assertTrue(additionSeen);
+    assertTrue(repository.hasChangedSince(beforeDeletion));
   }
 
   @Test
@@ -159,6 +198,20 @@ class InferenceRuleRepositoryTest {
     assertTrue(status.getLastError().contains("no longer passes validation"));
     assertTrue(status.getLastError().contains("OPTIONAL is not allowed"), status.getLastError());
     assertEquals(OPTIONAL_BODY, status.getRule().getRuleBody());
+  }
+
+  @Test
+  void storedRulesNegatingExistsAreDisabledWithTheReason() {
+    storeRule(
+        rule(LEGACY_RULE, 10)
+            .withRuleBody(
+                "CONSTRUCT { ?s <urn:copy> ?o } WHERE { ?s <urn:source> ?o "
+                    + "FILTER(!EXISTS { ?o <urn:label> ?l }) }"));
+
+    final InferenceRuleStatus status = repository.get(LEGACY_RULE);
+
+    assertFalse(status.getRule().getEnabled());
+    assertTrue(status.getLastError().contains("EXISTS is only allowed"), status.getLastError());
   }
 
   @Test

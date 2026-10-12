@@ -185,7 +185,7 @@ class RdfResourceTest {
     assertEquals(Entity.RDF, resource.getValue().getResource());
     assertEquals(
         List.of(MetadataOperation.EXECUTE_SPARQL_QUERY), operation.getValue().getOperations(null));
-    verify(repository, never()).executeSparqlQueryDirect(any(), any());
+    verify(repository, never()).executeAssertedSparqlQuery(any(), any());
   }
 
   @Test
@@ -193,7 +193,7 @@ class RdfResourceTest {
     RdfRepository repository = enabledRepository();
     Principal alice = () -> "alice";
     when(securityContext.getUserPrincipal()).thenReturn(alice);
-    when(repository.executeSparqlQueryDirect(any(), eq("application/sparql-results+json")))
+    when(repository.executeAssertedSparqlQuery(any(), eq("application/sparql-results+json")))
         .thenReturn("{\"head\":{\"vars\":[\"s\"]},\"results\":{\"bindings\":[]}}");
 
     Response response = rdfResource.queryAgentSparql(securityContext, AGENT_QUERY_BODY);
@@ -213,7 +213,7 @@ class RdfResourceTest {
     CatalogSecurityContext impersonated =
         new CatalogSecurityContext(
             alice, "http", SecurityContext.DIGEST_AUTH, Set.of(), false, "bot", null);
-    when(repository.executeSparqlQueryDirect(any(), eq("application/sparql-results+json")))
+    when(repository.executeAssertedSparqlQuery(any(), eq("application/sparql-results+json")))
         .thenReturn("{\"head\":{\"vars\":[\"s\"]},\"results\":{\"bindings\":[]}}");
     Logger auditLogger = (Logger) org.slf4j.LoggerFactory.getLogger(AgentSparqlAudit.class);
     ListAppender<ILoggingEvent> appender = new ListAppender<>();
