@@ -136,10 +136,18 @@ const selectedNodeId = (selection: GraphSelection) =>
 const selectedFamily = (selection: GraphSelection) =>
   selection?.kind === 'category' ? selection.category : null;
 
+// This component orchestrates data, canvas, drawer, overlays and footer
+// through several hooks and a few optional branches — the cyclomatic
+// cost comes from being an integration site, not from branchy logic that
+// should be split. Keeping it one file keeps the KG wiring reviewable in
+// one read; dropping sections into child components only moves the deps
+// through props.
+
 const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
   entity,
   entityType,
   levels = 2,
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity
 }) => {
   const { t } = useTranslation();
   const location = useLocation();
@@ -303,10 +311,15 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     wasFullscreen.current = isFullscreen;
   }, [isFullscreen]);
 
-  const handleZoom = useCallback(
-    (factor: number) => canvas.zoomBy(factor),
+  const handleZoomIn = useCallback(
+    () => canvas.zoomBy(ZOOM_IN_FACTOR),
     [canvas]
   );
+  const handleZoomOut = useCallback(
+    () => canvas.zoomBy(ZOOM_OUT_FACTOR),
+    [canvas]
+  );
+  const handleExtendToLevel3 = useCallback(() => setSelectedLevel(3), []);
   const handleFit = canvas.fit;
   const handleExport = useCallback(
     async (format: EntityGraphExportFormat) => {
@@ -388,7 +401,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
   // don't change. Keeping the canvas unwrapped by default dodges that; we only
   // pay the one-time G6 re-init when the drawer actually opens.
   const canvasContent = (
-    <Card.Content className="knowledge-graph-body tw:p-0">
+    <div className="knowledge-graph-body">
       <KnowledgeGraphBands
         layout={layout}
         rings={canvas.rings}
@@ -416,7 +429,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
           level={view.level}
           mode={mode}
           onClearFilters={clearFilters}
-          onExtend={() => setSelectedLevel(3)}
+          onExtend={handleExtendToLevel3}
         />
       )}
       <KnowledgeGraphViewControls
@@ -425,10 +438,10 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
         onFit={handleFit}
         onFullscreen={handleFullscreen}
         onRefresh={handleRefresh}
-        onZoomIn={() => handleZoom(ZOOM_IN_FACTOR)}
-        onZoomOut={() => handleZoom(ZOOM_OUT_FACTOR)}
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
       />
-    </Card.Content>
+    </div>
   );
   const detailsElement =
     drawer && displayData ? (
@@ -449,41 +462,36 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
         }
       />
     ) : null;
-  // Build the ReflexContainer children in a helper so the outer render's
-  // cyclomatic complexity stays within budget — react-reflex uses
-  // React.Children.map on its direct children, which handles the array fine
-  // and keeps the canvas ReflexElement stable so G6 isn't re-initialised
-  // every time the drawer toggles.
-  const renderStageChildren = () => {
-    const children: ReactNode[] = [
+  // Precomputed children for ReflexContainer: canvas always, splitter +
+  // details pane only when the drawer is open. React.Children flattens the
+  // array for react-reflex's prop-injection pass, and the canvas slot stays
+  // stable so G6 isn't re-initialised every time the drawer toggles.
+  const stageChildren: ReactNode[] = [
+    <ReflexElement
+      className="kg-stage-canvas-pane"
+      key="canvas"
+      minSize={160}
+      propagateDimensions={false}>
+      {canvasContent}
+    </ReflexElement>,
+  ];
+  if (detailsElement) {
+    stageChildren.push(
+      <ReflexSplitter
+        aria-label={t('label.kg-resize-details')}
+        className="kg-stage-splitter"
+        key="splitter"
+        propagate={false}
+      />,
       <ReflexElement
-        className="kg-stage-canvas-pane"
-        key="canvas"
-        minSize={160}
-        propagateDimensions={false}>
-        {canvasContent}
-      </ReflexElement>,
-    ];
-    if (detailsElement) {
-      children.push(
-        <ReflexSplitter
-          aria-label={t('label.kg-resize-details')}
-          className="kg-stage-splitter"
-          key="splitter"
-          propagate={false}
-        />,
-        <ReflexElement
-          className="kg-stage-details-pane"
-          flex={0.4}
-          key="details"
-          minSize={180}>
-          {detailsElement}
-        </ReflexElement>
-      );
-    }
-
-    return children;
-  };
+        className="kg-stage-details-pane"
+        flex={0.4}
+        key="details"
+        minSize={180}>
+        {detailsElement}
+      </ReflexElement>
+    );
+  }
 
   return (
     <FocusScope contain={isFullscreen}>
@@ -555,7 +563,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
               <ReflexContainer
                 className="kg-stage-main"
                 orientation="horizontal">
-                {renderStageChildren()}
+                {stageChildren}
               </ReflexContainer>
               <KnowledgeGraphOverlays
                 coverage={coverage}

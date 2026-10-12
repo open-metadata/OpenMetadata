@@ -98,7 +98,7 @@
   // handle that reveals a wider active hit area via a transparent padded
   // ::before, so the physical border stays 1px but the user has room to grab.
   .kg-stage-splitter.reflex-splitter {
-    height: var(--om-space-1);
+    height: 1px;
     background: var(--tw-border-color-secondary);
     border: 0;
     cursor: row-resize;
@@ -107,7 +107,7 @@
     &::before {
       content: '';
       position: absolute;
-      inset: calc(-1 * var(--om-space-4)) 0;
+      inset: -4px 0;
     }
 
     &:hover,
