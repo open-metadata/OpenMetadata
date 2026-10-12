@@ -464,6 +464,15 @@ const ConnectionServiceDetailsPage: React.FC = () => {
     [saveUpdatedServiceData, serviceDetails]
   );
 
+  // DataAssetsTab's data products section saves the service itself; only mirror the result here.
+  const handleDataProductsChange = useCallback(
+    (dataProducts: EntityReference[]) =>
+      setServiceDetails(
+        (previous) => ({ ...previous, dataProducts } as ServicesType)
+      ),
+    []
+  );
+
   const onDataProductUpdate = useCallback(
     async (dataProducts: DataProduct[]) => {
       if (!serviceCategory || !serviceDetails.id) {
@@ -955,6 +964,7 @@ const ConnectionServiceDetailsPage: React.FC = () => {
               setIsServiceLoading={setIsServiceLoading}
               showDeleted={showDeleted}
               onDataProductUpdate={onDataProductUpdate}
+              onDataProductsChange={handleDataProductsChange}
               onDescriptionUpdate={onDescriptionUpdate}
               onShowDeletedChange={handleShowDeletedChange}
             />

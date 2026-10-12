@@ -21,7 +21,7 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { getDatabases } from '../../../rest/databaseAPI';
-import { getServiceByFQN } from '../../../rest/serviceAPI';
+import { getServiceByFQN, patchService } from '../../../rest/serviceAPI';
 import { getTopics } from '../../../rest/topicsAPI';
 import { EXTENSION_POINTS } from '../../../utils/ExtensionPointTypes';
 import ConnectionServiceDetailsPage from './ConnectionServiceDetailsPage';
@@ -374,22 +374,25 @@ jest.mock('./ServiceDriveAssetTabs', () => ({
   },
 }));
 
+const mockDataAssetsTab = jest.fn();
 jest.mock('./DataAssetsTab', () => ({
   __esModule: true,
-  default: ({
-    data,
-    onShowDeletedChange,
-  }: {
+  default: (props: {
     data: { name: string }[];
     onShowDeletedChange: (value: boolean) => void;
-  }) => (
-    <div data-testid="data-assets-tab">
-      <button onClick={() => onShowDeletedChange(true)}>show-deleted</button>
-      {data.map(({ name }) => (
-        <span key={name}>{name}</span>
-      ))}
-    </div>
-  ),
+  }) => {
+    mockDataAssetsTab(props);
+    const { data, onShowDeletedChange } = props;
+
+    return (
+      <div data-testid="data-assets-tab">
+        <button onClick={() => onShowDeletedChange(true)}>show-deleted</button>
+        {data.map(({ name }) => (
+          <span key={name}>{name}</span>
+        ))}
+      </div>
+    );
+  },
 }));
 
 // Exercises the owner/domain/tier editing UI on its own OSS primitives (DomainSelectableList,
@@ -638,6 +641,22 @@ describe('ConnectionServiceDetailsPage', () => {
         expect(tabComponent).not.toHaveBeenCalled();
       }
     );
+  });
+
+  it('mirrors data products the data-assets tab saved, without saving them again', async () => {
+    await act(async () => {
+      render(<ConnectionServiceDetailsPage />);
+    });
+    await waitFor(() => expect(mockDataAssetsTab).toHaveBeenCalled());
+    const dataProduct = { id: 'dp-1', type: 'dataProduct', name: 'Revenue' };
+
+    const { onDataProductsChange } = mockDataAssetsTab.mock.calls.at(-1)[0];
+    act(() => onDataProductsChange([dataProduct]));
+
+    expect(mockDataAssetsTab.mock.calls.at(-1)[0].serviceDetails).toEqual(
+      expect.objectContaining({ dataProducts: [dataProduct] })
+    );
+    expect(patchService).not.toHaveBeenCalled();
   });
 
   describe('read-only user', () => {

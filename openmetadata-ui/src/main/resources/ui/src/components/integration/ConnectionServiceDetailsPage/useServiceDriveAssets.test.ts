@@ -12,6 +12,7 @@
  */
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { EntityType } from '../../../enums/entity.enum';
+import { CursorType } from '../../../enums/pagination.enum';
 import { File } from '../../../generated/entity/data/file';
 import { getDriveAssets } from '../../../rest/driveAPI';
 import { useServiceDriveAssets } from './useServiceDriveAssets';
@@ -155,7 +156,10 @@ describe('useServiceDriveAssets', () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     act(() =>
-      result.current.onPageChange({ cursorType: 'after', currentPage: 2 })
+      result.current.onPageChange({
+        cursorType: CursorType.AFTER,
+        currentPage: 2,
+      })
     );
 
     expect(mockHandlePageChange).toHaveBeenCalledWith(
@@ -170,7 +174,10 @@ describe('useServiceDriveAssets', () => {
     const { result } = renderFiles();
 
     act(() =>
-      result.current.onPageChange({ cursorType: 'after', currentPage: 2 })
+      result.current.onPageChange({
+        cursorType: CursorType.AFTER,
+        currentPage: 2,
+      })
     );
 
     expect(mockHandlePageChange).toHaveBeenCalledWith(2);

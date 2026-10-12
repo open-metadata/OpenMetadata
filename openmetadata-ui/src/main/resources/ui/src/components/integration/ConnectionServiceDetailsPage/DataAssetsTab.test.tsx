@@ -16,24 +16,12 @@ import { OperationPermission } from '../../../context/PermissionProvider/Permiss
 import { ServiceCategory } from '../../../enums/service.enum';
 import { ServicesType } from '../../../interface/service.interface';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
-import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
+import { EntityType } from '../../../enums/entity.enum';
+import DataProductsSection from '../../common/DataProductsSection/DataProductsSection';
 import DataAssetsTab from './DataAssetsTab';
 
-let mockEntityRules = {
-  entityRules: {
-    canAddMultipleDataProducts: true,
-    requireDomainForDataProduct: false,
-  },
-  isRulesLoaded: true,
-};
-
-jest.mock('../../../hooks/useEntityRules', () => ({
-  useEntityRules: () => mockEntityRules,
-}));
-
-jest.mock(
-  '../../DataProducts/DataProductsContainer/DataProductsContainer.component',
-  () => jest.fn(() => <div data-testid="data-products-container" />)
+jest.mock('../../common/DataProductsSection/DataProductsSection', () =>
+  jest.fn(() => <div data-testid="data-products-section" />)
 );
 
 jest.mock('../../../pages/ServiceDetailsPage/ServiceMainTabContent', () =>
@@ -73,6 +61,7 @@ const EDIT_ALL = {
 } as OperationPermission;
 
 const onDataProductUpdate = jest.fn();
+const onDataProductsChange = jest.fn();
 
 const renderTab = ({
   serviceCategory = ServiceCategory.DATABASE_SERVICES,
@@ -106,25 +95,17 @@ const renderTab = ({
       setIsServiceLoading={jest.fn()}
       showDeleted={false}
       onDataProductUpdate={onDataProductUpdate}
+      onDataProductsChange={onDataProductsChange}
       onDescriptionUpdate={jest.fn()}
       onShowDeletedChange={jest.fn()}
     />
   );
 
 const lastDataProductsProps = () =>
-  (DataProductsContainer as unknown as jest.Mock).mock.calls.at(-1)?.[0];
+  (DataProductsSection as unknown as jest.Mock).mock.calls.at(-1)?.[0];
 
 describe('DataAssetsTab — data products', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    mockEntityRules = {
-      entityRules: {
-        canAddMultipleDataProducts: true,
-        requireDomainForDataProduct: false,
-      },
-      isRulesLoaded: true,
-    };
-  });
+  beforeEach(() => jest.clearAllMocks());
 
   // Classic shows these in the right panel, which this tab hides.
   it("shows the service's data products against its domains", () => {
@@ -135,33 +116,21 @@ describe('DataAssetsTab — data products', () => {
       expect.objectContaining({
         activeDomains: [DOMAIN],
         dataProducts: [DATA_PRODUCT],
+        entityId: 'svc-1',
+        entityType: EntityType.DATABASE_SERVICE,
         hasPermission: true,
-        onSave: onDataProductUpdate,
       })
     );
   });
 
-  it('follows the entity rules for multiple data products and a required domain', () => {
+  // The section patches the service itself; the page only needs the result mirrored back.
+  it('hands what the section saved back to the page', () => {
     renderTab();
 
-    expect(lastDataProductsProps()).toEqual(
-      expect.objectContaining({
-        multiple: true,
-        requireDomainForDataProduct: false,
-      })
-    );
-  });
+    lastDataProductsProps().onDataProductsUpdate([DATA_PRODUCT]);
 
-  it('allows one data product and requires a domain until the rules load', () => {
-    mockEntityRules = { ...mockEntityRules, isRulesLoaded: false };
-    renderTab();
-
-    expect(lastDataProductsProps()).toEqual(
-      expect.objectContaining({
-        multiple: false,
-        requireDomainForDataProduct: true,
-      })
-    );
+    expect(onDataProductsChange).toHaveBeenCalledWith([DATA_PRODUCT]);
+    expect(onDataProductUpdate).not.toHaveBeenCalled();
   });
 
   it('is read-only without EditAll', () => {

@@ -553,19 +553,20 @@ test.describe(
           service.create(apiContext),
           dataProduct.create(apiContext),
         ]);
-        // A data product can only be assigned within its domain.
+        // A data product can only be assigned within its domain; the test assigns it in the UI.
         await service.patch(apiContext, [
           {
             op: 'add',
             path: '/domains',
             value: dataProduct.responseData.domains,
           },
-          {
-            op: 'add',
-            path: '/dataProducts',
-            value: [{ id: dataProduct.responseData.id, type: 'dataProduct' }],
-          },
         ]);
+        // The picker searches for data products.
+        await waitForSearchIndexed(
+          apiContext,
+          dataProduct.responseData.fullyQualifiedName,
+          'data_product_search_index'
+        );
         await afterAction();
       });
 
@@ -576,20 +577,58 @@ test.describe(
         await afterAction();
       });
 
-      test("shows the service's data products in its metadata details", async ({
+      test('assigns a data product to the service from its metadata details', async ({
         page,
       }) => {
+        const serviceFqn = service.entityResponseData.fullyQualifiedName;
+        const dataProductFqn =
+          dataProduct.responseData.fullyQualifiedName ?? '';
+        const section = page.getByTestId('service-data-products');
+        expect(dataProductFqn).not.toBe('');
         await enableAiAppMode(page);
         await visitAiModeServiceDetailsPage(page, {
           category: 'databaseServices',
-          fqn: service.entityResponseData.fullyQualifiedName,
+          fqn: serviceFqn,
         });
-
         await page.getByRole('button', { name: 'Metadata Details' }).click();
 
-        await expect(page.getByTestId('service-data-products')).toContainText(
-          dataProduct.responseData.displayName
-        );
+        await test.step('pick it and apply', async () => {
+          await section.getByTestId('edit-data-products').click();
+          const picker = page.getByTestId('drop-down-menu');
+          const option = picker.getByTestId(dataProductFqn);
+          await expect(option).toBeVisible();
+          await option.click();
+
+          const save = waitForResponseWithStatus(
+            page,
+            (response) =>
+              response.request().method() === 'PATCH' &&
+              response
+                .url()
+                .includes(
+                  `/api/v1/services/databaseServices/${service.entityResponseData.id}`
+                ),
+            200
+          );
+          await picker.getByTestId('update-btn').click();
+          await save;
+
+          await expect(section).toContainText(
+            dataProduct.responseData.displayName
+          );
+        });
+
+        await test.step('it is still there after a reload', async () => {
+          await visitAiModeServiceDetailsPage(page, {
+            category: 'databaseServices',
+            fqn: serviceFqn,
+          });
+          await page.getByRole('button', { name: 'Metadata Details' }).click();
+
+          await expect(section).toContainText(
+            dataProduct.responseData.displayName
+          );
+        });
       });
     });
 

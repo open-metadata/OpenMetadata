@@ -27,16 +27,15 @@ import { EntityReference } from '../../../generated/entity/type';
 import { Paging } from '../../../generated/type/paging';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { UsePagingInterface } from '../../../hooks/paging/usePaging';
-import { useEntityRules } from '../../../hooks/useEntityRules';
 import { ServicePageData } from '../../../interface/platform/service.interface';
 import { ServicesType } from '../../../interface/service.interface';
 import ServiceMainTabContent from '../../../pages/ServiceDetailsPage/ServiceMainTabContent';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getEntityTypeFromServiceCategory } from '../../../utils/ServicePureUtils';
+import DataProductsSection from '../../common/DataProductsSection/DataProductsSection';
 import Description from '../../common/EntityDescription/Description';
 import GlossaryTermsSection from '../../common/GlossaryTermsSection/GlossaryTermsSection';
 import TagsSectionV1 from '../../common/TagsSection/TagsSection';
-import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import './data-assets-tab.less';
 
 interface DataAssetsTabProps {
@@ -55,6 +54,8 @@ interface DataAssetsTabProps {
   pagingInfo: UsePagingInterface;
   setIsServiceLoading: Dispatch<SetStateAction<boolean>>;
   onDataProductUpdate: (dataProducts: DataProduct[]) => Promise<void>;
+  /** DataProductsSection saves the service itself; this keeps the caller's copy in step. */
+  onDataProductsChange: (dataProducts: EntityReference[]) => void;
 }
 
 const DataAssetsTab = ({
@@ -64,6 +65,7 @@ const DataAssetsTab = ({
   onDescriptionUpdate,
   saveUpdatedServiceData,
   onDataProductUpdate,
+  onDataProductsChange,
   ...rest
 }: DataAssetsTabProps) => {
   const { t } = useTranslation();
@@ -74,7 +76,6 @@ const DataAssetsTab = ({
   );
 
   const allTags = serviceDetails?.tags ?? [];
-  const { entityRules, isRulesLoaded } = useEntityRules(entityType);
   // ServicesType doesn't declare the governance fields, though the service is fetched with them.
   const { domains, dataProducts } = serviceDetails as unknown as {
     domains?: EntityReference[];
@@ -138,18 +139,18 @@ const DataAssetsTab = ({
                   carry no data products there either. */}
               {entityType !== EntityType.METADATA_SERVICE && (
                 <div data-testid="service-data-products">
-                  <DataProductsContainer
-                    newLook
+                  <DataProductsSection
                     activeDomains={domains}
-                    dataProducts={dataProducts ?? []}
+                    dataProducts={dataProducts}
+                    entityId={serviceDetails.id}
+                    entityType={entityType}
                     hasPermission={editDataProductsPermission}
-                    multiple={
-                      isRulesLoaded && entityRules.canAddMultipleDataProducts
-                    }
-                    requireDomainForDataProduct={
-                      !isRulesLoaded || entityRules.requireDomainForDataProduct
-                    }
-                    onSave={onDataProductUpdate}
+                    // The section keeps what it shows in its own state; remount it when the
+                    // service's data products change underneath it, as the summary panel does.
+                    key={`data-products-${serviceDetails.id}-${
+                      dataProducts?.length ?? 0
+                    }`}
+                    onDataProductsUpdate={onDataProductsChange}
                   />
                 </div>
               )}
