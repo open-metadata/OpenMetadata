@@ -13,6 +13,7 @@
 import Icon from '@ant-design/icons';
 import { Box, Card, Typography } from '@openmetadata/ui-core-components';
 import { Affix, Button } from 'antd';
+import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -107,11 +108,12 @@ const WhatsNewAlert = () => {
             data-testid="whats-new-alert-card">
             <Box className="layout-row" wrap="nowrap">
               <Box
-                className={`layout-column tw:block whats-new-alert-left ${
+                className={classNames(
+                  'layout-column tw:block whats-new-alert-left',
                   releaseDate
                     ? 'tw:flex-[0_0_220px]'
                     : 'tw:flex-[0_0_140px] whats-new-alert-left--centered'
-                }`}>
+                )}>
                 <div className="whats-new-alert-version-block">
                   <div className="whats-new-alert-meta">
                     <Typography className="whats-new-alert-meta-label">
