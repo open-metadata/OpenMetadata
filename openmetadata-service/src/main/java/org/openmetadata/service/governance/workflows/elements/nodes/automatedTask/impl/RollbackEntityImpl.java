@@ -54,6 +54,7 @@ public class RollbackEntityImpl implements JavaDelegate {
   private static final String REJECT_ACTION = "reject";
 
   private Expression inputNamespaceMapExpr;
+  private Expression batchExecutionExpr;
 
   @Deprecated
   @SuppressWarnings("unused")
@@ -61,6 +62,22 @@ public class RollbackEntityImpl implements JavaDelegate {
 
   @Override
   public void execute(DelegateExecution execution) {
+    WorkflowVariableHandler variableHandler = new WorkflowVariableHandler(execution);
+    InputNamespaces namespaces = InputNamespaces.from(inputNamespaceMapExpr, execution);
+    String updatedBy = updatedBy(variableHandler, namespaces);
+    BatchEntities.applyAction(
+        new BatchEntities.NodeExecution(batchExecutionExpr, execution, variableHandler, namespaces),
+        entityLink -> rejectEntity(entityLink, updatedBy),
+        () -> rejectRelatedEntity(execution));
+  }
+
+  private void rejectEntity(String entityLinkValue, String updatedBy) {
+    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkValue);
+    EntityInterface<?> entity = Entity.getEntity(entityLink, "", Include.ALL);
+    applyRejection(Entity.getEntityRepository(entityLink.getEntityType()), entity, updatedBy);
+  }
+
+  private void rejectRelatedEntity(DelegateExecution execution) {
     try {
       RollbackContext context = createContext(execution);
       RejectionOutcome outcome =

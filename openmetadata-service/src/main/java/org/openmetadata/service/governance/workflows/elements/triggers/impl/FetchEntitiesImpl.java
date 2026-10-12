@@ -9,12 +9,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Predicate;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.workflows.WorkflowStopRequests;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultListMapper;
@@ -26,6 +28,9 @@ public class FetchEntitiesImpl implements JavaDelegate {
   // and require the .keyword subfield for reliable sorting in deep pagination.
   private static final Set<String> ENTITIES_NEEDING_KEYWORD_SORT =
       Set.of("testCase", "user", "team");
+
+  /** Whether the WorkflowInstance of a business key was asked to stop; replaced in tests. */
+  Predicate<String> isStopRequested = WorkflowStopRequests::isStopRequested;
 
   private Expression entityTypesExpr;
   private Expression searchFilterExpr;
@@ -90,9 +95,17 @@ public class FetchEntitiesImpl implements JavaDelegate {
     int batchSize = Integer.parseInt((String) batchSizeExpr.getValue(execution));
 
     List<String> entityList = new ArrayList<>();
+    // The trigger process's business key is its WorkflowInstance id. Fetching nothing once a stop
+    // was requested sets hasFinished, so the batch loop ends and the process ends on its own.
+    boolean isStopped = isStopRequested.test(execution.getProcessInstanceBusinessKey());
+    if (isStopped) {
+      LOG.info(
+          "[WorkflowTerminate] Process {} fetches no further entities: a stop was requested",
+          execution.getProcessInstanceId());
+    }
 
     // Process only the single entity type for this process instance
-    if (entityTypeToFetch != null) {
+    if (entityTypeToFetch != null && !isStopped) {
       List<Object> searchAfter =
           JsonUtils.readOrConvertValues(execution.getVariable("searchAfter"), Object.class);
 

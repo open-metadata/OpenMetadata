@@ -460,6 +460,12 @@ CREATE INDEX IF NOT EXISTS idx_sso_test_login_session_admin
 CREATE INDEX IF NOT EXISTS idx_sso_test_login_session_expires
     ON sso_test_login_session (expires_at);
 
+-- Settings that exist both in openmetadata.yaml/environment and in this table (security, email,
+-- base URL, SCIM, MCP, app configuration) remember the deployment values they were last
+-- reconciled with. Comparing against that snapshot is how a server start tells a value changed in
+-- the deployment from a value changed in the UI (#31786). NULL until the server first reconciles.
+ALTER TABLE openmetadata_settings ADD COLUMN IF NOT EXISTS deployment_snapshot JSONB;
+
 -- #33980 shipped this column while the type enum still read Information/Warning/Issue. The enum
 -- has since been renamed so the stored value matches what the UI shows (Notice/Critical). A
 -- version is reprocessed statement-by-statement against SERVER_MIGRATION_SQL_LOGS, and the
@@ -569,3 +575,8 @@ ALTER TABLE rdf_projection_health
 CREATE INDEX IF NOT EXISTS idx_entity_relationship_memory_anchor
     ON entity_relationship (fromId, relation)
     WHERE toEntity = 'contextMemory';
+
+-- aboutEntity task lists match `aboutfqnhash LIKE 'hash.%'`, which a plain btree can't serve under a
+-- non-C collation (seq scan); text_pattern_ops as for the 1.13.0 *_fqnhash_pattern indexes.
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_task_about_fqn_hash_pattern
+  ON task_entity (aboutfqnhash text_pattern_ops);

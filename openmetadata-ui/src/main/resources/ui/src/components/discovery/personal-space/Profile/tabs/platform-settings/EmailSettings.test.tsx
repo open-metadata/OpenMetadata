@@ -14,14 +14,22 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { TransportationStrategy } from '../../../../../../generated/email/smtpSettings';
-import { getSettingsConfigFromConfigType } from '../../../../../../rest/settingConfigAPI';
+import { SettingType } from '../../../../../../generated/system/settingsSourceResponse';
+import {
+  getSettingsConfigFromConfigType,
+  getSettingsSource,
+} from '../../../../../../rest/settingConfigAPI';
+import { renderWithQueryClient } from '../../../../../../test/unit/test-utils';
 import EmailSettings from './EmailSettings';
+import { deploymentOwnedSource } from './PlatformSettings.mock';
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
 jest.mock('../../../../../../rest/settingConfigAPI', () => ({
+  getSettingsSource: jest.fn().mockResolvedValue({ settings: [] }),
+  adoptDeploymentConfig: jest.fn(),
   getSettingsConfigFromConfigType: jest.fn(),
   testEmailConnection: jest.fn(),
 }));
@@ -38,7 +46,7 @@ const onSetHeaderActions = jest.fn((actions: ReactNode) => {
 });
 
 const renderView = async () => {
-  render(
+  renderWithQueryClient(
     <EmailSettings
       onNavigate={onNavigate}
       onSetHeaderActions={onSetHeaderActions}
@@ -51,6 +59,7 @@ describe('EmailSettings', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     headerActions = undefined;
+    (getSettingsSource as jest.Mock).mockResolvedValue({ settings: [] });
   });
 
   it('shows every stored SMTP field, with "Not set" for empty ones', async () => {
@@ -109,5 +118,20 @@ describe('EmailSettings', () => {
     expect(screen.getByTestId('email-config-empty')).toBeInTheDocument();
     expect(screen.queryByTestId('test-email-button')).not.toBeInTheDocument();
     expect(screen.getByTestId('edit-button')).toHaveTextContent('label.add');
+  });
+
+  it('keeps Test Email but offers no edit when the deployment owns every field', async () => {
+    (getSettingsConfigFromConfigType as jest.Mock).mockResolvedValue({
+      data: { config_value: { senderMail: 'noreply@example.com' } },
+    });
+    (getSettingsSource as jest.Mock).mockResolvedValue({
+      settings: [deploymentOwnedSource(SettingType.EmailConfiguration, ['/'])],
+    });
+    await renderView();
+    await screen.findByTestId('settings-source-env-alert');
+    render(<>{headerActions}</>);
+
+    expect(screen.getByTestId('test-email-button')).toBeInTheDocument();
+    expect(screen.queryByTestId('edit-button')).not.toBeInTheDocument();
   });
 });
