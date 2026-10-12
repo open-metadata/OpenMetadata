@@ -20,6 +20,7 @@ import jakarta.json.JsonPatch;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.ws.rs.BeanParam;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
@@ -66,6 +67,9 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.csv.CsvAsyncJob;
+import org.openmetadata.service.csv.CsvAsyncJobArgs;
+import org.openmetadata.service.csv.CsvAsyncJobManager;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
@@ -84,6 +88,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.TestCaseResourceContext;
+import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -1369,9 +1374,12 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
                   "Name can be table FQN, test suite FQN, or '*' for platform-wide export",
               schema = @Schema(type = "string"))
           @PathParam("name")
-          String name)
+          String name,
+      @BeanParam TestCaseExportQuery query)
       throws IOException {
-    return exportCsvInternal(securityContext, name, false);
+    CsvAsyncJobArgs.TestCaseExportArgs exportArgs = authorizeExport(securityContext, name, query);
+    return repository.exportToCsv(
+        name, securityContext.getUserPrincipal().getName(), exportArgs, null);
   }
 
   @GET
@@ -1402,8 +1410,132 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
                   "Name can be table FQN, test suite FQN, or '*' for platform-wide export",
               schema = @Schema(type = "string"))
           @PathParam("name")
-          String name) {
-    return exportCsvInternalAsync(securityContext, name, false);
+          String name,
+      @BeanParam TestCaseExportQuery query) {
+    CsvAsyncJobArgs.TestCaseExportArgs exportArgs = authorizeExport(securityContext, name, query);
+    CsvAsyncJob job =
+        CsvAsyncJobManager.getInstance()
+            .createTestCaseExportJob(
+                name, securityContext.getUserPrincipal().getName(), exportArgs);
+    CSVExportResponse response =
+        new CSVExportResponse(job.getJobId(), "Export initiated successfully.");
+    return Response.accepted().entity(response).type(MediaType.APPLICATION_JSON).build();
+  }
+
+  private CsvAsyncJobArgs.TestCaseExportArgs authorizeExport(
+      SecurityContext securityContext, String name, TestCaseExportQuery query) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+    CsvAsyncJobArgs.TestCaseExportArgs exportArgs = query.toExportArgs();
+    repository.validateExportScope(name, exportArgs.getEntityFQN());
+    return exportArgs;
+  }
+
+  /**
+   * Filters and page shared by the sync and async export endpoints, so the two cannot drift. The
+   * filters mean what they mean on the test case search listing the Bulk Edit grid is opened from.
+   */
+  public static final class TestCaseExportQuery {
+    @Parameter(
+        description =
+            "Filter by test case status. Repeat the parameter or pass comma separated values",
+        schema =
+            @Schema(
+                type = "string",
+                allowableValues = {"Success", "Failed", "Aborted", "Queued"}))
+    @QueryParam("testCaseStatus")
+    private List<String> testCaseStatus;
+
+    @Parameter(
+        description = "Filter by test case type",
+        schema =
+            @Schema(
+                type = "string",
+                allowableValues = {"column", "table", "all"}))
+    @QueryParam("testCaseType")
+    private String testCaseType;
+
+    @Parameter(
+        description =
+            "Filter by the FQN of the table or column under test. A table FQN includes its column tests",
+        schema = @Schema(type = "string"))
+    @QueryParam("entityFQN")
+    private String entityFQN;
+
+    @Parameter(
+        description = "Filter by entity link. Mutually exclusive with entityFQN",
+        schema = @Schema(type = "string", example = "<E#/{entityType}/{entityFQN}/{fieldName}>"))
+    @QueryParam("entityLink")
+    private String entityLink;
+
+    @Parameter(
+        description = "Filter by tag FQNs, comma separated",
+        schema = @Schema(type = "string"))
+    @QueryParam("tags")
+    private String tags;
+
+    @Parameter(description = "Filter by tier tag FQN", schema = @Schema(type = "string"))
+    @QueryParam("tier")
+    private String tier;
+
+    @Parameter(
+        description = "Filter by owner (user or team name). A user also matches their teams",
+        schema = @Schema(type = "string"))
+    @QueryParam("owner")
+    private String owner;
+
+    // Range-checked in toExportArgs rather than with @Min: the sync endpoint produces text/plain,
+    // which the bean-validation error body cannot be written as, turning a 400 into a 500.
+    @Parameter(description = "Maximum number of test cases to export (>= 1). Omit to export all")
+    @QueryParam("limit")
+    private Integer limit;
+
+    @Parameter(description = "Number of matching test cases to skip (>= 0)")
+    @DefaultValue("0")
+    @QueryParam("offset")
+    private int offset;
+
+    private CsvAsyncJobArgs.TestCaseExportArgs toExportArgs() {
+      if (limit != null && limit < 1) {
+        throw new IllegalArgumentException("limit must be greater than or equal to 1");
+      }
+      if (offset < 0) {
+        throw new IllegalArgumentException("offset must be greater than or equal to 0");
+      }
+      if (!nullOrEmpty(entityFQN) && !nullOrEmpty(entityLink)) {
+        throw new IllegalArgumentException("Use either entityFQN or entityLink, not both");
+      }
+      String resolvedEntityFQN =
+          nullOrEmpty(entityLink)
+              ? emptyToNull(entityFQN)
+              : EntityLink.parse(entityLink).getFullyQualifiedFieldValue();
+      return new CsvAsyncJobArgs.TestCaseExportArgs()
+          .setTestCaseStatus(validateTestCaseStatuses(testCaseStatus))
+          .setTestCaseType(validateTestCaseType(testCaseType))
+          .setEntityFQN(resolvedEntityFQN)
+          .setTags(emptyToNull(tags))
+          .setTier(emptyToNull(tier))
+          .setOwnerIds(resolveUserOrTeamIds(owner, true))
+          .setLimit(limit)
+          .setOffset(offset);
+    }
+
+    private static String validateTestCaseType(String type) {
+      if (nullOrEmpty(type) || TEST_CASE_TYPE_ALL.equals(type)) {
+        return null;
+      }
+      if (!Entity.TABLE.equals(type) && !"column".equals(type)) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Invalid testCaseType '%s'. Allowed values are [column, table, all]", type));
+      }
+      return type;
+    }
+
+    private static String emptyToNull(String value) {
+      return nullOrEmpty(value) ? null : value;
+    }
   }
 
   @PUT

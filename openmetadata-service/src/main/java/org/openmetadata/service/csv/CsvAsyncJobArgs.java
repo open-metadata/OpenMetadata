@@ -38,6 +38,8 @@ public class CsvAsyncJobArgs {
   private LineageExportArgs lineageExport;
   // Present when the job exports audit log events as JSON.
   private AuditExportArgs auditExport;
+  // Present when a test case export is narrowed by list filters or paginated.
+  private TestCaseExportArgs testCaseExport;
 
   @Getter
   @Setter
@@ -98,5 +100,25 @@ public class CsvAsyncJobArgs {
     private Long endTs;
     private String searchTerm;
     private Integer limit;
+  }
+
+  /**
+   * Filters and page for a test case export, already validated and resolved by the resource
+   * (statuses normalized, entity link reduced to its FQN, owner name resolved to ids) so the sync
+   * and async endpoints hand the repository the same input.
+   */
+  @Getter
+  @Setter
+  @NoArgsConstructor
+  @Accessors(chain = true)
+  public static class TestCaseExportArgs {
+    private String testCaseStatus;
+    private String testCaseType;
+    private String entityFQN;
+    private String tags;
+    private String tier;
+    private String ownerIds;
+    private Integer limit;
+    private Integer offset;
   }
 }
