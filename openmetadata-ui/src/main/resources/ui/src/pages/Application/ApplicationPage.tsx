@@ -12,11 +12,12 @@
  */
 import {
   Box,
+  Card,
   Grid,
   SkeletonParagraph,
   Toggle,
 } from '@openmetadata/ui-core-components';
-import { Button, Card } from 'antd';
+import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, uniqueId } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -211,7 +212,9 @@ const ApplicationPage = () => {
               className="layout-column tw:col-span-24 tw:min-[576px]:col-span-24 tw:min-[768px]:col-span-12 tw:min-[992px]:col-span-8 tw:min-[1200px]:col-span-6"
               key={key}>
               <Card>
-                <SkeletonParagraph />
+                <Card.Content>
+                  <SkeletonParagraph />
+                </Card.Content>
               </Card>
             </Grid.Item>
           ))}

@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Divider, Grid, Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Form, Input, Select } from 'antd';
+import {
+  Card,
+  Divider,
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Button, Form, Input, Select } from 'antd';
 import { FormProps } from 'antd/lib/form/Form';
 import classNames from 'classnames';
 import { isEmpty, isNull } from 'lodash';
@@ -381,10 +386,6 @@ export const ContractSecurityFormTab: React.FC<{
   const [editingKey, setEditingKey] = useState<number | null>(null);
 
   const policiesFormData: Policy[] = Form.useWatch('policies', form);
-  const dataClassificationFormItem: string = Form.useWatch(
-    'dataClassification',
-    form
-  );
 
   const columnOptions = useMemo(() => {
     const { columns } = tableData as Table;
@@ -421,12 +422,12 @@ export const ContractSecurityFormTab: React.FC<{
       });
       onChange({
         security: {
-          dataClassification: dataClassificationFormItem,
+          dataClassification: form.getFieldValue('dataClassification'),
           policies: filteredValue,
         },
       });
     },
-    [policiesFormData]
+    [policiesFormData, form, onChange]
   );
 
   const handleFormChange: FormProps['onValuesChange'] = (_, values) => {
@@ -461,7 +462,7 @@ export const ContractSecurityFormTab: React.FC<{
         setEditingKey(0);
       }
     }
-  }, [initialValues?.security]);
+  }, [initialValues?.security, form]);
 
   return (
     <>

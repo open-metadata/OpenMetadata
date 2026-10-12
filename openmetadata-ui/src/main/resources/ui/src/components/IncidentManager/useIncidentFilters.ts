@@ -16,6 +16,7 @@ import QueryString, { ParsedQs } from 'qs';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { INITIAL_PAGING_VALUE } from '../../constants/constants';
 import { Option } from '../../pages/TasksPage/TasksPage.interface';
 import { TestCaseIncidentStatusParams } from '../../rest/incidentManagerAPI';
 
@@ -73,9 +74,27 @@ export const useIncidentFilters = ({
       dateRangeParams?: { key: string; title: string }
     ) => {
       const updatedFilters = { ...filters, ...newFilters };
+      // `filters` mirrors the whole query string, so it also carries usePaging's
+      // `currentPage`/cursor params. A changed value yields a different result
+      // set, and keeping the old page would request an offset past its end. An
+      // unchanged value (e.g. re-selecting the same option) keeps the page.
+      const filterChanged = Object.keys(newFilters).some(
+        (key) =>
+          !isEqual(
+            (filters as Record<string, unknown>)[key],
+            (newFilters as Record<string, unknown>)[key]
+          )
+      );
+      const pagingReset = filterChanged
+        ? {
+            currentPage: INITIAL_PAGING_VALUE,
+            cursorType: undefined,
+            cursorValue: undefined,
+          }
+        : {};
       const allUpdatedParams = dateRangeParams
-        ? { ...updatedFilters, ...dateRangeParams }
-        : { ...allParams, ...updatedFilters };
+        ? { ...updatedFilters, ...dateRangeParams, ...pagingReset }
+        : { ...allParams, ...updatedFilters, ...pagingReset };
 
       navigate(
         {
@@ -120,6 +139,9 @@ export const useIncidentFilters = ({
       'key',
       'title',
       'dateField',
+      'currentPage',
+      'cursorType',
+      'cursorValue',
     ]);
     navigate(
       {

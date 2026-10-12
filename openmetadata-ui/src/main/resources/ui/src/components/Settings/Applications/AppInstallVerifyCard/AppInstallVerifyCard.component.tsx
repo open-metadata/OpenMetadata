@@ -15,8 +15,13 @@ import {
   ClockCircleOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { Box, Divider, Typography } from '@openmetadata/ui-core-components';
-import { Avatar, Button, Card, Collapse } from 'antd';
+import {
+  Box,
+  Card,
+  Divider,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Avatar, Button, Collapse } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { LIGHT_GREEN_COLOR } from '../../../../constants/constants';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
@@ -72,94 +77,98 @@ const AppInstallVerifyCard = ({
         })}
       </Typography>
       <Card className="w-500 m-t-md">
-        <Box
-          inline
-          align="center"
-          className="layout-space layout-space-horizontal"
-          gap={3}
-          itemClassName="layout-space-item">
-          <UserPopOverCard
-            profileWidth={32}
-            userName={currentUser?.name ?? ''}
-          />
-          <div className="d-flex flex-col">
-            <Typography className="font-medium">
-              <Transi18next
-                i18nKey="label.application-by-developer"
-                renderElement={
-                  <a
-                    aria-label={t('label.application')}
-                    href={appData?.developerUrl}
-                    rel="noreferrer"
-                    style={{ color: theme.primaryColor }}
-                    target="_blank"
-                  />
-                }
-                values={{
-                  dev: appData?.developer,
-                  app: getEntityName(appData),
-                }}
-              />
-            </Typography>
-            <Typography className="text-xs" color="secondary">
-              {t('label.wants-to-access-your-account', {
-                username: currentUser?.displayName ?? currentUser?.name,
-              })}
-            </Typography>
+        <Card.Content>
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal"
+            gap={3}
+            itemClassName="layout-space-item">
+            <UserPopOverCard
+              profileWidth={32}
+              userName={currentUser?.name ?? ''}
+            />
+            <div className="d-flex flex-col">
+              <Typography className="font-medium">
+                <Transi18next
+                  i18nKey="label.application-by-developer"
+                  renderElement={
+                    <a
+                      aria-label={t('label.application')}
+                      href={appData?.developerUrl}
+                      rel="noreferrer"
+                      style={{ color: theme.primaryColor }}
+                      target="_blank"
+                    />
+                  }
+                  values={{
+                    dev: appData?.developer,
+                    app: getEntityName(appData),
+                  }}
+                />
+              </Typography>
+              <Typography className="text-xs" color="secondary">
+                {t('label.wants-to-access-your-account', {
+                  username: currentUser?.displayName ?? currentUser?.name,
+                })}
+              </Typography>
+            </div>
+          </Box>
+
+          <Collapse ghost className="w-full m-t-md" expandIconPosition="end">
+            <Collapse.Panel
+              header={` ${t('label.all-entity', {
+                entity: t('label.metadata'),
+              })}`}
+              key="1"
+            />
+          </Collapse>
+
+          <Divider className="tw:my-6" />
+          <div className="d-flex justify-end gap-2">
+            <Button block data-testid="cancel" onClick={onCancel}>
+              {t('label.cancel')}
+            </Button>
+            <Button
+              block
+              data-testid="save-button"
+              key="save-btn"
+              type="primary"
+              onClick={onSave}>
+              {nextButtonLabel}
+            </Button>
           </div>
-        </Box>
-
-        <Collapse ghost className="w-full m-t-md" expandIconPosition="end">
-          <Collapse.Panel
-            header={` ${t('label.all-entity', {
-              entity: t('label.metadata'),
-            })}`}
-            key="1"
-          />
-        </Collapse>
-
-        <Divider className="tw:my-6" />
-        <div className="d-flex justify-end gap-2">
-          <Button block data-testid="cancel" onClick={onCancel}>
-            {t('label.cancel')}
-          </Button>
-          <Button
-            block
-            data-testid="save-button"
-            key="save-btn"
-            type="primary"
-            onClick={onSave}>
-            {nextButtonLabel}
-          </Button>
-        </div>
+        </Card.Content>
       </Card>
       <Card className="w-500 m-t-md">
-        <div className="d-flex items-center justify-between">
-          <Box
-            inline
-            align="center"
-            className="layout-space layout-space-horizontal"
-            gap={2}
-            itemClassName="layout-space-item">
-            <UserOutlined />
-            <Typography className="text-xs" color="secondary">
-              {t('label.developed-by-developer', {
-                developer: appData?.developer,
-              })}
-            </Typography>
-          </Box>
-          <Box
-            inline
-            align="center"
-            className="layout-space layout-space-horizontal"
-            gap={2}
-            itemClassName="layout-space-item">
-            <ClockCircleOutlined />
-            <Typography className="text-xs" color="secondary">
-              {`${t('label.updated')} ${getRelativeTime(appData?.updatedAt)}`}
-            </Typography>
-          </Box>
-        </div>
+        <Card.Content>
+          <div className="d-flex items-center justify-between">
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal"
+              gap={2}
+              itemClassName="layout-space-item">
+              <UserOutlined />
+              <Typography className="text-xs" color="secondary">
+                {t('label.developed-by-developer', {
+                  developer: appData?.developer,
+                })}
+              </Typography>
+            </Box>
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal"
+              gap={2}
+              itemClassName="layout-space-item">
+              <ClockCircleOutlined />
+              <Typography className="text-xs" color="secondary">
+                {`${t('label.updated')} ${getRelativeTime(appData?.updatedAt)}`}
+              </Typography>
+            </Box>
+          </div>
+        </Card.Content>
       </Card>
     </div>
   );
