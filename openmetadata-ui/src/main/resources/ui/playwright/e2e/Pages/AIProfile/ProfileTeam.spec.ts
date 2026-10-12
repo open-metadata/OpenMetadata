@@ -27,7 +27,7 @@ import {
   openTeamTab,
   waitForTeamPatch,
 } from '../../../utils/aiProfile';
-import { chooseSelectOption, uuid } from '../../../utils/common';
+import { uuid } from '../../../utils/common';
 import { expect, test } from '../../fixtures/pages';
 
 // Ports the PORTABLE behaviours of e2e/Pages/Teams.spec.ts onto the AI-mode team
@@ -316,13 +316,24 @@ test.describe('AI Profile Team Detail', () => {
       await optionsList;
 
       const select = page.getByTestId(entityCase.selectTestId);
-      await select.getByRole('combobox').fill(name);
-      // chooseSelectOption, not a bare click: the listbox is a non-modal
-      // react-aria popover wired to useCloseOnScroll, so the scroll Playwright
-      // performs during a click's actionability check dismisses it and leaves
-      // the click waiting on a detached option. The helper centres the control
-      // first and reopens the popup if it closed anyway.
-      await chooseSelectOption(select, page.getByRole('option', { name }));
+      const combobox = select.getByRole('combobox');
+      await combobox.fill(name);
+
+      // Commit with Enter on the focused option rather than clicking it.
+      // Autocomplete drops a selection whenever `isLeavingRef` is set, and
+      // that ref is armed by `onBlurCapture` for a microtask — so a click
+      // whose actionability scroll blurs the input lands inside that window
+      // and `onSelectionChange` returns early. The option looks clicked, but
+      // no chip is added and Save stays disabled. Enter never leaves the
+      // input, so it cannot trip the guard.
+      await expect(page.getByRole('option', { name })).toBeVisible();
+      await combobox.press('ArrowDown');
+      await combobox.press('Enter');
+
+      // Prove the value actually committed before relying on Save: a dropped
+      // selection is otherwise only visible 60s later as a disabled button.
+      await expect(select.getByText(name, { exact: true })).toBeVisible();
+
       // Close the autocomplete dropdown so it doesn't intercept the Save click.
       await page.keyboard.press('Escape');
 
