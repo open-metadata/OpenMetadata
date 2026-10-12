@@ -43,6 +43,7 @@ import {
   listRelationshipTypes,
   updateRelationshipType,
 } from '../../rest/ontologyAPI';
+import { fetchAllPages } from '../../utils/AsyncUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import RelationshipTypeForm from './RelationshipTypeForm';
@@ -60,20 +61,15 @@ const RELATIONSHIP_TYPE_FIELDS = 'owners,reviewers';
 const PAGE_SIZE_OPTIONS = [PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE];
 
 const fetchAllRelationshipTypes = async (): Promise<RelationshipType[]> => {
-  const relationshipTypes: RelationshipType[] = [];
-  let after: string | undefined;
-
-  do {
-    const response = await listRelationshipTypes({
+  const { data } = await fetchAllPages((after) =>
+    listRelationshipTypes({
       fields: RELATIONSHIP_TYPE_FIELDS,
       limit: RELATIONSHIP_TYPE_FETCH_PAGE_SIZE,
       ...(after ? { after } : {}),
-    });
-    relationshipTypes.push(...response.data);
-    after = response.paging.after;
-  } while (after);
+    })
+  );
 
-  return relationshipTypes;
+  return data;
 };
 
 const getRelationshipTypePage = (

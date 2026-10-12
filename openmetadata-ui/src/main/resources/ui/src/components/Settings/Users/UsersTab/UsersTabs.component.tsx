@@ -12,7 +12,7 @@
  */
 import { ButtonUtility, Tooltip } from '@openmetadata/ui-core-components';
 import { Modal } from 'antd';
-import { isNil } from 'lodash';
+import { compact, isNil } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconRemove } from '../../../../assets/svg/ic-remove.svg';
@@ -21,6 +21,10 @@ import { TabSpecificField } from '../../../../enums/entity.enum';
 import { User } from '../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../generated/entity/type';
 import { getUserById } from '../../../../rest/userAPI';
+import {
+  BULK_ACTION_CONCURRENCY,
+  runWithConcurrencyLimit,
+} from '../../../../utils/AsyncUtils';
 import { commonUserDetailColumns } from '../../../../utils/Users.util';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Table from '../../../common/Table/TableV2';
@@ -63,19 +67,17 @@ export const UsersTab = ({ users, onRemoveUser }: UsersTabProps) => {
   const fetchUsersAdditionalDetails = async () => {
     try {
       setIsDetailsLoading(true);
-      const promises = users.map((user) =>
-        getUserById(user.id, {
-          fields: [TabSpecificField.TEAMS, TabSpecificField.ROLES],
-        })
+      // A user that fails to load is left out of the table.
+      const usersDetails = await runWithConcurrencyLimit(
+        users,
+        BULK_ACTION_CONCURRENCY,
+        (user) =>
+          getUserById(user.id, {
+            fields: [TabSpecificField.TEAMS, TabSpecificField.ROLES],
+          }).catch(() => undefined)
       );
 
-      const usersDetails = await Promise.allSettled(promises);
-
-      const filteredUser = usersDetails
-        .filter((user) => user.status === 'fulfilled')
-        .map((user) => (user as PromiseFulfilledResult<User>).value);
-
-      setAdditionalUsersDetails(filteredUser);
+      setAdditionalUsersDetails(compact(usersDetails));
     } catch {
       // Error
     } finally {

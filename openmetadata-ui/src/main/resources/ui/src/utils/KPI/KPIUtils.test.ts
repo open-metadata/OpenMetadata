@@ -10,7 +10,59 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { buildKpiChartRows } from './KPIUtils';
+import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
+import { buildKpiChartRows, getKpiLatestResults } from './KPIUtils';
+
+const makeKpi = (overrides: Partial<Kpi>): Kpi => ({
+  id: 'kpi-id',
+  name: 'description-kpi',
+  fullyQualifiedName: 'description-kpi',
+  description: '',
+  dataInsightChart: { id: 'chart-id', type: 'dataInsightCustomChart' },
+  metricType: KpiTargetType.Percentage,
+  targetValue: 80,
+  startDate: 100,
+  endDate: 200,
+  ...overrides,
+});
+
+const kpiResult = {
+  kpiFqn: 'description-kpi',
+  timestamp: 150,
+  targetResult: [{ name: 'fraction', value: '42', targetMet: false }],
+};
+
+describe('getKpiLatestResults', () => {
+  it('keys each KPI result by FQN with the KPI target, metric type and range', () => {
+    expect(
+      getKpiLatestResults([
+        makeKpi({ displayName: 'Description coverage', kpiResult }),
+      ])
+    ).toEqual({
+      'description-kpi': {
+        ...kpiResult,
+        target: 80,
+        metricType: KpiTargetType.Percentage,
+        startDate: 100,
+        endDate: 200,
+        displayName: 'Description coverage',
+      },
+    });
+  });
+
+  it('leaves out a KPI that has no result yet', () => {
+    expect(getKpiLatestResults([makeKpi({ kpiResult: undefined })])).toEqual(
+      {}
+    );
+  });
+
+  it('falls back to the FQN when the KPI has no display name', () => {
+    expect(
+      getKpiLatestResults([makeKpi({ kpiResult })])['description-kpi']
+        .displayName
+    ).toBe('description-kpi');
+  });
+});
 
 describe('buildKpiChartRows', () => {
   it('merges KPIs by day, sorted numerically, gaps as null', () => {

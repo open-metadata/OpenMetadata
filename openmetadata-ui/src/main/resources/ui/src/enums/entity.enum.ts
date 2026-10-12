@@ -141,6 +141,7 @@ export enum TabSpecificField {
   INCIDENT_ID = 'incidentId',
   INCIDENT_STATUS = 'incidentStatus',
   JOINS = 'joins',
+  KPI_RESULT = 'kpiResult',
   LAST_ACTIVITY_TIME = 'lastActivityTime',
   LAST_LOGIN_TIME = 'lastLoginTime',
   LINEAGE = 'lineage',

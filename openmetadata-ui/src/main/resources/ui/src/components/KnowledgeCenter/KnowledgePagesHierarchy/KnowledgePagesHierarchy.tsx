@@ -79,6 +79,10 @@ import {
   getPageHierarchyFromES,
   patchKnowledgePage,
 } from '../../../rest/knowledgeCenterAPI';
+import {
+  BULK_ACTION_CONCURRENCY,
+  runWithConcurrencyLimit,
+} from '../../../utils/AsyncUtils';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -230,8 +234,10 @@ const KnowledgePagesHierarchy = forwardRef<
           collectUnloadedExpandableNodes(traversalHierarchy);
 
         while (nodesPendingChildren.length > 0) {
-          const childrenResults = await Promise.all(
-            nodesPendingChildren.map((node) => {
+          const childrenResults = await runWithConcurrencyLimit(
+            nodesPendingChildren,
+            BULK_ACTION_CONCURRENCY,
+            (node) => {
               const offset =
                 nodeChildrenOffsetRef.current.get(node.fullyQualifiedName) ??
                 node.children?.length ??
@@ -243,11 +249,11 @@ const KnowledgePagesHierarchy = forwardRef<
                 offset,
                 KNOWLEDGE_CENTER_PAGINATION_LIMIT
               );
-            })
+            }
           );
 
           nodesPendingChildren.forEach((node, index) => {
-            const fetchedChildren = childrenResults[index].data;
+            const fetchedChildren = childrenResults[index]?.data ?? [];
             const offset =
               nodeChildrenOffsetRef.current.get(node.fullyQualifiedName) ??
               node.children?.length ??

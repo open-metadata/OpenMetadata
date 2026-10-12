@@ -171,7 +171,7 @@ describe('suggestionsAPI', () => {
       await approveRejectAllSuggestions(
         'user-uuid-123',
         'db.schema.my_table',
-        SuggestionType.SuggestDescription,
+        [SuggestionType.SuggestDescription],
         SuggestionAction.Accept
       );
 
@@ -201,7 +201,7 @@ describe('suggestionsAPI', () => {
       await approveRejectAllSuggestions(
         'user-1',
         'db.schema.my_table',
-        SuggestionType.SuggestDescription,
+        [SuggestionType.SuggestDescription],
         SuggestionAction.Accept
       );
 
@@ -232,12 +232,64 @@ describe('suggestionsAPI', () => {
       await approveRejectAllSuggestions(
         'user-1',
         'db.schema.my_table',
-        SuggestionType.SuggestDescription,
+        [SuggestionType.SuggestDescription],
         SuggestionAction.Accept
       );
 
       expect(resolveTask).toHaveBeenCalledTimes(1);
       expect(resolveTask).toHaveBeenCalledWith('task-desc', expect.any(Object));
+    });
+
+    it('resolves every requested type from one task list, one task at a time', async () => {
+      (APIClient.get as jest.Mock).mockResolvedValue({
+        data: {
+          data: [
+            makeTask('task-desc', 'columns.col_1.description', 'Description'),
+            makeTask('task-tag', 'columns.col_1.tags', 'Tag'),
+          ],
+          paging: {},
+        },
+      });
+
+      let markFirstStarted: () => void = () => undefined;
+      const firstStarted = new Promise<void>((resolve) => {
+        markFirstStarted = resolve;
+      });
+      let finishFirst: () => void = () => undefined;
+      (resolveTask as jest.Mock)
+        .mockImplementationOnce(() => {
+          markFirstStarted();
+
+          return new Promise<void>((resolve) => {
+            finishFirst = resolve;
+          });
+        })
+        .mockResolvedValue({});
+
+      const resolveAll = approveRejectAllSuggestions(
+        'user-1',
+        'db.schema.my_table',
+        [SuggestionType.SuggestDescription, SuggestionType.SuggestTagLabel],
+        SuggestionAction.Accept
+      );
+      await firstStarted;
+
+      expect(resolveTask).toHaveBeenCalledTimes(1);
+
+      finishFirst();
+      await resolveAll;
+
+      expect(APIClient.get).toHaveBeenCalledTimes(1);
+      expect(resolveTask).toHaveBeenNthCalledWith(
+        1,
+        'task-desc',
+        expect.any(Object)
+      );
+      expect(resolveTask).toHaveBeenNthCalledWith(
+        2,
+        'task-tag',
+        expect.any(Object)
+      );
     });
   });
 });

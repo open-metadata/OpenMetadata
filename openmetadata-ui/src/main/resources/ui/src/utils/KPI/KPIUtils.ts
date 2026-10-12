@@ -12,9 +12,34 @@
  */
 import { DataInsightChart } from '../../generated/api/dataInsight/kpi/createKpiRequest';
 import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
+import { UIKpiResult } from '../../interface/data-insight.interface';
 import i18n from '../i18next/LocalUtil';
 
 export type KpiChartRow = { day: number } & Record<string, number | null>;
+
+/**
+ * Latest result per KPI, keyed by KPI FQN, from a list fetched with the `kpiResult` field. A KPI
+ * without a result (no data yet) is left out, so the legend lists only KPIs that can show a value.
+ */
+export const getKpiLatestResults = (
+  kpiList: Kpi[]
+): Record<string, UIKpiResult> =>
+  kpiList.reduce<Record<string, UIKpiResult>>((latestResults, kpi) => {
+    const kpiFqn = kpi.fullyQualifiedName;
+
+    if (kpi.kpiResult && kpiFqn) {
+      latestResults[kpiFqn] = {
+        ...kpi.kpiResult,
+        target: kpi.targetValue,
+        metricType: kpi.metricType,
+        startDate: kpi.startDate,
+        endDate: kpi.endDate,
+        displayName: kpi.displayName ?? kpiFqn,
+      };
+    }
+
+    return latestResults;
+  }, {});
 
 export enum KPIChartType {
   Description = 'description',

@@ -407,16 +407,11 @@ describe('SuggestionsProvider', () => {
     fireEvent.click(acceptAllBtn);
 
     await waitFor(() => {
+      expect(approveRejectAllSuggestions).toHaveBeenCalledTimes(1);
       expect(approveRejectAllSuggestions).toHaveBeenCalledWith(
         '1',
         'mockFQN',
-        SuggestionType.SuggestDescription,
-        SuggestionAction.Accept
-      );
-      expect(approveRejectAllSuggestions).toHaveBeenCalledWith(
-        '1',
-        'mockFQN',
-        SuggestionType.SuggestTagLabel,
+        [SuggestionType.SuggestDescription, SuggestionType.SuggestTagLabel],
         SuggestionAction.Accept
       );
     });
@@ -487,16 +482,11 @@ describe('SuggestionsProvider', () => {
     fireEvent.click(rejectAllBtn);
 
     await waitFor(() => {
+      expect(approveRejectAllSuggestions).toHaveBeenCalledTimes(1);
       expect(approveRejectAllSuggestions).toHaveBeenCalledWith(
         '1',
         'mockFQN',
-        SuggestionType.SuggestDescription,
-        SuggestionAction.Reject
-      );
-      expect(approveRejectAllSuggestions).toHaveBeenCalledWith(
-        '1',
-        'mockFQN',
-        SuggestionType.SuggestTagLabel,
+        [SuggestionType.SuggestDescription, SuggestionType.SuggestTagLabel],
         SuggestionAction.Reject
       );
     });

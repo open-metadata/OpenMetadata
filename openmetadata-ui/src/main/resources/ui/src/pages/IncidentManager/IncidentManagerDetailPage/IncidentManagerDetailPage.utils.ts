@@ -18,6 +18,10 @@ import {
 } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import type { TestCase } from '../../../generated/tests/testCase';
 import { getIngestionPipelines } from '../../../rest/ingestionPipelineAPI';
+import {
+  BULK_ACTION_CONCURRENCY,
+  runWithConcurrencyLimit,
+} from '../../../utils/AsyncUtils';
 import { getNextCronRunTimestamp } from '../../../utils/CronUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { TestCasePageTabs } from '../IncidentManager.interface';
@@ -47,19 +51,23 @@ const getPipelineNextRunTimestamp = async (pipeline: IngestionPipeline) => {
 export const fetchNextTestCaseRunTimestamp = async (
   testSuiteFqns: string[]
 ) => {
-  const responses = await Promise.all(
-    testSuiteFqns.map((testSuite) =>
+  // The `testSuite` filter takes a single FQN, so there is one request per suite.
+  const responses = await runWithConcurrencyLimit(
+    testSuiteFqns,
+    BULK_ACTION_CONCURRENCY,
+    (testSuite) =>
       getIngestionPipelines({
         arrQueryFields: TEST_SUITE_PIPELINE_FIELDS,
         limit: TEST_SUITE_PIPELINE_LIMIT,
         pipelineType: [PipelineType.TestSuite],
         testSuite,
       })
-    )
   );
   const nextRuns = (
     await Promise.all(
-      responses.flatMap(({ data }) => data).map(getPipelineNextRunTimestamp)
+      responses
+        .flatMap((response) => response?.data ?? [])
+        .map(getPipelineNextRunTimestamp)
     )
   ).filter((nextRun): nextRun is number => nextRun !== undefined);
 

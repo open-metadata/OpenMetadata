@@ -13,7 +13,7 @@
 
 import { Button, Tooltip, Typography } from '@openmetadata/ui-core-components';
 import { File06, Link03, Plus } from '@openmetadata/ui-core-components/icons';
-import { groupBy, isEmpty, startCase } from 'lodash';
+import { compact, groupBy, isEmpty, startCase } from 'lodash';
 import { FC, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -33,6 +33,10 @@ import {
 import { getListKnowledgePages } from '../../../../rest/knowledgeCenterAPI';
 import { getTags } from '../../../../rest/tagAPI';
 import { getUserById } from '../../../../rest/userAPI';
+import {
+  BULK_ACTION_CONCURRENCY,
+  runWithConcurrencyLimit,
+} from '../../../../utils/AsyncUtils';
 import contextCenterClassBase from '../../../../utils/ContextCenterClassBase';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getSafeHttpUrl } from '../../../../utils/StringUtils';
@@ -122,8 +126,10 @@ const ContextCenterSubNavSections: FC<ContextCenterSubNavSectionsProps> = ({
 
       const tagsObj = groupBy(tags, 'fullyQualifiedName');
 
-      const sections = await Promise.all(
-        Object.keys(tagsObj).map(async (tagFqn) => {
+      const sections = await runWithConcurrencyLimit(
+        Object.keys(tagsObj),
+        BULK_ACTION_CONCURRENCY,
+        async (tagFqn) => {
           try {
             const { data } = await getListKnowledgePages({
               fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS}`,
@@ -134,10 +140,10 @@ const ContextCenterSubNavSections: FC<ContextCenterSubNavSectionsProps> = ({
           } catch {
             return { tagFqn, links: [] };
           }
-        })
+        }
       );
 
-      setQuickLinkSections(sections.filter((s) => !isEmpty(s.links)));
+      setQuickLinkSections(compact(sections).filter((s) => !isEmpty(s.links)));
     } catch {
       setQuickLinkSections([]);
     }

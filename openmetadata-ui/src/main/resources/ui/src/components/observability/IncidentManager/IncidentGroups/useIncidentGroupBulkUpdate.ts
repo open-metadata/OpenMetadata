@@ -23,9 +23,9 @@ import { useDomainStore } from '../../../../hooks/useDomainStore';
 import {
   bulkCreateResolutionStatus,
   getListTestCaseIncidentStatus,
-  IncidentCursor,
   MAX_BULK_INCIDENT_UPDATE_SIZE,
 } from '../../../../rest/incidentManagerAPI';
+import { fetchAllPages } from '../../../../utils/AsyncUtils';
 import { getErrorText } from '../../../../utils/StringUtils';
 import {
   buildBulkIncidentEntries,
@@ -51,22 +51,15 @@ const fetchAllGroupIncidents = async (
     Date.now(),
     domain
   );
-  const incidents: TestCaseResolutionStatus[] = [];
-  let offset: IncidentCursor | undefined;
-
-  do {
-    const pageQuery = {
+  const { data } = await fetchAllPages((offset) =>
+    getListTestCaseIncidentStatus({
       ...query,
       limit: MAX_BULK_INCIDENT_UPDATE_SIZE,
       offset,
-    };
-    // eslint-disable-next-line openmetadata-imports/no-api-calls-in-iteration -- each page needs the previous cursor
-    const { data, paging } = await getListTestCaseIncidentStatus(pageQuery); // NOSONAR
-    incidents.push(...data);
-    offset = paging?.after;
-  } while (offset);
+    })
+  );
 
-  return incidents;
+  return data;
 };
 
 /**

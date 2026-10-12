@@ -37,6 +37,7 @@ import {
   deleteRelationshipType,
   listRelationshipTypes,
 } from '../../../../../../rest/ontologyAPI';
+import { fetchAllPages } from '../../../../../../utils/AsyncUtils';
 import {
   showErrorToast,
   showSuccessToast,
@@ -47,21 +48,15 @@ const FETCH_PAGE_SIZE = 1000;
 const PAGE_SIZE_OPTIONS = [PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE];
 
 const fetchAll = async (): Promise<RelationshipType[]> => {
-  const result: RelationshipType[] = [];
-  let after: string | undefined;
-
-  do {
-    // eslint-disable-next-line openmetadata-imports/no-api-calls-in-iteration -- sequential page walk
-    const response = await listRelationshipTypes({
+  const { data } = await fetchAllPages((after) =>
+    listRelationshipTypes({
       fields: 'owners,reviewers',
       limit: FETCH_PAGE_SIZE,
       ...(after ? { after } : {}),
-    });
-    result.push(...response.data);
-    after = response.paging.after;
-  } while (after);
+    })
+  );
 
-  return result;
+  return data;
 };
 
 interface GovernanceGlossaryListProps {

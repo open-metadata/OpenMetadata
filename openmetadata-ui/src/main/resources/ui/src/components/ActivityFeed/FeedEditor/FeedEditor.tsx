@@ -38,9 +38,8 @@ import {
   MENTION_DENOTATION_CHARS,
   TOOLBAR_ITEMS,
 } from '../../../constants/Feeds.constants';
-import { TabSpecificField } from '../../../enums/entity.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { getUserByName } from '../../../rest/userAPI';
+import { fetchUserProfilePic } from '../../../hooks/user-profile/useUserProfile';
 import { EntityIconSize } from '../../../utils/EntityIconUtils';
 import {
   suggestions,
@@ -90,8 +89,6 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
     const [isMentionListOpen, toggleMentionList] = useState(false);
     const [isFocused, toggleFocus] = useState(false);
 
-    const { userProfilePics } = useApplicationStore();
-
     const handleClickOutside = useCallback((event: MouseEvent) => {
       const root = rootRef.current;
       const emojiContainer = root?.querySelector(
@@ -124,54 +121,40 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
       mentionChar: string
     ) => {
       const matches = await suggestions(searchTerm, mentionChar);
-      const newMatches: MentionSuggestionsItem[] = [];
-      try {
-        // Fetch profile images in case of user listing
-        const promises = matches.map(async (item, index) => {
-          if (item.type === 'user') {
-            return getUserByName(item.name, {
-              fields: TabSpecificField.PROFILE,
-            }).then((res) => {
-              newMatches[index] = {
-                ...item,
-                avatarEle: userMentionItemWithAvatar(
-                  item,
-                  userProfilePics[item.name] ?? res
-                ),
-              };
-            });
-          } else if (item.type === 'team') {
-            newMatches[index] = {
-              ...item,
-              avatarEle: userMentionItemWithAvatar(item),
-            };
-          } else {
-            newMatches[index] = {
-              ...item,
-            };
-          }
+      // Users already in the shared profile cache cost no request.
+      await Promise.all(
+        matches
+          .filter((item) => item.type === 'user')
+          .map((item) => fetchUserProfilePic(item.name))
+      );
+      const { userProfilePics } = useApplicationStore.getState();
+      const newMatches = matches.map((item) => {
+        if (item.type === 'user') {
+          return {
+            ...item,
+            avatarEle: userMentionItemWithAvatar(
+              item,
+              userProfilePics[item.name]
+            ),
+          };
+        }
 
-          return Promise.resolve();
-        });
-        await Promise.allSettled(promises);
-      } catch (error) {
-        // Empty
-      } finally {
-        const noMatchRow: MentionSuggestionsItem = {
-          id: undefined,
-          value: emptyMentionText ?? '',
-          link: '',
-          name: emptyMentionText ?? '',
-          breadcrumbs: [],
-          disabled: true,
-        };
-        renderList(
-          newMatches.length === 0 && emptyMentionText
-            ? [noMatchRow]
-            : newMatches,
-          searchTerm
-        );
-      }
+        return item.type === 'team'
+          ? { ...item, avatarEle: userMentionItemWithAvatar(item) }
+          : item;
+      });
+      const noMatchRow: MentionSuggestionsItem = {
+        id: undefined,
+        value: emptyMentionText ?? '',
+        link: '',
+        name: emptyMentionText ?? '',
+        breadcrumbs: [],
+        disabled: true,
+      };
+      renderList(
+        newMatches.length === 0 && emptyMentionText ? [noMatchRow] : newMatches,
+        searchTerm
+      );
     };
 
     const renderItems = useCallback((item: MentionSuggestionsItem) => {

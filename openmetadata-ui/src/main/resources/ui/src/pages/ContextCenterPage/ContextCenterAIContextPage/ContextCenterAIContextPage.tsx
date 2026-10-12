@@ -33,6 +33,7 @@ import { TabSpecificField } from '../../../enums/entity.enum';
 import { Persona } from '../../../generated/entity/teams/persona';
 import { useAuth } from '../../../hooks/authHooks';
 import { getAllPersonas } from '../../../rest/PersonaAPI';
+import { fetchAllPages } from '../../../utils/AsyncUtils';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getScopedRuleCount } from '../../../utils/PersonaAIContextUtils';
@@ -56,21 +57,16 @@ const ContextCenterAIContextPage = () => {
   const fetchPersonas = useCallback(async () => {
     try {
       setIsLoading(true);
-      const collected: Persona[] = [];
-      let after: string | undefined;
-      for (let page = 0; page < MAX_PERSONA_PAGES; page++) {
-        const { data, paging } = await getAllPersonas({
-          after,
-          fields: TabSpecificField.CONTEXT_DEFINITION,
-          limit: PERSONA_PAGE_SIZE,
-        });
-        collected.push(...data);
-        after = paging?.after;
-        if (!after) {
-          break;
-        }
-      }
-      setPersonas(collected);
+      const { data } = await fetchAllPages(
+        (after) =>
+          getAllPersonas({
+            after,
+            fields: TabSpecificField.CONTEXT_DEFINITION,
+            limit: PERSONA_PAGE_SIZE,
+          }),
+        { maxPages: MAX_PERSONA_PAGES }
+      );
+      setPersonas(data);
     } catch (error) {
       showErrorToast(error as AxiosError);
       setPersonas([]);

@@ -115,6 +115,19 @@ export const deployIngestionPipelineById = (
   return APIClient.post(`/services/ingestionPipelines/deploy/${id}`);
 };
 
+/**
+ * Deploys every pipeline in one request. The endpoint answers 200 even when a pipeline fails to
+ * deploy; that failure is reported in the pipeline's own entry, so callers must check each `code`.
+ */
+export const deployIngestionPipelines = async (ids: string[]) => {
+  const response = await APIClient.post<
+    string[],
+    AxiosResponse<PipelineServiceClientResponse[]>
+  >('/services/ingestionPipelines/bulk/deploy', ids);
+
+  return response.data;
+};
+
 export const enableDisableIngestionPipelineById = (id: string) => {
   return APIClient.post<unknown, AxiosResponse<IngestionPipeline>>(
     `/services/ingestionPipelines/toggleIngestion/${id}`

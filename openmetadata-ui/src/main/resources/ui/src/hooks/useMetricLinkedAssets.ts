@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { compact } from 'lodash';
 import { useCallback } from 'react';
 import { getMetricTabAssets } from '../rest/metricTabsAPI';
+import {
+  BULK_ACTION_CONCURRENCY,
+  runWithConcurrencyLimit,
+} from '../utils/AsyncUtils';
 import { metricObservabilityQueryKey } from './useMetricObservability';
 
 // The server caps a single page of linked assets at 1000.
@@ -40,16 +45,17 @@ export const fetchMetricLinkedAssetIds = async (
     },
     (_, index) => (index + 1) * METRIC_LINKED_ASSETS_PAGE_LIMIT
   );
-  const remainingPages = await Promise.all(
-    remainingOffsets.map((offset) =>
+  const remainingPages = await runWithConcurrencyLimit(
+    remainingOffsets,
+    BULK_ACTION_CONCURRENCY,
+    (offset) =>
       getMetricTabAssets(metricId, {
         limit: METRIC_LINKED_ASSETS_PAGE_LIMIT,
         offset,
       })
-    )
   );
 
-  return [firstPage, ...remainingPages].flatMap(({ data }) =>
+  return [firstPage, ...compact(remainingPages)].flatMap(({ data }) =>
     data.map(({ asset }) => asset.id)
   );
 };

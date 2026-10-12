@@ -11,6 +11,15 @@
  *  limitations under the License.
  */
 
+import { Paging } from '../generated/type/paging';
+
+/**
+ * In-flight cap for one request per item of a list: an action on every selected row, or a
+ * read for every item when there is no bulk endpoint. A list can run to hundreds of items,
+ * and firing one request per item at once floods the server.
+ */
+export const BULK_ACTION_CONCURRENCY = 5;
+
 /**
  * Run an async worker over `items` with at most `limit` executions in flight at
  * once, instead of one-at-a-time (`for … await`) or all-at-once (`Promise.all`).
@@ -45,4 +54,47 @@ export const runWithConcurrencyLimit = async <T, R>(
   await Promise.all(Array.from({ length: poolSize }, () => runNext()));
 
   return results;
+};
+
+interface FetchAllPagesOptions<T> {
+  /** Cursor to resume from; the walk starts at the first page without it. */
+  after?: string;
+  maxPages?: number;
+  signal?: AbortSignal;
+  shouldStop?: (collected: T[]) => boolean;
+}
+
+/**
+ * Follow a list endpoint's `after` cursor and collect every page. Each request
+ * needs the cursor from the page before it, so pages are read one at a time.
+ *
+ * The walk ends when the cursor runs out, after `maxPages` pages, once `signal`
+ * aborts, or when `shouldStop` returns `true` for the items collected so far.
+ * A rejected page rejects the walk; catch inside `fetchPage` to keep the pages
+ * already read. `paging` is the last page's, or `undefined` if none was read.
+ */
+export const fetchAllPages = async <T>(
+  fetchPage: (after?: string) => Promise<{ data: T[]; paging?: Paging }>,
+  {
+    after,
+    maxPages = Infinity,
+    signal,
+    shouldStop,
+  }: FetchAllPagesOptions<T> = {}
+): Promise<{ data: T[]; paging?: Paging }> => {
+  const data: T[] = [];
+  let paging: Paging | undefined;
+  let cursor = after;
+
+  for (let page = 0; page < maxPages && !signal?.aborted; page++) {
+    const response = await fetchPage(cursor);
+    data.push(...response.data);
+    paging = response.paging;
+    cursor = paging?.after;
+    if (!cursor || shouldStop?.(data)) {
+      break;
+    }
+  }
+
+  return { data, paging };
 };

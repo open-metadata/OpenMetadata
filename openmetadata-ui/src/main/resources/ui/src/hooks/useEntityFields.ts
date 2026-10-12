@@ -18,6 +18,10 @@ import {
   getFieldsForEntity,
 } from '../rest/metadataTypeAPI';
 import { CustomPropertiesForAssets } from '../rest/metadataTypeAPI.interface';
+import {
+  BULK_ACTION_CONCURRENCY,
+  runWithConcurrencyLimit,
+} from '../utils/AsyncUtils';
 import { buildFieldOptions } from '../utils/WorkflowConfigUtils';
 
 export const useEntityFields = (entityTypes?: EntityType[]) => {
@@ -37,8 +41,10 @@ export const useEntityFields = (entityTypes?: EntityType[]) => {
 
     try {
       const [allFieldsResults, customPropertiesByType] = await Promise.all([
-        Promise.all(
-          entityTypesArray.map((entityType) => getFieldsForEntity(entityType))
+        runWithConcurrencyLimit(
+          entityTypesArray,
+          BULK_ACTION_CONCURRENCY,
+          getFieldsForEntity
         ),
         // One bulk call returns custom properties for every entity type; index it
         // by type below. Best-effort: on failure fall back to bare names rather

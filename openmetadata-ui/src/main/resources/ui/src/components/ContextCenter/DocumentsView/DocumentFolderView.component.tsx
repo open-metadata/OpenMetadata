@@ -47,6 +47,10 @@ import type { ContextFile } from '../../../generated/entity/data/contextFile';
 import { Folder } from '../../../generated/entity/data/folder';
 import { queryClient } from '../../../queryClient';
 import { deleteFolder, listContextFiles } from '../../../rest/assetAPI';
+import {
+  BULK_ACTION_CONCURRENCY,
+  runWithConcurrencyLimit,
+} from '../../../utils/AsyncUtils';
 import { CONTEXT_CENTER_DOCUMENTS_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -523,8 +527,10 @@ const DocumentFolderView = (
         return;
       }
 
-      const refreshedEntries = await Promise.all(
-        targets.map(async (folderId) => {
+      const refreshedEntries = await runWithConcurrencyLimit(
+        targets,
+        BULK_ACTION_CONCURRENCY,
+        async (folderId) => {
           try {
             const response = await listContextFiles({
               folderId,
@@ -537,7 +543,7 @@ const DocumentFolderView = (
 
             return null;
           }
-        })
+        }
       );
 
       setFolderFilesState((prev) => {

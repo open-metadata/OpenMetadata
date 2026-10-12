@@ -29,6 +29,7 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import { isString } from 'lodash';
 import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Glossary } from '../../generated/entity/data/glossary';
@@ -44,6 +45,10 @@ import {
   ShaclValidationResult,
   validateOntologyShapes,
 } from '../../rest/rdfAPI';
+import {
+  BULK_ACTION_CONCURRENCY,
+  runWithConcurrencyLimit,
+} from '../../utils/AsyncUtils';
 import { formatBytes } from '../../utils/ContextCenterPureUtils';
 import {
   detectOntologyImportFormat,
@@ -326,16 +331,17 @@ const OntologyImportExportModal = ({
 
   const exportOntology = useCallback(async () => {
     const rdfFormat = format as OntologyExportFormat;
-    const parts = await Promise.all(
-      targetGlossaries.map((item) =>
+    const parts = await runWithConcurrencyLimit(
+      targetGlossaries,
+      BULK_ACTION_CONCURRENCY,
+      (item) =>
         exportGlossaryAsOntology({
           format: rdfFormat,
           glossaryId: item.id,
           includeRelations: includeInverse,
         }).then((blob) => blob.text())
-      )
     );
-    const merged = mergeOntologyExports(parts, rdfFormat);
+    const merged = mergeOntologyExports(parts.filter(isString), rdfFormat);
     const option = FORMAT_OPTIONS.find((entry) => entry.key === format);
     const safeName = (
       activeGlossary?.name ?? t('label.all-glossaries')

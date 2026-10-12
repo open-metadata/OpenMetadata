@@ -239,7 +239,7 @@ const DataInsightProvider = ({ children }: DataInsightProviderProps) => {
     setIsKpiLoading(true);
     try {
       const response = await getListKPIs({
-        fields: TabSpecificField.DATA_INSIGHT_CHART,
+        fields: `${TabSpecificField.DATA_INSIGHT_CHART},${TabSpecificField.KPI_RESULT}`,
       });
       setKpiList(response.data);
     } catch (_err) {

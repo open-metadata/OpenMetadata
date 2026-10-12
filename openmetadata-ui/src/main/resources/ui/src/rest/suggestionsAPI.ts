@@ -20,6 +20,7 @@ import {
   SuggestionStatus,
   SuggestionType,
 } from '../types/taskSuggestion';
+import { runWithConcurrencyLimit } from '../utils/AsyncUtils';
 import EntityLink from '../utils/EntityLink';
 import APIClient from './axiosClient';
 import {
@@ -210,7 +211,7 @@ export const updateSuggestionStatus = async (
 export const approveRejectAllSuggestions = async (
   userId: string,
   entityFQN: string,
-  suggestionType: SuggestionType,
+  suggestionTypes: SuggestionType[],
   action: SuggestionAction
 ): Promise<AxiosResponse> => {
   const response = await APIClient.get<PagingResponse<Task[]>>(TASKS_BASE_URL, {
@@ -229,15 +230,18 @@ export const approveRejectAllSuggestions = async (
       ? TaskResolutionType.Approved
       : TaskResolutionType.Rejected;
 
-  const filteredTasks = response.data.data.filter(
-    (task) =>
-      mapSuggestionTypeFromPayload(
-        task.payload as Record<string, unknown> | undefined
-      ) === suggestionType
-  );
+  const filteredTasks = response.data.data.filter((task) => {
+    const taskType = mapSuggestionTypeFromPayload(
+      task.payload as Record<string, unknown> | undefined
+    );
 
-  // Resolve sequentially to avoid optimistic-lock version conflicts on the entity.
-  for (const task of filteredTasks) {
+    return taskType !== undefined && suggestionTypes.includes(taskType);
+  });
+
+  // Resolve one at a time to avoid optimistic-lock version conflicts on the
+  // entity. All types go through this one queue: resolving them in parallel
+  // calls would race on the same entity.
+  await runWithConcurrencyLimit(filteredTasks, 1, (task) => {
     const suggestion = taskToSuggestion(task);
     const tagLabelsValue = suggestion.tagLabels
       ? JSON.stringify(suggestion.tagLabels)
@@ -248,10 +252,10 @@ export const approveRejectAllSuggestions = async (
         : tagLabelsValue;
 
     // Mirror Promise.allSettled behavior: one failure must not block remaining tasks.
-    await resolveTask(task.id, { resolutionType, newValue }).catch(
+    return resolveTask(task.id, { resolutionType, newValue }).catch(
       () => undefined
     );
-  }
+  });
 
   return { data: {} } as AxiosResponse;
 };

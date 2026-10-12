@@ -14,6 +14,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { getMetricTabAssets } from '../rest/metricTabsAPI';
+import { BULK_ACTION_CONCURRENCY } from '../utils/AsyncUtils';
 import {
   fetchMetricLinkedAssetIds,
   METRIC_LINKED_ASSETS_PAGE_LIMIT,
@@ -77,6 +78,27 @@ describe('fetchMetricLinkedAssetIds', () => {
       `asset-${METRIC_LINKED_ASSETS_PAGE_LIMIT}`,
       `asset-${METRIC_LINKED_ASSETS_PAGE_LIMIT * 2}`,
     ]);
+  });
+
+  it('keeps at most BULK_ACTION_CONCURRENCY page requests in flight', async () => {
+    const total = METRIC_LINKED_ASSETS_PAGE_LIMIT * 20;
+    let inFlight = 0;
+    let maxInFlight = 0;
+    mockGetMetricTabAssets.mockImplementation(
+      async (_id: string, { offset }: { offset: number }) => {
+        inFlight += 1;
+        maxInFlight = Math.max(maxInFlight, inFlight);
+        await Promise.resolve();
+        inFlight -= 1;
+
+        return buildPage([`asset-${offset}`], total);
+      }
+    );
+
+    await expect(fetchMetricLinkedAssetIds('metric-id')).resolves.toHaveLength(
+      20
+    );
+    expect(maxInFlight).toBe(BULK_ACTION_CONCURRENCY);
   });
 });
 
