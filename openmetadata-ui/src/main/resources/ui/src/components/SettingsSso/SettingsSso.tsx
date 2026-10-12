@@ -39,8 +39,8 @@ import SettingsSourceBanner from '../platform/settings/SettingsSourceBanner/Sett
 import ProviderSelector from './ProviderSelector/ProviderSelector';
 import './settings-sso.less';
 import SSOConfigurationForm from './SSOConfigurationForm/SSOConfigurationForm';
-import { useSecuritySettingsSource } from './useSecuritySettingsSource';
 import SsoProviderIcon from './SsoProviderIcon/SsoProviderIcon';
+import { useSecuritySettingsSource } from './useSecuritySettingsSource';
 
 const SettingsSso = () => {
   const { t } = useTranslation();

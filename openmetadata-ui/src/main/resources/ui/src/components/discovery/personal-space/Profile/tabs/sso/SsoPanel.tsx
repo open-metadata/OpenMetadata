@@ -42,6 +42,7 @@ import {
 } from '../../../../../../utils/SSOUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import SettingsSourceBanner from '../../../../../platform/settings/SettingsSourceBanner/SettingsSourceBanner';
+import SsoProviderIcon from '../../../../../SettingsSso/SsoProviderIcon/SsoProviderIcon';
 import { useSecuritySettingsSource } from '../../../../../SettingsSso/useSecuritySettingsSource';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import { SettingsSkeleton } from '../platform-settings/SettingsFormLayout';
@@ -54,7 +55,6 @@ import {
   viewToSubPath,
 } from './SsoPanel.utils';
 import SsoProviderGrid from './SsoProviderGrid';
-import SsoProviderIcon from '../../../../../SettingsSso/SsoProviderIcon/SsoProviderIcon';
 
 interface SsoPanelProps {
   onHeaderChange?: (override: ProfileHeaderOverride | null) => void;

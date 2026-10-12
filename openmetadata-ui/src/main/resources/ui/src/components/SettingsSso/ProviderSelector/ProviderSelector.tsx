@@ -18,9 +18,9 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AuthProvider } from '../../../generated/settings/settings';
 import { PROVIDER_OPTIONS } from '../../../utils/SSOUtils';
+import SsoProviderIcon from '../SsoProviderIcon/SsoProviderIcon';
 import './provider-selector.less';
 import { ProviderSelectorProps } from './ProviderSelector.interface';
-import SsoProviderIcon from '../SsoProviderIcon/SsoProviderIcon';
 
 const ProviderSelector: React.FC<ProviderSelectorProps> = ({
   selectedProvider: initialSelectedProvider,

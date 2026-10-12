@@ -21,9 +21,9 @@ import {
   ProviderIcon,
 } from '../../../utils/SSOUtils';
 import ServiceDocPanel from '../../common/ServiceDocPanel/ServiceDocPanel';
+import SsoProviderIcon from '../SsoProviderIcon/SsoProviderIcon';
 import './sso-doc-panel.less';
 import { FIELD_MAPPINGS, PROVIDER_FILE_MAP } from './SSODocPanel.constants';
-import SsoProviderIcon from '../SsoProviderIcon/SsoProviderIcon';
 
 interface SSODocPanelProp {
   serviceName: string;
