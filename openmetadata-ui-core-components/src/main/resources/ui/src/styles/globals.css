@@ -1226,12 +1226,12 @@
     --color-text-disabled: theme(--color-gray-500);
     /* Brand text = blue-300 link tone in dark (palette guideline + Collate #6491
        --ai-link); regular text stays on the gray ramp. */
-    --color-text-brand-primary: theme(--color-brand-300);
-    --color-text-brand-secondary: theme(--color-brand-300);
+    --color-text-brand-primary: theme(--color-brand-400);
+    --color-text-brand-secondary: theme(--color-brand-400);
     --color-text-brand-tertiary: theme(--color-gray-400);
     --color-text-placeholder: theme(--color-gray-400);
     --color-text-placeholder_subtle: theme(--color-gray-700);
-    --color-text-link: theme(--color-brand-300);
+    --color-text-link: theme(--color-brand-400);
     --color-text-link-hover: theme(--color-brand-200);
     --color-text-primary_on-brand: theme(--color-gray-50);
     --color-text-secondary_on-brand: theme(--color-gray-300);
@@ -1282,10 +1282,10 @@
     --color-fg-disabled_subtle: theme(--color-gray-600);
     /* Brand foreground (icons, tab underline, active accents) = blue-300 link
        tone in dark (palette guideline + Collate #6491 --ai-link). */
-    --color-fg-brand-primary: theme(--color-brand-300);
-    --color-fg-brand-secondary: theme(--color-brand-300);
-    --color-fg-brand-primary_alt: theme(--color-brand-300);
-    --color-fg-brand-secondary_alt: theme(--color-brand-300);
+    --color-fg-brand-primary: theme(--color-brand-400);
+    --color-fg-brand-secondary: theme(--color-brand-400);
+    --color-fg-brand-primary_alt: theme(--color-brand-400);
+    --color-fg-brand-secondary_alt: theme(--color-brand-400);
     --color-fg-brand-secondary_hover: theme(--color-brand-200);
 
     /* BACKGROUND COLORS */
@@ -1350,7 +1350,7 @@
     --color-avatar-styles-bg-neutral: rgb(224 224 224 / 1);
     --color-button-destructive-primary-icon: theme(--color-error-300);
     --color-button-destructive-primary-icon_hover: theme(--color-error-200);
-    --color-button-primary-icon: theme(--color-brand-300);
+    --color-button-primary-icon: theme(--color-brand-400);
     --color-button-primary-icon_hover: theme(--color-brand-200);
     --color-featured-icon-light-fg-brand: theme(--color-brand-200);
     --color-featured-icon-light-fg-error: theme(--color-error-200);
