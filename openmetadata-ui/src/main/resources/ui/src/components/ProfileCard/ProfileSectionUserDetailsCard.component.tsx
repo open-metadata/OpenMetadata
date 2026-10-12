@@ -82,11 +82,7 @@ const ProfileManageOptions = ({
         className="profile-manage-item d-flex item-center w-full text-left border-0  bg-transparent remove-button-default-styling"
         data-testid="edit-displayname"
         onClick={onEditDisplayName}>
-        <EditProfileIcon
-          className="tw:mr-1"
-          style={{ marginRight: '10px' }}
-          {...ICON_DIMENSION_USER_PAGE}
-        />
+        <EditProfileIcon className="tw:mr-2.5" {...ICON_DIMENSION_USER_PAGE} />
         <Typography className="profile-manage-label">
           {t('label.edit-entity', {
             entity: t('label.display-name'),
@@ -99,11 +95,7 @@ const ProfileManageOptions = ({
         className="profile-manage-item d-flex item-center w-full text-left border-0  bg-transparent remove-button-default-styling"
         data-testid="change-password-button"
         onClick={onChangePassword}>
-        <ChangePassword
-          className="tw:mr-1"
-          style={{ marginRight: '10px' }}
-          {...ICON_DIMENSION_USER_PAGE}
-        />
+        <ChangePassword className="tw:mr-2.5" {...ICON_DIMENSION_USER_PAGE} />
         <Typography className="profile-manage-label">
           {t('label.change-entity', {
             entity: t('label.password-lowercase'),
@@ -115,11 +107,7 @@ const ProfileManageOptions = ({
       <Button
         className="profile-manage-item d-flex item-center w-full text-left border-0 bg-transparent remove-button-default-styling"
         onClick={onRestore}>
-        <DeleteIcon
-          className="tw:mr-1"
-          style={{ marginRight: '10px' }}
-          {...ICON_DIMENSION_USER_PAGE}
-        />
+        <DeleteIcon className="tw:mr-2.5" {...ICON_DIMENSION_USER_PAGE} />
         <Typography className="profile-manage-label">
           {t('label.restore')}
         </Typography>
@@ -129,11 +117,7 @@ const ProfileManageOptions = ({
         <Button
           className="remove-button-default-styling profile-manage-item d-flex item-center w-full text-left border-0  bg-transparent"
           onClick={onDelete}>
-          <DeleteIcon
-            className="tw:mr-1"
-            style={{ marginRight: '10px' }}
-            {...ICON_DIMENSION_USER_PAGE}
-          />
+          <DeleteIcon className="tw:mr-2.5" {...ICON_DIMENSION_USER_PAGE} />
           <Typography className="profile-manage-label">
             {t('label.delete-profile')}
           </Typography>
@@ -348,7 +332,7 @@ const ProfileSectionUserDetailsCard = ({
         <span
           className="user-profile-deleted-badge"
           data-testid="deleted-badge">
-          <DeleteIcon className="tw:mr-1 ant-icon tw:size-3.5 tw:shrink-0" />
+          <DeleteIcon className="tw:mr-1 tw:size-3.5 tw:shrink-0" />
 
           {t('label.deleted')}
         </span>

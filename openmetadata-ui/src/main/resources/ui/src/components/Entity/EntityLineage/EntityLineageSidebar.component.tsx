@@ -66,8 +66,8 @@ const EntityNodeInternal: FC<EntityNodeProps> = ({
         </span>
         <span className="d-flex m-l-xs">
           <DragIconDotted
-            className="tw:size-3.5 tw:shrink-0"
-            style={{ color: theme.primaryColor, transform: 'rotate(90deg)' }}
+            className="tw:size-3.5 tw:shrink-0 tw:rotate-90"
+            style={{ color: theme.primaryColor }}
           />
         </span>
       </div>

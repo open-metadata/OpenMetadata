@@ -30,10 +30,7 @@ import { MouseEvent, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
-import {
-  GRAYED_OUT_COLOR,
-  NO_DATA_PLACEHOLDER,
-} from '../../../../../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../../../../../constants/constants';
 import { EMAIL_REG_EX } from '../../../../../constants/regex.constants';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { Team, TeamType } from '../../../../../generated/entity/teams/team';
@@ -476,10 +473,9 @@ const TeamsInfo = ({
             title={t('message.team-distinct-user-description')}
             triggerClassName="tw:inline-flex">
             <InfoCircle
-              className="tw:mx-1 tw:shrink-0"
+              className="tw:mx-1 tw:shrink-0 tw:text-quaternary"
               data-testid="helper-icon"
               size={14}
-              style={{ color: GRAYED_OUT_COLOR }}
             />
           </Tooltip>
         </Typography>

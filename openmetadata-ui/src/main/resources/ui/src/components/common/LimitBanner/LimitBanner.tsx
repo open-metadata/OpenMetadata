@@ -46,7 +46,7 @@ export const LimitBanner = () => {
         </div>
       </div>
       <CloseIcon
-        className="close-btn tw:p-0 tw:cursor-pointer tw:size-3.5 tw:shrink-0"
+        className="tw:p-0 tw:cursor-pointer tw:size-3.5 tw:shrink-0"
         style={{ color: '#546E7A' }}
         onClick={() => setBannerDetails(null)}
       />

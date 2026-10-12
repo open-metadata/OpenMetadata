@@ -16,7 +16,6 @@ import { InfoCircle } from '@openmetadata/ui-core-components/icons';
 import { Badge } from 'antd';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
-import { GRAYED_OUT_COLOR } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { HelperTextType } from '../../../interface/FormUtils.interface';
 import { FormItemLabelProps } from './Form.interface';
@@ -51,10 +50,9 @@ const FormItemLabel = ({
             title={helperText}
             triggerClassName="tw:inline-flex">
             <InfoCircle
-              className="tw:ml-2 tw:shrink-0"
+              className="tw:ml-2 tw:shrink-0 tw:text-quaternary"
               data-testid="helper-icon"
               size={14}
-              style={{ color: GRAYED_OUT_COLOR }}
             />
           </Tooltip>
         )}

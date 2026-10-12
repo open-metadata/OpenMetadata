@@ -22,7 +22,6 @@ import { InfoCircle } from '@openmetadata/ui-core-components/icons';
 
 import { AxiosError } from 'axios';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import { GRAYED_OUT_COLOR } from '../../../../constants/constants';
 import { EventSubscriptionDiagnosticInfo } from '../../../../generated/events/api/eventSubscriptionDiagnosticInfo';
 import { useFqn } from '../../../../hooks/useFqn';
 import { getDiagnosticInfo } from '../../../../rest/observabilityAPI';
@@ -91,9 +90,8 @@ function AlertDiagnosticInfoTab() {
                         title={item.description}
                         triggerClassName="tw:inline-flex">
                         <InfoCircle
-                          className="info-icon tw:shrink-0"
+                          className="info-icon tw:shrink-0 tw:text-quaternary"
                           size={14}
-                          style={{ color: GRAYED_OUT_COLOR }}
                         />
                       </Tooltip>
                     </Typography>

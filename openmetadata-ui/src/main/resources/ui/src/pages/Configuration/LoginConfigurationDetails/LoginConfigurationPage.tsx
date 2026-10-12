@@ -28,11 +28,7 @@ import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBre
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
-import {
-  GRAYED_OUT_COLOR,
-  NO_DATA_PLACEHOLDER,
-  ROUTES,
-} from '../../../constants/constants';
+import { NO_DATA_PLACEHOLDER, ROUTES } from '../../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { LoginConfiguration } from '../../../generated/configuration/loginConfiguration';
@@ -128,10 +124,9 @@ const LoginConfigurationPage = () => {
                   title={t('message.login-fail-attempt-message')}
                   triggerClassName="tw:inline-flex">
                   <InfoCircle
-                    className="tw:mx-1 tw:shrink-0"
+                    className="tw:mx-1 tw:shrink-0 tw:text-quaternary"
                     data-testid="max-login-fail-attampts-url-info"
                     size={14}
-                    style={{ color: GRAYED_OUT_COLOR }}
                   />
                 </Tooltip>
               </Typography>
@@ -155,10 +150,9 @@ const LoginConfigurationPage = () => {
                   title={t('message.access-block-time-message')}
                   triggerClassName="tw:inline-flex">
                   <InfoCircle
-                    className="tw:mx-1 tw:shrink-0"
+                    className="tw:mx-1 tw:shrink-0 tw:text-quaternary"
                     data-testid="access-block-time-info"
                     size={14}
-                    style={{ color: GRAYED_OUT_COLOR }}
                   />
                 </Tooltip>
               </Typography>
@@ -182,10 +176,9 @@ const LoginConfigurationPage = () => {
                   title={t('message.jwt-token-expiry-time-message')}
                   triggerClassName="tw:inline-flex">
                   <InfoCircle
-                    className="tw:mx-1 tw:shrink-0"
+                    className="tw:mx-1 tw:shrink-0 tw:text-quaternary"
                     data-testid="jwt-token-expiry-time-info"
                     size={14}
-                    style={{ color: GRAYED_OUT_COLOR }}
                   />
                 </Tooltip>
               </Typography>

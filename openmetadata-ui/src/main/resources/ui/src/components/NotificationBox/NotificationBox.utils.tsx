@@ -21,22 +21,12 @@ export const tabsInfo = [
   {
     name: i18n.t('label.task-plural'),
     key: NotificationTabsKey.TASK,
-    icon: (
-      <IconTask
-        className="tw:size-3.5 tw:shrink-0"
-        style={{ marginRight: '8px' }}
-      />
-    ),
+    icon: <IconTask className="tw:mr-2 tw:size-3.5 tw:shrink-0" />,
   },
   {
     name: i18n.t('label.mention-plural'),
     key: NotificationTabsKey.CONVERSATION,
-    icon: (
-      <IconMentions
-        className="tw:size-3.5 tw:shrink-0"
-        style={{ marginRight: '8px' }}
-      />
-    ),
+    icon: <IconMentions className="tw:mr-2 tw:size-3.5 tw:shrink-0" />,
   },
 ];
 
