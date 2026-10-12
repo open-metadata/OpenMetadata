@@ -519,9 +519,7 @@ export const ContractSecurityFormTab: React.FC<{
                 className="add-policy-button"
                 data-testid="add-policy-button"
                 disabled={!isNull(editingKey) || !addFunctionRef.current}
-                icon={
-                  <PlusIcon className="anticon tw:size-3.5 tw:shrink-0 tw:mr-2" />
-                }
+                icon={<PlusIcon className="tw:size-3.5 tw:shrink-0 tw:mr-2" />}
                 type="link"
                 onClick={handleAddPolicy}>
                 {t('label.add-entity', { entity: t('label.policy') })}

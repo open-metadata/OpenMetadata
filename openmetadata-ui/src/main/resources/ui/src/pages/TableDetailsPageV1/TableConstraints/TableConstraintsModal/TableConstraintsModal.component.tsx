@@ -563,7 +563,7 @@ const TableConstraintsModal = ({
                 <Button
                   className="text-primary d-flex items-center m-t-md"
                   data-testid="add-constraint-button"
-                  icon={<PlusIcon className="anticon tw:mr-2" />}
+                  icon={<PlusIcon className="tw:mr-2" />}
                   size="small"
                   onClick={() => add()}>
                   {t('label.add-entity', {

@@ -31,13 +31,7 @@ export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
         {canAdd && (
           <Button
             data-testid={`add-item-${title}`}
-            icon={
-              <Plus
-                className="tw:shrink-0"
-                size={12}
-                style={{ color: 'white' }}
-              />
-            }
+            icon={<Plus className="tw:shrink-0" size={12} />}
             id={`${idSchema.$id}`}
             size="small"
             type="primary"

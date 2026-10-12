@@ -95,13 +95,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
       children: (
         <Button
           data-testid="add-domain"
-          icon={
-            <Plus
-              className="tw:shrink-0"
-              size={12}
-              style={{ color: 'white' }}
-            />
-          }
+          icon={<Plus className="tw:shrink-0" size={12} />}
           size="small"
           type="primary"
         />
