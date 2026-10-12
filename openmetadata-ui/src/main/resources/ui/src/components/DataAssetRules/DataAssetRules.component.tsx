@@ -14,12 +14,13 @@
 import { PlusOutlined } from '@ant-design/icons';
 import {
   Box,
+  Button,
   Grid,
   SimpleModal,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Form, Input, Table } from 'antd';
+import { Form, Input, Table } from 'antd';
 import { FormInstance } from 'antd/es/form/Form';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -405,11 +406,9 @@ export const useSemanticsRuleList = ({
             })}
           </Typography>
           <Button
-            ghost
-            className="add-button"
+            color="secondary-brand"
             data-testid="add-widget-button"
-            icon={<PlusOutlined />}
-            type="primary"
+            iconLeading={<PlusOutlined />}
             onClick={handleAddDataAssetRule}>
             {t('label.add')}
           </Button>

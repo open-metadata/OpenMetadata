@@ -12,13 +12,14 @@
  */
 
 import {
+  Button,
   ButtonUtility,
   Divider,
   Popover,
   PopoverTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Select } from 'antd';
+import { Select } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, toLower, uniqBy } from 'lodash';
 import {
@@ -51,11 +52,11 @@ const renderMaxTagPlaceholder = (
   count: number,
   t: ReturnType<typeof useTranslation>['t']
 ) => (
-  <span className="max-tag-text">
+  <Typography className="max-tag-text">
     {t('label.plus-count-more', {
       count,
     })}
-  </span>
+  </Typography>
 );
 
 const UserProfileRoles = ({
@@ -334,35 +335,24 @@ const UserProfileRoles = ({
 
                   <div className="flex justify-end gap-2 mt-4">
                     <Button
-                      className="profile-edit-save"
+                      color="primary"
                       data-testid="user-profile-edit-roles-cancel-button"
-                      icon={<ClosePopoverIcon height={24} />}
-                      size="small"
+                      iconLeading={<ClosePopoverIcon height={24} />}
+                      size="xs"
                       style={{
-                        width: '30px',
-                        height: '30px',
-                        background: '#0950C5',
                         position: 'absolute',
                         bottom: '0px',
                         right: '38px',
                       }}
-                      type="primary"
                       onClick={handleCloseEditRole}
                     />
                     <Button
-                      className="profile-edit-cancel"
+                      color="primary"
                       data-testid="user-profile-edit-roles-save-button"
-                      icon={<SavePopoverIcon height={24} />}
-                      loading={isLoading}
-                      size="small"
-                      style={{
-                        width: '30px',
-                        height: '30px',
-                        background: '#0950C5',
-                        position: 'absolute',
-                        bottom: '0px',
-                      }}
-                      type="primary"
+                      iconLeading={<SavePopoverIcon height={24} />}
+                      isLoading={isLoading}
+                      size="xs"
+                      style={{ position: 'absolute', bottom: '0px' }}
                       onClick={handleRolesSave}
                     />
                   </div>

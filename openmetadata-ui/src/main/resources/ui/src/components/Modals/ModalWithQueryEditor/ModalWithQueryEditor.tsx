@@ -10,8 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Dialog, Modal, ModalOverlay } from '@openmetadata/ui-core-components';
-import { Button, Form } from 'antd';
+import {
+  Button,
+  Dialog,
+  Modal,
+  ModalOverlay,
+} from '@openmetadata/ui-core-components';
+import { Form } from 'antd';
 import { FormProps, useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { lazy, useEffect, useState } from 'react';
@@ -100,17 +105,17 @@ export const ModalWithQueryEditor = ({
           </Dialog.Content>
           <Dialog.Footer>
             <Button
+              color="link-color"
               data-testid="cancel"
-              disabled={isLoading}
+              isDisabled={isLoading}
               key="cancelButton"
-              type="link"
               onClick={onCancel}>
               {t('label.cancel')}
             </Button>
             <Button
+              color="primary"
               data-testid="save"
               key="saveButton"
-              type="primary"
               onClick={() => form.submit()}>
               {isSaving ? (
                 <Loader size="small" type="white" />

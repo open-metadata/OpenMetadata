@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 
-import { SimpleModal } from '@openmetadata/ui-core-components';
-import { Button, Input } from 'antd';
+import {
+  Button,
+  SimpleModal,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Input } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 
@@ -125,20 +129,19 @@ const AddPipeLineModal = ({
       data-testid="add-edge-modal"
       footer={[
         <Button
-          danger
+          color="primary-destructive"
           data-testid="remove-edge-button"
           key="remove-edge-btn"
-          type="primary"
           onClick={onRemoveEdgeClick}>
           {t('label.remove-entity', {
             entity: t('label.edge-lowercase'),
           })}
         </Button>,
         <Button
+          color="primary"
           data-testid="save-button"
+          isLoading={loading}
           key="save-btn"
-          loading={loading}
-          type="primary"
           onClick={() => onSave(edgeSelection)}>
           {t('label.save')}
         </Button>,
@@ -181,12 +184,14 @@ const AddPipeLineModal = ({
               )}
               <div>
                 <div className="d-flex flex-wrap">
-                  <span className="truncate breadcrumb">{breadcrumb}</span>
+                  <Typography className="truncate breadcrumb">
+                    {breadcrumb}
+                  </Typography>
                 </div>
                 <div className="d-flex flex-col">
-                  <span className="font-medium truncate">
+                  <Typography className="truncate" weight="medium">
                     {getEntityName(item)}
-                  </span>
+                  </Typography>
                 </div>
               </div>
             </div>

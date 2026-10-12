@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { SimpleModal } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import { Button, SimpleModal } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 
 import { clone } from 'lodash';
@@ -50,16 +49,16 @@ const SchemaModal: FC<SchemaModalProp> = ({
         isFooterVisible ? (
           <KeyDownStopPropagationWrapper>
             <Button
+              color="link-color"
               data-testid="cancel"
               key="cancelButton"
-              type="link"
               onClick={onClose}>
               {t('label.cancel')}
             </Button>
             <Button
+              color="primary"
               data-testid="save"
               key="saveButton"
-              type="primary"
               onClick={onSave}>
               {t('label.save')}
             </Button>

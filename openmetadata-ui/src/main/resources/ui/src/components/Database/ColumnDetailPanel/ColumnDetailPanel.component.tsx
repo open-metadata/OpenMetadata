@@ -30,10 +30,9 @@ import classNames from 'classnames';
 import { isString } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as ColumnIcon } from '../../../assets/svg/entity/column.svg';
 import { ReactComponent as KeyIcon } from '../../../assets/svg/icon-key.svg';
-import { DE_ACTIVE_COLOR, ENTITY_PATH } from '../../../constants/constants';
+import { ENTITY_PATH } from '../../../constants/constants';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
 import { Column, TableConstraint } from '../../../generated/entity/data/table';
@@ -842,7 +841,6 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         className="tw:ml-2"
         data-testid="edit-displayName-button"
         disabled={false}
-        icon={<IconEdit color={DE_ACTIVE_COLOR} height={18} width={18} />}
         size="small"
         title={t('label.edit-entity', {
           entity: t('label.display-name'),

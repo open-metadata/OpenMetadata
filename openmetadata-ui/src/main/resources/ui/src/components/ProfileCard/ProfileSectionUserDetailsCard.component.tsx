@@ -12,13 +12,14 @@
  */
 import Icon from '@ant-design/icons';
 import {
+  Button,
   ButtonUtility,
   Popover,
   PopoverTrigger,
   SimpleModal,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Badge, Button } from 'antd';
+import { Badge } from 'antd';
 import { AxiosError } from 'axios';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -81,64 +82,44 @@ const ProfileManageOptions = ({
   <div style={{ width: '180px' }}>
     {isLoggedInUser && (
       <Button
-        className="profile-manage-item d-flex item-center w-full text-left border-0  bg-transparent remove-button-default-styling"
+        className="tw:w-full tw:justify-start"
+        color="tertiary"
         data-testid="edit-displayname"
+        iconLeading={<EditProfileIcon {...ICON_DIMENSION_USER_PAGE} />}
         onClick={onEditDisplayName}>
-        <EditProfileIcon
-          className="m-r-xss"
-          style={{ marginRight: '10px' }}
-          {...ICON_DIMENSION_USER_PAGE}
-        />
-        <Typography className="profile-manage-label">
-          {t('label.edit-entity', {
-            entity: t('label.display-name'),
-          })}
-        </Typography>
+        {t('label.edit-entity', {
+          entity: t('label.display-name'),
+        })}
       </Button>
     )}
     {showChangePasswordComponent && (isLoggedInUser || isAdminUser) && (
       <Button
-        className="profile-manage-item d-flex item-center w-full text-left border-0  bg-transparent remove-button-default-styling"
+        className="tw:w-full tw:justify-start"
+        color="tertiary"
         data-testid="change-password-button"
+        iconLeading={<ChangePassword {...ICON_DIMENSION_USER_PAGE} />}
         onClick={onChangePassword}>
-        <ChangePassword
-          className="m-r-xss"
-          style={{ marginRight: '10px' }}
-          {...ICON_DIMENSION_USER_PAGE}
-        />
-        <Typography className="profile-manage-label">
-          {t('label.change-entity', {
-            entity: t('label.password-lowercase'),
-          })}
-        </Typography>
+        {t('label.change-entity', {
+          entity: t('label.password-lowercase'),
+        })}
       </Button>
     )}
     {userData?.deleted ? (
       <Button
-        className="profile-manage-item d-flex item-center w-full text-left border-0 bg-transparent remove-button-default-styling"
+        className="tw:w-full tw:justify-start"
+        color="tertiary"
+        iconLeading={<DeleteIcon {...ICON_DIMENSION_USER_PAGE} />}
         onClick={onRestore}>
-        <DeleteIcon
-          className="m-r-xss"
-          style={{ marginRight: '10px' }}
-          {...ICON_DIMENSION_USER_PAGE}
-        />
-        <Typography className="profile-manage-label">
-          {t('label.restore')}
-        </Typography>
+        {t('label.restore')}
       </Button>
     ) : (
       isAdminUser && (
         <Button
-          className="remove-button-default-styling profile-manage-item d-flex item-center w-full text-left border-0  bg-transparent"
+          className="tw:w-full tw:justify-start"
+          color="tertiary"
+          iconLeading={<DeleteIcon {...ICON_DIMENSION_USER_PAGE} />}
           onClick={onDelete}>
-          <DeleteIcon
-            className="m-r-xss"
-            style={{ marginRight: '10px' }}
-            {...ICON_DIMENSION_USER_PAGE}
-          />
-          <Typography className="profile-manage-label">
-            {t('label.delete-profile')}
-          </Typography>
+          {t('label.delete-profile')}
         </Button>
       )
     )}
@@ -360,9 +341,7 @@ const ProfileSectionUserDetailsCard = ({
       )}
 
       {showRestoreModal && (
-        <Button
-          className="remove-button-default-styling"
-          onClick={(e) => e.stopPropagation()}>
+        <div role="presentation" onClick={(e) => e.stopPropagation()}>
           <SimpleModal
             data-testid="restore-user-modal"
             isDismissable={false}
@@ -380,7 +359,7 @@ const ProfileSectionUserDetailsCard = ({
               })}
             </Typography>
           </SimpleModal>
-        </Button>
+        </div>
       )}
     </div>
   );

@@ -14,10 +14,10 @@ import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import {
   BadgeWithButton,
   Box,
+  Button,
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
 import { FC, useState } from 'react';
 import { Pressable } from 'react-aria-components';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
@@ -98,20 +98,19 @@ export const RelatedDataAssetsForm: FC<RelatedDataAssetsFormProps> = ({
             gap={2}
             itemClassName="layout-space-item">
             <Button
-              className="p-x-05"
+              color="secondary"
               data-testid="cancelDataAssets"
-              disabled={isSubmitLoading}
-              icon={<CloseOutlined size={12} />}
-              size="small"
+              iconLeading={<CloseOutlined size={12} />}
+              isDisabled={isSubmitLoading}
+              size="xs"
               onClick={onCancel}
             />
             <Button
-              className="p-x-05"
+              color="primary"
               data-testid="saveDataAssets"
-              icon={<CheckOutlined size={12} />}
-              loading={isSubmitLoading}
-              size="small"
-              type="primary"
+              iconLeading={<CheckOutlined size={12} />}
+              isLoading={isSubmitLoading}
+              size="xs"
               onClick={handleSubmit}
             />
           </Box>

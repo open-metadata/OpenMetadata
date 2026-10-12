@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 
-import { Box, SimpleModal, Typography } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import {
+  Box,
+  Button,
+  SimpleModal,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -257,10 +261,10 @@ const AppSchedule = ({
               itemClassName="layout-space-item">
               {appData.appType === AppType.External && (
                 <Button
+                  color="primary"
                   data-testid="deploy-button"
-                  disabled={isAppDisabled}
-                  loading={isDeployLoading}
-                  type="primary"
+                  isDisabled={isAppDisabled}
+                  isLoading={isDeployLoading}
                   onClick={onDeployTrigger}>
                   {t('label.deploy')}
                 </Button>
@@ -268,9 +272,9 @@ const AppSchedule = ({
 
               {!appData.system && (
                 <Button
+                  color="primary"
                   data-testid="edit-button"
-                  disabled={isAppDisabled}
-                  type="primary"
+                  isDisabled={isAppDisabled}
                   onClick={onDialogOpen}>
                   {t('label.edit')}
                 </Button>
@@ -278,10 +282,10 @@ const AppSchedule = ({
 
               {showRunNowButton && (
                 <Button
+                  color="primary"
                   data-testid="run-now-button"
-                  disabled={isAppDisabled}
-                  loading={isRunLoading}
-                  type="primary"
+                  isDisabled={isAppDisabled}
+                  isLoading={isRunLoading}
                   onClick={onAppTrigger}>
                   {t('label.run-now')}
                 </Button>
@@ -301,16 +305,16 @@ const AppSchedule = ({
         footer={
           <>
             <Button
+              color="link-color"
               data-testid="back-button"
-              type="link"
               onClick={onDialogCancel}>
               {t('label.cancel')}
             </Button>
             <Button
+              color="primary"
               data-testid="deploy-button"
-              disabled={!isScheduleValid}
-              loading={isSaveLoading}
-              type="primary"
+              isDisabled={!isScheduleValid}
+              isLoading={isSaveLoading}
               onClick={onDialogSave}>
               {t('label.save')}
             </Button>

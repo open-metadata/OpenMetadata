@@ -12,12 +12,13 @@
  */
 import {
   Box,
+  Button,
   ButtonUtility,
   Popover,
   PopoverTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, RefSelectProps, Select } from 'antd';
+import { RefSelectProps, Select } from 'antd';
 import classNames from 'classnames';
 import { debounce } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -62,7 +63,9 @@ const renderMaxTagPlaceholder = (
   count: number,
   t: ReturnType<typeof useTranslation>['t']
 ) => (
-  <span className="max-tag-text">{t('label.plus-count-more', { count })}</span>
+  <Typography className="max-tag-text">
+    {t('label.plus-count-more', { count })}
+  </Typography>
 );
 
 export const PersonaSelectableList = ({
@@ -316,24 +319,22 @@ export const PersonaSelectableList = ({
 
           <div className="flex justify-end gap-2">
             <Button
-              className="persona-profile-edit-save"
+              color="primary"
               data-testid={`user-profile${
                 isDefaultPersona ? '-default' : ''
               }persona-edit-cancel`}
-              icon={<ClosePopoverIcon height={24} />}
-              size="small"
-              type="primary"
+              iconLeading={<ClosePopoverIcon height={24} />}
+              size="xs"
               onClick={handleCloseEditTeam}
             />
             <Button
-              className="persona-profile-edit-cancel"
+              color="primary"
               data-testid={`user-profile${
                 isDefaultPersona ? '-default' : ''
               }-persona-edit-save`}
-              icon={<SavePopoverIcon height={24} />}
-              loading={isSaving}
-              size="small"
-              type="primary"
+              iconLeading={<SavePopoverIcon height={24} />}
+              isLoading={isSaving}
+              size="xs"
               onClick={handlePersonaUpdate}
             />
           </div>

@@ -13,12 +13,13 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Box,
+  Button,
   Card,
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Affix, Button } from 'antd';
-import ButtonGroup from 'antd/lib/button/button-group';
+import { Affix } from 'antd';
+
 import { CookieStorage } from 'cookie-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -152,10 +153,12 @@ const GithubStarCard = () => {
               </Typography>
             </Box>
             <Button
-              className="flex-center m--t-xss"
+              className="tw:-mt-1"
+              color="tertiary"
               data-testid="close-github-star-popup-card"
-              icon={<CloseIcon color={BLACK_COLOR} height={12} width={12} />}
-              type="text"
+              iconLeading={
+                <CloseIcon color={BLACK_COLOR} height={12} width={12} />
+              }
               onClick={handleClosePopup}
             />
           </Box>
@@ -164,37 +167,29 @@ const GithubStarCard = () => {
             {t('message.star-on-github-description')}
           </Typography>
 
-          <ButtonGroup className="github-action-button-group">
-            <Typography>
-              <a
-                href={OMD_REPOSITORY_LINK}
-                rel="noopener noreferrer"
-                target="_blank">
-                <Button
-                  className="github-star-button github-modal-action-button"
-                  icon={<Icon component={StarGithubIcon} size={12} />}>
-                  {t('label.star')}
-                </Button>
-              </a>
-            </Typography>
-
-            <Typography>
-              <a
-                href={OMD_REPOSITORY_LINK}
-                rel="noopener noreferrer"
-                target="_blank">
-                <Button className="github-modal-action-button">
-                  {isLoading ? (
-                    <div data-testid="skeleton-loader">
-                      <Skeleton height={36} variant="rounded" width={72} />
-                    </div>
-                  ) : (
-                    starredCount
-                  )}
-                </Button>
-              </a>
-            </Typography>
-          </ButtonGroup>
+          <div className="tw:flex tw:gap-2">
+            <Button
+              color="secondary"
+              href={OMD_REPOSITORY_LINK}
+              iconLeading={<Icon component={StarGithubIcon} size={12} />}
+              rel="noopener noreferrer"
+              target="_blank">
+              {t('label.star')}
+            </Button>
+            <Button
+              color="secondary"
+              href={OMD_REPOSITORY_LINK}
+              rel="noopener noreferrer"
+              target="_blank">
+              {isLoading ? (
+                <div data-testid="skeleton-loader">
+                  <Skeleton height={36} variant="rounded" width={72} />
+                </div>
+              ) : (
+                starredCount
+              )}
+            </Button>
+          </div>
         </Card.Content>
       </Card>
     </Affix>

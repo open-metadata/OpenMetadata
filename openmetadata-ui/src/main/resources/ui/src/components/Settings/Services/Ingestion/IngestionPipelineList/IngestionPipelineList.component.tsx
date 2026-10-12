@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Grid } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import { Button, Grid } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import capitalize from 'lodash/capitalize';
 import isNil from 'lodash/isNil';
@@ -327,15 +326,15 @@ export const IngestionPipelineList = ({
       </Grid.Item>
       <Grid.Item className="layout-column text-right" span={24}>
         <Button
+          color="primary"
           data-testid="bulk-re-deploy-button"
-          disabled={
+          isDisabled={
             selectedPipelines?.length === 0 ||
             isFetchingStatus ||
             !isAirflowAvailable ||
             isPlatformDisabled
           }
-          loading={deploying}
-          type="primary"
+          isLoading={deploying}
           onClick={handleBulkRedeploy}>
           {t('label.re-deploy')}
         </Button>

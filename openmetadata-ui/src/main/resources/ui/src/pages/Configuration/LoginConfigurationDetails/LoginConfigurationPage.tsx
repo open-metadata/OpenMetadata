@@ -13,11 +13,11 @@
 import Icon, { InfoCircleOutlined } from '@ant-design/icons';
 import {
   Box,
+  Button,
   Grid,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -108,8 +108,9 @@ const LoginConfigurationPage = () => {
             </Box>
             <Box className="layout-column tw:block">
               <Button
+                color="secondary"
                 data-testid="edit-button"
-                icon={<Icon component={IconEdit} size={12} />}
+                iconLeading={<Icon component={IconEdit} size={12} />}
                 onClick={handleEditClick}>
                 {t('label.edit')}
               </Button>

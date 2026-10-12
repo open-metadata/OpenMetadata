@@ -12,12 +12,12 @@
  */
 import {
   Box,
+  Button,
   Card,
   Divider,
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
 import { split } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -53,10 +53,9 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
     <Card className="welcome-screen-container" data-testid="welcome-screen">
       <div className="tw:flex tw:justify-end tw:px-4 tw:pt-4">
         <Button
-          className="flex-center welcome-screen-close-btn"
+          color="tertiary"
           data-testid="welcome-screen-close-btn"
-          icon={<CloseIcon height={12} width={12} />}
-          type="text"
+          iconLeading={<CloseIcon height={12} width={12} />}
           onClick={onClose}
         />
       </div>

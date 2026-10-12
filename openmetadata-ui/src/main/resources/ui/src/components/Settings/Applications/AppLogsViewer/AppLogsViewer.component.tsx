@@ -14,12 +14,13 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Box,
+  Button,
   Card,
   Divider,
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Badge, Button, Table } from 'antd';
+import { Badge, Table } from 'antd';
 import { capitalize, isEmpty, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -129,9 +130,9 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                   {showStatus && (
                     <>
                       <div className="flex">
-                        <span className="text-grey-muted">{`${t(
+                        <Typography color="secondary">{`${t(
                           'label.status'
-                        )}:`}</span>
+                        )}:`}</Typography>
 
                         <Box
                           inline
@@ -145,7 +146,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                             }
                             style={ICON_DIMENSION}
                           />
-                          <span>{capitalize(status)}</span>
+                          <Typography>{capitalize(status)}</Typography>
                         </Box>
                       </div>
                       <Divider
@@ -155,9 +156,9 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                     </>
                   )}
                   <div className="flex">
-                    <span className="text-grey-muted">{`${t(
+                    <Typography color="secondary">{`${t(
                       'label.index-states'
-                    )}:`}</span>
+                    )}:`}</Typography>
                     <span className="m-l-xs">
                       <Box
                         inline
@@ -232,10 +233,12 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                           orientation="vertical"
                         />
                         <div className="flex">
-                          <span className="text-grey-muted">{`${t(
+                          <Typography color="secondary">{`${t(
                             latencyLabelKey ?? 'label.latency'
-                          )}:`}</span>
-                          <span className="m-l-xs" data-testid="stage-latency">
+                          )}:`}</Typography>
+                          <Typography
+                            className="m-l-xs"
+                            data-testid="stage-latency">
                             {`${formatLatencyAverage(
                               timeMs,
                               stepStats.successRecords
@@ -243,7 +246,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                               timeMs,
                               stepStats.successRecords
                             )}`}
-                          </span>
+                          </Typography>
                         </div>
                       </>
                     );
@@ -255,14 +258,14 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                         orientation="vertical"
                       />
                       <div className="flex">
-                        <span className="text-grey-muted">{`${t(
+                        <Typography color="secondary">{`${t(
                           'label.last-updated'
-                        )}:`}</span>
-                        <span className="m-l-xs">
+                        )}:`}</Typography>
+                        <Typography className="m-l-xs">
                           {timestamp
                             ? formatDateTimeWithTimezone(timestamp)
                             : '--'}
-                        </span>
+                        </Typography>
                       </div>
                     </>
                   )}
@@ -576,7 +579,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
               className="layout-space layout-space-horizontal"
               gap={2}
               itemClassName="layout-space-item">
-              <span>{t('label.server-stat-plural')}</span>
+              <Typography>{t('label.server-stat-plural')}</Typography>
               {serverCount && (
                 <Badge
                   className="request-badge running"
@@ -674,8 +677,8 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
       {failureLogs && (
         <div className="m-t-md">
           <Button
+            color="link-color"
             data-testid="view-logs-button"
-            type="link"
             onClick={() => setShowLogsModal(true)}>
             {t('label.view-entity', { entity: t('label.log-plural') })}
           </Button>
@@ -685,8 +688,8 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
       {hasFailures && (
         <div className="m-t-md">
           <Button
+            color="link-color"
             data-testid="view-reindex-failures-button"
-            type="link"
             onClick={() => setShowFailuresDrawer(true)}>
             {t('label.view-reindex-failure-plural')}
           </Button>

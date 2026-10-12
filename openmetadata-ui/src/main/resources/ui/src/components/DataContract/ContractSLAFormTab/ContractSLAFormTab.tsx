@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 import {
+  Button,
   Card,
   Grid,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Form, InputNumber, Select, TimePicker } from 'antd';
+import { Form, InputNumber, Select, TimePicker } from 'antd';
 import { FormProps } from 'antd/lib/form/Form';
 import { isEmpty } from 'lodash';
 import moment from 'moment';
@@ -417,8 +418,8 @@ export const ContractSLAFormTab: React.FC<{
       </Card>
       <div className="d-flex justify-between m-t-md">
         <Button
-          className="contract-prev-button"
-          icon={<LeftOutlined height={22} width={20} />}
+          color="secondary"
+          iconLeading={<LeftOutlined height={22} width={20} />}
           onClick={onPrev}>
           {buttonProps.prevLabel ?? t('label.previous')}
         </Button>
