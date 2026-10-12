@@ -93,9 +93,13 @@ export const ProfilerMetricSelect = ({
       children.length > 0 &&
         children.every((child) => selectedIds.has(child.id))
         ? ['all']
-        : selectedNodes
-            .filter((node) => node.id !== 'all')
-            .map((node) => node.id)
+        : selectedNodes.reduce<string[]>((ids, node) => {
+            if (node.id !== 'all') {
+              ids.push(node.id);
+            }
+
+            return ids;
+          }, [])
     );
   };
   const visible = allSelected ? [nodes[0]] : selected;

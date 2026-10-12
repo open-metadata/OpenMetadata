@@ -13,6 +13,7 @@
 
 import { Card, Grid, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
+import { isNumber, isString } from 'lodash';
 import { FormCardSectionProps } from './FormCardSection.interface';
 
 function FormCardSection({
@@ -26,7 +27,7 @@ function FormCardSection({
     <Card
       className={className}
       data-testid={
-        typeof heading === 'string' || typeof heading === 'number'
+        isString(heading) || isNumber(heading)
           ? `${heading}-container`
           : undefined
       }>

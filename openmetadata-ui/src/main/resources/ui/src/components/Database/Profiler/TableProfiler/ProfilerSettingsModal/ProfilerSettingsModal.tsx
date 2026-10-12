@@ -29,6 +29,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Plus, Trash01, XClose } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
+import { isString } from 'lodash';
 import { lazy, useEffect, useMemo, useState } from 'react';
 import { FieldPath, useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -109,15 +110,18 @@ const ProfilerSettingsModal = ({
   );
   const partitionColumnItems = useMemo(
     () =>
-      columns
-        .filter(
-          (column) =>
-            partitionIntervalType &&
-            SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL[
-              partitionIntervalType
-            ].includes(column.dataType)
-        )
-        .map(({ name }) => ({ id: name, label: name })),
+      columns.reduce<typeof columnItems>((items, column) => {
+        if (
+          partitionIntervalType &&
+          SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL[
+            partitionIntervalType
+          ].includes(column.dataType)
+        ) {
+          items.push({ id: column.name, label: column.name });
+        }
+
+        return items;
+      }, []),
     [columns, partitionIntervalType]
   );
 
@@ -232,7 +236,7 @@ const ProfilerSettingsModal = ({
         name={name}
         rules={isRequired ? required(accessibleLabel) : undefined}>
         {({ field, fieldState }) => {
-          const key = typeof field.value === 'string' ? field.value : null;
+          const key = isString(field.value) ? field.value : null;
           const completeItems = getProfilerSelectItems(items, key);
           const handleSelection = (selection: string | number | null) => {
             if (selection !== null) {

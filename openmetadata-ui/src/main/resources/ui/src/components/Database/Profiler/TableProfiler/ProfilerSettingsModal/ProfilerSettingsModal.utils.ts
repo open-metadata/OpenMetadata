@@ -112,13 +112,20 @@ export const toProfilerConfig = (
           }
         : undefined,
     includeColumns: !isEqual(data.includeColumns, DEFAULT_INCLUDE_PROFILE)
-      ? data.includeColumns
-          .filter((column) => column.columnName !== undefined)
-          .map((column) =>
-            column.metrics?.[0] === 'all'
-              ? { columnName: column.columnName }
-              : column
-          )
+      ? data.includeColumns.reduce<ColumnProfilerConfig[]>(
+          (columns, column) => {
+            if (column.columnName !== undefined) {
+              columns.push(
+                column.metrics?.[0] === 'all'
+                  ? { columnName: column.columnName }
+                  : column
+              );
+            }
+
+            return columns;
+          },
+          []
+        )
       : undefined,
     partitioning: data.enablePartitioning
       ? {
@@ -131,9 +138,13 @@ export const toProfilerConfig = (
           partitionIntervalUnit: data.partitionIntervalUnit,
           partitionValues:
             data.partitionIntervalType === PartitionIntervalTypes.ColumnValue
-              ? data.partitionValues
-                  .map(({ value }) => value)
-                  .filter((value) => value.length > 0)
+              ? data.partitionValues.reduce<string[]>((values, { value }) => {
+                  if (value.length > 0) {
+                    values.push(value);
+                  }
+
+                  return values;
+                }, [])
               : undefined,
         }
       : undefined,

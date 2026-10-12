@@ -12,6 +12,7 @@
  */
 import { Grid, NumberInput, Slider } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
+import { isNumber } from 'lodash';
 import { useTranslation } from 'react-i18next';
 
 export const CustomRangeWidget = (props: WidgetProps) => {
@@ -32,7 +33,7 @@ export const CustomRangeWidget = (props: WidgetProps) => {
           maxValue={100}
           minValue={min}
           step={1}
-          value={typeof props.value === 'number' ? props.value : min}
+          value={isNumber(props.value) ? props.value : min}
           onChange={props.onChange}
         />
       </Grid.Item>
@@ -47,7 +48,7 @@ export const CustomRangeWidget = (props: WidgetProps) => {
           minValue={min}
           name={props.name}
           step={1}
-          value={typeof props.value === 'number' ? props.value : Number.NaN}
+          value={isNumber(props.value) ? props.value : Number.NaN}
           onChange={(value) =>
             props.onChange(Number.isNaN(value) ? null : value)
           }

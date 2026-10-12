@@ -23,16 +23,18 @@ export const getClassicRuleItems = (
 ) => {
   const items = getRuleItems(supportedRules, rules);
 
-  return [
-    ...items,
-    ...rules
-      .filter(
-        (rule) => rule.name && !items.some((item) => item.id === rule.name)
-      )
-      .map((rule) => ({
-        id: rule.name ?? '',
-        label: rule.name ?? '',
-        isDisabled: true,
-      })),
-  ];
+  return rules.reduce<typeof items>(
+    (result, rule) => {
+      if (rule.name && !items.some((item) => item.id === rule.name)) {
+        result.push({
+          id: rule.name,
+          label: rule.name,
+          isDisabled: true,
+        });
+      }
+
+      return result;
+    },
+    [...items]
+  );
 };

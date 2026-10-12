@@ -19,6 +19,7 @@ import {
   Tooltip,
 } from '@openmetadata/ui-core-components';
 import { XClose } from '@openmetadata/ui-core-components/icons';
+import { isNumber } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { SliderWithInputProps } from './SliderWithInput.interface';
 const SliderWithInput = ({
@@ -43,9 +44,7 @@ const SliderWithInput = ({
           minValue={min}
           step={1}
           value={value ?? min}
-          onChange={(next) =>
-            onChange(typeof next === 'number' ? next : next[0])
-          }
+          onChange={(next) => onChange(isNumber(next) ? next : next[0])}
         />
       </Box>
       <Box className="layout-column tw:block tw:w-44">

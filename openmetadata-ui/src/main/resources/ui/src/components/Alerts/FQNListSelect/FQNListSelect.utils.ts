@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { isEmpty } from 'lodash';
+import { isEmpty, isString } from 'lodash';
 import { SearchIndex } from '../../../enums/search.enum';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getTermQuery } from '../../../utils/SearchPureUtils';
@@ -22,15 +22,12 @@ const getContainerFqn = (
 ): string | undefined => {
   if (
     !('entityType' in source) ||
-    typeof source.entityType !== 'string' ||
+    !isString(source.entityType) ||
     !containerEntities.includes(source.entityType)
   ) {
     return undefined;
   }
-  if (
-    'fullyQualifiedName' in source &&
-    typeof source.fullyQualifiedName === 'string'
-  ) {
+  if ('fullyQualifiedName' in source && isString(source.fullyQualifiedName)) {
     return source.fullyQualifiedName || undefined;
   }
 

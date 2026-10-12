@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { FormSelectItem } from '@openmetadata/ui-core-components';
+import { isString } from 'lodash';
 import { FilterDescriptor, FilterValue } from './FilterChip.interface';
 
 const getSelectedValues = (value: FilterValue): string[] => {
@@ -18,7 +19,7 @@ const getSelectedValues = (value: FilterValue): string[] => {
     return value;
   }
 
-  return typeof value === 'string' ? [value] : [];
+  return isString(value) ? [value] : [];
 };
 
 export const getClassicFilterItems = (filter: FilterDescriptor) => {
