@@ -45,10 +45,13 @@ public class SubjectCachePeerSync implements Managed {
   record WatchedTable(String entityType, EntityDAO<?> dao) {}
 
   private final List<WatchedTable> tables;
+  private final EntityDAO<?> domainDao;
   private final List<Invalidatable> invalidators;
+  private final Runnable onDomainRename;
   private final LongSupplier clock;
   private final Map<String, Long> seenVersions = new HashMap<>();
   private final Map<String, Integer> rowCounts = new HashMap<>();
+  private final Map<String, String> domainNames = new HashMap<>();
   private long watermark;
   private ScheduledExecutorService scheduler;
 
@@ -59,14 +62,22 @@ public class SubjectCachePeerSync implements Managed {
             new WatchedTable(Entity.TEAM, dao.teamDAO()),
             new WatchedTable(Entity.ROLE, dao.roleDAO()),
             new WatchedTable(Entity.POLICY, dao.policyDAO())),
+        dao.domainDAO(),
         List.of(EntityRepository::onRemoteCacheInvalidate, SubjectCache.invalidator()),
+        SubjectCache::invalidateAllUserContexts,
         System::currentTimeMillis);
   }
 
   SubjectCachePeerSync(
-      List<WatchedTable> tables, List<Invalidatable> invalidators, LongSupplier clock) {
+      List<WatchedTable> tables,
+      EntityDAO<?> domainDao,
+      List<Invalidatable> invalidators,
+      Runnable onDomainRename,
+      LongSupplier clock) {
     this.tables = tables;
+    this.domainDao = domainDao;
     this.invalidators = invalidators;
+    this.onDomainRename = onDomainRename;
     this.clock = clock;
   }
 
@@ -74,6 +85,7 @@ public class SubjectCachePeerSync implements Managed {
   public void start() {
     watermark = clock.getAsLong();
     tables.forEach(table -> rowCounts.put(table.entityType(), countRows(table)));
+    domainDao.listChangedSince(domainDao.getTableName(), 0).forEach(this::rememberDomainName);
     scheduler =
         Executors.newSingleThreadScheduledExecutor(
             runnable -> {
@@ -98,6 +110,7 @@ public class SubjectCachePeerSync implements Managed {
       evictChangedRows(table);
       evictOnRemovedRows(table);
     }
+    evictOnDomainRenames();
     watermark = pollStart;
     seenVersions.values().removeIf(version -> version < pollStart - 2 * OVERLAP_MS);
   }
@@ -136,6 +149,25 @@ public class SubjectCachePeerSync implements Managed {
     if (previous != null && count < previous) {
       evict(table.entityType(), null, null);
     }
+  }
+
+  // A rename changes the domain FQN hasDomain() matches on without touching any user row
+  private void evictOnDomainRenames() {
+    boolean renamed = false;
+    for (String row :
+        domainDao.listChangedSince(domainDao.getTableName(), watermark - OVERLAP_MS)) {
+      renamed |= rememberDomainName(row);
+    }
+    if (renamed) {
+      onDomainRename.run();
+    }
+  }
+
+  /** Records the domain's name and returns whether it differs from the one seen before. */
+  private boolean rememberDomainName(String row) {
+    String[] idVersionName = row.split("\\|", 3);
+    String previous = domainNames.put(idVersionName[0], idVersionName[2]);
+    return previous != null && !previous.equals(idVersionName[2]);
   }
 
   private int countRows(WatchedTable table) {

@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,21 +22,28 @@ import org.openmetadata.service.security.policyevaluator.SubjectCachePeerSync.Wa
 class SubjectCachePeerSyncTest {
   private static final UUID USER_ID = UUID.randomUUID();
   private static final UUID ROLE_ID = UUID.randomUUID();
+  private static final UUID DOMAIN_ID = UUID.randomUUID();
 
   private final AtomicLong clock = new AtomicLong(1_000_000L);
   private final List<String> evicted = new ArrayList<>();
+  private final AtomicInteger domainRenames = new AtomicInteger();
   private EntityDAO<?> userDao;
   private EntityDAO<?> roleDao;
+  private EntityDAO<?> domainDao;
   private SubjectCachePeerSync sync;
 
   @BeforeEach
   void setUp() {
     userDao = dao("user_entity", 0);
     roleDao = dao("role_entity", 3);
+    domainDao = dao("domain_entity", 0);
+    rows(domainDao, DOMAIN_ID + "|" + clock.get() + "|Finance");
     sync =
         new SubjectCachePeerSync(
             List.of(new WatchedTable(Entity.USER, userDao), new WatchedTable(Entity.ROLE, roleDao)),
+            domainDao,
             List.of((type, id, fqn) -> evicted.add(type + ":" + id + ":" + fqn)),
+            domainRenames::incrementAndGet,
             clock::get);
     sync.start();
   }
@@ -81,6 +89,22 @@ class SubjectCachePeerSyncTest {
     sync.sync();
 
     assertEquals(List.of(Entity.ROLE + ":" + ROLE_ID + ":DataSteward"), evicted);
+  }
+
+  @Test
+  void renamedDomainDropsEveryUserContext() {
+    rows(domainDao, DOMAIN_ID + "|" + (clock.get() + 1) + "|FinanceOps");
+    sync.sync();
+
+    assertEquals(1, domainRenames.get());
+  }
+
+  @Test
+  void domainEditThatKeepsTheNameDropsNothing() {
+    rows(domainDao, DOMAIN_ID + "|" + (clock.get() + 1) + "|Finance");
+    sync.sync();
+
+    assertEquals(0, domainRenames.get());
   }
 
   private static EntityDAO<?> dao(String table, int count) {
