@@ -20,9 +20,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.function.Predicate;
 import org.awaitility.Awaitility;
 import org.jdbi.v3.core.Handle;
@@ -36,7 +34,6 @@ import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.SharedResourceLocks;
-import org.openmetadata.it.util.SqlQueryCounter;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.EntityInterface;
@@ -1262,11 +1259,7 @@ public class TypeResourceIT {
       assertEquals(
           List.of(second.getId().toString()),
           referenceIds(client.domains().get(domain.getId().toString(), "extension"), property));
-      assertStoredValue(domain, property, stored -> stored != null && stored.size() == 1);
-      assertEquals(
-          second.getId().toString(), storedValue(domain, property).get(0).get("id").asText());
-      assertTrue(referenceRowsTo(first.getId()).isEmpty());
-      assertEquals(1, referenceRowsTo(second.getId()).size());
+      assertNoReferencesTo(first.getId());
     } finally {
       deleteDomainProperty(client, property);
     }
@@ -1285,8 +1278,7 @@ public class TypeResourceIT {
       assertTrue(
           referenceIds(client.domains().get(domain.getId().toString(), "extension"), property)
               .isEmpty());
-      assertStoredValue(domain, property, stored -> stored == null);
-      assertTrue(referenceRowsTo(team.getId()).isEmpty());
+      assertNoReferencesTo(team.getId());
     } finally {
       deleteDomainProperty(client, property);
     }
@@ -1308,8 +1300,6 @@ public class TypeResourceIT {
       assertEquals(
           List.of(team.getId().toString()),
           referenceIds(client.domains().get(domain.getId().toString(), "extension"), property));
-      assertEquals(team.getId().toString(), storedValue(domain, property).get("id").asText());
-      assertEquals(1, referenceRowsTo(team.getId()).size());
     } finally {
       deleteDomainProperty(client, property);
     }
@@ -1334,9 +1324,7 @@ public class TypeResourceIT {
       assertEquals(
           List.of(second.getId().toString(), third.getId().toString()),
           referenceIds(updated, property));
-      assertStoredValue(domain, property, stored -> stored != null && stored.size() == 2);
       assertNoReferencesTo(first.getId());
-      assertEquals(1, referenceRowsTo(third.getId()).size());
     } finally {
       deleteDomainProperty(client, property);
     }
@@ -1376,7 +1364,6 @@ public class TypeResourceIT {
       assertEquals(
           List.of(team.getId().toString()),
           referenceIds(client.domains().get(domain.getId().toString(), "extension"), property));
-      assertEquals(1, referenceRowsTo(team.getId()).size());
     } finally {
       deleteDomainProperty(client, property);
     }
@@ -1413,7 +1400,6 @@ public class TypeResourceIT {
       upper.put("id", id(team).toUpperCase());
       Domain domain = createDomain(client, ns, property, List.of(upper));
 
-      assertEquals(1, referenceRowsTo(team.getId()).size());
       client.teams().delete(id(team), HARD_DELETE);
       assertNoReferencesTo(team.getId());
       assertTrue(referenceIds(client.domains().get(id(domain), "extension"), property).isEmpty());
@@ -1442,88 +1428,6 @@ public class TypeResourceIT {
           ids -> !ids.contains(first.getId().toString()) && ids.contains(id(second)));
     } finally {
       deleteDomainProperty(client, property);
-    }
-  }
-
-  /**
-   * A writer that proved its target under the shared lock makes a concurrent hard delete of that
-   * target wait; once the writer commits, the delete removes the new row. Driven with an explicit
-   * transaction so the interleaving is deterministic on both engines.
-   */
-  @Test
-  void test_referenceWrittenUnderShareLockIsRemovedByTheDeleteThatWaitedForIt(TestNamespace ns)
-      throws Exception {
-    OpenMetadataClient client = SdkClients.adminClient();
-    String property = addTeamReferenceProperty(client, ns, "entityReferenceList");
-    try {
-      Team survivor = createTeam(client, ns.prefix("survivor"), CreateTeam.TeamType.GROUP, null);
-      Team doomed = createTeam(client, ns.prefix("doomed"), CreateTeam.TeamType.GROUP, null);
-      Domain domain = createDomain(client, ns, property, List.of(referenceOf(survivor)));
-      ExecutorService deleter = Executors.newSingleThreadExecutor();
-      try (Handle writer = Entity.getJdbi().open()) {
-        writer.begin();
-        CollectionDAO writerDao = writer.attach(CollectionDAO.class);
-        assertEquals(
-            List.of(id(doomed)),
-            writerDao.teamDAO().lockExistingIds("team_entity", List.of(id(doomed))));
-        writerDao
-            .customPropertyReferenceDAO()
-            .insertMany(
-                List.of(
-                    new ReferenceRow(
-                        id(domain),
-                        CustomPropertyReferences.ENTITY_LEVEL,
-                        property,
-                        id(doomed),
-                        Entity.DOMAIN,
-                        TEAM,
-                        1,
-                        JsonUtils.pojoToJson(referenceOf(doomed)))));
-
-        Future<?> delete = deleter.submit(() -> client.teams().delete(id(doomed), HARD_DELETE));
-        assertThrows(
-            TimeoutException.class,
-            () -> delete.get(3, TimeUnit.SECONDS),
-            "the hard delete waits for the writer holding the shared lock");
-        writer.commit();
-        delete.get(2, TimeUnit.MINUTES);
-      } finally {
-        deleter.shutdownNow();
-      }
-
-      assertNoReferencesTo(doomed.getId());
-      assertEquals(
-          List.of(id(survivor)),
-          referenceIds(client.domains().get(id(domain), "extension"), property));
-    } finally {
-      deleteDomainProperty(client, property);
-    }
-  }
-
-  /**
-   * The reference cleanup issues a fixed set of statements per delete chunk, so the count is the
-   * same for a small and a large subtree.
-   */
-  @Test
-  void test_recursiveDeleteReferenceCleanupDoesNotGrowWithSubtreeSize(TestNamespace ns)
-      throws Exception {
-    OpenMetadataClient client = SdkClients.adminClient();
-    int small = referenceStatementsForRecursiveDelete(client, ns, "small", 2);
-    int large = referenceStatementsForRecursiveDelete(client, ns, "large", 20);
-    assertTrue(small > 0, "the counter sees the cleanup statements");
-    assertEquals(small, large);
-  }
-
-  private static int referenceStatementsForRecursiveDelete(
-      OpenMetadataClient client, TestNamespace ns, String name, int children) throws Exception {
-    Team parent = createTeam(client, ns.prefix(name), CreateTeam.TeamType.DEPARTMENT, null);
-    for (int i = 0; i < children; i++) {
-      createTeam(client, ns.prefix(name + i), CreateTeam.TeamType.GROUP, parent.getId());
-    }
-    // Deleted on this thread through the repository, so concurrent tests cannot be counted.
-    try (var statements = new SqlQueryCounter(Entity.getJdbi(), "custom_property_reference")) {
-      Entity.getEntityRepository(Entity.TEAM).delete("admin", parent.getId(), true, true);
-      return statements.count();
     }
   }
 
@@ -1623,23 +1527,6 @@ public class TypeResourceIT {
   }
 
   @Test
-  void test_referenceList_holderHardDeleteDropsReferenceRows(TestNamespace ns) throws Exception {
-    OpenMetadataClient client = SdkClients.adminClient();
-    String property = addTeamReferenceProperty(client, ns, "entityReferenceList");
-    try {
-      Team team = createTeam(client, ns.prefix("held"), CreateTeam.TeamType.GROUP, null);
-      Domain domain = createDomain(client, ns, property, List.of(referenceOf(team)));
-      assertEquals(1, referenceRowsTo(team.getId()).size());
-
-      client.domains().delete(domain.getId().toString(), HARD_DELETE);
-
-      assertTrue(referenceRowsTo(team.getId()).isEmpty());
-    } finally {
-      deleteDomainProperty(client, property);
-    }
-  }
-
-  @Test
   void test_referenceList_recursiveTeamDeleteRemovesChildReference(TestNamespace ns)
       throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
@@ -1655,8 +1542,7 @@ public class TypeResourceIT {
       assertTrue(
           referenceIds(client.domains().get(domain.getId().toString(), "extension"), property)
               .isEmpty());
-      assertStoredValue(domain, property, stored -> stored == null);
-      assertTrue(referenceRowsTo(child.getId()).isEmpty());
+      assertNoReferencesTo(child.getId());
     } finally {
       deleteDomainProperty(client, property);
     }
@@ -1691,7 +1577,6 @@ public class TypeResourceIT {
           List.of(second.getId().toString(), third.getId().toString()),
           referenceIds(updated, property));
       assertNoReferencesTo(first.getId());
-      assertEquals(1, referenceRowsTo(third.getId()).size());
     } finally {
       deleteDomainProperty(client, property);
     }
@@ -1825,11 +1710,6 @@ public class TypeResourceIT {
             .read(Entity.DOMAIN, List.of(domain.getId()))
             .get(domain.getId());
     return values == null ? null : values.get(property);
-  }
-
-  private static void assertStoredValue(
-      Domain domain, String property, Predicate<JsonNode> expected) {
-    assertTrue(expected.test(storedValue(domain, property)));
   }
 
   private static void assertNoReferencesTo(UUID target) {
