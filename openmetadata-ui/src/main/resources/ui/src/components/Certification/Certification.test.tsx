@@ -324,6 +324,29 @@ describe('Certification', () => {
     ).toBeInTheDocument();
   });
 
+  it('should reload the full list at once when reopened after a search', async () => {
+    render(
+      <Certification
+        {...defaultProps}
+        currentCertificate=""
+        popoverProps={undefined}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('certification-trigger'));
+    await screen.findByTestId('Certification.Silver');
+    fireEvent.change(screen.getByTestId('search-input'), {
+      target: { value: 'sil' },
+    });
+    await waitFor(() => expect(mockSearchQuery).toHaveBeenCalledTimes(2));
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+    fireEvent.click(screen.getByTestId('certification-trigger'));
+
+    await waitFor(() => expect(mockSearchQuery).toHaveBeenCalledTimes(3));
+
+    expect(mockSearchQuery).toHaveBeenLastCalledWith(FETCH_PARAMS);
+  });
+
   it('should not report a pick as a dismissal to onClose', async () => {
     render(<Certification {...defaultProps} />);
 

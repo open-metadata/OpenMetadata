@@ -111,6 +111,8 @@ const Certification = ({
   const [page, setPage] = useState(1);
   const [searchText, setSearchText] = useState('');
   const debouncedSearchText = useDebouncedValue(searchText, 300);
+  // Clearing the search reloads the full list at once; only typing waits.
+  const effectiveSearchText = searchText ? debouncedSearchText : '';
   // Keeps the selected certification's label once a later search no longer lists it.
   const [selectedCertification, setSelectedCertification] = useState<Tag>();
   const isOpen = popoverProps?.open ?? isPopupOpen;
@@ -143,7 +145,7 @@ const Certification = ({
     setIsLoading(true);
     setIsLoadingMore(false);
     isFetchingMore.current = false;
-    fetchCertificationPage(debouncedSearchText, 1)
+    fetchCertificationPage(effectiveSearchText, 1)
       .then((res) => {
         if (generation === searchGeneration.current) {
           setCertifications(res.tags);
@@ -165,7 +167,7 @@ const Certification = ({
           setIsLoading(false);
         }
       });
-  }, [isOpen, isFormField, debouncedSearchText, showFetchError]);
+  }, [isOpen, isFormField, effectiveSearchText, showFetchError]);
 
   useEffect(() => {
     const loaded = certifications.find(
@@ -184,7 +186,7 @@ const Certification = ({
     isFetchingMore.current = true;
     setIsLoadingMore(true);
     try {
-      const res = await fetchCertificationPage(debouncedSearchText, page + 1);
+      const res = await fetchCertificationPage(effectiveSearchText, page + 1);
       if (generation !== searchGeneration.current) {
         return;
       }
