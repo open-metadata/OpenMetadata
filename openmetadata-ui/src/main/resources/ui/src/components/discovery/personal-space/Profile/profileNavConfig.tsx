@@ -91,10 +91,7 @@ export interface ProfileHeaderOverride {
   /** Pre-rendered icon node; takes precedence over `icon` in ProfileContentHeader. */
   iconNode?: React.ReactNode;
   onBreadcrumbAction?: (id: Key) => void;
-  /**
-   * Action buttons rendered on the right of the header title row. Use
-   * `size="xs"` — ADR:2026-10-12-settings-modal-header-actions-use-xs-buttons.
-   */
+  /** Action buttons rendered on the right of the header title row. */
   actions?: React.ReactNode;
   /** When set, renders in place of the title text (e.g. an inline rename input). */
   titleInput?: React.ReactNode;
