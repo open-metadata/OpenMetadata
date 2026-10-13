@@ -755,11 +755,40 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
    */
   protected void authorizeAssetsOperation(
       SecurityContext securityContext, List<EntityReference> assets, MetadataOperation operation) {
-    for (EntityReference asset : listOrEmpty(assets)) {
-      authorizer.authorize(
-          securityContext,
-          new OperationContext(asset.getType(), operation),
-          new ResourceContext<>(asset.getType(), asset.getId(), asset.getFullyQualifiedName()));
+    Map<String, List<EntityReference>> assetsByType =
+        listOrEmpty(assets).stream().collect(Collectors.groupingBy(EntityReference::getType));
+    assetsByType.forEach(
+        (type, refs) -> authorizeAssetsOfType(securityContext, type, refs, operation));
+  }
+
+  /**
+   * Authorizes one asset type as a batch: its entities and the on-demand policy fields (e.g. tags) a
+   * condition reads load once for the whole group through a shared {@link BulkFieldHydrator}, rather
+   * than lazily per asset — the N+1 a large picker submit would otherwise cause. An id that does not
+   * resolve falls back to a lazy context, which denies exactly as the per-asset path did.
+   */
+  @SuppressWarnings("unchecked")
+  private <E extends EntityInterface<?>> void authorizeAssetsOfType(
+      SecurityContext securityContext,
+      String type,
+      List<EntityReference> refs,
+      MetadataOperation operation) {
+    EntityRepository<E> repository = (EntityRepository<E>) Entity.getEntityRepository(type);
+    List<UUID> ids = refs.stream().map(EntityReference::getId).toList();
+    List<E> entities = repository.getDao().findEntitiesByIds(ids, Include.NON_DELETED);
+    repository.enrichEntitiesForAuth(entities);
+    BulkFieldHydrator hydrator =
+        new BulkFieldHydrator(Map.of(Entity.FIELD_TAGS, () -> repository.batchLoadTags(entities)));
+    Map<UUID, E> byId = new HashMap<>();
+    entities.forEach(entity -> byId.put(entity.getId(), entity));
+    OperationContext operationContext = new OperationContext(type, operation);
+    for (EntityReference ref : refs) {
+      E entity = byId.get(ref.getId());
+      ResourceContextInterface resourceContext =
+          entity != null
+              ? new ResourceContext<>(type, entity, repository, hydrator)
+              : new ResourceContext<>(type, ref.getId(), ref.getFullyQualifiedName());
+      authorizer.authorize(securityContext, operationContext, resourceContext);
     }
   }
 
