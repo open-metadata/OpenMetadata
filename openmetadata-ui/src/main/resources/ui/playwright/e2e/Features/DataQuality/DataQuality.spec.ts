@@ -1305,7 +1305,11 @@ test.describe(
           `/api/v1/dataQuality/testCases/search/list?*testCaseType=all*`
         );
         await page.getByTestId('test-case-type-select-filter').click();
-        await page.getByTitle('All').nth(1).click();
+        await page
+          .locator('.ant-select-dropdown')
+          .filter({ hasNot: page.locator('.ant-select-dropdown-hidden') })
+          .getByTitle('All', { exact: true })
+          .click();
         await testCaseTypeByAll;
 
         // Test case filter by status
