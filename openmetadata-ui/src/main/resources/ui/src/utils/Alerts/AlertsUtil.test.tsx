@@ -32,6 +32,9 @@ import {
   mockTypedEvent2,
   mockTypedEvent3,
   mockTypedEvent4,
+  mockTypedEventEmptyDataFailed,
+  mockTypedEventEmptyDataSuccessful,
+  mockTypedEventEmptyDataUnprocessed,
 } from '../../mocks/AlertUtil.mock';
 import { ModifiedDestination } from '../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { searchQuery } from '../../rest/searchAPI';
@@ -366,6 +369,87 @@ describe('getChangeEventDataFromTypedEvent', () => {
       source: undefined,
       failingSubscriptionId: undefined,
     });
+  });
+
+  it('should not throw and return a degraded row for a successful event with empty data', () => {
+    const result = getChangeEventDataFromTypedEvent(
+      mockTypedEventEmptyDataSuccessful
+    );
+
+    expect(result.changeEventData).toStrictEqual({
+      id: `unreadable-${mockTypedEventEmptyDataSuccessful.status}-${mockTypedEventEmptyDataSuccessful.timestamp}`,
+      timestamp: mockTypedEventEmptyDataSuccessful.timestamp,
+    });
+    expect(result.changeEventDataToDisplay).toStrictEqual({
+      eventType: undefined,
+      entityId: undefined,
+      userName: undefined,
+      previousVersion: undefined,
+      currentVersion: undefined,
+      reason: undefined,
+      source: undefined,
+      failingSubscriptionId: undefined,
+    });
+  });
+
+  it('should not throw and return a degraded row for a failed event with empty data', () => {
+    const result = getChangeEventDataFromTypedEvent(
+      mockTypedEventEmptyDataFailed
+    );
+
+    expect(result.changeEventData).toStrictEqual({
+      id: `unreadable-${mockTypedEventEmptyDataFailed.status}-${mockTypedEventEmptyDataFailed.timestamp}`,
+      timestamp: mockTypedEventEmptyDataFailed.timestamp,
+    });
+    expect(result.changeEventDataToDisplay).toStrictEqual({
+      eventType: undefined,
+      entityId: undefined,
+      userName: undefined,
+      previousVersion: undefined,
+      currentVersion: undefined,
+      reason: undefined,
+      source: undefined,
+      failingSubscriptionId: undefined,
+    });
+  });
+
+  it('should not throw and return a degraded row for an unprocessed event with empty data', () => {
+    const result = getChangeEventDataFromTypedEvent(
+      mockTypedEventEmptyDataUnprocessed
+    );
+
+    expect(result.changeEventData).toStrictEqual({
+      id: `unreadable-${mockTypedEventEmptyDataUnprocessed.status}-${mockTypedEventEmptyDataUnprocessed.timestamp}`,
+      timestamp: mockTypedEventEmptyDataUnprocessed.timestamp,
+    });
+    expect(result.changeEventDataToDisplay).toStrictEqual({
+      eventType: undefined,
+      entityId: undefined,
+      userName: undefined,
+      previousVersion: undefined,
+      currentVersion: undefined,
+      reason: undefined,
+      source: undefined,
+      failingSubscriptionId: undefined,
+    });
+  });
+
+  it('should produce a unique fallback id per empty-data row so React keys do not collide', () => {
+    const failedRow = getChangeEventDataFromTypedEvent(
+      mockTypedEventEmptyDataFailed
+    );
+    const successfulRow = getChangeEventDataFromTypedEvent(
+      mockTypedEventEmptyDataSuccessful
+    );
+    const unprocessedRow = getChangeEventDataFromTypedEvent(
+      mockTypedEventEmptyDataUnprocessed
+    );
+
+    const failedKey = `${failedRow.changeEventData.id}-${failedRow.changeEventData.timestamp}`;
+    const successfulKey = `${successfulRow.changeEventData.id}-${successfulRow.changeEventData.timestamp}`;
+    const unprocessedKey = `${unprocessedRow.changeEventData.id}-${unprocessedRow.changeEventData.timestamp}`;
+
+    expect(new Set([failedKey, successfulKey, unprocessedKey]).size).toBe(3);
   });
 });
 

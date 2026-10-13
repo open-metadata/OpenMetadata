@@ -177,6 +177,6 @@ export interface AlertAiDestinationItemProps
   name: number;
   remove?: (index: number) => void;
   destination: ModifiedDestination;
-  destinationsWithStatus?: Destination[];
+  destinationsWithStatus?: Array<Destination | undefined>;
   isDestinationStatusLoading?: boolean;
 }

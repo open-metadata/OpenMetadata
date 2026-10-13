@@ -226,7 +226,7 @@ test('keeps dark text readable and exposes dedicated link roles', () => {
     light.get('--color-text-link-hover'),
     'var(--color-text-link-hover, theme(--color-brand-700))'
   );
-  assert.equal(dark.get('--color-text-link'), 'theme(--color-brand-300)');
+  assert.equal(dark.get('--color-text-link'), 'theme(--color-brand-400)');
   assert.equal(dark.get('--color-text-link-hover'), 'theme(--color-brand-200)');
   assert.equal(dark.get('--tw-text-color-link'), 'var(--color-text-link)');
   assert.equal(

@@ -452,8 +452,7 @@ describe('Observability Alerts Page Tests', () => {
       });
     });
 
-    const addButton = await screen.findByText(/label.add-entity/);
-    fireEvent.click(addButton);
+    fireEvent.click(await screen.findByTestId('create-observability'));
 
     expect(mockNavigate).toHaveBeenCalledWith('/observability/alerts/add');
   });

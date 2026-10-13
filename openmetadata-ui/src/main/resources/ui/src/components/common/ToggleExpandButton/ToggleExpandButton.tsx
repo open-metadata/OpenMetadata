@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import { Box, Button } from '@openmetadata/ui-core-components';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DownUpArrowIcon } from '../../../assets/svg/ic-down-up-arrow.svg';
@@ -34,10 +33,9 @@ function ToggleExpandButton({
 
   return (
     <Button
-      className="text-primary rounded-4"
+      color="tertiary"
       data-testid="toggle-expand-button"
-      size="small"
-      type="text"
+      size="xs"
       onClick={toggleExpandAll}>
       <Box
         inline

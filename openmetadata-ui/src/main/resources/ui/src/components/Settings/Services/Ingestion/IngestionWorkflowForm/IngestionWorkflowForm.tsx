@@ -10,11 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box } from '@openmetadata/ui-core-components';
+import { Box, Button } from '@openmetadata/ui-core-components';
 import Form, { IChangeEvent } from '@rjsf/core';
 import { RegistryFieldsType, UiSchema } from '@rjsf/utils';
 import { customizeValidator } from '@rjsf/validator-ajv8';
-import { Button } from 'antd';
 import classNames from 'classnames';
 import { capitalize, isUndefined, omit, omitBy } from 'lodash';
 import {
@@ -431,11 +430,11 @@ const IngestionWorkflowForm = forwardRef<
               className="layout-space layout-space-horizontal"
               gap={2}
               itemClassName="layout-space-item">
-              <Button type="link" onClick={onCancel}>
+              <Button color="link-color" onClick={onCancel}>
                 {cancelText ?? t('label.cancel')}
               </Button>
 
-              <Button data-testid="submit-btn" htmlType="submit" type="primary">
+              <Button color="primary" data-testid="submit-btn" type="submit">
                 {okText ?? t('label.save')}
               </Button>
             </Box>
