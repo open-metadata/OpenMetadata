@@ -20,6 +20,9 @@ export const ALERT_AI_DESTINATION_TEXT_AREA_ROWS = 2;
 export const ALERT_AI_OAUTH_TOKEN_URL_PLACEHOLDER =
   'https://auth.example.com/oauth/token';
 export const ALERT_AI_FORM_MODAL_ID = 'alert-form-modal';
+/** The alert form column alone, and with the 380px Form Hint column beside it. */
+export const ALERT_AI_FORM_DRAWER_WIDTH = 772;
+export const ALERT_AI_FORM_DRAWER_WIDTH_WITH_HINT = 1152;
 export const SEARCHABLE_ARGUMENTS = new Set([
   'domainList',
   'entityIdList',
