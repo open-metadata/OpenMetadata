@@ -6,7 +6,8 @@
 - **Guard:** `.github/scripts/tests/test_benchmark_trend.py` covers the gate, the baseline, the
   history layout and the merge of a suite's files. `ApiRoutesTest` and `ApiLatencyRecorderTest`
   cover route keys. `SeededLineageGraphTest` and `scripts/lineage_seed/tests/test_seed.py` pin the
-  seed manifest's keys. A reviewer checks the nightly matrix order.
+  seed manifest's keys, and the latter that an incomplete seed publishes none. A reviewer checks the
+  nightly matrix order.
 - **Related:** #32050, PR #34023, `open-metadata/openmetadata-nightly` `k8s-java-it.yml`,
   `docs/perf/lineage-scale-validation.md`
 
@@ -45,6 +46,12 @@ cannot answer either on its own:
    - A `lineage-scene-scale` scenario regresses when its p95 exceeds the median of the previous
      7 nights' p95 by more than 25% **and** by more than 25 ms.
    - It is not judged before it has 5 nights of history, or when it has fewer than 5 samples.
+   - The gate also fails when the run left no `lineage-scene-scale` report, when the report holds
+     no latency, or when it lists a scenario as failed in `failedScenarios` or
+     `failedInteractions`. A failed measurement has no p95, so a gate that only compared p95s would
+     pass it.
+   - A scenario the previous night measured and this one dropped without listing it shows as
+     `not measured` and does not fail, so a renamed scenario cannot fail the night it lands.
    - API-latency series are reported, never gated, because their traffic changes whenever tests
      change.
    - The IT's absolute budgets stay as a backstop.
@@ -58,11 +65,14 @@ cannot answer either on its own:
      `focus.{serviceFqn,databaseFqn,schemaFqn,hubTableFqn,leafTableFqn,hubColumnFqn}`.
    - The counts are exact, not estimated. `columnEdges` counts the edges that carry column lineage.
    - A missing key fails the run.
+   - The script writes the `benchmark` section only after every phase completed, and exits 1 while
+     any unit is incomplete. A partial graph's manifest has no section, so the benchmark refuses it
+     instead of measuring fewer assets than the counts claim.
 
 ## Consequences
 
 - Renaming a scenario or changing route normalisation starts a new series, and history does not
-  follow it. Rename deliberately.
+  follow it. The old name shows as `not measured` on the first night after. Rename deliberately.
 - Renaming or removing a report field means bumping `BenchmarkMetrics.SCHEMA_VERSION`. Both scripts
   refuse versions they do not know, so a format change cannot silently break the trend.
 - The script lives in OpenMetadata and the workflow and history in `openmetadata-nightly`, so the

@@ -42,7 +42,11 @@ if [[ -n "$seed_manifest" ]]; then
   fi
   seeded_workload="$(python3 -c '
 import json, sys
-graph = json.load(open(sys.argv[1]))["benchmark"]
+manifest = json.load(open(sys.argv[1]))
+if "benchmark" not in manifest:
+    missing = {key: manifest.get(key) for key in ("incomplete", "skipped")}
+    sys.exit(f"{sys.argv[1]} has no benchmark section: the seed did not complete {missing}. Re-run it.")
+graph = manifest["benchmark"]
 keys = ("cohortFqnPrefix", "services", "databases", "schemas", "tables", "edges", "columnEdges")
 workload = {"graphSource": "seed-manifest", **{key: graph[key] for key in keys}}
 print(json.dumps(workload, indent=2).replace("\n", "\n  "))

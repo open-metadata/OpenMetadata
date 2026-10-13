@@ -73,7 +73,8 @@ they are worth stating plainly:
   only once that scene is committed and laid out. Every band-based wait refuses to run when the
   band is not changing. An interaction the map cannot complete is recorded in the report
   (`interactionFailures`, `failedInteractions`), and the rest still run. The test fails at the end
-  with the list.
+  with the list. A scene API scenario or the first render that cannot complete is listed the same
+  way (`scenarioFailures`, `failedScenarios`), and the nightly gate fails on any listed name.
 - **Drills follow the benchmark graph's own path.** Each drill clicks the next node on the focus
   path (service → database → schema → hub table) when it is on screen. Only otherwise does it take
   the first clickable expandable child. The nightly cluster also holds every other suite's
@@ -246,7 +247,11 @@ The nightly's `latency-report` job runs `.github/scripts/benchmark_trend.py` ove
   #java-playwrights, where the Java IT alerts go, on scheduled runs and on dispatches of `main`.
 - **Gate** — the job fails when a `lineage-scene-scale` scenario's p95 is more than 25% and 25 ms
   above that median. Nothing is judged before a scenario has 5 nights of history, and suite API
-  traffic is never gated.
+  traffic is never gated. The gate also fails when the run left no `lineage-scene-scale` report,
+  when the report holds no latency, or when it lists a scenario as failed (`failedScenarios`,
+  `failedInteractions`): a failed measurement has no p95, so comparing p95s alone would pass it. A
+  scenario the previous night measured and this one dropped without listing it shows as
+  `not measured` and does not fail, so a renamed scenario cannot fail the night it lands.
 
 The same script runs locally against downloaded artifacts:
 

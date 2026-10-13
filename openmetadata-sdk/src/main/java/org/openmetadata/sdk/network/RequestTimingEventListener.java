@@ -45,8 +45,13 @@ final class RequestTimingEventListener extends EventListener {
     publish(call);
   }
 
+  /**
+   * Also fires when reading the body fails after the headers arrived. The call did not complete, so
+   * the status those headers carried must not be reported as its outcome.
+   */
   @Override
   public void callFailed(final Call call, final IOException ioe) {
+    statusCode = CompletedRequest.NO_RESPONSE;
     publish(call);
   }
 

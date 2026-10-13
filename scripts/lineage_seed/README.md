@@ -40,8 +40,11 @@ The data platform of a fictional company:
   - Upstream picks are skewed, so a few dimensions fan out to thousands of consumers. That is the
     shape that makes the map work hard.
   - About 10% of marts read across domains.
-- **A non-admin user**, `lineage.viewer@open-metadata.org` / `Lineage#Viewer2026`. A non-admin's
-  root scene skips the admin cache and is the heaviest path, so check the map as this user too.
+- **A non-admin user**, `<prefix>.lineage.viewer@open-metadata.org` / `Lineage#Viewer2026`
+  (`acme.lineage.viewer@open-metadata.org` by default). A non-admin's root scene skips the admin
+  cache and is the heaviest path, so check the map as this user too. Cleanup deletes the user only
+  if this seed created it, so a user that already existed, or a run with `--no-viewer`, leaves it
+  in place.
 
 The graph is a pure function of `--assets`, `--prefix` and `--seed`: the same arguments always
 build the same graph.
@@ -55,18 +58,21 @@ python3 scripts/lineage_seed/seed_lineage_graph.py plan --assets 2000000
 # Seed. admin/admin by default; pass --token <JWT> for a bot token instead
 python3 scripts/lineage_seed/seed_lineage_graph.py seed --server http://localhost:8585 --assets 200000
 
-# Interrupted, or some requests failed? Run the same command again: done work is skipped,
-# failed units are retried. --fresh ignores the saved progress.
+# Interrupted, or some requests failed? The run exits 1. Run the same command again: done work
+# is skipped, failed units are retried. --fresh ignores the saved progress.
 
-# Remove everything it created (prints the plan without --yes)
-python3 scripts/lineage_seed/seed_lineage_graph.py cleanup --server http://localhost:8585 --yes
+# Remove everything it created, with the seed's --assets, --prefix and --seed (prints the plan
+# without --yes). It also forgets the saved progress, so the next seed starts over.
+python3 scripts/lineage_seed/seed_lineage_graph.py cleanup --server http://localhost:8585 --assets 200000 --yes
 ```
 
 It needs a server built from `main`, because the hierarchical lineage scene API is not in `2.0.x`.
 Progress prints every 15 seconds with a rate and an ETA.
 
 When it finishes, the script writes `manifest.json` under its state directory
-(`~/.cache/openmetadata-lineage-seed/<prefix>-<assets>-<seed>/`) and prints what to open:
+(`~/.cache/openmetadata-lineage-seed/<prefix>-<assets>-<seed>/`) and prints what to open. Its
+`benchmark` section, which `LineageScenePerformanceScaleIT` attaches through, is written only once
+every phase is complete: a run with incomplete units or a `--skip` leaves it out.
 
 | | |
 |---|---|
@@ -171,7 +177,9 @@ done | sort -n
   topics (one PUT each, as there is no bulk endpoint), data models, dashboards, ML models, then
   lineage (`PUT /v1/lineage/{type}/name/{fqn}/{type}/name/{fqn}`, so no entity ids are needed).
 - **Resume:** each phase is split into units of up to `--batch-size` assets. Only fully successful
-  units are recorded in `state.json`, and that is what lets a re-run resume or retry.
+  units are recorded in `state.json`, and that is what lets a re-run resume or retry. A unit is
+  recorded by the exact range of assets it sent, so a re-run with another `--batch-size` sends the
+  asset phases again rather than trusting progress made at the old size.
 - **Load spread:** lineage units are interleaved across domains and layers, so concurrent writes
   update different service and data-product edges rather than queueing on the same refcount rows.
 - **No dbt pipeline on edges:** dbt edges carry no pipeline reference, as with the dbt connector.
@@ -187,7 +195,7 @@ done | sort -n
 | `--edge-workers` | 48 | parallel lineage PUTs |
 | `--batch-size` | 100 | assets per bulk request |
 | `--skip` | | skip a phase; repeatable |
-| `--state-dir` | `~/.cache/...` | resume state and manifest |
+| `--state-dir` | `~/.cache/...` | resume state and manifest; cleanup reads it too |
 | `--fresh` | | ignore saved progress |
 | `--no-viewer` | | do not create the non-admin user |
 

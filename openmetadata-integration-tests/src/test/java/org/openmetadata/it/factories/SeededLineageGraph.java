@@ -52,7 +52,8 @@ public final class SeededLineageGraph {
     final JsonNode benchmark = readTree(manifest).path(BENCHMARK_SECTION);
     if (benchmark.isMissingNode()) {
       throw new IllegalArgumentException(
-          "%s has no '%s' section; re-run the seed script".formatted(manifest, BENCHMARK_SECTION));
+          "%s has no '%s' section: the seed is incomplete or older; re-run the seed script"
+              .formatted(manifest, BENCHMARK_SECTION));
     }
     final JsonNode focus = benchmark.path(FOCUS_SECTION);
     return new LineageGraphSummary(

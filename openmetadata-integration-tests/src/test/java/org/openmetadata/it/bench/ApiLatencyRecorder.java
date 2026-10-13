@@ -76,8 +76,8 @@ public final class ApiLatencyRecorder implements RequestListener {
   @Override
   public void onRequestCompleted(final CompletedRequest request) {
     if (request.statusCode() == CompletedRequest.NO_RESPONSE) {
-      // No response means no server latency to report; a refused or timed-out call would only
-      // drag the percentiles towards the client's timeout.
+      // No response means no server latency to report; a refused, timed-out or cut-short call
+      // would only drag the percentiles towards the client's timeout.
       failedRequests.increment();
       return;
     }

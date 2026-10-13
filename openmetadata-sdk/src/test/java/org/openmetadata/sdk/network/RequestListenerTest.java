@@ -1,6 +1,7 @@
 package org.openmetadata.sdk.network;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -27,6 +28,7 @@ class RequestListenerTest {
 
   private static final String OK_BODY = "{\"status\":\"ok\"}";
   private static final long BODY_DELAY_MILLIS = 50;
+  private static final int PROMISED_BODY_BYTES = 100;
 
   private HttpServer server;
   private final List<CompletedRequest> completed = new CopyOnWriteArrayList<>();
@@ -37,6 +39,7 @@ class RequestListenerTest {
     server.createContext("/api/v1/tables", exchange -> respond(exchange, 200, OK_BODY));
     server.createContext("/api/v1/missing", exchange -> respond(exchange, 404, "{}"));
     server.createContext("/api/v1/slow-body", RequestListenerTest::respondWithDelayedBody);
+    server.createContext("/api/v1/cut-short", RequestListenerTest::respondWithBodyCutShort);
     server.start();
   }
 
@@ -61,6 +64,7 @@ class RequestListenerTest {
     assertEquals("/api/v1/tables", request.path());
     assertEquals("fields=columns", request.query());
     assertEquals(200, request.statusCode());
+    assertFalse(request.failed());
     assertTrue(request.durationNanos() > 0);
   }
 
@@ -101,6 +105,20 @@ class RequestListenerTest {
     final CompletedRequest request = completed.getFirst();
     assertEquals(CompletedRequest.NO_RESPONSE, request.statusCode());
     assertNull(request.query());
+    assertTrue(request.failed());
+  }
+
+  /** The headers bring a 200 and then the body stops short: that call failed, whatever its status. */
+  @Test
+  void reportsABodyCutShortAsAFailedCallDespiteItsStatus() {
+    final OpenMetadataHttpClient client = clientFor(baseUrl(), completed::add);
+
+    assertThrows(
+        OpenMetadataException.class,
+        () -> client.executeForString(HttpMethod.GET, "/v1/cut-short", null));
+
+    final CompletedRequest request = completed.getFirst();
+    assertEquals(CompletedRequest.NO_RESPONSE, request.statusCode());
     assertTrue(request.failed());
   }
 
@@ -169,6 +187,19 @@ class RequestListenerTest {
     exchange.sendResponseHeaders(status, bytes.length);
     try (OutputStream out = exchange.getResponseBody()) {
       out.write(bytes);
+    }
+  }
+
+  /**
+   * Promises {@link #PROMISED_BODY_BYTES} bytes and sends two. Closing the short stream throws, and
+   * the server drops the connection on a handler that throws, so the client reads past the end.
+   */
+  private static void respondWithBodyCutShort(final HttpExchange exchange) throws IOException {
+    exchange.getResponseHeaders().add("Content-Type", "application/json");
+    exchange.sendResponseHeaders(200, PROMISED_BODY_BYTES);
+    try (OutputStream out = exchange.getResponseBody()) {
+      out.write("{}".getBytes(StandardCharsets.UTF_8));
+      out.flush();
     }
   }
 

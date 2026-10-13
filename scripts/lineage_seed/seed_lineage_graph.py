@@ -50,13 +50,15 @@ from catalog import (  # noqa: E402
 from client import ApiError, Credentials, OpenMetadataClient, encode_fqn  # noqa: E402
 from payloads import Payloads  # noqa: E402
 
-STATE_VERSION = 1
+STATE_VERSION = 2
+STATE_FILE = "state.json"
+MANIFEST_FILE = "manifest.json"
 CONTAINER_BATCH = 100
 TOPIC_UNIT = 50
 LINEAGE_UNIT = 100
 PROGRESS_SECONDS = 15
 STATE_SAVE_SECONDS = 10
-VIEWER_NAME = "lineage_viewer"
+VIEWER_KEY = "lineage_viewer"
 VIEWER_PASSWORD = "Lineage#Viewer2026"
 VIEWER_EMAIL_DOMAIN = "open-metadata.org"
 CONFLICT = 409
@@ -102,31 +104,32 @@ class State:
         self.path = path
         self.identity = identity
         self.done: dict[str, set[str]] = {}
-        self.failures: dict[str, int] = {}
+        self.viewer_created = False
         self._lock = threading.Lock()
         self._saved_at = 0.0
-        if path.exists() and not fresh:
-            self._load()
+        if path.exists():
+            self._load(fresh)
 
-    def _load(self) -> None:
-        data = json.loads(self.path.read_text())
-        if data.get("identity") != self.identity:
+    def _load(self, fresh: bool) -> None:
+        data = saved_state(self.path)
+        same_seed = data.get("identity") == self.identity
+        if not same_seed and not fresh:
             raise SystemExit(
                 f"{self.path} belongs to a different seed {data.get('identity')}; "
                 "pass --fresh to start over, or a different --state-dir"
             )
-        self.done = {phase: set(keys) for phase, keys in data.get("done", {}).items()}
-        self.failures = data.get("failures", {})
+        # Starting over re-sends the graph, but cleanup must still know whose viewer user it is.
+        self.viewer_created = same_seed and bool(data.get("viewerCreated"))
+        if not fresh:
+            self.done = {phase: set(keys) for phase, keys in data.get("done", {}).items()}
 
     def is_done(self, phase: str, key: str) -> bool:
         return key in self.done.get(phase, ())
 
     def mark(self, phase: str, key: str, failed: int) -> None:
         """A unit with any failure stays pending, so the next run retries just those units."""
-        with self._lock:
-            if failed:
-                self.failures[phase] = self.failures.get(phase, 0) + failed
-            else:
+        if not failed:
+            with self._lock:
                 self.done.setdefault(phase, set()).add(key)
         if time.monotonic() - self._saved_at > STATE_SAVE_SECONDS:
             self.save()
@@ -137,13 +140,17 @@ class State:
                 "version": STATE_VERSION,
                 "identity": self.identity,
                 "done": {phase: sorted(keys) for phase, keys in self.done.items()},
-                "failures": self.failures,
+                "viewerCreated": self.viewer_created,
             }
             self._saved_at = time.monotonic()
         self.path.parent.mkdir(parents=True, exist_ok=True)
         temporary = self.path.with_suffix(".tmp")
         temporary.write_text(json.dumps(payload))
         os.replace(temporary, self.path)
+
+
+def saved_state(path: Path) -> dict[str, Any]:
+    return json.loads(path.read_text()) if path.exists() else {}
 
 
 @dataclass
@@ -206,16 +213,24 @@ class Seeder:
         self.pipeline_ids: dict[str, str] = {}
         self.payloads = Payloads(catalog, self.team_ids)
 
-    def run(self) -> None:
+    def run(self) -> dict[str, int]:
+        """Seeds every phase not skipped and writes the manifest. Returns the units each phase still
+        lacks, so an incomplete seed can fail."""
+        # No manifest while a run is in progress: nothing may benchmark a graph this run is changing.
+        (Path(self.args.state_dir) / MANIFEST_FILE).unlink(missing_ok=True)
         self._preflight()
         self._roots()
+        incomplete: dict[str, int] = {}
         for phase in PHASES:
             if phase in self.args.skip:
                 print(f"[{phase}] skipped")
                 continue
-            self._run_phase(phase, list(self._units(phase)))
+            remaining = self._run_phase(phase, list(self._units(phase)))
+            if remaining:
+                incomplete[phase] = remaining
         self.state.save()
-        write_manifest(self.catalog, self.client, self.args, self.state)
+        write_manifest(self.catalog, self.client, self.args, self.state, incomplete)
+        return incomplete
 
     # ------------------------------------------------------------ preflight and roots
 
@@ -263,9 +278,10 @@ class Seeder:
             )
 
     def _viewer(self) -> None:
+        name = viewer_name(self.catalog)
         body = {
-            "name": VIEWER_NAME,
-            "email": f"{VIEWER_NAME.replace('_', '.')}@{VIEWER_EMAIL_DOMAIN}",
+            "name": name,
+            "email": viewer_email(self.catalog),
             "displayName": "Lineage Viewer",
             "description": "Non-admin user for checking the lineage map: its root scene skips the admin cache.",
             "password": VIEWER_PASSWORD,
@@ -278,15 +294,23 @@ class Seeder:
         except ApiError as error:
             if error.status != CONFLICT:
                 print(f"warning: could not create the non-admin viewer user ({error}); continuing")
+            elif not self.state.viewer_created:
+                print(
+                    f"warning: user {name} already exists and this seed did not create it; cleanup will keep it"
+                )
+            return
+        self.state.viewer_created = True
+        self.state.save()
 
     # ------------------------------------------------------------ phases
 
-    def _run_phase(self, phase: str, units: list[Unit]) -> None:
+    def _run_phase(self, phase: str, units: list[Unit]) -> int:
+        """Runs the units not done yet; returns how many of them are still not done."""
         pending = [unit for unit in units if not self.state.is_done(phase, unit.key)]
         progress = Progress(phase, len(pending), sum(unit.items for unit in pending))
         if not pending:
             print(f"[{phase}] already complete")
-            return
+            return 0
         if phase == "lineage":
             self._load_pipeline_ids()
         workers = self.args.edge_workers if phase == "lineage" else self.args.workers
@@ -302,6 +326,7 @@ class Seeder:
         print(progress.line() + " · done")
         if progress.first_error:
             print(f"[{phase}] first failure: {progress.first_error}")
+        return sum(1 for unit in pending if not self.state.is_done(phase, unit.key))
 
     def _finish(self, phase: str, unit: Unit, result: tuple[int, str | None], progress: Progress) -> None:
         failed, error = result
@@ -339,12 +364,13 @@ class Seeder:
     def _container_units(self, name: str, bodies: list[dict[str, Any]], path: str) -> Iterator[Unit]:
         for start in range(0, len(bodies), CONTAINER_BATCH):
             batch = bodies[start : start + CONTAINER_BATCH]
-            yield Unit(f"{name}/{start}", len(batch), lambda batch=batch: self._bulk(path, batch))
+            key = f"{name}/{start}-{start + len(batch)}"
+            yield Unit(key, len(batch), lambda batch=batch: self._bulk(path, batch))
 
     def _asset_units(self, phase: str) -> Iterator[Unit]:
         for layer, domain, start, end in self._ranges(PHASE_LAYERS[phase], self.args.batch_size):
             yield Unit(
-                f"{layer}/{domain}/{start}",
+                _span_key(layer, domain, start, end),
                 end - start,
                 lambda span=(layer, domain, start, end): self._create_assets(*span),
             )
@@ -381,7 +407,7 @@ class Seeder:
     def _topic_units(self) -> Iterator[Unit]:
         for layer, domain, start, end in self._ranges(("stream",), TOPIC_UNIT):
             yield Unit(
-                f"{layer}/{domain}/{start}",
+                _span_key(layer, domain, start, end),
                 end - start,
                 lambda span=(domain, start, end): self._create_topics(*span),
             )
@@ -422,7 +448,7 @@ class Seeder:
                 len(self.catalog.upstreams(AssetRef(layer, domain, index))) for index in range(start, end)
             )
             yield Unit(
-                f"{layer}/{domain}/{start}",
+                _span_key(layer, domain, start, end),
                 edges,
                 lambda span=(layer, domain, start, end): self._create_edges(*span),
             )
@@ -441,6 +467,12 @@ class Seeder:
             f"/{LAYER_BY_KEY[edge.downstream.layer].entity_type}/name/{encode_fqn(downstream.fqn)}"
         )
         self.client.put(path, self.payloads.lineage_details(edge, self.pipeline_ids))
+
+
+def _span_key(layer: str, domain: int, start: int, end: int) -> str:
+    """Names the exact assets a unit sends. Progress saved under one --batch-size then never counts
+    an asset as done that a unit of another size failed to send."""
+    return f"{layer}/{domain}/{start}-{end}"
 
 
 def _interleaved(spans: Iterator[tuple[str, int, int, int]]) -> list[tuple[str, int, int, int]]:
@@ -585,16 +617,25 @@ def benchmark_section(catalog: Catalog, focus: dict[str, str]) -> dict[str, Any]
 
 
 def write_manifest(
-    catalog: Catalog, client: OpenMetadataClient, args: argparse.Namespace, state: State
+    catalog: Catalog,
+    client: OpenMetadataClient,
+    args: argparse.Namespace,
+    state: State,
+    incomplete: dict[str, int],
 ) -> None:
+    """Only a complete graph gets the benchmark section, so the benchmark never attaches to a graph
+    holding fewer assets or edges than the section claims."""
     focus = focus_points(catalog)
     ui = client.ui_root
+    skipped = [phase for phase in PHASES if phase in args.skip]
+    complete = not incomplete and not skipped
     manifest = {
         "identity": state.identity,
         "server": ui,
-        "failures": state.failures,
+        "incomplete": incomplete,
+        "skipped": skipped,
         "focus": focus,
-        "benchmark": benchmark_section(catalog, focus),
+        **({"benchmark": benchmark_section(catalog, focus)} if complete else {}),
         "open": {
             "platformLineage": f"{ui}/lineage",
             "hubOnPlatformLineage": f"{ui}/lineage/table/{encode_fqn(focus['hubTableFqn'])}",
@@ -602,11 +643,9 @@ def write_manifest(
             "leafDashboard": f"{ui}/dashboard/{encode_fqn(focus['leafDashboardFqn'])}/lineage",
         },
         # The password stays out of the manifest and the console; the README documents it.
-        "viewer": None
-        if args.no_viewer
-        else {"email": f"{VIEWER_NAME.replace('_', '.')}@{VIEWER_EMAIL_DOMAIN}"},
+        "viewer": {"email": viewer_email(catalog)} if state.viewer_created else None,
     }
-    target = Path(args.state_dir) / "manifest.json"
+    target = Path(args.state_dir) / MANIFEST_FILE
     target.write_text(json.dumps(manifest, indent=2) + "\n")
     print(f"\nManifest: {target}")
     for label, url in manifest["open"].items():
@@ -615,13 +654,57 @@ def write_manifest(
         print(
             f"  non-admin login        {manifest['viewer']['email']} (password in scripts/lineage_seed/README.md)"
         )
-    if state.failures:
-        print(
-            f"  failures by phase      {state.failures} (re-run the same command to retry the failed units)"
-        )
+    if incomplete:
+        print(f"  incomplete units       {incomplete} (re-run the same command to retry them)")
+    if not complete:
+        print("  benchmark section      left out until every phase is complete")
 
 
-def cleanup(client: OpenMetadataClient, catalog: Catalog, confirmed: bool) -> None:
+def viewer_name(catalog: Catalog) -> str:
+    """Prefixed like every other root, so graphs seeded under different prefixes never share it."""
+    return catalog.service_name(VIEWER_KEY)
+
+
+def viewer_email(catalog: Catalog) -> str:
+    return f"{viewer_name(catalog).replace('_', '.')}@{VIEWER_EMAIL_DOMAIN}"
+
+
+def identity_of(args: argparse.Namespace, client: OpenMetadataClient) -> dict[str, Any]:
+    """What saved progress must match to be resumed: the same graph on the same server."""
+    return {"assets": args.assets, "prefix": args.prefix, "seed": args.seed, "server": client.ui_root}
+
+
+def cleanup(client: OpenMetadataClient, catalog: Catalog, args: argparse.Namespace) -> int:
+    """Hard-deletes what the seed created and forgets its progress. Returns the failed deletes."""
+    targets = _cleanup_targets(client, catalog, args)
+    if not args.yes:
+        print("Would hard-delete (pass --yes to do it):")
+        for path, name in targets:
+            print(f"  {path}/name/{name}")
+        return 0
+    client.ensure_authenticated()
+    failed = 0
+    for path, name in targets:
+        try:
+            client.delete(f"{path}/name/{encode_fqn(name)}", {"hardDelete": "true", "recursive": "true"})
+            print(f"deleted {path}/name/{name}")
+        except ApiError as error:
+            if error.status != 404:
+                failed += 1
+                print(f"warning: {error}")
+    state_dir = Path(args.state_dir)
+    if failed:
+        print(f"Kept the saved progress in {state_dir}: {failed} deletes failed; run cleanup again")
+        return failed
+    # The graph is gone, so is its progress: the next seed sends everything again.
+    for name in (STATE_FILE, MANIFEST_FILE):
+        (state_dir / name).unlink(missing_ok=True)
+    return 0
+
+
+def _cleanup_targets(
+    client: OpenMetadataClient, catalog: Catalog, args: argparse.Namespace
+) -> list[tuple[str, str]]:
     targets = [(f"/v1/services/{collection}", name) for collection, name in _all_services(catalog)]
     targets += [
         ("/v1/dataProducts", catalog.service_name(name))
@@ -630,20 +713,13 @@ def cleanup(client: OpenMetadataClient, catalog: Catalog, confirmed: bool) -> No
     ]
     targets += [("/v1/domains", catalog.service_name(domain.name)) for domain in catalog.domains]
     targets += [("/v1/teams", catalog.service_name(f"{domain.name}_team")) for domain in catalog.domains]
-    targets.append(("/v1/users", VIEWER_NAME))
-    if not confirmed:
-        print("Would hard-delete (pass --yes to do it):")
-        for path, name in targets:
-            print(f"  {path}/name/{name}")
-        return
-    client.ensure_authenticated()
-    for path, name in targets:
-        try:
-            client.delete(f"{path}/name/{encode_fqn(name)}", {"hardDelete": "true", "recursive": "true"})
-            print(f"deleted {path}/name/{name}")
-        except ApiError as error:
-            if error.status != 404:
-                print(f"warning: {error}")
+    state_dir = Path(args.state_dir)
+    saved = saved_state(state_dir / STATE_FILE)
+    if saved.get("identity") == identity_of(args, client) and saved.get("viewerCreated"):
+        targets.append(("/v1/users", viewer_name(catalog)))
+    else:
+        print(f"Keeping user {viewer_name(catalog)}: {state_dir} does not record this seed creating it")
+    return targets
 
 
 def _all_services(catalog: Catalog) -> list[tuple[str, str]]:
@@ -678,6 +754,9 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
         )
         command.add_argument("--email", default=os.environ.get("OM_EMAIL", "admin@open-metadata.org"))
         command.add_argument("--password", default=os.environ.get("OM_PASSWORD", "admin"))
+        command.add_argument(
+            "--state-dir", default=None, help="resume state + manifest (default ~/.cache/...)"
+        )
         if name == "cleanup":
             command.add_argument("--yes", action="store_true", help="really delete")
             continue
@@ -687,9 +766,6 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
         )
         command.add_argument(
             "--batch-size", type=int, default=100, help="assets per bulk request (default 100)"
-        )
-        command.add_argument(
-            "--state-dir", default=None, help="resume state + manifest (default ~/.cache/...)"
         )
         command.add_argument(
             "--fresh", action="store_true", help="ignore saved progress and send everything again"
@@ -717,17 +793,15 @@ def main(argv: list[str] | None = None) -> int:
     credentials = Credentials(token=args.token, email=args.email, password=args.password)
     client = OpenMetadataClient(args.server, credentials)
     if args.command == "cleanup":
-        cleanup(client, catalog, args.yes)
-        return 0
-    identity = {"assets": args.assets, "prefix": args.prefix, "seed": args.seed, "server": client.ui_root}
-    state = State(Path(args.state_dir) / "state.json", identity, args.fresh)
+        return 1 if cleanup(client, catalog, args) else 0
+    state = State(Path(args.state_dir) / STATE_FILE, identity_of(args, client), args.fresh)
     try:
-        Seeder(client, catalog, args, state).run()
+        incomplete = Seeder(client, catalog, args, state).run()
     except KeyboardInterrupt:
         state.save()
         print("\nInterrupted. Progress is saved; re-run the same command to resume.")
         return 130
-    return 0
+    return 1 if incomplete else 0
 
 
 if __name__ == "__main__":

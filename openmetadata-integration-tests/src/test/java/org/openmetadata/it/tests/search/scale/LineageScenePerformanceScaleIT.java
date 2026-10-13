@@ -155,6 +155,7 @@ class LineageScenePerformanceScaleIT {
   private static final int INTERACTION_SAMPLES =
       Integer.getInteger("jpw.lineage.interactionSamples", 5);
   private static final String INTERACTION_PREFIX = "interaction-";
+  private static final String FIRST_RENDER_ID = "lineage-map-first-render-cold";
   private static final String LAYER_BAND = LineageBand.LAYER.value();
   private static final String ASSET_BAND = LineageBand.ASSET.value();
   private static final String FIELD_BAND = LineageBand.FIELD.value();
@@ -261,14 +262,17 @@ class LineageScenePerformanceScaleIT {
    */
   @EnabledIf("org.openmetadata.it.util.OssTestServer#isExternalMode")
   @ExtendWith(UiSessionExtension.class)
-  void lineageMapFirstRenderStaysWithinBudget(final UiSession ui) throws Exception {
+  void lineageMapFirstRenderStaysWithinBudget(final UiSession ui) throws InterruptedException {
     final LineageFocusPoints focus = graph.focusPoints();
     LineageMapPage.suppressOnboarding(ui);
-    final Latency latency =
-        LatencySampler.measure(1, RENDER_SAMPLES, iteration -> renderScene(ui, focus));
-    latencies.put("lineage-map-first-render-cold", latency);
-    LOG.info("Lineage map first render -> {}", latency);
-    assertThat(latency.p95Millis())
+    measureRecordingFailure(
+        FIRST_RENDER_ID,
+        scenarioFailures,
+        () -> LatencySampler.measure(1, RENDER_SAMPLES, iteration -> renderScene(ui, focus)));
+    assertThat(scenarioFailures)
+        .as("lineage map first render over %d assets", graph.tables())
+        .doesNotContainKey(FIRST_RENDER_ID);
+    assertThat(latencies.get(FIRST_RENDER_ID).p95Millis())
         .as("lineage map first render p95 over %d assets", graph.tables())
         .isLessThan(FIRST_RENDER_P95_LIMIT_MS);
   }
@@ -479,8 +483,6 @@ class LineageScenePerformanceScaleIT {
   }
 
   private void assertInteractionsWithinBudget() {
-    counters.put("interactionFailures", interactionFailures.size());
-    counters.put("failedInteractions", List.copyOf(interactionFailures.keySet()));
     assertThat(interactionFailures)
         .as("interactions the map could not complete over %d assets", graph.tables())
         .isEmpty();
@@ -770,8 +772,6 @@ class LineageScenePerformanceScaleIT {
   // ---------------- assertions, indexing, publishing ----------------
 
   private void assertWithinBudget(final List<Scenario> scenarios) {
-    counters.put("scenarioFailures", scenarioFailures.size());
-    counters.put("failedScenarios", List.copyOf(scenarioFailures.keySet()));
     assertThat(scenarioFailures)
         .as("scenarios the server could not complete over %d assets", graph.tables())
         .isEmpty();
@@ -911,9 +911,21 @@ class LineageScenePerformanceScaleIT {
 
   private void publishMetrics() throws IOException {
     recordSceneShape();
+    recordFailures();
     BenchmarkMetrics.publish(
         BenchmarkMetrics.report(client, "lineage-scene-scale", params(), latencies, counters),
         "lineage-scene-scale-" + cohortTables() + ".json");
+  }
+
+  /**
+   * A failed measurement has no latency, so the report lists it by name: without the list, the
+   * nightly's trend gate would see a missing scenario rather than a failed one.
+   */
+  private void recordFailures() {
+    counters.put("scenarioFailures", scenarioFailures.size());
+    counters.put("failedScenarios", List.copyOf(scenarioFailures.keySet()));
+    counters.put("interactionFailures", interactionFailures.size());
+    counters.put("failedInteractions", List.copyOf(interactionFailures.keySet()));
   }
 
   /**

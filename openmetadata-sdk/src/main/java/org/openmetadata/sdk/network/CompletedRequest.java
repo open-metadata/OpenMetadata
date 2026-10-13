@@ -6,7 +6,9 @@ package org.openmetadata.sdk.network;
  * @param method HTTP method, upper case
  * @param path encoded URL path including the server's base path, e.g. {@code /api/v1/tables}
  * @param query encoded query string without the leading {@code ?}, or {@code null}
- * @param statusCode final HTTP status, or {@code -1} when the call failed before a response
+ * @param statusCode final HTTP status, or {@link #NO_RESPONSE} when the call failed instead of
+ *     completing: refused, timed out, or cut short while its body was read, even after the
+ *     headers had brought a status
  * @param durationNanos from the call starting to its response body being consumed or the call
  *     failing — the time the caller actually waited
  */

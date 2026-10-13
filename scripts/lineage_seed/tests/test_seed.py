@@ -21,11 +21,22 @@ ASSETS = 1000
 
 
 class FakeServer:
-    """Records every call; bulk endpoints succeed unless the path is listed in `failing`."""
+    """Records every call. A bulk request fails outright when its path is in `failing`, and
+    reports a failed row for each asset named in `rejected_names`; creating a user named in
+    `existing_users` conflicts; a delete answers `delete_status` when one is set."""
 
-    def __init__(self, failing: set[str] | None = None) -> None:
+    def __init__(
+        self,
+        failing: set[str] | None = None,
+        rejected_names: set[str] | None = None,
+        existing_users: set[str] | None = None,
+        delete_status: int | None = None,
+    ) -> None:
         self.calls: list[tuple[str, str, Any]] = []
         self.failing = failing or set()
+        self.rejected_names = rejected_names or set()
+        self.existing_users = existing_users or set()
+        self.delete_status = delete_status
         self.ui_root = "http://fake:8585"
         self.pipelines: dict[str, str] = {}
 
@@ -54,27 +65,58 @@ class FakeServer:
             for pipeline in body:
                 self.pipelines[f"{pipeline['service']}.{pipeline['name']}"] = str(uuid.uuid4())
         if path.endswith("/bulk"):
-            return {"numberOfRowsFailed": 0}
+            rejected = [item for item in body if item.get("name") in self.rejected_names]
+            return {
+                "numberOfRowsFailed": len(rejected),
+                "failedRequest": [{"message": "rejected"}] * len(rejected),
+            }
         return {"id": str(uuid.uuid4())}
 
     def request(self, method: str, path: str, body: Any = None, query: Any = None) -> Any:
         self.calls.append((method, path, body))
+        if method == "POST" and path == "/v1/users" and body["name"] in self.existing_users:
+            raise ApiError(method, path, 409, "already exists")
+        return {}
+
+    def delete(self, path: str, query: dict[str, Any] | None = None) -> Any:
+        self.calls.append(("DELETE", path, query))
+        if self.delete_status is not None:
+            raise ApiError("DELETE", path, self.delete_status, "refused")
         return {}
 
     def paths(self, method: str = "PUT") -> list[str]:
         return [path for verb, path, _ in self.calls if verb == method]
 
 
-def run_seed(tmp_path: Path, server: FakeServer, *extra: str, viewer: bool = False) -> seed.State:
+def run_seed(tmp_path: Path, server: FakeServer, *extra: str, viewer: bool = False) -> dict[str, int]:
+    """Seeds and returns the units each phase still lacks."""
     viewer_args = [] if viewer else ["--no-viewer"]
     args = seed.parse_args(
         ["seed", "--assets", str(ASSETS), "--state-dir", str(tmp_path), *viewer_args, *extra]
     )
     catalog = Catalog(args.assets, args.prefix, args.seed)
-    identity = {"assets": args.assets, "prefix": args.prefix, "seed": args.seed, "server": server.ui_root}
-    state = seed.State(tmp_path / "state.json", identity, args.fresh)
-    seed.Seeder(server, catalog, args, state).run()
-    return state
+    state = seed.State(tmp_path / seed.STATE_FILE, seed.identity_of(args, server), args.fresh)
+    return seed.Seeder(server, catalog, args, state).run()
+
+
+def run_main(monkeypatch: pytest.MonkeyPatch, server: FakeServer, *argv: str) -> int:
+    monkeypatch.setattr(seed, "OpenMetadataClient", lambda *args, **kwargs: server)
+    return seed.main(list(argv))
+
+
+def run_cleanup(tmp_path: Path, server: FakeServer, *extra: str) -> int:
+    args = seed.parse_args(
+        ["cleanup", "--assets", str(ASSETS), "--state-dir", str(tmp_path), "--yes", *extra]
+    )
+    return seed.cleanup(server, Catalog(args.assets, args.prefix, args.seed), args)
+
+
+def deleted_users(server: FakeServer) -> list[str]:
+    return [path for verb, path, _ in server.calls if verb == "DELETE" and path.startswith("/v1/users/")]
+
+
+def manifest_of(tmp_path: Path) -> dict[str, Any]:
+    return json.loads((tmp_path / seed.MANIFEST_FILE).read_text())
 
 
 def test_a_full_seed_writes_every_kind_of_entity_and_lineage(tmp_path):
@@ -142,7 +184,7 @@ def test_the_viewer_password_is_neither_printed_nor_written(tmp_path, capsys):
     run_seed(tmp_path, FakeServer(), viewer=True)
 
     manifest = (tmp_path / "manifest.json").read_text()
-    assert json.loads(manifest)["viewer"]["email"] == "lineage.viewer@open-metadata.org"
+    assert json.loads(manifest)["viewer"]["email"] == "acme.lineage.viewer@open-metadata.org"
     assert seed.VIEWER_PASSWORD not in manifest
     assert seed.VIEWER_PASSWORD not in capsys.readouterr().out
 
@@ -166,14 +208,115 @@ def test_fresh_ignores_saved_progress(tmp_path):
 
 
 def test_a_failed_unit_stays_pending_and_is_retried_next_run(tmp_path):
-    state = run_seed(tmp_path, FakeServer(failing={"/v1/dashboards/bulk"}))
-    assert state.failures["dashboards"] > 0
+    incomplete = run_seed(tmp_path, FakeServer(failing={"/v1/dashboards/bulk"}))
+    assert incomplete["dashboards"] > 0
     retry = FakeServer()
 
-    run_seed(tmp_path, retry)
+    assert run_seed(tmp_path, retry) == {}
 
     assert "/v1/dashboards/bulk" in retry.paths()
     assert "/v1/tables/bulk" not in retry.paths()
+
+
+def test_a_resume_with_a_larger_batch_size_still_retries_the_assets_that_failed(tmp_path):
+    catalog = Catalog(ASSETS, "acme", 32050)
+    payloads = Payloads(catalog, {domain.name: "team-id" for domain in catalog.domains})
+    rejected = payloads.table(AssetRef("core", 0, 1))["name"]
+    run_seed(tmp_path, FakeServer(rejected_names={rejected}), "--batch-size", "1")
+    retry = FakeServer()
+
+    run_seed(tmp_path, retry, "--batch-size", "100")
+
+    sent = [item["name"] for verb, path, body in retry.calls if path == "/v1/tables/bulk" for item in body]
+    assert rejected in sent
+
+
+def test_an_incomplete_seed_exits_non_zero_without_a_benchmark_section(tmp_path, monkeypatch):
+    argv = ("seed", "--assets", str(ASSETS), "--state-dir", str(tmp_path), "--no-viewer")
+
+    assert run_main(monkeypatch, FakeServer(failing={"/v1/tables/bulk"}), *argv) == 1
+
+    manifest = manifest_of(tmp_path)
+    assert "benchmark" not in manifest
+    assert manifest["incomplete"]["tables"] > 0
+
+
+def test_a_retry_that_completes_the_seed_exits_zero_with_a_benchmark_section(tmp_path, monkeypatch):
+    argv = ("seed", "--assets", str(ASSETS), "--state-dir", str(tmp_path), "--no-viewer")
+    run_main(monkeypatch, FakeServer(failing={"/v1/tables/bulk"}), *argv)
+
+    assert run_main(monkeypatch, FakeServer(), *argv) == 0
+
+    manifest = manifest_of(tmp_path)
+    assert manifest["benchmark"]["tables"] > 0
+    assert manifest["incomplete"] == {}
+
+
+def test_a_seed_that_skipped_a_phase_publishes_no_benchmark_section(tmp_path):
+    assert run_seed(tmp_path, FakeServer(), "--skip", "lineage") == {}
+
+    assert "benchmark" not in manifest_of(tmp_path)
+
+
+def test_cleanup_deletes_the_viewer_this_seed_created(tmp_path):
+    run_seed(tmp_path, FakeServer(), viewer=True)
+    server = FakeServer()
+
+    assert run_cleanup(tmp_path, server) == 0
+
+    assert deleted_users(server) == ["/v1/users/name/acme_lineage_viewer"]
+
+
+@pytest.mark.parametrize(
+    ("viewer", "existing_users"),
+    [(False, set()), (True, {"acme_lineage_viewer"})],
+    ids=["seeded-without-a-viewer", "viewer-already-existed"],
+)
+def test_cleanup_keeps_a_viewer_this_seed_did_not_create(tmp_path, viewer, existing_users):
+    run_seed(tmp_path, FakeServer(existing_users=existing_users), viewer=viewer)
+    server = FakeServer()
+
+    run_cleanup(tmp_path, server)
+
+    assert deleted_users(server) == []
+
+
+def test_a_fresh_seed_still_knows_it_created_the_viewer(tmp_path):
+    run_seed(tmp_path, FakeServer(), viewer=True)
+    run_seed(tmp_path, FakeServer(existing_users={"acme_lineage_viewer"}), "--fresh", viewer=True)
+    server = FakeServer()
+
+    run_cleanup(tmp_path, server)
+
+    assert deleted_users(server) == ["/v1/users/name/acme_lineage_viewer"]
+
+
+def test_each_prefix_cleans_up_only_its_own_viewer(tmp_path):
+    for prefix in ("graph_a", "graph_b"):
+        run_seed(tmp_path / prefix, FakeServer(), "--prefix", prefix, viewer=True)
+    server = FakeServer()
+
+    run_cleanup(tmp_path / "graph_b", server, "--prefix", "graph_b")
+
+    assert deleted_users(server) == ["/v1/users/name/graph_b_lineage_viewer"]
+
+
+def test_cleanup_forgets_the_progress_so_the_next_seed_sends_everything_again(tmp_path):
+    run_seed(tmp_path, FakeServer())
+    run_cleanup(tmp_path, FakeServer())
+    again = FakeServer()
+
+    run_seed(tmp_path, again)
+
+    assert "/v1/tables/bulk" in again.paths()
+
+
+def test_a_cleanup_with_failed_deletes_keeps_the_progress(tmp_path):
+    run_seed(tmp_path, FakeServer())
+
+    assert run_cleanup(tmp_path, FakeServer(delete_status=500)) > 0
+
+    assert (tmp_path / seed.STATE_FILE).exists()
 
 
 def test_state_from_a_different_seed_is_refused(tmp_path):

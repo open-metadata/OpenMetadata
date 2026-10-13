@@ -260,11 +260,76 @@ def test_a_gated_regression_fails_the_run(tmp_path):
     reports = tmp_path / "reports"
     reports.mkdir()
     (reports / "lineage-scene-scale-50000.json").write_text(json.dumps(_lineage({"focused-hub-asset": 400})))
+    (reports / "api-latency-ui-it-1.json").write_text(
+        json.dumps(_api("ui-it", {"sdk GET /v1/tables": (5, 50)}))
+    )
     args = ["--reports", str(reports), "--history", str(history_dir), "--ref", "main", "--run-id", "now"]
 
     assert trend.main([*args, "--summary-out", str(tmp_path / "s.md")]) == 0
     assert trend.main([*args, "--gate", "lineage-scene-scale", "--fail-on-regression"]) == 1
     assert trend.main([*args, "--gate", "api-latency", "--fail-on-regression"]) == 0
+
+
+def _gate_run(tmp_path: Path, reports: list[dict]) -> tuple[int, str, dict]:
+    """Runs the nightly's gate over `reports`, after six nights that measured two scenarios."""
+    history_dir = tmp_path / "history"
+    _seed_history(history_dir, [_lineage({"focused-hub-asset": 100, "interaction-drill-schema": 900})] * 6)
+    reports_dir = tmp_path / "reports"
+    reports_dir.mkdir()
+    for index, report in enumerate(reports):
+        (reports_dir / f"report-{index}.json").write_text(json.dumps(report))
+    summary, slack = tmp_path / "summary.md", tmp_path / "slack.json"
+    code = trend.main(
+        [
+            *("--reports", str(reports_dir), "--history", str(history_dir), "--ref", "main"),
+            *("--run-id", "now", "--summary-out", str(summary), "--slack-out", str(slack)),
+            *("--gate", "lineage-scene-scale", "--fail-on-regression"),
+        ]
+    )
+    return code, summary.read_text(), json.loads(slack.read_text())
+
+
+def test_the_gate_fails_when_the_run_left_no_gated_report(tmp_path):
+    code, summary, slack = _gate_run(tmp_path, [_api("ui-it", {"sdk GET /v1/tables": (5, 50)})])
+
+    assert code == 1
+    assert "`lineage-scene-scale`: this run left no report" in summary
+    assert slack["text"] == "Nightly latency · main: 1 gated measurement(s) missing or failed"
+
+
+@pytest.mark.parametrize(
+    "counters",
+    [{}, {"interactionFailures": 1, "failedInteractions": ["interaction-drill-schema"]}],
+    ids=["no-failures-listed", "a-failed-interaction"],
+)
+def test_the_gate_fails_on_a_report_that_measured_nothing(tmp_path, counters):
+    code, summary, slack = _gate_run(tmp_path, [{**_lineage({}), "counters": counters}])
+
+    assert code == 1
+    assert "lineage-scene-scale/50000-tables: nothing was measured" in summary
+    assert "no regressions" not in slack["text"]
+
+
+def test_a_scenario_the_report_lists_as_failed_fails_the_gate_and_keeps_its_baseline(tmp_path):
+    report = {
+        **_lineage({"focused-hub-asset": 100}),
+        "counters": {"failedInteractions": ["interaction-drill-schema"]},
+    }
+
+    code, summary, slack = _gate_run(tmp_path, [report])
+
+    assert code == 1
+    assert "| `interaction-drill-schema` | — | 900 ms | — | ▅▅▅▅▅▅· | **✖ failed** |" in summary
+    assert "1 failed" in json.dumps(slack)
+
+
+def test_a_scenario_the_last_night_measured_and_this_one_dropped_shows_without_failing(tmp_path):
+    code, summary, slack = _gate_run(tmp_path, [_lineage({"focused-hub-asset": 100})])
+
+    assert code == 0
+    assert "| `interaction-drill-schema` | — | 900 ms | — | ▅▅▅▅▅▅· | not measured |" in summary
+    assert "**Gate `lineage-scene-scale`: passed.**" in summary
+    assert "1 not measured" in json.dumps(slack)
 
 
 def test_refuses_a_report_from_an_unknown_schema(tmp_path):

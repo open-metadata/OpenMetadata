@@ -11,7 +11,8 @@ turns one night's reports plus the nights before it into:
   * TRENDS.md with SVG trend charts, regenerated over the whole history — a checkout of the
     openmetadata-nightly `benchmark-history` branch;
   * a Slack payload carrying the same verdicts;
-  * exit code 1 when a gated benchmark regressed and --fail-on-regression is set.
+  * exit code 1, with --fail-on-regression, when a gated benchmark regressed, reported a scenario
+    as failed, measured nothing, or left no report at all.
 
     ./benchmark_trend.py --reports ./artifacts --history ./history --ref main \\
         --run-id 123 --run-url https://... --record --write-trends \\
@@ -51,7 +52,9 @@ from compare_benchmark_metrics import (
 WARMING_UP_LABEL = "warming up"
 FEW_SAMPLES_LABEL = "few samples"
 NOT_MEASURED_LABEL = "not measured"
+FAILED_LABEL = "failed"
 VERDICT_CELLS = {
+    FAILED_LABEL: "**✖ failed**",
     REGRESSED_LABEL: "**▲ slower**",
     IMPROVED_LABEL: "▼ faster",
     UNCHANGED_LABEL: "=",
@@ -64,6 +67,9 @@ CHARTS_DIR = "charts"
 TRENDS_FILE = "TRENDS.md"
 API_LATENCY_ID = "api-latency"
 LINEAGE_SCENE_ID = "lineage-scene-scale"
+# Counters in which LineageScenePerformanceScaleIT lists what it could not measure: a failed
+# scenario has no latency, so it would otherwise just be missing from the comparison.
+FAILURE_COUNTERS = ("failedScenarios", "failedInteractions")
 SMALL_MULTIPLE_WIDTH = 372
 SMALL_MULTIPLE_PLOT_HEIGHT = 120
 UNKNOWN = "unknown"
@@ -128,6 +134,14 @@ class SeriesResult:
     @property
     def regressions(self) -> list[Row]:
         return [row for row in self.rows if row.verdict == REGRESSED_LABEL]
+
+    @property
+    def failures(self) -> list[Row]:
+        return [row for row in self.rows if row.verdict == FAILED_LABEL]
+
+    @property
+    def measured(self) -> list[Row]:
+        return [row for row in self.rows if row.p95 is not None]
 
 
 # ---------------------------------------------------------------- reports
@@ -295,12 +309,40 @@ def p95_of(report: dict[str, Any] | None, scenario: str) -> int | None:
 def compare_series(
     series: str, runs: list[RecordedRun], current: dict[str, Any], settings: Settings
 ) -> SeriesResult:
-    """`runs` is the history before the current night, oldest first."""
+    """`runs` is the history before the current night, oldest first.
+
+    Scenarios the run reported as failed lead, and scenarios the previous night measured but this
+    one dropped trail, so a measurement that went missing is never mistaken for one that passed.
+    """
     previous = [run.reports.get(series) for run in runs]
-    rows = [
+    failed = [scenario for scenario in failed_scenarios(current) if scenario not in current["latencies"]]
+    rows = [_unmeasured_row(scenario, previous, FAILED_LABEL, settings) for scenario in failed]
+    rows += [
         _compare_scenario(scenario, previous, current, settings) for scenario in _ordered_scenarios(current)
     ]
+    rows += [
+        _unmeasured_row(scenario, previous, NOT_MEASURED_LABEL, settings)
+        for scenario in _dropped_scenarios(previous, current, failed)
+    ]
     return SeriesResult(series, current["benchmarkId"], describe(current), rows)
+
+
+def failed_scenarios(report: dict[str, Any]) -> list[str]:
+    counters = report.get("counters", {})
+    return sorted({scenario for counter in FAILURE_COUNTERS for scenario in counters.get(counter) or []})
+
+
+def _dropped_scenarios(
+    previous: list[dict[str, Any] | None], current: dict[str, Any], failed: list[str]
+) -> list[str]:
+    """What the last recorded night measured and this one neither measured nor reported failed.
+
+    Not for API traffic, whose routes vary with the tests that ran.
+    """
+    last = next((report for report in reversed(previous) if report is not None), None)
+    if last is None or current["benchmarkId"] == API_LATENCY_ID:
+        return []
+    return sorted(set(last.get("latencies", {})) - set(current["latencies"]) - set(failed))
 
 
 def _ordered_scenarios(report: dict[str, Any]) -> list[str]:
@@ -326,10 +368,8 @@ def _compare_scenario(
     latest = current["latencies"][scenario]
     p95 = latest.get(COMPARED_METRIC)
     samples = latest.get("sampleCount", 0)
-    history = [value for value in (p95_of(report, scenario) for report in previous) if value is not None]
-    baseline_values = history[-settings.baseline_runs :]
+    baseline_values = _baseline_values(scenario, previous, settings)
     baseline = statistics.median(baseline_values) if baseline_values else None
-    trail = [p95_of(report, scenario) for report in previous][-(settings.window - 1) :] + [p95]
     return Row(
         scenario=scenario,
         p95=p95,
@@ -337,8 +377,32 @@ def _compare_scenario(
         change_pct=_percent_change(baseline, p95),
         verdict=_verdict(p95, baseline_values, samples, settings),
         samples=samples,
-        sparkline=sparkline(trail),
+        sparkline=_trail(scenario, previous, p95, settings),
     )
+
+
+def _unmeasured_row(
+    scenario: str, previous: list[dict[str, Any] | None], verdict: str, settings: Settings
+) -> Row:
+    baseline_values = _baseline_values(scenario, previous, settings)
+    return Row(
+        scenario=scenario,
+        p95=None,
+        baseline=statistics.median(baseline_values) if baseline_values else None,
+        change_pct=None,
+        verdict=verdict,
+        samples=0,
+        sparkline=_trail(scenario, previous, None, settings),
+    )
+
+
+def _baseline_values(scenario: str, previous: list[dict[str, Any] | None], settings: Settings) -> list[int]:
+    history = [value for value in (p95_of(report, scenario) for report in previous) if value is not None]
+    return history[-settings.baseline_runs :]
+
+
+def _trail(scenario: str, previous: list[dict[str, Any] | None], p95: int | None, settings: Settings) -> str:
+    return sparkline([p95_of(report, scenario) for report in previous][-(settings.window - 1) :] + [p95])
 
 
 def _verdict(p95: int | None, baseline_values: list[int], samples: int, settings: Settings) -> str:
@@ -387,7 +451,11 @@ def sparkline(values: list[int | None]) -> str:
 
 
 def render_summary(
-    info: RunInfo, results: list[SeriesResult], settings: Settings, trends_url: str | None
+    info: RunInfo,
+    results: list[SeriesResult],
+    settings: Settings,
+    trends_url: str | None,
+    gates: list[str] | None = None,
 ) -> str:
     run = f"[{info.run_id}]({info.url})" if info.url else info.run_id
     lines = [
@@ -399,11 +467,21 @@ def render_summary(
         f"Trend: last {settings.window} nights._" + (f" [All trends]({trends_url})." if trends_url else ""),
         "",
     ]
+    if gates:
+        lines.extend(_gate_block(results, gates))
     if not results:
         lines.append("No benchmark reports were produced by this run.")
     for result in results:
         lines.extend(_series_table(result, settings))
     return "\n".join(lines) + "\n"
+
+
+def _gate_block(results: list[SeriesResult], gates: list[str]) -> list[str]:
+    names = ", ".join(f"`{gate}`" for gate in gates)
+    problems = gate_failures(results, gates)
+    if not problems:
+        return [f"**Gate {names}: passed.**", ""]
+    return [f"**Gate {names}: failed.**", "", *[f"- {problem}" for problem in problems], ""]
 
 
 def _series_table(result: SeriesResult, settings: Settings) -> list[str]:
@@ -583,18 +661,30 @@ def _ordered_series(keys: set[str]) -> list[str]:
 
 
 def render_slack(
-    info: RunInfo, results: list[SeriesResult], trends_url: str | None, max_listed: int = 10
+    info: RunInfo,
+    results: list[SeriesResult],
+    trends_url: str | None,
+    gates: list[str] | None = None,
+    max_listed: int = 10,
 ) -> dict[str, Any]:
+    unavailable = unavailable_measurements(results, gates or [])
     regressions = [(result, row) for result in results for row in result.regressions]
-    headline = (
-        f"Nightly latency · {info.ref}: {len(regressions)} regression(s)"
-        if regressions
-        else f"Nightly latency · {info.ref}: no regressions"
-    )
+    news = []
+    if unavailable:
+        news.append(f"{len(unavailable)} gated measurement(s) missing or failed")
+    if regressions:
+        news.append(f"{len(regressions)} regression(s)")
+    headline = f"Nightly latency · {info.ref}: {', '.join(news) or 'no regressions'}"
     blocks: list[dict[str, Any]] = [
         {"type": "header", "text": {"type": "plain_text", "text": headline}},
         {"type": "section", "text": {"type": "mrkdwn", "text": _slack_overview(results)}},
     ]
+    if unavailable:
+        listed = [f"• {problem}" for problem in unavailable[:max_listed]]
+        if len(unavailable) > max_listed:
+            listed.append(f"…and {len(unavailable) - max_listed} more in the run summary.")
+        text = "\n".join(["*Missing or failed:*", *listed])
+        blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": text}})
     if regressions:
         blocks.append(
             {
@@ -612,17 +702,20 @@ def _slack_overview(results: list[SeriesResult]) -> str:
     if not results:
         return "No benchmark reports were produced by this run."
     lines = []
+    labels = (REGRESSED_LABEL, IMPROVED_LABEL, UNCHANGED_LABEL, FAILED_LABEL, NOT_MEASURED_LABEL)
     for result in results:
-        counts = {label: 0 for label in (REGRESSED_LABEL, IMPROVED_LABEL, UNCHANGED_LABEL)}
+        counts = {label: 0 for label in labels}
         for row in result.rows:
             if row.verdict in counts:
                 counts[row.verdict] += 1
-        judged = sum(counts.values())
+        unjudged = len(result.rows) - sum(counts.values())
         lines.append(
             f"• *{result.benchmark_id}* ({result.description.replace('`', '')}): "
             f"{counts[REGRESSED_LABEL]} slower, {counts[IMPROVED_LABEL]} faster, "
             f"{counts[UNCHANGED_LABEL]} unchanged"
-            + (f", {len(result.rows) - judged} not yet judged" if judged < len(result.rows) else "")
+            + (f", {counts[FAILED_LABEL]} failed" if counts[FAILED_LABEL] else "")
+            + (f", {counts[NOT_MEASURED_LABEL]} not measured" if counts[NOT_MEASURED_LABEL] else "")
+            + (f", {unjudged} not yet judged" if unjudged else "")
         )
     return "\n".join(lines)
 
@@ -672,6 +765,30 @@ def gated_regressions(results: list[SeriesResult], gates: list[str]) -> list[tup
     ]
 
 
+def unavailable_measurements(results: list[SeriesResult], gates: list[str]) -> list[str]:
+    """What the gated benchmarks failed to measure: a report this run never left, a report holding
+    no latency, or a scenario the report itself lists as failed."""
+    problems = []
+    for gate in gates:
+        gated = [result for result in results if result.benchmark_id == gate]
+        if not gated:
+            problems.append(f"`{gate}`: this run left no report")
+        for result in gated:
+            if not result.measured:
+                problems.append(f"{result.series}: nothing was measured")
+            problems += [f"{result.series} `{row.scenario}`: failed" for row in result.failures]
+    return problems
+
+
+def gate_failures(results: list[SeriesResult], gates: list[str]) -> list[str]:
+    """Why the gated benchmarks fail this run; empty when they pass."""
+    regressions = [
+        f"{series} `{row.scenario}`: p95 {_ms(row.p95)} vs median {_ms(row.baseline)} ({_pct(row.change_pct)})"
+        for series, row in gated_regressions(results, gates)
+    ]
+    return unavailable_measurements(results, gates) + regressions
+
+
 def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -691,8 +808,10 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("--summary-out", type=Path, help="append the markdown summary here")
     parser.add_argument("--slack-out", type=Path, help="write a Slack chat.postMessage payload")
     parser.add_argument("--json-out", type=Path, help="write the comparison as JSON")
-    parser.add_argument("--gate", action="append", default=[], help="benchmarkId whose regressions fail")
-    parser.add_argument("--fail-on-regression", action="store_true")
+    parser.add_argument(
+        "--gate", action="append", default=[], help="benchmarkId that must report, measure and not regress"
+    )
+    parser.add_argument("--fail-on-regression", action="store_true", help="exit 1 when a gate fails")
     defaults = Settings()
     for name in (
         "baseline_runs",
@@ -745,26 +864,24 @@ def main(argv: list[str] | None = None) -> int:
 def _write_outputs(
     args: argparse.Namespace, info: RunInfo, results: list[SeriesResult], settings: Settings
 ) -> None:
-    summary = render_summary(info, results, settings, args.trends_url)
+    summary = render_summary(info, results, settings, args.trends_url, args.gate)
     if args.summary_out:
         with args.summary_out.open("a", encoding="utf-8") as out:
             out.write(summary)
     else:
         print(summary)
     if args.slack_out:
-        args.slack_out.write_text(json.dumps(render_slack(info, results, args.trends_url), indent=2))
+        args.slack_out.write_text(
+            json.dumps(render_slack(info, results, args.trends_url, args.gate), indent=2)
+        )
     if args.json_out:
         args.json_out.write_text(json.dumps([asdict(result) for result in results], indent=2))
 
 
 def _exit_code(results: list[SeriesResult], gates: list[str], fail_on_regression: bool) -> int:
-    failures = gated_regressions(results, gates)
-    for series, row in failures:
-        print(
-            f"regression: {series} {row.scenario} p95 {_ms(row.p95)} vs median {_ms(row.baseline)} "
-            f"({_pct(row.change_pct)})",
-            file=sys.stderr,
-        )
+    failures = gate_failures(results, gates)
+    for failure in failures:
+        print(f"gate: {failure}", file=sys.stderr)
     return 1 if (fail_on_regression and failures) else 0
 
 
