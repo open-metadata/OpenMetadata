@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import {
-  Button,
-  Card,
-  SkeletonParagraph,
+    Button,
+    Card,
+    SkeletonParagraph
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
@@ -158,7 +158,6 @@ export const PersonaPage = ({ pageTitle }: { pageTitle: string }) => {
         {errorPlaceHolder}
         {Boolean(addEditPersona) && (
           <AddEditPersonaForm
-            persona={addEditPersona}
             onCancel={handlePersonalAddEditCancel}
             onSave={handlePersonaAddEditSave}
           />
@@ -238,7 +237,6 @@ export const PersonaPage = ({ pageTitle }: { pageTitle: string }) => {
 
         {Boolean(addEditPersona) && (
           <AddEditPersonaForm
-            persona={addEditPersona}
             onCancel={handlePersonalAddEditCancel}
             onSave={handlePersonaAddEditSave}
           />
