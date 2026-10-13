@@ -913,11 +913,6 @@
       "count": 5
     }
   },
-  "src/components/DataAssets/AssetsSelectionModal/AssetSelectionContentBody.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 4
-    }
-  },
   "src/components/DataContract/ContractDetailFormTab/ContractDetailFormTab.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 2
@@ -1701,11 +1696,6 @@
   "src/components/common/Table/DraggableMenu/DraggableMenuItem.component.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 2
-    }
-  },
-  "src/components/common/TableDataCardV2/TableDataCardV2.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
     }
   },
   "src/components/common/TabsLabel/TabsLabel.component.tsx": {
