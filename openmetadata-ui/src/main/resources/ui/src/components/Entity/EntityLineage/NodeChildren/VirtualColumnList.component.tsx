@@ -26,7 +26,6 @@ import { ColumnContent } from '../CustomNode.utils';
 
 export interface VirtualColumnListProps {
   flatItems: EntityChildren;
-  isConnectable: boolean;
   isLoading: boolean;
   nodeId?: string;
   onColumnHover?: (columnFqn?: string) => void;
@@ -43,7 +42,6 @@ export interface VirtualColumnListProps {
 
 const VirtualColumnList = ({
   flatItems,
-  isConnectable,
   isLoading,
   nodeId,
   onColumnHover,
@@ -145,7 +143,6 @@ const VirtualColumnList = ({
           className={className}
           column={column}
           depth={depth}
-          isConnectable={isConnectable}
           isLoading={isLoading}
           key={column.fullyQualifiedName}
           showDataObservabilitySummary={showDataObservabilitySummary}
@@ -159,7 +156,6 @@ const VirtualColumnList = ({
     // selectedColumn triggers re-render when column selection changes
     [
       getColumnSummary,
-      isConnectable,
       isLoading,
       onColumnHover,
       onColumnLineageEdit,

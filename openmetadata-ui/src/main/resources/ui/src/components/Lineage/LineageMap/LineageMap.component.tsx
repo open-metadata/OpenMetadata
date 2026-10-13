@@ -137,6 +137,8 @@ import {
 } from './LineageMapEdit.utils';
 import { LineageSceneCache } from './LineageSceneCache.utils';
 
+type ZoomGestureEvent = MouseEvent | TouchEvent;
+
 const LINEAGE_MAP_ONBOARDING_COOKIE = 'lineageMapsOnboardingSeen';
 const SEMANTIC_ZOOM_COOLDOWN = 450;
 const PROGRAMMATIC_ZOOM_SUPPRESSION_MS = 1200;
@@ -1472,7 +1474,7 @@ const LineageMapCanvas = ({
   // pointer for wheel and pinch, otherwise the selected node or the only
   // drillable node in view. Anything else stays a plain zoom.
   const pickZoomTargetNode = useCallback(
-    (event?: MouseEvent | TouchEvent | null) => {
+    (event?: ZoomGestureEvent | null) => {
       if (!reactFlowInstance || !wrapperRef.current) {
         return {};
       }
@@ -1628,7 +1630,7 @@ const LineageMapCanvas = ({
   );
 
   const handleSemanticZoomIn = useCallback(
-    (event: MouseEvent | TouchEvent | null) => {
+    (event: ZoomGestureEvent | null) => {
       const { target, leaf } = pickZoomTargetNode(event);
       if (target) {
         handleDrill(target);
@@ -1644,7 +1646,7 @@ const LineageMapCanvas = ({
   );
 
   const handleMove = useCallback(
-    (event: MouseEvent | TouchEvent | null, viewport: { zoom: number }) => {
+    (event: ZoomGestureEvent | null, viewport: { zoom: number }) => {
       // Zoom only changes band on the main Lineage page.
       if (!isPlatformLineage || !scene || semanticZoomSuppressedRef.current) {
         previousZoomRef.current = viewport.zoom;

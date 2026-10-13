@@ -63,17 +63,21 @@ describe('LineageColumnMenu', () => {
     expect(screen.queryByText('label.delete')).not.toBeInTheDocument();
   });
 
-  it('does not propagate the trigger click to the column row', () => {
+  it('does not propagate trigger or menu clicks to the column row', async () => {
     const onParentClick = jest.fn();
+    const onParentMouseDown = jest.fn();
     render(
-      // stand-in for the column row's onClick handler that selects the column
+      // stand-in for the column row, which selects the column on click
       // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
-      <div onClick={onParentClick}>
+      <div onClick={onParentClick} onMouseDown={onParentMouseDown}>
         <LineageColumnMenu {...props} />
       </div>
     );
+    fireEvent.mouseDown(screen.getByTestId('lineage-column-menu'));
     fireEvent.click(screen.getByTestId('lineage-column-menu'));
+    fireEvent.click(await screen.findByText('label.edit-upstream'));
 
+    expect(onParentMouseDown).not.toHaveBeenCalled();
     expect(onParentClick).not.toHaveBeenCalled();
   });
 });

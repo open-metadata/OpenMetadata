@@ -238,7 +238,7 @@ const LineageSearchSelect = () => {
     [onNodeClick, reactFlowInstance, setSelectedColumn, nodes, zoomValue]
   );
 
-  // Both inputValue and selectedKey are controlled, so react-aria never
+  // Both inputValue and value are controlled, so react-aria never
   // rewrites the input itself: it re-emits the current key on blur/close to
   // ask for the text to be synced back, and leaves clearing to us.
   const handleSelectionChange = (key: Key | null) => {
@@ -260,7 +260,7 @@ const LineageSearchSelect = () => {
     debouncedFilterOptions(value);
     if (!value && selectedOption) {
       setSelectedOption(null);
-      onOptionSelect(undefined);
+      onOptionSelect();
     }
   };
 
@@ -283,12 +283,12 @@ const LineageSearchSelect = () => {
       placeholder={t('label.search-entity', {
         entity: t('label.lineage'),
       })}
-      selectedKey={selectedOption?.id ?? null}
       shortcut={false}
       size="md"
+      value={selectedOption?.id ?? null}
+      onChange={handleSelectionChange}
       onInputChange={handleInputChange}
-      onOpenChange={handleOpenChange}
-      onSelectionChange={handleSelectionChange}>
+      onOpenChange={handleOpenChange}>
       <Collection items={renderedOptions}>
         {(option) => (
           <Select.Item id={option.id} textValue={option.label}>

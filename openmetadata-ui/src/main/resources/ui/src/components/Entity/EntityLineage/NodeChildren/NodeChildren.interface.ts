@@ -16,7 +16,6 @@ import { LineageNodeType } from '../../../../interface/lineage.interface';
 
 export interface NodeChildrenProps {
   node: LineageNodeType;
-  isConnectable: boolean;
   isChildrenListExpanded: boolean;
   isOnlyShowColumnsWithLineageFilterActive?: boolean;
   onColumnHover?: (columnFqn?: string) => void;

@@ -41,7 +41,6 @@ import VirtualColumnList from './VirtualColumnList.component';
 
 const NodeChildren = ({
   node,
-  isConnectable,
   isChildrenListExpanded,
   isOnlyShowColumnsWithLineageFilterActive,
   onColumnHover,
@@ -186,7 +185,6 @@ const NodeChildren = ({
             <div className="rounded-4 overflow-hidden">
               <VirtualColumnList
                 flatItems={filteredColumns}
-                isConnectable={isConnectable}
                 isLoading={isLoading}
                 nodeId={node.id}
                 pageSize={pageSize}

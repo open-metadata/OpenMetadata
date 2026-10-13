@@ -185,7 +185,7 @@ const SceneDrillButton = ({
 };
 
 const CustomNodeV1 = (props: NodeProps) => {
-  const { data, type, isConnectable } = props;
+  const { data, type } = props;
 
   const { onNodeCollapse, loadChildNodesHandler, onNodeClick } =
     useLineageHandlers();
@@ -437,7 +437,6 @@ const CustomNodeV1 = (props: NodeProps) => {
     return (
       <NodeChildren
         isChildrenListExpanded={columnsExpanded}
-        isConnectable={isConnectable}
         isOnlyShowColumnsWithLineageFilterActive={showColumnsWithLineageOnly}
         node={node}
         onColumnHover={onSceneColumnHover}
@@ -447,7 +446,6 @@ const CustomNodeV1 = (props: NodeProps) => {
     );
   }, [
     columnsExpanded,
-    isConnectable,
     node,
     onColumnLineageEdit,
     onSceneColumnHover,

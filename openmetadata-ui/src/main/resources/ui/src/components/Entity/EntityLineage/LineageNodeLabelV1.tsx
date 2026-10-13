@@ -225,7 +225,9 @@ const EntityLabel = ({
   );
 };
 
-const TestSuiteSummaryContainer = ({ node }: LineageNodeLabelProps) => {
+const TestSuiteSummaryContainer = ({
+  node,
+}: Pick<LineageNodeLabelProps, 'node'>) => {
   const { entityType } = node;
   const [summary, setSummary] = useState<TestSummary>();
   const [isLoading, setIsLoading] = useState(true);
@@ -286,7 +288,7 @@ const EntityFooter = ({
   toggleColumnsList,
   toggleOnlyShowColumnsWithLineageFilterActive,
   isOnlyShowColumnsWithLineageFilterActive,
-}: LineageNodeLabelProps) => {
+}: Omit<LineageNodeLabelProps, 'actions' | 'onEntityClick'>) => {
   const { t } = useTranslation();
   const { childrenHeading } = useMemo(
     () => getEntityChildrenAndLabel(node),

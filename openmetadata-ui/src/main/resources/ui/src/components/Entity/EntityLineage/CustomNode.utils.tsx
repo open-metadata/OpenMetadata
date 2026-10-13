@@ -213,7 +213,6 @@ const getColumnNameContent = (
 
 interface ColumnContentProps {
   column: EntityChildrenItem;
-  isConnectable: boolean;
   showDataObservabilitySummary: boolean;
   isLoading: boolean;
   summary?: ColumnTestSummaryDefinition;
@@ -333,7 +332,6 @@ const ColumnContentInner = ({
 export const ColumnContent = memo(ColumnContentInner, (prev, next) => {
   const coreColumnPropsEqual =
     prev.column === next.column &&
-    prev.isConnectable === next.isConnectable &&
     prev.isLoading === next.isLoading &&
     prev.showDataObservabilitySummary === next.showDataObservabilitySummary;
   const renderPropsEqual =

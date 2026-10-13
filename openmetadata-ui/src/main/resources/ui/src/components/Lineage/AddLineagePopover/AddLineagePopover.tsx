@@ -50,10 +50,10 @@ import { AddLineagePopoverProps } from './AddLineagePopover.interface';
 // Only entity types whose search hits carry columns via getEntityChildrenAndLabel's
 // getTableEntityChildren resolver (reads `entityType` + `columns` directly, no
 // extra nesting) can be flattened into a column picker from a raw search hit.
-const COLUMN_CAPABLE_SEARCH_INDEXES: SearchIndex[] = [
+const COLUMN_CAPABLE_SEARCH_INDEXES = new Set<SearchIndex>([
   SearchIndex.TABLE,
   SearchIndex.DASHBOARD_DATA_MODEL,
-];
+]);
 
 type EntityHit = {
   id: string;
@@ -272,7 +272,7 @@ const AddLineagePopover = ({
     () =>
       (isColumnTarget
         ? entityData.filter(({ type: index }) =>
-            COLUMN_CAPABLE_SEARCH_INDEXES.includes(index)
+            COLUMN_CAPABLE_SEARCH_INDEXES.has(index)
           )
         : entityData
       ).map(({ type: index, label }) => {
@@ -416,9 +416,11 @@ const AddLineagePopover = ({
                 isDisabled={isSubmitting}
                 items={columnItems}
                 label={t('label.select-column')}
-                selectedKey={columnFqn ?? null}
                 size="sm"
-                onSelectionChange={(key) => setColumnFqn(String(key))}>
+                value={columnFqn ?? null}
+                onChange={(key) =>
+                  setColumnFqn(key === null ? undefined : String(key))
+                }>
                 {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
               </Select>
             )}

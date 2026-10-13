@@ -33,17 +33,15 @@ export const CanvasLayerWrapper = ({
   isPathHighlightActive?: boolean;
 }) => {
   return (
-    <>
-      <CanvasEdgeRenderer
-        dqHighlightedEdges={dqHighlightedEdges}
-        edges={edges}
-        hoverEdge={hoverEdge}
-        isPathHighlightActive={isPathHighlightActive}
-        nodes={nodes}
-        pathHighlightedEdgeIds={pathHighlightedEdgeIds}
-        onEdgeClick={onEdgeClick}
-        onEdgeHover={onEdgeHover}
-      />
-    </>
+    <CanvasEdgeRenderer
+      dqHighlightedEdges={dqHighlightedEdges}
+      edges={edges}
+      hoverEdge={hoverEdge}
+      isPathHighlightActive={isPathHighlightActive}
+      nodes={nodes}
+      pathHighlightedEdgeIds={pathHighlightedEdgeIds}
+      onEdgeClick={onEdgeClick}
+      onEdgeHover={onEdgeHover}
+    />
   );
 };

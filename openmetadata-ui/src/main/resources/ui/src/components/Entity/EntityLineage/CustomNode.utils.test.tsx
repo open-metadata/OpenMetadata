@@ -151,7 +151,6 @@ describe('Custom Node Utils', () => {
       const { getByTestId, getByText } = render(
         <ReactFlowProvider>
           <ColumnContent
-            isConnectable
             column={mockColumn}
             isLoading={false}
             showDataObservabilitySummary={false}
@@ -168,7 +167,6 @@ describe('Custom Node Utils', () => {
       const { getByTestId } = render(
         <ReactFlowProvider>
           <ColumnContent
-            isConnectable
             column={mockColumn}
             isLoading={false}
             showDataObservabilitySummary={false}
@@ -192,7 +190,6 @@ describe('Custom Node Utils', () => {
       const { getAllByTestId } = render(
         <ReactFlowProvider>
           <ColumnContent
-            isConnectable
             isLoading
             showDataObservabilitySummary
             column={mockColumn}
@@ -215,7 +212,6 @@ describe('Custom Node Utils', () => {
       const { getByTestId } = render(
         <ReactFlowProvider>
           <ColumnContent
-            isConnectable
             showDataObservabilitySummary
             column={mockColumn}
             isLoading={false}
@@ -231,7 +227,6 @@ describe('Custom Node Utils', () => {
       const { getByTestId } = render(
         <ReactFlowProvider>
           <ColumnContent
-            isConnectable
             column={mockColumn}
             isLoading={false}
             showDataObservabilitySummary={false}
@@ -250,7 +245,6 @@ describe('Custom Node Utils', () => {
       const { getByTestId } = render(
         <ReactFlowProvider>
           <ColumnContent
-            isConnectable
             column={mockColumn}
             isLoading={false}
             showDataObservabilitySummary={false}
@@ -273,7 +267,6 @@ describe('Custom Node Utils', () => {
       const { queryByTestId } = render(
         <ReactFlowProvider>
           <ColumnContent
-            isConnectable
             column={mockColumn}
             isLoading={false}
             showDataObservabilitySummary={false}
@@ -289,7 +282,6 @@ describe('Custom Node Utils', () => {
       const { getByTestId, findByText } = render(
         <ReactFlowProvider>
           <ColumnContent
-            isConnectable
             column={mockColumn}
             isLoading={false}
             showDataObservabilitySummary={false}
@@ -315,7 +307,6 @@ describe('Custom Node Utils', () => {
       const { getByTestId } = render(
         <ReactFlowProvider>
           <ColumnContent
-            isConnectable
             column={mockColumn}
             isLoading={false}
             showDataObservabilitySummary={false}
