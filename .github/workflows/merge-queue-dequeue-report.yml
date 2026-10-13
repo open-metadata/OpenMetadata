@@ -13,11 +13,24 @@
 # read from the commit rather than the branch.
 # Must stay pull_request_target — pull_request gets a read-only token on fork
 # PRs and cannot comment. Safe only while nothing checks out PR code.
+#
+# Conflict labels. GitHub builds each entry on main + every entry ahead and
+# removes it with MERGE_CONFLICT if that fails, even when it applies cleanly to
+# main and the entry it hit is about to fail. So a MERGE_CONFLICT dequeue is
+# labelled by what it conflicts with: `merge conflict` (latest main — rebase)
+# or `queue conflict` (only an entry ahead — re-queue once that one leaves).
+# GitHub only builds the first few entries, so a QUEUED entry further back that
+# starts conflicting with main would wait its turn and burn a full CI run
+# before failing; evict-main-conflicts removes it on the merge that caused it.
+# Both labels clear when the PR is pushed to or re-queued.
+# ADR:2026-10-13-merge-queue-conflicts-are-labelled-and-main-conflicts-evicted
 name: Merge Queue Dequeue Report
 
 on:
   pull_request_target:
-    types: [dequeued]
+    types: [dequeued, enqueued, synchronize]
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       pr:
@@ -32,12 +45,13 @@ on:
 permissions:
   checks: read
   contents: read
+  issues: write
   pull-requests: write
 
 jobs:
   report:
     name: Report dequeue cause
-    if: ${{ github.event_name == 'workflow_dispatch' || !github.event.pull_request.merged }}
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.action == 'dequeued' && !github.event.pull_request.merged) }}
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
@@ -91,6 +105,46 @@ jobs:
 
           echo "No RemovedFromMergeQueueEvent found for PR #$PR — nothing to report."
 
+      - name: Label what the entry conflicts with
+        if: ${{ steps.event.outputs.reason == 'MERGE_CONFLICT' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # GitHub computes mergeability against the base lazily: the first
+          # read can be UNKNOWN while it works it out in the background.
+          state=UNKNOWN
+          for _ in 1 2 3 4 5 6; do
+            # shellcheck disable=SC2016  # the GraphQL query must not expand
+            state=$(gh api graphql -f owner="$OWNER" -f repo="$REPO" -F pr="$PR" -f query='
+              query($owner: String!, $repo: String!, $pr: Int!) {
+                repository(owner: $owner, name: $repo) { pullRequest(number: $pr) { mergeable } }
+              }' --jq '.data.repository.pullRequest.mergeable')
+            [ "$state" != "UNKNOWN" ] && break
+            sleep 10
+          done
+
+          case "$state" in
+            CONFLICTING)
+              label="merge conflict"
+              echo "Conflicts with the latest \`$BASE_REF\` — rebase, then re-queue." > conflict.txt ;;
+            MERGEABLE)
+              label="queue conflict"
+              echo "Applies cleanly to the latest \`$BASE_REF\`; it conflicted only with an entry ahead in the queue. Re-queue once that entry has merged or left the queue." > conflict.txt ;;
+            *)
+              echo "Mergeability against $BASE_REF still UNKNOWN; leaving the PR unlabelled."
+              exit 0 ;;
+          esac
+
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "Would label PR #$PR: $label" >> "$GITHUB_STEP_SUMMARY"
+          else
+            gh label create "merge conflict" --color B60205 --force \
+              --description "Conflicts with the latest main; removed from the merge queue"
+            gh label create "queue conflict" --color FBCA04 --force \
+              --description "Conflicted only with an entry ahead in the merge queue"
+            gh pr edit "$PR" --add-label "$label"
+          fi
+
       - name: Comment the checks that caused the dequeue
         if: ${{ steps.event.outputs.reason != '' }}
         shell: bash
@@ -107,6 +161,9 @@ jobs:
           # merge-group commit and nothing ever ran against it.
           if [ -z "$SHA" ]; then
             echo "The entry left the queue before it was built, so no checks ran against it." > detail.txt
+            if [ -s conflict.txt ]; then
+              cat conflict.txt > detail.txt
+            fi
             {
               echo "### 🚦 Removed from the merge queue — \`$REASON\` ($CREATED)"
               echo
@@ -170,6 +227,9 @@ jobs:
             else
               echo "No failing check on merge-queue commit \`${SHA:0:7}\` — invalidated by an entry ahead in the queue, or a required check timed out." > detail.txt
             fi
+            if [ -s conflict.txt ]; then
+              cat conflict.txt >> detail.txt
+            fi
 
             {
               echo "### 🚦 Removed from the merge queue — \`$REASON\` ($CREATED)"
@@ -218,3 +278,106 @@ jobs:
           # Keep on — the action discards Slack API errors by default.
           errors: true
           payload-file-path: slack.json
+
+  # Only reacts to PRs that carry a conflict label, so the frequent
+  # synchronize events skip without taking a runner.
+  clear-conflict-labels:
+    if: >-
+      ${{ (github.event.action == 'enqueued' || github.event.action == 'synchronize')
+          && (contains(github.event.pull_request.labels.*.name, 'merge conflict')
+              || contains(github.event.pull_request.labels.*.name, 'queue conflict')) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      PR: ${{ github.event.number }}
+    steps:
+      - name: Clear conflict labels
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh pr edit "$PR" --remove-label "merge conflict" --remove-label "queue conflict"
+
+  evict-main-conflicts:
+    if: ${{ github.event_name == 'push' }}
+    # A newer merge re-checks every entry anyway.
+    concurrency:
+      group: merge-queue-evict-main-conflicts
+      cancel-in-progress: true
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      OWNER: ${{ github.repository_owner }}
+      REPO: ${{ github.event.repository.name }}
+      BASE_REF: ${{ github.event.repository.default_branch }}
+      DRY_RUN: ${{ vars.MQ_REPORT_DRY_RUN == 'true' }}
+      MERGED_SHA: ${{ github.sha }}
+    steps:
+      - name: Remove queue entries that conflict with main
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Only QUEUED entries: GitHub builds the rest on main + entries ahead
+          # and removes them itself on a conflict (it also reports them
+          # UNKNOWN while building). Mergeability is computed lazily after main
+          # moves; re-read until none is UNKNOWN, leave any still UNKNOWN for
+          # the next merge.
+          for _ in 1 2 3 4 5 6; do
+            # shellcheck disable=SC2016  # the GraphQL query must not expand
+            gh api graphql -f owner="$OWNER" -f repo="$REPO" -f branch="$BASE_REF" -f query='
+              query($owner: String!, $repo: String!, $branch: String!) {
+                repository(owner: $owner, name: $repo) {
+                  mergeQueue(branch: $branch) {
+                    entries(first: 100) {
+                      nodes { position state pullRequest { id number mergeable } }
+                    }
+                  }
+                }
+              }' --jq '.data.repository.mergeQueue.entries.nodes[]
+                       | select(.state == "QUEUED")
+                       | [.pullRequest.id, .pullRequest.number, .pullRequest.mergeable, .position]
+                       | @tsv' > entries.tsv
+            grep -q $'\tUNKNOWN\t' entries.tsv || break
+            sleep 10
+          done
+
+          echo "queued entries (id, pr, mergeable, position):"
+          cat entries.tsv
+
+          evicted=0
+          while IFS=$'\t' read -r id pr state position; do
+            [ "$state" = "CONFLICTING" ] || continue
+            evicted=$((evicted + 1))
+            echo "evict #$pr (position $position)"
+            if [ "$DRY_RUN" = "true" ]; then
+              continue
+            fi
+            # shellcheck disable=SC2016  # the GraphQL mutation must not expand
+            gh api graphql -f id="$id" -f query='
+              mutation($id: ID!) { dequeuePullRequest(input: {id: $id}) { clientMutationId } }' \
+              --silent || { echo "::warning::could not dequeue #$pr"; continue; }
+            gh label create "merge conflict" --color B60205 --force \
+              --description "Conflicts with the latest main; removed from the merge queue"
+            gh pr edit "$pr" --add-label "merge conflict"
+            gh pr comment "$pr" --body "### 🚦 Removed from the merge queue — conflicts with \`$BASE_REF\`
+
+          This PR (queue position $position) stopped merging cleanly into \`$BASE_REF\` at ${MERGED_SHA:0:7}, so it was removed before it was built. Rebase on \`$BASE_REF\`, then re-queue."
+          done < entries.tsv
+
+          {
+            echo "### Merge-queue entries conflicting with \`$BASE_REF\`"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| dry run | \`${DRY_RUN}\` |"
+            echo "| queued entries checked | $(wc -l < entries.tsv | tr -d ' ') |"
+            echo "| evicted | ${evicted} |"
+          } >> "$GITHUB_STEP_SUMMARY"
