@@ -110,6 +110,32 @@ jest.mock(
   })
 );
 
+const mockUseMemoryConflictReviews = jest.fn().mockReturnValue({
+  reviews: [],
+  total: 0,
+  isLoading: false,
+});
+
+jest.mock(
+  '../../../hooks/discovery/context-center/useMemoryConflictReviews',
+  () => ({
+    useMemoryConflictReviews: (isAdmin: boolean) =>
+      mockUseMemoryConflictReviews(isAdmin),
+  })
+);
+
+jest.mock(
+  '../../../components/ContextCenter/MemoryConflictReviews/MemoryConflictReviews',
+  () => ({
+    __esModule: true,
+    default: jest
+      .fn()
+      .mockImplementation(({ reviews }: { reviews: unknown[] }) => (
+        <div data-review-count={reviews.length} data-testid="memory-reviews" />
+      )),
+  })
+);
+
 jest.mock(
   '../../../components/ContextCenter/CreateMemoryModal/CreateMemoryModal.component',
   () => ({
@@ -430,5 +456,34 @@ describe('ContextCenterMemoriesPage — memory links', () => {
       '?author=test.user'
     );
     expect(screen.queryByTestId('view-memory-modal')).not.toBeInTheDocument();
+  });
+});
+
+describe('ContextCenterMemoriesPage — needs review', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetResourcePermission.mockResolvedValue({ EditAll: true });
+    mockUseMemoryConflictReviews.mockReturnValue({
+      reviews: [{ id: 'task-1' }, { id: 'task-2' }],
+      total: 2,
+      isLoading: false,
+    });
+  });
+
+  it('counts the open reviews and lists them in their own tab', async () => {
+    renderPage();
+
+    const card = await screen.findByTestId('memory-count-card-needs-review');
+
+    expect(card).toHaveTextContent('2');
+    expect(mockUseMemoryConflictReviews).toHaveBeenCalledWith(false);
+    expect(screen.queryByTestId('memory-reviews')).not.toBeInTheDocument();
+
+    fireEvent.click(card);
+
+    expect(await screen.findByTestId('memory-reviews')).toHaveAttribute(
+      'data-review-count',
+      '2'
+    );
   });
 });

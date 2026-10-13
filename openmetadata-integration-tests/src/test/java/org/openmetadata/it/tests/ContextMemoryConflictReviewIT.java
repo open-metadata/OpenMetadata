@@ -14,6 +14,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -24,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -50,6 +52,8 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.sdk.services.context.ContextMemoryService;
 
 /**
@@ -241,6 +245,20 @@ public class ContextMemoryConflictReviewIT {
   }
 
   @Test
+  void anAssigneeListsTheirConflictReviewsByType(TestNamespace ns) {
+    Conflict conflict = conflict(ns, "assigned");
+    String taskId = openTask(conflict.reviewed()).getId().toString();
+
+    Map<String, String> reviews = openTasksAssignedToUser2(TaskEntityType.MemoryConflictReview);
+
+    assertEquals(TaskEntityType.MemoryConflictReview.value(), reviews.get(taskId));
+    assertTrue(
+        reviews.values().stream().allMatch(TaskEntityType.MemoryConflictReview.value()::equals),
+        "the type filter returns conflict reviews only");
+    assertFalse(openTasksAssignedToUser2(TaskEntityType.CustomTask).containsKey(taskId));
+  }
+
+  @Test
   void aConflictReviewCannotBeFiledThroughTheApi(TestNamespace ns) {
     ContextMemory memory = pending(ns, "filed", shared().USER2_REF);
 
@@ -341,6 +359,23 @@ public class ContextMemoryConflictReviewIT {
         .stream()
         .filter(task -> memory.getId().equals(task.getAbout().getId()))
         .toList();
+  }
+
+  /** The type of each open task of {@code type} assigned to USER2, by task id. */
+  private static Map<String, String> openTasksAssignedToUser2(TaskEntityType type) {
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("type", type.value())
+            .queryParam("status", TaskEntityStatus.Open.value())
+            .queryParam("limit", "1000")
+            .build();
+    String response =
+        SdkClients.user2Client()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/tasks/assigned", null, options);
+    return StreamSupport.stream(JsonUtils.readTree(response).path("data").spliterator(), false)
+        .collect(
+            Collectors.toMap(task -> task.path("id").asText(), task -> task.path("type").asText()));
   }
 
   private static Set<String> transitionIds(Task task) {

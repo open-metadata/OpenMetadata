@@ -30,3 +30,8 @@ export const CONTEXT_CENTER_ARCHIVE_COUNT_QUERY_KEY = [
 export const CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY = [
   'context-center-memories-count',
 ];
+
+/** Open memory conflict reviews; resolving one, or any memory write, invalidates it. */
+export const CONTEXT_CENTER_MEMORY_REVIEWS_QUERY_KEY = [
+  'context-center-memory-reviews',
+];

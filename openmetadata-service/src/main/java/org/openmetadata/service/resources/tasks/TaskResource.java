@@ -585,6 +585,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
                   "Filter by status group: 'open' for open tasks, 'closed' for terminal tasks")
           @QueryParam("statusGroup")
           String statusGroup,
+      @Parameter(description = "Filter by task type") @QueryParam("type") TaskEntityType type,
       @Parameter(description = "Filter by domain FQN") @QueryParam("domain") String domain,
       @Parameter(description = "Limit the number results", schema = @Schema(type = "integer"))
           @DefaultValue("10")
@@ -607,7 +608,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    ListFilter filter = buildTaskListFilter(include, status, statusGroup, domain);
+    ListFilter filter = buildTaskListFilter(include, status, statusGroup, type, domain);
     applyTaskSearch(filter, q);
     filter.addQueryParam("assigneeIds", getCurrentUserAssigneeIds(securityContext));
     applyTaskTimeRange(filter, startTs, endTs);
@@ -647,6 +648,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
                   "Filter by status group: 'open' for open tasks, 'closed' for terminal tasks")
           @QueryParam("statusGroup")
           String statusGroup,
+      @Parameter(description = "Filter by task type") @QueryParam("type") TaskEntityType type,
       @Parameter(description = "Filter by domain FQN") @QueryParam("domain") String domain,
       @Parameter(description = "Limit the number results", schema = @Schema(type = "integer"))
           @DefaultValue("10")
@@ -669,7 +671,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    ListFilter filter = buildTaskListFilter(include, status, statusGroup, domain);
+    ListFilter filter = buildTaskListFilter(include, status, statusGroup, type, domain);
     applyTaskSearch(filter, q);
     addCurrentUserVisibleFilters(filter, uriInfo, securityContext);
     applyTaskTimeRange(filter, startTs, endTs);
@@ -708,6 +710,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
                   "Filter by status group: 'open' for open tasks, 'closed' for terminal tasks")
           @QueryParam("statusGroup")
           String statusGroup,
+      @Parameter(description = "Filter by task type") @QueryParam("type") TaskEntityType type,
       @Parameter(description = "Filter by domain FQN") @QueryParam("domain") String domain,
       @Parameter(description = "Limit the number results", schema = @Schema(type = "integer"))
           @DefaultValue("10")
@@ -742,7 +745,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       ownerIds.addAll(groupTeams.stream().map(team -> "'" + team.getId() + "'").toList());
     }
 
-    ListFilter filter = buildTaskListFilter(include, status, statusGroup, domain);
+    ListFilter filter = buildTaskListFilter(include, status, statusGroup, type, domain);
     applyTaskSearch(filter, q);
     filter.addQueryParam("ownedByIds", String.join(",", ownerIds));
     applyTaskTimeRange(filter, startTs, endTs);
@@ -779,6 +782,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
                   "Filter by status group: 'open' for open tasks, 'closed' for terminal tasks")
           @QueryParam("statusGroup")
           String statusGroup,
+      @Parameter(description = "Filter by task type") @QueryParam("type") TaskEntityType type,
       @Parameter(description = "Filter by domain FQN") @QueryParam("domain") String domain,
       @Parameter(description = "Limit the number results", schema = @Schema(type = "integer"))
           @DefaultValue("10")
@@ -804,7 +808,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     String userName = securityContext.getUserPrincipal().getName();
     User user = Entity.getEntityByName(Entity.USER, userName, "", Include.NON_DELETED);
 
-    ListFilter filter = buildTaskListFilter(include, status, statusGroup, domain);
+    ListFilter filter = buildTaskListFilter(include, status, statusGroup, type, domain);
     applyTaskSearch(filter, q);
     filter.addQueryParam("createdById", user.getId().toString());
     applyTaskTimeRange(filter, startTs, endTs);
@@ -1357,12 +1361,19 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
   }
 
   private ListFilter buildTaskListFilter(
-      Include include, TaskEntityStatus status, String statusGroup, String domain) {
+      Include include,
+      TaskEntityStatus status,
+      String statusGroup,
+      TaskEntityType type,
+      String domain) {
     ListFilter filter = new ListFilter(include);
     if (statusGroup != null) {
       filter.addQueryParam("taskStatusGroup", statusGroup);
     } else if (status != null) {
       filter.addQueryParam("taskStatus", status.value());
+    }
+    if (type != null) {
+      filter.addQueryParam("taskType", type.value());
     }
     repository.addDomainFilter(filter, domain);
 

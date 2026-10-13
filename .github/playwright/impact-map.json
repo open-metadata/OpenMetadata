@@ -504,6 +504,7 @@
       "specs": [
         "playwright/e2e/Features/ContextCenterArticles.spec.ts",
         "playwright/e2e/Features/ContextCenterMemories.spec.ts",
+        "playwright/e2e/Features/ContextCenterMemoryReview.spec.ts",
         "playwright/e2e/Features/ContextCenterDocument.spec.ts",
         "playwright/e2e/Features/ContextCenterDashboard.spec.ts",
         "playwright/e2e/Features/ContextCenterPermission.spec.ts",

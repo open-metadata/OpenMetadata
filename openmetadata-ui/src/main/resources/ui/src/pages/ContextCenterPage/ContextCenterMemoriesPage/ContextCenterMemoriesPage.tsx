@@ -51,6 +51,7 @@ import {
   MemoryFilterTab,
   MemorySortBy,
 } from '../../../components/ContextCenter/MemoriesView/MemoriesView.interface';
+import MemoryConflictReviews from '../../../components/ContextCenter/MemoryConflictReviews/MemoryConflictReviews';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import DataAssetSelectList from '../../../components/DataAssets/DataAssetSelectList/DataAssetSelectList';
 import {
@@ -67,6 +68,7 @@ import {
   ContextMemory,
   ContextMemoryStatus,
 } from '../../../generated/entity/context/contextMemory';
+import { useMemoryConflictReviews } from '../../../hooks/discovery/context-center/useMemoryConflictReviews';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { queryClient } from '../../../queryClient';
 import {
@@ -84,7 +86,10 @@ import {
   getFilterTabClassName,
   getSortConfig,
 } from '../../../utils/ContextCenterPureUtils';
-import { CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
+import {
+  CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY,
+  CONTEXT_CENTER_MEMORY_REVIEWS_QUERY_KEY,
+} from '../../../utils/ContextCenterQueryKeys';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
@@ -107,6 +112,12 @@ const MEMORY_STATUSES = [
   ),
 ];
 const CREATED_BY_ME_FILTER = 'created-by-me' as const;
+const NEEDS_REVIEW_FILTER = 'needs-review' as const;
+
+const refreshMemoryReviews = () =>
+  queryClient.invalidateQueries({
+    queryKey: CONTEXT_CENTER_MEMORY_REVIEWS_QUERY_KEY,
+  });
 
 const getMemoryEmptyActions = (
   canCreate: boolean,
@@ -319,6 +330,12 @@ const ContextCenterMemoriesPage: FC = () => {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [debouncedAuthorSearch, setDebouncedAuthorSearch] = useState('');
   const isAuthorSearchMounted = useRef(false);
+  const isReviewing = activeFilter === NEEDS_REVIEW_FILTER;
+  const {
+    reviews,
+    total: reviewTotal,
+    isLoading: isReviewsLoading,
+  } = useMemoryConflictReviews(Boolean(currentUser?.isAdmin));
 
   const SORT_OPTIONS = useMemo(
     () => [
@@ -381,6 +398,9 @@ const ContextCenterMemoriesPage: FC = () => {
 
   const fetchMemories = useCallback(
     async (showLoader = true) => {
+      if (isReviewing) {
+        return;
+      }
       const requestId = ++memoryListRequestId.current;
       if (showLoader) {
         setIsMemoriesLoading(true);
@@ -421,6 +441,7 @@ const ContextCenterMemoriesPage: FC = () => {
       currentUser?.id,
       currentUser?.name,
       debouncedSearch,
+      isReviewing,
       selectedAsset?.id,
       selectedAuthor?.id,
       selectedStatuses,
@@ -644,6 +665,7 @@ const ContextCenterMemoriesPage: FC = () => {
         t('server.entity-deleted-success', { entity: t('label.memory') })
       );
       setMemoryToDelete(undefined);
+      refreshMemoryReviews();
       await fetchMemories();
       await fetchMemoryCounts();
     } catch (err) {
@@ -685,6 +707,26 @@ const ContextCenterMemoriesPage: FC = () => {
     },
     [setSearchParams]
   );
+
+  const handleViewMemoryByName = useCallback(
+    (name: string) => {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('memory', name);
+
+        return next;
+      });
+    },
+    [setSearchParams]
+  );
+
+  const handleReviewResolved = useCallback(() => {
+    refreshMemoryReviews();
+    queryClient.invalidateQueries({
+      queryKey: CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY,
+    });
+    fetchMemoryCounts();
+  }, [fetchMemoryCounts]);
 
   const handleModalClose = useCallback(() => {
     setIsCreateModalOpen(false);
@@ -737,6 +779,7 @@ const ContextCenterMemoriesPage: FC = () => {
 
   const handleModalSuccess = useCallback(() => {
     handleModalClose();
+    refreshMemoryReviews();
     fetchMemories();
     fetchMemoryCounts();
   }, [handleModalClose, fetchMemories, fetchMemoryCounts]);
@@ -755,8 +798,14 @@ const ContextCenterMemoriesPage: FC = () => {
         value: memoryCounts.createdByMeVisible,
         icon: null,
       },
+      {
+        filterKey: NEEDS_REVIEW_FILTER,
+        label: t('label.needs-review'),
+        value: reviewTotal,
+        icon: null,
+      },
     ],
-    [memoryCounts, t]
+    [memoryCounts, reviewTotal, t]
   );
 
   const allAssetsLabel = t('label.all-entity', {
@@ -922,7 +971,10 @@ const ContextCenterMemoriesPage: FC = () => {
                   </Tabs.List>
                 </Tabs>
 
-                <Box align="center" gap={2}>
+                <Box
+                  align="center"
+                  className={classNames({ 'tw:hidden': isReviewing })}
+                  gap={2}>
                   <Dropdown.Root>
                     <Button
                       color="secondary"
@@ -1093,7 +1145,12 @@ const ContextCenterMemoriesPage: FC = () => {
                   </Dropdown.Root>
                 </Box>
 
-                <Box align="center" className="tw:ml-auto" gap={4}>
+                <Box
+                  align="center"
+                  className={classNames('tw:ml-auto', {
+                    'tw:hidden': isReviewing,
+                  })}
+                  gap={4}>
                   {hasActiveFilters && (
                     <Button
                       color="link-color"
@@ -1134,7 +1191,7 @@ const ContextCenterMemoriesPage: FC = () => {
               <Card
                 className="tw:flex tw:flex-col tw:h-auto"
                 style={{ overflow: 'unset' }}>
-                <div>
+                <div className={classNames({ 'tw:hidden': isReviewing })}>
                   <MemoriesView
                     canDelete={hasDeletePermission}
                     canEdit={hasEditPermission}
@@ -1153,11 +1210,20 @@ const ContextCenterMemoriesPage: FC = () => {
                   />
                 </div>
 
-                <PaginationCardMinimal
-                  page={currentPage}
-                  total={totalPages}
-                  onPageChange={setCurrentPage}
-                />
+                {isReviewing ? (
+                  <MemoryConflictReviews
+                    isLoading={isReviewsLoading}
+                    reviews={reviews}
+                    onResolved={handleReviewResolved}
+                    onViewMemory={handleViewMemoryByName}
+                  />
+                ) : (
+                  <PaginationCardMinimal
+                    page={currentPage}
+                    total={totalPages}
+                    onPageChange={setCurrentPage}
+                  />
+                )}
               </Card>
             </>
           )}

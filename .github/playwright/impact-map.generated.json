@@ -782,6 +782,7 @@
         "playwright/e2e/Features/ContextCenterDashboard.spec.ts",
         "playwright/e2e/Features/ContextCenterMemories.spec.ts",
         "playwright/e2e/Features/ContextCenterMemoryLifecycle.spec.ts",
+        "playwright/e2e/Features/ContextCenterMemoryReview.spec.ts",
         "playwright/e2e/Features/ContextCenterPermission.spec.ts",
         "playwright/e2e/Features/CsvJobsTray.spec.ts",
         "playwright/e2e/Features/CustomPropertiesPersonaWidget.spec.ts",
@@ -2940,6 +2941,7 @@
         "playwright/e2e/Features/ContextCenterDocument.spec.ts",
         "playwright/e2e/Features/ContextCenterMemories.spec.ts",
         "playwright/e2e/Features/ContextCenterMemoryLifecycle.spec.ts",
+        "playwright/e2e/Features/ContextCenterMemoryReview.spec.ts",
         "playwright/e2e/Features/ContextCenterPermission.spec.ts",
         "playwright/e2e/Features/CuratedAssets.spec.ts"
       ]
@@ -3400,6 +3402,7 @@
         "playwright/e2e/Features/ContextCenterDocument.spec.ts",
         "playwright/e2e/Features/ContextCenterMemories.spec.ts",
         "playwright/e2e/Features/ContextCenterMemoryLifecycle.spec.ts",
+        "playwright/e2e/Features/ContextCenterMemoryReview.spec.ts",
         "playwright/e2e/Features/ContextCenterPermission.spec.ts",
         "playwright/e2e/Features/CronValidations.spec.ts",
         "playwright/e2e/Features/CsvJobsTray.spec.ts",
@@ -5172,6 +5175,7 @@
         "playwright/e2e/Features/Container.spec.ts",
         "playwright/e2e/Features/ContextCenterDocument.spec.ts",
         "playwright/e2e/Features/ContextCenterMemories.spec.ts",
+        "playwright/e2e/Features/ContextCenterMemoryReview.spec.ts",
         "playwright/e2e/Features/CustomPropertiesPersonaWidget.spec.ts",
         "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
         "playwright/e2e/Features/DataProductPersonaCustomization.spec.ts",
@@ -5828,6 +5832,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/ContextCenter/MemoryConflictReviews/MemoryConflictReviews.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/ContextCenterMemoryReview.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/ContextCenter/PersonaAIContext/ContextPreviewModal/ContextPreviewModal.component.tsx"
       ],
       "specs": [
@@ -6325,6 +6337,14 @@
         "playwright/e2e/Features/DataQuality/TableLevelTests.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
         "playwright/e2e/VersionPages/TestCaseVersionPage.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/DataQuality/AddDataQualityTest/components/TestCaseFormDrawer.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/DataQuality/AddTestCaseNewFlow.spec.ts"
       ]
     },
     {
@@ -7148,7 +7168,6 @@
       ],
       "specs": [
         "playwright/e2e/Features/ContextCenterArticles.spec.ts",
-        "playwright/e2e/Features/DataQuality/AddTestCaseNewFlow.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryRelationsGraph.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryTermRelationsGraph.spec.ts",
         "playwright/e2e/Features/MetricAssets.spec.ts",
@@ -11747,6 +11766,7 @@
         "playwright/e2e/Features/ContextCenterDocument.spec.ts",
         "playwright/e2e/Features/ContextCenterMemories.spec.ts",
         "playwright/e2e/Features/ContextCenterMemoryLifecycle.spec.ts",
+        "playwright/e2e/Features/ContextCenterMemoryReview.spec.ts",
         "playwright/e2e/Features/ContextCenterPermission.spec.ts",
         "playwright/e2e/Features/CronValidations.spec.ts",
         "playwright/e2e/Features/CsvJobsTray.spec.ts",
@@ -12125,6 +12145,7 @@
         "playwright/e2e/Features/ContextCenterDocument.spec.ts",
         "playwright/e2e/Features/ContextCenterMemories.spec.ts",
         "playwright/e2e/Features/ContextCenterMemoryLifecycle.spec.ts",
+        "playwright/e2e/Features/ContextCenterMemoryReview.spec.ts",
         "playwright/e2e/Features/ContextCenterPermission.spec.ts",
         "playwright/e2e/Features/CuratedAssets.spec.ts",
         "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
