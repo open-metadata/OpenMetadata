@@ -12,12 +12,12 @@
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
-  Badge,
-  Box,
-  Grid,
-  Select,
-  Toggle,
-  Typography,
+    Badge,
+    Box,
+    Grid,
+    Select,
+    Toggle,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { Collapse, InputNumber } from 'antd';
 import { AxiosError } from 'axios';
@@ -26,24 +26,24 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ENTITY_PATH } from '../../../constants/constants';
 import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
+    GlobalSettingOptions,
+    GlobalSettingsMenuCategory
 } from '../../../constants/GlobalSettings.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
-  AllowedFieldField,
-  AllowedFieldValueBoostField,
-  AllowedSearchFields,
-  AssetTypeConfiguration,
-  BoostMode,
-  FieldBoost,
-  FieldValueBoost,
-  RankingConfiguration,
-  RankingStage,
-  ScoreMode,
-  SearchFieldMatchType as MatchType,
-  SearchSettings,
-  TermBoost,
+    AllowedFieldField,
+    AllowedFieldValueBoostField,
+    AllowedSearchFields,
+    AssetTypeConfiguration,
+    BoostMode,
+    FieldBoost,
+    FieldValueBoost,
+    RankingConfiguration,
+    RankingStage,
+    ScoreMode,
+    SearchFieldMatchType as MatchType,
+    SearchSettings,
+    TermBoost
 } from '../../../generated/configuration/searchSettings';
 import { CustomProperty } from '../../../generated/entity/type';
 import { Settings, SettingType } from '../../../generated/settings/settings';
@@ -52,28 +52,28 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { EntitySearchSettingsState } from '../../../pages/SearchSettingsPage/searchSettings.interface';
 import { getCustomPropertiesByEntityType } from '../../../rest/metadataTypeAPI';
 import {
-  getSettingsByType,
-  restoreSettingsConfig,
-  updateSettingsConfig,
+    getSettingsByType,
+    restoreSettingsConfig,
+    updateSettingsConfig
 } from '../../../rest/settingConfigAPI';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
 import {
-  boostModeOptions,
-  getEffectiveRankingConfiguration,
-  getEntitySearchConfig,
-  getSearchSettingCategories,
-  scoreModeOptions,
+    boostModeOptions,
+    getEffectiveRankingConfiguration,
+    getEntitySearchConfig,
+    getSearchSettingCategories,
+    scoreModeOptions
 } from '../../../utils/SearchSettingsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import CollapseHeader from '../../common/CollapseHeader/CollapseHeader';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import FieldValueBoostDialog from '../../discovery/personal-space/Profile/tabs/platform-settings/search/FieldValueBoostDialog';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import FieldConfiguration from '../FieldConfiguration/FieldConfiguration';
 import FieldValueBoostList from '../FieldValueBoostList/FieldValueBoostList';
-import FieldValueBoostModal from '../FieldValueBoostModal/FieldValueBoostModal';
 import SearchPreview from '../SearchPreview/SearchPreview';
 import TermBoostList from '../TermBoostList/TermBoostList';
 import './entity-search-settings.less';
@@ -1084,16 +1084,17 @@ const EntitySearchSettings = () => {
         </Box>
       </Box>
 
-      <FieldValueBoostModal
-        entityOptions={fieldValueBoostOptions ?? []}
-        open={showNewFieldValueBoost}
-        selectedBoost={selectedFieldValueBoost}
-        onCancel={() => {
-          setShowNewFieldValueBoost(false);
-          setSelectedFieldValueBoost(undefined);
-        }}
-        onSave={handleSaveFieldValueBoost}
-      />
+      {showNewFieldValueBoost && (
+        <FieldValueBoostDialog
+          boost={selectedFieldValueBoost}
+          fieldOptions={fieldValueBoostOptions ?? []}
+          onClose={() => {
+            setShowNewFieldValueBoost(false);
+            setSelectedFieldValueBoost(undefined);
+          }}
+          onSave={handleSaveFieldValueBoost}
+        />
+      )}
     </PageLayoutV1>
   );
 };

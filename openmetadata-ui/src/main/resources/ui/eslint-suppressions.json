@@ -1120,7 +1120,7 @@
   },
   "src/components/MyData/Persona/AddEditPersona/AddEditPersona.component.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 3
+      "count": 1
     }
   },
   "src/components/NavBar/NavBar.tsx": {
@@ -1186,11 +1186,6 @@
   "src/components/SearchSettings/FieldValueBoostList/FieldValueBoostList.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 1
-    }
-  },
-  "src/components/SearchSettings/FieldValueBoostModal/FieldValueBoostModal.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 5
     }
   },
   "src/components/SearchSettings/GlobalSettingsItem/GlobalSettingsItem.tsx": {

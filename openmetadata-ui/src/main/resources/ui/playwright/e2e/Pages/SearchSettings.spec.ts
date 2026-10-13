@@ -18,18 +18,18 @@ import { expect, test as base } from '../../support/fixtures/base';
 import { AdminClass } from '../../support/user/AdminClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  getApiContext,
-  redirectToHomePage,
-  toastNotification,
-  uuid,
+    getApiContext,
+    redirectToHomePage,
+    toastNotification,
+    uuid
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
-  mockEntitySearchSettings,
-  openMatchingFieldsPanel,
-  restoreDefaultSearchSettings,
-  selectSettingOption,
-  setSliderValue,
+    mockEntitySearchSettings,
+    openMatchingFieldsPanel,
+    restoreDefaultSearchSettings,
+    selectSettingOption,
+    setSliderValue
 } from '../../utils/searchSettingUtils';
 import { settingClick } from '../../utils/sidebar';
 
@@ -148,24 +148,21 @@ test.describe('Search Settings', () => {
       // Add and remove field value boost
       await page.getByTestId('add-field-value-boost-btn').click();
 
-      const modal = page.getByTestId('field-value-boost-modal');
+      const modal = page.getByTestId('field-value-boost-dialog');
 
       await modal.waitFor({ state: 'visible' });
 
-      await modal.locator('#field').click();
+      await selectSettingOption(
+        page,
+        modal.getByTestId('field-select'),
+        'totalVotes'
+      );
 
-      await page
-        .locator('.ant-select-dropdown:visible')
-        .getByTitle('totalVotes')
-        .click();
+      await modal.getByRole('slider').fill('25.6');
 
-      await page
-        .locator('.ant-select-dropdown:visible')
-        .waitFor({ state: 'hidden' });
+      await expect(modal.getByTestId('field-boost-value')).toHaveText('25.6');
 
-      await setSliderValue(page, 'field-boost-slider', 25.6);
-
-      await modal.getByRole('button', { name: 'Save' }).click();
+      await modal.getByTestId('save-field-value-boost').click();
 
       await toastNotification(page, /Search Settings updated successfully/);
 
