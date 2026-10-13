@@ -106,7 +106,7 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
   );
 
   const getAlertRecentEvents = useCallback(
-    (paginationOffset = 0) => {
+    (paginationOffset: number, isStale: () => boolean) => {
       setLoading(true);
       getAlertEventsFromId({
         id,
@@ -121,6 +121,9 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
         },
       })
         .then(({ data, paging }) => {
+          if (isStale()) {
+            return;
+          }
           // A page restored from the URL can lie past the end, where the empty state hides the paginator.
           if (isEmpty(data) && paginationOffset > 0) {
             handlePageChange(INITIAL_PAGING_VALUE);
@@ -131,14 +134,24 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
           setAlertRecentEvents(data);
           handlePagingChange(paging);
         })
-        .catch((e: AxiosError) => showErrorToast(e))
-        .finally(() => setLoading(false));
+        .catch((e: AxiosError) => {
+          if (!isStale()) {
+            showErrorToast(e);
+          }
+        })
+        .finally(() => {
+          if (!isStale()) {
+            setLoading(false);
+          }
+        });
     },
     [id, filter, pageSize, handlePagingChange, handlePageChange]
   );
 
-  const pagingHandler = ({ page }: PagingHandlerParams) =>
-    handlePageChange(page);
+  const pagingHandler = useCallback(
+    ({ page }: PagingHandlerParams) => handlePageChange(page),
+    [handlePageChange]
+  );
 
   const recentEventsList = useMemo(() => {
     if (loading) {
@@ -358,13 +371,20 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
     alertRecentEvents,
     pageSize,
     currentPage,
+    paging,
     pagingHandler,
     handlePageSizeChange,
     showPagination,
+    t,
   ]);
 
   useEffect(() => {
-    getAlertRecentEvents((currentPage - 1) * pageSize);
+    let ignore = false;
+    getAlertRecentEvents((currentPage - 1) * pageSize, () => ignore);
+
+    return () => {
+      ignore = true;
+    };
   }, [currentPage, getAlertRecentEvents, pageSize]);
 
   return (

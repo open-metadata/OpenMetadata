@@ -228,6 +228,35 @@ describe('AlertRecentEventsTab', () => {
     expect(screen.getByTestId('recent-events-list')).toBeInTheDocument();
   });
 
+  it('should ignore a response that arrives after a newer request', async () => {
+    await act(async () => {
+      render(<AlertRecentEventsTab alertDetails={mockAlertDetails} />);
+    });
+
+    let resolveStale: (value: unknown) => void = jest.fn();
+    mockGetEvents.mockImplementationOnce(
+      () => new Promise((resolve) => (resolveStale = resolve))
+    );
+
+    fireEvent.click(screen.getByText('next'));
+    fireEvent.click(screen.getByTestId('filter-button'));
+    fireEvent.click(await screen.findByText('label.failed'));
+
+    expect(await screen.findByTestId('recent-events-list')).toBeInTheDocument();
+
+    await act(async () => {
+      resolveStale({
+        data: [{ status: Status.Failed, data: [], timestamp: 1700000000001 }],
+        paging: { offset: 5 },
+      });
+    });
+
+    expect(screen.getByTestId('current-page')).toHaveTextContent('1');
+    expect(
+      screen.queryByTestId('event-collapse-unreadable-failed-1700000000001')
+    ).not.toBeInTheDocument();
+  });
+
   it('renders an unreadable (empty-data) row without crashing the page', async () => {
     (getAlertEventsFromId as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({
