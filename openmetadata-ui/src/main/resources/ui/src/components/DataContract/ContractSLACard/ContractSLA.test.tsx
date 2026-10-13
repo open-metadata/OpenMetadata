@@ -46,8 +46,11 @@ jest.mock('../../../utils/i18next/LocalUtil', () => ({
   t: jest.fn().mockImplementation((key) => key),
 }));
 
+// Every SVG import maps to one mocked module, so this mock stands in for all icons.
 jest.mock('../../../assets/svg/ic-check-circle-2.svg', () => ({
-  ReactComponent: () => <svg data-testid="check-icon" />,
+  ReactComponent: ({ className }: { className?: string }) => (
+    <svg className={className} data-testid="check-icon" />
+  ),
 }));
 
 jest.mock('../../Customization/GenericProvider/GenericContext', () => ({

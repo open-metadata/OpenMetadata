@@ -3808,8 +3808,10 @@
         "openmetadata-ui/src/main/resources/ui/playwright/utils/dataContracts.ts"
       ],
       "specs": [
+        "playwright/e2e/Pages/DataContractInheritance.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
-        "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts"
+        "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts",
+        "playwright/e2e/Pages/ODCSImportExport.spec.ts"
       ]
     },
     {
@@ -3872,6 +3874,15 @@
         "playwright/e2e/Pages/DataInsightSettings.spec.ts",
         "playwright/e2e/Pages/Entity.spec.ts",
         "playwright/e2e/Pages/ExplorePageRightPanel.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/playwright/utils/destination.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/DataContractInheritance.spec.ts",
+        "playwright/e2e/Pages/ODCSImportExport.spec.ts"
       ]
     },
     {
@@ -6090,15 +6101,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/DataContract/ContractSLAFormTab/ContractSLAFormTab.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Pages/DataContractInheritance.spec.ts",
-        "playwright/e2e/Pages/ODCSImportExport.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/DataContract/ContractSecurity/ContractSecurityCard.component.tsx"
       ],
       "specs": [
@@ -6323,6 +6325,14 @@
         "playwright/e2e/Features/DataQuality/TableLevelTests.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
         "playwright/e2e/VersionPages/TestCaseVersionPage.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/DataQuality/AddDataQualityTest/components/TestCaseFormDrawer.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/DataQuality/AddTestCaseNewFlow.spec.ts"
       ]
     },
     {
@@ -7146,7 +7156,6 @@
       ],
       "specs": [
         "playwright/e2e/Features/ContextCenterArticles.spec.ts",
-        "playwright/e2e/Features/DataQuality/AddTestCaseNewFlow.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryRelationsGraph.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryTermRelationsGraph.spec.ts",
         "playwright/e2e/Features/MetricAssets.spec.ts",
@@ -9799,7 +9808,6 @@
         "playwright/e2e/Features/IncidentManager.spec.ts",
         "playwright/e2e/Features/QueryEntity.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts",
-        "playwright/e2e/Pages/DataContractInheritance.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
         "playwright/e2e/Pages/DataProductAndSubdomains.spec.ts",
         "playwright/e2e/Pages/DomainUIInteractions.spec.ts",
@@ -9983,8 +9991,6 @@
         "openmetadata-ui/src/main/resources/ui/src/components/common/UserTag/UserTag.component.tsx"
       ],
       "specs": [
-        "playwright/e2e/Pages/DataContractInheritance.spec.ts",
-        "playwright/e2e/Pages/DataContracts.spec.ts",
         "playwright/e2e/Pages/ExplorePageRightPanel.spec.ts"
       ]
     },
@@ -10000,15 +10006,6 @@
         "playwright/e2e/Features/QueryEntity.spec.ts",
         "playwright/e2e/Pages/DomainUIInteractions.spec.ts",
         "playwright/e2e/Pages/TestSuite.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/common/UserTeamSelectableListSearchInput/UserTeamSelectableListSearchInput.component.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Pages/DataContractInheritance.spec.ts",
-        "playwright/e2e/Pages/DataContracts.spec.ts"
       ]
     },
     {
