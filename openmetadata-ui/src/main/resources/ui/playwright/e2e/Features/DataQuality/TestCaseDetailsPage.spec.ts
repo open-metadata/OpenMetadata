@@ -221,16 +221,18 @@ test.describe(
       await expect(page.getByTestId('test-case-rail')).toContainText(
         'Configuration'
       );
+      // The test case inherits its definition's dimension, Integrity.
       await expect(card.getByTestId('configuration-category')).toHaveText(
-        'Table test'
+        'Table test · Integrity'
       );
 
+      // Rows are labelled with the parameters' display names.
       const minRow = card.getByTestId('configuration-parameter-minValue');
       const maxRow = card.getByTestId('configuration-parameter-maxValue');
 
-      await expect(minRow).toContainText('minValue');
+      await expect(minRow).toContainText('Min');
       await expect(minRow).toContainText('12');
-      await expect(maxRow).toContainText('maxValue');
+      await expect(maxRow).toContainText('Max');
       await expect(maxRow).toContainText('34');
     });
 

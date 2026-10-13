@@ -270,7 +270,7 @@ const OntologyAuthoringInspector = ({
     );
     const colorMeta = effectiveColor
       ? COLOR_META_BY_HEX[effectiveColor.toLowerCase()] ?? {
-          background: 'var(--color-bg-secondary)',
+          background: 'var(--tw-color-bg-secondary)',
           color: effectiveColor,
         }
       : undefined;

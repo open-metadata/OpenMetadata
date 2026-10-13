@@ -11,9 +11,14 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined } from '@ant-design/icons';
-import { Tabs } from '@openmetadata/ui-core-components';
-import { Modal, Space } from 'antd';
+import {
+  Box,
+  Dialog,
+  Modal,
+  ModalOverlay,
+  Tabs,
+} from '@openmetadata/ui-core-components';
+import { Check } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -32,7 +37,6 @@ import { DetailsTabItem } from '../../../../utils/CustomizePage/CustomizePageEnt
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../common/Loader/Loader';
-import './add-widget-modal.less';
 import {
   AddWidgetModalProps,
   WidgetSizeInfo,
@@ -88,20 +92,24 @@ function AddWidgetModal({
 
         return {
           label: (
-            <Space data-testid={`${widget.name}-widget-tab-label`}>
+            <Box
+              align="center"
+              data-testid={`${widget.name}-widget-tab-label`}
+              direction="row"
+              gap={1}>
               <span>{widget.name}</span>
               {addedWidgetsList.some(
                 (w) =>
                   w.startsWith(widget.fullyQualifiedName) &&
                   !w.includes('EmptyWidgetPlaceholder')
               ) && (
-                <CheckOutlined
-                  className="m-l-xs"
+                <Check
+                  className="m-l-xs tw:size-4"
                   data-testid={`${widget.name}-check-icon`}
                   style={{ color: LIGHT_GREEN_COLOR }}
                 />
               )}
-            </Space>
+            </Box>
           ),
           key: widget.fullyQualifiedName,
           children: (
@@ -123,8 +131,8 @@ function AddWidgetModal({
   const visitedTabs = useVisitedTabs(activeTab);
 
   useEffect(() => {
-    fetchKnowledgePanels();
-  }, []);
+    void fetchKnowledgePanels();
+  }, [fetchKnowledgePanels]);
 
   const widgetsInfo = useMemo(() => {
     if (loading) {
@@ -169,20 +177,23 @@ function AddWidgetModal({
         ))}
       </Tabs>
     );
-  }, [loading, widgetsList, tabItems, activeTab, visitedTabs]);
+  }, [loading, widgetsList, tabItems, activeTab, visitedTabs, t]);
 
   return (
-    <Modal
-      centered
-      className="add-widget-modal"
-      data-testid="add-widget-modal"
-      footer={null}
-      open={open}
-      title={t('label.add-new-entity', { entity: t('label.widget') })}
-      width={750}
-      onCancel={handleCloseAddWidgetModal}>
-      {widgetsInfo}
-    </Modal>
+    <ModalOverlay
+      isOpen={open}
+      onOpenChange={(isOpen) => !isOpen && handleCloseAddWidgetModal()}>
+      <Modal className="add-widget-modal">
+        <Dialog
+          data-testid="add-widget-modal"
+          dividers="scroll"
+          title={t('label.add-new-entity', { entity: t('label.widget') })}
+          width={750}
+          onClose={handleCloseAddWidgetModal}>
+          <Dialog.Content>{widgetsInfo}</Dialog.Content>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 }
 

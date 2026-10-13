@@ -1,0 +1,19 @@
+{
+  "requestId": "a3b2c1d0-e9f8-4a7b-8c6d-5e4f3a2b1c0d",
+  "operation": "EXPLAIN",
+  "sourceRevision": {
+    "datasetGeneration": "9d72cf3b-3657-4ee3-809c-5bc70b9308bd",
+    "liveWriteWatermark": 18460
+  },
+  "ontologySelection": "APPROVED",
+  "ontologyIri": "https://example.org/finance",
+  "explain": {
+    "statement": {
+      "subjectIri": "https://example.org/finance#NetRevenue",
+      "predicateIri": "http://www.w3.org/2000/01/rdf-schema#subClassOf",
+      "objectKind": "IRI",
+      "objectIri": "https://example.org/finance#FinancialMetric"
+    },
+    "maxJustifications": 3
+  }
+}

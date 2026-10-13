@@ -97,8 +97,8 @@ jest.mock('@openmetadata/ui-core-components', () => {
   ));
 
   return {
-    Grid: GridMock,
     Card: CardMock,
+    Grid: GridMock,
     Tooltip: jest
       .fn()
       .mockImplementation(({ children }: { children: React.ReactNode }) => (

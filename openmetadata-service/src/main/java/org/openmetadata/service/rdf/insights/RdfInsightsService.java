@@ -65,6 +65,6 @@ public final class RdfInsightsService {
   }
 
   private String query(String sparql) {
-    return repository.executeSparqlQuery(sparql, SPARQL_JSON);
+    return repository.executeAssertedSparqlQuery(sparql, SPARQL_JSON);
   }
 }

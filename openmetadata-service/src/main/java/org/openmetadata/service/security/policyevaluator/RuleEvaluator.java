@@ -148,7 +148,7 @@ public class RuleEvaluator {
   private Task currentTask() {
     Task task = null;
     if (!expressionValidation && subjectContext != null && resourceContext != null) {
-      EntityInterface entity = resourceContext.getEntity();
+      EntityInterface<?> entity = resourceContext.getEntity();
       if (entity instanceof Task t) {
         task = t;
       }
@@ -467,7 +467,7 @@ public class RuleEvaluator {
       return false;
     }
 
-    EntityInterface entity = resourceContext.getEntity();
+    EntityInterface<?> entity = resourceContext.getEntity();
     if (entity == null) {
       return false;
     }
