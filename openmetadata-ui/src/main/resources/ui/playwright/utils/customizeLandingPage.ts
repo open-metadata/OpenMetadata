@@ -64,7 +64,16 @@ const getLandingPageWidgetSlot = (page: Page, widgetKey: string) =>
     .locator(
       `[data-testid="deferred-widget-${widgetKey}"], [data-testid^="deferred-widget-${widgetKey}-"]`
     )
+    .filter({ visible: true })
     .first();
+
+// A landing-page widget as it is on screen. In AI mode the persona customize
+// view hides the routed page rather than unmounting it (AppShell's
+// `tw:hidden!`, so leaving the editor restores it untouched), which leaves the
+// live home page — whose cells carry the very same keys — in the DOM under the
+// editor. Unfiltered, every lookup there matches both copies.
+export const getLandingPageWidget = (page: Page, widgetKey: string) =>
+  page.getByTestId(widgetKey).filter({ visible: true });
 
 const revealLandingPageWidget = async (page: Page, widgetKey: string) => {
   const slot = getLandingPageWidgetSlot(page, widgetKey);
@@ -83,7 +92,7 @@ const revealLandingPageWidget = async (page: Page, widgetKey: string) => {
   // The customize-page edit view renders widgets without a deferred slot. Only scroll a
   // widget that is already attached — scrolling a locator that resolves to nothing stalls
   // for the full action timeout and starves the caller's own waiting.
-  const widget = page.getByTestId(widgetKey);
+  const widget = getLandingPageWidget(page, widgetKey);
 
   if ((await widget.count()) > 0) {
     await widget.scrollIntoViewIfNeeded().catch(() => undefined);
@@ -230,7 +239,7 @@ export const removeAndCheckWidget = async (
   page: Page,
   { widgetKey }: { widgetKey: string }
 ) => {
-  const widget = page.locator(`[data-testid="${widgetKey}"]`);
+  const widget = getLandingPageWidget(page, widgetKey);
 
   await widget.scrollIntoViewIfNeeded();
 
@@ -242,7 +251,7 @@ export const removeAndCheckWidget = async (
   // match it by prefix inside the cell.
   await widget.locator(`[data-testid^="remove-widget-${widgetKey}"]`).click();
 
-  await expect(page.getByTestId(`${widgetKey}`)).not.toBeVisible();
+  await expect(widget).toHaveCount(0);
 };
 
 // Keep each probe non-blocking so the caller can reveal a slot that mounts
@@ -253,10 +262,24 @@ const isLandingPageWidgetVisible = async (
 ): Promise<boolean> => {
   await revealLandingPageWidget(page, widgetKey);
 
-  return page
-    .getByTestId(widgetKey)
-    .isVisible()
-    .catch(() => false);
+  const widget = getLandingPageWidget(page, widgetKey);
+  const matches = await widget.count();
+
+  // Grid cells carry the *base* widget key, so a picker-added copy of a widget
+  // the layout already holds gives two visible cells one test id. `isVisible()` then
+  // throws a strict-mode violation, which the catch below would read as "not
+  // visible yet" and poll out the full minute. Throwing here aborts the poll at
+  // once — Playwright's pollMatcher runs this callback outside its try/catch —
+  // and names the real problem.
+  if (matches > 1) {
+    throw new Error(
+      `${matches} landing-page widgets share the test id "${widgetKey}". ` +
+        'Remove the copy already in the layout before adding another ' +
+        '(see addCuratedAssetsWidget).'
+    );
+  }
+
+  return widget.isVisible().catch(() => false);
 };
 
 const isLandingPageWidgetLoading = async (widget: Locator) =>
@@ -280,7 +303,7 @@ export const waitForLandingPageWidget = async (
   page: Page,
   widgetKey: string
 ): Promise<Locator> => {
-  const widget = page.getByTestId(widgetKey);
+  const widget = getLandingPageWidget(page, widgetKey);
 
   // The reveal has to be retried, not done once. A deferred slot mounts its widget only
   // when scrolled into view, and `expect(...).toBeVisible()` cannot scroll. So when the
@@ -451,8 +474,7 @@ export const addAndVerifyWidget = async (
   // header `navigateToCustomizeLandingPage` waited for, so an immediate probe
   // can report a widget missing that is merely not mounted yet, landing on that
   // same dead end.
-  const isAlreadyOnLayout = await page
-    .getByTestId(widgetKey)
+  const isAlreadyOnLayout = await getLandingPageWidget(page, widgetKey)
     .waitFor({ state: 'attached', timeout: 10_000 })
     .then(() => true)
     .catch(() => false);
@@ -499,6 +521,37 @@ export const addAndVerifyWidget = async (
   await waitForLandingPageWidget(page, widgetKey);
 };
 
+/**
+ * Adds a Curated Assets card from the picker to a customize page that is
+ * already open — whichever route opened it — and returns the new card.
+ *
+ * The default layout ships an unconfigured Curated Assets card, and every copy
+ * carries the same base-key test id, so adding a second one would make each
+ * lookup of the widget ambiguous. Start from a layout without it, once the
+ * editor grid has painted so an unmounted card is not read as absent.
+ */
+export const addCuratedAssetsWidget = async (page: Page) => {
+  await expect(
+    page.locator('[data-testid^="KnowledgePanel."]')
+  ).not.toHaveCount(0);
+  if (
+    (await getLandingPageWidget(page, CURATED_ASSETS_WIDGET_KEY).count()) > 0
+  ) {
+    await removeAndCheckWidget(page, { widgetKey: CURATED_ASSETS_WIDGET_KEY });
+  }
+
+  await openAddCustomizeWidgetModal(page);
+  await waitForAllLoadersToDisappear(page);
+
+  const customizeHome = page.getByRole('dialog', { name: 'Customize Home' });
+  await customizeHome.getByTestId(CURATED_ASSETS_WIDGET_KEY).click();
+  await customizeHome.getByTestId('apply-btn').click();
+
+  await expect(customizeHome).not.toBeVisible();
+
+  return waitForLandingPageWidget(page, CURATED_ASSETS_WIDGET_KEY);
+};
+
 export const addCuratedAssetPlaceholder = async ({
   page,
   personaName,
@@ -510,31 +563,7 @@ export const addCuratedAssetPlaceholder = async ({
     personaName,
   });
 
-  // The default layout ships an unconfigured Curated Assets card, and every
-  // copy carries the same base-key test id, so adding a second one would make
-  // each lookup of the widget ambiguous. Start from a layout without it, once
-  // the editor grid has painted so an unmounted card is not read as absent.
-  await expect(
-    page.locator('[data-testid^="KnowledgePanel."]')
-  ).not.toHaveCount(0);
-  if ((await page.getByTestId(CURATED_ASSETS_WIDGET_KEY).count()) > 0) {
-    await removeAndCheckWidget(page, { widgetKey: CURATED_ASSETS_WIDGET_KEY });
-  }
-
-  await openAddCustomizeWidgetModal(page);
-  await waitForAllLoadersToDisappear(page);
-
-  await page
-    .getByRole('dialog', { name: 'Customize Home' })
-    .getByTestId(CURATED_ASSETS_WIDGET_KEY)
-    .click();
-
-  await page.locator('[data-testid="apply-btn"]').click();
-
-  const curatedAssetsWidget = await waitForLandingPageWidget(
-    page,
-    'KnowledgePanel.CuratedAssets'
-  );
+  const curatedAssetsWidget = await addCuratedAssetsWidget(page);
 
   await expect(
     curatedAssetsWidget.getByTestId('widget-empty-state')
@@ -633,7 +662,7 @@ const readLandingWidgetCount = async (
     return null;
   }
 
-  const widget = page.getByTestId(widgetKey);
+  const widget = getLandingPageWidget(page, widgetKey);
   if (await isLandingPageWidgetLoading(widget)) {
     return null;
   }
