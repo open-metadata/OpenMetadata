@@ -18,7 +18,7 @@ import {
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { AutoComplete, Form, Input, Select, Spin } from 'antd';
+import { AutoComplete, Form, Input, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -36,6 +36,7 @@ import { searchQuery } from '../../../../rest/searchAPI';
 import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 import { getSettingPageEntityBreadCrumb } from '../../../../utils/GlobalSettingsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import Loader from '../../../common/Loader/Loader';
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
@@ -392,7 +393,7 @@ const AdminPermissionDebugger: React.FC = () => {
                 <AutoComplete
                   className="w-full"
                   notFoundContent={
-                    searchingUsers ? <Spin size="small" /> : null
+                    searchingUsers ? <Loader size="x-small" /> : null
                   }
                   options={userOptions}
                   placeholder={t('label.search-entity', {
@@ -519,7 +520,7 @@ const AdminPermissionDebugger: React.FC = () => {
 
           {loadingPermissions && (
             <div className="loading-container">
-              <Spin size="large" />
+              <Loader />
             </div>
           )}
 

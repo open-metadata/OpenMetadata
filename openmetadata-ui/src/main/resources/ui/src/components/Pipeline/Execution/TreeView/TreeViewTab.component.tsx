@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 
-import { Box, Card, Grid, Typography } from '@openmetadata/ui-core-components';
-import { Empty } from 'antd';
+import {
+  Box,
+  Card,
+  EmptyPlaceholder,
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import Tree from 'antd/lib/tree';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
@@ -79,10 +84,9 @@ const TreeViewTab = ({
         </Box>
 
         {isEmpty(viewData) ? (
-          <Empty
-            className="my-4"
-            description={t('message.no-execution-runs-found')}
-          />
+          <Box className="my-4 tw:relative tw:min-h-40 tw:w-full">
+            <EmptyPlaceholder title={t('message.no-execution-runs-found')} />
+          </Box>
         ) : (
           <Grid className="layout-row layout-grid w-full">
             <Grid.Item className="layout-column" span={12}>

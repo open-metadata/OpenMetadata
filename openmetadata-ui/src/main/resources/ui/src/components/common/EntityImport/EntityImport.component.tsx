@@ -17,7 +17,6 @@ import {
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Affix } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined, startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -245,7 +244,7 @@ export const EntityImport = ({
                 onCSVUploaded={handleLoadData}
               />
 
-              <Affix className="bg-white p-md import-preview-footer">
+              <div className="bg-white p-md import-preview-footer">
                 <Box
                   inline
                   align="center"
@@ -260,7 +259,7 @@ export const EntityImport = ({
                     {t('label.cancel')}
                   </Button>
                 </Box>
-              </Affix>
+              </div>
             </Grid.Item>
           </>
         )}
@@ -315,7 +314,7 @@ export const EntityImport = ({
                     {children}
                   </Grid.Item>
                 </Grid>
-                <Affix className="bg-white p-md import-preview-footer">
+                <div className="bg-white p-md import-preview-footer">
                   <Box
                     inline
                     align="center"
@@ -339,7 +338,7 @@ export const EntityImport = ({
                       </Button>
                     )}
                   </Box>
-                </Affix>
+                </div>
               </div>
             )}
           </Grid.Item>

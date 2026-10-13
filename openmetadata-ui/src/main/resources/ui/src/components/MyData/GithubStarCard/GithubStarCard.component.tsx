@@ -19,7 +19,6 @@ import {
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Affix } from 'antd';
 
 import { CookieStorage } from 'cookie-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -124,7 +123,7 @@ const GithubStarCard = () => {
   }, [usernameExistsInCookie, updateGithubPopup]);
 
   return showGithubStarPopup && isHomePage ? (
-    <Affix
+    <div
       className={`github-star-popup-card 
       ${
         isWhatNewAlertVisible
@@ -188,7 +187,7 @@ const GithubStarCard = () => {
           </div>
         </Card.Content>
       </Card>
-    </Affix>
+    </div>
   ) : null;
 };
 

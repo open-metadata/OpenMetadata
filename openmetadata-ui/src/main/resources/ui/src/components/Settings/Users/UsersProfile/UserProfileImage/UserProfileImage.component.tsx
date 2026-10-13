@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Image } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import {
@@ -39,10 +38,11 @@ const UserProfileImage = ({ userData }: UserProfileImageProps) => {
       className="profile-image-container"
       data-testid="profile-image-container">
       {isImgUrlValid ? (
-        <Image
+        // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- lifecycle, not interaction
+        <img
           alt="profile"
+          className="tw:w-full tw:h-auto tw:align-middle"
           data-testid="user-profile-image"
-          preview={false}
           referrerPolicy="no-referrer"
           src={image ?? ''}
           onError={() => {

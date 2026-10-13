@@ -29,9 +29,10 @@ import {
   Box,
   Button,
   Card,
+  EmptyPlaceholder,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Checkbox, Empty, Form, Input, Select } from 'antd';
+import { Checkbox, Form, Input, Select } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { JsonSchemaObject } from '../../../rest/taskFormSchemasAPI';
@@ -321,11 +322,12 @@ const TaskFormBuilderSection = ({
               );
             })
           ) : (
-            <Empty
-              data-testid={`${testIdPrefix}-empty`}
-              description="No fields configured yet"
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-            />
+            <Box className="tw:relative tw:min-h-40 tw:w-full">
+              <EmptyPlaceholder
+                data-testid={`${testIdPrefix}-empty`}
+                title="No fields configured yet"
+              />
+            </Box>
           )}
         </div>
 

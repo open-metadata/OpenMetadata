@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button } from '@openmetadata/ui-core-components';
-
-import { Result } from 'antd';
+import { Box, Button, Typography } from '@openmetadata/ui-core-components';
 
 import React from 'react';
 import { FallbackProps } from 'react-error-boundary';
@@ -52,17 +50,22 @@ const ErrorFallback: React.FC<FallbackProps> = ({
   };
 
   return (
-    <Result
+    <Box
+      align="center"
       className="error-boundary-result"
-      extra={
-        <Button color="primary" onClick={handleReset}>
-          {isChunkLoadError ? t('label.refresh') : t('label.home')}
-        </Button>
-      }
-      icon={<OmUpgradeIcon />}
-      subTitle={message}
-      title={title}
-    />
+      direction="col"
+      justify="center">
+      <OmUpgradeIcon className="tw:mb-6" />
+      <Typography size="display-xs" weight="semibold">
+        {title}
+      </Typography>
+      <Typography as="p" className="tw:text-tertiary tw:mt-2" size="text-sm">
+        {message}
+      </Typography>
+      <Button className="tw:mt-6" color="primary" onClick={handleReset}>
+        {isChunkLoadError ? t('label.refresh') : t('label.home')}
+      </Button>
+    </Box>
   );
 };
 

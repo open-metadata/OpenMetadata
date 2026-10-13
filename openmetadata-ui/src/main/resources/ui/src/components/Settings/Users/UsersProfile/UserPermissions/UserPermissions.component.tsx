@@ -19,7 +19,7 @@ import {
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Collapse, Spin } from 'antd';
+import { Collapse } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useState } from 'react';
@@ -46,6 +46,7 @@ import {
   getTeamsWithFqnPath,
 } from '../../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
+import Loader from '../../../../common/Loader/Loader';
 import './UserPermissions.style.less';
 
 const { Panel } = Collapse;
@@ -593,7 +594,7 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
   if (loading) {
     return (
       <div className="user-permissions-loading">
-        <Spin size="large" />
+        <Loader />
       </div>
     );
   }
