@@ -523,7 +523,10 @@ const MembersImportForm: FC<MembersImportFormProps> = ({
   );
 
   const processImportResponse = useCallback(
-    async (response: CSVImportAsyncWebsocketResponse, job: CSVImportJobType) => {
+    async (
+      response: CSVImportAsyncWebsocketResponse,
+      job: CSVImportJobType
+    ) => {
       setActiveJob({ jobId: response.jobId, status: response.status });
       // A FAILED job must clear the spinner and drop back to an actionable step,
       // otherwise the form hangs on the ProcessingBanner with no footer/retry.
@@ -557,7 +560,10 @@ const MembersImportForm: FC<MembersImportFormProps> = ({
       setProcessingType(undefined);
       // An aborted dry-run keeps the user on the upload step so the abort card
       // can offer a retry; a clean one advances to preview.
-      if (job.type === 'initialLoad' && importResult?.status !== Status.Aborted) {
+      if (
+        job.type === 'initialLoad' &&
+        importResult?.status !== Status.Aborted
+      ) {
         setActiveStep(VALIDATION_STEP.EDIT_VALIDATE);
       }
       activeJobRef.current = undefined;
