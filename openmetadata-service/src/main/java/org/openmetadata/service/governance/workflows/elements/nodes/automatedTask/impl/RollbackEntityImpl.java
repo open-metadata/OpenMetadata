@@ -3,6 +3,7 @@ package org.openmetadata.service.governance.workflows.elements.nodes.automatedTa
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_INSTANCE_EXECUTION_ID_VARIABLE;
+import static org.openmetadata.service.governance.workflows.WorkflowEventConsumer.GOVERNANCE_BOT;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,6 +28,7 @@ import org.openmetadata.service.resources.feeds.MessageParser;
 public class RollbackEntityImpl implements JavaDelegate {
   private Workflow workflow;
   private Expression inputNamespaceMapExpr;
+  private Expression batchExecutionExpr;
 
   @Deprecated
   @SuppressWarnings("unused")
@@ -34,11 +36,35 @@ public class RollbackEntityImpl implements JavaDelegate {
 
   @Override
   public void execute(DelegateExecution execution) {
+    WorkflowVariableHandler varHandler = new WorkflowVariableHandler(execution);
+    InputNamespaces inputNamespaces = InputNamespaces.from(inputNamespaceMapExpr, execution);
+    String updatedBy = updatedBy(varHandler, inputNamespaces);
+    BatchEntities.applyAction(
+        new BatchEntities.NodeExecution(batchExecutionExpr, execution, varHandler, inputNamespaces),
+        entityLink -> rollbackEntity(entityLink, updatedBy),
+        () -> rollbackRelatedEntity(execution, varHandler, inputNamespaces, updatedBy));
+  }
+
+  private static String updatedBy(
+      WorkflowVariableHandler varHandler, InputNamespaces inputNamespaces) {
+    String updatedBy =
+        (String)
+            varHandler.getNamespacedVariable(
+                inputNamespaces.namespaceFor(UPDATED_BY_VARIABLE), UPDATED_BY_VARIABLE);
+    return updatedBy == null || updatedBy.isEmpty() ? GOVERNANCE_BOT : updatedBy;
+  }
+
+  private void rollbackEntity(String entityLinkValue, String updatedBy) {
+    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkValue);
+    rollback(entityLink.getEntityType(), Entity.getEntity(entityLink, "", Include.ALL), updatedBy);
+  }
+
+  private void rollbackRelatedEntity(
+      DelegateExecution execution,
+      WorkflowVariableHandler varHandler,
+      InputNamespaces inputNamespaces,
+      String updatedBy) {
     try {
-      WorkflowVariableHandler varHandler = new WorkflowVariableHandler(execution);
-
-      InputNamespaces inputNamespaces = InputNamespaces.from(inputNamespaceMapExpr, execution);
-
       Object workflowInstanceExecutionIdObj =
           execution.getVariable(WORKFLOW_INSTANCE_EXECUTION_ID_VARIABLE);
       String workflowInstanceExecutionId =
@@ -53,62 +79,57 @@ public class RollbackEntityImpl implements JavaDelegate {
                       inputNamespaces.namespaceFor(RELATED_ENTITY_VARIABLE),
                       RELATED_ENTITY_VARIABLE));
 
-      String updatedBy =
-          (String)
-              varHandler.getNamespacedVariable(
-                  inputNamespaces.namespaceFor(UPDATED_BY_VARIABLE), UPDATED_BY_VARIABLE);
-      if (updatedBy == null || updatedBy.isEmpty()) {
-        updatedBy = "governance-bot";
-      }
-
       EntityInterface currentEntity = varHandler.getRelatedEntity(entityLink, "", Include.ALL);
-
-      String entityType = currentEntity.getEntityReference().getType();
-      UUID entityId = currentEntity.getId();
-
       LOG.info(
           "[RollbackEntity] Rolling back entity: {} ({}), Workflow Instance: {}",
           currentEntity.getName(),
-          entityId,
+          currentEntity.getId(),
           workflowInstanceExecutionId);
 
-      EntityRepository<?> repository = Entity.getEntityRepository(entityType);
-
-      Double previousVersion = getPreviousApprovedVersion(currentEntity, repository);
-      if (previousVersion == null) {
-        LOG.warn(
-            "[RollbackEntity] No previous approved version found for entity: {} ({})",
-            currentEntity.getName(),
-            entityId);
-        return;
+      String entityType = currentEntity.getEntityReference().getType();
+      Double previousVersion = rollback(entityType, currentEntity, updatedBy);
+      if (previousVersion != null) {
+        execution.setVariable("rollbackAction", "rollback");
+        execution.setVariable("rollbackFromVersion", currentEntity.getVersion());
+        execution.setVariable("rollbackToVersion", previousVersion);
+        execution.setVariable("rollbackEntityId", currentEntity.getId().toString());
+        execution.setVariable("rollbackEntityType", entityType);
       }
+    } catch (Exception e) {
+      LOG.error("[RollbackEntity] Error during entity rollback: {}", e.getMessage(), e);
+      throw new RuntimeException("Failed to rollback entity", e);
+    }
+  }
 
+  /**
+   * Restores {@code currentEntity} to its previous approved version. Returns that version, or null
+   * when the entity has none and is left as it is.
+   */
+  private Double rollback(String entityType, EntityInterface currentEntity, String updatedBy) {
+    UUID entityId = currentEntity.getId();
+    EntityRepository<?> repository = Entity.getEntityRepository(entityType);
+
+    Double previousVersion = getPreviousApprovedVersion(currentEntity, repository);
+    if (previousVersion == null) {
+      LOG.warn(
+          "[RollbackEntity] No previous approved version found for entity: {} ({})",
+          currentEntity.getName(),
+          entityId);
+    } else {
       EntityInterface previousEntity = repository.getVersion(entityId, previousVersion.toString());
-
       LOG.info(
           "[RollbackEntity] Rolling back entity {} from version {} to version {}",
           currentEntity.getName(),
           currentEntity.getVersion(),
           previousVersion);
-
       restoreToPreviousVersion(repository, currentEntity, previousEntity, updatedBy);
-
-      execution.setVariable("rollbackAction", "rollback");
-      execution.setVariable("rollbackFromVersion", currentEntity.getVersion());
-      execution.setVariable("rollbackToVersion", previousVersion);
-      execution.setVariable("rollbackEntityId", entityId.toString());
-      execution.setVariable("rollbackEntityType", entityType);
-
       LOG.info(
           "[RollbackEntity] Successfully rolled back entity: {} ({}) to version {}",
           currentEntity.getName(),
           entityId,
           previousVersion);
-
-    } catch (Exception e) {
-      LOG.error("[RollbackEntity] Error during entity rollback: {}", e.getMessage(), e);
-      throw new RuntimeException("Failed to rollback entity", e);
     }
+    return previousVersion;
   }
 
   private Double getPreviousApprovedVersion(
