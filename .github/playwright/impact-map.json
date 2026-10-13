@@ -433,6 +433,16 @@
       ]
     },
     {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/DataMarketplace/AnnouncementsWidgetV2/**"
+      ],
+      "projects": ["chromium", "Basic"],
+      "specs": [
+        "playwright/e2e/Pages/DataMarketplace.spec.ts",
+        "playwright/e2e/Pages/DataMarketplaceAnnouncements.spec.ts"
+      ]
+    },
+    {
       "_comment": "FilterSelect replaced SearchDropdown as the quick-filter renderer, so the generated map (which only walks openmetadata-ui spec imports) no longer routes filter dropdown changes to the former SearchDropdown consumer specs. Mirror that consumer set for the core component and its Dropdown base so a FilterSelect change selects the Explore/lineage/Test Definition/bulk-operation coverage on the PR instead of the merge queue.",
       "sources": [
         "openmetadata-ui-core-components/src/main/resources/ui/src/components/application/filter-select/**",
