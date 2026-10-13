@@ -3422,76 +3422,107 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
 
   @Test
   void test_hierarchySearchKeepsParentOfEveryMatchOnThePage(TestNamespace ns) throws Exception {
+    assertHierarchySearchKeepsFullPath(ns, "hier_page", 1);
+  }
+
+  @Test
+  void test_hierarchySearchKeepsFullPathOfDeeplyNestedMatches(TestNamespace ns) throws Exception {
+    assertHierarchySearchKeepsFullPath(ns, "hier_deep", 4);
+  }
+
+  // More matches than the page holds, nested under parents that don't match the search: every
+  // match on the page must still come back under its full path. Creates index synchronously with a
+  // refresh, so no wait is needed; the post_filter keeps other tests' terms out of the result.
+  private void assertHierarchySearchKeepsFullPath(TestNamespace ns, String prefix, int depth)
+      throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
-    ObjectMapper mapper = new ObjectMapper();
-    String word = "pagecut" + UUID.randomUUID().toString().replace("-", "").substring(0, 10);
+    // Letters that never occur in the generated names (hex + "hier_page/deep_g/l/m"), so no n-gram
+    // of the word can fuzzily match a parent's name and parents never compete with the matches
+    String word = randomWordFrom("jknoqstuvwxyz", 16);
     int matchCount = 30;
     int pageSize = 25;
-
     Glossary glossary =
         client
             .glossaries()
             .create(
                 new CreateGlossary()
-                    .withName(ns.prefix("hier_page_glossary"))
-                    .withDescription("Glossary for hierarchy search paging"));
-    GlossaryTerm parent =
+                    .withName(ns.shortPrefix(prefix + "_g"))
+                    .withDescription("Glossary for hierarchy search"));
+    try {
+      List<GlossaryTerm> path = new ArrayList<>();
+      for (int level = 0; level < depth; level++) {
+        path.add(
+            createEntity(
+                new CreateGlossaryTerm()
+                    .withName(ns.shortPrefix(prefix + "_l" + level))
+                    .withGlossary(glossary.getFullyQualifiedName())
+                    .withParent(level == 0 ? null : path.get(level - 1).getFullyQualifiedName())
+                    .withDescription("Parent that does not match the search word")));
+      }
+      String deepestParent = path.get(depth - 1).getFullyQualifiedName();
+      for (int i = 0; i < matchCount; i++) {
         createEntity(
             new CreateGlossaryTerm()
-                .withName(ns.prefix("hier_page_parent"))
+                .withName(ns.shortPrefix(prefix + "_m" + i))
                 .withGlossary(glossary.getFullyQualifiedName())
-                .withDescription("Parent that does not match the search word"));
-    for (int i = 0; i < matchCount; i++) {
-      createEntity(
-          new CreateGlossaryTerm()
-              .withName(ns.prefix("hier_page_child_" + i))
-              .withGlossary(glossary.getFullyQualifiedName())
-              .withParent(parent.getFullyQualifiedName())
-              .withDescription("Child matching " + word));
+                .withParent(deepestParent)
+                .withDescription("Child matching " + word));
+      }
+
+      String ownGlossary =
+          "{\"query\":{\"term\":{\"glossary.name.keyword\":\""
+              + glossary.getName().toLowerCase()
+              + "\"}}}";
+      JsonNode node =
+          findByFqn(
+              searchGlossaryTerms(client, word, ownGlossary, pageSize, true),
+              glossary.getFullyQualifiedName());
+      assertNotNull(node, "Glossary of the matches should be returned");
+      for (GlossaryTerm parent : path) {
+        node = findByFqn(node.path("children"), parent.getFullyQualifiedName());
+        assertNotNull(node, "Parent " + parent.getName() + " should be returned");
+      }
+      assertEquals(
+          pageSize,
+          node.path("children").size(),
+          "Every match on the page should sit under its full path");
+    } finally {
+      client
+          .glossaries()
+          .delete(
+              glossary.getId().toString(),
+              java.util.Map.of("hardDelete", "true", "recursive", "true"));
     }
+  }
 
-    Awaitility.await("all matching terms should be indexed")
-        .atMost(java.time.Duration.ofSeconds(60))
-        .pollInterval(java.time.Duration.ofSeconds(1))
-        .ignoreExceptions()
-        .untilAsserted(
-            () -> {
-              String response =
-                  client
-                      .search()
-                      .query(word)
-                      .index("glossary_term_search_index")
-                      .size(matchCount)
-                      .execute();
-              assertEquals(
-                  matchCount,
-                  mapper.readTree(response).path("hits").path("total").path("value").asInt());
-            });
+  private static String randomWordFrom(String alphabet, int length) {
+    java.util.concurrent.ThreadLocalRandom random =
+        java.util.concurrent.ThreadLocalRandom.current();
+    StringBuilder word = new StringBuilder(length);
+    for (int i = 0; i < length; i++) {
+      word.append(alphabet.charAt(random.nextInt(alphabet.length())));
+    }
+    return word.toString();
+  }
 
-    // More matches than the page holds push the non-matching parent out of the ranked page
+  private static JsonNode searchGlossaryTerms(
+      OpenMetadataClient client, String query, String postFilter, int size, boolean hierarchy)
+      throws Exception {
     RequestOptions options =
         RequestOptions.builder()
-            .queryParam("q", word)
+            .queryParam("q", query)
             .queryParam("index", "glossary_term_search_index")
             .queryParam("from", "0")
-            .queryParam("size", String.valueOf(pageSize))
+            .queryParam("size", String.valueOf(size))
             .queryParam("deleted", "false")
-            .queryParam("getHierarchy", "true")
+            .queryParam("post_filter", postFilter)
+            .queryParam("getHierarchy", String.valueOf(hierarchy))
             .build();
-    JsonNode glossaries =
-        mapper.readTree(
+    return new ObjectMapper()
+        .readTree(
             client
                 .getHttpClient()
                 .executeForString(HttpMethod.GET, "/v1/search/query", null, options));
-
-    JsonNode glossaryNode = findByFqn(glossaries, glossary.getFullyQualifiedName());
-    assertNotNull(glossaryNode, "Glossary of the matches should be returned");
-    JsonNode parentNode = findByFqn(glossaryNode.path("children"), parent.getFullyQualifiedName());
-    assertNotNull(parentNode, "Parent of the matches should be returned even though it ranks last");
-    assertEquals(
-        pageSize,
-        parentNode.path("children").size(),
-        "Every match on the page should sit under its parent");
   }
 
   private static JsonNode findByFqn(JsonNode nodes, String fqn) {
