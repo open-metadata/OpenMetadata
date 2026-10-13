@@ -51,10 +51,16 @@
     }
   }
   // Built for the summary panel's padded cards; here it sits flush with the sections around it.
+  // Its title keeps the 12px below it that the glossary-terms and tags titles have (this section
+  // spaces it with padding, theirs with margin); the gap after it comes from the tab's own stack.
   .data-products-section {
     .data-products-header,
     .data-products-content {
-      padding: 0;
+      padding-left: 0;
+      padding-right: 0;
+    }
+    .data-products-content {
+      padding-bottom: 0;
     }
   }
   .tags-section {
