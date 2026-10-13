@@ -142,9 +142,9 @@ const GithubStarCard = () => {
               </Typography>
             </Box>
             <CloseButton
-              className="tw:-mt-1"
+              className="tw:-mt-1 tw:text-primary"
               data-testid="close-github-star-popup-card"
-              size="xs"
+              size="sm"
               onPress={handleClosePopup}
             />
           </Box>
@@ -153,8 +153,9 @@ const GithubStarCard = () => {
             {t('message.star-on-github-description')}
           </Typography>
 
-          <Box className="tw:mt-4" gap={2}>
+          <Box className="tw:mt-4" gap={0}>
             <Button
+              className="tw:rounded-r-none tw:bg-secondary"
               color="secondary"
               href={OMD_REPOSITORY_LINK}
               iconLeading={<Icon component={StarGithubIcon} size={12} />}
@@ -163,6 +164,7 @@ const GithubStarCard = () => {
               {t('label.star')}
             </Button>
             <Button
+              className="tw:-ml-px tw:rounded-l-none"
               color="secondary"
               href={OMD_REPOSITORY_LINK}
               rel="noopener noreferrer"
