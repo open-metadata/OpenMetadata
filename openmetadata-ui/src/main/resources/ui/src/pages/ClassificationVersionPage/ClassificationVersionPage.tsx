@@ -21,9 +21,9 @@ import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/Error
 import Loader from '../../components/common/Loader/Loader';
 import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { Classification } from '../../generated/entity/classification/classification';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';

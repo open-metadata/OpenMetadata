@@ -19,8 +19,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType, FqnPart } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Pipeline, TagLabel } from '../../../generated/entity/data/pipeline';
@@ -62,7 +62,6 @@ import { GenericProvider } from '../../Customization/GenericProvider/GenericProv
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
-import './pipeline-details.style.less';
 import { PipeLineDetailsProp } from './PipelineDetails.interface';
 const PipelineDetails = ({
   updatePipelineDetailsState,

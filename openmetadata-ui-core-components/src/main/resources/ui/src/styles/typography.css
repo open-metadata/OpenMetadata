@@ -17,6 +17,15 @@
   --tw-prose-td-borders: theme(--color-border-secondary);
 }
 
+/* Typography inherits its colour, except inside a link: a card-wide <a> would
+ * otherwise paint every title and value link blue. Layered so a `color` prop or
+ * `tw:text-*` class still wins. */
+@layer base {
+  :where(a) .prose {
+    color: theme(--color-text-primary);
+  }
+}
+
 .prose :not(:where([class~='not-prose'], [class~='not-prose'] *)) {
   /* Text */
   &:where(p) {
@@ -209,7 +218,7 @@
   }
 
   /* Inline elements */
-  &:where(a:not(h1 a, h2 a, h3 a, h4 a, h5 a, h6 a)) {
+  &:where(a:not(h1 a, h2 a, h3 a, h4 a, h5 a, h6 a, .prose-typography a)) {
     font-weight: 400;
     text-decoration: underline;
     text-underline-offset: 3px;
@@ -393,7 +402,7 @@
     }
 
     /* Inline elements */
-    &:where(a:not(h1 a, h2 a, h3 a, h4 a, h5 a, h6 a)) {
+    &:where(a:not(h1 a, h2 a, h3 a, h4 a, h5 a, h6 a, .prose-typography a)) {
       font-weight: 400;
       text-decoration: underline;
       text-underline-offset: 3px;

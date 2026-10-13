@@ -10,22 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  DQ_CHART_BLUE_COLOR,
-  DQ_CHART_FAILED_COLOR,
-  DQ_CHART_SUCCESS_COLOR,
-  DQ_CHART_WARNING_COLOR,
-  GREY_200,
-} from '../../../constants/Color.constants';
+import type { ChartStatus } from '@openmetadata/ui-core-components/charts';
 import { TestSummarySegmentId } from '../../DataQuality/SummaryPannel/SummaryPanel.interface';
 
-// 2.0 redesign chart palette (shared DQ chart constants).
-export const SEGMENT_COLORS: Record<TestSummarySegmentId, string> = {
-  [TestSummarySegmentId.Success]: DQ_CHART_SUCCESS_COLOR,
-  [TestSummarySegmentId.Aborted]: DQ_CHART_WARNING_COLOR,
-  [TestSummarySegmentId.Failed]: DQ_CHART_FAILED_COLOR,
-  [TestSummarySegmentId.Healthy]: DQ_CHART_SUCCESS_COLOR,
-  [TestSummarySegmentId.Unhealthy]: GREY_200,
-  [TestSummarySegmentId.Covered]: DQ_CHART_BLUE_COLOR,
-  [TestSummarySegmentId.Uncovered]: GREY_200,
+// Chart colours come from the core chart palette; segments only name a status.
+export const SEGMENT_STATUS: Record<TestSummarySegmentId, ChartStatus> = {
+  [TestSummarySegmentId.Success]: 'success',
+  [TestSummarySegmentId.Aborted]: 'warning',
+  [TestSummarySegmentId.Failed]: 'failed',
+  [TestSummarySegmentId.Healthy]: 'success',
+  [TestSummarySegmentId.Unhealthy]: 'neutral',
+  [TestSummarySegmentId.Covered]: 'info',
+  [TestSummarySegmentId.Uncovered]: 'neutral',
 };

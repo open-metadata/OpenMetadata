@@ -329,6 +329,27 @@ describe('PersonaAIContextUtils', () => {
         },
       ]);
     });
+
+    it('reports a prompt-only edit as an AI context change', () => {
+      const history = {
+        entityType: 'persona',
+        versions: [
+          versionSnapshot(3.1, { characterBudget: 120000, rules: [] }),
+          versionSnapshot(3.2, {
+            characterBudget: 120000,
+            prompt: 'You assist finance analysts.',
+            rules: [],
+          }),
+        ],
+      };
+
+      const entries = buildPersonaContextVersionHistory(history as never);
+
+      // Left out of the comparison, a prompt edit read as "no AI context change".
+      expect(entries[0].changes).toEqual([
+        { key: 'message.persona-context-history-prompt' },
+      ]);
+    });
   });
 });
 

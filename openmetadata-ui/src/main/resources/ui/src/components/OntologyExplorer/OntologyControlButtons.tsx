@@ -16,7 +16,7 @@ import {
   Tooltip,
   TooltipTrigger,
 } from '@openmetadata/ui-core-components';
-import { RefreshCw01 } from '@untitledui/icons';
+import { RefreshCw01 } from '@openmetadata/ui-core-components/icons';
 import { FC, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FitViewOptionsIcon } from '../../assets/svg/ic-fit-view-options.svg';

@@ -100,7 +100,7 @@ export const updatePersonaAIContext = async (
   id: string,
   data: Pick<
     PersonaContextDefinition,
-    'cacheTtlMinutes' | 'characterBudget' | 'enabled'
+    'cacheTtlMinutes' | 'characterBudget' | 'enabled' | 'prompt'
   >
 ) => {
   const response = await axiosClient.put<PersonaContextDefinition>(

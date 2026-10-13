@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   fireEvent,
   render,
@@ -26,20 +27,14 @@ import {
   ProviderType,
 } from '../../../generated/events/eventSubscription';
 import { ModifiedEventSubscription } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import { OBSERVABILITY_ALERT_COUNT_QUERY_KEY } from '../observability.constants';
 import AlertDetailsPage from './AlertDetailsPage';
+import { NOTIFICATION_ALERT_KIND } from './alertKinds';
 
 const mockNavigate = jest.fn();
-const mockUseAlertDetailsPage = jest.fn();
-const mockUseObservabilityAlertForm = jest.fn();
+const mockUseAlertDetailsData = jest.fn();
+const mockUseAlertFormData = jest.fn();
 const mockGetModifiedAlertDataForForm = jest.fn();
-
-jest.mock('./NotificationTemplateUtils', () => ({
-  getTemplateEntityRefObject: jest.fn((template) => ({
-    id: template.id,
-    name: template.name,
-    type: 'notificationTemplate',
-  })),
-}));
 
 jest.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
@@ -49,17 +44,13 @@ jest.mock('../../../hooks/useFqn', () => ({
   useFqn: () => ({ fqn: 'service.alert' }),
 }));
 
-jest.mock('../../../pages/AlertDetailsPage/hooks/useAlertDetailsPage', () => ({
-  useAlertDetailsPage: (params: unknown) => mockUseAlertDetailsPage(params),
+jest.mock('../../../hooks/observability/alerts/useAlertDetailsData', () => ({
+  useAlertDetailsData: (params: unknown) => mockUseAlertDetailsData(params),
 }));
 
-jest.mock(
-  '../../../pages/AddObservabilityPage/hooks/useObservabilityAlertForm',
-  () => ({
-    useObservabilityAlertForm: (params: unknown) =>
-      mockUseObservabilityAlertForm(params),
-  })
-);
+jest.mock('../../../pages/AddObservabilityPage/hooks/useAlertFormData', () => ({
+  useAlertFormData: (params: unknown) => mockUseAlertFormData(params),
+}));
 
 jest.mock('../../../utils/AlertsClassBase', () => ({
   __esModule: true,
@@ -148,12 +139,14 @@ jest.mock('@openmetadata/ui-core-components', () => {
     Owner: jest.fn(() => <div data-testid="owner-label" />),
     PageLayout: {
       PageHeader: ({
+        breadcrumb,
         footer,
         meta,
         subtitle,
         title,
         actions,
       }: {
+        breadcrumb?: ReactNode;
         footer?: ReactNode;
         meta?: ReactNode;
         subtitle?: string;
@@ -161,6 +154,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         actions?: ReactNode;
       }) => (
         <div data-testid="page-header">
+          {breadcrumb}
           <span>{title}</span>
           <span data-testid="page-header-subtitle">{subtitle}</span>
           <div data-testid="header-metadata">{meta}</div>
@@ -177,7 +171,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
   };
 });
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Edit03: () => null,
   RefreshCw04: () => null,
   Trash01: () => null,
@@ -232,21 +226,82 @@ jest.mock('./AlertAiForm.component', () => ({
   __esModule: true,
   default: ({
     mode,
+    shouldShowActionsSection,
     supportedFilters,
     supportedTriggers,
+    templateResourcePermission,
     value,
   }: {
     mode: string;
+    shouldShowActionsSection?: boolean;
+    templateResourcePermission?: Record<string, boolean>;
     supportedFilters?: unknown[];
     supportedTriggers?: unknown[];
     value: ModifiedEventSubscription;
   }) => (
     <div data-testid="alert-ai-form">
       <span data-testid="form-mode">{mode}</span>
+      <span data-testid="form-shows-triggers">
+        {String(Boolean(shouldShowActionsSection))}
+      </span>
+      <span data-testid="form-template-permission">
+        {JSON.stringify(templateResourcePermission ?? null)}
+      </span>
       <span data-testid="form-name">{value.name}</span>
       <span data-testid="filters-count">{supportedFilters?.length ?? 0}</span>
       <span data-testid="triggers-count">{supportedTriggers?.length ?? 0}</span>
     </div>
+  ),
+}));
+
+jest.mock(
+  '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component',
+  () => ({
+    __esModule: true,
+    default: ({
+      items,
+    }: {
+      items: { ariaLabel?: string; href?: string }[];
+    }) => (
+      <nav data-testid="breadcrumb">
+        {items.map((item) =>
+          item.href ? (
+            <a href={item.href} key={item.href}>
+              {item.ariaLabel}
+            </a>
+          ) : null
+        )}
+      </nav>
+    ),
+  })
+);
+
+jest.mock('./AlertAiEventCounts', () => ({
+  __esModule: true,
+  default: ({
+    counts,
+    loading,
+  }: {
+    counts?: { totalEventsCount?: number };
+    loading: boolean;
+  }) => (
+    <span data-testid="event-counts">
+      {loading ? 'loading' : counts?.totalEventsCount}
+    </span>
+  ),
+}));
+
+jest.mock('./AlertAiRecentEventsTab', () => ({
+  __esModule: true,
+  default: ({ alertDetails }: { alertDetails: { id: string } }) => (
+    <div data-testid="recent-events-tab">{alertDetails.id}</div>
+  ),
+}));
+
+jest.mock('./AlertAiDiagnosticTab', () => ({
+  __esModule: true,
+  default: ({ fqn }: { fqn: string }) => (
+    <div data-testid="diagnostic-tab">{fqn}</div>
   ),
 }));
 
@@ -268,13 +323,16 @@ jest.mock('./AlertDescriptionCard.component', () => ({
 jest.mock('./AlertEditModal.component', () => ({
   __esModule: true,
   default: ({
+    kind,
     onClose,
     onSaved,
   }: {
+    kind?: { alertType: string };
     onClose: () => void;
     onSaved: () => Promise<void> | void;
   }) => (
     <div data-testid="edit-modal">
+      <span data-testid="edit-modal-alert-type">{kind?.alertType}</span>
       <button data-testid="close-edit-modal" onClick={onClose}>
         close
       </button>
@@ -324,7 +382,8 @@ const getDetailsState = (overrides = {}) => ({
   editDescriptionPermission: true,
   editOwnersPermission: true,
   editPermission: true,
-  extraInfo: <span data-testid="extra-info">extra</span>,
+  alertEventCounts: { totalEventsCount: 3 },
+  alertEventCountsLoading: false,
   fetchAlertDetails: jest.fn(),
   handleAlertDelete: jest.fn(),
   handleAlertEdit: jest.fn(),
@@ -338,14 +397,6 @@ const getDetailsState = (overrides = {}) => ({
   setShowDeleteModal: jest.fn(),
   showDeleteModal: false,
   tab: AlertDetailTabs.CONFIGURATION,
-  tabItems: [
-    { key: AlertDetailTabs.CONFIGURATION, label: 'Configuration' },
-    {
-      children: <div data-testid="activity-tab">Activity</div>,
-      key: 'activity',
-      label: 'Activity',
-    },
-  ],
   viewPermission: true,
   ...overrides,
 });
@@ -358,23 +409,42 @@ const getFormState = () => ({
       supportedFilters: [{ name: 'filter' }],
     },
   ],
+  loadingState: { alerts: false, functions: false, templates: false },
+  // What the server says the alert's sources support.
+  selection: {
+    support: {
+      supportedFilters: [{ name: 'filter' }],
+      supportedTriggers: [{ name: 'action' }],
+    },
+  },
   templates: [],
 });
 
 describe('AlertDetailsPage', () => {
+  let queryClient: QueryClient;
+  const renderPage = (ui: ReactNode) =>
+    render(
+      <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
+    );
+
   beforeEach(() => {
     jest.clearAllMocks();
+    queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
     mockGetModifiedAlertDataForForm.mockReturnValue(modifiedAlert);
-    mockUseAlertDetailsPage.mockReturnValue(getDetailsState());
-    mockUseObservabilityAlertForm.mockReturnValue(getFormState());
+    mockUseAlertDetailsData.mockReturnValue(getDetailsState());
+    mockUseAlertFormData.mockReturnValue(getFormState());
   });
 
+  afterEach(() => queryClient.clear());
+
   it('renders permission error when view access is denied', () => {
-    mockUseAlertDetailsPage.mockReturnValue(
+    mockUseAlertDetailsData.mockReturnValue(
       getDetailsState({ loadingCount: 0, viewPermission: false })
     );
 
-    render(<AlertDetailsPage />);
+    renderPage(<AlertDetailsPage />);
 
     expect(screen.getByTestId('error-placeholder')).toHaveTextContent(
       'label.view-entity:label.alert-detail-plural'
@@ -382,21 +452,21 @@ describe('AlertDetailsPage', () => {
   });
 
   it('renders generic error when alert details are unavailable', () => {
-    mockUseAlertDetailsPage.mockReturnValue(
+    mockUseAlertDetailsData.mockReturnValue(
       getDetailsState({ alertDetails: undefined, loadingCount: 0 })
     );
 
-    render(<AlertDetailsPage />);
+    renderPage(<AlertDetailsPage />);
 
     expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
   });
 
   it('keeps the document title mounted while alert details are loading', () => {
-    mockUseAlertDetailsPage.mockReturnValue(
+    mockUseAlertDetailsData.mockReturnValue(
       getDetailsState({ loadingCount: 1 })
     );
 
-    render(<AlertDetailsPage />);
+    renderPage(<AlertDetailsPage />);
 
     expect(screen.getByTestId('loader')).toBeInTheDocument();
     expect(screen.getByTestId('document-title')).toHaveTextContent(
@@ -405,7 +475,7 @@ describe('AlertDetailsPage', () => {
   });
 
   it('renders configuration tab content with selected resource rules', () => {
-    render(<AlertDetailsPage />);
+    renderPage(<AlertDetailsPage />);
 
     expect(screen.getByTestId('page-header')).toHaveTextContent('test-alert');
     expect(screen.getByTestId('page-header-subtitle')).toHaveTextContent(
@@ -416,10 +486,14 @@ describe('AlertDetailsPage', () => {
     expect(screen.getByTestId('form-name')).toHaveTextContent('test-alert');
     expect(screen.getByTestId('filters-count')).toHaveTextContent('1');
     expect(screen.getByTestId('triggers-count')).toHaveTextContent('1');
+    // The configuration view asks about every source the alert watches.
+    expect(mockUseAlertFormData).toHaveBeenLastCalledWith(
+      expect.objectContaining({ sources: ['table'] })
+    );
   });
 
   it('renders the header meta row with owner and event stats', () => {
-    render(<AlertDetailsPage />);
+    renderPage(<AlertDetailsPage />);
 
     // The meta slot must carry both the owner label and the event-stat block
     // (this row regressed to an empty/stacked layout during the PageHeader
@@ -427,11 +501,45 @@ describe('AlertDetailsPage', () => {
     const metaRow = screen.getByTestId('header-metadata');
 
     expect(within(metaRow).getByTestId('owner-label')).toBeInTheDocument();
-    expect(within(metaRow).getByTestId('extra-info')).toBeInTheDocument();
+    expect(within(metaRow).getByTestId('event-counts')).toHaveTextContent('3');
+  });
+
+  it('renders the recent events and diagnostic tabs with AI content', () => {
+    mockUseAlertDetailsData.mockReturnValue(
+      getDetailsState({ tab: AlertDetailTabs.RECENT_EVENTS })
+    );
+    const { unmount } = renderPage(<AlertDetailsPage />);
+
+    expect(screen.getByTestId('recent-events-tab')).toHaveTextContent(
+      'alert-id'
+    );
+    expect(screen.queryByTestId('description-card')).not.toBeInTheDocument();
+
+    unmount();
+    mockUseAlertDetailsData.mockReturnValue(
+      getDetailsState({ tab: AlertDetailTabs.DIAGNOSTIC_INFO })
+    );
+    renderPage(<AlertDetailsPage />);
+
+    expect(screen.getByTestId('diagnostic-tab')).toHaveTextContent(
+      'service.alert'
+    );
+  });
+
+  it('lists the configuration, recent events and diagnostic tabs', () => {
+    renderPage(<AlertDetailsPage />);
+
+    expect(
+      screen.getAllByTestId('tab-item').map((item) => item.textContent)
+    ).toEqual([
+      'label.configuration',
+      'label.recent-event-plural',
+      'label.diagnostic-info',
+    ]);
   });
 
   it('uses the shared compact underline style for header tabs', () => {
-    render(<AlertDetailsPage />);
+    renderPage(<AlertDetailsPage />);
 
     const tabsList = screen.getByTestId('tabs-list');
 
@@ -449,7 +557,7 @@ describe('AlertDetailsPage', () => {
     const onDescriptionUpdate = jest.fn();
     const setShowDeleteModal = jest.fn();
 
-    mockUseAlertDetailsPage.mockImplementation(
+    mockUseAlertDetailsData.mockImplementation(
       ({ onEditAlert }: { onEditAlert: () => void }) =>
         getDetailsState({
           fetchAlertDetails,
@@ -460,7 +568,7 @@ describe('AlertDetailsPage', () => {
         })
     );
 
-    render(<AlertDetailsPage />);
+    renderPage(<AlertDetailsPage />);
 
     fireEvent.click(screen.getByTestId('description-card'));
     fireEvent.click(screen.getByTestId('sync-button'));
@@ -477,14 +585,93 @@ describe('AlertDetailsPage', () => {
     await waitFor(() => expect(fetchAlertDetails).toHaveBeenCalled());
   });
 
+  it('refreshes the sidebar alert count before returning to the list after delete', async () => {
+    queryClient.setQueryData(OBSERVABILITY_ALERT_COUNT_QUERY_KEY, 18);
+    renderPage(<AlertDetailsPage />);
+
+    const { afterDeleteAction } = mockUseAlertDetailsData.mock.calls[0][0];
+    await afterDeleteAction();
+
+    expect(
+      queryClient.getQueryState(OBSERVABILITY_ALERT_COUNT_QUERY_KEY)
+        ?.isInvalidated
+    ).toBe(true);
+    expect(mockNavigate).toHaveBeenCalledWith('/observability/alerts');
+  });
+
   it('navigates when detail tab changes', () => {
-    render(<AlertDetailsPage />);
+    renderPage(<AlertDetailsPage />);
 
     fireEvent.click(screen.getByTestId('change-tab'));
 
     expect(mockNavigate).toHaveBeenCalledWith(
       '/observability/alert/service.alert/activity',
       { replace: true }
+    );
+  });
+
+  describe('as a Settings → Notifications alert', () => {
+    it('loads the alert as a notification alert', () => {
+      renderPage(<AlertDetailsPage kind={NOTIFICATION_ALERT_KIND} />);
+
+      expect(mockUseAlertFormData).toHaveBeenCalledWith(
+        expect.objectContaining({ alertType: AlertType.Notification })
+      );
+    });
+
+    it('hides the trigger section in the configuration view', () => {
+      renderPage(<AlertDetailsPage kind={NOTIFICATION_ALERT_KIND} />);
+
+      expect(screen.getByTestId('form-shows-triggers')).toHaveTextContent(
+        'false'
+      );
+    });
+
+    it('keeps tab changes and the list breadcrumb under settings', () => {
+      renderPage(<AlertDetailsPage kind={NOTIFICATION_ALERT_KIND} />);
+
+      fireEvent.click(screen.getByTestId('change-tab'));
+
+      expect(mockNavigate).toHaveBeenCalledWith(
+        '/settings/notifications/alerts/service.alert/activity',
+        { replace: true }
+      );
+      expect(
+        screen.getByRole('link', { name: 'label.alert-plural' })
+      ).toHaveAttribute('href', '/settings/notifications/alerts');
+    });
+
+    it('edits the alert as a notification alert', () => {
+      mockUseAlertDetailsData.mockImplementation(
+        ({ onEditAlert }: { onEditAlert: () => void }) =>
+          getDetailsState({ handleAlertEdit: onEditAlert })
+      );
+
+      renderPage(<AlertDetailsPage kind={NOTIFICATION_ALERT_KIND} />);
+
+      fireEvent.click(screen.getByTestId('edit-button'));
+
+      expect(screen.getByTestId('edit-modal-alert-type')).toHaveTextContent(
+        AlertType.Notification
+      );
+    });
+  });
+
+  it('shows the trigger section for observability alerts', () => {
+    renderPage(<AlertDetailsPage />);
+
+    expect(screen.getByTestId('form-shows-triggers')).toHaveTextContent('true');
+  });
+
+  it('passes the template permission to the configuration view', () => {
+    mockUseAlertFormData.mockReturnValue({
+      ...getFormState(),
+      templateResourcePermission: { ViewAll: true },
+    });
+    renderPage(<AlertDetailsPage />);
+
+    expect(screen.getByTestId('form-template-permission')).toHaveTextContent(
+      '{"ViewAll":true}'
     );
   });
 });

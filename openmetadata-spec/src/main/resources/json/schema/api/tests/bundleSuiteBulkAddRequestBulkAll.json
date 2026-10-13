@@ -8,7 +8,7 @@
   "additionalProperties": false,
   "properties": {
     "filter": {
-      "description": "Optional filter to exclude specific test suites from the bulk selection.",
+      "description": "Optional filter constraining which test cases the bulk 'all' selection resolves to. When search criteria are set, 'all' means all test cases matching the same search/filter shown in the UI (not every test case in the system), minus any excludeIds.",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -18,6 +18,32 @@
           "items": {
             "$ref": "../../type/basic.json#/definitions/uuid"
           }
+        },
+        "q": {
+          "description": "Free-text search term applied to the test cases (matches the UI search box).",
+          "type": "string"
+        },
+        "testCaseStatus": {
+          "description": "Restrict to test cases with this latest execution status.",
+          "$ref": "../../tests/basic.json#/definitions/testCaseStatus"
+        },
+        "testCaseType": {
+          "description": "Restrict to column-level ('column'), table-level ('table'), or all ('all') test cases.",
+          "type": "string",
+          "default": "all"
+        },
+        "entityLink": {
+          "description": "Restrict to test cases under this entity link (e.g. a table).",
+          "type": "string"
+        },
+        "includeAllTests": {
+          "description": "When an entityLink is set, prefix-match it so column tests under the entity are included.",
+          "type": "boolean",
+          "default": false
+        },
+        "columnName": {
+          "description": "Restrict to test cases on this column.",
+          "type": "string"
         }
       }
     }

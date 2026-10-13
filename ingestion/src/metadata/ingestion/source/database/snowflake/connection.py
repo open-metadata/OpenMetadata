@@ -500,11 +500,13 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
         if keep_alive := self._get_client_session_keep_alive():
             connect_args["client_session_keep_alive"] = keep_alive
 
-        # Bound the Snowflake socket so a silently-severed TCP connection
-        # (NAT/LB idle reaping in K8s/hybrid runners) surfaces as a network
-        # error within 10 minutes instead of hanging the worker indefinitely.
-        # User-supplied connectionArguments win via setdefault.
-        connect_args.setdefault("network_timeout", 600)
+        # No client-side timeout is set on purpose. The driver arms `network_timeout`
+        # as a cancel timer on every statement it executes, so any value kills a
+        # query that legitimately runs longer, with `000604 (57014): SQL execution
+        # was cancelled by the client due to a timeout`. A severed socket is already
+        # bounded without it: when `socket_timeout` is unset the driver applies its
+        # own 60-second read timeout to every request. Users who want a hard cap can
+        # still pass either key in `connectionArguments`.
 
         session_parameters = dict(connect_args.get("session_parameters") or {})
         if connection.queryTag:

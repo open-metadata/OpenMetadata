@@ -20,10 +20,10 @@ import {
   HardDrive,
   LayersThree01,
   MessageSquare01,
-  SearchMd,
+  Search,
   Server01,
   Shield01,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { FC } from 'react';
 import { ServiceCategory } from '../enums/service.enum';
 
@@ -97,7 +97,7 @@ export const SERVICE_EMPTY_STATE: Record<
     descriptionKey: 'message.empty-pipeline-services-description',
   },
   [ServiceCategory.SEARCH_SERVICES]: {
-    icon: SearchMd,
+    icon: Search,
     titleKey: 'message.empty-search-services-title',
     descriptionKey: 'message.empty-search-services-description',
   },

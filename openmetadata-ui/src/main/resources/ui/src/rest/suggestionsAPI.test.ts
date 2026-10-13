@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { SuggestionAction } from '../components/Suggestions/SuggestionsProvider/SuggestionsProvider.interface';
+import { SuggestionAction } from '../enums/Suggestion.enum';
 import { SuggestionType } from '../types/taskSuggestion';
 import APIClient from './axiosClient';
 import {

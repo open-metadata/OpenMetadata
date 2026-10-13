@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import {
   applyProviderConfig,
   fetchSecurityConfig,
@@ -81,7 +82,10 @@ export const basicProviderFixture: SsoProviderFixture = {
   supportsSelfSignup: false,
   supportsSilentCallback: false,
   usesBackendRefresh: true,
+  hasBackendIssuedRefreshCookie: true,
+  usesPkce: false,
   supportsColdLoadRefresh: true,
+  supportsSilentReauth: false,
 
   isAvailable: () => true, // Always available — no external deps
 
@@ -99,14 +103,14 @@ export const basicProviderFixture: SsoProviderFixture = {
   },
 
   async performLogin(page: Page) {
-    await page.goto('/signin');
+    await page.goto('/signin', { waitUntil: 'domcontentloaded' });
     await page.getByLabel(/email/i).fill(ADMIN_EMAIL);
     await page.getByLabel(/password/i).fill(ADMIN_PASSWORD);
     await page.getByRole('button', { name: /^(sign in|log in)$/i }).click();
     // Authenticated app renders the sidebar's home nav; wait for it before
     // returning so downstream assertions can rely on isAuthenticated=true.
     await expect(page.getByTestId('app-bar-item-my-data')).toBeVisible({
-      timeout: 30_000,
+      timeout: ACTION_TIMEOUT,
     });
   },
 

@@ -129,6 +129,80 @@ describe('useTreeSelectSelection', () => {
     });
   });
 
+  describe('toggleNodeSelection', () => {
+    // The row renders checked through its child alone, so the click must clear it.
+    it('clears a parent that reads as checked through a collapsed child', () => {
+      const collapsed = glossary(1, []);
+      const { result } = renderSelection([collapsed]);
+
+      act(() => result.current.setSelection([term('t1', 'g')]));
+      act(() => result.current.toggleNodeSelection(collapsed, undefined, true));
+
+      expect(result.current.selectedData).toEqual([]);
+    });
+
+    // Selected while collapsed, the children live only on the hydrated node.
+    it('clears children hydrated on the click, not just the tree', () => {
+      const collapsed = glossary(2, []);
+      const hydrated = glossary(2, [term('t1', 'g'), term('t2', 'g')]);
+      const { result } = renderSelection([collapsed]);
+
+      act(() => result.current.toggleNodeSelection(hydrated));
+
+      expect(result.current.selectedData).toHaveLength(3);
+
+      act(() => result.current.toggleNodeSelection(hydrated, undefined, true));
+
+      expect(result.current.selectedData).toEqual([]);
+    });
+
+    it('still selects the whole branch when only some of it is selected', () => {
+      const node = glossary(2, [term('t1', 'g'), term('t2', 'g')]);
+      const { result } = renderSelection([node]);
+
+      act(() => result.current.toggleNodeSelection(node.children![0]));
+      act(() => result.current.toggleNodeSelection(node, undefined, false));
+
+      expect(result.current.selectedData.map(({ id }) => id)).toEqual([
+        't1',
+        'g',
+        't2',
+      ]);
+    });
+
+    // Mutually-exclusive (radio) siblings can never be co-selected: picking one
+    // clears the others under the same group parent. Select All mirrors this
+    // invariant, so guard the per-row behavior it depends on.
+    it('selecting a radio sibling deselects the others under its group parent', () => {
+      const email = {
+        ...term('pii.email', 'pii'),
+        isParentMutuallyExclusive: true,
+      };
+      const ssn = {
+        ...term('pii.ssn', 'pii'),
+        isParentMutuallyExclusive: true,
+      };
+      const pii: TreeSelectNode = {
+        id: 'pii',
+        label: 'pii',
+        value: 'pii',
+        hasExclusiveChildren: true,
+        children: [email, ssn],
+      };
+      const { result } = renderHook(() =>
+        useTreeSelectSelection({ multiple: true, treeData: [pii] })
+      );
+
+      act(() => result.current.toggleNodeSelection(email, pii));
+      expect(result.current.selectedData.map((n) => n.id)).toEqual([
+        'pii.email',
+      ]);
+
+      act(() => result.current.toggleNodeSelection(ssn, pii));
+      expect(result.current.selectedData.map((n) => n.id)).toEqual(['pii.ssn']);
+    });
+  });
+
   describe('getNodeSelectionState', () => {
     it('demotes a selected parent whose loaded terms are not all selected', () => {
       const state = getNodeSelectionState(

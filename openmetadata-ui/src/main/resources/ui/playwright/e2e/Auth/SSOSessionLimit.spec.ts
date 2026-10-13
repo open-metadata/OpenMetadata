@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { BrowserContext, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { SSO_ENV } from '../../constant/ssoAuth';
 import { expect, test } from '../../support/fixtures/base';
 import { withMaxActiveSessions } from '../../utils/sessionRenewal';
@@ -93,12 +94,15 @@ test.describe('SSO Session Limit', { tag: SESSION_LIMIT_TAGS }, () => {
     // authenticated request — a reload — is rejected with 401, bouncing it to the
     // sign-in page. Unlike an expired-token refresh, the revoked-session path does
     // not raise the "session has timed out" banner, so assert the logged-out state.
-    await evicted.reload();
-    await evicted.waitForURL('**/signin', { timeout: 30_000 });
+    await evicted.reload({ waitUntil: 'domcontentloaded' });
+    await evicted.waitForURL('**/signin', {
+      waitUntil: 'domcontentloaded',
+      timeout: ACTION_TIMEOUT,
+    });
     await expect(evicted.getByTestId('sso-login-button')).toBeVisible();
 
     // The newest session is within the cap and stays authenticated.
-    await survivor.reload();
+    await survivor.reload({ waitUntil: 'domcontentloaded' });
     await expect(survivor.getByTestId('dropdown-profile')).toBeVisible();
     expect(survivor.url()).not.toContain('/signin');
   });

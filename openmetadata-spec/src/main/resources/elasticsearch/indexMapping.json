@@ -284,7 +284,8 @@
     "indexName": "domain_search_index",
     "indexMappingFile": "/elasticsearch/%s/domain_index_mapping.json",
     "alias": "domain",
-    "parentAliases": ["all", "marketplace"],
+    "parentAliases": ["all", "dataAssetEmbeddings",
+      "marketplace"],
     "childAliases": ["dataProduct"]
   },
   "metric": {

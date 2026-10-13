@@ -17,6 +17,8 @@ import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguratio
 import org.openmetadata.schema.api.security.OpsConfig;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.operations.OperationalConfiguration;
+import org.openmetadata.service.config.source.ConfigTemplateKind;
+import org.openmetadata.service.config.source.RawConfigCapture;
 
 @Getter
 @Setter
@@ -80,7 +82,9 @@ public class DefaultOperationalConfigProvider {
             OperationalConfiguration.class, validator, objectMapper, "dw");
     return factory.build(
         new SubstitutingSourceProvider(
-            new FileConfigurationSourceProvider(), new EnvironmentVariableSubstitutor(false)),
+            new RawConfigCapture(
+                new FileConfigurationSourceProvider(), ConfigTemplateKind.OPERATIONS),
+            new EnvironmentVariableSubstitutor(false)),
         configFilePath);
   }
 }

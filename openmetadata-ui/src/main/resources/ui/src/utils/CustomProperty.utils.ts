@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { isArray, isEmpty, isNil, omitBy, toNumber } from 'lodash';
 import { DateTime } from 'luxon';
 import { ENTITY_PATH } from '../constants/constants';
 import {
@@ -211,6 +212,44 @@ export const serializeExtensionValue = (
   return isEmptyExtensionValue(serializedValue) ? undefined : serializedValue;
 };
 
+const NUMERIC_PROPERTY_TYPES = new Set(['integer', 'number']);
+
+const resolveSavedValue = (propertyTypeName: string, value: unknown) => {
+  if (propertyTypeName === 'enum') {
+    return (isArray(value) ? value : [value]).filter(Boolean);
+  }
+  if (NUMERIC_PROPERTY_TYPES.has(propertyTypeName) && value) {
+    return toNumber(value);
+  }
+
+  return value;
+};
+
+/**
+ * Merges one property's edited value into the entity extension. Empty values
+ * (undefined, null, '', [], {}) are pruned from the whole extension, and an
+ * extension with nothing left becomes undefined so the PATCH clears it.
+ */
+export const buildUpdatedExtension = (
+  extension: Record<string, unknown> | undefined,
+  propertyName: string,
+  propertyTypeName: string,
+  value: unknown
+): Record<string, unknown> | undefined => {
+  const updatedExtension = omitBy(
+    {
+      ...extension,
+      [propertyName]: resolveSavedValue(propertyTypeName, value),
+    },
+    (entry) =>
+      entry === '' ||
+      isNil(entry) ||
+      (typeof entry === 'object' && isEmpty(entry))
+  );
+
+  return isEmpty(updatedExtension) ? undefined : updatedExtension;
+};
+
 export const filterPopulatedTableRows = <T extends Record<string, unknown>>(
   rows: T[]
 ) => rows.filter((row) => Object.values(row).some(Boolean));
@@ -339,6 +378,8 @@ const getCustomPropertyPageHeaderByEntityPath = (): Record<
       [ENTITY_PATH.spreadsheets]: PAGE_HEADERS.SPREADSHEET_CUSTOM_ATTRIBUTES,
       [ENTITY_PATH.worksheets]: PAGE_HEADERS.WORKSHEET_CUSTOM_ATTRIBUTES,
       [ENTITY_PATH.column]: PAGE_HEADERS.COLUMN_CUSTOM_ATTRIBUTES,
+      [ENTITY_PATH.teams]: PAGE_HEADERS.TEAM_CUSTOM_ATTRIBUTES,
+      [ENTITY_PATH.users]: PAGE_HEADERS.USER_CUSTOM_ATTRIBUTES,
     };
   }
 

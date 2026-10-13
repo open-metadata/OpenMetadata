@@ -13,11 +13,13 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.jdbi3.ListFilter.escapeApostrophe;
 import static org.openmetadata.service.jdbi3.TermRelationMetadataCodec.DEFAULT_RELATION_TYPE;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
+import com.google.common.collect.Lists;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.HashMap;
@@ -39,8 +41,10 @@ import org.jdbi.v3.sqlobject.customizer.BindBean;
 import org.jdbi.v3.sqlobject.customizer.BindBeanList;
 import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.customizer.BindMap;
+import org.jdbi.v3.sqlobject.customizer.BindMethods;
 import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.BatchChunkSize;
+import org.jdbi.v3.sqlobject.statement.SqlBatch;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.jdbi.v3.sqlobject.statement.UseRowMapper;
@@ -72,6 +76,9 @@ public interface CoreRelationshipDAOs {
 
   @CreateSqlObject
   EntityExtensionDAO entityExtensionDAO();
+
+  @CreateSqlObject
+  CustomPropertyReferenceDAO customPropertyReferenceDAO();
 
   interface EntityExtensionDAO {
     @ConnectionAwareSqlUpdate(
@@ -134,6 +141,12 @@ public interface CoreRelationshipDAOs {
 
     @SqlQuery("SELECT json FROM entity_extension WHERE id = :id AND extension = :extension")
     String getExtension(@BindUUID("id") UUID id, @Bind("extension") String extension);
+
+    @SqlQuery(
+        "SELECT extension FROM entity_extension WHERE id = :id AND extension "
+            + "LIKE CONCAT (:extensionPrefix, '.%')")
+    List<String> getExtensionNames(
+        @BindUUID("id") UUID id, @Bind("extensionPrefix") String extensionPrefix);
 
     @SqlQuery(
         "SELECT id, extension, json "
@@ -224,11 +237,34 @@ public interface CoreRelationshipDAOs {
     List<ExtensionRecord> getExtensionsByJsonSchema(
         @BindUUID("id") UUID id, @Bind("jsonSchema") String jsonSchema);
 
-    // The keyset condition and the LIMIT are applied inside each UNION branch so that neither
-    // side materialises more than one page: the global top-:limit under this ORDER BY is always a
-    // subset of the union of each branch's own top-:limit. UNION ALL is safe because
-    // entity_extension only ever holds superseded versions while <table> holds the current one, so
-    // the same (id, updatedAt) cannot appear in both.
+    @SqlQuery(
+        "SELECT extension, json FROM entity_extension "
+            + "WHERE id = :id AND extension IN (<extensions>) ORDER BY extension")
+    @RegisterRowMapper(ExtensionMapper.class)
+    List<ExtensionRecord> getExtensionsByKeysInternal(
+        @BindUUID("id") UUID id, @BindList("extensions") List<String> extensions);
+
+    default List<ExtensionRecord> getExtensionsByKeys(UUID id, List<String> extensions) {
+      return EntityDAO.queryInChunks(extensions, chunk -> getExtensionsByKeysInternal(id, chunk));
+    }
+
+    // Bulk updates can commit history before replacing the current row. Prefer the current copy
+    // of an overlapping snapshot; hydrated history JSON need not equal the current storage JSON.
+    String MYSQL_HISTORY_WITHOUT_CURRENT =
+        "AND NOT EXISTS (SELECT 1 FROM <table> current_entity "
+            + "WHERE current_entity.id = entity_extension.id "
+            + "AND current_entity.updatedAt = entity_extension.updatedAt "
+            + "AND JSON_EXTRACT(current_entity.json, '$.version') = "
+            + "JSON_EXTRACT(entity_extension.json, '$.version')) ";
+
+    String POSTGRES_HISTORY_WITHOUT_CURRENT =
+        "AND NOT EXISTS (SELECT 1 FROM <table> current_entity "
+            + "WHERE current_entity.id = entity_extension.id "
+            + "AND current_entity.updatedAt = entity_extension.updatedAt "
+            + "AND current_entity.json::jsonb -> 'version' = entity_extension.json -> 'version') ";
+
+    // Filter overlaps before each branch's LIMIT so pages remain full. Keeping the keyset and
+    // LIMIT inside each branch bounds the JSON materialised for the final UNION ALL to two pages.
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM ("
@@ -236,6 +272,7 @@ public interface CoreRelationshipDAOs {
                 + "WHERE updatedAt >= :startTs "
                 + "AND updatedAt <= :endTs "
                 + "AND jsonSchema = :entityType "
+                + MYSQL_HISTORY_WITHOUT_CURRENT
                 + "<cursorCondition> "
                 + "ORDER BY updatedAt <sortOrder>, id <sortOrder> "
                 + "LIMIT :limit) "
@@ -257,6 +294,7 @@ public interface CoreRelationshipDAOs {
                 + "WHERE updatedAt >= :startTs "
                 + "AND updatedAt <= :endTs "
                 + "AND jsonSchema = :entityType "
+                + POSTGRES_HISTORY_WITHOUT_CURRENT
                 + "<cursorCondition> "
                 + "ORDER BY updatedAt <sortOrder>, id <sortOrder> "
                 + "LIMIT :limit) "
@@ -283,18 +321,34 @@ public interface CoreRelationshipDAOs {
         @Bind("cursorId") String cursorId,
         @Bind("limit") int limit);
 
-    @SqlQuery(
+    @ConnectionAwareSqlQuery(
         value =
             "SELECT SUM(cnt) FROM ("
                 + "SELECT COUNT(*) AS cnt FROM entity_extension "
                 + "WHERE updatedAt >= :startTs "
                 + "AND updatedAt <= :endTs "
                 + "AND jsonSchema = :entityType "
+                + MYSQL_HISTORY_WITHOUT_CURRENT
                 + "UNION ALL "
                 + "SELECT COUNT(*) AS cnt FROM <table> "
                 + "WHERE updatedAt >= :startTs AND "
                 + "updatedAt <= :endTs"
-                + ") total_counts")
+                + ") total_counts",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT SUM(cnt) FROM ("
+                + "SELECT COUNT(*) AS cnt FROM entity_extension "
+                + "WHERE updatedAt >= :startTs "
+                + "AND updatedAt <= :endTs "
+                + "AND jsonSchema = :entityType "
+                + POSTGRES_HISTORY_WITHOUT_CURRENT
+                + "UNION ALL "
+                + "SELECT COUNT(*) AS cnt FROM <table> "
+                + "WHERE updatedAt >= :startTs AND "
+                + "updatedAt <= :endTs"
+                + ") total_counts",
+        connectionType = POSTGRES)
     int getEntityHistoryByTimestampRangeCount(
         @Define("table") String table,
         @Bind("startTs") long startTs,
@@ -340,6 +394,226 @@ public interface CoreRelationshipDAOs {
      */
     default void deleteByJsonSchemaBatch(List<String> ids, String jsonSchema) {
       EntityDAO.updateInChunks(ids, chunk -> deleteByJsonSchemaBatchInternal(chunk, jsonSchema));
+    }
+  }
+
+  /**
+   * Rows of {@code custom_property_reference}: the only home of entityReference and
+   * entityReferenceList custom-property values. {@code columnKey} is empty for entity-level values.
+   */
+  interface CustomPropertyReferenceDAO {
+    String COLUMNS =
+        "id, columnKey, propertyName, targetId, holderType, targetType, position, json";
+
+    @Transaction
+    @ConnectionAwareSqlBatch(
+        value =
+            "INSERT INTO custom_property_reference("
+                + COLUMNS
+                + ") VALUES (:id, "
+                + ":columnKey, :propertyName, :targetId, :holderType, :targetType, :position, :json) "
+                + "ON DUPLICATE KEY UPDATE id = id",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlBatch(
+        value =
+            "INSERT INTO custom_property_reference("
+                + COLUMNS
+                + ") VALUES (:id, :columnKey, "
+                + ":propertyName, :targetId, :holderType, :targetType, :position, (:json :: jsonb)) "
+                + "ON CONFLICT DO NOTHING",
+        connectionType = POSTGRES)
+    @BatchChunkSize(500)
+    void insertManyInternal(@BindMethods List<ReferenceRow> rows);
+
+    default void insertMany(List<ReferenceRow> rows) {
+      if (!nullOrEmpty(rows)) {
+        insertManyInternal(rows);
+      }
+    }
+
+    @Transaction
+    @ConnectionAwareSqlBatch(
+        value =
+            "UPDATE custom_property_reference SET position = :position, json = :json, "
+                + "targetType = :targetType "
+                + "WHERE id = :id AND columnKey = :columnKey AND propertyName = :propertyName "
+                + "AND targetId = :targetId",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlBatch(
+        value =
+            "UPDATE custom_property_reference SET position = :position, json = (:json :: jsonb), "
+                + "targetType = :targetType "
+                + "WHERE id = :id AND columnKey = :columnKey AND propertyName = :propertyName "
+                + "AND targetId = :targetId",
+        connectionType = POSTGRES)
+    @BatchChunkSize(500)
+    void updateManyInternal(@BindMethods List<ReferenceRow> rows);
+
+    default void updateMany(List<ReferenceRow> rows) {
+      if (!nullOrEmpty(rows)) {
+        updateManyInternal(rows);
+      }
+    }
+
+    @SqlBatch(
+        "DELETE FROM custom_property_reference WHERE id = :id AND columnKey = :columnKey "
+            + "AND propertyName = :propertyName AND targetId = :targetId")
+    @BatchChunkSize(500)
+    void deleteManyInternal(@BindMethods List<ReferenceRow> rows);
+
+    default void deleteMany(List<ReferenceRow> rows) {
+      if (!nullOrEmpty(rows)) {
+        deleteManyInternal(rows);
+      }
+    }
+
+    @SqlQuery(
+        "SELECT "
+            + COLUMNS
+            + " FROM custom_property_reference WHERE id IN (<ids>) "
+            + "AND columnKey = '' ORDER BY id, propertyName, position")
+    @RegisterRowMapper(ReferenceRowMapper.class)
+    List<ReferenceRow> findEntityLevelInternal(@BindList("ids") List<String> ids);
+
+    default List<ReferenceRow> findEntityLevel(List<String> holderIds) {
+      return nullOrEmpty(holderIds)
+          ? List.of()
+          : EntityDAO.queryInChunks(holderIds, this::findEntityLevelInternal);
+    }
+
+    @SqlQuery(
+        "SELECT "
+            + COLUMNS
+            + " FROM custom_property_reference WHERE id IN (<ids>) "
+            + "AND columnKey <> '' ORDER BY id, columnKey, propertyName, position")
+    @RegisterRowMapper(ReferenceRowMapper.class)
+    List<ReferenceRow> findColumnLevelInternal(@BindList("ids") List<String> ids);
+
+    default List<ReferenceRow> findColumnLevel(List<String> holderIds) {
+      return nullOrEmpty(holderIds)
+          ? List.of()
+          : EntityDAO.queryInChunks(holderIds, this::findColumnLevelInternal);
+    }
+
+    @SqlQuery(
+        "SELECT "
+            + COLUMNS
+            + " FROM custom_property_reference WHERE id = :id "
+            + "AND columnKey IN (<keys>) ORDER BY columnKey, propertyName, position")
+    @RegisterRowMapper(ReferenceRowMapper.class)
+    List<ReferenceRow> findColumnsInternal(
+        @BindUUID("id") UUID id, @BindList("keys") List<String> columnKeys);
+
+    default List<ReferenceRow> findColumns(UUID holderId, List<String> columnKeys) {
+      return nullOrEmpty(columnKeys)
+          ? List.of()
+          : EntityDAO.queryInChunks(columnKeys, chunk -> findColumnsInternal(holderId, chunk));
+    }
+
+    @SqlQuery("SELECT " + COLUMNS + " FROM custom_property_reference WHERE targetId IN (<ids>)")
+    @RegisterRowMapper(ReferenceRowMapper.class)
+    List<ReferenceRow> findByTargetsInternal(@BindList("ids") List<String> ids);
+
+    /** Every stored reference to these entities, at entity and column level. */
+    default List<ReferenceRow> findByTargets(List<String> targetIds) {
+      return nullOrEmpty(targetIds)
+          ? List.of()
+          : EntityDAO.queryInChunks(targetIds, this::findByTargetsInternal);
+    }
+
+    @SqlQuery(
+        "SELECT COUNT(*) FROM custom_property_reference WHERE id IN (<ids>) AND columnKey = '' "
+            + "AND propertyName = :propertyName")
+    long countEntityLevel(
+        @BindList("ids") List<String> holderIds, @Bind("propertyName") String propertyName);
+
+    @SqlQuery(
+        "SELECT COUNT(*) FROM custom_property_reference WHERE id IN (<ids>) AND columnKey <> ''")
+    long countColumnLevel(@BindList("ids") List<String> holderIds);
+
+    @SqlUpdate("DELETE FROM custom_property_reference WHERE id IN (<ids>)")
+    void deleteByHoldersInternal(@BindList("ids") List<String> ids);
+
+    default void deleteByHolders(List<String> holderIds) {
+      if (!nullOrEmpty(holderIds)) {
+        EntityDAO.updateInChunks(holderIds, this::deleteByHoldersInternal);
+      }
+    }
+
+    /**
+     * Holders of references to these entities, locking the rows a delete is about to remove. Plain
+     * rows rather than DISTINCT, because Postgres does not allow DISTINCT with FOR UPDATE.
+     */
+    @SqlQuery("SELECT id FROM custom_property_reference WHERE targetId IN (<ids>) FOR UPDATE")
+    List<String> lockHoldersOfTargetsInternal(@BindList("ids") List<String> ids);
+
+    default List<String> lockHoldersOfTargets(List<String> targetIds) {
+      return nullOrEmpty(targetIds)
+          ? List.of()
+          : EntityDAO.queryInChunks(targetIds, this::lockHoldersOfTargetsInternal);
+    }
+
+    @SqlUpdate("DELETE FROM custom_property_reference WHERE targetId IN (<ids>)")
+    int deleteByTargetsInternal(@BindList("ids") List<String> ids);
+
+    /** Rows removed, so a caller can skip follow-up work when nothing referenced the targets. */
+    default int deleteByTargets(List<String> targetIds) {
+      int removed = 0;
+      for (List<String> chunk : Lists.partition(targetIds, 500)) {
+        removed += deleteByTargetsInternal(chunk);
+      }
+      return removed;
+    }
+
+    @SqlUpdate("DELETE FROM custom_property_reference WHERE id = :id AND columnKey = :columnKey")
+    void deleteColumn(@BindUUID("id") UUID id, @Bind("columnKey") String columnKey);
+
+    @SqlUpdate(
+        "DELETE FROM custom_property_reference WHERE holderType = :holderType "
+            + "AND propertyName = :propertyName AND columnKey = ''")
+    void deleteEntityLevelProperty(
+        @Bind("holderType") String holderType, @Bind("propertyName") String propertyName);
+
+    @SqlUpdate(
+        "DELETE FROM custom_property_reference WHERE holderType = :holderType "
+            + "AND propertyName = :propertyName AND columnKey <> ''")
+    void deleteColumnLevelProperty(
+        @Bind("holderType") String holderType, @Bind("propertyName") String propertyName);
+  }
+
+  /** One referenced entity of one custom-property value; {@code json} is the reference snapshot. */
+  record ReferenceRow(
+      String id,
+      String columnKey,
+      String propertyName,
+      String targetId,
+      String holderType,
+      String targetType,
+      int position,
+      String json) {
+    /** The table's primary key: one row per holder, column, property and target id. */
+    String primaryKey() {
+      return id + '\u0000' + columnKey + '\u0000' + propertyName + '\u0000' + targetId;
+    }
+
+    /** A reference is the same only if both its target id and type are. */
+    String key() {
+      return propertyName + '\u0000' + targetId + '\u0000' + targetType;
+    }
+  }
+
+  class ReferenceRowMapper implements RowMapper<ReferenceRow> {
+    @Override
+    public ReferenceRow map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return new ReferenceRow(
+          rs.getString("id"),
+          rs.getString("columnKey"),
+          rs.getString("propertyName"),
+          rs.getString("targetId"),
+          rs.getString("holderType"),
+          rs.getString("targetType"),
+          rs.getInt("position"),
+          rs.getString("json"));
     }
   }
 
@@ -423,6 +697,9 @@ public interface CoreRelationshipDAOs {
     private String json;
     private String jsonSchema;
   }
+
+  /** An edge into a context memory from an entity that may anchor it. */
+  record MemoryAnchorEdge(UUID fromId, String fromEntity, int relation) {}
 
   record OntologyRelationshipRow(
       UUID fromId,
@@ -927,6 +1204,24 @@ public interface CoreRelationshipDAOs {
       return EntityDAO.queryInChunks(
           fromIds, chunk -> findToBatchByToEntityInternal(chunk, relation, toEntityType));
     }
+
+    /**
+     * The distinct (entity, relation) pairs among {@code fromIds} with a live edge of one of {@code
+     * relations} into a context memory, one row per pair however many memories it points at. The
+     * target type is a literal so that PostgreSQL can use idx_entity_relationship_memory_anchor;
+     * MySQL serves the query from idx_entity_rel_cascade. Without either, a pinned domain or team
+     * would scan one edge per asset or user it holds.
+     */
+    @SqlQuery(
+        "SELECT DISTINCT fromId, fromEntity, relation "
+            + "FROM entity_relationship "
+            + "WHERE fromId IN (<fromIds>) "
+            + "AND relation IN (<relations>) "
+            + "AND toEntity = 'contextMemory' "
+            + "AND deleted = FALSE")
+    @UseRowMapper(MemoryAnchorEdgeMapper.class)
+    List<MemoryAnchorEdge> findMemoryAnchorEdges(
+        @BindList("fromIds") List<String> fromIds, @BindList("relations") List<Integer> relations);
 
     @SqlQuery(
         "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
@@ -1820,6 +2115,16 @@ public interface CoreRelationshipDAOs {
         return new RelationshipTypeUsage()
             .withRelationshipType(relationshipType)
             .withCount(rs.getInt("cnt"));
+      }
+    }
+
+    class MemoryAnchorEdgeMapper implements RowMapper<MemoryAnchorEdge> {
+      @Override
+      public MemoryAnchorEdge map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return new MemoryAnchorEdge(
+            UUID.fromString(rs.getString("fromId")),
+            rs.getString("fromEntity"),
+            rs.getInt("relation"));
       }
     }
 

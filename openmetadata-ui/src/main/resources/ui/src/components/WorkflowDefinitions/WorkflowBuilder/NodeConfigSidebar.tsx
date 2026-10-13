@@ -25,7 +25,6 @@ import {
   WorkflowType,
 } from '../../../constants/WorkflowBuilder.constants';
 import { useWorkflowModeContext } from '../../../contexts/WorkflowModeContext';
-import { WorkflowTriggerFields } from '../../../generated/type/workflowTriggerFields';
 import {
   BackendNodeConfig,
   DataAssetFilter,
@@ -40,7 +39,13 @@ import {
   isStartNode,
 } from '../../../utils/NodeUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { validateWorkflowConfig } from '../../../utils/WorkflowConfigUtils';
+import {
+  buildEntityFieldGroups,
+  getGitSinkTriggerNodeConfig,
+  getTriggerDataAssets,
+  validateWorkflowConfig,
+  withExtensionPrefix,
+} from '../../../utils/WorkflowConfigUtils';
 import {
   reconcileDataAssetFilters,
   serializeDataAssetFilters,
@@ -107,6 +112,8 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
   workflowDefinition,
   workflowMetadata,
   onWorkflowMetadataUpdate,
+  triggerFieldsConfig,
+  hasGitSinkNode = false,
 }) => {
   const {
     allowFullStartNodeConfiguration,
@@ -138,7 +145,15 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
       : getInitialNodeConfig({} as Node, workflowDefinition, null);
   }, [node, workflowDefinition, workflowMetadata, localName, localDescription]);
 
-  const effectiveConfig = localConfig || config;
+  // A Git sink workflow's trigger keeps only the entity types the sink syncs, whichever order the
+  // trigger and the sink were configured in.
+  const effectiveConfig = useMemo(() => {
+    const currentConfig = localConfig || config;
+
+    return hasGitSinkNode && isStartNode(node)
+      ? getGitSinkTriggerNodeConfig(currentConfig)
+      : currentConfig;
+  }, [localConfig, config, hasGitSinkNode, node]);
 
   const [customPropertyFields, setCustomPropertyFields] = useState<string[]>(
     []
@@ -155,16 +170,50 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
     Promise.all(assets.map((asset) => getCustomPropertiesByEntityType(asset)))
       .then((results) => {
         const names = [
-          ...new Set(results.flat().map((p) => `extension.${p.name}`)),
+          ...new Set(results.flat().map((p) => withExtensionPrefix(p.name))),
         ];
         setCustomPropertyFields(names);
       })
       .catch(() => setCustomPropertyFields([]));
   }, [effectiveConfig.dataAssets]);
 
+  // Offer the fields relevant to the workflow's selected entity types: the common fields plus each
+  // selected entity's own trigger fields (e.g. `columns` for a table) and its custom properties.
   const availableExcludeFields = useMemo(() => {
-    return [...Object.values(WorkflowTriggerFields), ...customPropertyFields];
-  }, [customPropertyFields]);
+    const assets = effectiveConfig.dataAssets ?? [];
+    const entitySpecificFields = assets.flatMap(
+      (asset) => triggerFieldsConfig.entitySpecific[asset] ?? []
+    );
+
+    return [
+      ...new Set([
+        ...triggerFieldsConfig.common,
+        ...entitySpecificFields,
+        ...customPropertyFields,
+      ]),
+    ];
+  }, [triggerFieldsConfig, effectiveConfig.dataAssets, customPropertyFields]);
+
+  // The trigger-fields registry's entity types are the ones a workflow can be defined on.
+  const workflowEntityTypes = useMemo(
+    () =>
+      getTriggerDataAssets(
+        Object.keys(triggerFieldsConfig.entitySpecific),
+        hasGitSinkNode
+      ),
+    [triggerFieldsConfig, hasGitSinkNode]
+  );
+
+  // Group entity-specific fields under their entity type below the common fields
+  // (e.g. `columns` shown under `table`).
+  const excludeFieldGroups = useMemo(
+    () =>
+      buildEntityFieldGroups(
+        triggerFieldsConfig.entitySpecific,
+        effectiveConfig.dataAssets ?? []
+      ),
+    [triggerFieldsConfig, effectiveConfig.dataAssets]
+  );
 
   useEffect(() => {
     if (isStartNode(node)) {
@@ -447,9 +496,11 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
         allowStartNodeFilterScheduleAndBatchEdit={
           allowStartNodeFilterScheduleAndBatchEdit
         }
+        availableDataAssets={workflowEntityTypes}
         availableEventTypes={[...AVAILABLE_OPTIONS.EVENT_TYPES]}
         availableExcludeFields={availableExcludeFields}
         config={effectiveConfig}
+        fieldGroups={excludeFieldGroups}
         handleEventTypeChange={handleEventTypeChange}
         removeDataAssetFilter={removeDataAssetFilter}
         removeFromArray={removeFromArray}

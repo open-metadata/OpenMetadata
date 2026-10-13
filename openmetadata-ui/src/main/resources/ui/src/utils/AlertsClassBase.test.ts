@@ -196,6 +196,12 @@ describe('AlertsClassBase', () => {
     jest.clearAllMocks();
   });
 
+  describe('getAlertAiTemplateSection', () => {
+    it('returns no section, since templates are a Collate feature', () => {
+      expect(alertsClass.getAlertAiTemplateSection()).toBeNull();
+    });
+  });
+
   describe('getAddAlertFormExtraWidgets', () => {
     it('should return an empty widgets object by default', () => {
       const widgets = alertsClass.getAddAlertFormExtraWidgets();

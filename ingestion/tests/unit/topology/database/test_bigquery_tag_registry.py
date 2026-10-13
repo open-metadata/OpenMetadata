@@ -30,7 +30,7 @@ from metadata.utils.lru_cache import LRUCache
 
 
 @pytest.fixture
-def source():
+def source(existing_tag_lookup):
     instance = object.__new__(BigquerySource)
     instance.source_config = DatabaseServiceMetadataPipeline(includeTags=True, extractJsonSchema=False)
     instance.service_connection = SimpleNamespace(includePolicyTags=True, taxonomyProjectID=None, taxonomyLocation="us")
@@ -44,7 +44,7 @@ def source():
         return []
 
     instance.metadata.es_search_from_fqn.side_effect = search
-    instance.metadata.get_by_name.side_effect = AssertionError("Label lookup must not access the server")
+    instance.metadata.get_by_name.side_effect = existing_tag_lookup
     instance.client = MagicMock()
     instance.client.get_dataset.return_value = Dataset("project.dataset")
     instance.client.get_table.return_value = Table("project.dataset.my_table")
@@ -221,10 +221,11 @@ def test_policy_resource_ids_and_quoted_asset_names_do_not_collide(source):
     ]
 
 
-def test_invalid_definition_does_not_discard_other_labels(source):
+def test_invalid_definition_does_not_discard_other_labels(source, caplog):
     source.client.get_table.return_value.labels = {"bad": 'invalid"name', "env": "prod"}
     records = schema_stage(source) + table_stage(source)
-    assert len([record for record in records if record.left]) == 1
+    assert [record for record in records if record.left] == []
+    assert "Skipped tag 'invalid\"name' in classification 'bad'" in caplog.text
     assert definitions([record for record in records if record.right]) == {("env", "prod")}
     assert fqns(source.get_tag_labels("my_table")) == ["env.prod"]
 

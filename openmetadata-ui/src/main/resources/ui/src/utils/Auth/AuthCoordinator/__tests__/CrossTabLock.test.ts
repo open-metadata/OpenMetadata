@@ -221,6 +221,38 @@ describe('CrossTabLock (Web Locks path)', () => {
     expect(received).toEqual([{ type: 'failed', reason: 'renewer blew up' }]);
   });
 
+  // Rotating-refresh IdP hardening: when work() succeeded and publish()
+  // threw (e.g. storage persist failed), the leader still holds a
+  // valid RenewResult in memory. Broadcast `done` with that value so
+  // followers apply it without re-running work() — a duplicate
+  // renewer() call would consume the just-rotated refresh token and
+  // invalidate this leader's session.
+  it('broadcasts done (not failed) when publish throws after work succeeded', async () => {
+    const lock = new CrossTabLock(TEST_LOCK_NAME, TEST_CHANNEL_NAME);
+    const received: unknown[] = [];
+    (
+      lock as unknown as {
+        channel: {
+          addEventListener: (t: string, cb: (e: MessageEvent) => void) => void;
+        };
+      }
+    ).channel.addEventListener('message', (event: MessageEvent) => {
+      received.push(event.data);
+    });
+
+    await expect(
+      lock.runExclusive(async () => ({ idToken: 'fresh', expiresAt: 42 }), {
+        publish: async () => {
+          throw new Error('storage write failed');
+        },
+      })
+    ).rejects.toThrow('storage write failed');
+
+    expect(received).toEqual([
+      { type: 'done', payload: { idToken: 'fresh', expiresAt: 42 } },
+    ]);
+  });
+
   it('throws LockTimeoutError if the leader never notifies', async () => {
     const lock = new CrossTabLock(TEST_LOCK_NAME, TEST_CHANNEL_NAME);
     held.add(TEST_LOCK_NAME);
@@ -352,6 +384,96 @@ describe('CrossTabLock (Web Locks path)', () => {
     // Sanity: must have unblocked promptly after the release, not after
     // the 5-second soft ceiling.
     expect(Date.now() - start).toBeLessThan(500);
+  });
+
+  // A second runExclusive slot opening within DONE_RETAIN_MS of a
+  // sibling's `done` broadcast must reuse that mint (via the primed
+  // per-slot buffer) instead of racing HANDOFF_GRACE_MS to a synthetic
+  // `failed` and retrying with a duplicate renewer() call —
+  // rotating-refresh IdPs would consume the just-rotated refresh
+  // token and invalidate the leader's session.
+  it('a runExclusive slot opening shortly after a done broadcast reuses that mint instead of running work again', async () => {
+    const lock = new CrossTabLock(TEST_LOCK_NAME, TEST_CHANNEL_NAME);
+
+    // First cycle: leader mints, broadcasts done via `publish`.
+    const first = await lock.runExclusive(
+      async () => ({ idToken: 'sibling-mint', expiresAt: 42 }),
+      {
+        publish: async (v) => {
+          lock.notifyDone(v);
+        },
+      }
+    );
+
+    expect(first).toEqual({
+      role: 'leader',
+      value: { idToken: 'sibling-mint', expiresAt: 42 },
+    });
+
+    // Second cycle within the retain window. `work` here would be the
+    // duplicate renewer() — it must NOT run. Instead the primed
+    // buffer surfaces the sibling's mint.
+    const workAgain = jest.fn(async () => ({
+      idToken: 'should-not-mint',
+      expiresAt: 43,
+    }));
+    const second = await lock.runExclusive(workAgain);
+
+    expect(workAgain).not.toHaveBeenCalled();
+    expect(second).toEqual({
+      role: 'follower',
+      message: {
+        type: 'done',
+        payload: { idToken: 'sibling-mint', expiresAt: 42 },
+      },
+    });
+  });
+
+  // Greptile P1 r4083354131: the recent-done shortcut must fire at
+  // most ONCE per broadcast per coordinator. A caller that already
+  // consumed the mint (and had the server reject it) must fall
+  // through to a real refresh on the forced retry — otherwise it
+  // reuses the just-known-bad token.
+  it('a second runExclusive on the SAME broadcast falls through to work, not the shortcut', async () => {
+    const lock = new CrossTabLock(TEST_LOCK_NAME, TEST_CHANNEL_NAME);
+
+    // First cycle mints and broadcasts done.
+    await lock.runExclusive(
+      async () => ({ idToken: 'first-mint', expiresAt: 42 }),
+      {
+        publish: async (v) => {
+          lock.notifyDone(v);
+        },
+      }
+    );
+
+    // Second cycle — same broadcast, first shortcut consumer.
+    const shortcutHit = await lock.runExclusive(
+      jest.fn(async () => ({ idToken: 'unused', expiresAt: 43 }))
+    );
+
+    expect(shortcutHit).toEqual({
+      role: 'follower',
+      message: {
+        type: 'done',
+        payload: { idToken: 'first-mint', expiresAt: 42 },
+      },
+    });
+
+    // Third cycle — SAME broadcast, forced re-entry (simulates the
+    // "server rejected first-mint, try again" path). Must NOT
+    // shortcut; must call work.
+    const secondMintWork = jest.fn(async () => ({
+      idToken: 'second-mint',
+      expiresAt: 44,
+    }));
+    const retry = await lock.runExclusive(secondMintWork);
+
+    expect(secondMintWork).toHaveBeenCalledTimes(1);
+    expect(retry).toEqual({
+      role: 'leader',
+      value: { idToken: 'second-mint', expiresAt: 44 },
+    });
   });
 
   it('rejects a concurrent ifAvailable probe while publish is running', async () => {

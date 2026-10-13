@@ -10,6 +10,7 @@ import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -24,10 +25,11 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.apps.bundles.rdf.RdfIndexRunRecovery;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.CacheConfig;
-import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
+import org.openmetadata.service.events.scheduled.AlertJobs;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
 import org.openmetadata.service.jdbi3.AppRepository;
@@ -47,6 +49,9 @@ import org.quartz.impl.matchers.GroupMatcher;
 public class ApplicationHandler {
 
   private static final String CACHE_WARMUP_APPLICATION = "CacheWarmupApplication";
+
+  /** Recovers its own runs: its distributed job can outlive the server that started it. */
+  private static final String SEARCH_INDEXING_APPLICATION = "SearchIndexingApplication";
 
   @Getter private static ApplicationHandler instance;
   private final OpenMetadataApplicationConfig config;
@@ -126,9 +131,24 @@ public class ApplicationHandler {
   public void cleanupStaleJobs() {
     try {
       LOG.info("Cleaning up stale application jobs from previous server runs");
-      CollectionDAO.AppExtensionTimeSeries dao =
+      final long startedAt = System.currentTimeMillis();
+      final CollectionDAO.AppExtensionTimeSeries runs =
           Entity.getCollectionDAO().appExtensionTimeSeriesDao();
-      dao.markAllStaleEntriesFailedExcludingApp("SearchIndexingApplication");
+      final List<String> running = runs.listAppNamesWithRunningStatus();
+      // Search and RDF indexing runs can still be executing on another server; their own
+      // recovery reads the run's lock to tell a live run from one whose server stopped.
+      final List<String> appNames =
+          running.stream()
+              .filter(appName -> !SEARCH_INDEXING_APPLICATION.equals(appName))
+              .filter(appName -> !RdfIndexRunRecovery.APP_NAME.equals(appName))
+              .toList();
+      if (!appNames.isEmpty()) {
+        runs.markRunningEntriesInterrupted(
+            appNames, AppRunInterruption.stillRunningAtStartup(), startedAt, startedAt);
+      }
+      if (running.contains(RdfIndexRunRecovery.APP_NAME)) {
+        RdfIndexRunRecovery.forServer().recover(startedAt);
+      }
       LOG.info("Stale application jobs cleanup completed successfully");
     } catch (Exception e) {
       LOG.error("Failed to cleanup stale application jobs", e);
@@ -140,8 +160,22 @@ public class ApplicationHandler {
       CollectionDAO daoCollection,
       SearchRepository searchRepository,
       Map<String, Object> configPayload) {
+    triggerApplicationOnDemand(app, daoCollection, searchRepository, configPayload, null);
+  }
+
+  /**
+   * @param triggeredBy principal that requested this run, recorded on the run record.
+   */
+  public void triggerApplicationOnDemand(
+      App app,
+      CollectionDAO daoCollection,
+      SearchRepository searchRepository,
+      Map<String, Object> configPayload,
+      String triggeredBy) {
     try {
-      runAppInit(app, daoCollection, searchRepository).triggerOnDemand(configPayload);
+      AbstractNativeApplication application = runAppInit(app, daoCollection, searchRepository);
+      application.setTriggeredBy(triggeredBy);
+      application.triggerOnDemand(configPayload);
     } catch (ClassNotFoundException
         | NoSuchMethodException
         | InvocationTargetException
@@ -251,14 +285,7 @@ public class ApplicationHandler {
                           appRepository.addEventSubscription(app, createdEventSub);
                           return createdEventSub;
                         }))
-        .forEach(
-            eventSub -> {
-              try {
-                EventSubscriptionScheduler.getInstance().addSubscriptionPublisher(eventSub);
-              } catch (Exception e) {
-                throw new RuntimeException(e);
-              }
-            });
+        .forEach(eventSub -> AlertJobs.convergeAfterCommit(eventSub.getId()));
   }
 
   public void configureApplication(
@@ -298,13 +325,9 @@ public class ApplicationHandler {
                 EventSubscription eventSub =
                     eventSubscriptionRepository.find(
                         eventSubscriptionReference.getId(), Include.ALL);
-                EventSubscriptionScheduler.getInstance().deleteEventSubscriptionPublisher(eventSub);
                 eventSubscriptionRepository.delete(deletedBy, eventSub.getId(), false, true);
-
               } catch (EntityNotFoundException e) {
                 LOG.debug("Event subscription {} not found", eventSubscriptionReference.getId());
-              } catch (SchedulerException e) {
-                throw new RuntimeException(e);
               }
             });
   }

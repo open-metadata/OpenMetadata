@@ -12,31 +12,23 @@
  */
 
 import {
-  Box,
   Button,
   EmptyPlaceholder,
-  Table,
   TableCard,
   Tabs,
-  Typography,
 } from '@openmetadata/ui-core-components';
-import { Delete, Edit, Expand } from '@openmetadata/ui-core-components/icons';
+import { Plus as Expand } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import { compare } from 'fast-json-patch';
-import { isArray, isEmpty, isString, isUndefined, startCase } from 'lodash';
 import React, { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CUSTOM_PROPERTIES_ICON_MAP } from '../../../../../../constants/CustomProperty.constants';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../../../../enums/permissions.enum';
 import { Type } from '../../../../../../generated/entity/type';
 import { CustomProperty } from '../../../../../../generated/type/customProperty';
 import {
+  deleteCustomPropertyByName,
   getTypeByFQN,
-  updateType,
 } from '../../../../../../rest/metadataTypeAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
@@ -47,18 +39,11 @@ import {
 } from '../../../../../../utils/ToastUtils';
 import withSuspenseFallback from '../../../../../AppRouter/withSuspenseFallback';
 import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
-import { getTableColumns } from './CustomPropertiesPanel.constants';
+import CustomPropertiesListTable from '../../../../../Settings/CustomProperty/CustomPropertiesListTable';
 import { CustomPropertiesDetailPageProps } from './CustomPropertiesPanel.types';
 
 const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../../../../../Database/SchemaEditor/SchemaEditor'))
-);
-
-const RichTextEditorPreviewerNew = withSuspenseFallback(
-  lazy(
-    () =>
-      import('../../../../../common/RichTextEditor/RichTextEditorPreviewNew')
-  )
 );
 
 const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
@@ -107,26 +92,30 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
     [typeDetail]
   );
 
-  const tableColumns = useMemo(() => getTableColumns(t), [t]);
-
   const { canCreate, canDelete, canEditAll } =
     getDerivedPermissionFlags(permission);
 
   const handleDeleteConfirm = useCallback(async () => {
-    if (!propertyToDelete || !typeDetail) {
+    if (!propertyToDelete || !entityType.fullyQualifiedName) {
       return;
     }
-    const updatedProperties = customProperties.filter(
-      (prop) => prop.name !== propertyToDelete.name
-    );
-    const patch = compare(
-      { ...typeDetail },
-      { ...typeDetail, customProperties: updatedProperties }
-    );
     setIsDeleting(true);
     try {
-      const updated = await updateType(typeDetail.id ?? '', patch);
-      setTypeDetail(updated);
+      const updated = await deleteCustomPropertyByName(
+        entityType.fullyQualifiedName,
+        propertyToDelete.name
+      );
+      // `undefined`: someone else already removed it, so drop it locally.
+      setTypeDetail(
+        (prev) =>
+          updated ??
+          (prev && {
+            ...prev,
+            customProperties: prev.customProperties?.filter(
+              (property) => property.name !== propertyToDelete.name
+            ),
+          })
+      );
       showSuccessToast(
         t('server.delete-entity-success', {
           entity: t('label.custom-property'),
@@ -138,132 +127,7 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
       setIsDeleting(false);
       setPropertyToDelete(null);
     }
-  }, [customProperties, propertyToDelete, t, typeDetail]);
-
-  const renderRow = useCallback(
-    (property: CustomProperty) => {
-      const typeName = property.propertyType.name ?? '';
-      const IconComp =
-        CUSTOM_PROPERTIES_ICON_MAP[
-          typeName as keyof typeof CUSTOM_PROPERTIES_ICON_MAP
-        ];
-      const typeDisplayName = startCase(typeName.replaceAll('-cp', ''));
-
-      return (
-        <Table.Row id={property.name} key={property.name}>
-          <Table.Cell>
-            <Typography size="text-sm" weight="medium">
-              {getEntityName(property)}
-            </Typography>
-          </Table.Cell>
-          <Table.Cell>
-            <Box align="center" direction="row" gap={1}>
-              {IconComp && <IconComp className="tw:size-4 tw:shrink-0" />}
-              <Typography className="tw:text-text-secondary" size="text-sm">
-                {typeDisplayName}
-              </Typography>
-            </Box>
-          </Table.Cell>
-          <Table.Cell>
-            {(() => {
-              const configData = property.customPropertyConfig;
-
-              if (isUndefined(configData)) {
-                return (
-                  <Typography className="tw:text-text-secondary" size="text-sm">
-                    --
-                  </Typography>
-                );
-              }
-
-              const config = configData.config;
-
-              if (isArray(config) && !isEmpty(config)) {
-                return (
-                  <Typography className="tw:text-text-secondary" size="text-sm">
-                    {JSON.stringify(config)}
-                  </Typography>
-                );
-              }
-
-              if (!isString(config) && !isArray(config)) {
-                if (config?.columns) {
-                  return (
-                    <Typography
-                      className="tw:text-text-secondary"
-                      size="text-sm">
-                      <span className="tw:font-medium">{`${t(
-                        'label.column-plural'
-                      )}:`}</span>
-                      <ul className="tw:m-0! tw:pl-4">
-                        {config.columns.map((col) => (
-                          <li key={col}>{col}</li>
-                        ))}
-                      </ul>
-                    </Typography>
-                  );
-                }
-
-                return (
-                  <Box direction="col" gap={1}>
-                    <Typography
-                      className="tw:text-text-secondary"
-                      size="text-sm">
-                      {JSON.stringify(config?.values ?? [])}
-                    </Typography>
-                    <Typography
-                      className="tw:text-text-secondary"
-                      size="text-sm">
-                      {`${t('label.multi-select')}: ${
-                        config?.multiSelect ? t('label.yes') : t('label.no')
-                      }`}
-                    </Typography>
-                  </Box>
-                );
-              }
-
-              return (
-                <Typography className="tw:text-text-secondary" size="text-sm">
-                  {config as string}
-                </Typography>
-              );
-            })()}
-          </Table.Cell>
-          <Table.Cell>
-            <RichTextEditorPreviewerNew
-              markdown={property.description ?? ''}
-              maxLineLength="2"
-            />
-          </Table.Cell>
-          <Table.Cell>
-            {(canEditAll || canDelete) && (
-              <Box direction="row" gap={1}>
-                {canEditAll && (
-                  <Button
-                    aria-label={t('label.edit')}
-                    color="tertiary"
-                    iconLeading={Edit}
-                    size="xs"
-                    onPress={() => onEditProperty(property)}
-                  />
-                )}
-                {canDelete && (
-                  <Button
-                    aria-label={t('label.delete')}
-                    color="tertiary-destructive"
-                    iconLeading={Delete}
-                    size="xs"
-                    onPress={() => setPropertyToDelete(property)}
-                  />
-                )}
-              </Box>
-            )}
-          </Table.Cell>
-        </Table.Row>
-      );
-    },
-    [canEditAll, canDelete, onEditProperty, t]
-  );
+  }, [entityType.fullyQualifiedName, propertyToDelete, t]);
 
   const addButton = canCreate ? (
     <Button
@@ -296,51 +160,42 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
           </div>
 
           <Tabs.Panel id="custom-properties">
-            <Table
-              aria-label={t('label.custom-property-plural')}
-              data-testid="custom-property-table">
-              <Table.Header columns={tableColumns}>
-                {(col) => (
-                  <Table.Head
-                    id={col.id}
-                    key={col.id}
-                    label={col.name}
-                    width={col.width}
+            <CustomPropertiesListTable
+              canDelete={canDelete}
+              canEdit={canEditAll}
+              containerClassName="custom-card-with-table"
+              customProperties={customProperties}
+              data-testid="custom-property-table"
+              emptyText={
+                <div className="tw:min-h-[250px] tw:relative">
+                  <EmptyPlaceholder
+                    actions={
+                      canCreate
+                        ? [
+                            {
+                              key: 'add',
+                              label: t('label.add-entity', {
+                                entity: t('label.custom-property'),
+                              }),
+                              color: 'primary' as const,
+                              iconLeading: Expand,
+                              onPress: onAddProperty,
+                            },
+                          ]
+                        : undefined
+                    }
+                    description={t('message.no-custom-properties-defined')}
+                    title={t('label.no-entity-found', {
+                      entity: t('label.custom-property-plural'),
+                    })}
+                    variant="blank"
                   />
-                )}
-              </Table.Header>
-              <Table.Body
-                dependencies={[isLoading]}
-                items={isLoading ? [] : customProperties}
-                renderEmptyState={() => (
-                  <div className="tw:min-h-[250px] tw:relative">
-                    <EmptyPlaceholder
-                      actions={
-                        canCreate
-                          ? [
-                              {
-                                key: 'add',
-                                label: t('label.add-entity', {
-                                  entity: t('label.custom-property'),
-                                }),
-                                color: 'primary' as const,
-                                iconLeading: Expand,
-                                onPress: onAddProperty,
-                              },
-                            ]
-                          : undefined
-                      }
-                      description={t('message.no-custom-properties-defined')}
-                      title={t('label.no-entity-found', {
-                        entity: t('label.custom-property-plural'),
-                      })}
-                      variant="blank"
-                    />
-                  </div>
-                )}>
-                {(property) => renderRow(property as CustomProperty)}
-              </Table.Body>
-            </Table>
+                </div>
+              }
+              isLoading={isLoading}
+              onDelete={setPropertyToDelete}
+              onEdit={onEditProperty}
+            />
           </Tabs.Panel>
 
           <Tabs.Panel id="schema">

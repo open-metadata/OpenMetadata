@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
+import { ButtonUtility, Card } from '@openmetadata/ui-core-components';
+import { Copy01 } from '@openmetadata/ui-core-components/icons';
 import CodeMirror from '@uiw/react-codemirror';
-import { Button, Card, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CopyIcon } from '../../../assets/svg/copy-left.svg';
 import { JSON_TAB_SIZE } from '../../../constants/constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
@@ -75,40 +75,55 @@ const CodeEditor = ({
 
   return (
     <Card
-      className={classNames(className, 'code-editor-new-style')}
-      data-testid="code-mirror-container"
-      extra={
-        showCopyButton && (
-          <div data-testid="copy-button-container">
-            <Tooltip
-              title={
-                hasCopied ? t('label.copied') : t('message.copy-to-clipboard')
-              }>
-              <Button
-                className="flex-center"
+      className={classNames(
+        'tw:overflow-visible tw:text-sm tw:leading-[1.5715] tw:text-primary tw:tabular-nums',
+        className,
+        'code-editor-new-style'
+      )}
+      data-testid="code-mirror-container">
+      {(title || showCopyButton) && (
+        <div
+          className={classNames(
+            'tw:-mb-px tw:flex tw:min-h-7 tw:items-center tw:rounded-t-xl',
+            'tw:border-b tw:border-subtle tw:bg-secondary tw:px-6 tw:text-base',
+            'tw:leading-[1.5715] tw:font-medium tw:text-primary'
+          )}>
+          <div className="tw:inline-block tw:flex-1 tw:overflow-hidden tw:text-ellipsis tw:whitespace-nowrap tw:[&_.ant-form-item-label]:p-0!">
+            {title}
+          </div>
+          {showCopyButton && (
+            <div
+              className="tw:ml-auto tw:text-sm tw:leading-[1.5715] tw:font-normal tw:text-primary"
+              data-testid="copy-button-container">
+              <ButtonUtility
+                aria-label={t('message.copy-to-clipboard')}
+                color="tertiary"
                 data-testid="query-copy-button"
-                icon={<CopyIcon height={16} width={16} />}
-                size="small"
-                type="text"
+                icon={Copy01}
+                size="sm"
+                tooltip={
+                  hasCopied ? t('label.copied') : t('message.copy-to-clipboard')
+                }
                 onClick={() => onCopyToClipBoard(internalValue)}
               />
-            </Tooltip>
-          </div>
-        )
-      }
-      title={title}>
-      <CodeMirror
-        basicSetup={false}
-        className={editorClass}
-        extensions={editorExtensions}
-        indentWithTab={false}
-        ref={editorRef}
-        theme="none"
-        value={internalValue}
-        onBlur={handleBlur}
-        onChange={handleChange}
-        {...(onFocus && { onFocus })}
-      />
+            </div>
+          )}
+        </div>
+      )}
+      <div className="tw:p-5">
+        <CodeMirror
+          basicSetup={false}
+          className={editorClass}
+          extensions={editorExtensions}
+          indentWithTab={false}
+          ref={editorRef}
+          theme="none"
+          value={internalValue}
+          onBlur={handleBlur}
+          onChange={handleChange}
+          {...(onFocus && { onFocus })}
+        />
+      </div>
     </Card>
   );
 };

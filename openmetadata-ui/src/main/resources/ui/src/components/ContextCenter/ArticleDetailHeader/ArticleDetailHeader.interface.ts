@@ -12,12 +12,12 @@
  */
 
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { VotingDataProps } from '../../../interface/entity/vote.interface';
 import {
   ArticleTab,
   ContentChangeState,
   KnowledgePage,
 } from '../../../interface/knowledge-center.interface';
-import { VotingDataProps } from '../../Entity/Voting/voting.interface';
 
 export type { ArticleTab };
 

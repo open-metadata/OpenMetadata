@@ -22,22 +22,28 @@ import {
   Select,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Edit03, Trash01 } from '@untitledui/icons';
+import { Edit03, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { isAxiosError } from 'axios';
 import classNames from 'classnames';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CSMode } from '../../enums/codemirror.enum';
-import { Binding } from '../../generated/api/rdf/sparqlResponse';
+import { RDFTerm } from '../../generated/api/rdf/sparqlResponse';
 import { useAuth } from '../../hooks/authHooks';
 import { useSparqlQueryLibrary } from '../../hooks/useSparqlQueryLibrary';
 import {
+  fetchRdfConfig,
   runSparqlQuery,
   SavedSparqlQuery,
   SparqlPlaygroundFormat,
   SparqlPlaygroundInference,
   SparqlPlaygroundResult,
 } from '../../rest/rdfAPI';
+import {
+  getAvailableSparqlInferences,
+  resolveSparqlInference,
+} from '../../utils/Sparql/SparqlInference.utils';
+import { getTermDisplayText } from '../../utils/Sparql/SparqlTerm.utils';
 import { generateUUID } from '../../utils/StringUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import SchemaEditor from '../Database/SchemaEditor/SchemaEditor';
@@ -72,10 +78,12 @@ const FORMAT_OPTIONS: ReadonlyArray<{
   },
 ];
 
-const INFERENCE_OPTIONS: ReadonlyArray<{
+type InferenceOption = {
   value: SparqlPlaygroundInference;
   labelKey: string;
-}> = [
+};
+
+const INFERENCE_OPTIONS: ReadonlyArray<InferenceOption> = [
   { value: 'none', labelKey: 'label.none' },
   { value: 'rdfs', labelKey: 'label.rdfs' },
   { value: 'owl', labelKey: 'label.owl' },
@@ -119,8 +127,8 @@ type SaveTarget = 'personal' | 'template';
 type TFunc = ReturnType<typeof useTranslation>['t'];
 
 interface TabularResult {
-  keyedRows: { key: string; row: { [key: string]: Binding } }[];
-  rows: { [key: string]: Binding }[];
+  keyedRows: { key: string; row: { [key: string]: RDFTerm } }[];
+  rows: { [key: string]: RDFTerm }[];
   vars: string[];
 }
 
@@ -156,6 +164,7 @@ const QueryToolbarActions = ({
   activeTemplateId,
   format,
   inference,
+  inferenceOptions,
   isAdminUser,
   running,
   t,
@@ -169,6 +178,7 @@ const QueryToolbarActions = ({
   activeTemplateId: string | undefined;
   format: SparqlPlaygroundFormat;
   inference: SparqlPlaygroundInference;
+  inferenceOptions: ReadonlyArray<InferenceOption>;
   isAdminUser: boolean | undefined;
   running: boolean;
   t: TFunc;
@@ -198,7 +208,7 @@ const QueryToolbarActions = ({
       <Select
         aria-label={t('label.inference')}
         data-testid="sparql-inference-select"
-        items={INFERENCE_OPTIONS.map((o) => ({
+        items={inferenceOptions.map((o) => ({
           id: o.value,
           label: t(o.labelKey),
         }))}
@@ -320,17 +330,13 @@ const ResultTable = ({
       <tbody>
         {tabularResult.keyedRows.map(({ key, row }) => (
           <tr key={key}>
-            {tabularResult.vars.map((v) => {
-              const binding = row[v] as Binding | undefined;
-
-              return (
-                <td
-                  className="tw:border-b tw:border-utility-gray-100 tw:px-3 tw:py-2 tw:font-mono tw:text-xs"
-                  key={v}>
-                  {binding?.value ?? ''}
-                </td>
-              );
-            })}
+            {tabularResult.vars.map((v) => (
+              <td
+                className="tw:border-b tw:border-utility-gray-100 tw:px-3 tw:py-2 tw:font-mono tw:text-xs"
+                key={v}>
+                {getTermDisplayText(row[v])}
+              </td>
+            ))}
           </tr>
         ))}
       </tbody>
@@ -612,6 +618,9 @@ const SparqlQueryConsole: React.FC<SparqlQueryConsoleProps> = ({
   );
   const [format, setFormat] = useState<SparqlPlaygroundFormat>('json');
   const [inference, setInference] = useState<SparqlPlaygroundInference>('none');
+  const [availableInferences, setAvailableInferences] = useState<
+    SparqlPlaygroundInference[]
+  >(getAvailableSparqlInferences);
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<SparqlPlaygroundResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -628,6 +637,38 @@ const SparqlQueryConsole: React.FC<SparqlQueryConsoleProps> = ({
     }
   }, [initialQuery]);
 
+  useEffect(() => {
+    let isActive = true;
+    fetchRdfConfig()
+      .then((status) => {
+        if (isActive) {
+          setAvailableInferences(
+            getAvailableSparqlInferences(status.inference.availableLevels)
+          );
+        }
+      })
+      // Without the RDF status the playground still runs queries without inference.
+      .catch(() => undefined);
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  const inferenceOptions = useMemo(
+    () =>
+      INFERENCE_OPTIONS.filter((option) =>
+        availableInferences.includes(option.value)
+      ),
+    [availableInferences]
+  );
+
+  // Derived rather than clamped on load, so a level loaded before the RDF status arrives is kept.
+  const effectiveInference = useMemo(
+    () => resolveSparqlInference(inference, availableInferences),
+    [inference, availableInferences]
+  );
+
   const handleRun = useCallback(async () => {
     if (!query.trim()) {
       setErrorMessage(t('message.sparql-empty-query-error'));
@@ -638,7 +679,11 @@ const SparqlQueryConsole: React.FC<SparqlQueryConsoleProps> = ({
     setErrorMessage(null);
     setResult(null);
     try {
-      const r = await runSparqlQuery({ query, format, inference });
+      const r = await runSparqlQuery({
+        query,
+        format,
+        inference: effectiveInference,
+      });
       setResult(r);
     } catch (e) {
       const axiosResponseData = isAxiosError(e) ? e.response?.data : undefined;
@@ -652,7 +697,7 @@ const SparqlQueryConsole: React.FC<SparqlQueryConsoleProps> = ({
     } finally {
       setRunning(false);
     }
-  }, [query, format, inference, t]);
+  }, [query, format, effectiveInference, t]);
 
   const handleSaveCurrent = useCallback(() => {
     setSaveTarget('personal');
@@ -684,7 +729,7 @@ const SparqlQueryConsole: React.FC<SparqlQueryConsoleProps> = ({
       name,
       query,
       format,
-      inference,
+      inference: effectiveInference,
       savedAt: Date.now(),
     };
     const saved =
@@ -701,8 +746,8 @@ const SparqlQueryConsole: React.FC<SparqlQueryConsoleProps> = ({
     }
   }, [
     activeTemplateId,
+    effectiveInference,
     format,
-    inference,
     query,
     saveName,
     saveTarget,
@@ -774,7 +819,7 @@ const SparqlQueryConsole: React.FC<SparqlQueryConsoleProps> = ({
 
     return tabularResult.keyedRows.map(({ key, row }) => ({
       key,
-      value: (row[variable] as Binding | undefined)?.value ?? '',
+      value: getTermDisplayText(row[variable]),
     }));
   }, [tabularResult]);
 
@@ -789,7 +834,8 @@ const SparqlQueryConsole: React.FC<SparqlQueryConsoleProps> = ({
           <QueryToolbarActions
             activeTemplateId={activeTemplateId}
             format={format}
-            inference={inference}
+            inference={effectiveInference}
+            inferenceOptions={inferenceOptions}
             isAdminUser={isAdminUser}
             running={running}
             setFormat={setFormat}

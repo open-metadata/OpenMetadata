@@ -96,17 +96,16 @@ describe('Test ChangeParentHierarchy modal component', () => {
     expect(mockOnCancel).toHaveBeenCalled();
   });
 
-  it('should render submit button and handle form submission', async () => {
+  it('should keep save disabled until a parent is selected', async () => {
     await act(async () => {
       render(<ChangeParent {...mockProps} />);
     });
 
-    const submitButton = await screen.findByText('label.save');
+    const submitButton = await screen.findByTestId('save-button');
 
-    expect(submitButton).toBeInTheDocument();
-
-    // The component now handles API calls internally
-    expect(submitButton).toBeInTheDocument();
+    expect(submitButton).toHaveTextContent('label.save');
+    // No parent picked yet, so there is nothing to move.
+    expect(submitButton).toBeDisabled();
   });
 
   it('should set up websocket listener when move job is created', async () => {
@@ -119,5 +118,32 @@ describe('Test ChangeParentHierarchy modal component', () => {
       'moveGlossaryTermChannel',
       expect.any(Function)
     );
+  });
+
+  it('should ignore a move completion for a job it did not start', async () => {
+    await act(async () => {
+      render(<ChangeParent {...mockProps} />);
+    });
+
+    const [, onMoveUpdate] = mockSocket.on.mock.calls.find(
+      ([channel]) => channel === 'moveGlossaryTermChannel'
+    ) as [string, (message: string) => void];
+
+    // The server addresses this channel to the user, so a move finished in any
+    // other session of theirs lands here too. Honouring it would navigate this
+    // dialog away to a term the user never asked for.
+    await act(async () => {
+      onMoveUpdate(
+        JSON.stringify({
+          jobId: 'a-job-this-modal-never-started',
+          status: 'COMPLETED',
+          message: 'Move completed',
+          fullyQualifiedName: 'someone.elses.term',
+        })
+      );
+    });
+
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(mockOnCancel).not.toHaveBeenCalled();
   });
 });

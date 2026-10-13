@@ -12,7 +12,7 @@
  */
 
 import { Avatar, Button, Typography } from '@openmetadata/ui-core-components';
-import { Package, Plus } from '@untitledui/icons';
+import { Package, Plus } from '@openmetadata/ui-core-components/icons';
 import { isEmpty, noop } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -205,7 +205,7 @@ const MarketplaceDataProductsWidget = ({
   if (loading) {
     return (
       <div
-        className="marketplace-widget-section"
+        className="marketplace-widget-section tw:bg-surface"
         data-testid="marketplace-dp-widget">
         <Loader size="small" />
       </div>
@@ -214,7 +214,7 @@ const MarketplaceDataProductsWidget = ({
 
   return (
     <div
-      className="marketplace-widget-section"
+      className="marketplace-widget-section tw:bg-surface"
       data-testid="marketplace-dp-widget">
       <div className="marketplace-widget-header">
         <div>

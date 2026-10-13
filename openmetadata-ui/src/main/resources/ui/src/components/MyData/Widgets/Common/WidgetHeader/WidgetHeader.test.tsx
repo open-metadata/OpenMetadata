@@ -126,6 +126,7 @@ describe('WidgetHeader', () => {
       'Very Long Widget Title That Should Be Truncated'
     );
 
-    expect(title).toHaveClass('ant-typography-ellipsis');
+    expect(title.tagName).toBe('P');
+    expect(title).toHaveClass('tw:truncate');
   });
 });

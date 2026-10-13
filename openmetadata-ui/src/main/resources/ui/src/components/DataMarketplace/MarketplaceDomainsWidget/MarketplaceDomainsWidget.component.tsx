@@ -12,7 +12,7 @@
  */
 
 import { Avatar, Button, Typography } from '@openmetadata/ui-core-components';
-import { Globe01, Plus } from '@untitledui/icons';
+import { Globe01, Plus } from '@openmetadata/ui-core-components/icons';
 import { isEmpty, noop } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -188,7 +188,7 @@ const MarketplaceDomainsWidget = ({
   if (loading) {
     return (
       <div
-        className="marketplace-widget-section"
+        className="marketplace-widget-section tw:bg-surface"
         data-testid="marketplace-domains-widget">
         <Loader size="small" />
       </div>
@@ -197,7 +197,7 @@ const MarketplaceDomainsWidget = ({
 
   return (
     <div
-      className="marketplace-widget-section"
+      className="marketplace-widget-section tw:bg-surface"
       data-testid="marketplace-domains-widget">
       <div className="marketplace-widget-header">
         <div>

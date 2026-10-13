@@ -11,11 +11,16 @@
  *  limitations under the License.
  */
 import { act, renderHook } from '@testing-library/react';
+import type { ReactFlowInstance } from 'reactflow';
 import { Edge, Node } from 'reactflow';
 import { ZOOM_VALUE } from '../constants/Lineage.constants';
-import { LineagePlatformView } from '../context/LineageProvider/LineageProvider.interface';
+import { EntityType } from '../enums/entity.enum';
 import { LineageBand } from '../generated/api/lineage/lineageScene';
 import { LineageLayer, PipelineViewMode } from '../generated/settings/settings';
+import type { EntityLineageResponse } from '../interface/lineage.interface';
+import type { ExploreQuickFilterField } from '../interface/quickFilter.interface';
+import type { SourceType } from '../interface/source.interface';
+import { LineagePlatformView } from './lineage/types';
 import { useLineageStore } from './useLineageStore';
 
 describe('useLineageStore', () => {
@@ -619,5 +624,263 @@ describe('useLineageStore', () => {
       expect(result.current.nodeFilterState.size).toBe(1);
       expect(result.current.nodeFilterState.get('node1')).toBe(true);
     });
+  });
+});
+
+describe('graph slice', () => {
+  beforeEach(() => useLineageStore.getState().reset());
+
+  it('setNodes replaces the nodes array', () => {
+    const n: Node[] = [{ id: 'a', position: { x: 0, y: 0 }, data: {} }];
+    useLineageStore.getState().setNodes(n);
+
+    expect(useLineageStore.getState().nodes).toBe(n);
+  });
+
+  it('applyNodesChange applies reactflow changes', () => {
+    useLineageStore
+      .getState()
+      .setNodes([{ id: 'a', position: { x: 0, y: 0 }, data: {} }]);
+    useLineageStore
+      .getState()
+      .applyNodesChange([
+        { id: 'a', type: 'position', position: { x: 10, y: 20 } },
+      ]);
+
+    expect(useLineageStore.getState().nodes[0].position).toEqual({
+      x: 10,
+      y: 20,
+    });
+  });
+
+  it('resetGraph clears nodes/edges/columnEdges and bumps tick', () => {
+    useLineageStore
+      .getState()
+      .setNodes([{ id: 'a', position: { x: 0, y: 0 }, data: {} }]);
+    const before = useLineageStore.getState().lineageMutationTick;
+    useLineageStore.getState().resetGraph();
+    const s = useLineageStore.getState();
+
+    expect(s.nodes).toHaveLength(0);
+    expect(s.edges).toHaveLength(0);
+    expect(s.columnEdges).toHaveLength(0);
+    expect(s.lineageMutationTick).toBe(before + 1);
+  });
+
+  it('redraw bumps mutation tick', () => {
+    const before = useLineageStore.getState().lineageMutationTick;
+    useLineageStore.getState().redraw();
+
+    expect(useLineageStore.getState().lineageMutationTick).toBe(before + 1);
+  });
+});
+
+describe('data slice', () => {
+  beforeEach(() => useLineageStore.getState().reset());
+
+  it('beginLoad sets loading=true, status=waiting, init unchanged', () => {
+    useLineageStore.getState().beginLoad();
+    const s = useLineageStore.getState();
+
+    expect(s.loading).toBe(true);
+    expect(s.status).toBe('waiting');
+  });
+
+  it('setLineageData stores payload, flips init=true, loading=false, status=success', () => {
+    const payload = { entity: { id: 'e' } } as unknown as EntityLineageResponse;
+    useLineageStore.getState().setLineageData(payload);
+    const s = useLineageStore.getState();
+
+    expect(s.entityLineage).toBe(payload);
+    expect(s.init).toBe(true);
+    expect(s.loading).toBe(false);
+    expect(s.status).toBe('success');
+  });
+
+  it('setLoadError sets loading=false and status=initial', () => {
+    useLineageStore.getState().beginLoad();
+    useLineageStore.getState().setLoadError();
+    const s = useLineageStore.getState();
+
+    expect(s.loading).toBe(false);
+    expect(s.status).toBe('initial');
+  });
+
+  it('commitEdits promotes updatedEntityLineage to entityLineage', () => {
+    const updated = { entity: { id: 'u' } } as unknown as EntityLineageResponse;
+    useLineageStore.setState({ updatedEntityLineage: updated });
+    useLineageStore.getState().commitEdits();
+    const s = useLineageStore.getState();
+
+    expect(s.entityLineage).toBe(updated);
+    expect(s.updatedEntityLineage).toBeUndefined();
+  });
+});
+
+describe('entity + rf slices', () => {
+  beforeEach(() => useLineageStore.getState().reset());
+
+  it('setEntityContext sets entity, entityType, entityFqn together', () => {
+    useLineageStore.getState().setEntityContext({
+      entity: { id: 'x' } as unknown as SourceType,
+      entityType: EntityType.TABLE,
+      entityFqn: 'svc.db.schema.tbl',
+    });
+    const s = useLineageStore.getState();
+
+    expect(s.entityFqn).toBe('svc.db.schema.tbl');
+    expect(s.entityType).toBe(EntityType.TABLE);
+    expect(s.entity?.id).toBe('x');
+  });
+
+  it('setReactFlowInstance stores instance and clears on undefined', () => {
+    const inst = { fitView: jest.fn() } as unknown as ReactFlowInstance;
+    useLineageStore.getState().setReactFlowInstance(inst);
+
+    expect(useLineageStore.getState().reactFlowInstance).toBe(inst);
+
+    useLineageStore.getState().setReactFlowInstance(undefined);
+
+    expect(useLineageStore.getState().reactFlowInstance).toBeUndefined();
+  });
+});
+
+describe('filters slice', () => {
+  beforeEach(() => useLineageStore.getState().reset());
+
+  it('setSelectedQuickFilters replaces value', () => {
+    const q = [
+      { key: 'k', label: 'l', value: [] },
+    ] as unknown as ExploreQuickFilterField[];
+    useLineageStore.getState().setSelectedQuickFilters(q);
+
+    expect(useLineageStore.getState().selectedQuickFilters).toBe(q);
+  });
+
+  it('setSelectedQuickFilters accepts a functional updater', () => {
+    useLineageStore.getState().setSelectedQuickFilters([]);
+    useLineageStore
+      .getState()
+      .setSelectedQuickFilters((prev) => [
+        ...prev,
+        { key: 'k' } as unknown as ExploreQuickFilterField,
+      ]);
+
+    expect(useLineageStore.getState().selectedQuickFilters).toHaveLength(1);
+  });
+
+  it('setTimeFilter stores the range', () => {
+    useLineageStore.getState().setTimeFilter({ startTime: 1, endTime: 2 });
+
+    expect(useLineageStore.getState().timeFilter).toEqual({
+      startTime: 1,
+      endTime: 2,
+    });
+  });
+});
+
+describe('ui slice', () => {
+  beforeEach(() => useLineageStore.getState().reset());
+
+  it('open/close delete modal toggles flag', () => {
+    useLineageStore.getState().openDeleteModal();
+
+    expect(useLineageStore.getState().showDeleteModal).toBe(true);
+
+    useLineageStore.getState().closeDeleteModal();
+
+    expect(useLineageStore.getState().showDeleteModal).toBe(false);
+  });
+
+  it('open/close add-edge modal toggles flag', () => {
+    useLineageStore.getState().openAddEdgeModal();
+
+    expect(useLineageStore.getState().showAddEdgeModal).toBe(true);
+
+    useLineageStore.getState().closeAddEdgeModal();
+
+    expect(useLineageStore.getState().showAddEdgeModal).toBe(false);
+  });
+
+  it('open/close drawer toggles flag', () => {
+    useLineageStore.getState().openDrawer();
+
+    expect(useLineageStore.getState().isDrawerOpen).toBe(true);
+
+    useLineageStore.getState().closeDrawer();
+
+    expect(useLineageStore.getState().isDrawerOpen).toBe(false);
+  });
+
+  it('setNewAddedNode stores and clears the node', () => {
+    const n = { id: 'n' } as unknown as Node;
+    useLineageStore.getState().setNewAddedNode(n);
+
+    expect(useLineageStore.getState().newAddedNode).toBe(n);
+
+    useLineageStore.getState().setNewAddedNode(undefined);
+
+    expect(useLineageStore.getState().newAddedNode).toBeUndefined();
+  });
+
+  it('setDeletionState replaces the payload', () => {
+    useLineageStore.getState().setDeletionState({
+      loading: true,
+      status: 'waiting',
+    });
+
+    expect(useLineageStore.getState().deletionState).toEqual({
+      loading: true,
+      status: 'waiting',
+    });
+  });
+});
+
+describe('graph slice (extra setters)', () => {
+  beforeEach(() => useLineageStore.getState().reset());
+
+  it('setEdges replaces the edges array', () => {
+    const e: Edge[] = [{ id: 'e1', source: 'a', target: 'b' }];
+    useLineageStore.getState().setEdges(e);
+
+    expect(useLineageStore.getState().edges).toBe(e);
+  });
+
+  it('setColumnEdges replaces the columnEdges array', () => {
+    const e: Edge[] = [{ id: 'ce1', source: 'a', target: 'b' }];
+    useLineageStore.getState().setColumnEdges(e);
+
+    expect(useLineageStore.getState().columnEdges).toBe(e);
+  });
+
+  it('applyEdgesChange applies reactflow edge changes', () => {
+    useLineageStore
+      .getState()
+      .setEdges([{ id: 'e1', source: 'a', target: 'b' }]);
+    useLineageStore.getState().applyEdgesChange([{ id: 'e1', type: 'remove' }]);
+
+    expect(useLineageStore.getState().edges).toHaveLength(0);
+  });
+});
+
+describe('data slice (extra actions)', () => {
+  beforeEach(() => useLineageStore.getState().reset());
+
+  it('resetData clears data slice and preserves other slices', () => {
+    useLineageStore.getState().setLineageData({
+      entity: { id: 'e' },
+    } as unknown as EntityLineageResponse);
+    useLineageStore
+      .getState()
+      .setNodes([{ id: 'n1', position: { x: 0, y: 0 }, data: {} }]);
+    useLineageStore.getState().resetData();
+    const s = useLineageStore.getState();
+
+    expect(s.entityLineage).toEqual({});
+    expect(s.init).toBe(false);
+    expect(s.loading).toBe(false);
+    expect(s.status).toBe('initial');
+    // graph slice untouched
+    expect(s.nodes).toHaveLength(1);
   });
 });

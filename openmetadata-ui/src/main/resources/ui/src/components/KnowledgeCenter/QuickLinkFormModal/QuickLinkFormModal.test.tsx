@@ -167,6 +167,12 @@ jest.mock('@openmetadata/ui-core-components', () => {
     Modal: ({ children }: { children: ReactNode }) => (
       <div data-testid="modal">{children}</div>
     ),
+    FilterSelect: ({
+      'data-testid': testId,
+    }: {
+      'data-testid'?: string;
+      [key: string]: unknown;
+    }) => <div data-testid={testId} />,
     ModalOverlay: ({
       children,
       isOpen,

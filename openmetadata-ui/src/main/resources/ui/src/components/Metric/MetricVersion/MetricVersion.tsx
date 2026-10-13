@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Box, Tabs } from '@openmetadata/ui-core-components';
-import { Space } from 'antd';
+
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -67,17 +67,22 @@ const MetricVersion: FC<MetricVersionProp> = ({
     );
   }, [currentVersionData]);
 
-  const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
-    useMemo(
-      () =>
-        getCommonExtraInfoForVersionDetails(
-          changeDescription,
-          owners,
-          tier,
-          domains
-        ),
-      [changeDescription, owners, tier, domains]
-    );
+  const {
+    ownerDisplayName,
+    ownerRef,
+    tierDisplayName,
+    domainDisplayName,
+    domainRef,
+  } = useMemo(
+    () =>
+      getCommonExtraInfoForVersionDetails(
+        changeDescription,
+        owners,
+        tier,
+        domains
+      ),
+    [changeDescription, owners, tier, domains]
+  );
 
   const tags = useMemo(
     () => getEntityVersionTags(currentVersionData, changeDescription),
@@ -149,7 +154,13 @@ const MetricVersion: FC<MetricVersionProp> = ({
             <div
               className="entity-tag-right-panel-container tw:flex-[0_0_220px]"
               data-testid="entity-right-panel">
-              <Space className="w-full" direction="vertical" size="large">
+              <Box
+                inline
+                align="stretch"
+                className="layout-space w-full"
+                direction="col"
+                gap={6}
+                itemClassName="layout-space-item">
                 <DataProductsContainer
                   newLook
                   activeDomains={domains}
@@ -166,7 +177,7 @@ const MetricVersion: FC<MetricVersionProp> = ({
                     tagType={TagSource[tagType as TagSource]}
                   />
                 ))}
-              </Space>
+              </Box>
             </div>
           </Box>
         ),
@@ -215,6 +226,7 @@ const MetricVersion: FC<MetricVersionProp> = ({
               deleted={Boolean(currentVersionData.deleted)}
               displayName={displayName}
               domainDisplayName={domainDisplayName}
+              domains={domainRef}
               entityType={EntityType.METRIC}
               ownerDisplayName={ownerDisplayName}
               ownerRef={ownerRef}

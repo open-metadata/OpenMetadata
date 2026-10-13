@@ -15,13 +15,14 @@ Module containing the logic to delete a DAG
 import os
 from pathlib import Path
 
+from airflow import settings
 from airflow.exceptions import DagNotFound
 from flask import Response
 
 try:
-    from airflow.api.common.delete_dag import delete_dag
+    from airflow.api.common.delete_dag import delete_dag as airflow_delete_dag
 except ImportError:
-    from airflow.api.common.experimental.delete_dag import delete_dag
+    from airflow.api.common.experimental.delete_dag import delete_dag as airflow_delete_dag
 
 from openmetadata_managed_apis.api.config import (
     AIRFLOW_DAGS_FOLDER,
@@ -39,13 +40,27 @@ def delete_dag_id(dag_id: str) -> Response:
     We clean:
     - py file in AIRFLOW_DAGS_FOLDER
     - config file in DAG_GENERATED_CONFIGS
-    - DagModel and DagRun entries in airflow db
+    - DAG metadata, versions, runs and task history in airflow db
+
+    Order matters: run Airflow's own delete FIRST so that its FK ordering
+    (a task instance pins the DAG version it ran, so deleting the DAG first
+    is refused when a task is still running) is enforced BEFORE the files
+    are removed. When Airflow refuses (raises AirflowException / RuntimeError
+    on running task instances), the files stay on disk and Airflow's next
+    parse can restore the DAG rather than leaving an orphan.
     :param dag_id: DAG to delete
     :return: API Response
     """
 
     dag_py_file = Path(AIRFLOW_DAGS_FOLDER) / f"{dag_id}.py"
     config_file = Path(DAG_GENERATED_CONFIGS) / f"{dag_id}.json"
+
+    with settings.Session() as session:
+        try:
+            deleted_dags = airflow_delete_dag(dag_id, session=session)
+        except DagNotFound:
+            deleted_dags = 0
+        session.commit()
 
     deleted_file = False
     if dag_py_file.is_file():
@@ -56,14 +71,6 @@ def delete_dag_id(dag_id: str) -> Response:
     if config_file.is_file():
         deleted_config = True
         os.remove(config_file.absolute())  # noqa: PTH107
-
-    # Airflow's own deletion walks every table keyed by the dag, in an order its foreign keys
-    # accept: a task instance pins the dag version it ran, so deleting the dag first is refused.
-    try:
-        delete_dag(dag_id)
-        deleted_dags = 1
-    except DagNotFound:
-        deleted_dags = 0
 
     if deleted_dags > 0 and deleted_file and deleted_config:
         return ApiResponse.success({"message": f"DAG [{dag_id}] has been deleted"})

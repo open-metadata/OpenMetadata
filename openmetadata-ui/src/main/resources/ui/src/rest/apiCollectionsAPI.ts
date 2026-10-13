@@ -13,11 +13,11 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse, PagingWithoutTotal, RestoreRequestType } from 'Models';
-import { QueryVote as VoteType } from '../components/Database/TableQueries/TableQueries.interface';
 import { APICollection } from '../generated/entity/data/apiCollection';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { Include } from '../generated/type/include';
 import { ListParams } from '../interface/API.interface';
+import { QueryVote as VoteType } from '../interface/entity/vote.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './axiosClient';
 

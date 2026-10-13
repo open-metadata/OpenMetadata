@@ -174,23 +174,9 @@ describe('CoreObjectFieldTemplate.utils', () => {
 
   describe('getNonRootPanelClassName', () => {
     it('applies every variant class when its flag is set', () => {
-      const className = getNonRootPanelClassName(
-        false,
-        true,
-        true,
-        true,
-        true,
-        true
-      );
+      const className = getNonRootPanelClassName(false, true, true);
 
       expect(className).toContain('tw:rounded-xl tw:bg-utility-gray-blue-50');
-      expect(className).toContain(
-        'core-object-field-template-sample-data-section'
-      );
-      expect(className).toContain(
-        'core-object-field-template-sample-data-config'
-      );
-      expect(className).toContain('core-object-field-template-storage-config');
       expect(className).toContain(
         'core-object-field-template-gated-credential-block'
       );
@@ -200,14 +186,7 @@ describe('CoreObjectFieldTemplate.utils', () => {
     });
 
     it('keeps only the base classes for a flat plain panel', () => {
-      const className = getNonRootPanelClassName(
-        true,
-        false,
-        false,
-        false,
-        false,
-        false
-      );
+      const className = getNonRootPanelClassName(true, false, false);
 
       expect(className).toBe(
         'core-object-field-template core-object-field-template-non-root tw:flex tw:flex-col tw:w-full tw:min-w-0 tw:gap-4'

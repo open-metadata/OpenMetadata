@@ -41,6 +41,9 @@ const mockTestCaseLastRunBanner = jest.fn(({ nextRunTimestamp }: any) => (
     last-run-banner
   </div>
 ));
+const mockManageButton = jest
+  .fn()
+  .mockReturnValue(<div data-testid="manage-button">manage-button</div>);
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -156,7 +159,7 @@ jest.mock(
   'components/common/EntityPageInfos/ManageButton/ManageButton',
   () => ({
     __esModule: true,
-    default: () => <div data-testid="manage-button">manage-button</div>,
+    default: (props: any) => mockManageButton(props),
   })
 );
 
@@ -174,11 +177,8 @@ jest.mock(
   'components/DataQuality/AddDataQualityTest/components/TestCaseFormDrawer',
   () => ({
     __esModule: true,
-    default: ({ open, variant }: { open?: boolean; variant?: string }) => (
-      <div
-        data-open={String(open)}
-        data-testid="test-case-form-drawer"
-        data-variant={variant}>
+    default: ({ open }: { open?: boolean }) => (
+      <div data-open={String(open)} data-testid="test-case-form-drawer">
         test-case-form-drawer
       </div>
     ),
@@ -257,6 +257,7 @@ const baseHookReturn = {
   hasViewPermission: true,
   hasDeletePermission: true,
   editDisplayNamePermission: true,
+  canRestorePermission: true,
   displayName: 'Test Case Display Name',
   tabs: [
     {
@@ -288,6 +289,7 @@ const baseHookReturn = {
   extraDropdownContent: [],
   handleOwnerChange: jest.fn(),
   handleDisplayNameChange: jest.fn(),
+  handleRestore: jest.fn(),
   getEntityFeedCount: jest.fn(),
   setTestCase: jest.fn(),
 };
@@ -343,10 +345,12 @@ describe('TestCaseDetail', () => {
     expect(screen.getByTestId('result-tab-body')).toBeInTheDocument();
   });
 
-  it('should align the detail header card with the inset tab content', () => {
+  it('should keep the detail header card on the shell header band', () => {
     render(<TestCaseDetail />);
 
-    expect(screen.getByTestId('test-case-header-container')).toHaveClass(
+    // AI padding standard: the header band sits at the shell's 8px padding,
+    // 8px outside the 16px-inset tab content, like the other shell pages.
+    expect(screen.getByTestId('test-case-header-container')).not.toHaveClass(
       'tw:mx-4'
     );
   });
@@ -526,6 +530,61 @@ describe('TestCaseDetail', () => {
     expect(screen.queryByTestId('result-tab-body')).not.toBeInTheDocument();
   });
 
+  describe('tab strip / body synchronization', () => {
+    const getSelectedTab = () =>
+      screen
+        .queryAllByRole('tab')
+        .find((tab) => tab.getAttribute('aria-selected') === 'true');
+
+    it('should highlight the matching tab and render its body when activeTab matches a rendered tab', () => {
+      mockUseTestCaseDetailPage.mockReturnValue({
+        ...baseHookReturn,
+        activeTab: 'issues',
+      });
+
+      render(<TestCaseDetail />);
+
+      expect(screen.getByTestId('incident')).toHaveAttribute(
+        'aria-selected',
+        'true'
+      );
+      expect(getSelectedTab()).toHaveAttribute('data-testid', 'incident');
+      expect(screen.getByTestId('incident-tab-body')).toBeInTheDocument();
+      expect(screen.queryByTestId('result-tab-body')).not.toBeInTheDocument();
+    });
+
+    it('should normalize an unmatched activeTab so the strip highlight and the rendered body agree (version page omits the issues tab)', () => {
+      mockUseTestCaseDetailPage.mockReturnValue({
+        ...baseHookReturn,
+        isVersionPage: true,
+        version: '0.2',
+        tabs: [
+          {
+            key: 'test-case-results',
+            labelProps: { id: 'test-case-result', name: 'Test Case Results' },
+            LabelComponent: MockTabLabel,
+            Tab: MockResultTab,
+          },
+        ],
+        activeTab: 'issues',
+      });
+
+      render(<TestCaseDetail isVersionPage />);
+
+      expect(screen.getByTestId('test-case-result')).toHaveAttribute(
+        'aria-selected',
+        'true'
+      );
+      expect(getSelectedTab()).toHaveAttribute(
+        'data-testid',
+        'test-case-result'
+      );
+      expect(screen.queryByTestId('incident')).not.toBeInTheDocument();
+      expect(screen.getByTestId('result-tab-body')).toBeInTheDocument();
+      expect(screen.queryByTestId('incident-tab-body')).not.toBeInTheDocument();
+    });
+  });
+
   describe('last run banner', () => {
     const incidentHeaderWithTask = {
       ...baseIncidentHeaderData,
@@ -540,9 +599,10 @@ describe('TestCaseDetail', () => {
     it('should render the last run banner above the results tab body', () => {
       render(<TestCaseDetail />);
 
-      expect(
-        screen.getByTestId(LAST_RUN_BANNER_CONTAINER_TEST_ID)
-      ).toBeInTheDocument();
+      // 22px down to the results, as in the mock.
+      expect(screen.getByTestId(LAST_RUN_BANNER_CONTAINER_TEST_ID)).toHaveClass(
+        'tw:pb-5.5'
+      );
       expect(screen.getByTestId(LAST_RUN_BANNER_TEST_ID)).toBeInTheDocument();
       expect(screen.getByTestId('result-tab-body')).toBeInTheDocument();
     });
@@ -609,7 +669,9 @@ describe('TestCaseDetail', () => {
           incidentTask: incidentHeaderWithTask.incidentTask,
           taskLinkInfo: incidentHeaderWithTask.taskLinkInfo,
           testCaseStatusData: incidentHeaderWithTask.testCaseStatusData,
-          parameterValues: [{ name: 'columnCount', value: '10' }],
+          testCase: expect.objectContaining({
+            parameterValues: [{ name: 'columnCount', value: '10' }],
+          }),
           testCaseResult: expect.objectContaining({
             testCaseStatus: 'Success',
           }),
@@ -779,7 +841,7 @@ describe('TestCaseDetail', () => {
     expect(screen.queryByTestId('version-button')).not.toBeInTheDocument();
   });
 
-  it('should render the test case form drawer in modal variant while editing dimensions', () => {
+  it('should render the test case form drawer while editing dimensions', () => {
     mockUseTestCaseDetailPage.mockReturnValue({
       ...baseHookReturn,
       isDimensionEdit: true,
@@ -791,6 +853,48 @@ describe('TestCaseDetail', () => {
 
     expect(drawer).toBeInTheDocument();
     expect(drawer).toHaveAttribute('data-open', 'true');
-    expect(drawer).toHaveAttribute('data-variant', 'modal');
+  });
+
+  describe('ManageButton delete/restore wiring', () => {
+    it('should not force hard-delete-only and should wire restore props for an active test case', () => {
+      render(<TestCaseDetail />);
+
+      expect(mockManageButton).toHaveBeenCalledWith(
+        expect.objectContaining({
+          canDelete: true,
+          canRestore: true,
+          deleted: undefined,
+          entityType: 'testCase',
+          onRestoreEntity: expect.any(Function),
+        })
+      );
+
+      const props = mockManageButton.mock.calls[0][0];
+
+      expect(props.allowSoftDelete).not.toBe(false);
+    });
+
+    it('should wire restore for a soft-deleted test case reached via deep-link', () => {
+      const handleRestore = jest.fn();
+
+      mockUseTestCaseDetailPage.mockReturnValue({
+        ...baseHookReturn,
+        testCase: { ...baseHookReturn.testCase, deleted: true },
+        hasDeletePermission: false,
+        canRestorePermission: true,
+        handleRestore,
+      });
+
+      render(<TestCaseDetail />);
+
+      expect(mockManageButton).toHaveBeenCalledWith(
+        expect.objectContaining({
+          canDelete: false,
+          canRestore: true,
+          deleted: true,
+          onRestoreEntity: handleRestore,
+        })
+      );
+    });
   });
 });
