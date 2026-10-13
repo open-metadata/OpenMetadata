@@ -13,7 +13,10 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.util.List;
+import java.util.Map;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
@@ -49,12 +52,42 @@ public final class AssetTagLabelService {
   private AssetTagLabelService() {}
 
   public static BulkOperationResult addToAssets(Request request) {
-    TagLabelUtil.checkDisabledTags(List.of(request.label()));
-    return AssetEditService.apply(editRequest(request), labelEdit(request, AssetLabelEdits::add));
+    return add(request, AssetLabelEdits::add);
+  }
+
+  /**
+   * Adds a glossary term, and refuses an asset whose labels are mutually exclusive with the tags of
+   * the term's glossary: applying the term from its tab hands those tags to the term.
+   */
+  public static BulkOperationResult addGlossaryTermToAssets(
+      Request request, List<TagLabel> glossaryTags) {
+    return add(
+        request,
+        (asset, entityType, childFqn, label) -> {
+          checkGlossaryTags(asset, entityType, childFqn, glossaryTags);
+          AssetLabelEdits.add(asset, entityType, childFqn, label);
+        });
   }
 
   public static BulkOperationResult removeFromAssets(Request request) {
     return AssetEditService.apply(editRequest(request), labelEdit(request, AssetLabelEdits::strip));
+  }
+
+  private static BulkOperationResult add(Request request, LabelEdit add) {
+    TagLabelUtil.checkDisabledTags(List.of(request.label()));
+    return AssetEditService.apply(editRequest(request), labelEdit(request, add));
+  }
+
+  private static void checkGlossaryTags(
+      EntityInterface<?> asset, String entityType, String childFqn, List<TagLabel> glossaryTags) {
+    if (!nullOrEmpty(glossaryTags)) {
+      String fqn = childFqn == null ? asset.getFullyQualifiedName() : childFqn;
+      String fqnHash = FullyQualifiedName.buildHash(fqn);
+      Map<String, List<TagLabel>> labels =
+          Map.of(fqnHash, AssetLabelEdits.labelsOf(asset, entityType, childFqn));
+      TagLabelUtil.checkMutuallyExclusiveForParentAndSubField(
+          fqn, fqnHash, labels, glossaryTags, false);
+    }
   }
 
   private static AssetEditService.Request editRequest(Request request) {

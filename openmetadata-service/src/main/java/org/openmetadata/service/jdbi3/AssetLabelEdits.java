@@ -46,6 +46,13 @@ final class AssetLabelEdits {
     }
   }
 
+  /** The asset's own labels, or its child field's when {@code childFqn} is set. */
+  static List<TagLabel> labelsOf(EntityInterface<?> asset, String entityType, String childFqn) {
+    List<TagLabel> labels =
+        childFqn == null ? asset.getTags() : child(asset, entityType, childFqn).getTags();
+    return listOrEmpty(labels);
+  }
+
   /**
    * Removes the label from the asset and all its child fields, or only from the subtree of one child
    * field when {@code childFqn} is set.

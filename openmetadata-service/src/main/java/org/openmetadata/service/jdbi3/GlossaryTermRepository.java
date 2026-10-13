@@ -1874,7 +1874,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     checkMutuallyExclusive(glossary.getTags());
 
     BulkOperationResult result =
-        AssetTagLabelService.addToAssets(assetsRequest(term, request, requester));
+        AssetTagLabelService.addGlossaryTermToAssets(
+            assetsRequest(term, request, requester), glossary.getTags());
     applyGlossaryTagsToTerm(term, glossary, request, result);
     return result;
   }

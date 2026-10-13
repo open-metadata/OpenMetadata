@@ -45,6 +45,9 @@ record the event.
 
 - A bulk edit records what the entity's page would: version, `updatedBy`, merge, event, rules. A
   rule added to the PATCH applies to every bulk feature built on it.
+- The glossary term tab keeps one check of its own before the PATCH: an asset whose labels are
+  mutually exclusive with the tags of the term's glossary is refused, because applying the term
+  from the tab hands those tags to the term.
 - Each entity costs a full PATCH. Grouping the search writes of a group is the next step and keeps
   this rule: the write stays the PATCH, only its side effects travel together.
 - Not yet on this rule: the ingestion bulk API, CSV import and the column bulk update (which already

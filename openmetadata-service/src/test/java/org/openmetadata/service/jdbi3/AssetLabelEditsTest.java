@@ -137,6 +137,19 @@ class AssetLabelEditsTest {
   }
 
   @Test
+  void labelsOfReadsTheAssetOrTheNamedColumn() {
+    Column id = column("id", null);
+    Column amount = column("amount", mutable(label(LabelType.MANUAL)));
+    Table table = table(null, id, amount);
+
+    assertTrue(AssetLabelEdits.labelsOf(table, Entity.TABLE, null).isEmpty());
+    assertTrue(AssetLabelEdits.labelsOf(table, Entity.TABLE, TABLE_FQN + ".id").isEmpty());
+    assertEquals(
+        List.of(TAG_FQN),
+        fqns(AssetLabelEdits.labelsOf(table, Entity.TABLE, TABLE_FQN + ".amount")));
+  }
+
+  @Test
   void stripLeavesAnUntaggedFieldsNullTags() {
     Column id = column("id", null);
     Table table = table(mutable(label(LabelType.MANUAL)), id);
