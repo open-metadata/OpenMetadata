@@ -10,7 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Button,
+  EmptyPlaceholder,
+} from '@openmetadata/ui-core-components';
 import { CheckCircle } from '@openmetadata/ui-core-components/icons';
 import { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -28,6 +32,9 @@ import { withMemoryTitle } from './MemoryConflictReviews.utils';
 const MemoryConflictReviews: FC<MemoryConflictReviewsProps> = ({
   reviews,
   isLoading,
+  hasMore,
+  isLoadingMore,
+  onLoadMore,
   onResolved,
 }) => {
   const { t } = useTranslation();
@@ -69,6 +76,17 @@ const MemoryConflictReviews: FC<MemoryConflictReviewsProps> = ({
           />
         </div>
       ))}
+      {hasMore && (
+        <Button
+          className="tw:self-center"
+          color="secondary"
+          data-testid="load-more-reviews"
+          isLoading={isLoadingMore}
+          size="sm"
+          onClick={onLoadMore}>
+          {t('label.load-more')}
+        </Button>
+      )}
       {comparing && (
         <MemoryConflictCompare
           review={comparing}

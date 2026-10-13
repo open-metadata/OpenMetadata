@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { TaskType } from '../../../generated/api/tasks/createTask';
 import { Task, TaskStatus } from '../../../generated/entity/tasks/task';
 import { listMyAssignedTasks, listTasks } from '../../../rest/tasksAPI';
@@ -29,24 +30,45 @@ export interface MemoryConflictReviews {
   reviews: Task[];
   total: number;
   isLoading: boolean;
+  hasMore: boolean;
+  isLoadingMore: boolean;
+  loadMore: () => void;
 }
 
 /**
  * Open memory conflict reviews: every one for an admin, otherwise the ones
- * assigned to the user or their teams.
+ * assigned to the user or their teams. Paged by cursor, a page at a time.
  */
 export const useMemoryConflictReviews = (
   isAdmin: boolean
 ): MemoryConflictReviews => {
-  const { data, isLoading } = useQuery({
-    queryKey: [...CONTEXT_CENTER_MEMORY_REVIEWS_QUERY_KEY, isAdmin],
-    queryFn: () =>
-      isAdmin ? listTasks(REVIEW_QUERY) : listMyAssignedTasks(REVIEW_QUERY),
-  });
+  const { data, isLoading, hasNextPage, isFetchingNextPage, fetchNextPage } =
+    useInfiniteQuery({
+      queryKey: [...CONTEXT_CENTER_MEMORY_REVIEWS_QUERY_KEY, isAdmin],
+      queryFn: ({ pageParam }) => {
+        const page = { ...REVIEW_QUERY, after: pageParam };
+
+        return isAdmin ? listTasks(page) : listMyAssignedTasks(page);
+      },
+      initialPageParam: undefined as string | undefined,
+      getNextPageParam: (lastPage) => lastPage.paging?.after,
+    });
+
+  const reviews = useMemo(
+    () => data?.pages.flatMap((page) => page.data) ?? [],
+    [data]
+  );
 
   return {
-    reviews: data?.data ?? [],
-    total: data?.paging?.total ?? 0,
+    reviews,
+    total: data?.pages[0]?.paging?.total ?? 0,
     isLoading,
+    hasMore: Boolean(hasNextPage),
+    isLoadingMore: isFetchingNextPage,
+    loadMore: () => {
+      if (hasNextPage && !isFetchingNextPage) {
+        fetchNextPage();
+      }
+    },
   };
 };

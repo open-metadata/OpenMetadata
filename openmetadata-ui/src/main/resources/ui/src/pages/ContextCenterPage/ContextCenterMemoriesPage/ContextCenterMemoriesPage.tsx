@@ -154,6 +154,9 @@ const getMemoryEmptyActions = (
   return actions;
 };
 
+const isEmptyOnceLoaded = (isLoading: boolean, count: number) =>
+  !isLoading && count === 0;
+
 const getMemoriesViewFlags = ({
   selectedAsset,
   selectedAuthor,
@@ -162,6 +165,8 @@ const getMemoriesViewFlags = ({
   debouncedSearch,
   isMemoriesLoading,
   memoriesLength,
+  isReviewsLoading,
+  reviewCount,
 }: {
   selectedAsset?: DataAssetOption;
   selectedAuthor?: MemoryFilterOption;
@@ -170,6 +175,8 @@ const getMemoriesViewFlags = ({
   debouncedSearch: string;
   isMemoriesLoading: boolean;
   memoriesLength: number;
+  isReviewsLoading: boolean;
+  reviewCount: number;
 }) => {
   const hasActiveFilters = Boolean(
     selectedAsset ||
@@ -184,8 +191,12 @@ const getMemoriesViewFlags = ({
     hasActiveFilters || (activeFilter && activeFilter !== 'all')
   );
   const isMemoriesFiltered = isMemoriesSearching || isMemoriesFilteredOnly;
+  // Open reviews keep the count cards up: the empty state would hide the
+  // Needs review tab, the only way to reach them.
   const showMemoriesEmptyState =
-    !isMemoriesLoading && !isMemoriesFiltered && memoriesLength === 0;
+    !isMemoriesFiltered &&
+    isEmptyOnceLoaded(isMemoriesLoading, memoriesLength) &&
+    isEmptyOnceLoaded(isReviewsLoading, reviewCount);
 
   return {
     hasActiveFilters,
@@ -335,6 +346,9 @@ const ContextCenterMemoriesPage: FC = () => {
     reviews,
     total: reviewTotal,
     isLoading: isReviewsLoading,
+    hasMore: hasMoreReviews,
+    isLoadingMore: isLoadingMoreReviews,
+    loadMore: loadMoreReviews,
   } = useMemoryConflictReviews(Boolean(currentUser?.isAdmin));
 
   const SORT_OPTIONS = useMemo(
@@ -584,6 +598,8 @@ const ContextCenterMemoriesPage: FC = () => {
     debouncedSearch,
     isMemoriesLoading,
     memoriesLength: memories.length,
+    isReviewsLoading,
+    reviewCount: reviewTotal,
   });
 
   const handleClearFilters = useCallback(() => {
@@ -1200,8 +1216,11 @@ const ContextCenterMemoriesPage: FC = () => {
 
                 {isReviewing ? (
                   <MemoryConflictReviews
+                    hasMore={hasMoreReviews}
                     isLoading={isReviewsLoading}
+                    isLoadingMore={isLoadingMoreReviews}
                     reviews={reviews}
+                    onLoadMore={loadMoreReviews}
                     onResolved={handleReviewResolved}
                   />
                 ) : (

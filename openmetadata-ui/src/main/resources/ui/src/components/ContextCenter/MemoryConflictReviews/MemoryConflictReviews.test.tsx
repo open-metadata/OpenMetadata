@@ -13,6 +13,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { Task } from '../../../generated/entity/tasks/task';
 import MemoryConflictReviews from './MemoryConflictReviews';
+import { MemoryConflictReviewsProps } from './MemoryConflictReviews.types';
 
 const mockCompare = jest.fn(
   ({ review, onClose }: { review: Task; onClose: () => void }) => (
@@ -61,17 +62,20 @@ const review = {
   payload: { memoryTitle: 'Customers need three orders', disputes: [] },
 } as unknown as Task;
 
-const renderReviews = (reviews: Task[] = [review], isLoading = false) => {
-  const onResolved = jest.fn();
+const renderReviews = (props: Partial<MemoryConflictReviewsProps> = {}) => {
+  const handlers = { onResolved: jest.fn(), onLoadMore: jest.fn() };
   render(
     <MemoryConflictReviews
-      isLoading={isLoading}
-      reviews={reviews}
-      onResolved={onResolved}
+      hasMore={false}
+      isLoading={false}
+      isLoadingMore={false}
+      reviews={[review]}
+      {...handlers}
+      {...props}
     />
   );
 
-  return { onResolved };
+  return handlers;
 };
 
 describe('MemoryConflictReviews', () => {
@@ -106,8 +110,22 @@ describe('MemoryConflictReviews', () => {
     expect(screen.queryByTestId('memory-compare-modal')).toBeNull();
   });
 
+  it('loads more reviews on request while more are open', () => {
+    const { onLoadMore } = renderReviews({ hasMore: true });
+
+    fireEvent.click(screen.getByText('label.load-more'));
+
+    expect(onLoadMore).toHaveBeenCalled();
+  });
+
+  it('offers no more reviews once all are listed', () => {
+    renderReviews();
+
+    expect(screen.queryByText('label.load-more')).toBeNull();
+  });
+
   it('says when nothing is waiting for a decision', () => {
-    renderReviews([]);
+    renderReviews({ reviews: [] });
 
     expect(screen.getByText('label.nothing-to-review')).toBeInTheDocument();
     expect(
@@ -117,7 +135,7 @@ describe('MemoryConflictReviews', () => {
   });
 
   it('shows the task list skeleton while loading', () => {
-    renderReviews([review], true);
+    renderReviews({ isLoading: true });
 
     expect(screen.getByTestId('inbox-task-list-skeleton')).toBeInTheDocument();
     expect(screen.queryByTestId('memory-review-memory-three')).toBeNull();

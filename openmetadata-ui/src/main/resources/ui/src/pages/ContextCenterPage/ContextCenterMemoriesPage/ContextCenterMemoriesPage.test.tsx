@@ -114,6 +114,9 @@ const mockUseMemoryConflictReviews = jest.fn().mockReturnValue({
   reviews: [],
   total: 0,
   isLoading: false,
+  hasMore: false,
+  isLoadingMore: false,
+  loadMore: jest.fn(),
 });
 
 jest.mock(
@@ -467,7 +470,57 @@ describe('ContextCenterMemoriesPage — needs review', () => {
       reviews: [{ id: 'task-1' }, { id: 'task-2' }],
       total: 2,
       isLoading: false,
+      hasMore: false,
+      isLoadingMore: false,
+      loadMore: jest.fn(),
     });
+  });
+
+  afterEach(() => {
+    (getListContextMemories as jest.Mock).mockResolvedValue({
+      data: [{ id: 'memory-1', title: 'Test Memory' }],
+      paging: { total: 1 },
+    });
+  });
+
+  it('keeps open reviews reachable when there are no memories to list', async () => {
+    (getListContextMemories as jest.Mock).mockResolvedValue({
+      data: [],
+      paging: { total: 0 },
+    });
+    renderPage();
+
+    fireEvent.click(
+      await screen.findByTestId('memory-count-card-needs-review')
+    );
+
+    expect(await screen.findByTestId('memory-reviews')).toBeInTheDocument();
+    expect(
+      screen.queryByText('message.context-center-memories-empty-subtitle')
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows the empty state once there are neither memories nor reviews', async () => {
+    (getListContextMemories as jest.Mock).mockResolvedValue({
+      data: [],
+      paging: { total: 0 },
+    });
+    mockUseMemoryConflictReviews.mockReturnValue({
+      reviews: [],
+      total: 0,
+      isLoading: false,
+      hasMore: false,
+      isLoadingMore: false,
+      loadMore: jest.fn(),
+    });
+    renderPage();
+
+    expect(
+      await screen.findByText('message.context-center-memories-empty-subtitle')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('memory-count-card-needs-review')
+    ).not.toBeInTheDocument();
   });
 
   it('counts the open reviews and lists them in their own tab', async () => {

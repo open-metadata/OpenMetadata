@@ -43,5 +43,8 @@ export interface ConflictRecency {
 export interface MemoryConflictReviewsProps {
   reviews: Task[];
   isLoading: boolean;
+  hasMore: boolean;
+  isLoadingMore: boolean;
+  onLoadMore: () => void;
   onResolved: () => void;
 }
