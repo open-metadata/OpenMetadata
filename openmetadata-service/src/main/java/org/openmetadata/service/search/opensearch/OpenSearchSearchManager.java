@@ -1661,7 +1661,12 @@ public class OpenSearchSearchManager implements SearchManagementClient {
                           // Add the original query as a should clause to preserve high scores
                           b.should(originalQuery);
                           // Add parent term queries as should clauses to fetch hierarchy
-                          parentTermQueries.forEach(b::should);
+                          if (indexName.equalsIgnoreCase(glossaryTermIndex)
+                              || indexName.equalsIgnoreCase(glossaryTermAlias)) {
+                            b.should(withZeroScore(parentTermQueries));
+                          } else {
+                            parentTermQueries.forEach(b::should);
+                          }
                           if (indexName.equalsIgnoreCase(glossaryTermIndex)) {
                             b.must(
                                 m ->
@@ -1716,7 +1721,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
 
     if (indexName.equalsIgnoreCase(glossaryTermIndex)
         || indexName.equalsIgnoreCase(glossaryTermAlias)) {
-      response = buildGlossaryTermSearchHierarchy(searchResponse);
+      response = buildGlossaryTermSearchHierarchy(indexName, searchResponse);
     } else if (indexName.equalsIgnoreCase(domainIndex) || indexName.equalsIgnoreCase(domainAlias)) {
       response = buildDomainSearchHierarchy(searchResponse);
     }
@@ -1724,7 +1729,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
   }
 
   private List<EntityHierarchy> buildGlossaryTermSearchHierarchy(
-      SearchResponse<JsonData> searchResponse) {
+      String indexName, SearchResponse<JsonData> searchResponse) {
     Map<String, EntityHierarchy> termMap = new LinkedHashMap<>();
     Map<String, EntityHierarchy> rootTerms = new LinkedHashMap<>();
 
@@ -1748,6 +1753,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       termMap.putIfAbsent(term.getFullyQualifiedName(), term);
     }
 
+    addMissingParents(indexName, termMap);
     termMap.putAll(rootTerms);
 
     termMap
@@ -1773,6 +1779,70 @@ public class OpenSearchSearchManager implements SearchManagementClient {
             });
 
     return new ArrayList<>(rootTerms.values());
+  }
+
+  // Parents only draw the tree, so they must not take page slots from real matches (the ones that
+  // miss the page are fetched by addMissingParents)
+  private static Query withZeroScore(List<Query> parentTermQueries) {
+    return Query.of(
+        q ->
+            q.constantScore(
+                c ->
+                    c.filter(f -> f.bool(b -> b.should(parentTermQueries).minimumShouldMatch("1")))
+                        .boost(0f)));
+  }
+
+  // A hit whose parent ranked below the page cut would otherwise be dropped from the tree
+  private void addMissingParents(String indexName, Map<String, EntityHierarchy> termMap) {
+    List<FieldValue> missing =
+        termMap.keySet().stream()
+            .flatMap(fqn -> parentTermFqns(fqn).stream())
+            .filter(fqn -> !termMap.containsKey(fqn))
+            .distinct()
+            .map(FieldValue::of)
+            .toList();
+    if (!missing.isEmpty()) {
+      for (EntityHierarchy parent : fetchApprovedTermsByFqn(indexName, missing)) {
+        parent.setChildren(new ArrayList<>());
+        termMap.putIfAbsent(parent.getFullyQualifiedName(), parent);
+      }
+    }
+  }
+
+  private List<EntityHierarchy> fetchApprovedTermsByFqn(String indexName, List<FieldValue> fqns) {
+    Query byFqn =
+        Query.of(q -> q.terms(t -> t.field("fullyQualifiedName").terms(tv -> tv.value(fqns))));
+    Query approved =
+        Query.of(q -> q.match(m -> m.field("entityStatus").query(FieldValue.of("Approved"))));
+    try {
+      return client
+          .search(
+              s ->
+                  s.index(indexName)
+                      .size(fqns.size())
+                      .query(q -> q.bool(b -> b.filter(List.of(byFqn, approved)))),
+              JsonData.class)
+          .hits()
+          .hits()
+          .stream()
+          .filter(hit -> hit.source() != null)
+          .map(hit -> JsonUtils.readValue(hit.source().toJson().toString(), EntityHierarchy.class))
+          .toList();
+    } catch (IOException | OpenSearchException e) {
+      LOG.warn("Could not fetch parent glossary terms for the search hierarchy", e);
+      return List.of();
+    }
+  }
+
+  // Term-level parents only: the glossary (single-part FQN) is the root and comes from each hit
+  private static List<String> parentTermFqns(String fqn) {
+    List<String> parents = new ArrayList<>();
+    for (String parent = getParentFQN(fqn);
+        parent != null && getParentFQN(parent) != null;
+        parent = getParentFQN(parent)) {
+      parents.add(parent);
+    }
+    return parents;
   }
 
   private List<EntityHierarchy> buildDomainSearchHierarchy(

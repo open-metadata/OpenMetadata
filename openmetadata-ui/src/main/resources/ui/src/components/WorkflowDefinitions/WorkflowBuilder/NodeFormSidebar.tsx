@@ -38,6 +38,7 @@ interface NodeFormSidebarProps {
   onWorkflowMetadataUpdate?: (metadata: WorkflowMetadata) => void;
   setNodes?: (nodes: Node[] | ((nodes: Node[]) => Node[])) => void;
   setEdges?: (edges: Edge[] | ((edges: Edge[]) => Edge[])) => void;
+  hasGitSinkNode?: boolean;
   currentWorkflowConfig?: {
     dataAssets?: string[];
     triggerType?: string;
@@ -62,6 +63,7 @@ export const NodeFormSidebar: React.FC<NodeFormSidebarProps> = ({
   onWorkflowMetadataUpdate,
   setNodes,
   setEdges,
+  hasGitSinkNode,
   currentWorkflowConfig,
 }) => {
   const { t } = useTranslation();
@@ -110,6 +112,7 @@ export const NodeFormSidebar: React.FC<NodeFormSidebarProps> = ({
   if (isStartNode(node)) {
     return (
       <NodeConfigSidebar
+        hasGitSinkNode={hasGitSinkNode}
         isOpen={isOpen}
         node={node}
         setEdges={setEdges}

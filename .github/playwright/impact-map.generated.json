@@ -3613,6 +3613,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/WorkflowDefinitions/WorkflowBuilder/CustomControls.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/Workflows/GitSinkTokenMask.spec.ts",
         "playwright/e2e/Features/Workflows/NoOpWorkflowNodeConfig.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts"
       ]
@@ -3622,6 +3623,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/WorkflowDefinitions/WorkflowBuilder/NodeConfigSidebar.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/Workflows/GitSinkTokenMask.spec.ts",
         "playwright/e2e/Features/Workflows/NoOpWorkflowNodeConfig.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts"
       ]
@@ -3631,6 +3633,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/WorkflowDefinitions/WorkflowBuilder/NodeFormSidebar.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/Workflows/GitSinkTokenMask.spec.ts",
         "playwright/e2e/Features/Workflows/NoOpWorkflowNodeConfig.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts"
       ]
@@ -3640,6 +3643,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/WorkflowDefinitions/WorkflowBuilder/WorkflowControls.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/Workflows/GitSinkTokenMask.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts"
       ]
     },
@@ -3657,6 +3661,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/WorkflowDefinitions/WorkflowBuilder/WorkflowHeader.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/Workflows/GitSinkTokenMask.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts"
       ]
     },
@@ -3689,6 +3694,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/WorkflowDefinitions/WorkflowBuilder/forms/FormActionButtons.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/Workflows/GitSinkTokenMask.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts"
       ]
     },
@@ -3699,6 +3705,14 @@
       "specs": [
         "playwright/e2e/Features/Workflows/NoOpWorkflowNodeConfig.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/WorkflowDefinitions/WorkflowBuilder/forms/SinkTaskForm.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/Workflows/GitSinkTokenMask.spec.ts"
       ]
     },
     {
@@ -5388,6 +5402,7 @@
         "playwright/e2e/Features/TierWidget.spec.ts",
         "playwright/e2e/Features/Topic.spec.ts",
         "playwright/e2e/Features/UserProfileOnlineStatus.spec.ts",
+        "playwright/e2e/Features/Workflows/GitSinkTokenMask.spec.ts",
         "playwright/e2e/Features/Workflows/NoOpWorkflowNodeConfig.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowExecutionHistoryEntity.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts",

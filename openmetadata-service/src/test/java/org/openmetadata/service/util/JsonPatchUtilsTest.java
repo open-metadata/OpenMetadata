@@ -1,6 +1,7 @@
 package org.openmetadata.service.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
@@ -340,6 +341,44 @@ class JsonPatchUtilsTest {
     // Assertions
     assertTrue(operations.contains(MetadataOperation.EDIT_CERTIFICATION));
     assertEquals(1, operations.size());
+  }
+
+  @Test
+  void copyAndMoveReadFromAnotherPath() {
+    String tokenPath = "/nodes/1/config/sinkConfig/credentials/token";
+    String copy =
+        """
+        [{"op": "copy", "from": "%s", "path": "/description"}]
+        """
+            .formatted(tokenPath);
+    String move =
+        """
+        [{"op": "replace", "path": "/displayName", "value": "renamed"},
+         {"op": "move", "from": "%s", "path": "/description"}]
+        """
+            .formatted(tokenPath);
+
+    assertTrue(JsonPatchUtils.readsFromAnotherPath(jsonPatch(copy)));
+    assertTrue(JsonPatchUtils.readsFromAnotherPath(jsonPatch(move)));
+  }
+
+  @Test
+  void addReplaceRemoveAndTestDoNotReadFromAnotherPath() {
+    String patch =
+        """
+        [{"op": "add", "path": "/displayName", "value": "name"},
+         {"op": "replace", "path": "/description", "value": "from"},
+         {"op": "remove", "path": "/tags/0"},
+         {"op": "test", "path": "/name", "value": "from"}]
+        """;
+
+    assertFalse(JsonPatchUtils.readsFromAnotherPath(jsonPatch(patch)));
+  }
+
+  private static JsonPatch jsonPatch(String patch) {
+    try (JsonReader reader = Json.createReader(new StringReader(patch))) {
+      return Json.createPatch(reader.readArray());
+    }
   }
 
   private static @NotNull String getPatchString(long currentTime, String operationString) {
