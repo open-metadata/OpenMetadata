@@ -1,4 +1,5 @@
-import type { FC, MouseEventHandler } from 'react';
+import { shouldClientNavigate, useRouter } from '@react-aria/utils';
+import type { FC, MouseEvent, MouseEventHandler } from 'react';
 import { Pressable } from 'react-aria-components';
 import { Tooltip } from '@/components/base/tooltip/tooltip';
 import { cx } from '@/utils/cx';
@@ -45,6 +46,23 @@ export const NavItemButton = ({
   tooltipPlacement = 'right',
   onClick,
 }: NavItemButtonProps) => {
+  const router = useRouter();
+
+  // A plain anchor would reload the whole app; under a RouterProvider, hand
+  // same-tab clicks to the client router the way react-aria's Link does.
+  const handleClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    onClick?.(event);
+    if (
+      href &&
+      !event.defaultPrevented &&
+      !router.isNative &&
+      shouldClientNavigate(event.currentTarget, event)
+    ) {
+      event.preventDefault();
+      router.open(event.currentTarget, event, href, undefined);
+    }
+  };
+
   return (
     <Tooltip placement={tooltipPlacement} title={label}>
       <Pressable>
@@ -60,7 +78,7 @@ export const NavItemButton = ({
             className
           )}
           href={href}
-          onClick={onClick}>
+          onClick={handleClick}>
           <Icon
             aria-hidden="true"
             className={cx(
