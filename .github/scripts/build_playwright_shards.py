@@ -14,6 +14,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable
 
+import playwright_quarantine
+
 
 FULL_PROJECTS = {
     "chromium",
@@ -198,7 +200,45 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--history", type=Path, action="append", default=[])
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--github-output", type=Path)
+    parser.add_argument(
+        "--quarantine",
+        type=Path,
+        help="quarantine.json; its tests are dropped from the plan unless "
+        "--run-quarantined is set. Validated either way.",
+    )
+    parser.add_argument(
+        "--run-quarantined",
+        action="store_true",
+        help="Keep quarantined tests (the nightly schedule runs them).",
+    )
     return parser.parse_args()
+
+
+def apply_quarantine(
+    report: dict[str, Any], quarantine: Path | None, run_quarantined: bool
+) -> dict[str, Any]:
+    """Validate the quarantine file and drop its tests unless they should run.
+
+    An invalid file fails planning, so an entry cannot land without its issue.
+    """
+    if quarantine is None:
+        return report
+    try:
+        entries = playwright_quarantine.load_quarantine(quarantine)
+    except playwright_quarantine.QuarantineError as error:
+        raise SystemExit(f"Invalid Playwright quarantine file {quarantine}: {error}")
+    if run_quarantined or not entries:
+        print(f"Quarantine: {len(entries)} entr(ies), all kept in this plan.")
+        return report
+    report, removed = playwright_quarantine.strip_quarantined(report, entries)
+    for entry in playwright_quarantine.unmatched_entries(entries, removed):
+        print(
+            f"::warning file={quarantine}::Quarantine entry `{entry.spec}` › "
+            f"{entry.title} matches no listed test; remove or update it.",
+            file=sys.stderr,
+        )
+    print(f"Quarantine: dropped {len(removed)} test(s) from this plan.")
+    return report
 
 
 def iter_specs(suite: dict[str, Any]) -> Iterable[dict[str, Any]]:
@@ -750,6 +790,7 @@ def write_plan(
 def main() -> None:
     args = parse_args()
     report = json.loads(args.test_list.read_text(encoding="utf-8"))
+    report = apply_quarantine(report, args.quarantine, args.run_quarantined)
     selection = json.loads(args.selection.read_text(encoding="utf-8"))
     test_weights, identity_weights = load_history_with_baseline(args.history)
     discovered_units = discover_units(report)

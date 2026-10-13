@@ -1,0 +1,5 @@
+{
+  "$comment": "Playwright tests excluded from PR and merge-queue runs; the nightly schedule still runs them without failing on them. Each entry needs spec (relative to playwright/e2e/), title (describe › test, as playwright-flaky-tests.json lists it), issue (GitHub issue URL tracking the fix) and added (YYYY-MM-DD). See .github/playwright/README.md.",
+  "version": 1,
+  "tests": []
+}

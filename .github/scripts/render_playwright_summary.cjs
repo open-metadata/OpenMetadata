@@ -30,9 +30,41 @@ function redactSecrets(value) {
     .replace(JSON_WEB_TOKEN_PATTERN, '<redacted>');
 }
 
+// Tests in .github/playwright/quarantine.json are planned only for the nightly
+// schedule. Their failures there are listed but do not fail the check, so the
+// quarantine keeps collecting evidence without turning main red. Keys match
+// playwright_quarantine.py: the spec below `playwright/e2e/` and the
+// describe › test title path.
+const SPEC_ROOT = 'playwright/e2e/';
+
+function quarantineKey(file, titlePath) {
+  const normalized = String(file ?? '').replace(/\\/g, '/');
+  const index = normalized.lastIndexOf(SPEC_ROOT);
+  const spec = index >= 0 ? normalized.slice(index + SPEC_ROOT.length) : normalized;
+  return `${spec}\u0000${titlePath}`;
+}
+
+// A missing or unreadable file means no test is discounted: a quarantined
+// failure then fails the check, which is the safe direction.
+function loadQuarantineKeys(fs, filePath) {
+  if (!filePath || !fs.existsSync(filePath)) {
+    return new Set();
+  }
+  try {
+    const { tests } = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    return new Set(
+      (Array.isArray(tests) ? tests : []).map(entry => quarantineKey(entry.spec, entry.title))
+    );
+  } catch (error) {
+    console.warn(`Could not read the Playwright quarantine file ${filePath}: ${error.message}`);
+    return new Set();
+  }
+}
+
 async function renderPlaywrightSummary({ github, context, core }) {
   const fs = require('fs');
   const path = require('path');
+  const quarantineKeys = loadQuarantineKeys(fs, process.env.PLAYWRIGHT_QUARANTINE_FILE);
 
   const checkChangesResult = process.env.CHECK_CHANGES_RESULT;
   const cacheKeysResult = process.env.CACHE_KEYS_RESULT;
@@ -375,10 +407,17 @@ async function renderPlaywrightSummary({ github, context, core }) {
 
       const allTests = [];
       const lifecycleTests = [];
-      function collectTests(suite, filePath) {
+      function collectTests(suite, filePath, parentTitles) {
         const file = suite.file || filePath || '';
+        // The file suite's own title is the file name; describes below it
+        // form the title path, as in playwright_quarantine.py.
+        const suiteTitle = String(suite.title || '').trim();
+        const isFileSuite = suiteTitle === file.replace(/\\/g, '/') ||
+          suiteTitle === file.replace(/\\/g, '/').split('/').pop();
+        const titles = suiteTitle && !isFileSuite ? [...parentTitles, suiteTitle] : parentTitles;
         for (const spec of (suite.specs || [])) {
           const specFile = spec.file || file;
+          const titlePath = [...titles, String(spec.title || '').trim()].join(' › ');
           for (const test of (spec.tests || [])) {
             const results = test.results || [];
             const lastResult = results[results.length - 1] || {};
@@ -387,6 +426,7 @@ async function renderPlaywrightSummary({ github, context, core }) {
               title: spec.title,
               file: specFile,
               status: test.status,
+              quarantined: quarantineKeys.has(quarantineKey(specFile, titlePath)),
               retries: results.length - 1,
               error: redactSecrets(
                 lastResult.error?.message || firstResult.error?.message || ''
@@ -400,11 +440,11 @@ async function renderPlaywrightSummary({ github, context, core }) {
           }
         }
         for (const child of (suite.suites || [])) {
-          collectTests(child, file);
+          collectTests(child, file, titles);
         }
       }
       for (const suite of (report.suites || [])) {
-        collectTests(suite, '');
+        collectTests(suite, '', []);
       }
 
       const knownStatuses = new Set(['expected', 'unexpected', 'flaky', 'skipped']);
@@ -434,7 +474,8 @@ async function renderPlaywrightSummary({ github, context, core }) {
       }
       shardResults.push({
         shard: shardNum,
-        genuine: allTests.filter(t => t.status === 'unexpected'),
+        genuine: allTests.filter(t => t.status === 'unexpected' && !t.quarantined),
+        quarantinedFailures: allTests.filter(t => t.status === 'unexpected' && t.quarantined),
         flaky: allTests.filter(t => t.status === 'flaky'),
         passed: allTests.filter(t => t.status === 'expected'),
         skipped: allTests.filter(t => t.status === 'skipped'),
@@ -509,9 +550,10 @@ async function renderPlaywrightSummary({ github, context, core }) {
     const shardResult = resultsByShard.get(shard);
     const genuineFailures = shardResult?.genuine.length || 0;
     const lifecycleFailures = shardResult?.lifecycleFailures.length || 0;
+    const quarantinedFailures = shardResult?.quarantinedFailures.length || 0;
     if (
       steps.tests !== 'success' &&
-      !(steps.tests === 'failure' && (genuineFailures > 0 || lifecycleFailures > 0))
+      !(steps.tests === 'failure' && (genuineFailures > 0 || lifecycleFailures > 0 || quarantinedFailures > 0))
     ) {
       addInfrastructureIssue(`Shard ${shard} test execution finished with status \`${steps.tests || 'not-run'}\` without a reported test failure.`);
     }
@@ -519,6 +561,10 @@ async function renderPlaywrightSummary({ github, context, core }) {
 
   const totalPassed = shardResults.reduce((s, r) => s + r.passed.length, 0);
   const totalFailed = shardResults.reduce((s, r) => s + r.genuine.length, 0);
+  const totalQuarantinedFailed = shardResults.reduce(
+    (sum, result) => sum + result.quarantinedFailures.length,
+    0
+  );
   const totalFlaky = shardResults.reduce((s, r) => s + r.flaky.length, 0);
   const totalSkipped = shardResults.reduce((s, r) => s + r.skipped.length, 0);
   const totalLifecycleFlaky = shardResults.reduce(
@@ -526,7 +572,12 @@ async function renderPlaywrightSummary({ github, context, core }) {
     0
   );
   const zeroAttemptSkippedTests = coverage?.zeroAttemptSkippedTests ?? [];
-  if (upstreamResult === 'failure' && totalFailed === 0 && infrastructureIssues.length === 0) {
+  if (
+    upstreamResult === 'failure' &&
+    totalFailed === 0 &&
+    totalQuarantinedFailed === 0 &&
+    infrastructureIssues.length === 0
+  ) {
     addInfrastructureIssue('The Playwright shard matrix failed outside a reported test failure.');
   }
 
@@ -746,6 +797,25 @@ async function renderPlaywrightSummary({ github, context, core }) {
     }
   }
 
+  const allQuarantined = shardResults.flatMap(
+    r => r.quarantinedFailures.map(t => ({ ...t, shard: r.shard }))
+  );
+  if (allQuarantined.length > 0) {
+    lines.push(`<details><summary>🔒 ${allQuarantined.length} quarantined test failure(s) (do not fail this check)</summary>`);
+    lines.push('');
+    for (const t of allQuarantined.slice(0, 30)) {
+      const shortFile = t.file.replace(/.*playwright\/e2e\//, '');
+      lines.push(`- \`${shortFile}\` › ${t.title} (shard ${t.shard})`);
+    }
+    if (allQuarantined.length > 30) {
+      lines.push(`- ... and ${allQuarantined.length - 30} more`);
+    }
+    lines.push('');
+    lines.push('Listed in `.github/playwright/quarantine.json`; see each entry\'s issue.');
+    lines.push('</details>');
+    lines.push('');
+  }
+
   const allFlaky = shardResults.flatMap(r => r.flaky.map(t => ({ ...t, shard: r.shard })));
   if (allFlaky.length > 0) {
     lines.push(`<details><summary>🟡 ${allFlaky.length} flaky test(s) (passed on retry)</summary>`);
@@ -960,4 +1030,4 @@ async function renderPlaywrightSummary({ github, context, core }) {
   }
 }
 
-module.exports = { renderPlaywrightSummary, redactSecrets };
+module.exports = { renderPlaywrightSummary, redactSecrets, quarantineKey, loadQuarantineKeys };

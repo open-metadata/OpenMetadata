@@ -11,6 +11,10 @@
 
 # Dispatcher for the postgresql Playwright E2E PR gate.
 #
+# Pull requests run a targeted plan (smoke + changed specs + impact-mapped
+# specs, capped so a PR never escalates to the full suite); the merge queue
+# and the nightly schedule run the full suite.
+#
 # The heavy lifting (gate → build → shard) lives in
 # `playwright-e2e-reusable.yml`; this file adds two top-level jobs that
 # MUST stay in the caller so branch protection can find them by their
@@ -62,16 +66,26 @@ on:
         required: true
         type: boolean
         default: true
-  # Playwright runs only in the merge queue. PRs still trigger the workflow
-  # because `playwright-summary` is a required check: every job is skipped by
-  # its `if:` (no runner starts), and GitHub counts a skipped required check
-  # as passing. With no PR trigger the check would hang at "Expected — waiting".
+  # PRs run a TARGETED plan (smoke + changed specs + impact-mapped specs); the
+  # merge queue runs the full suite. `playwright-summary` is a required check,
+  # so it must report on every PR: fork PRs, drafts and PRs with no `e2e` path
+  # change start no test runners and the summary reports green (see the gate
+  # and check-changes jobs in the reusable). pull_request_target stays off on
+  # purpose (#34740): fork PRs rely on the queue.
+  #
+  # `labeled` lets a same-repo PR whose summary went red only because the
+  # `safe to test` label was missing (the build's "Verify PR labels" step)
+  # recover by adding it. Any other label skips both jobs below: the reusable
+  # is never called, so its concurrency group (which already exempts labeled
+  # events from cancel-in-progress) never sees the event and an in-flight run
+  # for the PR keeps going.
   pull_request:
     types:
       - opened
       - synchronize
       - reopened
       - ready_for_review
+      - labeled
 
 permissions:
   actions: read
@@ -80,7 +94,7 @@ permissions:
 
 jobs:
   playwright:
-    if: ${{ github.event_name != 'pull_request' }}
+    if: ${{ github.event.action != 'labeled' || github.event.label.name == 'safe to test' }}
     uses: ./.github/workflows/playwright-e2e-reusable.yml
     # secrets: inherit passes the full TEST_* / GITHUB_TOKEN set into the
     # reusable without re-listing each one; the reusable only reads what it
@@ -106,9 +120,18 @@ jobs:
       # be fixed.
       retries: 1
 
+  # An ignored label event must not report under the required check's name:
+  # a skipped `playwright-summary` counts as passing and would replace the
+  # real run's result on the same commit. It reports as a skipped check with
+  # a different name instead.
   playwright-summary:
-    name: playwright-summary
-    if: ${{ always() && !cancelled() && github.event_name != 'pull_request' }}
+    name: >-
+      ${{
+        (github.event.action == 'labeled' && github.event.label.name != 'safe to test')
+        && 'playwright-summary (ignored label event)'
+        || 'playwright-summary'
+      }}
+    if: ${{ always() && !cancelled() && (github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
     needs: [playwright]
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -384,6 +407,9 @@ jobs:
         continue-on-error: true
         run: echo "PW_REPORT_STARTED_AT=$(date +%s)" >> "$GITHUB_ENV"
 
+      # The same pass also writes a merged JSON report: it is the only per-test
+      # record of a green merge-group run (queue shards upload results JSON
+      # only on failure), and the flaky-test listing below reads it.
       - name: Merge HTML report
         id: merge-report
         if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
@@ -391,13 +417,40 @@ jobs:
         working-directory: openmetadata-ui/src/main/resources/ui
         env:
           PLAYWRIGHT_HTML_OUTPUT_DIR: ${{ runner.temp }}/playwright-report
+          PLAYWRIGHT_JSON_OUTPUT_FILE: ${{ runner.temp }}/playwright-merged-results/results.json
         run: |
           if ! find "$RUNNER_TEMP/playwright-blobs" -type f -name '*.zip' -print -quit | grep -q .; then
             echo "No Playwright blob reports were uploaded" >&2
             exit 1
           fi
           timeout --foreground --signal=TERM --kill-after=30s 3m \
-            npx playwright merge-reports --reporter=html "$RUNNER_TEMP/playwright-blobs"
+            npx playwright merge-reports --reporter=html,json "$RUNNER_TEMP/playwright-blobs"
+
+      # Reporting only: tests that failed and then passed on retry, from every
+      # shard, into the job summary and an artifact the daily CI health report
+      # aggregates. Never fails the check.
+      - name: List flaky tests
+        id: list-flaky
+        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        continue-on-error: true
+        run: |
+          timeout --foreground --signal=TERM --kill-after=30s 1m \
+            python3 .github/scripts/playwright_flaky_tests.py \
+              --report-glob "$RUNNER_TEMP/playwright-merged-results/results.json" \
+              --report-glob "$GITHUB_WORKSPACE/results/playwright-results-json-*/results.json" \
+              --output "$RUNNER_TEMP/playwright-flaky/playwright-flaky-tests.json" \
+              --summary "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload flaky tests
+        if: ${{ always() && steps.list-flaky.outcome == 'success' }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-flaky-tests
+          path: ${{ runner.temp }}/playwright-flaky/playwright-flaky-tests.json
+          overwrite: true
+          retention-days: 8
+          if-no-files-found: ignore
 
       - name: Merge Playwright timing history
         id: merge-timings
@@ -630,8 +683,22 @@ jobs:
           echo "::error::gate did not succeed (result=${{ needs.playwright.outputs.gate_result }}, should_run=${{ needs.playwright.outputs.gate_should_run }}). Refusing synthetic green — this playwright-summary must not report success without a valid gate decision."
           exit 1
 
+      # A PR whose diff matches no `e2e` path skips every job after
+      # check-changes, and the renderer below would count each skipped job as
+      # a CI failure. Match the exact 'success' / 'false' strings so a failed
+      # or unset change detection still falls through to the renderer and
+      # fails loudly instead of reporting a synthetic green.
+      - name: Report a PR without E2E-relevant changes as green
+        id: no-e2e-changes
+        if: ${{ github.event_name == 'pull_request' && needs.playwright.outputs.check_changes_result == 'success' && needs.playwright.outputs.check_changes_e2e == 'false' }}
+        run: |
+          {
+            echo "No path in this PR matches the e2e filter in playwright-e2e-reusable.yml, so Playwright did not run."
+            echo "The merge queue still runs the full suite before merge."
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Render consolidated job summary and gate on results
-        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.gate_should_run == 'true' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.gate_should_run == 'true' && steps.no-e2e-changes.outcome != 'success' }}
         uses: actions/github-script@v9
         env:
           CHECK_CHANGES_RESULT: ${{ needs.playwright.outputs.check_changes_result }}
@@ -661,6 +728,9 @@ jobs:
           DOCKER_COMPOSE_CHANGED: ${{ needs.playwright.outputs.check_changes_docker_compose }}
           EXPECTED_MATRIX: ${{ needs.playwright.outputs.plan_playwright_matrix }}
           COMMENT_PAYLOAD_PATH: ${{ runner.temp }}/playwright-pr-comment/summary.json
+          # Read from this job's own checkout: failures of these tests are
+          # reported but do not fail the check (only the schedule runs them).
+          PLAYWRIGHT_QUARANTINE_FILE: .github/playwright/quarantine.json
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |

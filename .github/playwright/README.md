@@ -2,7 +2,7 @@
 
 `playwright-postgresql-e2e.yml` has two execution modes:
 
-- Pull requests run the Basic smoke list, directly changed specs, and suites selected by `impact-map.json`. Shared test infrastructure and unmapped changes add one canary from every supported project.
+- Pull requests run the Basic smoke list, directly changed specs, and suites selected by `impact-map.json`. Shared test infrastructure and unmapped changes add one canary from every supported project. A PR never escalates to the full suite: unmapped code paths keep it on that plan (`escalationCapped` in the selection), because the merge queue runs the full suite anyway. Fork PRs, drafts, and PRs that match no `e2e` path in the reusable's change filter start no test runners and report `playwright-summary` green.
 - Merge queue, scheduled, and manual full-suite runs execute all projects covered by this workflow. Manual runs can opt out of the full suite and can select HTTP/1.1 or HTTP/2.
 
 The manual HTTP/2 benchmark applies to browser/server lanes. Dedicated Airflow shards stay on HTTP/1.1 because the fixture's self-signed browser certificate is not part of generated ingestion workflow configuration.
@@ -11,7 +11,7 @@ SSO stays in its dedicated workflow, while knowledge graph and ontology share on
 
 ## Local pre-merge runs
 
-PR checks run unit tests only; Playwright runs in the merge queue. Before requesting review, run the specs the PR impacts on your machine against a local stack (`./docker/run_local_docker.sh -m ui -d mysql`):
+PR checks run only the targeted Playwright plan above; the merge queue runs the full suite. Before requesting review, run the specs the PR impacts on your machine against a local stack (`./docker/run_local_docker.sh -m ui -d mysql`):
 
 ```bash
 make playwright_affected                                         # list impacted specs + the exact command
@@ -21,7 +21,7 @@ make playwright_affected_run ARGS="--update-pr --workers=2"      # also upsert t
 
 `.github/scripts/plan_local_playwright.py` diffs the branch against `origin/main` (`--base` to change it; includes uncommitted and untracked files) and feeds that list to `select_playwright_tests.py` as a `pull_request` event, so the selection is the same targeted plan CI computes from `impact-map.json` and `impact-map.generated.json`: smoke, directly changed specs, impact-mapped specs, and canaries when shared infrastructure or unmapped files change. Delegated specs stay with their dedicated workflows.
 
-Where CI escalates unmapped code paths to the full suite, the local plan instead runs the targeted set plus one canary per project and lists the unmapped files as impact-map gaps. Close a gap by adding a mapping here rather than running the full suite locally.
+Unmapped code paths keep both the PR run and the local plan on the targeted set plus one canary per project, and the local plan lists the unmapped files as impact-map gaps. Close a gap by adding a mapping here rather than running the full suite locally.
 
 The command passes spec files without `--project`, so Playwright routes each file to every project that claims it, as a normal local run does. Flags passed through `ARGS` that the script does not recognise (`--workers`, `--headed`, `--debug`) are forwarded to `npx playwright test`. Like every CI lane, the run sets `PLAYWRIGHT_IS_OSS=true` unless you export it yourself; without it `auth.setup.ts` calls the Collate-only ingestion-runner API and fails before any spec runs. The results block, delimited by `<!-- local-playwright-results:start/end -->` under "Playwright (UI) tests" in the PR template, records the tested commit, a warning for uncommitted changes, totals, and a per-spec table; selected specs that produced no results are listed as "not run" and mark the run as failed.
 
@@ -38,6 +38,25 @@ The common matrix is bounded to 5–24 runners and uses a 21-minute allocation b
 The `Basic` and `chromium` projects share that common 24-runner cap and are balanced together; they are not separate pools of standard hosted runners. Isolated ingestion, reindex, search-RBAC, and global-state lanes are additional because they cannot safely share mutable server state with the common matrix. The global-state lane runs one worker and also carries the domain-isolation and search-nightly suites, which are too short to justify their own runner; search-RBAC stays separate because it enables RBAC from a setup project rather than inside its spec.
 
 The `@ingestion` project is excluded from common Chromium only when the dynamic planner is active. Its source-matched Airflow image is restored only for ingestion shards, so other workflows that invoke the regular Chromium project keep their existing behavior.
+
+## Quarantine
+
+`quarantine.json` lists tests that are known to flake and are being fixed. `build_playwright_shards.py` drops them from pull-request and merge-queue plans, so they cannot fail a PR or eject a queue entry. The nightly `schedule` run still executes them, and `render_playwright_summary.cjs` lists their failures under "Quarantined failures" without failing `playwright-summary`, so the fix keeps getting evidence.
+
+Add an entry only with a GitHub issue that tracks the fix:
+
+```json
+{
+  "spec": "Features/CustomPropertiesPanel.spec.ts",
+  "title": "Custom Properties Panel › shows the property values",
+  "issue": "https://github.com/open-metadata/OpenMetadata/issues/12345",
+  "added": "2026-10-08"
+}
+```
+
+`spec` is relative to `playwright/e2e/` and `title` is the describe › test path, exactly as the `playwright-flaky-tests` artifact (and the "Flaky Playwright tests" section of the job summary) prints it. Planning fails on an entry without a valid issue URL or date, and warns on an entry that matches no test (renamed, moved, or deleted). Remove the entry in the PR that fixes the test, and close the issue when the nightly run stays green. `python3 .github/scripts/playwright_quarantine.py` validates the file locally.
+
+The `@quarantine` tag described in `openmetadata-ui/.../playwright/QUARANTINE.md` is a separate mechanism: it removes a test from every lane, nightly included.
 
 ## Entity matrix
 
