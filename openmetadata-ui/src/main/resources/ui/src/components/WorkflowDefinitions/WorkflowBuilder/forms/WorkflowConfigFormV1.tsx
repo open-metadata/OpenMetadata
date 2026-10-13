@@ -28,6 +28,7 @@ import {
 
 interface WorkflowConfigFormV1Props {
   config: NodeConfig;
+  availableDataAssets?: string[];
   availableEventTypes: string[];
   availableExcludeFields: string[];
   allowFullStartNodeConfiguration: boolean;
@@ -59,6 +60,7 @@ function getEventTriggerEntityType(
 
 export const WorkflowConfigFormV1: React.FC<WorkflowConfigFormV1Props> = ({
   config,
+  availableDataAssets = [...AVAILABLE_OPTIONS.DATA_ASSETS],
   availableEventTypes,
   availableExcludeFields,
   allowFullStartNodeConfiguration,
@@ -91,7 +93,7 @@ export const WorkflowConfigFormV1: React.FC<WorkflowConfigFormV1Props> = ({
       />
 
       <DataAssetFormSection
-        availableDataAssets={[...AVAILABLE_OPTIONS.DATA_ASSETS]}
+        availableDataAssets={availableDataAssets}
         dataAssets={config.dataAssets}
         lockFields={lockCoreStartFields}
         onDataAssetsChange={(dataAssets) =>

@@ -30,6 +30,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchAggregationNode;
@@ -386,6 +387,15 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     }
     T entityRecord = JsonUtils.readValue(jsonRecord, entityClass);
     setInheritedFields(entityRecord);
+    return entityRecord;
+  }
+
+  public T getByIdOrNotFound(UUID id) {
+    T entityRecord = getById(id);
+    if (entityRecord == null) {
+      throw EntityNotFoundException.byMessage(
+          CatalogExceptionMessage.entityNotFound(entityType, id));
+    }
     return entityRecord;
   }
 
