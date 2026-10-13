@@ -177,7 +177,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
               />
             </Box>
           )}
-        <Tab editVariant="modal" showSidePanel={isTabExpanded} />
+        <Tab showSidePanel={isTabExpanded} />
       </>
     );
   }, [
@@ -540,7 +540,6 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
         <TestCaseFormDrawer
           open={isDimensionEdit}
           testCase={testCase}
-          variant="modal"
           onClose={handleCancelDimension}
           onUpdate={setTestCase}
         />

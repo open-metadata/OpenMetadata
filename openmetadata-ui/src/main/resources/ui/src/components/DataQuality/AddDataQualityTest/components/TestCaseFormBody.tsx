@@ -97,6 +97,10 @@ import ThresholdPreview from '../../../observability/data-quality/ThresholdPrevi
 import TagSelector from '../../../Tag/TagSelector/TagSelector';
 import ParameterFields from './ParameterFields';
 import {
+  ROOT_SELECTED_ENTITY_PATH,
+  ROOT_TABLE_PATH,
+} from './TestCaseFormBody.constants';
+import {
   FormValues,
   TablesCache,
   TestCaseFormBodyProps,
@@ -108,7 +112,6 @@ import { toDataQualityDimensionItem } from './transformTestCaseFormData';
 
 const TABLE_CUSTOM_SQL_QUERY = 'tableCustomSQLQuery';
 const TABLES_CACHE_MAX_SIZE = 100;
-const ROOT_TABLE_PATH = 'root/table';
 const ROOT_TEST_TYPE_PATH = 'root/testType';
 
 const fqnFromSelectItem = (
@@ -259,7 +262,7 @@ const TestLevelAndTableCard: FC<{
     <Card className="form-card-section" data-testid="select-table-card">
       <Card.Content className="tw:flex tw:flex-col tw:gap-4">
         {!isEditMode && (
-          <div {...testLevelDoc}>
+          <div id="root/testLevel" {...testLevelDoc}>
             <FormField control={form.control} name="testLevel">
               {({ field }) => (
                 <>
@@ -652,13 +655,14 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     [testCase?.Create, getEntityPermissionByFqn, t]
   );
 
-  // Report the focused field to the doc panel. Rendered controls carry
-  // `root/<fieldName>` ids, so one capture handler covers every field the
-  // same way the legacy antd form's form-level onFocus did.
-  const handleFormFocusCapture = useCallback(
-    (event: React.FocusEvent<HTMLDivElement>) => {
-      const fieldId = (event.target as HTMLElement).closest?.(
-        '[id^="root/"]'
+  // Report the focused or clicked field (`root/<fieldName>` ids). A select
+  // holding a value hides its input, so fall back to the id in its wrapper.
+  const handleFieldActivation = useCallback(
+    (event: React.SyntheticEvent<HTMLDivElement>) => {
+      const target = event.target as HTMLElement;
+      const fieldId = (
+        target.closest?.('[id^="root/"]') ??
+        target.closest?.('[data-field-doc]')?.querySelector('[id^="root/"]')
       )?.id;
       if (fieldId) {
         handleActiveField(fieldId);
@@ -1216,7 +1220,12 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
 
   const selectedTableField = {
     name: 'selectedTable',
-    label: t('label.select-entity', { entity: t('label.table') }),
+    label: t(
+      selectedTableFqn ? 'label.selected-entity' : 'label.select-entity',
+      {
+        entity: t('label.table'),
+      }
+    ),
     type: FieldTypes.ASYNC_SELECT,
     required: true,
     rules: {
@@ -1254,7 +1263,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
       // legacy option onclick did.
       onItemInserted: () => {
         form.trigger('selectedTable');
-        handleActiveField('root/selected-entity');
+        handleActiveField(ROOT_SELECTED_ENTITY_PATH);
       },
       // Clearing an unauthorized table must clear the stale permission error
       // and switch the doc panel back to the generic table section.
@@ -1524,7 +1533,8 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
       className="test-case-form-v1 drawer-mode test-case-form-body"
       data-testid="test-case-form-v1"
       ref={formBodyRef}
-      onFocusCapture={handleFormFocusCapture}>
+      onFocusCapture={handleFieldActivation}
+      onPointerDownCapture={handleFieldActivation}>
       {errorMessage && (
         <div className="floating-error-alert">
           <Alert
