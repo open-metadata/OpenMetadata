@@ -23,6 +23,10 @@
  * details that open expanded. A service name too long for the header ends in an ellipsis, with
  * the full name on hover.
  *
+ * Its header carries the version history, opened from the current version as on Context Center,
+ * and, for a database service, Follow; the service's active announcement shows under the header
+ * on every tab; and deleting the service lands on its list.
+ *
  * It gates what classic gates: the Connection tab, which shows the connection config, only for
  * users who may edit the service; and no domain / owner / tier edits on a soft-deleted service.
  *
@@ -74,6 +78,7 @@ test.describe(
       // Three live databases, so a two-row page has a second page, and one soft-deleted one.
       let databases: string[] = [];
       let deletedDatabase = '';
+      const announcementTitle = `pw-ai-announcement-${uuid()}`;
 
       test.beforeAll(async ({ browser }) => {
         test.setTimeout(EXTENDED_TEST_TIMEOUT);
@@ -119,6 +124,24 @@ test.describe(
           'database_search_index'
         );
 
+        // A second version for the version history, and an active announcement for the banner.
+        await service.patch(apiContext, [
+          { op: 'add', path: '/description', value: 'Orders and payments' },
+        ]);
+        const now = Date.now();
+        await okJson(
+          await apiContext.post('/api/v1/announcements', {
+            data: {
+              displayName: announcementTitle,
+              description: 'Read-only during the migration',
+              entityLink: `<#E::databaseService::${serviceFqn}>`,
+              startTime: now - 60_000,
+              endTime: now + 24 * 60 * 60 * 1000,
+            },
+          }),
+          'Create announcement'
+        );
+
         await afterAction();
       });
 
@@ -142,6 +165,91 @@ test.describe(
 
         await expect(ownedRow).toContainText(owner.getUserDisplayName());
         await expect(ownedRow).toContainText('Personal');
+      });
+
+      test('opens the version history from the current version in the header', async ({
+        page,
+      }) => {
+        await visitAiModeServiceDetailsPage(page, {
+          category: 'databaseServices',
+          fqn: serviceFqn,
+        });
+        const history = page.getByTestId('service-version-history');
+        const versions = waitForResponseWithStatus(
+          page,
+          (response) =>
+            response.url().includes('/services/databaseServices/') &&
+            response.url().endsWith('/versions'),
+          'ok'
+        );
+
+        await page.getByTestId('service-version-history-button').click();
+        await versions;
+
+        await expect(history.getByTestId('version-dot-0.2')).toBeVisible();
+        await expect(history.getByTestId('version-dot-0.1')).toBeVisible();
+        await expect(history).toContainText('Current');
+      });
+
+      test('follows the service, and unfollows it', async ({ page }) => {
+        await visitAiModeServiceDetailsPage(page, {
+          category: 'databaseServices',
+          fqn: serviceFqn,
+        });
+
+        await test.step('follow', async () => {
+          const followed = waitForResponseWithStatus(
+            page,
+            (response) =>
+              response.url().includes('/followers') &&
+              response.request().method() === 'PUT',
+            'ok'
+          );
+          await page
+            .getByRole('button', { name: 'Follow', exact: true })
+            .click();
+          await followed;
+
+          await expect(
+            page.getByRole('button', { name: 'Unfollow', exact: true })
+          ).toBeVisible();
+        });
+
+        await test.step('unfollow', async () => {
+          const unfollowed = waitForResponseWithStatus(
+            page,
+            (response) =>
+              response.url().includes('/followers') &&
+              response.request().method() === 'DELETE',
+            'ok'
+          );
+          await page
+            .getByRole('button', { name: 'Unfollow', exact: true })
+            .click();
+          await unfollowed;
+
+          await expect(
+            page.getByRole('button', { name: 'Follow', exact: true })
+          ).toBeVisible();
+        });
+      });
+
+      test('shows its active announcement under the header on every tab', async ({
+        page,
+      }) => {
+        await visitAiModeServiceDetailsPage(page, {
+          category: 'databaseServices',
+          fqn: serviceFqn,
+        });
+        const banner = page.getByTestId('entity-header-announcements');
+
+        await expect(banner).toContainText(announcementTitle);
+
+        await page
+          .getByRole('tab', { name: 'Connection', exact: true })
+          .click();
+
+        await expect(banner).toContainText(announcementTitle);
       });
 
       test('pages through the databases and keeps the page across a reload', async ({
@@ -344,6 +452,52 @@ test.describe(
           ).not.toBeChecked();
           await expect(page.getByTestId('deleted-badge')).toBeHidden();
         });
+      });
+    });
+
+    test.describe('deleting a service', () => {
+      let service: DatabaseServiceClass;
+
+      test.beforeAll(async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+        service = new DatabaseServiceClass();
+        await service.create(apiContext);
+        await afterAction();
+      });
+
+      test.afterAll(async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+        await service.delete(apiContext);
+        await afterAction();
+      });
+
+      test("lands on the service's list once it is deleted", async ({
+        page,
+      }) => {
+        const serviceFqn = service.entityResponseData.fullyQualifiedName;
+        await enableAiAppMode(page);
+        await visitAiModeServiceDetailsPage(page, {
+          category: 'databaseServices',
+          fqn: serviceFqn,
+        });
+
+        await page.getByRole('button', { name: 'Settings' }).click();
+        await page.getByRole('menuitemradio', { name: 'Delete' }).click();
+        await expect(page.getByTestId('delete-modal')).toBeVisible();
+
+        const deleted = waitForResponseWithStatus(
+          page,
+          (response) =>
+            response.url().includes('/services/databaseServices/async/') &&
+            response.request().method() === 'DELETE',
+          'ok'
+        );
+        await page.getByTestId('confirm-button').click();
+        await deleted;
+
+        await expect(page).toHaveURL(
+          /\/connections\?category=databaseServices$/
+        );
       });
     });
 

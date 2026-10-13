@@ -30,6 +30,7 @@ import {
 import { ExploreSearchIndex } from '../interface/discovery/explore.interface';
 import { QueryFilterInterface } from '../pages/ExplorePage/ExplorePage.interface';
 import { getTreeConfig } from './AdvancedSearchUtils';
+import { formatEntityVersion } from './EntityVersionUtilsPure';
 import type { TreeNode } from './queryBuilder/url';
 import { withExploreFieldKeys } from './queryBuilder/url';
 import { getJsonTreeFromQueryFilter } from './QueryBuilderPureUtils';
@@ -271,9 +272,6 @@ export interface PersonaContextVersionEntry {
 
 const RULE_DERIVED_FIELDS = ['matchedCount'];
 
-export const formatPersonaVersion = (version?: number): string =>
-  Number.parseFloat(String(version ?? 1)).toFixed(1);
-
 interface ComparableDefinition {
   cacheTtlMinutes?: number;
   characterBudget?: number;
@@ -457,7 +455,7 @@ const describeVersionChanges = (
     return [
       {
         key: 'message.persona-context-history-reverted',
-        values: { version: formatPersonaVersion(revertTarget.version) },
+        values: { version: formatEntityVersion(revertTarget.version) },
       },
     ];
   }
@@ -489,7 +487,7 @@ export const buildPersonaContextVersionHistory = (
     .sort((a, b) => (b.version ?? 0) - (a.version ?? 0));
 
   return snapshots.map((snapshot, index) => ({
-    version: formatPersonaVersion(snapshot.version),
+    version: formatEntityVersion(snapshot.version),
     isCurrent: index === 0,
     updatedBy: snapshot.updatedBy,
     updatedAt: snapshot.updatedAt,

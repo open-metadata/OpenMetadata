@@ -266,7 +266,11 @@ jest.mock('@openmetadata/ui-core-components', () => {
       Menu: ({ children }: { children: React.ReactNode }) => (
         <div>{children}</div>
       ),
-      Item: ({ label }: { label: string }) => <div>{label}</div>,
+      Item: ({ label, onAction }: { label: string; onAction?: () => void }) => (
+        <button type="button" onClick={onAction}>
+          {label}
+        </button>
+      ),
     },
     Typography: ({ children }: { children: React.ReactNode }) => (
       <span>{children}</span>
@@ -321,15 +325,70 @@ jest.mock('../../common/Loader/Loader', () => ({
   default: () => <div data-testid="loader" />,
 }));
 
+const mockDeleteEntityModal = jest.fn();
 jest.mock('../../common/DeleteWidget/DeleteEntityModal', () => ({
   __esModule: true,
-  default: () => null,
+  default: (props: Record<string, unknown>) => {
+    mockDeleteEntityModal(props);
+
+    return null;
+  },
 }));
 
+const mockAnnouncementDrawer = jest.fn();
 jest.mock(
   '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer',
-  () => ({ __esModule: true, default: () => null })
+  () => ({
+    __esModule: true,
+    default: (props: Record<string, unknown>) => {
+      mockAnnouncementDrawer(props);
+
+      return <div data-testid="announcement-drawer" />;
+    },
+  })
 );
+
+const mockAnnouncementsBanner = jest.fn();
+jest.mock(
+  '../../common/AnnouncementsWidget/AnnouncementsWidgetV3Body.component',
+  () => ({
+    __esModule: true,
+    default: (props: Record<string, unknown>) => {
+      mockAnnouncementsBanner(props);
+
+      return <div data-testid="entity-header-announcements" />;
+    },
+  })
+);
+
+const mockAnnouncements = [{ id: 'announcement-1' }];
+const mockRefetchAnnouncements = jest.fn();
+const mockUseActiveAnnouncements = jest.fn((..._args: unknown[]) => ({
+  announcements: mockAnnouncements,
+  refetch: mockRefetchAnnouncements,
+}));
+jest.mock('./useActiveAnnouncements', () => ({
+  useActiveAnnouncements: (...args: unknown[]) =>
+    mockUseActiveAnnouncements(...args),
+}));
+
+const mockServiceVersionHistory = jest.fn();
+jest.mock('./ServiceVersionHistory', () => ({
+  ServiceVersionHistory: (props: Record<string, unknown>) => {
+    mockServiceVersionHistory(props);
+
+    return <div data-testid="service-version-history-button" />;
+  },
+}));
+
+const mockServiceFollowButton = jest.fn();
+jest.mock('./ServiceFollowButton', () => ({
+  ServiceFollowButton: (props: Record<string, unknown>) => {
+    mockServiceFollowButton(props);
+
+    return <div data-testid="entity-follow-button" />;
+  },
+}));
 
 jest.mock('../../common/TestConnection/TestConnection', () => ({
   __esModule: true,
@@ -490,6 +549,15 @@ describe('ConnectionServiceDetailsPage', () => {
       (key) => delete contributionsByPoint[key]
     );
   });
+
+  const renderOnDataAssets = async () => {
+    await act(async () => {
+      render(<ConnectionServiceDetailsPage />);
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('data-assets-tab')).toBeInTheDocument()
+    );
+  };
 
   it('resolves a soft-deleted service instead of 404ing on it', async () => {
     await act(async () => {
@@ -1015,6 +1083,118 @@ describe('ConnectionServiceDetailsPage', () => {
 
       expect(screen.getByTestId('data-assets-tab')).toBeInTheDocument();
       expect(screen.queryByText('unfiltered')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('header actions', () => {
+    it("opens the service's version history from its current version", async () => {
+      (getServiceByFQN as jest.Mock).mockResolvedValueOnce({
+        ...MOCK_SERVICE,
+        version: 0.3,
+      });
+      await renderOnDataAssets();
+
+      expect(mockServiceVersionHistory).toHaveBeenLastCalledWith({
+        serviceCategory: 'databaseServices',
+        serviceId: 'svc-1',
+        version: 0.3,
+      });
+    });
+
+    it('lets a database service be followed, and keeps the followers it reports', async () => {
+      const follower = { id: 'user-1', type: 'user' };
+      await renderOnDataAssets();
+
+      expect(mockServiceFollowButton).toHaveBeenLastCalledWith(
+        expect.objectContaining({ serviceId: 'svc-1', followers: [] })
+      );
+
+      act(() =>
+        mockServiceFollowButton.mock.calls
+          .at(-1)[0]
+          .onFollowersChange([follower])
+      );
+
+      expect(mockServiceFollowButton).toHaveBeenLastCalledWith(
+        expect.objectContaining({ followers: [follower] })
+      );
+    });
+
+    // As classic: the followers endpoint exists for database services only.
+    it('offers no follow on another kind of service', async () => {
+      mockServiceCategory = 'dashboardServices';
+      await renderOnDataAssets();
+
+      expect(
+        screen.queryByTestId('entity-follow-button')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByTestId('service-version-history-button')
+      ).toBeInTheDocument();
+    });
+
+    it('offers no follow on a soft-deleted service', async () => {
+      (getServiceByFQN as jest.Mock).mockResolvedValueOnce({
+        ...MOCK_SERVICE,
+        deleted: true,
+      });
+      await renderOnDataAssets();
+
+      expect(
+        screen.queryByTestId('entity-follow-button')
+      ).not.toBeInTheDocument();
+    });
+
+    it("lands on the service's list once it is deleted", async () => {
+      await renderOnDataAssets();
+
+      fireEvent.click(screen.getByText('label.delete'));
+      act(() => mockDeleteEntityModal.mock.calls.at(-1)[0].afterDeleteAction());
+
+      expect(mockNavigate).toHaveBeenCalledWith(
+        '/connections?category=databaseServices'
+      );
+    });
+  });
+
+  describe('announcements', () => {
+    it("shows the service's active announcements on every tab", async () => {
+      await renderOnDataAssets();
+
+      expect(mockUseActiveAnnouncements).toHaveBeenLastCalledWith(
+        'databaseService',
+        'test-service'
+      );
+      expect(mockAnnouncementsBanner).toHaveBeenLastCalledWith(
+        expect.objectContaining({ announcements: mockAnnouncements })
+      );
+
+      fireEvent.click(
+        screen.getByRole('button', { name: /label\.connection/i })
+      );
+
+      await waitFor(() =>
+        expect(screen.getByTestId('edit-connection-button')).toBeInTheDocument()
+      );
+
+      expect(
+        screen.getByTestId('entity-header-announcements')
+      ).toBeInTheDocument();
+    });
+
+    it('opens an announcement in the drawer, and reloads them once it closes', async () => {
+      await renderOnDataAssets();
+
+      act(() => mockAnnouncementsBanner.mock.calls.at(-1)[0].onItemClick());
+
+      expect(screen.getByTestId('announcement-drawer')).toBeInTheDocument();
+
+      act(() => mockAnnouncementDrawer.mock.calls.at(-1)[0].onClose());
+
+      expect(
+        screen.queryByTestId('announcement-drawer')
+      ).not.toBeInTheDocument();
+      expect(mockRefetchAnnouncements).toHaveBeenCalled();
     });
   });
 

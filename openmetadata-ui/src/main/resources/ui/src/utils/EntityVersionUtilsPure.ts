@@ -67,6 +67,10 @@ import { getTagsWithoutTier, getTierTags } from './TablePureUtils';
 
 type EntityColumn = TableColumn | ContainerColumn | Field;
 
+/** An entity version as the UI shows it, with one decimal: `0.1`, `1.0`. */
+export const formatEntityVersion = (version?: number | string): string =>
+  Number.parseFloat(String(version ?? 1)).toFixed(1);
+
 export const getEntityVersionByField = (
   changeDescription: ChangeDescription,
   field: string,
