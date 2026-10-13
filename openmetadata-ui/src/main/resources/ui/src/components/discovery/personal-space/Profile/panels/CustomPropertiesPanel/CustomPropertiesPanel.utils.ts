@@ -12,13 +12,22 @@
  */
 
 import type { TFunction } from 'i18next';
+import { isUndefined, omit, omitBy } from 'lodash';
+import {
+    PROPERTY_TYPES_WITH_ENTITY_REFERENCE,
+    PROPERTY_TYPES_WITH_FORMAT,
+    SUPPORTED_FORMAT_MAP,
+    TABLE_TYPE_CUSTOM_PROPERTY
+} from '../../../../../../constants/CustomProperty.constants';
+import { Type } from '../../../../../../generated/entity/type';
+import { CustomProperty } from '../../../../../../generated/type/customProperty';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { SettingMenuItem } from '../../../../../../utils/GlobalSettingsUtils';
 import { CRUMB } from './CustomPropertiesPanel.constants';
 import {
-  AddCustomPropertyFormValues,
-  CustomPropertiesSubView,
-  FormSelectItem,
+    AddCustomPropertyFormValues,
+    CustomPropertiesSubView,
+    FormSelectItem
 } from './CustomPropertiesPanel.types';
 
 /** Extract the id string from a FormSelectItem (or return as-is if already a string). */
@@ -57,6 +66,60 @@ export function buildCustomPropertyConfig(
 
   return undefined;
 }
+
+/** Which config fields the selected property type needs. */
+export const getCustomPropertyTypeFlags = (
+  propertyTypes: Type[],
+  propertyType?: FormSelectItem | string | null
+) => {
+  const selectedId = toId(propertyType ?? undefined);
+  const typeName =
+    propertyTypes.find((type) => type.id === selectedId)?.name ?? '';
+
+  return {
+    hasEnumConfig: typeName === 'enum',
+    hasFormatConfig: PROPERTY_TYPES_WITH_FORMAT.includes(typeName),
+    hasEntityReferenceConfig:
+      PROPERTY_TYPES_WITH_ENTITY_REFERENCE.includes(typeName),
+    hasTableTypeConfig: typeName === TABLE_TYPE_CUSTOM_PROPERTY,
+    supportedFormats:
+      SUPPORTED_FORMAT_MAP[typeName as keyof typeof SUPPORTED_FORMAT_MAP] ?? [],
+  };
+};
+
+/** Add-form values → the custom property the types API expects. */
+export const toCustomPropertyPayload = (
+  data: AddCustomPropertyFormValues,
+  propertyTypes: Type[]
+): CustomProperty => {
+  const flags = getCustomPropertyTypeFlags(propertyTypes, data.propertyType);
+  const customPropertyConfig = buildCustomPropertyConfig(
+    data,
+    flags.hasEnumConfig,
+    flags.hasFormatConfig,
+    flags.hasEntityReferenceConfig,
+    flags.hasTableTypeConfig
+  );
+
+  return omitBy(
+    {
+      ...omit(data, [
+        'multiSelect',
+        'formatConfig',
+        'entityReferenceConfig',
+        'enumConfig',
+        'columns',
+      ]),
+      displayName: data.displayName || undefined,
+      propertyType: {
+        id: toId(data.propertyType ?? undefined),
+        type: 'type',
+      },
+      ...(isUndefined(customPropertyConfig) ? {} : { customPropertyConfig }),
+    },
+    isUndefined
+  ) as unknown as CustomProperty;
+};
 
 export interface ParsedCustomPropertiesHash {
   entityFqn: string | null;
