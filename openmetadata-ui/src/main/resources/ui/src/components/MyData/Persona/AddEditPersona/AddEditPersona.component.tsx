@@ -12,13 +12,13 @@
  */
 import { PlusOutlined } from '@ant-design/icons';
 import {
-    Box,
-    Button,
-    FormField,
-    FormItemLabel,
-    HookForm,
-    Input,
-    SimpleModal
+  Box,
+  Button,
+  FormField,
+  FormItemLabel,
+  HookForm,
+  Input,
+  SimpleModal,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { trim } from 'lodash';
@@ -26,8 +26,8 @@ import { useState } from 'react';
 import { RegisterOptions, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import {
-    DISPLAY_NAME_FIELD_REGISTER_RULES,
-    NAME_FIELD_REGISTER_RULES
+  DISPLAY_NAME_FIELD_REGISTER_RULES,
+  NAME_FIELD_REGISTER_RULES,
 } from '../../../../constants/Form.constants';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { EntityReference } from '../../../../generated/entity/type';
@@ -52,7 +52,10 @@ interface PersonaFormValues {
 
 type TextFieldName = 'name' | 'displayName';
 
-export const AddEditPersonaForm = ({ onCancel, onSave }: AddPersonaFormProps) => {
+export const AddEditPersonaForm = ({
+  onCancel,
+  onSave,
+}: AddPersonaFormProps) => {
   const { t } = useTranslation();
   // Validate while typing, as the antd form did.
   const form = useForm<PersonaFormValues>({

@@ -17,24 +17,24 @@ import { useCallback, useEffect, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import {
-    createLearningResource,
-    getLearningResourceById,
-    LearningResource,
-    updateLearningResource
+  createLearningResource,
+  getLearningResourceById,
+  LearningResource,
+  updateLearningResource,
 } from '../../../../../../rest/learningResourceAPI';
 import {
-    showErrorToast,
-    showSuccessToast
+  showErrorToast,
+  showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
 import {
-    LearningResourceFormValues,
-    toLearningResourceFormValues,
-    toLearningResourcePayload
+  LearningResourceFormValues,
+  toLearningResourceFormValues,
+  toLearningResourcePayload,
 } from './LearningResourceSettings.utils';
 import type { PlatformSettingsFormProps } from './PlatformSettings.types';
 import SettingsFormLayout, {
-    SettingsFormSection,
-    SettingsSkeleton
+  SettingsFormSection,
+  SettingsSkeleton,
 } from './SettingsFormLayout';
 import { useLearningResourceFields } from './useLearningResourceFields';
 import { useSettingsFetch } from './useSettingsFetch';

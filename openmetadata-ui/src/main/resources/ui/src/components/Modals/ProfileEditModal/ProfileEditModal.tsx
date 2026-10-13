@@ -12,11 +12,11 @@
  */
 
 import {
-    FieldProp,
-    FieldTypes,
-    FormFields,
-    HookForm,
-    SimpleModal
+  FieldProp,
+  FieldTypes,
+  FormFields,
+  HookForm,
+  SimpleModal,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { FunctionComponent, useState } from 'react';

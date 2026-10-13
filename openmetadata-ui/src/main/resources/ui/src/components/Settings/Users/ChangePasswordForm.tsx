@@ -12,11 +12,11 @@
  */
 
 import {
-    Box,
-    FormField,
-    HookForm,
-    PasswordInput,
-    SimpleModal
+  Box,
+  FormField,
+  HookForm,
+  PasswordInput,
+  SimpleModal,
 } from '@openmetadata/ui-core-components';
 import React from 'react';
 import { RegisterOptions, useForm } from 'react-hook-form';
@@ -91,10 +91,7 @@ const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({
         onCancel();
       }}
       onOk={handleSave}>
-      <HookForm
-        form={form}
-        id="change-password-form"
-        onSubmit={handleSave}>
+      <HookForm form={form} id="change-password-form" onSubmit={handleSave}>
         <Box direction="col" gap={4}>
           {isLoggedInUser &&
             renderPasswordField(

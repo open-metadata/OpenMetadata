@@ -12,14 +12,14 @@
  */
 
 import {
-    Box,
-    Button,
-    Divider,
-    FormField,
-    FormItemLabel,
-    HookForm,
-    Input,
-    Typography
+  Box,
+  Button,
+  Divider,
+  FormField,
+  FormItemLabel,
+  HookForm,
+  Input,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { trim } from 'lodash';
@@ -36,7 +36,10 @@ import { ADD_POLICY_PAGE_BREADCRUMB } from '../../../constants/Breadcrumb.consta
 import { ERROR_MESSAGE } from '../../../constants/constants';
 import { NAME_FIELD_REGISTER_RULES } from '../../../constants/Form.constants';
 import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
-import { CreatePolicy, Rule } from '../../../generated/api/policies/createPolicy';
+import {
+  CreatePolicy,
+  Rule,
+} from '../../../generated/api/policies/createPolicy';
 import { withPageLayout } from '../../../hoc/withPageLayout';
 import { addPolicy } from '../../../rest/rolesAPIV1';
 import { getIsErrorMatch } from '../../../utils/APIUtils';

@@ -17,16 +17,16 @@ import type { CustomProperty } from '../../../../../../generated/type/customProp
 import type { SettingMenuItem } from '../../../../../../utils/GlobalSettingsUtils';
 import { CRUMB } from './CustomPropertiesPanel.constants';
 import {
-    AddCustomPropertyFormValues,
-    FormSelectItem
+  AddCustomPropertyFormValues,
+  FormSelectItem,
 } from './CustomPropertiesPanel.types';
 import {
-    buildCustomPropertyConfig,
-    getBreadcrumbItems,
-    getCustomPropertyTypeFlags,
-    getPageTitle,
-    toCustomPropertyPayload,
-    toId
+  buildCustomPropertyConfig,
+  getBreadcrumbItems,
+  getCustomPropertyTypeFlags,
+  getPageTitle,
+  toCustomPropertyPayload,
+  toId,
 } from './CustomPropertiesPanel.utils';
 
 jest.mock('../../../../../../utils/EntityNameUtils', () => ({

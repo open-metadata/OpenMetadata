@@ -18,11 +18,11 @@ import { Glossary } from '../../support/glossary/Glossary';
 import { LearningResourceClass } from '../../support/learning/LearningResourceClass';
 import { AdminClass } from '../../support/user/AdminClass';
 import {
-    createNewPage,
-    getApiContext,
-    redirectToHomePage,
-    selectOptionWithRetry,
-    uuid
+  createNewPage,
+  getApiContext,
+  redirectToHomePage,
+  selectOptionWithRetry,
+  uuid,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { dismissLineageMapOnboarding } from '../../utils/lineage';

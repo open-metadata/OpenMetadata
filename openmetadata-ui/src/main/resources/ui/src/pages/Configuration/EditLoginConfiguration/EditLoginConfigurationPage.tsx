@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 import {
-    Box,
-    Button,
-    FieldProp,
-    FieldTypes,
-    FormFields,
-    HookForm
+  Box,
+  Button,
+  FieldProp,
+  FieldTypes,
+  FormFields,
+  HookForm,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
@@ -29,20 +29,20 @@ import ResizablePanels from '../../../components/common/ResizablePanels/Resizabl
 import ServiceDocPanel from '../../../components/common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import {
-    GlobalSettingOptions,
-    GlobalSettingsMenuCategory
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
 } from '../../../constants/GlobalSettings.constants';
 import {
-    CUSTOM_LOGIN_CONFIG_SERVICE_CATEGORY,
-    OPEN_METADATA
+  CUSTOM_LOGIN_CONFIG_SERVICE_CATEGORY,
+  OPEN_METADATA,
 } from '../../../constants/service-guide.constant';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { LoginConfiguration } from '../../../generated/configuration/loginConfiguration';
 import { Settings, SettingType } from '../../../generated/settings/settings';
 import { withPageLayout } from '../../../hoc/withPageLayout';
 import {
-    getLoginConfig,
-    updateSettingsConfig
+  getLoginConfig,
+  updateSettingsConfig,
 } from '../../../rest/settingConfigAPI';
 import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';

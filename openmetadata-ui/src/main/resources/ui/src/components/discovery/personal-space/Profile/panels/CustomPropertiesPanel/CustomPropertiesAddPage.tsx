@@ -12,10 +12,10 @@
  */
 
 import {
-    Box,
-    Button,
-    HookForm,
-    Typography
+  Box,
+  Button,
+  HookForm,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -23,16 +23,16 @@ import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Category, Type } from '../../../../../../generated/entity/type';
 import {
-    addPropertyToEntity,
-    getTypeListByCategory
+  addPropertyToEntity,
+  getTypeListByCategory,
 } from '../../../../../../rest/metadataTypeAPI';
 import {
-    showErrorToast,
-    showSuccessToast
+  showErrorToast,
+  showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
 import {
-    AddCustomPropertyFormValues,
-    CustomPropertiesAddPageProps
+  AddCustomPropertyFormValues,
+  CustomPropertiesAddPageProps,
 } from './CustomPropertiesPanel.types';
 import { toCustomPropertyPayload } from './CustomPropertiesPanel.utils';
 import CustomPropertyFormFields from './CustomPropertyFormFields';

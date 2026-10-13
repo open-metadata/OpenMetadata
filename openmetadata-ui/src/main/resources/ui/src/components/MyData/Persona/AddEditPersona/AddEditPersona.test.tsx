@@ -33,9 +33,12 @@ jest.mock('../../../common/RichTextEditor/RichTextEditor', () =>
   jest.fn(() => <div data-testid="description" />)
 );
 
-jest.mock('../../../common/UserSelectableList/UserSelectableList.component', () => ({
-  UserSelectableList: jest.fn(({ children }) => <div>{children}</div>),
-}));
+jest.mock(
+  '../../../common/UserSelectableList/UserSelectableList.component',
+  () => ({
+    UserSelectableList: jest.fn(({ children }) => <div>{children}</div>),
+  })
+);
 
 describe('AddEditPersonaForm', () => {
   it('should create the persona from the trimmed form values', async () => {

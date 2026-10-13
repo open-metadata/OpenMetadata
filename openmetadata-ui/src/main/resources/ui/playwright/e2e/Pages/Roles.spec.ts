@@ -16,16 +16,16 @@ import { GlobalSettingOptions } from '../../constant/settings';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import { expect, test } from '../../support/fixtures/base';
 import {
-    getApiContext,
-    getDescriptionBox,
-    redirectToHomePage,
-    toastNotification,
-    uuid
+  getApiContext,
+  getDescriptionBox,
+  redirectToHomePage,
+  toastNotification,
+  uuid,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
-    getElementWithPagination,
-    removePolicyFromRole
+  getElementWithPagination,
+  removePolicyFromRole,
 } from '../../utils/roles';
 import { settingClick } from '../../utils/sidebar';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
@@ -91,9 +91,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await descriptionField.fill(description);
 
       // Select the policies - search and select from dropdown
-      const policiesInput = page
-        .getByTestId('policies')
-        .getByRole('combobox');
+      const policiesInput = page.getByTestId('policies').getByRole('combobox');
       await policiesInput.fill('Data');
       await page
         .getByRole('option', { name: 'Data Consumer Policy', exact: true })

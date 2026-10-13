@@ -12,12 +12,12 @@
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
-    Badge,
-    Box,
-    Grid,
-    Select,
-    Toggle,
-    Typography
+  Badge,
+  Box,
+  Grid,
+  Select,
+  Toggle,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { Collapse, InputNumber } from 'antd';
 import { AxiosError } from 'axios';
@@ -26,24 +26,24 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ENTITY_PATH } from '../../../constants/constants';
 import {
-    GlobalSettingOptions,
-    GlobalSettingsMenuCategory
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
 } from '../../../constants/GlobalSettings.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
-    AllowedFieldField,
-    AllowedFieldValueBoostField,
-    AllowedSearchFields,
-    AssetTypeConfiguration,
-    BoostMode,
-    FieldBoost,
-    FieldValueBoost,
-    RankingConfiguration,
-    RankingStage,
-    ScoreMode,
-    SearchFieldMatchType as MatchType,
-    SearchSettings,
-    TermBoost
+  AllowedFieldField,
+  AllowedFieldValueBoostField,
+  AllowedSearchFields,
+  AssetTypeConfiguration,
+  BoostMode,
+  FieldBoost,
+  FieldValueBoost,
+  RankingConfiguration,
+  RankingStage,
+  ScoreMode,
+  SearchFieldMatchType as MatchType,
+  SearchSettings,
+  TermBoost,
 } from '../../../generated/configuration/searchSettings';
 import { CustomProperty } from '../../../generated/entity/type';
 import { Settings, SettingType } from '../../../generated/settings/settings';
@@ -52,18 +52,18 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { EntitySearchSettingsState } from '../../../pages/SearchSettingsPage/searchSettings.interface';
 import { getCustomPropertiesByEntityType } from '../../../rest/metadataTypeAPI';
 import {
-    getSettingsByType,
-    restoreSettingsConfig,
-    updateSettingsConfig
+  getSettingsByType,
+  restoreSettingsConfig,
+  updateSettingsConfig,
 } from '../../../rest/settingConfigAPI';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
 import {
-    boostModeOptions,
-    getEffectiveRankingConfiguration,
-    getEntitySearchConfig,
-    getSearchSettingCategories,
-    scoreModeOptions
+  boostModeOptions,
+  getEffectiveRankingConfiguration,
+  getEntitySearchConfig,
+  getSearchSettingCategories,
+  scoreModeOptions,
 } from '../../../utils/SearchSettingsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';

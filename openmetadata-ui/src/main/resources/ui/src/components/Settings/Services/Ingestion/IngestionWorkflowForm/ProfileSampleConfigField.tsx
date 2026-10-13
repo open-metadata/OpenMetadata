@@ -12,13 +12,13 @@
  */
 
 import {
-    Button,
-    Card,
-    Grid,
-    Input,
-    Select,
-    Toggle,
-    Typography
+  Button,
+  Card,
+  Grid,
+  Input,
+  Select,
+  Toggle,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { FieldProps } from '@rjsf/utils';
@@ -27,12 +27,12 @@ import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MIN_PROFILE_SAMPLE } from '../../../../../constants/profiler.constant';
 import {
-    ICSamplingConfig,
-    ProfileSampleConfig,
-    ProfileSampleType,
-    SampleConfigType,
-    SamplingMethodType,
-    Threshold
+  ICSamplingConfig,
+  ProfileSampleConfig,
+  ProfileSampleType,
+  SampleConfigType,
+  SamplingMethodType,
+  Threshold,
 } from '../../../../../generated/metadataIngestion/databaseServiceProfilerPipeline';
 import { pickConfigForType } from '../../../../../utils/ProfileSampleConfigUtils';
 

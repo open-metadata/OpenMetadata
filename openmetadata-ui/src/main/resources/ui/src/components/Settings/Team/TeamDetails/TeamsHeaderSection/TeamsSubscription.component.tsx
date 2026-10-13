@@ -12,13 +12,13 @@
  */
 
 import {
-    Box,
-    FormField,
-    HookForm,
-    Input,
-    Select,
-    SimpleModal,
-    Typography
+  Box,
+  FormField,
+  HookForm,
+  Input,
+  Select,
+  SimpleModal,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -26,8 +26,8 @@ import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../../../constants/constants';
 import {
-    SUBSCRIPTION_WEBHOOK,
-    SUBSCRIPTION_WEBHOOK_OPTIONS
+  SUBSCRIPTION_WEBHOOK,
+  SUBSCRIPTION_WEBHOOK_OPTIONS,
 } from '../../../../../constants/Teams.constants';
 import { Webhook } from '../../../../../generated/type/profile';
 import { isValidUrl } from '../../../../../utils/SSOUtils';

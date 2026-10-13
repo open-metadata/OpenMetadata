@@ -16,18 +16,18 @@ import { FieldTypes } from '@openmetadata/ui-core-components';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ResourceType,
-    RESOURCE_TYPE_LABEL_KEYS,
-    RESOURCE_TYPE_VALUES,
-    SOURCE_URL_PLACEHOLDERS
+  ResourceType,
+  RESOURCE_TYPE_LABEL_KEYS,
+  RESOURCE_TYPE_VALUES,
+  SOURCE_URL_PLACEHOLDERS,
 } from '../../../../../../constants/Learning.constants';
 import { ResourceTypeIcon } from '../../../../../Learning/ResourceTypeIcon/ResourceTypeIcon';
 import {
-    CATEGORY_ITEMS,
-    CONTEXT_ITEMS,
-    DURATION_ITEMS,
-    LearningResourceFormValues,
-    STATUS_ITEMS
+  CATEGORY_ITEMS,
+  CONTEXT_ITEMS,
+  DURATION_ITEMS,
+  LearningResourceFormValues,
+  STATUS_ITEMS,
 } from './LearningResourceSettings.utils';
 import { isValidUrl } from './ThemeSettings.utils';
 
@@ -140,5 +140,4 @@ export const useLearningResourceFields = (
     ],
     [isEditing, required, resourceType, t]
   );
-
 };
