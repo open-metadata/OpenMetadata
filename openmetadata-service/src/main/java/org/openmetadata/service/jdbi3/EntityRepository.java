@@ -13536,6 +13536,29 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
   }
 
+  /**
+   * Has each field inherit its entity's glossary terms, as {@link Entity#populateEntityFieldTags}
+   * does on a single read, so a list returns the same field tags as a get. Expects the entities' own
+   * tags and the fields' tags to be loaded already.
+   */
+  protected <F extends FieldInterface> void inheritEntityTermsOnFields(
+      List<T> entities, Function<T, List<F>> fieldExtractor) {
+    for (T entity : listOrEmpty(entities)) {
+      inheritEntityTerms(entity, fieldExtractor.apply(entity));
+    }
+  }
+
+  /** One entity's step of {@link #inheritEntityTermsOnFields}. Package-private for tests. */
+  static <F extends FieldInterface> void inheritEntityTerms(
+      EntityInterface<?> entity, List<F> fields) {
+    List<TagLabel> inheritedTerms = Entity.inheritedParentTerms(entity.getTags());
+    if (!inheritedTerms.isEmpty() && fields != null) {
+      for (F field : EntityUtil.getFlattenedEntityField(fields)) {
+        field.setTags(mergeInheritedTags(field.getTags(), inheritedTerms));
+      }
+    }
+  }
+
   protected List<UUID> entityListToUUID(List<T> entities) {
     return entities.stream().map(EntityInterface<?>::getId).toList();
   }

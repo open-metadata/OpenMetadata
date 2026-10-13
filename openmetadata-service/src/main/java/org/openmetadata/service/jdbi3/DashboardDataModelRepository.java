@@ -196,6 +196,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     if (fields.contains("columns")) {
       // Use bulk tag fetching to avoid N+1 queries
       bulkPopulateEntityFieldTags(dataModels, DashboardDataModel::getColumns);
+      inheritEntityTermsOnFields(dataModels, DashboardDataModel::getColumns);
     }
   }
 

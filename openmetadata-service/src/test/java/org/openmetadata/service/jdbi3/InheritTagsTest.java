@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
@@ -227,6 +228,48 @@ class InheritTagsTest {
     return descriptors.stream().anyMatch(d -> fieldName.equals(d.fieldName()));
   }
 
+  /**
+   * A bulk read has every field inherit its entity's glossary terms, as a single read does, so a
+   * list returns the same column tags as a get. Fields do not inherit classification tags.
+   */
+  @Test
+  void inheritEntityTerms_givesEveryFieldTheEntitysGlossaryTermsAsDerived() {
+    Column inner = new Column().withName("inner").withFullyQualifiedName("t.payload.inner");
+    Column payload =
+        new Column()
+            .withName("payload")
+            .withFullyQualifiedName("t.payload")
+            .withChildren(List.of(inner));
+    Table table = table();
+    table.setTags(
+        new ArrayList<>(List.of(glossaryTerm("Finance.Revenue"), manual("PII.Sensitive"))));
+
+    EntityRepository.inheritEntityTerms(table, List.of(payload));
+
+    for (Column column : List.of(payload, inner)) {
+      assertEquals(1, column.getTags().size(), column.getName() + " tags: " + column.getTags());
+      assertEquals("Finance.Revenue", column.getTags().getFirst().getTagFQN());
+      assertEquals(TagLabel.LabelType.DERIVED, column.getTags().getFirst().getLabelType());
+    }
+  }
+
+  /** A field that carries the entity's term itself keeps its own label. */
+  @Test
+  void inheritEntityTerms_keepsAFieldsOwnLabelOfTheSameTerm() {
+    Column amount =
+        new Column()
+            .withName("amount")
+            .withFullyQualifiedName("t.amount")
+            .withTags(new ArrayList<>(List.of(glossaryTerm("Finance.Revenue"))));
+    Table table = table();
+    table.setTags(new ArrayList<>(List.of(glossaryTerm("Finance.Revenue"))));
+
+    EntityRepository.inheritEntityTerms(table, List.of(amount));
+
+    assertEquals(1, amount.getTags().size());
+    assertEquals(TagLabel.LabelType.MANUAL, amount.getTags().getFirst().getLabelType());
+  }
+
   private static Table table() {
     return new Table().withId(UUID.randomUUID()).withName("t");
   }
@@ -247,6 +290,10 @@ class InheritTagsTest {
         .withSource(TagLabel.TagSource.CLASSIFICATION)
         .withLabelType(TagLabel.LabelType.MANUAL)
         .withState(TagLabel.State.CONFIRMED);
+  }
+
+  private static TagLabel glossaryTerm(String fqn) {
+    return manual(fqn).withSource(TagLabel.TagSource.GLOSSARY);
   }
 
   private static List<String> tagFqns(Table table) {

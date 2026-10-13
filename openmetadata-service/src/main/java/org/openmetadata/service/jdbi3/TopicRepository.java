@@ -242,6 +242,7 @@ public class TopicRepository extends EntityRepository<Topic> {
 
       if (!topicsWithSchemas.isEmpty()) {
         bulkPopulateEntityFieldTags(topicsWithSchemas, t -> t.getMessageSchema().getSchemaFields());
+        inheritEntityTermsOnFields(topicsWithSchemas, t -> t.getMessageSchema().getSchemaFields());
       }
     }
   }
