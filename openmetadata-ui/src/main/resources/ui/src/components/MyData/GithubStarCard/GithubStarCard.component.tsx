@@ -126,7 +126,7 @@ const GithubStarCard = () => {
   return showGithubStarPopup && isHomePage ? (
     <Box
       className={classNames(
-        'tw:fixed tw:right-7.5 tw:-bottom-full tw:z-1 tw:border-none',
+        'tw:fixed tw:right-7.5 tw:-bottom-full tw:z-1 tw:w-full tw:max-w-90 tw:border-none',
         isWhatNewAlertVisible
           ? 'github-star-popup-card-with-alert'
           : 'github-star-popup-card-without-alert'
@@ -153,7 +153,7 @@ const GithubStarCard = () => {
             {t('message.star-on-github-description')}
           </Typography>
 
-          <Box gap={2}>
+          <Box className="tw:mt-4" gap={2}>
             <Button
               color="secondary"
               href={OMD_REPOSITORY_LINK}
