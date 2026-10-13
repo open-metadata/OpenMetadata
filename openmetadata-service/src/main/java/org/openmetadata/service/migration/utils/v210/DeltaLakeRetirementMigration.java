@@ -30,8 +30,7 @@ import org.openmetadata.service.migration.utils.IdBatches;
 import org.openmetadata.service.util.EntityUtil;
 
 /**
- * Retires the removed DeltaLake database connector
- * (ADR:2026-10-13-a-removed-connector-is-retired-in-the-first-data-migration-step). Its services,
+ * Retires the removed DeltaLake database connector. Its services,
  * their databases, schemas, tables and stored procedures, and all of their version snapshots become
  * CustomDatabase, keeping their metadata. A service's connection config is replaced with {@code
  * {"type": "CustomDatabase"}}, so the old metastore password and storage keys are not kept as
