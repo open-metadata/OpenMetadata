@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { OM_BASE_URL, SSO_ENV } from '../../constant/ssoAuth';
 import {
   applyProviderConfig,
@@ -184,14 +185,16 @@ export const keycloakOidcPublicProviderFixture: SsoProviderFixture = {
       )
       .catch(() => undefined);
     const signupAppeared = await Promise.race([
-      createButton.waitFor({ state: 'visible', timeout: 30_000 }).then(
+      createButton.waitFor({ state: 'visible', timeout: ACTION_TIMEOUT }).then(
         () => true,
         () => false
       ),
-      sidebarLocator.waitFor({ state: 'visible', timeout: 30_000 }).then(
-        () => false,
-        () => false
-      ),
+      sidebarLocator
+        .waitFor({ state: 'visible', timeout: ACTION_TIMEOUT })
+        .then(
+          () => false,
+          () => false
+        ),
     ]);
     if (signupAppeared) {
       // displayName is required; the SPA pre-fills it from token claims but

@@ -131,15 +131,25 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
           if (item.type === 'user') {
             return getUserByName(item.name, {
               fields: TabSpecificField.PROFILE,
-            }).then((res) => {
-              newMatches[index] = {
-                ...item,
-                avatarEle: userMentionItemWithAvatar(
-                  item,
-                  userProfilePics[item.name] ?? res
-                ),
-              };
-            });
+            })
+              .then((res) => {
+                newMatches[index] = {
+                  ...item,
+                  avatarEle: userMentionItemWithAvatar(
+                    item,
+                    userProfilePics[item.name] ?? res
+                  ),
+                };
+              })
+              .catch(() => {
+                // Fallback: render without avatar on fetch failure so the
+                // index is always populated and quill-mention's renderList
+                // never dereferences an undefined (holey) array element.
+                newMatches[index] = {
+                  ...item,
+                  avatarEle: userMentionItemWithAvatar(item),
+                };
+              });
           } else if (item.type === 'team') {
             newMatches[index] = {
               ...item,
@@ -309,11 +319,14 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
           e.preventDefault();
           onSaveHandle();
         }
-        // handle enter keybinding for mention popup
-        // set mention list state to false when mention item is selected
-        else {
-          toggleMentionList(false);
-        }
+        // When the list is open, quill-mention's onClose (deferred via
+        // setTimeout) is the sole authority on when isMentionListOpen goes
+        // false. Flipping it here on every Enter-while-open desynchronises
+        // React's flag from the real dropdown: a disabled "No match found"
+        // row keeps the dropdown open (selectItem returns early, so onClose
+        // never fires), but an unconditional toggle would set the flag to
+        // false anyway, letting the next Enter submit through the
+        // !isMentionListOpen guard.
       }
     };
 

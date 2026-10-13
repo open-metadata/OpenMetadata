@@ -263,7 +263,7 @@ public class GetEntityTool implements McpTool {
     int columnLimit = McpParams.getInt(params, COLUMN_LIMIT_PARAM, NO_COLUMN_LIMIT);
     // Kept as the entity, not just its map: the content section needs the object, and reading it
     // a second time for that would be the same fetch twice in one request.
-    EntityInterface entity =
+    EntityInterface<?> entity =
         CommonUtils.readEntityForCaller(entityType, fqn, "*", null, securityContext);
     Map<String, Object> entityData = JsonUtils.getMap(entity);
 
@@ -288,7 +288,7 @@ public class GetEntityTool implements McpTool {
     IncludeContext authorizationContext =
         new IncludeContext(authorizer, securityContext, entityType, fqn, null, options(params));
     authorizeKnowledge(authorizationContext);
-    EntityInterface entity =
+    EntityInterface<?> entity =
         CommonUtils.readEntityForCaller(entityType, fqn, "", Include.NON_DELETED, securityContext);
     IncludeContext contentContext =
         new IncludeContext(
@@ -317,7 +317,7 @@ public class GetEntityTool implements McpTool {
       CatalogSecurityContext securityContext,
       String entityType,
       String fqn,
-      EntityInterface entity,
+      EntityInterface<?> entity,
       ContentOptions options) {}
 
   /** How the knowledge sections render, shared by {@code context} and {@code content}. */
@@ -700,7 +700,7 @@ public class GetEntityTool implements McpTool {
    * durable fix for genuinely un-representable columns is index-backed sub-column paging.
    */
   private static boolean columnExceedsBudget(int overhead, Object column) {
-    long available = (long) (McpResponseTrim.MAX_RESPONSE_CHARS * COLUMN_BUDGET_FACTOR) - overhead;
+    long available = (long) (McpResponseTrim.maxResponseChars() * COLUMN_BUDGET_FACTOR) - overhead;
     return McpResponseTrim.serializedLength(column) + 1 > available;
   }
 
@@ -721,7 +721,7 @@ public class GetEntityTool implements McpTool {
    * advances by at least one column instead of re-requesting the same offset forever.
    */
   private static int fitToBudget(int overhead, List<?> columns, int start, int end) {
-    long available = (long) (McpResponseTrim.MAX_RESPONSE_CHARS * COLUMN_BUDGET_FACTOR) - overhead;
+    long available = (long) (McpResponseTrim.maxResponseChars() * COLUMN_BUDGET_FACTOR) - overhead;
     long used = 0;
     int fitEnd = start;
     for (int i = start; i < end && used <= available; i++) {

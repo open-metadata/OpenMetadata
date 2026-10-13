@@ -163,7 +163,7 @@ public final class DottedServiceFqnMigration {
       RepairTally tally) {
     try {
       // Include.ALL so a soft-deleted service still has its (also soft-deleted) children repaired.
-      EntityInterface service =
+      EntityInterface<?> service =
           hierarchy.serviceDao().apply(collectionDAO).findEntityById(serviceId, Include.ALL);
       String serviceFqn = service == null ? null : service.getFullyQualifiedName();
       // Only a quoted service FQN could have produced the unquoted-dotted corruption.
@@ -197,8 +197,8 @@ public final class DottedServiceFqnMigration {
       RepairTally tally) {
     // Include.ALL so soft-deleted children (still linked to the service) are repaired too; a later
     // restore would otherwise keep the invalid FQN/hash and duplicate on re-ingestion.
-    List<? extends EntityInterface> children = childDao.findEntitiesByIds(childIds, Include.ALL);
-    for (EntityInterface child : children) {
+    List<? extends EntityInterface<?>> children = childDao.findEntitiesByIds(childIds, Include.ALL);
+    for (EntityInterface<?> child : children) {
       recordOutcome(tally, child.getId(), repairChild(childDao, childType, serviceFqn, child));
     }
   }
@@ -212,7 +212,7 @@ public final class DottedServiceFqnMigration {
   }
 
   private static RepairOutcome repairChild(
-      EntityDAO<?> childDao, String childType, String serviceFqn, EntityInterface child) {
+      EntityDAO<?> childDao, String childType, String serviceFqn, EntityInterface<?> child) {
     try {
       String expectedFqn = FullyQualifiedName.add(serviceFqn, child.getName());
       if (expectedFqn.equals(child.getFullyQualifiedName())) {

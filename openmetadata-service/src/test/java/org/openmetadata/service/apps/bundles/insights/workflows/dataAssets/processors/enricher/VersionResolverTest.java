@@ -45,7 +45,8 @@ class VersionResolverTest {
     long windowEnd = TimestampUtils.getEndOfDayTimestamp(today);
     long windowStart = TimestampUtils.subtractDays(today, 29);
 
-    EntityInterface entity = stubEntity(windowStart - 5 * ONE_DAY); // updated 5 days BEFORE window
+    EntityInterface<?> entity =
+        stubEntity(windowStart - 5 * ONE_DAY); // updated 5 days BEFORE window
     EnrichmentContext context =
         new EnrichmentContext(
             "table", List.of("id", "name", "fullyQualifiedName"), windowStart, windowEnd);
@@ -73,7 +74,7 @@ class VersionResolverTest {
     long windowEnd = TimestampUtils.getEndOfDayTimestamp(today);
     long windowStart = TimestampUtils.subtractDays(today, 29);
 
-    EntityInterface entity = stubEntity(windowStart + 1); // 1ms after window start
+    EntityInterface<?> entity = stubEntity(windowStart + 1); // 1ms after window start
 
     EnrichmentContext context =
         new EnrichmentContext("table", List.of("id"), windowStart, windowEnd);
@@ -116,7 +117,7 @@ class VersionResolverTest {
     long windowEnd = TimestampUtils.getEndOfDayTimestamp(now);
     long windowStart = TimestampUtils.subtractDays(now, 7);
 
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     when(entity.getUpdatedAt()).thenReturn(null);
 
     EnrichmentContext context =
@@ -130,8 +131,8 @@ class VersionResolverTest {
     }
   }
 
-  private static EntityInterface stubEntity(long updatedAt) {
-    EntityInterface entity = mock(EntityInterface.class);
+  private static EntityInterface<?> stubEntity(long updatedAt) {
+    EntityInterface<?> entity = mock(EntityInterface.class);
     when(entity.getUpdatedAt()).thenReturn(updatedAt);
     return entity;
   }

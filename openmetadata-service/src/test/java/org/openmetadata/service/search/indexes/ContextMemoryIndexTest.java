@@ -33,12 +33,12 @@ import org.mockito.Mockito;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryScope;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.ContextMemoryType;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchRepository;
 
@@ -67,7 +67,7 @@ class ContextMemoryIndexTest {
             .withSummary("Quick guide on Certification filtering")
             .withMemoryType(ContextMemoryType.FAQ)
             .withMemoryScope(ContextMemoryScope.USER_GLOBAL)
-            .withEntityStatus(EntityStatus.APPROVED)
+            .withEntityStatus(ContextMemoryStatus.APPROVED)
             .withPinned(true)
             .withSourceType(ContextMemorySourceType.CHAT_PROMOTION)
             .withUsageCount(7)

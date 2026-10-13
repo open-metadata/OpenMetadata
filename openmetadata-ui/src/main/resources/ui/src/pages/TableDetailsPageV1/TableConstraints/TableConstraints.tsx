@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Space, Tooltip } from 'antd';
+import { Box, Tooltip, Typography } from '@openmetadata/ui-core-components';
 import { isEmpty, map } from 'lodash';
 import { ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -88,7 +87,13 @@ const TableConstraints = ({
   }
 
   const content = isEmpty(data?.tableConstraints) ? null : (
-    <Space className="w-full new-header-border-card" direction="vertical">
+    <Box
+      inline
+      align="stretch"
+      className="layout-space w-full new-header-border-card"
+      direction="col"
+      gap={2}
+      itemClassName="layout-space-item">
       {data?.tableConstraints?.map(
         ({ constraintType, columns, referredColumns }) => {
           if (
@@ -118,9 +123,11 @@ const TableConstraints = ({
                   <div data-testid="referred-column-name-fqn">
                     {map(referredColumns, (referredColumn) => (
                       <Tooltip
+                        arrow
+                        excludeTriggerFromTabOrder
                         placement="top"
                         title={referredColumn}
-                        trigger="hover">
+                        triggerClassName="tw:inline-flex">
                         <Link
                           className="no-underline"
                           to={entityUtilClassBase.getEntityLink(
@@ -151,7 +158,7 @@ const TableConstraints = ({
           return null;
         }
       )}
-    </Space>
+    </Box>
   );
 
   return (

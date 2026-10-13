@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Divider } from '@openmetadata/ui-core-components';
-import { Button, Input, Popover, Select, Tooltip } from 'antd';
+import {
+  ButtonUtility,
+  Divider,
+  SelectPopover,
+  Tooltip,
+} from '@openmetadata/ui-core-components';
+import { Input, Select } from 'antd';
 import classNames from 'classnames';
 import { debounce, isEmpty, isString } from 'lodash';
 import Qs from 'qs';
@@ -24,6 +29,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { useInteractOutside } from 'react-aria';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
@@ -218,24 +224,17 @@ export const GlobalSearchBar = () => {
     return (
       <>
         <Tooltip
+          arrow
           title={
             isNLPActive
               ? t('message.natural-language-search-active')
               : t('label.use-natural-language-search')
           }>
-          <Button
-            className={classNames('nav-search-button', 'w-6', 'h-6', {
-              active: isNLPActive,
-            })}
+          <ButtonUtility
+            color="tertiary"
             data-testid="nlp-suggestions-button"
-            icon={
-              <Icon
-                component={
-                  isNLPActive ? IconSuggestionsActive : IconSuggestionsBlue
-                }
-              />
-            }
-            type="text"
+            icon={isNLPActive ? IconSuggestionsActive : IconSuggestionsBlue}
+            size="xs"
             onClick={() => setNLPActive(!isNLPActive)}
           />
         </Tooltip>
@@ -247,12 +246,21 @@ export const GlobalSearchBar = () => {
     );
   };
 
-  const renderPopoverContent = () => {
-    if (!shouldShowSearchContent) {
-      return false;
-    }
+  // Non-modal popovers skip react-aria's outside-press dismissal; restore the
+  // antd behaviour. The popover is portaled, so presses inside it land
+  // outside the search container and are filtered by class.
+  useInteractOutside({
+    ref: searchContainerRef,
+    isDisabled: !isSearchBoxOpen,
+    onInteractOutside: (event) => {
+      if (!(event.target as Element).closest('.global-search-overlay')) {
+        setIsSearchBoxOpen(false);
+      }
+    },
+  });
 
-    return isInPageSearchAllowed(pathname) ? (
+  const renderPopoverContent = () =>
+    isInPageSearchAllowed(pathname) ? (
       <SearchOptions
         isOpen={isSearchBoxOpen}
         options={inPageSearchOptions(pathname)}
@@ -270,7 +278,6 @@ export const GlobalSearchBar = () => {
         onSearchTextUpdate={handleSearchChange}
       />
     );
-  };
 
   const renderSearchIcon = () =>
     searchValue ? (
@@ -308,42 +315,41 @@ export const GlobalSearchBar = () => {
       data-testid="navbar-search-container"
       ref={searchContainerRef}>
       {renderNlpToggle()}
-      <Popover
-        align={{ offset: [0, 12] }}
-        content={renderPopoverContent()}
-        getPopupContainer={() => searchContainerRef.current || document.body}
-        open={isSearchBoxOpen}
-        overlayClassName="global-search-overlay"
-        overlayStyle={{ paddingTop: 0, width: '100%' }}
-        placement="bottom"
-        showArrow={false}
-        trigger={['click']}
+      <Input
+        autoComplete="off"
+        bordered={false}
+        className="rounded-4 appbar-search"
+        data-testid="searchBox"
+        id="searchBox"
+        placeholder={t('label.search-for-type', {
+          type: t('label.data-asset-plural'),
+        })}
+        type="text"
+        value={searchValue}
+        onBlur={() => {
+          setIsSearchBlur(true);
+        }}
+        onChange={(e) => {
+          const { value } = e.target;
+          debounceOnSearch(value);
+          handleSearchChange(value);
+        }}
+        onClick={() => setIsSearchBoxOpen(true)}
+        onFocus={() => {
+          setIsSearchBlur(false);
+        }}
+        onKeyDown={handleKeyDown}
+      />
+      <SelectPopover
+        className="global-search-overlay"
+        data-testid="global-search-popover"
+        isOpen={isSearchBoxOpen && Boolean(shouldShowSearchContent)}
+        size="md"
+        style={{ width: searchContainerRef.current?.offsetWidth }}
+        triggerRef={searchContainerRef}
         onOpenChange={setIsSearchBoxOpen}>
-        <Input
-          autoComplete="off"
-          bordered={false}
-          className="rounded-4 appbar-search"
-          data-testid="searchBox"
-          id="searchBox"
-          placeholder={t('label.search-for-type', {
-            type: t('label.data-asset-plural'),
-          })}
-          type="text"
-          value={searchValue}
-          onBlur={() => {
-            setIsSearchBlur(true);
-          }}
-          onChange={(e) => {
-            const { value } = e.target;
-            debounceOnSearch(value);
-            handleSearchChange(value);
-          }}
-          onFocus={() => {
-            setIsSearchBlur(false);
-          }}
-          onKeyDown={handleKeyDown}
-        />
-      </Popover>
+        {renderPopoverContent()}
+      </SelectPopover>
 
       {entitiesSelect}
       <Divider

@@ -20,6 +20,7 @@ import {
 } from '../constants/AdvancedSearch.constants';
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { getEntityLifecycleStages } from '../rest/metadataTypeAPI';
 import { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
 import { getAggregateFieldOptions } from '../rest/miscAPI';
 import { AdvancedSearchClassBase } from './AdvancedSearchClassBase';
@@ -140,6 +141,34 @@ describe('AdvancedSearchClassBase', () => {
   beforeEach(() => {
     advancedSearchClassBase = new AdvancedSearchClassBase();
   });
+
+  it.each(['Superseded', 'Invalidated'])(
+    'does not offer %s when filtering tables',
+    async (status) => {
+      const config = advancedSearchClassBase.getCommonConfig({
+        entitySearchIndex: [SearchIndex.TABLE],
+      });
+      const field = config[EntityFields.ENTITY_STATUS];
+      if (!('fieldSettings' in field)) {
+        throw new Error('Status must be a selectable field');
+      }
+      const settings = field.fieldSettings;
+      const fetch =
+        settings && 'asyncFetch' in settings ? settings.asyncFetch : undefined;
+      if (typeof fetch !== 'function') {
+        throw new Error(
+          'Status options must resolve through lifecycle discovery'
+        );
+      }
+
+      await expect(fetch('', 0)).resolves.toMatchObject({
+        values: expect.arrayContaining([
+          expect.objectContaining({ value: 'Approved' }),
+        ]),
+      });
+      await expect(fetch(status, 0)).resolves.toMatchObject({ values: [] });
+    }
+  );
 
   it('getCommonConfig function should return expected fields', () => {
     const result = advancedSearchClassBase.getCommonConfig({});
@@ -1506,5 +1535,33 @@ describe('tag-like field autocomplete casing (#31999)', () => {
         fieldSettings?: { asyncFetch?: unknown };
       }
     );
+  });
+});
+
+jest.mock('../rest/metadataTypeAPI', () => ({
+  getEntityLifecycleStages: jest.fn(),
+}));
+
+beforeEach(() => {
+  (
+    getEntityLifecycleStages as jest.MockedFunction<
+      typeof getEntityLifecycleStages
+    >
+  ).mockResolvedValue({
+    stages: ['Approved', 'In Review', 'Superseded', 'Invalidated'],
+    entityTypes: [
+      {
+        entityType: 'table',
+        stages: ['Approved', 'In Review'],
+        transitions: [],
+        stageWorkflows: [],
+      },
+      {
+        entityType: 'contextMemory',
+        stages: ['Approved', 'Superseded', 'Invalidated'],
+        transitions: [],
+        stageWorkflows: [],
+      },
+    ],
   });
 });

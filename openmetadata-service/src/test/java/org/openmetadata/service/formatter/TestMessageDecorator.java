@@ -1,6 +1,5 @@
 package org.openmetadata.service.formatter;
 
-import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
 
 public final class TestMessageDecorator implements MessageDecorator<String> {
@@ -42,16 +41,6 @@ public final class TestMessageDecorator implements MessageDecorator<String> {
   @Override
   public String getEntityUrl(String prefix, String fqn, String additionalInput) {
     return prefix + "|" + fqn + "|" + additionalInput;
-  }
-
-  @Override
-  public String buildEntityMessage(String publisherName, ChangeEvent event) {
-    return null;
-  }
-
-  @Override
-  public String buildThreadMessage(String publisherName, ChangeEvent event) {
-    return null;
   }
 
   @Override

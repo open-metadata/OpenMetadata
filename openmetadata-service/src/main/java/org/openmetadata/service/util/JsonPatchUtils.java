@@ -44,6 +44,7 @@ public class JsonPatchUtils {
   private static final String PATH_KEY = "path";
   private static final String DOMAINS_PATH = "/" + Entity.FIELD_DOMAINS;
   private static final String DOMAINS_PATH_PREFIX = DOMAINS_PATH + "/";
+  private static final String FROM_MEMBER = "from";
 
   private JsonPatchUtils() {}
 
@@ -96,7 +97,7 @@ public class JsonPatchUtils {
   public static Set<MetadataOperation> getMetadataOperations(
       ResourceContextInterface resourceContextInterface, JsonPatch jsonPatch) {
     Set<MetadataOperation> uniqueOperations = new HashSet<>();
-    EntityInterface originalEntity = resourceContextInterface.getEntity();
+    EntityInterface<?> originalEntity = resourceContextInterface.getEntity();
     String resourceType = resourceContextInterface.getResource();
     boolean tagsAffected = false;
 
@@ -137,6 +138,18 @@ public class JsonPatchUtils {
     }
 
     return uniqueOperations;
+  }
+
+  /**
+   * Whether an operation of {@code jsonPatch} reads a value from another location of the document,
+   * as {@code copy} and {@code move} do through their {@code from} member.
+   */
+  public static boolean readsFromAnotherPath(JsonPatch jsonPatch) {
+    // jakarta JsonPatch exposes its operations as untyped JsonValues; each operation is a JSON
+    // object.
+    return jsonPatch.toJsonArray().stream()
+        .anyMatch(
+            operation -> operation instanceof JsonObject object && object.containsKey(FROM_MEMBER));
   }
 
   private static JsonNode applyPatch(JsonNode targetJson, JsonPatch patch)

@@ -27,6 +27,8 @@ export const styles = sortCx({
       'tw:in-data-input-wrapper:shadow-xs tw:in-data-input-wrapper:focus:!z-50 tw:in-data-input-wrapper:in-data-leading:-mr-px tw:in-data-input-wrapper:in-data-leading:rounded-r-none tw:in-data-input-wrapper:in-data-leading:before:rounded-r-none tw:in-data-input-wrapper:in-data-trailing:-ml-px tw:in-data-input-wrapper:in-data-trailing:rounded-l-none tw:in-data-input-wrapper:in-data-trailing:before:rounded-l-none',
       // Disabled styles
       'tw:disabled:cursor-not-allowed tw:disabled:text-fg-disabled',
+      // The masked highlight fades the disabled border into dark surfaces.
+      'tw:dark:disabled:before:hidden tw:dark:disabled:after:outline-disabled',
       // Icon styles
       'tw:disabled:*:data-icon:text-fg-disabled_subtle',
       // Same as `icon` but for SSR icons that cannot be passed to the client as functions.

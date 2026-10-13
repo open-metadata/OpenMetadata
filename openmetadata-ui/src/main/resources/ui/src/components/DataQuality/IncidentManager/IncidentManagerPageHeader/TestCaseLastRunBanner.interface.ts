@@ -29,7 +29,8 @@ import type { TaskLinkInfo } from './useTestCaseIncidentHeader';
 export interface TestCaseLastRunBannerProps {
   hasEditStatusPermission?: boolean;
   incidentTask: Task | null;
-  nextRunTimestamp?: number;
+  /** `null` when no run is scheduled; absent while the schedule is unknown. */
+  nextRunTimestamp?: number | null;
   onAcknowledge?: () => Promise<void>;
   testCase?: TestCase;
   testCaseResult?: TestCaseResult;
@@ -56,7 +57,7 @@ export interface IncidentDetailsProps {
 }
 
 export interface LastRunTimeProps {
-  nextRunTimestamp?: number;
+  nextRunTimestamp?: number | null;
   testCaseStatus: TestCaseStatus;
   timestamp?: number;
 }

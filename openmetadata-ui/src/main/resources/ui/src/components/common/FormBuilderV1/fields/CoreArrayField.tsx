@@ -52,14 +52,27 @@ const getArrayFieldContainerClass = (isInvalid: boolean, isDisabled: boolean) =>
 
 // Plain derivations of the RJSF props; pulled out so the component body stays a
 // render function rather than a chain of defaulting expressions.
+// A string schema rendered with `'ui:field': 'ArrayField'` (e.g. an OIDC
+// `scope`) is edited as tags but stored space-separated.
+const toValues = (formData: unknown, isSpaceSeparated: boolean): string[] => {
+  if (isSpaceSeparated) {
+    return typeof formData === 'string'
+      ? formData.split(' ').filter(Boolean)
+      : [];
+  }
+
+  return (formData as string[] | undefined) ?? [];
+};
+
 const getCoreArrayFieldState = (
   id: string,
-  formData: string[] | undefined,
+  formData: unknown,
+  isSpaceSeparated: boolean,
   disabled?: boolean,
   readonly?: boolean
 ) => ({
   fieldName: id.split('/').pop() ?? '',
-  value: formData ?? [],
+  value: toValues(formData, isSpaceSeparated),
   isDisabled: Boolean(disabled || readonly),
 });
 
@@ -92,12 +105,12 @@ const ArrayValueChip = ({
   return (
     <span
       className="tw:inline-flex tw:items-center tw:gap-1 tw:rounded-md
-          tw:bg-utility-brand-50 tw:px-2 tw:py-0.5 tw:text-xs tw:font-medium tw:text-brand-700 tw:outline-1 tw:-outline-offset-1 tw:outline-brand-200">
+          tw:bg-utility-brand-50 tw:px-2 tw:py-0.5 tw:text-xs tw:font-medium tw:text-utility-brand-700 tw:outline-1 tw:-outline-offset-1 tw:outline-utility-brand-200">
       {value}
       {!isDisabled && (
         <button
           aria-label={t('label.remove-entity', { entity: value })}
-          className="tw:flex tw:cursor-pointer tw:items-center tw:text-brand-400 hover:tw:text-brand-700"
+          className="tw:flex tw:cursor-pointer tw:items-center tw:text-utility-brand-400 tw:hover:text-utility-brand-700"
           type="button"
           onClick={onRemove}>
           <XClose size={10} strokeWidth={2.5} />
@@ -120,16 +133,24 @@ const CoreArrayField = (props: FieldProps) => {
     rawErrors,
     label,
     required,
+    uiSchema,
   } = props;
 
   const { t } = useTranslation();
   const id = idSchema.$id;
   const isFilterPattern = /FilterPattern/.test(id);
+  const isSpaceSeparated = schema.type === 'string';
   const { fieldName, value, isDisabled } = getCoreArrayFieldState(
     id,
     formData,
+    isSpaceSeparated,
     disabled,
     readonly
+  );
+  const emitValues = useCallback(
+    (values: string[]) =>
+      onChange(isSpaceSeparated ? values.join(' ') : values),
+    [isSpaceSeparated, onChange]
   );
   const [inputValue, setInputValue] = useState('');
 
@@ -153,9 +174,9 @@ const CoreArrayField = (props: FieldProps) => {
       if (isEmpty(filtered)) {
         return;
       }
-      onChange(Array.from(new Set([...value, ...filtered])));
+      emitValues(Array.from(new Set([...value, ...filtered])));
     },
-    [value, onChange]
+    [value, emitValues]
   );
 
   const commitInput = useCallback(() => {
@@ -190,9 +211,9 @@ const CoreArrayField = (props: FieldProps) => {
     [commitInput, pasteFromClipboard]
   );
 
-  const placeholder = isFilterPattern
-    ? t('message.filter-pattern-placeholder')
-    : '';
+  const placeholder =
+    (uiSchema?.['ui:placeholder'] as string | undefined) ??
+    (isFilterPattern ? t('message.filter-pattern-placeholder') : '');
 
   const fieldLabel = label || schema.title || getFormDisplayLabel(fieldName);
 
@@ -205,7 +226,7 @@ const CoreArrayField = (props: FieldProps) => {
             isDisabled={isDisabled}
             key={v}
             value={v}
-            onRemove={() => onChange(value.filter((val) => val !== v))}
+            onRemove={() => emitValues(value.filter((val) => val !== v))}
           />
         ))}
         {!isDisabled && (

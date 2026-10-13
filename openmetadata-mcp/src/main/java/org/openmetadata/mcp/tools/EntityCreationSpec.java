@@ -16,8 +16,8 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 /** The repository-owned information needed to create one entity type. */
 record EntityCreationSpec(
     String entityType,
-    EntityRepository<? extends EntityInterface> repository,
-    Class<? extends EntityInterface> entityClass) {
+    EntityRepository<? extends EntityInterface<?>> repository,
+    Class<? extends EntityInterface<?>> entityClass) {
 
   /** Knowledge Page fields maintained by relationships or background processing. */
   private static final Set<String> PAGE_SYSTEM_FIELDS =
@@ -53,7 +53,7 @@ record EntityCreationSpec(
 
   static EntityCreationSpec resolve(String entityType) {
     rejectDedicatedCreateFlow(entityType, DEDICATED_CREATE_FLOWS.get(entityType));
-    EntityRepository<? extends EntityInterface> repository;
+    EntityRepository<? extends EntityInterface<?>> repository;
     try {
       repository = Entity.getEntityRepository(entityType);
     } catch (EntityNotFoundException e) {
@@ -67,7 +67,7 @@ record EntityCreationSpec(
               + ". Call describe_entity_type with the corrected type before creating it.",
           e);
     }
-    Class<? extends EntityInterface> entityClass = repository.getEntityClass();
+    Class<? extends EntityInterface<?>> entityClass = repository.getEntityClass();
     if (ServiceEntityInterface.class.isAssignableFrom(entityClass)) {
       rejectDedicatedCreateFlow(
           entityType, "service creation requires connection-secret masking and unmasking");
@@ -92,8 +92,8 @@ record EntityCreationSpec(
   }
 
   @SuppressWarnings("unchecked")
-  EntityRepository<EntityInterface> typedRepository() {
-    return (EntityRepository<EntityInterface>) repository;
+  EntityRepository<EntityInterface<?>> typedRepository() {
+    return (EntityRepository<EntityInterface<?>>) repository;
   }
 
   boolean hasMcpDefault(String field) {
