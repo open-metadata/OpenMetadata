@@ -58,7 +58,7 @@ test('the suppressions baseline matches its recorded state exactly', () => {
     // fixes from both branches. Scoping the Context Center draft editor to
     // `.om-block-editor` instead of `.ProseMirror...first()` removes four, and
     // the Data Contract core-components migration removes three more.
-    'om-playwright/no-positional-locator': 584,
+    'om-playwright/no-positional-locator': 583,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 1,
     'playwright/no-wait-for-selector': 14,
