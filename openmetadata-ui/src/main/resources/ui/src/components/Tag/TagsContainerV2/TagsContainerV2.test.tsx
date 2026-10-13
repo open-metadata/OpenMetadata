@@ -23,6 +23,7 @@ import {
 } from '../../../generated/type/tagLabel';
 import { ClassificationTagPickerProps } from '../../common/ClassificationTagPicker/ClassificationTagPicker';
 import { GlossaryTermPickerProps } from '../../common/GlossaryTermPicker/GlossaryTermPicker';
+import { LayoutType } from '../TagsViewer/TagsViewer.interface';
 import TagsContainerV2 from './TagsContainerV2';
 
 const TRIGGER_STATE = {
@@ -69,11 +70,13 @@ jest.mock('../../common/GlossaryTermPicker/GlossaryTermPicker', () => {
 // Renders a portaled link alongside its normal output, standing in for the "+n more" popover:
 // the Popover mounts overlay content in `document.body`, so it is a React-tree descendant whose
 // clicks bubble through the container while being a DOM sibling of it.
+// The mock also echoes the `entityFqn` prop it receives back as a data attribute, so propagation
+// tests can assert what TagsContainerV2 forwards to TagsViewer without rendering the real chip.
 jest.mock('../TagsViewer/TagsViewer', () => {
   const { createPortal } = jest.requireActual('react-dom');
 
-  return jest.fn().mockImplementation(() => (
-    <div data-testid="tags-viewer">
+  return jest.fn().mockImplementation((props: { entityFqn?: string }) => (
+    <div data-entity-fqn={props.entityFqn} data-testid="tags-viewer">
       {createPortal(
         <a data-testid="portaled-tag-link" href="/tag/PII">
           PII
@@ -666,5 +669,116 @@ describe('TagsContainerV2 glossary picker', () => {
     });
 
     expect(onSelectionChange).not.toHaveBeenCalled();
+  });
+});
+
+// TagsContainerV2 receives its own `entityFqn` prop for entity-level callers (e.g.
+// EntityRightPanel) that have no `columnData`. Until this fix, both layout paths forwarded
+// `columnData?.fqn ?? ''` to TagsViewer, dropping `entityFqn` entirely. That made the
+// `tag.labelType === LabelType.Generated && entityFqn` guard in TagsViewer fail on the empty
+// string, so a Generated tag on entity-level `tags` fell through to ClassificationTag instead of
+// AutoClassificationTag. These tests assert the `entityFqn` value that actually reaches
+// TagsViewer in each layout and caller scenario.
+describe('TagsContainerV2 entityFqn propagation to TagsViewer', () => {
+  const COLUMN_FQN = 'sample.db.schema.table.columns.col1';
+
+  const generatedTag: EntityTags = {
+    tagFQN: PII_SENSITIVE_FQN,
+    source: TagSource.Classification,
+    labelType: LabelType.Generated,
+    state: State.Confirmed,
+  };
+
+  const renderForPropagation = (props: {
+    entityFqn?: string;
+    columnData?: { fqn: string; name?: string };
+    layoutType?: LayoutType;
+    newLook?: boolean;
+  }) => {
+    return render(
+      <MemoryRouter>
+        <TagsContainerV2
+          permission
+          columnData={props.columnData}
+          entityFqn={props.entityFqn}
+          entityType="table"
+          layoutType={props.layoutType}
+          newLook={props.newLook}
+          selectedTags={[generatedTag]}
+          tagType={TagSource.Classification}
+        />
+      </MemoryRouter>
+    );
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('forwards entityFqn in vertical layout when columnData is absent (entity-level)', () => {
+    renderForPropagation({ entityFqn: 'sample.db.schema.table' });
+
+    expect(screen.getByTestId('tags-viewer')).toHaveAttribute(
+      'data-entity-fqn',
+      'sample.db.schema.table'
+    );
+  });
+
+  it('forwards columnData.fqn in vertical layout when columnData is present (column-level)', () => {
+    renderForPropagation({
+      entityFqn: 'sample.db.schema.table',
+      columnData: { fqn: COLUMN_FQN },
+    });
+
+    expect(screen.getByTestId('tags-viewer')).toHaveAttribute(
+      'data-entity-fqn',
+      COLUMN_FQN
+    );
+  });
+
+  it('forwards entityFqn in horizontal layout when columnData is absent (entity-level)', () => {
+    renderForPropagation({
+      entityFqn: 'sample.db.schema.table',
+      layoutType: LayoutType.HORIZONTAL,
+    });
+
+    expect(screen.getByTestId('tags-viewer')).toHaveAttribute(
+      'data-entity-fqn',
+      'sample.db.schema.table'
+    );
+  });
+
+  it('forwards columnData.fqn in horizontal layout when columnData is present (column-level)', () => {
+    renderForPropagation({
+      entityFqn: 'sample.db.schema.table',
+      columnData: { fqn: COLUMN_FQN },
+      layoutType: LayoutType.HORIZONTAL,
+    });
+
+    expect(screen.getByTestId('tags-viewer')).toHaveAttribute(
+      'data-entity-fqn',
+      COLUMN_FQN
+    );
+  });
+
+  it('forwards empty string when neither entityFqn nor columnData is provided', () => {
+    renderForPropagation({});
+
+    expect(screen.getByTestId('tags-viewer')).toHaveAttribute(
+      'data-entity-fqn',
+      ''
+    );
+  });
+
+  it('forwards entityFqn in newLook vertical layout when columnData is absent', () => {
+    renderForPropagation({
+      entityFqn: 'sample.db.schema.table',
+      newLook: true,
+    });
+
+    expect(screen.getByTestId('tags-viewer')).toHaveAttribute(
+      'data-entity-fqn',
+      'sample.db.schema.table'
+    );
   });
 });

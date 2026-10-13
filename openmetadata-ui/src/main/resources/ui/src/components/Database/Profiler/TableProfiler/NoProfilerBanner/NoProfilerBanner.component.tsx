@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Tooltip } from '@openmetadata/ui-core-components';
-import { ArrowRight } from '@untitledui/icons';
+import { ArrowRight } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as NoDataIcon } from '../../../../../assets/svg/ticket-with-check.svg';
 import documentationLinksClassBase from '../../../../../utils/DocumentationLinksClassBase';

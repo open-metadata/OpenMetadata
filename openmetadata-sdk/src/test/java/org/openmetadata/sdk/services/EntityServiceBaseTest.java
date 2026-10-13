@@ -336,6 +336,51 @@ class EntityServiceBaseTest {
         .execute(eq(HttpMethod.DELETE), eq("/v1/tables/" + tableId), isNull(), eq(Void.class));
   }
 
+  @Test
+  void testDeleteByName() {
+    String fqn = "service.db.schema.table";
+
+    when(mockHttpClient.execute(
+            eq(HttpMethod.DELETE), eq("/v1/tables/name/" + fqn), isNull(), eq(Void.class)))
+        .thenReturn(null);
+
+    tableService.deleteByName(fqn);
+
+    // by-FQN delete must hit the /name/{fqn} endpoint, never the by-id /{id} path.
+    verify(mockHttpClient)
+        .execute(eq(HttpMethod.DELETE), eq("/v1/tables/name/" + fqn), isNull(), eq(Void.class));
+    verify(mockHttpClient, never())
+        .execute(eq(HttpMethod.DELETE), eq("/v1/tables/" + fqn), isNull(), eq(Void.class));
+  }
+
+  @Test
+  void testDeleteByNameWithParams() {
+    String fqn = "service.db.schema.table";
+    Map<String, String> params = Map.of("recursive", "true", "hardDelete", "true");
+
+    ArgumentCaptor<RequestOptions> options = ArgumentCaptor.forClass(RequestOptions.class);
+    when(mockHttpClient.execute(
+            eq(HttpMethod.DELETE),
+            eq("/v1/tables/name/" + fqn),
+            isNull(),
+            eq(Void.class),
+            options.capture()))
+        .thenReturn(null);
+
+    tableService.deleteByName(fqn, params);
+
+    verify(mockHttpClient)
+        .execute(
+            eq(HttpMethod.DELETE),
+            eq("/v1/tables/name/" + fqn),
+            isNull(),
+            eq(Void.class),
+            any(RequestOptions.class));
+    RequestOptions captured = options.getValue();
+    assertEquals("true", captured.getQueryParams().get("recursive"));
+    assertEquals("true", captured.getQueryParams().get("hardDelete"));
+  }
+
   // Note: restore method is not part of the base EntityServiceBase class
   // This would need to be implemented in specific service subclasses if needed
 

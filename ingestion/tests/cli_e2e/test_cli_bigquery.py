@@ -244,5 +244,5 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             end_ts,
             profile_type=ColumnProfile,
         ).entities[0]
-        # We ingest 1 row for each day and the profiler should default to the latest partition
-        assert column_profile.valuesCount == 1
+        # We ingest 1 row per day; the auto-detected BigQuery DAY window is 3 days (#33221)
+        assert column_profile.valuesCount == 3

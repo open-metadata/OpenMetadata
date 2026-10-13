@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Space, Typography } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import FilterSelectDropdown from '../../common/FilterSelectDropdown/FilterSelectDropdown';
@@ -57,8 +57,8 @@ const AddTestCaseListFilters = ({
   );
 
   return (
-    <Space size={8}>
-      <Typography.Text>{t('label.filter-plural')}:</Typography.Text>
+    <Box align="center" gap={2}>
+      <Typography>{t('label.filter-plural')}:</Typography>
       {filtersToShow.map((filter) => (
         <FilterSelectDropdown
           hideCounts
@@ -74,7 +74,7 @@ const AddTestCaseListFilters = ({
           onSearch={handleSearch}
         />
       ))}
-    </Space>
+    </Box>
   );
 };
 

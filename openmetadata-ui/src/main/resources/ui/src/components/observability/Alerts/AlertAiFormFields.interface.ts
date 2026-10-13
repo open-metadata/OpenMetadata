@@ -12,8 +12,9 @@
  */
 
 import { SelectItemType } from '@openmetadata/ui-core-components';
-import { ComponentProps, ReactNode } from 'react';
-import InlineAlert from '../../../components/common/InlineAlert/InlineAlert';
+import { ReactNode } from 'react';
+import { InlineAlertProps } from '../../../components/common/InlineAlert/InlineAlert.interface';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { NotificationTemplate } from '../../../generated/entity/events/notificationTemplate';
 import {
   Destination,
@@ -41,20 +42,28 @@ export interface AlertAiFormFieldsProps {
   alert?: ModifiedEventSubscription;
   containerEntities?: string[];
   filterResources: ObservabilityFilterResourceDescriptor[];
-  inlineAlert?: ComponentProps<typeof InlineAlert>;
+  inlineAlert?: InlineAlertProps;
   isViewOnly?: boolean;
-  onChange?: (value: ModifiedCreateEventSubscription) => void;
+  // Accepts a value or a functional updater. Prefer the updater — it composes against the latest
+  // state so rapid edits don't clobber each other. The value form stays assignable to the
+  // value-only AlertAiTemplateSectionProps.onChange (Collate), so the two repos can merge in any order.
+  onChange?: (
+    valueOrUpdater:
+      | ModifiedCreateEventSubscription
+      | ((
+          prev: ModifiedCreateEventSubscription
+        ) => ModifiedCreateEventSubscription)
+  ) => void;
+  /** The recipient categories the server offers for the selected sources. */
+  recipientCategories?: string[];
   showBasicFields?: boolean;
   shouldShowActionsSection: boolean;
   shouldShowFiltersSection: boolean;
-  /**
-   * Classic alert forms only offer templates when `alertsClassBase` registers
-   * a template widget (Collate); OSS has none and cannot save one.
-   */
-  shouldShowTemplateSection?: boolean;
   supportedFilters?: EventFilterRule[];
   supportedTriggers?: EventFilterRule[];
+  templateResourcePermission?: OperationPermission;
   templates?: NotificationTemplate[];
+  templatesLoading?: boolean;
   validationErrors?: AlertAiFormValidationErrors;
   value: AlertAiFormValue;
 }
@@ -64,13 +73,20 @@ interface AlertAiFormBaseProps
     AlertAiFormFieldsProps,
     'isViewOnly' | 'onChange' | 'showBasicFields' | 'value'
   > {
+  fieldDocDisplay?: 'popover' | 'panel';
   formId?: string;
   showHint?: boolean;
 }
 
 export interface AlertAiEditableFormProps extends AlertAiFormBaseProps {
   mode: Exclude<AlertAiFormMode, 'view'>;
-  onChange: (value: ModifiedCreateEventSubscription) => void;
+  onChange: (
+    valueOrUpdater:
+      | ModifiedCreateEventSubscription
+      | ((
+          prev: ModifiedCreateEventSubscription
+        ) => ModifiedCreateEventSubscription)
+  ) => void;
   onSubmit: (value: ModifiedCreateEventSubscription) => Promise<void> | void;
   value: ModifiedCreateEventSubscription;
 }
@@ -91,7 +107,7 @@ export interface AlertAiFieldStateProps {
 }
 
 export interface AlertAiFormExternalProps extends AlertAiFieldStateProps {
-  inlineAlert?: ComponentProps<typeof InlineAlert>;
+  inlineAlert?: InlineAlertProps;
 }
 
 export interface AlertAiSectionProps {
@@ -147,6 +163,7 @@ export interface AiArgumentAutocompleteProps extends RuleArgumentFieldProps {
 export interface AlertAiDestinationSectionProps {
   isViewOnly?: boolean;
   onChange?: AlertAiFormFieldsProps['onChange'];
+  recipientCategories?: string[];
   selectedSource?: string;
   validationErrors?: AlertAiFormValidationErrors;
   value: AlertAiFormValue;
@@ -157,13 +174,6 @@ export interface AlertAiDestinationItemProps
   name: number;
   remove?: (index: number) => void;
   destination: ModifiedDestination;
-  destinationsWithStatus?: Destination[];
+  destinationsWithStatus?: Array<Destination | undefined>;
   isDestinationStatusLoading?: boolean;
-}
-
-export interface AlertAiNotificationSectionProps {
-  isViewOnly?: boolean;
-  onChange?: AlertAiFormFieldsProps['onChange'];
-  templates?: NotificationTemplate[];
-  value: AlertAiFormValue;
 }

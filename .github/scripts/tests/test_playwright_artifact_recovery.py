@@ -139,3 +139,24 @@ def test_different_workflow_runs_cannot_be_combined(tmp_path):
     write_report(tmp_path)
     write_report(tmp_path, "-retry", run="other", attempt="2")
     assert normalize(tmp_path).returncode != 0
+
+
+@pytest.mark.parametrize("suffixes", [("-a1",), ("-a1", "-a1-retry")])
+def test_run_attempt_suffix_is_not_shard_identity(tmp_path, suffixes):
+    for suffix in suffixes:
+        write_report(tmp_path, suffix)
+    result = normalize(tmp_path)
+    assert result.returncode == 0, result.stderr
+    assert [p.name for p in tmp_path.iterdir()] == [
+        "playwright-results-json-chromium-01"
+    ]
+
+
+def test_rerun_attempt_supersedes_earlier_attempt(tmp_path):
+    write_report(tmp_path, "-a1", status="unexpected", attempt="1")
+    write_report(tmp_path, "-a2", attempt="2")
+    result = normalize(tmp_path)
+    assert result.returncode == 0, result.stderr
+    [directory] = tmp_path.iterdir()
+    report = json.loads((directory / "results.json").read_text())
+    assert report["suites"][0]["specs"][0]["tests"][0]["status"] == "expected"

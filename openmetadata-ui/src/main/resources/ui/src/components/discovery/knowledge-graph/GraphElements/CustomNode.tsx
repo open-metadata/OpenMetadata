@@ -25,7 +25,7 @@ import {
   Tag01,
   User01,
   Users01,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';

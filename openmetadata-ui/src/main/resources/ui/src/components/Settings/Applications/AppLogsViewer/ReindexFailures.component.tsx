@@ -11,15 +11,30 @@
  *  limitations under the License.
  */
 
-import { Drawer, Select, Space, Tooltip, Typography } from 'antd';
+import {
+  Box,
+  Button,
+  Select,
+  SlideoutMenu,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { RDF_INDEX_APP_NAME } from '../../../../constants/Applications.constant';
 import { getRdfReindexFailures } from '../../../../rest/rdfAPI';
 import { getReindexFailures } from '../../../../rest/searchAPI';
 import { formatDateTimeWithTimezone } from '../../../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import CopyToClipboardButton from '../../../common/CopyToClipboardButton/CopyToClipboardButton';
 import { ColumnsType } from '../../../common/Table/Table.interface';
 import Table from '../../../common/Table/TableV2';
 import {
@@ -28,6 +43,42 @@ import {
 } from './ReindexFailures.interface';
 
 const PAGE_SIZE = 20;
+const ALL_ENTITY_TYPES_KEY = '__all__';
+
+const ErrorMessage = ({ text }: { text: string }) => {
+  const { t } = useTranslation();
+  const textRef = useRef<HTMLDivElement>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isClamped, setIsClamped] = useState(false);
+
+  useLayoutEffect(() => {
+    const clampEl = textRef.current?.querySelector('p');
+    if (clampEl && !isExpanded) {
+      setIsClamped(clampEl.scrollHeight > clampEl.clientHeight);
+    }
+  }, [text, isExpanded]);
+
+  return (
+    <Box align="start" direction="row" gap={1}>
+      <Box className="tw:min-w-0 tw:flex-1" direction="col" ref={textRef}>
+        <Typography as="p" ellipsis={isExpanded ? false : { rows: 2 }}>
+          {text}
+        </Typography>
+        {(isClamped || isExpanded) && (
+          <Button
+            noTextPadding
+            color="link-color"
+            data-testid="error-message-toggle"
+            size="sm"
+            onClick={() => setIsExpanded((expanded) => !expanded)}>
+            {t(isExpanded ? 'label.less-lowercase' : 'label.more-lowercase')}
+          </Button>
+        )}
+      </Box>
+      <CopyToClipboardButton copyText={text} />
+    </Box>
+  );
+};
 
 const ReindexFailures = ({
   visible,
@@ -123,7 +174,9 @@ const ReindexFailures = ({
         key: 'entityType',
         width: 120,
         render: (text: string) => (
-          <Typography.Text className="font-medium">{text}</Typography.Text>
+          <Typography className="tw:text-primary" weight="medium">
+            {text}
+          </Typography>
         ),
       },
       {
@@ -133,9 +186,10 @@ const ReindexFailures = ({
         width: 150,
         ellipsis: true,
         render: (text: string) => (
-          <Typography.Text copyable={Boolean(text)}>
-            {text || '-'}
-          </Typography.Text>
+          <Box inline align="center" direction="row" gap={1}>
+            <Typography className="tw:text-primary">{text || '-'}</Typography>
+            {text && <CopyToClipboardButton copyText={text} />}
+          </Box>
         ),
       },
       {
@@ -144,7 +198,7 @@ const ReindexFailures = ({
         key: 'failureStage',
         width: 100,
         render: (text: string) => (
-          <Typography.Text>{text || '-'}</Typography.Text>
+          <Typography className="tw:text-primary">{text || '-'}</Typography>
         ),
       },
       {
@@ -155,15 +209,12 @@ const ReindexFailures = ({
         render: (text: string) =>
           text ? (
             <Tooltip
-              overlayStyle={{ maxWidth: 500 }}
-              placement="topLeft"
-              title={<pre className="m-0 whitespace-pre-wrap">{text}</pre>}>
-              <Typography.Paragraph
-                copyable
-                className="m-b-0"
-                ellipsis={{ rows: 2, expandable: true, symbol: 'more' }}>
-                {text}
-              </Typography.Paragraph>
+              arrow
+              excludeTriggerFromTabOrder
+              placement="top left"
+              title={<pre className="m-0 whitespace-pre-wrap">{text}</pre>}
+              triggerClassName="tw:inline-flex">
+              <ErrorMessage text={text} />
             </Tooltip>
           ) : (
             '-'
@@ -180,56 +231,79 @@ const ReindexFailures = ({
     [t]
   );
 
-  return (
-    <Drawer
-      destroyOnClose
-      open={visible}
-      placement="right"
-      title={t('label.reindex-failure-plural')}
-      width={900}
-      onClose={onClose}>
-      <Space className="w-full m-b-md" direction="vertical" size="small">
-        <Space>
-          <Typography.Text>{t('label.filter-by-entity-type')}:</Typography.Text>
-          <Select
-            allowClear
-            placeholder={t('label.all')}
-            style={{ width: 200 }}
-            value={entityTypeFilter}
-            onChange={handleEntityTypeChange}>
-            {entityTypes.map((type) => (
-              <Select.Option key={type} value={type}>
-                {type}
-              </Select.Option>
-            ))}
-          </Select>
-        </Space>
-        {total > 0 && (
-          <Typography.Text className="text-grey-muted">
-            {t('label.showing-total-failure-plural', { total })}
-          </Typography.Text>
-        )}
-      </Space>
+  const entityTypeItems = useMemo(
+    () => [
+      { id: ALL_ENTITY_TYPES_KEY, label: t('label.all') },
+      ...entityTypes.map((type) => ({ id: type, label: type })),
+    ],
+    [entityTypes, t]
+  );
 
-      <Table
-        columns={columns}
-        dataSource={data}
-        loading={loading}
-        pagination={{
-          current: currentPage,
-          pageSize: PAGE_SIZE,
-          showSizeChanger: false,
-          total,
-        }}
-        rowKey="id"
-        // Columns are fixed widths summing 950px (120+150+100+400+180) — wider
-        // than the 900px drawer. Set the horizontal extent so TableV2 scrolls
-        // rather than collapsing the columns into the drawer width.
-        scroll={{ x: 950, y: 'calc(100vh - 280px)' }}
-        size="small"
-        onChange={({ current }) => handlePageChange(current ?? 1)}
-      />
-    </Drawer>
+  return (
+    <SlideoutMenu
+      isDismissable
+      data-testid="reindex-failures-drawer"
+      isOpen={visible}
+      width={900}
+      onOpenChange={(isOpen) => !isOpen && onClose()}>
+      {({ close }) => (
+        <>
+          <SlideoutMenu.Header onClose={close}>
+            <Typography size="text-lg" weight="semibold">
+              {t('label.reindex-failure-plural')}
+            </Typography>
+          </SlideoutMenu.Header>
+          <SlideoutMenu.Content>
+            <Box className="tw:mb-4" direction="col" gap={2}>
+              <Box align="center" direction="row" gap={2}>
+                <Typography>{t('label.filter-by-entity-type')}:</Typography>
+                <Select
+                  aria-label={t('label.filter-by-entity-type')}
+                  className="tw:w-50"
+                  items={entityTypeItems}
+                  value={entityTypeFilter ?? ALL_ENTITY_TYPES_KEY}
+                  onChange={(key) =>
+                    handleEntityTypeChange(
+                      key && key !== ALL_ENTITY_TYPES_KEY
+                        ? String(key)
+                        : undefined
+                    )
+                  }>
+                  {(item) => (
+                    <Select.Item id={item.id} key={item.id}>
+                      {item.label}
+                    </Select.Item>
+                  )}
+                </Select>
+              </Box>
+              {total > 0 && (
+                <Typography className="tw:text-tertiary">
+                  {t('label.showing-total-failure-plural', { total })}
+                </Typography>
+              )}
+            </Box>
+
+            <Table
+              columns={columns}
+              dataSource={data}
+              loading={loading}
+              pagination={{
+                current: currentPage,
+                pageSize: PAGE_SIZE,
+                showSizeChanger: false,
+                total,
+              }}
+              rowKey="id"
+              // Columns are fixed widths summing 950px (120+150+100+400+180) — wider
+              // than the 900px drawer, so the table scrolls sideways.
+              scroll={{ x: 950 }}
+              size="small"
+              onChange={({ current }) => handlePageChange(current ?? 1)}
+            />
+          </SlideoutMenu.Content>
+        </>
+      )}
+    </SlideoutMenu>
   );
 };
 

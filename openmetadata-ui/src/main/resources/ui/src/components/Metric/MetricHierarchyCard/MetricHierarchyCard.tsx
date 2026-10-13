@@ -26,7 +26,7 @@ import {
   LayersTwo01,
   Package,
   Plus,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import type { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';

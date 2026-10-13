@@ -14,15 +14,16 @@
 import { expect } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import {
+  chooseSelectOption,
   createNewPage,
   getApiContext,
   redirectToHomePage,
-  selectOptionWithRetry,
   uuid,
 } from '../../utils/common';
 import {
   createMemoryViaApi,
   getLoggedInUser,
+  getMemoryDialog,
   LoggedInUser,
   MEMORIES_API,
   MEMORIES_URL,
@@ -35,6 +36,7 @@ import {
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { waitForSearchIndexed } from '../../utils/polling';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 import { test as base } from '../fixtures/pages';
 
 const test = base;
@@ -73,6 +75,7 @@ test.describe(
     const PAGINATION_COUNT = 11;
 
     test.beforeAll(async ({ browser }) => {
+      globalMemoryIds.length = 0;
       const { apiContext, afterAction } = await createNewPage(browser);
 
       await linkedTable.create(apiContext);
@@ -191,6 +194,33 @@ test.describe(
       await afterAction();
     });
 
+    test.afterAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+      try {
+        const results = await Promise.allSettled(
+          globalMemoryIds.map(async (id) => {
+            const response = await apiContext.delete(
+              `${MEMORIES_API}/${id}?hardDelete=true`
+            );
+            expect(
+              [200, 404],
+              `memory fixture cleanup: ${await response.text()}`
+            ).toContain(response.status());
+          })
+        );
+        await linkedTable.delete(apiContext);
+        const errors = results
+          .filter((result) => result.status === 'rejected')
+          .map((result) => (result as PromiseRejectedResult).reason);
+        if (errors.length) {
+          throw new AggregateError(errors, 'Memory fixture cleanup failed');
+        }
+      } finally {
+        globalMemoryIds.length = 0;
+        await afterAction();
+      }
+    });
+
     test.beforeEach(async ({ page }) => {
       await redirectToHomePage(page);
     });
@@ -218,7 +248,7 @@ test.describe(
         await navigateToMemories(page);
         await page.getByTestId('add-memory-btn').click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
         await expect(dialog.getByTestId('memory-title-input')).toBeVisible();
         await expect(dialog.getByTestId('memory-content-input')).toBeVisible();
@@ -244,7 +274,7 @@ test.describe(
         await navigateToMemories(page);
         await page.getByTestId('add-memory-btn').click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
 
         // Only fill title — leave content empty
@@ -266,7 +296,7 @@ test.describe(
         await navigateToMemories(page);
         await page.getByTestId('add-memory-btn').click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
 
         await dialog
@@ -287,7 +317,7 @@ test.describe(
         await navigateToMemories(page);
         await page.getByTestId('add-memory-btn').click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
 
         await dialog
@@ -326,7 +356,7 @@ test.describe(
         await navigateToMemories(page);
         await page.getByTestId('add-memory-btn').click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
 
         await dialog
@@ -354,7 +384,7 @@ test.describe(
         await navigateToMemories(page);
         await page.getByTestId('add-memory-btn').click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
 
         await dialog.getByRole('button', { name: /preview/i }).click();
@@ -370,7 +400,7 @@ test.describe(
         await navigateToMemories(page);
         await page.getByTestId('add-memory-btn').click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
 
         await dialog.getByRole('button', { name: /preview/i }).click();
@@ -391,7 +421,7 @@ test.describe(
         await navigateToMemories(page);
         await page.getByTestId('add-memory-btn').click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
 
         const content = '# Heading\n\nParagraph text';
@@ -434,7 +464,7 @@ test.describe(
         await navigateToMemories(page);
         await page.getByTestId('add-memory-btn').click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
 
         const memoryTitle = `All Fields Memory ${uuid()}`;
@@ -448,19 +478,20 @@ test.describe(
           .fill('This memory has all optional fields populated.');
 
         // Select type: Note
-        await selectOptionWithRetry(
+        await chooseSelectOption(
           dialog.getByTestId('memory-type-select'),
           page.getByRole('option', { name: /note/i })
         );
 
-        const createResPromise = page.waitForResponse(
+        const createResPromise = waitForResponseWithStatus(
+          page,
           (res) =>
             res.url().includes(MEMORIES_API) &&
-            res.request().method() === 'POST'
+            res.request().method() === 'POST',
+          201
         );
         await dialog.getByRole('button', { name: /create memory/i }).click();
         const createRes = await createResPromise;
-        expect(createRes.status()).toBe(201);
 
         const created = await createRes.json();
         createdMemoryId = created.id;
@@ -556,7 +587,7 @@ test.describe(
         await row.scrollIntoViewIfNeeded();
         await row.click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
         await expect(dialog.getByText(SHARED_MEMORY_TITLE)).toBeVisible();
         await expect(
@@ -582,11 +613,13 @@ test.describe(
 
         await navigateToMemories(page);
 
-        const searchResPromise = page.waitForResponse(
+        const searchResPromise = waitForResponseWithStatus(
+          page,
           (res) =>
             res.url().includes(MEMORIES_API) &&
             res.url().includes('q=') &&
-            res.request().method() === 'GET'
+            res.request().method() === 'GET',
+          200
         );
         await page
           .getByTestId('search-input')
@@ -608,15 +641,19 @@ test.describe(
 
         await navigateToMemories(page);
         const noMatchQuery = 'zzz_no_match_expected';
-        const searchPromise = page.waitForResponse((res) => {
-          const url = new URL(res.url());
+        const searchPromise = waitForResponseWithStatus(
+          page,
+          (res) => {
+            const url = new URL(res.url());
 
-          return (
-            url.pathname === MEMORIES_API &&
-            url.searchParams.get('q') === noMatchQuery &&
-            res.request().method() === 'GET'
-          );
-        });
+            return (
+              url.pathname === MEMORIES_API &&
+              url.searchParams.get('q') === noMatchQuery &&
+              res.request().method() === 'GET'
+            );
+          },
+          200
+        );
         const searchInput = page.getByTestId('search-input').locator('input');
         await searchInput.fill(noMatchQuery);
         await searchPromise;
@@ -626,16 +663,20 @@ test.describe(
           .getByText('No matching results')
           .waitFor({ state: 'visible' });
 
-        const restoreResPromise = page.waitForResponse((res) => {
-          const url = new URL(res.url());
+        const restoreResPromise = waitForResponseWithStatus(
+          page,
+          (res) => {
+            const url = new URL(res.url());
 
-          return (
-            url.pathname === MEMORIES_API &&
-            !url.searchParams.has('q') &&
-            url.searchParams.get('limit') === '10' &&
-            res.request().method() === 'GET'
-          );
-        });
+            return (
+              url.pathname === MEMORIES_API &&
+              !url.searchParams.has('q') &&
+              url.searchParams.get('limit') === '10' &&
+              res.request().method() === 'GET'
+            );
+          },
+          200
+        );
         await searchInput.clear();
         await restoreResPromise;
         await waitForAllLoadersToDisappear(page);
@@ -654,9 +695,12 @@ test.describe(
 
         await navigateToMemories(page);
 
-        const listResPromise = page.waitForResponse(
+        const listResPromise = waitForResponseWithStatus(
+          page,
           (res) =>
-            res.url().includes(MEMORIES_API) && res.request().method() === 'GET'
+            res.url().includes(MEMORIES_API) &&
+            res.request().method() === 'GET',
+          200
         );
         await page.getByRole('tab', { name: /created by me/i }).click();
         await listResPromise;
@@ -683,9 +727,12 @@ test.describe(
         await page.getByRole('tab', { name: /created by me/i }).click();
         await waitForAllLoadersToDisappear(page);
 
-        const listResPromise = page.waitForResponse(
+        const listResPromise = waitForResponseWithStatus(
+          page,
           (res) =>
-            res.url().includes(MEMORIES_API) && res.request().method() === 'GET'
+            res.url().includes(MEMORIES_API) &&
+            res.request().method() === 'GET',
+          200
         );
         // Click the first summary card (Total Memories)
         await page
@@ -718,9 +765,12 @@ test.describe(
 
         await navigateToMemories(page);
 
-        const listResPromise = page.waitForResponse(
+        const listResPromise = waitForResponseWithStatus(
+          page,
           (res) =>
-            res.url().includes(MEMORIES_API) && res.request().method() === 'GET'
+            res.url().includes(MEMORIES_API) &&
+            res.request().method() === 'GET',
+          200
         );
         // Click the "Created by Me" summary card
         await page
@@ -759,9 +809,12 @@ test.describe(
         });
         await expect(authorOption).toBeVisible();
 
-        const listResPromise = page.waitForResponse(
+        const listResPromise = waitForResponseWithStatus(
+          page,
           (res) =>
-            res.url().includes(MEMORIES_API) && res.request().method() === 'GET'
+            res.url().includes(MEMORIES_API) &&
+            res.request().method() === 'GET',
+          200
         );
         await authorOption.click();
         await listResPromise;
@@ -809,9 +862,12 @@ test.describe(
         const clearBtn = page.getByRole('button', { name: /clear all/i });
         await expect(clearBtn).toBeVisible();
 
-        const listResPromise = page.waitForResponse(
+        const listResPromise = waitForResponseWithStatus(
+          page,
           (res) =>
-            res.url().includes(MEMORIES_API) && res.request().method() === 'GET'
+            res.url().includes(MEMORIES_API) &&
+            res.request().method() === 'GET',
+          200
         );
         await clearBtn.click();
         await listResPromise;
@@ -857,9 +913,12 @@ test.describe(
         await waitForAllLoadersToDisappear(page);
 
         // "All" tab clears the author filter
-        const listResPromise = page.waitForResponse(
+        const listResPromise = waitForResponseWithStatus(
+          page,
           (res) =>
-            res.url().includes(MEMORIES_API) && res.request().method() === 'GET'
+            res.url().includes(MEMORIES_API) &&
+            res.request().method() === 'GET',
+          200
         );
         await page.getByRole('tab', { name: /^all$/i }).click();
         await listResPromise;
@@ -882,11 +941,13 @@ test.describe(
 
         await navigateToMemories(page);
 
-        const searchResPromise = page.waitForResponse(
+        const searchResPromise = waitForResponseWithStatus(
+          page,
           (res) =>
             res.url().includes(MEMORIES_API) &&
             res.url().includes('q=') &&
-            res.request().method() === 'GET'
+            res.request().method() === 'GET',
+          200
         );
         await page
           .getByTestId('search-input')
@@ -943,11 +1004,13 @@ test.describe(
         await navigateToMemories(page);
         await page.getByRole('button', { name: /sort/i }).click();
 
-        const listResPromise = page.waitForResponse(
+        const listResPromise = waitForResponseWithStatus(
+          page,
           (res) =>
             res.url().includes(MEMORIES_API) &&
             res.url().includes('sortBy=usageCount') &&
-            res.request().method() === 'GET'
+            res.request().method() === 'GET',
+          200
         );
         await page.getByRole('menuitemradio', { name: /most used/i }).click();
         await listResPromise;
@@ -989,7 +1052,7 @@ test.describe(
         await row.scrollIntoViewIfNeeded();
         await row.click();
 
-        await expect(page.getByRole('dialog')).toBeVisible();
+        await expect(getMemoryDialog(page)).toBeVisible();
         await expect(page).toHaveURL(new RegExp(`memory=${sharedMemoryName}`));
 
         await page.getByRole('button', { name: /cancel/i }).click();
@@ -1000,13 +1063,15 @@ test.describe(
       }) => {
         test.slow();
 
-        await page.goto(`${MEMORIES_URL}?memory=${sharedMemoryName}`);
+        await page.goto(`${MEMORIES_URL}?memory=${sharedMemoryName}`, {
+          waitUntil: 'domcontentloaded',
+        });
         await page
           .getByTestId('context-center-memories-page')
           .waitFor({ state: 'visible' });
         await waitForAllLoadersToDisappear(page);
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
         await expect(dialog).toContainText(SHARED_MEMORY_TITLE);
       });
@@ -1026,11 +1091,11 @@ test.describe(
         await row.scrollIntoViewIfNeeded();
         await row.click();
 
-        await expect(page.getByRole('dialog')).toBeVisible();
+        await expect(getMemoryDialog(page)).toBeVisible();
         await expect(page).toHaveURL(/memory=/);
 
         await page.getByRole('button', { name: /cancel/i }).click();
-        await expect(page.getByRole('dialog')).not.toBeVisible();
+        await expect(getMemoryDialog(page)).not.toBeVisible();
         await expect(page).not.toHaveURL(/memory=/);
       });
 
@@ -1102,7 +1167,7 @@ test.describe(
         );
         await row.getByTestId('edit-memory-btn').click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
         await expect(dialog.getByTestId('memory-content-input')).toBeVisible();
         await expect(
@@ -1131,7 +1196,7 @@ test.describe(
         );
         await row.click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
 
         await dialog.getByRole('button', { name: /^edit$/i }).click();
@@ -1141,12 +1206,15 @@ test.describe(
           .locator('textarea')
           .fill('Updated via view-to-edit switch.');
 
-        const updateResPromise = page.waitForResponse(
-          new RegExp(`${MEMORIES_API}/${editMemoryId}`)
+        const updateResPromise = waitForResponseWithStatus(
+          page,
+          (res) =>
+            new RegExp(`${MEMORIES_API}/${editMemoryId}`).test(res.url()) &&
+            res.request().method() === 'PATCH',
+          200
         );
         await dialog.getByRole('button', { name: /^(save|create)/i }).click();
-        const updateRes = await updateResPromise;
-        expect(updateRes.status()).toBe(200);
+        await updateResPromise;
 
         await expect(dialog).not.toBeVisible();
       });
@@ -1163,7 +1231,7 @@ test.describe(
         );
         await row.getByTestId('edit-memory-btn').click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
 
         await dialog
@@ -1182,7 +1250,7 @@ test.describe(
         );
         await reopenedRow.click();
 
-        const viewDialog = page.getByRole('dialog');
+        const viewDialog = getMemoryDialog(page);
         await expect(viewDialog).toBeVisible();
         await expect(viewDialog).not.toContainText(
           'This change should be discarded'
@@ -1203,7 +1271,7 @@ test.describe(
         );
         await row.getByTestId('edit-memory-btn').click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
 
         const newTitle = `Updated Title ${uuid()}`;
@@ -1213,12 +1281,15 @@ test.describe(
         await titleInput.clear();
         await titleInput.fill(newTitle);
 
-        const updateResPromise = page.waitForResponse(
-          new RegExp(`${MEMORIES_API}/${editMemoryId}`)
+        const updateResPromise = waitForResponseWithStatus(
+          page,
+          (res) =>
+            new RegExp(`${MEMORIES_API}/${editMemoryId}`).test(res.url()) &&
+            res.request().method() === 'PATCH',
+          200
         );
         await dialog.getByRole('button', { name: /save changes/i }).click();
-        const updateRes = await updateResPromise;
-        expect(updateRes.status()).toBe(200);
+        await updateResPromise;
 
         await expect(dialog).not.toBeVisible();
 
@@ -1242,7 +1313,7 @@ test.describe(
         );
         await row.getByTestId('edit-memory-btn').click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
 
         const newContent = `Updated content ${uuid()}`;
@@ -1252,12 +1323,15 @@ test.describe(
         await textarea.clear();
         await textarea.fill(newContent);
 
-        const updateResPromise = page.waitForResponse(
-          new RegExp(`${MEMORIES_API}/${editMemoryId}`)
+        const updateResPromise = waitForResponseWithStatus(
+          page,
+          (res) =>
+            new RegExp(`${MEMORIES_API}/${editMemoryId}`).test(res.url()) &&
+            res.request().method() === 'PATCH',
+          200
         );
         await dialog.getByRole('button', { name: /save changes/i }).click();
-        const updateRes = await updateResPromise;
-        expect(updateRes.status()).toBe(200);
+        await updateResPromise;
 
         await expect(dialog).not.toBeVisible();
 
@@ -1266,7 +1340,7 @@ test.describe(
         await updatedRow.scrollIntoViewIfNeeded();
         await updatedRow.click();
 
-        const viewDialog = page.getByRole('dialog');
+        const viewDialog = getMemoryDialog(page);
         await expect(viewDialog).toBeVisible();
         await expect(
           viewDialog.getByTestId('description-field-preview')
@@ -1286,20 +1360,30 @@ test.describe(
         );
         await row.getByTestId('edit-memory-btn').click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
 
-        await dialog.getByTestId('memory-type-select').click();
         const faqOption = page.getByRole('option', { name: /faq/i });
-        await faqOption.click();
+        await chooseSelectOption(
+          dialog.getByTestId('memory-type-select'),
+          faqOption
+        );
         await faqOption.waitFor({ state: 'detached' });
+        // Verify the select label updated before saving so a drifted click is
+        // caught here rather than silently saving the old type.
+        await expect(dialog.getByTestId('memory-type-select')).toContainText(
+          /faq/i
+        );
 
-        const updateResPromise = page.waitForResponse(
-          new RegExp(`${MEMORIES_API}/${editMemoryId}`)
+        const updateResPromise = waitForResponseWithStatus(
+          page,
+          (res) =>
+            new RegExp(`${MEMORIES_API}/${editMemoryId}`).test(res.url()) &&
+            res.request().method() === 'PATCH',
+          200
         );
         await dialog.getByRole('button', { name: /save changes/i }).click();
-        const updateRes = await updateResPromise;
-        expect(updateRes.status()).toBe(200);
+        await updateResPromise;
 
         await expect(dialog).not.toBeVisible();
       });
@@ -1318,7 +1402,7 @@ test.describe(
         );
         await row.getByTestId('edit-memory-btn').click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
 
         // In edit mode the visibility section shows the edit pencil icon for owners
@@ -1328,17 +1412,22 @@ test.describe(
         );
         await editVisibilityBtn.click();
 
-        await dialog.getByTestId('memory-visibility-select').click();
         const privateOption = page.getByRole('option', { name: /private/i });
-        await privateOption.click();
+        await chooseSelectOption(
+          dialog.getByTestId('memory-visibility-select'),
+          privateOption
+        );
         await privateOption.waitFor({ state: 'detached' });
 
-        const updateResPromise = page.waitForResponse(
-          new RegExp(`${MEMORIES_API}/${editMemoryId}`)
+        const updateResPromise = waitForResponseWithStatus(
+          page,
+          (res) =>
+            new RegExp(`${MEMORIES_API}/${editMemoryId}`).test(res.url()) &&
+            res.request().method() === 'PATCH',
+          200
         );
         await dialog.getByRole('button', { name: /save changes/i }).click();
-        const updateRes = await updateResPromise;
-        expect(updateRes.status()).toBe(200);
+        await updateResPromise;
 
         await expect(dialog).not.toBeVisible();
 
@@ -1347,7 +1436,7 @@ test.describe(
         await updatedRow.scrollIntoViewIfNeeded();
         await updatedRow.click();
 
-        const viewDialog = page.getByRole('dialog');
+        const viewDialog = getMemoryDialog(page);
         await expect(viewDialog).toBeVisible();
         await expect(viewDialog).toContainText(/private/i);
         await page.getByRole('button', { name: /cancel/i }).click();
@@ -1369,50 +1458,78 @@ test.describe(
         );
         await row.getByTestId('edit-memory-btn').click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
 
-        const initialSearchRes = page.waitForResponse((res) =>
-          res.url().includes('/search/query')
-        );
-        await dialog.getByRole('button', { name: /link.*asset/i }).click();
-        await initialSearchRes;
-        await page.getByText('Loading...').waitFor({ state: 'detached' });
-        const assetSearch = page
-          .getByTestId('picker-popover')
-          .getByRole('textbox');
-        await expect(assetSearch).toBeVisible();
-        const searchResPromise = page.waitForResponse((res) =>
-          res.url().includes('/search/query')
-        );
-        await assetSearch.fill(table.name);
-        await searchResPromise;
-        await waitForAllLoadersToDisappear(page);
-
-        const option = page.getByRole('option', {
-          name: table.displayName ?? table.name,
+        const assetName = table.displayName ?? table.name;
+        const linkBtn = dialog.getByRole('button', { name: /link.*asset/i });
+        const assetChip = dialog.getByTestId('linked-asset-card').filter({
+          hasText: assetName,
         });
-        await expect(option).toBeVisible();
-        await option.click();
 
-        await page.keyboard.press('Escape'); // Close the picker popover
-        await option.waitFor({ state: 'detached' });
+        // Retry the open→search→click→close cycle until the asset chip appears.
+        // The picker popover can close on a scroll before the click lands, so the
+        // whole sequence is wrapped in toPass.
+        await expect(async () => {
+          if (await assetChip.isVisible()) return;
 
-        // Confirm the asset card appeared in the dialog
-        await expect(dialog).toContainText(table.displayName ?? table.name);
+          const initialSearchRes = waitForResponseWithStatus(
+            page,
+            (res) =>
+              res.request().method() === 'GET' &&
+              new URL(res.url()).pathname === '/api/v1/search/query',
+            200
+          );
+          await linkBtn.click();
+          await initialSearchRes;
 
-        const updateResPromise = page.waitForResponse(
-          new RegExp(`${MEMORIES_API}/${editMemoryId}`)
+          const assetSearch = page
+            .getByTestId('picker-popover')
+            .getByRole('textbox');
+          await expect(assetSearch).toBeVisible({ timeout: 5000 });
+
+          const searchRes = waitForResponseWithStatus(
+            page,
+            (res) => {
+              const url = new URL(res.url());
+
+              return (
+                res.request().method() === 'GET' &&
+                url.pathname === '/api/v1/search/query' &&
+                url.searchParams.get('q') === `*${table.name}*`
+              );
+            },
+            200
+          );
+          await assetSearch.fill(table.name);
+          await searchRes;
+
+          const option = page
+            .getByTestId('picker-popover')
+            .getByRole('option', { name: assetName });
+          await option.click({ timeout: 3000 });
+
+          await page.keyboard.press('Escape');
+
+          // Failing assertion drives the retry
+          await expect(assetChip).toBeVisible({ timeout: 3000 });
+        }).toPass({ timeout: 20000 });
+
+        const updateResPromise = waitForResponseWithStatus(
+          page,
+          (res) =>
+            new RegExp(`${MEMORIES_API}/${editMemoryId}`).test(res.url()) &&
+            res.request().method() === 'PATCH',
+          200
         );
         await dialog.getByRole('button', { name: /save changes/i }).click();
-        const updateRes = await updateResPromise;
-        expect(updateRes.status()).toBe(200);
+        await updateResPromise;
 
         await expect(dialog).not.toBeVisible();
 
         const updatedRow = page.getByTestId(`memory-row-${editMemoryId}`);
         await updatedRow.scrollIntoViewIfNeeded();
-        await expect(updatedRow).toContainText(table.displayName ?? table.name);
+        await expect(updatedRow).toContainText(assetName);
       });
     });
 
@@ -1434,7 +1551,7 @@ test.describe(
         await row.scrollIntoViewIfNeeded();
         await row.click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
 
         await expect(dialog).toContainText(/shared/i);
@@ -1457,7 +1574,7 @@ test.describe(
         await row.scrollIntoViewIfNeeded();
         await row.click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
 
         await expect(dialog).toContainText(/private/i);
@@ -1481,7 +1598,7 @@ test.describe(
         await row.scrollIntoViewIfNeeded();
         await row.click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
 
         await expect(dialog).toContainText(/entity/i);
@@ -1516,7 +1633,7 @@ test.describe(
         await row.scrollIntoViewIfNeeded();
         await row.getByTestId('edit-memory-btn').click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
         await expect(dialog).toContainText(/shared/i);
 
@@ -1526,13 +1643,17 @@ test.describe(
         );
         await editVisibilityBtn.click();
 
-        await selectOptionWithRetry(
+        await chooseSelectOption(
           dialog.getByTestId('memory-visibility-select'),
           page.getByRole('option', { name: /private/i })
         );
 
-        const updateResPromise = page.waitForResponse(
-          new RegExp(`${MEMORIES_API}/${visBadgeMemoryId}`)
+        const updateResPromise = waitForResponseWithStatus(
+          page,
+          (res) =>
+            new RegExp(`${MEMORIES_API}/${visBadgeMemoryId}`).test(res.url()) &&
+            res.request().method() === 'PATCH',
+          200
         );
         await dialog.getByRole('button', { name: /save changes/i }).click();
         await updateResPromise;
@@ -1548,7 +1669,7 @@ test.describe(
         await updatedRow.scrollIntoViewIfNeeded();
         await updatedRow.click();
 
-        const viewDialog = page.getByRole('dialog');
+        const viewDialog = getMemoryDialog(page);
         await expect(viewDialog).toBeVisible();
         await expect(viewDialog).toContainText('Only visible to you.');
         await page.getByRole('button', { name: /cancel/i }).click();
@@ -1646,7 +1767,7 @@ test.describe(
         );
         await row.click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
 
         // Non-owner should NOT see Edit or Delete buttons
@@ -1672,15 +1793,18 @@ test.describe(
         await navigateToMemories(page);
         await page.getByTestId('add-memory-btn').click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
 
-        const initialSearchRes0 = page.waitForResponse((res) =>
-          res.url().includes('/search/query')
+        const initialSearchRes0 = waitForResponseWithStatus(
+          page,
+          (res) =>
+            res.request().method() === 'GET' &&
+            new URL(res.url()).pathname === '/api/v1/search/query',
+          200
         );
         await dialog.getByRole('button', { name: /link.*asset/i }).click();
         await initialSearchRes0;
-        await page.getByText('Loading...').waitFor({ state: 'detached' });
         await expect(
           page.getByTestId('picker-popover').getByRole('textbox')
         ).toBeVisible();
@@ -1696,22 +1820,35 @@ test.describe(
         await navigateToMemories(page);
         await page.getByTestId('add-memory-btn').click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
 
-        const initialSearchRes1 = page.waitForResponse((res) =>
-          res.url().includes('/search/query')
+        const initialSearchRes1 = waitForResponseWithStatus(
+          page,
+          (res) =>
+            res.request().method() === 'GET' &&
+            new URL(res.url()).pathname === '/api/v1/search/query',
+          200
         );
         await dialog.getByRole('button', { name: /link.*asset/i }).click();
         await initialSearchRes1;
-        await page.getByText('Loading...').waitFor({ state: 'detached' });
         const assetSearch = page
           .getByTestId('picker-popover')
           .getByRole('textbox');
         await expect(assetSearch).toBeVisible();
 
-        const searchResPromise = page.waitForResponse((res) =>
-          res.url().includes('/search/query')
+        const searchResPromise = waitForResponseWithStatus(
+          page,
+          (res) => {
+            const url = new URL(res.url());
+
+            return (
+              res.request().method() === 'GET' &&
+              url.pathname === '/api/v1/search/query' &&
+              url.searchParams.get('q') === `*${table.name}*`
+            );
+          },
+          200
         );
         await assetSearch.fill(table.name);
         await searchResPromise;
@@ -1731,22 +1868,35 @@ test.describe(
         await navigateToMemories(page);
         await page.getByTestId('add-memory-btn').click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
 
-        const initialSearchRes2 = page.waitForResponse((res) =>
-          res.url().includes('/search/query')
+        const initialSearchRes2 = waitForResponseWithStatus(
+          page,
+          (res) =>
+            res.request().method() === 'GET' &&
+            new URL(res.url()).pathname === '/api/v1/search/query',
+          200
         );
         await dialog.getByRole('button', { name: /link.*asset/i }).click();
         await initialSearchRes2;
-        await page.getByText('Loading...').waitFor({ state: 'detached' });
         const assetSearch = page
           .getByTestId('picker-popover')
           .getByRole('textbox');
         await expect(assetSearch).toBeVisible();
 
-        const searchResPromise = page.waitForResponse((res) =>
-          res.url().includes('/search/query')
+        const searchResPromise = waitForResponseWithStatus(
+          page,
+          (res) => {
+            const url = new URL(res.url());
+
+            return (
+              res.request().method() === 'GET' &&
+              url.pathname === '/api/v1/search/query' &&
+              url.searchParams.get('q') === `*${table.name}*`
+            );
+          },
+          200
         );
         await assetSearch.fill(table.name);
         await searchResPromise;
@@ -1802,7 +1952,7 @@ test.describe(
         );
         await row.getByTestId('edit-memory-btn').click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
         await expect(dialog).toContainText(table.displayName ?? table.name);
 
@@ -1845,9 +1995,13 @@ test.describe(
         // fetch — wait for it so the picker's initial state has settled
         // before searching, otherwise a later waitForResponse could match
         // this stale request instead of the actual search.
-        const initialLoadResPromise = page.waitForResponse(
+        const initialLoadResPromise = waitForResponseWithStatus(
+          page,
           (res) =>
-            res.url().includes('/search/query') && res.url().includes('q=*')
+            res.request().method() === 'GET' &&
+            new URL(res.url()).pathname === '/api/v1/search/query' &&
+            new URL(res.url()).searchParams.get('q') === '*',
+          200
         );
         await assetFilterButton.click();
         await initialLoadResPromise;
@@ -1857,33 +2011,71 @@ test.describe(
           .getByRole('textbox');
         await expect(assetSearch).toBeVisible();
 
-        const searchResPromise = page.waitForResponse((res) =>
-          res.url().includes('/search/query')
-        );
-        await assetSearch.fill(table.name);
-        await searchResPromise;
+        const assetName = table.displayName ?? table.name;
 
-        const option = page.getByRole('option', {
-          name: table.displayName ?? table.name,
-        });
-        await expect(option).toBeVisible();
-        await option.click();
-        await waitForAllLoadersToDisappear(page);
+        // Retry the search→select cycle until the filter is applied. Each
+        // attempt must be able to start from a closed popover: the flake this
+        // absorbs is the popover closing before the option click lands, which
+        // detaches the textbox and would make a bare `fill` hang.
+        await expect(async () => {
+          if (!(await assetSearch.isVisible())) {
+            const reopenResPromise = waitForResponseWithStatus(
+              page,
+              (res) =>
+                res.request().method() === 'GET' &&
+                new URL(res.url()).pathname === '/api/v1/search/query' &&
+                new URL(res.url()).searchParams.get('q') === '*',
+              200,
+              { timeout: 5000 }
+            );
+            await assetFilterButton.click();
+            await reopenResPromise;
+          }
 
-        // "Clear All" appears since an asset filter is now active
-        await expect(
-          page
-            .getByTestId('empty-placeholder')
-            .getByRole('button', { name: 'Clear All' })
-        ).toBeVisible();
+          // Clearing first guarantees the refill changes the value, so the
+          // search request this attempt waits for is actually fired.
+          await assetSearch.clear();
+
+          const searchResPromise = waitForResponseWithStatus(
+            page,
+            (res) => {
+              const url = new URL(res.url());
+
+              return (
+                res.request().method() === 'GET' &&
+                url.pathname === '/api/v1/search/query' &&
+                url.searchParams.get('q') === `*${table.name}*`
+              );
+            },
+            200,
+            { timeout: 5000 }
+          );
+          await assetSearch.fill(table.name);
+          await searchResPromise;
+
+          const option = page.getByRole('option', { name: assetName });
+          await option.click({ timeout: 3000 });
+          await waitForAllLoadersToDisappear(page);
+
+          // Failing assertion drives retry if filter didn't apply
+          await expect(
+            page
+              .getByTestId('empty-placeholder')
+              .getByRole('button', { name: 'Clear All' })
+          ).toBeVisible({ timeout: 3000 });
+        }).toPass({ timeout: 20000 });
 
         // Reopen the same filter trigger (now showing the selected asset's
         // name) to click its "All Assets" reset option. Reopening fires
         // another loadOptions('') fetch — wait for it before looking for
         // the reset option.
-        const reopenLoadResPromise = page.waitForResponse(
+        const reopenLoadResPromise = waitForResponseWithStatus(
+          page,
           (res) =>
-            res.url().includes('/search/query') && res.url().includes('q=*')
+            res.request().method() === 'GET' &&
+            new URL(res.url()).pathname === '/api/v1/search/query' &&
+            new URL(res.url()).searchParams.get('q') === '*',
+          200
         );
         await assetFilterButton.click();
         await reopenLoadResPromise;
@@ -1950,14 +2142,15 @@ test.describe(
         await row.getByTestId('manage-button').click();
         await page.getByTestId('delete-btn').click();
 
-        const deleteResPromise = page.waitForResponse(
+        const deleteResPromise = waitForResponseWithStatus(
+          page,
           (res) =>
             res.url().includes(`${MEMORIES_API}/${deleteMemoryId}`) &&
-            res.request().method() === 'DELETE'
+            res.request().method() === 'DELETE',
+          'ok'
         );
         await page.getByTestId('confirm-button').click();
-        const deleteRes = await deleteResPromise;
-        expect(deleteRes.ok()).toBeTruthy();
+        await deleteResPromise;
 
         await waitForAllLoadersToDisappear(page);
         await expect(
@@ -1978,17 +2171,18 @@ test.describe(
         await row.scrollIntoViewIfNeeded();
         await row.getByTestId('edit-memory-btn').click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
 
-        const deleteResPromise = page.waitForResponse(
+        const deleteResPromise = waitForResponseWithStatus(
+          page,
           (res) =>
             res.url().includes(`${MEMORIES_API}/${deleteMemoryId}`) &&
-            res.request().method() === 'DELETE'
+            res.request().method() === 'DELETE',
+          'ok'
         );
         await dialog.getByRole('button', { name: /^delete$/i }).click();
-        const deleteRes = await deleteResPromise;
-        expect(deleteRes.ok()).toBeTruthy();
+        await deleteResPromise;
 
         await expect(dialog).not.toBeVisible();
         await expect(
@@ -2021,18 +2215,22 @@ test.describe(
         await navigateToMemories(page);
 
         const firstPageRows = page.locator('[data-testid^="memory-row-"]');
-        await expect(firstPageRows.first()).toBeVisible();
+        await expect(firstPageRows.filter({ visible: true })).not.toHaveCount(
+          0
+        );
 
         // Capture ID of first row on page 1
         const firstRowId = await firstPageRows
           .first()
           .getAttribute('data-testid');
 
-        const listResPromise = page.waitForResponse(
+        const listResPromise = waitForResponseWithStatus(
+          page,
           (res) =>
             res.url().includes(MEMORIES_API) &&
             res.url().includes('offset=') &&
-            res.request().method() === 'GET'
+            res.request().method() === 'GET',
+          200
         );
         await page.getByRole('button', { name: /next/i }).click();
         await listResPromise;
@@ -2040,8 +2238,8 @@ test.describe(
 
         // Page 2 must show rows, and the first-page row must not be present
         await expect(
-          page.locator('[data-testid^="memory-row-"]').first()
-        ).toBeVisible();
+          page.locator('[data-testid^="memory-row-"]').filter({ visible: true })
+        ).not.toHaveCount(0);
 
         if (firstRowId) {
           await expect(page.getByTestId(firstRowId)).not.toBeVisible();
@@ -2056,28 +2254,33 @@ test.describe(
         await navigateToMemories(page);
 
         // Go to page 2
-        const toPage2 = page.waitForResponse(
+        const toPage2 = waitForResponseWithStatus(
+          page,
           (res) =>
             res.url().includes(MEMORIES_API) &&
             res.url().includes('offset=') &&
-            res.request().method() === 'GET'
+            res.request().method() === 'GET',
+          200
         );
         await page.getByRole('button', { name: /next/i }).click();
         await toPage2;
         await waitForAllLoadersToDisappear(page);
 
         // Go back to page 1
-        const toPage1 = page.waitForResponse(
+        const toPage1 = waitForResponseWithStatus(
+          page,
           (res) =>
-            res.url().includes(MEMORIES_API) && res.request().method() === 'GET'
+            res.url().includes(MEMORIES_API) &&
+            res.request().method() === 'GET',
+          200
         );
         await page.getByRole('button', { name: /prev/i }).click();
         await toPage1;
         await waitForAllLoadersToDisappear(page);
 
         await expect(
-          page.locator('[data-testid^="memory-row-"]').first()
-        ).toBeVisible();
+          page.locator('[data-testid^="memory-row-"]').filter({ visible: true })
+        ).not.toHaveCount(0);
       });
     });
   }

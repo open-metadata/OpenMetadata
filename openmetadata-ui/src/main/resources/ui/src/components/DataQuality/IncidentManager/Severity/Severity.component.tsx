@@ -16,7 +16,6 @@ import classNames from 'classnames';
 import { startCase, toLower } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
@@ -52,7 +51,7 @@ const Severity = ({
   const onCancel = useCallback(() => setIsEditSeverity(false), []);
 
   const handleSubmit = useCallback(
-    async (data: Severities) => {
+    async (data?: Severities) => {
       await onSubmit?.(data);
       onCancel();
     },
@@ -92,7 +91,6 @@ const Severity = ({
           {canEditSeverity && (
             <EditIconButton
               data-testid="edit-severity-icon"
-              icon={<EditIcon width="12px" />}
               newLook={newLook}
               size="small"
               title={t('label.edit-entity', {

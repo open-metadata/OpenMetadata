@@ -235,14 +235,14 @@ const validateAlertAiDestinationConfig = ({
   }
 };
 
-const validateAlertAiDestinationFields = ({
+export const validateAlertAiDestinationFields = ({
   errors,
   t,
   value,
 }: {
   errors: AlertAiFormValidationErrors;
   t: TFunction;
-  value: ModifiedCreateEventSubscription;
+  value: Pick<ModifiedCreateEventSubscription, 'destinations'>;
 }) => {
   setRequiredError({
     errors,

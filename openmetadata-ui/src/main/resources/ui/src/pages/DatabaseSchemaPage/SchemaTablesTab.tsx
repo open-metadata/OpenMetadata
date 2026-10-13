@@ -11,9 +11,12 @@
  *  limitations under the License.
  */
 
-import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import {
+  EmptyPlaceholder,
+  Toggle,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Assets, NoSearch } from '@openmetadata/ui-core-components/icons';
-import { Switch, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -380,15 +383,13 @@ function SchemaTablesTab({
       extraTableFilters={
         !isVersionView && (
           <>
-            <span>
-              <Switch
-                checked={showDeletedSchemas}
+            <span className="tw:inline-flex tw:items-center">
+              <Toggle
                 data-testid="show-deleted"
-                onClick={handleShowDeletedTables}
+                isSelected={showDeletedSchemas}
+                onChange={handleShowDeletedTables}
               />
-              <Typography.Text className="m-l-xs">
-                {t('label.deleted')}
-              </Typography.Text>
+              <Typography className="m-l-xs">{t('label.deleted')}</Typography>
             </span>
 
             {getBulkEditButton(canBulkEditTables, handleEditTable)}

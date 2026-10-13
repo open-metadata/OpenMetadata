@@ -147,6 +147,39 @@ describe('PersonaAIContext', () => {
     );
   });
 
+  it('saves the prompt together with the current settings', async () => {
+    // The endpoint overwrites all three settings from the body, so a prompt save that omitted
+    // them would reset the budget, TTL and enabled state to their defaults.
+    const definition = {
+      cacheTtlMinutes: 45,
+      characterBudget: 150000,
+      enabled: false,
+      rules: [],
+    };
+    mockedGetPersonaAIContext.mockResolvedValue(definition);
+    mockedUpdatePersonaAIContext.mockResolvedValue({
+      ...definition,
+      prompt: 'You assist finance analysts.',
+    });
+
+    render(<PersonaAIContext canEdit persona={persona} />);
+
+    fireEvent.change(
+      await screen.findByRole('textbox', { name: /label\.prompt/ }),
+      { target: { value: 'You assist finance analysts.' } }
+    );
+    fireEvent.click(screen.getByTestId('persona-context-prompt-save'));
+
+    await waitFor(() =>
+      expect(mockedUpdatePersonaAIContext).toHaveBeenCalledWith(persona.id, {
+        cacheTtlMinutes: 45,
+        characterBudget: 150000,
+        enabled: false,
+        prompt: 'You assist finance analysts.',
+      })
+    );
+  });
+
   it('does not persist unchanged settings on blur', async () => {
     const definition = {
       cacheTtlMinutes: 30,

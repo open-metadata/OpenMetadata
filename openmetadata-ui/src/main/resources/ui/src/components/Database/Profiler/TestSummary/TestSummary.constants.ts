@@ -43,6 +43,12 @@ export const RESULT_METRIC_BY_DEFINITION: Record<string, ResultMetric> = {
     labelKey: 'label.result-metric-null-count',
     impliedExpected: 0,
   },
+  // It checks every value, and its two series are the column's min and max,
+  // so the caption names the column rather than either series.
+  columnValuesToBeBetween: {
+    labelKey: 'label.result-metric-column-values',
+    namesColumn: true,
+  },
   columnValueMaxToBeBetween: {
     labelKey: 'label.result-metric-column-max',
     namesColumn: true,
@@ -76,6 +82,12 @@ export const RESULT_METRIC_BY_DEFINITION: Record<string, ResultMetric> = {
     namesColumn: true,
   },
 };
+
+/**
+ * Shown where a run has no value to report. An em dash, as in the mock, rather
+ * than NO_DATA_PLACEHOLDER's '--': nothing to report is not missing data.
+ */
+export const NO_VALUE = '—';
 
 export const DEFAULT_RESULT_METRIC: ResultMetric = {
   labelKey: 'label.result-metric-values',

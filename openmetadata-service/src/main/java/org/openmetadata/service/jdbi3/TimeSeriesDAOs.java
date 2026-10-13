@@ -25,10 +25,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.Getter;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
@@ -447,17 +449,10 @@ public interface TimeSeriesDAOs {
       }
 
       if (!nullOrEmpty(searchQuery)) {
-        // The term travels as a bind value, so only the LIKE metacharacters need escaping — not the
-        // apostrophes that ListFilter.escape also doubles for literal interpolation, which would
-        // make a search for "it's" match nothing. Lower-cased here to pair with the LOWER(...)
-        // columns in the condition instead of asking the engine to lower the pattern per row.
+        // Lower-cased here to pair with the LOWER(...) columns in the condition instead of asking
+        // the engine to lower the pattern per row.
         String pattern =
-            searchQuery
-                .trim()
-                .toLowerCase(Locale.ROOT)
-                .replace("\\", "\\\\")
-                .replace("%", "\\%")
-                .replace("_", "\\_");
+            ListFilter.escapeLikeBindValue(searchQuery.trim().toLowerCase(Locale.ROOT));
         filter.queryParams.put("testDefinitionSearchLike", String.format("%%%s%%", pattern));
         mysqlCondition.append(MYSQL_SEARCH_CONDITION);
         psqlCondition.append(POSTGRES_SEARCH_CONDITION);
@@ -1602,6 +1597,17 @@ public interface TimeSeriesDAOs {
     String SYSTEM_PROFILE_EXTENSION = "table.systemProfile";
     String TABLE_COLUMN_PROFILE_EXTENSION = "table.columnProfile";
 
+    @SqlQuery(
+        "SELECT json FROM profiler_data_time_series "
+            + "WHERE entityFQNHash = :entityFQNHash AND extension = :extension "
+            + "AND timestamp <= :endTs ORDER BY timestamp DESC, operation DESC LIMIT :limit OFFSET :offset")
+    List<String> listProfileHistory(
+        @BindFQN("entityFQNHash") String entityFQN,
+        @Bind("extension") String extension,
+        @Bind("endTs") long endTs,
+        @Bind("limit") int limit,
+        @Bind("offset") int offset);
+
     /**
      * Purges the profiler history left behind by a hard-deleted table, bounded to profiles recorded
      * at or before {@code deletedAt}.
@@ -1988,6 +1994,16 @@ public interface TimeSeriesDAOs {
         @Bind("timestamp") long timestamp,
         @Bind("recordId") String recordId);
 
+    // Keeps the incident row's denormalized severity in step with a severity edited on the
+    // record that row points at; an edit on any older record of the chain leaves it alone.
+    @SqlUpdate(
+        "UPDATE test_case_incident SET severity = :severity "
+            + "WHERE stateId = :stateId AND latestRecordId = :recordId")
+    void updateIncidentSeverity(
+        @Bind("stateId") String stateId,
+        @Bind("recordId") String recordId,
+        @Bind("severity") String severity);
+
     @SqlQuery(
         "SELECT json FROM "
             + "(SELECT id, json, testCaseResolutionStatusType, assignee, ROW_NUMBER() OVER(PARTITION BY <partition> ORDER BY timestamp DESC) AS row_num "
@@ -2007,22 +2023,25 @@ public interface TimeSeriesDAOs {
         @BindMap Map<String, ?> outerParams,
         @Define("outerCond") String outerFilter);
 
+    // The status, the assignee and the severity describe an incident as it stands, so a latest
+    // listing applies them to each incident's latest record rather than to the records it is
+    // ranked from — or an incident resolved since would still match through an earlier record.
+    List<String> LATEST_RECORD_PARAMS =
+        List.of("testCaseResolutionStatusType", "incidentAssignee", "incidentListSeverity");
+
+    static ListFilter latestRecordFilter(ListFilter filter) {
+      ListFilter outerFilter = new ListFilter(null);
+      LATEST_RECORD_PARAMS.forEach(
+          param -> outerFilter.addQueryParam(param, filter.getQueryParam(param)));
+      return outerFilter;
+    }
+
     @Override
     default List<String> listWithOffset(
         ListFilter filter, int limit, int offset, Long startTs, Long endTs, boolean latest) {
       if (latest) {
-        // When fetching latest, we need to apply Assignee and Status filters on the outer query
-        // i.e. after we have fetched the latest records for each testCaseFQNHash
-        // We'll first get the values, remove then from `filter` and then create `outerFilter`
-        String testCaseResolutionStatusType = filter.getQueryParam("testCaseResolutionStatusType");
-        filter.removeQueryParam("testCaseResolutionStatusType");
-        String assignee = filter.getQueryParam("incidentAssignee");
-        filter.removeQueryParam("incidentAssignee");
-
-        ListFilter outerFilter = new ListFilter(null);
-        outerFilter.addQueryParam("testCaseResolutionStatusType", testCaseResolutionStatusType);
-        outerFilter.addQueryParam("incidentAssignee", assignee);
-
+        ListFilter outerFilter = latestRecordFilter(filter);
+        LATEST_RECORD_PARAMS.forEach(filter::removeQueryParam);
         String condition = filter.getCondition();
         condition = addOriginEntityFQNJoin(filter, condition);
 
@@ -2051,19 +2070,44 @@ public interface TimeSeriesDAOs {
           endTs);
     }
 
+    @SqlQuery(
+        "SELECT count(*) FROM "
+            + "(SELECT id, json, testCaseResolutionStatusType, assignee, ROW_NUMBER() OVER(PARTITION BY <partition> ORDER BY timestamp DESC) AS row_num "
+            + "FROM <table> <cond> "
+            + "AND timestamp BETWEEN :startTs AND :endTs) ranked "
+            + "<outerCond> AND ranked.row_num = 1")
+    int listCount(
+        @Define("table") String table,
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Define("partition") String partition,
+        @Bind("startTs") Long startTs,
+        @Bind("endTs") Long endTs,
+        @BindMap Map<String, ?> outerParams,
+        @Define("outerCond") String outerFilter);
+
     @Override
     default int listCount(ListFilter filter, Long startTs, Long endTs, boolean latest) {
-      String condition = filter.getCondition();
-      condition = addOriginEntityFQNJoin(filter, condition);
-      return latest
-          ? listCount(
-              getTimeSeriesTableName(),
-              getPartitionFieldName(),
-              filter.getQueryParams(),
-              condition,
-              startTs,
-              endTs)
-          : listCount(getTimeSeriesTableName(), filter.getQueryParams(), condition, startTs, endTs);
+      if (!latest) {
+        String condition = addOriginEntityFQNJoin(filter, filter.getCondition());
+        return listCount(
+            getTimeSeriesTableName(), filter.getQueryParams(), condition, startTs, endTs);
+      }
+      // The listing reads the same filter afterwards, so it is copied rather than trimmed.
+      ListFilter innerFilter = new ListFilter(filter.getInclude());
+      filter.getQueryParams().forEach(innerFilter::addQueryParam);
+      LATEST_RECORD_PARAMS.forEach(innerFilter::removeQueryParam);
+      ListFilter outerFilter = latestRecordFilter(filter);
+      String condition = addOriginEntityFQNJoin(innerFilter, innerFilter.getCondition());
+      return listCount(
+          getTimeSeriesTableName(),
+          innerFilter.getQueryParams(),
+          condition,
+          getPartitionFieldName(),
+          startTs,
+          endTs,
+          outerFilter.getQueryParams(),
+          outerFilter.getCondition());
     }
 
     @Override
@@ -2114,6 +2158,24 @@ public interface TimeSeriesDAOs {
         connectionType = POSTGRES)
     int deleteOrphanedRecords(@Bind("limit") int limit);
 
+    // Statuses an open incident can currently be in, from the most actionable to the least.
+    // Resolved is left out throughout: a resolved incident has left the group, so it neither
+    // counts toward the group nor appears in the per-status breakdown of it.
+    //
+    // This is the one place the triage order is written down: the statusRank expression below,
+    // the per-status count columns and the repository's breakdown ordering are all derived from
+    // it, so a new status value cannot drift between them.
+    List<TestCaseResolutionStatusTypes> OPEN_STATUSES =
+        List.of(
+            TestCaseResolutionStatusTypes.Assigned,
+            TestCaseResolutionStatusTypes.Ack,
+            TestCaseResolutionStatusTypes.New);
+
+    // Column a status' incident count is selected under, e.g. statusCountAssigned.
+    static String statusCountColumn(TestCaseResolutionStatusTypes status) {
+      return "statusCount" + status.value();
+    }
+
     String INCIDENT_GROUPS_FROM =
         """
         FROM test_case_incident i
@@ -2125,31 +2187,63 @@ public interface TimeSeriesDAOs {
     @SqlQuery(
         "SELECT <groupKey> AS groupKey, <groupType> AS groupType, COUNT(DISTINCT i.stateId) AS incidentCount, "
             + "MIN(i.severity) AS severity, "
-            + "MIN(CASE i.testCaseResolutionStatusType WHEN 'Assigned' THEN 1 WHEN 'Ack' THEN 2 ELSE 3 END) AS statusRank, "
+            + "<statusRank> AS statusRank, "
+            + "<statusCounts>, "
             + "<assigneesExpr> AS assignees, "
             + "COUNT(DISTINCT i.assignee) AS assigneeCount, "
             + "MIN(i.createdAt) AS firstSeen, "
             + "MAX(i.updatedAt) AS lastSeen, "
             + "<createdAtAgg> AS incidentCreatedAt, "
+            + "COUNT(DISTINCT <tableFqn>) AS tableCount, "
+            + "COUNT(DISTINCT "
+            + TEST_DEFINITION_ID
+            + ") AS testDefinitionCount, "
             + "COUNT(*) OVER () AS totalGroups "
             + INCIDENT_GROUPS_FROM
             + "GROUP BY <groupByCols> "
-            + "ORDER BY incidentCount <sortOrder>, groupKey "
+            + "ORDER BY <orderBy>, groupKey "
             + "LIMIT :limit OFFSET :offset")
     @RegisterRowMapper(TestCaseIncidentGroupCountMapper.class)
     List<TestCaseIncidentGroupCount> listIncidentGroups(
         @Define("openStatuses") String openStatuses,
+        @Define("statusRank") String statusRank,
+        @Define("statusCounts") String statusCounts,
         @Define("assigneesExpr") String assigneesExpr,
         @Define("createdAtAgg") String createdAtAgg,
+        @Define("tableFqn") String tableFqn,
         @Define("groupKey") String groupKey,
         @Define("groupType") String groupType,
         @Define("groupByCols") String groupByCols,
         @Define("dimensionJoin") String dimensionJoin,
         @Define("cond") String cond,
-        @Define("sortOrder") String sortOrder,
+        @Define("orderBy") String orderBy,
         @BindMap Map<String, ?> params,
         @Bind("limit") int limit,
         @Bind("offset") int offset);
+
+    // The few related entities each group of a page names inline: those most of its incidents
+    // carry, ranked here so the payload is bounded by the page rather than by its incidents.
+    @SqlQuery(
+        "SELECT groupKey, relatedKey FROM ("
+            + "SELECT <groupKey> AS groupKey, <relatedKey> AS relatedKey, "
+            + "ROW_NUMBER() OVER (PARTITION BY <groupKey> "
+            + "ORDER BY COUNT(DISTINCT i.stateId) DESC, <relatedKey>) AS relatedRank "
+            + INCIDENT_GROUPS_FROM
+            + "AND <relatedKey> IS NOT NULL AND <groupKey> IN (<groupKeys>) "
+            + "GROUP BY <groupByCols>, <relatedKey>) ranked "
+            + "WHERE :relatedLimit >= relatedRank "
+            + "ORDER BY groupKey, relatedRank")
+    @RegisterRowMapper(IncidentGroupRelatedKeyMapper.class)
+    List<IncidentGroupRelatedKey> listIncidentGroupRelatedKeys(
+        @Define("openStatuses") String openStatuses,
+        @Define("groupKey") String groupKey,
+        @Define("groupByCols") String groupByCols,
+        @Define("dimensionJoin") String dimensionJoin,
+        @Define("cond") String cond,
+        @Define("relatedKey") String relatedKey,
+        @BindList("groupKeys") List<String> groupKeys,
+        @BindMap Map<String, ?> params,
+        @Bind("relatedLimit") int relatedLimit);
 
     @SqlQuery("SELECT COUNT(DISTINCT <groupKey>) " + INCIDENT_GROUPS_FROM)
     int countIncidentGroups(
@@ -2175,31 +2269,56 @@ public interface TimeSeriesDAOs {
     }
 
     default IncidentGroupPage listIncidentGroups(
-        IncidentGroupBy groupBy, ListFilter filter, String sortOrder, int limit, int offset) {
+        IncidentGroupBy groupBy, ListFilter filter, String orderBy, int limit, int offset) {
       IncidentGroupDimension dimension = IncidentGroupDimension.from(groupBy);
       String condition = filter.getCondition();
+      // One group on its own, as a link to its drill-down reopens it: matched on the very key
+      // it is grouped under, so it counts what it counts in the full listing.
+      if (filter.getQueryParam("incidentGroupKey") != null) {
+        condition += " AND " + dimension.groupKey() + " = :incidentGroupKey";
+      }
       Map<String, Object> params = new HashMap<>(filter.getQueryParams());
       List<String> openStatusBinds = new ArrayList<>();
+      List<String> statusCountExprs = new ArrayList<>();
+      List<String> statusRankWhens = new ArrayList<>();
       int openStatusIndex = 0;
-      for (TestCaseResolutionStatusTypes status : TestCaseResolutionStatusTypes.values()) {
-        if (status != TestCaseResolutionStatusTypes.Resolved) {
-          String bind = "openStatus" + openStatusIndex++;
-          params.put(bind, status.value());
-          openStatusBinds.add(":" + bind);
-        }
+      for (TestCaseResolutionStatusTypes status : OPEN_STATUSES) {
+        String bind = "openStatus" + openStatusIndex++;
+        params.put(bind, status.value());
+        openStatusBinds.add(":" + bind);
+        statusCountExprs.add(
+            String.format(
+                "COUNT(DISTINCT CASE WHEN i.testCaseResolutionStatusType = :%s THEN i.stateId END) AS %s",
+                bind, statusCountColumn(status)));
+        // 1-based so the rank reads as a position in OPEN_STATUSES; the repository turns it back
+        // into the status at that position. The value is inlined rather than bound: a simple CASE
+        // is a rendered expression here, and the strings come from the enum, never from input.
+        statusRankWhens.add(String.format("WHEN '%s' THEN %d", status.value(), openStatusIndex));
       }
       String openStatuses = String.join(", ", openStatusBinds);
+      // A status outside the open set cannot reach this query — the WHERE clause bars it — but
+      // SQL needs an ELSE, and ranking it past the last one keeps MIN() picking a real status.
+      String statusRank =
+          String.format(
+              "MIN(CASE i.testCaseResolutionStatusType %s ELSE %d END)",
+              String.join(" ", statusRankWhens), OPEN_STATUSES.size() + 1);
+      // A test case has one test definition, so this join does not multiply incident rows; it is
+      // what lets a group of any dimension name its definitions.
+      String joins = dimension.join() + " " + TEST_DEFINITION_JOIN;
       List<TestCaseIncidentGroupCount> counts =
           listIncidentGroups(
               openStatuses,
+              statusRank,
+              String.join(", ", statusCountExprs),
               assigneesExpr(),
               createdAtAggExpr(),
+              tableFqnExpr(),
               dimension.groupKey(),
               dimension.groupType(),
               dimension.groupByCols(),
-              dimension.join(),
+              joins,
               condition,
-              sortOrder,
+              orderBy,
               params,
               limit,
               offset);
@@ -2211,29 +2330,94 @@ public interface TimeSeriesDAOs {
       } else if (offset == 0) {
         total = 0;
       } else {
-        total =
-            countIncidentGroups(
-                openStatuses, dimension.groupKey(), dimension.join(), condition, params);
+        total = countIncidentGroups(openStatuses, dimension.groupKey(), joins, condition, params);
       }
-      return new IncidentGroupPage(counts, total);
+      IncidentGroupScope scope =
+          new IncidentGroupScope(dimension, openStatuses, joins, condition, params);
+      List<String> groupKeys = counts.stream().map(TestCaseIncidentGroupCount::groupKey).toList();
+      return new IncidentGroupPage(
+          counts,
+          total,
+          topRelatedKeys(scope, tableFqnExpr(), groupKeys),
+          topRelatedKeys(scope, TEST_DEFINITION_ID, groupKeys));
+    }
+
+    // Related keys by group key, each group's list ordered from the most incidents down.
+    private Map<String, List<String>> topRelatedKeys(
+        IncidentGroupScope scope, String relatedKey, List<String> groupKeys) {
+      List<IncidentGroupRelatedKey> rows =
+          groupKeys.isEmpty()
+              ? List.of()
+              : listIncidentGroupRelatedKeys(
+                  scope.openStatuses(),
+                  scope.dimension().groupKey(),
+                  scope.dimension().groupByCols(),
+                  scope.joins(),
+                  scope.condition(),
+                  relatedKey,
+                  groupKeys,
+                  scope.params(),
+                  INCIDENT_GROUP_RELATED_LIMIT);
+      return rows.stream()
+          .collect(
+              Collectors.groupingBy(
+                  IncidentGroupRelatedKey::groupKey,
+                  Collectors.mapping(IncidentGroupRelatedKey::relatedKey, Collectors.toList())));
     }
 
     // JSON aggregates instead of GROUP_CONCAT/STRING_AGG: the 1024-char group_concat_max_len
     // default would truncate an assignee-dense group mid-name. MySQL's JSON_ARRAYAGG cannot take
     // DISTINCT, so the array may carry nulls and duplicates — the repository dedupes on parse.
     private static String assigneesExpr() {
-      return Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
-          ? "JSON_ARRAYAGG(i.assignee)"
-          : "JSON_AGG(i.assignee)";
+      return jsonArrayAgg("i.assignee");
     }
 
     private static String createdAtAggExpr() {
-      return Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
-          ? "JSON_ARRAYAGG(i.createdAt)"
-          : "JSON_AGG(i.createdAt)";
+      return jsonArrayAgg("i.createdAt");
     }
 
-    record IncidentGroupPage(List<TestCaseIncidentGroupCount> counts, int total) {}
+    private static String jsonArrayAgg(String expression) {
+      return Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+          ? String.format("JSON_ARRAYAGG(%s)", expression)
+          : String.format("JSON_AGG(%s)", expression);
+    }
+
+    // test_case.entityFQN is column-level for column test cases, so the origin table FQN is
+    // extracted from the entityLink (<#E::table::fqn> or <#E::table::fqn::columns::col>)
+    // instead.
+    private static String tableFqnExpr() {
+      return Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+          ? "TRIM(TRAILING '>' FROM SUBSTRING_INDEX(SUBSTRING_INDEX(tc.entityLink, '::', 3), '::', -1))"
+          : "TRIM(TRAILING '>' FROM SPLIT_PART(tc.entityLink, '::', 3))";
+    }
+
+    // Outer, so an incident whose test case lost its definition relationship still counts, as it
+    // still lists in the flat listing.
+    String TEST_DEFINITION_JOIN =
+        String.format(
+            "LEFT JOIN entity_relationship tdr ON tdr.toId = tc.id AND tdr.relation = %d "
+                + "AND tdr.fromEntity = '%s' AND tdr.toEntity = '%s'",
+            CONTAINS.ordinal(), Entity.TEST_DEFINITION, Entity.TEST_CASE);
+
+    String TEST_DEFINITION_ID = "tdr.fromId";
+
+    // Related tables and test definitions a group names inline; its counts carry the full number.
+    int INCIDENT_GROUP_RELATED_LIMIT = 5;
+
+    /** A page of groups, with the top related table FQNs and test definition ids of each group. */
+    record IncidentGroupPage(
+        List<TestCaseIncidentGroupCount> counts,
+        int total,
+        Map<String, List<String>> tables,
+        Map<String, List<String>> testDefinitions) {}
+
+    // The FROM and WHERE of a grouping, which the page and its related-entity ranking share.
+    record IncidentGroupScope(
+        IncidentGroupDimension dimension,
+        String openStatuses,
+        String joins,
+        String condition,
+        Map<String, Object> params) {}
 
     record IncidentGroupDimension(
         String groupKey, String groupType, String groupByCols, String join) {
@@ -2241,34 +2425,43 @@ public interface TimeSeriesDAOs {
       static IncidentGroupDimension from(IncidentGroupBy groupBy) {
         return switch (groupBy) {
           case Table -> forTable();
-          case TestDefinition -> forRelationship(
-              CONTAINS, String.format("er.fromEntity = '%s'", Entity.TEST_DEFINITION));
-          case Owner -> forRelationship(
-              OWNS, String.format("er.fromEntity IN ('%s', '%s')", Entity.USER, Entity.TEAM));
+          case TestDefinition -> forTestDefinition();
+          case Owner -> forOwner();
         };
       }
 
-      // test_case.entityFQN is column-level for column test cases, so the origin table FQN is
-      // extracted from the entityLink (<#E::table::fqn> or <#E::table::fqn::columns::col>)
-      // instead.
       private static IncidentGroupDimension forTable() {
-        String tableFqn =
-            Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
-                ? "TRIM(TRAILING '>' FROM SUBSTRING_INDEX(SUBSTRING_INDEX(tc.entityLink, '::', 3), '::', -1))"
-                : "TRIM(TRAILING '>' FROM SPLIT_PART(tc.entityLink, '::', 3))";
+        String tableFqn = tableFqnExpr();
         return new IncidentGroupDimension(
             tableFqn, String.format("'%s'", Entity.TABLE), tableFqn, "");
       }
 
-      private static IncidentGroupDimension forRelationship(
-          Relationship relation, String fromEntityCondition) {
-        String join =
-            String.format(
-                "INNER JOIN entity_relationship er ON er.toId = tc.id AND er.relation = %d "
-                    + "AND %s AND er.toEntity = '%s'",
-                relation.ordinal(), fromEntityCondition, Entity.TEST_CASE);
+      private static IncidentGroupDimension forTestDefinition() {
+        String definitions = String.format("er.fromEntity = '%s'", Entity.TEST_DEFINITION);
+        String join = relationshipJoin("INNER", CONTAINS, definitions);
         return new IncidentGroupDimension(
             "er.fromId", "er.fromEntity", "er.fromId, er.fromEntity", join);
+      }
+
+      // A test case always has a test definition, but it need not have an owner — and the
+      // incidents of an unowned test case are still incidents. The owner dimension therefore
+      // joins outwards and gathers the rows that match no owner under an empty group key, which
+      // the repository turns into the "no owner" group. An inner join would drop them from the
+      // dimension instead, reading as though those test cases had no incidents at all.
+      private static IncidentGroupDimension forOwner() {
+        String owners = String.format("er.fromEntity IN ('%s', '%s')", Entity.USER, Entity.TEAM);
+        String join = relationshipJoin("LEFT", OWNS, owners);
+        String groupByCols = "er.fromId, er.fromEntity";
+        return new IncidentGroupDimension(
+            "COALESCE(er.fromId, '')", "COALESCE(er.fromEntity, '')", groupByCols, join);
+      }
+
+      private static String relationshipJoin(
+          String joinType, Relationship relation, String fromEntityCondition) {
+        return String.format(
+            "%s JOIN entity_relationship er ON er.toId = tc.id AND er.relation = %d "
+                + "AND %s AND er.toEntity = '%s'",
+            joinType, relation.ordinal(), fromEntityCondition, Entity.TEST_CASE);
       }
     }
   }
@@ -2518,27 +2711,49 @@ public interface TimeSeriesDAOs {
       int incidentCount,
       String severity,
       int statusRank,
+      Map<String, Integer> statusCounts,
       String assignees,
       int assigneeCount,
       long firstSeen,
       long lastSeen,
       String incidentCreatedAt,
+      int tableCount,
+      int testDefinitionCount,
       int totalGroups) {}
+
+  record IncidentGroupRelatedKey(String groupKey, String relatedKey) {}
+
+  class IncidentGroupRelatedKeyMapper implements RowMapper<IncidentGroupRelatedKey> {
+    @Override
+    public IncidentGroupRelatedKey map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return new IncidentGroupRelatedKey(rs.getString("groupKey"), rs.getString("relatedKey"));
+    }
+  }
 
   class TestCaseIncidentGroupCountMapper implements RowMapper<TestCaseIncidentGroupCount> {
     @Override
     public TestCaseIncidentGroupCount map(ResultSet rs, StatementContext ctx) throws SQLException {
+      Map<String, Integer> statusCounts = new LinkedHashMap<>();
+      for (TestCaseResolutionStatusTypes status :
+          TestCaseResolutionStatusTimeSeriesDAO.OPEN_STATUSES) {
+        statusCounts.put(
+            status.value(),
+            rs.getInt(TestCaseResolutionStatusTimeSeriesDAO.statusCountColumn(status)));
+      }
       return new TestCaseIncidentGroupCount(
           rs.getString("groupKey"),
           rs.getString("groupType"),
           rs.getInt("incidentCount"),
           rs.getString("severity"),
           rs.getInt("statusRank"),
+          statusCounts,
           rs.getString("assignees"),
           rs.getInt("assigneeCount"),
           rs.getLong("firstSeen"),
           rs.getLong("lastSeen"),
           rs.getString("incidentCreatedAt"),
+          rs.getInt("tableCount"),
+          rs.getInt("testDefinitionCount"),
           rs.getInt("totalGroups"));
     }
   }

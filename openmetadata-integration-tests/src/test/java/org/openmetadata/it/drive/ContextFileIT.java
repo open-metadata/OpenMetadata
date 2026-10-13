@@ -26,6 +26,8 @@ import org.openmetadata.schema.api.data.CreateFolder;
 import org.openmetadata.schema.api.data.MoveContextFileRequest;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
+import org.openmetadata.schema.entity.context.MemoryShareConfig;
+import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ContextFileSourceType;
 import org.openmetadata.schema.entity.data.ContextFileType;
@@ -506,6 +508,25 @@ class ContextFileIT {
     ContextFile updated = rest.patch(FILE_PATH, file.getId(), original, file, ContextFile.class);
 
     assertEquals(ProcessingStatus.Processed, updated.getProcessingStatus());
+  }
+
+  @Test
+  void testSharingChangeIsStored(TestNamespace ns) throws Exception {
+    RestClient rest = RestClient.admin();
+    ContextFile file =
+        createFile(
+            rest,
+            new CreateContextFile()
+                .withName(ns.prefix("sharing-test"))
+                .withProcessingStatus(ProcessingStatus.Uploaded));
+
+    String original = JsonUtils.pojoToJson(file);
+    file.setShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE));
+    rest.patch(FILE_PATH, file.getId(), original, file, ContextFile.class);
+
+    ContextFile stored = getFile(rest, file.getId(), "");
+    assertNotNull(stored.getShareConfig(), "A sharing change must survive a re-read");
+    assertEquals(MemoryVisibility.PRIVATE, stored.getShareConfig().getVisibility());
   }
 
   // --- Permissions ---

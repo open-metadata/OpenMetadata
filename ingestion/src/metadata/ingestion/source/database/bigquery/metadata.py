@@ -23,7 +23,7 @@ from google import auth
 from google.cloud.bigquery.schema import SchemaField
 from sqlalchemy import text
 from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy.sql.sqltypes import Interval
+from sqlalchemy.sql.sqltypes import JSON, NUMERIC, Interval
 from sqlalchemy.types import String
 from sqlalchemy_bigquery import BigQueryDialect, _types
 from sqlalchemy_bigquery._types import _get_sqla_column_type
@@ -133,20 +133,17 @@ _bigquery_table_types = {
 }
 
 
-class BQJSON(String):
-    """The SQL JSON type."""
-
-    def get_col_spec(self, **kw):  # pylint: disable=unused-argument
-        return "JSON"
-
-
 logger = ingestion_logger()
 # pylint: disable=protected-access
+# sqlalchemy-bigquery reflects NUMERIC/BIGNUMERIC as the generic Numeric, which the column
+# type parser maps to INT; the NUMERIC class keeps their decimal semantics.
 _types._type_map.update(
     {
         "GEOGRAPHY": create_sqlalchemy_type("GEOGRAPHY"),
-        "JSON": BQJSON,
+        "JSON": JSON,
         "INTERVAL": Interval,
+        "NUMERIC": NUMERIC,
+        "BIGNUMERIC": NUMERIC,
     }
 )
 
@@ -638,6 +635,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 tag_name=tag_name,
                 tag_description=f"Bigquery {tag_type} {'Tag' if tag_type == 'Policy' else 'Label'}",
                 classification_description=f"BigQuery {tag_type} Classification",
+                entity_fqn=entity_fqn,
             )
             if definition and entity_fqn:
                 self.attach_tag(entity_fqn=entity_fqn, tag=definition)

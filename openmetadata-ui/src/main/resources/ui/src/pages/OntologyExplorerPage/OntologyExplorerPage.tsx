@@ -19,11 +19,12 @@ import {
   LayersThree01,
   Plus,
   Share07,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { TFunction } from 'i18next';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router-dom';
 import { useOntologyAiCapability } from '../../components/OntologyExplorer/hooks/useOntologyAiCapability';
 import {
   OntologyEditLeaseState,
@@ -35,6 +36,7 @@ import OntologyExplorer from '../../components/OntologyExplorer/OntologyExplorer
 import { OntologyGraphData } from '../../components/OntologyExplorer/OntologyExplorer.interface';
 import OntologyImportExportMenu from '../../components/OntologyExplorer/OntologyImportExportMenu';
 import OntologyLibrary from '../../components/OntologyExplorer/OntologyLibrary';
+import OntologyMemoryReviewPanel from '../../components/OntologyExplorer/OntologyMemoryReviewPanel';
 import OntologyModelingWorkbench from '../../components/OntologyExplorer/OntologyModelingWorkbench';
 import { ONTOLOGY_STUDIO_STYLE } from '../../components/OntologyExplorer/OntologyStudio.styles';
 import OntologyStudioQueryConsole from '../../components/OntologyExplorer/OntologyStudioQueryConsole';
@@ -53,7 +55,7 @@ import { useIsAiMode } from '../../hooks/useAppMode';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { generateUUID } from '../../utils/StringUtils';
 
-type StudioMode = 'view' | 'edit' | 'query' | 'ai';
+type StudioMode = 'view' | 'edit' | 'query' | 'ai' | 'review';
 type ViewSurface = 'graph' | 'tree';
 type EditSurface = 'graph' | 'model';
 type QuerySurface = 'console' | 'builder';
@@ -170,6 +172,31 @@ function computeCanCreateConcept(
   );
 }
 
+function computeChangeSetPermissions(
+  isAdminUser: boolean | undefined,
+  permissions: UIPermission
+) {
+  const canApply =
+    Boolean(isAdminUser) ||
+    checkPermission(Operation.EditAll, ResourceEntity.GLOSSARY, permissions);
+  const canSubmit =
+    canApply ||
+    checkPermission(
+      Operation.EditGlossaryTerms,
+      ResourceEntity.GLOSSARY,
+      permissions
+    );
+  const canDiscard =
+    Boolean(isAdminUser) ||
+    checkPermission(
+      Operation.EditAll,
+      ResourceEntity.ONTOLOGY_CHANGE_SET,
+      permissions
+    );
+
+  return { canApply, canDiscard, canSubmit };
+}
+
 function computeModeTabs(
   t: TFunction,
   canEditOntology: boolean,
@@ -178,6 +205,9 @@ function computeModeTabs(
   const editModeTabs: StudioModeTab[] = canEditOntology
     ? [{ id: 'edit', label: t('label.edit') }]
     : [];
+  const reviewModeTabs: StudioModeTab[] = canEditOntology
+    ? [{ id: 'review', label: t('label.needs-review') }]
+    : [];
   const aiModeTabs: StudioModeTab[] = isOntologyAiEnabled
     ? [{ id: 'ai', label: t('label.ai') }]
     : [];
@@ -185,6 +215,7 @@ function computeModeTabs(
   return [
     { id: 'view', label: t('label.view') },
     ...editModeTabs,
+    ...reviewModeTabs,
     { id: 'query', label: t('label.query') },
     ...aiModeTabs,
   ];
@@ -261,6 +292,7 @@ interface StudioVisibilityFlags {
   showAiAssistant: boolean;
   showModelingWorkbench: boolean;
   showQuerySurface: boolean;
+  showReviewSurface: boolean;
   showRdfDisabledNotice: boolean;
 }
 
@@ -275,6 +307,7 @@ function computeVisibilityFlags(
     showAiAssistant: mode === 'ai' && isOntologyAiEnabled,
     showModelingWorkbench: mode === 'edit' && editSurface === 'model',
     showQuerySurface: mode === 'query',
+    showReviewSurface: mode === 'review',
     showRdfDisabledNotice:
       mode === 'query' && !isRdfEnabled && !isCapabilityLoading,
   };
@@ -344,6 +377,7 @@ function getSubModeConfiguration(
     edit: () => getEditSubModeConfiguration(surfaces.editSurface, t),
     query: () =>
       getQuerySubModeConfiguration(surfaces.querySurface, isRdfEnabled, t),
+    review: () => ({ id: 'review', items: [], label: t('label.needs-review') }),
     view: () => getViewSubModeConfiguration(surfaces.viewSurface, t),
   };
 
@@ -364,6 +398,18 @@ function resolveQuerySurfaceChange(id: string): QuerySurface | undefined {
     : undefined;
 }
 
+const DRAFT_SEARCH_PARAM = 'draft';
+
+// A memory modal links straight to its draft, which opens Studio in review mode.
+function useLinkedDraftId(): string | undefined {
+  const [searchParams] = useSearchParams();
+
+  return searchParams.get(DRAFT_SEARCH_PARAM) ?? undefined;
+}
+
+const studioModeFor = (linkedDraftId?: string): StudioMode =>
+  linkedDraftId ? 'review' : 'view';
+
 const OntologyExplorerPage: React.FC = () => {
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
@@ -375,7 +421,10 @@ const OntologyExplorerPage: React.FC = () => {
     isRdfEnabled,
     isLoading: isCapabilityLoading,
   } = useOntologyAiCapability();
-  const [mode, setMode] = useState<StudioMode>('view');
+  const initialDraftId = useLinkedDraftId();
+  const [mode, setMode] = useState<StudioMode>(() =>
+    studioModeFor(initialDraftId)
+  );
   const [viewSurface, setViewSurface] = useState<ViewSurface>('graph');
   const [editSurface, setEditSurface] = useState<EditSurface>('graph');
   const [querySurface, setQuerySurface] = useState<QuerySurface>('console');
@@ -480,6 +529,10 @@ const OntologyExplorerPage: React.FC = () => {
   const explorerSurface = mode === 'view' ? viewSurface : 'graph';
 
   const canEditOntology = computeCanEditOntology(isAdminUser, permissions);
+  const changeSetPermissions = computeChangeSetPermissions(
+    isAdminUser,
+    permissions
+  );
   const canCreateConcept = computeCanCreateConcept(
     isAdminUser,
     permissions,
@@ -488,10 +541,9 @@ const OntologyExplorerPage: React.FC = () => {
   const modeTabs = computeModeTabs(t, canEditOntology, isOntologyAiEnabled);
 
   useEffect(() => {
-    if (
-      (mode === 'edit' && !canEditOntology) ||
-      (mode === 'ai' && !isOntologyAiEnabled)
-    ) {
+    const isUnavailableEditMode =
+      (mode === 'edit' || mode === 'review') && !canEditOntology;
+    if (isUnavailableEditMode || (mode === 'ai' && !isOntologyAiEnabled)) {
       setMode('view');
     }
   }, [canEditOntology, isOntologyAiEnabled, mode]);
@@ -538,6 +590,7 @@ const OntologyExplorerPage: React.FC = () => {
     showAiAssistant,
     showModelingWorkbench,
     showQuerySurface,
+    showReviewSurface,
     showRdfDisabledNotice,
   } = computeVisibilityFlags(
     mode,
@@ -548,7 +601,10 @@ const OntologyExplorerPage: React.FC = () => {
   );
 
   const showDefaultSurface =
-    !showAiAssistant && !showQuerySurface && !showRdfDisabledNotice;
+    !showAiAssistant &&
+    !showQuerySurface &&
+    !showReviewSurface &&
+    !showRdfDisabledNotice;
 
   const defaultModeContent = showModelingWorkbench ? (
     <OntologyModelingWorkbench
@@ -663,7 +719,7 @@ const OntologyExplorerPage: React.FC = () => {
 
   function renderModeTabsBar() {
     return (
-      <div className="tw:flex tw:min-w-0 tw:flex-1 tw:justify-center">
+      <div className="tw:flex tw:min-w-max tw:flex-1 tw:justify-center">
         <div className="tw:flex tw:gap-[3px] tw:rounded-[10px] tw:border tw:border-secondary tw:bg-tertiary tw:p-[3px]">
           {modeTabs.map((tab) => (
             <Button
@@ -693,7 +749,7 @@ const OntologyExplorerPage: React.FC = () => {
   }
 
   function renderSubModeNav() {
-    if (mode === 'ai') {
+    if (mode === 'ai' || mode === 'review') {
       return null;
     }
 
@@ -760,6 +816,18 @@ const OntologyExplorerPage: React.FC = () => {
   }
 
   function renderMainContent() {
+    if (showReviewSurface) {
+      return (
+        <OntologyMemoryReviewPanel
+          canApply={changeSetPermissions.canApply}
+          canDiscard={changeSetPermissions.canDiscard}
+          canSubmit={changeSetPermissions.canSubmit}
+          initialDraftId={initialDraftId}
+          onApplied={() => setExplorerRevision((revision) => revision + 1)}
+        />
+      );
+    }
+
     if (showAiAssistant) {
       return (
         <OntologyAiAssistant
@@ -813,7 +881,7 @@ const OntologyExplorerPage: React.FC = () => {
       <section
         className={classNames(
           'tw:flex tw:min-h-0 tw:flex-1',
-          mode === 'query' || mode === 'ai'
+          mode === 'query' || mode === 'ai' || mode === 'review'
             ? 'tw:bg-secondary'
             : 'tw:bg-primary'
         )}>

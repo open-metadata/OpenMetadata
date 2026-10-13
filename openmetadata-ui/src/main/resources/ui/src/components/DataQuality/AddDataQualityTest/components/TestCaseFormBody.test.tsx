@@ -279,6 +279,57 @@ describe('TestCaseFormBody', () => {
     expect(await screen.findByTestId('selectedTable')).toBeInTheDocument();
   });
 
+  it('reports the active field for a click on the table select and keyboard focus on a test level card', async () => {
+    const onActiveFieldChange = jest.fn();
+    const Wrapper = () => {
+      const form = useForm<FormValues>({
+        defaultValues: { testLevel: TestLevel.TABLE } as FormValues,
+      });
+
+      return (
+        <HookForm showFieldDocs form={form} onSubmit={jest.fn()}>
+          <TestCaseFormBody
+            form={form}
+            onActiveFieldChange={onActiveFieldChange}
+          />
+        </HookForm>
+      );
+    };
+
+    await act(async () => {
+      render(<Wrapper />);
+    });
+
+    // A select holding a value takes no focus on click.
+    await act(async () => {
+      fireEvent.pointerDown(await screen.findByTestId('selectedTable'));
+    });
+
+    expect(onActiveFieldChange).toHaveBeenLastCalledWith('root/table');
+
+    await act(async () => {
+      screen.getAllByRole('radio')[0].focus();
+    });
+
+    expect(onActiveFieldChange).toHaveBeenLastCalledWith('root/testLevel');
+  });
+
+  it('labels the table field Selected Table once a table is picked', async () => {
+    await act(async () => {
+      renderBody();
+    });
+
+    expect(screen.queryByText('label.selected-entity')).not.toBeInTheDocument();
+
+    await act(async () => {
+      formRef?.setValue('selectedTable', TABLE_FQN);
+    });
+
+    expect(
+      await screen.findByText('label.selected-entity')
+    ).toBeInTheDocument();
+  });
+
   it('does not render the column select at table level', async () => {
     await act(async () => {
       renderBody();
@@ -519,6 +570,73 @@ describe('TestCaseFormBody', () => {
     await waitFor(() => {
       expect(
         screen.queryByTestId('parameter-minValue')
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe('dimension failure policy with a dynamic assertion', () => {
+    const DYNAMIC_DIMENSIONAL_DEFINITION = {
+      ...DYNAMIC_DEFINITION,
+      parameterDefinition: [
+        ...(DYNAMIC_DEFINITION.parameterDefinition ?? []),
+        {
+          name: 'dimensionFailurePolicy',
+          displayName: 'Dimension Failure Policy',
+          dataType: 'STRING',
+          optionValues: ['OVERALL_ONLY', 'ANY_DIMENSION'],
+        },
+      ],
+    } as unknown as TestDefinition;
+
+    const renderWithDynamicAssertion = async (testLevel: TestLevel) => {
+      mockGetListTestDefinitions.mockResolvedValue({
+        data: [DYNAMIC_DIMENSIONAL_DEFINITION],
+        paging: { total: 1 },
+      } as never);
+
+      await act(async () => {
+        renderBody({ table: SELECTED_TABLE }, { testLevel });
+      });
+
+      await waitFor(() => {
+        expect(mockGetListTestDefinitions).toHaveBeenCalled();
+      });
+
+      await act(async () => {
+        formRef?.setValue('testTypeId', {
+          id: TEST_DEFINITION_FQN,
+          label: 'Column Values To Be Between',
+        } as never);
+      });
+
+      expect(
+        await screen.findByTestId('parameter-minValue')
+      ).toBeInTheDocument();
+
+      await act(async () => {
+        formRef?.setValue('useDynamicAssertion', true);
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.queryByTestId('parameter-minValue')
+        ).not.toBeInTheDocument();
+      });
+    };
+
+    it('keeps the policy on a dimension-level test once the bounds are learned', async () => {
+      await renderWithDynamicAssertion(TestLevel.COLUMN_DIMENSION);
+
+      expect(
+        screen.getByTestId('parameter-dimensionFailurePolicy')
+      ).toBeInTheDocument();
+    });
+
+    it('still hides the policy on a column-level test', async () => {
+      await renderWithDynamicAssertion(TestLevel.COLUMN);
+
+      expect(
+        screen.queryByTestId('parameter-dimensionFailurePolicy')
       ).not.toBeInTheDocument();
     });
   });

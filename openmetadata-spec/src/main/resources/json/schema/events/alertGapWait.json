@@ -1,0 +1,25 @@
+{
+  "$id": "https://open-metadata.org/schema/events/alertGapWait.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AlertGapWait",
+  "description": "A wait an alert started at a gap in the change event offsets. It belongs to the position it was measured at and is ignored at any other position.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.events.AlertGapWait",
+  "properties": {
+    "atOffset": {
+      "description": "The position of the alert when the gap was first seen.",
+      "type": "integer",
+      "existingJavaType": "Long"
+    },
+    "since": {
+      "description": "When the gap was first seen.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "timestamp": {
+      "description": "Update time of this row.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    }
+  },
+  "required": ["atOffset", "since", "timestamp"],
+  "additionalProperties": false
+}

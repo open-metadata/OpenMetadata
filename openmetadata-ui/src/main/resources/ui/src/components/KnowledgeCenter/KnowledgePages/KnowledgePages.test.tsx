@@ -99,6 +99,32 @@ describe('KnowledgePages', () => {
     expect(pageLink).toHaveAttribute('target', '_blank');
   });
 
+  it('should neutralise a javascript: quick link url (XSS guard)', async () => {
+    (getListKnowledgePages as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        data: [
+          {
+            ...MOCK_KNOWLEDGE_PAGES[1],
+            page: { url: 'javascript:alert(document.domain)' },
+          },
+        ],
+        paging: {
+          total: 10,
+        },
+      })
+    );
+    await act(async () => {
+      render(<KnowledgePages />, { wrapper: MemoryRouter });
+    });
+
+    const pageLink = screen.getByTestId('page-link');
+
+    // getSafeHttpUrl drops the javascript: scheme, so the '#' fallback is used —
+    // React Router renders that as href="/", never the script url.
+    expect(pageLink.getAttribute('href')).not.toContain('javascript:');
+    expect(pageLink).toHaveAttribute('href', '/');
+  });
+
   it('should not render when data is empty', async () => {
     (getListKnowledgePages as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({

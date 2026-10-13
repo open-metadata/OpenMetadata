@@ -14,15 +14,12 @@
 import { PlusOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
+  Box,
   Button,
-  Form,
-  FormProps,
-  Input,
-  Radio,
-  Select,
-  Space,
-  Switch,
-} from 'antd';
+  Toggle,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Form, FormProps, Input, Radio, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { TFunction } from 'i18next';
 import {
@@ -94,10 +91,13 @@ const buildDomainsField = (
     multiple: true,
     children: (
       <Button
+        aria-label={t('label.add-entity', { entity: t('label.domain') })}
+        color="primary"
         data-testid="add-domain"
-        icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
-        size="small"
-        type="primary"
+        iconLeading={
+          <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
+        }
+        size="xs"
       />
     ),
   },
@@ -138,8 +138,8 @@ const BotFields = ({ isAdminUser }: BotFieldsProps) => {
           label={t('label.allow-impersonation')}
           name="allowImpersonation"
           tooltip={t('message.allow-impersonation-help')}
-          valuePropName="checked">
-          <Switch data-testid="allow-impersonation" />
+          valuePropName="isSelected">
+          <Toggle data-testid="allow-impersonation" />
         </Form.Item>
       )}
     </>
@@ -401,14 +401,19 @@ const AdminOnlyFields = ({
       )}
 
       <Form.Item>
-        <Space>
-          <span> {t('label.admin')}</span>
-          <Switch
-            checked={isAdmin}
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal"
+          gap={2}
+          itemClassName="layout-space-item">
+          <Typography> {t('label.admin')}</Typography>
+          <Toggle
             data-testid="admin"
+            isSelected={isAdmin}
             onChange={onToggleAdmin}
           />
-        </Space>
+        </Box>
       </Form.Item>
     </>
   );
@@ -736,19 +741,24 @@ const CreateUser = ({
         <InlineAlert alertClassName="m-b-xs" {...inlineAlertDetails} />
       )}
 
-      <Space className="w-full justify-end" size={4}>
-        <Button data-testid="cancel-user" type="link" onClick={onCancel}>
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal w-full justify-end"
+        gap={1}
+        itemClassName="layout-space-item">
+        <Button color="link-color" data-testid="cancel-user" onClick={onCancel}>
           {t('label.cancel')}
         </Button>
         <Button
+          color="primary"
           data-testid="save-user"
           form="create-user-bot-form"
-          htmlType="submit"
-          loading={isLoading}
-          type="primary">
+          isLoading={isLoading}
+          type="submit">
           {t('label.create')}
         </Button>
-      </Space>
+      </Box>
     </Form>
   );
 };

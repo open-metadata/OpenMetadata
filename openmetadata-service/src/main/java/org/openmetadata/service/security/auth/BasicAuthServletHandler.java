@@ -268,7 +268,8 @@ public class BasicAuthServletHandler implements AuthServeletHandler {
       String previousRefreshToken,
       String updatedRefreshToken) {
     Optional<UserSession> completedSession =
-        sessionService.completeRefresh(session, updatedRefreshToken, null);
+        sessionService.completeRefresh(
+            session, updatedRefreshToken, SessionService.ProviderTokenUpdate.NONE);
     if (completedSession.isEmpty() || completedSession.get().getStatus() != SessionStatus.ACTIVE) {
       deleteOrphanedRefreshToken(previousRefreshToken, updatedRefreshToken);
       sessionService.revokeSession(req, resp);

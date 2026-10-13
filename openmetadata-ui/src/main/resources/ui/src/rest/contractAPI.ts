@@ -428,13 +428,14 @@ export const importContractFromODCSYaml = async (
   yamlContent: string,
   entityId: string,
   entityType: string,
-  objectName?: string
+  objectName?: string,
+  createTestCases = true
 ): Promise<DataContract> => {
   const response = await APIClient.post<DataContract>(
     `${BASE_URL}/odcs/yaml`,
     yamlContent,
     {
-      params: { entityId, entityType, objectName },
+      params: { entityId, entityType, objectName, createTestCases },
       headers: { 'Content-Type': APPLICATION_YAML_CONTENT_TYPE },
     }
   );
@@ -473,20 +474,23 @@ export interface SchemaValidation {
 /**
  * Validate ODCS YAML against an entity without importing
  * Returns comprehensive validation results including entity errors, constraint errors,
- * and schema field mismatches
+ * and schema field mismatches, plus the import report: what the import keeps, changes and
+ * leaves out, and what each quality rule becomes
  * @param objectName Schema object name to validate (for multi-object ODCS contracts)
+ * @param createTestCases Whether the import would create test cases from the quality rules
  */
 export const validateODCSYaml = async (
   yamlContent: string,
   entityId: string,
   entityType: string,
-  objectName?: string
+  objectName?: string,
+  createTestCases = true
 ): Promise<ContractValidation> => {
   const response = await APIClient.post<ContractValidation>(
     `${BASE_URL}/odcs/validate/yaml`,
     yamlContent,
     {
-      params: { entityId, entityType, objectName },
+      params: { entityId, entityType, objectName, createTestCases },
       headers: { 'Content-Type': APPLICATION_YAML_CONTENT_TYPE },
     }
   );
@@ -533,19 +537,21 @@ export const validateContractYaml = async (
  * Create or update a data contract from ODCS v3.1.0 YAML format
  * @param mode 'merge' preserves existing fields, 'replace' overwrites all fields but preserves ID and history
  * @param objectName Schema object name to import (for multi-object ODCS contracts)
+ * @param createTestCases Whether the contract's ODCS quality rules become test cases
  */
 export const createOrUpdateContractFromODCSYaml = async (
   yamlContent: string,
   entityId: string,
   entityType: string,
   mode: 'merge' | 'replace' = 'merge',
-  objectName?: string
+  objectName?: string,
+  createTestCases = true
 ): Promise<DataContract> => {
   const response = await APIClient.put<DataContract>(
     `${BASE_URL}/odcs/yaml`,
     yamlContent,
     {
-      params: { entityId, entityType, mode, objectName },
+      params: { entityId, entityType, mode, objectName, createTestCases },
       headers: { 'Content-Type': APPLICATION_YAML_CONTENT_TYPE },
     }
   );

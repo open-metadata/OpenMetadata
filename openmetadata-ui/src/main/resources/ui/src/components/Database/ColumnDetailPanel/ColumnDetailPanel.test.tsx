@@ -84,16 +84,10 @@ jest.mock('antd', () => ({
       {children}
     </div>
   )),
-  Typography: {
-    Text: jest.fn().mockImplementation(({ children, ...props }) => (
-      <span data-testid="typography-text" {...props}>
-        {children}
-      </span>
-    )),
-  },
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
   Button: jest.fn().mockImplementation(
     ({
       children,
@@ -111,6 +105,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </button>
     )
   ),
+  Tooltip: ({ children }: React.PropsWithChildren) => children,
 }));
 
 jest.mock('@ant-design/icons', () => ({
@@ -398,7 +393,6 @@ jest.mock('../../../utils/EntitySummaryPanelUtils', () => ({
 }));
 
 jest.mock('../../../utils/StringUtils', () => ({
-  stringToHTML: jest.fn().mockImplementation((str) => str),
   getErrorText: jest
     .fn()
     .mockImplementation(
@@ -407,6 +401,10 @@ jest.mock('../../../utils/StringUtils', () => ({
     ),
   getEncodedFqn: jest.fn().mockImplementation((fqn: string) => fqn),
   getDecodedFqn: jest.fn().mockImplementation((fqn: string) => fqn),
+}));
+
+jest.mock('../../../utils/RichTextStringUtils', () => ({
+  stringToHTML: jest.fn().mockImplementation((str) => str),
 }));
 
 jest.mock('../../../utils/TablePureUtils', () => ({
