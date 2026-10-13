@@ -159,6 +159,11 @@ public class CacheInvalidationPubSub {
     client = null;
   }
 
+  /** False when Redis was unreachable at start-up: nothing is published or received. */
+  public boolean isRunning() {
+    return running.get();
+  }
+
   public void publish(String entityType, UUID id, String fqn, String op) {
     if (!running.get() || pubConnection == null || entityType == null) {
       return;

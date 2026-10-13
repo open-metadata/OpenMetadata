@@ -18,8 +18,9 @@ L2-cached).
 
 ## Decision
 
-- Only when Redis is off (`CacheBundle.getCacheInvalidationPubSub()` is null) does `SubjectCachePeerSync`
-  run, on every pod; with Redis it never starts and pub/sub stays the only channel.
+- Only when Redis is off (`CacheBundle.getCacheInvalidationPubSub()` is null, or Redis was unreachable
+  so pub/sub never started) does `SubjectCachePeerSync` run, on every pod; with working Redis it never
+  starts and pub/sub stays the only channel.
   Every **5 s** it lists rows of `user_entity`, `team_entity`, `role_entity`, `policy_entity` and
   `domain_entity` whose `updatedAt` is later than the previous poll minus **60 s**, and evicts them
   through `EntityRepository.onRemoteCacheInvalidate` and `SubjectCache.invalidator()`, the same pair

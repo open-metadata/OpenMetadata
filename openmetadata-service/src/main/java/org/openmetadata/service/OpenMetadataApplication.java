@@ -356,8 +356,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     CacheConfiguration cacheConfig = catalogConfig.getCacheMemoryConfiguration();
     EntityRepository.initCaches(cacheConfig);
     SubjectCache.initCaches(cacheConfig.getAuthCacheMaxEntries());
-    // Without Redis pub/sub, auth writes served by other pods reach these caches by polling
-    if (org.openmetadata.service.cache.CacheBundle.getCacheInvalidationPubSub() == null) {
+    // Without working Redis pub/sub, auth writes served by other pods reach these caches by polling
+    if (SubjectCachePeerSync.isNeeded(
+        org.openmetadata.service.cache.CacheBundle.getCacheInvalidationPubSub())) {
       environment.lifecycle().manage(new SubjectCachePeerSync(Entity.getCollectionDAO()));
     }
     OpenSearchSearchManager.initRbacCache(cacheConfig.getRbacCacheMaxEntries());

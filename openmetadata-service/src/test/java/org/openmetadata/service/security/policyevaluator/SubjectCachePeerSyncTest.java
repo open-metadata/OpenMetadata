@@ -1,6 +1,8 @@
 package org.openmetadata.service.security.policyevaluator;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
@@ -16,6 +18,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.cache.CacheInvalidationPubSub;
 import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.security.policyevaluator.SubjectCachePeerSync.WatchedTable;
 
@@ -105,6 +108,17 @@ class SubjectCachePeerSyncTest {
     sync.sync();
 
     assertEquals(0, domainRenames.get());
+  }
+
+  @Test
+  void pollsUnlessRedisPubSubIsRunning() {
+    CacheInvalidationPubSub running = mock(CacheInvalidationPubSub.class);
+    when(running.isRunning()).thenReturn(true);
+    CacheInvalidationPubSub failedToStart = mock(CacheInvalidationPubSub.class);
+
+    assertTrue(SubjectCachePeerSync.isNeeded(null));
+    assertTrue(SubjectCachePeerSync.isNeeded(failedToStart));
+    assertFalse(SubjectCachePeerSync.isNeeded(running));
   }
 
   private static EntityDAO<?> dao(String table, int count) {

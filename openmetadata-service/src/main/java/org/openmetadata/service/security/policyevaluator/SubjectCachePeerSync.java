@@ -27,6 +27,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.LongSupplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.cache.CacheInvalidationPubSub;
 import org.openmetadata.service.cache.Invalidatable;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityDAO;
@@ -65,6 +66,11 @@ public class SubjectCachePeerSync implements Managed {
   private final Map<String, Integer> rowCounts = new HashMap<>();
   private long watermark;
   private ScheduledExecutorService scheduler;
+
+  /** Polling is needed whenever pub/sub carries no peer writes, including when Redis was down. */
+  public static boolean isNeeded(CacheInvalidationPubSub pubSub) {
+    return pubSub == null || !pubSub.isRunning();
+  }
 
   public SubjectCachePeerSync(CollectionDAO dao) {
     this(
