@@ -478,6 +478,7 @@ export const Lineage = ({
     useState<ReactFlowInstance>();
   const reactFlowInstanceRef = useRef<ReactFlowInstance>();
   const lastFetchedLineageKeyRef = useRef<string>();
+  const lineageFetchIdRef = useRef(0);
 
   const {
     lineageConfig,
@@ -891,6 +892,20 @@ export const Lineage = ({
         return;
       }
 
+      // Claim the key before the request so a second trigger for the same
+      // graph while this one is in flight does not fetch it again. A late
+      // duplicate response redraws with the layers captured at its call and
+      // wipes column rows the user has switched on since.
+      lastFetchedLineageKeyRef.current = getLineageFetchKey(
+        fqn,
+        entityType,
+        config,
+        queryFilter,
+        timeFilter
+      );
+      const fetchId = ++lineageFetchIdRef.current;
+      const isSuperseded = () => fetchId !== lineageFetchIdRef.current;
+
       setLoading(true);
       setInit(false);
 
@@ -906,13 +921,9 @@ export const Lineage = ({
           startTime: timeFilter.startTime,
           endTime: timeFilter.endTime,
         });
-        lastFetchedLineageKeyRef.current = getLineageFetchKey(
-          fqn,
-          entityType,
-          config,
-          queryFilter,
-          timeFilter
-        );
+        if (isSuperseded()) {
+          return;
+        }
         setLineageData(res);
 
         const { nodes, edges, entity } = parseLineageData(
@@ -930,6 +941,10 @@ export const Lineage = ({
         setEntityLineage(updatedEntityLineage);
         await redrawLineage(updatedEntityLineage, true);
       } catch (err) {
+        if (isSuperseded()) {
+          return;
+        }
+        lastFetchedLineageKeyRef.current = undefined;
         showErrorToast(
           err as AxiosError,
           t('server.entity-fetch-error', {
@@ -937,8 +952,10 @@ export const Lineage = ({
           })
         );
       } finally {
-        setInit(true);
-        setLoading(false);
+        if (!isSuperseded()) {
+          setInit(true);
+          setLoading(false);
+        }
       }
     },
     [
