@@ -81,7 +81,7 @@ const BaseIconButton = forwardRef<HTMLButtonElement, BaseIconButtonProps>(
         iconLeading={icon ?? DefaultIcon}
         isDisabled={disabled}
         ref={ref}
-        size="xxs"
+        size="xs"
         {...props}
       />
     </Tooltip>

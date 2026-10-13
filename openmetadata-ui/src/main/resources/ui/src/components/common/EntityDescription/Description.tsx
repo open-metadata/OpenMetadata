@@ -168,7 +168,7 @@ const Description = ({
             color="secondary"
             data-testid="request-description"
             iconLeading={MessagePlusSquare}
-            size="xxs"
+            size="xs"
             onPress={handleRequest}
           />
         </Tooltip>
@@ -207,7 +207,7 @@ const Description = ({
           color="secondary"
           data-testid="edit-description"
           iconLeading={Edit01}
-          size="xxs"
+          size="xs"
           onPress={handleEditDescription}
         />
       </Tooltip>
@@ -224,7 +224,7 @@ const Description = ({
           color="secondary"
           data-testid="description-thread"
           iconLeading={MessageChatSquare}
-          size="xxs"
+          size="xs"
           onPress={openThread}
         />
       </Tooltip>

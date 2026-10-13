@@ -62,7 +62,8 @@ const { parsePathData, stringifyPathData } = require('svgo/lib/path.js');
 const GRID = 20;
 const SOURCE_GRID = 24;
 
-/** Rescale icons drawn on UntitledUI's 24-unit grid to the 20-unit grid.
+/** Rescale icons drawn on UntitledUI's 24-unit grid to the 20-unit grid
+ *  (ADR:2026-10-13-core-icons-and-buttons-follow-the-figma-icon-spec).
  *  Only path geometry is scaled — stroke-width stays as authored, so a 1.3
  *  stroke renders at the same weight as every native 20-grid icon. */
 const normalizeToGrid = {

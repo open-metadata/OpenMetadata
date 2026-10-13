@@ -38,7 +38,8 @@ export const styles = sortCx({
       'tw:outline-brand tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2',
     icon: 'tw:pointer-events-none tw:size-5 tw:shrink-0 tw:transition-inherit-all',
   },
-  // Heights and icon frames follow the Figma "Icons in buttons" spec. The
+  // Heights and icon frames follow the Figma "Icons in buttons" spec
+  // (ADR:2026-10-13-core-icons-and-buttons-follow-the-figma-icon-spec). The
   // visible icon→label gap is `gap-*` plus the label's `px-0.5`. Icons draw in
   // the middle 16 of 20 units, so the spec's fixed 2px frame padding needs
   // svg padding on smaller frames: 18 → 0.25px (14px glyph), 16 → 0.5px (12px).
