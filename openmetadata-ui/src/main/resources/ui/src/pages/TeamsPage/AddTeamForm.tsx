@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
 import {
   Box,
   Button,
@@ -24,6 +23,7 @@ import {
   Select,
   SimpleModal,
 } from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { toLower, trim } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
@@ -265,11 +265,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
                       })}
                       color="primary"
                       data-testid="add-domain"
-                      iconLeading={
-                        <PlusOutlined
-                          style={{ color: 'white', fontSize: '12px' }}
-                        />
-                      }
+                      iconLeading={Plus}
                       size="xs"
                     />
                   </DomainSelectableList>

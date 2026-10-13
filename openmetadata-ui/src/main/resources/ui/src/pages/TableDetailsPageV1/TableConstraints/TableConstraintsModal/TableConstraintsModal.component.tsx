@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Autocomplete,
   Box,
@@ -22,14 +21,13 @@ import {
   Select,
   SimpleModal,
 } from '@openmetadata/ui-core-components';
+import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { debounce, isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useFilter } from 'react-aria';
 import { useFieldArray, useForm, UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
-import { ReactComponent as PlusIcon } from '../../../../assets/svg/plus-primary.svg';
 import { PAGE_SIZE } from '../../../../constants/constants';
 import {
   RELATIONSHIP_TYPE_OPTION,
@@ -264,15 +262,9 @@ const ForeignKeyRow = ({
         className="tw:absolute tw:top-2.5 tw:right-3"
         color="tertiary"
         data-testid={`${index}-delete-constraint-button`}
-        iconLeading={
-          <Icon
-            className="align-middle text-grey-muted"
-            component={IconDelete}
-            style={{ fontSize: '16px' }}
-          />
-        }
+        iconLeading={Trash01}
         size="xs"
-        onClick={() => onRemove(index)}
+        onPress={() => onRemove(index)}
       />
     </div>
   );
@@ -443,9 +435,9 @@ const TableConstraintsModal = ({
         className="tw:mt-4 tw:self-start"
         color="secondary"
         data-testid="add-constraint-button"
-        iconLeading={<PlusIcon className="anticon" />}
+        iconLeading={Plus}
         size="xs"
-        onClick={() => append(EMPTY_FOREIGN_CONSTRAINT)}>
+        onPress={() => append(EMPTY_FOREIGN_CONSTRAINT)}>
         {t('label.add-entity', { entity: t('label.constraint-plural') })}
       </Button>
     </>

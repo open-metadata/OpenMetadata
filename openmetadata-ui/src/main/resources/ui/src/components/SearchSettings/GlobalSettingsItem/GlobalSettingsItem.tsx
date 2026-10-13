@@ -40,7 +40,19 @@ export const GlobalSettingItem = ({
   const [updatedValue, setUpdatedValue] = useState<number>(value);
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
 
+  const handleCancel = () => {
+    setUpdatedValue(value);
+    setIsEditing(false);
+  };
+
   const handleSave = async () => {
+    // A cleared input parses to NaN; treat it as a cancelled edit.
+    if (Number.isNaN(updatedValue)) {
+      handleCancel();
+
+      return;
+    }
+
     try {
       setIsUpdating(true);
       // The core Input has no min/max, so the bounds are applied on save.
@@ -53,11 +65,6 @@ export const GlobalSettingItem = ({
       setIsUpdating(false);
       setIsEditing(false);
     }
-  };
-
-  const handleCancel = () => {
-    setUpdatedValue(value);
-    setIsEditing(false);
   };
 
   return (

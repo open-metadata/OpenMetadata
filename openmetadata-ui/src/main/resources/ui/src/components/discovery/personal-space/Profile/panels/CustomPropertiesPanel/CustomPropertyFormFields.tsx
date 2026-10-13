@@ -324,10 +324,14 @@ const CustomPropertyFormFields = ({
 
   return (
     <>
-      <div className="tw:flex tw:gap-4">
-        <div className="tw:flex-1">{getField(nameField)}</div>
-        <div className="tw:flex-1">{getField(displayNameField)}</div>
-      </div>
+      <Box gap={4}>
+        <Box className="tw:flex-1" direction="col">
+          {getField(nameField)}
+        </Box>
+        <Box className="tw:flex-1" direction="col">
+          {getField(displayNameField)}
+        </Box>
+      </Box>
       {getField(propertyTypeField)}
       {typeAddon}
       {hasEnumConfig && (

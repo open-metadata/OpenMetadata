@@ -139,7 +139,10 @@ const QueryUsedByOtherTable = ({
   }, [initialOptions]);
 
   const selectList = (
-    <div className="w-min-30 w-full" data-testid="edit-query-used-in">
+    <Box
+      className="tw:min-w-30"
+      data-testid="edit-query-used-in"
+      direction="col">
       <DataAssetAsyncSelectList
         multiple
         // eslint-disable-next-line jsx-a11y/no-autofocus -- turns autofocus off so the SQL editor keeps focus
@@ -156,7 +159,7 @@ const QueryUsedByOtherTable = ({
           onChange(next.map((option) => option.reference));
         }}
       />
-    </div>
+    </Box>
   );
 
   return (

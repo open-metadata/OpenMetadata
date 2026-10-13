@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
 import {
   Autocomplete,
   Box,
@@ -30,7 +29,11 @@ import {
   SelectItemType,
   Toggle,
 } from '@openmetadata/ui-core-components';
-import { Copy01, RefreshCw01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Copy01,
+  Plus,
+  RefreshCw01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compact, debounce, isUndefined, trim } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -545,11 +548,7 @@ const CreateUser = ({
                     })}
                     color="primary"
                     data-testid="add-domain"
-                    iconLeading={
-                      <PlusOutlined
-                        style={{ color: 'white', fontSize: '12px' }}
-                      />
-                    }
+                    iconLeading={Plus}
                     size="xs"
                   />
                 </DomainSelectableList>

@@ -14,6 +14,7 @@
 import {
   Box,
   Select,
+  Typography,
   type SelectItemType,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
@@ -135,27 +136,30 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
           key={item.id}
           textValue={item.label}>
           {entity && (
-            <div className="tw:flex tw:items-center tw:gap-2 tw:overflow-hidden">
+            <Box align="center" className="tw:overflow-hidden" gap={2}>
               <img
                 alt={get(entity, 'serviceType', '') || entity.name}
                 height="16px"
                 src={serviceUtilClassBase.getServiceTypeLogo(entity)}
                 width="16px"
               />
-              <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col">
+              <Box className="tw:min-w-0 tw:flex-1" direction="col">
                 {entity.entityType === EntityType.TABLE && (
-                  <span className="tw:text-xs tw:break-all tw:whitespace-normal tw:text-tertiary">
+                  <Typography
+                    className="tw:break-all tw:whitespace-normal"
+                    color="secondary"
+                    size="text-xs">
                     {getSuggestionLabelHeading(item.id, entity.entityType)}
-                  </span>
+                  </Typography>
                 )}
-                <span className="tw:truncate tw:text-xs tw:text-tertiary">
+                <Typography ellipsis color="secondary" size="text-xs">
                   {entity.name}
-                </span>
-                <span className="tw:truncate tw:text-sm tw:font-medium">
+                </Typography>
+                <Typography ellipsis size="text-sm" weight="medium">
                   {item.label}
-                </span>
-              </div>
-            </div>
+                </Typography>
+              </Box>
+            </Box>
           )}
         </Select.Item>
       );

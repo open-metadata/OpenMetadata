@@ -233,7 +233,9 @@ export const PersonaSelectableList = ({
         containerClassName="tw:w-95 tw:p-5"
         data-testid="persona-popover"
         placement="bottom start">
-        <div className="user-profile-edit-popover-card relative">
+        <Box
+          className="user-profile-edit-popover-card relative"
+          direction="col">
           <div className="d-flex justify-start items-center gap-2 m-b-sm">
             <div className="d-flex flex-start items-center">
               <PersonaIcon height={16} />
@@ -246,7 +248,7 @@ export const PersonaSelectableList = ({
             </Typography>
           </div>
 
-          <div className="tw:mb-3">
+          <Box className="tw:mb-3" direction="col">
             <Autocomplete
               // eslint-disable-next-line jsx-a11y/no-autofocus -- the list opens with the popover, as before
               autoFocus
@@ -277,11 +279,11 @@ export const PersonaSelectableList = ({
                 />
               )}
             </Autocomplete>
-          </div>
+          </Box>
 
           <div className="flex justify-end gap-2">
             <Button
-              aria-label={t('label.save')}
+              aria-label={t('label.cancel')}
               color="primary"
               data-testid={`user-profile${
                 isDefaultPersona ? '-default' : ''
@@ -291,7 +293,7 @@ export const PersonaSelectableList = ({
               onClick={handleCloseEditTeam}
             />
             <Button
-              aria-label={t('label.cancel')}
+              aria-label={t('label.save')}
               color="primary"
               data-testid={`user-profile${
                 isDefaultPersona ? '-default' : ''
@@ -302,7 +304,7 @@ export const PersonaSelectableList = ({
               onClick={handlePersonaUpdate}
             />
           </div>
-        </div>
+        </Box>
       </Popover>
     </PopoverTrigger>
   );

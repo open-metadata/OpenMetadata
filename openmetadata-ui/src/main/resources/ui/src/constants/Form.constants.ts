@@ -16,70 +16,47 @@ import { Rule } from 'antd/lib/form';
 import i18n from '../utils/i18next/LocalUtil';
 import { ENTITY_NAME_REGEX } from './regex.constants';
 
-export const NAME_FIELD_RULES: Rule[] = [
-  {
-    required: true,
-    message: i18n.t('label.field-required', {
-      field: i18n.t('label.name'),
-    }),
-  },
-  {
-    min: 1,
-    max: 128,
-    message: i18n.t('message.entity-size-in-between', {
-      entity: i18n.t('label.name'),
+const ENTITY_NAME_MAX_LENGTH = 128;
+
+const sizeMessage = (labelKey: string) =>
+  String(
+    i18n.t('message.entity-size-in-between', {
+      entity: i18n.t(labelKey),
       min: 1,
-      max: 128,
-    }),
-  },
-  {
-    pattern: ENTITY_NAME_REGEX,
-    message: i18n.t('message.entity-name-validation'),
-  },
+      max: ENTITY_NAME_MAX_LENGTH,
+    })
+  );
+
+const NAME_REQUIRED_MESSAGE = String(
+  i18n.t('label.field-required', { field: i18n.t('label.name') })
+);
+const NAME_SIZE_MESSAGE = sizeMessage('label.name');
+const NAME_PATTERN_MESSAGE = String(i18n.t('message.entity-name-validation'));
+const DISPLAY_NAME_SIZE_MESSAGE = sizeMessage('label.display-name');
+
+// TODO(open-metadata/openmetadata-collate#6893): drop the antd `Rule[]` shapes
+// once the last antd forms (alerts, custom metrics) move to react-hook-form.
+export const NAME_FIELD_RULES: Rule[] = [
+  { required: true, message: NAME_REQUIRED_MESSAGE },
+  { min: 1, max: ENTITY_NAME_MAX_LENGTH, message: NAME_SIZE_MESSAGE },
+  { pattern: ENTITY_NAME_REGEX, message: NAME_PATTERN_MESSAGE },
 ];
 
 export const DISPLAY_NAME_FIELD_RULES: Rule[] = [
-  {
-    min: 1,
-    max: 128,
-    message: i18n.t('message.entity-size-in-between', {
-      entity: i18n.t('label.display-name'),
-      min: 1,
-      max: 128,
-    }),
-  },
+  { min: 1, max: ENTITY_NAME_MAX_LENGTH, message: DISPLAY_NAME_SIZE_MESSAGE },
 ];
-
-const NAME_SIZE_MESSAGE = String(
-  i18n.t('message.entity-size-in-between', {
-    entity: i18n.t('label.name'),
-    min: 1,
-    max: 128,
-  })
-);
 
 /** react-hook-form counterpart of NAME_FIELD_RULES. */
 export const NAME_FIELD_REGISTER_RULES = {
-  required: String(
-    i18n.t('label.field-required', { field: i18n.t('label.name') })
-  ),
-  maxLength: { value: 128, message: NAME_SIZE_MESSAGE },
-  pattern: {
-    value: ENTITY_NAME_REGEX,
-    message: String(i18n.t('message.entity-name-validation')),
-  },
+  required: NAME_REQUIRED_MESSAGE,
+  maxLength: { value: ENTITY_NAME_MAX_LENGTH, message: NAME_SIZE_MESSAGE },
+  pattern: { value: ENTITY_NAME_REGEX, message: NAME_PATTERN_MESSAGE },
 };
 
 /** react-hook-form counterpart of DISPLAY_NAME_FIELD_RULES. */
 export const DISPLAY_NAME_FIELD_REGISTER_RULES = {
   maxLength: {
-    value: 128,
-    message: String(
-      i18n.t('message.entity-size-in-between', {
-        entity: i18n.t('label.display-name'),
-        min: 1,
-        max: 128,
-      })
-    ),
+    value: ENTITY_NAME_MAX_LENGTH,
+    message: DISPLAY_NAME_SIZE_MESSAGE,
   },
 };

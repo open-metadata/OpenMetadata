@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PlusOutlined } from '@ant-design/icons';
 import {
   Box,
   Button,
@@ -20,6 +19,7 @@ import {
   Input,
   SimpleModal,
 } from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { trim } from 'lodash';
 import { useState } from 'react';
@@ -170,11 +170,7 @@ export const AddEditPersonaForm = ({
                       })}
                       color="primary"
                       data-testid="add-users"
-                      iconLeading={
-                        <PlusOutlined
-                          style={{ color: 'white', fontSize: '12px' }}
-                        />
-                      }
+                      iconLeading={Plus}
                       size="xs"
                     />
                   </UserSelectableList>

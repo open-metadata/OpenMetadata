@@ -12,6 +12,7 @@
  */
 
 import {
+  Box,
   FormField,
   FormItemLabel,
   Grid,
@@ -26,7 +27,6 @@ import { useTranslation } from 'react-i18next';
 import DatePicker from '../../components/common/DatePicker/DatePicker';
 import { KPI_DATE_PICKER_FORMAT } from '../../constants/DataInsight.constants';
 import { KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
-import { getLayoutGutter } from '../../utils/common/layout.utils';
 import { getDisabledDates } from '../../utils/DataInsightPureUtils';
 import { KPIMetricTypeOptions } from '../../utils/KPI/KPIUtils';
 import { KPIFormValues } from './KPIPage.interface';
@@ -166,12 +166,10 @@ const KPIFormFields = ({ form, chartItems, isEditing }: KPIFormFieldsProps) => {
           );
 
           return (
-            <div>
+            <Box direction="col">
               {isPercentage ? (
-                <Grid
-                  className="layout-row layout-grid tw:items-center"
-                  style={getLayoutGutter(32)}>
-                  <Grid.Item className="layout-column" span={20}>
+                <Grid className="tw:items-center" colGap="8">
+                  <Grid.Item span={20}>
                     <Slider
                       aria-label={t('label.metric-value')}
                       maxValue={100}
@@ -182,9 +180,7 @@ const KPIFormFields = ({ form, chartItems, isEditing }: KPIFormFieldsProps) => {
                       }
                     />
                   </Grid.Item>
-                  <Grid.Item className="layout-column" span={4}>
-                    {valueInput}
-                  </Grid.Item>
+                  <Grid.Item span={4}>{valueInput}</Grid.Item>
                 </Grid>
               ) : (
                 valueInput
@@ -192,13 +188,13 @@ const KPIFormFields = ({ form, chartItems, isEditing }: KPIFormFieldsProps) => {
               {fieldState.error && (
                 <HintText isInvalid>{fieldState.error.message}</HintText>
               )}
-            </div>
+            </Box>
           );
         }}
       </FormField>
 
-      <Grid className="layout-row layout-grid" style={getLayoutGutter(8, 8)}>
-        <Grid.Item className="layout-column" span={12}>
+      <Grid gap="2">
+        <Grid.Item span={12}>
           <FormField
             control={form.control}
             name="startDate"
@@ -206,7 +202,7 @@ const KPIFormFields = ({ form, chartItems, isEditing }: KPIFormFieldsProps) => {
               required: t('label.field-required', { field: startLabel }),
             }}>
             {({ field, fieldState }) => (
-              <div className="tw:flex tw:flex-col tw:gap-1.5">
+              <Box className="tw:gap-1.5" direction="col">
                 <FormItemLabel required label={startLabel} />
                 <DatePicker
                   className="w-full"
@@ -220,11 +216,11 @@ const KPIFormFields = ({ form, chartItems, isEditing }: KPIFormFieldsProps) => {
                 {fieldState.error && (
                   <HintText isInvalid>{fieldState.error.message}</HintText>
                 )}
-              </div>
+              </Box>
             )}
           </FormField>
         </Grid.Item>
-        <Grid.Item className="layout-column" span={12}>
+        <Grid.Item span={12}>
           <FormField
             control={form.control}
             name="endDate"
@@ -234,7 +230,7 @@ const KPIFormFields = ({ form, chartItems, isEditing }: KPIFormFieldsProps) => {
               }),
             }}>
             {({ field, fieldState }) => (
-              <div className="tw:flex tw:flex-col tw:gap-1.5">
+              <Box className="tw:gap-1.5" direction="col">
                 <FormItemLabel required label={t('label.end-date')} />
                 <DatePicker
                   className="w-full"
@@ -248,7 +244,7 @@ const KPIFormFields = ({ form, chartItems, isEditing }: KPIFormFieldsProps) => {
                 {fieldState.error && (
                   <HintText isInvalid>{fieldState.error.message}</HintText>
                 )}
-              </div>
+              </Box>
             )}
           </FormField>
         </Grid.Item>

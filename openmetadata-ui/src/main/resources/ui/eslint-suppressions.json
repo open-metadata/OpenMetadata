@@ -1093,11 +1093,6 @@
       "count": 1
     }
   },
-  "src/components/MyData/Persona/AddEditPersona/AddEditPersona.component.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
-    }
-  },
   "src/components/NavBar/NavBar.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 3
@@ -1251,11 +1246,6 @@
   "src/components/Settings/Team/TeamsSelectable/TeamsSelectableNew.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 2
-    }
-  },
-  "src/components/Settings/Users/CreateUser/CreateUser.component.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
     }
   },
   "src/components/Settings/Users/UserProfileIcon/UserProfileIcon.component.tsx": {
@@ -1608,11 +1598,6 @@
       "count": 1
     }
   },
-  "src/pages/TableDetailsPageV1/TableConstraints/TableConstraintsModal/TableConstraintsModal.component.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
-    }
-  },
   "src/pages/TaskFormSettingsPage/TaskFormSettingsPage.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 3
@@ -1621,11 +1606,6 @@
   "src/pages/TaskFormSettingsPage/components/TaskFormBuilderSection.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 4
-    }
-  },
-  "src/pages/TeamsPage/AddTeamForm.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
     }
   },
   "src/utils/Alerts/AlertsUtil.tsx": {
