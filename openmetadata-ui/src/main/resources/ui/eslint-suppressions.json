@@ -1248,11 +1248,6 @@
       "count": 1
     }
   },
-  "src/components/Settings/Services/Ingestion/IngestionWorkflowForm/ProfileSampleConfigField.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
-    }
-  },
   "src/components/Settings/SettingItemCard/SettingItemCard.component.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 2
@@ -1555,7 +1550,7 @@
   },
   "src/pages/AppearanceConfigSettingsPage/AppearanceConfigSettingsPage.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 3
+      "count": 1
     }
   },
   "src/pages/AuditLogsPage/AuditLogsPage.tsx": {

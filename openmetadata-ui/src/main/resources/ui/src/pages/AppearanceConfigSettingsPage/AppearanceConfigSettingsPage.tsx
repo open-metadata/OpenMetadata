@@ -13,21 +13,27 @@
 
 import Icon from '@ant-design/icons';
 import {
-  Box,
-  Button,
-  Card,
-  Grid,
-  Typography,
+    Box,
+    Button,
+    Card,
+    FormField,
+    FormItemLabel,
+    Grid,
+    HintText,
+    HookForm,
+    Input,
+    Typography
 } from '@openmetadata/ui-core-components';
-import { Form, FormProps } from 'antd';
 import { AxiosError } from 'axios';
 import { startCase, toString } from 'lodash';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DomainIcon } from '../../assets/svg/ic-domain.svg';
 import { ReactComponent as ShareIcon } from '../../assets/svg/ic-share.svg';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
+import ColorPicker from '../../components/common/ColorPicker/ColorPicker.component';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
@@ -38,42 +44,40 @@ import { LogoConfiguration } from '../../generated/configuration/logoConfigurati
 import { UIThemePreference } from '../../generated/configuration/uiThemePreference';
 import { Settings, SettingType } from '../../generated/settings/settings';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
 import { updateSettingsConfig } from '../../rest/settingConfigAPI';
 import { generatePalette } from '../../styles/colorPallet';
 import { getLayoutGutter } from '../../utils/common/layout.utils';
-import { getField } from '../../utils/formUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
+import { isValidUrl } from '../../utils/SSOUtils';
 import { getThemeConfig } from '../../utils/ThemeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './appearance-config-settings-page.less';
 
 const orEmpty = (value?: string): string => value ?? '';
 
+type AppearanceFormValues = Partial<
+  LogoConfiguration & UIThemePreference['customTheme']
+>;
+type ThemeColorName = keyof UIThemePreference['customTheme'];
+
+const toFormValues = (
+  config?: Partial<UIThemePreference>
+): AppearanceFormValues => ({
+  ...config?.customLogoConfig,
+  ...config?.customTheme,
+});
+
 const AppearanceConfigSettingsPage = () => {
   const navigate = useNavigate();
   const { applicationConfig, setApplicationConfig } = useApplicationStore();
   const { t } = useTranslation();
-  const [form] = Form.useForm();
+  const form = useForm<AppearanceFormValues>({
+    mode: 'onChange',
+    defaultValues: toFormValues(applicationConfig),
+  });
+  const formState = form.watch();
   const [loading, setLoading] = useState<boolean>(false);
   const [resetting, setResetting] = useState<boolean>(false);
-
-  const [formState, setFormState] = useState<
-    Partial<
-      UIThemePreference['customLogoConfig'] & UIThemePreference['customTheme']
-    >
-  >({
-    ...applicationConfig?.customLogoConfig,
-    ...applicationConfig?.customTheme,
-  });
-
-  // Track if hover color was manually edited by user
-  const isHoverColorManuallyEdited = useRef<boolean>(false);
-  const isSelectedColorManuallyEdited = useRef<boolean>(false);
-  // Track the last primary color to detect changes
-  const lastPrimaryColor = useRef<string>(
-    applicationConfig?.customTheme?.primaryColor ?? ''
-  );
 
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
@@ -84,10 +88,7 @@ const AppearanceConfigSettingsPage = () => {
     []
   );
 
-  const handleSave: FormProps['onFinish'] = async (
-    values: UIThemePreference['customLogoConfig'] &
-      UIThemePreference['customTheme']
-  ) => {
+  const handleSave = async (values: AppearanceFormValues) => {
     setLoading(true);
     try {
       const configValues = {
@@ -150,12 +151,6 @@ const AppearanceConfigSettingsPage = () => {
         ...configValues,
         customTheme: getThemeConfig(configValues.customTheme),
       });
-
-      // Reset the manual edit flag
-      isHoverColorManuallyEdited.current = false;
-      isSelectedColorManuallyEdited.current = false;
-
-      lastPrimaryColor.current = '';
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -163,265 +158,55 @@ const AppearanceConfigSettingsPage = () => {
     }
   };
 
-  const themeFormFields: FieldProp[] = [
-    {
-      name: 'primaryColor',
-      id: 'primaryColor',
-      label: 'Primary Color',
-      required: false,
-      type: FieldTypes.COLOR_PICKER,
-      rules: [
-        {
-          pattern: HEX_COLOR_CODE_REGEX,
-          message: t('message.hex-color-validation'),
-        },
-      ],
-      props: {
-        'data-testid': 'primaryColor',
-      },
-    },
-    {
-      name: 'selectedColor',
-      id: 'selectedColor',
-      label: 'Selected Color',
-      required: false,
-      type: FieldTypes.COLOR_PICKER,
-      rules: [
-        {
-          pattern: HEX_COLOR_CODE_REGEX,
-          message: t('message.hex-color-validation'),
-        },
-      ],
-      props: {
-        'data-testid': 'selectedColor',
-      },
-    },
-    {
-      name: 'hoverColor',
-      id: 'hoverColor',
-      label: 'Hover Color',
-      required: false,
-      type: FieldTypes.COLOR_PICKER,
-      rules: [
-        {
-          pattern: HEX_COLOR_CODE_REGEX,
-          message: t('message.hex-color-validation'),
-        },
-      ],
-      props: {
-        'data-testid': 'hoverColor',
-      },
-    },
-    {
-      name: 'panelBackgroundColor',
-      id: 'panelBackgroundColor',
-      label: t('label.panel-background-color'),
-      required: false,
-      type: FieldTypes.COLOR_PICKER,
-      rules: [
-        {
-          pattern: HEX_COLOR_CODE_REGEX,
-          message: t('message.hex-color-validation'),
-        },
-      ],
-      props: {
-        'data-testid': 'panelBackgroundColor',
-      },
-    },
-    {
-      name: 'errorColor',
-      id: 'errorColor',
-      label: 'Error Color',
-      required: false,
-      type: FieldTypes.COLOR_PICKER,
-      rules: [
-        {
-          pattern: HEX_COLOR_CODE_REGEX,
-          message: t('message.hex-color-validation'),
-        },
-      ],
-      props: {
-        'data-testid': 'errorColor',
-      },
-    },
-    {
-      name: 'successColor',
-      id: 'successColor',
-      label: 'Success Color',
-      required: false,
-      type: FieldTypes.COLOR_PICKER,
-      rules: [
-        {
-          pattern: HEX_COLOR_CODE_REGEX,
-          message: t('message.hex-color-validation'),
-        },
-      ],
-      props: {
-        'data-testid': 'successColor',
-      },
-    },
-    {
-      name: 'warningColor',
-      id: 'warningColor',
-      label: 'Warning Color',
-      required: false,
-      type: FieldTypes.COLOR_PICKER,
-      rules: [
-        {
-          pattern: HEX_COLOR_CODE_REGEX,
-          message: t('message.hex-color-validation'),
-        },
-      ],
-      props: {
-        'data-testid': 'warningColor',
-      },
-    },
-    {
-      name: 'infoColor',
-      id: 'infoColor',
-      label: 'Info Color',
-      required: false,
-      type: FieldTypes.COLOR_PICKER,
-      rules: [
-        {
-          pattern: HEX_COLOR_CODE_REGEX,
-          message: t('message.hex-color-validation'),
-        },
-      ],
-      props: {
-        'data-testid': 'infoColor',
-      },
-    },
+  const themeFormFields: Array<{ name: ThemeColorName; label: string }> = [
+    { name: 'primaryColor', label: 'Primary Color' },
+    { name: 'selectedColor', label: 'Selected Color' },
+    { name: 'hoverColor', label: 'Hover Color' },
+    { name: 'panelBackgroundColor', label: t('label.panel-background-color') },
+    { name: 'errorColor', label: 'Error Color' },
+    { name: 'successColor', label: 'Success Color' },
+    { name: 'warningColor', label: 'Warning Color' },
+    { name: 'infoColor', label: 'Info Color' },
   ];
 
-  const customLogoFormFields: FieldProp[] = [
+  const customLogoFormFields: Array<{
+    name: keyof LogoConfiguration;
+    label: string;
+    placeholder: string;
+  }> = [
     {
       name: 'customLogoUrlPath',
       label: t('label.logo-url'),
-      type: FieldTypes.TEXT,
-      required: false,
-      id: 'root/customLogoUrlPath',
       placeholder: 'URL path for the login page logo',
-      props: {
-        'data-testid': 'customLogoUrlPath',
-        autoFocus: true,
-      },
-      rules: [
-        {
-          type: 'url',
-          message: t('message.entity-is-not-valid-url', {
-            entity: t('label.logo-url'),
-          }),
-        },
-      ],
     },
     {
       name: 'customMonogramUrlPath',
       label: t('label.monogram-url'),
-      type: FieldTypes.TEXT,
-      required: false,
-      id: 'root/customMonogramUrlPath',
       placeholder: 'URL path for the navbar logo',
-      props: {
-        'data-testid': 'customMonogramUrlPath',
-      },
-      rules: [
-        {
-          type: 'url',
-          message: t('message.entity-is-not-valid-url', {
-            entity: t('label.monogram-url'),
-          }),
-        },
-      ],
     },
     {
       name: 'customFaviconUrlPath',
       label: t('label.favicon-url'),
-      type: FieldTypes.TEXT,
-      required: false,
-      id: 'root/customFaviconUrlPath',
       placeholder: 'URL path for the favicon',
-      props: {
-        'data-testid': 'customFaviconUrlPath',
-      },
-      rules: [
-        {
-          type: 'url',
-          message: t('message.entity-is-not-valid-url', {
-            entity: t('label.favicon-url'),
-          }),
-        },
-      ],
     },
   ];
 
-  const handleValuesChange = (
-    changedValues: Partial<
-      UIThemePreference['customLogoConfig'] & UIThemePreference['customTheme']
-    >,
-    allValues: UIThemePreference['customLogoConfig'] &
-      UIThemePreference['customTheme']
-  ) => {
-    // Check if primary color changed
-    if (
-      'primaryColor' in changedValues &&
-      changedValues.primaryColor !== lastPrimaryColor.current
-    ) {
-      lastPrimaryColor.current = changedValues.primaryColor ?? '';
-
-      // Always auto-generate hover color when primary color changes
-      if (changedValues.primaryColor) {
-        const palette = generatePalette(changedValues.primaryColor);
-        const generatedHoverColor = palette[2]; // 2nd element (index 3)
-        const generatedSelectedColor = palette[8];
-
-        // Update form field
-        form.setFieldValue('hoverColor', generatedHoverColor);
-        form.setFieldValue('selectedColor', generatedSelectedColor);
-
-        // Update allValues with the generated hover color
-        allValues = {
-          ...allValues,
-          hoverColor: generatedHoverColor,
-          selectedColor: generatedSelectedColor,
-        };
-
-        // Reset manual edit flag since primary color changed
-        isHoverColorManuallyEdited.current = false;
-        isSelectedColorManuallyEdited.current = false;
+  // A new primary colour regenerates the hover and selected shades from its palette.
+  useEffect(() => {
+    const subscription = form.watch((values, { name }) => {
+      if (name === 'primaryColor' && values.primaryColor) {
+        const palette = generatePalette(values.primaryColor);
+        form.setValue('hoverColor', palette[2]);
+        form.setValue('selectedColor', palette[8]);
       }
-    }
+    });
 
-    // Check if hover color was manually changed (without primary color change)
-    if ('hoverColor' in changedValues && !('primaryColor' in changedValues)) {
-      isHoverColorManuallyEdited.current = true;
-    }
-    // Check if Selected color was manually changed (without primary color change)
-    if (
-      'selectedColor' in changedValues &&
-      !('primaryColor' in changedValues)
-    ) {
-      isSelectedColorManuallyEdited.current = true;
-    }
-
-    // Update form state
-    setFormState({ ...allValues });
-  };
+    return () => subscription.unsubscribe();
+  }, [form]);
 
   useEffect(() => {
-    const configValues = {
-      ...applicationConfig?.customLogoConfig,
-      ...applicationConfig?.customTheme,
-    };
-    setFormState(configValues);
-    form.setFieldsValue(configValues);
-
-    // Reset tracking refs when loading saved config
-    lastPrimaryColor.current =
-      applicationConfig?.customTheme?.primaryColor ?? '';
-    isHoverColorManuallyEdited.current = false;
-    isSelectedColorManuallyEdited.current = false;
-  }, [applicationConfig]);
+    form.reset(toFormValues(applicationConfig));
+  }, [applicationConfig, form]);
 
   return (
     <PageLayoutV1 pageTitle={t('label.theme')}>
@@ -464,15 +249,7 @@ const AppearanceConfigSettingsPage = () => {
           </Box>
         </Grid.Item>
         <Grid.Item className="layout-column" span={24}>
-          <Form
-            form={form}
-            initialValues={{
-              ...applicationConfig?.customLogoConfig,
-              ...applicationConfig?.customTheme,
-            }}
-            layout="vertical"
-            onFinish={handleSave}
-            onValuesChange={handleValuesChange}>
+          <HookForm form={form} onSubmit={form.handleSubmit(handleSave)}>
             <div className="white-label-card-wrapper m-b-md">
               <Card className="white-label-config-card">
                 <Card.Header title={t('label.custom-logo')} />
@@ -484,7 +261,7 @@ const AppearanceConfigSettingsPage = () => {
                       return (
                         <Grid.Item
                           className="layout-column w-full"
-                          key={field.id}
+                          key={field.name}
                           span={24}>
                           <Box
                             className="layout-row"
@@ -493,18 +270,38 @@ const AppearanceConfigSettingsPage = () => {
                             <Box
                               className="layout-column tw:block"
                               style={{ maxWidth: '50%', flex: '0 0 50%' }}>
-                              {getField(field)}
+                              <FormField
+                                control={form.control}
+                                name={field.name}
+                                rules={{
+                                  validate: (value) =>
+                                    !value ||
+                                    isValidUrl(value) ||
+                                    t('message.entity-is-not-valid-url', {
+                                      entity: field.label,
+                                    }),
+                                }}>
+                                {({ field: control, fieldState }) => (
+                                  <Input
+                                    hint={fieldState.error?.message}
+                                    id={`root/${field.name}`}
+                                    inputDataTestId={field.name}
+                                    isInvalid={fieldState.invalid}
+                                    label={field.label}
+                                    placeholder={field.placeholder}
+                                    value={control.value ?? ''}
+                                    onBlur={control.onBlur}
+                                    onChange={control.onChange}
+                                  />
+                                )}
+                              </FormField>
                             </Box>
                             <Box className="layout-column tw:block">
                               <BrandImage
                                 className="preview-image"
                                 height={70}
                                 isMonoGram={field.name !== 'customLogoUrlPath'}
-                                src={
-                                  formState[
-                                    field.name as keyof LogoConfiguration
-                                  ]
-                                }
+                                src={formState[field.name]}
                                 width={
                                   field.name !== 'customLogoUrlPath' ? 75 : 120
                                 }
@@ -526,15 +323,12 @@ const AppearanceConfigSettingsPage = () => {
                     className="layout-row layout-grid w-full"
                     style={{ ...getLayoutGutter(16, 16) }}>
                     {themeFormFields.map((field) => {
-                      const currentColor =
-                        formState[
-                          field.name as keyof UIThemePreference['customTheme']
-                        ];
+                      const currentColor = formState[field.name];
 
                       return (
                         <Grid.Item
                           className="layout-column w-full"
-                          key={field.id}
+                          key={field.name}
                           span={24}>
                           <Box
                             className="layout-row"
@@ -543,7 +337,34 @@ const AppearanceConfigSettingsPage = () => {
                             <Box
                               className="layout-column tw:block"
                               style={{ maxWidth: '50%', flex: '0 0 50%' }}>
-                              {getField(field)}
+                              <FormField
+                                control={form.control}
+                                name={field.name}
+                                rules={{
+                                  pattern: {
+                                    value: HEX_COLOR_CODE_REGEX,
+                                    message: t('message.hex-color-validation'),
+                                  },
+                                }}>
+                                {({ field: control, fieldState }) => (
+                                  <Box direction="col" gap={1}>
+                                    <FormItemLabel label={field.label} />
+                                    <ColorPicker
+                                      id={field.name}
+                                      value={control.value ?? ''}
+                                      onBlur={control.onBlur}
+                                      onChange={(e) =>
+                                        control.onChange(e.target.value)
+                                      }
+                                    />
+                                    {fieldState.error && (
+                                      <HintText isInvalid>
+                                        {fieldState.error.message}
+                                      </HintText>
+                                    )}
+                                  </Box>
+                                )}
+                              </FormField>
                             </Box>
                             <Box
                               className="layout-column tw:block"
@@ -625,7 +446,7 @@ const AppearanceConfigSettingsPage = () => {
                 {t('label.save')}
               </Button>
             </Box>
-          </Form>
+          </HookForm>
         </Grid.Item>
       </Grid>
     </PageLayoutV1>
