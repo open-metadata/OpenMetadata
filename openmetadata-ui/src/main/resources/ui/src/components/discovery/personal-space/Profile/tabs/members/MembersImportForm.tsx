@@ -130,9 +130,9 @@ const SelectedFileCard: FC<{
 
   return (
     <Card
-      className="tw:w-full tw:text-left tw:border-secondary tw:dark:bg-secondary"
+      className="tw:w-full tw:text-left"
       data-testid="selected-file-card"
-      variant="elevated">
+      variant="muted">
       <Box align="center" className="tw:p-4" gap={3}>
         <FeaturedIcon color="brand" icon={File06} size="md" theme="light" />
         <Box align="start" className="tw:min-w-0 tw:flex-1" direction="col">
@@ -194,9 +194,9 @@ const ProcessingBanner: FC<{
   stages?: { key: string; label: string; state: StageState }[];
 }> = ({ title, fileName, rowCountLabel, progress, stages }) => (
   <Card
-    className="tw:mx-auto tw:w-full tw:max-w-[520px] tw:border-secondary tw:dark:bg-secondary"
+    className="tw:mx-auto tw:w-full tw:max-w-[520px]"
     data-testid="import-processing"
-    variant="elevated">
+    variant="muted">
     <Box align="center" className="tw:p-10" direction="col" gap={5}>
       <Box
         align="center"
@@ -251,9 +251,9 @@ const AbortCard: FC<{ reason?: string; onBack: () => void }> = ({
 
   return (
     <Card
-      className="tw:mx-auto tw:w-full tw:max-w-[520px] tw:border-secondary tw:dark:bg-secondary"
+      className="tw:mx-auto tw:w-full tw:max-w-[520px]"
       data-testid="import-aborted"
-      variant="elevated">
+      variant="muted">
       <Box align="center" className="tw:p-10" direction="col" gap={4}>
         <FeaturedIcon
           color="error"

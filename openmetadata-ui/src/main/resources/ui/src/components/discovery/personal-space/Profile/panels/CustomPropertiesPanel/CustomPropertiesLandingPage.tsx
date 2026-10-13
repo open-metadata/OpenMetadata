@@ -149,7 +149,7 @@ const CustomPropertiesLandingPage: React.FC<
                   role="button"
                   size="md"
                   tabIndex={0}
-                  variant="secondary"
+                  variant="muted"
                   onClick={() =>
                     !isCurrentLoading &&
                     handleCardClick(entityTypeName, item.key)

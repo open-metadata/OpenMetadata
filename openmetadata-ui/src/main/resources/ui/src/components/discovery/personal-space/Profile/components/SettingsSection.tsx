@@ -59,7 +59,7 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({
     </Typography>
     <Card
       className="tw:flex tw:flex-col tw:divide-y tw:divide-secondary"
-      variant="secondary">
+      variant="muted">
       {children}
     </Card>
   </Box>

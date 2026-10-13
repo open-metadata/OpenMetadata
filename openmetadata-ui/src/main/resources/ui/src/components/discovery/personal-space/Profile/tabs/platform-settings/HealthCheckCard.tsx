@@ -122,7 +122,7 @@ const HealthCheckCard = ({ name, validation }: HealthCheckCardProps) => {
     <Card
       className={classNames('tw:flex tw:flex-col', status.border)}
       data-testid={name}
-      variant="secondary">
+      variant="muted">
       <Box
         align="center"
         className={classNames('tw:px-5 tw:py-3', status.background)}

@@ -46,7 +46,7 @@ const PlatformSettingsLanding = ({
             role="button"
             size="md"
             tabIndex={0}
-            variant="secondary"
+            variant="muted"
             onClick={open}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {

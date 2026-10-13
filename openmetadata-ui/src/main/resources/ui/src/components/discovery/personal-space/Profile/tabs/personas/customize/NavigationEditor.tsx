@@ -184,7 +184,7 @@ const NavigationEditor = ({
     <Card
       className="tw:flex tw:flex-col tw:w-[40%]"
       data-testid="navigation-editor"
-      variant="secondary">
+      variant="muted">
       <Tree
         aria-label={t('label.navigation')}
         defaultExpandedKeys={expandedKeys}

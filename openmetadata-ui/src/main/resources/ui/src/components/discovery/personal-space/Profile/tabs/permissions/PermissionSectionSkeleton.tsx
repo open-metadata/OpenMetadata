@@ -29,12 +29,13 @@ const PermissionSectionSkeleton: React.FC<PermissionSectionSkeletonProps> = ({
   <Box direction="col" gap={4}>
     {Array.from({ length: rows }).map((_, index) => (
       <Card
-        className="tw:flex tw:flex-col tw:gap-3 tw:p-4"
         // eslint-disable-next-line react/no-array-index-key -- static skeleton, never reordered
         key={index}
-        variant="secondary">
-        <Skeleton height={16} variant="text" width={220} />
-        <Skeleton height={64} variant="rounded" width="100%" />
+        variant="muted">
+        <Card.Content className="tw:flex tw:flex-col tw:gap-3">
+          <Skeleton height={16} variant="text" width={220} />
+          <Skeleton height={64} variant="rounded" width="100%" />
+        </Card.Content>
       </Card>
     ))}
   </Box>

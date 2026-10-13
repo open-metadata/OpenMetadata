@@ -524,26 +524,28 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
       />
 
       {/* Owners + event-stats summary row */}
-      <Card
-        className="tw:flex tw:flex-row tw:items-center tw:flex-wrap tw:gap-6 tw:mb-2 tw:p-3"
-        variant="secondary">
-        <Box align="center" direction="row" gap={2}>
-          <Typography className="tw:text-tertiary tw:shrink-0" size="text-sm">
-            {`${t('label.owner-plural')}:`}
-          </Typography>
-          <Owner
-            hasPermission={editOwnersPermission}
-            owners={alert?.owners ?? []}
-            selectorContent={
-              <UserTeamSelectableList
-                hasPermission={editOwnersPermission}
-                owner={alert?.owners}
-                onUpdate={handleOwnerUpdate}
-              />
-            }
-          />
-        </Box>
-        {eventsRecord && <DiagnosticStatsSummary eventsRecord={eventsRecord} />}
+      <Card className="tw:mb-2" size="sm" variant="muted">
+        <Card.Content className="tw:flex tw:flex-row tw:items-center tw:flex-wrap tw:gap-6">
+          <Box align="center" direction="row" gap={2}>
+            <Typography className="tw:text-tertiary tw:shrink-0" size="text-sm">
+              {`${t('label.owner-plural')}:`}
+            </Typography>
+            <Owner
+              hasPermission={editOwnersPermission}
+              owners={alert?.owners ?? []}
+              selectorContent={
+                <UserTeamSelectableList
+                  hasPermission={editOwnersPermission}
+                  owner={alert?.owners}
+                  onUpdate={handleOwnerUpdate}
+                />
+              }
+            />
+          </Box>
+          {eventsRecord && (
+            <DiagnosticStatsSummary eventsRecord={eventsRecord} />
+          )}
+        </Card.Content>
       </Card>
 
       <Tabs selectedKey={activeTab} onSelectionChange={handleTabChange}>

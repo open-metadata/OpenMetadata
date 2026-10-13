@@ -68,7 +68,7 @@ function ReadOnlyTriggerDisplay({
   const { t } = useTranslation();
 
   return (
-    <Card className="tw:w-full" size="md" variant="secondary">
+    <Card className="tw:w-full" size="md" variant="muted">
       <Card.Content>
         <Box direction="col" gap={3}>
           <Box direction="col" gap={1}>

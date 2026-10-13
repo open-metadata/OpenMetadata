@@ -54,7 +54,7 @@ const MembersLanding: FC<MembersSubPanelProps> = ({ onNavigate }) => {
             isClickable
             key={card.id}
             size="md"
-            variant="secondary"
+            variant="muted"
             onClick={() => onNavigate(card.view)}>
             <Card.Content>
               <Box

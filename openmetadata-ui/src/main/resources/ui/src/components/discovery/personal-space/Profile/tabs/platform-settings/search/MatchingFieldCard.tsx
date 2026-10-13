@@ -81,7 +81,7 @@ const MatchingFieldCard = ({
     <Card
       data-testid={`field-configuration-panel-${field.field}`}
       size="sm"
-      variant="secondary">
+      variant="muted">
       <Card.Content>
         <Box direction="col" gap={3}>
           <Box align="center" direction="row" gap={2} justify="between">

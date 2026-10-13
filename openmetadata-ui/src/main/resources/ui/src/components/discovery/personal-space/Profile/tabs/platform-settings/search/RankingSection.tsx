@@ -106,7 +106,7 @@ const RankingSection = ({ ranking, onChange }: RankingSectionProps) => {
         }
         key={`${name || 'unnamed'}-${index}`}
         size="sm"
-        variant="secondary">
+        variant="muted">
         <Card.Content>
           <Box direction="col" gap={3}>
             <Box align="end" direction="row" gap={3} justify="between">
@@ -151,7 +151,7 @@ const RankingSection = ({ ranking, onChange }: RankingSectionProps) => {
 
   return (
     <Box data-testid="ranking-settings" direction="col" gap={3}>
-      <Card size="sm" variant="secondary">
+      <Card size="sm" variant="muted">
         <Card.Content>
           <Box align="center" direction="row" justify="between">
             <Labelled label={t('label.algorithm')}>
@@ -174,7 +174,7 @@ const RankingSection = ({ ranking, onChange }: RankingSectionProps) => {
       {(ranking.stages ?? []).map((stage, index) => renderStage(stage, index))}
 
       {signals && (
-        <Card data-testid="ranking-signals" size="sm" variant="secondary">
+        <Card data-testid="ranking-signals" size="sm" variant="muted">
           <Card.Content>
             <Box direction="col" gap={3}>
               {signals.purpose && (

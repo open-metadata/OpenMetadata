@@ -40,7 +40,7 @@ const MembershipSection: React.FC<MembershipSectionProps> = ({
     <Card
       className="tw:flex tw:flex-col tw:divide-y tw:divide-secondary"
       data-testid="membership-section"
-      variant="secondary">
+      variant="muted">
       <TeamsRow updateUserDetails={updateUserDetails} userData={userData} />
       <RolesRow updateUserDetails={updateUserDetails} userData={userData} />
       <div className="tw:px-5 tw:py-4">

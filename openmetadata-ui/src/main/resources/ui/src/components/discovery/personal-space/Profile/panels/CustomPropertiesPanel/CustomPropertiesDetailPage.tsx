@@ -154,16 +154,14 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
         <Tabs
           selectedKey={activeTab}
           onSelectionChange={(k) => setActiveTab(k as string)}>
-          <div className="tw:border-b tw:border-secondary tw:px-4 tw:pt-3">
-            <Tabs.List size="sm" type="underline">
-              <Tabs.Item
-                badge={customProperties.length || undefined}
-                id="custom-properties"
-                label={t('label.custom-property-plural')}
-              />
-              <Tabs.Item id="schema" label={t('label.schema')} />
-            </Tabs.List>
-          </div>
+          <Tabs.List className="tw:px-4 tw:pt-3" size="sm" type="underline">
+            <Tabs.Item
+              badge={customProperties.length || undefined}
+              id="custom-properties"
+              label={t('label.custom-property-plural')}
+            />
+            <Tabs.Item id="schema" label={t('label.schema')} />
+          </Tabs.List>
 
           <Tabs.Panel id="custom-properties">
             <CustomPropertiesListTable

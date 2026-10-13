@@ -33,25 +33,24 @@ const SsoOverview = ({
   const { t } = useTranslation();
 
   return (
-    <Card
-      className="tw:flex tw:flex-row tw:items-center tw:justify-between tw:gap-4 tw:w-full tw:p-5"
-      data-testid="sso-overview"
-      variant="secondary">
-      <Box direction="col" gap={1}>
-        <Typography size="text-md" weight="semibold">
-          {t('label.enable-sso')}
-        </Typography>
-        <Typography className="tw:text-tertiary" size="text-sm">
-          {t('message.allow-user-to-login-via-sso')}
-        </Typography>
-      </Box>
-      <Toggle
-        aria-label={t('label.enable-sso')}
-        data-testid="sso-self-signup-toggle"
-        isDisabled={isSelfSignupManaged}
-        isSelected={isSelfSignupEnabled}
-        onChange={onSelfSignupChange}
-      />
+    <Card className="tw:w-full" data-testid="sso-overview" variant="muted">
+      <Card.Content className="tw:flex tw:flex-row tw:items-center tw:justify-between tw:gap-4">
+        <Box direction="col" gap={1}>
+          <Typography size="text-md" weight="semibold">
+            {t('label.enable-sso')}
+          </Typography>
+          <Typography className="tw:text-tertiary" size="text-sm">
+            {t('message.allow-user-to-login-via-sso')}
+          </Typography>
+        </Box>
+        <Toggle
+          aria-label={t('label.enable-sso')}
+          data-testid="sso-self-signup-toggle"
+          isDisabled={isSelfSignupManaged}
+          isSelected={isSelfSignupEnabled}
+          onChange={onSelfSignupChange}
+        />
+      </Card.Content>
     </Card>
   );
 };

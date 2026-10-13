@@ -224,31 +224,31 @@ const PersonaUsersTab = ({
   return (
     <Box data-testid="persona-users-tab" direction="col" gap={4}>
       {isAdding && (
-        <Card
-          className="tw:flex tw:flex-col tw:gap-4 tw:p-4"
-          variant="secondary">
-          <Typography
-            className="tw:text-primary"
-            size="text-sm"
-            weight="semibold">
-            {t('label.add-entity', { entity: t('label.user-plural') })}
-          </Typography>
-          <HookForm form={addUsersForm}>
-            <FormFields fields={[usersField]} />
-          </HookForm>
-          <Box direction="row" gap={3} justify="end">
-            <Button color="tertiary" size="sm" onPress={handleCancelAdd}>
-              {t('label.cancel')}
-            </Button>
-            <Button
-              color="primary"
-              data-testid="save-persona-users"
-              isDisabled={pendingUsers.length === 0}
-              size="sm"
-              onPress={handleConfirmAdd}>
-              {t('label.save')}
-            </Button>
-          </Box>
+        <Card variant="muted">
+          <Card.Content className="tw:flex tw:flex-col tw:gap-4">
+            <Typography
+              className="tw:text-primary"
+              size="text-sm"
+              weight="semibold">
+              {t('label.add-entity', { entity: t('label.user-plural') })}
+            </Typography>
+            <HookForm form={addUsersForm}>
+              <FormFields fields={[usersField]} />
+            </HookForm>
+            <Box direction="row" gap={3} justify="end">
+              <Button color="tertiary" size="sm" onPress={handleCancelAdd}>
+                {t('label.cancel')}
+              </Button>
+              <Button
+                color="primary"
+                data-testid="save-persona-users"
+                isDisabled={pendingUsers.length === 0}
+                size="sm"
+                onPress={handleConfirmAdd}>
+                {t('label.save')}
+              </Button>
+            </Box>
+          </Card.Content>
         </Card>
       )}
       {canEdit && !isAdding && (

@@ -17,14 +17,17 @@ import {
   Box,
   Card,
   Divider,
+  FeaturedIcon,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { UserCheck01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Policy,
+  Teams,
+  UserCheck01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as PoliciesIcon } from '../../../../../assets/svg/policies.svg';
-import { ReactComponent as TeamsIcon } from '../../../../../assets/svg/Teams.svg';
 import { User } from '../../../../../generated/entity/teams/user';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import {
@@ -65,7 +68,7 @@ interface StatTileProps {
   count: number;
   label: string;
   subLabel?: string;
-  icon?: React.ReactNode;
+  icon: FC<{ className?: string }>;
 }
 
 const StatTile: React.FC<StatTileProps> = ({
@@ -74,34 +77,38 @@ const StatTile: React.FC<StatTileProps> = ({
   subLabel,
   icon,
 }) => (
-  <Card
-    className="tw:flex tw:flex-col tw:gap-2 tw:flex-1 tw:p-4"
-    variant="secondary">
-    <Box align="center" gap={2}>
-      <Box className="tw:rounded-md tw:bg-utility-success-50 tw:h-8 tw:w-8 tw:flex tw:items-center tw:justify-center">
-        {icon}
+  <Card className="tw:flex-1" variant="muted">
+    <Card.Content className="tw:flex tw:flex-col tw:gap-2">
+      <Box align="center" gap={2}>
+        <FeaturedIcon
+          color="success"
+          icon={icon}
+          shape="square"
+          size="sm"
+          theme="light"
+        />
+        <Box direction="col">
+          <Typography className="tw:text-utility-gray-900" weight="semibold">
+            {count}
+          </Typography>
+          <Typography
+            className="tw:text-utility-gray-700"
+            size="text-sm"
+            weight="medium">
+            {label}
+          </Typography>
+        </Box>
       </Box>
-      <Box direction="col">
-        <Typography className="tw:text-utility-gray-900" weight="semibold">
-          {count}
-        </Typography>
+      <Divider className="tw:h-0 tw:bg-transparent tw:border-t tw:border-dashed tw:border-border-secondary tw:-mx-1" />
+      {subLabel && (
         <Typography
           className="tw:text-utility-gray-700"
-          size="text-sm"
-          weight="medium">
-          {label}
+          size="text-xs"
+          weight="regular">
+          {subLabel}
         </Typography>
-      </Box>
-    </Box>
-    <Divider className="tw:h-0 tw:bg-transparent tw:border-t tw:border-dashed tw:border-border-secondary tw:-mx-1" />
-    {subLabel && (
-      <Typography
-        className="tw:text-utility-gray-700"
-        size="text-xs"
-        weight="regular">
-        {subLabel}
-      </Typography>
-    )}
+      )}
+    </Card.Content>
   </Card>
 );
 
@@ -177,13 +184,7 @@ const PermissionsTab: React.FC<PermissionsTabProps> = ({
       <Box className="tw:flex-wrap" gap={3}>
         <StatTile
           count={stats.totalRoles}
-          icon={
-            <UserCheck01
-              className="tw:text-utility-success-600"
-              height={20}
-              width={20}
-            />
-          }
+          icon={UserCheck01}
           label={t('label.total-role-plural')}
           subLabel={t('label.direct-inherited-summary', {
             direct: stats.directRoles,
@@ -192,7 +193,7 @@ const PermissionsTab: React.FC<PermissionsTabProps> = ({
         />
         <StatTile
           count={stats.totalPolicies}
-          icon={<PoliciesIcon height={24} width={24} />}
+          icon={Policy}
           label={t('label.policy-plural')}
           subLabel={t('label.rule-plural-count', {
             count: stats.totalRules,
@@ -200,7 +201,7 @@ const PermissionsTab: React.FC<PermissionsTabProps> = ({
         />
         <StatTile
           count={stats.teamCount}
-          icon={<TeamsIcon height={24} width={24} />}
+          icon={Teams}
           label={t('label.team-plural')}
           subLabel={t('label.max-hierarchy-depth-value', {
             count: stats.maxHierarchyDepth,

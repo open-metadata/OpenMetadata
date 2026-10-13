@@ -41,7 +41,7 @@ const PersonaCustomizeGrid = ({
             role="button"
             size="md"
             tabIndex={0}
-            variant="secondary"
+            variant="muted"
             onClick={() => handler(category.key)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {

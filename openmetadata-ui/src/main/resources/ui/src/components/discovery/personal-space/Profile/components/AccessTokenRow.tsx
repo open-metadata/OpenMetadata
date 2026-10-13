@@ -59,14 +59,16 @@ const AI_PROFILE_TOKEN_NAME = 'ai-profile-token';
 
 const AccessTokenLoadingSkeleton = () => (
   <Card
-    className="tw:flex tw:flex-col tw:gap-3 ai-profile-page__edit-card tw:w-full tw:px-5 tw:py-4"
+    className="ai-profile-page__edit-card tw:w-full"
     data-testid="access-token-row"
-    variant="secondary">
-    <Skeleton height={16} variant="text" width="60%" />
-    <Skeleton height={44} variant="rounded" width="100%" />
-    <Box justify="end">
-      <Skeleton height={36} variant="rounded" width={120} />
-    </Box>
+    variant="muted">
+    <Card.Content className="tw:flex tw:flex-col tw:gap-3">
+      <Skeleton height={16} variant="text" width="60%" />
+      <Skeleton height={44} variant="rounded" width="100%" />
+      <Box justify="end">
+        <Skeleton height={36} variant="rounded" width={120} />
+      </Box>
+    </Card.Content>
   </Card>
 );
 
@@ -86,50 +88,53 @@ const AccessTokenEmptyState = ({
   handleGenerate: () => void;
 }) => (
   <Card
-    className="tw:flex tw:flex-col tw:items-center tw:justify-center tw:gap-3 ai-profile-page__edit-card tw:w-full tw:items-center tw:px-6 tw:py-10 tw:text-center"
+    className="ai-profile-page__edit-card tw:w-full"
     data-testid="access-token-row"
-    variant="secondary">
-    <FeaturedIcon color="brand" icon={Key01} size="lg" theme="light" />
-    <Typography className="tw:text-primary" weight="semibold">
-      {t('message.no-access-token-title')}
-    </Typography>
-    <Typography
-      className="tw:max-w-md tw:text-tertiary"
-      size="text-sm"
-      weight="regular">
-      {t('message.no-access-token-subtitle')}
-    </Typography>
-    <Box align="center" className="tw:mt-3" direction="row" gap={3}>
-      <Box align="center" direction="row" gap={2}>
-        <Typography
-          className="tw:whitespace-nowrap tw:text-tertiary"
-          size="text-sm"
-          weight="regular">
-          {`${t('label.expires-in')}:`}
-        </Typography>
-        <Select
-          aria-label={t('label.token-expiration')}
-          className="tw:min-w-28"
-          data-testid="token-expiry-select"
-          items={expiryOptions}
-          selectedKey={expiry}
+    size="lg"
+    variant="muted">
+    <Card.Content className="tw:flex tw:flex-col tw:items-center tw:justify-center tw:gap-3 tw:text-center">
+      <FeaturedIcon color="brand" icon={Key01} size="lg" theme="light" />
+      <Typography className="tw:text-primary" weight="semibold">
+        {t('message.no-access-token-title')}
+      </Typography>
+      <Typography
+        className="tw:max-w-md tw:text-tertiary"
+        size="text-sm"
+        weight="regular">
+        {t('message.no-access-token-subtitle')}
+      </Typography>
+      <Box align="center" className="tw:mt-3" direction="row" gap={3}>
+        <Box align="center" direction="row" gap={2}>
+          <Typography
+            className="tw:whitespace-nowrap tw:text-tertiary"
+            size="text-sm"
+            weight="regular">
+            {`${t('label.expires-in')}:`}
+          </Typography>
+          <Select
+            aria-label={t('label.token-expiration')}
+            className="tw:min-w-28"
+            data-testid="token-expiry-select"
+            items={expiryOptions}
+            selectedKey={expiry}
+            size="sm"
+            onSelectionChange={(key: Key | null) =>
+              key && setExpiry(key as JWTTokenExpiry)
+            }>
+            {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+          </Select>
+        </Box>
+        <Button
+          color="primary"
+          data-testid="generate-token"
+          icon={Plus}
+          isLoading={isLoading}
           size="sm"
-          onSelectionChange={(key: Key | null) =>
-            key && setExpiry(key as JWTTokenExpiry)
-          }>
-          {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
-        </Select>
+          onClick={handleGenerate}>
+          {t('label.generate-token')}
+        </Button>
       </Box>
-      <Button
-        color="primary"
-        data-testid="generate-token"
-        icon={Plus}
-        isLoading={isLoading}
-        size="sm"
-        onClick={handleGenerate}>
-        {t('label.generate-token')}
-      </Button>
-    </Box>
+    </Card.Content>
   </Card>
 );
 
@@ -163,7 +168,7 @@ const AccessTokenDetails = ({
   <Card
     className="tw:flex tw:flex-col ai-profile-page__edit-card tw:w-full"
     data-testid="access-token-row"
-    variant="secondary">
+    variant="muted">
     <Box
       align="center"
       className="tw:justify-between tw:border-b tw:border-secondary tw:px-4 tw:py-3.5"

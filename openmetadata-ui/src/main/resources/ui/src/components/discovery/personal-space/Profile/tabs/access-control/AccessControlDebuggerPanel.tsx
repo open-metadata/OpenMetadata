@@ -164,7 +164,7 @@ const AccessControlDebuggerPanel: FC = () => {
       <Card
         className="tw:mt-4 tw:overflow-hidden"
         data-testid="evaluation-result"
-        variant="secondary">
+        variant="muted">
         <Box
           className={`tw:px-6 tw:py-4 tw:border-b-2 ${
             evaluationInfo.allowed
@@ -364,42 +364,44 @@ const AccessControlDebuggerPanel: FC = () => {
       direction="col"
       gap={4}>
       {/* Card 1: Select a user */}
-      <Card className="tw:p-6" direction="col" gap={4} variant="secondary">
-        <Typography weight="semibold">
-          {t('label.select-user-to-debug-permissions')}
-        </Typography>
-
-        <Box className="tw:max-w-100 tw:min-w-64 tw:mt-2">
-          <Select.ComboBox
-            allowsEmptyCollection
-            showSearchIcon
-            className="tw:min-w-80"
-            items={userOptions}
-            placeholder={t('label.search-entity', {
-              entity: t('label.user'),
-            })}
-            onInputChange={(v) => searchUsers(v)}
-            onSelectionChange={(key) => key && handleUserSelect(String(key))}>
-            {(item) => (
-              <Select.Item id={item.id} key={item.id}>
-                {item.label}
-              </Select.Item>
-            )}
-          </Select.ComboBox>
-        </Box>
-
-        {selectedUsername && (
-          <Typography className="tw:text-secondary" size="text-sm">
-            {`${t('label.selected-entity', {
-              entity: t('label.user-lowercase'),
-            })}: `}
-            <strong>{selectedUsername}</strong>
+      <Card variant="muted">
+        <Card.Content className="tw:flex tw:flex-col tw:gap-4">
+          <Typography weight="semibold">
+            {t('label.select-user-to-debug-permissions')}
           </Typography>
-        )}
+
+          <Box className="tw:max-w-100 tw:min-w-64 tw:mt-2">
+            <Select.ComboBox
+              allowsEmptyCollection
+              showSearchIcon
+              className="tw:min-w-80"
+              items={userOptions}
+              placeholder={t('label.search-entity', {
+                entity: t('label.user'),
+              })}
+              onInputChange={(v) => searchUsers(v)}
+              onSelectionChange={(key) => key && handleUserSelect(String(key))}>
+              {(item) => (
+                <Select.Item id={item.id} key={item.id}>
+                  {item.label}
+                </Select.Item>
+              )}
+            </Select.ComboBox>
+          </Box>
+
+          {selectedUsername && (
+            <Typography className="tw:text-secondary" size="text-sm">
+              {`${t('label.selected-entity', {
+                entity: t('label.user-lowercase'),
+              })}: `}
+              <strong>{selectedUsername}</strong>
+            </Typography>
+          )}
+        </Card.Content>
       </Card>
 
       {/* Card 2: Evaluate Permission */}
-      <Card className="tw:overflow-hidden" variant="secondary">
+      <Card className="tw:overflow-hidden" variant="muted">
         <Box className="tw:px-6 tw:py-4 tw:border-b tw:border-secondary">
           <Typography
             className="tw:text-primary"
@@ -516,7 +518,7 @@ const AccessControlDebuggerPanel: FC = () => {
 
       {/* Card 4: Permissions for {username} (only after user is selected) */}
       {selectedUsername && (
-        <Card className="tw:overflow-hidden tw:w-full" variant="secondary">
+        <Card className="tw:overflow-hidden tw:w-full" variant="muted">
           <Box className="tw:px-6 tw:py-4 tw:border-b tw:border-secondary">
             <Typography
               className="tw:text-primary"

@@ -43,10 +43,10 @@ export const SettingsFormSection = ({
         {title}
       </Typography>
     )}
-    <Card
-      className="tw:grid tw:grid-cols-1 tw:gap-x-8 tw:gap-y-5 tw:p-6 tw:md:grid-cols-2"
-      variant="secondary">
-      {children}
+    <Card variant="muted">
+      <Card.Content className="tw:grid tw:grid-cols-1 tw:gap-x-8 tw:gap-y-5 tw:md:grid-cols-2">
+        {children}
+      </Card.Content>
     </Card>
   </Box>
 );
@@ -120,12 +120,11 @@ const SettingsFormLayout = <T extends FieldValues>({
 export default SettingsFormLayout;
 
 export const SettingsSkeleton = ({ rows = 4 }: { rows?: number }) => (
-  <Card
-    className="tw:flex tw:flex-col tw:gap-4 tw:p-5"
-    data-testid="settings-skeleton"
-    variant="secondary">
-    {Array.from({ length: rows }, (_, index) => (
-      <Skeleton height={20} key={index} variant="rounded" width="100%" />
-    ))}
+  <Card data-testid="settings-skeleton" variant="muted">
+    <Card.Content className="tw:flex tw:flex-col tw:gap-4">
+      {Array.from({ length: rows }, (_, index) => (
+        <Skeleton height={20} key={index} variant="rounded" width="100%" />
+      ))}
+    </Card.Content>
   </Card>
 );

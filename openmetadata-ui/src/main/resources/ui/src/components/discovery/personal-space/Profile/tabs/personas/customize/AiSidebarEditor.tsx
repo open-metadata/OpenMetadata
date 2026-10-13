@@ -217,7 +217,7 @@ const AiSidebarEditor = ({
     <Card
       className="tw:flex tw:flex-col tw:w-[40%]"
       data-testid="ai-sidebar-editor"
-      variant="secondary">
+      variant="muted">
       <Tree
         aria-label={t('label.app-mode-sidebar')}
         defaultExpandedKeys={new Set([MORE_NAV_KEY])}

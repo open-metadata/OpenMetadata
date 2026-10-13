@@ -52,7 +52,7 @@ const GlossarySettings = ({ className = 'tw:p-6' }: { className?: string }) => {
   return (
     <Box className={className} data-testid="glossary-settings" direction="col">
       <DocumentTitle title={t('label.glossary')} />
-      <Card variant="secondary">
+      <Card variant="muted">
         <Card.Header title={t('label.glossary')} />
         <Card.Content>
           {isPending && (

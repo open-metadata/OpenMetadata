@@ -19,16 +19,11 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import {
-  ArrowUpRight,
-  Hint,
-  SingleSignOn,
-} from '@openmetadata/ui-core-components/icons';
+import { Hint, SingleSignOn } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import type { Key } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AuthProvider } from '../../../../../../generated/settings/settings';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import {
   getSecurityConfiguration,
@@ -86,7 +81,6 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
   const { state: hashState, setHash } = useSettingsHash();
   const [config, setConfig] = useState<SecurityConfiguration>();
   const [isLoading, setIsLoading] = useState(true);
-  const [pickedProvider, setPickedProvider] = useState<AuthProvider>();
   const [showHint, setShowHint] = useState(false);
   const {
     sources,
@@ -213,20 +207,7 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
       </Box>
     );
 
-    const actions = canPickProvider ? (
-      <Button
-        color="primary"
-        data-testid="sso-configure-provider"
-        iconTrailing={ArrowUpRight}
-        isDisabled={!pickedProvider}
-        size="xs"
-        onPress={() =>
-          pickedProvider &&
-          onNavigate({ type: 'new', provider: pickedProvider })
-        }>
-        {t('label.configure')}
-      </Button>
-    ) : (
+    const actions = canPickProvider ? undefined : (
       <Box align="center" direction="row" gap={4}>
         {showsForm && hintToggle}
         {canChangeProvider && (
@@ -263,7 +244,6 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
     isLoading,
     onHeaderChange,
     onNavigate,
-    pickedProvider,
     showHint,
     showsForm,
     t,
@@ -299,8 +279,7 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
       return (
         <div className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:px-8 tw:pb-8">
           <SsoProviderGrid
-            selectedProvider={pickedProvider}
-            onSelect={setPickedProvider}
+            onSelect={(provider) => onNavigate({ type: 'new', provider })}
           />
         </div>
       );

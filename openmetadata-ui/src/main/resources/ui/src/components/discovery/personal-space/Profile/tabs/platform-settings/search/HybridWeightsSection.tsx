@@ -56,27 +56,27 @@ const HybridWeightsSection = ({
           {t('label.save')}
         </Button>
       </Box>
-      <Card
-        className="tw:flex tw:flex-row tw:items-center tw:gap-6 tw:px-5 tw:py-4"
-        variant="secondary">
-        <Typography data-testid="keyword-weight" size="text-sm">
-          {`${t('label.keyword')}: ${complementWeight(weight).toFixed(1)}`}
-        </Typography>
-        <Slider
-          aria-label={t('label.hybrid-search-weight-plural')}
-          className="tw:flex-1"
-          isDisabled={isDisabled}
-          maxValue={1}
-          minValue={0}
-          step={0.1}
-          value={weight}
-          onChange={(value) =>
-            setWeight(Array.isArray(value) ? value[0] : value)
-          }
-        />
-        <Typography data-testid="semantic-weight" size="text-sm">
-          {`${t('label.semantic')}: ${weight.toFixed(1)}`}
-        </Typography>
+      <Card variant="muted">
+        <Card.Content className="tw:flex tw:flex-row tw:items-center tw:gap-6">
+          <Typography data-testid="keyword-weight" size="text-sm">
+            {`${t('label.keyword')}: ${complementWeight(weight).toFixed(1)}`}
+          </Typography>
+          <Slider
+            aria-label={t('label.hybrid-search-weight-plural')}
+            className="tw:flex-1"
+            isDisabled={isDisabled}
+            maxValue={1}
+            minValue={0}
+            step={0.1}
+            value={weight}
+            onChange={(value) =>
+              setWeight(Array.isArray(value) ? value[0] : value)
+            }
+          />
+          <Typography data-testid="semantic-weight" size="text-sm">
+            {`${t('label.semantic')}: ${weight.toFixed(1)}`}
+          </Typography>
+        </Card.Content>
       </Card>
     </Box>
   );

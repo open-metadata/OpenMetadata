@@ -138,7 +138,7 @@ const BotTokenSection: React.FC<BotTokenSectionProps> = ({
   }, [jwtTokenExpiresAt, isTokenExpired, tokenExpiryDate, t]);
 
   return (
-    <Card data-testid="token-section" variant="secondary">
+    <Card data-testid="token-section" variant="muted">
       {/* Header */}
       <Box
         align="center"

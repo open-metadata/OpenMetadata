@@ -117,63 +117,68 @@ const TermBoostCard = ({
 
   return (
     <Card
-      className="tw:flex tw:flex-col tw:gap-4 tw:w-64 tw:p-4"
+      className="tw:w-64"
       data-testid={`term-boost-${draft.value || 'new'}`}
-      variant="secondary">
-      <Autocomplete
-        aria-label={t('label.select-tag')}
-        data-testid="term-boost-select"
-        isDisabled={isExisting}
-        items={options}
-        multiple={false}
-        placeholder={t('label.select-tag')}
-        selectedItems={selectedItems}
-        onItemCleared={() => update({ ...draft, field: '', value: '' })}
-        onItemInserted={(key) => {
-          const option = options.find((item) => item.id === String(key));
-          if (option) {
-            update({ ...draft, field: option.field, value: option.id });
-          }
-        }}
-        onSearchChange={debouncedFetch}>
-        {(item) => <Autocomplete.Item id={item.id} label={item.label} />}
-      </Autocomplete>
+      variant="muted">
+      <Card.Content className="tw:flex tw:flex-col tw:gap-4">
+        <Autocomplete
+          aria-label={t('label.select-tag')}
+          data-testid="term-boost-select"
+          isDisabled={isExisting}
+          items={options}
+          multiple={false}
+          placeholder={t('label.select-tag')}
+          selectedItems={selectedItems}
+          onItemCleared={() => update({ ...draft, field: '', value: '' })}
+          onItemInserted={(key) => {
+            const option = options.find((item) => item.id === String(key));
+            if (option) {
+              update({ ...draft, field: option.field, value: option.id });
+            }
+          }}
+          onSearchChange={debouncedFetch}>
+          {(item) => <Autocomplete.Item id={item.id} label={item.label} />}
+        </Autocomplete>
 
-      <Box direction="col" gap={1}>
-        <Box align="center" direction="row" justify="between">
-          <Typography className="tw:text-secondary" size="text-sm">
-            {t('label.boost')}
-          </Typography>
-          <Typography
-            className="tw:text-brand-secondary"
-            data-testid="term-boost-value"
-            size="text-sm"
-            weight="semibold">
-            {draft.boost}
-          </Typography>
+        <Box direction="col" gap={1}>
+          <Box align="center" direction="row" justify="between">
+            <Typography className="tw:text-secondary" size="text-sm">
+              {t('label.boost')}
+            </Typography>
+            <Typography
+              className="tw:text-brand-secondary"
+              data-testid="term-boost-value"
+              size="text-sm"
+              weight="semibold">
+              {draft.boost}
+            </Typography>
+          </Box>
+          <Slider
+            aria-label={t('label.boost')}
+            data-testid="term-boost-slider"
+            maxValue={MAX_BOOST}
+            minValue={0}
+            step={BOOST_STEP}
+            value={draft.boost}
+            onChange={(value) =>
+              update({
+                ...draft,
+                boost: Array.isArray(value) ? value[0] : value,
+              })
+            }
+          />
         </Box>
-        <Slider
-          aria-label={t('label.boost')}
-          data-testid="term-boost-slider"
-          maxValue={MAX_BOOST}
-          minValue={0}
-          step={BOOST_STEP}
-          value={draft.boost}
-          onChange={(value) =>
-            update({ ...draft, boost: Array.isArray(value) ? value[0] : value })
-          }
-        />
-      </Box>
 
-      <ButtonUtility
-        className="tw:self-end"
-        color="tertiary"
-        data-testid="delete-term-boost"
-        icon={Trash01}
-        size="xs"
-        tooltip={t('label.delete')}
-        onPress={() => onDelete(draft.value)}
-      />
+        <ButtonUtility
+          className="tw:self-end"
+          color="tertiary"
+          data-testid="delete-term-boost"
+          icon={Trash01}
+          size="xs"
+          tooltip={t('label.delete')}
+          onPress={() => onDelete(draft.value)}
+        />
+      </Card.Content>
     </Card>
   );
 };

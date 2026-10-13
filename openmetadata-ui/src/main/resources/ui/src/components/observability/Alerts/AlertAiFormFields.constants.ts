@@ -47,9 +47,10 @@ export const ALERT_AI_FORM_CLASS_NAMES = {
   destinationAlert: 'tw:px-4',
   // Never bg-surface: the core Toggle off-track (bg-tertiary) is the same colour
   // in dark and the Notify Downstream toggle vanishes (core fix: collate issue 6549).
-  // Dark uses bg-secondary so the near-black inputs stay visible inside the card.
+  // bg-primary_alt is white in light and bg-secondary in dark, so the near-black
+  // inputs stay visible inside the card.
   destinationCard:
-    'tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:dark:bg-secondary tw:px-4 tw:py-3',
+    'tw:rounded-lg tw:border tw:border-secondary tw:bg-primary_alt tw:px-4 tw:py-3',
   downstreamDepthField: 'tw:w-1/2 tw:pr-1.5',
   field: 'tw:min-w-0',
   fieldFill: 'tw:flex-1',

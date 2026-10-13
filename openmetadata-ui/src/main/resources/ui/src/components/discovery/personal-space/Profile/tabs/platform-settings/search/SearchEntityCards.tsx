@@ -60,7 +60,7 @@ const SearchEntityCards = ({
               role="button"
               size="md"
               tabIndex={0}
-              variant="secondary"
+              variant="muted"
               onClick={open}
               onKeyDown={(event) => {
                 if (event.key === 'Enter' || event.key === ' ') {

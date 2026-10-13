@@ -44,54 +44,57 @@ const InheritedPermissionsSection: React.FC<
     <Box direction="col" gap={4}>
       {items.map((item) => (
         <Card
-          className="tw:flex tw:gap-3 tw:p-4"
           key={`${item.permissionType}-${
             item.source?.fullyQualifiedName ?? item.source?.name ?? ''
           }`}
-          variant="secondary">
-          <Box className="tw:h-9 tw:w-9 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-md tw:bg-utility-purple-50 tw:text-utility-purple-600">
-            <ShieldTick height={18} width={18} />
-          </Box>
-          <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
-            <Box align="center" className="tw:flex-wrap tw:gap-2">
-              <Typography className="tw:text-secondary" size="text-xs">
-                {t('label.type')}
-              </Typography>
-              <Badge color="purple" size="xs">
-                {item.permissionType}
-              </Badge>
+          variant="muted">
+          <Card.Content className="tw:flex tw:gap-3">
+            <Box className="tw:h-9 tw:w-9 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-md tw:bg-utility-purple-50 tw:text-utility-purple-600">
+              <ShieldTick height={18} width={18} />
             </Box>
-
-            {item.description && (
-              <Typography className="tw:text-secondary" size="text-xs">
-                {item.description}
-              </Typography>
-            )}
-
-            {item.source && (
-              <Box align="center" className="tw:gap-1">
+            <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
+              <Box align="center" className="tw:flex-wrap tw:gap-2">
                 <Typography className="tw:text-secondary" size="text-xs">
-                  {`${t('label.source')} :`}
+                  {t('label.type')}
                 </Typography>
-                <Link
-                  className="tw:text-xs tw:text-utility-blue-dark-500"
-                  to={getPermissionEntityLink(item.source)}>
-                  {getEntityName(item.source)}
-                </Link>
+                <Badge color="purple" size="xs">
+                  {item.permissionType}
+                </Badge>
               </Box>
-            )}
 
-            {item.policies.length > 0 && (
-              <Box direction="col" gap={2}>
-                {item.policies.map((policy) => (
-                  <PolicyAccordion
-                    key={policy.policy.fullyQualifiedName ?? policy.policy.name}
-                    policy={policy}
-                  />
-                ))}
-              </Box>
-            )}
-          </Box>
+              {item.description && (
+                <Typography className="tw:text-secondary" size="text-xs">
+                  {item.description}
+                </Typography>
+              )}
+
+              {item.source && (
+                <Box align="center" className="tw:gap-1">
+                  <Typography className="tw:text-secondary" size="text-xs">
+                    {`${t('label.source')} :`}
+                  </Typography>
+                  <Link
+                    className="tw:text-xs tw:text-utility-blue-dark-500"
+                    to={getPermissionEntityLink(item.source)}>
+                    {getEntityName(item.source)}
+                  </Link>
+                </Box>
+              )}
+
+              {item.policies.length > 0 && (
+                <Box direction="col" gap={2}>
+                  {item.policies.map((policy) => (
+                    <PolicyAccordion
+                      key={
+                        policy.policy.fullyQualifiedName ?? policy.policy.name
+                      }
+                      policy={policy}
+                    />
+                  ))}
+                </Box>
+              )}
+            </Box>
+          </Card.Content>
         </Card>
       ))}
     </Box>

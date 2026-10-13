@@ -59,7 +59,7 @@ const InfoWidget: FC<{
   action?: ReactNode;
   children: ReactNode;
 }> = ({ label, action, children }) => (
-  <Card className={WIDGET_CLASS} variant="secondary">
+  <Card className={WIDGET_CLASS} variant="muted">
     <Box align="center" direction="row" gap={1}>
       <Typography
         className="tw:text-brand-secondary"

@@ -25,8 +25,7 @@ const meta = {
       control: false,
       table: {
         type: {
-          summary:
-            '"default" | "elevated" | "outlined" | "ghost" | "secondary"',
+          summary: '"default" | "elevated" | "outlined" | "ghost" | "muted"',
         },
       },
     },
@@ -150,7 +149,7 @@ export const WithSubComponents: StoryObj = {
 export const Variants: StoryObj = {
   render: () => (
     <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-      {(['default', 'elevated', 'outlined', 'ghost', 'secondary'] as const).map(
+      {(['default', 'elevated', 'outlined', 'ghost', 'muted'] as const).map(
         (variant) => (
           <div key={variant} style={{ width: 200 }}>
             <Card variant={variant}>
@@ -164,6 +163,29 @@ export const Variants: StoryObj = {
           </div>
         )
       )}
+    </div>
+  ),
+};
+
+// The muted variant sits one step below the surface it is placed on in dark
+// mode; review it against the gray-800 overlay surface it is used on.
+export const MutedOnDarkSurface: StoryObj = {
+  render: () => (
+    <div
+      className="dark-mode tw:rounded-xl tw:bg-overlay-surface tw:p-6"
+      style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+      {(['default', 'muted'] as const).map((variant) => (
+        <div key={variant} style={{ width: 220 }}>
+          <Card isClickable variant={variant}>
+            <Card.Header subtitle="dark theme · clickable" title={variant} />
+            <Card.Content>
+              <p className="tw:text-sm tw:text-secondary">
+                Hover to compare the interaction.
+              </p>
+            </Card.Content>
+          </Card>
+        </div>
+      ))}
     </div>
   ),
 };
