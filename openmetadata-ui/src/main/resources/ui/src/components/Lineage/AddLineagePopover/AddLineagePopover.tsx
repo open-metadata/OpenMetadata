@@ -13,6 +13,7 @@
 import {
   Box,
   Button,
+  Card,
   FilterSelect,
   Select,
   SelectItemType,
@@ -21,6 +22,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { ArrowRight } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { entityData } from '../../../constants/Lineage.constants';
@@ -75,23 +77,25 @@ const LineagePreviewCard = ({
   placeholder?: string;
   isCurrent?: boolean;
 }) => (
-  <Box
-    className={
-      isCurrent
-        ? 'tw:min-w-0 tw:flex-1 tw:rounded-lg tw:border tw:border-brand tw:bg-brand-primary tw:px-3 tw:py-2'
-        : 'tw:min-w-0 tw:flex-1 tw:rounded-lg tw:border tw:border-dashed tw:border-primary tw:bg-secondary tw:px-3 tw:py-2'
-    }
-    direction="col">
-    <Typography className="tw:text-tertiary" size="text-xs">
-      {label}
-    </Typography>
-    <Typography
-      className={name ? 'tw:truncate tw:text-primary' : 'tw:text-quaternary'}
-      size="text-sm"
-      weight="medium">
-      {name ?? placeholder}
-    </Typography>
-  </Box>
+  <Card
+    className={classNames(
+      'tw:min-w-0 tw:flex-1 tw:rounded-lg tw:px-3 tw:py-2',
+      !isCurrent && 'tw:border-dashed'
+    )}
+    color={isCurrent ? 'brand' : 'secondary'}>
+    <Box direction="col">
+      <Typography className="tw:text-tertiary" size="text-xs">
+        {label}
+      </Typography>
+      <Typography
+        className={name ? 'tw:text-primary' : 'tw:text-quaternary'}
+        ellipsis={Boolean(name)}
+        size="text-sm"
+        weight="medium">
+        {name ?? placeholder}
+      </Typography>
+    </Box>
+  </Card>
 );
 
 const joinNames = (...names: (string | undefined | false)[]) =>

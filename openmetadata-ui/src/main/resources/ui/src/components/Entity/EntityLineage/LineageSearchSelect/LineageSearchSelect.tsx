@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Select, SelectItemType } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Select,
+  SelectItemType,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { ChevronRight } from '@openmetadata/ui-core-components/icons';
 import { debounce } from 'lodash';
 import React, {
@@ -78,17 +83,20 @@ const LineageSearchSelect = () => {
         id: node.fullyQualifiedName,
         label: getEntityName(node),
         content: (
-          <span
-            className="tw:flex tw:items-center tw:gap-1"
-            data-testid={`option-${node.fullyQualifiedName}`}>
+          <Box
+            align="center"
+            data-testid={`option-${node.fullyQualifiedName}`}
+            gap={1}>
             <img
               alt={node.serviceType}
               height="16px"
               src={serviceUtilClassBase.getServiceTypeLogo(node)}
               width="16px"
             />
-            <span className="tw:truncate">{getEntityName(node)}</span>
-          </span>
+            <Typography ellipsis size="text-sm">
+              {getEntityName(node)}
+            </Typography>
+          </Box>
         ),
       };
       optionsMap.set(nodeOption.id, nodeOption);
@@ -108,32 +116,35 @@ const LineageSearchSelect = () => {
           id: column.fullyQualifiedName ?? '',
           label: getEntityName(column),
           content: (
-            <span
-              className="tw:flex tw:items-center tw:gap-1"
-              data-testid={`option-${column.fullyQualifiedName}`}>
-              <span className="tw:flex tw:items-center tw:gap-1">
+            <Box
+              align="center"
+              data-testid={`option-${column.fullyQualifiedName}`}
+              gap={1}>
+              <Box align="center" gap={1}>
                 <img
                   alt={node.serviceType}
                   height="16px"
                   src={serviceUtilClassBase.getServiceTypeLogo(node)}
                   width="16px"
                 />
-                <span className="tw:text-xs tw:text-tertiary">
+                <Typography className="tw:text-tertiary" size="text-xs">
                   {getEntityName(node)}
-                </span>
+                </Typography>
                 <ChevronRight
                   aria-hidden="true"
                   className="tw:size-3 tw:text-fg-quaternary"
                 />
-              </span>
-              <span className="tw:flex tw:items-center tw:gap-1">
+              </Box>
+              <Box align="center" gap={1}>
                 {searchClassBase.getEntityIconWithBg(
                   node.entityType ?? '',
                   EntityIconSize.Size14
                 )}
-                <span className="tw:truncate">{getEntityName(column)}</span>
-              </span>
-            </span>
+                <Typography ellipsis size="text-sm">
+                  {getEntityName(column)}
+                </Typography>
+              </Box>
+            </Box>
           ),
         };
         optionsMap.set(columnOption.id, columnOption);

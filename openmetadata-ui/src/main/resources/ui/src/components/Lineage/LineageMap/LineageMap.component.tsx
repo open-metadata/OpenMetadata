@@ -747,9 +747,13 @@ const LineageMapControls = ({
       className={classNames(LINEAGE_MAP_RAIL_CLASSES, {
         'with-minimap': miniMapVisible,
       })}>
-      <div className="tw:flex tw:h-[138px] tw:flex-col tw:items-end tw:justify-between tw:py-1">
+      <Box
+        align="end"
+        className="tw:h-[138px] tw:py-1"
+        direction="col"
+        justify="between">
         {stops.map(({ stop, label, isActive, isDisabled }) => (
-          <div className="tw:flex tw:h-6 tw:items-center" key={stop}>
+          <Box align="center" className="tw:h-6" key={stop}>
             <Button
               className={classNames(LINEAGE_MAP_RAIL_LABEL_CLASSES, {
                 'active tw:font-semibold tw:text-brand-secondary! tw:after:outline-brand':
@@ -766,9 +770,9 @@ const LineageMapControls = ({
               }}>
               {label}
             </Button>
-          </div>
+          </Box>
         ))}
-      </div>
+      </Box>
       <div className={LINEAGE_MAP_RAIL_TRACK_CLASSES}>
         <span
           aria-hidden="true"

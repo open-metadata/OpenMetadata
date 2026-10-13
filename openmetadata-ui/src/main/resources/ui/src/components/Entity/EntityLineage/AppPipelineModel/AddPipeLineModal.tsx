@@ -12,11 +12,13 @@
  */
 
 import {
+  Box,
   Button,
   Dialog,
   Input,
   Modal,
   ModalOverlay,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -158,14 +160,16 @@ const AddPipeLineModal = ({
                 ).join('/');
 
                 return (
-                  <div
+                  <Box
+                    align="center"
                     className={classNames(
-                      'tw:my-2 tw:flex tw:cursor-pointer tw:items-center tw:gap-2 tw:rounded-sm tw:p-2',
+                      'tw:my-2 tw:cursor-pointer tw:rounded-sm tw:p-2',
                       edgeSelection?.id === item.id
                         ? 'tw:bg-utility-brand-100'
                         : 'tw:hover:bg-tertiary'
                     )}
                     data-testid={`pipeline-entry-${item.fullyQualifiedName}`}
+                    gap={2}
                     key={item.id}
                     role="button"
                     tabIndex={0}
@@ -179,19 +183,18 @@ const AddPipeLineModal = ({
                       item.type,
                       EntityIconSize.Size14
                     )}
-                    <div>
-                      <div className="tw:flex tw:flex-wrap">
-                        <span className="tw:truncate tw:text-[10px] tw:text-quaternary">
-                          {breadcrumb}
-                        </span>
-                      </div>
-                      <div className="tw:flex tw:flex-col">
-                        <span className="tw:truncate tw:font-medium">
-                          {getEntityName(item)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+                    <Box className="tw:min-w-0" direction="col">
+                      <Typography
+                        ellipsis
+                        className="tw:text-quaternary"
+                        size="text-xs">
+                        {breadcrumb}
+                      </Typography>
+                      <Typography ellipsis size="text-sm" weight="medium">
+                        {getEntityName(item)}
+                      </Typography>
+                    </Box>
+                  </Box>
                 );
               })}
 
