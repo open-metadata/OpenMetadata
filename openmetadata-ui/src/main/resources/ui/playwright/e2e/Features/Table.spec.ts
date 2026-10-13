@@ -745,6 +745,10 @@ test.describe('Large Table Column Search & Copy Link', () => {
     // 4. Read clipboard
     const clipboardText = await copyAndGetClipboardText(page, copyButton);
 
+    // Copying the link must not open the column detail panel (#35350)
+    await expect(rowSelector).toBeVisible();
+    await expect(page.locator('.column-detail-panel')).not.toBeVisible();
+
     // Verify URL format structure
     expect(clipboardText).toContain(
       `/table/${createdTable.fullyQualifiedName}`

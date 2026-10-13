@@ -58,7 +58,13 @@ const CopyLinkButton: FC<CopyLinkButtonProps> = ({
         icon={ShareIcon}
         isDisabled={!fieldFqn}
         size="xs"
-        onClick={() => fieldFqn && handleCopyFieldLink(fieldFqn)}
+        onClick={(e) => {
+          // Rendered inside clickable rows/cells; copying must not trigger their click handlers.
+          e.stopPropagation();
+          if (fieldFqn) {
+            handleCopyFieldLink(fieldFqn);
+          }
+        }}
       />
     </Tooltip>
   );
