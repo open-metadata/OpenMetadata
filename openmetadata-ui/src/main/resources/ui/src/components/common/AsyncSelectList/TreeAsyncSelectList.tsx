@@ -52,6 +52,7 @@ import {
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   filterTreeNodeOptions,
+  findExpandableKeysForArray,
   findItemByFqn,
 } from '../../../utils/GlossaryPureUtils';
 import { convertGlossaryTermsToTreeOptions } from '../../../utils/GlossaryUtils';
@@ -433,9 +434,14 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
       const encodedValue = getEncodedFqn(escapeESReservedCharacters(value));
       const results: Glossary[] = await searchGlossaryTerms(encodedValue);
 
-      setSearchOptions(filterTreeNodeOptions(results, filterOptions));
+      const filteredResults = filterTreeNodeOptions(results, filterOptions);
+
+      setSearchOptions(filteredResults);
+      // Expand every level so matches nested under parent terms are visible
       setExpandedRowKeys(
-        results.map((result) => result.fullyQualifiedName as string)
+        findExpandableKeysForArray(
+          filteredResults as unknown as ModifiedGlossaryTerm[]
+        )
       );
       setIsLoading(false);
     } else {
