@@ -39,12 +39,11 @@ public final class HealthyDataAssetsChartMigration {
   public static final String HEALTHY_DATA_ASSETS_LIVE = "healthy_data_assets_live";
 
   /**
-   * Per day, over test-case-result documents: tables that ran tests that day, less those with a
-   * failed or aborted run that day.
+   * Per day, over the Data Insights table snapshots: tables whose tests were healthy as of that day.
+   * Counting test-case-result documents instead only sees tables whose tests ran that day, so any
+   * day without a run read 0.
    */
-  static final String DAILY_FORMULA =
-      "unique(k='table.id',q='testCaseStatus: *')"
-          + "-unique(k='table.id',q='testCaseStatus: Failed OR testCaseStatus: Aborted')";
+  static final String DAILY_FORMULA = "count(k='id.keyword',q='dataQualityStatus: Healthy')";
 
   /**
    * Over test-case documents, matching the Data Quality page: entities with tests, less those

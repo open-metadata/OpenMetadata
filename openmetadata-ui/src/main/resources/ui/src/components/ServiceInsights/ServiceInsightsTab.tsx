@@ -154,9 +154,7 @@ const ServiceInsightsTab = ({
       const sevenDaysAgoTimestampInMs = getDayAgoStartGMTinMillis(6);
 
       const chartsList = [
-        ...PLATFORM_INSIGHTS_CHARTS.filter(
-          (chart) => chart !== SystemChartType.HealthyDataAssets
-        ),
+        ...PLATFORM_INSIGHTS_CHARTS,
         ...(widgets.PIIDistributionWidget
           ? [SystemChartType.PIIDistribution]
           : []),
@@ -164,29 +162,12 @@ const ServiceInsightsTab = ({
           ? [SystemChartType.TierDistribution]
           : []),
       ];
-      const filter = `{"query":{"match":{"service.name.keyword":"${serviceName}"}}}`;
 
-      // The daily healthy chart only counts tables whose tests ran inside each day, so it reads 0
-      // on any day without a run. The live chart uses each test case's latest status instead,
-      // matching the Data Quality page.
-      const [coverageChartsData, healthyChartData] = await Promise.all([
-        getMultiChartsPreviewByName(chartsList, {
-          start: sevenDaysAgoTimestampInMs,
-          end: currentTimestampInMs,
-          filter,
-        }),
-        getMultiChartsPreviewByName([SystemChartType.HealthyDataAssetsLive], {
-          start: sevenDaysAgoTimestampInMs,
-          end: currentTimestampInMs,
-          live: true,
-          serviceName,
-        }),
-      ]);
-      const chartsData = {
-        ...coverageChartsData,
-        [SystemChartType.HealthyDataAssets]:
-          healthyChartData[SystemChartType.HealthyDataAssetsLive],
-      };
+      const chartsData = await getMultiChartsPreviewByName(chartsList, {
+        start: sevenDaysAgoTimestampInMs,
+        end: currentTimestampInMs,
+        filter: `{"query":{"match":{"service.name.keyword":"${serviceName}"}}}`,
+      });
 
       await getDataAssetsCount();
 

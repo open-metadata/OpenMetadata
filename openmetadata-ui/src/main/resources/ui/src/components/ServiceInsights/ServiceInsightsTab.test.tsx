@@ -336,20 +336,16 @@ describe('ServiceInsightsTab', () => {
     });
   });
 
-  it('should read healthy data assets from the live chart so days without test runs do not read 0', async () => {
+  it('should read healthy data assets with the other daily charts so the card shows a trend', async () => {
+    const dayMs = 86400000;
     const todayStart = getCurrentDayStartGMTinMillis();
-    mockGetMultiChartsPreviewByName.mockImplementation(
-      (chartNames: SystemChartType[]) =>
-        Promise.resolve(
-          chartNames.includes(SystemChartType.HealthyDataAssetsLive)
-            ? {
-                [SystemChartType.HealthyDataAssetsLive]: {
-                  results: [{ count: 3, term: 'oracle-ui-test' }],
-                },
-              }
-            : {}
-        )
-    );
+    const healthyResults = [0, 1, 2, 3, 4, 5, 6].map((day) => ({
+      day: todayStart - (6 - day) * dayMs,
+      count: day === 6 ? 3 : 2,
+    }));
+    mockGetMultiChartsPreviewByName.mockResolvedValue({
+      [SystemChartType.HealthyDataAssets]: { results: healthyResults },
+    });
     const { PlatformInsightsWidget } =
       serviceUtilClassBase.getInsightsTabWidgets('databaseServices');
 
@@ -360,26 +356,22 @@ describe('ServiceInsightsTab', () => {
       },
     });
 
-    const healthyCall = mockGetMultiChartsPreviewByName.mock.calls.find(
-      ([chartNames]) =>
-        chartNames.includes(SystemChartType.HealthyDataAssetsLive)
+    expect(mockGetMultiChartsPreviewByName).toHaveBeenCalledTimes(1);
+    expect(mockGetMultiChartsPreviewByName).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        SystemChartType.DescriptionCoverage,
+        SystemChartType.HealthyDataAssets,
+      ]),
+      expect.objectContaining({ end: todayStart })
     );
-    const coverageCall = mockGetMultiChartsPreviewByName.mock.calls.find(
-      ([chartNames]) => chartNames.includes(SystemChartType.DescriptionCoverage)
-    );
-
-    expect(healthyCall?.[0]).toEqual([SystemChartType.HealthyDataAssetsLive]);
-    expect(healthyCall?.[1]).toEqual(
-      expect.objectContaining({ live: true, serviceName: 'oracle-ui-test' })
-    );
-    expect(coverageCall?.[0]).not.toContain(SystemChartType.HealthyDataAssets);
-    expect(coverageCall?.[1].end).toBe(todayStart);
     expect(PlatformInsightsWidget).toHaveBeenCalledWith(
       expect.objectContaining({
         chartsData: expect.arrayContaining([
           expect.objectContaining({
             chartType: SystemChartType.HealthyDataAssets,
             currentPercentage: 3,
+            percentageChange: 1,
+            numberOfDays: 6,
           }),
         ]),
       }),

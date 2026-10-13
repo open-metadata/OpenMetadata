@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import lombok.extern.slf4j.Slf4j;
 import org.glassfish.jersey.internal.util.ExceptionUtils;
+import org.jdbi.v3.core.JdbiException;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.system.IndexingError;
@@ -16,6 +17,8 @@ import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.type.change.ChangeSummary;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.DataQualityStatusResolver;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.EnrichmentContext;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.EnrichmentPipeline;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.EnrichmentTarget;
@@ -86,6 +89,9 @@ public class DataInsightsEntityEnricherProcessor
 
   private final VersionResolver versionResolver = new VersionResolver();
   private final SnapshotMaterializer snapshotMaterializer = new SnapshotMaterializer();
+  private final DataQualityStatusResolver dataQualityStatusResolver =
+      new DataQualityStatusResolver(Entity.getCollectionDAO());
+  private final AtomicInteger dataQualityWarnCount = new AtomicInteger();
 
   public DataInsightsEntityEnricherProcessor(int total) {
     this.stats.withTotalRecords(total).withSuccessRecords(0).withFailedRecords(0);
@@ -198,6 +204,7 @@ public class DataInsightsEntityEnricherProcessor
         enrichEntity(target);
         snapshots.addAll(snapshotMaterializer.materialize(window, target.entityMap()));
       }
+      stampDataQualityStatus(entity, snapshots);
       return snapshots;
     } catch (EntityNotFoundException e) {
       // The asset was hard-deleted between the source listing it and this enrichment — routine
@@ -206,6 +213,21 @@ public class DataInsightsEntityEnricherProcessor
       // Insights source and abort dependent extensions such as completeness scoring.
       LOG.debug("[DataInsights enricher] skipping entity deleted mid-run: {}", entity.getId());
       return List.of();
+    }
+  }
+
+  /** Like a failing step, a failed lookup drops only the status, never the entity's snapshots. */
+  private void stampDataQualityStatus(
+      EntityInterface<?> entity, List<Map<String, Object>> snapshots) {
+    try {
+      dataQualityStatusResolver.stamp(entity, snapshots);
+    } catch (JdbiException e) {
+      if (dataQualityWarnCount.incrementAndGet() <= MAX_ENTITY_LOSS_WARN_SAMPLES) {
+        LOG.warn(
+            "[DataInsights enricher] entity='{}' data quality status skipped: {}",
+            entity.getFullyQualifiedName(),
+            e.toString());
+      }
     }
   }
 

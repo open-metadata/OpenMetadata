@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.LineChart;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.DataQualityStatusResolver;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchLineChartAggregator;
 import org.openmetadata.service.util.DataInsightFormulaEvaluator;
@@ -47,11 +48,14 @@ class HealthyDataAssetsChartMigrationTest {
   }
 
   @Test
-  void dailyChartCountsTablesOnFieldsThatExistInTheTestCaseResultIndex() throws Exception {
+  void dailyChartCountsHealthyTableSnapshotsNotTestRuns() throws Exception {
     JsonNode request = prepare(HealthyDataAssetsChartMigration.dailyChart(), false);
 
-    assertEquals(Set.of("table.id"), cardinalityFields(request));
-    assertFalse(request.toString().contains(".keyword"), "result-index fields are keyword already");
+    assertTrue(
+        request.toString().contains(DataQualityStatusResolver.DATA_QUALITY_STATUS_KEY),
+        "" + request);
+    assertFalse(request.toString().contains("table.id"), "must not count test-case-result docs");
+    assertTrue(cardinalityFields(request).isEmpty(), "one snapshot per table per day: count it");
   }
 
   @Test
