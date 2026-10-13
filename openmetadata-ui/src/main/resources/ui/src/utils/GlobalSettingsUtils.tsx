@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { PLACEHOLDER_ROUTE_FQN, ROUTES } from '../constants/constants';
+import { ROUTES } from '../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -20,7 +20,6 @@ import { EntityType } from '../enums/entity.enum';
 import globalSettingsClassBase from './GlobalSettingsClassBase';
 import i18n from './i18next/LocalUtil';
 import { getSettingPath } from './RouterUtils';
-import { getEncodedFqn } from './StringUtils';
 
 export interface SettingMenuItem {
   key: string;
@@ -70,14 +69,6 @@ const SETTING_OPTION_BY_ENTITY_TYPE: Partial<
 
 export const getSettingOptionByEntityType = (entityType: EntityType) =>
   SETTING_OPTION_BY_ENTITY_TYPE[entityType] ?? GlobalSettingOptions.TABLES;
-
-export const getCustomizePagePath = (personaFqn: string, pageFqn: string) => {
-  const path = ROUTES.CUSTOMIZE_PAGE;
-
-  return path
-    .replaceAll(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(personaFqn))
-    .replace(':pageFqn', pageFqn);
-};
 
 export const getSettingPageEntityBreadCrumb = (
   category: GlobalSettingsMenuCategory,

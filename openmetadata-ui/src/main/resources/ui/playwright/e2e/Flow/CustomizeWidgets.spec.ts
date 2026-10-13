@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page } from '@playwright/test';
-import { SearchIndex } from '../../../src/enums/search.enum';
+import { Page, Response } from '@playwright/test';
 import { KPI_DATA } from '../../constant/dataInsight';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
@@ -28,9 +27,7 @@ import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
 import {
   addAndVerifyWidget,
   removeAndVerifyWidget,
-  verifyWidgetEntityNavigation,
-  verifyWidgetFooterViewMore,
-  verifyWidgetHeaderNavigation,
+  verifyWidgetTitleAndNavigation,
   waitForLandingPageWidget,
 } from '../../utils/customizeLandingPage';
 import {
@@ -38,15 +35,12 @@ import {
   deleteKpiRequest,
   deleteSeededKpisOnChart,
 } from '../../utils/dataInsight';
-import { followEntity, waitForAllLoadersToDisappear } from '../../utils/entity';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 import {
-  verifyActivityFeedFilters,
-  verifyDataFilters,
+  selectTopicCardFilterOption,
   verifyDataProductsFilters,
-  verifyDomainsFilters,
-  verifyTaskFilters,
-  verifyTotalDataAssetsFilters,
 } from '../../utils/widgetFilters';
 
 let adminUser: UserClass;
@@ -55,12 +49,13 @@ let adminUser: UserClass;
 let testDomain: Domain;
 let testDataProducts: DataProduct[] = [];
 
-// The Activity Feed widget only renders its "View More" link once the feed
-// exceeds PAGE_SIZE_BASE (15), so the footer step seeds one more than that
-// rather than depending on whatever activity the database happens to hold.
+// Seed tables for the Team Activity and Data Quality cards. Each test makes
+// its own per-test user the owner before seeding: Team Activity reads
+// `/activity/my-feed`, which only returns events on assets the viewer (or one
+// of their teams) owns, and the Data Quality card is narrowed to "My data" so
+// its rows are this test's failures rather than the newest ones server-wide.
 let activitySeedTable: TableClass;
-const FEED_WIDGET_PAGE_SIZE = 15;
-const SEEDED_ACTIVITY_COUNT = FEED_WIDGET_PAGE_SIZE + 1;
+let dataQualitySeedTable: TableClass;
 
 type WidgetTestFixtures = {
   page: Page;
@@ -205,31 +200,30 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   }
 
   activitySeedTable = new TableClass();
-  await activitySeedTable.create(apiContext);
-
-  for (let index = 0; index < SEEDED_ACTIVITY_COUNT; index++) {
-    await insertActivityEventForTest(
-      apiContext,
-      activitySeedTable,
-      `Customize widgets activity ${index}`
-    );
-  }
+  dataQualitySeedTable = new TableClass();
+  await settleAll([
+    activitySeedTable.create(apiContext),
+    dataQualitySeedTable.create(apiContext),
+  ]);
 
   await afterAction();
 });
 
-test.afterAll(
-  'Cleanup: delete the activity seed table',
-  async ({ browser }) => {
-    const { afterAction, apiContext } = await performAdminLogin(browser);
+test.afterAll('Cleanup: delete the seed tables', async ({ browser }) => {
+  const { afterAction, apiContext } = await performAdminLogin(browser);
 
-    try {
-      await activitySeedTable.delete(apiContext);
-    } finally {
-      await afterAction();
-    }
+  // A failed beforeAll can stop before the tables exist; deleting `undefined`
+  // would then replace its error with a TypeError.
+  try {
+    await settleAll(
+      [activitySeedTable, dataQualitySeedTable]
+        .filter((table) => table !== undefined)
+        .map((table) => table.delete(apiContext))
+    );
+  } finally {
+    await afterAction();
   }
-);
+});
 
 test.beforeEach(async ({ page }) => {
   await redirectToHomePage(page);
@@ -237,150 +231,65 @@ test.beforeEach(async ({ page }) => {
   await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 });
 
-test('Activity Feed Widget', async ({ page, persona, testUser }) => {
+// The landing page's widgets are topic cards now. Five of the nine suites that
+// used to live here -- My Data, Data Assets, Total Data Assets, Following
+// Assets and My Tasks -- covered widgets `getExcludedWidgetFqns` keeps out of
+// both the grid and the Add Widgets picker, so there is nothing left for them
+// to drive. What a card still offers is a title, a footer link out, and
+// removal/re-adding from the persona editor; that is what the four below check.
+test('Activity Feed Widget', async ({ browser, page, persona, testUser }) => {
   test.slow(true);
 
   const widgetKey = 'KnowledgePanel.ActivityFeed';
+  const activitySummary = `Customize widgets activity ${uuid()}`;
 
-  await waitForAllLoadersToDisappear(page);
+  await test.step('Seed activity on a table the user owns', async () => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
 
-  await waitForLandingPageWidget(page, widgetKey);
+    try {
+      // Owner first: `my-feed` is scoped to assets the viewer owns, so an
+      // event on an unowned table never reaches the card.
+      await activitySeedTable.setOwner(apiContext, {
+        id: testUser.responseData.id,
+        type: 'user',
+      });
+      await insertActivityEventForTest(
+        apiContext,
+        activitySeedTable,
+        activitySummary
+      );
+    } finally {
+      await afterAction();
+    }
 
-  await test.step('Test widget header and navigation', async () => {
-    await waitForAllLoadersToDisappear(page);
-    await verifyWidgetHeaderNavigation(
-      page,
-      widgetKey,
-      'Activity Feed',
-      `/users/${testUser.responseData.name}/activity_feed/all`
-    );
-  });
-
-  await test.step('Test widget filters', async () => {
-    await waitForAllLoadersToDisappear(page);
-    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-    await verifyActivityFeedFilters(page, widgetKey);
-  });
-
-  await test.step('Test widget footer navigation', async () => {
-    await waitForAllLoadersToDisappear(page);
-    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-    await verifyWidgetFooterViewMore(page, {
-      widgetKey,
-      link: `/users/${testUser.responseData.name}/activity_feed/all`,
-      requireViewMore: true,
-    });
-
+    // The card read the feed when beforeEach landed; load it again so it
+    // reads the seeded event.
     await redirectToHomePage(page);
   });
 
-  await test.step('Test widget customization', async () => {
-    await waitForAllLoadersToDisappear(page);
-    await removeAndVerifyWidget(page, widgetKey, persona.responseData.name);
-    await addAndVerifyWidget(page, widgetKey, persona.responseData.name);
-  });
-});
-
-test('Data Assets Widget', async ({ page, persona }) => {
-  test.slow(true);
-
-  const widgetKey = 'KnowledgePanel.DataAssets';
-
-  await waitForAllLoadersToDisappear(page);
-
   await waitForLandingPageWidget(page, widgetKey);
 
-  await test.step('Test widget header and navigation', async () => {
+  await test.step('Test widget title and navigation', async () => {
     await waitForAllLoadersToDisappear(page);
-    await verifyWidgetHeaderNavigation(
+    await verifyWidgetTitleAndNavigation(
       page,
       widgetKey,
-      'Data Assets',
-      '/explore'
+      'Team Activity',
+      `/users/${testUser.responseData.name}/activity_feed`
     );
   });
 
-  await test.step('Test widget displays entities and navigation', async () => {
-    await waitForAllLoadersToDisappear(page);
-    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-    // Data Assets widget needs special handling for multiple search indexes
-    const searchIndex = SearchIndex.DATA_ASSET;
+  await test.step('Test widget displays activity', async () => {
+    const widget = await waitForLandingPageWidget(page, widgetKey);
 
-    await verifyWidgetEntityNavigation(page, {
-      widgetKey,
-      entitySelector: '[data-testid^="data-asset-service-"]',
-      urlPattern: '/explore',
-      verifyElement: '[data-testid="explore-page"]',
-      apiResponseUrl: '/api/v1/search/query',
-      searchQuery: searchIndex,
-    });
-  });
-
-  await test.step('Test widget footer navigation', async () => {
-    await waitForAllLoadersToDisappear(page);
-    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-    await verifyWidgetFooterViewMore(page, {
-      widgetKey,
-      link: 'explore',
-    });
-
-    await redirectToHomePage(page);
-  });
-
-  await test.step('Test widget customization', async () => {
-    await waitForAllLoadersToDisappear(page);
-    await removeAndVerifyWidget(page, widgetKey, persona.responseData.name);
-    await addAndVerifyWidget(page, widgetKey, persona.responseData.name);
-  });
-});
-
-test('My Data Widget', async ({ page, persona, testUser }) => {
-  test.slow(true);
-
-  const widgetKey = 'KnowledgePanel.MyData';
-
-  await waitForAllLoadersToDisappear(page);
-
-  await waitForLandingPageWidget(page, widgetKey);
-
-  await test.step('Test widget header and navigation', async () => {
-    await waitForAllLoadersToDisappear(page);
-    await verifyWidgetHeaderNavigation(
-      page,
-      widgetKey,
-      'My Data',
-      `/users/${testUser.responseData.name}/mydata`
-    );
-  });
-
-  await test.step('Test widget filters', async () => {
-    await waitForAllLoadersToDisappear(page);
-    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-    await verifyDataFilters(page, widgetKey, 'dataAsset');
-  });
-
-  await test.step('Test widget displays entities and navigation', async () => {
-    await waitForAllLoadersToDisappear(page);
-    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-    await verifyWidgetEntityNavigation(page, {
-      widgetKey,
-      entitySelector: '[data-testid^="My-Data-"]',
-      urlPattern: '/', // My Data can navigate to various entity types
-      apiResponseUrl: '/api/v1/search/query',
-      searchQuery: `index=${SearchIndex.DATA_ASSET}`,
-    });
-  });
-
-  await test.step('Test widget footer navigation', async () => {
-    await waitForAllLoadersToDisappear(page);
-    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-    // My Data footer navigates to explore with owner filter
-    await verifyWidgetFooterViewMore(page, {
-      widgetKey,
-      link: 'explore',
-    });
-
-    await redirectToHomePage(page);
+    // Pinned to the seeded table rather than to a non-empty list: the feed
+    // holds whatever else the user's assets saw, so a row count alone would
+    // pass on somebody else's activity.
+    await expect(
+      widget
+        .getByTestId('team-activity-rows')
+        .getByText(activitySeedTable.entityResponseData.name)
+    ).toBeVisible();
   });
 
   await test.step('Test widget customization', async () => {
@@ -424,23 +333,14 @@ test('KPI Widget', async ({ page, persona, kpiIds }) => {
 
   await waitForLandingPageWidget(page, widgetKey);
 
-  await test.step('Test widget header and navigation', async () => {
+  await test.step('Test widget title and navigation', async () => {
     await waitForAllLoadersToDisappear(page);
-    await verifyWidgetHeaderNavigation(
+    await verifyWidgetTitleAndNavigation(
       page,
       widgetKey,
-      'KPI',
+      'Key Performance Indicators',
       '/data-insights/kpi'
     );
-  });
-
-  await test.step('Test widget footer navigation', async () => {
-    await waitForAllLoadersToDisappear(page);
-    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-    await verifyWidgetFooterViewMore(page, {
-      widgetKey,
-      link: 'data-insights/kpi',
-    });
   });
 
   await test.step('Test widget loads KPI data correctly', async () => {
@@ -482,138 +382,51 @@ test('KPI Widget', async ({ page, persona, kpiIds }) => {
     // Wait for skeleton loader to disappear
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
-    // Check if the KPI widget content is visible
-    const kpiWidgetContent = widget.locator('[data-testid="kpi-widget"]');
+    // The card lists one progress row per KPI rather than plotting a single
+    // chart, so the KPI having a row of its own is what proves it was read.
+    await expect(widget.getByTestId('kpi-rows')).toBeVisible();
 
-    await expect(kpiWidgetContent).toBeVisible();
+    const kpiRow = widget.getByTestId(`kpi-${kpi.id}`);
 
-    const kpiChart = widget.getByTestId('kpi-widget-chart');
-    await expect(kpiChart).toBeVisible();
-    // ECharts labels its root `role="img"` with `<chart title>. <series names>`,
-    // so the KPI being named there proves it was plotted (axis and grid lines
-    // are also svg paths, which makes a path count vacuous).
-    await expect(kpiChart.getByRole('img', { name: kpi.name })).toBeVisible();
+    await expect(kpiRow).toBeVisible();
+    // The row names the KPI the way a reader set it up: its display name.
+    await expect(kpiRow).toContainText(kpi.displayName ?? kpi.name);
   });
 
-  await test.step('Test widget customization', async () => {
-    await waitForAllLoadersToDisappear(page);
-    await removeAndVerifyWidget(page, widgetKey, persona.responseData.name);
-    await addAndVerifyWidget(page, widgetKey, persona.responseData.name);
-  });
-});
-
-test('Total Data Assets Widget', async ({ page, persona }) => {
-  test.slow(true);
-
-  const widgetKey = 'KnowledgePanel.TotalAssets';
-
-  // Wait for the widgets data to appear
-  await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-
-  await waitForLandingPageWidget(page, widgetKey);
-
-  await test.step('Test widget header and navigation', async () => {
-    await waitForAllLoadersToDisappear(page);
-    // The tab-less /data-insights is not a landable route — it only renders via
-    // an in-page redirect. Assert the resolved tab plus the rendered container,
-    // so a widget pointing at the bare route (or a page stuck on its loader)
-    // fails here instead of passing a substring check.
-    await verifyWidgetHeaderNavigation(
+  // The range is the window each KPI's results are read over, so switching it
+  // has to re-read them over the new span rather than relabel the old one.
+  await test.step('Test widget range filter re-reads the window', async () => {
+    const widget = await waitForLandingPageWidget(page, widgetKey);
+    const ninetyDayResults = waitForResponseWithStatus(
       page,
-      widgetKey,
-      'Total Data Assets',
-      '/data-insights/data-assets',
-      'data-insight-container'
+      (response) => {
+        const url = new URL(response.url());
+
+        return (
+          response.request().method() === 'GET' &&
+          url.pathname ===
+            `/api/v1/kpi/${encodeURIComponent(
+              kpi.fullyQualifiedName
+            )}/kpiResult` &&
+          Number(url.searchParams.get('endTs')) -
+            Number(url.searchParams.get('startTs')) ===
+            90 * 24 * 60 * 60 * 1000
+        );
+      },
+      200
     );
-  });
 
-  await test.step('Test widget filters', async () => {
-    await waitForAllLoadersToDisappear(page);
-    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-    await verifyTotalDataAssetsFilters(page, widgetKey);
-  });
+    await selectTopicCardFilterOption(page, widget, 'kpi-window-filter', '90');
+    await ninetyDayResults;
 
-  await test.step('Test widget footer navigation', async () => {
-    await waitForAllLoadersToDisappear(page);
-    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-    await verifyWidgetFooterViewMore(page, {
-      widgetKey,
-      link: 'data-insights',
-    });
-
-    await redirectToHomePage(page);
+    await expect(widget.getByTestId('kpi-window-filter')).toContainText(
+      'Last 90 days'
+    );
+    await expect(widget.getByTestId(`kpi-${kpi.id}`)).toBeVisible();
   });
 
   await test.step('Test widget customization', async () => {
     await waitForAllLoadersToDisappear(page);
-    await removeAndVerifyWidget(page, widgetKey, persona.responseData.name);
-    await addAndVerifyWidget(page, widgetKey, persona.responseData.name);
-  });
-});
-
-test('Following Assets Widget', async ({ page, persona, testUser }) => {
-  test.slow(true);
-
-  await testDomain.visitEntityPage(page);
-  await waitForAllLoadersToDisappear(page);
-
-  await followEntity(page, testDomain.endpoint);
-
-  await redirectToHomePage(page);
-  // wait for the page loader to disappear
-  await waitForAllLoadersToDisappear(page);
-
-  const widgetKey = 'KnowledgePanel.Following';
-
-  // Wait for the widgets data to appear
-  await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-
-  await waitForLandingPageWidget(page, widgetKey);
-
-  await test.step('Test widget header and navigation', async () => {
-    await waitForAllLoadersToDisappear(page);
-    await verifyWidgetHeaderNavigation(
-      page,
-      widgetKey,
-      'Following',
-      `/users/${testUser.responseData.name}/following`
-    );
-  });
-
-  await test.step('Test widget filters', async () => {
-    await waitForAllLoadersToDisappear(page);
-    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-    await verifyDataFilters(page, widgetKey, 'all');
-  });
-
-  await test.step('Test widget displays followed entities', async () => {
-    await waitForAllLoadersToDisappear(page);
-    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-    // Verify that followed entities appear in the widget
-    await verifyWidgetEntityNavigation(page, {
-      widgetKey,
-      entitySelector: '[data-testid^="Following-"]',
-      urlPattern: '/', // Following can navigate to various entity types
-      apiResponseUrl: '/api/v1/search/query',
-      searchQuery: `index=${SearchIndex.ALL}`,
-    });
-  });
-
-  await test.step('Test widget footer navigation', async () => {
-    await waitForAllLoadersToDisappear(page);
-    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-    // Following footer navigates to explore with following filter
-    await verifyWidgetFooterViewMore(page, {
-      widgetKey,
-      link: 'explore',
-    });
-
-    await redirectToHomePage(page);
-  });
-
-  await test.step('Test widget customization', async () => {
-    await waitForAllLoadersToDisappear(page);
-    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
     await removeAndVerifyWidget(page, widgetKey, persona.responseData.name);
     await addAndVerifyWidget(page, widgetKey, persona.responseData.name);
   });
@@ -623,129 +436,31 @@ test('Domains Widget', async ({ page, persona }) => {
   test.slow(true);
 
   const widgetKey = 'KnowledgePanel.Domains';
-  const widget = page.getByTestId(widgetKey);
 
   await waitForAllLoadersToDisappear(page);
 
-  await expect(widget).not.toBeVisible();
+  // Domains is part of the default layout now, so the flow is the reverse of
+  // what it was: the card is already there, and what has to work is taking it
+  // out of the persona layout and putting it back.
+  await waitForLandingPageWidget(page, widgetKey);
 
-  await test.step('Add widget', async () => {
+  await test.step('Test widget title and navigation', async () => {
     await waitForAllLoadersToDisappear(page);
-    await addAndVerifyWidget(page, widgetKey, persona.responseData.name);
+    await verifyWidgetTitleAndNavigation(page, widgetKey, 'Domains', '/domain');
   });
 
-  await test.step('Test widget header and navigation', async () => {
+  await test.step('Test widget displays domains', async () => {
     await waitForAllLoadersToDisappear(page);
-    await verifyWidgetHeaderNavigation(page, widgetKey, 'Domains', '/domain');
+    const widget = await waitForLandingPageWidget(page, widgetKey);
+
+    await expect(widget.getByTestId('domain-rows')).toBeVisible();
   });
 
-  await test.step('Test widget filters', async () => {
-    await waitForAllLoadersToDisappear(page);
-    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-    await verifyDomainsFilters(page, widgetKey);
-  });
-
-  await test.step('Test widget displays entities and navigation', async () => {
-    await waitForAllLoadersToDisappear(page);
-    await verifyWidgetEntityNavigation(page, {
-      widgetKey,
-      entitySelector: '[data-testid^="domain-card-"]',
-      urlPattern: '/domain',
-      apiResponseUrl: '/api/v1/search/query',
-      searchQuery: `index=${SearchIndex.DOMAIN}`,
-    });
-  });
-
-  await test.step('Test widget footer navigation', async () => {
-    await waitForAllLoadersToDisappear(page);
-    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-    await verifyWidgetFooterViewMore(page, {
-      widgetKey,
-      link: 'domain',
-    });
-  });
-
-  await test.step('Remove widget', async () => {
+  await test.step('Test widget customization', async () => {
     await redirectToHomePage(page);
     await waitForAllLoadersToDisappear(page);
     await removeAndVerifyWidget(page, widgetKey, persona.responseData.name);
-  });
-});
-
-test('My Tasks Widget', async ({ page, persona, testUser }) => {
-  test.slow(true);
-
-  await test.step('Create a task', async () => {
-    const { apiContext, afterAction } = await getApiContext(page);
-    const glossary1 = EntityDataClass.glossary1;
-
-    // Use new Task API endpoint
-    await apiContext.post('/api/v1/tasks', {
-      data: {
-        name: `My Tasks Widget Test - ${Date.now()}`,
-        about: `<#E::glossary::${glossary1.responseData.fullyQualifiedName}>`,
-        type: 'DescriptionUpdate',
-        category: 'MetadataUpdate',
-        assignees: [testUser.responseData.name],
-        payload: {
-          suggestedValue: 'Test task description for My Tasks widget test',
-          currentValue: '',
-          field: 'description',
-        },
-      },
-    });
-
-    await afterAction();
-  });
-
-  // Navigate back to home to test the widget
-  await redirectToHomePage(page);
-  await waitForAllLoadersToDisappear(page);
-
-  const widgetKey = 'KnowledgePanel.MyTask';
-  const widget = page.getByTestId(widgetKey);
-
-  await expect(widget).not.toBeVisible();
-
-  await test.step('Add widget', async () => {
-    await waitForAllLoadersToDisappear(page);
     await addAndVerifyWidget(page, widgetKey, persona.responseData.name);
-  });
-
-  await test.step('Test widget header and navigation', async () => {
-    await waitForAllLoadersToDisappear(page);
-    await verifyWidgetHeaderNavigation(
-      page,
-      widgetKey,
-      'My Tasks',
-      `/users/${testUser.responseData.name}/task`
-    );
-  });
-
-  await test.step('Test widget filters', async () => {
-    await waitForAllLoadersToDisappear(page);
-    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-    await verifyTaskFilters(page, widgetKey);
-  });
-
-  await test.step('Test widget displays entities and navigation', async () => {
-    await waitForAllLoadersToDisappear(page);
-    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-    await verifyWidgetEntityNavigation(page, {
-      widgetKey,
-      entitySelector:
-        '[data-testid="task-feed-card"] [data-testid="redirect-task-button-link"]',
-      urlPattern: '/glossary', // Tasks can navigate to various entity detail pages
-      apiResponseUrl: '/api/v1/tasks',
-      searchQuery: 'view=visible',
-      emptyStateTestId: 'my-task-empty-state', // Custom empty state test ID for MyTaskWidget
-    });
-  });
-
-  await test.step('Remove widget', async () => {
-    await redirectToHomePage(page);
-    await waitForAllLoadersToDisappear(page);
-    await removeAndVerifyWidget(page, widgetKey, persona.responseData.name);
   });
 });
 
@@ -753,20 +468,16 @@ test('Data Products Widget', async ({ page, persona }) => {
   test.slow(true);
 
   const widgetKey = 'KnowledgePanel.DataProducts';
-  const widget = page.getByTestId(widgetKey);
 
   await waitForAllLoadersToDisappear(page);
 
-  await expect(widget).not.toBeVisible();
+  // Default-layout widget, same as Domains — present first, removed and
+  // re-added after.
+  await waitForLandingPageWidget(page, widgetKey);
 
-  await test.step('Add widget', async () => {
+  await test.step('Test widget title and navigation', async () => {
     await waitForAllLoadersToDisappear(page);
-    await addAndVerifyWidget(page, widgetKey, persona.responseData.name);
-  });
-
-  await test.step('Test widget header and navigation', async () => {
-    await waitForAllLoadersToDisappear(page);
-    await verifyWidgetHeaderNavigation(
+    await verifyWidgetTitleAndNavigation(
       page,
       widgetKey,
       'Data Products',
@@ -774,36 +485,188 @@ test('Data Products Widget', async ({ page, persona }) => {
     );
   });
 
-  await test.step('Test widget filters', async () => {
+  await test.step('Test widget sort filter', async () => {
     await waitForAllLoadersToDisappear(page);
-    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
     await verifyDataProductsFilters(page, widgetKey);
   });
 
-  await test.step('Test widget displays entities and navigation', async () => {
+  await test.step('Test widget displays data products', async () => {
     await waitForAllLoadersToDisappear(page);
-    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-    await verifyWidgetEntityNavigation(page, {
-      widgetKey,
-      entitySelector: '[data-testid^="data-product-card-"]',
-      urlPattern: '/dataProduct',
-      apiResponseUrl: '/api/v1/search/query',
-      searchQuery: `index=${SearchIndex.DATA_PRODUCT}`,
-    });
+    const widget = await waitForLandingPageWidget(page, widgetKey);
+
+    await expect(widget.getByTestId('data-product-rows')).toBeVisible();
   });
 
-  await test.step('Test widget footer navigation', async () => {
-    await waitForAllLoadersToDisappear(page);
-    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-    await verifyWidgetFooterViewMore(page, {
-      widgetKey,
-      link: '/dataProduct',
-    });
-  });
-
-  await test.step('Remove widget', async () => {
+  await test.step('Test widget customization', async () => {
     await redirectToHomePage(page);
     await waitForAllLoadersToDisappear(page);
     await removeAndVerifyWidget(page, widgetKey, persona.responseData.name);
+    await addAndVerifyWidget(page, widgetKey, persona.responseData.name);
+  });
+});
+
+// Ported from Collate's `LandingPageWidgets.spec.ts`: both cards moved into OSS
+// with the landing-page migration, so their lifecycle belongs beside the other
+// default-layout widgets rather than in a downstream suite.
+test('Context Center Widget', async ({ page, persona }) => {
+  test.slow(true);
+
+  // The card is Context Center; the key is the Knowledge Center one it kept.
+  const widgetKey = 'KnowledgePanel.KnowledgeCenter';
+
+  await waitForAllLoadersToDisappear(page);
+  await waitForLandingPageWidget(page, widgetKey);
+
+  await test.step('Test widget customization', async () => {
+    await redirectToHomePage(page);
+    await waitForAllLoadersToDisappear(page);
+    await removeAndVerifyWidget(page, widgetKey, persona.responseData.name);
+    await addAndVerifyWidget(page, widgetKey, persona.responseData.name);
+  });
+});
+
+test('Data Quality Widget', async ({ browser, page, persona, testUser }) => {
+  test.slow(true);
+
+  const widgetKey = 'KnowledgePanel.DataQuality';
+
+  // The card only lists failing tests, so the test seeds one: a table the
+  // user owns, a test case on it, and a failed result.
+  const testCase =
+    await test.step('Seed a failing test the user owns', async () => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+
+      try {
+        await dataQualitySeedTable.setOwner(apiContext, {
+          id: testUser.responseData.id,
+          type: 'user',
+        });
+        const created = await dataQualitySeedTable.createTestCase(apiContext);
+        await dataQualitySeedTable.addTestCaseResult(
+          apiContext,
+          created.fullyQualifiedName ?? '',
+          {
+            result: 'Failed (landing page widget fixture)',
+            testCaseStatus: 'Failed',
+            timestamp: Date.now(),
+          }
+        );
+
+        // The card reads the search index, which lags the write. Gate on the
+        // exact query "My data" sends so the first UI read is already final.
+        await expect
+          .poll(
+            async () => {
+              const response = await apiContext.get(
+                '/api/v1/dataQuality/testCases/search/list',
+                {
+                  params: {
+                    includeAllTests: true,
+                    limit: 50,
+                    owner: testUser.responseData.name,
+                    q: '*',
+                    testCaseStatus: 'Failed',
+                  },
+                }
+              );
+              const body = await okJson<{ data: { id: string }[] }>(
+                response,
+                'Owned failing tests'
+              );
+
+              return body.data.map((item) => item.id);
+            },
+            { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }
+          )
+          .toContain(created.id);
+
+        return created as typeof created & { id: string; name: string };
+      } finally {
+        await afterAction();
+      }
+    });
+
+  const isFailedTestsResponse = (response: Response) => {
+    const url = new URL(response.url());
+
+    return (
+      response.request().method() === 'GET' &&
+      url.pathname === '/api/v1/dataQuality/testCases/search/list' &&
+      url.searchParams.get('testCaseStatus') === 'Failed'
+    );
+  };
+
+  await redirectToHomePage(page);
+  const widget = await waitForLandingPageWidget(page, widgetKey);
+
+  await test.step('Scope to My data lists the seeded failure', async () => {
+    const mineResponse = waitForResponseWithStatus(
+      page,
+      (response) =>
+        isFailedTestsResponse(response) &&
+        new URL(response.url()).searchParams.get('owner') ===
+          testUser.responseData.name,
+      200
+    );
+
+    await selectTopicCardFilterOption(page, widget, 'dq-scope-filter', 'mine');
+    await mineResponse;
+
+    await expect(widget.getByTestId('dq-scope-filter')).toContainText(
+      'My Data'
+    );
+    await expect(widget.getByTestId('data-quality-rows')).toBeVisible();
+    await expect(
+      widget.getByTestId(`failed-test-${testCase.id}`)
+    ).toContainText(testCase.name);
+  });
+
+  await test.step('Widening the range refetches the 30-day window', async () => {
+    const thirtyDayResponse = waitForResponseWithStatus(
+      page,
+      (response) => {
+        const url = new URL(response.url());
+
+        return (
+          isFailedTestsResponse(response) &&
+          Number(url.searchParams.get('endTimestamp')) -
+            Number(url.searchParams.get('startTimestamp')) ===
+            30 * 24 * 60 * 60 * 1000
+        );
+      },
+      200
+    );
+
+    await selectTopicCardFilterOption(page, widget, 'dq-range-filter', '30');
+    const response = await thirtyDayResponse;
+    const url = new URL(response.url());
+
+    // Scope survives the range change, and the window ends now.
+    expect(url.searchParams.get('owner')).toBe(testUser.responseData.name);
+    expect(
+      Math.abs(Number(url.searchParams.get('endTimestamp')) - Date.now())
+    ).toBeLessThan(5 * 60 * 1000);
+
+    await expect(widget.getByTestId('dq-range-filter')).toContainText(
+      'Last 30 days'
+    );
+    await expect(
+      widget.getByTestId(`failed-test-${testCase.id}`)
+    ).toBeVisible();
+  });
+
+  await test.step('View test opens the test case page', async () => {
+    await widget.getByTestId(`dq-view-test-${testCase.id}`).click();
+
+    await expect
+      .poll(() => decodeURIComponent(new URL(page.url()).pathname))
+      .toContain(`/test-case/${testCase.fullyQualifiedName}`);
+  });
+
+  await test.step('Test widget customization', async () => {
+    await redirectToHomePage(page);
+    await waitForAllLoadersToDisappear(page);
+    await removeAndVerifyWidget(page, widgetKey, persona.responseData.name);
+    await addAndVerifyWidget(page, widgetKey, persona.responseData.name);
   });
 });
