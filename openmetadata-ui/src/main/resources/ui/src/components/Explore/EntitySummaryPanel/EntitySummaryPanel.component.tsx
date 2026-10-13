@@ -21,11 +21,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { LineageData } from '../../../components/Lineage/Lineage.interface';
+import { mockTourSummaryPanelPermission } from '../../../constants/mockTourPermission.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
@@ -151,6 +153,7 @@ export default function EntitySummaryPanel({
   const navigate = useNavigate();
   const { getEntityPermission, getEntityPermissionByFqn } =
     usePermissionProvider();
+  const { isTourPage } = useTourProvider();
   const [isPermissionLoading, setIsPermissionLoading] = useState<boolean>(true);
   const [entityPermissions, setEntityPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
@@ -348,6 +351,12 @@ export default function EntitySummaryPanel({
       return;
     }
 
+    if (isTourPage) {
+      setEntityData(entityDetails.details as EntityData);
+
+      return;
+    }
+
     setIsEntityDataLoading(true);
     try {
       const fqn = entityDetails.details.fullyQualifiedName;
@@ -423,7 +432,12 @@ export default function EntitySummaryPanel({
     } finally {
       setIsEntityDataLoading(false);
     }
-  }, [entityDetails?.details?.fullyQualifiedName, entityType, entityFetchMap]);
+  }, [
+    entityDetails?.details?.fullyQualifiedName,
+    entityType,
+    entityFetchMap,
+    isTourPage,
+  ]);
 
   const fetchEntityTypeDetail = useCallback(async () => {
     if (!entityType || entityType === EntityType.KNOWLEDGE_PAGE) {
@@ -444,7 +458,7 @@ export default function EntitySummaryPanel({
   const fetchLineageData = useCallback(async () => {
     const currentFqn = entityDetails?.details?.fullyQualifiedName;
 
-    if (!currentFqn || !entityType) {
+    if (!currentFqn || !entityType || isTourPage) {
       setIsLineageLoading(false);
       setLineageData(null);
 
@@ -483,6 +497,7 @@ export default function EntitySummaryPanel({
   }, [
     entityDetails?.details?.fullyQualifiedName,
     entityType,
+    isTourPage,
     upstreamDepth,
     downstreamDepth,
     nodesPerLayer,
@@ -777,10 +792,20 @@ export default function EntitySummaryPanel({
   }, [entityDetails, navigate]);
 
   useEffect(() => {
+    // The tour's entity is mock data with no server-side record, so it carries a view-only
+    // tour grant instead of a permission fetch.
+    if (isTourPage) {
+      setEntityPermissions(
+        mockTourSummaryPanelPermission as OperationPermission
+      );
+      setIsPermissionLoading(false);
+
+      return;
+    }
     if (id) {
       fetchResourcePermission(id);
     }
-  }, [id]);
+  }, [id, isTourPage]);
 
   // Reset activeTab to OVERVIEW when entity changes
   useEffect(() => {
@@ -1042,9 +1067,11 @@ export default function EntitySummaryPanel({
             )}
             <DataQualityTab
               entityFQN={entityDetails.details.fullyQualifiedName || ''}
-              hasViewTests={
+              // Boolean(): with neither grant this is `undefined`, which the tab's
+              // `hasViewTests = true` default would turn into a fetch.
+              hasViewTests={Boolean(
                 entityPermissions.ViewTests || entityPermissions.ViewAll
-              }
+              )}
             />
           </>
         );

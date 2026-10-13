@@ -15,7 +15,9 @@ import { MemoryRouter } from 'react-router-dom';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { mockDatasetData } from '../../constants/mockTourData.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { EntityTabs } from '../../enums/entity.enum';
 import { TableType } from '../../generated/entity/data/table';
 import { getQueriesList } from '../../rest/queryAPI';
@@ -769,6 +771,30 @@ describe('TestDetailsPageV1 component', () => {
           expect.objectContaining({ count: 7, isLoading: false })
         )
       );
+    });
+
+    it('should not request the count for the tour mock table', async () => {
+      // Persistent, not "once": the page's wrappers may call the hook first. Restored below.
+      (useTourProvider as jest.Mock).mockImplementation(() => ({
+        isTourOpen: true,
+        activeTabForTourDatasetPage: 'schema',
+        isTourPage: true,
+        tourMockDatasetData: mockDatasetData,
+      }));
+
+      try {
+        await renderOnSchemaTab();
+
+        await waitFor(() => expect(getQueriesTabProps()).not.toHaveLength(0));
+
+        expect(getQueriesList).not.toHaveBeenCalled();
+      } finally {
+        (useTourProvider as jest.Mock).mockImplementation(() => ({
+          isTourOpen: false,
+          activeTabForTourDatasetPage: 'schema',
+          isTourPage: false,
+        }));
+      }
     });
 
     it('should fall back to 0 when the count request fails', async () => {
