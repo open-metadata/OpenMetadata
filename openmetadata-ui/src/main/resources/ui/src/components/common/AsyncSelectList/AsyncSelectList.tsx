@@ -240,19 +240,18 @@ const AsyncSelectList: FC<AsyncSelectListProps> = ({
     const tagDisplayName = getTagDisplay(item.id);
     const tagLabel = getEntityName(tag) || tagDisplayName || tag.tagFQN;
 
-    // Neither a derived nor a propagated label is the user's own: a propagated one is inherited
-    // from a parent asset, so offering the delete here would remove nothing server-side and the
-    // label would return on the next read.
-    const labelType = (selectedTag?.data as TagLabel)?.labelType;
-    const isDerived = labelType === LabelType.Derived;
-    const isSystemApplied = isDerived || labelType === LabelType.Propagated;
-    const systemTagTooltipKey = isDerived
-      ? 'message.derived-tag-warning'
-      : 'message.propagated-tag-warning';
+    // A derived label is not the asset's own: a classification tag is implied by one of its
+    // glossary terms, and a glossary term is inherited from the parent asset. Removing it here would
+    // change nothing server-side, and the label would return on the next read.
+    const isDerived =
+      (selectedTag?.data as TagLabel)?.labelType === LabelType.Derived;
     const isGlossaryTerm =
       (selectedTag?.data as TagLabel)?.source === TagSource.Glossary ||
       (selectedTag?.data as { entityType?: EntityType })?.entityType ===
         EntityType.GLOSSARY_TERM;
+    const derivedTagTooltip = isGlossaryTerm
+      ? t('message.inherited-tag-warning')
+      : t('message.derived-tag-warning');
     const TagComponent = isGlossaryTerm ? GlossaryTag : ClassificationTag;
 
     return (
@@ -264,9 +263,9 @@ const AsyncSelectList: FC<AsyncSelectListProps> = ({
         key={item.id}
         label={tagLabel}
         size="sm"
-        tooltip={isSystemApplied ? t(systemTagTooltipKey) : undefined}
+        tooltip={isDerived ? derivedTagTooltip : undefined}
         onDelete={
-          isSystemApplied
+          isDerived
             ? undefined
             : (e) => {
                 e.stopPropagation();

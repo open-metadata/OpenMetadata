@@ -6821,8 +6821,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     if (nullOrEmpty(tagLabels)) {
       return;
     }
-    // Filter out system-generated tags (DERIVED, PROPAGATED) — they are projections, not the
-    // entity's own labels, so they must never reach tag_usage.
+    // Filter out DERIVED tags as they are system-generated
     List<TagLabel> nonDerivedTags =
         tagLabels.stream()
             .filter(tag -> !TagLabelUtil.isSystemGenerated(tag))
@@ -6841,8 +6840,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     if (nullOrEmpty(tagLabels)) {
       return;
     }
-    // Filter out system-generated tags (DERIVED, PROPAGATED) — they are projections, not the
-    // entity's own labels, so they must never reach tag_usage.
+    // Filter out DERIVED tags as they are system-generated
     List<TagLabel> nonDerivedTags =
         tagLabels.stream()
             .filter(tag -> !TagLabelUtil.isSystemGenerated(tag))
@@ -8944,17 +8942,26 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       return;
     }
     List<TagLabel> inherited = inheritedTagLabels(parent.getTags());
-    if (inherited.isEmpty()) {
-      return;
+    if (!inherited.isEmpty()) {
+      entity.setTags(mergeInheritedTags(entity.getTags(), inherited));
     }
-    List<TagLabel> merged = new ArrayList<>(listOrEmpty(entity.getTags()));
+  }
+
+  /**
+   * Adds labels inherited from a parent to an asset's own. Shared by entity inheritance and by the
+   * glossary terms a field inherits from its entity ({@code Entity#populateEntityFieldTags}), so the
+   * two follow the same rules.
+   */
+  public static List<TagLabel> mergeInheritedTags(
+      List<TagLabel> ownTags, List<TagLabel> inherited) {
+    List<TagLabel> merged = new ArrayList<>(listOrEmpty(ownTags));
     Set<String> existing =
         merged.stream().map(TagLabel::getTagFQN).collect(Collectors.toCollection(HashSet::new));
     Set<String> ownParents =
         merged.stream()
             .map(tag -> FullyQualifiedName.getParentFQN(tag.getTagFQN()))
             .collect(Collectors.toSet());
-    for (TagLabel tag : inherited) {
+    for (TagLabel tag : listOrEmpty(inherited)) {
       // The asset's own label wins; an inherited duplicate would otherwise shadow it as read-only.
       if (existing.contains(tag.getTagFQN()) || conflictsWithOwnTag(tag, ownParents)) {
         continue;
@@ -8962,7 +8969,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       existing.add(tag.getTagFQN());
       merged.add(tag);
     }
-    entity.setTags(merged);
+    return merged;
   }
 
   /**
@@ -8985,7 +8992,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   /** Copies so the parent's own labels are not mutated, and marks the copies as derived. */
-  private static List<TagLabel> inheritedTagLabels(List<TagLabel> tags) {
+  public static List<TagLabel> inheritedTagLabels(List<TagLabel> tags) {
     if (nullOrEmpty(tags)) {
       return Collections.emptyList();
     }

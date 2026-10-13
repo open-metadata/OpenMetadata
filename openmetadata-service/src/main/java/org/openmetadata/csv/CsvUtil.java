@@ -309,9 +309,10 @@ public final class CsvUtil {
                     tagLabel ->
                         tagLabel.getSource().equals(TagLabel.TagSource.GLOSSARY)
                             && !tagLabel.getTagFQN().split("\\.")[0].equals("Tier")
-                            // A projected or recomputed label is not the entity's own. Exporting it
-                            // and re-importing would store it as MANUAL in tag_usage, pinning a
-                            // label that should vanish when its source is removed.
+                            // A DERIVED label -- inherited from a parent or implied by a term -- is
+                            // not the entity's own. Exporting it and re-importing would store it as
+                            // MANUAL in tag_usage, pinning a label that should vanish with its
+                            // source.
                             && !TagLabelUtil.isSystemGenerated(tagLabel))
                 .map(TagLabel::getTagFQN)
                 .collect(Collectors.joining(FIELD_SEPARATOR)));

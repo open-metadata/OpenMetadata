@@ -276,7 +276,7 @@ class TestCaseResolutionStatusRepositoryTest {
       entity
           .when(() -> Entity.getEntity(any(EntityReference.class), anyString(), any()))
           .thenReturn(table);
-      entity.when(() -> Entity.propagatedParentTags(any())).thenCallRealMethod();
+      entity.when(() -> Entity.inheritedParentTerms(any())).thenCallRealMethod();
 
       Map<String, Object> listedSource =
           new HashMap<>(new TestCaseResolutionStatusIndex(incident).buildSearchIndexDoc());

@@ -2232,14 +2232,14 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   /**
-   * The label shape the child-doc cascade matches on. Only the FQN is compared, but the labelType
-   * has to read as system-applied so the delete script leaves a child's own manual label alone.
+   * The label the child-doc cascade removes. The delete script matches on the FQN and only touches
+   * the child's DERIVED copies, so a child's own label of the same term is left alone.
    */
   private static TagLabel removedLabel(GlossaryTerm term) {
     return new TagLabel()
         .withTagFQN(term.getFullyQualifiedName())
         .withSource(TagSource.GLOSSARY)
-        .withLabelType(TagLabel.LabelType.PROPAGATED);
+        .withLabelType(TagLabel.LabelType.DERIVED);
   }
 
   /**

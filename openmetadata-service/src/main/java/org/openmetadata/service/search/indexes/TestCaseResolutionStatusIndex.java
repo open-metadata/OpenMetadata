@@ -1,9 +1,7 @@
 package org.openmetadata.service.search.indexes;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,8 +14,8 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
-import org.openmetadata.service.util.EntityUtil;
 
 public record TestCaseResolutionStatusIndex(TestCaseResolutionStatus testCaseResolutionStatus)
     implements SearchIndex {
@@ -84,18 +82,17 @@ public record TestCaseResolutionStatusIndex(TestCaseResolutionStatus testCaseRes
   }
 
   /**
-   * A glossary term on the table is projected onto its children at read time and is never stored, so
+   * A glossary term on the table is inherited by its children at read time and is never stored, so
    * nothing on the test case itself can reproduce it here. Deriving it while the document is built
    * keeps a rebuild — a reindex, or an incident raised after the table was tagged — from writing the
    * term back out of existence, and leaves the cascade responsible only for documents that already
    * exist.
    */
   private List<TagLabel> tagsWithParentTerms(TestCase testCase, Table parentTable) {
-    List<TagLabel> tags = new ArrayList<>(listOrEmpty(testCase.getTags()));
-    if (parentTable != null) {
-      EntityUtil.mergeTags(tags, Entity.propagatedParentTags(parentTable.getTags()));
-    }
-    return tags;
+    return parentTable == null
+        ? testCase.getTags()
+        : EntityRepository.mergeInheritedTags(
+            testCase.getTags(), Entity.inheritedParentTerms(parentTable.getTags()));
   }
 
   /**

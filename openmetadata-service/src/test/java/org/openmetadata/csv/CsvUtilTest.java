@@ -175,7 +175,7 @@ public class CsvUtilTest {
                 .withSource(TagLabel.TagSource.CLASSIFICATION)
                 .withLabelType(TagLabel.LabelType.DERIVED),
             new TagLabel()
-                .withTagFQN("Ignore.Propagated")
+                .withTagFQN("Lineage.Propagated")
                 .withSource(TagLabel.TagSource.CLASSIFICATION)
                 .withLabelType(TagLabel.LabelType.PROPAGATED),
             new TagLabel()
@@ -183,7 +183,7 @@ public class CsvUtilTest {
                 .withSource(TagLabel.TagSource.GLOSSARY)
                 .withLabelType(TagLabel.LabelType.DERIVED),
             new TagLabel()
-                .withTagFQN("Glossary.IgnorePropagated")
+                .withTagFQN("Glossary.Lineage")
                 .withSource(TagLabel.TagSource.GLOSSARY)
                 .withLabelType(TagLabel.LabelType.PROPAGATED));
 
@@ -204,10 +204,12 @@ public class CsvUtilTest {
     CsvUtil.addReviewers(
         csvRecord, List.of(new EntityReference().withType("user").withName("bob")));
 
+    // DERIVED labels (implied by a term, or inherited from a parent) stay out of the export; labels
+    // propagated along lineage are the asset's own and go in.
     assertEquals(
         List.of(
-            "PersonalData.Personal",
-            "Glossary.Term",
+            "PersonalData.Personal;Lineage.Propagated",
+            "Glossary.Term;Glossary.Lineage",
             "Tier.Tier1",
             "user:alice;team:engineering",
             "finance;marketing",

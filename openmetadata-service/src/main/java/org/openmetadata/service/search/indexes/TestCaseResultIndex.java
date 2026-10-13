@@ -1,9 +1,7 @@
 package org.openmetadata.service.search.indexes;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,10 +16,10 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.DataQualityDimensionRepository;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.search.SearchIndexUtils;
-import org.openmetadata.service.util.EntityUtil;
 
 public record TestCaseResultIndex(TestCaseResult testCaseResult) implements SearchIndex {
   private static final Set<String> excludeFields =
@@ -90,7 +88,7 @@ public record TestCaseResultIndex(TestCaseResult testCaseResult) implements Sear
     }
 
     Table parentTable = resolveParentTable(testCase);
-    projectParentTerms(testCase, parentTable);
+    inheritParentTerms(testCase, parentTable);
     Map<String, Object> testCaseMap = JsonUtils.getMap(testCase);
     esDoc.put("testSuites", testCaseMap.get("testSuites"));
     esDoc.put("testSuite", testCaseMap.get("testSuite"));
@@ -110,24 +108,21 @@ public record TestCaseResultIndex(TestCaseResult testCaseResult) implements Sear
   }
 
   /**
-   * A glossary term on the table is projected onto its children at read time and is never stored, so
+   * A glossary term on the table is inherited by its children at read time and is never stored, so
    * nothing on the test case itself can reproduce it here. Without this the embedded copy depends
    * entirely on the cascade having patched the document: any later rebuild — a reindex, or simply a
    * result ingested after the table was tagged — writes the term back out of existence. Deriving it
    * while the document is built makes a rebuild reproduce the same value the cascade would have
    * written, which leaves the cascade responsible only for documents that already exist.
    */
-  private void projectParentTerms(TestCase testCase, Table parentTable) {
+  private void inheritParentTerms(TestCase testCase, Table parentTable) {
     if (parentTable == null) {
       return;
     }
-    List<TagLabel> propagated = Entity.propagatedParentTags(parentTable.getTags());
-    if (propagated.isEmpty()) {
-      return;
+    List<TagLabel> inherited = Entity.inheritedParentTerms(parentTable.getTags());
+    if (!inherited.isEmpty()) {
+      testCase.setTags(EntityRepository.mergeInheritedTags(testCase.getTags(), inherited));
     }
-    List<TagLabel> merged = new ArrayList<>(listOrEmpty(testCase.getTags()));
-    EntityUtil.mergeTags(merged, propagated);
-    testCase.setTags(merged);
   }
 
   private Table resolveParentTable(TestCase testCase) {

@@ -331,10 +331,10 @@ public class TagLabelUtil {
 
     List<TagLabel> updatedTagLabels = new ArrayList<>();
     EntityUtil.mergeTags(updatedTagLabels, filteredTags);
-    for (TagLabel tagLabel : tagLabels) {
-      if (tagLabel != null) {
-        EntityUtil.mergeTags(updatedTagLabels, getDerivedTags(tagLabel));
-      }
+    // A DERIVED label came from somewhere else -- a term's own tags or a parent the asset inherits
+    // from -- so only the asset's own labels imply further tags.
+    for (TagLabel tagLabel : filteredTags) {
+      EntityUtil.mergeTags(updatedTagLabels, getDerivedTags(tagLabel));
     }
     updatedTagLabels.sort(compareTagLabel);
     return updatedTagLabels;
@@ -451,8 +451,9 @@ public class TagLabelUtil {
     List<TagLabel> updatedTagLabels = new ArrayList<>();
     EntityUtil.mergeTags(updatedTagLabels, filteredTags);
 
-    for (TagLabel tagLabel : tagLabels) {
-      if (tagLabel != null && tagLabel.getSource() == TagLabel.TagSource.GLOSSARY) {
+    // Only the asset's own terms imply tags; see getTagsForValidation.
+    for (TagLabel tagLabel : filteredTags) {
+      if (tagLabel.getSource() == TagLabel.TagSource.GLOSSARY) {
         List<TagLabel> derivedTags =
             derivedTagsMap.getOrDefault(
                 FullyQualifiedName.buildHash(tagLabel.getTagFQN()), Collections.emptyList());
@@ -470,32 +471,32 @@ public class TagLabelUtil {
   }
 
   /**
-   * A label the system computes or projects, as opposed to one a user applied. These are never
-   * written to {@code tag_usage}: DERIVED is recomputed on read from the glossary term's own
-   * classification tags, and PROPAGATED is projected from a parent onto its fields by {@code
-   * Entity.populateEntityFieldTags}. Persisting either would turn a projection into a stored row that
-   * outlives whatever it was projected from — a client that reads an entity and writes it back
-   * unchanged would silently pin the label in place.
+   * A label the read path computes rather than one applied to the asset: a classification tag a
+   * glossary term implies, or a label inherited from a parent ({@code EntityRepository#inheritTags}
+   * for entities, {@code Entity#populateEntityFieldTags} for fields). These are never written to
+   * {@code tag_usage} -- a client that reads an asset and writes it back unchanged would otherwise
+   * pin a label that should vanish with its source.
+   *
+   * <p>{@code PROPAGATED} is not one of them: it marks a label propagated along lineage and stored
+   * for the asset itself, so it is persisted and removable like any applied label.
    */
   public static boolean isSystemGenerated(TagLabel tagLabel) {
-    return tagLabel != null
-        && (TagLabel.LabelType.DERIVED.equals(tagLabel.getLabelType())
-            || TagLabel.LabelType.PROPAGATED.equals(tagLabel.getLabelType()));
+    return tagLabel != null && TagLabel.LabelType.DERIVED.equals(tagLabel.getLabelType());
   }
 
   /**
-   * Mutual-exclusivity applies to the labels a user applied and the classification tags their
-   * glossary terms imply, never to projections. A field reads back its parent's glossary terms as
-   * PROPAGATED, along with the DERIVED tags those terms imply, so a GET → PUT round trip would
-   * otherwise present the parent's labels next to the field's own and reject a table that saved
-   * fine before. A DERIVED label on the list does not say which term it came from, so the implied
-   * tags are re-derived here from the user-applied terms alone.
+   * Mutual-exclusivity applies to the labels applied to the asset and the classification tags their
+   * glossary terms imply, never to DERIVED labels. A field reads back its parent's glossary terms as
+   * DERIVED, so a GET → PUT round trip would otherwise present the parent's term next to the field's
+   * own and reject a table that saved fine before. A DERIVED label does not say which term it came
+   * from, so the implied tags are re-derived here from the applied labels alone. That happens even
+   * while glossary tag propagation is off, so a write accepted then stays valid when it is back on.
    */
   public static void checkMutuallyExclusiveForUserAppliedTags(List<TagLabel> tagLabels) {
     List<TagLabel> userApplied =
         listOrEmpty(tagLabels).stream().filter(tag -> !isSystemGenerated(tag)).toList();
     checkMutuallyExclusive(
-        addDerivedTagsWithPreFetched(userApplied, batchFetchDerivedTags(userApplied)));
+        addDerivedTagsWithPreFetched(userApplied, batchFetchDerivedTags(userApplied, true)));
   }
 
   public static void checkMutuallyExclusive(List<TagLabel> tagLabels) {

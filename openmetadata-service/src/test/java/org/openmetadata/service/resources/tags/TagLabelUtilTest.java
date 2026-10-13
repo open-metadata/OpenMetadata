@@ -356,30 +356,48 @@ class TagLabelUtilTest {
   }
 
   /**
-   * A read projects the parent's glossary terms onto every column, so a plain GET/PUT round trip
-   * sends a column back carrying both its own term and the projected one. Both hang off the same
-   * glossary, so the unfiltered check pairs them up and rejects the write with a mutual-exclusivity
-   * 400 for a label the user never applied and cannot remove.
-   *
-   * <p>Only one label survives the filter, so the check never reaches the parent lookup — which is
-   * also what keeps this a unit test: {@code mutuallyExclusive} would need a live glossary.
+   * A field reads back its parent's glossary terms as DERIVED, so a plain GET/PUT round trip sends a
+   * column back carrying both its own term and the inherited one. Both hang off the same glossary,
+   * so an unfiltered check pairs them up and rejects the write with a mutual-exclusivity 400 for a
+   * label the user never applied and cannot remove.
    */
   @Test
-  void mutuallyExclusiveCheckIgnoresPropagatedAndDerivedLabels() {
+  void mutuallyExclusiveCheckIgnoresInheritedTerms() {
     List<TagLabel> roundTrippedColumnTags =
+        List.of(
+            glossaryLabel("Finance.Revenue", TagLabel.LabelType.MANUAL),
+            glossaryLabel("Finance.Cost", TagLabel.LabelType.DERIVED));
+
+    try (MockedStatic<Entity> entityMock = derivedTagsInTagUsage(Map.of());
+        MockedStatic<TagLabelUtil> utilMock =
+            mockStatic(TagLabelUtil.class, Mockito.CALLS_REAL_METHODS)) {
+      utilMock.when(() -> TagLabelUtil.mutuallyExclusive(any(TagLabel.class))).thenReturn(true);
+
+      assertDoesNotThrow(
+          () -> TagLabelUtil.checkMutuallyExclusiveForUserAppliedTags(roundTrippedColumnTags));
+    }
+  }
+
+  /**
+   * A label propagated along lineage is stored for the asset like one applied by hand, so it is
+   * checked: a column carrying a propagated {@code Finance.Cost} cannot also take {@code
+   * Finance.Revenue}.
+   */
+  @Test
+  void mutuallyExclusiveCheckCoversLineagePropagatedLabels() {
+    List<TagLabel> columnTags =
         List.of(
             glossaryLabel("Finance.Revenue", TagLabel.LabelType.MANUAL),
             glossaryLabel("Finance.Cost", TagLabel.LabelType.PROPAGATED));
 
-    try (MockedStatic<Entity> entityMock = derivedTagsInTagUsage(Map.of())) {
-      assertDoesNotThrow(
-          () -> TagLabelUtil.checkMutuallyExclusiveForUserAppliedTags(roundTrippedColumnTags));
-      assertDoesNotThrow(
-          () ->
-              TagLabelUtil.checkMutuallyExclusiveForUserAppliedTags(
-                  List.of(
-                      glossaryLabel("Finance.Revenue", TagLabel.LabelType.MANUAL),
-                      glossaryLabel("Finance.Cost", TagLabel.LabelType.DERIVED))));
+    try (MockedStatic<Entity> entityMock = derivedTagsInTagUsage(Map.of());
+        MockedStatic<TagLabelUtil> utilMock =
+            mockStatic(TagLabelUtil.class, Mockito.CALLS_REAL_METHODS)) {
+      utilMock.when(() -> TagLabelUtil.mutuallyExclusive(any(TagLabel.class))).thenReturn(true);
+
+      assertThrows(
+          IllegalArgumentException.class,
+          () -> TagLabelUtil.checkMutuallyExclusiveForUserAppliedTags(columnTags));
     }
   }
 
@@ -429,17 +447,16 @@ class TagLabelUtilTest {
   }
 
   /**
-   * A term inherited from the parent and the classification tag it implies are both projections. A
-   * GET → PUT round trip carries them back next to the column's own {@code PII.NonSensitive}, and
-   * neither may block the write. That is why the exemption covers DERIVED labels and not only
-   * PROPAGATED ones.
+   * A term inherited from the parent and the classification tag it implies are both DERIVED. A GET →
+   * PUT round trip carries them back next to the column's own {@code PII.NonSensitive}, and neither
+   * may block the write.
    */
   @Test
   void derivedTagOfAnInheritedTermDoesNotConflictWithAManualTag() {
     List<TagLabel> roundTrippedColumnTags =
         List.of(
             classificationLabel("PII.NonSensitive", TagLabel.LabelType.MANUAL),
-            glossaryLabel("Finance.Revenue", TagLabel.LabelType.PROPAGATED),
+            glossaryLabel("Finance.Revenue", TagLabel.LabelType.DERIVED),
             classificationLabel("PII.Sensitive", TagLabel.LabelType.DERIVED));
 
     try (MockedStatic<TagLabelUtil> utilMock =
@@ -448,6 +465,35 @@ class TagLabelUtilTest {
 
       assertDoesNotThrow(
           () -> TagLabelUtil.checkMutuallyExclusiveForUserAppliedTags(roundTrippedColumnTags));
+    }
+  }
+
+  /**
+   * With glossary tag propagation off the implied tags are not returned, but they are still
+   * validated: a write accepted now must not become an invalid combination when it is turned back
+   * on.
+   */
+  @Test
+  void derivedTagOfTheFieldsOwnTermConflictsEvenWithGlossaryPropagationOff() {
+    List<TagLabel> columnTags =
+        List.of(
+            glossaryLabel("Finance.Revenue", TagLabel.LabelType.MANUAL),
+            classificationLabel("PII.NonSensitive", TagLabel.LabelType.MANUAL));
+    Map<String, List<TagLabel>> revenueImpliesSensitive =
+        Map.of(
+            "Finance.Revenue",
+            List.of(classificationLabel("PII.Sensitive", TagLabel.LabelType.DERIVED)));
+
+    try (MockedStatic<Entity> entityMock = derivedTagsInTagUsage(revenueImpliesSensitive);
+        MockedStatic<SettingsCache> settings = mockStatic(SettingsCache.class);
+        MockedStatic<TagLabelUtil> utilMock =
+            mockStatic(TagLabelUtil.class, Mockito.CALLS_REAL_METHODS)) {
+      settings.when(SettingsCache::isGlossaryTagPropagationEnabled).thenReturn(false);
+      utilMock.when(() -> TagLabelUtil.mutuallyExclusive(any(TagLabel.class))).thenReturn(true);
+
+      assertThrows(
+          IllegalArgumentException.class,
+          () -> TagLabelUtil.checkMutuallyExclusiveForUserAppliedTags(columnTags));
     }
   }
 

@@ -710,14 +710,14 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   /**
-   * The label shape the child-doc cascade matches on. Only the FQN is compared, but the labelType
-   * has to read as system-applied so the delete script leaves a child's own manual label alone.
+   * The label the child-doc cascade removes. The delete script matches on the FQN and only touches
+   * the child's DERIVED copies, so a child's own label of the same term is left alone.
    */
   private static TagLabel removedLabel(Tag tag) {
     return new TagLabel()
         .withTagFQN(tag.getFullyQualifiedName())
         .withSource(TagSource.CLASSIFICATION)
-        .withLabelType(TagLabel.LabelType.PROPAGATED);
+        .withLabelType(TagLabel.LabelType.DERIVED);
   }
 
   /**

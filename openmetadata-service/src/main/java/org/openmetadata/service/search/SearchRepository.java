@@ -3513,7 +3513,7 @@ public class SearchRepository {
       case TAG_LABEL_LIST -> {
         List<TagLabel> tagLabels =
             JsonUtils.readOrConvertValues(field.getNewValue(), TagLabel.class);
-        tagLabels.forEach(t -> t.setLabelType(TagLabel.LabelType.PROPAGATED));
+        tagLabels.forEach(t -> t.setLabelType(TagLabel.LabelType.DERIVED));
         data.put("tagAdded", tagLabels);
         script.append(generateAddTagLabelListScript());
       }
@@ -3574,7 +3574,7 @@ public class SearchRepository {
       case TAG_LABEL_LIST -> {
         List<TagLabel> tagLabels =
             JsonUtils.readOrConvertValues(field.getOldValue(), TagLabel.class);
-        tagLabels.forEach(t -> t.setLabelType(TagLabel.LabelType.PROPAGATED));
+        tagLabels.forEach(t -> t.setLabelType(TagLabel.LabelType.DERIVED));
         data.put("tagDeleted", tagLabels);
         script.append(generateDeleteTagLabelListScript());
       }
@@ -3629,10 +3629,10 @@ public class SearchRepository {
       case TAG_LABEL_LIST -> {
         List<TagLabel> addedTags =
             JsonUtils.readOrConvertValues(field.getNewValue(), TagLabel.class);
-        addedTags.forEach(t -> t.setLabelType(TagLabel.LabelType.PROPAGATED));
+        addedTags.forEach(t -> t.setLabelType(TagLabel.LabelType.DERIVED));
         List<TagLabel> deletedTags =
             JsonUtils.readOrConvertValues(field.getOldValue(), TagLabel.class);
-        deletedTags.forEach(t -> t.setLabelType(TagLabel.LabelType.PROPAGATED));
+        deletedTags.forEach(t -> t.setLabelType(TagLabel.LabelType.DERIVED));
         data.put("tagAdded", addedTags);
         data.put("tagDeleted", deletedTags);
         script.append(generateUpdateTagLabelListScript());
@@ -3754,14 +3754,10 @@ public class SearchRepository {
   }
 
   /**
-   * Removes a parent's tags from a child doc, but only the labels the system itself propagated. A
-   * child that carries the same term MANUAL (a column explicitly tagged with the term the table also
-   * carries) keeps it — matching on tagFQN alone used to strip it.
-   *
-   * <p>Both system label types are removed. PROPAGATED is what the parent-to-child fan-out here
-   * stamps; DERIVED is stamped by the service-level attribute propagation and by releases before
-   * this one, so accepting it keeps those cleaned up without requiring a reindex first. Recognising
-   * only one of the two would leave the other's labels stranded on every child document.
+   * Removes a parent's tags from a child doc, but only the copies the parent-to-child cascade wrote,
+   * which it stamps {@code DERIVED}. A child that carries the same term in its own right -- applied
+   * manually, by a tool, or propagated along lineage ({@code PROPAGATED}) -- keeps it; matching on
+   * tagFQN alone used to strip it.
    *
    * <p>An absent {@code labelType} is treated as user-applied, not system-applied: {@code
    * tagLabel.json} defaults the field to {@code Manual}, so a doc missing it most likely carries a
@@ -3785,10 +3781,9 @@ public class SearchRepository {
               continue;
             }
             def existingLabelType = existingTag.labelType;
-            boolean systemApplied = existingLabelType != null
-                && (existingLabelType.equalsIgnoreCase('%2$s')
-                    || existingLabelType.equalsIgnoreCase('%3$s'));
-            if (systemApplied) {
+            boolean inherited = existingLabelType != null
+                && existingLabelType.equalsIgnoreCase('%2$s');
+            if (inherited) {
               for (int j = 0; j < params.tagDeleted.size(); j++) {
                 def removedTag = params.tagDeleted[j];
                 if (removedTag != null && existingTag.tagFQN.equalsIgnoreCase(removedTag.tagFQN)) {
@@ -3800,7 +3795,7 @@ public class SearchRepository {
           }
         }
         """,
-        tagPath, TagLabel.LabelType.PROPAGATED.value(), TagLabel.LabelType.DERIVED.value());
+        tagPath, TagLabel.LabelType.DERIVED.value());
   }
 
   private String generateDeleteTagLabelListScript() {

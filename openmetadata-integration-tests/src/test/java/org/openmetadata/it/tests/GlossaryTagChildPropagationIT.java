@@ -62,15 +62,10 @@ import org.openmetadata.service.Entity;
  *
  * <p>Bug B: {@code GET /tables/{id}?fields=columns,tags} returned each column's own tags only, so
  * the column tag panel showed nothing while Explore and the glossary Assets tab (both search-backed)
- * showed the term. {@code Entity.populateEntityFieldTags} now projects the parent's glossary terms
- * onto every field on read.
+ * showed the term. {@code Entity.populateEntityFieldTags} now has every field inherit the parent's
+ * glossary terms on read, marked {@code DERIVED} the way an entity inherits its parent's tags.
  *
  * <p>Bug A: removing the term left the label behind on the child search docs.
- *
- * <p>The projected label is {@code PROPAGATED}, not {@code DERIVED} as the issue proposed:
- * {@code DERIVED} means "recomputed on read from the glossary term's own classification tags" and is
- * stripped by every write path ({@code EntityRepository.applyTags}) and regenerated on every read
- * ({@code TagLabelUtil.addDerivedTags}), so it cannot survive a round trip.
  */
 @Execution(ExecutionMode.CONCURRENT)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -103,13 +98,13 @@ public class GlossaryTagChildPropagationIT {
 
       Table tagged = client.tables().get(table.getId().toString(), "columns,tags");
       assertEquals(
-          TagLabel.LabelType.PROPAGATED,
+          TagLabel.LabelType.DERIVED,
           labelOn(tagged, TOP_LEVEL_COLUMN, term).getLabelType(),
-          "top-level column should carry the table's term as PROPAGATED");
+          "top-level column should inherit the table's term as DERIVED");
       assertEquals(
-          TagLabel.LabelType.PROPAGATED,
+          TagLabel.LabelType.DERIVED,
           labelOn(tagged, NESTED_COLUMN, term).getLabelType(),
-          "nested column should carry the table's term as PROPAGATED");
+          "nested column should inherit the table's term as DERIVED");
 
       clearTableTags(client, table);
 
@@ -150,7 +145,7 @@ public class GlossaryTagChildPropagationIT {
       assertEquals(
           TagLabel.LabelType.MANUAL,
           columnLabels.getFirst().getLabelType(),
-          "a column's own label must win over the projected one");
+          "a column's own label must win over the inherited one");
 
       clearTableTags(client, table);
 

@@ -341,7 +341,7 @@ class CustomIndexTest {
   }
 
   /**
-   * A term on the table is projected onto its children on read and never stored, so the test case
+   * A term on the table is inherited by its children on read and never stored, so the test case
    * carries no trace of it. Deriving it here is what makes a rebuild reproduce what the tag cascade
    * would have written, instead of quietly undoing it.
    */
@@ -362,7 +362,7 @@ class CustomIndexTest {
     entityStaticMock
         .when(() -> Entity.getEntityByName(eq(Entity.TABLE), anyString(), anyString(), any()))
         .thenReturn(tableTaggedWith(glossaryTerm()));
-    entityStaticMock.when(() -> Entity.propagatedParentTags(any())).thenCallRealMethod();
+    entityStaticMock.when(() -> Entity.inheritedParentTerms(any())).thenCallRealMethod();
 
     Map<String, Object> result =
         new TestCaseResultIndex(tcr).buildSearchIndexDocInternal(new HashMap<>());
@@ -371,8 +371,7 @@ class CustomIndexTest {
     List<Map<String, Object>> tags = (List<Map<String, Object>>) embeddedTestCase.get("tags");
     assertEquals(1, tags.size());
     assertEquals("Glossary.Term", tags.getFirst().get("tagFQN"));
-    assertEquals(
-        TagLabel.LabelType.PROPAGATED.value(), tags.getFirst().get("labelType").toString());
+    assertEquals(TagLabel.LabelType.DERIVED.value(), tags.getFirst().get("labelType").toString());
   }
 
   @Test
@@ -404,7 +403,7 @@ class CustomIndexTest {
     entityStaticMock
         .when(() -> Entity.getEntityByName(eq(Entity.TABLE), anyString(), anyString(), any()))
         .thenReturn(tableTaggedWith(glossaryTerm()));
-    entityStaticMock.when(() -> Entity.propagatedParentTags(any())).thenCallRealMethod();
+    entityStaticMock.when(() -> Entity.inheritedParentTerms(any())).thenCallRealMethod();
 
     Map<String, Object> result =
         new TestCaseResolutionStatusIndex(status).buildSearchIndexDocInternal(new HashMap<>());
@@ -412,8 +411,7 @@ class CustomIndexTest {
     TestCase embeddedTestCase = (TestCase) result.get("testCase");
     assertEquals(1, embeddedTestCase.getTags().size());
     assertEquals("Glossary.Term", embeddedTestCase.getTags().getFirst().getTagFQN());
-    assertEquals(
-        TagLabel.LabelType.PROPAGATED, embeddedTestCase.getTags().getFirst().getLabelType());
+    assertEquals(TagLabel.LabelType.DERIVED, embeddedTestCase.getTags().getFirst().getLabelType());
     // The fan-out finds time-series children by table.id, so the reference has to be on the doc.
     assertNotNull(result.get("table"));
   }

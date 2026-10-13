@@ -1115,8 +1115,10 @@ class SearchRepositoryBehaviorTest {
     assertTrue(script.contains("ctx._source.testCase.tags"));
     assertTrue(script.contains("params.tagAdded"));
     assertTrue(script.contains("params.tagDeleted"));
-    assertTrue(script.contains(TagLabel.LabelType.PROPAGATED.value()));
     assertTrue(script.contains(TagLabel.LabelType.DERIVED.value()));
+    assertFalse(
+        script.contains(TagLabel.LabelType.PROPAGATED.value()),
+        "a lineage-propagated label belongs to the child and must not be removed");
     assertFalse(
         script.contains("ctx._source.classificationTags"),
         "the root-tag re-separation script is invalid for time-series mappings");
@@ -1125,10 +1127,10 @@ class SearchRepositoryBehaviorTest {
     assertEquals(Set.of("tagAdded", "tagDeleted"), params.keySet());
     assertTrue(
         ((List<TagLabel>) params.get("tagAdded"))
-            .stream().allMatch(tag -> tag.getLabelType() == TagLabel.LabelType.PROPAGATED));
+            .stream().allMatch(tag -> tag.getLabelType() == TagLabel.LabelType.DERIVED));
     assertTrue(
         ((List<TagLabel>) params.get("tagDeleted"))
-            .stream().allMatch(tag -> tag.getLabelType() == TagLabel.LabelType.PROPAGATED));
+            .stream().allMatch(tag -> tag.getLabelType() == TagLabel.LabelType.DERIVED));
   }
 
   /**
@@ -1191,10 +1193,10 @@ class SearchRepositoryBehaviorTest {
             eq(new ImmutablePair<>("table.id", tableId.toString())),
             tagUpdateCaptor.capture());
     assertTrue(tagUpdateCaptor.getValue().getKey().contains("ctx._source.tags"));
-    List<TagLabel> propagatedTags =
+    List<TagLabel> inheritedTags =
         (List<TagLabel>) tagUpdateCaptor.getValue().getValue().get("tagAdded");
-    assertEquals(1, propagatedTags.size());
-    assertEquals(TagLabel.LabelType.PROPAGATED, propagatedTags.getFirst().getLabelType());
+    assertEquals(1, inheritedTags.size());
+    assertEquals(TagLabel.LabelType.DERIVED, inheritedTags.getFirst().getLabelType());
   }
 
   @Test
@@ -2224,7 +2226,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   @SuppressWarnings("unchecked")
-  void inheritedFieldChangesAddTagsMarksThemAsPropagated() throws Exception {
+  void inheritedFieldChangesAddTagsMarksThemAsDerived() throws Exception {
     EntityInterface<?> tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
 
     TagLabel tag1 =
@@ -2256,10 +2258,7 @@ class SearchRepositoryBehaviorTest {
     assertNotNull(data.get("tagAdded"));
     List<TagLabel> addedTags = (List<TagLabel>) data.get("tagAdded");
     assertEquals(2, addedTags.size());
-    // PROPAGATED, not DERIVED: DERIVED means "recomputed on read from the glossary term's own
-    // classification tags" and is stripped by every write path, so it cannot survive a round
-    // trip. See TagLabelUtil.isSystemGenerated and Entity.propagatedParentTags.
-    assertTrue(addedTags.stream().allMatch(t -> t.getLabelType() == TagLabel.LabelType.PROPAGATED));
+    assertTrue(addedTags.stream().allMatch(t -> t.getLabelType() == TagLabel.LabelType.DERIVED));
     assertEquals("PII.Sensitive", addedTags.get(0).getTagFQN());
     assertEquals("Tier.Tier1", addedTags.get(1).getTagFQN());
   }
@@ -2278,7 +2277,7 @@ class SearchRepositoryBehaviorTest {
         new TagLabel()
             .withTagFQN("g.term")
             .withSource(TagLabel.TagSource.GLOSSARY)
-            .withLabelType(TagLabel.LabelType.PROPAGATED);
+            .withLabelType(TagLabel.LabelType.DERIVED);
 
     ChangeDescription changeDescription =
         changeDescription(
@@ -2300,7 +2299,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   @SuppressWarnings("unchecked")
-  void inheritedFieldChangesDeleteTagsMarksThemAsPropagated() throws Exception {
+  void inheritedFieldChangesDeleteTagsMarksThemAsDerived() throws Exception {
     EntityInterface<?> tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
 
     TagLabel tag =
@@ -2327,7 +2326,7 @@ class SearchRepositoryBehaviorTest {
     assertNotNull(data.get("tagDeleted"));
     List<TagLabel> deletedTags = (List<TagLabel>) data.get("tagDeleted");
     assertEquals(1, deletedTags.size());
-    assertEquals(TagLabel.LabelType.PROPAGATED, deletedTags.get(0).getLabelType());
+    assertEquals(TagLabel.LabelType.DERIVED, deletedTags.get(0).getLabelType());
     assertEquals("PII.Sensitive", deletedTags.get(0).getTagFQN());
   }
 
@@ -2369,11 +2368,11 @@ class SearchRepositoryBehaviorTest {
 
     assertEquals(1, addedTags.size());
     assertEquals("PII.NonSensitive", addedTags.get(0).getTagFQN());
-    assertEquals(TagLabel.LabelType.PROPAGATED, addedTags.get(0).getLabelType());
+    assertEquals(TagLabel.LabelType.DERIVED, addedTags.get(0).getLabelType());
 
     assertEquals(1, deletedTags.size());
     assertEquals("PII.Sensitive", deletedTags.get(0).getTagFQN());
-    assertEquals(TagLabel.LabelType.PROPAGATED, deletedTags.get(0).getLabelType());
+    assertEquals(TagLabel.LabelType.DERIVED, deletedTags.get(0).getLabelType());
   }
 
   @Test
@@ -2449,9 +2448,11 @@ class SearchRepositoryBehaviorTest {
     assertTrue(script.contains("equalsIgnoreCase"), "Delete script should match by tagFQN");
     assertTrue(
         script.contains("existingTag.labelType"),
-        "Delete script should only remove system-applied labels");
-    assertTrue(script.contains(TagLabel.LabelType.PROPAGATED.value()));
+        "Delete script should only remove the cascade's DERIVED copies");
     assertTrue(script.contains(TagLabel.LabelType.DERIVED.value()));
+    assertFalse(
+        script.contains(TagLabel.LabelType.PROPAGATED.value()),
+        "a lineage-propagated label belongs to the child and must not be removed");
     assertTrue(script.contains("ctx._source.tags.remove(i)"), "Script should remove matched tags");
     assertFalse(
         script.contains("Collections.sort"), "Delete-only script should not sort (no additions)");
