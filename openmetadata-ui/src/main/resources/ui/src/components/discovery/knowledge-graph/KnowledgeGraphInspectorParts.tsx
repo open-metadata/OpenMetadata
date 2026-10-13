@@ -175,15 +175,23 @@ export const InspectorIdentityCard = ({
 interface KeyValueProps {
   label: string;
   value: ReactNode;
+  valueTestId?: string;
 }
 
 /** A plain `Label: value` row for drawer meta like "Team: Finance" or "System name: upstream". */
-export const InspectorKeyValue = ({ label, value }: KeyValueProps) => (
+export const InspectorKeyValue = ({
+  label,
+  value,
+  valueTestId,
+}: KeyValueProps) => (
   <Box align="baseline" gap={2}>
     <Typography className="tw:text-tertiary" size="text-sm">
       {label + ':'}
     </Typography>
-    <Typography className="tw:break-all tw:text-primary" size="text-sm">
+    <Typography
+      className="tw:break-all tw:text-primary"
+      data-testid={valueTestId}
+      size="text-sm">
       {value}
     </Typography>
   </Box>

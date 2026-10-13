@@ -52,7 +52,6 @@ const KnowledgeGraphRelationship = ({
       <>
         <Box className="kg-inspector-body" direction="col">
           <InspectorStatement
-            codeTestId="relationship-predicate"
             color={style.color}
             family={t(style.labelKey)}
             statement={
@@ -71,6 +70,7 @@ const KnowledgeGraphRelationship = ({
                   {systemName}
                 </span>
               }
+              valueTestId="relationship-predicate"
             />
           )}
           {edge.data.members && (
