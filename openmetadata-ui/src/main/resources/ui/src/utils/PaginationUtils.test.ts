@@ -1,4 +1,14 @@
-import { computeTotalPages } from './PaginationUtils';
+import {
+  GRID_PAGE_SIZE_OPTIONS,
+  LIST_PAGE_SIZE_OPTIONS,
+} from '../constants/constants';
+import { PageViewMode } from '../generated/type/personaPreferences';
+import {
+  computeTotalPages,
+  getViewPageSize,
+  getViewPageSizeOptions,
+  resolveViewPageSize,
+} from './PaginationUtils';
 
 /*
  *  Copyright 2024 Collate.
@@ -39,5 +49,43 @@ describe('computeTotalPages', () => {
 
   it('should handle page size greater than total items', () => {
     expect(computeTotalPages(20, 10)).toBe(1);
+  });
+});
+
+// ADR:2026-10-13-ui-page-sizes-lists-15-25-50-grids-12-24-48
+describe('view page sizes', () => {
+  it('pages lists at 15/25/50 and card grids at 12/24/48', () => {
+    expect(LIST_PAGE_SIZE_OPTIONS).toEqual([15, 25, 50]);
+    expect(GRID_PAGE_SIZE_OPTIONS).toEqual([12, 24, 48]);
+  });
+
+  it('uses the grid scale only for the card view', () => {
+    expect(getViewPageSizeOptions(PageViewMode.Card)).toBe(
+      GRID_PAGE_SIZE_OPTIONS
+    );
+    expect(getViewPageSizeOptions('card')).toBe(GRID_PAGE_SIZE_OPTIONS);
+    expect(getViewPageSizeOptions(PageViewMode.Table)).toBe(
+      LIST_PAGE_SIZE_OPTIONS
+    );
+    expect(getViewPageSizeOptions(PageViewMode.Tree)).toBe(
+      LIST_PAGE_SIZE_OPTIONS
+    );
+    expect(getViewPageSizeOptions(undefined)).toBe(LIST_PAGE_SIZE_OPTIONS);
+  });
+
+  it('starts each view on the first step of its scale', () => {
+    expect(getViewPageSize(PageViewMode.Card)).toBe(12);
+    expect(getViewPageSize(PageViewMode.Table)).toBe(15);
+  });
+
+  it('keeps a picked size that the view offers', () => {
+    expect(resolveViewPageSize(PageViewMode.Table, 50)).toBe(50);
+    expect(resolveViewPageSize(PageViewMode.Card, 24)).toBe(24);
+  });
+
+  it('falls back to the first step when the picked size belongs to the other scale', () => {
+    expect(resolveViewPageSize(PageViewMode.Card, 25)).toBe(12);
+    expect(resolveViewPageSize(PageViewMode.Table, 24)).toBe(15);
+    expect(resolveViewPageSize(PageViewMode.Table)).toBe(15);
   });
 });

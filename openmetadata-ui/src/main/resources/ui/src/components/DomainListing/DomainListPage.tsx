@@ -51,6 +51,7 @@ import ViewToggle from '../common/ViewToggle/ViewToggle';
 import MarketplaceSearchInput from '../DataMarketplace/MarketplaceSearchInput/MarketplaceSearchInput.component';
 import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
 import DomainTreeView from './components/DomainTreeView';
+import { getViewPageSize } from '../../utils/PaginationUtils';
 import { DomainListPageProps } from './DomainListPage.interface';
 import { useDomainCreateDrawer } from './hooks/useDomainCreateDrawer';
 import { useDomainListingData } from './hooks/useDomainListingData';
@@ -59,7 +60,22 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
   const { isMarketplace, domainBasePath } = useMarketplaceStore();
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
-  const domainListing = useDomainListingData({ enableNlq: isAiMode });
+  const personaView = usePersonaViewMode(VIEW_MODE_PAGE.Domains);
+  const [selectedView, setView] = useState<PageViewMode>();
+  const view = selectedView ?? personaView;
+  const domainListing = useDomainListingData({
+    enableNlq: isAiMode,
+    pageSize: getViewPageSize(view),
+  });
+  // Card and table views page at different sizes, so the current page may not exist in the other.
+  const { handlePageChange } = domainListing;
+  const handleViewChange = useCallback(
+    (nextView: PageViewMode) => {
+      setView(nextView);
+      handlePageChange(1);
+    },
+    [handlePageChange]
+  );
   const { permissions } = usePermissionProvider();
   const [treeRefreshToken, setTreeRefreshToken] = useState(0);
 
@@ -151,9 +167,6 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
     loading: domainListing.loading,
   });
 
-  const personaView = usePersonaViewMode(VIEW_MODE_PAGE.Domains);
-  const [selectedView, setView] = useState<PageViewMode>();
-  const view = selectedView ?? personaView;
   const isTreeView = view === PageViewMode.Tree;
   const { renderDomainCard } = useDomainCardTemplates();
 
@@ -352,7 +365,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
             <ViewToggle
               value={view}
               views={[PageViewMode.Table, PageViewMode.Card, PageViewMode.Tree]}
-              onChange={setView}
+              onChange={handleViewChange}
             />
             {deleteIconButton}
           </Box>

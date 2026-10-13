@@ -23,7 +23,7 @@ import ConnectionsListView, {
 import {
   GRID_PAGE_SIZE_OPTIONS,
   LIST_PAGE_SIZE_OPTIONS,
-} from './ConnectionsPage.constants';
+} from '../../../constants/constants';
 import { ConnectionsCategory } from './useConnectionsData';
 
 const mockNavigate = jest.fn();
@@ -449,7 +449,7 @@ const defaultData = {
   serviceTypeOptions: [{ count: 24, value: 'Mysql' }],
   serviceTypesInTab: ['Mysql'],
   page: 1,
-  pageSize: 10,
+  pageSize: LIST_PAGE_SIZE_OPTIONS[0],
   rows: [row],
   setPage: mockSetPage,
   setPageSize: mockSetPageSize,
@@ -1271,7 +1271,7 @@ describe('ConnectionsListView', () => {
     );
   });
 
-  it('uses twelve cards per grid page and ten rows per list page', () => {
+  it('uses the grid scale for cards and the list scale for rows', () => {
     renderView('grid');
 
     expect(mockUseConnectionsData).toHaveBeenLastCalledWith(

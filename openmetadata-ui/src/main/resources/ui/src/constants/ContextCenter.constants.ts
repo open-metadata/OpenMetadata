@@ -13,6 +13,7 @@
 // ─── File type badge ──────────────────────────────────────────────────────────
 
 import { EntityFields } from '../enums/AdvancedSearch.enum';
+import { PAGE_SIZE_BASE } from './constants';
 import {
   ContextMemoryStatus,
   MemoryType,
@@ -73,7 +74,7 @@ export const ARTICLE_SORT_OPTIONS: ArticleSortOption[] = [
 
 export const DEFAULT_ARTICLE_SORT_OPTION = ARTICLE_SORT_OPTIONS[0];
 
-export const ARCHIVE_PAGE_SIZE = 15;
+export const ARCHIVE_PAGE_SIZE = PAGE_SIZE_BASE;
 export const RECENT_DASHBOARD_ARTICLES_LIMIT = 3;
 export const RECENT_DASHBOARD_DOCUMENTS_LIMIT = 3;
 export const RECENT_DASHBOARD_MEMORIES_LIMIT = 3;
@@ -133,7 +134,7 @@ export const VISIBILITY_OPTIONS = [
   },
 ];
 
-export const MEMORIES_PER_PAGE = 10;
+export const MEMORIES_PER_PAGE = PAGE_SIZE_BASE;
 export const MEMORY_FIELDS =
   'owners,tags,domains,primaryEntity,relatedEntities,derivedEntities,sourceEntity';
 

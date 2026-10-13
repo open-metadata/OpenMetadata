@@ -13,6 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { useCallback, useRef, useState } from 'react';
+import { PAGE_SIZE_BASE } from '../../../../constants/constants';
 import { SearchIndex } from '../../../../enums/search.enum';
 import {
   Aggregations,
@@ -57,7 +58,7 @@ export const useDataFetching = <T extends { id: string }>(
   const {
     searchIndex,
     baseFilter = '',
-    pageSize = 10,
+    pageSize = PAGE_SIZE_BASE,
     transform,
     useNlq = false,
   } = config;
@@ -65,7 +66,7 @@ export const useDataFetching = <T extends { id: string }>(
   // Default transform function
   const defaultTransform = useCallback(
     (data: SearchResponse<SearchIndex>) =>
-      data.hits?.hits?.map((hit) => hit._source) || [],
+      (data.hits?.hits?.map((hit) => hit._source) ?? []) as unknown as T[],
     []
   );
 

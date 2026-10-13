@@ -30,7 +30,7 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 const domain = new Domain();
 const subDomains: SubDomain[] = [];
 const SUBDOMAIN_COUNT = 60;
-const PAGE_SIZE = 9;
+const PAGE_SIZE = 15;
 
 test.describe('SubDomain Pagination', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.beforeAll('Setup domain and subdomains', async ({ browser }) => {

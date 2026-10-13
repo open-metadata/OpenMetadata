@@ -20,7 +20,7 @@ import { queryClient } from '../../../queryClient';
 import {
   GRID_PAGE_SIZE_OPTIONS,
   LIST_PAGE_SIZE_OPTIONS,
-} from './ConnectionsPage.constants';
+} from '../../../constants/constants';
 import { ConnectionsCategory, useConnectionsData } from './useConnectionsData';
 
 const mockGetServicesOverview = jest.fn();

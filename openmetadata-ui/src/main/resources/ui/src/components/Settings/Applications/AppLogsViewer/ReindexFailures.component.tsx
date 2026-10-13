@@ -29,6 +29,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RDF_INDEX_APP_NAME } from '../../../../constants/Applications.constant';
+import { PAGE_SIZE_BASE } from '../../../../constants/constants';
 import { getRdfReindexFailures } from '../../../../rest/rdfAPI';
 import { getReindexFailures } from '../../../../rest/searchAPI';
 import { formatDateTimeWithTimezone } from '../../../../utils/date-time/DateTimeUtils';
@@ -40,8 +41,6 @@ import {
   ReindexFailureRecord,
   ReindexFailuresProps,
 } from './ReindexFailures.interface';
-
-const PAGE_SIZE = 20;
 
 const ErrorMessage = ({ text }: { text: string }) => {
   const { t } = useTranslation();
@@ -107,8 +106,8 @@ const ReindexFailures = ({
             ? getRdfReindexFailures
             : getReindexFailures;
         const response = await fetcher({
-          offset: (page - 1) * PAGE_SIZE,
-          limit: PAGE_SIZE,
+          offset: (page - 1) * PAGE_SIZE_BASE,
+          limit: PAGE_SIZE_BASE,
           entityType,
         });
         if (requestId !== requestSequence.current) {
@@ -277,7 +276,7 @@ const ReindexFailures = ({
         loading={loading}
         pagination={{
           current: currentPage,
-          pageSize: PAGE_SIZE,
+          pageSize: PAGE_SIZE_BASE,
           showSizeChanger: false,
           total,
         }}

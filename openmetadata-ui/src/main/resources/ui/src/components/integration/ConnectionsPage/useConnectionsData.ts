@@ -18,6 +18,7 @@ import {
 } from '@tanstack/react-query';
 import { debounce } from 'lodash';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { LIST_PAGE_SIZE_OPTIONS } from '../../../constants/constants';
 import {
   ServiceHealth,
   ServiceSummary,
@@ -30,7 +31,6 @@ import {
   ConnectionsServiceCategory,
   CONNECTIONS_ENTITY_TYPES,
   ENTITY_TYPE_TO_CATEGORY,
-  LIST_PAGE_SIZE_OPTIONS,
   SERVICES_ESTATE_LIMIT,
 } from './ConnectionsPage.constants';
 import {

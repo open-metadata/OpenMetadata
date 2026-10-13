@@ -21,7 +21,8 @@ import { QueryFieldInterface } from '../../../pages/ExplorePage/ExplorePage.inte
 
 export const useDomainListingData = ({
   enableNlq,
-}: { enableNlq?: boolean } = {}): ListingData<Domain> => {
+  pageSize,
+}: { enableNlq?: boolean; pageSize?: number } = {}): ListingData<Domain> => {
   const { domainBasePath } = useMarketplaceStore();
   const { userDomains, isDomainRestricted } = useDomainStore();
 
@@ -63,5 +64,6 @@ export const useDomainListingData = ({
     nameLabelKey: 'label.domain',
     basePath: domainBasePath,
     enableNlq,
+    pageSize,
   });
 };

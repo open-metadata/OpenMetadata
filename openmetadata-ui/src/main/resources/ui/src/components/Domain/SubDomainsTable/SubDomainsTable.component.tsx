@@ -26,6 +26,7 @@ import { VIEW_MODE_PAGE } from '../../../constants/platform/personaAppLayout.con
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { PageViewMode } from '../../../generated/type/personaPreferences';
 import { usePersonaViewMode } from '../../../hooks/platform/usePersonaViewMode';
+import { getViewPageSize } from '../../../utils/PaginationUtils';
 import { useDelete } from '../../common/atoms/actions/useDelete';
 import { useDomainCardTemplates } from '../../common/atoms/domain/ui/useDomainCardTemplates';
 import { useDomainFilters } from '../../common/atoms/domain/ui/useDomainFilters';
@@ -47,9 +48,22 @@ const SubDomainsTable = ({
   onDeleteSubDomain,
 }: SubDomainsTableProps) => {
   const { t } = useTranslation();
+  const personaView = usePersonaViewMode(VIEW_MODE_PAGE.SubDomains);
+  const [selectedView, setView] = useState<PageViewMode>();
+  const view = selectedView ?? personaView;
   const subdomainListing = useSubdomainListingData({
     parentDomainFqn: domainFqn,
+    pageSize: getViewPageSize(view),
   });
+  // Card and table views page at different sizes, so the current page may not exist in the other.
+  const { handlePageChange } = subdomainListing;
+  const handleViewChange = useCallback(
+    (nextView: PageViewMode) => {
+      setView(nextView);
+      handlePageChange(1);
+    },
+    [handlePageChange]
+  );
 
   const { quickFilters, defaultFilters } = useDomainFilters({
     isSubDomain: true,
@@ -85,9 +99,6 @@ const SubDomainsTable = ({
     };
   }, [debouncedSearch]);
 
-  const personaView = usePersonaViewMode(VIEW_MODE_PAGE.SubDomains);
-  const [selectedView, setView] = useState<PageViewMode>();
-  const view = selectedView ?? personaView;
   const { renderDomainCard } = useDomainCardTemplates();
 
   const { columns: subDomainColumns, renderCell: renderSubDomainCell } =
@@ -229,7 +240,7 @@ const SubDomainsTable = ({
             />
             {quickFilters}
             <Box className="tw:ml-auto" />
-            <ViewToggle value={view} onChange={setView} />
+            <ViewToggle value={view} onChange={handleViewChange} />
             {deleteIconButton}
           </Box>
           {filterSelectionDisplay}

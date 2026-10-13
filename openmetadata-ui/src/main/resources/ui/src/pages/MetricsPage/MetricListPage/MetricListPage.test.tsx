@@ -19,6 +19,7 @@ import {
   within,
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { PAGE_SIZE_BASE } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import {
   EntityStatus,
@@ -544,7 +545,7 @@ const setHierarchy = ({
   mockUseMetricHierarchy.mockImplementation(() => ({
     topLevelNodes,
     buildRows: () => rows,
-    paging: { total, offset: 0, limit: 20 },
+    paging: { total, offset: 0, limit: PAGE_SIZE_BASE },
     isPending,
     isFetching: isPending,
     error,
@@ -1131,7 +1132,11 @@ describe('MetricListPage', () => {
 
     await waitFor(() =>
       expect(mockUseMetricHierarchy).toHaveBeenLastCalledWith(
-        expect.objectContaining({ page: 2, pageSize: 20, query: '' })
+        expect.objectContaining({
+          page: 2,
+          pageSize: PAGE_SIZE_BASE,
+          query: '',
+        })
       )
     );
 

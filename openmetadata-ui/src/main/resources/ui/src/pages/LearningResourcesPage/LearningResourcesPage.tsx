@@ -41,11 +41,6 @@ import { LearningResourceCard } from '../../components/Learning/LearningResource
 import { ResourcePlayerModal } from '../../components/Learning/ResourcePlayer/ResourcePlayerModal.component';
 import { ResourceTypeIcon } from '../../components/Learning/ResourceTypeIcon/ResourceTypeIcon';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
-} from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import {
   MAX_VISIBLE_CONTEXTS,
@@ -56,6 +51,10 @@ import { VIEW_MODE_PAGE } from '../../constants/platform/personaAppLayout.consta
 import { PageViewMode } from '../../generated/type/personaPreferences';
 import { usePersonaViewMode } from '../../hooks/platform/usePersonaViewMode';
 import { LearningResource } from '../../rest/learningResourceAPI';
+import {
+  getViewPageSizeOptions,
+  resolveViewPageSize,
+} from '../../utils/PaginationUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { useLearningResourceActions } from './hooks/useLearningResourceActions';
 import {
@@ -85,7 +84,13 @@ export const LearningResourcesPage: React.FC = () => {
     {}
   );
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(PAGE_SIZE_BASE);
+  const [selectedPageSize, setPageSize] = useState<number>();
+
+  const personaView = usePersonaViewMode(VIEW_MODE_PAGE.LearningResources);
+  const [selectedView, setView] = useState<PageViewMode>();
+  const view = selectedView ?? personaView;
+  const pageSizeOptions = getViewPageSizeOptions(view);
+  const pageSize = resolveViewPageSize(view, selectedPageSize);
 
   const { resources, paging, isLoading, refetch } = useLearningResources({
     searchText,
@@ -112,10 +117,6 @@ export const LearningResourcesPage: React.FC = () => {
     handlePlayerClose,
   } = useLearningResourceActions({ onRefetch: refetch });
 
-  const personaView = usePersonaViewMode(VIEW_MODE_PAGE.LearningResources);
-  const [selectedView, setView] = useState<PageViewMode>();
-  const view = selectedView ?? personaView;
-
   const [searchInputValue, setSearchInputValue] = useState(searchText);
 
   const debouncedSetSearchText = useMemo(
@@ -140,6 +141,11 @@ export const LearningResourcesPage: React.FC = () => {
 
   const handlePageSizeChange = useCallback((size: number) => {
     setPageSize(size);
+    setCurrentPage(1);
+  }, []);
+
+  const handleViewChange = useCallback((nextView: PageViewMode) => {
+    setView(nextView);
     setCurrentPage(1);
   }, []);
 
@@ -175,10 +181,17 @@ export const LearningResourcesPage: React.FC = () => {
       currentPage,
       isNumberBased: true,
       isLoading,
-      pageSizeOptions: [PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE],
+      pageSizeOptions,
       onShowSizeChange: handlePageSizeChange,
     }),
-    [paging.total, pageSize, currentPage, isLoading, handlePageSizeChange]
+    [
+      paging.total,
+      pageSize,
+      pageSizeOptions,
+      currentPage,
+      isLoading,
+      handlePageSizeChange,
+    ]
   );
 
   const renderCategoriesCell = (record: LearningResource) => {
@@ -354,7 +367,7 @@ export const LearningResourcesPage: React.FC = () => {
               />
               {quickFilters}
               <Box className="tw:flex-1" />
-              <ViewToggle value={view} onChange={setView} />
+              <ViewToggle value={view} onChange={handleViewChange} />
             </Box>
             {filterSelectionDisplay}
           </Box>

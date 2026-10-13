@@ -15,7 +15,10 @@ import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
+import {
+  LIST_PAGE_SIZE_OPTIONS,
+  NO_DATA_PLACEHOLDER,
+} from '../../../../constants/constants';
 import { Paging } from '../../../../generated/type/paging';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import { useFqn } from '../../../../hooks/useFqn';
@@ -40,8 +43,6 @@ const STATUS_TYPE_MAP: Record<string, StatusType> = {
   FAILED: StatusType.Failure,
 };
 
-const PAGE_SIZE = 15;
-
 const AppLiveIndexing = ({ appData: _appData }: AppLiveIndexingProps) => {
   const { t } = useTranslation();
   const { fqn } = useFqn();
@@ -55,7 +56,7 @@ const AppLiveIndexing = ({ appData: _appData }: AppLiveIndexingProps) => {
     handlePagingChange,
     handlePageChange,
     handlePageSizeChange,
-  } = usePaging(PAGE_SIZE);
+  } = usePaging();
 
   const fetchRetryQueue = useCallback(
     async (offset = 0) => {
@@ -164,7 +165,6 @@ const AppLiveIndexing = ({ appData: _appData }: AppLiveIndexingProps) => {
     <Table
       bordered
       columns={columns}
-      currentPage={currentPage}
       dataSource={records}
       loading={isLoading}
       locale={{
@@ -176,21 +176,19 @@ const AppLiveIndexing = ({ appData: _appData }: AppLiveIndexingProps) => {
           </div>
         ),
       }}
-      pageSize={pageSize}
       pagination={{
         total: paging.total,
         pageSize,
         current: currentPage,
+        hideOnSinglePage: true,
         showSizeChanger: true,
-        pageSizeOptions: ['10', '15', '25', '50'],
-        onChange: (page) =>
-          handlePageChangeHandler({ currentPage: page, cursorType: '' }),
+        pageSizeOptions: LIST_PAGE_SIZE_OPTIONS,
+        onChange: (page) => handlePageChangeHandler({ currentPage: page }),
         onShowSizeChange: (_, size) => {
           handlePageSizeChange(size);
           fetchRetryQueue(0);
         },
       }}
-      paginationVisible={records.length > 0 && paging.total > pageSize}
       rowKey={(record) => `${record.entityId}-${record.entityFqn}`}
       size="small"
     />

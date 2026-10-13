@@ -583,7 +583,7 @@ test.describe('Domains', () => {
       await Promise.all([
         createSubDomain(page, subDomain.data),
         page.waitForResponse(
-          '/api/v1/search/query?q=&index=domain&from=0&size=9&deleted=false*'
+          '/api/v1/search/query?q=&index=domain&from=0&size=15&deleted=false*'
         ),
       ]);
 
@@ -631,7 +631,7 @@ test.describe('Domains', () => {
       await selectDomain(page, domain.data);
 
       const subDomainApiRes1 = page.waitForResponse(
-        '/api/v1/search/query?q=&index=domain&from=0&size=9&deleted=false*'
+        '/api/v1/search/query?q=&index=domain&from=0&size=15&deleted=false*'
       );
 
       // Create new sub domain under the existing sub domain
@@ -1350,7 +1350,7 @@ test.describe('Domains', () => {
       });
 
       await test.step('Fill subdomain form', async () => {
-        await fillDomainForm(page, subDomain.data, false);
+        await fillDomainForm(page, subDomain.data);
       });
 
       await test.step('Search and select tag via TagSuggestion', async () => {
@@ -3072,7 +3072,7 @@ test.describe('Domain Access with hasDomain() Rule', () => {
       // Navigate to the domain table
       const domainTableFqn =
         testResources.domainTable.entityResponseData.fullyQualifiedName;
-      await userPage.goto(`/table/${encodeURIComponent(domainTableFqn)}`);
+      await userPage.goto(`/table/${encodeURIComponent(domainTableFqn ?? '')}`);
       await waitForAllLoadersToDisappear(userPage);
 
       // Verify no permission error
@@ -3088,7 +3088,9 @@ test.describe('Domain Access with hasDomain() Rule', () => {
       // Navigate to the subdomain table
       const subDomainTableFqn =
         testResources.subDomainTable.entityResponseData.fullyQualifiedName;
-      await userPage.goto(`/table/${encodeURIComponent(subDomainTableFqn)}`);
+      await userPage.goto(
+        `/table/${encodeURIComponent(subDomainTableFqn ?? '')}`
+      );
 
       // Verify no permission error
       await expect(
@@ -3136,7 +3138,7 @@ test.describe('Domain Access with noDomain() Rule', () => {
     await test.step('Verify user can access domain-assigned table', async () => {
       const domainTableFqn =
         testResources.domainTable.entityResponseData.fullyQualifiedName;
-      await userPage.goto(`/table/${encodeURIComponent(domainTableFqn)}`);
+      await userPage.goto(`/table/${encodeURIComponent(domainTableFqn ?? '')}`);
       await waitForAllLoadersToDisappear(userPage);
 
       // Verify no permission error
@@ -3151,7 +3153,9 @@ test.describe('Domain Access with noDomain() Rule', () => {
     await test.step('Verify user gets permission error for table without domain', async () => {
       const noDomainTableFqn =
         testResources.noDomainTable.entityResponseData.fullyQualifiedName;
-      await userPage.goto(`/table/${encodeURIComponent(noDomainTableFqn)}`);
+      await userPage.goto(
+        `/table/${encodeURIComponent(noDomainTableFqn ?? '')}`
+      );
       await waitForAllLoadersToDisappear(userPage);
 
       // Verify permission error is shown

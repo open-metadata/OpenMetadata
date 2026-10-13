@@ -18,10 +18,12 @@ import { useMarketplaceStore } from '../../../../hooks/useMarketplaceStore';
 
 interface UseSubdomainListingDataProps {
   parentDomainFqn: string;
+  pageSize?: number;
 }
 
 export const useSubdomainListingData = ({
   parentDomainFqn,
+  pageSize,
 }: UseSubdomainListingDataProps): ListingData<Domain> => {
   const { domainBasePath } = useMarketplaceStore();
 
@@ -45,5 +47,6 @@ export const useSubdomainListingData = ({
     basePath: domainBasePath,
     isSubDomain: true,
     searchKey: 'sub-domain',
+    pageSize,
   });
 };

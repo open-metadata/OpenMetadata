@@ -25,6 +25,10 @@ import { AddEditPersonaForm } from '../../../components/MyData/Persona/AddEditPe
 import { PersonaDetailsCard } from '../../../components/MyData/Persona/PersonaDetailsCard/PersonaDetailsCard';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
+import {
+  GRID_PAGE_SIZE_BASE,
+  GRID_PAGE_SIZE_OPTIONS,
+} from '../../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
@@ -38,8 +42,6 @@ import { getAllPersonas } from '../../../rest/PersonaAPI';
 import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './persona-page.less';
-
-const PERSONA_PAGE_SIZE = 12;
 
 export const PersonaPage = ({ pageTitle }: { pageTitle: string }) => {
   const { isAdminUser } = useAuth();
@@ -57,7 +59,7 @@ export const PersonaPage = ({ pageTitle }: { pageTitle: string }) => {
     paging,
     pagingCursor,
     showPagination,
-  } = usePaging(PERSONA_PAGE_SIZE);
+  } = usePaging(GRID_PAGE_SIZE_BASE, GRID_PAGE_SIZE_OPTIONS);
 
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () => getSettingPageEntityBreadCrumb(GlobalSettingsMenuCategory.PERSONA),

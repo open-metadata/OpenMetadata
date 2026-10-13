@@ -49,6 +49,7 @@ import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
 import dataProductClassBase from '../../utils/DataProduct/DataProductClassBase';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getEntityAvatarProps } from '../../utils/IconUtils';
+import { getViewPageSize } from '../../utils/PaginationUtils';
 import { renderBreakableTooltip } from '../../utils/TooltipUtils';
 import { useDelete } from '../common/atoms/actions/useDelete';
 import {
@@ -153,7 +154,22 @@ const DataProductListPage = ({
   const { isMarketplace, dataProductBasePath } = useMarketplaceStore();
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
-  const dataProductListing = useDataProductListingData({ enableNlq: isAiMode });
+  const personaView = usePersonaViewMode(VIEW_MODE_PAGE.DataProducts);
+  const [selectedView, setView] = useState<PageViewMode>();
+  const view = selectedView ?? personaView;
+  const dataProductListing = useDataProductListingData({
+    enableNlq: isAiMode,
+    pageSize: getViewPageSize(view),
+  });
+  // Card and table views page at different sizes, so the current page may not exist in the other.
+  const { handlePageChange } = dataProductListing;
+  const handleViewChange = useCallback(
+    (nextView: PageViewMode) => {
+      setView(nextView);
+      handlePageChange(1);
+    },
+    [handlePageChange]
+  );
   const { permissions } = usePermissionProvider();
   const { quickFilters, defaultFilters } = useDataProductFilters({
     aggregations: dataProductListing.aggregations || undefined,
@@ -233,9 +249,6 @@ const DataProductListPage = ({
     loading: dataProductListing.loading,
   });
 
-  const personaView = usePersonaViewMode(VIEW_MODE_PAGE.DataProducts);
-  const [selectedView, setView] = useState<PageViewMode>();
-  const view = selectedView ?? personaView;
   const { renderDataProductCard } = useDomainCardTemplates();
 
   const extraColumns = dataProductClassBase.getListingExtraColumns();
@@ -457,7 +470,7 @@ const DataProductListPage = ({
             )}
             {quickFilters}
             <Box className="tw:ml-auto" />
-            <ViewToggle value={view} onChange={setView} />
+            <ViewToggle value={view} onChange={handleViewChange} />
             {deleteIconButton}
           </Box>
           {filterSelectionDisplay}

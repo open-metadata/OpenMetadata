@@ -12,6 +12,7 @@
  */
 
 import { useCallback, useEffect, useRef } from 'react';
+import { PAGE_SIZE_BASE } from '../../../../constants/constants';
 import { useIsRouteVisible } from '../../../../context/RouteVisibilityProvider/RouteVisibilityProvider';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { useQuickFilterLabels } from '../../../../hooks/useQuickFilterLabels';
@@ -50,7 +51,7 @@ export const useListingData = <
   const {
     searchIndex,
     baseFilter = '',
-    pageSize = 10,
+    pageSize = PAGE_SIZE_BASE,
     filterKeys,
     filterConfigs,
     columns,

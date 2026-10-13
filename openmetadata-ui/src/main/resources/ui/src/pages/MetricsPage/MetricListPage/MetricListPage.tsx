@@ -123,6 +123,7 @@ import {
   MetricTreeNode,
   VisibleMetricTableRow,
 } from '../../../utils/MetricEntityUtils/MetricHierarchyUtils';
+import { getViewPageSize } from '../../../utils/PaginationUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
@@ -152,7 +153,6 @@ const METRIC_TABLE_PREFERENCE_KEY = 'metricList';
 const METRIC_STATIC_COLUMNS = ['name'];
 const METRIC_VIEW_STORAGE_KEY = 'metricsList.viewMode.v1';
 const METRIC_SEARCH_DEBOUNCE_MS = 500;
-const METRIC_PAGE_SIZE = 20;
 
 const DEFAULT_VISIBLE_METRIC_COLUMNS: MetricColumnId[] = [
   'description',
@@ -263,6 +263,7 @@ const MetricListPage = () => {
   // Owned by TableV2's Customize menu; card view only reads it.
   const visibleColumns = getVisibleMetricColumns(selectedEntityTableColumns);
   const [viewMode, setViewMode] = useState<MetricViewMode>(getInitialViewMode);
+  const metricPageSize = getViewPageSize(viewMode);
   const [isExporting, setIsExporting] = useState(false);
   const [isMetricActionsOpen, setIsMetricActionsOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -306,14 +307,14 @@ const MetricListPage = () => {
         search: debouncedSearch,
         status: statusFilter,
         page,
-        size: METRIC_PAGE_SIZE,
+        size: metricPageSize,
       },
     ],
     queryFn: () =>
       searchQuery({
         query: debouncedSearch,
         pageNumber: page,
-        pageSize: METRIC_PAGE_SIZE,
+        pageSize: metricPageSize,
         searchIndex: SearchIndex.METRIC,
         trackTotalHits: true,
         queryFilter: statusFilter
@@ -346,7 +347,7 @@ const MetricListPage = () => {
   } = useMetricHierarchy({
     enabled: [hasViewPermission, isTreeMode].every(Boolean),
     page,
-    pageSize: METRIC_PAGE_SIZE,
+    pageSize: metricPageSize,
     query: debouncedSearch,
   });
 
@@ -452,7 +453,7 @@ const MetricListPage = () => {
   const totalMetrics = isTreeMode
     ? treePaging.total
     : searchResponse?.hits.total.value ?? 0;
-  const totalPages = Math.max(1, Math.ceil(totalMetrics / METRIC_PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(totalMetrics / metricPageSize));
   const listingError =
     permissionError ?? (isTreeMode ? treeError : searchError);
   const listingErrorMessage = permissionError
@@ -530,10 +531,15 @@ const MetricListPage = () => {
     [setCurrentPage]
   );
 
-  const handleViewModeChange = useCallback((nextMode: MetricViewMode) => {
-    setViewMode(nextMode);
-    localStorage.setItem(METRIC_VIEW_STORAGE_KEY, nextMode);
-  }, []);
+  // Card and table views page at different sizes, so the current page may not exist in the other.
+  const handleViewModeChange = useCallback(
+    (nextMode: MetricViewMode) => {
+      setViewMode(nextMode);
+      setCurrentPage(1);
+      localStorage.setItem(METRIC_VIEW_STORAGE_KEY, nextMode);
+    },
+    [setCurrentPage]
+  );
 
   const handleImport = useCallback(() => {
     setIsMetricActionsOpen(false);
@@ -1050,7 +1056,7 @@ const MetricListPage = () => {
   );
 
   const renderPagination = () =>
-    totalMetrics > METRIC_PAGE_SIZE ? (
+    totalMetrics > metricPageSize ? (
       <Box
         aria-label={t('label.page')}
         className="tw:border-t tw:border-secondary tw:px-4 tw:py-3"

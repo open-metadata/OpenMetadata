@@ -11,6 +11,29 @@
  *  limitations under the License.
  */
 
+import {
+  GRID_PAGE_SIZE_OPTIONS,
+  LIST_PAGE_SIZE_OPTIONS,
+} from '../constants/constants';
+import { PageViewMode } from '../generated/type/personaPreferences';
+
 export const computeTotalPages = (pSize: number, total: number) => {
   return Math.ceil(total / pSize);
+};
+
+type ViewMode = PageViewMode | `${PageViewMode}`;
+
+export const getViewPageSizeOptions = (view?: ViewMode) =>
+  view === PageViewMode.Card ? GRID_PAGE_SIZE_OPTIONS : LIST_PAGE_SIZE_OPTIONS;
+
+export const getViewPageSize = (view?: ViewMode) =>
+  getViewPageSizeOptions(view)[0];
+
+// The two scales share no size, so a size picked in one view falls back to the other's first step.
+export const resolveViewPageSize = (view?: ViewMode, selectedSize?: number) => {
+  const options = getViewPageSizeOptions(view);
+
+  return selectedSize && options.includes(selectedSize)
+    ? selectedSize
+    : options[0];
 };

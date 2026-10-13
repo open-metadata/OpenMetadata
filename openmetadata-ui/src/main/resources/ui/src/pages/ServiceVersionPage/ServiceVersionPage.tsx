@@ -334,7 +334,8 @@ function ServiceVersionPage() {
   );
 
   const getOtherDetails = useCallback(
-    async (paging?: PagingWithoutTotal) => {
+    async (cursor?: PagingWithoutTotal) => {
+      const paging = { ...cursor, limit: pageSize };
       try {
         setIsOtherDataLoading(true);
         switch (serviceCategory) {
@@ -394,6 +395,7 @@ function ServiceVersionPage() {
     },
     [
       serviceCategory,
+      pageSize,
       fetchDatabases,
       fetchTopics,
       fetchDashboards,
@@ -482,6 +484,7 @@ function ServiceVersionPage() {
                   data={data}
                   entityType={entityType}
                   isServiceLoading={isOtherDataLoading}
+                  pageSize={pageSize}
                   paging={paging}
                   pagingHandler={pagingHandler}
                   serviceDetails={currentVersionData}

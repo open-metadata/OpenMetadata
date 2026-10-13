@@ -40,7 +40,7 @@ test.describe.serial(
       await redirectToHomePage(page);
 
       const appsResponse = page.waitForResponse(
-        `/api/v1/apps?limit=15&include=non-deleted`
+        `/api/v1/apps?limit=12&include=non-deleted`
       );
 
       await settingClick(page, GlobalSettingOptions.APPLICATIONS);
