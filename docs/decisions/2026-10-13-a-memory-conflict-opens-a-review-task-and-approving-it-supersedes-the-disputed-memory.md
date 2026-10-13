@@ -41,8 +41,8 @@ Approved — and nothing wrote it.
    resolved.
 3. **The task says nothing a memory holds.** Every user may read tasks, while a memory may be
    Private, Shared or anchored to an asset only some may view. So the task's title and description
-   are fixed text, and its payload names the disputed memories by reference, with when each conflict
-   was detected — no title, question, answer, reason or source. Reviewers compare the two memories
+   are fixed text, and its payload (`type/memoryConflictReviewPayload.json`) names the disputed
+   memories by reference, with when each conflict was detected — no title, question, answer, reason or source. Reviewers compare the two memories
    in Context Center, which reads each through the memory API and so through its visibility rules. A
    write that changes the memory's disputes or owners rewrites the open task's assignees and payload.
 4. Resolving the task decides the conflict, writing as the resolver, impersonated by

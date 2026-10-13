@@ -15,15 +15,13 @@ import {
   EntityReference,
 } from '../../../../generated/entity/context/contextMemory';
 import { Task } from '../../../../generated/entity/tasks/task';
-import {
-  ConflictRecency,
-  MemoryConflictReviewDispute,
-} from './MemoryConflictReviews.types';
+import { DisputedMemory } from '../../../../generated/type/memoryConflictReviewPayload';
+import { ConflictRecency } from './MemoryConflictReviews.types';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 
-const toDispute = (value: unknown): MemoryConflictReviewDispute | undefined => {
+const toDispute = (value: unknown): DisputedMemory | undefined => {
   if (!isRecord(value) || !isRecord(value.memory)) {
     return undefined;
   }
@@ -38,17 +36,13 @@ const toDispute = (value: unknown): MemoryConflictReviewDispute | undefined => {
  * The memories a conflict review weighs the reviewed memory against, as the
  * server recorded them. Malformed entries are skipped.
  */
-export const getReviewDisputes = (
-  task: Task
-): MemoryConflictReviewDispute[] => {
+export const getReviewDisputes = (task: Task): DisputedMemory[] => {
   const disputes = isRecord(task.payload) ? task.payload.disputes : undefined;
 
   return Array.isArray(disputes)
     ? disputes
         .map(toDispute)
-        .filter((dispute): dispute is MemoryConflictReviewDispute =>
-          Boolean(dispute)
-        )
+        .filter((dispute): dispute is DisputedMemory => Boolean(dispute))
     : [];
 };
 

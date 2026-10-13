@@ -17,7 +17,7 @@ import {
   ShareVisibility,
   SourceType,
 } from '../../../../generated/entity/context/contextMemory';
-import { MemoryConflictReviewDispute } from '../MemoryConflictReviews/MemoryConflictReviews.types';
+import { DisputedMemory } from '../../../../generated/type/memoryConflictReviewPayload';
 import { DiffSegment } from './MemoryConflictCompare.types';
 import {
   diffList,
@@ -185,7 +185,7 @@ describe('getUnavailableMemory', () => {
 });
 
 describe('getKeepHints', () => {
-  const dispute = (id: string): MemoryConflictReviewDispute => ({
+  const dispute = (id: string): DisputedMemory => ({
     memory: { id, type: 'contextMemory', name: id },
   });
 

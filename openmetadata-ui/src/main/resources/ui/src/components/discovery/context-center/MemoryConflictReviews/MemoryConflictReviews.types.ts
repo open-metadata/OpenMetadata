@@ -10,18 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityReference } from '../../../../generated/entity/context/contextMemory';
 import { Task } from '../../../../generated/entity/tasks/task';
-
-/**
- * A memory the reviewed one contradicts, as the task records it: by reference
- * only. Every user may read tasks, so what a memory says is read through the
- * memory API, which applies its visibility rules.
- */
-export interface MemoryConflictReviewDispute {
-  memory: EntityReference;
-  detectedAt?: number;
-}
 
 export type ClaimRecency = 'newer' | 'older';
 

@@ -20,9 +20,9 @@ import {
   ContextMemory,
   EntityReference,
 } from '../../../../generated/entity/context/contextMemory';
+import { DisputedMemory } from '../../../../generated/type/memoryConflictReviewPayload';
 import { formatDate } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { MemoryConflictReviewDispute } from '../MemoryConflictReviews/MemoryConflictReviews.types';
 import { getClaimUpdatedAt } from '../MemoryConflictReviews/MemoryConflictReviews.utils';
 import {
   MEMORY_SOURCE_LABEL_KEYS,
@@ -254,7 +254,7 @@ export const getUnavailableMemoryLabel = (
 
 /** What keeping each side does to the other, as translation keys. */
 export const getKeepHints = (
-  disputes: MemoryConflictReviewDispute[],
+  disputes: DisputedMemory[],
   reviewedTitle: string,
   disputedTitle: string
 ): { approved: KeepHint; reviewed: KeepHint } =>

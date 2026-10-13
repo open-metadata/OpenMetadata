@@ -35,6 +35,7 @@ import org.openmetadata.schema.entity.context.MemoryDispute;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MemoryConflictReviewPayload;
 import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -192,19 +193,18 @@ public final class MemoryConflictResolution {
   }
 
   static List<MemoryDispute> recordedDisputes(Task task) {
-    MemoryConflictReviewTasks.OpenedFor openedFor =
+    MemoryConflictReviewPayload recorded =
         task.getPayload() == null
             ? null
-            : JsonUtils.convertValueLenient(
-                task.getPayload(), MemoryConflictReviewTasks.OpenedFor.class);
-    return openedFor == null
+            : JsonUtils.convertValueLenient(task.getPayload(), MemoryConflictReviewPayload.class);
+    return recorded == null
         ? List.of()
-        : listOrEmpty(openedFor.disputes()).stream()
+        : listOrEmpty(recorded.getDisputes()).stream()
             .map(
-                contradiction ->
+                disputed ->
                     new MemoryDispute()
-                        .withMemory(contradiction.memory())
-                        .withDetectedAt(contradiction.detectedAt()))
+                        .withMemory(disputed.getMemory())
+                        .withDetectedAt(disputed.getDetectedAt()))
             .toList();
   }
 

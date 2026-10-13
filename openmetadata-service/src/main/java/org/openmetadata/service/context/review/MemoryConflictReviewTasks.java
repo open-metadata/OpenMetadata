@@ -33,9 +33,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.tasks.Task;
+import org.openmetadata.schema.type.DisputedMemory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MemoryConflictReviewPayload;
 import org.openmetadata.schema.type.TaskAvailableTransition;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityStatus;
@@ -97,15 +99,6 @@ public final class MemoryConflictReviewTasks {
 
   private static final List<Function<ContextMemory, Object>> REVIEWED_FIELDS =
       List.of(ContextMemory::getDisputes, ContextMemory::getOwners);
-
-  /** A memory the reviewed one contradicts, and when that was detected. */
-  record Contradiction(EntityReference memory, Long detectedAt) {}
-
-  /**
-   * Every memory the reviewed one contradicts. A decision retried after the memory left Draft,
-   * which releases its disputes, reads them from here.
-   */
-  record OpenedFor(List<Contradiction> disputes) {}
 
   private MemoryConflictReviewTasks() {}
 
@@ -315,14 +308,20 @@ public final class MemoryConflictReviewTasks {
     return disputed;
   }
 
-  static OpenedFor openedFor(ContextMemory reviewed) {
-    List<Contradiction> contradictions =
-        listOrEmpty(reviewed.getDisputes()).stream()
-            .map(
-                dispute ->
-                    new Contradiction(referenceTo(dispute.getMemory()), dispute.getDetectedAt()))
-            .toList();
-    return new OpenedFor(contradictions);
+  /**
+   * Every memory the reviewed one contradicts, by reference. A decision retried after the memory
+   * left Draft, which releases its disputes, reads them from here.
+   */
+  static MemoryConflictReviewPayload openedFor(ContextMemory reviewed) {
+    return new MemoryConflictReviewPayload()
+        .withDisputes(
+            listOrEmpty(reviewed.getDisputes()).stream()
+                .map(
+                    dispute ->
+                        new DisputedMemory()
+                            .withMemory(referenceTo(dispute.getMemory()))
+                            .withDetectedAt(dispute.getDetectedAt()))
+                .toList());
   }
 
   /** A stored memory reference reads as the memory's title, which the task must not carry. */
