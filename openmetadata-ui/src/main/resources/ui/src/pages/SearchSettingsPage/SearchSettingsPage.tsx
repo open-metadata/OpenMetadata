@@ -142,7 +142,6 @@ const SearchBoostsSection = ({
               handleDeleteTermBoost={onDeleteTermBoost}
               handleTermBoostChange={onTermBoostChange}
               showNewTermBoost={showNewTermBoost}
-              termBoostCardClassName="settings-term-boost-card"
               termBoosts={searchConfig?.globalSettings?.termBoosts ?? []}
             />
           </Grid.Item>

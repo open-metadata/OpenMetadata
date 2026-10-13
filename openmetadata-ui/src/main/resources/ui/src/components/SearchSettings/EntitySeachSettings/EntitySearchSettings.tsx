@@ -1044,7 +1044,6 @@ const EntitySearchSettings = () => {
                   handleDeleteTermBoost={handleDeleteTermBoost}
                   handleTermBoostChange={handleTermBoostChange}
                   showNewTermBoost={showNewTermBoost}
-                  termBoostCardClassName="term-boost-card"
                   termBoosts={searchSettings.termBoosts ?? []}
                 />
               </div>

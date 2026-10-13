@@ -201,14 +201,19 @@ test('Query Entity', async ({ page }) => {
     await page.click(CODE_EDITOR_LINE, { clickCount: 3 });
     await page.keyboard.press('Backspace');
     await page.keyboard.type(`${queryData.queryUsedIn.table1}`);
-    await page.click('[data-testid="edit-query-used-in"]');
     const tableSearchResponse = page.waitForResponse(
-      '/api/v1/search/query?q=*&index=table*'
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes('index=table') &&
+        response.url().includes(queryData.queryUsedIn.table2)
     );
-    await page.keyboard.type(queryData.queryUsedIn.table2);
+    await page
+      .getByTestId('edit-query-used-in')
+      .getByRole('combobox')
+      .fill(queryData.queryUsedIn.table2);
     await tableSearchResponse;
     await page
-      .locator('.ant-select-dropdown:visible .ant-select-item-option')
+      .getByRole('option')
       .filter({
         has: page.getByText(queryData.queryUsedIn.table2, { exact: true }),
       })

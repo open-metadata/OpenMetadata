@@ -17,25 +17,17 @@ import {
   PopoverTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-
-import { DefaultOptionType } from 'antd/lib/select';
-import { isArray, isUndefined, slice, uniqBy } from 'lodash';
-import { useEffect, useMemo, useState } from 'react';
+import { isUndefined, slice } from 'lodash';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import {
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE_MEDIUM,
-} from '../../../../constants/constants';
 import { QUERY_USED_BY_TABLE_VIEW_CAP } from '../../../../constants/Query.constant';
 import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
-import { searchQuery } from '../../../../rest/searchAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
-import { AsyncSelect } from '../../../common/AsyncSelect/AsyncSelect';
-import Loader from '../../../common/Loader/Loader';
-import getEntityLabel from '../../../Entity/EntityLabel/EntityLabel.component';
+import DataAssetAsyncSelectList from '../../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList';
+import { DataAssetOption } from '../../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import {
   QueryUsedByOtherTableProps,
   QueryUsedByTable,
@@ -47,8 +39,6 @@ const QueryUsedByOtherTable = ({
   onChange,
 }: QueryUsedByOtherTableProps) => {
   const { t } = useTranslation();
-  const [initialOptions, setInitialOptions] = useState<DefaultOptionType[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const { topThreeTable, remainingTable } = useMemo(() => {
     const { queryUsedIn } = query;
 
@@ -131,85 +121,38 @@ const QueryUsedByOtherTable = ({
     [topThreeTable, remainingTable]
   );
 
-  const handleOnChange = (
-    _: string[],
-    options?: DefaultOptionType | DefaultOptionType[]
-  ) => {
-    if (isArray(options)) {
-      onChange(options);
-    }
-  };
-
-  const fetchTableEntity = async (
-    searchValue = ''
-  ): Promise<DefaultOptionType[]> => {
-    try {
-      const response = await searchQuery({
-        query: searchValue,
-        pageNumber: INITIAL_PAGING_VALUE,
-        pageSize: PAGE_SIZE_MEDIUM,
-        searchIndex: SearchIndex.TABLE,
-      });
-
-      return response.hits.hits.map((value) => ({
-        label: getEntityLabel(value._source),
-        value: value._source.id,
-        labelName: getEntityName(value._source),
-      }));
-    } catch (error) {
-      return [];
-    }
-  };
-
-  const fetchInitialOptions = async () => {
-    setIsLoading(true);
-    try {
-      const options = await fetchTableEntity();
-      const { queryUsedIn = [] } = query;
-      const selectedValue = queryUsedIn.map((table) => ({
-        label: getEntityLabel(table),
-        value: table.id,
-        labelName: getEntityName(table),
-      }));
-
-      setInitialOptions(uniqBy([...selectedValue, ...options], 'labelName'));
-    } catch (error) {
-      setInitialOptions([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const selectList = useMemo(() => {
-    const { queryUsedIn = [] } = query;
-
-    const defaultValue = queryUsedIn.map((table) => table.id);
-
-    return isLoading ? (
-      <Loader size="small" />
-    ) : (
-      <AsyncSelect
-        api={fetchTableEntity}
-        className="w-min-30 w-full"
-        data-testid="edit-query-used-in"
-        defaultValue={defaultValue}
-        mode="multiple"
-        optionLabelProp="labelName"
-        options={initialOptions}
-        placeholder={t('label.please-select-entity', {
-          entity: t('label.query-used-in'),
-        })}
-        size="small"
-        onChange={handleOnChange}
-      />
+    const initialOptions: DataAssetOption[] = (query.queryUsedIn ?? []).map(
+      (table) => ({
+        value: table.fullyQualifiedName,
+        displayName: getEntityName(table),
+        reference: table,
+      })
     );
-  }, [query, initialOptions, isLoading, fetchTableEntity, handleOnChange]);
 
-  useEffect(() => {
-    if (isEditMode) {
-      fetchInitialOptions();
-    }
-  }, [isEditMode]);
+    return (
+      <div className="w-min-30 w-full" data-testid="edit-query-used-in">
+        <DataAssetAsyncSelectList
+          multiple
+          // eslint-disable-next-line jsx-a11y/no-autofocus -- turns autofocus off so the SQL editor keeps focus
+          autoFocus={false}
+          initialOptions={initialOptions}
+          placeholder={t('label.please-select-entity', {
+            entity: t('label.query-used-in'),
+          })}
+          searchIndex={SearchIndex.TABLE}
+          value={initialOptions.map((option) => option.value ?? '')}
+          onChange={(options) =>
+            onChange(
+              (Array.isArray(options) ? options : []).map(
+                (option) => option.reference
+              )
+            )
+          }
+        />
+      </div>
+    );
+  }, [query.queryUsedIn, onChange, t]);
 
   return (
     <Box className="layout-row" data-testid="para-container" wrap="wrap">
