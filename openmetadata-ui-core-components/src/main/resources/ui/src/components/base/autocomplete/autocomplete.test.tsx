@@ -63,44 +63,6 @@ describe('Autocomplete – selection commit', () => {
   });
 });
 
-// Unit tests render the raw i18n key, the app renders the English copy.
-const NO_DATA_TEXT = /no.data.found/i;
-
-const renderEmptyAutocomplete = (isLoading: boolean) =>
-  render(
-    <Autocomplete
-      isLoading={isLoading}
-      items={[]}
-      placeholder="Select"
-      selectedItems={[]}>
-      {(item) => (
-        <Autocomplete.Item id={item.id} key={item.id}>
-          {item.label}
-        </Autocomplete.Item>
-      )}
-    </Autocomplete>
-  );
-
-describe('Autocomplete – async empty state', () => {
-  it('shows a loading state instead of "no data" while results load', async () => {
-    renderEmptyAutocomplete(true);
-
-    await userEvent.click(screen.getByRole('combobox'));
-
-    expect(await screen.findByRole('status')).toBeInTheDocument();
-    expect(screen.queryByText(NO_DATA_TEXT)).not.toBeInTheDocument();
-  });
-
-  it('shows "no data" once loading has finished', async () => {
-    renderEmptyAutocomplete(false);
-
-    await userEvent.click(screen.getByRole('combobox'));
-
-    expect(await screen.findByText(NO_DATA_TEXT)).toBeInTheDocument();
-    expect(screen.queryByRole('status')).not.toBeInTheDocument();
-  });
-});
-
 // Above the virtualization threshold.
 const LARGE_OPTIONS: SelectItemType[] = Array.from(
   { length: 250 },
@@ -268,5 +230,61 @@ describe('Autocomplete – scroll paging across the virtualization threshold', (
     rerender(renderWithItems(LARGE_OPTIONS, onPopoverScroll));
 
     expect(screen.getByRole('listbox').scrollTop).toBe(scrolledTo);
+  });
+});
+
+describe('Autocomplete – popover header and footer', () => {
+  it('renders the header and footer around the open list', async () => {
+    render(
+      <Autocomplete
+        items={OPTIONS}
+        placeholder="Select"
+        popoverFooter={<div>Footer hints</div>}
+        popoverHeader={<div>Showing 2 of 2</div>}
+        selectedItems={[]}>
+        {(item) => (
+          <Autocomplete.Item id={item.id} key={item.id}>
+            {item.label}
+          </Autocomplete.Item>
+        )}
+      </Autocomplete>
+    );
+
+    expect(screen.queryByText('Showing 2 of 2')).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('combobox'));
+
+    const listbox = await screen.findByRole('listbox');
+    const header = screen.getByText('Showing 2 of 2');
+    const footer = screen.getByText('Footer hints');
+
+    expect(
+      header.compareDocumentPosition(listbox) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(
+      listbox.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+  });
+});
+
+describe('Autocomplete – empty state', () => {
+  it('renders the given empty state instead of the default one', async () => {
+    render(
+      <Autocomplete
+        emptyState={<div>Loading results</div>}
+        items={[]}
+        placeholder="Select"
+        selectedItems={[]}>
+        {(item) => (
+          <Autocomplete.Item id={item.id} key={item.id}>
+            {item.label}
+          </Autocomplete.Item>
+        )}
+      </Autocomplete>
+    );
+
+    await userEvent.click(screen.getByRole('combobox'));
+
+    expect(await screen.findByText('Loading results')).toBeInTheDocument();
   });
 });
