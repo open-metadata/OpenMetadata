@@ -209,7 +209,13 @@ export const configureNodeInputOutput = (
         'result',
       ];
     } else if (subType === NodeSubType.SinkTask) {
-      config.output = ['syncResult', 'syncedCount', 'failedCount', 'result'];
+      config.output = [
+        'syncResult',
+        'syncedCount',
+        'failedCount',
+        'skippedCount',
+        'result',
+      ];
       config.branches = ['success', 'failure'];
     } else {
       config.output = [];

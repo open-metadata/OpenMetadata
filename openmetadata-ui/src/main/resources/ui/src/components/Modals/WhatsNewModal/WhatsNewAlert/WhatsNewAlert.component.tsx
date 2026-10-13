@@ -86,7 +86,7 @@ const WhatsNewAlert = () => {
       });
     }
     onModalCancel();
-  }, [cookieStorage, onModalCancel, getReleaseVersionExpiry, cookieKey]);
+  }, [onModalCancel, cookieKey]);
 
   useEffect(() => {
     if (cookieKey) {
@@ -109,7 +109,7 @@ const WhatsNewAlert = () => {
                 className={`whats-new-alert-left${
                   releaseDate ? '' : ' whats-new-alert-left--centered'
                 }`}
-                flex="220px">
+                flex={releaseDate ? '220px' : '140px'}>
                 <div className="whats-new-alert-version-block">
                   <div className="whats-new-alert-meta">
                     <Typography.Text className="whats-new-alert-meta-label">
