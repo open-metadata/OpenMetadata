@@ -13,20 +13,21 @@
 
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { SearchIndex } from '../../../../enums/search.enum';
 import { Query } from '../../../../generated/entity/data/query';
 import { MOCK_QUERIES } from '../../../../mocks/Queries.mock';
-import { searchQuery } from '../../../../rest/searchAPI';
-import { MOCK_EXPLORE_SEARCH_RESULTS } from '../../../Explore/Explore.mock';
+import { DataAssetAsyncSelectListProps } from '../../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import { QueryUsedByOtherTableProps } from '../TableQueries.interface';
 import QueryUsedByOtherTable from './QueryUsedByOtherTable.component';
 
-jest.mock('../../../common/AsyncSelect/AsyncSelect', () => ({
-  AsyncSelect: jest
-    .fn()
-    .mockImplementation(() => <div>AsyncSelect.component</div>),
-}));
+const mockDataAssetSelect = jest
+  .fn()
+  .mockImplementation(() => <div>DataAssetAsyncSelectList</div>);
 
-jest.mock('../../../../rest/searchAPI');
+jest.mock(
+  '../../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList',
+  () => (props: DataAssetAsyncSelectListProps) => mockDataAssetSelect(props)
+);
 
 const mockProps: QueryUsedByOtherTableProps = {
   query: MOCK_QUERIES[0] as Query,
@@ -35,10 +36,6 @@ const mockProps: QueryUsedByOtherTableProps = {
 };
 
 describe('QueryUsedByOtherTable test', () => {
-  beforeEach(() => {
-    (searchQuery as jest.Mock).mockResolvedValue(MOCK_EXPLORE_SEARCH_RESULTS);
-  });
-
   it('Component should render', async () => {
     render(<QueryUsedByOtherTable {...mockProps} />, {
       wrapper: MemoryRouter,
@@ -71,40 +68,36 @@ describe('QueryUsedByOtherTable test', () => {
     );
   });
 
-  it('Should display select box if edit mode is true', async () => {
+  it('Should search tables and preselect the current ones in edit mode', async () => {
     render(<QueryUsedByOtherTable {...mockProps} isEditMode />, {
       wrapper: MemoryRouter,
     });
-    const selectField = await screen.findByText('AsyncSelect.component');
 
-    expect(selectField).toBeInTheDocument();
+    expect(
+      await screen.findByText('DataAssetAsyncSelectList')
+    ).toBeInTheDocument();
+
+    const props = mockDataAssetSelect.mock.calls[0][0];
+    const usedIn = MOCK_QUERIES[0].queryUsedIn ?? [];
+
+    expect(props.searchIndex).toBe(SearchIndex.TABLE);
+    expect(props.multiple).toBe(true);
+    expect(props.value).toEqual(usedIn.map((t) => t.fullyQualifiedName));
   });
 
-  it('Should fetch initial dropdown list in edit mode', async () => {
-    const mockSearchQuery = searchQuery as jest.Mock;
-    render(<QueryUsedByOtherTable {...mockProps} isEditMode />, {
-      wrapper: MemoryRouter,
-    });
-    const selectField = await screen.findByText('AsyncSelect.component');
+  it('Should report the picked tables as entity references', async () => {
+    const onChange = jest.fn();
+    render(
+      <QueryUsedByOtherTable {...mockProps} isEditMode onChange={onChange} />,
+      { wrapper: MemoryRouter }
+    );
+    await screen.findByText('DataAssetAsyncSelectList');
 
-    expect(selectField).toBeInTheDocument();
-    expect(mockSearchQuery).toHaveBeenCalledWith({
-      query: '',
-      pageNumber: 1,
-      pageSize: 25,
-      searchIndex: 'table',
-    });
-  });
+    const reference = { id: 'table-id', type: 'table', name: 'orders' };
+    mockDataAssetSelect.mock.calls[0][0].onChange([
+      { displayName: 'orders', value: 'db.orders', reference },
+    ]);
 
-  it('Loader should be visible while loading the initial options', async () => {
-    render(<QueryUsedByOtherTable {...mockProps} isEditMode />, {
-      wrapper: MemoryRouter,
-    });
-
-    expect(screen.getByTestId('loader')).toBeInTheDocument();
-
-    const selectField = await screen.findByText('AsyncSelect.component');
-
-    expect(selectField).toBeInTheDocument();
+    expect(onChange).toHaveBeenCalledWith([reference]);
   });
 });

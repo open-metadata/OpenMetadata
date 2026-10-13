@@ -1008,21 +1008,6 @@
       "count": 1
     }
   },
-  "src/components/Database/TableQueries/QueryCard.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
-    }
-  },
-  "src/components/Database/TableQueries/QueryUsedByOtherTable/QueryUsedByOtherTable.component.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
-    }
-  },
-  "src/components/Database/TableQueries/TableQueries.interface.ts": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
-    }
-  },
   "src/components/Database/TableQueries/TableQueries.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 3
@@ -1186,11 +1171,6 @@
   "src/components/SearchSettings/GlobalSettingsItem/GlobalSettingsItem.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 1
-    }
-  },
-  "src/components/SearchSettings/TermBoost/TermBoost.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 3
     }
   },
   "src/components/ServiceInsights/AgentsStatusWidget/AgentsStatusWidget.tsx": {
