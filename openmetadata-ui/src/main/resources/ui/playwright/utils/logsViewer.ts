@@ -11,13 +11,10 @@
  *  limitations under the License.
  */
 
-import { APIRequestContext, expect, type Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 import {
   LOGS_VIEWER_PIPELINE_STATUS_MAX_WAIT_MS,
   LOGS_VIEWER_PIPELINE_STATUS_RETRY_INTERVAL_MS,
-  LOGS_VIEWER_RUNNING_STATUS_INTERVAL_MS,
-  LOGS_VIEWER_RUNNING_STATUS_MAX_WAIT_MS,
-  TERMINAL_PIPELINE_STATES,
 } from '../constant/logsViewer';
 import { waitForAllLoadersToDisappear } from './entity';
 
@@ -285,80 +282,6 @@ export const LOG_STREAM_RESPONSE_HEADERS = {
  */
 export const buildLogStreamFrames = (...frames: LogStreamFrame[]): string =>
   frames.map((frame) => `data: ${JSON.stringify(frame)}\n\n`).join('');
-
-interface PipelineStatusRow {
-  runId?: string;
-  pipelineState?: string;
-}
-
-const readLatestPipelineStatus = async (
-  apiContext: APIRequestContext,
-  pipelineFqn: string
-): Promise<PipelineStatusRow | undefined> => {
-  const response = await apiContext.get(
-    `/api/v1/services/ingestionPipelines/${encodeURIComponent(
-      pipelineFqn
-    )}/pipelineStatus?limit=1`
-  );
-
-  if (!response.ok()) {
-    return undefined;
-  }
-
-  const body = await response.json();
-
-  return body.data?.[0];
-};
-
-/**
- * Waits for a freshly triggered run to report `running` and returns its runId.
- *
- * The log viewer only opens an SSE stream when the pipeline's latest status row
- * carries both a runId and a live state, so a test that wants to watch live logs
- * has to wait for exactly this row before it navigates.
- *
- * A run that is already terminal fails immediately with its own message rather
- * than burning the remaining budget — that outcome means the source had too
- * little to ingest to leave a live window, which is a different problem from a
- * scheduler that never started.
- */
-export const waitForRunningPipelineStatus = async (
-  apiContext: APIRequestContext,
-  pipelineFqn: string,
-  timeoutMs = LOGS_VIEWER_RUNNING_STATUS_MAX_WAIT_MS
-): Promise<{ runId: string }> => {
-  const deadline = Date.now() + timeoutMs;
-  let lastSeenState = 'no status row';
-
-  while (Date.now() < deadline) {
-    const latest = await readLatestPipelineStatus(apiContext, pipelineFqn);
-    const state = latest?.pipelineState;
-
-    if (state) {
-      lastSeenState = state;
-    }
-
-    if (state === 'running' && latest?.runId) {
-      return { runId: latest.runId };
-    }
-
-    if (state && TERMINAL_PIPELINE_STATES.includes(state)) {
-      throw new Error(
-        `Pipeline ${pipelineFqn} already reached "${state}" before a live window could be observed. ` +
-          `The source has too little to ingest for this test — widen the filter or pick a larger source.`
-      );
-    }
-
-    await new Promise((resolve) =>
-      setTimeout(resolve, LOGS_VIEWER_RUNNING_STATUS_INTERVAL_MS)
-    );
-  }
-
-  throw new Error(
-    `Pipeline ${pipelineFqn} did not report a "running" status within ${timeoutMs}ms ` +
-      `(last seen: ${lastSeenState}). The scheduler did not start the run in time.`
-  );
-};
 
 /**
  * The line count the log viewer reports in its footer, as a number.

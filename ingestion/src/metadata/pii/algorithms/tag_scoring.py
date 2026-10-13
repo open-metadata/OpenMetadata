@@ -13,6 +13,7 @@ from typing import (  # noqa: UP035
 )
 
 if TYPE_CHECKING:
+    from presidio_analyzer import RecognizerResult
     from presidio_analyzer.nlp_engine import NlpEngine
 
 from metadata.generated.schema.entity.classification.tag import Tag
@@ -93,17 +94,10 @@ class TagScorer:
 
         return results
 
-    def _build_recognizer_metadata(
-        self,
-        analysis: TagAnalysis,
-    ) -> Optional[TagLabelRecognizerMetadata]:  # noqa: UP045
-        if not analysis.recognizer_results:
-            return None
-
-        first_result = analysis.recognizer_results[0]
-        recognition_metadata = cast(Dict[str, str], first_result.recognition_metadata)  # noqa: TC006, UP006
-
-        recognizer_name = recognition_metadata.get(
+    @staticmethod
+    def _recognizer_name(result: "RecognizerResult") -> str:
+        recognition_metadata = cast(Dict[str, str], result.recognition_metadata)  # noqa: TC006, UP006
+        return recognition_metadata.get(
             presidio_constants.RECOGNIZER_METADATA_NAME,
             recognition_metadata.get(
                 presidio_constants.RECOGNIZER_METADATA_IDENTIFIER,
@@ -111,8 +105,23 @@ class TagScorer:
             ),
         )
 
+    def _build_recognizer_metadata(
+        self,
+        analysis: TagAnalysis,
+    ) -> Optional[TagLabelRecognizerMetadata]:  # noqa: UP045
+        if not analysis.recognizer_results:
+            return None
+
+        # Use the result with the highest score — that is the result responsible for
+        # analysis.score (which is the max), not necessarily the first in the list.
+        best_result = max(analysis.recognizer_results, key=lambda r: r.score)
+        recognizer_name = self._recognizer_name(best_result)
+
+        # Only report the patterns of the recognizer the metadata is attributed to.
         patterns_matched: Set[Tuple[str, str, float]] = set()  # noqa: UP006
         for result in analysis.recognizer_results:
+            if self._recognizer_name(result) != recognizer_name:
+                continue
             if result.analysis_explanation and result.analysis_explanation.pattern:
                 patterns_matched.add(
                     (

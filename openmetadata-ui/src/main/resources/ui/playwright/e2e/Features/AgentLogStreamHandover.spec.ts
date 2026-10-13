@@ -41,10 +41,11 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
  * the paginated endpoint exactly once, without resuming the 5s polling the
  * stream replaced.
  *
- * Everything here is mocked. Watching a real run reach its terminal state would
- * cost minutes of ingestion for behaviour that depends only on the frame the
- * server sends, and the live-tailing half is already proven against a real
- * stream in `e2e/Pages/IngestionLogStreamLive.spec.ts`.
+ * Everything here is mocked. What the viewer does depends only on the frames
+ * the server sends, so a real run would add minutes of ingestion and a race
+ * against how long that run happens to last. The server side of the stream —
+ * headers committed up front, typed frames, the `after` cursor — is covered by
+ * `IngestionPipelineLogStreamIT`.
  *
  * Each test picks what the stream serves up front rather than changing it
  * mid-flight. An earlier version held the second connection open and released it
@@ -56,6 +57,16 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 
 const RUN_ID = randomUUID();
 const STREAM_CURSOR = '20';
+
+/**
+ * How long a resumable connection stays pending before it is served. Long enough
+ * that the reconnect loop does not spin, short enough that a test sees several
+ * connections within its budget.
+ */
+const RESUMABLE_CONNECTION_HOLD_MS = 1_000;
+
+/** The cursor connection `n` (1-based) ends on; connection `n + 1` resumes from it. */
+const resumableCursor = (connection: number): string => `cursor-${connection}`;
 
 /**
  * Enough lines to overflow the log body at any viewport the suite runs at, so
@@ -105,11 +116,19 @@ const mockLogEndpoints = async (
   page: Page,
   {
     terminal,
+    resumable = false,
     lineCount,
     lineLength,
     followUpLineCount,
   }: {
     terminal: boolean;
+    /**
+     * Hold each connection open briefly, then end it the way the server sheds an
+     * idle connection mid-run: a `complete` frame with `reason: idleTimeout`. The
+     * client reconnects at once from the new cursor without backing off, so the
+     * stream stays live the whole time. Each connection gets its own cursor.
+     */
+    resumable?: boolean;
     lineCount?: number;
     lineLength?: number;
     /**
@@ -149,9 +168,12 @@ const mockLogEndpoints = async (
 
   await page.route(
     '**/api/v1/services/ingestionPipelines/logs/*/stream/*',
-    (route) => {
+    async (route) => {
       const isFirstConnection = streamRequests.length === 0;
       streamRequests.push(route.request().url());
+      const cursor = resumable
+        ? resumableCursor(streamRequests.length)
+        : STREAM_CURSOR;
 
       const frames: LogStreamFrame[] = [
         {
@@ -162,7 +184,7 @@ const mockLogEndpoints = async (
             isFirstConnection ? lineCount : followUpLineCount ?? lineCount,
             lineLength
           )}\n`,
-          after: STREAM_CURSOR,
+          after: cursor,
         },
       ];
 
@@ -171,15 +193,28 @@ const mockLogEndpoints = async (
           eventType: 'complete',
           runId: RUN_ID,
           reason: 'runFinished',
-          after: STREAM_CURSOR,
+          after: cursor,
         });
+      } else if (resumable) {
+        frames.push({
+          eventType: 'complete',
+          runId: RUN_ID,
+          reason: 'idleTimeout',
+          after: cursor,
+        });
+        await new Promise((resolve) =>
+          setTimeout(resolve, RESUMABLE_CONNECTION_HOLD_MS)
+        );
       }
 
-      return route.fulfill({
-        status: 200,
-        headers: LOG_STREAM_RESPONSE_HEADERS,
-        body: buildLogStreamFrames(...frames),
-      });
+      // The page may close while a held connection is still pending.
+      return route
+        .fulfill({
+          status: 200,
+          headers: LOG_STREAM_RESPONSE_HEADERS,
+          body: buildLogStreamFrames(...frames),
+        })
+        .catch(() => undefined);
     }
   );
 
@@ -257,6 +292,7 @@ test.describe('Agent log stream handover to the paginated endpoint', () => {
     page: Page,
     options: {
       terminal: boolean;
+      resumable?: boolean;
       lineCount?: number;
       lineLength?: number;
       followUpLineCount?: number;
@@ -301,11 +337,10 @@ test.describe('Agent log stream handover to the paginated endpoint', () => {
     });
 
     await test.step('The viewer never calls the paginated endpoint', async () => {
-      // No assertion on the live dot here. Playwright cannot hold a response
-      // open, so this mock closes every connection immediately and the client
-      // spends most of its time in reconnect backoff, where the reconnecting
-      // dot legitimately replaces the live one. A genuinely open connection is
-      // asserted against a real run in e2e/Pages/IngestionLogStreamLive.spec.ts.
+      // No assertion on the live dot here: this mock closes every connection
+      // without a frame saying why, so the client spends most of its time in
+      // reconnect backoff, where the reconnecting dot legitimately replaces the
+      // live one. The resumable test below covers the steady live state.
       await expect(page.getByTestId('log-viewer-stream-error')).toBeHidden();
 
       expect(
@@ -329,6 +364,65 @@ test.describe('Agent log stream handover to the paginated endpoint', () => {
         'reconnecting is not a reason to fall back to polling'
       ).toBe(0);
     });
+  });
+
+  test('A live run stays live while its log grows over resumed connections', async ({
+    page,
+  }) => {
+    const mocks = await openAgentLogs(page, {
+      terminal: false,
+      resumable: true,
+      lineCount: 5,
+      followUpLineCount: 3,
+    });
+
+    await test.step('The viewer reports the stream as live', async () => {
+      await assertLogViewerShowsLogs(page);
+      await expect(page.getByTestId('log-viewer-live-indicator')).toBeVisible();
+      await expect(
+        page.getByTestId('log-viewer-reconnecting-indicator')
+      ).toBeHidden();
+      await expect(page.getByTestId('log-viewer-stream-error')).toBeHidden();
+    });
+
+    await test.step('Each connection appends to the log without a reload', async () => {
+      const initialLineCount = await getLogViewerLineCount(page);
+
+      await expect
+        .poll(() => mocks.streamRequests.length, {
+          message: 'the client should resume after every idle-timeout close',
+          timeout: 15_000,
+        })
+        .toBeGreaterThanOrEqual(3);
+      await expect
+        .poll(() => getLogViewerLineCount(page))
+        .toBeGreaterThan(initialLineCount);
+    });
+
+    await test.step('Every resumed connection carries the cursor the previous one ended on', async () => {
+      const requests = [...mocks.streamRequests];
+
+      expect(requests[0]).not.toContain('after=');
+      requests.slice(1).forEach((url, index) => {
+        expect(url).toContain(`after=${resumableCursor(index + 1)}`);
+      });
+    });
+
+    await test.step('The stream is still live and the paginated endpoint was never polled', async () => {
+      await expect(page.getByTestId('log-viewer-live-indicator')).toBeVisible();
+      await expect(
+        page.getByTestId('log-viewer-reconnecting-indicator')
+      ).toBeHidden();
+
+      expect(
+        mocks.paginatedLogCalls(),
+        'the paginated log endpoint must not be called while streaming'
+      ).toBe(0);
+    });
+
+    await page.getByTestId('log-viewer-close').click();
+
+    await expect(page.getByTestId('log-viewer-title')).toBeHidden();
   });
 
   test('Scrolling a live log pauses auto-follow and the toolbar toggle resumes it', async ({
