@@ -18,7 +18,7 @@ import {
   HookForm,
   SimpleModal,
 } from '@openmetadata/ui-core-components';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import {
@@ -31,6 +31,12 @@ type DepthField = 'upstreamDepth' | 'downstreamDepth' | 'nodesPerLayer';
 // Number inputs hold strings; the config stores numbers.
 type LineageConfigFormValues = Record<DepthField, string>;
 
+const toFormValues = (config: LineageConfig): LineageConfigFormValues => ({
+  upstreamDepth: String(config.upstreamDepth ?? ''),
+  downstreamDepth: String(config.downstreamDepth ?? ''),
+  nodesPerLayer: String(config.nodesPerLayer ?? ''),
+});
+
 const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
   visible,
   config,
@@ -39,12 +45,16 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
 }) => {
   const { t } = useTranslation();
   const form = useForm<LineageConfigFormValues>({
-    defaultValues: {
-      upstreamDepth: String(config.upstreamDepth ?? ''),
-      downstreamDepth: String(config.downstreamDepth ?? ''),
-      nodesPerLayer: String(config.nodesPerLayer ?? ''),
-    },
+    defaultValues: toFormValues(config),
   });
+
+  // Callers keep the modal mounted and only toggle `visible`, so re-read the
+  // config on every open: it may have loaded since, or an edit was cancelled.
+  useEffect(() => {
+    if (visible) {
+      form.reset(toFormValues(config));
+    }
+  }, [visible, config, form]);
 
   const getNumberField = (
     name: DepthField,
