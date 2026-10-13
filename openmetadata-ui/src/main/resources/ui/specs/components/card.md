@@ -7,7 +7,7 @@
 | **Name** | Card |
 | **Category** | Base / container |
 | **Status** | Stable |
-| **Styles** | [`src/styles/components/card.less`](../../src/styles/components/card.less) |
+| **Styles** | [`core card.tsx`](../../../../../../../openmetadata-ui-core-components/src/main/resources/ui/src/components/base/card/card.tsx) |
 | **Component** | `@openmetadata/ui-core-components` → `Card` (`Card.Header` / `Card.Content` / `Card.Footer`) for new work; Ant Design `Card` (legacy) |
 
 ## Overview
@@ -35,8 +35,8 @@ Parts: **root** (surface, border, radius, optional shadow), **header**
 
 ## Tokens used
 
-Real `--om-*` tokens in `card.less` are the medium weight and the expand
-transition; surface/border/radius map through the modern core-components Card.
+Surface, border and radius come from the core-components Card; the medium
+weight and expand transition below are the matching `--om-*` tokens.
 
 | Part | Token |
 | --- | --- |

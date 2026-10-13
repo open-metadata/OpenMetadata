@@ -57,6 +57,12 @@ Light mode is frozen: reach dark with tokens that adapt, never by changing light
 [`docs/colors.md`](../../openmetadata-ui/src/main/resources/ui/docs/colors.md); dark values live under
 `.dark-mode` in `globals.css`.
 
+- **One file per token layer:** core tokens (`--color-*`, `--tw-*`) are declared only in core
+  `globals.css`; project `--om-*` tokens only in `tokens.css`, light on `:root` and dark on
+  `:root.dark-mode` side by side. Never declare an `--om-*` in `app.less` or a component file —
+  cross-file import order decides the winner. `variables.less` fallbacks equal the `tokens.css`
+  light value. Guard: `theme-contract.test.js` (ADR:2026-10-13-om-tokens-have-one-source-file).
+
 - **Scope:** dark mode is AI mode on core/Tailwind surfaces only. Classic mode gets no dark theme
   and antd-only surfaces (`.ant-*`) are not themed for dark — migrate them to core instead
   (ADR:2026-10-12-dark-mode-targets-ai-mode-core-surfaces-only).

@@ -819,62 +819,8 @@ a[href].link-text-grey,
   color: @background-color !important;
 }
 
-// Dark-mode bridge for fixed-hex legacy LESS palette vars.
-// Each var in variables.less has a project token and original color fallback, so light
-// mode resolves to the exact original hex (no drift) while dark mode picks up
-// the semantic/utility override below. This themes every consumer of these
-// legacy vars app-wide without per-file edits. Utility tokens auto-invert under
-// .dark-mode, so referencing them here yields the dark value. Categorical ramps
-// (severity, heatmap gradients) are intentionally excluded — they belong to the
-// token foundation.
-// `:root.dark-mode` (not `.dark-mode`): tokens.css declares the light values on
-// `:root` at equal specificity and is imported after this file, so a bare
-// `.dark-mode` lost and every bridged var stayed light in dark mode.
-:root.dark-mode {
-  // Neutral surfaces / borders / muted text
-  --om-grey-26: var(--color-bg-secondary_subtle);
-  --om-grey-25: var(--color-bg-secondary_subtle);
-  --om-grey-9: var(--color-bg-secondary_subtle);
-  --om-grey-1: var(--color-bg-secondary);
-  --om-grey-2: var(--color-bg-secondary);
-  --om-grey-5: var(--color-bg-secondary);
-  --om-grey-6: var(--color-bg-secondary);
-  --om-grey-50: var(--color-bg-secondary);
-  // @grey-15 (= @border-color / @global-border) is the primary neutral border
-  // across antd + legacy components (cards, tabs, tables, panels, dividers).
-  // In dark, map it to the subtle white-alpha border (rgba(255,255,255,0.08))
-  // so every antd surface reads consistently instead of a solid gray edge —
-  // one change themes all @border-color borders app-wide (OSS + Collate via
-  // submodule). Light keeps the frozen #eaecf5 fallback.
-  --om-grey-15: var(--color-border-subtle);
-  --om-grey-38: var(--color-border-subtle);
-  --om-grey-7: var(--color-text-quaternary);
-  --om-heading-color: var(--color-text-primary);
-  --om-border-color-base: var(--color-border-primary);
-  // @blue-29/@blue-30 are the fill/edge of legacy neutral chips (column data
-  // type, tag/glossary chips, async-select tags) — dark uses the core gray Badge pair.
-  --om-blue-29: var(--tw-color-utility-gray-50);
-  --om-purple-1: var(--tw-color-utility-purple-50);
-  --om-blue-30: var(--tw-color-utility-gray-200);
-  // Status — utility tokens auto-invert to readable dark values
-  --om-blue-13: var(--tw-color-utility-blue-light-100);
-  --om-blue-22: var(--tw-color-utility-blue-light-50);
-  --om-blue-500: var(--tw-color-utility-blue-light-500);
-  --om-green-9: var(--tw-color-utility-success-50);
-  --om-green-10: var(--tw-color-utility-success-700);
-  --om-green-12: var(--tw-color-utility-success-100);
-  --om-green-100: var(--tw-color-utility-success-100);
-  --om-green-500: var(--tw-color-utility-success-500);
-  --om-red-9: var(--tw-color-utility-error-50);
-  --om-red-10: var(--tw-color-utility-error-700);
-  --om-red-22: var(--tw-color-utility-error-500);
-  --om-yellow-10: var(--tw-color-utility-warning-50);
-  --om-alert-error-icon-bg-1: var(--tw-color-utility-error-100);
-  --om-alert-warning-icon: var(--tw-color-utility-warning-600);
-  --om-alert-warning-icon-bg-1: var(--tw-color-utility-warning-100);
-  --om-warning-100: var(--tw-color-utility-warning-100);
-  --om-warning-400: var(--tw-color-utility-warning-400);
-}
+// Dark values for the legacy --om-* aliases live in tokens.css, next to their
+// light values (ADR:2026-10-13-om-tokens-have-one-source-file).
 
 // AI dark-mode brand ACCENTS -> blue-400 (#53b1fd), the devrel dark palette:
 // #1570ef carries fills/borders, #53b1fd labels/icons/links (~5.4:1 on dark).

@@ -28,6 +28,10 @@
  *                         values (spacing, z-index, legacy colors with no
  *                         upstream home) hold the raw value directly here —
  *                         this is the one place raw values may live.
+ *                         Light values go on :root, dark values on
+ *                         :root.dark-mode — both here, never in another
+ *                         stylesheet (ADR:2026-10-13-om-tokens-have-one-
+ *                         source-file).
  *
  *   Components (the .less / .css files) reference Layer 2 via var(--om-*) and
  *   never raw values.
@@ -242,8 +246,8 @@
   --om-color-utility-yellow-100: var(--color-utility-yellow-100, #fef7c3);
   --om-color-utility-yellow-700: var(--color-utility-yellow-700, #a15c07);
 
-  /* Legacy LESS aliases keep their original light values; app.less supplies
-     their semantic dark-mode overrides. */
+  /* Legacy LESS aliases keep their original light values here; their dark
+     values are in the :root.dark-mode block below. */
   --om-green-9: #ecfdf3;
   --om-green-10: #027a48;
   --om-green-12: #d1fadf;
@@ -369,6 +373,60 @@
   --om-color-white: var(--color-white, #ffffff);
   --om-color-black: var(--color-black, #000000);
   --om-color-transparent: transparent;
+}
+
+/* Dark values for the legacy LESS aliases above. Kept in this file so light
+   and dark for every --om-* token sit in one place, with no cross-file import
+   order to get wrong. `:root.dark-mode` out-ranks `:root` whatever the order.
+   Each var in variables.less points at its --om-* alias, so light mode keeps
+   the original hex while dark picks the semantic/utility token below; utility
+   tokens auto-invert under .dark-mode. Categorical ramps (severity, heatmap
+   gradients) are excluded and belong to the token foundation.
+   ADR:2026-10-13-om-tokens-have-one-source-file */
+:root.dark-mode {
+  /* Neutral surfaces / borders / muted text */
+  --om-grey-26: var(--color-bg-secondary_subtle);
+  --om-grey-25: var(--color-bg-secondary_subtle);
+  --om-grey-9: var(--color-bg-secondary_subtle);
+  --om-grey-1: var(--color-bg-secondary);
+  --om-grey-2: var(--color-bg-secondary);
+  --om-grey-5: var(--color-bg-secondary);
+  --om-grey-6: var(--color-bg-secondary);
+  --om-grey-50: var(--color-bg-secondary);
+  /* @grey-15 (= @border-color / @global-border) is the primary neutral border
+     across antd + legacy components (cards, tabs, tables, panels, dividers).
+     In dark, map it to the subtle white-alpha border (rgba(255,255,255,0.08))
+     so every antd surface reads consistently instead of a solid gray edge —
+     one change themes all @border-color borders app-wide (OSS + Collate via
+     submodule). Light keeps the frozen #eaecf5 fallback. */
+  --om-grey-15: var(--color-border-subtle);
+  --om-grey-38: var(--color-border-subtle);
+  --om-grey-7: var(--color-text-quaternary);
+  --om-heading-color: var(--color-text-primary);
+  --om-border-color-base: var(--color-border-primary);
+  /* @blue-29/@blue-30 are the fill/edge of legacy neutral chips (column data
+     type, tag/glossary chips, async-select tags) — dark uses the core gray Badge pair. */
+  --om-blue-29: var(--tw-color-utility-gray-50);
+  --om-purple-1: var(--tw-color-utility-purple-50);
+  --om-blue-30: var(--tw-color-utility-gray-200);
+  /* Status — utility tokens auto-invert to readable dark values */
+  --om-blue-13: var(--tw-color-utility-blue-light-100);
+  --om-blue-22: var(--tw-color-utility-blue-light-50);
+  --om-blue-500: var(--tw-color-utility-blue-light-500);
+  --om-green-9: var(--tw-color-utility-success-50);
+  --om-green-10: var(--tw-color-utility-success-700);
+  --om-green-12: var(--tw-color-utility-success-100);
+  --om-green-100: var(--tw-color-utility-success-100);
+  --om-green-500: var(--tw-color-utility-success-500);
+  --om-red-9: var(--tw-color-utility-error-50);
+  --om-red-10: var(--tw-color-utility-error-700);
+  --om-red-22: var(--tw-color-utility-error-500);
+  --om-yellow-10: var(--tw-color-utility-warning-50);
+  --om-alert-error-icon-bg-1: var(--tw-color-utility-error-100);
+  --om-alert-warning-icon: var(--tw-color-utility-warning-600);
+  --om-alert-warning-icon-bg-1: var(--tw-color-utility-warning-100);
+  --om-warning-100: var(--tw-color-utility-warning-100);
+  --om-warning-400: var(--tw-color-utility-warning-400);
 }
 
 /* @tokens:generated-begin — DO NOT EDIT BY HAND.
@@ -713,7 +771,6 @@
   --om-legacy-color-0-0-0-0-1: rgba(0, 0, 0, 0.1);
   --om-legacy-color-0-0-0-0-102: #0000001a;
   --om-legacy-color-0-0-0-0-12: rgba(0, 0, 0, 0.12);
-  --om-legacy-color-0-0-0-0-13: rgba(0, 0, 0, 0.13);
   --om-legacy-color-0-0-0-0-15: rgba(0, 0, 0, 0.15);
   --om-legacy-color-0-0-0-0-2: rgba(0, 0, 0, 0.2);
   --om-legacy-color-0-0-0-0-25: rgba(0, 0, 0, 0.25);
@@ -727,7 +784,6 @@
   --om-legacy-color-008a00: #008a00;
   --om-legacy-color-027a48: #027a48;
   --om-legacy-color-06a4a4: #06a4a4;
-  --om-legacy-color-0950c5: #0950c5;
   --om-legacy-color-0c5460: #0c5460;
   --om-legacy-color-10-13-18-0-04: rgba(10, 13, 18, 0.04);
   --om-legacy-color-10-13-18-0-05: rgba(10, 13, 18, 0.05);
@@ -735,15 +791,12 @@
   --om-legacy-color-10-13-18-0-059: #0a0d120f;
   --om-legacy-color-10-13-18-0-08: rgba(10, 13, 18, 0.08);
   --om-legacy-color-10-13-18-0-102: #0a0d121a;
-  --om-legacy-color-10-13-18-0-18: rgba(10, 13, 18, 0.18);
-  --om-legacy-color-101828: #101828;
   --om-legacy-color-102a72: #102a72;
   --om-legacy-color-107-114-128-0-15: rgba(107, 114, 128, 0.15);
   --om-legacy-color-111827: #111827;
   --om-legacy-color-113-71-232-0-102: #7147e81a;
   --om-legacy-color-113-71-232-0-35: rgba(113, 71, 232, 0.35);
   --om-legacy-color-113-71-232-0-6: #7147e899;
-  --om-legacy-color-117-117-117-0-3: rgba(117, 117, 117, 0.3);
   --om-legacy-color-13c2c2: #13c2c2;
   --om-legacy-color-15-15-15-0-1: rgba(15, 15, 15, 0.1);
   --om-legacy-color-15-23-42-0-06: rgba(15, 23, 42, 0.06);
@@ -811,7 +864,6 @@
   --om-legacy-color-76746f: #76746f;
   --om-legacy-color-777777: #777;
   --om-legacy-color-7f56d9: #7f56d9;
-  --om-legacy-color-82-196-26-0-05: rgba(82, 196, 26, 0.05);
   --om-legacy-color-85-155-238-0-2: rgba(85, 155, 238, 0.2);
   --om-legacy-color-856404: #856404;
   --om-legacy-color-8c8c8c: #8c8c8c;
@@ -827,9 +879,7 @@
   --om-legacy-color-bee5eb: #bee5eb;
   --om-legacy-color-c3e6cb: #c3e6cb;
   --om-legacy-color-c45296: #c45296;
-  --om-legacy-color-c6b5f6: #c6b5f6;
   --om-legacy-color-c6c6c6: #c6c6c6;
-  --om-legacy-color-c9d7ff: #c9d7ff;
   --om-legacy-color-cb2431: #cb2431;
   --om-legacy-color-cccccc: #cccccc;
   --om-legacy-color-d4d4d8: #d4d4d8;
@@ -854,7 +904,6 @@
   --om-legacy-color-e8e8e8: #e8e8e8;
   --om-legacy-color-e8e8e9: #e8e8e9;
   --om-legacy-color-e8ecf5: #e8ecf5;
-  --om-legacy-color-eaecf0: #eaecf0;
   --om-legacy-color-ebeef1: #ebeef1;
   --om-legacy-color-ecedee: #ecedee;
   --om-legacy-color-eeeeee: #eeeeee;
@@ -862,7 +911,6 @@
   --om-legacy-color-efbdc1: #efbdc1;
   --om-legacy-color-f0f0f0: #f0f0f0;
   --om-legacy-color-f0f5ff: #f0f5ff;
-  --om-legacy-color-f1edfd: #f1edfd;
   --om-legacy-color-f1f1f1: #f1f1f1;
   --om-legacy-color-f1f5ff: #f1f5ff;
   --om-legacy-color-f3f7fd: #f3f7fd;
@@ -879,10 +927,8 @@
   --om-legacy-color-f7f9fc: #f7f9fc;
   --om-legacy-color-f7fbf9: #f7fbf9;
   --om-legacy-color-f8f8f8: #f8f8f8;
-  --om-legacy-color-f8f9fa: #f8f9fa;
   --om-legacy-color-f8faff: #f8faff;
   --om-legacy-color-f9816c: #f9816c;
-  --om-legacy-color-f9f5ff: #f9f5ff;
   --om-legacy-color-fbf8f8: #fbf8f8;
   --om-legacy-color-fbfaf9: #fbfaf9;
   --om-legacy-color-fbfcff: #fbfcff;
@@ -912,7 +958,6 @@
   --om-space-18: 18px;
   --om-space-19: 19px;
   --om-space-22: 22px;
-  --om-space-23: 23px;
   --om-space-26: 26px;
   --om-space-30: 30px;
   --om-space-35: 35px;
