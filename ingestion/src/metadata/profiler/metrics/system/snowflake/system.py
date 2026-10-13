@@ -126,6 +126,17 @@ def _parse_cached(normalized: str) -> Optional[str]:  # noqa: UP045
         return None
 
 
+def _snowflake_identifier(name: str) -> str:
+    """Quote a Snowflake identifier: an embedded double quote is doubled."""
+    return '"' + name.replace('"', '""') + '"'
+
+
+def _snowflake_literal(value: str) -> str:
+    """Quote a Snowflake string literal: a backslash is an escape, so it is
+    doubled before the single quote is."""
+    return "'" + value.replace("\\", "\\\\").replace("'", "''") + "'"
+
+
 class SnowflakeTableResovler:
     """A class the resolves snowflake tables by mimicking snowflake's default resolution logic:
     https://docs.snowflake.com/en/sql-reference/name-resolution
@@ -150,8 +161,13 @@ class SnowflakeTableResovler:
     def show_tables(self, db, schema, table):
         # SHOW ... LIKE treats _ and % as wildcards and has no ESCAPE clause, so the
         # match is narrowed server-side and the name column is compared here instead.
+        # The names are parsed out of the query history, so they are untrusted.
         rows = self.session.execute(
-            text(f'SHOW TABLES LIKE \'{table}\' IN SCHEMA "{db}"."{schema}" LIMIT {SHOW_TABLES_MATCH_LIMIT}')
+            text(
+                f"SHOW TABLES LIKE {_snowflake_literal(table)} "
+                f"IN SCHEMA {_snowflake_identifier(db)}.{_snowflake_identifier(schema)} "
+                f"LIMIT {SHOW_TABLES_MATCH_LIMIT}"
+            )
         ).fetchall()
         target = CaseInsensitiveString(table)
         return next((row for row in rows if target == row[1]), None)
