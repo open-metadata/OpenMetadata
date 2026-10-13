@@ -204,8 +204,7 @@ test('Query Entity', async ({ page }) => {
     const tableSearchResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/search/query') &&
-        response.url().includes('index=table') &&
-        response.url().includes(queryData.queryUsedIn.table2)
+        response.url().includes('index=table')
     );
     await page
       .getByTestId('edit-query-used-in')
