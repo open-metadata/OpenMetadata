@@ -87,6 +87,11 @@ public class RedisWebSocketRelay implements WebSocketRelay {
   }
 
   @Override
+  public boolean isRunning() {
+    return running.get();
+  }
+
+  @Override
   public void stop() {
     if (!running.compareAndSet(true, false)) {
       return;

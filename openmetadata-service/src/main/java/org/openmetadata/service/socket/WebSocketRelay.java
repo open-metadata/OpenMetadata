@@ -42,4 +42,9 @@ public interface WebSocketRelay {
   default void start() {}
 
   default void stop() {}
+
+  /** Whether the relay is live after {@link #start()}; false means frames are not being relayed. */
+  default boolean isRunning() {
+    return true;
+  }
 }
