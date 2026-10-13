@@ -37,6 +37,7 @@ import {
 import {
   getMemoryLinkName,
   getReviewDisputes,
+  getReviewedMemoryTitle,
 } from './MemoryConflictReviews.utils';
 
 interface ReviewRowProps {
@@ -90,7 +91,7 @@ const ReviewRow: FC<ReviewRowProps> = ({
           data-testid="reviewed-memory"
           size="md"
           onClick={() => onViewMemory(getMemoryLinkName(review.about))}>
-          {getEntityName(review.about)}
+          {getReviewedMemoryTitle(review) ?? getEntityName(review.about)}
         </Button>
         <Box direction="col" gap={1}>
           <Typography className="tw:text-tertiary" size="text-xs">

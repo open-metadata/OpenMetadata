@@ -32,7 +32,11 @@ Approved — and nothing wrote it.
    disputed memory. Only the server opens one: the task API refuses to create the type or to patch a task into or out of it. The task opens after the
    write that records the dispute commits; a failure to open it is logged, and the next write to the
    memory tries again. No workflow drives it: its Approve and Reject transitions are fixed when it
-   opens, and its decision applies synchronously when it is resolved.
+   opens, and its decision applies synchronously when it is resolved. The task names every memory
+   by its title, because memory names are generated: its payload records the reviewed memory's
+   `memoryTitle` and each disputed memory with its title as the display name. A write that changes
+   the memory's title, disputes or owners rewrites the open task's title, description, assignees
+   and payload, so the task shows what its decision acts on.
 3. Resolving the task decides the conflict, writing as the resolver, impersonated by
    `governance-bot`:
    - **Approve:** every disputed memory that is still Approved becomes Superseded by the reviewed

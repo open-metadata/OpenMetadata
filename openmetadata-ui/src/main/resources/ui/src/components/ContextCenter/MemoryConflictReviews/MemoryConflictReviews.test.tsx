@@ -32,10 +32,10 @@ const review = {
     id: 'memory-three',
     type: 'contextMemory',
     name: 'three-orders',
-    displayName: 'Customers need three orders',
   },
   payload: {
     memoryVersion: 0.2,
+    memoryTitle: 'Customers need three orders',
     disputes: [
       {
         memory: {
@@ -83,6 +83,14 @@ describe('MemoryConflictReviews', () => {
     expect(
       screen.getByText('Five orders against three orders')
     ).toBeInTheDocument();
+  });
+
+  it('names the reviewed memory when the task records no title', () => {
+    renderReviews([{ ...review, payload: { disputes: [] } } as Task]);
+
+    expect(screen.getByTestId('reviewed-memory')).toHaveTextContent(
+      'three-orders'
+    );
   });
 
   it('opens either memory by name', () => {

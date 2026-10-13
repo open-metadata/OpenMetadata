@@ -89,7 +89,14 @@ public class ContextMemoryConflictReviewIT {
     assertEquals(TaskCategory.Review, task.getCategory());
     assertEquals(conflict.reviewed().getId(), task.getAbout().getId());
     assertEquals(Set.of("approve", "reject"), transitionIds(task));
-    assertTrue(task.getDescription().contains(THRESHOLD_REASON));
+    assertTrue(
+        task.getDescription()
+            .contains("- " + conflict.disputed().getTitle() + ": " + THRESHOLD_REASON));
+    Map<?, ?> payload = JsonUtils.convertValue(task.getPayload(), Map.class);
+    assertEquals(conflict.reviewed().getTitle(), payload.get("memoryTitle"));
+    Map<?, ?> dispute = (Map<?, ?>) ((List<?>) payload.get("disputes")).getFirst();
+    assertEquals(
+        conflict.disputed().getTitle(), ((Map<?, ?>) dispute.get("memory")).get("displayName"));
     Set<String> assignees = names(task.getAssignees());
     assertTrue(assignees.contains(shared().USER2.getName()), "owner of the reviewed memory");
     assertTrue(assignees.contains(shared().USER3.getName()), "owner of the disputed memory");
@@ -103,6 +110,28 @@ public class ContextMemoryConflictReviewIT {
 
     assertEquals(
         1, openTasks(conflict.reviewed()).size(), "an edit in review opens no second task");
+  }
+
+  @Test
+  void retitlingAMemoryInReviewRetitlesItsTask(TestNamespace ns) {
+    Conflict conflict = conflict(ns, "retitle");
+    Task task = openTask(conflict.reviewed());
+
+    admin()
+        .patch(
+            idOf(conflict.reviewed()),
+            JsonUtils.readTree(
+                """
+                [{"op":"replace","path":"/title","value":"Customers need three completed orders"}]"""));
+
+    Task retitled = openTask(conflict.reviewed());
+    assertEquals(task.getId(), retitled.getId(), "the open task is rewritten, not replaced");
+    assertEquals(
+        "Review conflicting memory: Customers need three completed orders",
+        retitled.getDisplayName());
+    assertEquals(
+        "Customers need three completed orders",
+        JsonUtils.convertValue(retitled.getPayload(), Map.class).get("memoryTitle"));
   }
 
   @Test
@@ -354,7 +383,7 @@ public class ContextMemoryConflictReviewIT {
                 "aboutEntity", memory.getFullyQualifiedName(),
                 "type", TaskEntityType.MemoryConflictReview.value(),
                 "status", TaskEntityStatus.Open.value(),
-                "fields", "about,assignees,availableTransitions"))
+                "fields", "about,assignees,availableTransitions,payload"))
         .getData()
         .stream()
         .filter(task -> memory.getId().equals(task.getAbout().getId()))

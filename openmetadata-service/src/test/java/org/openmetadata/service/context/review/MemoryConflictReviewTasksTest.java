@@ -15,6 +15,7 @@ package org.openmetadata.service.context.review;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -83,7 +84,7 @@ class MemoryConflictReviewTasksTest {
     assertEquals(Entity.CONTEXT_MEMORY, task.getAbout().getType());
     assertEquals(BOT, task.getCreatedBy());
     assertEquals(42L, task.getCreatedAt());
-    assertEquals("Review conflicting memory: three-orders", task.getDisplayName());
+    assertEquals("Review conflicting memory: Three orders", task.getDisplayName());
   }
 
   @Test
@@ -114,12 +115,54 @@ class MemoryConflictReviewTasksTest {
   }
 
   @Test
-  void theDescriptionNamesEachDisputedMemoryAndWhy() {
+  void theDescriptionTitlesEachDisputedMemoryAndSaysWhy() {
     ContextMemory disputed = memory("five-orders", ContextMemoryStatus.APPROVED, CURATOR);
 
-    String description = MemoryConflictReviewTasks.describe(reviewed(disputed));
+    String description =
+        MemoryConflictReviewTasks.reviewTask(reviewed(disputed), List.of(disputed), BOT, 1L)
+            .getDescription();
 
-    assertTrue(description.contains("- five-orders: Five orders against three orders"));
+    assertTrue(description.contains("- Five orders: Five orders against three orders"));
+  }
+
+  /** Generated memory names such as {@code orders.pdf-<uuid>} label nothing for a reviewer. */
+  @Test
+  void theTaskTitlesTheReviewedMemoryAndEachDisputedOne() {
+    ContextMemory disputed = memory("five-orders", ContextMemoryStatus.APPROVED, CURATOR);
+    ContextMemory reviewed = reviewed(disputed);
+
+    Task task = MemoryConflictReviewTasks.reviewTask(reviewed, List.of(disputed), BOT, 1L);
+
+    Map<?, ?> payload = JsonUtils.convertValue(task.getPayload(), Map.class);
+    assertEquals("Three orders", payload.get("memoryTitle"));
+    Map<?, ?> disputedMemory =
+        (Map<?, ?>) ((Map<?, ?>) ((List<?>) payload.get("disputes")).getFirst()).get("memory");
+    assertEquals("Five orders", disputedMemory.get("displayName"));
+    assertEquals("five-orders", disputedMemory.get("name"));
+    assertNull(
+        reviewed.getDisputes().getFirst().getMemory().getDisplayName(),
+        "the memory's own disputes stay as written");
+  }
+
+  @Test
+  void aDisputedMemoryThatIsGoneKeepsItsName() {
+    ContextMemory disputed = memory("five-orders", ContextMemoryStatus.APPROVED, CURATOR);
+
+    Task task = MemoryConflictReviewTasks.reviewTask(reviewed(disputed), List.of(), BOT, 1L);
+
+    assertTrue(task.getDescription().contains("- five-orders: Five orders against three orders"));
+  }
+
+  @Test
+  void retitlingRedisputingOrReassigningChangesWhatTheReviewShows() {
+    ContextMemory disputed = memory("five-orders", ContextMemoryStatus.APPROVED, CURATOR);
+    ContextMemory before = reviewed(disputed);
+
+    assertTrue(changes(before, copy(before).withTitle("Three completed orders")));
+    assertTrue(changes(before, copy(before).withDisputes(List.of())));
+    assertTrue(changes(before, copy(before).withOwners(List.of(CURATOR))));
+    assertTrue(changes(null, before));
+    assertFalse(changes(before, copy(before).withAnswer("At least three completed orders.")));
   }
 
   @Test
@@ -143,6 +186,14 @@ class MemoryConflictReviewTasksTest {
     assertEquals("missing", MemoryConflictReviewTasks.label(missing));
   }
 
+  private static boolean changes(ContextMemory previous, ContextMemory current) {
+    return MemoryConflictReviewTasks.changesWhatTheReviewShows(previous, current);
+  }
+
+  private static ContextMemory copy(ContextMemory memory) {
+    return JsonUtils.deepCopy(memory, ContextMemory.class);
+  }
+
   private static ContextMemory reviewed(ContextMemory disputed) {
     MemoryDispute dispute =
         new MemoryDispute()
@@ -163,10 +214,16 @@ class MemoryConflictReviewTasksTest {
         .withId(UUID.randomUUID())
         .withName(name)
         .withFullyQualifiedName(name)
-        .withTitle(name)
+        .withTitle(titleOf(name))
         .withEntityStatus(stage)
         .withVersion(0.1)
         .withOwners(List.of(owners));
+  }
+
+  /** {@code five-orders} is titled {@code Five orders}, so a test can tell a title from a name. */
+  private static String titleOf(String name) {
+    String words = name.replace('-', ' ');
+    return Character.toUpperCase(words.charAt(0)) + words.substring(1);
   }
 
   private static EntityReference user(String name) {

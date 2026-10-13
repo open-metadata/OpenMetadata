@@ -34,18 +34,15 @@ const RESOLVE_TASK = /\/api\/v1\/tasks\/[^/]+\/resolve$/;
 const CONFLICT_REASON = 'Five orders against three orders';
 
 const createConflict = async (apiContext: APIRequestContext) => {
-  const create = (kind: string, entityStatus: 'Approved' | 'Unprocessed') => {
-    const name = `cc_review_${kind}_${uuid()}`;
-
-    return createMemoryViaApi(apiContext, {
-      name,
-      title: name,
+  const create = (kind: string, entityStatus: 'Approved' | 'Unprocessed') =>
+    createMemoryViaApi(apiContext, {
+      name: `cc_review_${kind}_${uuid()}`,
+      title: `Customers need ${kind} orders`,
       question: 'Who qualifies as a customer?',
       answer: `Customers need ${kind} orders.`,
       entityStatus,
       shareConfig: { visibility: 'Entity' },
     }) as Promise<Memory>;
-  };
   const disputed = await create('five', 'Approved');
   const reviewed = await create('three', 'Unprocessed');
   await patchMemory(apiContext, reviewed.id, [

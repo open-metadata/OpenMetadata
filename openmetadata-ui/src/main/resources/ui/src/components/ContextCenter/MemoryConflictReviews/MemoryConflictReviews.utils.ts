@@ -45,6 +45,17 @@ export const getReviewDisputes = (
     : [];
 };
 
+/**
+ * The reviewed memory's title as the server recorded it on the task. Memory
+ * names are generated, so a title is what a reviewer recognises; the task's
+ * `about` reference carries only the name.
+ */
+export const getReviewedMemoryTitle = (task: Task): string | undefined => {
+  const title = isRecord(task.payload) ? task.payload.memoryTitle : undefined;
+
+  return typeof title === 'string' && title.trim() ? title : undefined;
+};
+
 /** A memory's URL name, which Context Center opens through `?memory=`. */
 export const getMemoryLinkName = (memory?: EntityReference): string =>
   memory?.name ?? memory?.fullyQualifiedName ?? '';

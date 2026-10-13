@@ -14,6 +14,7 @@ import { Task } from '../../../generated/entity/tasks/task';
 import {
   getMemoryLinkName,
   getReviewDisputes,
+  getReviewedMemoryTitle,
 } from './MemoryConflictReviews.utils';
 
 const taskWith = (payload: unknown) =>
@@ -52,6 +53,26 @@ describe('getReviewDisputes', () => {
   it('has no disputes when the payload has none', () => {
     expect(getReviewDisputes(taskWith(undefined))).toEqual([]);
     expect(getReviewDisputes(taskWith({ disputes: 'x' }))).toEqual([]);
+  });
+});
+
+describe('getReviewedMemoryTitle', () => {
+  it('reads the title the server recorded on the task', () => {
+    expect(
+      getReviewedMemoryTitle(
+        taskWith({ memoryTitle: 'Customers need three orders' })
+      )
+    ).toBe('Customers need three orders');
+  });
+
+  it('has no title when the task records none', () => {
+    expect(getReviewedMemoryTitle(taskWith(undefined))).toBeUndefined();
+    expect(
+      getReviewedMemoryTitle(taskWith({ memoryTitle: '  ' }))
+    ).toBeUndefined();
+    expect(
+      getReviewedMemoryTitle(taskWith({ memoryTitle: 3 }))
+    ).toBeUndefined();
   });
 });
 
