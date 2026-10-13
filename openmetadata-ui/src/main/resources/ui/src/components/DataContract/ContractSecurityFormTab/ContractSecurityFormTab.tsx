@@ -386,10 +386,6 @@ export const ContractSecurityFormTab: React.FC<{
   const [editingKey, setEditingKey] = useState<number | null>(null);
 
   const policiesFormData: Policy[] = Form.useWatch('policies', form);
-  const dataClassificationFormItem: string = Form.useWatch(
-    'dataClassification',
-    form
-  );
 
   const columnOptions = useMemo(() => {
     const { columns } = tableData as Table;
@@ -426,12 +422,12 @@ export const ContractSecurityFormTab: React.FC<{
       });
       onChange({
         security: {
-          dataClassification: dataClassificationFormItem,
+          dataClassification: form.getFieldValue('dataClassification'),
           policies: filteredValue,
         },
       });
     },
-    [policiesFormData]
+    [policiesFormData, form, onChange]
   );
 
   const handleFormChange: FormProps['onValuesChange'] = (_, values) => {
@@ -466,7 +462,7 @@ export const ContractSecurityFormTab: React.FC<{
         setEditingKey(0);
       }
     }
-  }, [initialValues?.security]);
+  }, [initialValues?.security, form]);
 
   return (
     <>

@@ -238,7 +238,11 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                           </Box>
                           <Box className="layout-column tw:block">
                             {/* Display the change event id */}
-                            <Typography>{changeEventData.id}</Typography>
+                            <Typography>
+                              {isEmpty(typedEvent.data)
+                                ? t('label.unreadable-event')
+                                : changeEventData.id}
+                            </Typography>
                           </Box>
                         </Box>
                       </Box>

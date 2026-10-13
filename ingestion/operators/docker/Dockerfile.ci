@@ -164,9 +164,13 @@ ARG INGESTION_DEPENDENCY="all"
 # Pre-install the unmaintained dialect package that declares SQLAlchemy<2 in its
 # metadata but works at runtime with SQLAlchemy 2.0.
 RUN pip install --no-deps "sqlalchemy-ibmi==0.9.3"
-RUN pip install "datamodel-code-generator==0.64.0"
-RUN mkdir -p /ingestion/src/metadata/generated
-RUN python /scripts/datamodel_generation.py
+# 0.64.0 is vulnerable to CVE-2026-107377 (first patched in 0.81.0). Generate with
+# 0.83.0, then remove it in the same layer so its files cannot remain in the final
+# image's lower layers.
+RUN pip install "datamodel-code-generator==0.83.0" \
+  && mkdir -p /ingestion/src/metadata/generated \
+  && python /scripts/datamodel_generation.py \
+  && pip uninstall -y datamodel-code-generator
 RUN pip install ".[airflow]"
 RUN pip install ".[${INGESTION_DEPENDENCY}]"
 
@@ -183,6 +187,7 @@ COPY ingestion/operators/docker/*.py .
 # while authenticating connection with the airflow, psycopg2 solves this error
 RUN pip uninstall psycopg2-binary -y
 RUN pip install psycopg2 mysqlclient==2.1.1
+RUN python -c "import importlib.util as u; assert u.find_spec('datamodel_code_generator') is None"
 
 # Drop build-only packages that leaked into the runtime image. libmariadb-dev
 # and libmariadb-dev-compat are only needed to compile mysqlclient (done above);

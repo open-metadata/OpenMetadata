@@ -16,7 +16,7 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ChevronUp, InfoCircle } from '@openmetadata/ui-core-components/icons';
+import { ChevronUp, Info } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -121,7 +121,7 @@ const WidgetCard = ({
                     aria-label={t('label.info')}
                     className="tw:p-1"
                     color="tertiary"
-                    icon={InfoCircle}
+                    icon={Info}
                     size="xs"
                   />
                 </Tooltip>
