@@ -18,7 +18,7 @@ working with OpenMetadata entities.
 import traceback
 import types
 from collections import OrderedDict
-from collections.abc import Generator, Iterable
+from collections.abc import Callable, Generator, Iterable
 from itertools import chain
 from typing import (
     Any,
@@ -657,9 +657,13 @@ class OpenMetadata(
         params: dict[str, str] | None = None,
         skip_on_failure: bool = False,
         include: str | None = None,
+        on_parse_error: Callable[[type[T], dict[str, Any], Exception], None] | None = None,
     ) -> EntityList[T]:
         """
         Helps us paginate over the collection
+
+        Providing on_parse_error enables per-entity skipping even when
+        skip_on_failure is False. Callback errors propagate to the caller.
         """
 
         suffix = self.get_suffix(entity)
@@ -676,14 +680,17 @@ class OpenMetadata(
         if self._use_raw_data:
             return resp
 
-        if skip_on_failure:
+        if skip_on_failure or on_parse_error is not None:
             entities = []
             for elmt in resp["data"]:
                 try:
                     entities.append(entity(**elmt))
                 except Exception as exc:
-                    logger.error(f"Error creating entity [{entity.__name__}]. Failed with exception {exc}")
-                    logger.debug(f"Can't create [{entity.__name__}] from [{elmt}]. Skipping.")
+                    if on_parse_error is not None:
+                        on_parse_error(entity, elmt, exc)
+                    else:
+                        logger.error(f"Error creating entity [{entity.__name__}]. Failed with exception {exc}")
+                        logger.debug(f"Can't create [{entity.__name__}] from [{elmt}]. Skipping.")
                     continue
         else:
             entities = [entity(**elmt) for elmt in resp["data"]]
@@ -701,6 +708,7 @@ class OpenMetadata(
         params: dict[str, str] | None = None,
         skip_on_failure: bool = False,
         include: str | None = None,
+        on_parse_error: Callable[[type[T], dict[str, Any], Exception], None] | None = None,
     ) -> Iterable[T]:
         """
         Utility method that paginates over all EntityLists
@@ -709,6 +717,7 @@ class OpenMetadata(
         :param fields: Extra fields to return
         :param limit: Number of entities in each pagination
         :param params: Extra parameters, e.g., {"service": "serviceName"} to filter
+        :param on_parse_error: Report and skip malformed entities; implies skip_on_failure
         :return: Generator that will be yielding all Entities
         """
 
@@ -720,6 +729,7 @@ class OpenMetadata(
             params=params,
             skip_on_failure=skip_on_failure,
             include=include,
+            on_parse_error=on_parse_error,
         )
         yield from entity_list.entities
 
@@ -733,6 +743,7 @@ class OpenMetadata(
                 after=after,
                 skip_on_failure=skip_on_failure,
                 include=include,
+                on_parse_error=on_parse_error,
             )
             yield from entity_list.entities
             after = entity_list.after
