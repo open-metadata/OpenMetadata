@@ -731,9 +731,9 @@ export const addUser = async (
 
   await fillDescriptionBox(page, 'Adding new user');
 
-  await page.click(':nth-child(2) > .ant-radio > .ant-radio-input');
-  await page.fill('input[name="password"]', password);
-  await page.fill('input[name="confirmPassword"]', password);
+  await page.getByTestId('password-create').click();
+  await page.getByTestId('password').fill(password);
+  await page.getByTestId('confirmPassword').fill(password);
 
   const rolesCombobox = page
     .getByTestId('roles-dropdown')
@@ -743,29 +743,19 @@ export const addUser = async (
   const rolesSearchResponse = page.waitForResponse('/api/v1/roles/search?*');
   await rolesCombobox.fill(role);
   await rolesSearchResponse;
-  const roleOption = page
-    .locator('.ant-select-item-option-content')
-    .filter({ hasText: new RegExp(`^${role}$`) });
+  const roleOption = page.getByRole('option', { name: role, exact: true });
   await expect(roleOption).toBeVisible({ timeout: LONG_ACTION_TIMEOUT });
   await roleOption.click();
-  await clickOutside(page);
+  await page.keyboard.press('Escape');
 
   if (personas?.length) {
-    await page
-      .locator('[data-testid="personas-dropdown"] .ant-select-selector')
-      .click();
-    await page
+    const personasCombobox = page
       .getByTestId('personas-dropdown')
-      .getByRole('combobox')
-      .fill(personas[0]);
-    await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);
-    const personaOption = page
-      .locator('.ant-select-dropdown:visible')
-      .locator('.ant-select-item-option')
-      .filter({ hasText: personas[0] });
-    await personaOption.waitFor({ state: 'visible' });
-    await personaOption.click();
-    await clickOutside(page);
+      .getByRole('combobox');
+    await personasCombobox.click();
+    await personasCombobox.fill(personas[0]);
+    await page.getByRole('option', { name: personas[0], exact: true }).click();
+    await page.keyboard.press('Escape');
   }
 
   const saveResponse = page.waitForResponse('/api/v1/users');
@@ -795,9 +785,9 @@ export const checkForUserExistError = async (
 
   await fillDescriptionBox(page, 'Adding new user');
 
-  await page.click(':nth-child(2) > .ant-radio > .ant-radio-input');
-  await page.fill('input[name="password"]', password);
-  await page.fill('input[name="confirmPassword"]', password);
+  await page.getByTestId('password-create').click();
+  await page.getByTestId('password').fill(password);
+  await page.getByTestId('confirmPassword').fill(password);
 
   const saveResponse = page.waitForResponse('/api/v1/users');
   await page.click('[data-testid="save-user"]');
