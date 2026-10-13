@@ -21,7 +21,6 @@ import {
 import { XClose } from '@openmetadata/ui-core-components/icons';
 
 import { useTranslation } from 'react-i18next';
-import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { SliderWithInputProps } from './SliderWithInput.interface';
 const SliderWithInput = ({
   value,
@@ -33,11 +32,11 @@ const SliderWithInput = ({
 
   return (
     <Box
-      className={`layout-row ${className}`}
+      align="center"
+      className={className}
       data-testid="percentage-input"
-      style={getLayoutGutter(20)}
-      wrap="wrap">
-      <Box className="layout-column tw:block" style={{ flex: 'auto' }}>
+      gap={5}>
+      <Box className="tw:min-w-0 tw:flex-1">
         <Slider
           showRange
           aria-label={t('label.value')}
@@ -50,30 +49,28 @@ const SliderWithInput = ({
           }
         />
       </Box>
-      <Box className="layout-column tw:block w-32">
-        <div className="flex items-center gap-2">
-          <NumberInput
-            aria-label={t('label.value')}
-            inputDataTestId="slider-input"
-            maxValue={100}
-            minValue={min}
-            step={1}
-            suffix="%"
-            value={value}
-            onChange={(value) =>
-              onChange(Array.isArray(value) ? value[0] : value)
-            }
+      <Box align="center" className="tw:w-40 tw:shrink-0" gap={2}>
+        <NumberInput
+          aria-label={t('label.value')}
+          inputDataTestId="slider-input"
+          maxValue={100}
+          minValue={min}
+          step={1}
+          suffix="%"
+          value={value}
+          onChange={(value) =>
+            onChange(Array.isArray(value) ? value[0] : value)
+          }
+        />
+        <Tooltip arrow title={t('label.clear')}>
+          <ButtonUtility
+            color="tertiary"
+            data-testid="clear-slider-input"
+            icon={XClose}
+            size="xs"
+            onClick={() => onChange(null)}
           />
-          <Tooltip arrow title={t('label.clear')}>
-            <ButtonUtility
-              color="tertiary"
-              data-testid="clear-slider-input"
-              icon={XClose}
-              size="xs"
-              onClick={() => onChange(null)}
-            />
-          </Tooltip>
-        </div>
+        </Tooltip>
       </Box>
     </Box>
   );

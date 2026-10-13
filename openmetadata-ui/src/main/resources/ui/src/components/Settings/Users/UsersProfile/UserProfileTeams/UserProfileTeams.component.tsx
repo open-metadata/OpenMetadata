@@ -12,6 +12,7 @@
  */
 
 import {
+  Box,
   Button,
   ButtonUtility,
   Divider,
@@ -120,20 +121,18 @@ const UserProfileTeams = ({
                 className="profile-edit-popover-card"
                 containerClassName="tw:w-95 tw:p-5"
                 placement="top end">
-                <div
-                  className="user-profile-edit-popover-card relative"
+                {/* The team tree opens in its own overlay, so the card keeps a fixed height. */}
+                <Box
+                  className="tw:h-39"
                   data-testid="profile-teams-edit-popover"
-                  // The team tree opens in its own overlay, so the card keeps a fixed height.
-                  style={{ height: '156px' }}>
-                  <div className="d-flex justify-start items-center gap-2 m-b-sm">
-                    <div className="d-flex flex-start items-center">
-                      <IconTeamsGrey height={16} />
-                    </div>
-
-                    <Typography className="user-profile-edit-popover-card-title">
+                  direction="col"
+                  gap={3}>
+                  <Box align="center" gap={2}>
+                    <IconTeamsGrey height={16} />
+                    <Typography size="text-sm" weight="semibold">
                       {t('label.team-plural')}
                     </Typography>
-                  </div>
+                  </Box>
 
                   <div
                     className="border p-2 bg-gray-100 rounded-md"
@@ -150,18 +149,13 @@ const UserProfileTeams = ({
                     />
                   </div>
 
-                  <div className="flex justify-end gap-2 mt-4">
+                  <Box className="tw:mt-auto" gap={2} justify="end">
                     <Button
                       aria-label={t('label.cancel')}
                       color="primary"
                       data-testid="teams-edit-close-btn"
                       iconLeading={<ClosePopoverIcon height={24} />}
                       size="xs"
-                      style={{
-                        position: 'absolute',
-                        bottom: '0px',
-                        right: '38px',
-                      }}
                       onClick={handleCloseEditTeam}
                     />
                     <Button
@@ -171,11 +165,10 @@ const UserProfileTeams = ({
                       iconLeading={<SavePopoverIcon height={24} />}
                       isLoading={isLoading}
                       size="xs"
-                      style={{ position: 'absolute', bottom: '0px' }}
                       onClick={handleTeamsSave}
                     />
-                  </div>
-                </div>
+                  </Box>
+                </Box>
               </Popover>
             </PopoverTrigger>
           )}

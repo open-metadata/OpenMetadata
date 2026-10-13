@@ -303,6 +303,9 @@ const RuleForm: FC<RuleFormProps> = ({
               fetchData={fetchResources}
               isInvalid={fieldState.invalid}
               label={`${t('label.resource-plural')}:`}
+              placeholder={t('label.select-field', {
+                field: t('label.resource-plural'),
+              })}
               selectedDisplayStrategy="parent"
               value={getTreeSelectValue(resourcesOptions, field.value)}
               onBlur={field.onBlur}
@@ -340,6 +343,9 @@ const RuleForm: FC<RuleFormProps> = ({
               fetchData={fetchOperations}
               isInvalid={fieldState.invalid}
               label={`${t('label.operation-plural')}:`}
+              placeholder={t('label.select-field', {
+                field: t('label.operation-plural'),
+              })}
               selectedDisplayStrategy="parent"
               value={getTreeSelectValue(operationOptions, field.value)}
               onBlur={field.onBlur}
