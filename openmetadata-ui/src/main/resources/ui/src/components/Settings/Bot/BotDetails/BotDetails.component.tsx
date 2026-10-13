@@ -14,11 +14,12 @@
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import {
   Badge,
+  Button,
   Card,
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Input } from 'antd';
+import { Input } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, toLower, uniqBy } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -160,20 +161,22 @@ const BotDetails: FC<BotsDetailProps> = ({
                         />
                         <div className="flex justify-end" data-testid="buttons">
                           <Button
-                            className="text-sm mr-1"
+                            aria-label={t('label.cancel')}
+                            className="tw:mr-1"
+                            color="primary"
                             data-testid="cancel-displayName"
-                            icon={<CloseOutlined />}
-                            size="small"
-                            type="primary"
+                            iconLeading={<CloseOutlined />}
+                            size="xs"
                             onMouseDown={() => setIsDisplayNameEdit(false)}
                           />
 
                           <Button
-                            className="text-sm mr-1"
+                            aria-label={t('label.save')}
+                            className="tw:mr-1"
+                            color="primary"
                             data-testid="save-displayName"
-                            icon={<CheckOutlined />}
-                            size="small"
-                            type="primary"
+                            iconLeading={<CheckOutlined />}
+                            size="xs"
                             onClick={handleDisplayNameChange}
                           />
                         </div>

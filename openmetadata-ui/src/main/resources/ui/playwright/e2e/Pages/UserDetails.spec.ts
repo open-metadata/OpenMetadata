@@ -518,7 +518,7 @@ test.describe('User with different Roles', () => {
 
     await userPage.click('[data-testid="user-profile-manage-btn"]');
     await userPage.click('[data-testid="edit-displayname"]');
-    await userPage.locator('[role="dialog"].ant-modal').waitFor({
+    await userPage.getByTestId('profile-edit-modal').waitFor({
       state: 'visible',
     });
     await userPage.fill(

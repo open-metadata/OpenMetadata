@@ -11,15 +11,18 @@
  *  limitations under the License.
  */
 
-import { isEmpty } from 'lodash';
+import { TFunction } from 'i18next';
+import { isEmpty, xorBy } from 'lodash';
 import {
   Task,
   TaskAvailableTransition,
   TaskCategory,
   TaskStatus,
 } from '../../../../generated/entity/tasks/task';
+import { EntityReference } from '../../../../generated/type/entityReference';
 import { TaskFormSchema } from '../../../../rest/taskFormSchemasAPI';
 import { ResolveTask, TaskResolutionType } from '../../../../rest/tasksAPI';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
   applyTaskFormSchemaDefaults,
   getEditableTaskPayload,
@@ -327,4 +330,29 @@ export const splitTaskActions = (
     secondary,
     overflow: actions.filter((action) => !promoted.has(action.id)),
   };
+};
+
+/**
+ * Why a reassign should not be sent, if it should not. Clicking the current
+ * assignee in the single-select picker clears it, and choosing the same people
+ * again changes nothing: both say who is already assigned. An empty pick on a
+ * task with no assignee says one is required.
+ */
+export const getReassignBlocker = (
+  current: EntityReference[],
+  next: EntityReference[],
+  t: TFunction
+): string | undefined => {
+  const isUnchanged = isEmpty(next) || isEmpty(xorBy(current, next, 'id'));
+  if (!isEmpty(current) && isUnchanged) {
+    return t('message.already-assigned-to-task', {
+      name: current.map((assignee) => getEntityName(assignee)).join(', '),
+    });
+  }
+
+  return isEmpty(next)
+    ? t('message.field-text-is-required', {
+        fieldText: t('label.assignee-plural'),
+      })
+    : undefined;
 };

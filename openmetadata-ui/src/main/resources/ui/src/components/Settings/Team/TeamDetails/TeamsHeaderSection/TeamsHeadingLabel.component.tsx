@@ -16,17 +16,12 @@ import {
   CloseOutlined,
   ExclamationCircleFilled,
 } from '@ant-design/icons';
-import {
-  Box,
-  ButtonUtility,
-  Tooltip,
-  Typography,
-} from '@openmetadata/ui-core-components';
-import { Button, Input } from 'antd';
+import { Box, Button, Typography } from '@openmetadata/ui-core-components';
+import { Input } from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
+import { EditIconButton } from '../../../../common/IconButtons/EditIconButton';
 
 import { Team } from '../../../../../generated/entity/teams/team';
 import { useAuth } from '../../../../../hooks/authHooks';
@@ -120,29 +115,24 @@ const TeamsHeadingLabel = ({
 
     const canEditHeading = hasAccess || isCurrentTeamOwner;
     const editHeadingButton = canEditHeading && !currentTeam.deleted && (
-      <Tooltip
-        arrow
-        placement="right"
+      <EditIconButton
+        newLook
+        data-testid="edit-team-name"
+        disabled={!hasEditDisplayNamePermission}
+        size="small"
         title={
           hasEditDisplayNamePermission
             ? t('label.edit-entity', {
                 entity: t('label.display-name'),
               })
             : t('message.no-permission-for-action')
-        }>
-        <ButtonUtility
-          color="secondary"
-          data-testid="edit-team-name"
-          icon={EditIcon}
-          isDisabled={!hasEditDisplayNamePermission}
-          size="xs"
-          onClick={(e) => {
-            // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
-            e.stopPropagation();
-            setIsHeadingEditing(true);
-          }}
-        />
-      </Tooltip>
+        }
+        onClick={(e) => {
+          // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
+          e.stopPropagation();
+          setIsHeadingEditing(true);
+        }}
+      />
     );
 
     return isHeadingEditing ? (
@@ -170,18 +160,16 @@ const TeamsHeadingLabel = ({
           gap={1}
           itemClassName="layout-space-item">
           <Button
-            className="rounded-4 text-sm p-xss"
+            color="primary"
             data-testid="cancelAssociatedTag"
-            disabled={isLoading}
-            type="primary"
+            isDisabled={isLoading}
             onMouseDown={handleClose}>
             <CloseOutlined />
           </Button>
           <Button
-            className="rounded-4 text-sm p-xss"
+            color="primary"
             data-testid="saveAssociatedTag"
-            loading={isLoading}
-            type="primary"
+            isLoading={isLoading}
             onMouseDown={onHeadingSave}>
             <CheckOutlined />
           </Button>

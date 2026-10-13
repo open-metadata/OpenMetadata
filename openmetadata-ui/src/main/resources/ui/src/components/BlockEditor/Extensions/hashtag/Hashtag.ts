@@ -14,6 +14,7 @@ import { mergeAttributes, Node } from '@tiptap/core';
 import { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import { PluginKey } from '@tiptap/pm/state';
 import Suggestion, { SuggestionOptions } from '@tiptap/suggestion';
+import { SAFE_HREF_REGEX } from '../../../../constants/regex.constants';
 
 export type HashtagOptions = {
   HTMLAttributes: Record<string, unknown>;
@@ -115,7 +116,7 @@ export const Hashtag = Node.create<HashtagOptions>({
         default: null,
         parseHTML: (element) => element.getAttribute('href'),
         renderHTML: (attributes) => {
-          if (!attributes.href) {
+          if (!SAFE_HREF_REGEX.test(attributes.href ?? '')) {
             return {};
           }
 
@@ -154,7 +155,13 @@ export const Hashtag = Node.create<HashtagOptions>({
   },
 
   parseHTML() {
-    return [{ tag: 'a[href]:not([href *= "javascript:" i])' }];
+    return [
+      {
+        tag: 'a[href]',
+        getAttrs: (element) =>
+          SAFE_HREF_REGEX.test(element.getAttribute('href') ?? '') && null,
+      },
+    ];
   },
 
   renderHTML({ HTMLAttributes, node }) {

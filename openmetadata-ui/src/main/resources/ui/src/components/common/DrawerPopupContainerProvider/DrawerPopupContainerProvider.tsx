@@ -15,7 +15,7 @@ import { PropsWithChildren } from 'react';
 
 const PORTAL_CONTAINER_ID = 'drawer-popup-portal';
 
-const getPopupContainer = (): HTMLElement => {
+export const getPopupContainer = (): HTMLElement => {
   let container = document.getElementById(PORTAL_CONTAINER_ID);
   if (!container) {
     container = document.createElement('div');

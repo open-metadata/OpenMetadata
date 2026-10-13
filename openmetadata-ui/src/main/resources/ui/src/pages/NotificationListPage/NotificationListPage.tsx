@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 import {
+  Button,
   ButtonUtility,
   Grid,
   Skeleton,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -356,8 +356,8 @@ const NotificationListPage = () => {
               alertResourcePermission?.All) && (
               <LimitWrapper resource="eventsubscription">
                 <Button
+                  color="primary"
                   data-testid="create-notification"
-                  type="primary"
                   onClick={() =>
                     navigate(
                       getSettingPath(

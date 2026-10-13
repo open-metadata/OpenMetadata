@@ -20,6 +20,7 @@ import {
 } from '../../../../generated/tests/testCaseResolutionStatus';
 import { TagLabel } from '../../../../generated/type/tagLabel';
 import { EntityUnion } from '../../../Explore/ExplorePage.interface';
+import type { ActivityChange } from './inbox.utils';
 
 /**
  * The detail pane is described as data, never as JSX: a task type contributes a
@@ -43,7 +44,8 @@ export type TaskDetailRowIcon =
 export type TaskDetailRowValue =
   | { kind: 'text'; text: string }
   | { kind: 'date'; timestamp?: number }
-  | { kind: 'users'; refs: EntityReference[] }
+  // `title` heads the "+N" overflow, plural where the row's label is not.
+  | { kind: 'users'; refs: EntityReference[]; title?: string }
   | { kind: 'tags'; tags: TagLabel[] }
   | { kind: 'link'; label: string; to: string }
   // A long list, e.g. requested columns: the first few inline, the rest in a
@@ -104,6 +106,8 @@ export interface TaskDetailDescriptor {
   subtitleKey: string;
   actionLabels?: TaskActionLabelOverrides;
   rows: TaskDetailRow[];
+  /** What approving changes, drawn as the activity cards draw a change. */
+  change?: ActivityChange;
   callout?: TaskDetailCallout;
   /**
    * The timeline's "created" event in the type's own words, e.g. "created this

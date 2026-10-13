@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import { PlusOutlined } from '@ant-design/icons';
-import { Box } from '@openmetadata/ui-core-components';
-import { Button, Form } from 'antd';
+import { Box, Button, SimpleModal } from '@openmetadata/ui-core-components';
+import { Form } from 'antd';
 import { useForm } from 'antd/es/form/Form';
-import Modal from 'antd/lib/modal/Modal';
+
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -39,6 +39,7 @@ import { getUserById } from '../../../../rest/userAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { generateFormFields, getField } from '../../../../utils/formUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import { DrawerPopupContainerProvider } from '../../../common/DrawerPopupContainerProvider/DrawerPopupContainerProvider';
 import { UserTag } from '../../../common/UserTag/UserTag.component';
 import { UserTagSize } from '../../../common/UserTag/UserTag.interface';
 import { AddPersonaFormProps } from './AddEditPersona.interface';
@@ -162,10 +163,15 @@ export const AddEditPersonaForm = ({
         hasPermission: true,
         children: (
           <Button
+            aria-label={t('label.add-entity', {
+              entity: t('label.user-plural'),
+            })}
+            color="primary"
             data-testid="add-users"
-            icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
-            size="small"
-            type="primary"
+            iconLeading={
+              <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
+            }
+            size="xs"
           />
         ),
       },
@@ -176,50 +182,49 @@ export const AddEditPersonaForm = ({
   const handleSave = useCallback(() => form?.submit(), [form]);
 
   return (
-    <Modal
-      centered
-      destroyOnClose
-      open
+    <SimpleModal
+      isOpen
       cancelText={t('label.cancel')}
-      closable={false}
-      closeIcon={null}
-      confirmLoading={isSaving}
       data-testid="add-edit-persona-modal"
+      isDismissable={false}
+      isOkLoading={isSaving}
       okText={isEditMode ? t('label.update') : t('label.create')}
       title={isEmpty(persona) ? 'Add Persona' : 'Edit Persona'}
       width={750}
       onCancel={onCancel}
       onOk={handleSave}>
-      <Form
-        form={form}
-        initialValues={persona}
-        layout="vertical"
-        validateMessages={VALIDATION_MESSAGES}
-        onFinish={handleSubmit}>
-        {generateFormFields(fields)}
-        <div>
-          {getField(usersField)}
-          {Boolean(usersList.length) && (
-            <Box
-              inline
-              align="center"
-              className="layout-space layout-space-horizontal m--t-md"
-              data-testid="users-container"
-              gap={2}
-              itemClassName="layout-space-item"
-              wrap="wrap">
-              {usersList.map((d) => (
-                <UserTag
-                  id={d.name ?? d.id}
-                  key={d.id}
-                  name={getEntityName(d)}
-                  size={UserTagSize.small}
-                />
-              ))}
-            </Box>
-          )}
-        </div>
-      </Form>
-    </Modal>
+      <DrawerPopupContainerProvider>
+        <Form
+          form={form}
+          initialValues={persona}
+          layout="vertical"
+          validateMessages={VALIDATION_MESSAGES}
+          onFinish={handleSubmit}>
+          {generateFormFields(fields)}
+          <div>
+            {getField(usersField)}
+            {Boolean(usersList.length) && (
+              <Box
+                inline
+                align="center"
+                className="layout-space layout-space-horizontal m--t-md"
+                data-testid="users-container"
+                gap={2}
+                itemClassName="layout-space-item"
+                wrap="wrap">
+                {usersList.map((d) => (
+                  <UserTag
+                    id={d.name ?? d.id}
+                    key={d.id}
+                    name={getEntityName(d)}
+                    size={UserTagSize.small}
+                  />
+                ))}
+              </Box>
+            )}
+          </div>
+        </Form>
+      </DrawerPopupContainerProvider>
+    </SimpleModal>
   );
 };
