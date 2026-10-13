@@ -19,6 +19,11 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import CustomMetricFormDrawer from './CustomMetricFormDrawer';
 
 const mockLocation = { search: '' };
+const mockNavigate = jest.fn();
+
+jest.mock('react-router-dom', () => ({
+  useNavigate: () => mockNavigate,
+}));
 
 jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () =>
   jest.fn(() => mockLocation)
@@ -130,6 +135,48 @@ describe('CustomMetricFormDrawer', () => {
     expect(screen.getByTestId('column-profile-preview')).toHaveTextContent(
       SECOND_COLUMN.fullyQualifiedName ?? ''
     );
+  });
+
+  it("opens the new column metric's column profile after creating it", async () => {
+    mockLocation.search = '?startTs=1&endTs=2';
+    (putCustomMetric as jest.Mock).mockResolvedValue({ data: TABLE });
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    render(
+      <CustomMetricFormDrawer
+        isColumnMetric
+        open
+        table={TABLE}
+        onClose={jest.fn()}
+        onSuccess={jest.fn()}
+      />
+    );
+
+    await user.type(
+      await screen.findByTestId('custom-metric-name'),
+      'column_metric'
+    );
+    await user.click(
+      within(screen.getByTestId('custom-metric-column')).getByRole('button')
+    );
+    await user.click(
+      await screen.findByRole('option', { name: SECOND_COLUMN.name })
+    );
+    await typeQuery(user, 'SELECT 1');
+    await user.click(screen.getByTestId('submit-button'));
+
+    await waitFor(() =>
+      expect(putCustomMetric).toHaveBeenCalledWith(TABLE.id, {
+        name: 'column_metric',
+        expression: 'SELECT 1',
+        columnName: SECOND_COLUMN.name,
+      })
+    );
+
+    expect(mockNavigate).toHaveBeenCalledWith({
+      search: `startTs=1&endTs=2&activeColumnFqn=${encodeURIComponent(
+        SECOND_COLUMN.fullyQualifiedName ?? ''
+      )}`,
+    });
   });
 
   it('edits a column metric, keeping its persisted fields but not its id', async () => {

@@ -16,6 +16,7 @@ import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { CustomMetric, Table } from '../../../generated/entity/data/table';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { putCustomMetric } from '../../../rest/customMetricAPI';
@@ -46,18 +47,21 @@ const CustomMetricFormDrawer = ({
 }: CustomMetricFormDrawerProps) => {
   const { t } = useTranslation();
   const location = useCustomLocation();
+  const navigate = useNavigate();
   const isEditMode = Boolean(metric);
   const form = useForm<CustomMetric>({
     defaultValues: { name: '', expression: '' },
   });
   const columnName = useWatch({ control: form.control, name: 'columnName' });
 
-  const activeColumnFqn = useMemo(() => {
+  const searchParams = useMemo(() => {
     const param = location.search;
 
-    return QueryString.parse(param.startsWith('?') ? param.substring(1) : param)
-      .activeColumnFqn as string | undefined;
+    return QueryString.parse(
+      param.startsWith('?') ? param.substring(1) : param
+    );
   }, [location.search]);
+  const activeColumnFqn = searchParams.activeColumnFqn as string | undefined;
 
   const selectedColumnFqn = useMemo(
     () =>
@@ -109,6 +113,20 @@ const CustomMetricFormDrawer = ({
           )
         );
         onSuccess(data);
+        // Land on the metric's column so its new graph is in view, as the
+        // former add page did when it navigated back.
+        if (
+          isColumnMetric &&
+          selectedColumnFqn &&
+          selectedColumnFqn !== activeColumnFqn
+        ) {
+          navigate({
+            search: QueryString.stringify({
+              ...searchParams,
+              activeColumnFqn: selectedColumnFqn,
+            }),
+          });
+        }
       } catch (error) {
         showErrorToast(error as AxiosError);
 
@@ -116,7 +134,18 @@ const CustomMetricFormDrawer = ({
         throw error;
       }
     },
-    [table, metric, isColumnMetric, isEditMode, onSuccess, t]
+    [
+      table,
+      metric,
+      isColumnMetric,
+      isEditMode,
+      selectedColumnFqn,
+      activeColumnFqn,
+      searchParams,
+      navigate,
+      onSuccess,
+      t,
+    ]
   );
 
   const closeDrawerRef = useRef<() => void>(() => undefined);
