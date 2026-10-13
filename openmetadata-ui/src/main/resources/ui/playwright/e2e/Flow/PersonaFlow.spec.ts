@@ -41,6 +41,7 @@ import {
   updatePersonaDisplayName,
 } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 const PERSONA_DETAILS = {
   name: `persona-with-%-${uuid()}`,
@@ -121,7 +122,15 @@ test.describe.serial('Persona operations', () => {
       .click();
     await page.getByTestId('selectable-list-update-btn').click();
 
+    const createPersonaResponse = waitForResponseWithStatus(
+      page,
+      (response) =>
+        response.request().method() === 'POST' &&
+        new URL(response.url()).pathname.endsWith('/api/v1/personas'),
+      201
+    );
     await page.getByRole('button', { name: 'Create' }).click();
+    await createPersonaResponse;
 
     await navigateToPersonaSettings(page);
 
@@ -300,6 +309,11 @@ test.describe.serial('Default persona setting and removal flow', () => {
         user1.delete(apiContext),
         persona1.delete(apiContext),
         persona2.delete(apiContext),
+        apiContext.delete(
+          `/api/v1/personas/name/${encodeURIComponent(
+            PERSONA_DETAILS.name
+          )}?hardDelete=true`
+        ),
       ]);
       await afterAction();
     }
@@ -361,7 +375,15 @@ test.describe.serial('Default persona setting and removal flow', () => {
           .click();
         await adminPage.getByTestId('selectable-list-update-btn').click();
 
+        const createPersonaResponse = waitForResponseWithStatus(
+          adminPage,
+          (response) =>
+            response.request().method() === 'POST' &&
+            new URL(response.url()).pathname.endsWith('/api/v1/personas'),
+          201
+        );
         await adminPage.getByRole('button', { name: 'Create' }).click();
+        await createPersonaResponse;
 
         await navigateToPersonaSettings(adminPage);
 
