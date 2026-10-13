@@ -249,7 +249,7 @@ const BotDescriptionSection: FC<BotDescriptionSectionProps> = ({
             </Box>
           </Box>
         ) : (
-          <div className="tw:mt-1.5">
+          <Box className="tw:mt-1.5">
             {botData.description ? (
               <RichTextEditorPreviewerV1 markdown={botData.description} />
             ) : (
@@ -257,7 +257,7 @@ const BotDescriptionSection: FC<BotDescriptionSectionProps> = ({
                 --
               </Typography>
             )}
-          </div>
+          </Box>
         )}
       </Card.Content>
     </Card>
