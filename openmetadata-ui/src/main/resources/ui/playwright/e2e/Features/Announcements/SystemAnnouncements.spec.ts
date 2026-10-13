@@ -12,7 +12,6 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { DateTime } from 'luxon';
-import { test } from '../../fixtures/pages';
 import {
   descriptionBox,
   getApiContext,
@@ -22,6 +21,7 @@ import {
 import { pickDateInCorePicker } from '../../../utils/dateTime';
 import { getRowByName } from '../../../utils/scopedLocators';
 import { clickAndWaitFor } from '../../../utils/waitHelpers';
+import { test } from '../../fixtures/pages';
 
 const DAY = 24 * 60 * 60 * 1000;
 const LIST_PATH = '/settings/notifications/announcements';
