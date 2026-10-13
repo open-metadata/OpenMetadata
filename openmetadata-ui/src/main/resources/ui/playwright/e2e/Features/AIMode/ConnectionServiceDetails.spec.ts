@@ -18,8 +18,10 @@
  * Its data-assets table lists each asset's owners and tags, pages that move the rows, the Deleted
  * switch, a soft-deleted service's children, the list after a restore and after a search is
  * cleared, only the top level of nesting assets, and drive directories. It also offers classic's
- * other asset tabs (a dashboard service's data models, a drive service's files and spreadsheets)
- * and the service's data products.
+ * other asset tabs (a dashboard service's data models, a drive service's files and spreadsheets),
+ * each counted in its label before it is opened, and the service's data products in metadata
+ * details that open expanded. A service name too long for the header ends in an ellipsis, with
+ * the full name on hover.
  *
  * It gates what classic gates: the Connection tab, which shows the connection config, only for
  * users who may edit the service; and no domain / owner / tier edits on a soft-deleted service.
@@ -443,6 +445,11 @@ test.describe(
           fqn: serviceFqn,
         });
 
+        // Counted before the tab is opened, as its list loads only then.
+        await expect(
+          page.getByRole('tab', { name: 'Data Model 1', exact: true })
+        ).toBeVisible();
+
         await openAiModeServiceAssetTab(page, {
           tabName: 'Data Model',
           listPath: 'dashboard/datamodels',
@@ -461,16 +468,22 @@ test.describe(
       let serviceFqn = '';
       let directory = '';
       let file = '';
+      let secondFile = '';
       let spreadsheet = '';
+      // Long enough to overflow the header at any viewport the suite runs at.
+      const longName = `pw-drive-service-with-a-name-far-too-long-for-the-header-${'x'.repeat(
+        120
+      )}-${uuid()}`;
 
       test.beforeAll(async ({ browser }) => {
         const { apiContext, afterAction } = await performAdminLogin(browser);
-        service = new DriveServiceClass();
+        service = new DriveServiceClass(longName);
         await service.create(apiContext);
         serviceFqn = service.entityResponseData.fullyQualifiedName;
         const suffix = uuid();
         directory = `pw-ai-directory-${suffix}`;
         file = `pw-ai-file-${suffix}`;
+        secondFile = `pw-ai-file-2-${suffix}`;
         spreadsheet = `pw-ai-spreadsheet-${suffix}`;
 
         // Top-level, as the Files and Spreadsheets tabs list only the service's root.
@@ -478,6 +491,7 @@ test.describe(
           [
             ['drives/directories', directory],
             ['drives/files', file],
+            ['drives/files', secondFile],
             ['drives/spreadsheets', spreadsheet],
           ].map(async ([path, name]) =>
             okJson(
@@ -517,6 +531,16 @@ test.describe(
           fqn: serviceFqn,
         });
 
+        // Each tab counts its own assets — a directory, two files and a spreadsheet — before any
+        // of their lists has loaded.
+        await test.step('Counts', async () => {
+          for (const name of ['Directories 1', 'Files 2', 'Spreadsheets 1']) {
+            await expect(
+              page.getByRole('tab', { name, exact: true })
+            ).toBeVisible();
+          }
+        });
+
         await test.step('Files', async () => {
           await openAiModeServiceAssetTab(page, {
             tabName: 'Files',
@@ -525,6 +549,7 @@ test.describe(
           });
 
           await expect(getRowByName(page, file)).toBeVisible();
+          await expect(getRowByName(page, secondFile)).toBeVisible();
           await expect(getRowByName(page, spreadsheet)).toBeHidden();
         });
 
@@ -538,6 +563,34 @@ test.describe(
           await expect(getRowByName(page, spreadsheet)).toBeVisible();
           await expect(getRowByName(page, file)).toBeHidden();
         });
+      });
+
+      test('keeps a long service name to one line, with the full name on hover', async ({
+        page,
+      }) => {
+        await enableAiAppMode(page);
+        await visitAiModeServiceDetailsPage(page, {
+          category: 'driveServices',
+          fqn: serviceFqn,
+        });
+        const title = page.getByTestId('entity-header-display-name');
+
+        await expect(title).toHaveText(longName);
+        // The header actions stay in reach rather than being pushed off by the name.
+        await expect(
+          page.getByRole('button', { name: 'Settings' })
+        ).toBeInViewport();
+
+        // react-aria opens a hover tooltip only once the page has seen a pointer press, as it
+        // has for any user who got here by clicking.
+        await openAiModeServiceAssetTab(page, {
+          tabName: 'Files',
+          listPath: 'drives/files',
+          serviceFqn,
+        });
+        await title.hover();
+
+        await expect(page.getByRole('tooltip')).toHaveText(longName);
       });
     });
 
@@ -590,7 +643,10 @@ test.describe(
           category: 'databaseServices',
           fqn: serviceFqn,
         });
-        await page.getByRole('button', { name: 'Metadata Details' }).click();
+        // Open from the start; clicking it here would close it.
+        await expect(
+          page.getByRole('button', { name: 'Metadata Details' })
+        ).toHaveAttribute('aria-expanded', 'true');
 
         await test.step('pick it and apply', async () => {
           await section.getByTestId('edit-data-products').click();

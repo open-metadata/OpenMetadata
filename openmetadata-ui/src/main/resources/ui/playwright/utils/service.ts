@@ -121,7 +121,10 @@ export const openAiModeServiceAssetTab = async (
   }: { tabName: string; listPath: string; serviceFqn: string }
 ) => {
   const list = waitForServiceAssetList(page, listPath, serviceFqn);
-  await page.getByRole('tab', { name: tabName, exact: true }).click();
+  // The tab's name carries its count once that loads ("Files 2"), so match the label alone.
+  await page
+    .getByRole('tab', { name: new RegExp(`^${tabName}( \\d+)?$`) })
+    .click();
   await list;
   await waitForAllLoadersToDisappear(page);
 };

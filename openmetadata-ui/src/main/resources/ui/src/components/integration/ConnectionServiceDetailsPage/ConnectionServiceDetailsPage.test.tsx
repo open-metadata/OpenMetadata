@@ -217,9 +217,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
         return (
           <button type="button" onClick={() => onSelect(id)}>
             {label}
-            {badge ? (
+            {badge === undefined ? null : (
               <span data-testid={`tab-badge-${id}`}>{badge}</span>
-            ) : null}
+            )}
           </button>
         );
       },
@@ -279,6 +279,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         PageHeader: ({
           icon,
           title,
+          badge,
           meta,
           actions,
           subtitle,
@@ -286,6 +287,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         }: {
           icon?: React.ReactNode;
           title?: React.ReactNode;
+          badge?: React.ReactNode;
           meta?: React.ReactNode;
           actions?: React.ReactNode;
           subtitle?: React.ReactNode;
@@ -294,6 +296,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
           <div data-testid="service-header">
             {icon}
             {title}
+            {badge}
             {meta}
             {actions}
             {subtitle}
@@ -375,6 +378,16 @@ jest.mock('./ServiceDriveAssetTabs', () => ({
 
     return <div data-testid="service-spreadsheets-tab" />;
   },
+}));
+
+let mockAssetCounts: Record<string, number> = {};
+const mockUseServiceAssetCounts = jest.fn(
+  (..._args: unknown[]) => mockAssetCounts
+);
+jest.mock('./useServiceAssetCounts', () => ({
+  ...jest.requireActual('./useServiceAssetCounts'),
+  useServiceAssetCounts: (...args: unknown[]) =>
+    mockUseServiceAssetCounts(...args),
 }));
 
 const mockDataAssetsTab = jest.fn();
@@ -472,6 +485,7 @@ describe('ConnectionServiceDetailsPage', () => {
     delete mockTableFilters.schema;
     delete mockPagingCursor.cursorType;
     delete mockPagingCursor.cursorValue;
+    mockAssetCounts = {};
     Object.keys(contributionsByPoint).forEach(
       (key) => delete contributionsByPoint[key]
     );
@@ -645,6 +659,48 @@ describe('ConnectionServiceDetailsPage', () => {
         expect(tabComponent).not.toHaveBeenCalled();
       }
     );
+  });
+
+  describe('tab counts', () => {
+    it('counts the assets of the loaded service, on the side of the deleted switch shown', async () => {
+      mockTableFilters.showDeletedTables = true;
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      expect(mockUseServiceAssetCounts).toHaveBeenLastCalledWith(
+        'databaseServices',
+        'test-service',
+        'deleted'
+      );
+    });
+
+    it('badges each asset tab with its count, zero included', async () => {
+      mockServiceCategory = 'driveServices';
+      mockAssetCounts = { dataAssets: 9, files: 3, spreadsheets: 0 };
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      expect(screen.getByTestId('tab-badge-dataAssets')).toHaveTextContent('9');
+      expect(screen.getByTestId('tab-badge-files')).toHaveTextContent('3');
+      expect(screen.getByTestId('tab-badge-spreadsheets')).toHaveTextContent(
+        '0'
+      );
+      expect(
+        screen.queryByTestId('tab-badge-connection')
+      ).not.toBeInTheDocument();
+    });
+
+    it('shows no badge for a count that has not loaded', async () => {
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      expect(
+        screen.queryByTestId('tab-badge-dataAssets')
+      ).not.toBeInTheDocument();
+    });
   });
 
   it('mirrors data products the data-assets tab saved, without saving them again', async () => {

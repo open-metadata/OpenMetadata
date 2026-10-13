@@ -24,8 +24,14 @@ jest.mock('../../common/DataProductsSection/DataProductsSection', () =>
   jest.fn(() => <div data-testid="data-products-section" />)
 );
 
-jest.mock('../../../pages/ServiceDetailsPage/ServiceMainTabContent', () =>
-  jest.fn(() => <div data-testid="service-main-tab-content" />)
+const mockServiceMainTabContent = jest.fn();
+jest.mock(
+  '../../../pages/ServiceDetailsPage/ServiceMainTabContent',
+  () => (props: Record<string, unknown>) => {
+    mockServiceMainTabContent(props);
+
+    return <div data-testid="service-main-tab-content" />;
+  }
 );
 
 jest.mock('../../common/EntityDescription/Description', () =>
@@ -44,7 +50,19 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
-    Accordion: Passthrough,
+    Accordion: ({
+      children,
+      defaultExpandedKeys,
+    }: {
+      children: ReactNode;
+      defaultExpandedKeys?: string[];
+    }) => (
+      <div
+        data-expanded={defaultExpandedKeys?.join(',')}
+        data-testid="accordion">
+        {children}
+      </div>
+    ),
     AccordionHeader: Passthrough,
     AccordionItem: Passthrough,
     AccordionPanel: Passthrough,
@@ -158,5 +176,27 @@ describe('DataAssetsTab — data products', () => {
     expect(
       screen.queryByTestId('service-data-products')
     ).not.toBeInTheDocument();
+  });
+});
+
+describe('DataAssetsTab — layout', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('opens with the metadata details expanded', () => {
+    renderTab();
+
+    expect(screen.getByTestId('accordion')).toHaveAttribute(
+      'data-expanded',
+      'metadata-details'
+    );
+  });
+
+  // The tab already sits in the page's frame; a card around the table would be a box in a box.
+  it('shows the asset table without a card of its own', () => {
+    renderTab();
+
+    expect(mockServiceMainTabContent).toHaveBeenCalledWith(
+      expect.objectContaining({ wrapInCard: false })
+    );
   });
 });

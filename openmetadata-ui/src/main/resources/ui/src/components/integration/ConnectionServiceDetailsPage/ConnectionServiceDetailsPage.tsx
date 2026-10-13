@@ -101,15 +101,22 @@ import {
   getConnectionsRootBreadcrumb,
   getServiceCategoryBreadcrumb,
 } from './connectionsBreadcrumb.utils';
-import { fetchServiceChildren } from './connectionServiceChildren.utils';
+import {
+  fetchServiceChildren,
+  getSecondaryAssetTabs,
+} from './connectionServiceChildren.utils';
 import DataAssetHeaderDetailsRow from './DataAssetHeaderDetailsRow/DataAssetHeaderDetailsRow';
 import DataAssetsTab from './DataAssetsTab';
 import {
   ServiceFilesTab,
   ServiceSpreadsheetsTab,
 } from './ServiceDriveAssetTabs';
+import {
+  DATA_ASSETS_TAB_KEY,
+  useServiceAssetCounts,
+} from './useServiceAssetCounts';
 
-type StaticTabKey = 'dataAssets' | 'connection';
+type StaticTabKey = typeof DATA_ASSETS_TAB_KEY | 'connection';
 type TabKey = StaticTabKey | string;
 
 interface DetailsTab {
@@ -126,19 +133,8 @@ interface DetailsTab {
 const DATA_ASSETS_TAB_ORDER = 40;
 const CONNECTION_TAB_ORDER = 50;
 
-// The asset tabs classic shows beside the main one, for the categories that have them. They sit
-// between the data-assets tab and Connection, in this order.
-const SECONDARY_ASSET_TABS: Partial<
-  Record<ServiceCategory, Array<{ key: EntityTabs; labelKey: string }>>
-> = {
-  [ServiceCategory.DASHBOARD_SERVICES]: [
-    { key: EntityTabs.DATA_Model, labelKey: 'label.data-model' },
-  ],
-  [ServiceCategory.DRIVE_SERVICES]: [
-    { key: EntityTabs.FILES, labelKey: 'label.file-plural' },
-    { key: EntityTabs.SPREADSHEETS, labelKey: 'label.spreadsheet-plural' },
-  ],
-};
+// A long service name ends in an ellipsis, with the full name on hover only when it is cut off.
+const TITLE_ELLIPSIS = { tooltip: true } as const;
 
 const getActionButtonColor = (action: ActionContribution) => {
   if (action.danger) {
@@ -184,7 +180,9 @@ const ConnectionServiceDetailsPage: React.FC = () => {
   const { getEntityPermissionByFqn, permissions } = usePermissionProvider();
   const { extensionRegistry } = useApplicationsProvider();
 
-  const [activeTab, setActiveTab] = useState<TabKey>(() => tab ?? 'dataAssets');
+  const [activeTab, setActiveTab] = useState<TabKey>(
+    () => tab ?? DATA_ASSETS_TAB_KEY
+  );
 
   const handleTabChange = useCallback(
     (tabKey: TabKey) => {
@@ -301,6 +299,13 @@ const ConnectionServiceDetailsPage: React.FC = () => {
   // A soft-deleted service's children are soft-deleted with it, so asking for live ones would
   // return nothing and the tab would read as empty rather than as deleted.
   const showDeleted = showDeletedTables || isServiceDeleted;
+  const include = showDeleted ? Include.Deleted : Include.NonDeleted;
+  // Keyed on the loaded service, so the counts wait for the Deleted setting it decides.
+  const assetCounts = useServiceAssetCounts(
+    serviceCategory as ServiceCategory,
+    serviceDetails.fullyQualifiedName ?? '',
+    include
+  );
 
   const { handlePageChange } = pagingInfo;
   const handleShowDeletedChange = useCallback(
@@ -364,7 +369,7 @@ const ConnectionServiceDetailsPage: React.FC = () => {
                 ? databaseFields
                 : commonTableFields,
             paging: { ...paging, limit: pageSize },
-            include: showDeleted ? Include.Deleted : Include.NonDeleted,
+            include,
           }
         );
         if (isLatest()) {
@@ -387,7 +392,7 @@ const ConnectionServiceDetailsPage: React.FC = () => {
       decodedFqn,
       pageSize,
       handlePagingChange,
-      showDeleted,
+      include,
       databaseFields,
     ]
   );
@@ -589,7 +594,8 @@ const ConnectionServiceDetailsPage: React.FC = () => {
   // and yields to ServiceMainTabContent while a search is active, as classic service details does.
   useEffect(() => {
     const isListShown =
-      activeTab === 'dataAssets' && Boolean(serviceDetails.fullyQualifiedName);
+      activeTab === DATA_ASSETS_TAB_KEY &&
+      Boolean(serviceDetails.fullyQualifiedName);
     if (searchValue) {
       // The search owns the table now; a list request still in flight must not land on it.
       latestListRequestRef.current += 1;
@@ -674,19 +680,21 @@ const ConnectionServiceDetailsPage: React.FC = () => {
   const tabs: DetailsTab[] = useMemo(() => {
     const builtIns: DetailsTab[] = [
       {
-        key: 'dataAssets',
+        key: DATA_ASSETS_TAB_KEY,
         label: serviceCategory
           ? getCountLabel(
               serviceCategory as unknown as Parameters<typeof getCountLabel>[0]
             )
           : t('label.data-asset-plural'),
         order: DATA_ASSETS_TAB_ORDER,
+        badge: assetCounts[DATA_ASSETS_TAB_KEY],
       },
-      ...(SECONDARY_ASSET_TABS[serviceCategory as ServiceCategory] ?? []).map(
+      ...getSecondaryAssetTabs(serviceCategory as ServiceCategory).map(
         ({ key, labelKey }, index) => ({
           key,
           label: t(labelKey),
           order: DATA_ASSETS_TAB_ORDER + index + 1,
+          badge: assetCounts[key],
         })
       ),
       // The connection config is for those who may edit it; classic hides the tab otherwise.
@@ -711,13 +719,13 @@ const ConnectionServiceDetailsPage: React.FC = () => {
     }));
 
     return [...builtIns, ...contributed].sort((a, b) => a.order - b.order);
-  }, [t, serviceCategory, pluginTabs, canEditAll]);
+  }, [t, serviceCategory, pluginTabs, canEditAll, assetCounts]);
 
   const allTabKeys = useMemo(
     () => tabs.map((detailsTab) => detailsTab.key),
     [tabs]
   );
-  const defaultTabKey = tabs[0]?.key ?? 'dataAssets';
+  const defaultTabKey = tabs[0]?.key ?? DATA_ASSETS_TAB_KEY;
   // A deep link can name a tab this service category doesn't have; the effect below falls back
   // from it, and until then its content must not mount (and fetch).
   const isOfferedTab = (key: TabKey) =>
@@ -840,6 +848,20 @@ const ConnectionServiceDetailsPage: React.FC = () => {
             </Dropdown.Root>
           </>
         }
+        badge={
+          // Without this the page looks like any other service, which matters most here: the
+          // deleted switch is the only way in, so the state is easy to forget. Mirrors the
+          // classic service header, testid included.
+          isServiceDeleted ? (
+            <Badge
+              color="error"
+              data-testid="deleted-badge"
+              size="sm"
+              type="pill-color">
+              {t('label.deleted')}
+            </Badge>
+          ) : undefined
+        }
         breadcrumb={
           <HeaderBreadcrumb
             noMargin
@@ -917,27 +939,15 @@ const ConnectionServiceDetailsPage: React.FC = () => {
           />
         }
         title={
-          <span className="tw:flex tw:items-center tw:gap-2">
-            <Typography
-              className="tw:text-primary"
-              data-testid="entity-header-display-name"
-              size="text-xl"
-              weight="semibold">
-              {serviceDetails.displayName || serviceDetails.name}
-            </Typography>
-            {/* Without this the page looks like any other service, which matters most here:
-                  the deleted switch is the only way in, so the state is easy to forget. Mirrors
-                  the classic service header, testid included. */}
-            {isServiceDeleted && (
-              <Badge
-                color="error"
-                data-testid="deleted-badge"
-                size="sm"
-                type="pill-color">
-                {t('label.deleted')}
-              </Badge>
-            )}
-          </span>
+          <Typography
+            as="h3"
+            className="tw:min-w-0 tw:text-primary"
+            data-testid="entity-header-display-name"
+            ellipsis={TITLE_ELLIPSIS}
+            size="text-xl"
+            weight="semibold">
+            {serviceDetails.displayName || serviceDetails.name}
+          </Typography>
         }
         variant="gradient"
       />
@@ -952,7 +962,7 @@ const ConnectionServiceDetailsPage: React.FC = () => {
           // so an empty slot costs no dead space. Applies to every tab because they all render into
           // this container.
           style={{ paddingBottom: footerInset || undefined }}>
-          {activeTab === 'dataAssets' && (
+          {activeTab === DATA_ASSETS_TAB_KEY && (
             <DataAssetsTab
               currentPage={currentPage}
               data={data}
