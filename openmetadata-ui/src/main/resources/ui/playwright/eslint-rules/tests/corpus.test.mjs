@@ -57,7 +57,7 @@ test('the suppressions baseline matches its recorded state exactly', () => {
     // remove three more. The merged baseline retains independent locator
     // fixes from both branches. Scoping the Context Center draft editor to
     // `.om-block-editor` instead of `.ProseMirror...first()` removes four.
-    'om-playwright/no-positional-locator': 587,
+    'om-playwright/no-positional-locator': 586,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 1,
     'playwright/no-wait-for-selector': 14,
