@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import {
   generateODCSContract,
   getODCSWithRunnableQualityRules,
@@ -42,6 +43,8 @@ import {
   redirectToHomePage,
   toastNotification,
 } from '../../utils/common';
+import { fillContractName } from '../../utils/dataContracts';
+import { selectDropdownOption } from '../../utils/destination';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   clickImportODCSButton,
@@ -1637,9 +1640,11 @@ version: "1.0.0"`;
         buffer: Buffer.from(ODCS_VALID_MULTI_OBJECT_YAML),
       });
 
-      await page.getByTestId('file-info-card').waitFor({ timeout: 30000 });
+      await page
+        .getByTestId('file-info-card')
+        .waitFor({ timeout: ACTION_TIMEOUT });
       await expect(page.getByTestId('object-selector-section')).toBeVisible({
-        timeout: 30000,
+        timeout: ACTION_TIMEOUT,
       });
 
       // Open the dropdown to see all options
@@ -1751,22 +1756,26 @@ version: "1.0.0"`;
       await page.getByRole('tab', { name: 'SLA' }).click();
 
       // Add refresh frequency
-      await page.getByTestId('refresh-frequency-interval-input').fill('24');
-      await page.getByTestId('refresh-frequency-unit-select').click();
-      await expect(
-        page.locator(".refresh-frequency-unit-select [title*='Hour']")
-      ).toBeVisible();
       await page
-        .locator(".refresh-frequency-unit-select [title*='Hour']")
-        .click();
+        .getByTestId('refresh-frequency-interval-input')
+        .locator('input')
+        .fill('24');
+      await selectDropdownOption({
+        page,
+        testId: 'refresh-frequency-unit-select',
+        optionName: 'Hour',
+      });
 
       // Add max latency
-      await page.getByTestId('max-latency-value-input').fill('2');
-      await page.getByTestId('max-latency-unit-select').click();
-      await expect(
-        page.locator(".max-latency-unit-select [title*='Hour']")
-      ).toBeVisible();
-      await page.locator(".max-latency-unit-select [title*='Hour']").click();
+      await page
+        .getByTestId('max-latency-value-input')
+        .locator('input')
+        .fill('2');
+      await selectDropdownOption({
+        page,
+        testId: 'max-latency-unit-select',
+        optionName: 'Hour',
+      });
 
       // Save the contract
       const saveContractResponse = page.waitForResponse(
@@ -1848,12 +1857,24 @@ version: "1.0.0"`;
       await page.getByRole('tab', { name: 'SLA' }).click();
 
       // Update refresh frequency from 12 to 48 hours
-      await page.getByTestId('refresh-frequency-interval-input').clear();
-      await page.getByTestId('refresh-frequency-interval-input').fill('48');
+      await page
+        .getByTestId('refresh-frequency-interval-input')
+        .locator('input')
+        .clear();
+      await page
+        .getByTestId('refresh-frequency-interval-input')
+        .locator('input')
+        .fill('48');
 
       // Update max latency from 2 to 4 hours
-      await page.getByTestId('max-latency-value-input').clear();
-      await page.getByTestId('max-latency-value-input').fill('4');
+      await page
+        .getByTestId('max-latency-value-input')
+        .locator('input')
+        .clear();
+      await page
+        .getByTestId('max-latency-value-input')
+        .locator('input')
+        .fill('4');
 
       // Save the contract
       const saveContractResponse = page.waitForResponse(
@@ -1980,9 +2001,7 @@ version: "1.0.0"`;
         await page.getByTestId('create-contract-button').click();
         await expect(page.getByTestId('add-contract-card')).toBeVisible();
 
-        await page
-          .getByTestId('contract-name')
-          .fill('OM Merge Round Trip Contract');
+        await fillContractName(page, 'OM Merge Round Trip Contract');
         await page.fill(
           '.om-block-editor[contenteditable="true"]',
           'Original contract description'
@@ -1991,21 +2010,25 @@ version: "1.0.0"`;
         const contractCard = page.getByTestId('add-contract-card');
         await contractCard.getByRole('tab', { name: 'SLA' }).click();
 
-        await page.getByTestId('refresh-frequency-interval-input').fill('12');
-        await page.getByTestId('refresh-frequency-unit-select').click();
-        await expect(
-          page.locator(".refresh-frequency-unit-select [title*='Hour']")
-        ).toBeVisible();
         await page
-          .locator(".refresh-frequency-unit-select [title*='Hour']")
-          .click();
+          .getByTestId('refresh-frequency-interval-input')
+          .locator('input')
+          .fill('12');
+        await selectDropdownOption({
+          page,
+          testId: 'refresh-frequency-unit-select',
+          optionName: 'Hour',
+        });
 
-        await page.getByTestId('max-latency-value-input').fill('3');
-        await page.getByTestId('max-latency-unit-select').click();
-        await expect(
-          page.locator(".max-latency-unit-select [title*='Hour']")
-        ).toBeVisible();
-        await page.locator(".max-latency-unit-select [title*='Hour']").click();
+        await page
+          .getByTestId('max-latency-value-input')
+          .locator('input')
+          .fill('3');
+        await selectDropdownOption({
+          page,
+          testId: 'max-latency-unit-select',
+          optionName: 'Hour',
+        });
 
         const saveContractResponse = page.waitForResponse(
           '/api/v1/dataContracts*'

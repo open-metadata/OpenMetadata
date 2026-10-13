@@ -195,7 +195,8 @@ public class TableRepository extends EntityRepository<Table> {
     fieldFetchers.put(TABLE_PROFILER_CONFIG, this::fetchAndSetTableProfilerConfigs);
     fieldFetchers.put("joins", this::fetchAndSetJoins);
     fieldFetchers.put(CUSTOM_METRICS, this::fetchAndSetCustomMetrics);
-    fieldFetchers.put(FIELD_TAGS, this::fetchAndSetColumnTags);
+    fieldFetchers.put(FIELD_TAGS, this::fetchAndSetTableTags);
+    fieldFetchers.put(COLUMN_FIELD, this::fetchAndSetColumnTags);
     fieldFetchers.put("pipelineObservability", this::fetchAndSetPipelineObservability);
   }
 
@@ -208,7 +209,7 @@ public class TableRepository extends EntityRepository<Table> {
               ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), table.getId())
               : table.getUsageSummary());
     }
-    if (fields.contains(COLUMN_FIELD) && fields.contains(FIELD_TAGS)) {
+    if (fields.contains(COLUMN_FIELD)) {
       populateEntityFieldTags(entityType, table.getColumns(), table.getFullyQualifiedName(), true);
     }
     table.setJoins(fields.contains("joins") ? getJoins(table) : table.getJoins());
@@ -233,8 +234,6 @@ public class TableRepository extends EntityRepository<Table> {
     fetchAndSetFields(entities, fields);
     setInheritedFields(entities, fields);
 
-    // Column tags come from tag_usage, not table JSON — fetched via fetchAndSetColumnTags when tags
-    // requested
     entities.forEach(table -> clearFieldsInternal(table, fields));
   }
 
@@ -279,7 +278,7 @@ public class TableRepository extends EntityRepository<Table> {
     metadataLoader.loadMetrics(tables, fields.contains(COLUMN_FIELD));
   }
 
-  private void fetchAndSetColumnTags(List<Table> tables, Fields fields) {
+  private void fetchAndSetTableTags(List<Table> tables, Fields fields) {
     if (!fields.contains(FIELD_TAGS) || tables == null || tables.isEmpty()) {
       return;
     }
@@ -290,7 +289,9 @@ public class TableRepository extends EntityRepository<Table> {
           addDerivedTagsGracefully(
               tagsMap.getOrDefault(table.getFullyQualifiedName(), Collections.emptyList())));
     }
+  }
 
+  private void fetchAndSetColumnTags(List<Table> tables, Fields fields) {
     if (fields.contains(COLUMN_FIELD)) {
       bulkPopulateEntityFieldTags(tables, Table::getColumns);
     }
@@ -1830,7 +1831,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  protected void applyInheritance(Table entity, Fields fields, EntityInterface parent) {
+  protected void applyInheritance(Table entity, Fields fields, EntityInterface<?> parent) {
     inheritOwners(entity, fields, parent);
     inheritDomains(entity, fields, parent);
     inheritTags(entity, fields, parent);
@@ -1843,7 +1844,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  public EntityInterface getParentEntity(Table entity, String fields) {
+  public EntityInterface<?> getParentEntity(Table entity, String fields) {
     return Entity.getEntity(entity.getDatabaseSchema(), fields, ALL);
   }
 
@@ -1854,7 +1855,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  public List<TagLabel> getAllTags(EntityInterface entity) {
+  public List<TagLabel> getAllTags(EntityInterface<?> entity) {
     List<TagLabel> allTags = new ArrayList<>();
     Table table = (Table) entity;
     EntityUtil.mergeTags(allTags, table.getTags());
@@ -2281,8 +2282,11 @@ public class TableRepository extends EntityRepository<Table> {
       compareAndUpdate(
           "retentionPeriod",
           () ->
-              recordChange(
-                  "retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod()));
+              updateUserOnlyField(
+                  "retentionPeriod",
+                  original.getRetentionPeriod(),
+                  updated.getRetentionPeriod(),
+                  updated::setRetentionPeriod));
       compareAndUpdate(
           "compressionEnabled",
           () ->
@@ -2347,6 +2351,15 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     private void updateTableConstraints(Table origTable, Table updatedTable, Operation operation) {
+      // Many sources (e.g. Trino) never report constraints, so a bot PUT without any must not
+      // read that absence as "delete them" and wipe user-curated ones. Constraints on columns the
+      // source dropped are still cleaned up below.
+      if (operation.isPut()
+          && updatedByBot()
+          && nullOrEmpty(updatedTable.getTableConstraints())
+          && !nullOrEmpty(origTable.getTableConstraints())) {
+        updatedTable.setTableConstraints(new ArrayList<>(origTable.getTableConstraints()));
+      }
       // Detect columns that were removed (exist in original but not in updated).
       // This also handles null column entries produced by JSON patch operations.
       Set<String> removedColumns = detectRemovedColumns(origTable, updatedTable);
@@ -2425,11 +2438,7 @@ public class TableRepository extends EntityRepository<Table> {
         LineageRepository lineageRepository = Entity.getLineageRepository();
         if (lineageRepository != null) {
           lineageRepository.updateColumnLineage(
-              updated.getId(),
-              originalUpdatedColumnFqnMap,
-              deletedColumns,
-              updated.getSchemaDefinition(),
-              updated.getUpdatedBy());
+              updated.getId(), originalUpdatedColumnFqnMap, deletedColumns, updated.getUpdatedBy());
         }
         List<String> deletedColumnFqns = List.copyOf(deletedColumns);
         HashMap<String, String> renamedColumnFqns = new HashMap<>(originalUpdatedColumnFqnMap);

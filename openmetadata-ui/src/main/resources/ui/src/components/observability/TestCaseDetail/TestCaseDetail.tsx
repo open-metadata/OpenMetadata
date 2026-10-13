@@ -38,6 +38,7 @@ import {
   shouldFetchNextRun,
 } from '../../../pages/IncidentManager/IncidentManagerDetailPage/IncidentManagerDetailPage.utils';
 import { useTestCaseDetailPage } from '../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCaseDetailPage';
+import { getRenderedActiveTab } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { renderHighlightedText } from '../../../utils/EntitySearchUtils';
 import { getEntityFQN } from '../../../utils/FeedUtilsPure';
@@ -99,6 +100,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
     hasViewPermission,
     hasDeletePermission,
     editDisplayNamePermission,
+    canRestorePermission,
     displayName,
     tabs,
     activeTab,
@@ -117,6 +119,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
     extraDropdownContent,
     handleOwnerChange,
     handleDisplayNameChange,
+    handleRestore,
     getEntityFeedCount,
     setTestCase,
   } = useTestCaseDetailPage({ isVersionPage });
@@ -136,8 +139,13 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
     }),
   });
 
+  const renderedActiveTab = useMemo(
+    () => getRenderedActiveTab(tabs, activeTab),
+    [tabs, activeTab]
+  );
+
   const activeTabContent = useMemo(() => {
-    const currentTab = tabs.find(({ key }) => key === activeTab) ?? tabs.at(0);
+    const currentTab = tabs.find(({ key }) => key === renderedActiveTab);
 
     if (!currentTab) {
       return null;
@@ -150,30 +158,31 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
         {key === TestCasePageTabs.TEST_CASE_RESULTS &&
           !isVersionPage &&
           !dimensionKey && (
-            <div
-              className="tw:pt-4 tw:pb-2.5"
-              data-testid="test-case-last-run-banner-tab-container">
+            <Box
+              className="tw:pt-4 tw:pb-5.5"
+              data-testid="test-case-last-run-banner-tab-container"
+              direction="col">
               <TestCaseLastRunBanner
                 hasEditStatusPermission={
                   incidentHeaderData.hasEditStatusPermission
                 }
                 incidentTask={incidentHeaderData.incidentTask}
                 nextRunTimestamp={nextRunTimestamp}
-                parameterValues={testCase?.parameterValues}
                 taskLinkInfo={incidentHeaderData.taskLinkInfo}
+                testCase={testCase}
                 testCaseResult={testCase?.testCaseResult}
                 testCaseStatus={testCase?.testCaseStatus}
                 testCaseStatusData={incidentHeaderData.testCaseStatusData}
                 onAcknowledge={incidentHeaderData.handleAcknowledgeIncident}
               />
-            </div>
+            </Box>
           )}
         <Tab editVariant="modal" showSidePanel={isTabExpanded} />
       </>
     );
   }, [
     tabs,
-    activeTab,
+    renderedActiveTab,
     isTabExpanded,
     dimensionKey,
     isVersionPage,
@@ -183,9 +192,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
     incidentHeaderData.testCaseStatusData,
     incidentHeaderData.hasEditStatusPermission,
     incidentHeaderData.handleAcknowledgeIncident,
-    testCase?.parameterValues,
-    testCase?.testCaseResult,
-    testCase?.testCaseStatus,
+    testCase,
   ]);
 
   const breadcrumbItems = useMemo(() => {
@@ -454,8 +461,9 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
                             observabilityRouterClassBase.getDataQualityPagePath()
                           )
                         }
-                        allowSoftDelete={false}
                         canDelete={hasDeletePermission}
+                        canRestore={canRestorePermission}
+                        deleted={testCase.deleted}
                         displayName={testCase.displayName}
                         editDisplayNamePermission={editDisplayNamePermission}
                         entityFQN={testCase.fullyQualifiedName}
@@ -464,6 +472,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
                         entityType={EntityType.TEST_CASE}
                         extraDropdownContent={extraDropdownContent}
                         onEditDisplayName={handleDisplayNameChange}
+                        onRestoreEntity={handleRestore}
                       />
                     </>
                   )}
@@ -490,7 +499,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
             <Tabs
               className="tw:w-fit"
               data-testid="tabs"
-              selectedKey={activeTab}
+              selectedKey={renderedActiveTab}
               onSelectionChange={(key) => handleTabChange(String(key))}>
               <Tabs.List size="sm" type="underline">
                 {tabs.map(({ labelProps, key, isBeta }) => (

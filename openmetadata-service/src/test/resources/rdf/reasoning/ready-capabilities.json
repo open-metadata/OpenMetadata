@@ -1,0 +1,34 @@
+{
+  "protocolVersion": "1",
+  "readiness": "READY",
+  "reasons": [],
+  "engines": [
+    { "name": "HermiT", "version": "1.4.6.519-om.1", "profile": "OWL 2 DL" },
+    { "name": "ELK", "version": "0.6.0", "profile": "OWL 2 EL" },
+    { "name": "governance-rules", "version": "jena-6.2.0", "profile": "SPARQL CONSTRUCT rules" }
+  ],
+  "coverage": ["ObjectIntersectionOf", "ObjectSomeValuesFrom", "SubClassOf", "TransitiveObjectProperty"],
+  "memoryBudget": {
+    "containerLimitBytes": 12884901888,
+    "requiredBytes": 11930464712,
+    "fusekiHeapBytes": 4294967296,
+    "fusekiOffHeapBytes": 1073741824,
+    "workerHeapBytes": 2147483648,
+    "workerOffHeapBytes": 536870912,
+    "pageCacheFloorBytes": 2684354560,
+    "safetyMargin": 0.1
+  },
+  "limits": {
+    "maxQueuedJobs": 16,
+    "maxClosureAxioms": 200000,
+    "maxIndividuals": 50000,
+    "maxExpressionDepth": 32,
+    "maxImports": 64,
+    "maxJobSeconds": 3600,
+    "maxQuerySeconds": 30,
+    "maxDerivedTriples": 50000000,
+    "maxRulePasses": 64,
+    "maxDiskBytes": 107374182400,
+    "maxResultRows": 10000
+  }
+}

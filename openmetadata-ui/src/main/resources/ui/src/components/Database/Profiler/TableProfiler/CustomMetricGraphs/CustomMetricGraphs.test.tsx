@@ -10,17 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  AreaChart,
+  type CartesianChartProps,
+} from '@openmetadata/ui-core-components/charts';
 import { queryByAttribute, render, screen } from '@testing-library/react';
 import { useTableProfiler } from '../TableProfilerProvider';
 import CustomMetricGraphs from './CustomMetricGraphs.component';
 
-jest.mock('../../../../../hooks/useChartColors', () => ({
-  useChartColors: jest.fn().mockReturnValue({
-    grid: '#234567',
-    primary: '#345678',
-    primaryArea: '#456789',
-  }),
-}));
+type Row = Record<string, string | number | undefined>;
+const areaCalls = () =>
+  (
+    AreaChart as unknown as jest.Mock<null, [CartesianChartProps<Row>]>
+  ).mock.calls.map(([props]) => props);
 
 const mockProps = {
   customMetricsGraphData: {
@@ -110,6 +112,41 @@ describe('CustomMetricGraphs', () => {
     const graph = queryByAttribute('id', container, `${name}-graph`);
 
     expect(graph).toBeInTheDocument();
+  });
+
+  it('draws each metric as one area series that scales to the data', async () => {
+    render(<CustomMetricGraphs {...mockProps} />);
+    const props = areaCalls().at(-1) as CartesianChartProps<Row>;
+
+    expect(props.series).toEqual([
+      { key: 'CountOfFRAddress', name: 'CountOfFRAddress' },
+    ]);
+    expect(props.xKey).toBe('formattedTimestamp');
+    expect(props.yAxis).toEqual(
+      expect.objectContaining({ min: 'dataMin', max: 'dataMax' })
+    );
+    expect(props.data).toBe(mockProps.customMetricsGraphData.CountOfFRAddress);
+  });
+
+  it('shows the timestamp and value in the tooltip', async () => {
+    render(<CustomMetricGraphs {...mockProps} />);
+    const props = areaCalls().at(-1) as CartesianChartProps<Row>;
+    const row = mockProps.customMetricsGraphData.CountOfFRAddress[0];
+    const content = props.tooltip?.render?.(
+      [
+        {
+          seriesKey: 'CountOfFRAddress',
+          name: 'CountOfFRAddress',
+          value: 1387,
+          color: '#100000',
+          dataIndex: 0,
+        },
+      ],
+      row
+    );
+    render(<>{content}</>);
+
+    expect(screen.getByText('Count Of FR Address')).toBeInTheDocument();
   });
 
   it('should render no data placeholder, when there is no data', async () => {

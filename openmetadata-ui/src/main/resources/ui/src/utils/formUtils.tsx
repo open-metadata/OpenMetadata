@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  Divider,
   Input as UTInput,
   Select as UTSelect,
   SelectItemType,
@@ -21,21 +22,18 @@ import {
 import {
   Alert,
   Checkbox,
-  Divider,
   Form,
   FormItemProps,
   Input,
   InputNumber,
   Select,
-  Switch,
-  TooltipProps,
 } from 'antd';
 import { RuleObject } from 'antd/lib/form';
-import { TooltipPlacement } from 'antd/lib/tooltip';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isString, startCase, toString } from 'lodash';
-import React, { ComponentProps, Fragment, ReactNode } from 'react';
+import { ComponentProps, Fragment, ReactNode } from 'react';
+import type { Placement } from 'react-aria';
 import AsyncSelectList from '../components/common/AsyncSelectList/AsyncSelectList';
 import { AsyncSelectListProps } from '../components/common/AsyncSelectList/AsyncSelectList.interface';
 import ColorPicker from '../components/common/ColorPicker/ColorPicker.component';
@@ -110,10 +108,17 @@ const FIELD_ELEMENT_RENDERERS: Partial<
   [FieldTypes.FILTER_PATTERN]: ({ props }) => ({
     element: <FilterPattern {...(props as unknown as FilterPatternProps)} />,
   }),
-  [FieldTypes.SWITCH]: ({ props, id }) => ({
-    element: <Switch {...props} id={id} />,
-    formPropsPatch: { valuePropName: 'checked' },
-  }),
+  [FieldTypes.SWITCH]: ({ props, id }) => {
+    // Callers still pass antd's `disabled`; map it so they need no change.
+    const { disabled, ...rest } = props as ToggleProps & {
+      disabled?: boolean;
+    };
+
+    return {
+      element: <Toggle isDisabled={disabled} {...rest} id={id} />,
+      formPropsPatch: { valuePropName: 'isSelected' },
+    };
+  },
   [FieldTypes.CHECK_BOX]: ({ props, id }) => ({
     element: <Checkbox {...props} id={id} />,
     formPropsPatch: { valuePropName: 'checked' },
@@ -369,14 +374,11 @@ export const getField = (field: FieldProp) => {
 
   const labelValue = (
     <FormItemLabel
-      align={props.tooltipAlign as TooltipProps['align']}
       helperText={helperText}
       helperTextType={helperTextType}
       isBeta={isBeta}
       label={label}
-      overlayClassName={props.overlayClassName as string}
-      overlayInnerStyle={props.overlayInnerStyle as React.CSSProperties}
-      placement={props.tooltipPlacement as TooltipPlacement}
+      placement={props.tooltipPlacement as Placement}
       showHelperText={showHelperText}
     />
   );
@@ -385,7 +387,7 @@ export const getField = (field: FieldProp) => {
     return (
       <div className="d-flex gap-2 form-switch-container">
         <Form.Item className="m-b-0" {...formProps}>
-          <Switch />
+          <Toggle />
         </Form.Item>
         <Typography className="font-medium">{labelValue}</Typography>
       </div>
@@ -415,7 +417,7 @@ export const getField = (field: FieldProp) => {
         />
       )}
 
-      {hasSeparator && <Divider />}
+      {hasSeparator && <Divider className="tw:my-6" />}
     </Fragment>
   );
 };

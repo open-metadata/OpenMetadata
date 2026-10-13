@@ -19,12 +19,14 @@ import {
   InputType,
   SubscriptionCategory,
   SubscriptionType,
+  Type,
 } from '../../../generated/events/eventSubscription';
 import { EventType } from '../../../generated/type/changeEvent';
 import { ModifiedDestination } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { ALERT_AI_DEFAULT_DOWNSTREAM_DEPTH } from './AlertAiFormFields.constants';
 import { AlertAiFormValue } from './AlertAiFormFields.interface';
 import {
+  getAlertAiSectionInputs,
   getAlertAiSectionVisibility,
   getDestinationTypeUpdate,
   getDestinationWithNotifyDownstream,
@@ -72,6 +74,137 @@ describe('AlertAiFormFieldsPureUtils', () => {
       shouldRenderActionsSection: true,
       shouldRenderFiltersSection: true,
       shouldRenderSourceSection: true,
+    });
+  });
+
+  describe('getAlertAiSectionInputs view-mode descriptor availability', () => {
+    const viewValueWithRules = {
+      input: {
+        actions: [{ effect: Effect.Include, name: 'testResultTrigger' }],
+        filters: [{ effect: Effect.Include, name: 'domainList' }],
+      },
+    } as unknown as AlertAiFormValue;
+
+    it('preserves parent flags in view mode when supported lists are unavailable (regression)', () => {
+      const inputs = getAlertAiSectionInputs({
+        shouldShowActionsSection: true,
+        shouldShowFiltersSection: true,
+        value: viewValueWithRules,
+        isViewOnly: true,
+        selectedFilterResource: undefined,
+        selectedSource: 'table',
+        supportedFilters: undefined,
+        supportedTriggers: undefined,
+      });
+      const visibility = getAlertAiSectionVisibility({
+        isViewOnly: true,
+        selectedFilters: inputs.selectedFilters,
+        selectedSource: 'table',
+        selectedTriggers: inputs.selectedTriggers,
+        shouldShowActionsSection: inputs.shouldDisplayActionsSection,
+        shouldShowFiltersSection: inputs.shouldDisplayFiltersSection,
+      });
+
+      expect(inputs.selectedFilters).toHaveLength(1);
+      expect(inputs.shouldDisplayFiltersSection).toBe(true);
+      expect(inputs.shouldDisplayActionsSection).toBe(true);
+      expect(visibility.shouldRenderFiltersSection).toBe(true);
+      expect(visibility.shouldRenderActionsSection).toBe(true);
+    });
+
+    it('renders configured rules in view mode once supported lists are populated (contrast)', () => {
+      const inputs = getAlertAiSectionInputs({
+        shouldShowActionsSection: true,
+        shouldShowFiltersSection: true,
+        value: viewValueWithRules,
+        isViewOnly: true,
+        selectedFilterResource: undefined,
+        selectedSource: 'table',
+        supportedFilters: [
+          {
+            condition: '',
+            effect: Effect.Include,
+            name: 'domainList',
+          },
+        ],
+        supportedTriggers: [
+          {
+            condition: '',
+            effect: Effect.Include,
+            name: 'testResultTrigger',
+          },
+        ],
+      });
+      const visibility = getAlertAiSectionVisibility({
+        isViewOnly: true,
+        selectedFilters: inputs.selectedFilters,
+        selectedSource: 'table',
+        selectedTriggers: inputs.selectedTriggers,
+        shouldShowActionsSection: inputs.shouldDisplayActionsSection,
+        shouldShowFiltersSection: inputs.shouldDisplayFiltersSection,
+      });
+
+      expect(visibility.shouldRenderFiltersSection).toBe(true);
+      expect(visibility.shouldRenderActionsSection).toBe(true);
+    });
+
+    it('hides sections in view mode when the server explicitly returns an empty list', () => {
+      const inputs = getAlertAiSectionInputs({
+        shouldShowActionsSection: true,
+        shouldShowFiltersSection: true,
+        value: viewValueWithRules,
+        isViewOnly: true,
+        selectedFilterResource: undefined,
+        selectedSource: 'table',
+        supportedFilters: [],
+        supportedTriggers: [],
+      });
+
+      expect(inputs.shouldDisplayFiltersSection).toBe(false);
+      expect(inputs.shouldDisplayActionsSection).toBe(false);
+    });
+
+    it('still applies the descriptor override in edit mode when lists are unavailable', () => {
+      const inputs = getAlertAiSectionInputs({
+        shouldShowActionsSection: true,
+        shouldShowFiltersSection: true,
+        value: viewValueWithRules,
+        isViewOnly: false,
+        selectedFilterResource: undefined,
+        selectedSource: 'table',
+        supportedFilters: undefined,
+        supportedTriggers: undefined,
+      });
+
+      expect(inputs.shouldDisplayFiltersSection).toBe(false);
+      expect(inputs.shouldDisplayActionsSection).toBe(false);
+    });
+
+    it('hides sections with no configured rules in view mode even when lists are unavailable', () => {
+      const emptyValue = {
+        input: { actions: [], filters: [] },
+      } as unknown as AlertAiFormValue;
+      const inputs = getAlertAiSectionInputs({
+        shouldShowActionsSection: true,
+        shouldShowFiltersSection: true,
+        value: emptyValue,
+        isViewOnly: true,
+        selectedFilterResource: undefined,
+        selectedSource: 'table',
+        supportedFilters: undefined,
+        supportedTriggers: undefined,
+      });
+      const visibility = getAlertAiSectionVisibility({
+        isViewOnly: true,
+        selectedFilters: inputs.selectedFilters,
+        selectedSource: 'table',
+        selectedTriggers: inputs.selectedTriggers,
+        shouldShowActionsSection: inputs.shouldDisplayActionsSection,
+        shouldShowFiltersSection: inputs.shouldDisplayFiltersSection,
+      });
+
+      expect(visibility.shouldRenderFiltersSection).toBe(false);
+      expect(visibility.shouldRenderActionsSection).toBe(false);
     });
   });
 
@@ -181,7 +314,7 @@ describe('AlertAiFormFieldsPureUtils', () => {
     });
   });
 
-  it('maps internal and external destination type updates', () => {
+  it('maps internal and external destination type updates from a blank row', () => {
     expect(
       getDestinationTypeUpdate(
         {} as ModifiedDestination,
@@ -190,6 +323,7 @@ describe('AlertAiFormFieldsPureUtils', () => {
     ).toEqual({
       category: SubscriptionCategory.Owners,
       destinationType: SubscriptionCategory.Owners,
+      config: { sendToOwners: true },
     });
 
     expect(
@@ -201,6 +335,151 @@ describe('AlertAiFormFieldsPureUtils', () => {
       category: SubscriptionCategory.External,
       destinationType: SubscriptionType.Slack,
       type: SubscriptionType.Slack,
+    });
+  });
+
+  it('passes the header category separators through unchanged', () => {
+    const headerDestination = {
+      destinationType: SubscriptionType.Slack,
+    } as ModifiedDestination;
+
+    expect(getDestinationTypeUpdate(headerDestination, 'header-internal')).toBe(
+      headerDestination
+    );
+  });
+
+  describe('getDestinationTypeUpdate resets stale fields on category change', () => {
+    const populatedSlackDestination: ModifiedDestination = {
+      category: SubscriptionCategory.External,
+      destinationType: SubscriptionType.Slack,
+      type: SubscriptionType.Slack,
+      config: {
+        endpoint: 'https://hooks.slack.com/services/T00/B00/XXX',
+        authType: { type: Type.Bearer, secretKey: 'secret' },
+        headers: [{ key: 'X-Key', value: 'v' }],
+        queryParams: [{ key: 'q', value: '1' }],
+      },
+      notifyDownstream: true,
+      downstreamDepth: 3,
+    } as ModifiedDestination;
+
+    it('clears stale type/config/downstream settings when switching to an internal category (Slack -> Owners)', () => {
+      const result = getDestinationTypeUpdate(
+        populatedSlackDestination,
+        SubscriptionCategory.Owners
+      );
+
+      expect(result).toEqual({
+        category: SubscriptionCategory.Owners,
+        destinationType: SubscriptionCategory.Owners,
+        config: { sendToOwners: true },
+      });
+      expect(result.type).toBeUndefined();
+      expect(result.config?.endpoint).toBeUndefined();
+      expect(result.config?.authType).toBeUndefined();
+      expect(result.config?.headers).toBeUndefined();
+      expect(result.config?.queryParams).toBeUndefined();
+      expect(result.notifyDownstream).toBeUndefined();
+      expect(result.downstreamDepth).toBeUndefined();
+    });
+
+    it('seeds the sendTo flag for Admins and Followers without carrying prior config', () => {
+      expect(
+        getDestinationTypeUpdate(
+          populatedSlackDestination,
+          SubscriptionCategory.Admins
+        )
+      ).toEqual({
+        category: SubscriptionCategory.Admins,
+        destinationType: SubscriptionCategory.Admins,
+        config: { sendToAdmins: true },
+      });
+      expect(
+        getDestinationTypeUpdate(
+          populatedSlackDestination,
+          SubscriptionCategory.Followers
+        )
+      ).toEqual({
+        category: SubscriptionCategory.Followers,
+        destinationType: SubscriptionCategory.Followers,
+        config: { sendToFollowers: true },
+      });
+    });
+
+    it('clears stale config when switching to receiver-based internal categories (Slack -> Teams/Users)', () => {
+      const toTeams = getDestinationTypeUpdate(
+        populatedSlackDestination,
+        SubscriptionCategory.Teams
+      );
+
+      expect(toTeams).toEqual({
+        category: SubscriptionCategory.Teams,
+        destinationType: SubscriptionCategory.Teams,
+      });
+      expect(toTeams.type).toBeUndefined();
+      expect(toTeams.config).toBeUndefined();
+      expect(toTeams.notifyDownstream).toBeUndefined();
+      expect(toTeams.downstreamDepth).toBeUndefined();
+    });
+
+    it('does not carry the stale Slack endpoint when switching external -> external (Slack -> MSTeams/GChat/Webhook/Email)', () => {
+      [
+        SubscriptionType.MSTeams,
+        SubscriptionType.GChat,
+        SubscriptionType.Webhook,
+      ].forEach((externalType) => {
+        const result = getDestinationTypeUpdate(
+          populatedSlackDestination,
+          externalType
+        );
+
+        expect(result).toEqual({
+          category: SubscriptionCategory.External,
+          destinationType: externalType,
+          type: externalType,
+        });
+        expect(result.config).toBeUndefined();
+        expect(result.notifyDownstream).toBeUndefined();
+        expect(result.downstreamDepth).toBeUndefined();
+      });
+
+      const toEmail = getDestinationTypeUpdate(
+        populatedSlackDestination,
+        SubscriptionType.Email
+      );
+
+      expect(toEmail).toEqual({
+        category: SubscriptionCategory.External,
+        destinationType: SubscriptionType.Email,
+        type: SubscriptionType.Email,
+      });
+      expect(toEmail.config).toBeUndefined();
+    });
+
+    it('does not carry the internal sendTo flag when switching internal -> external (Owners -> Slack)', () => {
+      const ownersDestination: ModifiedDestination = {
+        category: SubscriptionCategory.Owners,
+        destinationType: SubscriptionCategory.Owners,
+        type: SubscriptionType.Email,
+        config: { sendToOwners: true },
+        notifyDownstream: true,
+        downstreamDepth: 2,
+      } as ModifiedDestination;
+
+      const result = getDestinationTypeUpdate(
+        ownersDestination,
+        SubscriptionType.Slack
+      );
+
+      expect(result).toEqual({
+        category: SubscriptionCategory.External,
+        destinationType: SubscriptionType.Slack,
+        type: SubscriptionType.Slack,
+      });
+      expect(result.config).toBeUndefined();
+      expect(result.config?.sendToOwners).toBeUndefined();
+      expect(result.notifyDownstream).toBeUndefined();
+      expect(result.downstreamDepth).toBeUndefined();
     });
   });
 

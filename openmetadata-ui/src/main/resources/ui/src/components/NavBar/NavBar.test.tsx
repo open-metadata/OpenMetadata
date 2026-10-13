@@ -381,4 +381,26 @@ describe('handleDocumentVisibilityChange one hour threshold', () => {
       expect.objectContaining({ expires: expect.any(Date) })
     );
   });
+
+  it('should swallow a getVersion network failure on window focus without caching the fetch time', async () => {
+    mockGetItem.mockReturnValue(null);
+    (global.Date.now as jest.Mock).mockReturnValue(5000000);
+
+    render(<NavBarComponent />);
+    await screen.findByTestId('global-search-bar');
+
+    jest.clearAllMocks();
+    (getVersion as jest.Mock).mockRejectedValueOnce(new Error('Network Error'));
+
+    await act(async () => {
+      window.dispatchEvent(new Event('focus'));
+    });
+
+    expect(getVersion).toHaveBeenCalledTimes(1);
+    expect(mockSetItem).not.toHaveBeenCalledWith(
+      LAST_VERSION_FETCH_TIME_KEY,
+      expect.anything(),
+      expect.anything()
+    );
+  });
 });

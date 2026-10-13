@@ -23,6 +23,7 @@ const DomainTags: FC<DomainTagsProps> = ({
   labels,
   onRemove,
   maxVisible = 5,
+  maxWidth,
   size = 'sm',
   showInheritedIcon = true,
   className,
@@ -71,6 +72,7 @@ const DomainTags: FC<DomainTagsProps> = ({
             key={domain.id ?? domain.fullyQualifiedName}
             label={getEntityName(domain)}
             labelNode={labels?.[index]}
+            maxWidth={maxWidth}
             size={size}
             onDelete={onRemove ? () => onRemove(domain) : undefined}
           />

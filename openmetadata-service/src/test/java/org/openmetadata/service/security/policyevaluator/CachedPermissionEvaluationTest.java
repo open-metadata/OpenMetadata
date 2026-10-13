@@ -312,7 +312,7 @@ public class CachedPermissionEvaluationTest {
     return rules;
   }
 
-  private static <T extends EntityInterface> List<EntityReference> toEntityReferences(
+  private static <T extends EntityInterface<?>> List<EntityReference> toEntityReferences(
       List<T> entities) {
     List<EntityReference> references = new ArrayList<>();
     for (T entity : entities) {

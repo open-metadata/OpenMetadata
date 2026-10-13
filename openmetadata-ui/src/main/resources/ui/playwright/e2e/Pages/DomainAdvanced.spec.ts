@@ -615,7 +615,7 @@ test.describe('Bulk Domain Asset Operations', () => {
         await page
           .locator(`[data-testid="table-data-card_${fqn}"]`)
           .getByTestId('asset-checkbox')
-          .check();
+          .click();
       }
 
       const removeRes = page.waitForResponse('/api/v1/domains/*/assets/remove');
@@ -907,7 +907,7 @@ test.describe('Data Product Asset Management', () => {
       await page
         .locator(`[data-testid="table-data-card_${tableFqn}"]`)
         .getByTestId('asset-checkbox')
-        .check();
+        .click();
 
       const addRes = page.waitForResponse('/api/v1/dataProducts/*/assets/add');
       await page.getByTestId('save-btn').click();
@@ -1052,7 +1052,7 @@ test.describe('Domain asset dryRun — remove confirmation', () => {
     await page
       .locator(`[data-testid="table-data-card_${fqn}"]`)
       .getByTestId('asset-checkbox')
-      .check();
+      .click();
   };
 
   test('single-asset remove with linked data product shows preview and commits on Remove Anyway', async ({

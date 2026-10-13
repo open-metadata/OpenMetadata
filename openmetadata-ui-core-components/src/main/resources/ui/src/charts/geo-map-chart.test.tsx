@@ -22,7 +22,7 @@ const hostProps = vi.hoisted(() => ({
   calls: [] as Array<Record<string, unknown>>,
 }));
 
-vi.mock('echarts-for-react/lib/core', () => ({
+vi.mock('echarts-for-react/esm/core', () => ({
   default: (props: Record<string, unknown>) => {
     hostProps.calls.push(props);
 

@@ -47,6 +47,7 @@ import org.openmetadata.schema.entity.ai.McpTool;
 import org.openmetadata.schema.entity.ai.McpToolCategory;
 import org.openmetadata.schema.entity.ai.McpTransportType;
 import org.openmetadata.schema.entity.ai.McpUsageMetrics;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 
@@ -78,6 +79,19 @@ public class McpServerResourceIT {
             "/v1/services/mcpServices",
             createService,
             RequestOptions.builder().build());
+  }
+
+  @Test
+  void testNewMcpServerStartsUnprocessed(TestNamespace ns) throws Exception {
+    McpServer created =
+        createMcpServer(
+            new CreateMcpServer()
+                .withName(ns.prefix("draft-mcp-server"))
+                .withServerType(McpServerType.DataAccess)
+                .withTransportType(McpTransportType.Stdio)
+                .withDescription("MCP Server with no registration status"));
+
+    assertEquals(EntityStatus.UNPROCESSED, created.getEntityStatus());
   }
 
   @Test

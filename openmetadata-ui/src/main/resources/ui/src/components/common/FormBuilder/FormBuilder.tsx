@@ -10,11 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Button } from '@openmetadata/ui-core-components';
 
 import { CheckOutlined } from '@ant-design/icons';
 import Form, { FormProps, IChangeEvent } from '@rjsf/core';
 import { WidgetProps } from '@rjsf/utils';
-import { Button } from 'antd';
 import classNames from 'classnames';
 import { LoadingState } from 'Models';
 import { forwardRef, useEffect, useMemo, useState } from 'react';
@@ -117,31 +117,24 @@ const FormBuilder = forwardRef<Form, Props>(
     const submitButton = useMemo(() => {
       if (status === 'waiting') {
         return (
-          <Button
-            disabled
-            className="p-x-md p-y-xxs h-auto rounded-6"
-            type="primary">
+          <Button isDisabled color="primary">
             <Loader size="small" type="white" />
           </Button>
         );
       } else if (status === 'success') {
         return (
-          <Button
-            disabled
-            className="p-x-md p-y-xxs h-auto rounded-6"
-            type="primary">
+          <Button isDisabled color="primary">
             <CheckOutlined />
           </Button>
         );
       } else {
         return (
           <Button
-            className="font-medium p-x-md p-y-xxs h-auto rounded-6"
+            color="primary"
             data-testid="submit-btn"
-            disabled={isSubmitDisabled}
-            htmlType="submit"
-            loading={isLoading}
-            type="primary">
+            isDisabled={isSubmitDisabled}
+            isLoading={isLoading}
+            type="submit">
             {okText}
           </Button>
         );
@@ -181,7 +174,7 @@ const FormBuilder = forwardRef<Form, Props>(
           className="m-t-lg d-flex justify-end text-right"
           data-testid="buttons">
           {!hideCancelButton && (
-            <Button type="link" onClick={handleCancel}>
+            <Button color="link-color" onClick={handleCancel}>
               {cancelText}
             </Button>
           )}

@@ -267,7 +267,9 @@ export const resetToProviderSelector = async (page: Page) => {
  */
 export const verifyReadOnlyMode = async (page: Page) => {
   await expect(page.getByTestId('edit-sso-configuration')).toBeVisible();
-  await expect(page.locator('input[disabled]').first()).toBeVisible();
+  await expect(
+    page.locator('input[disabled]').filter({ visible: true })
+  ).not.toHaveCount(0);
 };
 
 /**
@@ -276,7 +278,9 @@ export const verifyReadOnlyMode = async (page: Page) => {
 export const verifyEditMode = async (page: Page) => {
   await expect(page.getByTestId('save-sso-configuration')).toBeVisible();
   await expect(page.getByTestId('cancel-sso-configuration')).toBeVisible();
-  await expect(page.locator('input:not([disabled])').first()).toBeVisible();
+  await expect(
+    page.locator('input:not([disabled])').filter({ visible: true })
+  ).not.toHaveCount(0);
 };
 
 /**

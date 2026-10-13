@@ -550,6 +550,82 @@ class AuthenticationCodeFlowHandlerTest {
     assertEquals("Redirect URI must exactly match a trusted redirect URI", thrown.getMessage());
   }
 
+  /**
+   * Issue #26311: the deployment is served at https://om.example.org but serverUrl still holds the
+   * default localhost value, which made every SSO login fail with "Redirect URI must exactly match a
+   * trusted redirect URI". The configured OIDC callback URL has to be right for login to work at
+   * all, so the landing page is trusted on its host.
+   */
+  @Test
+  void requireRedirectUri_trustsTheLandingOnTheCallbackHostWhenServerUrlIsStale() throws Exception {
+    AuthenticationCodeFlowHandler handler =
+        createRedirectHandler("http://localhost:8585", "https://om.example.org/callback");
+
+    assertEquals(
+        "https://om.example.org/auth/callback",
+        invokeRequireRedirectUri(handler, "https://om.example.org/auth/callback"));
+  }
+
+  @Test
+  void requireRedirectUri_keepsTheConfiguredCallbackPort() throws Exception {
+    AuthenticationCodeFlowHandler handler =
+        createRedirectHandler("http://localhost:8585", "http://om.example.org:8080/callback");
+
+    assertEquals(
+        "http://om.example.org:8080/auth/callback",
+        invokeRequireRedirectUri(handler, "http://om.example.org:8080/auth/callback"));
+    assertRejectedRedirect(handler, "http://om.example.org/auth/callback");
+  }
+
+  /** Only OpenMetadata's own landing page is trusted on the callback host, not any path on it. */
+  @Test
+  void requireRedirectUri_rejectsAnyOtherPathOnTheCallbackHost() throws Exception {
+    AuthenticationCodeFlowHandler handler =
+        createRedirectHandler("http://localhost:8585", "https://om.example.org/callback");
+
+    assertRejectedRedirect(handler, "https://om.example.org/steal?token=leak");
+  }
+
+  /** The MCP flow stays anchored to serverUrl, exactly as before #26311. */
+  @Test
+  void requireRedirectUri_doesNotTrustTheMcpCallbackOnTheCallbackHost() throws Exception {
+    AuthenticationCodeFlowHandler handler =
+        createRedirectHandler("http://localhost:8585", "https://om.example.org/callback");
+
+    assertRejectedRedirect(handler, "https://om.example.org" + MCP_CALLBACK);
+  }
+
+  /** #26311: logout and the signin fallbacks follow the callback host, not a stale serverUrl. */
+  @Test
+  void deploymentUrl_usesTheCallbackHostWhenServerUrlIsStale() throws Exception {
+    AuthenticationCodeFlowHandler handler =
+        createRedirectHandler("http://localhost:8585", "https://om.example.org/callback");
+
+    assertEquals("https://om.example.org/logout", invokeDeploymentUrl(handler, "/logout"));
+  }
+
+  /** serverUrl carries a deployment's base path, so the callback URL's base must keep it too. */
+  @Test
+  void deploymentUrl_keepsTheBasePathOfTheCallbackUrl() throws Exception {
+    AuthenticationCodeFlowHandler handler =
+        createRedirectHandler(
+            "http://localhost:8585", "https://om.example.org/openmetadata/callback");
+
+    assertEquals(
+        "https://om.example.org/openmetadata/signin", invokeDeploymentUrl(handler, "/signin"));
+  }
+
+  /** A callback URL that is not the /callback servlet has no base to derive, so serverUrl stays. */
+  @Test
+  void deploymentUrl_fallsBackToServerUrlWhenTheCallbackUrlIsNotTheCallbackServlet()
+      throws Exception {
+    AuthenticationCodeFlowHandler handler =
+        createRedirectHandler(
+            "https://om-internal.example.org", "https://om.example.org/oidc/return");
+
+    assertEquals("https://om-internal.example.org/signin", invokeDeploymentUrl(handler, "/signin"));
+  }
+
   private AuthenticationCodeFlowHandler createRedirectHandler(
       String serverUrl, String callbackUrl, List<String> additionalTrustedRedirectUris)
       throws Exception {
@@ -558,11 +634,37 @@ class AuthenticationCodeFlowHandlerTest {
     when(authConfig.getAdditionalTrustedRedirectUris()).thenReturn(additionalTrustedRedirectUris);
 
     AuthenticationCodeFlowHandler handler =
+        createRedirectHandler(serverUrl, serverUrl + "/callback");
+    setField(handler, "authenticationConfiguration", authConfig);
+    return handler;
+  }
+
+  private AuthenticationCodeFlowHandler createRedirectHandler(
+      String serverUrl, String oidcCallbackUrl) throws Exception {
+    OidcClient oidcClientForCallback = new OidcClient();
+    oidcClientForCallback.setCallbackUrl(oidcCallbackUrl);
+    AuthenticationCodeFlowHandler handler =
         (AuthenticationCodeFlowHandler)
             getUnsafe().allocateInstance(AuthenticationCodeFlowHandler.class);
-    setField(handler, "authenticationConfiguration", authConfig);
+    setField(handler, "client", oidcClientForCallback);
     setField(handler, "serverUrl", serverUrl);
+    setField(handler, "authenticationConfiguration", new AuthenticationConfiguration());
     return handler;
+  }
+
+  private void assertRejectedRedirect(AuthenticationCodeFlowHandler handler, String redirectUri) {
+    IllegalArgumentException thrown =
+        assertThrows(
+            IllegalArgumentException.class, () -> invokeRequireRedirectUri(handler, redirectUri));
+    assertEquals("Redirect URI must exactly match a trusted redirect URI", thrown.getMessage());
+  }
+
+  private String invokeDeploymentUrl(AuthenticationCodeFlowHandler handler, String path)
+      throws Exception {
+    Method method =
+        AuthenticationCodeFlowHandler.class.getDeclaredMethod("deploymentUrl", String.class);
+    method.setAccessible(true);
+    return (String) method.invoke(handler, path);
   }
 
   private String invokeRequireRedirectUri(AuthenticationCodeFlowHandler handler, String redirectUri)

@@ -73,6 +73,16 @@ class ContextFileVisibilityTest {
   }
 
   @Test
+  void onlyUnrestrictedAndEntityFilesAreOrgWide() {
+    assertTrue(ContextFileVisibility.isOrgWide(new ContextFile()));
+    assertTrue(ContextFileVisibility.isOrgWide(fileOwnedBy(ALICE, null)));
+    assertTrue(ContextFileVisibility.isOrgWide(fileOwnedBy(ALICE, MemoryVisibility.ENTITY)));
+    assertFalse(ContextFileVisibility.isOrgWide(fileOwnedBy(ALICE, MemoryVisibility.PRIVATE)));
+    assertFalse(ContextFileVisibility.isOrgWide(fileOwnedBy(ALICE, MemoryVisibility.SHARED)));
+    assertFalse(ContextFileVisibility.isOrgWide(fileOwnedBy(ALICE, MemoryVisibility.PUBLIC)));
+  }
+
+  @Test
   void onlyAnOwnerOrAnAdminMayRestrictAFile() {
     ContextFile open = fileOwnedBy(ALICE, null);
     ContextFile restricted = fileOwnedBy(ALICE, MemoryVisibility.PRIVATE);

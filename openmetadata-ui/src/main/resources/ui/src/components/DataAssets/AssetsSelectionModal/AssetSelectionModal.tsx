@@ -14,7 +14,6 @@ import { Dialog, Modal, ModalOverlay } from '@openmetadata/ui-core-components';
 import { isUndefined } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { AssetsOfEntity } from '../../../enums/Assets.enum';
-import './asset-selection-model.style.less';
 import AssetSelectionContentBody from './AssetSelectionContentBody';
 import AssetSelectionFooter from './AssetSelectionFooter';
 import { AssetSelectionModalProps } from './AssetSelectionModal.interface';
@@ -45,7 +44,7 @@ export const AssetSelectionModal = ({
     <ModalOverlay
       isOpen={open}
       onOpenChange={(isOpen) => !isOpen && onCancel?.()}>
-      <Modal className="asset-selection-modal">
+      <Modal>
         <Dialog
           data-testid="asset-selection-modal"
           title={t('label.add-entity', { entity: t('label.asset-plural') })}

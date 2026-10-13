@@ -24,9 +24,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 
 public final class CatalogExceptionMessage {
   public static final String REINDEXING_ALREADY_RUNNING = "REINDEXING_ALREADY_RUNNING";
@@ -216,6 +214,22 @@ public final class CatalogExceptionMessage {
 
   public static String notReviewer(String name) {
     return String.format("User '%s' is not a reviewer", name);
+  }
+
+  public static String entityStatusNotInLifecycle(String entityType, String stage) {
+    return String.format("%s is not a lifecycle stage of %s", stage, entityType);
+  }
+
+  public static String entityStatusMoveNotInLifecycle(String entityType, String from, String to) {
+    return String.format(
+        "The lifecycle of %s does not allow moving from %s to %s", entityType, from, to);
+  }
+
+  public static String entityStatusOwnedByWorkflow(String entityType, String fqn, String workflow) {
+    return String.format(
+        "The lifecycle stage of %s '%s' is managed by the workflow '%s' and changes only through"
+            + " it. Use its approval tasks, or suspend the workflow to change the stage directly.",
+        entityType, fqn, workflow);
   }
 
   public static String notTaskAssignee(String name) {
@@ -430,16 +444,6 @@ public final class CatalogExceptionMessage {
       SubscriptionDestination.SubscriptionType type, String message) {
     return String.format(
         "Failed to publish event of destination type %s due to %s ", type.value(), message);
-  }
-
-  public static String invalidTaskField(EntityLink entityLink, TaskType taskType) {
-    return String.format(
-        "The Entity link with no field name - %s is not supported for %s task.",
-        entityLink, taskType);
-  }
-
-  public static String invalidFieldForTask(String fieldName, TaskType type) {
-    return String.format("The field name %s is not supported for %s task.", fieldName, type);
   }
 
   public static String invalidReviewerType(String type) {

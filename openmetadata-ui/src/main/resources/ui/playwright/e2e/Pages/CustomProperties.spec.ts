@@ -104,6 +104,7 @@ import {
   getEntityDisplayName,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import { pickEntityMatrix } from '../../utils/entityMatrix';
 import { getEntityFqn } from '../../utils/entityPanel';
 import { navigateToExploreAndSelectEntity } from '../../utils/explore';
 import { createTable } from '../../utils/KnowledgeCenter';
@@ -259,7 +260,11 @@ const ALL_ENTITIES: CRUDEntity[] = [
   { key: 'entity_tableColumn', makeInstance: null },
 ];
 
-ALL_ENTITIES.forEach(({ key, makeInstance }) => {
+pickEntityMatrix(
+  __filename,
+  ALL_ENTITIES,
+  ALL_ENTITIES.filter(({ key }) => key === 'entity_table')
+).forEach(({ key, makeInstance }) => {
   const entity = CUSTOM_PROPERTIES_ENTITIES[key];
   const basicProperties =
     key === 'entity_table' ? BASIC_PROPERTIES : ['String'];

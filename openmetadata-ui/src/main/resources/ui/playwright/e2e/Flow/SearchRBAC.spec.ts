@@ -19,13 +19,27 @@ import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { disableEtagConditionalReads, uuid } from '../../utils/common';
+import { pickEntityMatrix } from '../../utils/entityMatrix';
 import { waitForSearchIndexed } from '../../utils/polling';
 import {
+  enableDisableSearchRBAC,
   exploreShouldShowEntity,
   exploreTreeCategories,
   searchForEntityShouldWork,
   searchForEntityShouldWorkShowNoResult,
 } from '../../utils/searchRBAC';
+
+// `enableAccessControl` is global and SearchSettings.spec.ts resets it, so
+// re-assert it per test rather than trusting the project setup to survive.
+test.beforeEach(async ({ browser }) => {
+  const { apiContext, afterAction } = await performAdminLogin(browser);
+
+  try {
+    await enableDisableSearchRBAC(apiContext, true);
+  } finally {
+    await afterAction();
+  }
+});
 
 const newStrippedPage = async (browser: Browser) => {
   const page = await browser.newPage();
@@ -34,7 +48,13 @@ const newStrippedPage = async (browser: Browser) => {
   return page;
 };
 
-for (const entity of searchRBACEntities) {
+for (const entity of pickEntityMatrix(
+  __filename,
+  searchRBACEntities,
+  searchRBACEntities.filter(
+    ({ class: EntityClass }) => EntityClass === TableClass
+  )
+)) {
   const entityObj = new entity.class();
 
   test.describe(entity.name, () => {

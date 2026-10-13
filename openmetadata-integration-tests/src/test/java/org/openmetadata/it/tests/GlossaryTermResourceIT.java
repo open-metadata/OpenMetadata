@@ -22,10 +22,14 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.ResourceAccessMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.util.SdkClients;
+import org.openmetadata.it.util.SharedResourceLocks;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.AddGlossaryToAssetsRequest;
 import org.openmetadata.schema.api.data.CreateGlossary;
@@ -71,6 +75,9 @@ import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.cache.CacheBundle;
+import org.openmetadata.service.resources.settings.SettingsCache;
 
 /**
  * Integration tests for GlossaryTerm entity operations.
@@ -82,7 +89,6 @@ import org.openmetadata.sdk.network.RequestOptions;
  */
 @Execution(ExecutionMode.CONCURRENT)
 public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlossaryTerm> {
-
   // Disable tests that don't apply to GlossaryTerm
   {
     supportsFollowers = false; // GlossaryTerm doesn't support followers directly
@@ -98,6 +104,12 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   // ===================================================================
   // ABSTRACT METHOD IMPLEMENTATIONS (Required by BaseEntityIT)
   // ===================================================================
+
+  // Without reviewers the minimal entity has nobody to review it, so it starts approved.
+  @Override
+  protected EntityStatus expectedInitialEntityStatus() {
+    return EntityStatus.APPROVED;
+  }
 
   @Override
   protected CreateGlossaryTerm createMinimalRequest(TestNamespace ns) {
@@ -1585,8 +1597,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
 
   @Test
   void test_glossaryTermStatusTransitions(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
-    Glossary glossary = getOrCreateGlossary(ns);
+    Glossary glossary = GlossaryTestFactory.createForStatusTests(ns);
 
     // Create term
     CreateGlossaryTerm request =
@@ -1597,18 +1608,16 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
 
     GlossaryTerm term = createEntity(request);
     assertNotNull(term.getEntityStatus());
-
-    // Update status to Deprecated
-    term.setEntityStatus(org.openmetadata.schema.type.EntityStatus.DEPRECATED);
+    term.setEntityStatus(EntityStatus.DEPRECATED);
     GlossaryTerm updated = patchEntity(term.getId().toString(), term);
-    assertEquals(org.openmetadata.schema.type.EntityStatus.DEPRECATED, updated.getEntityStatus());
+    assertEquals(EntityStatus.DEPRECATED, updated.getEntityStatus());
   }
 
   @Test
   void test_glossaryTermStatusTransitionUpdatesSearchIndex(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     ObjectMapper mapper = new ObjectMapper();
-    Glossary glossary = getOrCreateGlossary(ns);
+    Glossary glossary = GlossaryTestFactory.createForStatusTests(ns);
 
     CreateGlossaryTerm request =
         new CreateGlossaryTerm()
@@ -1617,8 +1626,9 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withDescription("Term for search status propagation");
 
     GlossaryTerm term = createEntity(request);
-    term.setEntityStatus(org.openmetadata.schema.type.EntityStatus.DEPRECATED);
+    term.setEntityStatus(EntityStatus.DEPRECATED);
     GlossaryTerm updated = patchEntity(term.getId().toString(), term);
+    assertEquals(EntityStatus.DEPRECATED, updated.getEntityStatus());
 
     Awaitility.await("Glossary term status should be reflected in search")
         .atMost(java.time.Duration.ofSeconds(30))
@@ -2964,12 +2974,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   void test_listGlossaryTermsWithEntityStatusFilter(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    // Create a dedicated glossary for this test
-    CreateGlossary createGlossary =
-        new CreateGlossary()
-            .withName(ns.prefix("status_list_glossary"))
-            .withDescription("Glossary for entityStatus list filter test");
-    Glossary glossary = client.glossaries().create(createGlossary);
+    Glossary glossary = GlossaryTestFactory.createForStatusTests(ns);
 
     // Create two terms - both start as APPROVED (default status when no reviewers)
     CreateGlossaryTerm request1 =
@@ -2988,9 +2993,8 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     GlossaryTerm draftTerm = createEntity(request2);
     assertEquals(EntityStatus.APPROVED, draftTerm.getEntityStatus());
 
-    // Update second term to DRAFT status
     draftTerm.setEntityStatus(EntityStatus.DRAFT);
-    GlossaryTerm updatedDraftTerm = client.glossaryTerms().update(draftTerm.getId(), draftTerm);
+    GlossaryTerm updatedDraftTerm = patchEntity(draftTerm.getId().toString(), draftTerm);
     assertEquals(EntityStatus.DRAFT, updatedDraftTerm.getEntityStatus());
 
     // List with APPROVED status filter - only approved term should be returned
@@ -3057,12 +3061,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   void test_glossaryTermEntityStatusFiltering(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    // Step 1: Create a dedicated glossary for this test to avoid interference
-    CreateGlossary createGlossary =
-        new CreateGlossary()
-            .withName(ns.prefix("status_filter_glossary"))
-            .withDescription("Glossary for entityStatus filtering test");
-    Glossary glossary = client.glossaries().create(createGlossary);
+    Glossary glossary = GlossaryTestFactory.createForStatusTests(ns);
 
     // Step 2: Create two terms - both should start as APPROVED (default status when no reviewers)
     CreateGlossaryTerm request1 =
@@ -3081,9 +3080,8 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     GlossaryTerm reviewTerm = client.glossaryTerms().create(request2);
     assertEquals(EntityStatus.APPROVED, reviewTerm.getEntityStatus());
 
-    // Step 3: Update the second term to IN_REVIEW status
     reviewTerm.setEntityStatus(EntityStatus.IN_REVIEW);
-    GlossaryTerm updatedReviewTerm = client.glossaryTerms().update(reviewTerm.getId(), reviewTerm);
+    GlossaryTerm updatedReviewTerm = patchEntity(reviewTerm.getId().toString(), reviewTerm);
     assertEquals(EntityStatus.IN_REVIEW, updatedReviewTerm.getEntityStatus());
 
     // Step 4: Search without entityStatus filter - both terms should be returned
@@ -3406,6 +3404,127 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             });
   }
 
+  @Test
+  @ResourceLock(value = SharedResourceLocks.SEARCH_SETTINGS, mode = ResourceAccessMode.READ)
+  void test_hierarchySearchKeepsParentOfEveryMatchOnThePage(TestNamespace ns) throws Exception {
+    assertHierarchySearchKeepsFullPath(ns, "hier_page", 1);
+  }
+
+  @Test
+  @ResourceLock(value = SharedResourceLocks.SEARCH_SETTINGS, mode = ResourceAccessMode.READ)
+  void test_hierarchySearchKeepsFullPathOfDeeplyNestedMatches(TestNamespace ns) throws Exception {
+    assertHierarchySearchKeepsFullPath(ns, "hier_deep", 4);
+  }
+
+  // More matches than the page holds, nested under parents that don't match the search: every
+  // match on the page must still come back under its full path. Creates index synchronously with a
+  // refresh, so no wait is needed; the post_filter keeps other tests' terms out of the result.
+  private void assertHierarchySearchKeepsFullPath(TestNamespace ns, String prefix, int depth)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    // Letters that never occur in the generated names (hex + "hier_page/deep_g/l/m"), so no n-gram
+    // of the word can fuzzily match a parent's name and parents never compete with the matches
+    String word = randomWordFrom("jknoqstuvwxyz", 16);
+    int matchCount = 30;
+    int pageSize = 25;
+    Glossary glossary =
+        client
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.shortPrefix(prefix + "_g"))
+                    .withDescription("Glossary for hierarchy search"));
+    try {
+      List<GlossaryTerm> path = new ArrayList<>();
+      for (int level = 0; level < depth; level++) {
+        path.add(
+            createEntity(
+                new CreateGlossaryTerm()
+                    .withName(ns.shortPrefix(prefix + "_l" + level))
+                    .withGlossary(glossary.getFullyQualifiedName())
+                    .withParent(level == 0 ? null : path.get(level - 1).getFullyQualifiedName())
+                    .withDescription("Parent that does not match the search word")));
+      }
+      String deepestParent = path.get(depth - 1).getFullyQualifiedName();
+      for (int i = 0; i < matchCount; i++) {
+        createEntity(
+            new CreateGlossaryTerm()
+                .withName(ns.shortPrefix(prefix + "_m" + i))
+                .withGlossary(glossary.getFullyQualifiedName())
+                .withParent(deepestParent)
+                .withDescription("Child matching " + word));
+      }
+
+      String ownGlossary =
+          "{\"query\":{\"term\":{\"glossary.name.keyword\":\""
+              + glossary.getName().toLowerCase()
+              + "\"}}}";
+      JsonNode node =
+          findByFqn(
+              searchGlossaryTerms(client, word, ownGlossary, pageSize, true),
+              glossary.getFullyQualifiedName());
+      assertNotNull(node, "Glossary of the matches should be returned");
+      for (GlossaryTerm parent : path) {
+        node = findByFqn(node.path("children"), parent.getFullyQualifiedName());
+        assertNotNull(node, "Parent " + parent.getName() + " should be returned");
+      }
+      assertEquals(
+          pageSize,
+          node.path("children").size(),
+          "Every match on the page should sit under its full path");
+    } finally {
+      // Best-effort: a cleanup hiccup must not fail a test whose assertions passed
+      try {
+        client
+            .glossaries()
+            .delete(
+                glossary.getId().toString(),
+                java.util.Map.of("hardDelete", "true", "recursive", "true"));
+      } catch (Exception ignored) {
+        // the namespace-scoped glossary cannot affect other tests' assertions
+      }
+    }
+  }
+
+  private static String randomWordFrom(String alphabet, int length) {
+    java.util.concurrent.ThreadLocalRandom random =
+        java.util.concurrent.ThreadLocalRandom.current();
+    StringBuilder word = new StringBuilder(length);
+    for (int i = 0; i < length; i++) {
+      word.append(alphabet.charAt(random.nextInt(alphabet.length())));
+    }
+    return word.toString();
+  }
+
+  private static JsonNode searchGlossaryTerms(
+      OpenMetadataClient client, String query, String postFilter, int size, boolean hierarchy)
+      throws Exception {
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("q", query)
+            .queryParam("index", "glossary_term_search_index")
+            .queryParam("from", "0")
+            .queryParam("size", String.valueOf(size))
+            .queryParam("deleted", "false")
+            .queryParam("post_filter", postFilter)
+            .queryParam("getHierarchy", String.valueOf(hierarchy))
+            .build();
+    return new ObjectMapper()
+        .readTree(
+            client
+                .getHttpClient()
+                .executeForString(HttpMethod.GET, "/v1/search/query", null, options));
+  }
+
+  private static JsonNode findByFqn(JsonNode nodes, String fqn) {
+    for (JsonNode node : nodes) {
+      if (fqn.equals(node.path("fullyQualifiedName").asText())) {
+        return node;
+      }
+    }
+    return null;
+  }
+
   private String getAssetCounts(OpenMetadataClient client, String parent) {
     RequestOptions.Builder optionsBuilder = RequestOptions.builder();
     if (parent != null) {
@@ -3520,6 +3639,14 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     OpenMetadataClient client = SdkClients.adminClient();
     GlossaryTerm term = createGlossaryTermForBulk(ns, "dr_false");
     Table table = createTableTaggedWithTerm(ns, term, "dr_false");
+    var tagCache = CacheBundle.getCachedTagUsageDao();
+    if (tagCache != null) {
+      tagCache.putTags(
+          Entity.TABLE,
+          table.getId(),
+          JsonUtils.pojoToJson(table.getTags()),
+          SettingsCache.isGlossaryTagPropagationEnabled());
+    }
 
     AddGlossaryToAssetsRequest realRemove =
         new AddGlossaryToAssetsRequest()
@@ -3560,6 +3687,36 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     assertFalse(
         tableHasTag(client, table.getId(), term.getFullyQualifiedName()),
         "Glossary tag should NOT be applied to table on dryRun=true add");
+  }
+
+  @Test
+  void test_bulkAddGlossaryToAssets_dryRunFalse_updatesCachedTable(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    GlossaryTerm term = createGlossaryTermForBulk(ns, "add_cached");
+    Table table = createBareTable(ns, "add_cached");
+    var tagCache = CacheBundle.getCachedTagUsageDao();
+    if (tagCache != null) {
+      tagCache.putTags(
+          Entity.TABLE,
+          table.getId(),
+          JsonUtils.pojoToJson(List.of()),
+          SettingsCache.isGlossaryTagPropagationEnabled());
+    }
+
+    AddGlossaryToAssetsRequest request =
+        new AddGlossaryToAssetsRequest()
+            .withDryRun(false)
+            .withAssets(List.of(table.getEntityReference()));
+    client
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/glossaryTerms/" + term.getId() + "/assets/add",
+            request,
+            BulkOperationResult.class);
+
+    assertTrue(tableHasTag(client, table.getId(), term.getFullyQualifiedName()));
   }
 
   @Test
@@ -3719,6 +3876,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   @Test
   void test_bulkRemoveGlossaryFromAssets_columnAsset_authorizedUser_succeeds(TestNamespace ns)
       throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
     GlossaryTerm term = createGlossaryTermForBulk(ns, "authz_col_ok");
     Table table = createTableWithColumnTaggedWithTerm(ns, term, "authz_col_ok");
     // A column is surfaced as a tableColumn asset but is edited through its table, so a user with
@@ -3730,6 +3888,9 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
         putAssets(term.getId(), "remove", columnAssetBody(table), token);
 
     assertAuthorizedBulkSuccess(response);
+    assertFalse(
+        columnHasTag(admin, table.getId(), "id", term.getFullyQualifiedName()),
+        "Glossary term must be removed from the column when the caller is authorized");
   }
 
   @Test

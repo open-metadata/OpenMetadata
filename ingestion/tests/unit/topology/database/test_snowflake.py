@@ -33,6 +33,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.models.topology import TopologyContextManager
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.snowflake.metadata import MAP, SnowflakeSource
 from metadata.ingestion.source.database.snowflake.models import SnowflakeStoredProcedure
 from metadata.utils import fqn
@@ -224,6 +225,8 @@ def get_snowflake_sources():
                 config.workflowConfig.openMetadataServerConfig,
                 SNOWFLAKE_CONFIGURATIONS["incremental"]["ingestionPipelineFQN"],
             )
+    for source in sources.values():
+        source.metadata = MagicMock(spec=OpenMetadata)
     return sources
 
 
