@@ -16,16 +16,16 @@ import { GlobalSettingOptions } from '../../constant/settings';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import { expect, test } from '../../support/fixtures/base';
 import {
-  getApiContext,
-  getDescriptionBox,
-  redirectToHomePage,
-  toastNotification,
-  uuid,
+    getApiContext,
+    getDescriptionBox,
+    redirectToHomePage,
+    toastNotification,
+    uuid
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
-  getElementWithPagination,
-  removePolicyFromRole,
+    getElementWithPagination,
+    removePolicyFromRole
 } from '../../utils/roles';
 import { settingClick } from '../../utils/sidebar';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
@@ -91,30 +91,21 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await descriptionField.fill(description);
 
       // Select the policies - search and select from dropdown
-      const policiesDropdown = page.locator('[data-testid="policies"]');
-      await expect(policiesDropdown).toBeVisible();
-      await policiesDropdown.click();
-      await policiesDropdown.locator('input').fill('Data');
-      const dataConsumerOption = page
-        .locator('.ant-select-dropdown:visible')
-        .locator('[title="Data Consumer Policy"]');
-      await expect(dataConsumerOption).toBeVisible();
-      await dataConsumerOption.click();
+      const policiesInput = page
+        .getByTestId('policies')
+        .getByRole('combobox');
+      await policiesInput.fill('Data');
+      await page
+        .getByRole('option', { name: 'Data Consumer Policy', exact: true })
+        .click();
+      await policiesInput.fill('Data');
+      await page
+        .getByRole('option', { name: 'Data Steward Policy', exact: true })
+        .click();
 
-      await policiesDropdown.locator('input').fill('Data');
-      const dataStewardOption = page
-        .locator('.ant-select-dropdown:visible')
-        .locator('[title="Data Steward Policy"]');
-      await expect(dataStewardOption).toBeVisible();
-      await dataStewardOption.click();
-
-      // close dropdown by clicking side panel
-      await page.getByText('Add Role').click();
-
-      // Wait for dropdown to close
-      await expect(
-        page.locator('.ant-select-dropdown:visible')
-      ).not.toBeVisible();
+      // Close the list so it does not cover the footer
+      await policiesInput.press('Escape');
+      await expect(page.getByRole('listbox')).not.toBeVisible();
 
       // Save the role - wait for API response and UI update
       const submitButton = page.locator('[data-testid="submit-btn"]');
@@ -262,12 +253,10 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await expect(submitButton).toBeEnabled();
       await submitButton.click();
 
-      // Verify the error message that is displayed - wait for alert to appear
-      const errorAlert = page.locator('[role="alert"]');
-      await expect(errorAlert).toBeVisible();
-      await expect(errorAlert).toContainText(
-        errorMessageValidation.ifPolicyNotSelected
-      );
+      // Verify the validation message under the policies field
+      await expect(
+        page.getByText(errorMessageValidation.ifPolicyNotSelected)
+      ).toBeVisible();
     });
 
     await test.step('Edit created role', async () => {

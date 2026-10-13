@@ -49,3 +49,37 @@ export const DISPLAY_NAME_FIELD_RULES: Rule[] = [
     }),
   },
 ];
+
+const NAME_SIZE_MESSAGE = String(
+  i18n.t('message.entity-size-in-between', {
+    entity: i18n.t('label.name'),
+    min: 1,
+    max: 128,
+  })
+);
+
+/** react-hook-form counterpart of NAME_FIELD_RULES. */
+export const NAME_FIELD_REGISTER_RULES = {
+  required: String(
+    i18n.t('label.field-required', { field: i18n.t('label.name') })
+  ),
+  maxLength: { value: 128, message: NAME_SIZE_MESSAGE },
+  pattern: {
+    value: ENTITY_NAME_REGEX,
+    message: String(i18n.t('message.entity-name-validation')),
+  },
+};
+
+/** react-hook-form counterpart of DISPLAY_NAME_FIELD_RULES. */
+export const DISPLAY_NAME_FIELD_REGISTER_RULES = {
+  maxLength: {
+    value: 128,
+    message: String(
+      i18n.t('message.entity-size-in-between', {
+        entity: i18n.t('label.display-name'),
+        min: 1,
+        max: 128,
+      })
+    ),
+  },
+};

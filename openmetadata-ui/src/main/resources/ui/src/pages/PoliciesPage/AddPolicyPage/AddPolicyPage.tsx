@@ -12,37 +12,37 @@
  */
 
 import {
-  Box,
-  Button,
-  Divider,
-  Typography,
+    Box,
+    Button,
+    Divider,
+    FormField,
+    FormItemLabel,
+    HookForm,
+    Input,
+    Typography
 } from '@openmetadata/ui-core-components';
-import { Form, Input } from 'antd';
 import { AxiosError } from 'axios';
 import { trim } from 'lodash';
 import { useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
+import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { INITIAL_RULE } from '../../../components/discovery/personal-space/Profile/tabs/access-control/AccessControl.constants';
+import AccessControlRuleForm from '../../../components/discovery/personal-space/Profile/tabs/access-control/AccessControlRuleForm';
 import { ADD_POLICY_PAGE_BREADCRUMB } from '../../../constants/Breadcrumb.constants';
 import { ERROR_MESSAGE } from '../../../constants/constants';
-import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
+import { NAME_FIELD_REGISTER_RULES } from '../../../constants/Form.constants';
 import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
-import {
-  CreatePolicy,
-  Effect,
-  Rule,
-} from '../../../generated/api/policies/createPolicy';
+import { CreatePolicy, Rule } from '../../../generated/api/policies/createPolicy';
 import { withPageLayout } from '../../../hoc/withPageLayout';
-import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { addPolicy } from '../../../rest/rolesAPIV1';
 import { getIsErrorMatch } from '../../../utils/APIUtils';
-import { getField } from '../../../utils/formUtils';
 import { translateWithNestedKeys } from '../../../utils/i18next/LocalUtil';
 import { getPath, getPolicyWithFqnPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import RuleForm from '../RuleForm/RuleForm';
 
 const policiesPath = getPath(GlobalSettingOptions.POLICIES);
 
@@ -50,16 +50,13 @@ const AddPolicyPage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
 
-  const [name, setName] = useState<string>('');
-  const [description, setDescription] = useState<string>('');
-  const [ruleData, setRuleData] = useState<Rule>({
-    name: '',
-    description: '',
-    resources: [],
-    operations: [],
-    condition: '',
-    effect: Effect.Allow,
+  // Validate while typing, as the antd form did.
+  const form = useForm<{ name: string }>({
+    mode: 'onChange',
+    defaultValues: { name: '' },
   });
+  const ruleForm = useForm<Rule>({ defaultValues: INITIAL_RULE });
+  const [description, setDescription] = useState<string>('');
   const [isSaveLoading, setIsSaveLoading] = useState<boolean>(false);
 
   const handleCancel = () => {
@@ -67,6 +64,19 @@ const AddPolicyPage = () => {
   };
 
   const handleSubmit = async () => {
+    let ruleData: Rule | undefined;
+    let name: string | undefined;
+    // Validate both forms so every invalid field shows its error at once.
+    await ruleForm.handleSubmit((data) => {
+      ruleData = data;
+    })();
+    await form.handleSubmit((data) => {
+      name = data.name;
+    })();
+    if (!ruleData || name === undefined) {
+      return;
+    }
+
     const { condition, ...rest } = { ...ruleData, name: trim(ruleData.name) };
     const data: CreatePolicy = {
       name: trim(name),
@@ -96,26 +106,6 @@ const AddPolicyPage = () => {
     }
   };
 
-  const descriptionField: FieldProp = useMemo(
-    () => ({
-      name: 'description',
-      required: false,
-      label: `${t('label.description')}:`,
-      id: 'root/description',
-      type: FieldTypes.DESCRIPTION,
-      props: {
-        'data-testid': 'description',
-        initialValue: '',
-        style: {
-          margin: 0,
-        },
-        placeHolder: t('message.write-your-description'),
-        onTextChange: (value: string) => setDescription(value),
-      },
-    }),
-    []
-  );
-
   const translatedAddPolicyBreadcrumb = useMemo(
     () =>
       ADD_POLICY_PAGE_BREADCRUMB.map((option) => ({
@@ -144,28 +134,37 @@ const AddPolicyPage = () => {
                   entity: t('label.policy'),
                 })}
               </Typography>
-              <Form
-                data-testid="policy-form"
-                id="policy-form"
-                initialValues={{
-                  ruleEffect: ruleData.effect,
-                }}
-                layout="vertical"
-                onFinish={handleSubmit}>
-                <Form.Item
-                  label={`${t('label.name')}:`}
-                  name="name"
-                  rules={NAME_FIELD_RULES}>
-                  <Input
-                    data-testid="policy-name"
-                    placeholder={t('label.policy-name')}
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                  />
-                </Form.Item>
+              <Box data-testid="policy-form" direction="col" gap={4}>
+                <HookForm form={form}>
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    rules={NAME_FIELD_REGISTER_RULES}>
+                    {({ field, fieldState }) => (
+                      <Input
+                        isRequired
+                        hint={fieldState.error?.message}
+                        inputDataTestId="policy-name"
+                        isInvalid={fieldState.invalid}
+                        label={t('label.name')}
+                        placeholder={t('label.policy-name')}
+                        value={field.value}
+                        onBlur={field.onBlur}
+                        onChange={field.onChange}
+                      />
+                    )}
+                  </FormField>
+                </HookForm>
 
-                {getField(descriptionField)}
+                <Box direction="col" gap={1}>
+                  <FormItemLabel label={t('label.description')} />
+                  <RichTextEditor
+                    data-testid="description"
+                    initialValue=""
+                    placeHolder={t('message.write-your-description')}
+                    onTextChange={setDescription}
+                  />
+                </Box>
 
                 <Divider
                   className="tw:my-4"
@@ -179,7 +178,7 @@ const AddPolicyPage = () => {
                     </Typography>
                   }
                 />
-                <RuleForm ruleData={ruleData} setRuleData={setRuleData} />
+                <AccessControlRuleForm form={ruleForm} />
 
                 <Box
                   inline
@@ -196,13 +195,12 @@ const AddPolicyPage = () => {
                   <Button
                     color="primary"
                     data-testid="submit-btn"
-                    form="policy-form"
                     isLoading={isSaveLoading}
-                    type="submit">
+                    onClick={handleSubmit}>
                     {t('label.create')}
                   </Button>
                 </Box>
-              </Form>
+              </Box>
             </div>
           </div>
         ),

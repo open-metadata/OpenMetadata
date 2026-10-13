@@ -13,32 +13,32 @@
 import test, { expect, Page } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import {
-  DEFAULT_POLICIES,
-  DESCRIPTION,
-  ERROR_MESSAGE_VALIDATION,
-  NEW_RULE_DESCRIPTION,
-  NEW_RULE_NAME,
-  POLICY_NAME,
-  RULE_DESCRIPTION,
-  RULE_DETAILS,
-  RULE_NAME,
-  UPDATED_DESCRIPTION,
-  UPDATED_POLICY_NAME,
-  UPDATED_RULE_NAME,
+    DEFAULT_POLICIES,
+    DESCRIPTION,
+    ERROR_MESSAGE_VALIDATION,
+    NEW_RULE_DESCRIPTION,
+    NEW_RULE_NAME,
+    POLICY_NAME,
+    RULE_DESCRIPTION,
+    RULE_DETAILS,
+    RULE_NAME,
+    UPDATED_DESCRIPTION,
+    UPDATED_POLICY_NAME,
+    UPDATED_RULE_NAME
 } from '../../constant/permission';
 import { GlobalSettingOptions } from '../../constant/settings';
 import {
-  PolicyClass,
-  PolicyRulesType,
+    PolicyClass,
+    PolicyRulesType
 } from '../../support/access-control/PoliciesClass';
 import {
-  closeFirstPopupAlert,
-  descriptionBox,
-  fillDescriptionBox,
-  getApiContext,
-  getDescriptionBox,
-  redirectToHomePage,
-  toastNotification,
+    closeFirstPopupAlert,
+    descriptionBox,
+    fillDescriptionBox,
+    getApiContext,
+    getDescriptionBox,
+    redirectToHomePage,
+    toastNotification
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { validateFormNameFieldInput } from '../../utils/form';
@@ -54,8 +54,7 @@ const addRule = async (
   ruleDescription: string,
   descriptionIndex: number
 ) => {
-  // Validate form name field input
-  await page.fill('[data-testid="rule-name"]', rulename);
+  await page.getByTestId('rule-name').getByRole('textbox').fill(rulename);
 
   // Enter rule description
   await page
@@ -63,36 +62,25 @@ const addRule = async (
     .nth(descriptionIndex)
     .fill(ruleDescription);
 
-  // Select resource dropdown
-  await page.locator('[data-testid="resources"]').click();
+  // Select "All" resources, then the first operation for them
+  const resources = page.getByTestId('resources');
+  await resources.getByRole('combobox').click();
+  await page.getByRole('option', { name: 'All', exact: true }).click();
+  await resources.getByRole('combobox').press('Escape');
 
-  // Select All
-  await page.locator('.ant-select-tree-checkbox-inner').first().click();
+  const operations = page.getByTestId('operations');
+  await operations.getByRole('combobox').click();
+  await page.getByRole('option', { name: 'All', exact: true }).click();
+  await operations.getByRole('combobox').press('Escape');
 
-  // Click on operations dropdown
-  await page.locator('[data-testid="operations"]').click();
-
-  // Select operation
-  await page.locator('.ant-select-tree-checkbox-inner').nth(1).click();
-
-  // Click on condition combobox
-  await page.locator('[data-testid="condition"]').click();
-
-  // Select condition. The listener goes up first because typing the condition validates it too,
-  // so the response can arrive before the option is clicked.
+  // Typing the condition validates it, so the listener goes up first.
   const conditionResponse = page.waitForResponse(
     '/api/v1/policies/validation/condition/*'
   );
-
-  // Type the condition to filter the list. The options are built from every policy function's
-  // examples and the dropdown is virtualized, so an option far enough down the list is not in the
-  // DOM to be clicked - which is what happens whenever a new function is added.
   await page
-    .locator(
-      '[data-testid="condition"] > .ant-select-selector .ant-select-selection-search-input'
-    )
+    .getByTestId('condition')
+    .getByRole('combobox')
     .fill(RULE_DETAILS.condition);
-  await page.locator(`[title="${RULE_DETAILS.condition}"]`).click();
   await conditionResponse;
 
   // Verify condition success
@@ -137,7 +125,7 @@ test.describe(
         ).toBeVisible();
 
         // Enter policy name
-        await page.locator('[data-testid="policy-name"]').fill(POLICY_NAME);
+        await page.getByTestId('policy-name').fill(POLICY_NAME);
         await validateFormNameFieldInput({
           page,
           value: POLICY_NAME,
@@ -268,7 +256,10 @@ test.describe(
         await page.locator('[data-testid="edit-rule"]').click();
 
         // Enter new name
-        await page.locator('[data-testid="rule-name"]').fill(UPDATED_RULE_NAME);
+        await page
+          .getByTestId('rule-name')
+          .getByRole('textbox')
+          .fill(UPDATED_RULE_NAME);
 
         // Click on submit button
         await page.locator('[data-testid="submit-btn"]').click();
