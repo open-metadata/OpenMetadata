@@ -1341,6 +1341,7 @@
         "playwright/e2e/Features/TableSearch.spec.ts",
         "playwright/e2e/Features/TableSorting.spec.ts",
         "playwright/e2e/Features/TeamUserCustomProperties.spec.ts",
+        "playwright/e2e/Features/Workflows/ChangeRequestReviewLifecycle.spec.ts",
         "playwright/e2e/Flow/ExploreDiscovery.spec.ts",
         "playwright/e2e/Flow/SchemaTable.spec.ts",
         "playwright/e2e/Pages/CustomProperties.spec.ts",
