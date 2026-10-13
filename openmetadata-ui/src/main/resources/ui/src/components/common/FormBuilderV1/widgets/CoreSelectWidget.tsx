@@ -14,10 +14,9 @@
 import { Select } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
 import { Key, useMemo } from 'react';
-import CoreTreeSelectWidget from './CoreTreeSelectWidget';
 import { getWidgetHint, getWidgetLabel } from './coreWidgetUtils';
 
-const CoreEnumSelectWidget = ({
+const CoreSelectWidget = ({
   id,
   value,
   disabled,
@@ -92,12 +91,5 @@ const CoreEnumSelectWidget = ({
     </Select>
   );
 };
-
-const CoreSelectWidget = (props: WidgetProps) =>
-  props.schema.uiFieldType === 'treeSelect' ? (
-    <CoreTreeSelectWidget {...props} />
-  ) : (
-    <CoreEnumSelectWidget {...props} />
-  );
 
 export default CoreSelectWidget;

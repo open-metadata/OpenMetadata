@@ -309,32 +309,28 @@ test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await page.fill('#root\\/batchSize', '100');
 
-      const entitiesField = page.getByTestId('tree-select-widget');
-      await entitiesField.click();
+      // Entities is an enum multi-select with an "All" option. Picking a specific entity replaces
+      // "All", so the stored ["all"] becomes ["table"]. A retry may already have saved Table.
+      const entitiesField = page.getByTestId('enum-multi-select-root/entities');
+      const tableChip = entitiesField.getByText('Table', { exact: true });
 
-      // Located by node test id, not the popover's: Collate renders this field with its own tree
-      // select, which wraps the core TreeSelect without forwarding a test id to the popover.
-      const allNode = page.getByTestId('tree-node-all');
-      await expect(allNode).toBeVisible();
-
-      // The entity list is server-driven, so bring Table into view by searching. Nodes are keyed
-      // by enum value, so `tree-node-table` cannot also match `tableColumn` ("Table Column").
-      await entitiesField.getByRole('textbox').fill('table');
-
-      const tableNode = page.getByTestId('tree-node-table');
-      const tableCheckbox = page.getByTestId('checkbox-table');
-      await expect(tableNode).toBeVisible();
-
-      // Uncheck Table only if it is currently checked
-      if ((await tableCheckbox.getAttribute('data-selected')) === 'true') {
-        await tableNode.click();
+      if (!(await tableChip.isVisible())) {
+        // Search first: the list is server-driven, and "Table Column" also matches "table".
+        await entitiesField.getByRole('combobox').fill('Table');
+        await page
+          .locator('[role="listbox"]:visible')
+          .getByRole('option', { name: 'Table', exact: true })
+          .click();
       }
 
-      await expect(tableCheckbox).not.toHaveAttribute('data-selected', 'true');
+      await expect(tableChip).toBeVisible();
+      await expect(
+        entitiesField.getByText('All', { exact: true })
+      ).toBeHidden();
 
       // Need an outside click to close the dropdown
       await clickOutside(page);
-      await expect(tableNode).toBeHidden();
+      await expect(page.locator('[role="listbox"]:visible')).toHaveCount(0);
 
       await page
         .getByTestId('select-widget-root/searchIndexMappingLanguage')
