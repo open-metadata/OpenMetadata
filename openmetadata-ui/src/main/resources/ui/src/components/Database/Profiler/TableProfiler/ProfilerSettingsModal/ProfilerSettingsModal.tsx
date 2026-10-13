@@ -15,13 +15,13 @@ import { PlusOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Box,
-  Button as CoreButton,
+  Button,
   Grid,
   SlideoutMenu,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Input, InputNumber, Select, TreeSelect } from 'antd';
+import { Input, InputNumber, Select, TreeSelect } from 'antd';
 import Form from 'antd/lib/form';
 import { FormProps, List } from 'antd/lib/form/Form';
 import { getLayoutGutter } from '../../../../../utils/common/layout.utils';
@@ -484,15 +484,15 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
         className="layout-space layout-space-horizontal"
         gap={4}
         itemClassName="layout-space-item">
-        <CoreButton color="secondary" onPress={handleCancel}>
+        <Button color="secondary" onPress={handleCancel}>
           {t('label.cancel')}
-        </CoreButton>
-        <CoreButton
+        </Button>
+        <Button
           form="profiler-setting-form"
           isLoading={isLoading}
           type="submit">
           {t('label.save')}
-        </CoreButton>
+        </Button>
       </Box>
     </div>
   );
@@ -652,10 +652,10 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                       {`${t('label.include')}:`}
                     </p>
                     <Button
-                      className="include-columns-add-button flex-center"
-                      icon={<PlusOutlined />}
-                      size="small"
-                      type="primary"
+                      aria-label={t('label.add')}
+                      color="primary"
+                      iconLeading={<PlusOutlined />}
+                      size="xs"
                       onClick={() => add({ metrics: ['all'] })}
                     />
                   </div>
@@ -704,15 +704,14 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                             />
                           </Form.Item>
                           <Button
-                            className="delete-btn"
-                            icon={
+                            aria-label={t('label.remove')}
+                            color="tertiary"
+                            iconLeading={
                               <Icon
-                                className="align-middle"
                                 component={IconDelete}
                                 style={{ fontSize: '16px' }}
                               />
                             }
-                            type="text"
                             onClick={() => remove(name)}
                           />
                         </Grid.Item>
@@ -747,7 +746,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                 <Form.Item
                   className="m-b-0"
                   label={
-                    <span className="text-xs">{t('label.interval-type')}</span>
+                    <Typography size="text-xs">
+                      {t('label.interval-type')}
+                    </Typography>
                   }
                   labelCol={PROFILER_MODAL_LABEL_STYLE}
                   name="partitionIntervalType"
@@ -775,11 +776,11 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                 <Form.Item
                   className="m-b-0"
                   label={
-                    <span className="text-xs">
+                    <Typography size="text-xs">
                       {t('label.column-entity', {
                         entity: t('label.name'),
                       })}
-                    </span>
+                    </Typography>
                   }
                   labelCol={PROFILER_MODAL_LABEL_STYLE}
                   name="partitionColumnName"
@@ -813,7 +814,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                     <Form.Item
                       className="m-b-0"
                       label={
-                        <span className="text-xs">{t('label.interval')}</span>
+                        <Typography size="text-xs">
+                          {t('label.interval')}
+                        </Typography>
                       }
                       labelCol={PROFILER_MODAL_LABEL_STYLE}
                       name="partitionInterval"
@@ -838,9 +841,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                     <Form.Item
                       className="m-b-0"
                       label={
-                        <span className="text-xs">
+                        <Typography size="text-xs">
                           {t('label.interval-unit')}
-                        </span>
+                        </Typography>
                       }
                       labelCol={PROFILER_MODAL_LABEL_STYLE}
                       name="partitionIntervalUnit"
@@ -872,11 +875,11 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                     <Form.Item
                       className="m-b-0"
                       label={
-                        <span className="text-xs">
+                        <Typography size="text-xs">
                           {t('label.start-entity', {
                             entity: t('label.range'),
                           })}
-                        </span>
+                        </Typography>
                       }
                       labelCol={PROFILER_MODAL_LABEL_STYLE}
                       name="partitionIntegerRangeStart"
@@ -907,11 +910,11 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                     <Form.Item
                       className="m-b-0"
                       label={
-                        <span className="text-xs">
+                        <Typography size="text-xs">
                           {t('label.end-entity', {
                             entity: t('label.range'),
                           })}
-                        </span>
+                        </Typography>
                       }
                       labelCol={PROFILER_MODAL_LABEL_STYLE}
                       name="partitionIntegerRangeEnd"
@@ -951,10 +954,10 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                             {`${t('label.value')}:`}
                           </p>
                           <Button
-                            className="include-columns-add-button flex-center"
-                            icon={<PlusOutlined />}
-                            size="small"
-                            type="primary"
+                            aria-label={t('label.add')}
+                            color="primary"
+                            iconLeading={<PlusOutlined />}
+                            size="xs"
                             onClick={() => add()}
                           />
                         </div>
@@ -990,15 +993,14 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                                 />
                               </Form.Item>
                               <Button
-                                className="delete-btn"
-                                icon={
+                                aria-label={t('label.remove')}
+                                color="tertiary"
+                                iconLeading={
                                   <Icon
-                                    className="align-middle"
                                     component={IconDelete}
                                     style={{ fontSize: '16px' }}
                                   />
                                 }
-                                type="text"
                                 onClick={() => remove(name)}
                               />
                             </Grid.Item>

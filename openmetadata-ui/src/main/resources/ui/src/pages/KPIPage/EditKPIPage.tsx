@@ -13,20 +13,12 @@
 
 import {
   Box,
-  Button as CoreButton,
+  Button,
   Grid,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import {
-  Button,
-  Form,
-  FormProps,
-  Input,
-  InputNumber,
-  Select,
-  Slider,
-} from 'antd';
+import { Form, FormProps, Input, InputNumber, Select, Slider } from 'antd';
 import { useForm, useWatch } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -419,21 +411,21 @@ const EditKPIPage = () => {
                 gap={2}
                 itemClassName="layout-space-item">
                 <Button
+                  color="link-color"
                   data-testid="cancel-btn"
-                  type="link"
                   onClick={handleCancel}>
                   {t('label.go-back')}
                 </Button>
                 {isAdminUser ? (
                   <Tooltip arrow title={t('label.save')}>
-                    <CoreButton
+                    <Button
                       color="primary"
                       data-testid="submit-btn"
                       isLoading={isUpdatingKPI}
                       size="sm"
                       type="submit">
                       {t('label.save')}
-                    </CoreButton>
+                    </Button>
                   </Tooltip>
                 ) : null}
               </Box>

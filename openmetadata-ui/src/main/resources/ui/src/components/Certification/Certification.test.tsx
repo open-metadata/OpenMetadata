@@ -17,16 +17,24 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { SearchIndex } from '../../enums/search.enum';
 import { Tag } from '../../generated/entity/classification/tag';
-import { getTags } from '../../rest/tagAPI';
+import { searchQuery } from '../../rest/searchAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Certification from './Certification.component';
 
-jest.mock('../../rest/tagAPI', () => ({
-  getTags: jest.fn(),
+jest.mock('../../rest/searchAPI', () => ({
+  searchQuery: jest.fn(),
 }));
 
-const mockGetTags = getTags as jest.MockedFunction<typeof getTags>;
+const mockSearchQuery = searchQuery as jest.Mock;
+
+const searchResponse = (tags: Tag[], total = tags.length) => ({
+  hits: {
+    hits: tags.map((tag) => ({ _source: tag })),
+    total: { value: total },
+  },
+});
 
 const mockCertifications: Tag[] = [
   {
@@ -64,33 +72,41 @@ const defaultProps = {
   popoverProps: { open: true },
 };
 
-const FETCH_PARAMS = {
-  parent: 'Certification',
-  limit: 50,
-  disabled: false,
+const FETCH_PARAMS = expect.objectContaining({
+  query: '',
+  pageNumber: 1,
+  pageSize: 50,
+  searchIndex: SearchIndex.TAG,
+});
+
+const scrollToEnd = () => {
+  const menu = screen.getByRole('menu');
+  Object.defineProperties(menu, {
+    scrollHeight: { configurable: true, value: 400 },
+    clientHeight: { configurable: true, value: 200 },
+  });
+  menu.scrollTop = 200;
+  fireEvent.scroll(menu);
 };
 
 describe('Certification', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetTags.mockResolvedValue({
-      data: mockCertifications,
-      paging: { total: 3 },
-    });
+    mockSearchQuery.mockResolvedValue(searchResponse(mockCertifications));
   });
 
   it('should render the trigger children', () => {
     render(<Certification {...defaultProps} popoverProps={{ open: false }} />);
 
     expect(screen.getByTestId('certification-trigger')).toBeInTheDocument();
-    expect(mockGetTags).not.toHaveBeenCalled();
+    expect(mockSearchQuery).not.toHaveBeenCalled();
   });
 
   it('should fetch certifications when the popover opens', async () => {
     render(<Certification {...defaultProps} />);
 
     await waitFor(() => {
-      expect(mockGetTags).toHaveBeenCalledWith(FETCH_PARAMS);
+      expect(mockSearchQuery).toHaveBeenCalledWith(FETCH_PARAMS);
     });
   });
 
@@ -111,10 +127,7 @@ describe('Certification', () => {
   });
 
   it('should show an empty state when no certifications are available', async () => {
-    mockGetTags.mockResolvedValueOnce({
-      data: [],
-      paging: { total: 0 },
-    });
+    mockSearchQuery.mockResolvedValueOnce(searchResponse([]));
 
     render(<Certification {...defaultProps} currentCertificate="" />);
 
@@ -160,7 +173,7 @@ describe('Certification', () => {
 
   it('should show an error toast when fetching certifications fails', async () => {
     const fetchError = new Error('fetch failed');
-    mockGetTags.mockRejectedValueOnce(fetchError);
+    mockSearchQuery.mockRejectedValueOnce(fetchError);
 
     render(<Certification {...defaultProps} />);
 
@@ -186,31 +199,50 @@ describe('Certification', () => {
     expect(
       await screen.findByTestId('Certification.Silver')
     ).toBeInTheDocument();
-    expect(mockGetTags).toHaveBeenCalledWith(FETCH_PARAMS);
+    expect(mockSearchQuery).toHaveBeenCalledWith(FETCH_PARAMS);
   });
 
-  it('should list certifications from every page', async () => {
-    mockGetTags
-      .mockResolvedValueOnce({
-        data: [mockCertifications[0]],
-        paging: { total: 2, after: 'page-2' },
-      })
-      .mockResolvedValueOnce({
-        data: [mockCertifications[1]],
-        paging: { total: 2 },
-      });
+  it('should load the next page when the list is scrolled to its end', async () => {
+    mockSearchQuery
+      .mockResolvedValueOnce(searchResponse([mockCertifications[0]], 2))
+      .mockResolvedValueOnce(searchResponse([mockCertifications[1]], 2));
 
     render(<Certification {...defaultProps} />);
 
+    await screen.findByTestId('Certification.Bronze');
+    scrollToEnd();
+
     expect(await screen.findByTestId('Certification.Gold')).toBeInTheDocument();
-    expect(screen.getByTestId('Certification.Bronze')).toBeInTheDocument();
-    expect(mockGetTags).toHaveBeenLastCalledWith({
-      ...FETCH_PARAMS,
-      after: 'page-2',
-    });
+    expect(mockSearchQuery).toHaveBeenLastCalledWith(
+      expect.objectContaining({ pageNumber: 2 })
+    );
   });
 
-  it('should fetch a form field once, not on every open and close', async () => {
+  it('should not load more once every certification is listed', async () => {
+    render(<Certification {...defaultProps} />);
+
+    await screen.findByTestId('Certification.Gold');
+    scrollToEnd();
+
+    expect(mockSearchQuery).toHaveBeenCalledTimes(1);
+  });
+
+  it('should search certifications on the server', async () => {
+    render(<Certification {...defaultProps} />);
+
+    await screen.findByTestId('Certification.Gold');
+    fireEvent.change(screen.getByTestId('search-input'), {
+      target: { value: 'gol' },
+    });
+
+    await waitFor(() =>
+      expect(mockSearchQuery).toHaveBeenLastCalledWith(
+        expect.objectContaining({ query: '*gol*', pageNumber: 1 })
+      )
+    );
+  });
+
+  it('should show a form field value by name before it is opened', async () => {
     render(
       <Certification
         {...defaultProps}
@@ -220,14 +252,99 @@ describe('Certification', () => {
       </Certification>
     );
 
-    const trigger = await screen.findByRole('button', { name: 'Gold' });
-    fireEvent.click(trigger);
-    await screen.findByTestId('Certification.Silver');
-    fireEvent.keyDown(document.body, { key: 'Escape' });
-    fireEvent.click(trigger);
+    fireEvent.click(await screen.findByRole('button', { name: 'Gold' }));
     await screen.findByTestId('Certification.Silver');
 
-    expect(mockGetTags).toHaveBeenCalledTimes(1);
+    expect(mockSearchQuery).toHaveBeenCalledTimes(2);
+  });
+
+  it('should drop the results of a search the user has moved past', async () => {
+    let finishFirstSearch!: (value: unknown) => void;
+    mockSearchQuery
+      .mockResolvedValueOnce(searchResponse(mockCertifications))
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finishFirstSearch = resolve;
+          })
+      )
+      .mockResolvedValueOnce(searchResponse([mockCertifications[2]]));
+
+    render(<Certification {...defaultProps} currentCertificate="" />);
+
+    await screen.findByTestId('Certification.Bronze');
+    const searchInput = screen.getByTestId('search-input');
+    fireEvent.change(searchInput, { target: { value: 'bro' } });
+    await waitFor(() => expect(mockSearchQuery).toHaveBeenCalledTimes(2));
+    fireEvent.change(searchInput, { target: { value: 'sil' } });
+    await screen.findByTestId('Certification.Silver');
+
+    await act(async () => {
+      finishFirstSearch(searchResponse([mockCertifications[0]]));
+    });
+
+    expect(screen.getByTestId('Certification.Silver')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('Certification.Bronze')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should keep the selected label when a search no longer lists it', async () => {
+    render(
+      <Certification
+        {...defaultProps}
+        currentCertificate="Certification.Gold"
+        popoverProps={undefined}>
+        {undefined}
+      </Certification>
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Gold' }));
+    await screen.findByTestId('Certification.Gold');
+    mockSearchQuery.mockResolvedValueOnce(
+      searchResponse([mockCertifications[2]])
+    );
+    fireEvent.change(screen.getByTestId('search-input'), {
+      target: { value: 'sil' },
+    });
+    await waitFor(() =>
+      expect(mockSearchQuery).toHaveBeenLastCalledWith(
+        expect.objectContaining({ query: '*sil*' })
+      )
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('Certification.Bronze')
+      ).not.toBeInTheDocument()
+    );
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+
+    expect(
+      await screen.findByRole('button', { name: 'Gold' })
+    ).toBeInTheDocument();
+  });
+
+  it('should reload the full list at once when reopened after a search', async () => {
+    render(
+      <Certification
+        {...defaultProps}
+        currentCertificate=""
+        popoverProps={undefined}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('certification-trigger'));
+    await screen.findByTestId('Certification.Silver');
+    fireEvent.change(screen.getByTestId('search-input'), {
+      target: { value: 'sil' },
+    });
+    await waitFor(() => expect(mockSearchQuery).toHaveBeenCalledTimes(2));
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+    fireEvent.click(screen.getByTestId('certification-trigger'));
+
+    await waitFor(() => expect(mockSearchQuery).toHaveBeenCalledTimes(3));
+
+    expect(mockSearchQuery).toHaveBeenLastCalledWith(FETCH_PARAMS);
   });
 
   it('should not report a pick as a dismissal to onClose', async () => {

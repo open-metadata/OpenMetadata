@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 
-import { Box, Card, Typography } from '@openmetadata/ui-core-components';
-import { Button, Form } from 'antd';
+import {
+  Box,
+  Button,
+  Card,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Form } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { trim } from 'lodash';
@@ -170,14 +175,17 @@ const AddRulePage = () => {
               className="layout-space layout-space-horizontal w-full justify-end"
               gap={2}
               itemClassName="layout-space-item">
-              <Button data-testid="cancel-btn" type="link" onClick={handleBack}>
+              <Button
+                color="link-color"
+                data-testid="cancel-btn"
+                onClick={handleBack}>
                 {t('label.cancel')}
               </Button>
               <Button
+                color="primary"
                 data-testid="submit-btn"
                 form="rule-form"
-                htmlType="submit"
-                type="primary">
+                type="submit">
                 {t('label.create')}
               </Button>
             </Box>

@@ -19,13 +19,13 @@ import {
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Box,
+  Button,
   Tabs,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { IChangeEvent } from '@rjsf/core';
 import { RJSFSchema } from '@rjsf/utils';
-import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -203,7 +203,7 @@ const AppDetails = () => {
     try {
       setLoadingState((prev) => ({ ...prev, isSaveLoading: true }));
       if (action === AppAction.ENABLE) {
-        handleRestore();
+        await handleRestore();
       } else {
         await uninstallApp(
           appData?.fullyQualifiedName ?? '',
@@ -681,10 +681,9 @@ const AppDetails = () => {
       <Box>
         <div className="d-flex tw:min-w-0 tw:flex-auto">
           <Button
-            className="p-0"
-            icon={<LeftOutlined />}
-            size="small"
-            type="text"
+            color="tertiary"
+            iconLeading={<LeftOutlined />}
+            size="xs"
             onClick={onBrowseAppsClick}>
             <Typography className="font-medium">
               {t('label.browse-app-plural')}

@@ -23,6 +23,7 @@ import {
 import {
   createMemoryViaApi,
   getLoggedInUser,
+  getMemoryDialog,
   LoggedInUser,
   MEMORIES_API,
   MEMORIES_URL,
@@ -247,7 +248,7 @@ test.describe(
         await navigateToMemories(page);
         await page.getByTestId('add-memory-btn').click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
         await expect(dialog.getByTestId('memory-title-input')).toBeVisible();
         await expect(dialog.getByTestId('memory-content-input')).toBeVisible();
@@ -273,7 +274,7 @@ test.describe(
         await navigateToMemories(page);
         await page.getByTestId('add-memory-btn').click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
 
         // Only fill title — leave content empty
@@ -295,7 +296,7 @@ test.describe(
         await navigateToMemories(page);
         await page.getByTestId('add-memory-btn').click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
 
         await dialog
@@ -316,7 +317,7 @@ test.describe(
         await navigateToMemories(page);
         await page.getByTestId('add-memory-btn').click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
 
         await dialog
@@ -355,7 +356,7 @@ test.describe(
         await navigateToMemories(page);
         await page.getByTestId('add-memory-btn').click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
 
         await dialog
@@ -383,7 +384,7 @@ test.describe(
         await navigateToMemories(page);
         await page.getByTestId('add-memory-btn').click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
 
         await dialog.getByRole('button', { name: /preview/i }).click();
@@ -399,7 +400,7 @@ test.describe(
         await navigateToMemories(page);
         await page.getByTestId('add-memory-btn').click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
 
         await dialog.getByRole('button', { name: /preview/i }).click();
@@ -420,7 +421,7 @@ test.describe(
         await navigateToMemories(page);
         await page.getByTestId('add-memory-btn').click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
 
         const content = '# Heading\n\nParagraph text';
@@ -463,7 +464,7 @@ test.describe(
         await navigateToMemories(page);
         await page.getByTestId('add-memory-btn').click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
 
         const memoryTitle = `All Fields Memory ${uuid()}`;
@@ -586,7 +587,7 @@ test.describe(
         await row.scrollIntoViewIfNeeded();
         await row.click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
         await expect(dialog.getByText(SHARED_MEMORY_TITLE)).toBeVisible();
         await expect(
@@ -1051,7 +1052,7 @@ test.describe(
         await row.scrollIntoViewIfNeeded();
         await row.click();
 
-        await expect(page.getByRole('dialog')).toBeVisible();
+        await expect(getMemoryDialog(page)).toBeVisible();
         await expect(page).toHaveURL(new RegExp(`memory=${sharedMemoryName}`));
 
         await page.getByRole('button', { name: /cancel/i }).click();
@@ -1070,7 +1071,7 @@ test.describe(
           .waitFor({ state: 'visible' });
         await waitForAllLoadersToDisappear(page);
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
         await expect(dialog).toContainText(SHARED_MEMORY_TITLE);
       });
@@ -1090,11 +1091,11 @@ test.describe(
         await row.scrollIntoViewIfNeeded();
         await row.click();
 
-        await expect(page.getByRole('dialog')).toBeVisible();
+        await expect(getMemoryDialog(page)).toBeVisible();
         await expect(page).toHaveURL(/memory=/);
 
         await page.getByRole('button', { name: /cancel/i }).click();
-        await expect(page.getByRole('dialog')).not.toBeVisible();
+        await expect(getMemoryDialog(page)).not.toBeVisible();
         await expect(page).not.toHaveURL(/memory=/);
       });
 
@@ -1166,7 +1167,7 @@ test.describe(
         );
         await row.getByTestId('edit-memory-btn').click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
         await expect(dialog.getByTestId('memory-content-input')).toBeVisible();
         await expect(
@@ -1195,7 +1196,7 @@ test.describe(
         );
         await row.click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
 
         await dialog.getByRole('button', { name: /^edit$/i }).click();
@@ -1230,7 +1231,7 @@ test.describe(
         );
         await row.getByTestId('edit-memory-btn').click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
 
         await dialog
@@ -1249,7 +1250,7 @@ test.describe(
         );
         await reopenedRow.click();
 
-        const viewDialog = page.getByRole('dialog');
+        const viewDialog = getMemoryDialog(page);
         await expect(viewDialog).toBeVisible();
         await expect(viewDialog).not.toContainText(
           'This change should be discarded'
@@ -1270,7 +1271,7 @@ test.describe(
         );
         await row.getByTestId('edit-memory-btn').click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
 
         const newTitle = `Updated Title ${uuid()}`;
@@ -1312,7 +1313,7 @@ test.describe(
         );
         await row.getByTestId('edit-memory-btn').click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
 
         const newContent = `Updated content ${uuid()}`;
@@ -1339,7 +1340,7 @@ test.describe(
         await updatedRow.scrollIntoViewIfNeeded();
         await updatedRow.click();
 
-        const viewDialog = page.getByRole('dialog');
+        const viewDialog = getMemoryDialog(page);
         await expect(viewDialog).toBeVisible();
         await expect(
           viewDialog.getByTestId('description-field-preview')
@@ -1359,7 +1360,7 @@ test.describe(
         );
         await row.getByTestId('edit-memory-btn').click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
 
         const faqOption = page.getByRole('option', { name: /faq/i });
@@ -1401,7 +1402,7 @@ test.describe(
         );
         await row.getByTestId('edit-memory-btn').click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
 
         // In edit mode the visibility section shows the edit pencil icon for owners
@@ -1435,7 +1436,7 @@ test.describe(
         await updatedRow.scrollIntoViewIfNeeded();
         await updatedRow.click();
 
-        const viewDialog = page.getByRole('dialog');
+        const viewDialog = getMemoryDialog(page);
         await expect(viewDialog).toBeVisible();
         await expect(viewDialog).toContainText(/private/i);
         await page.getByRole('button', { name: /cancel/i }).click();
@@ -1457,7 +1458,7 @@ test.describe(
         );
         await row.getByTestId('edit-memory-btn').click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
 
         const assetName = table.displayName ?? table.name;
@@ -1550,7 +1551,7 @@ test.describe(
         await row.scrollIntoViewIfNeeded();
         await row.click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
 
         await expect(dialog).toContainText(/shared/i);
@@ -1573,7 +1574,7 @@ test.describe(
         await row.scrollIntoViewIfNeeded();
         await row.click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
 
         await expect(dialog).toContainText(/private/i);
@@ -1597,7 +1598,7 @@ test.describe(
         await row.scrollIntoViewIfNeeded();
         await row.click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
 
         await expect(dialog).toContainText(/entity/i);
@@ -1632,7 +1633,7 @@ test.describe(
         await row.scrollIntoViewIfNeeded();
         await row.getByTestId('edit-memory-btn').click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
         await expect(dialog).toContainText(/shared/i);
 
@@ -1668,7 +1669,7 @@ test.describe(
         await updatedRow.scrollIntoViewIfNeeded();
         await updatedRow.click();
 
-        const viewDialog = page.getByRole('dialog');
+        const viewDialog = getMemoryDialog(page);
         await expect(viewDialog).toBeVisible();
         await expect(viewDialog).toContainText('Only visible to you.');
         await page.getByRole('button', { name: /cancel/i }).click();
@@ -1766,7 +1767,7 @@ test.describe(
         );
         await row.click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
 
         // Non-owner should NOT see Edit or Delete buttons
@@ -1792,7 +1793,7 @@ test.describe(
         await navigateToMemories(page);
         await page.getByTestId('add-memory-btn').click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
 
         const initialSearchRes0 = waitForResponseWithStatus(
@@ -1819,7 +1820,7 @@ test.describe(
         await navigateToMemories(page);
         await page.getByTestId('add-memory-btn').click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
 
         const initialSearchRes1 = waitForResponseWithStatus(
@@ -1867,7 +1868,7 @@ test.describe(
         await navigateToMemories(page);
         await page.getByTestId('add-memory-btn').click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
 
         const initialSearchRes2 = waitForResponseWithStatus(
@@ -1951,7 +1952,7 @@ test.describe(
         );
         await row.getByTestId('edit-memory-btn').click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
         await expect(dialog).toContainText(table.displayName ?? table.name);
 
@@ -2170,7 +2171,7 @@ test.describe(
         await row.scrollIntoViewIfNeeded();
         await row.getByTestId('edit-memory-btn').click();
 
-        const dialog = page.getByRole('dialog');
+        const dialog = getMemoryDialog(page);
         await expect(dialog).toBeVisible();
 
         const deleteResPromise = waitForResponseWithStatus(

@@ -12,14 +12,14 @@
  */
 import {
   Avatar,
-  ButtonUtility,
   Popover,
   Tabs,
   Tag,
   TagGroup,
   TagList,
+  Typography,
 } from '@openmetadata/ui-core-components';
-import { Edit02, Users01 } from '@openmetadata/ui-core-components/icons';
+import { Users01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isArray, isEmpty, noop, toString } from 'lodash';
 import React, {
@@ -45,6 +45,7 @@ import {
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceListFromEntities } from '../../../utils/EntityReferenceUtils';
 import { getTermQuery } from '../../../utils/SearchPureUtils';
+import { EditIconButton } from '../IconButtons/EditIconButton';
 import { SelectableList } from '../SelectableList/SelectableList.component';
 import { UserSelectDropdownProps } from './UserTeamSelectableList.interface';
 
@@ -52,7 +53,7 @@ export const TeamListItemRenderer = (props: EntityReference) => {
   return (
     <span className="tw:flex tw:items-center tw:gap-2">
       <Avatar placeholderIcon={Users01} size="xxs" />
-      <span className="tw:text-sm">{getEntityName(props)}</span>
+      <Typography size="text-sm">{getEntityName(props)}</Typography>
     </span>
   );
 };
@@ -381,12 +382,11 @@ export const UserTeamSelectableList = ({
 
   const defaultTrigger = hasPermission ? (
     <span ref={triggerRef}>
-      <ButtonUtility
-        color="tertiary"
+      <EditIconButton
+        newLook
         data-testid={triggerDataTestId}
-        icon={Edit02}
-        size="xs"
-        tooltip={getEditTriggerTitle()}
+        size="small"
+        title={getEditTriggerTitle()}
         onClick={handleTriggerClick}
       />
     </span>
@@ -422,11 +422,11 @@ export const UserTeamSelectableList = ({
   const renderPreviewSection = () =>
     previewSelected ? (
       <div className="tw:flex tw:flex-col tw:gap-2 tw:px-3 tw:py-3 tw:bg-secondary tw:border-b tw:border-primary">
-        <span className="tw:text-sm tw:text-tertiary">
+        <Typography color="secondary" size="text-sm">
           {t('label.selected-entity', {
             entity: label ?? t('label.owner-plural'),
           })}
-        </span>
+        </Typography>
         <TagGroup label={label ?? t('label.owner-plural')} size="sm">
           <TagList className="tw:flex tw:max-h-24 tw:flex-wrap tw:gap-1 tw:overflow-y-auto">
             {selectedUsers.map((user) => (
