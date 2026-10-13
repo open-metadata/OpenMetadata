@@ -8433,6 +8433,15 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Settings/Persona/CustomizeUI/CustomizeUI.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
+        "playwright/e2e/Pages/DataContracts.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Settings/Services/AddIngestion/AddIngestion.component.tsx"
       ],
       "specs": [
