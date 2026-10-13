@@ -1538,11 +1538,6 @@
       "count": 2
     }
   },
-  "src/pages/AddQueryPage/AddQueryPage.component.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 3
-    }
-  },
   "src/pages/AlertDetailsPage/components/AlertDetailsContent.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 1
@@ -1591,16 +1586,6 @@
   "src/pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 1
-    }
-  },
-  "src/pages/KPIPage/AddKPIPage.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 8
-    }
-  },
-  "src/pages/KPIPage/EditKPIPage.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 8
     }
   },
   "src/pages/LearningResourcesPage/LearningResourceForm.component.tsx": {
