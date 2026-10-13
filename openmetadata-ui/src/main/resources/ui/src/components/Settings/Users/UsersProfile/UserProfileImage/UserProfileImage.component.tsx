@@ -34,9 +34,7 @@ const UserProfileImage = ({ userData }: UserProfileImageProps) => {
   }, [image]);
 
   return (
-    <div
-      className="profile-image-container"
-      data-testid="profile-image-container">
+    <div data-testid="profile-image-container">
       {isImgUrlValid ? (
         // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- lifecycle, not interaction
         <img

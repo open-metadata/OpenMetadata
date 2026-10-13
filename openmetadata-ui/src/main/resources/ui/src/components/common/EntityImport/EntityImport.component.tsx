@@ -244,7 +244,7 @@ export const EntityImport = ({
                 onCSVUploaded={handleLoadData}
               />
 
-              <div className="bg-white p-md import-preview-footer">
+              <div className="tw:fixed tw:inset-x-0 tw:bottom-0 tw:z-4 tw:border-t tw:border-secondary tw:bg-surface tw:p-4">
                 <Box
                   inline
                   align="center"
@@ -314,7 +314,7 @@ export const EntityImport = ({
                     {children}
                   </Grid.Item>
                 </Grid>
-                <div className="bg-white p-md import-preview-footer">
+                <div className="tw:fixed tw:inset-x-0 tw:bottom-0 tw:z-4 tw:border-t tw:border-secondary tw:bg-surface tw:p-4">
                   <Box
                     inline
                     align="center"

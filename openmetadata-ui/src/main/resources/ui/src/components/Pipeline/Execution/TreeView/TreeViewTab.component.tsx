@@ -84,7 +84,7 @@ const TreeViewTab = ({
         </Box>
 
         {isEmpty(viewData) ? (
-          <Box className="my-4 tw:relative tw:min-h-40 tw:w-full">
+          <Box className="tw:relative tw:my-4 tw:min-h-40 tw:w-full">
             <EmptyPlaceholder title={t('message.no-execution-runs-found')} />
           </Box>
         ) : (

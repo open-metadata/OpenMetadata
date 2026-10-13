@@ -106,7 +106,7 @@ const WhatsNewAlert = () => {
   return (
     <>
       {showWhatsNew.alert && isHomePage && (
-        <div className="whats-new-alert-affix">
+        <div className="tw:fixed tw:right-8 tw:bottom-8 tw:z-2000">
           <Card
             className="whats-new-alert-card"
             data-testid="whats-new-alert-card">

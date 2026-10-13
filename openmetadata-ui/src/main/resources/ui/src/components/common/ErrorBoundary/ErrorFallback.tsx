@@ -52,7 +52,7 @@ const ErrorFallback: React.FC<FallbackProps> = ({
   return (
     <Box
       align="center"
-      className="error-boundary-result"
+      className="tw:h-full tw:px-8 tw:py-12 tw:text-center"
       direction="col"
       justify="center">
       <OmUpgradeIcon className="tw:mb-6" />

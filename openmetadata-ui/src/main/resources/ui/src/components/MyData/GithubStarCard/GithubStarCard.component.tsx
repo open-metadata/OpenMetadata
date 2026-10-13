@@ -124,13 +124,11 @@ const GithubStarCard = () => {
 
   return showGithubStarPopup && isHomePage ? (
     <div
-      className={`github-star-popup-card 
-      ${
+      className={`tw:fixed tw:right-7.5 tw:-bottom-full tw:z-1 tw:border-none ${
         isWhatNewAlertVisible
           ? 'github-star-popup-card-with-alert'
           : 'github-star-popup-card-without-alert'
-      }
-      `}>
+      }`}>
       <Card data-testid="github-star-popup-card">
         <Card.Content>
           <Box
