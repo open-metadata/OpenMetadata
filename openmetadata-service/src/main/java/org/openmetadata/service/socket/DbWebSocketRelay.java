@@ -27,6 +27,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 
 /**
  * DB-backed relay used when no Redis is configured. The producing pod enqueues a frame and a writer
@@ -78,6 +79,8 @@ public class DbWebSocketRelay implements WebSocketRelay {
   private final BlockingQueue<WsRelayDAO.Frame> pending = new ArrayBlockingQueue<>(QUEUE_CAPACITY);
 
   private final AtomicBoolean running = new AtomicBoolean(false);
+  // True while offers are being shed, so a full queue logs once rather than per dropped frame.
+  private final AtomicBoolean shedding = new AtomicBoolean(false);
   // Highest createdAt delivered. Written on start and by the single dispatcher thread; volatile for
   // visibility between the two.
   private volatile long cursorCreatedAt = 0;
@@ -178,8 +181,13 @@ public class DbWebSocketRelay implements WebSocketRelay {
     // Enqueue off the caller's thread; the writer drains in batches. Never block the caller on the
     // DB — local delivery already happened, and frames are transient so a full queue just sheds.
     WsRelayDAO.Frame frame = new WsRelayDAO.Frame(scope, target, event, message, instanceId);
-    if (!pending.offer(frame)) {
-      LOG.debug("ws relay queue full, dropping frame scope={} event={}", scope, event);
+    if (pending.offer(frame)) {
+      shedding.set(false);
+    } else if (shedding.compareAndSet(false, true)) {
+      // Warn once per episode, not per frame: a stuck writer would otherwise flood the log.
+      LOG.warn(
+          "ws relay queue full ({} frames); dropping cross-pod frames until it drains",
+          QUEUE_CAPACITY);
     }
   }
 
@@ -190,7 +198,12 @@ public class DbWebSocketRelay implements WebSocketRelay {
       try {
         dao.insertBatch(batch);
       } catch (Exception e) {
-        LOG.debug("Failed to insert {} ws relay frame(s)", batch.size(), e);
+        // Root cause only: JDBI renders the bound arguments (the payloads) into its own message.
+        LOG.warn(
+            "Failed to insert {} ws relay frame(s); peer pods will not receive them: {}",
+            batch.size(),
+            ExceptionUtils.getRootCauseMessage(e));
+        LOG.debug("ws relay insert failure", e);
       }
       batch.clear();
     }
