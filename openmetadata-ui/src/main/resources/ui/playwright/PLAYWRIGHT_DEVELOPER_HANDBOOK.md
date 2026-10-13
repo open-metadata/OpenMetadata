@@ -810,7 +810,10 @@ await expect(selectAll).not.toBeChecked();
 ```
 
 Use `check()` / `uncheck()` / `fill()` / `selectOption()` — they converge on a target state.
-`click()` flips whatever the state happens to be.
+`click()` flips whatever the state happens to be. Exception: the core `Checkbox`
+(`@openmetadata/ui-core-components`) puts `data-testid` on its react-aria `<label>`, not the
+`<input>`, so `.check()`/`.uncheck()` on `getByTestId('asset-checkbox')` rejects with "not a
+checkbox or radio button" — `.click()` the label instead.
 
 ### Ambiguous Page-Global Locators
 
