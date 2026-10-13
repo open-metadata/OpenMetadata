@@ -151,6 +151,10 @@ export const EntityImport = ({
 
       if (!importResults) {
         // The result could not be fetched; the error toast above already informed the user.
+        // Unblock the UI so the buttons aren't stuck disabled (the same hang this PR fixes).
+        setIsImporting(false);
+        handleResetImportJob();
+
         return;
       }
 

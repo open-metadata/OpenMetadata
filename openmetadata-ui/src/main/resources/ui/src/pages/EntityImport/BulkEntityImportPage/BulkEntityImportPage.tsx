@@ -1103,6 +1103,16 @@ const BulkEntityImportPage = () => {
         showErrorToast(error as AxiosError);
       }
 
+      if (!resolvedResults) {
+        // The result could not be fetched; the error toast above already informed the user.
+        // Unblock the UI instead of feeding an empty result downstream (the same hang this
+        // PR fixes) — the validate/import buttons gate on isValidating.
+        setIsValidating(false);
+        handleResetImportJob();
+
+        return;
+      }
+
       appendActiveImportLogLine(t('message.import-csv-job-completed'));
       setValidationData(resolvedResults);
       fetchCsvJobs();
