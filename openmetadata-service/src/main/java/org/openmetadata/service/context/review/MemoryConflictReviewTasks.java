@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
@@ -62,6 +63,8 @@ public final class MemoryConflictReviewTasks {
   static final String CLOSED_OUTSIDE_REVIEW =
       "Closed because the memory left its conflict review outside this task (now %s)";
   static final String DELETED_IN_REVIEW = "Closed because the memory was deleted during its review";
+  static final String MEMORY_GONE = "this memory no longer exists";
+  private static final String CLAIM_FIELDS = "owners,primaryEntity,sourceEntity";
 
   private static final List<TaskAvailableTransition> TRANSITIONS =
       List.of(
@@ -78,12 +81,28 @@ public final class MemoryConflictReviewTasks {
               .withResolutionType(TaskResolutionType.Rejected)
               .withRequiresComment(false));
 
+  private static final List<Function<ContextMemory, Object>> SHOWN_FIELDS =
+      List.of(
+          ContextMemory::getTitle,
+          ContextMemory::getQuestion,
+          ContextMemory::getAnswer,
+          ContextMemory::getPrimaryEntity,
+          ContextMemory::getDisputes,
+          ContextMemory::getOwners);
+
   /**
-   * What the task records about the memory under review. Memory names are generated (an extracted
-   * memory is named after its source plus a UUID), so the task carries each memory's title: the
-   * reviewed one as {@code memoryTitle}, each disputed one as its reference's display name.
+   * A memory the reviewed one contradicts: its reference, titled because memory names are
+   * generated (an extracted memory is named after its source plus a UUID), why it conflicts, when
+   * that was detected, and its claim, which a memory that no longer exists does not have.
    */
-  record OpenedFor(Double memoryVersion, String memoryTitle, List<MemoryDispute> disputes) {}
+  record Contradiction(EntityReference memory, String reason, Long detectedAt, MemoryClaim claim) {}
+
+  /**
+   * What the task records about the conflict: the reviewed memory's title and claim, and every
+   * memory it contradicts. A reviewer compares {@code claim} with each contradiction's claim.
+   */
+  record OpenedFor(
+      Double memoryVersion, String memoryTitle, MemoryClaim claim, List<Contradiction> disputes) {}
 
   private MemoryConflictReviewTasks() {}
 
@@ -142,7 +161,7 @@ public final class MemoryConflictReviewTasks {
   }
 
   private static void open(ContextMemory memory) {
-    ContextMemory reviewed = reviewedWithOwners(memory);
+    ContextMemory reviewed = reviewedAsWritten(memory);
     EntityReference creator =
         Entity.getEntityReferenceByName(Entity.USER, GOVERNANCE_BOT, Include.ALL);
     Task task =
@@ -160,7 +179,7 @@ public final class MemoryConflictReviewTasks {
    * edit display names keeps the task's old title.
    */
   private static void refresh(Task open, ContextMemory memory) {
-    ContextMemory reviewed = reviewedWithOwners(memory);
+    ContextMemory reviewed = reviewedAsWritten(memory);
     Task current =
         reviewTask(reviewed, disputedMemories(reviewed), open.getCreatedBy(), open.getCreatedAt());
     JsonPatch patch =
@@ -181,24 +200,28 @@ public final class MemoryConflictReviewTasks {
     return nullOrEmpty(writer) ? GOVERNANCE_BOT : writer;
   }
 
-  /** The task shows the memory's title and disputes, and assigns the owners of every side. */
+  /** The task shows the memory's claim and disputes, and assigns the owners of every side. */
   static boolean changesWhatTheReviewShows(ContextMemory previous, ContextMemory current) {
     return previous == null
-        || !Objects.equals(previous.getTitle(), current.getTitle())
-        || !Objects.equals(previous.getDisputes(), current.getDisputes())
-        || !Objects.equals(previous.getOwners(), current.getOwners());
+        || SHOWN_FIELDS.stream()
+            .anyMatch(field -> !Objects.equals(field.apply(previous), field.apply(current)));
   }
 
   /**
    * The memory as its write left it. Reading it back within the same request can return the copy
-   * cached before the write, so only owners the write did not carry are loaded.
+   * cached before the write, so only the fields the write did not carry are loaded.
    */
-  private static ContextMemory reviewedWithOwners(ContextMemory memory) {
+  private static ContextMemory reviewedAsWritten(ContextMemory memory) {
     ContextMemory reviewed = JsonUtils.deepCopy(memory, ContextMemory.class);
-    if (reviewed.getOwners() == null) {
+    if (reviewed.getOwners() == null || reviewed.getPrimaryEntity() == null) {
       ContextMemory stored =
-          Entity.getEntity(Entity.CONTEXT_MEMORY, memory.getId(), "owners", Include.NON_DELETED);
-      reviewed.setOwners(stored.getOwners());
+          Entity.getEntity(
+              Entity.CONTEXT_MEMORY, memory.getId(), CLAIM_FIELDS, Include.NON_DELETED);
+      reviewed.setOwners(Optional.ofNullable(reviewed.getOwners()).orElse(stored.getOwners()));
+      reviewed.setPrimaryEntity(
+          Optional.ofNullable(reviewed.getPrimaryEntity()).orElse(stored.getPrimaryEntity()));
+      reviewed.setSourceEntity(
+          Optional.ofNullable(reviewed.getSourceEntity()).orElse(stored.getSourceEntity()));
     }
     return reviewed;
   }
@@ -221,7 +244,7 @@ public final class MemoryConflictReviewTasks {
     return new Task()
         .withId(UUID.randomUUID())
         .withDisplayName("Review conflicting memory: " + openedFor.memoryTitle())
-        .withDescription(describe(openedFor.disputes()))
+        .withDescription(describe(openedFor))
         .withCategory(TaskCategory.Review)
         .withType(TASK_TYPE)
         .withStatus(TaskEntityStatus.Open)
@@ -250,50 +273,57 @@ public final class MemoryConflictReviewTasks {
   private static List<ContextMemory> disputedMemories(ContextMemory reviewed) {
     List<ContextMemory> disputed = new ArrayList<>();
     listOrEmpty(reviewed.getDisputes())
-        .forEach(dispute -> withOwners(dispute.getMemory().getId()).ifPresent(disputed::add));
+        .forEach(dispute -> storedMemory(dispute.getMemory().getId()).ifPresent(disputed::add));
     return disputed;
   }
 
-  /** A disputed memory that no longer exists keeps its name: there is no title left to read. */
   private static OpenedFor openedFor(ContextMemory reviewed, List<ContextMemory> disputed) {
-    Map<UUID, String> titles = new HashMap<>();
-    disputed.forEach(memory -> titles.put(memory.getId(), label(memory)));
-    List<MemoryDispute> titledDisputes =
+    Map<UUID, ContextMemory> disputedById = new HashMap<>();
+    disputed.forEach(memory -> disputedById.put(memory.getId(), memory));
+    List<Contradiction> contradictions =
         listOrEmpty(reviewed.getDisputes()).stream()
-            .map(dispute -> titled(dispute, titles))
+            .map(dispute -> contradiction(dispute, disputedById.get(dispute.getMemory().getId())))
             .toList();
-    return new OpenedFor(reviewed.getVersion(), label(reviewed), titledDisputes);
+    return new OpenedFor(
+        reviewed.getVersion(), label(reviewed), MemoryClaim.of(reviewed), contradictions);
   }
 
-  private static MemoryDispute titled(MemoryDispute dispute, Map<UUID, String> titles) {
-    EntityReference memory = dispute.getMemory();
-    EntityReference titledMemory =
-        JsonUtils.deepCopy(memory, EntityReference.class)
-            .withDisplayName(titles.getOrDefault(memory.getId(), memory.getName()));
-    return JsonUtils.deepCopy(dispute, MemoryDispute.class).withMemory(titledMemory);
+  /** A disputed memory that no longer exists keeps its name: there is no title left to read. */
+  private static Contradiction contradiction(MemoryDispute dispute, ContextMemory disputed) {
+    EntityReference memory = JsonUtils.deepCopy(dispute.getMemory(), EntityReference.class);
+    memory.setDisplayName(disputed == null ? memory.getName() : label(disputed));
+    MemoryClaim claim = disputed == null ? null : MemoryClaim.of(disputed);
+    return new Contradiction(memory, dispute.getReason(), dispute.getDetectedAt(), claim);
   }
 
-  private static String describe(List<MemoryDispute> titledDisputes) {
+  private static String describe(OpenedFor openedFor) {
     StringBuilder description =
         new StringBuilder(
-            "This memory contradicts Approved knowledge. Approving it supersedes the memories it"
-                + " contradicts; rejecting it keeps them.\n");
-    for (MemoryDispute dispute : titledDisputes) {
+                "This memory contradicts Approved knowledge. Approving it supersedes the memories"
+                    + " it contradicts; rejecting it keeps them.\n\n**In review:** ")
+            .append(statedClaim(openedFor.claim()));
+    for (Contradiction contradiction : openedFor.disputes()) {
       description
-          .append("\n- ")
-          .append(dispute.getMemory().getDisplayName())
-          .append(": ")
-          .append(dispute.getReason());
+          .append("\n\n**Contradicts \"")
+          .append(contradiction.memory().getDisplayName())
+          .append("\":** ")
+          .append(statedClaim(contradiction.claim()))
+          .append("\n\n**Why:** ")
+          .append(contradiction.reason());
     }
     return description.toString();
   }
 
-  private static Optional<ContextMemory> withOwners(UUID memoryId) {
+  private static String statedClaim(MemoryClaim claim) {
+    return claim == null ? MEMORY_GONE : Objects.toString(claim.answer(), "");
+  }
+
+  private static Optional<ContextMemory> storedMemory(UUID memoryId) {
     Optional<ContextMemory> memory = Optional.empty();
     try {
       memory =
           Optional.of(
-              Entity.getEntity(Entity.CONTEXT_MEMORY, memoryId, "owners", Include.NON_DELETED));
+              Entity.getEntity(Entity.CONTEXT_MEMORY, memoryId, CLAIM_FIELDS, Include.NON_DELETED));
     } catch (EntityNotFoundException deleted) {
       LOG.debug("[MemoryConflictReview] memory {} no longer exists", memoryId, deleted);
     }

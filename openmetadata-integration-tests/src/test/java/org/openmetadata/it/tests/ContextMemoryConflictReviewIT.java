@@ -91,16 +91,25 @@ public class ContextMemoryConflictReviewIT {
     assertEquals(Set.of("approve", "reject"), transitionIds(task));
     assertTrue(
         task.getDescription()
-            .contains("- " + conflict.disputed().getTitle() + ": " + THRESHOLD_REASON));
+            .contains(
+                "**Contradicts \""
+                    + conflict.disputed().getTitle()
+                    + "\":** "
+                    + conflict.disputed().getAnswer()));
+    assertTrue(task.getDescription().contains("**Why:** " + THRESHOLD_REASON));
     assertEquals(
         conflict.disputed().getTitle(),
         conflict.reviewed().getDisputes().getFirst().getMemory().getDisplayName(),
         "a stored memory reference reads as the memory's title");
     Map<?, ?> payload = JsonUtils.convertValue(task.getPayload(), Map.class);
     assertEquals(conflict.reviewed().getTitle(), payload.get("memoryTitle"));
+    assertEquals(conflict.reviewed().getAnswer(), ((Map<?, ?>) payload.get("claim")).get("answer"));
     Map<?, ?> dispute = (Map<?, ?>) ((List<?>) payload.get("disputes")).getFirst();
     assertEquals(
         conflict.disputed().getTitle(), ((Map<?, ?>) dispute.get("memory")).get("displayName"));
+    Map<?, ?> disputedClaim = (Map<?, ?>) dispute.get("claim");
+    assertEquals(conflict.disputed().getAnswer(), disputedClaim.get("answer"));
+    assertEquals(ContextMemoryStatus.APPROVED.value(), disputedClaim.get("status"));
     Set<String> assignees = names(task.getAssignees());
     assertTrue(assignees.contains(shared().USER2.getName()), "owner of the reviewed memory");
     assertTrue(assignees.contains(shared().USER3.getName()), "owner of the disputed memory");

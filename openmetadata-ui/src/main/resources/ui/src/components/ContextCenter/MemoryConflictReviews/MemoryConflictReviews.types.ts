@@ -13,9 +13,31 @@
 import { EntityReference } from '../../../generated/entity/context/contextMemory';
 import { Task } from '../../../generated/entity/tasks/task';
 
+/** One side of a conflict, as the server recorded it when the review opened. */
+export interface MemoryClaim {
+  id: string;
+  name?: string;
+  title?: string;
+  question?: string;
+  answer?: string;
+  status?: string;
+  contentUpdatedAt?: number;
+  anchor?: EntityReference;
+  source?: string;
+  author?: string;
+}
+
 export interface MemoryConflictReviewDispute {
   memory: EntityReference;
   reason: string;
+  claim?: MemoryClaim;
+}
+
+export type ClaimRecency = 'newer' | 'older';
+
+export interface ConflictRecency {
+  reviewed?: ClaimRecency;
+  disputed: Record<string, ClaimRecency>;
 }
 
 export interface MemoryConflictReviewsProps {

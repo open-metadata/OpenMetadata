@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { ResolutionType } from '../../../generated/api/tasks/resolveTask';
+import { ClaimRecency } from './MemoryConflictReviews.types';
 
 export const REVIEW_SKELETON_KEYS = ['review-skeleton-1', 'review-skeleton-2'];
 
@@ -21,3 +22,8 @@ export const REVIEW_DECISIONS = {
 } as const;
 
 export type ReviewDecision = keyof typeof REVIEW_DECISIONS;
+
+export const CLAIM_RECENCY_LABELS: Record<ClaimRecency, string> = {
+  newer: 'label.newer',
+  older: 'label.older',
+};

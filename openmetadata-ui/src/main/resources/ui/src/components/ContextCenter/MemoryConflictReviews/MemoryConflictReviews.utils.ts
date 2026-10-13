@@ -12,10 +12,19 @@
  */
 import { EntityReference } from '../../../generated/entity/context/contextMemory';
 import { Task } from '../../../generated/entity/tasks/task';
-import { MemoryConflictReviewDispute } from './MemoryConflictReviews.types';
+import {
+  ConflictRecency,
+  MemoryClaim,
+  MemoryConflictReviewDispute,
+} from './MemoryConflictReviews.types';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
+
+const toClaim = (value: unknown): MemoryClaim | undefined =>
+  isRecord(value) && typeof value.id === 'string'
+    ? (value as unknown as MemoryClaim)
+    : undefined;
 
 const toDispute = (value: unknown): MemoryConflictReviewDispute | undefined => {
   if (!isRecord(value) || !isRecord(value.memory)) {
@@ -24,7 +33,9 @@ const toDispute = (value: unknown): MemoryConflictReviewDispute | undefined => {
   const memory = value.memory as unknown as EntityReference;
   const reason = typeof value.reason === 'string' ? value.reason : '';
 
-  return memory.id ? { memory, reason } : undefined;
+  return memory.id
+    ? { memory, reason, claim: toClaim(value.claim) }
+    : undefined;
 };
 
 /**
@@ -45,6 +56,10 @@ export const getReviewDisputes = (
     : [];
 };
 
+/** What the reviewed memory claims, as recorded when the review opened. */
+export const getReviewedClaim = (task: Task): MemoryClaim | undefined =>
+  isRecord(task.payload) ? toClaim(task.payload.claim) : undefined;
+
 /**
  * The reviewed memory's title as the server recorded it on the task. Memory
  * names are generated, so a title is what a reviewer recognises; the task's
@@ -54,6 +69,41 @@ export const getReviewedMemoryTitle = (task: Task): string | undefined => {
   const title = isRecord(task.payload) ? task.payload.memoryTitle : undefined;
 
   return typeof title === 'string' && title.trim() ? title : undefined;
+};
+
+/**
+ * Which side states the more recent claim, by when each claim's content last
+ * changed. The reviewed memory is newer only when it is newer than every claim
+ * it contradicts, and older only when it is older than all of them.
+ */
+export const getConflictRecency = (
+  reviewed: MemoryClaim | undefined,
+  disputes: MemoryConflictReviewDispute[]
+): ConflictRecency => {
+  const reviewedAt = reviewed?.contentUpdatedAt;
+  const recency: ConflictRecency = { disputed: {} };
+  if (reviewedAt === undefined) {
+    return recency;
+  }
+  const dated = disputes.filter(
+    (dispute) => dispute.claim?.contentUpdatedAt !== undefined
+  );
+  dated.forEach(({ memory, claim }) => {
+    const disputedAt = claim?.contentUpdatedAt ?? reviewedAt;
+    if (disputedAt !== reviewedAt) {
+      recency.disputed[memory.id] = disputedAt > reviewedAt ? 'newer' : 'older';
+    }
+  });
+  const sides = Object.values(recency.disputed);
+  if (dated.length > 0 && sides.length === dated.length) {
+    if (sides.every((side) => side === 'older')) {
+      recency.reviewed = 'newer';
+    } else if (sides.every((side) => side === 'newer')) {
+      recency.reviewed = 'older';
+    }
+  }
+
+  return recency;
 };
 
 /** A memory's URL name, which Context Center opens through `?memory=`. */

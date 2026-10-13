@@ -35,9 +35,12 @@ Approved — and nothing wrote it.
    opens, and its decision applies synchronously when it is resolved. The task names every memory
    by its title, because memory names are generated: its payload records the reviewed memory's
    `memoryTitle` and each disputed memory with its title as the display name, as do the
-   `supersededBy` and dispute references a memory stores. A write that changes
-   the memory's title, disputes or owners rewrites the open task's title, description, assignees
-   and payload, so the task shows what its decision acts on.
+   `supersededBy` and dispute references a memory stores. It also records each side's claim —
+   title, question, answer, status, when its content last changed, anchor, source and author — so
+   a reviewer compares what the two memories say and which is newer without opening either; a
+   decision is refused once a disputed memory's content changes, so the claim read is the one the
+   decision acts on. A write that changes the memory's title, question, answer, anchor, disputes or
+   owners rewrites the open task's title, description, assignees and payload.
 3. Resolving the task decides the conflict, writing as the resolver, impersonated by
    `governance-bot`:
    - **Approve:** every disputed memory that is still Approved becomes Superseded by the reviewed

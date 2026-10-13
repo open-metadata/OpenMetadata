@@ -115,14 +115,36 @@ class MemoryConflictReviewTasksTest {
   }
 
   @Test
-  void theDescriptionTitlesEachDisputedMemoryAndSaysWhy() {
+  void theDescriptionStatesBothClaimsAndWhyTheyConflict() {
     ContextMemory disputed = memory("five-orders", ContextMemoryStatus.APPROVED, CURATOR);
 
     String description =
         MemoryConflictReviewTasks.reviewTask(reviewed(disputed), List.of(disputed), BOT, 1L)
             .getDescription();
 
-    assertTrue(description.contains("- Five orders: Five orders against three orders"));
+    assertTrue(description.contains("**In review:** Customers need three orders."));
+    assertTrue(
+        description.contains("**Contradicts \"Five orders\":** Customers need five orders."));
+    assertTrue(description.contains("**Why:** Five orders against three orders"));
+  }
+
+  @Test
+  void theTaskRecordsBothClaimsForTheReviewerToCompare() {
+    ContextMemory disputed = memory("five-orders", ContextMemoryStatus.APPROVED, CURATOR);
+
+    Task task =
+        MemoryConflictReviewTasks.reviewTask(reviewed(disputed), List.of(disputed), BOT, 1L);
+
+    Map<?, ?> payload = JsonUtils.convertValue(task.getPayload(), Map.class);
+    Map<?, ?> claim = (Map<?, ?>) payload.get("claim");
+    assertEquals("Three orders", claim.get("title"));
+    assertEquals("Customers need three orders.", claim.get("answer"));
+    assertEquals("Draft", claim.get("status"));
+    Map<?, ?> contradiction = (Map<?, ?>) ((List<?>) payload.get("disputes")).getFirst();
+    Map<?, ?> disputedClaim = (Map<?, ?>) contradiction.get("claim");
+    assertEquals("Customers need five orders.", disputedClaim.get("answer"));
+    assertEquals("Approved", disputedClaim.get("status"));
+    assertEquals("Five orders against three orders", contradiction.get("reason"));
   }
 
   /** Generated memory names such as {@code orders.pdf-<uuid>} label nothing for a reviewer. */
@@ -145,24 +167,32 @@ class MemoryConflictReviewTasksTest {
   }
 
   @Test
-  void aDisputedMemoryThatIsGoneKeepsItsName() {
+  void aDisputedMemoryThatIsGoneKeepsItsNameAndHasNoClaim() {
     ContextMemory disputed = memory("five-orders", ContextMemoryStatus.APPROVED, CURATOR);
 
     Task task = MemoryConflictReviewTasks.reviewTask(reviewed(disputed), List.of(), BOT, 1L);
 
-    assertTrue(task.getDescription().contains("- five-orders: Five orders against three orders"));
+    assertTrue(
+        task.getDescription()
+            .contains("**Contradicts \"five-orders\":** " + MemoryConflictReviewTasks.MEMORY_GONE));
+    Map<?, ?> payload = JsonUtils.convertValue(task.getPayload(), Map.class);
+    Map<?, ?> contradiction = (Map<?, ?>) ((List<?>) payload.get("disputes")).getFirst();
+    assertNull(contradiction.get("claim"));
   }
 
   @Test
-  void retitlingRedisputingOrReassigningChangesWhatTheReviewShows() {
+  void anEditToWhatTheReviewShowsChangesIt() {
     ContextMemory disputed = memory("five-orders", ContextMemoryStatus.APPROVED, CURATOR);
     ContextMemory before = reviewed(disputed);
 
     assertTrue(changes(before, copy(before).withTitle("Three completed orders")));
+    assertTrue(changes(before, copy(before).withAnswer("At least three completed orders.")));
+    assertTrue(changes(before, copy(before).withQuestion("Who is an active customer?")));
+    assertTrue(changes(before, copy(before).withPrimaryEntity(CURATOR)));
     assertTrue(changes(before, copy(before).withDisputes(List.of())));
     assertTrue(changes(before, copy(before).withOwners(List.of(CURATOR))));
     assertTrue(changes(null, before));
-    assertFalse(changes(before, copy(before).withAnswer("At least three completed orders.")));
+    assertFalse(changes(before, copy(before).withSummary("Three orders make a customer active.")));
   }
 
   @Test
@@ -215,6 +245,8 @@ class MemoryConflictReviewTasksTest {
         .withName(name)
         .withFullyQualifiedName(name)
         .withTitle(titleOf(name))
+        .withQuestion("Who is a customer?")
+        .withAnswer("Customers need " + name.replace("-orders", " orders") + ".")
         .withEntityStatus(stage)
         .withVersion(0.1)
         .withOwners(List.of(owners));

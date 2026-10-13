@@ -11,9 +11,12 @@
  *  limitations under the License.
  */
 import { Task } from '../../../generated/entity/tasks/task';
+import { MemoryConflictReviewDispute } from './MemoryConflictReviews.types';
 import {
+  getConflictRecency,
   getMemoryLinkName,
   getReviewDisputes,
+  getReviewedClaim,
   getReviewedMemoryTitle,
 } from './MemoryConflictReviews.utils';
 
@@ -35,6 +38,22 @@ describe('getReviewDisputes', () => {
     ]);
   });
 
+  it('reads the claim recorded for each disputed memory', () => {
+    const [dispute] = getReviewDisputes(
+      taskWith({
+        disputes: [
+          {
+            memory: { id: 'm-1' },
+            reason: 'Disagree',
+            claim: { id: 'm-1', answer: 'Five orders.' },
+          },
+        ],
+      })
+    );
+
+    expect(dispute.claim).toEqual({ id: 'm-1', answer: 'Five orders.' });
+  });
+
   it('skips malformed entries and keeps a dispute without a reason', () => {
     const disputes = getReviewDisputes(
       taskWith({
@@ -47,7 +66,9 @@ describe('getReviewDisputes', () => {
       })
     );
 
-    expect(disputes).toEqual([{ memory: { id: 'm-2' }, reason: '' }]);
+    expect(disputes).toEqual([
+      { memory: { id: 'm-2' }, reason: '', claim: undefined },
+    ]);
   });
 
   it('has no disputes when the payload has none', () => {
@@ -73,6 +94,64 @@ describe('getReviewedMemoryTitle', () => {
     expect(
       getReviewedMemoryTitle(taskWith({ memoryTitle: 3 }))
     ).toBeUndefined();
+  });
+});
+
+describe('getReviewedClaim', () => {
+  it('reads the claim of the memory in review', () => {
+    expect(
+      getReviewedClaim(taskWith({ claim: { id: 'm-3', answer: 'Three.' } }))
+    ).toEqual({ id: 'm-3', answer: 'Three.' });
+  });
+
+  it('has no claim when the task records none', () => {
+    expect(getReviewedClaim(taskWith({}))).toBeUndefined();
+    expect(
+      getReviewedClaim(taskWith({ claim: { answer: 'x' } }))
+    ).toBeUndefined();
+  });
+});
+
+describe('getConflictRecency', () => {
+  const disputeAt = (
+    id: string,
+    contentUpdatedAt?: number
+  ): MemoryConflictReviewDispute => ({
+    memory: { id, type: 'contextMemory' },
+    reason: '',
+    claim: { id, contentUpdatedAt },
+  });
+
+  it('marks the memory in review newer than every claim it contradicts', () => {
+    expect(
+      getConflictRecency({ id: 'r', contentUpdatedAt: 300 }, [
+        disputeAt('a', 100),
+        disputeAt('b', 200),
+      ])
+    ).toEqual({ reviewed: 'newer', disputed: { a: 'older', b: 'older' } });
+  });
+
+  it('marks a revalidated memory older than the claim that replaced it', () => {
+    expect(
+      getConflictRecency({ id: 'r', contentUpdatedAt: 100 }, [
+        disputeAt('a', 300),
+      ])
+    ).toEqual({ reviewed: 'older', disputed: { a: 'newer' } });
+  });
+
+  it('labels no side when the order is mixed or unknown', () => {
+    expect(
+      getConflictRecency({ id: 'r', contentUpdatedAt: 200 }, [
+        disputeAt('a', 100),
+        disputeAt('b', 300),
+      ])
+    ).toEqual({ disputed: { a: 'older', b: 'newer' } });
+    expect(getConflictRecency(undefined, [disputeAt('a', 100)])).toEqual({
+      disputed: {},
+    });
+    expect(
+      getConflictRecency({ id: 'r', contentUpdatedAt: 200 }, [disputeAt('a')])
+    ).toEqual({ disputed: {} });
   });
 });
 

@@ -11,130 +11,272 @@
  *  limitations under the License.
  */
 import {
+  Badge,
   Box,
   Button,
   EmptyPlaceholder,
+  Grid,
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { CheckCircle } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as NoFilterResultsIcon } from '../../../assets/svg/common/no-filter-results.svg';
+import { EntityReference } from '../../../generated/entity/context/contextMemory';
 import { Task } from '../../../generated/entity/tasks/task';
 import { resolveTask } from '../../../rest/tasksAPI';
+import { formatDate } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { stripMarkdown } from '../../../utils/RichTextStringUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import {
+  CLAIM_RECENCY_LABELS,
   ReviewDecision,
   REVIEW_DECISIONS,
   REVIEW_SKELETON_KEYS,
 } from './MemoryConflictReviews.constants';
 import {
-  MemoryConflictReviewDispute,
+  ClaimRecency,
+  MemoryClaim,
   MemoryConflictReviewsProps,
 } from './MemoryConflictReviews.types';
 import {
+  getConflictRecency,
   getMemoryLinkName,
   getReviewDisputes,
+  getReviewedClaim,
   getReviewedMemoryTitle,
 } from './MemoryConflictReviews.utils';
 
-interface ReviewRowProps {
+interface ClaimCardProps {
+  claim?: MemoryClaim;
+  reference?: EntityReference;
+  title: string;
+  recency?: ClaimRecency;
+  reason?: string;
+  testId: string;
+  onViewMemory: (memoryName: string) => void;
+}
+
+const ClaimCard: FC<ClaimCardProps> = ({
+  claim,
+  reference,
+  title,
+  recency,
+  reason,
+  testId,
+  onViewMemory,
+}) => {
+  const { t } = useTranslation();
+  const details = [
+    claim?.anchor && getEntityName(claim.anchor),
+    claim?.source,
+    claim?.author,
+    claim?.contentUpdatedAt && formatDate(claim.contentUpdatedAt),
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
+  return (
+    <Box
+      className="tw:rounded-lg tw:border tw:border-secondary tw:p-4"
+      direction="col"
+      gap={2}>
+      <Box align="start" gap={2} justify="between">
+        <Button
+          className="tw:text-left"
+          color="link-gray"
+          data-testid={testId}
+          size="md"
+          onClick={() =>
+            onViewMemory(claim?.name ?? getMemoryLinkName(reference))
+          }>
+          <Typography className="tw:text-primary" weight="medium">
+            {title}
+          </Typography>
+        </Button>
+        {recency && (
+          <Badge
+            color={recency === 'newer' ? 'brand' : 'gray'}
+            size="sm"
+            type="color">
+            {t(CLAIM_RECENCY_LABELS[recency])}
+          </Badge>
+        )}
+      </Box>
+      {claim?.answer && (
+        <Typography
+          className="tw:text-secondary tw:line-clamp-4"
+          data-testid={`${testId}-claim`}
+          size="text-sm">
+          {stripMarkdown(claim.answer)}
+        </Typography>
+      )}
+      {details && (
+        <Typography className="tw:text-tertiary" size="text-xs">
+          {details}
+        </Typography>
+      )}
+      {reason && (
+        <Typography className="tw:text-tertiary" size="text-xs">
+          {t('message.why-they-conflict', { reason })}
+        </Typography>
+      )}
+    </Box>
+  );
+};
+
+interface KeepActionProps {
+  label: string;
+  hint: string;
+  testId: string;
+  isDisabled: boolean;
+  isLoading: boolean;
+  onKeep: () => void;
+}
+
+const KeepAction: FC<KeepActionProps> = ({
+  label,
+  hint,
+  testId,
+  isDisabled,
+  isLoading,
+  onKeep,
+}) => (
+  <Box direction="col" gap={1}>
+    <Button
+      className="tw:self-start"
+      color="secondary"
+      data-testid={testId}
+      isDisabled={isDisabled}
+      isLoading={isLoading}
+      size="sm"
+      onClick={onKeep}>
+      {label}
+    </Button>
+    <Typography className="tw:text-tertiary" size="text-xs">
+      {hint}
+    </Typography>
+  </Box>
+);
+
+interface ConflictCardProps {
   review: Task;
-  isResolving: boolean;
+  resolving?: ReviewDecision;
+  isDisabled: boolean;
   onDecide: (review: Task, decision: ReviewDecision) => void;
   onViewMemory: (memoryName: string) => void;
 }
 
-const DisputedMemory: FC<{
-  dispute: MemoryConflictReviewDispute;
-  onViewMemory: (memoryName: string) => void;
-}> = ({ dispute, onViewMemory }) => (
-  <Box direction="col" gap={1}>
-    <Button
-      className="tw:self-start"
-      color="link-color"
-      data-testid={`disputed-memory-${dispute.memory.id}`}
-      size="sm"
-      onClick={() => onViewMemory(getMemoryLinkName(dispute.memory))}>
-      {getEntityName(dispute.memory)}
-    </Button>
-    {dispute.reason && (
-      <Typography className="tw:text-tertiary tw:line-clamp-2" size="text-xs">
-        {dispute.reason}
-      </Typography>
-    )}
-  </Box>
-);
-
-const ReviewRow: FC<ReviewRowProps> = ({
+const ConflictCard: FC<ConflictCardProps> = ({
   review,
-  isResolving,
+  resolving,
+  isDisabled,
   onDecide,
   onViewMemory,
 }) => {
   const { t } = useTranslation();
+  const claim = getReviewedClaim(review);
   const disputes = getReviewDisputes(review);
+  const recency = getConflictRecency(claim, disputes);
+  const reviewedTitle =
+    getReviewedMemoryTitle(review) ?? getEntityName(review.about);
+  const question =
+    claim?.question ??
+    disputes.find((dispute) => dispute.claim?.question)?.claim?.question;
+  const isSingle = disputes.length === 1;
+  const disputedTitle = isSingle ? getEntityName(disputes[0].memory) : '';
 
   return (
     <Box
-      align="start"
       className="tw:px-5.5 tw:py-4.5 tw:border-b tw:border-secondary tw:last:border-b-0"
       data-testid={`memory-review-${review.about?.id}`}
-      gap={3}
-      justify="between">
-      <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={2}>
-        <Button
-          className="tw:self-start"
-          color="link-gray"
-          data-testid="reviewed-memory"
-          size="md"
-          onClick={() => onViewMemory(getMemoryLinkName(review.about))}>
-          <Typography className="tw:text-primary" weight="medium">
-            {getReviewedMemoryTitle(review) ?? getEntityName(review.about)}
-          </Typography>
-        </Button>
-        <Box direction="col" gap={1}>
-          <Typography className="tw:text-tertiary" size="text-xs">
-            {t('label.conflicts-with')}
-          </Typography>
-          {disputes.map((dispute) => (
-            <DisputedMemory
-              dispute={dispute}
-              key={dispute.memory.id}
+      direction="col"
+      gap={3}>
+      {question && (
+        <Typography data-testid="review-question" weight="semibold">
+          {question}
+        </Typography>
+      )}
+      <Grid colGap="4" rowGap="3">
+        <Grid.Item span={12}>
+          <Box direction="col" gap={2}>
+            <Typography className="tw:text-tertiary" size="text-xs">
+              {t('label.in-review')}
+            </Typography>
+            <ClaimCard
+              claim={claim}
+              recency={recency.reviewed}
+              reference={review.about}
+              testId="reviewed-memory"
+              title={reviewedTitle}
               onViewMemory={onViewMemory}
             />
-          ))}
-        </Box>
-      </Box>
-      <Box align="center" className="tw:shrink-0" gap={2}>
-        <Button
-          color="secondary"
-          data-testid="reject-review"
-          isDisabled={isResolving}
-          size="sm"
-          onClick={() => onDecide(review, 'reject')}>
-          {t('label.reject')}
-        </Button>
-        <Button
-          color="primary"
-          data-testid="approve-review"
-          isDisabled={isResolving}
-          isLoading={isResolving}
-          size="sm"
-          onClick={() => onDecide(review, 'approve')}>
-          {t('label.approve')}
-        </Button>
-      </Box>
+            <KeepAction
+              hint={
+                isSingle
+                  ? t('message.keep-reviewed-memory-hint', {
+                      title: disputedTitle,
+                    })
+                  : t('message.keep-reviewed-memory-hint-plural', {
+                      count: disputes.length,
+                    })
+              }
+              isDisabled={isDisabled}
+              isLoading={resolving === 'approve'}
+              label={t('label.keep-this-one')}
+              testId="keep-reviewed-memory"
+              onKeep={() => onDecide(review, 'approve')}
+            />
+          </Box>
+        </Grid.Item>
+        <Grid.Item span={12}>
+          <Box direction="col" gap={2}>
+            <Typography className="tw:text-tertiary" size="text-xs">
+              {t('label.conflicts-with')}
+            </Typography>
+            {disputes.map((dispute) => (
+              <ClaimCard
+                claim={dispute.claim}
+                key={dispute.memory.id}
+                reason={dispute.reason}
+                recency={recency.disputed[dispute.memory.id]}
+                reference={dispute.memory}
+                testId={`disputed-memory-${dispute.memory.id}`}
+                title={getEntityName(dispute.memory)}
+                onViewMemory={onViewMemory}
+              />
+            ))}
+            <KeepAction
+              hint={
+                isSingle
+                  ? t('message.keep-approved-memory-hint', {
+                      title: reviewedTitle,
+                    })
+                  : t('message.keep-approved-memories-hint', {
+                      title: reviewedTitle,
+                    })
+              }
+              isDisabled={isDisabled}
+              isLoading={resolving === 'reject'}
+              label={
+                isSingle ? t('label.keep-this-one') : t('label.keep-these')
+              }
+              testId="keep-approved-memories"
+              onKeep={() => onDecide(review, 'reject')}
+            />
+          </Box>
+        </Grid.Item>
+      </Grid>
     </Box>
   );
 };
 
 /**
- * Open memory conflict reviews, each deciding a Draft memory against the
- * Approved memories it contradicts. Approving supersedes those memories;
- * rejecting keeps them.
+ * Open memory conflict reviews, each comparing a Draft memory with the
+ * Approved memories it contradicts. Keeping the Draft approves it and
+ * supersedes them; keeping the Approved memories rejects the Draft.
  */
 const MemoryConflictReviews: FC<MemoryConflictReviewsProps> = ({
   reviews,
@@ -143,11 +285,14 @@ const MemoryConflictReviews: FC<MemoryConflictReviewsProps> = ({
   onResolved,
 }) => {
   const { t } = useTranslation();
-  const [resolvingId, setResolvingId] = useState<string>();
+  const [resolving, setResolving] = useState<{
+    id: string;
+    decision: ReviewDecision;
+  }>();
 
   const handleDecide = useCallback(
     async (review: Task, decision: ReviewDecision) => {
-      setResolvingId(review.id);
+      setResolving({ id: review.id, decision });
       try {
         await resolveTask(review.id, {
           transitionId: decision,
@@ -158,7 +303,7 @@ const MemoryConflictReviews: FC<MemoryConflictReviewsProps> = ({
       } catch (err) {
         showErrorToast(err as AxiosError);
       } finally {
-        setResolvingId(undefined);
+        setResolving(undefined);
       }
     },
     [onResolved, t]
@@ -186,7 +331,7 @@ const MemoryConflictReviews: FC<MemoryConflictReviewsProps> = ({
       <div className="tw:relative tw:min-h-[320px] tw:py-12">
         <EmptyPlaceholder
           description={t('message.no-memory-conflicts-to-review')}
-          icon={<NoFilterResultsIcon className="tw:text-quaternary" />}
+          icon={<CheckCircle className="tw:text-fg-quaternary" />}
           title={t('label.nothing-to-review')}
           variant="blank"
         />
@@ -197,9 +342,12 @@ const MemoryConflictReviews: FC<MemoryConflictReviewsProps> = ({
   return (
     <div data-testid="memory-conflict-reviews">
       {reviews.map((review) => (
-        <ReviewRow
-          isResolving={resolvingId === review.id}
+        <ConflictCard
+          isDisabled={resolving?.id === review.id}
           key={review.id}
+          resolving={
+            resolving?.id === review.id ? resolving.decision : undefined
+          }
           review={review}
           onDecide={handleDecide}
           onViewMemory={onViewMemory}

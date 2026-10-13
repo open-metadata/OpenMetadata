@@ -28,6 +28,7 @@ interface Memory {
   id: string;
   name: string;
   title: string;
+  answer: string;
 }
 
 const RESOLVE_TASK = /\/api\/v1\/tasks\/[^/]+\/resolve$/;
@@ -39,7 +40,7 @@ const createConflict = async (apiContext: APIRequestContext) => {
       name: `cc_review_${kind}_${uuid()}`,
       title: `Customers need ${kind} orders`,
       question: 'Who qualifies as a customer?',
-      answer: `Customers need ${kind} orders.`,
+      answer: `A customer has at least ${kind} completed orders.`,
       entityStatus,
       shareConfig: { visibility: 'Entity' },
     }) as Promise<Memory>;
@@ -89,7 +90,7 @@ test.describe(
       }
     });
 
-    test('approving a review supersedes the memory it contradicts', async ({
+    test('keeping the memory in review supersedes the one it contradicts', async ({
       page,
       browser,
     }) => {
@@ -97,7 +98,7 @@ test.describe(
       const { disputed, reviewed } = await createConflict(apiContext);
       created.push(disputed, reviewed);
 
-      await test.step('the conflict waits in Needs review', async () => {
+      await test.step('the conflict compares both claims', async () => {
         await navigateToMemories(page);
         await page.getByTestId('memory-count-card-needs-review').click();
         const review = page.getByTestId(`memory-review-${reviewed.id}`);
@@ -106,17 +107,23 @@ test.describe(
         await expect(review.getByTestId('reviewed-memory')).toHaveText(
           reviewed.title
         );
+        await expect(review.getByTestId('reviewed-memory-claim')).toHaveText(
+          reviewed.answer
+        );
         await expect(
           review.getByTestId(`disputed-memory-${disputed.id}`)
         ).toHaveText(disputed.title);
+        await expect(
+          review.getByTestId(`disputed-memory-${disputed.id}-claim`)
+        ).toHaveText(disputed.answer);
         await expect(review).toContainText(CONFLICT_REASON);
       });
 
-      await test.step('approving resolves it and retires the old claim', async () => {
+      await test.step('keeping the new claim retires the old one', async () => {
         const review = page.getByTestId(`memory-review-${reviewed.id}`);
         await clickAndWaitFor(
           page,
-          review.getByTestId('approve-review'),
+          review.getByTestId('keep-reviewed-memory'),
           RESOLVE_TASK
         );
 
@@ -140,7 +147,7 @@ test.describe(
       await afterAction();
     });
 
-    test('rejecting a review keeps the memory it contradicts', async ({
+    test('keeping the approved memory rejects the one in review', async ({
       page,
       browser,
     }) => {
@@ -156,7 +163,7 @@ test.describe(
 
       await clickAndWaitFor(
         page,
-        review.getByTestId('reject-review'),
+        review.getByTestId('keep-approved-memories'),
         RESOLVE_TASK
       );
 
