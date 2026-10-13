@@ -66,25 +66,52 @@ const TeamsSelectable = ({
 
   // TreeSelect fetches once when it first opens; awaiting the shared request
   // keeps an early open (e.g. a popover opened straight away) from caching an empty tree.
-  const teamsRequest = useRef<Promise<TeamHierarchy[]>>();
-  const loadTeams = useCallback(() => {
-    teamsRequest.current ??= getTeamsHierarchy(filterJoinable).then(
-      ({ data }) =>
-        [...data].sort((a, b) =>
-          (a.fullyQualifiedName ?? '').localeCompare(b.fullyQualifiedName ?? '')
-        )
-    );
+  const teamsRequest = useRef<{
+    filterJoinable?: boolean;
+    promise: Promise<TeamHierarchy[]>;
+  }>();
+  const notifiedError = useRef<unknown>();
 
-    return teamsRequest.current;
+  const notifyError = useCallback((error: unknown) => {
+    // The mount load and the picker share one request; toast its failure once.
+    if (error !== notifiedError.current) {
+      notifiedError.current = error;
+      showErrorToast(error as AxiosError);
+    }
+  }, []);
+
+  const loadTeams = useCallback(() => {
+    if (
+      !teamsRequest.current ||
+      teamsRequest.current.filterJoinable !== filterJoinable
+    ) {
+      const promise = getTeamsHierarchy(filterJoinable)
+        .then(({ data }) =>
+          [...data].sort((a, b) =>
+            (a.fullyQualifiedName ?? '').localeCompare(
+              b.fullyQualifiedName ?? ''
+            )
+          )
+        )
+        .catch((error) => {
+          // Forget the failed request so the next open retries.
+          teamsRequest.current = undefined;
+
+          throw error;
+        });
+      teamsRequest.current = { filterJoinable, promise };
+    }
+
+    return teamsRequest.current?.promise ?? Promise.resolve([]);
   }, [filterJoinable]);
 
   useEffect(() => {
     setIsLoading(true);
     loadTeams()
       .then((data) => showTeamsAlert && setNoTeam(isEmpty(data)))
-      .catch((error: AxiosError) => showErrorToast(error))
+      .catch(notifyError)
       .finally(() => setIsLoading(false));
-  }, [loadTeams, showTeamsAlert]);
+  }, [loadTeams, notifyError, showTeamsAlert]);
 
   const fetchData = useCallback(
     async () => ({
@@ -115,6 +142,7 @@ const TeamsSelectable = ({
         showIcon={false}
         value={selectedTeamsInternal}
         onChange={onChange}
+        onFetchError={notifyError}
       />
       {noTeam && (
         <Alert

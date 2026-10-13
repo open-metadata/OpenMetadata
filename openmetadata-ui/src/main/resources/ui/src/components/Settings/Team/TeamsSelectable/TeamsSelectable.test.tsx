@@ -15,10 +15,14 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { TeamType } from '../../../../generated/entity/teams/teamHierarchy';
 import { getTeamsHierarchy } from '../../../../rest/teamsAPI';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import TeamsSelectable from './TeamsSelectable';
 
 jest.mock('../../../../rest/teamsAPI', () => ({
   getTeamsHierarchy: jest.fn(),
+}));
+jest.mock('../../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
 }));
 jest.mock('../../../../utils/EntityNameUtils', () => ({
   getEntityName: () => 'entityName',
@@ -65,6 +69,32 @@ describe('TeamsSelectable', () => {
     );
 
     expect(onSelectionChange).toHaveBeenLastCalledWith([]);
+  });
+
+  it('toasts a failed load once and retries when the picker opens', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const error = new Error('network');
+    (getTeamsHierarchy as jest.Mock)
+      .mockRejectedValueOnce(error)
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'team-id',
+            name: 'Team',
+            teamType: TeamType.Group,
+            isJoinable: true,
+          },
+        ],
+      });
+    render(<TeamsSelectable />, { wrapper: MemoryRouter });
+
+    await waitFor(() => expect(showErrorToast).toHaveBeenCalledWith(error));
+
+    await user.click(screen.getByRole('combobox'));
+
+    expect(await screen.findByText('entityName')).toBeInTheDocument();
+    expect(getTeamsHierarchy).toHaveBeenCalledTimes(2);
+    expect(showErrorToast).toHaveBeenCalledTimes(1);
   });
 
   it('shows an empty-team message after an empty response', async () => {
