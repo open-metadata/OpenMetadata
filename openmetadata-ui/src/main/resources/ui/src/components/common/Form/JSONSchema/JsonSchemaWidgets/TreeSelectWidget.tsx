@@ -15,7 +15,6 @@ import { TreeSelect } from 'antd';
 import { startCase } from 'lodash';
 import { FC, ReactNode, useCallback, useMemo } from 'react';
 import { ReactComponent as ArrowIcon } from '../../../../../assets/svg/ic-arrow-down.svg';
-import { TEXT_BODY_COLOR } from '../../../../../constants/constants';
 
 const ALL_VALUE = 'all';
 
@@ -85,9 +84,8 @@ const TreeSelectWidget: FC<WidgetProps> = ({
       }}
       switcherIcon={
         <ArrowIcon
-          className="tw:size-2.5 tw:shrink-0"
+          className="tw:size-2.5 tw:shrink-0 tw:text-secondary"
           data-testid="expand-icon"
-          style={{ color: TEXT_BODY_COLOR }}
         />
       }
       treeData={treeData}

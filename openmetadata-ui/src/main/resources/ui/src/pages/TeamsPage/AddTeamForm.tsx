@@ -99,9 +99,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
           aria-label={t('label.add-entity', { entity: t('label.domain') })}
           color="primary"
           data-testid="add-domain"
-          iconLeading={
-            <Plus size={14} style={{ color: 'white', fontSize: '12px' }} />
-          }
+          iconLeading={Plus}
           size="xs"
         />
       ),

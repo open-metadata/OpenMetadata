@@ -168,9 +168,7 @@ export const AddEditPersonaForm = ({
             })}
             color="primary"
             data-testid="add-users"
-            iconLeading={
-              <Plus size={14} style={{ color: 'white', fontSize: '12px' }} />
-            }
+            iconLeading={Plus}
             size="xs"
           />
         ),

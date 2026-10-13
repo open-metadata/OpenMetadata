@@ -107,9 +107,7 @@ export const ObjectFieldTemplate: FunctionComponent<
             aria-label={t('label.add')}
             color="primary"
             data-testid={`add-item-${title}`}
-            iconLeading={
-              <Plus size={14} style={{ color: 'white', fontSize: '12px' }} />
-            }
+            iconLeading={Plus}
             id={`${idSchema.$id}`}
             size="xs"
             onClick={() => {

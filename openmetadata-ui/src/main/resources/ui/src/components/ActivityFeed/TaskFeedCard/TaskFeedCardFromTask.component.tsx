@@ -346,16 +346,10 @@ const TaskFeedCardFromTask = ({
       justify="between"
       wrap="wrap">
       <Box>
-        <Box align="center" justify="center">
-          <ReplyIcon
-            className="tw:mr-2"
-            height={20}
-            width={20}
-            onClick={showReplies}
-          />
+        <Box align="center" gap={2} justify="center">
+          <ReplyIcon height={20} width={20} onClick={showReplies} />
           {commentsCount > 0 ? (
             <Button
-              className="tw:mr-1"
               color="link-gray"
               data-testid="replies-count"
               onPress={showReplies}>
