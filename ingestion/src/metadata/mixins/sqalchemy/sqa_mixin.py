@@ -74,7 +74,7 @@ class SQAInterfaceMixin(Root):
         if isinstance(self.service_connection_config, (MysqlConnection, MariaDBConnection)):
             # The schema name comes from the source, so it is untrusted.
             quoted_schema = session.connection().dialect.identifier_preparer.quote_identifier(  # pyright: ignore[reportUnknownVariableType, reportUnknownMemberType]
-                self.table_entity.databaseSchema.name
+                self.table_entity.databaseSchema.name  # pyright: ignore[reportAttributeAccessIssue]
             )
             session.execute(  # pyright: ignore[reportUnknownMemberType]
                 text(f"USE {quoted_schema}"),
