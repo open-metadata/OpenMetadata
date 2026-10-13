@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Badge, Box, Tabs } from '@openmetadata/ui-core-components';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -19,10 +19,9 @@ import { usePersonalSpaceStore } from '../../../../hooks/usePersonalSpaceStore';
 import { PERSONAL_SPACE_ROUTES } from '../personalSpace.constants';
 import {
   DEFAULT_INBOX_DATE_PRESET,
-  formatInboxCount,
   getDefaultInboxDateRange,
   getInboxDateRange,
-  InboxCount,
+  getInboxTabBadge,
   InboxDateRange,
   INBOX_DATE_RANGE_OPTIONS,
 } from './inbox.utils';
@@ -34,27 +33,6 @@ import { useInboxCounts } from './useInboxCounts';
 export type InboxTabKey = 'activity' | 'tasks';
 
 const DEFAULT_TAB: InboxTabKey = 'activity';
-
-// The same outlined count badge as the Activity sub-tabs, brand on the selected
-// tab. The tab's own `badge` prop draws a pill, so the count is rendered here.
-const renderTabLabel = (label: string, count: InboxCount) =>
-  function TabLabel({ isSelected }: { isSelected: boolean }) {
-    return (
-      <>
-        {label}
-        {count.total > 0 && (
-          <Badge
-            // Keeps a badged tab as tall as a bare one.
-            className="tw:-my-px"
-            color={isSelected ? 'brand' : 'gray'}
-            size="sm"
-            type="color">
-            {formatInboxCount(count)}
-          </Badge>
-        )}
-      </>
-    );
-  };
 
 /**
  * The Inbox: the Activity / Triage tabs (with live counts) in the page header,
@@ -117,14 +95,13 @@ const InboxContent: React.FC = () => {
       {/* The header's bottom border is the rule under these tabs; the list's
           own separator would draw a second, shorter line right above it. */}
       <Tabs.List className="tw:before:hidden" size="sm" type="underline">
-        <Tabs.Item id="activity">
-          {renderTabLabel(t('label.activity'), activityCount)}
+        <Tabs.Item badge={getInboxTabBadge(activityCount)} id="activity">
+          {t('label.activity')}
         </Tabs.Item>
-        <Tabs.Item id="tasks">
-          {renderTabLabel(t('label.triage'), {
-            total: taskCount,
-            isCapped: false,
-          })}
+        <Tabs.Item
+          badge={getInboxTabBadge({ total: taskCount, isCapped: false })}
+          id="tasks">
+          {t('label.triage')}
         </Tabs.Item>
       </Tabs.List>
     </Tabs>

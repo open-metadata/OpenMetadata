@@ -45,6 +45,8 @@ export interface ProfileContentHeaderProps {
   titleInput?: React.ReactNode;
   /** Node rendered inline right after the title text (e.g. a rename/edit icon button). */
   titleSuffix?: React.ReactNode;
+  /** Extra row rendered under the description (e.g. installed / developer details). */
+  meta?: React.ReactNode;
 }
 
 /**
@@ -62,6 +64,7 @@ const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
   actions,
   titleInput,
   titleSuffix,
+  meta,
 }) => {
   const defaultBreadcrumbs = useMemo<BreadcrumbItemType[]>(
     () => [
@@ -116,6 +119,7 @@ const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
             weight="regular">
             {description}
           </Typography>
+          {meta}
         </Box>
         {actions && (
           <Box

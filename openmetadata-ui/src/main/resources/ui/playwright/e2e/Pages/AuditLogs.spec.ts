@@ -706,7 +706,7 @@ test.describe(
         const exportButton = page.getByTestId('export-audit-logs-button');
         await exportButton.click();
 
-        await page.locator('.ant-modal-content').waitFor({
+        await page.getByTestId('export-audit-logs-modal').waitFor({
           state: 'visible',
         });
       });
@@ -740,9 +740,9 @@ test.describe(
       });
 
       await test.step('Verify Export button is enabled after date selection', async () => {
-        const exportOkButton = page.locator(
-          '.ant-modal-footer button.ant-btn-primary'
-        );
+        const exportOkButton = page
+          .getByTestId('export-audit-logs-modal')
+          .getByRole('button', { name: 'Export' });
         await expect(exportOkButton).toBeEnabled();
       });
 
@@ -751,9 +751,9 @@ test.describe(
           response.url().includes('/api/v1/audit/logs/export')
         );
 
-        const exportOkButton = page.locator(
-          '.ant-modal-footer button.ant-btn-primary'
-        );
+        const exportOkButton = page
+          .getByTestId('export-audit-logs-modal')
+          .getByRole('button', { name: 'Export' });
         await exportOkButton.click();
 
         const response = await exportApiCall;
@@ -812,7 +812,7 @@ test.describe(
         const exportButton = page.getByTestId('export-audit-logs-button');
         await exportButton.click();
 
-        await page.locator('.ant-modal-content').waitFor({
+        await page.getByTestId('export-audit-logs-modal').waitFor({
           state: 'visible',
         });
       });
@@ -844,9 +844,9 @@ test.describe(
             request.url().includes('q=admin')
         );
 
-        const exportOkButton = page.locator(
-          '.ant-modal-footer button.ant-btn-primary'
-        );
+        const exportOkButton = page
+          .getByTestId('export-audit-logs-modal')
+          .getByRole('button', { name: 'Export' });
         await exportOkButton.click();
 
         await exportApiCall;
@@ -865,7 +865,7 @@ test.describe(
         const exportButton = page.getByTestId('export-audit-logs-button');
         await exportButton.click();
 
-        await page.locator('.ant-modal-content').waitFor({
+        await page.getByTestId('export-audit-logs-modal').waitFor({
           state: 'visible',
         });
 
@@ -895,9 +895,9 @@ test.describe(
           response.url().includes('/api/v1/audit/logs/export')
         );
 
-        const exportOkButton = page.locator(
-          '.ant-modal-footer button.ant-btn-primary'
-        );
+        const exportOkButton = page
+          .getByTestId('export-audit-logs-modal')
+          .getByRole('button', { name: 'Export' });
         await exportOkButton.click();
 
         const response = await exportApiCall;

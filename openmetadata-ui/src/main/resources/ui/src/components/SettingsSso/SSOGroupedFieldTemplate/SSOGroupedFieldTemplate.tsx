@@ -12,12 +12,12 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Box } from '@openmetadata/ui-core-components';
+import { Box, Button } from '@openmetadata/ui-core-components';
 import {
   ObjectFieldTemplatePropertyType,
   ObjectFieldTemplateProps,
 } from '@rjsf/utils';
-import { Button, Collapse } from 'antd';
+import { Collapse } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
 import { createElement, Fragment, FunctionComponent } from 'react';
@@ -307,8 +307,15 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
   ObjectFieldTemplateProps
 > = (props: ObjectFieldTemplateProps) => {
   const { t } = useTranslation();
-  const { formContext, idSchema, title, onAddClick, schema, properties } =
-    props;
+  const {
+    disabled,
+    formContext,
+    idSchema,
+    title,
+    onAddClick,
+    schema,
+    properties,
+  } = props;
 
   const { advancedProperties, normalProperties } = properties.reduce(
     (propertyMap, currentProperty) => {
@@ -384,13 +391,15 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
 
           {schema.additionalProperties && (
             <Button
+              aria-label={t('label.add')}
+              color="primary"
               data-testid={`add-item-${title}`}
-              icon={
+              iconLeading={
                 <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
               }
               id={`${idSchema.$id}`}
-              size="small"
-              type="primary"
+              isDisabled={disabled}
+              size="xs"
               onClick={() => {
                 onAddClick(schema)();
               }}

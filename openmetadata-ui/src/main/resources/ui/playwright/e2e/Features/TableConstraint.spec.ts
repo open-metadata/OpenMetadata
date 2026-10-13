@@ -65,7 +65,7 @@ test.describe('Table Constraints', {}, () => {
       await waitForAllLoadersToDisappear(page);
 
       await page.click('[data-testid="table-constraints-add-button"]');
-      await page.locator('[role="dialog"].ant-modal').waitFor();
+      await page.getByTestId('table-constraint-modal').waitFor();
 
       // Add for Primary Key
 
@@ -294,7 +294,7 @@ test.describe('Table Constraints', {}, () => {
       await page.click('[data-testid="save-btn"]');
       await saveResponse;
 
-      await page.locator('[role="dialog"].ant-modal').waitFor({
+      await page.getByTestId('table-constraint-modal').waitFor({
         state: 'detached',
       });
     });
@@ -360,7 +360,7 @@ test.describe('Table Constraints', {}, () => {
       await page.click('[data-testid="save-btn"]');
       await saveResponseOne;
 
-      await page.locator('[role="dialog"].ant-modal').waitFor({
+      await page.getByTestId('table-constraint-modal').waitFor({
         state: 'detached',
       });
 
@@ -376,7 +376,7 @@ test.describe('Table Constraints', {}, () => {
       // Remove the pending constraints
 
       await page.getByTestId('edit-table-constraint-button').click();
-      await page.locator('[role="dialog"].ant-modal').waitFor();
+      await page.getByTestId('table-constraint-modal').waitFor();
 
       // Clear Dist Key
       await clickOnDistKeySelector(page, true);
@@ -394,7 +394,7 @@ test.describe('Table Constraints', {}, () => {
       await page.click('[data-testid="save-btn"]');
       await saveResponse;
 
-      await page.locator('[role="dialog"].ant-modal').waitFor({
+      await page.getByTestId('table-constraint-modal').waitFor({
         state: 'detached',
       });
 

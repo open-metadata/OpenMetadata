@@ -10,8 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
-import { Button, Form } from 'antd';
+import {
+  Box,
+  Button,
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Form } from 'antd';
 import { AxiosError } from 'axios';
 import QueryString from 'qs';
 import { useEffect, useMemo, useState } from 'react';
@@ -249,16 +254,17 @@ const AddCustomMetricPage = () => {
                   gap={2}
                   itemClassName="layout-space-item">
                   <Button
+                    color="secondary"
                     data-testid="cancel-button"
-                    disabled={isActionLoading}
+                    isDisabled={isActionLoading}
                     onClick={handleBackClick}>
                     {t('label.cancel')}
                   </Button>
                   <Button
+                    color="primary"
                     data-testid="submit-button"
-                    htmlType="submit"
-                    loading={isActionLoading}
-                    type="primary"
+                    isLoading={isActionLoading}
+                    type="submit"
                     onClick={() => form.submit()}>
                     {t('label.create')}
                   </Button>

@@ -11,14 +11,18 @@
  *  limitations under the License.
  */
 
-import { Box, Table, Typography } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import {
+  Box,
+  Button,
+  Table,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import {
   ManageMenu,
   ManageMenuItem,
@@ -279,15 +283,15 @@ const FailedTestCaseSampleData = ({
         </Typography>
         <div className="d-flex gap-4">
           {testCaseData?.inspectionQuery && !isVersionPage && (
-            <Link
-              to={observabilityRouterClassBase.getTestCaseDetailPagePath(
+            <Button
+              color="primary"
+              data-testid="explore-with-query"
+              href={observabilityRouterClassBase.getTestCaseDetailPagePath(
                 testCaseData?.fullyQualifiedName ?? '',
                 TestCasePageTabs.SQL_QUERY
               )}>
-              <Button data-testid="explore-with-query" type="primary">
-                {t('label.explore-with-query')}
-              </Button>
-            </Link>
+              {t('label.explore-with-query')}
+            </Button>
           )}
           {hasEditPermission && (
             <ManageMenu

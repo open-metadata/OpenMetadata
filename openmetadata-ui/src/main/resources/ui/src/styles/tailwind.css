@@ -74,10 +74,10 @@ a {
 :where(.dark-mode) .tw\:text-brand-600,
 :where(.dark-mode) .tw\:text-brand-700,
 :where(.dark-mode) .tw\:text-blue-700 {
-  color: var(--om-color-brand-300);
+  color: var(--tw-color-brand-400);
 }
 
-/* Dark: brand-tint surfaces darken so the flipped brand-300 text stays readable
+/* Dark: brand-tint surfaces darken so the flipped brand-400 text stays readable
  * on them. Dark-scoped, so the utility token (which flips to brand-950/900 under
  * .dark-mode) is safe to reference directly here. */
 :where(.dark-mode) .tw\:bg-brand-50 {
