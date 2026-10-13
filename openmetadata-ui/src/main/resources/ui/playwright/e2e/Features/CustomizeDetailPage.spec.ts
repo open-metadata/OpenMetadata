@@ -202,7 +202,11 @@ test.describe(
       await adminPage.getByText('Data Assets').click();
 
       for (const type of Object.values(ECustomizedDataAssets)) {
-        await expect(adminPage.getByText(type, { exact: true })).toBeVisible();
+        await expect(
+          adminPage
+            .getByTestId('customize-ui-options')
+            .getByText(type, { exact: true })
+        ).toBeVisible();
       }
     });
 
@@ -212,7 +216,11 @@ test.describe(
       await adminPage.getByText('Governance').click();
 
       for (const type of Object.values(ECustomizedGovernance)) {
-        await expect(adminPage.getByText(type, { exact: true })).toBeVisible();
+        await expect(
+          adminPage
+            .getByTestId('customize-ui-options')
+            .getByText(type, { exact: true })
+        ).toBeVisible();
       }
     });
 
@@ -420,7 +428,10 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
         await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
         await adminPage.getByText('Data Assets').click();
-        await adminPage.getByText(type, { exact: true }).click();
+        await adminPage
+          .getByTestId('customize-ui-options')
+          .getByText(type, { exact: true })
+          .click();
 
         await waitForAllLoadersToDisappear(adminPage);
 
@@ -576,7 +587,10 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         );
         await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
         await adminPage.getByText('Governance').click();
-        await adminPage.getByText(type, { exact: true }).click();
+        await adminPage
+          .getByTestId('customize-ui-options')
+          .getByText(type, { exact: true })
+          .click();
 
         await waitForAllLoadersToDisappear(adminPage);
 
