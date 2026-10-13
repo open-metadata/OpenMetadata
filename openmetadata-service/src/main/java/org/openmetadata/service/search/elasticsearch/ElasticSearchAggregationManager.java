@@ -133,6 +133,26 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
   }
 
   /**
+   * ANDs the caller's RBAC policy and per-subject ContextMemory visibility into the aggregation
+   * query, mirroring {@code ElasticSearchSearchManager#applyRbacCondition}. A {@code null} or exempt
+   * subject (admin, or access control disabled) is left unfiltered by RBAC. An identifiable subject
+   * gets its own memory visibility filter (admins are limited to searchable statuses only); a
+   * {@code null} or unidentifiable subject falls back to the org-wide-only memory filter so the
+   * aggregation never leaks private memories.
+   */
+  private Query applySubjectFilters(Query query, SubjectContext subjectContext) {
+    Query rbacFiltered = applyRbacQuery(query, subjectContext);
+    OMQueryBuilder visibilityBuilder = MEMORY_VISIBILITY.buildVisibilityFilter(subjectContext);
+    if (visibilityBuilder != null) {
+      Query memoryFilter = ((ElasticQueryBuilder) visibilityBuilder).buildV2();
+      return rbacFiltered == null
+          ? memoryFilter
+          : Query.of(q -> q.bool(b -> b.must(rbacFiltered).filter(memoryFilter)));
+    }
+    return restrictToOrgWideMemories(rbacFiltered);
+  }
+
+  /**
    * A bare query_string searches every field in the mapping, which on large data-asset mappings can
    * exceed the cluster's max_clause_count, so data-asset text goes through the configured fields
    * instead. {@code *} and other indexes keep the bare query_string.
@@ -168,6 +188,12 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
 
   @Override
   public Response aggregate(AggregationRequest request) throws IOException {
+    return aggregate(request, null);
+  }
+
+  @Override
+  public Response aggregate(AggregationRequest request, SubjectContext subjectContext)
+      throws IOException {
     if (!isClientAvailable) {
       LOG.error("ElasticSearch client is not available. Cannot perform aggregation.");
       throw new IOException("ElasticSearch client is not available");
@@ -219,7 +245,7 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
         }
       }
 
-      searchRequestBuilder.query(restrictToOrgWideMemories(query));
+      searchRequestBuilder.query(applySubjectFilters(query, subjectContext));
 
       String aggregationField =
           SearchSourceBuilderFactory.resolveFieldForSortOrAggregation(request.getFieldName());
