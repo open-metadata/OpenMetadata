@@ -85,6 +85,19 @@ const SchemaEditor = withSuspenseFallback(
 const getPopupContainer = (triggerNode: HTMLElement) =>
   triggerNode.parentElement ?? document.body;
 
+// The include-column pickers live inside a `h-max-40 overflow-y-auto` wrapper that
+// becomes a 160px clip box once a second include row is added. Mounting their
+// popups into `triggerNode.parentElement` (as `getPopupContainer` does) traps
+// them inside that scroll container, so the options are clipped and scroll
+// with the tiny box. Climb out of the scroll wrapper to the dialog root: the
+// popups stay inside the react-aria focus/accessibility boundary but render
+// above the clip box, where they can never be cut off. `closest` returns
+// `Element`, but the dialog node (and the `document.body` fallback) are both
+// `HTMLElement`, which is what antd's `getPopupContainer` requires.
+const getPopupContainerOutsideRows = (triggerNode: HTMLElement): HTMLElement =>
+  (triggerNode.closest('[data-testid="profiler-settings-modal"]') ??
+    document.body) as HTMLElement;
+
 const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   tableId,
   columns,
@@ -679,7 +692,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                               showSearch
                               className="w-full"
                               data-testid="include-column-select"
-                              getPopupContainer={getPopupContainer}
+                              getPopupContainer={getPopupContainerOutsideRows}
                               options={columnWithAllOption}
                               placeholder={t(
                                 'label.select-column-plural-to-include'
@@ -696,7 +709,8 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                             <TreeSelect
                               treeCheckable
                               className="w-full"
-                              getPopupContainer={getPopupContainer}
+                              data-testid="include-column-metrics"
+                              getPopupContainer={getPopupContainerOutsideRows}
                               maxTagCount={2}
                               placeholder={t('label.please-select')}
                               showCheckedStrategy="SHOW_PARENT"
