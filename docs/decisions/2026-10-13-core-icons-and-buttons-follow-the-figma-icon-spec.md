@@ -29,12 +29,13 @@ keep the glyph at frame − 4px.
 `utility-gray-600` on hover; primary icons are white; status and brand variants keep their colour.
 
 **ButtonUtility.** Sizes `xs`–`xl` are 20/24/28/32/36px with icon frames 16/18/18/20/20 and radius
-4/6/6/8/8px; default `lg`. `xs` is for tight inline actions and is always borderless: `secondary`
+4/6/6/8/8px; default `sm`. `xs` is for tight inline actions and is always borderless: `secondary`
 renders as `tertiary`, `secondary-destructive` as `tertiary-destructive`.
 
 ## Consequences
 Explicit Button sizes render one step smaller than before (`sm` 36→32, `md` 40→36, `lg` 44→40) and
-ButtonUtility `sm`/`xs` shrink to 24/20; call sites that must keep a height move up one name.
+ButtonUtility `sm`/`xs` shrink to 24/20, and its default moves from 32px to `sm` (24px); call sites
+that must keep a height move up one name.
 Icons rendered without a size are 20px instead of 24px. A new 24-grid icon is converted on
 `yarn icons:generate`; one that uses shapes other than `<path>` or transforms fails generation
 until it is converted to paths.

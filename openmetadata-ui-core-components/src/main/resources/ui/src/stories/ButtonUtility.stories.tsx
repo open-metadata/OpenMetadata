@@ -30,7 +30,7 @@ export const Default: Story = {
   args: {
     icon: Edit01,
     color: 'secondary',
-    size: 'lg',
+    size: 'sm',
     tooltip: 'Edit',
   },
 };

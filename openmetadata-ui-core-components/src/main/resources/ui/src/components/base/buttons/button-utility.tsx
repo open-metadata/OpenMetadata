@@ -105,7 +105,7 @@ export const ButtonUtility = ({
   className,
   isDisabled,
   icon: Icon,
-  size = 'lg',
+  size = 'sm',
   color = 'secondary',
   tooltipPlacement = 'top',
   ...otherProps

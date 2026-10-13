@@ -239,6 +239,15 @@ describe('ButtonUtility — icon size and color', () => {
     expect(screen.getByRole('button', { name: 'Edit' })).toHaveClass(radius);
   });
 
+  it('defaults to the 24px sm size', () => {
+    render(<ButtonUtility icon={Edit01} tooltip="Edit" />);
+
+    expect(screen.getByRole('button', { name: 'Edit' })).toHaveClass(
+      'tw:p-0.75',
+      'tw:rounded-md'
+    );
+  });
+
   it('drops the border at xs', () => {
     const { rerender } = render(
       <ButtonUtility color="secondary" icon={Edit01} size="xs" tooltip="Edit" />
