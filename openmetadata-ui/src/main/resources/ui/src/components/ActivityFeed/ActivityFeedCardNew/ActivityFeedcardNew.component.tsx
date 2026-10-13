@@ -436,15 +436,18 @@ const ActivityFeedCardNew = ({
       data-testid="feed-card-v2-sidebar">
       <Card.Content className="activity-feed-card-new-body tw:p-0">
         <Box className="w-full" gap={2}>
-          <Box align="center" direction="col" justify="center">
+          <Box align="center" direction="col" justify="start">
             <UserPopOverCard
               className="m-r-0"
               profileWidth={24}
               userName={createdBy}
             />
 
+            {/* flex-1 + min-h-0 so the 100%-height line fills only what the
+                avatar leaves; otherwise the column overflows and the card
+                body's overflow:hidden clips the avatar. */}
             <Divider
-              className="divider tw:bg-transparent"
+              className="divider tw:min-h-0 tw:flex-1 tw:bg-transparent"
               orientation="vertical"
             />
           </Box>
