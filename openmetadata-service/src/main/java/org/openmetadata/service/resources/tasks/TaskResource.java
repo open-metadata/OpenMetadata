@@ -1588,6 +1588,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     Task task = repository.get(uriInfo, id, getFields(FIELDS), Include.ALL, false);
     OperationContext operationContext = new OperationContext(Entity.TASK, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, new TaskResourceContext(task));
+    requireClosable(task);
     RestUtil.DeleteResponse<Task> response =
         repository.delete(securityContext.getUserPrincipal().getName(), id, false, hardDelete);
     if (hardDelete) {

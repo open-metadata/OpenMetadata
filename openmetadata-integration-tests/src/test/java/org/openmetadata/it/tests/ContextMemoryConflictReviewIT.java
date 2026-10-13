@@ -36,13 +36,16 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.context.CreateContextMemory;
 import org.openmetadata.schema.api.tasks.CreateTask;
+import org.openmetadata.schema.api.tasks.Payload;
 import org.openmetadata.schema.api.tasks.ResolveTask;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.tasks.Task;
+import org.openmetadata.schema.type.ComparedMemory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.MemoryConflictReviewResolution;
 import org.openmetadata.schema.type.TaskAvailableTransition;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityStatus;
@@ -186,6 +189,13 @@ public class ContextMemoryConflictReviewIT {
                     task.getId().toString(),
                     new ResolveTask().withResolutionType(TaskResolutionType.Cancelled)));
 
+    for (Map<String, String> delete :
+        List.of(Map.<String, String>of(), Map.of("hardDelete", "true"))) {
+      assertThrows(
+          InvalidRequestException.class,
+          () -> SdkClients.adminClient().tasks().delete(task.getId().toString(), delete));
+    }
+
     assertTrue(edited.getMessage().contains("opened and kept by the server"));
     assertTrue(dismissed.getMessage().contains("Approve or reject this memory conflict review"));
     assertEquals(task.getId(), openTask(conflict.reviewed()).getId());
@@ -270,6 +280,78 @@ public class ContextMemoryConflictReviewIT {
     admin().restore(idOf(conflict.reviewed()));
 
     assertNotEquals(task.getId(), openTask(conflict.reviewed()).getId(), "a fresh review");
+  }
+
+  /**
+   * The disputed memory's owner may approve, but cannot read the Private memory in review, so
+   * linking the superseded memory to it fails after the approval was written. The decision's writes
+   * commit together, so both memories stay as they were and the review stays open.
+   */
+  @Test
+  void aDecisionThatFailsPartWayLeavesBothMemoriesAsTheyWere(TestNamespace ns) {
+    ContextMemory disputed = admin().create(memory(ns, "partial-five", shared().USER3_REF));
+    ContextMemory privateDraft =
+        admin()
+            .create(
+                memory(ns, "partial-three", shared().USER2_REF)
+                    .withEntityStatus(ContextMemoryStatus.UNPROCESSED)
+                    .withShareConfig(
+                        new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE)));
+    ContextMemory reviewed =
+        admin()
+            .patch(
+                idOf(privateDraft),
+                JsonUtils.readTree(HOLD_FOR_REVIEW.formatted(disputed.getId(), THRESHOLD_REASON)));
+    Task task = openTask(reviewed);
+
+    assertThrows(
+        OpenMetadataException.class,
+        () -> resolve(SdkClients.user3Client(), task, "approve", TaskResolutionType.Approved));
+
+    ContextMemory stillInReview = admin().get(idOf(reviewed));
+    assertEquals(ContextMemoryStatus.DRAFT, stillInReview.getEntityStatus());
+    assertEquals(1, listOrEmpty(stillInReview.getDisputes()).size());
+    assertEquals(ContextMemoryStatus.APPROVED, admin().get(idOf(disputed)).getEntityStatus());
+    assertEquals(task.getId(), openTask(reviewed).getId(), "the review stays open");
+
+    Task approved = resolve(SdkClients.adminClient(), task, "approve", TaskResolutionType.Approved);
+
+    assertEquals(TaskEntityStatus.Approved, approved.getStatus());
+    assertEquals(ContextMemoryStatus.SUPERSEDED, admin().get(idOf(disputed)).getEntityStatus());
+  }
+
+  /** The reviewer compared the memories, then the one in review changed before they decided. */
+  @Test
+  void aDecisionMadeAgainstAnOutdatedComparisonWritesNothing(TestNamespace ns) {
+    Conflict conflict = conflict(ns, "outdated");
+    Task task = openTask(conflict.reviewed());
+    ContextMemory comparedReviewed = admin().get(idOf(conflict.reviewed()));
+    ContextMemory comparedDisputed = admin().get(idOf(conflict.disputed()));
+
+    admin()
+        .patch(
+            idOf(conflict.reviewed()),
+            JsonUtils.readTree(
+                """
+                [{"op":"replace","path":"/answer","value":"Customers need at least two orders."}]"""));
+
+    OpenMetadataException refused =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> approveComparing(task, comparedReviewed, comparedDisputed));
+
+    assertEquals(412, refused.getStatusCode());
+    assertEquals(
+        ContextMemoryStatus.DRAFT, admin().get(idOf(conflict.reviewed())).getEntityStatus());
+    assertEquals(
+        ContextMemoryStatus.APPROVED, admin().get(idOf(conflict.disputed())).getEntityStatus());
+    assertEquals(task.getId(), openTask(conflict.reviewed()).getId(), "the review stays open");
+
+    Task approved =
+        approveComparing(
+            task, admin().get(idOf(conflict.reviewed())), admin().get(idOf(conflict.disputed())));
+
+    assertEquals(TaskEntityStatus.Approved, approved.getStatus());
   }
 
   @Test
@@ -431,6 +513,31 @@ public class ContextMemoryConflictReviewIT {
         .resolve(
             task.getId().toString(),
             new ResolveTask().withTransitionId(transitionId).withResolutionType(resolution));
+  }
+
+  /** Approves as the compare dialog does, naming the claims the reviewer read. */
+  private static Task approveComparing(Task task, ContextMemory... compared) {
+    MemoryConflictReviewResolution comparison =
+        new MemoryConflictReviewResolution()
+            .withCompared(
+                List.of(compared).stream()
+                    .map(
+                        memory ->
+                            new ComparedMemory()
+                                .withId(memory.getId())
+                                .withContentUpdatedAt(
+                                    memory.getLastContentUpdatedAt() == null
+                                        ? memory.getUpdatedAt()
+                                        : memory.getLastContentUpdatedAt()))
+                    .toList());
+    return SdkClients.adminClient()
+        .tasks()
+        .resolve(
+            task.getId().toString(),
+            new ResolveTask()
+                .withTransitionId("approve")
+                .withResolutionType(TaskResolutionType.Approved)
+                .withPayload(JsonUtils.convertValue(comparison, Payload.class)));
   }
 
   private static Task openTask(ContextMemory memory) {

@@ -17,13 +17,18 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryDispute;
+import org.openmetadata.schema.type.ComparedMemory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.MemoryConflictReviewResolution;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.PreconditionFailedException;
@@ -40,6 +45,8 @@ final class MemoryConflictDecision {
       "Memory '%s' is no longer in review, so this conflict review cannot decide it";
   static final String CHANGED_AFTER_DETECTION =
       "Memory '%s' changed after the conflict was detected; requeue '%s' to reassess the conflict";
+  static final String STALE_COMPARISON =
+      "These memories changed after they were compared; compare them again before deciding";
   static final String REJECTED_IN_REVIEW = "Rejected in conflict review";
   static final String SUPERSEDED_IN_REVIEW = "Superseded in conflict review by '%s'";
 
@@ -62,6 +69,43 @@ final class MemoryConflictDecision {
     }
     changes.addAll(supersessions);
     return List.copyOf(changes);
+  }
+
+  /**
+   * A reviewer decides on what they compared: the memories they compared must still be the reviewed
+   * memory and every memory it disputes, and each claim they read must not have changed since. A
+   * memory they could not read carries no time to check. A caller that sends no comparison, such as
+   * a bulk decision, decides on the memories as they are.
+   */
+  static void requireComparedAsIs(
+      MemoryConflictReviewResolution comparison,
+      ContextMemory reviewed,
+      List<MemoryDispute> disputes,
+      Map<UUID, ContextMemory> disputedById) {
+    if (comparison != null && !isComparedAsIs(comparison, reviewed, disputes, disputedById)) {
+      throw new PreconditionFailedException(STALE_COMPARISON);
+    }
+  }
+
+  private static boolean isComparedAsIs(
+      MemoryConflictReviewResolution comparison,
+      ContextMemory reviewed,
+      List<MemoryDispute> disputes,
+      Map<UUID, ContextMemory> disputedById) {
+    Map<UUID, ContextMemory> current = new HashMap<>(disputedById);
+    current.put(reviewed.getId(), reviewed);
+    Set<UUID> inReview = new HashSet<>(Set.of(reviewed.getId()));
+    listOrEmpty(disputes).forEach(dispute -> inReview.add(dispute.getMemory().getId()));
+    List<ComparedMemory> compared = listOrEmpty(comparison.getCompared());
+    Set<UUID> comparedIds = new HashSet<>();
+    compared.forEach(memory -> comparedIds.add(memory.getId()));
+    return inReview.equals(comparedIds)
+        && compared.stream().allMatch(memory -> isReadAsIs(memory, current.get(memory.getId())));
+  }
+
+  private static boolean isReadAsIs(ComparedMemory compared, ContextMemory memory) {
+    Long readAt = compared.getContentUpdatedAt();
+    return readAt == null || (memory != null && contentTime(memory) == readAt);
   }
 
   /** A memory that is already Rejected had its rejection written before the task could resolve. */

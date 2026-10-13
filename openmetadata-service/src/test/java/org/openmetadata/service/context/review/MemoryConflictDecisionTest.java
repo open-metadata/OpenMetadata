@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,7 +29,9 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryDispute;
+import org.openmetadata.schema.type.ComparedMemory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.MemoryConflictReviewResolution;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.PreconditionFailedException;
 
@@ -201,6 +204,75 @@ class MemoryConflictDecisionTest {
 
     assertEquals(1, changes.size());
     assertNull(changes.getFirst().after().getSupersededBy());
+  }
+
+  @Test
+  void aDecisionWithoutAComparisonActsOnTheMemoriesAsTheyAre() {
+    ContextMemory approved = memory("five-orders", ContextMemoryStatus.APPROVED, 100L);
+    ContextMemory reviewed = reviewed("three-orders", approved);
+
+    requireComparedAsIs(null, reviewed, approved);
+  }
+
+  @Test
+  void aComparisonOfTheClaimsAsTheyStandAllowsTheDecision() {
+    ContextMemory approved = memory("five-orders", ContextMemoryStatus.APPROVED, 100L);
+    ContextMemory reviewed = reviewed("three-orders", approved);
+
+    requireComparedAsIs(comparing(reviewed, 150L, approved, 100L), reviewed, approved);
+  }
+
+  /** The reviewer read the claims before one of them changed: the decision is not theirs. */
+  @Test
+  void aClaimChangedSinceItWasComparedRefusesTheDecision() {
+    ContextMemory approved = memory("five-orders", ContextMemoryStatus.APPROVED, 100L);
+    ContextMemory reviewed = reviewed("three-orders", approved);
+
+    PreconditionFailedException refused =
+        assertThrows(
+            PreconditionFailedException.class,
+            () ->
+                requireComparedAsIs(comparing(reviewed, 140L, approved, 100L), reviewed, approved));
+
+    assertEquals(MemoryConflictDecision.STALE_COMPARISON, refused.getMessage());
+  }
+
+  @Test
+  void aDisputeTheReviewerDidNotCompareRefusesTheDecision() {
+    ContextMemory approved = memory("five-orders", ContextMemoryStatus.APPROVED, 100L);
+    ContextMemory reviewed = reviewed("three-orders", approved);
+
+    assertThrows(
+        PreconditionFailedException.class,
+        () -> requireComparedAsIs(comparing(reviewed, 150L), reviewed, approved));
+  }
+
+  @Test
+  void aMemoryTheReviewerCouldNotReadHasNoClaimToCheck() {
+    ContextMemory approved = memory("five-orders", ContextMemoryStatus.APPROVED, 100L);
+    ContextMemory reviewed = reviewed("three-orders", approved);
+
+    requireComparedAsIs(comparing(reviewed, 150L, approved, null), reviewed, approved);
+  }
+
+  private static void requireComparedAsIs(
+      MemoryConflictReviewResolution comparison,
+      ContextMemory reviewed,
+      ContextMemory... disputed) {
+    MemoryConflictDecision.requireComparedAsIs(
+        comparison, reviewed, reviewed.getDisputes(), byId(disputed));
+  }
+
+  /** Pairs of a memory and the claim time the reviewer read for it. */
+  private static MemoryConflictReviewResolution comparing(Object... memoryAndTime) {
+    List<ComparedMemory> compared = new ArrayList<>();
+    for (int index = 0; index < memoryAndTime.length; index += 2) {
+      compared.add(
+          new ComparedMemory()
+              .withId(((ContextMemory) memoryAndTime[index]).getId())
+              .withContentUpdatedAt((Long) memoryAndTime[index + 1]));
+    }
+    return new MemoryConflictReviewResolution().withCompared(compared);
   }
 
   private static List<MemoryChange> approve(ContextMemory reviewed, ContextMemory... disputed) {

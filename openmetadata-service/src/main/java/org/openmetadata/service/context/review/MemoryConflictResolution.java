@@ -36,6 +36,7 @@ import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MemoryConflictReviewPayload;
+import org.openmetadata.schema.type.MemoryConflictReviewResolution;
 import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -67,6 +68,7 @@ public final class MemoryConflictResolution {
   static final String DECIDE_TO_END_REVIEW =
       "Approve or reject this memory conflict review: it closes by itself once its memory leaves"
           + " review";
+  static final String INVALID_COMPARISON = "Invalid memory conflict review resolution: %s";
   static final String CHANGED_WHILE_DECIDING =
       "A memory in this review changed while it was being decided; reload it and decide again";
   static final String MAY_NOT_READ_DISPUTED =
@@ -117,12 +119,35 @@ public final class MemoryConflictResolution {
     return Optional.ofNullable(resolution).map(VERDICTS::get);
   }
 
-  public static void decide(Task task, TaskResolutionType resolution, String comment, String user) {
+  /**
+   * Decides the review. {@code resolvedPayload}, when sent, is the {@link
+   * MemoryConflictReviewResolution} naming what the reviewer compared.
+   */
+  public static void decide(
+      Task task,
+      TaskResolutionType resolution,
+      String comment,
+      String user,
+      Object resolvedPayload) {
     Optional<Verdict> verdict = verdictOf(resolution);
     if (verdict.isEmpty()) {
       requireReviewEnded(task);
     }
-    verdict.ifPresent(decided -> apply(decided, task, comment, user));
+    MemoryConflictReviewResolution comparison = comparisonOf(resolvedPayload);
+    verdict.ifPresent(decided -> apply(decided, task, new Decision(comment, user, comparison)));
+  }
+
+  /** Who decided, why, and what they compared before deciding. */
+  private record Decision(String comment, String user, MemoryConflictReviewResolution comparison) {}
+
+  private static MemoryConflictReviewResolution comparisonOf(Object resolvedPayload) {
+    try {
+      return resolvedPayload == null
+          ? null
+          : JsonUtils.convertValue(resolvedPayload, MemoryConflictReviewResolution.class);
+    } catch (IllegalArgumentException invalid) {
+      throw new BadRequestException(String.format(INVALID_COMPARISON, invalid.getMessage()));
+    }
   }
 
   /**
@@ -141,31 +166,47 @@ public final class MemoryConflictResolution {
     }
   }
 
-  private static void apply(Verdict verdict, Task task, String comment, String user) {
+  private static void apply(Verdict verdict, Task task, Decision decision) {
     ContextMemory reviewed = reviewedMemory(task);
-    List<MemoryChange> changes = changesFor(verdict, task, reviewed, comment, user);
+    List<MemoryDispute> disputes = disputesOf(task, reviewed);
+    Map<UUID, ContextMemory> disputed = disputedMemories(disputes);
+    MemoryConflictDecision.requireComparedAsIs(decision.comparison(), reviewed, disputes, disputed);
+    List<MemoryChange> changes =
+        verdict == Verdict.APPROVE
+            ? MemoryConflictDecision.approve(
+                reviewed, disputes, readable(disputed, decision.user()))
+            : MemoryConflictDecision.reject(reviewed, decision.comment());
     changes.stream()
         .filter(change -> !change.before().getId().equals(reviewed.getId()))
-        .forEach(change -> requireMaySupersede(change, user));
-    whileDeciding(reviewed.getId(), () -> changes.forEach(change -> write(change, user)));
-    LOG.info("[MemoryConflictReview] {} decided {} for memory {}", user, verdict, reviewed.getId());
+        .forEach(change -> requireMaySupersede(change, decision.user()));
+    writeTogether(reviewed, changes, decision.user());
+    LOG.info(
+        "[MemoryConflictReview] {} decided {} for memory {}",
+        decision.user(),
+        verdict,
+        reviewed.getId());
   }
 
-  private static List<MemoryChange> changesFor(
-      Verdict verdict, Task task, ContextMemory reviewed, String comment, String user) {
-    List<MemoryDispute> disputes = disputesOf(task, reviewed);
-    return verdict == Verdict.APPROVE
-        ? MemoryConflictDecision.approve(reviewed, disputes, readableDisputed(disputes, user))
-        : MemoryConflictDecision.reject(reviewed, comment);
+  /**
+   * A decision writes two memories or more, and a later write can still be refused, by a
+   * concurrent edit or a check only the write path makes; the writes commit together or not at
+   * all, so a refusal leaves both memories as they were and the review open.
+   */
+  private static void writeTogether(
+      ContextMemory reviewed, List<MemoryChange> changes, String user) {
+    memoryRepository()
+        .executeInTransaction(
+            () -> {
+              whileDeciding(reviewed.getId(), () -> changes.forEach(change -> write(change, user)));
+              return changes.size();
+            });
   }
 
   /**
    * A direct PATCH checks a memory's visibility before its policy, and a refusal names the memory
    * it refuses, so an approval reads only Approved disputed memories the resolver can read.
    */
-  private static Map<UUID, ContextMemory> readableDisputed(
-      List<MemoryDispute> disputes, String user) {
-    Map<UUID, ContextMemory> disputed = disputedMemories(disputes);
+  private static Map<UUID, ContextMemory> readable(Map<UUID, ContextMemory> disputed, String user) {
     boolean isAdmin = SubjectContext.getSubjectContext(user).isAdmin();
     if (hidesOneToSupersede(
         disputed.values(),

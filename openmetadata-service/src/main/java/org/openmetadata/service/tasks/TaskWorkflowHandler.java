@@ -413,7 +413,7 @@ public class TaskWorkflowHandler {
     // A memory conflict review decides on rejection too, and a refused decision must fail the
     // resolution. Other types mutate the target entity only on positive resolutions.
     if (MemoryConflictResolution.decides(task)) {
-      MemoryConflictResolution.decide(task, resolutionType, comment, user);
+      MemoryConflictResolution.decide(task, resolutionType, comment, user, resolvedPayload);
     } else if (approved && task.getAbout() != null) {
       applyEntityChanges(task, approved, newValue, resolvedPayload, user);
     } else {

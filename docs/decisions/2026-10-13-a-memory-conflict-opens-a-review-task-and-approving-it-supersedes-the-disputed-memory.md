@@ -33,8 +33,8 @@ Approved — and nothing wrote it.
    Review category, opened by `governance-bot` and assigned to the owners of the memory and of every
    disputed memory, who are notified. Only the server opens, edits and closes one: a client raises a
    conflict by recording `disputes` on the memory, and the task API refuses to create the type, to
-   patch or bulk-edit such a task, to turn another task into one, and to close one without a
-   decision while its memory is in review — resolving the task is the authorization to decide the
+   patch or bulk-edit such a task, to turn another task into one, and to close, cancel or delete one
+   without a decision while its memory is in review — resolving the task is the authorization to decide the
    memory. The task opens after the write that records the dispute commits; a failure to open it is
    logged, and the next write to the memory tries again. No workflow drives it: its Approve and
    Reject transitions are fixed when it opens, and its decision applies synchronously when it is
@@ -46,7 +46,9 @@ Approved — and nothing wrote it.
    in Context Center, which reads each through the memory API and so through its visibility rules. A
    write that changes the memory's disputes or owners rewrites the open task's assignees and payload.
 4. Resolving the task decides the conflict, writing as the resolver, impersonated by
-   `governance-bot`, and recording a change event for every memory it writes:
+   `governance-bot`, and recording a change event for every memory it writes. The writes commit in
+   one transaction, so a write refused part-way — by a concurrent edit or a check only the write
+   path makes — leaves every memory as it was and the review open:
    - **Approve:** the reviewed memory becomes Approved, and then every disputed memory that is still
      Approved becomes Superseded by it. Approving first means an approval interrupted before it
      supersedes leaves both claims Approved, as before the review, never a retired claim with
@@ -61,10 +63,15 @@ Approved — and nothing wrote it.
 5. A resolution is refused, leaving the task open and every memory unchanged, when the reviewed
    memory left Draft for any outcome other than the one being decided, when a disputed memory's
    content changed after its dispute was detected, when the resolver may not read or supersede a
-   disputed memory, or when a memory changed while the decision was being made. A reviewed memory
-   that already holds the decided outcome is a retry of that decision, not a change of mind: it is
-   not refused. A resolution that is neither approval nor rejection is refused while the memory is in
-   review.
+   disputed memory, or when a memory changed while the decision was being made. A client that shows
+   the comparison sends what the reviewer compared as the resolution payload
+   (`type/memoryConflictReviewResolution.json`): the reviewed memory and every disputed memory, each
+   with when its claim last changed as the reviewer read it. The decision is refused when the
+   disputes or any of those claims changed since, so it never acts on content the reviewer did not
+   see; a caller that sends no comparison, such as a bulk decision, decides on the memories as they
+   are. A reviewed memory that already holds the decided outcome is a retry of that decision, not
+   a change of mind: it is not refused. A resolution that is neither approval nor rejection is
+   refused while the memory is in review.
 6. A change that takes the memory out of review outside the task — an approval or rejection in
    Context Center, a governance workflow's transition (written as `governance-bot`), an explicit
    requeue to Unprocessed, a soft delete — closes every open review of it. Only the task's own
@@ -82,8 +89,8 @@ Approved — and nothing wrote it.
 - A memory still stores its dispute and successor references with the other memory's title, which
   its own readers see. Writers link only memories the same audience may read; Collate links
   same-audience pairs only.
-- The writes of a decision are not one transaction, and the task resolves only after they land.
-  A retried resolution converges: an already superseded memory is skipped, an already Approved or
+- The memory writes of a decision commit together, and the task resolves only after they do. A
+  resolution retried after its writes committed but its task did not resolve converges: an already superseded memory is skipped, an already Approved or
   Rejected reviewed memory is not written again, and the disputes, released when the memory left
   Draft, are read from the task's payload, which only the server writes.
 - On one server, opening a review is serialized per memory; across servers two writes landing
