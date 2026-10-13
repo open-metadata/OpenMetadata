@@ -53,9 +53,14 @@ def test_python_literals_on_a_boolean_column_are_kept(column_type):
     assert utils.parse_set_values(raw="[True, False]", column_type=column_type) == [True, False]
 
 
-@pytest.mark.parametrize("column_type", [sqa.String(), DataType.VARCHAR])
-def test_strings_on_a_string_column_stay_strings(column_type):
+@pytest.mark.parametrize("column_type", [sqa.String(), DataType.VARCHAR, None])
+def test_strings_on_a_string_or_unknown_column_stay_strings(column_type):
     assert utils.parse_set_values(raw='["true", "false"]', column_type=column_type) == ["true", "false"]
+
+
+def test_a_set_that_is_not_a_collection_is_rejected():
+    with pytest.raises(ValueError, match="must be a list"):
+        utils.parse_set_values(raw='"true"', column_type=sqa.Boolean())
 
 
 def test_is_boolean_reads_both_type_systems():

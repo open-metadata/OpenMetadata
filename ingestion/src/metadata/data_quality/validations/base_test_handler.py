@@ -711,8 +711,15 @@ class BaseTestValidator(ABC):
         return self.get_test_case_param_value(
             self.test_case.parameterValues,  # type: ignore
             param_name,
-            partial(utils.parse_set_values, column_type=self.get_column().type),
+            partial(utils.parse_set_values, column_type=self.get_set_values_type()),
         )
+
+    def get_set_values_type(self):
+        """The column type a set is parsed against, or None to keep its values as written.
+
+        Implementation provided by SQAValidatorMixin or PandasValidatorMixin via MRO chain.
+        """
+        return super().get_set_values_type()  # type: ignore
 
     def get_predicted_value(self) -> Optional[str]:  # noqa: UP045
         """Get predicted value"""

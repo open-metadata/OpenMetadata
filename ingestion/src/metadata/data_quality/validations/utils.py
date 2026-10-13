@@ -36,9 +36,14 @@ def is_unbounded(bound: Any) -> bool:
 
 
 def parse_set_values(raw: str, column_type) -> list:
-    """Parse an allowed or forbidden set; on a boolean column "true"/"false" strings become booleans"""
+    """Parse an allowed or forbidden set; on a boolean column "true"/"false" strings become booleans
+
+    Only "true"/"false" (any case) are mapped: "1"/"0", "t"/"f" and "yes"/"no" stay as written.
+    """
     values = literal_eval(raw)
-    return [_as_boolean(value) for value in values] if is_boolean(column_type) else values
+    if not isinstance(values, (list, tuple, set)):
+        raise ValueError(f"A set of values must be a list, got {raw}")  # noqa: TRY004 the set validators abort on ValueError
+    return [_as_boolean(value) for value in values] if is_boolean(column_type) else list(values)
 
 
 def _as_boolean(value):

@@ -42,6 +42,11 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
     "tableCustomSQLQuery",
 }
 
+ABORTED_BEFORE_ROW_COUNT = {
+    "test_case_table_custom_sql_unsafe_query_aborted",
+    "test_case_column_value_in_set_missing_column",
+}
+
 
 # pylint: disable=line-too-long
 @pytest.mark.parametrize(
@@ -294,6 +299,29 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
                 20.0,
                 75.0,
                 25.0,
+            ),
+            None,
+        ),
+        (
+            "test_case_column_value_in_set_missing_column",
+            "columnValuesToBeInSet",
+            "COLUMN",
+            (TestCaseResult, None, None, TestCaseStatus.Aborted, None, None, None, None),
+            None,
+        ),
+        (
+            "test_case_column_values_not_in_set_boolean_strings",
+            "columnValuesToBeNotInSet",
+            "COLUMN",
+            (
+                TestCaseResult,
+                "40",
+                None,
+                TestCaseStatus.Failed,
+                40.0,
+                40.0,
+                50.0,
+                50.0,
             ),
             None,
         ),
@@ -1144,10 +1172,7 @@ def test_suite_validation_database(  # noqa: C901
     if failed_percentage:
         assert round(res.failedRowsPercentage, 2) == failed_percentage
     assert res.testCaseStatus == status
-    if (
-        test_case_type in TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED
-        and test_case_name != "test_case_table_custom_sql_unsafe_query_aborted"
-    ):
+    if test_case_type in TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED and test_case_name not in ABORTED_BEFORE_ROW_COUNT:
         assert res.failedRows is not None
         assert res.failedRowsPercentage is not None
         assert res.passedRows is not None

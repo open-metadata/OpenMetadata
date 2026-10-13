@@ -195,9 +195,7 @@ def is_boolean(_type) -> bool:
     """
     Check if _type is a boolean, as a sqlalchemy type or an OpenMetadata DataType
     """
-    return (
-        _type.value == DataType.BOOLEAN.value if isinstance(_type, DataType) else issubclass(_type.__class__, Boolean)
-    )
+    return _type == DataType.BOOLEAN if isinstance(_type, DataType) else isinstance(_type, Boolean)
 
 
 def is_quantifiable(_type) -> bool:

@@ -76,6 +76,10 @@ class DataQualityQueryType(Enum):
 class SQAValidatorMixin:
     """Validator mixin for SQA test cases"""
 
+    def get_set_values_type(self):
+        """The column type the engine declares, so a set compares in that type"""
+        return self.get_column().type  # type: ignore
+
     def get_column(self: HasValidatorContext, column_name: Optional[str] = None) -> Column:  # noqa: UP045
         """Get column object for the given column name
 
@@ -185,7 +189,7 @@ class SQAValidatorMixin:
 
         return res
 
-    def _count_rows_outside(self, runner, column, expression, min_bound, max_bound) -> int:
+    def _count_rows_outside(self, runner, column, expression, min_bound, max_bound) -> Optional[int]:  # noqa: UP045
         """Rows whose `expression` falls outside [min_bound, max_bound]
 
         An unbounded side excludes nothing. With both sides unbounded no row is outside, and a

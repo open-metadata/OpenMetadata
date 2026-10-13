@@ -53,9 +53,8 @@ class BaseColumnValuesToBeNotInSetValidator(BaseTestValidator):
         Returns:
             TestCaseResult: The test case result for the overall validation
         """
-        test_params = self._get_test_parameters()
-
         try:
+            test_params = self._get_test_parameters()
             column: Union[SQALikeColumn, Column] = self.get_column()  # noqa: UP007
             res = self._run_results(Metrics.countInSet, column, values=test_params[self.FORBIDDEN_VALUES])
 

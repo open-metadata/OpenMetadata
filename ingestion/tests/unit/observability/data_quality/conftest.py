@@ -893,6 +893,35 @@ def test_case_column_value_in_set_boolean():
 
 
 @pytest.fixture
+def test_case_column_values_not_in_set_boolean_strings():
+    """The forbidden set as the UI and generated tests write it: strings"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_IS_ACTIVE,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="forbiddenValues", value='["true"]'),
+        ],
+        computePassedFailedRowCount=True,
+    )
+
+
+@pytest.fixture
+def test_case_column_value_in_set_missing_column():
+    """A set test on a column the table no longer has"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink="<#E::table::service.db.users::columns::dropped_column>",
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="allowedValues", value='["John"]'),
+        ],
+    )
+
+
+@pytest.fixture
 def test_case_column_value_in_set_boolean_strings():
     """The allowed set as the UI and generated tests write it: strings"""
     return TestCase(
