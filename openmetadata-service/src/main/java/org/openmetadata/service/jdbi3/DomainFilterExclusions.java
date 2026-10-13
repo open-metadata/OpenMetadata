@@ -41,11 +41,12 @@ public final class DomainFilterExclusions {
           Entity.TEAM,
           Entity.TAG,
           Entity.CLASSIFICATION,
-          // Test cases and basic test suites inherit their domain from the linked table and never
-          // materialize a domain relationship of their own, so the strict membership condition
-          // would always empty a data-quality list rather than narrow it.
+          // Test cases, basic test suites and queries inherit their domain from the linked table
+          // and never materialize a domain relationship of their own, so the strict membership
+          // condition would always empty those lists rather than narrow them.
           Entity.TEST_CASE,
-          Entity.TEST_SUITE);
+          Entity.TEST_SUITE,
+          Entity.QUERY);
 
   /** True when the global domain filter must never narrow lists of the given entity type. */
   public static boolean isExcluded(String entityType) {
