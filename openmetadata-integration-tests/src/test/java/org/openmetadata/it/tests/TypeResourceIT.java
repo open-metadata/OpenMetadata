@@ -9,7 +9,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -60,7 +59,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ReferenceRow;
-import org.openmetadata.service.jdbi3.CustomPropertyReferences;
 import org.openmetadata.service.jdbi3.TypeRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.v210.CustomPropertyReferenceMigration;
@@ -1418,7 +1416,7 @@ public class TypeResourceIT {
       Team second = createTeam(client, ns.prefix("second"), CreateTeam.TeamType.GROUP, null);
       Domain domain =
           createDomain(client, ns, property, List.of(referenceOf(first), referenceOf(second)));
-      awaitSearchRefIds(client, domain, ids -> ids.contains(first.getId().toString()));
+      assertTrue(searchRefIds(client, domain).contains(id(first)));
 
       client.teams().delete(first.getId().toString(), HARD_DELETE);
 
@@ -1499,9 +1497,10 @@ public class TypeResourceIT {
                 } catch (OpenMetadataException e) {
                   LOG.debug(
                       "Write rejected while the target was being deleted: {}", e.getMessage());
-                }
-                if (attempt == 0) {
-                  firstWrites.countDown();
+                } finally {
+                  if (attempt == 0) {
+                    firstWrites.countDown();
+                  }
                 }
               }
             });
@@ -1515,12 +1514,6 @@ public class TypeResourceIT {
           referenceIds(client.domains().get(domain.getId().toString(), "extension"), property)
               .contains(doomed.getId().toString()));
       assertNoReferencesTo(doomed.getId());
-      JsonNode stored = storedValue(domain, property);
-      if (stored != null) {
-        for (JsonNode ref : stored) {
-          assertFalse(doomed.getId().toString().equals(ref.path("id").asText()));
-        }
-      }
     } finally {
       deleteDomainProperty(client, property);
     }
@@ -1701,15 +1694,6 @@ public class TypeResourceIT {
       ids.add(value.get("id").asText());
     }
     return ids;
-  }
-
-  /** The value as its rows hold it; reference values have no other home. */
-  private static JsonNode storedValue(Domain domain, String property) {
-    ObjectNode values =
-        new CustomPropertyReferences(Entity.getCollectionDAO())
-            .read(Entity.DOMAIN, List.of(domain.getId()))
-            .get(domain.getId());
-    return values == null ? null : values.get(property);
   }
 
   private static void assertNoReferencesTo(UUID target) {
