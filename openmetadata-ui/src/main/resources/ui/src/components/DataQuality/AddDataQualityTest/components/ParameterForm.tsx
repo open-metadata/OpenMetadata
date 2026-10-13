@@ -13,8 +13,13 @@
 
 import { PlusOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Toggle, Tooltip, Typography } from '@openmetadata/ui-core-components';
-import { Button, Form, FormItemProps, Input, InputNumber, Select } from 'antd';
+import {
+  Button,
+  Toggle,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Form, FormItemProps, Input, InputNumber, Select } from 'antd';
 import { FormListProps, RuleRender } from 'antd/lib/form';
 import { debounce, isUndefined } from 'lodash';
 import {
@@ -369,12 +374,13 @@ const buildArraySetField = ({
         key={data.name}
         label={
           <>
-            <span>{data.displayName}</span>
+            <Typography>{data.displayName}</Typography>
             <Button
-              className="m-x-sm list-add-btn"
-              icon={<PlusOutlined />}
-              size="small"
-              type="primary"
+              aria-label={t('label.add')}
+              className="tw:mx-3"
+              color="primary"
+              iconLeading={<PlusOutlined />}
+              size="xs"
               onClick={() => add()}
             />
           </>
@@ -404,14 +410,11 @@ const buildArraySetField = ({
               )}
             </Form.Item>
             <Button
-              icon={
-                <Icon
-                  className="align-middle"
-                  component={IconDelete}
-                  style={{ fontSize: '16px' }}
-                />
+              aria-label={t('label.remove')}
+              color="tertiary"
+              iconLeading={
+                <Icon component={IconDelete} style={{ fontSize: '16px' }} />
               }
-              type="text"
               onClick={() => remove(name)}
             />
           </div>

@@ -14,6 +14,7 @@
 import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import {
   Bell01,
+  GridView,
   Key01,
   PermissionDebugger as AccessControlIcon,
   Persona as PersonaIcon,
@@ -38,6 +39,7 @@ import AccessTokenPanel from './components/AccessTokenPanel';
 import CustomPropertiesPanel from './panels/CustomPropertiesPanel/CustomPropertiesPanel';
 import ProfileDetailsPanel from './ProfileDetailsPanel';
 import AccessControlPanel from './tabs/access-control/AccessControlPanel';
+import ApplicationsPanel from './tabs/applications/ApplicationsPanel';
 import BotsPanel from './tabs/bots/BotsPanel';
 import GovernancePanel from './tabs/governance/GovernancePanel';
 import MembersPanel from './tabs/members/MembersPanel';
@@ -97,6 +99,8 @@ export interface ProfileHeaderOverride {
   titleInput?: React.ReactNode;
   /** Node rendered inline right after the title text (e.g. a rename/edit icon button). */
   titleSuffix?: React.ReactNode;
+  /** Extra row rendered under the description (e.g. installed / developer details). */
+  meta?: React.ReactNode;
 }
 
 /**
@@ -285,6 +289,22 @@ export const FEATURES_NAV_ITEMS: ProfileNavItem[] = [
     selfContainedLayout: true,
     render: ({ onHeaderChange }) => (
       <GovernancePanel onHeaderChange={onHeaderChange} />
+    ),
+  },
+  {
+    id: 'applications',
+    group: 'features',
+    label: 'label.application-plural',
+    description: 'message.application-settings-description',
+    icon: GridView,
+    isVisible: (permissions) =>
+      userPermissions.hasViewPermissions(
+        ResourceEntity.APPLICATION,
+        permissions
+      ),
+    selfContainedLayout: true,
+    render: ({ onHeaderChange }) => (
+      <ApplicationsPanel onHeaderChange={onHeaderChange} />
     ),
   },
   {

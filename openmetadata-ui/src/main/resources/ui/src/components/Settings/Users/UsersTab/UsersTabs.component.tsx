@@ -10,8 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ButtonUtility, Tooltip } from '@openmetadata/ui-core-components';
-import { Modal } from 'antd';
+import {
+  ButtonUtility,
+  SimpleModal,
+  Tooltip,
+} from '@openmetadata/ui-core-components';
 import { isNil } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -148,11 +151,11 @@ export const UsersTab = ({ users, onRemoveUser }: UsersTabProps) => {
         size="small"
       />
       {Boolean(removeUserDetails?.state) && (
-        <Modal
+        <SimpleModal
           cancelText={t('label.cancel')}
           data-testid="remove-confirmation-modal"
+          isOpen={Boolean(removeUserDetails?.state)}
           okText={t('label.confirm')}
-          open={Boolean(removeUserDetails?.state)}
           title={t('label.removing-user')}
           onCancel={handleRemoveCancel}
           onOk={handleRemoveConfirm}>
@@ -161,7 +164,7 @@ export const UsersTab = ({ users, onRemoveUser }: UsersTabProps) => {
               entity: removeUserDetails?.user.name,
             }),
           })}
-        </Modal>
+        </SimpleModal>
       )}
     </>
   );
