@@ -63,6 +63,8 @@ import org.openmetadata.service.util.email.EmailUtil;
 
 class UserUtilTest {
 
+  private static final AuthorizerConfiguration NO_CONFIGURED_ADMINS = new AuthorizerConfiguration();
+
   @Test
   void updateUserWithHashedPwdStoresBCryptPassword() {
     User user = new User();
@@ -538,7 +540,8 @@ class UserUtilTest {
           .thenReturn(dataConsumerRole);
 
       boolean changed =
-          UserUtil.reSyncUserRolesFromToken(uriInfo, user, Set.of(ADMIN_ROLE, "DataConsumer"));
+          UserUtil.reSyncUserRolesFromToken(
+              uriInfo, user, Set.of(ADMIN_ROLE, "DataConsumer"), NO_CONFIGURED_ADMINS);
 
       assertTrue(changed);
       assertTrue(user.getIsAdmin());
@@ -562,7 +565,9 @@ class UserUtilTest {
     try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
       mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(userRepository);
 
-      boolean changed = UserUtil.reSyncUserRolesFromToken(null, user, Set.of("DataConsumer"));
+      boolean changed =
+          UserUtil.reSyncUserRolesFromToken(
+              null, user, Set.of("DataConsumer"), NO_CONFIGURED_ADMINS);
 
       assertFalse(changed);
       verifyNoInteractions(userRepository);
@@ -571,29 +576,31 @@ class UserUtilTest {
 
   @Test
   void getRolesFromAuthorizationTokenKeepsNullDistinctFromEmpty() {
-    // A token with no roles claim must stay null all the way to the sync, otherwise it is
-    // indistinguishable from a provider that revoked every role.
-    CatalogSecurityContext noRolesClaim =
+    // A context with nothing to sync from (the feature is off, or OpenMetadata minted the token)
+    // must stay null all the way to the sync, otherwise it is indistinguishable from a provider
+    // that revoked every role.
+    CatalogSecurityContext nothingToSyncFrom =
         new CatalogSecurityContext(
             () -> "alice", "https", CatalogSecurityContext.OPENID_AUTH, null);
-    CatalogSecurityContext emptyRolesClaim =
+    CatalogSecurityContext providerGrantsNoRoles =
         new CatalogSecurityContext(
             () -> "alice", "https", CatalogSecurityContext.OPENID_AUTH, Set.of());
 
-    assertNull(UserUtil.getRolesFromAuthorizationToken(noRolesClaim));
-    assertEquals(Set.of(), UserUtil.getRolesFromAuthorizationToken(emptyRolesClaim));
+    assertNull(UserUtil.getRolesFromAuthorizationToken(nothingToSyncFrom));
+    assertEquals(Set.of(), UserUtil.getRolesFromAuthorizationToken(providerGrantsNoRoles));
   }
 
   @Test
-  void reSyncUserRolesFromTokenLeavesRolesAloneWhenProviderSentNoRolesClaim() {
+  void reSyncUserRolesFromTokenLeavesTheUserAloneWhenThereIsNothingToSyncFrom() {
     UserRepository userRepository = mock(UserRepository.class);
-    User user = userWithRoles("alice", "DataSteward");
+    User user = userWithRoles("alice", "DataSteward").withIsAdmin(true);
 
     try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
       mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(userRepository);
 
-      assertFalse(UserUtil.reSyncUserRolesFromToken(null, user, null));
+      assertFalse(UserUtil.reSyncUserRolesFromToken(null, user, null, NO_CONFIGURED_ADMINS));
 
+      assertTrue(user.getIsAdmin());
       assertEquals(List.of("DataSteward"), roleNames(user));
       verifyNoInteractions(userRepository);
     }
@@ -608,7 +615,7 @@ class UserUtilTest {
     try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
       mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(userRepository);
 
-      assertTrue(UserUtil.reSyncUserRolesFromToken(null, user, Set.of()));
+      assertTrue(UserUtil.reSyncUserRolesFromToken(null, user, Set.of(), NO_CONFIGURED_ADMINS));
 
       assertEquals(List.of(), roleNames(user));
       verify(userRepository).patch(eq(null), eq(userId), eq("alice"), any());
@@ -623,7 +630,7 @@ class UserUtilTest {
     try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
       mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(userRepository);
 
-      assertFalse(UserUtil.reSyncUserRolesFromToken(null, user, Set.of()));
+      assertFalse(UserUtil.reSyncUserRolesFromToken(null, user, Set.of(), NO_CONFIGURED_ADMINS));
 
       verifyNoInteractions(userRepository);
     }
@@ -638,7 +645,8 @@ class UserUtilTest {
     try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
       mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(userRepository);
 
-      assertTrue(UserUtil.reSyncUserRolesFromToken(null, user, Set.of(ADMIN_ROLE)));
+      assertTrue(
+          UserUtil.reSyncUserRolesFromToken(null, user, Set.of(ADMIN_ROLE), NO_CONFIGURED_ADMINS));
 
       assertTrue(user.getIsAdmin());
       assertEquals(List.of(), roleNames(user));
@@ -647,29 +655,62 @@ class UserUtilTest {
   }
 
   @Test
-  void reSyncUserRolesFromTokenDoesNotDemoteAdminsWhenProviderOmitsTheAdminRole() {
-    // adminPrincipals grants admin outside the provider, so a missing admin role in the token is
-    // not enough to conclude the user should lose it.
+  void reSyncUserRolesFromTokenDemotesAnAdminTheProviderNoLongerGrantsAdmin() {
     UUID userId = UUID.randomUUID();
+    UserRepository userRepository = mock(UserRepository.class);
+    User user = userWithRoles("alice", "DataSteward").withId(userId).withIsAdmin(true);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(userRepository);
+
+      assertTrue(UserUtil.reSyncUserRolesFromToken(null, user, Set.of(), NO_CONFIGURED_ADMINS));
+
+      assertFalse(user.getIsAdmin());
+      assertEquals(List.of(), roleNames(user));
+      verify(userRepository).patch(eq(null), eq(userId), eq("alice"), any());
+    }
+  }
+
+  @Test
+  void reSyncUserRolesFromTokenKeepsAdminForAnAdminEmailTheProviderDoesNotGrantAdmin() {
+    AuthorizerConfiguration adminByEmail =
+        new AuthorizerConfiguration().withAdminEmails(Set.of("alice@om.test"));
+    User user = syncConfiguredAdmin(adminByEmail);
+
+    assertTrue(user.getIsAdmin());
+    assertEquals(List.of("DataConsumer"), roleNames(user));
+  }
+
+  @Test
+  void reSyncUserRolesFromTokenKeepsAdminForAnAdminPrincipalTheProviderDoesNotGrantAdmin() {
+    AuthorizerConfiguration adminByName =
+        new AuthorizerConfiguration().withAdminPrincipals(Set.of("alice"));
+    User user = syncConfiguredAdmin(adminByName);
+
+    assertTrue(user.getIsAdmin());
+    assertEquals(List.of("DataConsumer"), roleNames(user));
+  }
+
+  private static User syncConfiguredAdmin(AuthorizerConfiguration authorizerConfiguration) {
     Role dataConsumerRole =
         new Role()
             .withId(UUID.randomUUID())
             .withName("DataConsumer")
             .withFullyQualifiedName("DataConsumer");
-    UserRepository userRepository = mock(UserRepository.class);
-    User user = userWithRoles("alice").withId(userId).withIsAdmin(true);
+    User user = userWithRoles("alice").withEmail("alice@om.test").withIsAdmin(true);
 
     try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
-      mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(userRepository);
+      mockedEntity
+          .when(() -> Entity.getEntityRepository(Entity.USER))
+          .thenReturn(mock(UserRepository.class));
       mockedEntity
           .when(() -> Entity.getEntityByName(Entity.ROLE, "DataConsumer", "id", NON_DELETED, true))
           .thenReturn(dataConsumerRole);
 
-      assertTrue(UserUtil.reSyncUserRolesFromToken(null, user, Set.of("DataConsumer")));
-
-      assertTrue(user.getIsAdmin());
-      assertEquals(List.of("DataConsumer"), roleNames(user));
+      UserUtil.reSyncUserRolesFromToken(
+          null, user, Set.of("DataConsumer"), authorizerConfiguration);
     }
+    return user;
   }
 
   @Test
@@ -693,7 +734,8 @@ class UserUtilTest {
           .thenThrow(EntityNotFoundException.class);
 
       assertTrue(
-          UserUtil.reSyncUserRolesFromToken(null, user, Set.of("DataConsumer", "GhostRole")));
+          UserUtil.reSyncUserRolesFromToken(
+              null, user, Set.of("DataConsumer", "GhostRole"), NO_CONFIGURED_ADMINS));
 
       assertEquals(List.of("DataConsumer"), roleNames(user));
     }
