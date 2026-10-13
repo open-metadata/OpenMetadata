@@ -25,6 +25,7 @@ import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
@@ -158,6 +159,22 @@ public class EntityFieldUtils {
   }
 
   /**
+   * Reads a multi-value FQN field. FQNs may contain commas, so the UI writes a JSON array; a plain
+   * comma-separated string is still accepted for workflows saved before that.
+   */
+  static List<String> parseFqnList(String value) {
+    String trimmed = value.trim();
+    if (trimmed.startsWith("[")) {
+      try {
+        return JsonUtils.readObjects(trimmed, String.class);
+      } catch (JsonParsingException e) {
+        LOG.debug("Field value {} is not a JSON array, reading it as comma-separated", trimmed);
+      }
+    }
+    return Arrays.asList(trimmed.split(","));
+  }
+
+  /**
    * Appends tags to the entity by fetching actual Tag entities.
    * If new tags are mutually exclusive with existing tags, replaces the conflicting tags.
    */
@@ -168,10 +185,8 @@ public class EntityFieldUtils {
 
     List<TagLabel> existingTags = entity.getTags() != null ? entity.getTags() : new ArrayList<>();
     List<TagLabel> newTagsToAdd = new ArrayList<>();
-    String[] fqns = tagFQNs.contains(",") ? tagFQNs.split(",") : new String[] {tagFQNs};
-
     // First, collect all new tags to add
-    for (String fqn : fqns) {
+    for (String fqn : parseFqnList(tagFQNs)) {
       String trimmedFQN = fqn.trim();
       if (!trimmedFQN.isEmpty()) {
         // Check if tag already exists
@@ -258,10 +273,8 @@ public class EntityFieldUtils {
     }
     List<TagLabel> existingTags = entity.getTags() != null ? entity.getTags() : new ArrayList<>();
     List<TagLabel> newTermsToAdd = new ArrayList<>();
-    String[] fqns = termFQNs.contains(",") ? termFQNs.split(",") : new String[] {termFQNs};
-
     // First, collect all new glossary terms to add
-    for (String fqn : fqns) {
+    for (String fqn : parseFqnList(termFQNs)) {
       String trimmedFQN = fqn.trim();
       if (!trimmedFQN.isEmpty()) {
         // Check if term already exists
