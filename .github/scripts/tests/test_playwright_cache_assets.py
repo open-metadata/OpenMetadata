@@ -550,3 +550,16 @@ def test_prune_workflow_only_deletes_caches_on_dead_queue_refs() -> None:
     # an empty list must never read as "every queue ref is dead".
     listing = prune.split("live=$(gh api", 1)[0]
     assert "set -euo pipefail" in listing
+
+
+def test_prune_workflow_only_cancels_runs_on_dead_queue_refs() -> None:
+    prune = (ROOT / ".github/workflows/prune-ephemeral-caches.yml").read_text()
+    # Rebuilds start new entries via merge_group; the sweep must fire there.
+    assert "\n  merge_group:\n" in prune
+    cancel = prune.split("  cancel-stale-runs:", 1)[1]
+    # Cancelling a run whose ref is still live would kill a real queue check.
+    assert 'grep -qxF "$branch" <<<"$live"' in cancel
+    assert '[[ "$id" == "$SELF_RUN_ID" ]] && continue' in cancel
+    assert "gh-readonly-queue/" in cancel
+    listing = cancel.split("live=$(gh api", 1)[0]
+    assert "set -euo pipefail" in listing

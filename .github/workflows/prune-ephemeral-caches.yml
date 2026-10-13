@@ -9,7 +9,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-# Delete Actions caches stranded on dead merge-queue refs.
+# Clean up what dead merge-queue refs leave behind: Actions caches (prune) and
+# workflow runs that are still going (cancel-stale-runs).
 #
 # A merge-queue entry runs on gh-readonly-queue/main/pr-<n>-<sha>, which GitHub
 # deletes the moment the entry merges or is dequeued. Caches saved there
@@ -31,19 +32,32 @@
 # writes continuously, so 19 setup-uv entries came back within 19 minutes of
 # run 33878696968 deleting them. Prefer gating a save over pruning it.
 #
-# SAFETY: a cache is deleted only when its ref no longer resolves. Entries
-# still in the queue keep their caches, so an in-flight run is never forced
-# into a rebuild. If the ref listing fails the job aborts without deleting —
-# an empty list must never be read as "every queue ref is dead".
-name: Prune ephemeral Actions caches
+# Runs leak the same way. A queue rebuild (an entry ahead fails, is dequeued,
+# or merges) deletes the old refs and creates new ones, but GitHub does NOT
+# cancel the runs already started on the deleted refs, and no `concurrency`
+# group catches them: merge_group runs key on run_id (so sibling PRs never
+# cancel each other) or on the ref name, which is new on every rebuild. The
+# orphans keep holding runners, and keep starting jobs, for results nothing
+# reads. Observed 2026-10-13 05:49Z: 16 runs / 30 running jobs on 5 deleted
+# refs, one for PR 35141 nearly an hour after it merged. A rebuild deletes the
+# old refs before creating the new ones, so the merge_group trigger sees them
+# dead as soon as the next entry starts; the schedule covers a rebuild that
+# starts no new entry.
+#
+# SAFETY: a cache is deleted, or a run cancelled, only when its ref no longer
+# resolves. Entries still in the queue keep their caches and runs. If the ref
+# listing fails the job aborts without acting — an empty list must never be
+# read as "every queue ref is dead".
+name: Prune dead merge-queue refs
 
 on:
+  merge_group:
   schedule:
     - cron: "*/30 * * * *"
   workflow_dispatch:
     inputs:
       dry_run:
-        description: List what would be deleted without deleting it.
+        description: List what would be deleted or cancelled without acting.
         type: boolean
         default: false
 
@@ -51,12 +65,13 @@ permissions:
   actions: write
   contents: read
 
-concurrency:
-  group: prune-ephemeral-caches
-  cancel-in-progress: false
-
 jobs:
   prune:
+    # Not on merge_group: the sweep is slow and caches are not urgent.
+    if: github.event_name != 'merge_group'
+    concurrency:
+      group: prune-ephemeral-caches
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -135,4 +150,65 @@ jobs:
             echo "| caches on dead queue refs (deleted) | ${deleted} |"
             echo "| reclaimed | $((reclaimed / 1048576)) MB |"
             echo "| listing truncated | \`${truncated}\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  cancel-stale-runs:
+    # A rebuild fires one merge_group event per new entry; let one sweep run
+    # and collapse the rest into a single pending one.
+    concurrency:
+      group: cancel-stale-merge-queue-runs
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      DRY_RUN: ${{ inputs.dry_run || false }}
+      SELF_RUN_ID: ${{ github.run_id }}
+    steps:
+      - name: Cancel runs on dead merge-queue refs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          live=$(gh api --paginate \
+            "repos/${GH_REPO}/git/matching-refs/heads/gh-readonly-queue/" \
+            --jq '.[].ref | sub("^refs/heads/"; "")' | sort -u)
+          echo "live queue refs:"
+          printf '%s\n' "${live:-  (none)}"
+
+          runs=$(mktemp)
+          for status in in_progress queued waiting requested pending; do
+            gh api --paginate \
+              "repos/${GH_REPO}/actions/runs?event=merge_group&status=${status}&per_page=100" \
+              --jq '.workflow_runs[] | [.id, .head_branch, .name] | @tsv' >> "$runs"
+          done
+
+          cancelled=0
+          kept=0
+          while IFS=$'\t' read -r id branch name; do
+            [[ "$id" == "$SELF_RUN_ID" ]] && continue
+            [[ "$branch" == gh-readonly-queue/* ]] || continue
+            if grep -qxF "$branch" <<<"$live"; then
+              kept=$((kept + 1))
+              continue
+            fi
+            printf 'cancel %s %s (%s)\n' "$id" "$name" "$branch"
+            if [[ "$DRY_RUN" != "true" ]]; then
+              # The run can finish between the listing and the cancel; that is
+              # the outcome we wanted, so do not fail the job for it.
+              gh api -X POST "repos/${GH_REPO}/actions/runs/${id}/cancel" \
+                --silent || echo "::warning::could not cancel run ${id} (${name})"
+            fi
+            cancelled=$((cancelled + 1))
+          done < <(sort -u "$runs")
+
+          {
+            echo "### Stale merge-queue runs"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| dry run | \`${DRY_RUN}\` |"
+            echo "| runs on live queue refs (kept) | ${kept} |"
+            echo "| runs on dead queue refs (cancelled) | ${cancelled} |"
           } >> "$GITHUB_STEP_SUMMARY"
