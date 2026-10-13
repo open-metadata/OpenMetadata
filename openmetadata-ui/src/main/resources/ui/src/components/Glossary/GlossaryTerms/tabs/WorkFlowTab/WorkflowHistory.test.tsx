@@ -20,6 +20,7 @@ import {
 import WorkflowHistory from './WorkflowHistory.component';
 
 // Import mocked modules
+import { getEntityLifecycleStages } from '../../../../../rest/metadataTypeAPI';
 import {
   getWorkflowInstancesForApplication,
   getWorkflowInstanceStateById,
@@ -36,6 +37,7 @@ import { useGenericContext } from '../../../../Customization/GenericProvider/Gen
 // Mock dependencies
 jest.mock('../../../../Customization/GenericProvider/GenericContext');
 jest.mock('../../../../../rest/workflowAPI');
+jest.mock('../../../../../rest/metadataTypeAPI');
 jest.mock('../../../../../utils/ToastUtils');
 jest.mock('../../../../../utils/date-time/DateTimeUtils');
 jest.mock('../../../../../utils/GlossaryTerm/GlossaryTermReferenceUtils');
@@ -169,6 +171,16 @@ describe('WorkflowHistory Component', () => {
     (getWorkflowInstanceStateById as jest.Mock).mockResolvedValue(
       mockWorkflowInstanceState
     );
+    (getEntityLifecycleStages as jest.Mock).mockResolvedValue({
+      entityTypes: [
+        {
+          entityType: 'glossaryTerm',
+          stages: [],
+          stageWorkflows: ['GlossaryTermApprovalWorkflow'],
+          transitions: [],
+        },
+      ],
+    });
   });
 
   describe('Rendering', () => {
@@ -218,6 +230,54 @@ describe('WorkflowHistory Component', () => {
           entityLink: 'entity-link',
           workflowDefinitionName: 'GlossaryTermApprovalWorkflow',
         });
+      });
+    });
+
+    it('should read history from the lifecycle playbook that owns the stage', async () => {
+      (getEntityLifecycleStages as jest.Mock).mockResolvedValueOnce({
+        entityTypes: [
+          {
+            entityType: 'glossaryTerm',
+            stages: [],
+            stageWorkflows: ['GlossaryTermLifecycle'],
+            transitions: [],
+          },
+        ],
+      });
+
+      await act(async () => {
+        render(<WorkflowHistory glossaryTerm={mockGlossaryTerm} />);
+      });
+
+      await waitFor(() => {
+        expect(getWorkflowInstancesForApplication).toHaveBeenCalledWith(
+          expect.objectContaining({
+            workflowDefinitionName: 'GlossaryTermLifecycle',
+          })
+        );
+        expect(getWorkflowInstanceStateById).toHaveBeenCalledWith(
+          'GlossaryTermLifecycle',
+          expect.any(String),
+          expect.any(Object)
+        );
+      });
+    });
+
+    it('should fall back to the default approval workflow without a stage owner', async () => {
+      (getEntityLifecycleStages as jest.Mock).mockResolvedValueOnce({
+        entityTypes: [],
+      });
+
+      await act(async () => {
+        render(<WorkflowHistory glossaryTerm={mockGlossaryTerm} />);
+      });
+
+      await waitFor(() => {
+        expect(getWorkflowInstancesForApplication).toHaveBeenCalledWith(
+          expect.objectContaining({
+            workflowDefinitionName: 'GlossaryTermApprovalWorkflow',
+          })
+        );
       });
     });
 

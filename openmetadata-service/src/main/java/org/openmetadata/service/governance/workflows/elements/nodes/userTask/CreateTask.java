@@ -18,8 +18,10 @@ import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAME
 import static org.openmetadata.service.governance.workflows.Workflow.RECOGNIZER_FEEDBACK;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.SUPERSEDED_BY_NEWER_RUN;
+import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
+import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import io.github.resilience4j.core.IntervalFunction;
@@ -470,7 +472,8 @@ public class CreateTask implements TaskListener {
 
     // Build createdBy reference
     EntityReference createdByRef =
-        resolveCreatedByReference(requestedCreatedBy, entity, payload, taskType);
+        resolveCreatedByReference(
+            requestedCreatedBy, entity, payload, taskType, triggeringUser(delegateTask));
     String updatedBy =
         requestedUpdatedBy != null && !requestedUpdatedBy.isBlank()
             ? requestedUpdatedBy
@@ -1138,7 +1141,8 @@ public class CreateTask implements TaskListener {
       EntityReference requestedCreatedBy,
       EntityInterface<?> entity,
       Object payload,
-      TaskEntityType taskType) {
+      TaskEntityType taskType,
+      String triggeringUser) {
     if (requestedCreatedBy != null && requestedCreatedBy.getId() != null) {
       return requestedCreatedBy;
     }
@@ -1146,7 +1150,7 @@ public class CreateTask implements TaskListener {
     if (payloadCreator != null) {
       return payloadCreator;
     }
-    String userName = entity != null ? entity.getUpdatedBy() : null;
+    String userName = triggeringUser != null ? triggeringUser : lastEditor(entity);
     if (userName == null || userName.isEmpty()) {
       userName = DEFAULT_SYSTEM_USER;
     }
@@ -1155,6 +1159,19 @@ public class CreateTask implements TaskListener {
     } catch (Exception e) {
       return Entity.getEntityReferenceByName(Entity.USER, DEFAULT_SYSTEM_USER, Include.NON_DELETED);
     }
+  }
+
+  // The filer is the editor who started the run, as in self-approval prevention: a stage written by
+  // the previous gate's approver must not make that approver the filer of the next approval task.
+  private static String triggeringUser(DelegateTask delegateTask) {
+    // Flowable stores process variables as untyped Object; only entity-event triggers set it.
+    Object user =
+        delegateTask.getVariable(getNamespacedVariableName(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE));
+    return user instanceof String name && !name.isBlank() ? name : null;
+  }
+
+  private static String lastEditor(EntityInterface<?> entity) {
+    return entity != null ? entity.getUpdatedBy() : null;
   }
 
   static EntityReference extractPayloadCreatedBy(Object payload, TaskEntityType taskType) {

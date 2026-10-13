@@ -30,6 +30,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as CompletedIcon } from '../../../../../assets/svg/ic-check-circle-new.svg';
 import { ReactComponent as PendingIcon } from '../../../../../assets/svg/pending-badge-1.svg';
 import { GLOSSARY_TERM_APPROVAL_WORKFLOW_DEFINITION_NAME } from '../../../../../constants/Glossary.contant';
+import { EntityType } from '../../../../../enums/entity.enum';
 import {
   EntityStatus,
   GlossaryTerm,
@@ -38,6 +39,7 @@ import {
   WorkflowInstanceState,
   WorkflowStatus,
 } from '../../../../../generated/governance/workflows/workflowInstanceState';
+import { getEntityLifecycleStages } from '../../../../../rest/metadataTypeAPI';
 import {
   getWorkflowInstancesForApplication,
   getWorkflowInstanceStateById,
@@ -52,6 +54,17 @@ import { showErrorToast } from '../../../../../utils/ToastUtils';
 import Loader from '../../../../common/Loader/Loader';
 import { useGenericContext } from '../../../../Customization/GenericProvider/GenericContext';
 import './workflow-history.less';
+
+// A published lifecycle playbook replaces the default approval workflow as the stage owner.
+const getStageWorkflowName = async () => {
+  const { entityTypes } = await getEntityLifecycleStages();
+
+  return (
+    entityTypes.find(
+      ({ entityType }) => entityType === EntityType.GLOSSARY_TERM
+    )?.stageWorkflows?.[0] ?? GLOSSARY_TERM_APPROVAL_WORKFLOW_DEFINITION_NAME
+  );
+};
 
 interface WorkflowHistoryProps {
   glossaryTerm?: GlossaryTerm;
@@ -124,13 +137,12 @@ const WorkflowHistory = memo(
           glossaryTerm.fullyQualifiedName
         );
 
-        // First, get workflow instances
+        const workflowDefinitionName = await getStageWorkflowName();
         const instancesResponse = await getWorkflowInstancesForApplication({
           startTs,
           endTs,
           entityLink,
-          workflowDefinitionName:
-            GLOSSARY_TERM_APPROVAL_WORKFLOW_DEFINITION_NAME,
+          workflowDefinitionName,
         });
 
         const instances = instancesResponse.data || [];
@@ -143,7 +155,7 @@ const WorkflowHistory = memo(
 
         // Then fetch detailed states for each instance
         const statesPromises = await getWorkflowInstanceStateById(
-          GLOSSARY_TERM_APPROVAL_WORKFLOW_DEFINITION_NAME,
+          workflowDefinitionName,
           instances[0]?.id ?? '',
           {
             startTs,

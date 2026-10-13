@@ -79,6 +79,7 @@ import org.openmetadata.schema.api.services.CreateDashboardService;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.schema.api.services.DatabaseConnection;
+import org.openmetadata.schema.api.tasks.ResolveTask;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.api.tests.CreateTestCase;
@@ -122,6 +123,7 @@ import org.openmetadata.schema.type.ApiConnection;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.MetricType;
 import org.openmetadata.schema.type.MetricUnitOfMeasurement;
 import org.openmetadata.schema.type.TagLabel;
@@ -11683,5 +11685,136 @@ public class WorkflowDefinitionResourceIT {
     } catch (Exception e) {
       LOG.warn("Failed to clean up column custom property {}: {}", propName, e.getMessage());
     }
+  }
+
+  /** Approves an owner gate, then a second owner gate that the first approval's stage write fed. */
+  private static final String TWO_OWNER_GATES_WORKFLOW =
+      """
+      {
+        "name": "%s",
+        "description": "Two consecutive owner approvals",
+        "trigger": {
+          "type": "eventBasedEntity",
+          "config": {
+            "entityTypes": ["domain"],
+            "events": ["Updated"],
+            "exclude": ["entityStatus"],
+            "filter": {"domain": %s}
+          },
+          "output": ["relatedEntity", "updatedBy"]
+        },
+        "nodes": [
+          {"name": "start", "type": "startEvent", "subType": "startEvent"},
+          {"name": "ApproveFirst", "type": "userTask", "subType": "userApprovalTask",
+           "config": {"assignees": {"addOwners": true, "emptyAssigneeStrategy": "wait"},
+                      "approvalThreshold": 1, "rejectionThreshold": 1},
+           "inputNamespaceMap": {"relatedEntity": "global"}, "output": ["updatedBy"]},
+          {"name": "SetInReview", "type": "automatedTask", "subType": "setEntityAttributeTask",
+           "config": {"fieldName": "entityStatus", "fieldValue": "In Review"},
+           "inputNamespaceMap": {"relatedEntity": "global", "updatedBy": "ApproveFirst"}},
+          {"name": "ApproveSecond", "type": "userTask", "subType": "userApprovalTask",
+           "config": {"assignees": {"addOwners": true, "emptyAssigneeStrategy": "wait"},
+                      "approvalThreshold": 1, "rejectionThreshold": 1},
+           "inputNamespaceMap": {"relatedEntity": "global"}, "output": ["updatedBy"]},
+          {"name": "SetApproved", "type": "automatedTask", "subType": "setEntityAttributeTask",
+           "config": {"fieldName": "entityStatus", "fieldValue": "Approved"},
+           "inputNamespaceMap": {"relatedEntity": "global", "updatedBy": "ApproveSecond"}},
+          {"name": "end", "type": "endEvent", "subType": "endEvent"}
+        ],
+        "edges": [
+          {"from": "start", "to": "ApproveFirst"},
+          {"from": "ApproveFirst", "to": "SetInReview", "condition": "approve"},
+          {"from": "ApproveFirst", "to": "end", "condition": "reject"},
+          {"from": "SetInReview", "to": "ApproveSecond"},
+          {"from": "ApproveSecond", "to": "SetApproved", "condition": "approve"},
+          {"from": "ApproveSecond", "to": "end", "condition": "reject"},
+          {"from": "SetApproved", "to": "end"}
+        ],
+        "config": {"storeStageStatus": false}
+      }""";
+
+  @Test
+  @Order(221)
+  void test_sameOwnerApprovesConsecutiveGates(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    OpenMetadataClient ownerClient = SdkClients.user1Client();
+    EntityReference owner = admin.users().getByName("shared_user1").getEntityReference();
+    Domain domain =
+        admin
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.shortPrefix("ownerGates"))
+                    .withDescription("Domain approved by its owner at two gates")
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withOwners(List.of(owner)));
+    // The trigger filter excludes what it matches, so only this domain starts the workflow.
+    String onlyThisDomain =
+        MAPPER.writeValueAsString(
+            MAPPER.writeValueAsString(
+                Map.of(
+                    "!=",
+                    List.of(Map.of("var", "fullyQualifiedName"), domain.getFullyQualifiedName()))));
+    String workflowName = "ownerGatesFlow_" + ns.shortPrefix();
+    WorkflowDefinition created =
+        admin
+            .workflowDefinitions()
+            .create(
+                MAPPER.readValue(
+                    TWO_OWNER_GATES_WORKFLOW.formatted(workflowName, onlyThisDomain),
+                    CreateWorkflowDefinition.class));
+    trackWorkflow(created.getName(), created.getId().toString());
+    waitForWorkflowDeployment(admin, workflowName);
+
+    admin
+        .domains()
+        .patch(
+            domain.getId(),
+            MAPPER.readTree(
+                "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"Ready for review\"}]"));
+
+    Task first = awaitOpenApprovalTask(ownerClient, domain.getFullyQualifiedName(), null);
+    ownerClient
+        .tasks()
+        .resolve(
+            first.getId().toString(),
+            new ResolveTask().withResolutionType(TaskResolutionType.Approved));
+    Task second = awaitOpenApprovalTask(ownerClient, domain.getFullyQualifiedName(), first.getId());
+    assertEquals(
+        List.of(owner.getId()),
+        second.getAssignees().stream().map(EntityReference::getId).toList());
+
+    ownerClient
+        .tasks()
+        .resolve(
+            second.getId().toString(),
+            new ResolveTask().withResolutionType(TaskResolutionType.Approved));
+
+    await("the second owner approval to approve the domain")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .untilAsserted(
+            () ->
+                assertEquals(
+                    EntityStatus.APPROVED,
+                    admin.domains().get(domain.getId().toString()).getEntityStatus()));
+  }
+
+  private Task awaitOpenApprovalTask(OpenMetadataClient client, String entityFqn, UUID previous) {
+    List<Task> found = new ArrayList<>();
+    await("an open approval task for " + entityFqn)
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .until(
+            () -> {
+              found.clear();
+              listOpenApprovalTasks(client, entityFqn).getData().stream()
+                  .filter(task -> !task.getId().equals(previous))
+                  .findFirst()
+                  .ifPresent(found::add);
+              return !found.isEmpty();
+            });
+    return found.getFirst();
   }
 }

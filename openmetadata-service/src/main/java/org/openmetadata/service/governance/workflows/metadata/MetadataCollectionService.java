@@ -39,7 +39,7 @@ public final class MetadataCollectionService {
   }
 
   public void reconcile(
-      final EntityInterface entity,
+      final EntityInterface<?> entity,
       final MetadataCollectionConfiguration configuration,
       final String key) {
     final UUID id = taskId(entity.getId(), key, configuration.getField());
@@ -51,7 +51,7 @@ public final class MetadataCollectionService {
     final boolean complete = matches(configuration.getRules(), entity);
     if (!applies || complete) {
       existing.filter(this::isOpen).ifPresent(task -> finish(task, complete));
-    } else if (configuration.getStage() != entity.getEntityStatus()) {
+    } else if (!isInStage(entity, configuration)) {
       existing.filter(this::isOpen).ifPresent(task -> finish(task, false));
     } else if (existing.isEmpty()) {
       createMissingTask(entity, configuration, id);
@@ -65,7 +65,13 @@ public final class MetadataCollectionService {
         (entityId + ":" + key + ":" + field).getBytes(StandardCharsets.UTF_8));
   }
 
-  private boolean matches(final String rules, final EntityInterface entity) {
+  private static boolean isInStage(
+      final EntityInterface<?> entity, final MetadataCollectionConfiguration configuration) {
+    final Enum<?> current = entity.getEntityStatus();
+    return current != null && configuration.getStage().value().equals(current.toString());
+  }
+
+  private boolean matches(final String rules, final EntityInterface<?> entity) {
     return Boolean.TRUE.equals(RuleEngine.getInstance().apply(rules, JsonUtils.getMap(entity)));
   }
 
@@ -83,7 +89,7 @@ public final class MetadataCollectionService {
   }
 
   private void createMissingTask(
-      final EntityInterface entity,
+      final EntityInterface<?> entity,
       final MetadataCollectionConfiguration configuration,
       final UUID id) {
     final List<EntityReference> assignees = assignees(entity, configuration);
@@ -102,7 +108,7 @@ public final class MetadataCollectionService {
   }
 
   private List<EntityReference> assignees(
-      final EntityInterface entity, final MetadataCollectionConfiguration configuration) {
+      final EntityInterface<?> entity, final MetadataCollectionConfiguration configuration) {
     final List<EntityReference> references =
         switch (configuration.getTaskAssignees()) {
           case OWNERS -> entity.getOwners();
@@ -113,7 +119,7 @@ public final class MetadataCollectionService {
   }
 
   private Task newTask(
-      final EntityInterface entity,
+      final EntityInterface<?> entity,
       final MetadataCollectionConfiguration configuration,
       final UUID id) {
     final boolean description = "description".equals(configuration.getField());
@@ -143,7 +149,7 @@ public final class MetadataCollectionService {
   }
 
   private Map<String, String> payload(
-      final EntityInterface entity, final MetadataCollectionConfiguration configuration) {
+      final EntityInterface<?> entity, final MetadataCollectionConfiguration configuration) {
     return "description".equals(configuration.getField())
         ? Map.of(
             "fieldPath",

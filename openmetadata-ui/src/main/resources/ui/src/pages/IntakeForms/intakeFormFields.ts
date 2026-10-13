@@ -62,6 +62,7 @@ export const NATIVE_FIELDS_BY_ENTITY_TYPE: Record<
     { path: 'displayName', labelKey: 'label.display-name' },
     { path: 'synonyms', labelKey: 'label.synonym-plural' },
     { path: 'tags', labelKey: 'label.tag-plural' },
+    { path: 'owners', labelKey: 'label.owner-plural' },
     { path: 'reviewers', labelKey: 'label.reviewer-plural' },
   ],
 };
