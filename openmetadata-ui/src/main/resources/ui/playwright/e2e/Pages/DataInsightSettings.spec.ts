@@ -22,6 +22,7 @@ import {
   customFormatDateTime,
   getCurrentMillis,
   getEpochMillisForFutureDays,
+  pickDateInCorePicker,
 } from '../../utils/dateTime';
 import {
   expectScheduleFrequencySelected,
@@ -134,22 +135,19 @@ test.describe.serial(
         })
         .click();
 
-      // Set start and end dates. They are segmented date fields, not text inputs: focus the
-      // month segment and type the digits, which advance through day and year.
-      const typeDate = async (fieldId: string, millis: number) => {
-        await page
-          .locator(`[id="${fieldId}"]`)
-          .getByRole('spinbutton', { name: /month/i })
-          .click();
-        await page.keyboard.type(customFormatDateTime(millis, 'MMddyyyy'));
-      };
-      await typeDate(
-        'root/backfillConfiguration/startDate',
-        getCurrentMillis()
+      // Set start and end dates in the design-system date pickers; the field id sits on the
+      // picker group, whose calendar button is the trigger.
+      const datePickerTrigger = (fieldId: string) =>
+        page.locator(`[id="${fieldId}"]`).getByRole('button');
+      await pickDateInCorePicker(
+        page,
+        datePickerTrigger('root/backfillConfiguration/startDate'),
+        customFormatDateTime(getCurrentMillis(), 'yyyy-MM-dd')
       );
-      await typeDate(
-        'root/backfillConfiguration/endDate',
-        getEpochMillisForFutureDays(5)
+      await pickDateInCorePicker(
+        page,
+        datePickerTrigger('root/backfillConfiguration/endDate'),
+        customFormatDateTime(getEpochMillisForFutureDays(5), 'yyyy-MM-dd')
       );
 
       // Submit the form
