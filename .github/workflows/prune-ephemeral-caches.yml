@@ -157,6 +157,7 @@ jobs:
             echo "| listing truncated | \`${truncated}\` |"
           } >> "$GITHUB_STEP_SUMMARY"
 
+  # ADR:2026-10-13-stale-merge-queue-runs-are-cancelled-by-a-central-sweep
   cancel-stale-runs:
     if: github.event_name != 'pull_request_target' || !github.event.pull_request.merged
     # A rebuild fires one merge_group event per new entry; let one sweep run
