@@ -2,6 +2,7 @@ import { Tooltip } from '@/components/base/tooltip/tooltip';
 import { cx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
 import { borderAfter } from '@/utils/tailwindClasses';
+import { styles as buttonStyles } from './button';
 import type {
   AnchorHTMLAttributes,
   ButtonHTMLAttributes,
@@ -17,15 +18,39 @@ import type {
 } from 'react-aria-components';
 import { Button as AriaButton, Link as AriaLink } from 'react-aria-components';
 
+const neutralIcon =
+  'tw:text-utility-gray-500 tw:hover:text-utility-gray-600 tw:*:data-icon:text-current';
+
 export const styles = {
+  primary: buttonStyles.colors.primary.root,
   secondary: [
-    'tw:bg-surface tw:text-fg-quaternary tw:shadow-xs-skeuomorphic',
-    'tw:hover:bg-primary_hover tw:dark:hover:bg-raised tw:hover:text-fg-quaternary_hover tw:disabled:shadow-xs',
+    'tw:bg-surface tw:shadow-xs-skeuomorphic',
+    'tw:hover:bg-primary_hover tw:dark:hover:bg-raised tw:disabled:shadow-xs',
     borderAfter,
     'tw:after:outline-primary tw:disabled:after:outline-disabled_subtle',
+    neutralIcon,
   ].join(' '),
-  tertiary:
-    'tw:text-quaternary tw:hover:bg-primary_hover tw:hover:text-tertiary',
+  tertiary: `tw:hover:bg-primary_hover ${neutralIcon}`,
+  'secondary-destructive': buttonStyles.colors['secondary-destructive'].root,
+  'tertiary-destructive': buttonStyles.colors['tertiary-destructive'].root,
+};
+
+// Icon-only sizes from the Figma "Icons in buttons" spec: box size, icon frame,
+// padding, radius. The svg padding keeps the glyph at frame − 4px (see the note
+// in button.tsx); `before:` matches the primary variant's inner border to the radius.
+const sizes = {
+  xs: 'tw:rounded-sm tw:before:rounded-[3px] tw:p-0.5 tw:*:data-icon:size-4 tw:*:data-icon:p-[0.5px]', // 20 · 16 frame · 2px · r4
+  sm: 'tw:rounded-md tw:before:rounded-[5px] tw:p-0.75 tw:*:data-icon:size-4.5 tw:*:data-icon:p-[0.25px]', // 24 · 18 frame · 3px · r6
+  md: 'tw:rounded-md tw:before:rounded-[5px] tw:p-1.25 tw:*:data-icon:size-4.5 tw:*:data-icon:p-[0.25px]', // 28 · 18 frame · 5px · r6
+  lg: 'tw:rounded-lg tw:before:rounded-[7px] tw:p-1.5 tw:*:data-icon:size-5', // 32 · 20 frame · 6px · r8
+  xl: 'tw:rounded-lg tw:before:rounded-[7px] tw:p-2 tw:*:data-icon:size-5', // 36 · 20 frame · 8px · r8
+};
+
+// The 20px size is for tight inline actions (removing a chip, clearing an
+// input, row actions inside text), so it never draws a border.
+const borderless: Partial<Record<keyof typeof styles, keyof typeof styles>> = {
+  secondary: 'tertiary',
+  'secondary-destructive': 'tertiary-destructive',
 };
 
 /**
@@ -35,9 +60,9 @@ export interface CommonProps {
   /** Disables the button and shows a disabled state */
   isDisabled?: boolean;
   /** The size variant of the button */
-  size?: 'xs' | 'sm';
+  size?: keyof typeof sizes;
   /** The color variant of the button */
-  color?: 'secondary' | 'tertiary';
+  color?: keyof typeof styles;
   /** The icon to display in the button */
   icon?: FC<{ className?: string }> | ReactNode;
   /** The tooltip to display when hovering over the button */
@@ -80,7 +105,7 @@ export const ButtonUtility = ({
   className,
   isDisabled,
   icon: Icon,
-  size = 'sm',
+  size = 'lg',
   color = 'secondary',
   tooltipPlacement = 'top',
   ...otherProps
@@ -115,12 +140,12 @@ export const ButtonUtility = ({
       aria-label={tooltip}
       {...props}
       className={cx(
-        'tw:group tw:relative tw:inline-flex tw:h-max tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:p-1.5 tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:disabled:cursor-not-allowed tw:disabled:text-fg-disabled_subtle',
-        styles[color],
+        'tw:group tw:relative tw:inline-flex tw:h-max tw:cursor-pointer tw:items-center tw:justify-center tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:disabled:cursor-not-allowed tw:disabled:text-fg-disabled_subtle tw:disabled:*:data-icon:text-fg-disabled_subtle',
+        sizes[size],
+        styles[(size === 'xs' && borderless[color]) || color],
 
         // Icon styles
-        'tw:*:data-icon:pointer-events-none tw:*:data-icon:shrink-0 tw:*:data-icon:text-current tw:*:data-icon:transition-inherit-all',
-        size === 'xs' ? 'tw:*:data-icon:size-4' : 'tw:*:data-icon:size-5',
+        'tw:*:data-icon:pointer-events-none tw:*:data-icon:shrink-0 tw:*:data-icon:transition-inherit-all',
 
         className
       )}>
@@ -133,7 +158,7 @@ export const ButtonUtility = ({
     return (
       <Tooltip
         isDisabled={isDisabled}
-        offset={size === 'xs' ? 4 : 6}
+        offset={size === 'xs' || size === 'sm' ? 4 : 6}
         placement={tooltipPlacement}
         title={tooltip}>
         {content}

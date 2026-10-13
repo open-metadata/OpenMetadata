@@ -57,6 +57,68 @@ const CUSTOM_DIR = join(ROOT, 'icons-custom');
 const OUT_DIR = join(ROOT, 'src', 'icons');
 
 const createComponentTemplate = require('../templates/component.cjs');
+const { parsePathData, stringifyPathData } = require('svgo/lib/path.js');
+
+const GRID = 20;
+const SOURCE_GRID = 24;
+
+/** Rescale icons drawn on UntitledUI's 24-unit grid to the 20-unit grid.
+ *  Only path geometry is scaled — stroke-width stays as authored, so a 1.3
+ *  stroke renders at the same weight as every native 20-grid icon. */
+const normalizeToGrid = {
+  name: 'normalizeToGrid',
+  fn: (_root, _params, info) => {
+    let scale = 1;
+
+    return {
+      element: {
+        enter: (node, parentNode) => {
+          if (node.name === 'svg' && parentNode.type === 'root') {
+            if (
+              node.attributes.viewBox === `0 0 ${SOURCE_GRID} ${SOURCE_GRID}`
+            ) {
+              scale = GRID / SOURCE_GRID;
+              node.attributes.viewBox = `0 0 ${GRID} ${GRID}`;
+            }
+
+            return;
+          }
+          if (scale === 1) {
+            return;
+          }
+          if (
+            node.name !== 'path' &&
+            node.name !== 'g' &&
+            node.name !== 'defs'
+          ) {
+            throw new Error(
+              `${info.path}: <${node.name}> on the ${SOURCE_GRID} grid is not rescaled; convert it to a <path>`
+            );
+          }
+          if (node.attributes.transform) {
+            throw new Error(
+              `${info.path}: transforms on the ${SOURCE_GRID} grid are not supported`
+            );
+          }
+          if (node.name === 'path') {
+            const pathData = parsePathData(node.attributes.d).map(
+              ({ command, args }) => ({
+                command,
+                // Arc rotation and the two flags (indices 2–4) are not lengths.
+                args: args.map((value, i) =>
+                  (command === 'A' || command === 'a') && i >= 2 && i <= 4
+                    ? value
+                    : value * scale
+                ),
+              })
+            );
+            node.attributes.d = stringifyPathData({ pathData, precision: 3 });
+          }
+        },
+      },
+    };
+  },
+};
 
 /** Convert any filename to a valid PascalCase component name. */
 function toComponentName(filename) {
@@ -77,6 +139,7 @@ async function eslintFix(code, filePath) {
 
 /** SVGO plugins shared by both pipelines. */
 const sharedPlugins = [
+  normalizeToGrid,
   {
     name: 'preset-default',
     params: { overrides: { removeViewBox: false } },
