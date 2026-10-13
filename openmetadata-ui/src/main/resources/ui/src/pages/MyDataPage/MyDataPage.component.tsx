@@ -25,6 +25,7 @@ import DeferredWidget from '../../components/common/DeferredWidget/DeferredWidge
 import CustomiseLandingPageHeader from '../../components/MyData/CustomizableComponents/CustomiseLandingPageHeader/CustomiseLandingPageHeader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { LOGGED_IN_USER_STORAGE_KEY } from '../../constants/constants';
+import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
 import { PageType } from '../../generated/system/ui/page';
 import type { PersonaPreferences } from '../../generated/type/personaPreferences';
@@ -79,6 +80,7 @@ const MyDataPage = () => {
   const { currentUser, selectedPersona, setCurrentUser } =
     useApplicationStore();
   const { isWelcomeVisible } = useWelcomeStore();
+  const { isTourPage } = useTourProvider();
 
   const [showWelcomeScreen, setShowWelcomeScreen] = useState(false);
   const [isAnnouncementLoading, setIsAnnouncementLoading] =
@@ -124,8 +126,10 @@ const MyDataPage = () => {
     [docData]
   );
 
+  // The tour always shows the default layout: its first step targets the activity feed
+  // widget, which a persona's customised landing page may not include.
   const layout = useMemo<Array<WidgetConfig>>(() => {
-    if (!docData || !selectedPersona) {
+    if (isTourPage || !docData || !selectedPersona) {
       return getDefaultLandingPageLayout();
     }
     const pageData = getPersonaPage(docData, PageType.LandingPage);
@@ -147,7 +151,7 @@ const MyDataPage = () => {
     return isEmpty(filteredLayout)
       ? getDefaultLandingPageLayout()
       : filteredLayout;
-  }, [docData, selectedPersona]);
+  }, [isTourPage, docData, selectedPersona]);
   const storageData = useMemo(
     () => localStorage.getItem(LOGGED_IN_USER_STORAGE_KEY),
     []
@@ -191,7 +195,10 @@ const MyDataPage = () => {
   };
 
   useEffect(() => {
-    updateWelcomeScreen(!usernameExistsInCookie && isWelcomeVisible);
+    // The welcome screen replaces the widgets, so on the tour it would hide the step targets.
+    updateWelcomeScreen(
+      !usernameExistsInCookie && isWelcomeVisible && !isTourPage
+    );
 
     return () => updateWelcomeScreen(false);
   }, []);

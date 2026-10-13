@@ -13,6 +13,10 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import {
+  TourContext,
+  TourProviderContextProps,
+} from '../../context/TourProvider/TourProvider';
 import { PageType } from '../../generated/system/ui/page';
 import {
   mockActiveAnnouncementData,
@@ -400,6 +404,32 @@ describe('MyDataPage component', () => {
     expect(
       await screen.findByText('KnowledgePanel.MyData')
     ).toBeInTheDocument();
+  });
+
+  it('MyDataPage on the tour shows the default widgets and no WelcomeScreen, even for a first-time user with a customised persona', async () => {
+    localStorage.clear();
+
+    await act(async () => {
+      render(
+        <QueryClientProvider client={queryClient}>
+          <TourContext.Provider
+            value={
+              {
+                isTourPage: true,
+              } as Partial<TourProviderContextProps> as TourProviderContextProps
+            }>
+            <MyDataPage />
+          </TourContext.Provider>
+        </QueryClientProvider>
+      );
+    });
+
+    // KPI is only in the default layout, never in the persona's customised one.
+    expect(await screen.findByTestId('KnowledgePanel.KPI')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('KnowledgePanel.ActivityFeed')
+    ).toBeInTheDocument();
+    expect(screen.queryByText('WelcomeScreen')).toBeNull();
   });
 
   it('MyDataPage should render default widgets when there is no selected persona', async () => {

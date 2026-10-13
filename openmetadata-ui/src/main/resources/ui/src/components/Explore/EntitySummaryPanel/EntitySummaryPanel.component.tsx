@@ -20,6 +20,9 @@ import { get, isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { mockTablePermission } from '../../../constants/mockTourPermission.constants';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ResourceEntity } from '../../../enums/permissions.enum';
@@ -96,6 +99,7 @@ import { getTopicByFqn, patchTopicDetails } from '../../../rest/topicsAPI';
 import { getEntityLinkFromType } from '../../../utils/EntityLinkUtils';
 import { DRAWER_NAVIGATION_OPTIONS } from '../../../utils/EntityPureUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -204,6 +208,10 @@ const mergeEntityData = (
 const ONTOLOGY_EXPLORER = 'ontology-explorer';
 const GLOSSARY_TERM_ASSETS_TAB = 'glossary-term-assets-tab';
 const DETAILS_ENTITY_TYPE_KEY = 'details.entityType';
+const TOUR_PERMISSION_FLAGS = {
+  ...getDerivedPermissionFlags(mockTablePermission as OperationPermission),
+  isLoading: false,
+};
 
 export default function EntitySummaryPanel({
   entityDetails,
@@ -228,6 +236,7 @@ export default function EntitySummaryPanel({
   const { tab } = useRequiredParams<{ tab: string }>();
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { isTourPage } = useTourProvider();
   const [activeTab, setActiveTab] = useState<EntityRightPanelTab>(
     EntityRightPanelTab.OVERVIEW
   );
@@ -338,6 +347,13 @@ export default function EntitySummaryPanel({
   // getPrioritizedEditPermission calls with no soft-delete gating, so passing `deleted` here
   // would hide edit affordances that previously rendered on deleted entities — a real
   // behavior change. DataAssetsHeader is ungated for the same reason.
+  // The tour's entity is mock data with no server-side record, so it carries the tour's mock
+  // grants instead of a permission fetch (same as TableDetailsPageV1).
+  const fetchedPermissionFlags = useEntityPermissions(
+    permissionResourceType,
+    permissionIdentifier,
+    { enabled: isPermissionFetchEnabled && !isTourPage }
+  );
   const {
     isLoading: isPermissionLoading,
     hasViewAccess: viewPermission,
@@ -350,9 +366,7 @@ export default function EntitySummaryPanel({
     // precedent as `canViewBasic`'s fix — see PermissionDerivation.ts): an explicit field
     // deny beats a broader grant. Fixes the same class of bug in passing.
     canViewTests,
-  } = useEntityPermissions(permissionResourceType, permissionIdentifier, {
-    enabled: isPermissionFetchEnabled,
-  });
+  } = isTourPage ? TOUR_PERMISSION_FLAGS : fetchedPermissionFlags;
 
   // Memoize the entity fetch map to avoid recreating it on every render
   const entityFetchMap = useMemo<
@@ -452,6 +466,12 @@ export default function EntitySummaryPanel({
       return;
     }
 
+    if (isTourPage) {
+      setEntityData(entityDetails.details as EntityData);
+
+      return;
+    }
+
     setIsEntityDataLoading(true);
     try {
       const fqn = entityDetails.details.fullyQualifiedName;
@@ -481,7 +501,12 @@ export default function EntitySummaryPanel({
     } finally {
       setIsEntityDataLoading(false);
     }
-  }, [entityDetails?.details?.fullyQualifiedName, entityType, entityFetchMap]);
+  }, [
+    entityDetails?.details?.fullyQualifiedName,
+    entityType,
+    entityFetchMap,
+    isTourPage,
+  ]);
 
   const fetchEntityTypeDetail = useCallback(async () => {
     if (!entityType || entityType === EntityType.KNOWLEDGE_PAGE) {
