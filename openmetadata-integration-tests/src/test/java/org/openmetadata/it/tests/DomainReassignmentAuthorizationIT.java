@@ -215,6 +215,44 @@ public class DomainReassignmentAuthorizationIT {
     assertEquals(domain.getId(), reloaded.getDomains().get(0).getId());
   }
 
+  /**
+   * The target domain is authorized by the id that will be persisted, not the FQN the client sends.
+   * A forged reference — an unheld domain's id wearing a held domain's FQN — would otherwise pass
+   * {@code hasDomain()} yet be stored under the unheld id, re-opening exactly this bug.
+   */
+  @Test
+  void test_patchCannotForgeAHeldFqnOverAnUnheldDomainId(TestNamespace ns) throws Exception {
+    DomainScopedUser scoped = domainScopedUser(ns);
+    Table table = createTable(ns, scoped.heldDomain());
+
+    assertThrows(
+        ForbiddenException.class,
+        () -> patchDomainsForged(scoped.client(), table, scoped.otherDomain(), scoped.heldDomain()),
+        "A client-supplied FQN must not override the domain id used for authorization");
+
+    Table reloaded = SdkClients.adminClient().tables().get(table.getId().toString(), "domains");
+    assertEquals(
+        scoped.heldDomain().getId(),
+        reloaded.getDomains().get(0).getId(),
+        "The forged move must not have persisted the unheld domain");
+  }
+
+  /**
+   * An id-only reference (no FQN, common from API clients) must resolve to a clean authorization
+   * decision, not an NPE/500 from dereferencing a null FQN. A {@link ForbiddenException} both proves
+   * the move is denied and that it did not 500 (which would surface as a different exception).
+   */
+  @Test
+  void test_patchWithIdOnlyDomainReferenceIsDeniedNotCrashed(TestNamespace ns) throws Exception {
+    DomainScopedUser scoped = domainScopedUser(ns);
+    Table table = createTable(ns, scoped.heldDomain());
+
+    assertThrows(
+        ForbiddenException.class,
+        () -> patchDomainsIdOnly(scoped.client(), table, scoped.otherDomain()),
+        "An id-only move into an unheld domain must be denied cleanly, not 500");
+  }
+
   private DomainScopedUser domainScopedUser(TestNamespace ns) {
     Domain held = createDomain(ns, "held", null);
     Domain heldSub = createDomain(ns, "heldsub", held.getFullyQualifiedName());
@@ -317,6 +355,31 @@ public class DomainReassignmentAuthorizationIT {
         String.format(
             "[{\"op\":\"add\",\"path\":\"/domains\",\"value\":[{\"id\":\"%s\",\"type\":\"domain\",\"fullyQualifiedName\":\"%s\"}]}]",
             target.getId(), target.getFullyQualifiedName());
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH, "/v1/tables/" + table.getId(), patch, jsonPatchOptions());
+  }
+
+  /** Patches a table's domain to {@code idDomain}'s id but {@code fqnDomain}'s FQN (a forgery). */
+  private void patchDomainsForged(
+      OpenMetadataClient client, Table table, Domain idDomain, Domain fqnDomain) {
+    String patch =
+        String.format(
+            "[{\"op\":\"add\",\"path\":\"/domains\",\"value\":[{\"id\":\"%s\",\"type\":\"domain\",\"fullyQualifiedName\":\"%s\"}]}]",
+            idDomain.getId(), fqnDomain.getFullyQualifiedName());
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH, "/v1/tables/" + table.getId(), patch, jsonPatchOptions());
+  }
+
+  /** Patches a table's domain with an id-only reference (no FQN), as many API clients send. */
+  private void patchDomainsIdOnly(OpenMetadataClient client, Table table, Domain target) {
+    String patch =
+        String.format(
+            "[{\"op\":\"add\",\"path\":\"/domains\",\"value\":[{\"id\":\"%s\",\"type\":\"domain\"}]}]",
+            target.getId());
     client
         .getHttpClient()
         .executeForString(

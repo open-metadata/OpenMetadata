@@ -16,6 +16,7 @@ package org.openmetadata.service.security.policyevaluator;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
@@ -63,8 +64,9 @@ class UpdatedDomainsResourceContextTest {
     when(storedResource.getResource()).thenReturn(Entity.TABLE);
     when(storedResource.getOwners()).thenReturn(owners);
     when(storedResource.getTags()).thenReturn(tags);
-    when(storedResource.getEntity()).thenReturn(entity);
-    when(storedResource.getResolvedEntity()).thenReturn(entity);
+    // doReturn avoids the EntityInterface<?> wildcard-capture that thenReturn cannot satisfy.
+    doReturn(entity).when(storedResource).getEntity();
+    doReturn(entity).when(storedResource).getResolvedEntity();
     when(storedResource.getLoadedFields()).thenReturn(loadedFields);
 
     ResourceContextInterface updated =

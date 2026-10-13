@@ -709,14 +709,39 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
     if (updatedDomains == null || !domainsChanged(resourceContext.getDomains(), updatedDomains)) {
       return;
     }
+    // Authorize against the domains resolved server-side by id, not the references the client sent.
+    // The repository persists a domain by its id (validateDomainsByRef), while hasDomain() compares
+    // only the FQN, so a client-supplied {id, fullyQualifiedName} pair whose FQN names a held
+    // domain
+    // but whose id points elsewhere would otherwise pass the check yet be stored under the other
+    // domain. Resolving by id makes the authorized FQN match what will be persisted.
+    List<EntityReference> resolvedDomains = resolveDomainsById(updatedDomains);
     try {
       authorizer.authorize(
           securityContext,
           new OperationContext(entityType, MetadataOperation.EDIT_DOMAINS),
-          new UpdatedDomainsResourceContext(resourceContext, updatedDomains));
+          new UpdatedDomainsResourceContext(resourceContext, resolvedDomains));
     } catch (AuthorizationException e) {
-      throw domainChangeDenied(securityContext, updatedDomains, e);
+      throw domainChangeDenied(securityContext, resolvedDomains, e);
     }
+  }
+
+  /**
+   * Resolves each target domain from the store so the reference carries the real, persisted FQN.
+   * Keys on id when present (the field the repository persists), falling back to the FQN only for an
+   * id-less reference. An unresolvable reference throws, which denies the change rather than
+   * authorizing a domain that does not exist.
+   */
+  private List<EntityReference> resolveDomainsById(List<EntityReference> domains) {
+    List<EntityReference> resolved = new ArrayList<>(domains.size());
+    for (EntityReference domain : domains) {
+      resolved.add(
+          domain.getId() != null
+              ? Entity.getEntityReferenceById(Entity.DOMAIN, domain.getId(), Include.NON_DELETED)
+              : Entity.getEntityReferenceByName(
+                  Entity.DOMAIN, domain.getFullyQualifiedName(), Include.NON_DELETED));
+    }
+    return resolved;
   }
 
   /**
