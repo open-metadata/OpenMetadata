@@ -443,3 +443,9 @@ ui-checkstyle-all:
 ui-checkstyle-changed:
 	cd openmetadata-ui/src/main/resources/ui && yarn install --frozen-lockfile && yarn ui-checkstyle:changed && yarn ui-checkstyle:playwright:changed
 	cd openmetadata-ui-core-components/src/main/resources/ui && yarn install --frozen-lockfile && yarn ui-checkstyle:changed
+	@# CI's I18n Sync steps: yarn i18n must leave the locale files as they were.
+	cd openmetadata-ui/src/main/resources/ui && before=$$(git diff -- src/locale | shasum) && yarn i18n && \
+		if [ "$$(git diff -- src/locale | shasum)" != "$$before" ]; then \
+			echo "I18n Sync: yarn i18n updated src/locale; translate the new placeholders and commit them."; exit 1; \
+		fi
+	cd openmetadata-ui-core-components/src/main/resources/ui && yarn check-i18n-all
