@@ -37,6 +37,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.context.review.MemoryConflictReviewTasks;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.governance.EntityLifecycle;
@@ -170,6 +171,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   protected void postCreate(ContextMemory memory) {
     super.postCreate(memory);
     ontologyQueue().enqueue(memory, memory.getUpdatedBy());
+    MemoryConflictReviewTasks.afterWrite(null, memory);
   }
 
   @Override
@@ -180,6 +182,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     }
     OntologyMemoryDerivationQueue queue = ontologyQueue();
     memories.forEach(memory -> queue.enqueue(memory, memory.getUpdatedBy()));
+    memories.forEach(memory -> MemoryConflictReviewTasks.afterWrite(null, memory));
   }
 
   @Override
@@ -190,6 +193,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
         && getDerivedEntities(updated).isEmpty()) {
       ontologyQueue().enqueue(updated, updated.getUpdatedBy());
     }
+    MemoryConflictReviewTasks.afterWrite(previous, updated);
   }
 
   /** Whether the memory row exists, soft-deleted or not; provenance may point at either. */

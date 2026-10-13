@@ -4615,6 +4615,7 @@
     "members-online-users-description": "Sistemde son zamanlarda etkin olan kullanıcıları görüntüleyin.",
     "members-teams-description": "Tüm organizasyon yapınızı hiyerarşik ekiplerle temsil edin.",
     "members-users-description": "Kuruluşunuzdaki normal kullanıcıları görüntüleyin ve yönetin. Yönetici kullanıcılar için lütfen Yöneticiler sayfasını ziyaret edin.",
+    "memory-conflict-review-message": "için anı çakışması incelemesi",
     "memory-proposal-failed": "Son öneri denemesi başarısız oldu: {{message}}",
     "memory-proposal-no-new-terms": "Son öneri denemesi bu anıda yeni sözlük terimi bulamadı.",
     "memory-proposal-reviewer-visibility": "Ontology Studio taslaklarını görüntüleyebilen herkes (varsayılan olarak tüm kullanıcılar), bu anıdan ayrıntılar da içeren bu öneriyi okuyabilir.",

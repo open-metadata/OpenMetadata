@@ -4615,6 +4615,7 @@
     "members-online-users-description": "최근 시스템에서 활동한 사용자를 확인하세요.",
     "members-teams-description": "계층적 팀으로 전체 조직 구조를 표현하세요.",
     "members-users-description": "조직의 일반 사용자를 보고 관리합니다. 관리자 사용자는 관리자 페이지를 확인하세요.",
+    "memory-conflict-review-message": "다음에 대한 메모리 충돌 검토:",
     "memory-proposal-failed": "마지막 제안 시도가 실패했습니다: {{message}}",
     "memory-proposal-no-new-terms": "마지막 제안 시도에서 이 메모리에서 새 용어를 찾지 못했습니다.",
     "memory-proposal-reviewer-visibility": "Ontology Studio 초안을 볼 수 있는 사람(기본적으로 모든 사용자)은 이 메모리의 세부 정보를 포함한 이 제안을 읽을 수 있습니다.",

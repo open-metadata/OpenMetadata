@@ -4615,6 +4615,7 @@
     "members-online-users-description": "Zeigen Sie Benutzer an, die kürzlich im System aktiv waren.",
     "members-teams-description": "Bilden Sie Ihre gesamte Organisationsstruktur mit hierarchischen Teams ab.",
     "members-users-description": "Zeigen und verwalten Sie die regulären Benutzer in Ihrer Organisation. Für Administratoren besuchen Sie bitte die Seite „Administratoren\".",
+    "memory-conflict-review-message": "Prüfung eines Erinnerungskonflikts für",
     "memory-proposal-failed": "Der letzte Vorschlagsversuch ist fehlgeschlagen: {{message}}",
     "memory-proposal-no-new-terms": "Beim letzten Vorschlagsversuch wurden in dieser Erinnerung keine neuen Glossarbegriffe gefunden.",
     "memory-proposal-reviewer-visibility": "Alle, die Entwürfe im Ontology Studio sehen können (standardmäßig alle Benutzer), können diesen Vorschlag lesen, einschließlich Details aus dieser Erinnerung.",

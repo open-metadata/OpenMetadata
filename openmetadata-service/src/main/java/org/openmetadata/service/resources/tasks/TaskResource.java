@@ -952,6 +952,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     if (create == null) {
       throw BadRequestException.of("Request body is required to create a task.");
     }
+    requireCreatableThroughApi(create);
     Task task = getTask(create, securityContext.getUserPrincipal().getName());
     enforceDomainOnlyPolicyForTask(securityContext, task);
     authorizeCreateTaskOnAboutEntity(securityContext, task);
@@ -983,10 +984,23 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     if (create == null) {
       throw BadRequestException.of("Request body is required to create or update a task.");
     }
+    requireCreatableThroughApi(create);
     Task task = getTask(create, securityContext.getUserPrincipal().getName());
     enforceDomainOnlyPolicyForTask(securityContext, task);
     authorizeCreateTaskOnAboutEntity(securityContext, task);
     return createOrUpdate(uriInfo, securityContext, task);
+  }
+
+  /**
+   * The server opens a memory conflict review when a memory enters review with disputes, and its
+   * resolution assumes that memory
+   * (ADR:2026-10-13-a-memory-conflict-opens-a-review-task-and-approving-it-supersedes-the-disputed-memory).
+   */
+  private static void requireCreatableThroughApi(CreateTask create) {
+    if (create.getType() == TaskEntityType.MemoryConflictReview) {
+      throw BadRequestException.of(
+          "Memory conflict review tasks are opened by the server when a memory is disputed");
+    }
   }
 
   /**

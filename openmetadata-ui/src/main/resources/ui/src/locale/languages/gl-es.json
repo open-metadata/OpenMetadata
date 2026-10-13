@@ -4615,6 +4615,7 @@
     "members-online-users-description": "Visualiza os usuarios que estiveron activos recentemente no sistema.",
     "members-teams-description": "Representa toda a estrutura da túa organización con equipos xerárquicos.",
     "members-users-description": "Visualiza e xestiona os usuarios habituais da túa organización. Para os administradores, visita a páxina de Administradores.",
+    "memory-conflict-review-message": "Revisión de conflito de recordo para",
     "memory-proposal-failed": "O último intento de proposta fallou: {{message}}",
     "memory-proposal-no-new-terms": "O último intento de proposta non atopou termos de glosario novos neste recordo.",
     "memory-proposal-reviewer-visibility": "Calquera persoa que poida ver os borradores de Ontology Studio (por defecto, todas as persoas usuarias) pode ler esta proposta, incluídos detalles deste recordo.",

@@ -4615,6 +4615,7 @@
     "members-online-users-description": "查看最近在系统中活跃的用户。",
     "members-teams-description": "使用分层团队呈现您的整个组织结构。",
     "members-users-description": "查看和管理组织中的普通用户。对于管理员用户，请访问\"管理员\"页面。",
+    "memory-conflict-review-message": "记忆冲突审查",
     "memory-proposal-failed": "上次提议失败：{{message}}",
     "memory-proposal-no-new-terms": "上次提议未在此记忆中找到新的术语库术语。",
     "memory-proposal-reviewer-visibility": "任何可以查看 Ontology Studio 草稿的人（默认是所有用户）都可以阅读此提议，包括来自此记忆的详细信息。",

@@ -4615,6 +4615,7 @@
     "members-online-users-description": "Consultez les utilisateurs récemment actifs dans le système.",
     "members-teams-description": "Représentez toute la structure de votre organisation avec des équipes hiérarchiques.",
     "members-users-description": "Consultez et gérez les utilisateurs standard de votre organisation. Pour les administrateurs, consultez la page Administrateurs.",
+    "memory-conflict-review-message": "Revue de conflit de souvenir pour",
     "memory-proposal-failed": "La dernière tentative de proposition a échoué : {{message}}",
     "memory-proposal-no-new-terms": "La dernière tentative de proposition n’a trouvé aucun nouveau terme de glossaire dans ce souvenir.",
     "memory-proposal-reviewer-visibility": "Toute personne pouvant consulter les brouillons d’Ontology Studio (par défaut, tous les utilisateurs) peut lire cette proposition, y compris des détails de ce souvenir.",

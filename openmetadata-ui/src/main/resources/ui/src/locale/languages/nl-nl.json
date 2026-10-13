@@ -4615,6 +4615,7 @@
     "members-online-users-description": "Bekijk gebruikers die recent actief zijn geweest in het systeem.",
     "members-teams-description": "Geef uw volledige organisatiestructuur weer met hiërarchische teams.",
     "members-users-description": "Bekijk en beheer de gewone gebruikers in uw organisatie. Ga voor beheerders naar de pagina Beheerders.",
+    "memory-conflict-review-message": "Herinneringsconflictbeoordeling voor",
     "memory-proposal-failed": "De laatste poging tot een voorstel is mislukt: {{message}}",
     "memory-proposal-no-new-terms": "Bij de laatste poging tot een voorstel zijn in deze herinnering geen nieuwe woordenboektermen gevonden.",
     "memory-proposal-reviewer-visibility": "Iedereen die Ontology Studio-concepten kan bekijken (standaard alle gebruikers) kan dit voorstel lezen, inclusief details uit deze herinnering.",

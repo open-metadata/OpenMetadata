@@ -4615,6 +4615,7 @@
     "members-online-users-description": "最近システムでアクティブだったユーザーを表示します。",
     "members-teams-description": "階層的なチームで組織全体の構造を表現します。",
     "members-users-description": "組織内の一般ユーザーを表示・管理します。管理者ユーザーについては、管理者ページをご覧ください。",
+    "memory-conflict-review-message": "メモリの競合レビュー：",
     "memory-proposal-failed": "前回の提案に失敗しました: {{message}}",
     "memory-proposal-no-new-terms": "前回の提案では、このメモリから新しい用語集の用語は見つかりませんでした。",
     "memory-proposal-reviewer-visibility": "Ontology Studio の下書きを閲覧できるユーザー（既定ではすべてのユーザー）は、このメモリの詳細を含むこの提案を読むことができます。",

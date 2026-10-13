@@ -4615,6 +4615,7 @@
     "members-online-users-description": "檢視最近在系統中活躍的使用者。",
     "members-teams-description": "使用階層式團隊呈現您的整個組織結構。",
     "members-users-description": "檢視和管理組織中的一般使用者。若為管理員使用者，請前往「管理員」頁面。",
+    "memory-conflict-review-message": "記憶衝突審查",
     "memory-proposal-failed": "上次提議失敗：{{message}}",
     "memory-proposal-no-new-terms": "上次提議未在此記憶中找到新的詞彙表術語。",
     "memory-proposal-reviewer-visibility": "任何可以檢視 Ontology Studio 草稿的人（預設為所有使用者）都可以閱讀此提議，包括來自此記憶的詳細資訊。",

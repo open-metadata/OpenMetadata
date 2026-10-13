@@ -4615,6 +4615,7 @@
     "members-online-users-description": "View users who have been active recently in the system.",
     "members-teams-description": "Represent your entire organizational structure with hierarchical teams.",
     "members-users-description": "View and manage regular users in your organization. For admin users, please visit the Admins page.",
+    "memory-conflict-review-message": "Memory conflict review for",
     "memory-proposal-failed": "The last proposal attempt failed: {{message}}",
     "memory-proposal-no-new-terms": "The last proposal attempt found no new glossary terms in this memory.",
     "memory-proposal-reviewer-visibility": "Anyone who can view Ontology Studio drafts (by default, every user) can read this proposal, including details from this memory.",
