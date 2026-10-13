@@ -52,17 +52,25 @@ async function goToLearningResourcesAdmin(page: Page) {
 async function selectDropdownOption(
   page: Page,
   testId: string,
-  optionText: string
+  optionText: string,
+  role: 'button' | 'combobox' = 'button'
 ) {
-  const field = page
+  const trigger = page
     .getByTestId('learning-resource-form-drawer')
-    .getByTestId(testId);
-  const trigger = field.getByRole('button').or(field.getByRole('combobox'));
+    .getByTestId(testId)
+    .getByRole(role);
   await selectOptionWithRetry(
     trigger,
     page.getByRole('option', { name: new RegExp(`^${optionText}$`, 'i') })
   );
-  await page.keyboard.press('Escape');
+  // A multi-select stays open; Escape would bubble to the drawer and close it.
+  if ((await trigger.getAttribute('aria-expanded')) === 'true') {
+    await page
+      .getByTestId('learning-resource-form-drawer')
+      .getByText(/^(Add|Edit) Resource$/)
+      .click();
+  }
+  await expect(trigger).toHaveAttribute('aria-expanded', 'false');
 }
 
 async function fillResourceForm(
@@ -88,8 +96,13 @@ async function fillResourceForm(
   await descriptionInput.fill(data.description);
 
   await selectDropdownOption(page, 'resource-type-select', data.type);
-  await selectDropdownOption(page, 'categories-select', data.category);
-  await selectDropdownOption(page, 'contexts-select', data.context);
+  await selectDropdownOption(
+    page,
+    'categories-select',
+    data.category,
+    'combobox'
+  );
+  await selectDropdownOption(page, 'contexts-select', data.context, 'combobox');
 
   const urlInput = page.getByTestId('source-url-input').getByRole('textbox');
   await expect(urlInput).toBeVisible();
