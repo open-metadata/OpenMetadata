@@ -62,7 +62,13 @@ const CopyLinkButton: FC<CopyLinkButtonProps> = ({
           width: '24px',
           height: '24px',
         }}
-        onClick={() => fieldFqn && handleCopyFieldLink(fieldFqn)}>
+        onClick={(e) => {
+          // Rendered inside clickable rows/cells; copying must not trigger their click handlers.
+          e.stopPropagation();
+          if (fieldFqn) {
+            handleCopyFieldLink(fieldFqn);
+          }
+        }}>
         <ShareIcon style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }} />
       </Button>
     </Tooltip>
