@@ -13,7 +13,8 @@
 Regex-based parser for AWS Glue PySpark/GlueContext scripts to extract lineage.
 
 Parses GlueContext DynamicFrame APIs and Spark DataFrame APIs to identify
-source and target entities (S3 paths, Glue Catalog tables, JDBC tables).
+source and target entities (S3 paths, Glue Catalog tables, JDBC tables,
+Snowflake tables).
 """
 
 import re
@@ -118,6 +119,29 @@ SPARK_WRITE_INSERTINTO_PATTERN = re.compile(
     r"\.write\.insertInto\s*\(\s*[\"']([^\"']+)[\"']\s*\)",
 )
 
+# --- Snowflake Patterns ---
+# The Snowflake Spark connector is used either through GlueContext
+# (connection_type="snowflake", handled in the from_options / write_options
+# blocks) or directly with the DataFrame API:
+#   spark.read.format("snowflake").options(**sf_options).option("dbtable", "T").load()
+#   df.write.format("snowflake").options(**sf_options).option("dbtable", "T").mode("...").save()
+# The database / schema usually live in a shared options dict (sfDatabase / sfSchema).
+
+SNOWFLAKE_FORMATS = r"(?:snowflake|net\.snowflake\.spark\.snowflake)"
+
+SPARK_READ_SNOWFLAKE_PATTERN = re.compile(
+    rf"\.read\.format\s*\(\s*[\"']{SNOWFLAKE_FORMATS}[\"']\s*\)(.*?)\.load\s*\(",
+    re.DOTALL,
+)
+
+SPARK_WRITE_SNOWFLAKE_PATTERN = re.compile(
+    rf"\.write\.format\s*\(\s*[\"']{SNOWFLAKE_FORMATS}[\"']\s*\)(.*?)\.save\s*\(",
+    re.DOTALL,
+)
+
+SNOWFLAKE_DATABASE_PATTERN = re.compile(r"[\"']sfDatabase[\"']\s*[:=]\s*[\"']([^\"']+)[\"']")
+SNOWFLAKE_SCHEMA_PATTERN = re.compile(r"[\"']sfSchema[\"']\s*[:=]\s*[\"']([^\"']+)[\"']")
+
 # --- Helpers for extracting keyword arguments from function calls ---
 
 S3_PATH_PATTERN = re.compile(r"s3[an]?://[^\s\"',\]\}]+")
@@ -143,6 +167,27 @@ def _extract_s3_paths(block: str) -> list[str]:
     return list(set(S3_PATH_PATTERN.findall(block)))
 
 
+def _extract_option(block: str, key: str) -> str | None:
+    """
+    Value of `key` given as .option("key", "value"), as a dict entry or as a
+    keyword argument. The value may hold quotes of the other kind, as in
+    .option("dbtable", '"DB"."SCHEMA"."TABLE"').
+    """
+    for pattern in (
+        rf"option\s*\(\s*[\"']{key}[\"']\s*,\s*([\"'])(.+?)\1",
+        rf"[\"']?{key}[\"']?\s*:\s*([\"'])(.+?)\1",
+        rf"{key}\s*=\s*([\"'])(.+?)\1",
+    ):
+        match = re.search(pattern, block)
+        if match:
+            return match.group(2)
+    return None
+
+
+def _is_snowflake(connection_type: str | None) -> bool:
+    return bool(connection_type) and connection_type.lower() == "snowflake"
+
+
 @dataclass
 class CatalogRef:
     database: str
@@ -158,6 +203,13 @@ class JDBCRef:
 
 
 @dataclass
+class SnowflakeRef:
+    table: str
+    database: str | None = None
+    schema: str | None = None
+
+
+@dataclass
 class ScriptLineageResult:
     s3_sources: list[str] = field(default_factory=list)
     s3_targets: list[str] = field(default_factory=list)
@@ -165,6 +217,8 @@ class ScriptLineageResult:
     catalog_targets: list[CatalogRef] = field(default_factory=list)
     jdbc_sources: list[JDBCRef] = field(default_factory=list)
     jdbc_targets: list[JDBCRef] = field(default_factory=list)
+    snowflake_sources: list[SnowflakeRef] = field(default_factory=list)
+    snowflake_targets: list[SnowflakeRef] = field(default_factory=list)
 
     @property
     def has_lineage(self) -> bool:
@@ -175,6 +229,8 @@ class ScriptLineageResult:
             or self.catalog_targets
             or self.jdbc_sources
             or self.jdbc_targets
+            or self.snowflake_sources
+            or self.snowflake_targets
         )
 
 
@@ -187,6 +243,7 @@ def parse_glue_script(source_code: str) -> ScriptLineageResult:
     _parse_glue_context_targets(source_code, result)
     _parse_spark_read(source_code, result)
     _parse_spark_write(source_code, result)
+    _parse_spark_snowflake(source_code, result)
 
     logger.debug(
         f"Script lineage result: "
@@ -194,7 +251,9 @@ def parse_glue_script(source_code: str) -> ScriptLineageResult:
         f"catalog_sources={len(result.catalog_sources)}, "
         f"catalog_targets={len(result.catalog_targets)}, "
         f"jdbc_sources={len(result.jdbc_sources)}, "
-        f"jdbc_targets={len(result.jdbc_targets)}"
+        f"jdbc_targets={len(result.jdbc_targets)}, "
+        f"snowflake_sources={len(result.snowflake_sources)}, "
+        f"snowflake_targets={len(result.snowflake_targets)}"
     )
 
     return result
@@ -221,6 +280,11 @@ def _parse_glue_context_sources(source_code: str, result: ScriptLineageResult):
                 result.s3_sources.extend(paths)
                 for p in paths:
                     logger.debug(f"Found S3 source: {p}")
+            elif _is_snowflake(conn_type):
+                ref = _snowflake_ref(block, source_code)
+                if ref:
+                    result.snowflake_sources.append(ref)
+                    logger.debug(f"Found Snowflake source: {ref}")
             elif conn_type and conn_type.lower() in (
                 "jdbc",
                 "mysql",
@@ -266,6 +330,11 @@ def _parse_glue_context_targets(source_code: str, result: ScriptLineageResult): 
                 result.s3_targets.extend(paths)
                 for p in paths:
                     logger.debug(f"Found S3 target: {p}")
+            elif _is_snowflake(conn_type):
+                ref = _snowflake_ref(block, source_code)
+                if ref:
+                    result.snowflake_targets.append(ref)
+                    logger.debug(f"Found Snowflake target: {ref}")
             elif conn_type:
                 table = _extract_dict_value(block, "dbtable")
                 connection_name = _extract_kwarg(block, "catalog_connection")
@@ -364,3 +433,43 @@ def _parse_spark_write(source_code: str, result: ScriptLineageResult):
             else:
                 result.catalog_targets.append(CatalogRef(database="default", table=table_ref))
             logger.debug(f"Found Spark saveAsTable/insertInto target: {table_ref}")
+
+
+def _snowflake_ref(block: str, source_code: str) -> SnowflakeRef | None:
+    """
+    `dbtable` may be qualified (DB.SCHEMA.TABLE or SCHEMA.TABLE); otherwise
+    sfDatabase / sfSchema are taken from the block or, failing that, from
+    anywhere in the script (the usual shared options dict).
+    """
+    table = _extract_option(block, "dbtable")
+    if not table:
+        return None
+    database = _extract_option(block, "sfDatabase")
+    schema = _extract_option(block, "sfSchema")
+    if not database:
+        match = SNOWFLAKE_DATABASE_PATTERN.search(source_code)
+        database = match.group(1) if match else None
+    if not schema:
+        match = SNOWFLAKE_SCHEMA_PATTERN.search(source_code)
+        schema = match.group(1) if match else None
+
+    parts = table.replace('"', "").split(".")
+    if len(parts) == 3:
+        database, schema, table = parts
+    elif len(parts) == 2:
+        schema, table = parts
+    return SnowflakeRef(table=table, database=database, schema=schema)
+
+
+def _parse_spark_snowflake(source_code: str, result: ScriptLineageResult):
+    for match in SPARK_READ_SNOWFLAKE_PATTERN.finditer(source_code):
+        ref = _snowflake_ref(match.group(1), source_code)
+        if ref:
+            result.snowflake_sources.append(ref)
+            logger.debug(f"Found Spark read.format('snowflake') source: {ref}")
+
+    for match in SPARK_WRITE_SNOWFLAKE_PATTERN.finditer(source_code):
+        ref = _snowflake_ref(match.group(1), source_code)
+        if ref:
+            result.snowflake_targets.append(ref)
+            logger.debug(f"Found Spark write.format('snowflake') target: {ref}")

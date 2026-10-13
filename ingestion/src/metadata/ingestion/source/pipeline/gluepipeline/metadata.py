@@ -59,6 +59,7 @@ from metadata.ingestion.source.pipeline.gluepipeline.models import (
     JobNodeResponse,
     S3Source,
     S3Target,
+    SnowflakeNode,
 )
 from metadata.ingestion.source.pipeline.gluepipeline.script_parser import (
     parse_glue_script,
@@ -92,6 +93,8 @@ TABLE_MODEL_MAP = {
     "RedshiftSource": CatalogSource,
     "RedshiftTarget": CatalogSource,
     "DirectJDBC": CatalogSource,
+    "SnowflakeSource": SnowflakeNode,
+    "SnowflakeTarget": SnowflakeNode,
 }
 STORAGE_MODEL_MAP = {
     "S3CsvSource": S3Source,
@@ -215,7 +218,8 @@ class GluepipelineSource(PipelineServiceSource):
                     table_model = CatalogSource.model_validate(entity)
                 elif key in STORAGE_MODEL_MAP:
                     storage_model = STORAGE_MODEL_MAP[key].model_validate(entity)
-                if table_model:
+                # a Snowflake source of type "query" carries no table: nothing to link
+                if table_model and table_model.table_name:
                     for db_service_name in self.get_db_service_names() or ["*"]:
                         table_entity = self.metadata.get_entity_reference(
                             entity=Table,
@@ -267,6 +271,8 @@ class GluepipelineSource(PipelineServiceSource):
         self._resolve_catalog_entities(result.catalog_targets, lineage_details, "targets")
         self._resolve_jdbc_entities(result.jdbc_sources, lineage_details, "sources")
         self._resolve_jdbc_entities(result.jdbc_targets, lineage_details, "targets")
+        self._resolve_snowflake_entities(result.snowflake_sources, lineage_details, "sources")
+        self._resolve_snowflake_entities(result.snowflake_targets, lineage_details, "targets")
 
     def _download_s3_script(self, s3_uri: str) -> str | None:
         try:
@@ -369,6 +375,55 @@ class GluepipelineSource(PipelineServiceSource):
                         break
                 except Exception as exc:
                     logger.debug(f"Failed to resolve JDBC ref {table_name} in service {db_service_name}: {exc}")
+
+    def _resolve_snowflake_entities(self, refs: list, lineage_details: dict, direction: str):
+        """
+        Snowflake refs carry database and schema, so the first attempt is exact.
+        When the script's sfDatabase does not match the ingested database name
+        fall back to schema.table, then to the bare table name, but only while
+        the match stays unambiguous.
+        """
+        for ref in refs:
+            attempts = ((ref.database, ref.schema), (None, ref.schema), (None, None))
+            table_entity = None
+            for database_name, schema_name in attempts:
+                table_entity = self._search_unique_table(ref.table, database_name, schema_name)
+                if table_entity:
+                    break
+            if table_entity:
+                lineage_details[direction].append(table_entity)
+            else:
+                logger.warning(
+                    f"Could not find table entity for Snowflake reference "
+                    f"{ref.database}.{ref.schema}.{ref.table}. Ensure the Snowflake service has been ingested."
+                )
+
+    def _search_unique_table(
+        self, table_name: str, database_name: str | None, schema_name: str | None
+    ) -> EntityReference | None:
+        for db_service_name in self.get_db_service_names() or ["*"]:
+            try:
+                table_fqns = fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Table,
+                    table_name=table_name,
+                    database_name=database_name,
+                    schema_name=schema_name,
+                    service_name=db_service_name,
+                    fetch_multiple_entities=True,
+                )
+            except Exception as exc:
+                logger.debug(f"Failed to search table {table_name} in service {db_service_name}: {exc}")
+                continue
+            if not table_fqns:
+                continue
+            if len(table_fqns) > 1:
+                logger.warning(f"Snowflake table {table_name} matches several tables {table_fqns}; skipping lineage")
+                return None
+            table_entity = self.metadata.get_entity_reference(entity=Table, fqn=table_fqns[0])
+            if table_entity:
+                return table_entity
+        return None
 
     def _resolve_glue_connection(self, connection_name: str) -> dict | None:
         if connection_name in self._glue_connection_cache:
