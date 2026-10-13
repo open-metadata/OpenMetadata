@@ -1363,10 +1363,14 @@ export const addTagsAndGlossaryToDomain = async (
  */
 export const clearPersistedDomain = async (apiContext: APIRequestContext) => {
   const me = await (await apiContext.get('/api/v1/users/loggedInUser')).json();
-  await apiContext.patch(`/api/v1/users/${me.id}`, {
+  const res = await apiContext.patch(`/api/v1/users/${me.id}`, {
     data: [{ op: 'add', path: '/defaultDomain', value: null }],
     headers: { 'Content-Type': 'application/json-patch+json' },
   });
+
+  expect(res.ok(), `clearing defaultDomain returned ${res.status()}`).toBe(
+    true
+  );
 };
 
 /** Saves `domainId` as the caller's navbar selection (User.defaultDomain) through the API. */
@@ -1375,7 +1379,7 @@ export const setPersistedDomain = async (
   domainId: string
 ) => {
   const me = await (await apiContext.get('/api/v1/users/loggedInUser')).json();
-  await apiContext.patch(`/api/v1/users/${me.id}`, {
+  const res = await apiContext.patch(`/api/v1/users/${me.id}`, {
     data: [
       {
         op: 'add',
@@ -1385,11 +1389,14 @@ export const setPersistedDomain = async (
     ],
     headers: { 'Content-Type': 'application/json-patch+json' },
   });
+
+  expect(res.ok(), `saving defaultDomain returned ${res.status()}`).toBe(true);
 };
 
 /**
  * Runs a navbar domain pick and waits for it to settle: the pick is saved on the user, then the
  * page reloads. Interacting before the reload races it (e.g. a second pick lands first).
+ * A failed save shows a toast and skips the reload, so fail on its status instead of waiting.
  */
 export const switchNavbarDomain = async (
   page: Page,
@@ -1398,11 +1405,20 @@ export const switchNavbarDomain = async (
   const saved = page.waitForResponse(
     (response) =>
       response.request().method() === 'PATCH' &&
-      /\/api\/v1\/users\/[^/]+$/.test(new URL(response.url()).pathname)
+      /\/api\/v1\/users\/[^/]+$/.test(new URL(response.url()).pathname),
+    { timeout: ACTION_TIMEOUT }
   );
-  const reloaded = page.waitForEvent('load');
+  const reloaded = page.waitForEvent('load', { timeout: ACTION_TIMEOUT });
+  // A failed save never reloads; keep the rejection handled until the status is checked.
+  reloaded.catch(() => undefined);
   await pick();
-  await saved;
+  const response = await saved;
+
+  expect(
+    response.ok(),
+    `saving the navbar domain returned ${response.status()}`
+  ).toBe(true);
+
   await reloaded;
   await waitForAllLoadersToDisappear(page);
 };

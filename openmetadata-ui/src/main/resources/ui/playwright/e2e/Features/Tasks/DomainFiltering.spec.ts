@@ -22,15 +22,14 @@ import {
 } from '../../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { loginAsIsolatedAdmin } from '../../../utils/isolatedDomainUser';
-import {
-  waitForTaskCountResponse,
-  waitForTaskListResponse,
-} from '../../../utils/task';
+import { waitForTaskListResponse } from '../../../utils/task';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 // The navbar pick is saved on the user (defaultDomain) and applied on load, so tests switch
-// domains as a throwaway admin to keep the pick out of parallel tests.
+// domains as a throwaway admin to keep the pick out of parallel tests. Returns the task count
+// the reloaded page requests for the new selection; the waiter is armed only after the save and
+// matches the expected `domain` param, so a count request left over from before can't satisfy it.
 const switchDomain = async (
   apiContext: APIRequestContext,
   page: Page,
@@ -39,7 +38,19 @@ const switchDomain = async (
   await (domain
     ? setPersistedDomain(apiContext, domain.id ?? '')
     : clearPersistedDomain(apiContext));
+  const expectedDomain = domain?.fullyQualifiedName ?? null;
+  const taskCount = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+
+    return (
+      response.request().method() === 'GET' &&
+      url.pathname.endsWith('/api/v1/tasks/count') &&
+      url.searchParams.get('domain') === expectedDomain
+    );
+  });
   await page.reload();
+
+  return taskCount;
 };
 
 test.describe('Domain Filtering - Tasks Refetch on Domain Switch', () => {
@@ -143,17 +154,13 @@ test.describe('Domain Filtering - Tasks Refetch on Domain Switch', () => {
       await activityFeedTab.click();
       await waitForAllLoadersToDisappear(page);
 
-      const taskApiResponse = waitForTaskCountResponse(page);
-
-      await switchDomain(apiContext, page, domainA.responseData);
-      const response = await taskApiResponse;
+      const response = await switchDomain(
+        apiContext,
+        page,
+        domainA.responseData
+      );
 
       expect(response.status()).toBe(200);
-      expect(response.url()).toContain(
-        `domain=${encodeURIComponent(
-          domainA.responseData.fullyQualifiedName ?? ''
-        )}`
-      );
     } finally {
       await afterAction();
     }
@@ -177,17 +184,13 @@ test.describe('Domain Filtering - Tasks Refetch on Domain Switch', () => {
       await switchDomain(apiContext, page, domainA.responseData);
       await waitForAllLoadersToDisappear(page);
 
-      const taskApiResponse = waitForTaskCountResponse(page);
-
-      await switchDomain(apiContext, page, domainB.responseData);
-      const response = await taskApiResponse;
+      const response = await switchDomain(
+        apiContext,
+        page,
+        domainB.responseData
+      );
 
       expect(response.status()).toBe(200);
-      expect(response.url()).toContain(
-        `domain=${encodeURIComponent(
-          domainB.responseData.fullyQualifiedName ?? ''
-        )}`
-      );
     } finally {
       await afterAction();
     }
@@ -211,14 +214,10 @@ test.describe('Domain Filtering - Tasks Refetch on Domain Switch', () => {
       await switchDomain(apiContext, page, domainA.responseData);
       await waitForAllLoadersToDisappear(page);
 
-      const taskApiResponse = waitForTaskCountResponse(page);
-
-      await switchDomain(apiContext, page);
-      const response = await taskApiResponse;
+      // Resolves only on a count request without a `domain` param.
+      const response = await switchDomain(apiContext, page);
 
       expect(response.status()).toBe(200);
-      const responseUrl = response.url();
-      expect(responseUrl).not.toContain('domain=');
     } finally {
       await afterAction();
     }
@@ -367,10 +366,11 @@ test.describe('Domain Filtering - Entity Page Activity Feed', () => {
       await waitForAllLoadersToDisappear(page);
 
       // Switch domain and verify feeds API is called
-      const taskApiResponse = waitForTaskCountResponse(page);
-
-      await switchDomain(apiContext, page, domain.responseData);
-      const response = await taskApiResponse;
+      const response = await switchDomain(
+        apiContext,
+        page,
+        domain.responseData
+      );
 
       expect(response.status()).toBe(200);
     } finally {

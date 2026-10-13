@@ -39,6 +39,7 @@ import {
   searchAndExpectEntityVisible,
   selectDomain,
   selectDomainFromNavbar,
+  switchNavbarDomain,
   verifyActiveDomainIsDefault,
 } from '../../utils/domain';
 import { assignTier, waitForAllLoadersToDisappear } from '../../utils/entity';
@@ -624,8 +625,10 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await domainSearch.clear();
       const allDomainsNode = page.getByTestId('tree-node-All Domains');
       await expect(allDomainsNode).toBeVisible();
-      await allDomainsNode.click({ timeout: ACTION_TIMEOUT });
-      await waitForAllLoadersToDisappear(page);
+      // The clear saves on the user and reloads; wait for both before asserting.
+      await switchNavbarDomain(page, () =>
+        allDomainsNode.click({ timeout: ACTION_TIMEOUT })
+      );
 
       await verifyActiveDomainIsDefault(page);
 
