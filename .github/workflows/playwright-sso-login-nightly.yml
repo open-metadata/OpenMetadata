@@ -46,6 +46,9 @@ on:
       - 'openmetadata-ui/src/main/resources/ui/src/pages/ForgotPassword/**'
       - 'openmetadata-ui/src/main/resources/ui/src/pages/ResetPassword/**'
       - 'openmetadata-ui/src/main/resources/ui/src/components/common/LoginButton/**'
+      # ui-core-components primitives (buttons/input/form/form-field) are
+      # intentionally NOT in this PR gate; drift is caught by the nightly run.
+      # ADR:2026-10-13-sso-pr-gate-covers-auth-owned-paths-only
       # Backend auth surface — narrow to the packages the SSO matrix
       # actually exercises (login/refresh, JWT filter, SAML handler,
       # OIDC/SAML code flow, LDAP/basic authenticators, the servlet
