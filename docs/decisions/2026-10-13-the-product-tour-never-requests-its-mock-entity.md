@@ -34,6 +34,9 @@ lineage step. Neither the specs nor the unit tests could see this.
   while the user is still on `/tour`.
 - Mock grants come from `mockTourPermission.constants.ts`, not `mockTourData.constants.ts`. Any page
   can then import them without bundling the whole mock dataset.
+- The Explore summary panel gets a view-only grant on the tour (`mockTourSummaryPanelPermission`).
+  A tour edit would PATCH a table that does not exist, and the panel's data quality tab would
+  query it by FQN.
 
 ## Consequences
 

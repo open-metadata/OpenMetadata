@@ -20,3 +20,10 @@ export const mockTablePermission = {
   ViewDataProfile: true,
   EditAll: true,
 };
+
+// The Explore summary panel's grant on the tour's mock table: view only. No edit or test
+// controls, since every edit would PATCH a table that does not exist, and the data quality
+// tab would query it by FQN.
+export const mockTourSummaryPanelPermission = {
+  ViewBasic: true,
+};

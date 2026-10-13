@@ -20,7 +20,7 @@ import { get, isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { mockTablePermission } from '../../../constants/mockTourPermission.constants';
+import { mockTourSummaryPanelPermission } from '../../../constants/mockTourPermission.constants';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
@@ -208,8 +208,19 @@ const mergeEntityData = (
 const ONTOLOGY_EXPLORER = 'ontology-explorer';
 const GLOSSARY_TERM_ASSETS_TAB = 'glossary-term-assets-tab';
 const DETAILS_ENTITY_TYPE_KEY = 'details.entityType';
+const getSummaryLineageConfig = ({
+  upstreamDepth = 1,
+  downstreamDepth = 1,
+  nodesPerLayer = 50,
+  pipelineViewMode = PipelineViewMode.Node,
+}: Pick<
+  EntitySummaryPanelProps,
+  'upstreamDepth' | 'downstreamDepth' | 'nodesPerLayer' | 'pipelineViewMode'
+>) => ({ upstreamDepth, downstreamDepth, nodesPerLayer, pipelineViewMode });
 const TOUR_PERMISSION_FLAGS = {
-  ...getDerivedPermissionFlags(mockTablePermission as OperationPermission),
+  ...getDerivedPermissionFlags(
+    mockTourSummaryPanelPermission as OperationPermission
+  ),
   isLoading: false,
 };
 
@@ -347,8 +358,8 @@ export default function EntitySummaryPanel({
   // getPrioritizedEditPermission calls with no soft-delete gating, so passing `deleted` here
   // would hide edit affordances that previously rendered on deleted entities — a real
   // behavior change. DataAssetsHeader is ungated for the same reason.
-  // The tour's entity is mock data with no server-side record, so it carries the tour's mock
-  // grants instead of a permission fetch (same as TableDetailsPageV1).
+  // The tour's entity is mock data with no server-side record, so it carries a view-only
+  // tour grant instead of a permission fetch.
   const fetchedPermissionFlags = useEntityPermissions(
     permissionResourceType,
     permissionIdentifier,
@@ -527,7 +538,7 @@ export default function EntitySummaryPanel({
   const fetchLineageData = useCallback(async () => {
     const currentFqn = entityDetails?.details?.fullyQualifiedName;
 
-    if (!currentFqn || !entityType) {
+    if (!currentFqn || !entityType || isTourPage) {
       setIsLineageLoading(false);
       setLineageData(null);
 
@@ -540,12 +551,12 @@ export default function EntitySummaryPanel({
       const response = await getLineageDataByFQN({
         fqn: currentFqn,
         entityType,
-        config: {
-          upstreamDepth: upstreamDepth ?? 1,
-          downstreamDepth: downstreamDepth ?? 1,
-          nodesPerLayer: nodesPerLayer ?? 50,
-          pipelineViewMode: pipelineViewMode ?? PipelineViewMode.Node,
-        },
+        config: getSummaryLineageConfig({
+          upstreamDepth,
+          downstreamDepth,
+          nodesPerLayer,
+          pipelineViewMode,
+        }),
       });
 
       if (entityDetails?.details?.fullyQualifiedName !== currentFqn) {
@@ -566,6 +577,7 @@ export default function EntitySummaryPanel({
   }, [
     entityDetails?.details?.fullyQualifiedName,
     entityType,
+    isTourPage,
     upstreamDepth,
     downstreamDepth,
     nodesPerLayer,
