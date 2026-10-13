@@ -41,8 +41,9 @@
 # reads. Observed 2026-10-13 05:49Z: 16 runs / 30 running jobs on 5 deleted
 # refs, one for PR 35141 nearly an hour after it merged. A rebuild deletes the
 # old refs before creating the new ones, so the merge_group trigger sees them
-# dead as soon as the next entry starts; the schedule covers a rebuild that
-# starts no new entry.
+# dead as soon as the next entry starts; the dequeued trigger covers a PR
+# leaving the queue with nothing rebuilt behind it, and the schedule anything
+# else.
 #
 # SAFETY: a cache is deleted, or a run cancelled, only when its ref no longer
 # resolves (and, for runs, its PR did not merge). Entries still in the queue keep their caches and runs. If the ref
@@ -52,6 +53,10 @@ name: Prune dead merge-queue refs
 
 on:
   merge_group:
+  # pull_request_target, not pull_request: fork PRs get a read-only token and
+  # could not cancel. Safe only while nothing checks out or reads PR content.
+  pull_request_target:
+    types: [dequeued]
   schedule:
     - cron: "*/30 * * * *"
   workflow_dispatch:
@@ -67,8 +72,8 @@ permissions:
 
 jobs:
   prune:
-    # Not on merge_group: the sweep is slow and caches are not urgent.
-    if: github.event_name != 'merge_group'
+    # Only on schedule/dispatch: the sweep is slow and caches are not urgent.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     concurrency:
       group: prune-ephemeral-caches
       cancel-in-progress: false
@@ -153,6 +158,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   cancel-stale-runs:
+    if: github.event_name != 'pull_request_target' || !github.event.pull_request.merged
     # A rebuild fires one merge_group event per new entry; let one sweep run
     # and collapse the rest into a single pending one.
     concurrency:
@@ -165,24 +171,34 @@ jobs:
       GH_REPO: ${{ github.repository }}
       DRY_RUN: ${{ inputs.dry_run || false }}
       SELF_RUN_ID: ${{ github.run_id }}
+      EVENT_NAME: ${{ github.event_name }}
     steps:
       - name: Cancel runs on dead merge-queue refs
         shell: bash
         run: |
           set -euo pipefail
 
-          live=$(gh api --paginate \
-            "repos/${GH_REPO}/git/matching-refs/heads/gh-readonly-queue/" \
-            --jq '.[].ref | sub("^refs/heads/"; "")' | sort -u)
-          echo "live queue refs:"
-          printf '%s\n' "${live:-  (none)}"
+          # GitHub deletes the queue ref ~2s after the dequeued event fires.
+          # A fixed wait is enough; the schedule catches a slower delete.
+          if [[ "$EVENT_NAME" == "pull_request_target" ]]; then
+            sleep 20
+          fi
 
+          # Runs BEFORE refs: a run only exists once its ref does, so every
+          # listed run's ref is in the listing below if still live. The other
+          # order would cancel runs of an entry created between the two calls.
           runs=$(mktemp)
           for status in in_progress queued waiting requested pending; do
             gh api --paginate \
               "repos/${GH_REPO}/actions/runs?event=merge_group&status=${status}&per_page=100" \
               --jq '.workflow_runs[] | [.id, .head_branch, .name] | @tsv' >> "$runs"
           done
+
+          live=$(gh api --paginate \
+            "repos/${GH_REPO}/git/matching-refs/heads/gh-readonly-queue/" \
+            --jq '.[].ref | sub("^refs/heads/"; "")' | sort -u)
+          echo "live queue refs:"
+          printf '%s\n' "${live:-  (none)}"
 
           cancelled=0
           kept=0

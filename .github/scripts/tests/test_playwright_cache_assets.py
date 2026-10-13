@@ -563,5 +563,8 @@ def test_prune_workflow_only_cancels_runs_on_dead_queue_refs() -> None:
     # A merged group's still-running checks are post-merge signal for main.
     assert '[[ "${merged[$pr]}" == "true" ]]' in cancel
     assert "gh-readonly-queue/" in cancel
+    assert "  pull_request_target:\n    types: [dequeued]\n" in prune
     listing = cancel.split("live=$(gh api", 1)[0]
     assert "set -euo pipefail" in listing
+    # Refs listed after runs, or a just-created entry's runs read as dead.
+    assert "actions/runs?event=merge_group" in listing
