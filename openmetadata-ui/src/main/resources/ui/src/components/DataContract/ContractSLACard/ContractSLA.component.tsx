@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import {
   Box,
   Divider,
@@ -189,7 +188,14 @@ const ContractSLA: React.FC<{
   const renderOutcomeIcon = (key: string): ReactNode => {
     const outcomeOf = SLA_CHECK_OUTCOME[key];
     if (!slaValidation || !outcomeOf) {
-      return <Icon className="sla-icon" component={DefaultIcon} />;
+      return (
+        <DefaultIcon
+          className="sla-icon"
+          fill="currentColor"
+          height="1em"
+          width="1em"
+        />
+      );
     }
     const met = outcomeOf(slaValidation);
     if (met === true) {

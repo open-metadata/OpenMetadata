@@ -136,12 +136,13 @@ describe('EditorSlots link handling', () => {
     document.body.removeChild(dialog);
   });
 
-  it('falls back to document.body when the editor is inside an antd modal', () => {
-    // antd modals also expose role="dialog" but do not trap focus and would
-    // misposition a nested modal, so the link overlays must stay in body.
+  it('falls back to document.body when the editor is inside an antd drawer', () => {
+    // antd drawers also expose role="dialog" but do not trap focus and would
+    // misposition a nested overlay, so the link overlays must stay in body.
     const dialog = document.createElement('div');
     dialog.setAttribute('role', 'dialog');
-    dialog.className = 'ant-modal';
+    dialog.className = 'ant-drawer';
+
     document.body.appendChild(dialog);
     const editorElement = document.createElement('div');
     dialog.appendChild(editorElement);

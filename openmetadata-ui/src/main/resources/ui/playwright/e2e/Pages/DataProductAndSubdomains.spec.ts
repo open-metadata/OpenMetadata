@@ -442,7 +442,7 @@ test.describe('Data Product Comprehensive Tests', () => {
       await assetModal
         .locator(`[data-testid="table-data-card_${tableFqn}"]`)
         .getByTestId('asset-checkbox')
-        .check();
+        .click();
 
       // Save
       const addRes = page.waitForResponse('/api/v1/dataProducts/*/assets/add');
