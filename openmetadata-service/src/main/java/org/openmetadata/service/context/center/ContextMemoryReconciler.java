@@ -10,10 +10,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryScope;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
@@ -69,7 +69,7 @@ public class ContextMemoryReconciler {
 
   private boolean isReusableFileMemory(ContextMemory pill) {
     return pill.getSourceType() == ContextMemorySourceType.FILE_EXTRACTION
-        && pill.getEntityStatus() == EntityStatus.APPROVED
+        && pill.getEntityStatus() == ContextMemoryStatus.APPROVED
         && pill.getMemoryScope() == ContextMemoryScope.ENTITY_SCOPED
         && pill.getShareConfig() != null
         && pill.getShareConfig().getVisibility() == MemoryVisibility.ENTITY;
@@ -254,7 +254,7 @@ public class ContextMemoryReconciler {
    * stage was a reviewer's decision that re-extracting the same fact must not undo.
    */
   private boolean isEngineManaged(ContextMemory pill) {
-    return isAutomated(pill) && pill.getEntityStatus() == EntityStatus.APPROVED;
+    return isAutomated(pill) && pill.getEntityStatus() == ContextMemoryStatus.APPROVED;
   }
 
   private String questionKey(ContextMemory pill) {

@@ -17,6 +17,7 @@ import { FormProvider, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
 import DestinationFormItem from '../../../../../Alerts/DestinationFormItem/DestinationFormItem.component';
+import { DESTINATIONS_MIN_COUNT_ERROR_PATH } from '../../../../../Alerts/DestinationFormItem/DestinationFormItem.constants';
 import { DestinationFormItemProps } from '../../../../../Alerts/DestinationFormItem/DestinationFormItem.interface';
 import type { ModifiedCreateEventSubscription } from './Notification.types';
 
@@ -115,7 +116,10 @@ function NotificationDestinationBridge({
     });
 
     if (isDestinationMissing) {
-      setError('destinations', {
+      // The `root.*` namespace keeps this manual array-level error separate
+      // from nested `destinations.*` field errors so row add/remove (which
+      // clears this sentinel via `clearErrors`) cannot wipe them.
+      setError(DESTINATIONS_MIN_COUNT_ERROR_PATH, {
         message: minimumDestinationError,
         type: 'manual',
       });

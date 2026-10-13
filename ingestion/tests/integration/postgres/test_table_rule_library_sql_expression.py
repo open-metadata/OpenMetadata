@@ -64,6 +64,19 @@ def table_rule_library_test_definition(
                     description="Minimum customer ID for comparison",
                     required=False,
                 ),
+                TestCaseParameterDefinition(
+                    name="threshold",
+                    displayName="Failure Threshold",
+                    dataType="NUMBER",
+                    required=False,
+                ),
+                TestCaseParameterDefinition(
+                    name="thresholdUnit",
+                    displayName="Threshold Unit",
+                    dataType="STRING",
+                    required=False,
+                    optionValues=["ABSOLUTE", "PERCENTAGE"],
+                ),
             ],
             sqlExpression=SqlQuery(root="SELECT * FROM {{ table_name }} WHERE customer_id > {{ minCustomerId }}"),
             validatorClass="TableRuleLibrarySqlExpressionValidator",
@@ -125,6 +138,45 @@ class TableRuleLibraryTestParameter:
             ),
             expected_status=TestCaseStatus.Success,
         ),
+        TableRuleLibraryTestParameter(
+            entity_fqn="{database_service_fqn}.dvdrental.public.customer",
+            test_case_definition=TestCaseDefinition(
+                name="table_rule_library_customers_threshold_tolerated_as_percentage",
+                testDefinitionName="{test_def_name}",
+                parameterValues=[
+                    {"name": "minCustomerId", "value": "0"},
+                    {"name": "threshold", "value": "100"},
+                    {"name": "thresholdUnit", "value": "PERCENTAGE"},
+                ],
+            ),
+            expected_status=TestCaseStatus.Success,
+        ),
+        TableRuleLibraryTestParameter(
+            entity_fqn="{database_service_fqn}.dvdrental.public.customer",
+            test_case_definition=TestCaseDefinition(
+                name="table_rule_library_customers_threshold_above_percentage",
+                testDefinitionName="{test_def_name}",
+                parameterValues=[
+                    {"name": "minCustomerId", "value": "0"},
+                    {"name": "threshold", "value": "99"},
+                    {"name": "thresholdUnit", "value": "PERCENTAGE"},
+                ],
+            ),
+            expected_status=TestCaseStatus.Failed,
+        ),
+        TableRuleLibraryTestParameter(
+            entity_fqn="{database_service_fqn}.dvdrental.public.customer",
+            test_case_definition=TestCaseDefinition(
+                name="table_rule_library_customers_threshold_tolerated_as_absolute",
+                testDefinitionName="{test_def_name}",
+                parameterValues=[
+                    {"name": "minCustomerId", "value": "0"},
+                    {"name": "threshold", "value": "1000000"},
+                    {"name": "thresholdUnit", "value": "ABSOLUTE"},
+                ],
+            ),
+            expected_status=TestCaseStatus.Success,
+        ),
     ],
     ids=lambda x: x.test_case_definition.name,
 )
@@ -177,3 +229,4 @@ def test_table_rule_library_sql_expression_validator(
 
     assert test_case.testCaseResult is not None
     assert test_case.testCaseResult.testCaseStatus == table_rule_library_parameters.expected_status
+    assert "Evaluated on the full table." in test_case.testCaseResult.result

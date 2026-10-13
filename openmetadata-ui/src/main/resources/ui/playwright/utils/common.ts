@@ -22,6 +22,7 @@ import { randomUUID } from 'crypto';
 import { existsSync } from 'fs';
 import { readFile } from 'fs/promises';
 import { toLower } from 'lodash';
+import { ACTION_TIMEOUT } from '../constant/common';
 import { SidebarItem } from '../constant/sidebar';
 import { adjectives, nouns } from '../constant/user';
 import { Domain } from '../support/domain/Domain';
@@ -544,23 +545,34 @@ export const waitForToastToDisappear = async (
 };
 
 /**
- * Waits until the toast stack holds no toast, so a click on something beneath it
- * cannot be swallowed.
+ * Activates `locator` with the keyboard instead of the mouse.
  *
- * The toast region renders fixed at bottom-center — the same spot as many
- * dialogs' action buttons (Test Connection's Done/OK, for one). The backend fans
- * async-delete notifications from parallel workers' cleanup out to every socket
- * of the logged-in user, so unrelated "…deleted successfully!" toasts can pile up
- * over a button and intercept the click. A count assertion is used instead of a
- * message-filtered `waitFor` because the intercepting toast can be any of them —
- * `toHaveCount(0)` retries until the whole stack has drained and never trips
- * strict mode.
+ * Reach for this whenever a control can sit under the toast stack: pagination
+ * rows, dialog footers (Test Connection's Done/OK), anything near the bottom of
+ * the viewport. The toast region renders fixed at bottom-center, and the backend
+ * fans async-delete/job notifications from parallel workers' cleanup out to every
+ * socket of the logged-in user, so an unrelated "…deleted successfully!" toast can
+ * cover a button and swallow the click.
+ *
+ * Waiting for the stack to drain first does not work: it is refilled by processes
+ * this test does not control, so emptiness is a race no timeout wins. `click({
+ * force: true })` does not work either: it only silences the hit-target check, and
+ * the browser still delivers the event to whatever occupies that coordinate — the
+ * toast. A key press is delivered to the focused element instead of to a point, so
+ * nothing drawn on top is on its path, and on a button the browser turns Enter into
+ * the same click event the mouse would have produced.
+ *
+ * Only for controls the browser activates with Enter (buttons, links, menu items).
+ * A checkbox needs Space, and a custom widget may need its own key.
  */
-export const waitForToastStackToClear = async (
-  page: Page,
-  timeout?: number
-) => {
-  await expect(page.getByTestId('alert-bar')).toHaveCount(0, { timeout });
+export const clickIgnoringToasts = async (locator: Locator) => {
+  // Asserted explicitly because `press` runs no actionability checks of its own —
+  // it is `focus()` plus a key, and focusing a hidden or detached element is a
+  // silent no-op that sends the key to the body and fails much later, somewhere
+  // confusing. These two make a broken control fail here, saying why.
+  await expect(locator).toBeVisible();
+  await expect(locator).toBeEnabled();
+  await locator.press('Enter');
 };
 
 /**
@@ -644,7 +656,7 @@ export const visitOwnProfilePage = async (page: Page) => {
   const userResponse = page.waitForResponse(
     '/api/v1/users/name/*?fields=*&include=all'
   );
-  await page.getByRole('link', { name: 'View Profile' }).click();
+  await page.getByTestId('user-name').click();
   await userResponse;
   await clickOutside(page);
 };
@@ -702,45 +714,37 @@ export const assignDataProduct = async (
     .getByTestId(action === 'Add' ? 'add-data-product' : 'edit-button')
     .click();
 
+  const picker = page.getByTestId('drop-down-menu');
+  await expect(picker).toBeVisible();
+
   for (const dataProduct of dataProducts) {
-    const tagLocator = page.getByTestId(
-      `tag-${dataProduct.fullyQualifiedName}`
-    );
+    const row = picker.getByTestId(dataProduct.fullyQualifiedName ?? '');
 
     await expect(async () => {
-      // Match any Data Product search response. The dropdown filters by the
+      // Match any Data Product search response. The picker filters by the
       // asset's domain only when the "Data Product Domain Validation" rule is
       // enabled; when it is disabled the query carries no domain, so we cannot
-      // key the wait on the domain name. The tag visibility check below is the
+      // key the wait on the domain name. The row visibility check below is the
       // real synchronization guard.
       const searchDataProduct = page.waitForResponse((response) =>
         response.url().includes('/api/v1/search/query')
       );
-      await page.locator('[data-testid="data-product-selector"] input').clear();
-      await page
-        .locator('[data-testid="data-product-selector"] input')
-        .fill(dataProduct.displayName);
+      await picker.getByTestId('search-input').clear();
+      await picker.getByTestId('search-input').fill(dataProduct.displayName);
       await searchDataProduct;
-      await expect(tagLocator).toBeVisible({ timeout: 2_000 });
+      await expect(row).toBeVisible({ timeout: 2_000 });
     }).toPass({ timeout: 30_000, intervals: [1_000, 2_000, 5_000] });
 
-    await tagLocator.click();
+    await row.click();
   }
 
-  await expect(
-    page
-      .getByTestId('data-product-dropdown-actions')
-      .getByTestId('saveAssociatedTag')
-  ).toBeEnabled();
+  await expect(picker.getByTestId('update-btn')).toBeEnabled();
 
   const patchReq = page.waitForResponse(
     (req) => req.request().method() === 'PATCH'
   );
 
-  await page
-    .getByTestId('data-product-dropdown-actions')
-    .getByTestId('saveAssociatedTag')
-    .click();
+  await picker.getByTestId('update-btn').click();
   await patchReq;
 
   if (pollForInheritance) {
@@ -792,40 +796,34 @@ export const removeDataProduct = async (
     .getByTestId('edit-button')
     .click();
 
-  await waitForAllLoadersToDisappear(page);
+  const picker = page.getByTestId('drop-down-menu');
+  await expect(picker).toBeVisible();
 
-  await page
-    .getByTestId(`selected-tag-${dataProduct.fullyQualifiedName}`)
-    .getByTestId('remove-tags')
-    .locator('svg')
-    .click();
+  // Search it up, since the selection may sit past the first page, then
+  // uncheck it.
+  const searchDataProduct = page.waitForResponse((response) =>
+    response.url().includes('/api/v1/search/query')
+  );
+  await picker.getByTestId('search-input').fill(dataProduct.displayName);
+  await searchDataProduct;
+  const row = picker.getByTestId(dataProduct.fullyQualifiedName ?? '');
+  // A single-select picker's radio row can't be unpicked; Clear all drops it.
+  if ((await row.getAttribute('role')) === 'menuitemradio') {
+    await picker.getByTestId('clear-filter-btn').click();
+  } else {
+    await row.click();
+  }
 
-  await expect(
-    page
-      .getByTestId('data-product-dropdown-actions')
-      .getByTestId('saveAssociatedTag')
-  ).toBeEnabled();
+  await expect(picker.getByTestId('update-btn')).toBeEnabled();
 
   const patchReq = page.waitForResponse(
     (req) => req.request().method() === 'PATCH'
   );
 
-  await page
-    .getByTestId('data-product-dropdown-actions')
-    .getByTestId('saveAssociatedTag')
-    .click();
+  await picker.getByTestId('update-btn').click();
   await patchReq;
 
-  await page
-    .getByTestId('data-product-dropdown-actions')
-    .getByTestId('saveAssociatedTag')
-    .locator('[data-icon="loading"]')
-    .waitFor({ state: 'detached' });
-  await expect(
-    page
-      .getByTestId('data-product-dropdown-actions')
-      .getByTestId('saveAssociatedTag')
-  ).not.toBeVisible();
+  await expect(picker).not.toBeVisible();
 
   await expect(
     page
@@ -844,7 +842,7 @@ export const visitGlossaryPage = async (page: Page, glossaryName: string) => {
   await page
     .getByTestId('glossary-left-panel')
     .getByRole('link', { name: glossaryName, exact: true })
-    .click({ timeout: 30000 });
+    .click({ timeout: ACTION_TIMEOUT });
   await waitForAllLoadersToDisappear(page);
 };
 
@@ -1019,7 +1017,7 @@ export const verifyDomainPropagation = async (
   }
 
   const entityCard = page.getByTestId(`table-data-card_${childFqnSearchTerm}`);
-  await expect(entityCard).toBeVisible({ timeout: 30_000 });
+  await expect(entityCard).toBeVisible({ timeout: ACTION_TIMEOUT });
   await expect(entityCard).toContainText(domain.displayName);
 };
 
@@ -1832,7 +1830,8 @@ export const searchDataProductOptions = async (
   } finally {
     await afterAction();
   }
-  const input = page.locator('[data-testid="data-product-selector"] input');
+  const picker = page.getByTestId('drop-down-menu');
+  const input = picker.getByTestId('search-input');
   if ((await input.inputValue()) === dataProduct.displayName) {
     await input.clear();
   }
@@ -1849,13 +1848,5 @@ export const searchDataProductOptions = async (
   await input.fill(dataProduct.displayName);
   expect((await responsePromise).status()).toBe(200);
   await waitForAllLoadersToDisappear(page);
-  return page
-    .locator('.ant-select-dropdown:visible')
-    .getByTestId('tag-' + dataProduct.fullyQualifiedName);
-};
-
-export const waitForAntdModalToSettle = async (page: Page) => {
-  await expect(
-    page.locator('.ant-modal[class*="-appear"], .ant-modal[class*="-enter"]')
-  ).toHaveCount(0);
+  return picker.getByTestId(dataProduct.fullyQualifiedName ?? '');
 };

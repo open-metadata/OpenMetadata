@@ -186,7 +186,7 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
 
   // System-defined relationship types ship with the ontology and are in use from the start.
   @Override
-  protected EntityStatus initialEntityStatus(RelationshipType entity) {
+  protected Enum<?> initialEntityStatus(RelationshipType entity) {
     return Boolean.TRUE.equals(entity.getSystemDefined()) && entity.getEntityStatus() == null
         ? EntityStatus.APPROVED
         : super.initialEntityStatus(entity);

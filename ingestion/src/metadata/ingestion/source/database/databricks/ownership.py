@@ -32,8 +32,7 @@ if TYPE_CHECKING:
 logger = ingestion_logger()
 
 OWNER_CACHE_SIZE = 1000
-# pydantic 2.14 types TypeAdapter's argument as TypeForm, which basedpyright won't match to
-# the Annotated EmailStr. Valid at runtime.
+# Pydantic exposes EmailStr as Annotated on Python 3.10, which Pyright rejects despite the valid runtime API.
 EMAIL_STR_ADAPTER = TypeAdapter(EmailStr)  # pyright: ignore[reportArgumentType]
 
 

@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card } from 'antd';
+
+import { Card } from '@openmetadata/ui-core-components';
 import { get } from 'lodash';
 import { lazy, Suspense } from 'react';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
@@ -148,16 +149,18 @@ export const getDashboardDataModelDetailPageTabs = ({
             key: EntityTabs.SQL,
             children: (
               <Card>
-                <SchemaEditor
-                  editorClass="custom-query-editor custom-code-mirror-theme full-screen-editor-height"
-                  mode={{ name: CSMode.SQL }}
-                  options={{
-                    styleActiveLine: false,
-                    readOnly: true,
-                  }}
-                  refreshEditor={activeTab === EntityTabs.SQL}
-                  value={dataModelData?.sql}
-                />
+                <Card.Content>
+                  <SchemaEditor
+                    editorClass="custom-query-editor custom-code-mirror-theme full-screen-editor-height"
+                    mode={{ name: CSMode.SQL }}
+                    options={{
+                      styleActiveLine: false,
+                      readOnly: true,
+                    }}
+                    refreshEditor={activeTab === EntityTabs.SQL}
+                    value={dataModelData?.sql}
+                  />
+                </Card.Content>
               </Card>
             ),
           },

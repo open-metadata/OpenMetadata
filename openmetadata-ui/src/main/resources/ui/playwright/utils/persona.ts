@@ -13,6 +13,7 @@
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { Document } from '../../src/generated/entity/docStore/document';
 import { PersonaPreferences } from '../../src/generated/type/personaPreferences';
+import { ACTION_TIMEOUT } from '../constant/common';
 import { GlobalSettingOptions } from '../constant/settings';
 import { PersonaClass } from '../support/persona/PersonaClass';
 import { UserClass } from '../support/user/UserClass';
@@ -111,10 +112,6 @@ export const setPersonaAsDefault = async (page: Page) => {
   await setAsDefaultButton.waitFor({ state: 'visible' });
   await setAsDefaultButton.click();
 
-  // The `default-persona-confirmation-modal` testid is on the antd
-  // `.ant-modal-root` wrapper (0x0), so `toBeVisible` on it always reports
-  // hidden. Wait for the actual "Yes" button inside the modal instead — its
-  // visibility is the real signal that the modal is rendered and interactive.
   const setAsDefaultConfirmationModal = page.getByTestId(
     'default-persona-confirmation-modal'
   );
@@ -156,7 +153,7 @@ export const navigateToPersonaWithPagination = async (
             response.request().method() === 'GET' &&
             response.url().includes('/api/v1/personas/name/'),
           200,
-          { timeout: 30000 }
+          { timeout: ACTION_TIMEOUT }
         );
 
         await locator.click();
@@ -193,10 +190,6 @@ export const removePersonaDefault = async (
   await removeDefaultButton.waitFor({ state: 'visible' });
   await removeDefaultButton.click();
 
-  // The `default-persona-confirmation-modal` testid is on the antd
-  // `.ant-modal-root` wrapper (0x0), so `toBeVisible` on it always reports
-  // hidden. Wait for the actual "Yes" button inside the modal instead — its
-  // visibility is the real signal that the modal is rendered and interactive.
   const removeDefaultConfirmationModal = page.getByTestId(
     'default-persona-confirmation-modal'
   );

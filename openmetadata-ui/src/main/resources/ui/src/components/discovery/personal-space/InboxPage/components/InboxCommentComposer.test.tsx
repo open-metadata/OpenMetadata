@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 
 const mockOnSave = jest.fn();
 
@@ -22,6 +28,7 @@ let mockCurrentUser: { name?: string; displayName?: string } = {
 
 let mockEditorContent = '';
 const mockClearEditor = jest.fn();
+const mockSetEditorContent = jest.fn();
 
 jest.mock('hooks/useApplicationStore', () => ({
   useApplicationStore: () => ({ currentUser: mockCurrentUser }),
@@ -63,10 +70,21 @@ jest.mock(
           useImperativeHandle(ref, () => ({
             getEditorContent: () => mockEditorContent,
             clearEditorContent: mockClearEditor,
+            setEditorContent: mockSetEditorContent,
           }));
 
           return (
             <>
+              {/* quill's format bar, where quill-emoji adds its button. */}
+              <div className="ql-toolbar" data-testid="format-bar">
+                <span className="ql-formats">
+                  <button
+                    aria-label="emoji"
+                    className="textarea-emoji-control"
+                    data-testid="emoji-control"
+                  />
+                </span>
+              </div>
               <button
                 aria-label="feed-editor"
                 data-placeholder={placeHolder}
@@ -193,6 +211,32 @@ describe('InboxCommentComposer', () => {
     expect(mockOnSave).toHaveBeenCalledWith('hello');
   });
 
+  // A refused comment comes back to the editor rather than vanishing with it.
+  it('puts the draft back when the save fails', async () => {
+    mockOnSave.mockRejectedValueOnce(new Error('refused'));
+    render(<InboxCommentComposer onSave={mockOnSave} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('feed-editor'));
+    });
+
+    expect(mockSetEditorContent).toHaveBeenCalledWith(
+      expect.stringContaining('hello')
+    );
+    expect(screen.getByTestId('send-button')).toBeEnabled();
+  });
+
+  it('leaves the editor empty when the save succeeds', async () => {
+    mockOnSave.mockResolvedValueOnce(undefined);
+    render(<InboxCommentComposer onSave={mockOnSave} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('feed-editor'));
+    });
+
+    expect(mockSetEditorContent).not.toHaveBeenCalled();
+  });
+
   it('passes the default placeholder to the editor', () => {
     render(<InboxCommentComposer onSave={mockOnSave} />);
 
@@ -224,5 +268,72 @@ describe('InboxCommentComposer', () => {
 
     expect(holder).not.toBeNull();
     expect(holder?.getAttribute('style')).toContain('Reply here');
+  });
+
+  // quill-emoji adds its picker to the format bar with no horizontal position
+  // and removes it on close.
+  describe('emoji picker', () => {
+    const openPicker = (top?: string) => {
+      const picker = document.createElement('div');
+      picker.id = 'textarea-emoji';
+      if (top) {
+        picker.style.top = top;
+      }
+      screen.getByTestId('format-bar').appendChild(picker);
+
+      return picker;
+    };
+
+    it('anchors the picker above its button and marks the button open', async () => {
+      render(<InboxCommentComposer onSave={jest.fn()} />);
+      const button = screen.getByTestId('emoji-control');
+      const picker = openPicker('-250px');
+
+      await waitFor(() => expect(button).toHaveClass('ql-active'));
+
+      expect(button).toHaveAttribute('aria-expanded', 'true');
+      expect(picker.style.left).toBe('0px');
+      expect(picker.style.top).toBe('');
+      expect(picker.style.bottom).toBe('100%');
+
+      picker.remove();
+
+      await waitFor(() => expect(button).not.toHaveClass('ql-active'));
+
+      expect(button).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    // The editor loads lazily and quill rebuilds its bar on re-initialising,
+    // so the bar can be a new one by the time the picker opens.
+    it('anchors the picker in a format bar rebuilt after mount', async () => {
+      render(<InboxCommentComposer onSave={jest.fn()} />);
+      const oldBar = screen.getByTestId('format-bar');
+      const newBar = document.createElement('div');
+      newBar.className = 'ql-toolbar';
+      newBar.innerHTML =
+        '<span class="ql-formats"><button class="textarea-emoji-control"></button></span>';
+      oldBar.replaceWith(newBar);
+      const picker = document.createElement('div');
+      picker.id = 'textarea-emoji';
+      picker.style.top = '-250px';
+      newBar.appendChild(picker);
+
+      await waitFor(() =>
+        expect(newBar.querySelector('.textarea-emoji-control')).toHaveClass(
+          'ql-active'
+        )
+      );
+
+      expect(picker.style.bottom).toBe('100%');
+    });
+
+    it('opens below the bar when quill-emoji chose below', async () => {
+      render(<InboxCommentComposer onSave={jest.fn()} />);
+      const picker = openPicker();
+
+      await waitFor(() => expect(picker.style.top).toBe('100%'));
+
+      expect(picker.style.bottom).toBe('');
+    });
   });
 });

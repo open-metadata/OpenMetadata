@@ -139,34 +139,25 @@ class ColumnValueLengthsToBeBetweenValidator(
         Returns:
             List[DimensionResult]: Top N dimensions plus "Others"
         """
-        dimension_results = []
+        checker = self._get_validation_checker(test_params)
 
-        try:
-            checker = self._get_validation_checker(test_params)
+        metric_expressions = {
+            DIMENSION_TOTAL_COUNT_KEY: Metrics.rowCount().fn(),
+            Metrics.minLength.name: Metrics.minLength(column).fn(),
+            Metrics.maxLength.name: Metrics.maxLength(column).fn(),
+            DIMENSION_FAILED_COUNT_KEY: checker.build_row_level_violations_sqa(LenFn(column)),
+        }
 
-            metric_expressions = {
-                DIMENSION_TOTAL_COUNT_KEY: Metrics.rowCount().fn(),
-                Metrics.minLength.name: Metrics.minLength(column).fn(),
-                Metrics.maxLength.name: Metrics.maxLength(column).fn(),
-                DIMENSION_FAILED_COUNT_KEY: checker.build_row_level_violations_sqa(LenFn(column)),
-            }
+        normalized_dimension = self._get_normalized_dimension_expression(dimension_col)
 
-            normalized_dimension = self._get_normalized_dimension_expression(dimension_col)
+        result_rows = self._run_dimensional_validation_query(
+            source=self.runner.dataset,
+            dimension_expr=normalized_dimension,
+            metric_expressions=metric_expressions,
+            top_n=top_n,
+        )
 
-            result_rows = self._run_dimensional_validation_query(
-                source=self.runner.dataset,
-                dimension_expr=normalized_dimension,
-                metric_expressions=metric_expressions,
-                top_n=top_n,
-            )
-
-            return self._process_dimension_rows(result_rows, dimension_col.name, metrics_to_compute, test_params)
-
-        except Exception as exc:
-            logger.warning(f"Error executing dimensional query: {exc}")
-            logger.debug("Full error details: ", exc_info=True)
-
-        return dimension_results
+        return self._process_dimension_rows(result_rows, dimension_col.name, metrics_to_compute, test_params)
 
     def filter(self):
         # The window is the one the test case configured: the failure threshold is a row tolerance
