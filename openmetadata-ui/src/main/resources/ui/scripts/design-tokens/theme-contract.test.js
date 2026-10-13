@@ -307,8 +307,6 @@ test('exposes the approved roles through the legacy token bridge', () => {
       'var(--color-border-warning-subtle, #fec84b)',
     '--om-color-border-success-subtle':
       'var(--color-border-success-subtle, #75e0a7)',
-    '--om-color-link': 'var(--color-text-link, #1570ef)',
-    '--om-color-link-hover': 'var(--color-text-link-hover, #175cd3)',
     '--om-shadow-card': 'var(--shadow-card, var(--shadow-xs))',
     '--om-shadow-raised': 'var(--shadow-raised, var(--shadow-lg))',
     '--om-shadow-overlay': 'var(--shadow-overlay, var(--shadow-xl))',

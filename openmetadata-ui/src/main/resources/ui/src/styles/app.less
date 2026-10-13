@@ -915,10 +915,10 @@ a[href].link-text-grey,
 
 // Legacy Ant links: `.text-link-color` uses `@primary-color`
 // (= var(--ant-primary-color)), injected by AntDConfigProvider as #1570ef and
-// never flipped. Point it at the flipping link token in dark (blue-300).
+// never flipped. Point it at the core link token, which flips in dark.
 .dark-mode .text-link-color,
 .dark-mode a.text-link-color {
-  color: var(--om-color-link);
+  color: var(--color-text-link);
 }
 
 // (Bare-anchor dark link color is handled in tailwind.css via `:where(.dark-mode) a`
@@ -930,7 +930,7 @@ a[href].link-text-grey,
 .dark-mode a.ant-typography,
 .dark-mode .ant-typography a,
 .dark-mode .prose-typography a {
-  color: var(--om-color-link);
+  color: var(--color-text-link);
 }
 
 // Ant secondary text is @text-color-secondary (fade(@black, 45%)), compiled to a
