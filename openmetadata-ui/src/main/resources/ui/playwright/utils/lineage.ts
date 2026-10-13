@@ -468,8 +468,10 @@ export const openLineageMenu = async (
   const menuButton = trigger.getByTestId(menuTestId);
 
   await panIntoCanvasView(page, menuButton);
-  // The column ⋮ is only revealed by CSS hover/focus on its row.
-  await trigger.hover();
+  // The column ⋮ is only revealed by CSS hover/focus on its row. Hover the
+  // button itself: it is laid out while transparent, it is what the pan above
+  // cleared, and the middle of a large node can sit under the minimap.
+  await menuButton.hover();
   await menuButton.click();
 };
 
