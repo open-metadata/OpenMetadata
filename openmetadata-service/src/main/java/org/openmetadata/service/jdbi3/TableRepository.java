@@ -81,6 +81,7 @@ import org.openmetadata.csv.CsvExportProgressCallback;
 import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.api.data.CreateEntityProfile;
 import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
@@ -129,6 +130,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
+import org.openmetadata.service.util.ChildFieldResolver;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -185,7 +187,9 @@ public class TableRepository extends EntityRepository<Table> {
     // field_relationship / tag_usage via the root cleanup() FQN prefix, so the bulk path skips the
     // per-table search dispatch and FQN-satellite deletes.
     descendantsCoveredByAncestorCascade = true;
-    metadataLoader = new TableMetadataLoader(() -> daoCollection.entityExtensionDAO());
+    metadataLoader =
+        new TableMetadataLoader(
+            () -> daoCollection.entityExtensionDAO(), this::customPropertyReferences, Entity.TABLE);
 
     // Register bulk field fetchers for efficient database operations
     fieldFetchers.put("usageSummary", this::fetchAndSetUsageSummaries);
@@ -193,7 +197,8 @@ public class TableRepository extends EntityRepository<Table> {
     fieldFetchers.put(TABLE_PROFILER_CONFIG, this::fetchAndSetTableProfilerConfigs);
     fieldFetchers.put("joins", this::fetchAndSetJoins);
     fieldFetchers.put(CUSTOM_METRICS, this::fetchAndSetCustomMetrics);
-    fieldFetchers.put(FIELD_TAGS, this::fetchAndSetColumnTags);
+    fieldFetchers.put(FIELD_TAGS, this::fetchAndSetTableTags);
+    fieldFetchers.put(COLUMN_FIELD, this::fetchAndSetColumnTags);
     fieldFetchers.put("pipelineObservability", this::fetchAndSetPipelineObservability);
   }
 
@@ -206,7 +211,7 @@ public class TableRepository extends EntityRepository<Table> {
               ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), table.getId())
               : table.getUsageSummary());
     }
-    if (fields.contains(COLUMN_FIELD) && fields.contains(FIELD_TAGS)) {
+    if (fields.contains(COLUMN_FIELD)) {
       populateEntityFieldTags(entityType, table.getColumns(), table.getFullyQualifiedName(), true);
     }
     table.setJoins(fields.contains("joins") ? getJoins(table) : table.getJoins());
@@ -220,6 +225,8 @@ public class TableRepository extends EntityRepository<Table> {
     }
     if (fields.contains(COLUMN_FIELD) && fields.contains("extension")) {
       metadataLoader.loadColumnExtensions(table.getId(), table.getColumns());
+    } else if (fields.contains(COLUMN_FIELD)) {
+      applyColumnReferences(List.of(table), Table::getColumns, false);
     }
   }
 
@@ -230,9 +237,10 @@ public class TableRepository extends EntityRepository<Table> {
 
     fetchAndSetFields(entities, fields);
     setInheritedFields(entities, fields);
+    if (fields.contains(COLUMN_FIELD)) {
+      applyColumnReferences(entities, Table::getColumns, fields.contains("extension"));
+    }
 
-    // Column tags come from tag_usage, not table JSON — fetched via fetchAndSetColumnTags when tags
-    // requested
     entities.forEach(table -> clearFieldsInternal(table, fields));
   }
 
@@ -277,7 +285,7 @@ public class TableRepository extends EntityRepository<Table> {
     metadataLoader.loadMetrics(tables, fields.contains(COLUMN_FIELD));
   }
 
-  private void fetchAndSetColumnTags(List<Table> tables, Fields fields) {
+  private void fetchAndSetTableTags(List<Table> tables, Fields fields) {
     if (!fields.contains(FIELD_TAGS) || tables == null || tables.isEmpty()) {
       return;
     }
@@ -288,7 +296,9 @@ public class TableRepository extends EntityRepository<Table> {
           addDerivedTagsGracefully(
               tagsMap.getOrDefault(table.getFullyQualifiedName(), Collections.emptyList())));
     }
+  }
 
+  private void fetchAndSetColumnTags(List<Table> tables, Fields fields) {
     if (fields.contains(COLUMN_FIELD)) {
       bulkPopulateEntityFieldTags(tables, Table::getColumns);
     }
@@ -1828,7 +1838,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  protected void applyInheritance(Table entity, Fields fields, EntityInterface parent) {
+  protected void applyInheritance(Table entity, Fields fields, EntityInterface<?> parent) {
     inheritOwners(entity, fields, parent);
     inheritDomains(entity, fields, parent);
     inheritTags(entity, fields, parent);
@@ -1841,7 +1851,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  public EntityInterface getParentEntity(Table entity, String fields) {
+  public EntityInterface<?> getParentEntity(Table entity, String fields) {
     return Entity.getEntity(entity.getDatabaseSchema(), fields, ALL);
   }
 
@@ -1852,7 +1862,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  public List<TagLabel> getAllTags(EntityInterface entity) {
+  public List<TagLabel> getAllTags(EntityInterface<?> entity) {
     List<TagLabel> allTags = new ArrayList<>();
     Table table = (Table) entity;
     EntityUtil.mergeTags(allTags, table.getTags());
@@ -2225,6 +2235,11 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     @Override
+    protected boolean supportsColumnExtension() {
+      return true;
+    }
+
+    @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       Table origTable = original;
       Table updatedTable = updated;
@@ -2274,8 +2289,11 @@ public class TableRepository extends EntityRepository<Table> {
       compareAndUpdate(
           "retentionPeriod",
           () ->
-              recordChange(
-                  "retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod()));
+              updateUserOnlyField(
+                  "retentionPeriod",
+                  original.getRetentionPeriod(),
+                  updated.getRetentionPeriod(),
+                  updated::setRetentionPeriod));
       compareAndUpdate(
           "compressionEnabled",
           () ->
@@ -2340,6 +2358,15 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     private void updateTableConstraints(Table origTable, Table updatedTable, Operation operation) {
+      // Many sources (e.g. Trino) never report constraints, so a bot PUT without any must not
+      // read that absence as "delete them" and wipe user-curated ones. Constraints on columns the
+      // source dropped are still cleaned up below.
+      if (operation.isPut()
+          && updatedByBot()
+          && nullOrEmpty(updatedTable.getTableConstraints())
+          && !nullOrEmpty(origTable.getTableConstraints())) {
+        updatedTable.setTableConstraints(new ArrayList<>(origTable.getTableConstraints()));
+      }
       // Detect columns that were removed (exist in original but not in updated).
       // This also handles null column entries produced by JSON patch operations.
       Set<String> removedColumns = detectRemovedColumns(origTable, updatedTable);
@@ -2418,11 +2445,7 @@ public class TableRepository extends EntityRepository<Table> {
         LineageRepository lineageRepository = Entity.getLineageRepository();
         if (lineageRepository != null) {
           lineageRepository.updateColumnLineage(
-              updated.getId(),
-              originalUpdatedColumnFqnMap,
-              deletedColumns,
-              updated.getSchemaDefinition(),
-              updated.getUpdatedBy());
+              updated.getId(), originalUpdatedColumnFqnMap, deletedColumns, updated.getUpdatedBy());
         }
         List<String> deletedColumnFqns = List.copyOf(deletedColumns);
         HashMap<String, String> renamedColumnFqns = new HashMap<>(originalUpdatedColumnFqnMap);
@@ -2855,68 +2878,76 @@ public class TableRepository extends EntityRepository<Table> {
       Authorizer authorizer,
       SecurityContext securityContext) {
 
-    List<Column> allColumns = table.getColumns();
-    if (allColumns == null || allColumns.isEmpty()) {
-      return new ResultList<>(new ArrayList<>(), "0", String.valueOf(offset + limit), 0);
+    ResultList<FieldInterface> page =
+        new ChildFieldPageReader(this, ChildFieldResolver.specFor(Entity.TABLE))
+            .read(
+                table,
+                limit,
+                offset,
+                fieldsParam,
+                sortBy,
+                sortOrder,
+                (parent, columns, requestedFields) ->
+                    enrichColumnPage(
+                        table, columns, requestedFields, piiOwners, authorizer, securityContext));
+    return toColumnResultList(page);
+  }
+
+  /** A table column page carries custom metrics, custom-property extensions and a masked profile. */
+  private List<FieldInterface> enrichColumnPage(
+      Table table,
+      List<FieldInterface> page,
+      String fieldsParam,
+      List<EntityReference> piiOwners,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
+    List<Column> columns = page.stream().map(Column.class::cast).collect(Collectors.toList());
+    if (fieldsParam == null || !fieldsParam.contains("extension")) {
+      metadataLoader.stripColumnReferences(columns);
     }
-
-    // Sort columns based on sortBy and sortOrder parameters
-    List<Column> sortedColumns = new ArrayList<>(allColumns);
-    Comparator<Column> comparator;
-    if ("ordinalPosition".equals(sortBy)) {
-      comparator =
-          Comparator.comparing(
-              Column::getOrdinalPosition, Comparator.nullsLast(Comparator.naturalOrder()));
-    } else {
-      // Default: sort by name
-      comparator =
-          Comparator.comparing(
-              Column::getName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+    if (fieldsParam == null) {
+      return page;
     }
-
-    // Apply sort order (desc reverses the comparator)
-    if ("desc".equalsIgnoreCase(sortOrder)) {
-      comparator = comparator.reversed();
+    if (fieldsParam.contains("customMetrics")) {
+      metadataLoader.loadColumnMetrics(table.getId(), columns);
     }
-    sortedColumns.sort(comparator);
-
-    // Apply pagination
-    int total = sortedColumns.size();
-    int fromIndex = Math.min(offset, total);
-    int toIndex = Math.min(offset + limit, total);
-
-    List<Column> paginatedColumns = sortedColumns.subList(fromIndex, toIndex);
-
-    // Apply field processing if needed
-    if (fieldsParam != null && fieldsParam.contains("tags")) {
-      populateEntityFieldTags(entityType, paginatedColumns, table.getFullyQualifiedName(), true);
+    if (fieldsParam.contains("extension")) {
+      metadataLoader.loadColumnExtensions(table.getId(), columns);
     }
-
-    if (fieldsParam != null && fieldsParam.contains("customMetrics")) {
-      metadataLoader.loadColumnMetrics(table.getId(), paginatedColumns);
+    if (fieldsParam.contains("profile")) {
+      columns =
+          addMaskedProfile(table, columns, fieldsParam, piiOwners, authorizer, securityContext);
     }
+    return new ArrayList<>(columns);
+  }
 
-    if (fieldsParam != null && fieldsParam.contains("extension")) {
-      metadataLoader.loadColumnExtensions(table.getId(), paginatedColumns);
+  /**
+   * Profile data is masked per column, and masking reads a column's tags, so a profile request that
+   * did not also ask for tags has to hydrate them here before masking can decide anything.
+   */
+  private List<Column> addMaskedProfile(
+      Table table,
+      List<Column> columns,
+      String fieldsParam,
+      List<EntityReference> piiOwners,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
+    setColumnProfile(columns);
+    if (!fieldsParam.contains("tags")) {
+      populateEntityFieldTags(entityType, columns, table.getFullyQualifiedName(), true);
     }
+    return piiOwners != null
+        ? PIIMasker.getTableProfile(piiOwners, columns, authorizer, securityContext)
+        : PIIMasker.getTableProfile(
+            table.getFullyQualifiedName(), columns, authorizer, securityContext);
+  }
 
-    if (fieldsParam != null && fieldsParam.contains("profile")) {
-      setColumnProfile(paginatedColumns);
-      if (!fieldsParam.contains("tags")) {
-        populateEntityFieldTags(entityType, paginatedColumns, table.getFullyQualifiedName(), true);
-      }
-      paginatedColumns =
-          piiOwners != null
-              ? PIIMasker.getTableProfile(piiOwners, paginatedColumns, authorizer, securityContext)
-              : PIIMasker.getTableProfile(
-                  table.getFullyQualifiedName(), paginatedColumns, authorizer, securityContext);
-    }
-
-    // Calculate pagination metadata
-    String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;
-    String after = toIndex < total ? String.valueOf(toIndex) : null;
-
-    return new ResultList<>(paginatedColumns, before, after, total);
+  /** Narrows a generic child page back to the Column-typed result this API has always returned. */
+  private ResultList<Column> toColumnResultList(ResultList<FieldInterface> page) {
+    ResultList<Column> result = new ResultList<>();
+    result.setData(page.getData().stream().map(Column.class::cast).toList());
+    result.setPaging(page.getPaging());
+    return result;
   }
 
   public Column enrichSingleColumnFields(
@@ -2938,6 +2969,8 @@ public class TableRepository extends EntityRepository<Table> {
     }
     if (fieldsParam.contains("extension")) {
       metadataLoader.loadColumnExtensions(table.getId(), singleton);
+    } else {
+      metadataLoader.stripColumnReferences(singleton);
     }
     if (fieldsParam.contains("profile")) {
       setColumnProfile(singleton);
@@ -3249,6 +3282,11 @@ public class TableRepository extends EntityRepository<Table> {
 
     if (fields.contains("tags") || fields.contains("*")) {
       populateEntityFieldTags(entityType, paginatedColumns, table.getFullyQualifiedName(), true);
+    }
+    if (fields.contains("extension")) {
+      metadataLoader.loadColumnExtensions(table.getId(), paginatedColumns);
+    } else {
+      metadataLoader.stripColumnReferences(paginatedColumns);
     }
 
     if (fieldsParam != null && fieldsParam.contains("profile")) {

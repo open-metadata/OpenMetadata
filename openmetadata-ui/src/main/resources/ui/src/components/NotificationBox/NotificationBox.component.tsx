@@ -12,8 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Tabs } from '@openmetadata/ui-core-components';
-import { Badge, Button, List, Typography } from 'antd';
+import { Button, Tabs, Typography } from '@openmetadata/ui-core-components';
+import { Badge, List } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -269,12 +269,12 @@ const NotificationBox = ({
           className="notification-content-container"
           dataSource={notificationDropDownList}
           footer={
-            <Button block href={viewAllPath} type="link">
-              <span>
+            <Button className="tw:w-full" color="link-color" href={viewAllPath}>
+              <Typography>
                 {t('label.view-entity', {
                   entity: t('label.all-lowercase'),
                 })}
-              </span>
+              </Typography>
             </Button>
           }
           itemLayout="vertical"
@@ -291,12 +291,14 @@ const NotificationBox = ({
 
   return (
     <div className="notification-box">
-      <Typography.Title
+      <Typography
+        as="h5"
         className="p-x-md p-t-sm p-b-xss"
         data-testid="notification-heading"
-        level={5}>
+        size="text-md"
+        weight="semibold">
         {t('label.notification-plural')}
-      </Typography.Title>
+      </Typography>
       <Tabs
         defaultSelectedKey={NotificationTabsKey.TASK}
         onSelectionChange={(key) => updateActiveTab(String(key))}>

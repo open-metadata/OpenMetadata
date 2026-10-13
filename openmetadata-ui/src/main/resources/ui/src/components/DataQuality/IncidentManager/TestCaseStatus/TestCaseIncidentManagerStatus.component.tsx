@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 
-import { Typography as CoreTypography } from '@openmetadata/ui-core-components';
-import { Space, Tooltip, Typography } from 'antd';
+import {
+  Box,
+  Tooltip,
+  Typography as CoreTypography,
+} from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { TEST_CASE_RESOLUTION_STATUS_LABELS } from '../../../../constants/TestSuite.constant';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
@@ -76,7 +78,7 @@ const TestCaseIncidentManagerStatus = ({
   const onCancel = useCallback(() => setIsEditStatus(false), []);
 
   if (!statusType) {
-    return <Typography.Text>{NO_DATA_PLACEHOLDER}</Typography.Text>;
+    return <CoreTypography>{NO_DATA_PLACEHOLDER}</CoreTypography>;
   }
 
   if (headerName) {
@@ -94,17 +96,25 @@ const TestCaseIncidentManagerStatus = ({
           {hasEditPermission && (
             <EditIconButton
               data-testid="edit-resolution-icon"
-              icon={<EditIcon width="12px" />}
               newLook={newLook}
               size="small"
+              title={t('label.edit-entity', {
+                entity: t('label.status'),
+              })}
               onClick={onEditStatus}
             />
           )}
         </div>
-        <Tooltip placement="bottom" title={tooltipTitle}>
-          <Space
+        <Tooltip
+          excludeTriggerFromTabOrder
+          isDisabled={!tooltipTitle}
+          placement="bottom"
+          title={tooltipTitle}>
+          <Box
+            inline
             align="center"
-            data-testid={`${data.testCaseReference?.name}-status`}>
+            data-testid={`${data.testCaseReference?.name}-status`}
+            gap={2}>
             <AppBadge
               className={classNames(
                 'resolution',
@@ -112,7 +122,7 @@ const TestCaseIncidentManagerStatus = ({
               )}
               label={TEST_CASE_RESOLUTION_STATUS_LABELS[statusType]}
             />
-          </Space>
+          </Box>
         </Tooltip>
 
         {isEditStatus && (
@@ -140,14 +150,25 @@ const TestCaseIncidentManagerStatus = ({
 
   return (
     <>
-      <Space
+      <Box
+        inline
         align="center"
-        data-testid={`${data.testCaseReference?.name}-status`}>
-        <Tooltip placement="bottom" title={tooltipTitle}>
-          <AppBadge
-            className={classNames('resolution', statusType.toLocaleLowerCase())}
-            label={TEST_CASE_RESOLUTION_STATUS_LABELS[statusType]}
-          />
+        data-testid={`${data.testCaseReference?.name}-status`}
+        gap={2}>
+        <Tooltip
+          excludeTriggerFromTabOrder
+          isDisabled={!tooltipTitle}
+          placement="bottom"
+          title={tooltipTitle}>
+          <span>
+            <AppBadge
+              className={classNames(
+                'resolution',
+                statusType.toLocaleLowerCase()
+              )}
+              label={TEST_CASE_RESOLUTION_STATUS_LABELS[statusType]}
+            />
+          </span>
         </Tooltip>
 
         {hasEditPermission && (
@@ -163,7 +184,7 @@ const TestCaseIncidentManagerStatus = ({
             onClick={onEditStatus}
           />
         )}
-      </Space>
+      </Box>
 
       {isEditStatus && (
         <TestCaseStatusModal

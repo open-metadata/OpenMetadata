@@ -17,23 +17,24 @@ const mockGetGlossariesList = jest.fn();
 
 const mockSearchGlossaryTerms = jest.fn();
 
+const mockGetGlossaryTermChildrenLazy = jest.fn();
+
 jest.mock('../../../rest/glossaryAPI', () => ({
   getGlossariesList: (...args: unknown[]) => mockGetGlossariesList(...args),
-  queryGlossaryTerms: jest.fn(),
+  getGlossaryTermChildrenLazy: (...args: unknown[]) =>
+    mockGetGlossaryTermChildrenLazy(...args),
   searchGlossaryTerms: (...args: unknown[]) => mockSearchGlossaryTerms(...args),
 }));
 
-jest.mock('./useGlossaryMutualExclusivity', () => ({
-  useGlossaryMutualExclusivity: () => ({
-    getExclusivity: jest.fn(),
-    setExclusivity: jest.fn(),
-  }),
-}));
+// `useGlossaryMutualExclusivity` is not mocked — the real chain is under test.
 
-const fetchRoots = async (rootIsValue?: boolean, rootCascades?: boolean) => {
-  const { result } = renderHook(() =>
-    useGlossaryTreeData(rootIsValue, rootCascades)
-  );
+const page = (data: unknown[], paging: { total: number; after?: string }) => ({
+  data,
+  paging,
+});
+
+const fetchRoots = async (rootIsValue?: boolean) => {
+  const { result } = renderHook(() => useGlossaryTreeData(rootIsValue));
 
   return result.current({});
 };
@@ -50,22 +51,77 @@ describe('useGlossaryTreeData', () => {
     });
   });
 
-  // A glossary is never a term, so ticking an empty one would select nothing.
-  it('marks a glossary with no terms unselectable', async () => {
+  // Nothing cascades, so a glossary row can only ever be a container.
+  it('never checks a glossary row, whatever its term count', async () => {
     const { nodes } = await fetchRoots();
 
-    expect(nodes.map(({ allowSelection }) => allowSelection)).toEqual([
-      false,
-      true,
-      true,
-    ]);
+    expect(nodes.some(({ allowSelection }) => allowSelection)).toBe(false);
   });
 
-  // Single-select has no cascade, so a click on a glossary could only clear the pick.
-  it('marks every glossary unselectable when a single-select picks terms', async () => {
-    const { nodes } = await fetchRoots(false, false);
+  describe('glossary paging', () => {
+    it('reports the cursor and total of a truncated glossary listing', async () => {
+      mockGetGlossariesList.mockResolvedValue({
+        data: [{ name: 'Filled', fullyQualifiedName: 'Filled' }],
+        paging: { total: 137, after: 'glossary-cursor-1' },
+      });
 
-    expect(nodes.some(({ allowSelection }) => allowSelection)).toBe(false);
+      const response = await fetchRoots();
+
+      expect(response).toMatchObject({
+        hasMore: true,
+        total: 137,
+        nextCursor: 'glossary-cursor-1',
+      });
+    });
+
+    it('passes the cursor back when loading more glossaries', async () => {
+      const { result } = renderHook(() => useGlossaryTreeData());
+
+      await result.current({ after: 'glossary-cursor-1', pageSize: 50 });
+
+      expect(mockGetGlossariesList).toHaveBeenCalledWith(
+        expect.objectContaining({ after: 'glossary-cursor-1', limit: 50 }),
+        undefined
+      );
+    });
+
+    // Swallowed, a failed later page reads as the end of the listing and the
+    // tree drops its cursor, stranding every glossary after it.
+    it('lets a failed later page reject instead of ending the listing', async () => {
+      const { result } = renderHook(() => useGlossaryTreeData());
+      mockGetGlossariesList.mockRejectedValue(new Error('boom'));
+
+      await expect(
+        result.current({ after: 'glossary-cursor-1' })
+      ).rejects.toThrow('boom');
+    });
+
+    // The first page has no cursor to lose, so it still degrades to empty.
+    it('still swallows a failed first page', async () => {
+      const { result } = renderHook(() => useGlossaryTreeData());
+      mockGetGlossariesList.mockRejectedValue(new Error('boom'));
+
+      await expect(result.current({})).resolves.toMatchObject({ nodes: [] });
+    });
+
+    // Search matches names against the loaded listing, so page two has to stay
+    // searchable alongside page one.
+    it('keeps earlier pages searchable after loading more', async () => {
+      mockSearchGlossaryTerms.mockResolvedValue([]);
+      const { result } = renderHook(() => useGlossaryTreeData());
+
+      await result.current({});
+      mockGetGlossariesList.mockResolvedValue({
+        data: [{ name: 'Later', fullyQualifiedName: 'Later' }],
+      });
+      await result.current({ after: 'glossary-cursor-1' });
+
+      const first = await result.current({ searchTerm: 'fill' });
+      const second = await result.current({ searchTerm: 'later' });
+
+      expect(first.nodes.map(({ id }) => id)).toEqual(['Filled']);
+      expect(second.nodes.map(({ id }) => id)).toEqual(['Later']);
+    });
   });
 
   // A glossary whose own name matches has no term hit to carry it into results.
@@ -88,7 +144,7 @@ describe('useGlossaryTreeData', () => {
         children: [{ name: 't1' }],
       },
     ]);
-    const { result } = renderHook(() => useGlossaryTreeData(false, false));
+    const { result } = renderHook(() => useGlossaryTreeData());
 
     const { nodes } = await result.current({ searchTerm: 'fi' });
 
@@ -100,5 +156,159 @@ describe('useGlossaryTreeData', () => {
     const { nodes } = await fetchRoots(true);
 
     expect(nodes.every(({ allowSelection }) => allowSelection)).toBe(true);
+  });
+
+  describe('expanding a branch', () => {
+    const expand = async (
+      params: Parameters<ReturnType<typeof useGlossaryTreeData>>[0]
+    ) => {
+      const { result } = renderHook(() => useGlossaryTreeData());
+      // Roots first: that is where each glossary's FQN gets recorded.
+      await result.current({});
+
+      return result.current(params);
+    };
+
+    it('asks for one page of direct children, not the whole glossary', async () => {
+      mockGetGlossaryTermChildrenLazy.mockResolvedValue(
+        page([{ name: 't1', fullyQualifiedName: 'Filled.t1' }], { total: 1 })
+      );
+
+      const { nodes, hasMore } = await expand({
+        parentId: 'Filled',
+        pageSize: 100,
+      });
+
+      expect(mockGetGlossaryTermChildrenLazy).toHaveBeenCalledWith(
+        'Filled',
+        100,
+        undefined,
+        expect.objectContaining({ fields: ['childrenCount'] })
+      );
+      expect(nodes.map(({ id }) => id)).toEqual(['Filled.t1']);
+      expect(hasMore).toBe(false);
+    });
+
+    // Swallowing it would look like an empty last page: the tree would clear
+    // the cursor and strand every term after the failure.
+    it('lets a failed page reject instead of ending the branch', async () => {
+      mockGetGlossaryTermChildrenLazy.mockRejectedValue(new Error('boom'));
+
+      await expect(
+        expand({ parentId: 'Filled', after: 'cursor-1' })
+      ).rejects.toThrow('boom');
+    });
+
+    // The cursor is what the "Show N more" row spends; total is what it counts.
+    it('reports the cursor and total of a truncated branch', async () => {
+      mockGetGlossaryTermChildrenLazy.mockResolvedValue(
+        page([{ name: 't1', fullyQualifiedName: 'Filled.t1' }], {
+          total: 137,
+          after: 'cursor-1',
+        })
+      );
+
+      const response = await expand({ parentId: 'Filled', pageSize: 100 });
+
+      expect(response).toMatchObject({
+        hasMore: true,
+        total: 137,
+        nextCursor: 'cursor-1',
+      });
+    });
+
+    it('passes the cursor back when loading more', async () => {
+      mockGetGlossaryTermChildrenLazy.mockResolvedValue(page([], { total: 1 }));
+
+      await expand({ parentId: 'Filled', pageSize: 100, after: 'cursor-1' });
+
+      expect(mockGetGlossaryTermChildrenLazy).toHaveBeenCalledWith(
+        'Filled',
+        100,
+        'cursor-1',
+        expect.anything()
+      );
+    });
+
+    // An exclusive glossary allows one term, so its children are radios.
+    it('marks the children of an exclusive glossary as radio choices', async () => {
+      mockGetGlossariesList.mockResolvedValue({
+        data: [
+          {
+            name: 'Colours',
+            fullyQualifiedName: 'Colours',
+            termCount: 3,
+            mutuallyExclusive: true,
+          },
+        ],
+      });
+      mockGetGlossaryTermChildrenLazy.mockResolvedValue(
+        page(
+          [
+            { name: 'Red', fullyQualifiedName: 'Colours.Red' },
+            { name: 'Green', fullyQualifiedName: 'Colours.Green' },
+          ],
+          { total: 2 }
+        )
+      );
+
+      const { nodes } = await expand({ parentId: 'Colours' });
+
+      expect(
+        nodes.map(({ isParentMutuallyExclusive }) => isParentMutuallyExclusive)
+      ).toEqual([true, true]);
+    });
+
+    // Declared, not inferred: a lazy branch has no children to infer from.
+    it('marks an exclusive term as the group above its radios', async () => {
+      mockGetGlossaryTermChildrenLazy.mockResolvedValue(
+        page(
+          [
+            {
+              name: 'Region',
+              fullyQualifiedName: 'Filled.Region',
+              mutuallyExclusive: true,
+              childrenCount: 2,
+            },
+            {
+              name: 'Childless',
+              fullyQualifiedName: 'Filled.Childless',
+              mutuallyExclusive: true,
+              childrenCount: 0,
+            },
+            { name: 'Plain', fullyQualifiedName: 'Filled.Plain' },
+          ],
+          { total: 3 }
+        )
+      );
+
+      const { nodes } = await expand({ parentId: 'Filled' });
+
+      // The childless one keeps its own control — it has no group to stand for.
+      expect(
+        nodes.map(({ hasExclusiveChildren }) => hasExclusiveChildren)
+      ).toEqual([true, false, false]);
+    });
+
+    // childrenCount is a nested count, so any non-zero value means a chevron.
+    it('derives the chevron from childrenCount', async () => {
+      mockGetGlossaryTermChildrenLazy.mockResolvedValue(
+        page(
+          [
+            { name: 'leaf', fullyQualifiedName: 'Filled.leaf' },
+            {
+              name: 'branch',
+              fullyQualifiedName: 'Filled.branch',
+              childrenCount: 4,
+            },
+          ],
+          { total: 2 }
+        )
+      );
+
+      const { nodes } = await expand({ parentId: 'Filled' });
+
+      expect(nodes.map(({ isLeaf }) => isLeaf)).toEqual([true, false]);
+    });
   });
 });

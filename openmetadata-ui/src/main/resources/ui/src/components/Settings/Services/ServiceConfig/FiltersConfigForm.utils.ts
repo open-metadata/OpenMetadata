@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Table } from '@untitledui/icons';
+import { Table } from '@openmetadata/ui-core-components/icons';
 import { startCase } from 'lodash';
 import { SERVICE_FILTER_PATTERN_FIELDS } from '../../../../constants/ServiceConnection.constants';
 import { ServiceConnectionFilterPatternFields } from '../../../../enums/ServiceConnection.enum';

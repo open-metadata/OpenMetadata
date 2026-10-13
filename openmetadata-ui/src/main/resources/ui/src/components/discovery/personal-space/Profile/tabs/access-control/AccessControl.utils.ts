@@ -21,6 +21,12 @@ import {
   getRoleWithFqnPath,
   getTeamsWithFqnPath,
 } from '../../../../../../utils/RouterUtils';
+import type { AccessControlView } from './AccessControl.types';
+
+const PATH_ROLES = 'roles';
+const PATH_POLICIES = 'policies';
+const PATH_PERMISSION_DEBUGGER = 'permission-debugger';
+const PATH_AUDIT_LOGS = 'audit-logs';
 
 export const buildConditionOptions = (fns: Function[]): SelectItemType[] =>
   uniqBy(
@@ -29,6 +35,81 @@ export const buildConditionOptions = (fns: Function[]): SelectItemType[] =>
     ),
     'id'
   );
+
+export function hashSubPathToView(subPath: string): AccessControlView {
+  if (!subPath) {
+    return { type: 'landing' };
+  }
+
+  const parts = subPath.split('/');
+
+  if (parts[0] === PATH_ROLES) {
+    if (!parts[1]) {
+      return { type: 'roles' };
+    }
+
+    if (parts[1] === 'add') {
+      return { type: 'roles-add' };
+    }
+
+    return {
+      type: 'roles-detail',
+      fqn: parts.slice(1).join('/'),
+      name: parts[1],
+    };
+  }
+
+  if (parts[0] === PATH_POLICIES) {
+    if (!parts[1]) {
+      return { type: 'policies' };
+    }
+
+    if (parts[1] === 'add') {
+      return { type: 'policies-add' };
+    }
+
+    return {
+      type: 'policies-detail',
+      fqn: parts.slice(1).join('/'),
+      name: parts[1],
+    };
+  }
+
+  if (parts[0] === PATH_PERMISSION_DEBUGGER) {
+    return { type: PATH_PERMISSION_DEBUGGER };
+  }
+
+  if (parts[0] === PATH_AUDIT_LOGS) {
+    return { type: PATH_AUDIT_LOGS };
+  }
+
+  return { type: 'landing' };
+}
+
+export function viewToSubPath(view: AccessControlView): string | undefined {
+  switch (view.type) {
+    case 'landing':
+      return undefined;
+    case 'roles':
+      return PATH_ROLES;
+    case 'roles-add':
+      return `${PATH_ROLES}/add`;
+    case 'roles-detail':
+      return `${PATH_ROLES}/${view.fqn}`;
+    case 'policies':
+      return PATH_POLICIES;
+    case 'policies-add':
+      return `${PATH_POLICIES}/add`;
+    case 'policies-detail':
+      return `${PATH_POLICIES}/${view.fqn}`;
+    case PATH_PERMISSION_DEBUGGER:
+      return PATH_PERMISSION_DEBUGGER;
+    case PATH_AUDIT_LOGS:
+      return PATH_AUDIT_LOGS;
+    default:
+      return undefined;
+  }
+}
 
 export const getEntityLink = (entityType: string, fqn: string): string => {
   switch (entityType) {

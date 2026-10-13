@@ -122,6 +122,7 @@ describe('WorkflowConfigFormV1 OSS vs Collate start node', () => {
         {...baseHandlers}
         allowStartNodeFilterScheduleAndBatchEdit
         allowFullStartNodeConfiguration={false}
+        availableDataAssets={[]}
         availableEventTypes={[]}
         availableExcludeFields={[]}
         config={config}
@@ -170,6 +171,7 @@ describe('WorkflowConfigFormV1 OSS vs Collate start node', () => {
         {...baseHandlers}
         allowFullStartNodeConfiguration={false}
         allowStartNodeFilterScheduleAndBatchEdit={false}
+        availableDataAssets={[]}
         availableEventTypes={[]}
         availableExcludeFields={[]}
         config={config}
@@ -205,6 +207,7 @@ describe('WorkflowConfigFormV1 OSS vs Collate start node', () => {
         {...baseHandlers}
         allowFullStartNodeConfiguration
         allowStartNodeFilterScheduleAndBatchEdit
+        availableDataAssets={[]}
         availableEventTypes={['entityUpdated']}
         availableExcludeFields={['description']}
         config={config}

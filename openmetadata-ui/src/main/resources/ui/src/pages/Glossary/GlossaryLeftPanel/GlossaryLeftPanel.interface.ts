@@ -15,4 +15,5 @@ import { Glossary } from '../../../generated/entity/data/glossary';
 
 export interface GlossaryLeftPanelProps {
   glossaries: Glossary[];
+  onAddGlossary: () => void;
 }

@@ -1168,8 +1168,8 @@ test.describe.serial('Persona AI Context', () => {
     await page.getByTestId('add-context-condition').click();
 
     await expect(
-      page.getByTestId('delete-condition-button').last()
-    ).toBeVisible();
+      page.getByTestId('delete-condition-button').filter({ visible: true })
+    ).not.toHaveCount(0);
   };
 
   // A condition with a field but no value serializes to `{"term":{}}`, which the search engines

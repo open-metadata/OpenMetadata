@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Box, Button } from '@openmetadata/ui-core-components';
 import Form, { IChangeEvent } from '@rjsf/core';
 import { RegistryFieldsType, UiSchema } from '@rjsf/utils';
 import { customizeValidator } from '@rjsf/validator-ajv8';
-import { Button, Space } from 'antd';
 import classNames from 'classnames';
 import { capitalize, isUndefined, omit, omitBy } from 'lodash';
 import {
@@ -424,15 +424,20 @@ const IngestionWorkflowForm = forwardRef<
          * and keep the card's bottom border-radius visible during scroll. */}
         {!hideFooter && (
           <div className="d-flex w-full justify-end">
-            <Space>
-              <Button type="link" onClick={onCancel}>
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal"
+              gap={2}
+              itemClassName="layout-space-item">
+              <Button color="link-color" onClick={onCancel}>
                 {cancelText ?? t('label.cancel')}
               </Button>
 
-              <Button data-testid="submit-btn" htmlType="submit" type="primary">
+              <Button color="primary" data-testid="submit-btn" type="submit">
                 {okText ?? t('label.save')}
               </Button>
-            </Space>
+            </Box>
           </div>
         )}
       </Form>

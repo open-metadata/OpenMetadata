@@ -31,6 +31,10 @@ jest.mock('./i18next/LocalUtil', () => ({
 import { AxiosError } from 'axios';
 import {
   decodeHtmlEntities,
+  stringToHTML,
+  stripMarkdown,
+} from './RichTextStringUtils';
+import {
   escapeESReservedCharacters,
   formatJsonString,
   getBase64EncodedString,
@@ -45,8 +49,6 @@ import {
   removeAttachmentsWithoutUrl,
   replaceCallback,
   slugify,
-  stringToHTML,
-  stripMarkdown,
 } from './StringUtils';
 
 describe('StringUtils', () => {
@@ -391,6 +393,19 @@ describe('StringUtils', () => {
 
     it('should trim surrounding whitespace', () => {
       expect(stripMarkdown('  **hello world**  ')).toBe('hello world');
+    });
+
+    it('should keep words apart across HTML block boundaries', () => {
+      expect(stripMarkdown('<p>First.</p><p>Second.</p>')).toBe(
+        'First. Second.'
+      );
+      expect(stripMarkdown('<ul><li>a</li><li>b</li></ul>')).toBe('a b');
+    });
+
+    it('should not pad inline HTML formatting', () => {
+      expect(stripMarkdown('<p><strong>Bold</strong> then more</p>')).toBe(
+        'Bold then more'
+      );
     });
   });
 

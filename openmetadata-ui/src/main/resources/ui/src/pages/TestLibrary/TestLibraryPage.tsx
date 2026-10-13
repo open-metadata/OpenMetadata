@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
+import { Grid } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
+
 import { useTranslation } from 'react-i18next';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import TestDefinitionList from '../../components/TestLibrary/TestDefinitionList/TestDefinitionList.component';
@@ -21,11 +23,13 @@ const TestLibraryPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.test-library')}>
-      <Row className="p-t-md" gutter={[16, 16]}>
-        <Col span={24}>
+      <Grid
+        className="layout-row layout-grid p-t-md"
+        style={{ ...getLayoutGutter(16, 16) }}>
+        <Grid.Item className="layout-column" span={24}>
           <TestDefinitionList />
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
     </PageLayoutV1>
   );
 };

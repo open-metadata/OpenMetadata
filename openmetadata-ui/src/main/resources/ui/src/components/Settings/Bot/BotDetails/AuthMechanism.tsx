@@ -12,7 +12,13 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Divider, Input, Space, Typography } from 'antd';
+import {
+  Box,
+  Button,
+  Divider,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Input } from 'antd';
 import classNames from 'classnames';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -90,9 +96,9 @@ const AuthMechanism: FC<Props> = ({
             component={IconError}
             style={{ fontSize: '16px' }}
           />
-          <span className="align-middle">
+          <Typography className="align-middle">
             {t('message.token-has-no-expiry')}
-          </span>
+          </Typography>
         </>
       );
     }
@@ -105,11 +111,15 @@ const AuthMechanism: FC<Props> = ({
   const renderTokenSection = () =>
     JWTToken ? (
       <>
-        <Space
-          className={classNames(
+        <Box
+          inline
+          align="center"
+          className={`layout-space layout-space-horizontal ${classNames(
             'w-full justify-between ant-space-authMechanism',
             isSCIMBot && 'm-t-xs'
-          )}>
+          )}`}
+          gap={2}
+          itemClassName="layout-space-item">
           <Input.Password
             readOnly
             autoComplete="off"
@@ -125,7 +135,7 @@ const AuthMechanism: FC<Props> = ({
               onClick={() => navigator.clipboard.writeText(JWTToken)}
             />
           )}
-        </Space>
+        </Box>
         {!isSCIMBot && (
           <p className="text-grey-muted" data-testid="token-expiry">
             {renderExpiryText()}
@@ -143,9 +153,9 @@ const AuthMechanism: FC<Props> = ({
       <div className="flex justify-between mt-4">
         <div className="flex  gap-8">
           <div className="flex flex-col gap-2">
-            <Typography.Text className="created-by-label">
+            <Typography className="created-by-label">
               {t('label.created-by')}
-            </Typography.Text>
+            </Typography>
             <div className="flex items-center gap-2 mt-1">
               <UserPopOverCard
                 showUserName
@@ -156,13 +166,13 @@ const AuthMechanism: FC<Props> = ({
             </div>
           </div>
           <div className="flex flex-col gap-2">
-            <Typography.Text className="created-on-label">
+            <Typography className="created-on-label">
               {t('label.created-on')}
-            </Typography.Text>
+            </Typography>
 
-            <Typography.Text className="created-on-value">
+            <Typography className="created-on-value">
               {tokenCreatedOnLabel}
-            </Typography.Text>
+            </Typography>
           </div>
         </div>
       </div>
@@ -170,59 +180,63 @@ const AuthMechanism: FC<Props> = ({
 
   return (
     <>
-      <Space className="w-full justify-between">
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal w-full justify-between"
+        gap={2}
+        itemClassName="layout-space-item">
         {isSCIMBot ? (
           <div className="flex flex-col gap-2">
-            <Typography.Text className="card-title m-t-0 m-b-2 text-md">
+            <Typography className="card-title m-t-0 m-b-2 text-md">
               {t('message.automate-provisioning-with-scim')}
-            </Typography.Text>
-            <Typography.Paragraph className="m-b-0 card-description">
+            </Typography>
+            <Typography as="p" className="m-b-0 card-description">
               {t(
                 'message.scim-allows-automatic-user-and-group-management-directly-from-your-sso-provider'
               )}
-            </Typography.Paragraph>
+            </Typography>
           </div>
         ) : (
-          <Typography.Text className="text-base">
+          <Typography className="text-base">
             {isBot
               ? t('label.om-jwt-token')
               : t('message.personal-access-token')}
-          </Typography.Text>
+          </Typography>
         )}
 
-        <Space>
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal"
+          gap={2}
+          itemClassName="layout-space-item">
           {JWTToken ? (
             <Button
-              danger
+              color="secondary-destructive"
               data-testid="revoke-button"
-              disabled={!hasPermission}
-              size="small"
-              type="default"
+              isDisabled={!hasPermission}
+              size="xs"
               onClick={onTokenRevoke}>
               {t('label.revoke-token')}
             </Button>
           ) : (
             <Button
-              className="text-sm"
+              color="primary"
               data-testid="auth-mechanism"
-              disabled={!hasPermission}
-              size="small"
-              type="primary"
+              isDisabled={!hasPermission}
+              size="xs"
               onClick={onEdit}>
               {t('label.generate-new-token')}
             </Button>
           )}
-        </Space>
-      </Space>
-      <Divider className={isSCIMBot ? 'scim-divider' : ''} />
+        </Box>
+      </Box>
+      <Divider className="tw:my-6" />
 
-      {!isSCIMBot && (
-        <Typography.Paragraph>{t('message.jwt-token')}</Typography.Paragraph>
-      )}
+      {!isSCIMBot && <Typography as="p">{t('message.jwt-token')}</Typography>}
       {isSCIMBot && (
-        <Typography.Text className="token-label">
-          {t('label.scim-token')}
-        </Typography.Text>
+        <Typography className="token-label">{t('label.scim-token')}</Typography>
       )}
 
       {renderTokenSection()}

@@ -58,6 +58,54 @@ export function buildCustomPropertyConfig(
   return undefined;
 }
 
+export interface ParsedCustomPropertiesHash {
+  entityFqn: string | null;
+  action: 'detail' | 'add' | 'edit';
+  propertyName?: string;
+}
+
+export function parseCustomPropertiesHash(
+  subPath: string
+): ParsedCustomPropertiesHash {
+  if (!subPath) {
+    return { entityFqn: null, action: 'detail' };
+  }
+
+  const parts = subPath.split('/');
+  const entityFqn = parts[0] || null;
+
+  if (parts[1] === 'add-property') {
+    return { entityFqn, action: 'add' };
+  }
+
+  if (parts[1] === 'edit-property' && parts[2]) {
+    return {
+      entityFqn,
+      action: 'edit',
+      propertyName: parts.slice(2).join('/'),
+    };
+  }
+
+  return { entityFqn, action: 'detail' };
+}
+
+export function viewToSubPath(
+  view: CustomPropertiesSubView
+): string | undefined {
+  switch (view.type) {
+    case 'landing':
+      return undefined;
+    case 'detail':
+      return view.entityType.fullyQualifiedName ?? undefined;
+    case 'add':
+      return `${view.entityType.fullyQualifiedName}/add-property`;
+    case 'edit':
+      return `${view.entityType.fullyQualifiedName}/edit-property/${view.property.name}`;
+    default:
+      return undefined;
+  }
+}
+
 export function getBreadcrumbItems(
   subView: CustomPropertiesSubView,
   t: TFunction,

@@ -12,7 +12,7 @@
  */
 
 import { Typography } from '@openmetadata/ui-core-components';
-import { InfoCircle } from '@untitledui/icons';
+import { InfoCircle } from '@openmetadata/ui-core-components/icons';
 import React from 'react';
 
 interface InfoLabelProps {

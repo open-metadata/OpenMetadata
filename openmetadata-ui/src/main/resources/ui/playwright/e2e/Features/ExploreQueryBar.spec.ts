@@ -130,11 +130,11 @@ test('selecting an asset type grays out incompatible tree categories', async ({
 
   const databasesNode = page
     .getByTestId('explore-tree-title-Databases')
-    .locator('xpath=ancestor::*[contains(@class, "ant-tree-treenode")]');
+    .locator('xpath=ancestor::*[@role="row"]');
   const dashboardsNode = page
     .getByTestId('explore-tree-title-Dashboards')
-    .locator('xpath=ancestor::*[contains(@class, "ant-tree-treenode")]');
+    .locator('xpath=ancestor::*[@role="row"]');
 
-  await expect(databasesNode).not.toHaveClass(/ant-tree-treenode-disabled/);
-  await expect(dashboardsNode).toHaveClass(/ant-tree-treenode-disabled/);
+  await expect(databasesNode).not.toHaveAttribute('aria-disabled', 'true');
+  await expect(dashboardsNode).toHaveAttribute('aria-disabled', 'true');
 });

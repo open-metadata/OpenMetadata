@@ -21,12 +21,7 @@ import { ProgressBar } from '@/components/base/progress-indicators/progress-indi
 import { FeaturedIcon } from '@/components/foundations/featured-icon/featured-icon';
 import { cx } from '@/utils/cx';
 import { FileIcon as FileIconBase } from '@untitledui/file-icons';
-import {
-  CheckCircle,
-  Trash01,
-  UploadCloud02,
-  XCircle,
-} from '@untitledui/icons';
+import { CheckCircle, Trash01, UploadCloud02, XCircle } from '../../../icons';
 import type {
   ChangeEvent,
   ComponentProps,

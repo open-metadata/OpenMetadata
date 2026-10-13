@@ -24,7 +24,7 @@ import { loadConnectionSchema } from '../../../../../utils/ServiceConnectionUtil
 import serviceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
 import ConnectionObjectFieldTemplate from './ConnectionObjectFieldTemplate';
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   ChevronDown: () => <span data-testid="chevron" />,
   InfoCircle: () => <span data-testid="info-circle" />,
   Key01: () => <span data-testid="key-icon" />,

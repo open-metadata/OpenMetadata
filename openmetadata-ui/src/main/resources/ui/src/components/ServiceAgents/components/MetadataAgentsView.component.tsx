@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Code01 } from '@untitledui/icons';
+import { Code01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { FC, ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

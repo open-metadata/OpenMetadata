@@ -70,25 +70,25 @@ const test = base.extend<{
 }>({
   serviceOwnerPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await serviceOwnerUser.login(page);
+    await serviceOwnerUser.signIn(page);
     await use(page);
     await page.close();
   },
   anotherUserPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await anotherUser.login(page);
+    await anotherUser.signIn(page);
     await use(page);
     await page.close();
   },
   pipelineTriggerPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await pipelineTriggerUser.login(page);
+    await pipelineTriggerUser.signIn(page);
     await use(page);
     await page.close();
   },
   pipelineEditPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await pipelineEditUser.login(page);
+    await pipelineEditUser.signIn(page);
     await use(page);
     await page.close();
   },
