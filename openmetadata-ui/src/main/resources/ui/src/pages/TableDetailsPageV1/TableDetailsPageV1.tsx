@@ -489,7 +489,7 @@ const TableDetailsPageV1: React.FC = () => {
   }, [tableFqn]);
 
   const handleTabChange = (activeKey: string) => {
-    if (activeKey !== activeTab && !isTourOpen) {
+    if (activeKey !== activeTab && !isTourDataset) {
       navigate(getEntityDetailsPath(EntityType.TABLE, tableFqn, activeKey), {
         replace: true,
         state: location.state,
@@ -990,7 +990,7 @@ const TableDetailsPageV1: React.FC = () => {
       data-testid="tabs"
       selectedKey={getRenderedActiveTab(
         tabs,
-        isTourOpen ? activeTabForTourDatasetPage : activeTab
+        isTourDataset ? activeTabForTourDatasetPage : activeTab
       )}
       onSelectionChange={(key) => handleTabChange(String(key))}>
       <Tabs.List

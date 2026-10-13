@@ -12,7 +12,7 @@
  */
 
 import { Box, Tabs } from '@openmetadata/ui-core-components';
-import { Space } from 'antd';
+
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -162,7 +162,13 @@ const ChartVersion: FC<ChartVersionProp> = ({
             <div
               className="entity-tag-right-panel-container tw:flex-[0_0_220px]"
               data-testid="entity-right-panel">
-              <Space className="w-full" direction="vertical" size="large">
+              <Box
+                inline
+                align="stretch"
+                className="layout-space w-full"
+                direction="col"
+                gap={6}
+                itemClassName="layout-space-item">
                 <DataProductsContainer
                   newLook
                   activeDomains={domains}
@@ -179,7 +185,7 @@ const ChartVersion: FC<ChartVersionProp> = ({
                     tagType={TagSource[tagType as TagSource]}
                   />
                 ))}
-              </Space>
+              </Box>
             </div>
           </Box>
         ),

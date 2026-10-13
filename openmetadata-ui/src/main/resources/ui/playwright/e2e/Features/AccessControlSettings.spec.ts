@@ -730,6 +730,11 @@ test.describe(
             try {
               await option.click({ timeout: 3000 });
 
+              const chip = resourcesAutocomplete.getByTestId(
+                'autocomplete-selected-item'
+              );
+              await chip.waitFor({ state: 'visible', timeout: 2000 });
+
               return true;
             } catch {
               return false;
@@ -748,6 +753,11 @@ test.describe(
 
             try {
               await option.click({ timeout: 3000 });
+
+              const chip = operationsAutocomplete.getByTestId(
+                'autocomplete-selected-item'
+              );
+              await chip.waitFor({ state: 'visible', timeout: 2000 });
 
               return true;
             } catch {
@@ -1047,6 +1057,11 @@ test.describe(
               try {
                 await option.click({ timeout: 3000 });
 
+                const chip = resourcesAutocomplete.getByTestId(
+                  'autocomplete-selected-item'
+                );
+                await chip.waitFor({ state: 'visible', timeout: 2000 });
+
                 return true;
               } catch {
                 return false;
@@ -1066,6 +1081,11 @@ test.describe(
 
               try {
                 await option.click({ timeout: 3000 });
+
+                const chip = operationsAutocomplete.getByTestId(
+                  'autocomplete-selected-item'
+                );
+                await chip.waitFor({ state: 'visible', timeout: 2000 });
 
                 return true;
               } catch {

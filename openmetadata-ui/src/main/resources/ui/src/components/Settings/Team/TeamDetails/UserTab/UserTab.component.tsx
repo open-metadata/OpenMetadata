@@ -10,9 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PlusOutlined } from '@ant-design/icons';
-import { Button, Col, Modal, Space, Tooltip } from 'antd';
-import classNames from 'classnames';
+
+import {
+  Box,
+  Button,
+  ButtonUtility,
+  SimpleModal,
+  Tooltip,
+} from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { isEmpty, orderBy } from 'lodash';
 import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -263,28 +269,30 @@ export const UserTab = ({
         key: 'actions',
         width: 90,
         render: (_, record) => (
-          <Space
+          <Box
+            inline
             align="center"
-            className="w-full justify-center remove-icon"
-            size={8}>
+            className="layout-space layout-space-horizontal w-full justify-center remove-icon"
+            gap={2}
+            itemClassName="layout-space-item">
             <Tooltip
+              arrow
               placement="left"
               title={
                 editUserPermission
                   ? t('label.remove')
                   : t('message.no-permission-for-action')
               }>
-              <Button
+              <ButtonUtility
+                color="tertiary"
                 data-testid="remove-user-btn"
-                disabled={!editUserPermission}
-                icon={
-                  <IconRemove height={16} name={t('label.remove')} width={16} />
-                }
-                type="text"
+                icon={IconRemove}
+                isDisabled={!editUserPermission}
+                size="sm"
                 onClick={() => handleRemoveClick(record.id)}
               />
             </Tooltip>
-          </Space>
+          </Box>
         ),
       },
     ];
@@ -380,22 +388,24 @@ export const UserTab = ({
     isGroupType ? (
       <ErrorPlaceHolder
         button={
-          <Space>
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal"
+            gap={2}
+            itemClassName="layout-space-item">
             <UserSelectableList
               hasPermission
               includeBot
               selectedUsers={currentTeam?.users ?? []}
               onUpdate={onAddUser}>
-              <Tooltip placement="topRight" title={addUserButtonTitle}>
+              <Tooltip arrow placement="top right" title={addUserButtonTitle}>
                 <Button
-                  ghost
-                  className={classNames({
-                    'p-x-lg': editUserPermission && !isTeamDeleted,
-                  })}
+                  color="secondary"
                   data-testid="add-new-user"
-                  disabled={!editUserPermission || isTeamDeleted}
-                  icon={<PlusOutlined />}
-                  type="primary">
+                  iconLeading={Plus}
+                  isDisabled={!editUserPermission || isTeamDeleted}
+                  size="sm">
                   {t('label.add')}
                 </Button>
               </Tooltip>
@@ -409,7 +419,7 @@ export const UserTab = ({
                 extraDropdownContent={IMPORT_EXPORT_MENU_ITEM}
               />
             )}
-          </Space>
+          </Box>
         }
         className="mt-0-important border-none"
         heading={t('label.user')}
@@ -429,15 +439,20 @@ export const UserTab = ({
 
   const renderExtraTableFilters = () =>
     !currentTeam.deleted && (
-      <Col>
-        <Space>
+      <Box className="layout-column tw:block">
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal"
+          gap={2}
+          itemClassName="layout-space-item">
           {isGroupType && users.length > 0 && editUserPermission && (
             <UserSelectableList
               hasPermission
               includeBot
               selectedUsers={currentTeam?.users ?? []}
               onUpdate={onAddUser}>
-              <Button data-testid="add-new-user" type="primary">
+              <Button color="primary" data-testid="add-new-user">
                 {t('label.add-entity', { entity: t('label.user') })}
               </Button>
             </UserSelectableList>
@@ -449,8 +464,8 @@ export const UserTab = ({
             entityType={EntityType.USER}
             extraDropdownContent={IMPORT_EXPORT_MENU_ITEM}
           />
-        </Space>
-      </Col>
+        </Box>
+      </Box>
     );
 
   if (isEmpty(users) && !searchText && !isLoading) {
@@ -490,11 +505,11 @@ export const UserTab = ({
         }}
         size="small"
       />
-      <Modal
+      <SimpleModal
         cancelText={t('label.cancel')}
         data-testid="confirmation-modal"
+        isOpen={Boolean(deletingUser)}
         okText={t('label.confirm')}
-        open={Boolean(deletingUser)}
         title={t('label.removing-user')}
         onCancel={() => setDeletingUser(undefined)}
         onOk={handleRemoveUser}>
@@ -503,7 +518,7 @@ export const UserTab = ({
             entity: getEntityName(deletingUser),
           }),
         })}
-      </Modal>
+      </SimpleModal>
     </div>
   );
 };

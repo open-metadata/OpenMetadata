@@ -419,29 +419,39 @@ describe('ContractSemanticFormTab', () => {
   });
 
   describe('Error Handling', () => {
-    it('should handle validation errors gracefully', async () => {
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-
+    it('keeps an invalid rule open and shows the errors', async () => {
       render(<ContractSemanticFormTab {...commonProps} />);
 
-      const addButton = screen.getByTestId('add-semantic-button');
-
       await act(async () => {
-        fireEvent.click(addButton);
+        fireEvent.click(screen.getByTestId('save-semantic-button'));
       });
 
-      const saveButton = screen.getByTestId('save-semantic-button');
+      expect(screen.getByTestId('save-semantic-button')).toBeInTheDocument();
+      expect(await screen.findByText('Name is required')).toBeInTheDocument();
+      expect(screen.getByText('Description is required')).toBeInTheDocument();
+    });
+
+    // A failed save must keep validating: fixing a field clears its error.
+    it('clears an error once the field is fixed after a failed save', async () => {
+      render(<ContractSemanticFormTab {...commonProps} />);
 
       await act(async () => {
-        fireEvent.click(saveButton);
+        fireEvent.click(screen.getByTestId('save-semantic-button'));
       });
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        'Validation failed:',
-        expect.any(Object)
+      expect(await screen.findByText('Name is required')).toBeInTheDocument();
+
+      await act(async () => {
+        fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), {
+          target: { value: 'Owner rule' },
+        });
+      });
+
+      await waitFor(() =>
+        expect(screen.queryByText('Name is required')).not.toBeInTheDocument()
       );
 
-      consoleSpy.mockRestore();
+      expect(screen.getByText('Description is required')).toBeInTheDocument();
     });
 
     it('should handle empty initial values', () => {

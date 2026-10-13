@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTimeout;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -120,6 +121,7 @@ import org.openmetadata.sdk.models.TableColumnList;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
@@ -5972,6 +5974,51 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   }
 
   @Test
+  void get_sampleData_masksPiiWhenTheSampleCoversOnlySomeColumns(TestNamespace ns) {
+    OpenMetadataClient adminClient = SdkClients.adminClient();
+    User reader = UserTestFactory.createUser(ns, "pii_partial_reader");
+    OpenMetadataClient readerClient =
+        SdkClients.createClient(reader.getEmail(), reader.getEmail(), new String[] {});
+    TagLabel pii =
+        new TagLabel()
+            .withTagFQN(PIIMasker.SENSITIVE_PII_TAG)
+            .withSource(TagLabel.TagSource.CLASSIFICATION);
+
+    CreateTable columnPii = createRequest(ns.prefix("pii_column_partial_sample"), ns);
+    List<Column> columns = new ArrayList<>(columnPii.getColumns());
+    columns.add(
+        ColumnBuilder.of("email", "VARCHAR").dataLength(255).build().withTags(List.of(pii)));
+    columnPii.setColumns(columns);
+    Table table = adminClient.tables().create(columnPii);
+    adminClient
+        .tables()
+        .updateSampleData(
+            table.getId(),
+            new TableData()
+                .withColumns(List.of("id", "name"))
+                .withRows(List.of(List.of(1, "Alice"))));
+
+    TableData visible = readerClient.tables().getSampleData(table.getId()).getSampleData();
+
+    assertEquals(List.of("id", "name"), visible.getColumns());
+    assertEquals(List.of(1, "Alice"), visible.getRows().getFirst());
+
+    CreateTable tablePii = createRequest(ns.prefix("pii_table_partial_sample"), ns);
+    tablePii.setTags(List.of(pii));
+    Table sensitive = adminClient.tables().create(tablePii);
+    adminClient
+        .tables()
+        .updateSampleData(
+            sensitive.getId(),
+            new TableData().withColumns(List.of("name")).withRows(List.of(List.of("Alice"))));
+
+    TableData masked = readerClient.tables().getSampleData(sensitive.getId()).getSampleData();
+
+    assertEquals(List.of("name [MASKED]"), masked.getColumns());
+    assertEquals(List.of(PIIMasker.MASKED_VALUE), masked.getRows().getFirst());
+  }
+
+  @Test
   void test_sensitivePIIColumnProfile(TestNamespace ns) {
     OpenMetadataClient adminClient = SdkClients.adminClient();
 
@@ -7561,7 +7608,6 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
           "name column should have no tags");
     }
 
-    // Test 2: List with fields=columns only — columns populated, no tags
     ListParams paramsColumnsOnly =
         new ListParams()
             .setLimit(tableCount)
@@ -7573,6 +7619,10 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     for (Table table : responseColumnsOnly.getData()) {
       assertNotNull(table.getColumns(), "Columns should be populated");
       assertEquals(3, table.getColumns().size());
+      assertTrue(nullOrEmpty(table.getTags()));
+      assertEquals(
+          List.of(tag.getFullyQualifiedName()),
+          table.getColumns().getFirst().getTags().stream().map(TagLabel::getTagFQN).toList());
     }
 
     // Test 3: List with fields=tags only — table tags populated

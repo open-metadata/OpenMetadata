@@ -78,7 +78,6 @@ export interface DataQualityTabProps {
   tableHeader?: ReactNode;
   removeTableBorder?: boolean;
   enableBulkActions?: boolean;
-  editVariant?: 'drawer' | 'modal';
   hasActiveFilters?: boolean;
   emptyStateAction?: EmptyPlaceholderAction;
   // Per-entity permissions keyed by test-case id, supplied by the list API when
