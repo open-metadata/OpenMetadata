@@ -839,7 +839,8 @@
         "openmetadata-ui/src/main/resources/ui/src/utils/platform/systemAnnouncements.utils*",
         "openmetadata-ui/src/main/resources/ui/src/constants/platform/systemAnnouncements.constants.ts",
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/notification/nativeNotificationSections.ts",
-        "openmetadata-ui/src/main/resources/ui/src/assets/svg/announcement-colored-new.svg"
+        "openmetadata-ui-core-components/src/main/resources/ui/icons-custom/announcement-colored.svg",
+        "openmetadata-ui-core-components/src/main/resources/ui/src/icons/AnnouncementColored.tsx"
       ],
       "projects": ["chromium"],
       "specs": [

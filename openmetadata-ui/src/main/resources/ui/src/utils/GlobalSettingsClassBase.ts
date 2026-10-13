@@ -10,9 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { GlossaryTerm } from '@openmetadata/ui-core-components/icons';
+import {
+  AnnouncementColored,
+  GlossaryTerm,
+} from '@openmetadata/ui-core-components/icons';
 import { ReactComponent as AdminIcon } from '../assets/svg/admin-colored.svg';
-import { ReactComponent as AnnouncementIcon } from '../assets/svg/announcement-colored-new.svg';
 import { ReactComponent as APICollectionIcon } from '../assets/svg/api-collection-colored.svg';
 import { ReactComponent as APIEndpointIcon } from '../assets/svg/api-endpoints-colored.svg';
 import { ReactComponent as IconAPI } from '../assets/svg/apis-colored.svg';
@@ -319,7 +321,7 @@ class GlobalSettingsClassBase {
           {
             category: t('label.announcement-plural'),
             key: `${GlobalSettingsMenuCategory.NOTIFICATIONS}.${GlobalSettingOptions.ANNOUNCEMENTS}`,
-            icon: AnnouncementIcon,
+            icon: AnnouncementColored,
             description: t('message.system-announcements-description'),
             // System announcements are written by admins alone — the server
             // allows no other user — so nobody else is shown the card.
