@@ -4757,6 +4757,7 @@
     "no-execution-runs-found": "No execution runs found for the pipeline.",
     "no-features-data-available": "No features data available",
     "no-feed-available-for-selected-filter": "No feed found. Try changing the filters.",
+    "no-fields-configured": "No fields configured yet",
     "no-file-selected": "No file selected",
     "no-filter-patterns-available": "No filter patterns are available for this connector.",
     "no-folders-yet-create-one": "No folders yet, create one to organize documents by topic or team.",

@@ -20,6 +20,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 
+import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -123,25 +124,17 @@ const GithubStarCard = () => {
   }, [usernameExistsInCookie, updateGithubPopup]);
 
   return showGithubStarPopup && isHomePage ? (
-    <div
-      className={`tw:fixed tw:right-7.5 tw:-bottom-full tw:z-1 tw:border-none ${
+    <Box
+      className={classNames(
+        'tw:fixed tw:right-7.5 tw:-bottom-full tw:z-1 tw:border-none',
         isWhatNewAlertVisible
           ? 'github-star-popup-card-with-alert'
           : 'github-star-popup-card-without-alert'
-      }`}>
+      )}>
       <Card data-testid="github-star-popup-card">
         <Card.Content>
-          <Box
-            align="center"
-            className="layout-space layout-space-horizontal d-flex justify-between"
-            gap={2}
-            itemClassName="layout-space-item">
-            <Box
-              inline
-              align="center"
-              className="layout-space layout-space-horizontal"
-              gap={2}
-              itemClassName="layout-space-item">
+          <Box align="center" gap={2} justify="between">
+            <Box inline align="center" gap={2}>
               <StarIcon className="github-star-icon" />
 
               <Typography className="github-star-popup-header">
@@ -160,7 +153,7 @@ const GithubStarCard = () => {
             {t('message.star-on-github-description')}
           </Typography>
 
-          <div className="tw:flex tw:gap-2">
+          <Box gap={2}>
             <Button
               color="secondary"
               href={OMD_REPOSITORY_LINK}
@@ -182,10 +175,10 @@ const GithubStarCard = () => {
                 starredCount
               )}
             </Button>
-          </div>
+          </Box>
         </Card.Content>
       </Card>
-    </div>
+    </Box>
   ) : null;
 };
 

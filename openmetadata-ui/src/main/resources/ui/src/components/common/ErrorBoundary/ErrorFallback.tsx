@@ -54,15 +54,18 @@ const ErrorFallback: React.FC<FallbackProps> = ({
       align="center"
       className="tw:h-full tw:px-8 tw:py-12 tw:text-center"
       direction="col"
+      gap={6}
       justify="center">
-      <OmUpgradeIcon className="tw:mb-6" />
-      <Typography size="display-xs" weight="semibold">
-        {title}
-      </Typography>
-      <Typography as="p" className="tw:text-tertiary tw:mt-2" size="text-sm">
-        {message}
-      </Typography>
-      <Button className="tw:mt-6" color="primary" onClick={handleReset}>
+      <OmUpgradeIcon />
+      <Box align="center" direction="col" gap={2}>
+        <Typography size="display-xs" weight="semibold">
+          {title}
+        </Typography>
+        <Typography as="p" color="secondary" size="text-sm">
+          {message}
+        </Typography>
+      </Box>
+      <Button color="primary" onPress={handleReset}>
         {isChunkLoadError ? t('label.refresh') : t('label.home')}
       </Button>
     </Box>

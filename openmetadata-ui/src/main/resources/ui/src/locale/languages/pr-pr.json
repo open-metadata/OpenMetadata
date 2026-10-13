@@ -4757,6 +4757,7 @@
     "no-execution-runs-found": "هیچ اجرای پیاده‌سازی‌ای برای این خط لوله یافت نشد.",
     "no-features-data-available": "هیچ داده‌ای برای ویژگی‌ها موجود نیست.",
     "no-feed-available-for-selected-filter": "هیچ فیدی یافت نشد. فیلترها را تغییر دهید.",
+    "no-fields-configured": "هنوز هیچ فیلدی پیکربندی نشده است",
     "no-file-selected": "هیچ فایلی انتخاب نشده است",
     "no-filter-patterns-available": "هیچ الگوی فیلتری برای این رابط موجود نیست.",
     "no-folders-yet-create-one": "هنوز پوشه‌ای وجود ندارد، یکی بسازید تا مستندات را بر اساس موضوع یا تیم سازمان‌دهی کنید.",

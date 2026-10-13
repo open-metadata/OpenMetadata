@@ -106,7 +106,7 @@ const WhatsNewAlert = () => {
   return (
     <>
       {showWhatsNew.alert && isHomePage && (
-        <div className="tw:fixed tw:right-8 tw:bottom-8 tw:z-2000">
+        <Box className="tw:fixed tw:right-8 tw:bottom-8 tw:z-2000">
           <Card
             className="whats-new-alert-card"
             data-testid="whats-new-alert-card">
@@ -180,7 +180,7 @@ const WhatsNewAlert = () => {
               </Box>
             </Box>
           </Card>
-        </div>
+        </Box>
       )}
     </>
   );

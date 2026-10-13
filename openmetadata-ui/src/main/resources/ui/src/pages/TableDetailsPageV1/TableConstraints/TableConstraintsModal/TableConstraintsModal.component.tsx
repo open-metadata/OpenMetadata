@@ -18,6 +18,7 @@ import {
   SimpleModal,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Columns03 } from '@openmetadata/ui-core-components/icons';
 import { Form, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, isEmpty } from 'lodash';
@@ -531,8 +532,11 @@ const TableConstraintsModal = ({
                             isRelatedColumnLoading ? (
                               <Loader size="small" />
                             ) : (
-                              <Box className="tw:relative tw:min-h-24 tw:w-full">
+                              <Box className="tw:relative tw:min-h-24">
                                 <EmptyPlaceholder
+                                  icon={
+                                    <Columns03 className="tw:text-secondary" />
+                                  }
                                   title={t('label.no-entity-available', {
                                     entity: t('label.column-plural'),
                                   })}

@@ -32,6 +32,7 @@ import {
   EmptyPlaceholder,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { List } from '@openmetadata/ui-core-components/icons';
 import { Checkbox, Form, Input, Select } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -322,10 +323,11 @@ const TaskFormBuilderSection = ({
               );
             })
           ) : (
-            <Box className="tw:relative tw:min-h-40 tw:w-full">
+            <Box className="tw:relative tw:min-h-40">
               <EmptyPlaceholder
                 data-testid={`${testIdPrefix}-empty`}
-                title="No fields configured yet"
+                icon={<List className="tw:text-secondary" />}
+                title={t('message.no-fields-configured')}
               />
             </Box>
           )}

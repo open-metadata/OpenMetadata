@@ -519,9 +519,9 @@ const AdminPermissionDebugger: React.FC = () => {
           {renderEvaluationResult()}
 
           {loadingPermissions && (
-            <div className="loading-container">
+            <Box align="center" className="tw:min-h-75" justify="center">
               <Loader />
-            </div>
+            </Box>
           )}
 
           {permissionInfo && !loadingPermissions && (

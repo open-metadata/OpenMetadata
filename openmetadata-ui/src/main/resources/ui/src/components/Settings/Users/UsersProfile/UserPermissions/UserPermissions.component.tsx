@@ -593,9 +593,9 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
 
   if (loading) {
     return (
-      <div className="user-permissions-loading">
+      <Box align="center" className="tw:min-h-100" justify="center">
         <Loader />
-      </div>
+      </Box>
     );
   }
 
