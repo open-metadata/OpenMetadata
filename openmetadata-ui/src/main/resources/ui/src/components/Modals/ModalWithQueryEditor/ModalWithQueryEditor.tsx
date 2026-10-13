@@ -11,15 +11,19 @@
  *  limitations under the License.
  */
 import {
-  Button,
-  Dialog,
-  Modal,
-  ModalOverlay,
+    Box,
+    Button,
+    Dialog,
+    FormField,
+    FormItemLabel,
+    HintText,
+    HookForm,
+    Modal,
+    ModalOverlay
 } from '@openmetadata/ui-core-components';
-import { Form } from 'antd';
-import { FormProps, useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { lazy, useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -39,11 +43,11 @@ export const ModalWithQueryEditor = ({
   visible,
 }: ModalWithQueryEditorProps) => {
   const { t } = useTranslation();
-  const [form] = useForm();
+  const form = useForm<{ query: string }>({ defaultValues: { query: '' } });
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
 
-  const onFinish: FormProps['onFinish'] = async (value) => {
+  const onFinish = async (value: { query: string }) => {
     setIsSaving(true);
     try {
       await onSave?.(value.query ?? '');
@@ -56,7 +60,7 @@ export const ModalWithQueryEditor = ({
 
   useEffect(() => {
     if (visible) {
-      form.setFieldsValue({ query: value });
+      form.reset({ query: value ?? '' });
       setIsLoading(false);
     }
   }, [form, visible]);
@@ -80,27 +84,38 @@ export const ModalWithQueryEditor = ({
             {isLoading ? (
               <Loader />
             ) : (
-              <Form form={form} layout="vertical" onFinish={onFinish}>
-                <Form.Item
-                  data-testid="sql-editor-container"
-                  label={t('label.sql-uppercase-query')}
+              <HookForm form={form} onSubmit={form.handleSubmit(onFinish)}>
+                <FormField
+                  control={form.control}
                   name="query"
-                  rules={[
-                    {
-                      required: true,
-                      message: t('label.field-required', {
-                        field: t('label.sql-uppercase-query'),
-                      }),
-                    },
-                  ]}
-                  trigger="onChange">
-                  <SchemaEditor
-                    className="custom-query-editor query-editor-h-200 custom-code-mirror-theme"
-                    mode={{ name: CSMode.SQL }}
-                    showCopyButton={false}
-                  />
-                </Form.Item>
-              </Form>
+                  rules={{
+                    required: t('label.field-required', {
+                      field: t('label.sql-uppercase-query'),
+                    }),
+                  }}>
+                  {({ field, fieldState }) => (
+                    <Box
+                      data-testid="sql-editor-container"
+                      direction="col"
+                      gap={1}>
+                      <FormItemLabel
+                        required
+                        label={t('label.sql-uppercase-query')}
+                      />
+                      <SchemaEditor
+                        className="custom-query-editor query-editor-h-200 custom-code-mirror-theme"
+                        mode={{ name: CSMode.SQL }}
+                        showCopyButton={false}
+                        value={field.value}
+                        onChange={field.onChange}
+                      />
+                      {fieldState.error && (
+                        <HintText isInvalid>{fieldState.error.message}</HintText>
+                      )}
+                    </Box>
+                  )}
+                </FormField>
+              </HookForm>
             )}
           </Dialog.Content>
           <Dialog.Footer>
@@ -116,7 +131,7 @@ export const ModalWithQueryEditor = ({
               color="primary"
               data-testid="save"
               key="saveButton"
-              onClick={() => form.submit()}>
+              onClick={form.handleSubmit(onFinish)}>
               {isSaving ? (
                 <Loader size="small" type="white" />
               ) : (
