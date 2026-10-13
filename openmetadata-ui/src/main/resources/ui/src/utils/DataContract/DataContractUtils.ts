@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { RuleObject } from 'antd/lib/form';
 import { dump } from 'js-yaml';
 import { isEmpty, omit } from 'lodash';
 import { DateTime } from 'luxon';
@@ -41,19 +40,10 @@ import jsonLogicSearchClassBase from '../JSONLogicSearchClassBase';
 import { withGlossaryTermField } from '../queryBuilderWidgets/glossaryTermQueryField';
 import { getTermQuery } from '../SearchPureUtils';
 
-export const semanticRuleValidator = (_: RuleObject, value: string) => {
-  if (isEmpty(value) || value === '""' || value === '{}') {
-    return Promise.reject(
-      new Error(
-        t('message.field-text-is-required', {
-          fieldText: t('label.rule'),
-        })
-      )
-    );
-  }
-
-  return Promise.resolve();
-};
+export const semanticRuleValidator = (value?: string) =>
+  isEmpty(value) || value === '""' || value === '{}'
+    ? t('message.field-text-is-required', { fieldText: t('label.rule') })
+    : true;
 
 export const getContractStatusLabelBasedOnFailedResult = (failed?: number) => {
   return failed === 0 ? t('label.passed') : t('label.failed');
