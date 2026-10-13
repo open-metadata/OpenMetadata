@@ -69,7 +69,8 @@ public final class AlertDiagnostics {
         .withSuccessfulEventsCount(counts.delivered())
         .withFailedEventsCount(counts.failed())
         .withTotalUnprocessedEventsCount(progress.unread())
-        .withRelevantUnprocessedEventsCount((long) relevant.size())
+        .withRelevantUnprocessedEventsCount(
+            progress.relevantUnreadCount(AlertDiagnostics::matchingRules))
         .withRelevantUnprocessedEventsList(listCountOnly ? null : relevant)
         .withTotalUnprocessedEventsList(
             listCountOnly ? null : progress.allUnread(limit, paginationOffset));
