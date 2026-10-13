@@ -60,8 +60,10 @@ test('the suppressions baseline matches its recorded state exactly', () => {
     // landing page's FeedWidget, Data Assets and My Tasks suites went with the
     // widgets they drove, taking six more with them, and the Data Contract
     // core-components migration removes three more. Scoping the ActivityFeed
-    // thread-panel locators removes one more.
-    'om-playwright/no-positional-locator': 577,
+    // thread-panel locators removes one more. Targeting the core TreeSelect
+    // popovers and team picker by test id in the Policies, UserDetails and
+    // team-editor specs removes five more.
+    'om-playwright/no-positional-locator': 572,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 1,
     'playwright/no-wait-for-selector': 14,

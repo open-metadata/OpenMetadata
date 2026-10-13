@@ -544,7 +544,7 @@
   },
   "playwright/e2e/Pages/Policies.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 10
+      "count": 8
     }
   },
   "playwright/e2e/Pages/ProfilerConfigurationPage.spec.ts": {
@@ -600,7 +600,7 @@
   },
   "playwright/e2e/Pages/UserDetails.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 3
+      "count": 2
     }
   },
   "playwright/e2e/Pages/Users.spec.ts": {
@@ -820,7 +820,7 @@
   },
   "playwright/utils/userDetails.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 3
+      "count": 1
     }
   },
   "src/components/ActivityFeed/TaskFeedCard/TaskFeedCardFromTask.component.tsx": {

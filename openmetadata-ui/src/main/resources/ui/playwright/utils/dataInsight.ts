@@ -82,7 +82,7 @@ export const addKpi = async (page: Page, data: KPIData) => {
   await page.getByTestId('displayName').fill(data.displayName);
   await page.getByTestId('metricType').click();
   await page.click(`.ant-select-dropdown [title="${data.metricType}"]`);
-  await page.locator('.ant-slider-mark-text', { hasText: '100%' }).click();
+  await page.getByTestId('metric-number-input').fill('100');
 
   await page.getByTestId('start-date').click();
   await page.getByTestId('start-date').fill(startDate);

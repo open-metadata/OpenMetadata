@@ -67,13 +67,19 @@ const addRule = async (
   await page.locator('[data-testid="resources"]').click();
 
   // Select All
-  await page.locator('.ant-select-tree-checkbox-inner').first().click();
+  await page
+    .getByTestId('resources-popover')
+    .getByTestId('checkbox-All')
+    .click();
 
   // Click on operations dropdown
   await page.locator('[data-testid="operations"]').click();
 
   // Select operation
-  await page.locator('.ant-select-tree-checkbox-inner').nth(1).click();
+  await page
+    .getByTestId('operations-popover')
+    .getByTestId('checkbox-All')
+    .click();
 
   // Click on condition combobox
   await page.locator('[data-testid="condition"]').click();
@@ -88,11 +94,12 @@ const addRule = async (
   // examples and the dropdown is virtualized, so an option far enough down the list is not in the
   // DOM to be clicked - which is what happens whenever a new function is added.
   await page
-    .locator(
-      '[data-testid="condition"] > .ant-select-selector .ant-select-selection-search-input'
-    )
+    .getByTestId('condition')
+    .getByRole('combobox')
     .fill(RULE_DETAILS.condition);
-  await page.locator(`[title="${RULE_DETAILS.condition}"]`).click();
+  await page
+    .getByRole('option', { name: RULE_DETAILS.condition, exact: true })
+    .click();
   await conditionResponse;
 
   // Verify condition success

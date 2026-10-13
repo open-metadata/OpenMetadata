@@ -741,7 +741,7 @@ test.describe('Search Settings', () => {
         const ngramSliderHandle = page
           .getByTestId('field-configuration-panel-name.ngram')
           .getByTestId('field-weight-slider')
-          .locator('.ant-slider-handle');
+          .getByRole('slider');
 
         // Register before triggering so the delayed stale request and response
         // are both observed.

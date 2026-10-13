@@ -67,6 +67,7 @@ import {
   verifyTeamListingAssetCount,
   waitForTeamAssetsSearchResponse,
 } from '../../utils/team';
+import { selectTeamInPicker } from '../../utils/userDetails';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 base.describe.configure({ mode: 'serial' });
@@ -502,10 +503,7 @@ test.describe('Teams Page', () => {
         page.getByTestId('profile-teams-edit-popover')
       ).toBeVisible();
 
-      await page
-        .getByTestId('profile-teams-edit-popover')
-        .getByText(teamDisplayName)
-        .click();
+      await selectTeamInPicker(page, teamDisplayName);
 
       const patchUserPromise = page.waitForResponse(
         (response) =>

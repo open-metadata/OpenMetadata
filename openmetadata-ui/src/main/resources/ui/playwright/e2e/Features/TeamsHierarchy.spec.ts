@@ -86,7 +86,7 @@ test.describe(
       await page.keyboard.type(businessTeamName);
 
       for (const teamName of teamNames) {
-        const dropdown = page.locator('.ant-tree-select-dropdown');
+        const dropdown = page.getByTestId('team-select-popover');
 
         await expect(dropdown).toContainText(teamName);
         await expect(dropdown.getByText(teamName)).toHaveCount(1);
@@ -98,7 +98,7 @@ test.describe(
         await page.click('[data-testid="team-select"]');
         await page.keyboard.type(teamName);
 
-        await expect(page.locator('.ant-tree-select-dropdown')).toContainText(
+        await expect(page.getByTestId('team-select-popover')).toContainText(
           teamName
         );
       }
@@ -129,12 +129,11 @@ test.describe(
         const teamSelect = page.getByTestId('team-select');
         const teamSelectInput = teamSelect.getByRole('combobox');
         const dropdown = page.getByRole('tree');
-        // Selection chips only — the select also mirrors the typed search
-        // text as a text node (ant-select-selection-search-mirror), so a
-        // bare getByText inside the control matches even with no selection.
-        const selectedTeamChips = teamSelect.locator(
-          '.ant-select-selection-item'
-        );
+        // Selection chips only: each chip carries a "Remove <team>" button,
+        // while the typed search text is not a chip.
+        const selectedTeamChips = teamSelect.getByRole('button', {
+          name: /^Remove /,
+        });
 
         await test.step('Non-Group team with children is visible but not selectable', async () => {
           await teamSelect.click();
@@ -147,7 +146,9 @@ test.describe(
           await departmentOption.click();
 
           await expect(
-            selectedTeamChips.filter({ hasText: departmentTeamName })
+            teamSelect.getByRole('button', {
+              name: `Remove ${departmentTeamName}`,
+            })
           ).toHaveCount(0);
         });
 
@@ -172,7 +173,7 @@ test.describe(
           await groupOption.click();
 
           await expect(
-            selectedTeamChips.filter({ hasText: groupTeamName })
+            teamSelect.getByRole('button', { name: `Remove ${groupTeamName}` })
           ).toHaveCount(1);
         });
       } finally {
@@ -209,15 +210,12 @@ test.describe(
 
         const teamSelect = popover.getByTestId('team-select');
         const teamSelectInput = teamSelect.getByRole('combobox');
-        // `teams-custom-dropdown-class` is set by TeamsSelectableNew via
-        // popupClassName (component-owned, not an antd internal).
-        const dropdown = page.locator('.teams-custom-dropdown-class');
+        // The core TreeSelect renders its tree in a `team-select-popover` overlay.
+        const dropdown = page.getByTestId('team-select-popover');
         // Chips truncate long labels, so selection is asserted on the tree
-        // node's selected state where the full team name is rendered. The antd
-        // class is the only selected-state signal: rc-tree renders no treeitem
-        // role and (mis)maps aria-selected to `selectable`, not `selected`.
+        // node's `data-selected` state, where the full team name is rendered.
         const selectedTreeNodes = dropdown.locator(
-          '.ant-select-tree-treenode-selected'
+          '[data-testid^="tree-node-"][data-selected="true"]'
         );
 
         await test.step('Non-Group team with children is visible but not selectable', async () => {

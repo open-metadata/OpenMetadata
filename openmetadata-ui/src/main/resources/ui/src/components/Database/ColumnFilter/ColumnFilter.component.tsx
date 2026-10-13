@@ -52,6 +52,9 @@ export const ColumnFilter = ({
           isSelected={selectedKeys.indexOf(filter.value as React.Key) > -1}
           key={String(filter.value)}
           label={startCase(filter.text as string)}
+          // Rendered inside the table header, which provides react-aria's row
+          // selection checkbox context; opt out of it.
+          slot={null}
           onChange={() => handleClick(filter.value as React.Key)}
         />
       ))}

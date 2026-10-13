@@ -156,7 +156,7 @@ test.describe.serial('Settings Navigation Page Tests', () => {
 
     //   Make changes
     const navigateSwitch = page
-      .locator('.ant-tree-title:has-text("Insights")')
+      .getByRole('row', { name: 'Insights', exact: true })
       .locator('[data-testid^="navigation-switch-"]');
 
     await navigateSwitch.click();
@@ -205,7 +205,7 @@ test.describe.serial('Settings Navigation Page Tests', () => {
 
     //   Make changes
     const domainSwitch = page
-      .locator('.ant-tree-title:has-text("Domains")')
+      .getByRole('row', { name: 'Domains', exact: true })
       .first()
       .locator('[data-testid^="navigation-switch-"]');
 
@@ -248,7 +248,7 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     await setUserDefaultPersona(page, persona.responseData.displayName);
     await navigateToPersonaNavigation(page);
 
-    const treeItems = page.locator('.ant-tree-node-content-wrapper');
+    const treeItems = page.getByRole('treegrid').getByRole('row');
 
     // Wait for the tree to be fully ready
     await expect(treeItems.filter({ visible: true })).not.toHaveCount(0);
@@ -300,7 +300,7 @@ test.describe.serial('Settings Navigation Page Tests', () => {
 
     const exploreSwitch = page.getByTestId('navigation-switch-/explore');
     const insightsSwitch = page
-      .locator('.ant-tree-title:has-text("Insights")')
+      .getByRole('row', { name: 'Insights', exact: true })
       .locator('[data-testid^="navigation-switch-"]')
       .first();
 
@@ -348,7 +348,7 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     await setUserDefaultPersona(page, persona.responseData.displayName);
     await navigateToPersonaNavigation(page);
 
-    const treeItems = page.locator('.ant-tree-node-content-wrapper');
+    const treeItems = page.getByRole('treegrid').getByRole('row');
 
     await expect(treeItems.filter({ visible: true })).not.toHaveCount(0);
 
@@ -453,7 +453,7 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     await setUserDefaultPersona(page, persona.responseData.displayName);
     await navigateToPersonaNavigation(page);
 
-    const treeItems = page.locator('.ant-tree-node-content-wrapper');
+    const treeItems = page.getByRole('treegrid').getByRole('row');
 
     await expect(treeItems.filter({ visible: true })).not.toHaveCount(0);
 

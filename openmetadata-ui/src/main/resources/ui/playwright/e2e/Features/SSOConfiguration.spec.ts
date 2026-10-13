@@ -458,13 +458,9 @@ test.describe('SSO Configuration Tests', () => {
     }) => {
       await selectSSOProvider(page, 'google');
 
-      const advancedConfigCollapse = page.locator(
-        '.sso-advanced-properties-collapse'
-      );
-
-      await expect(advancedConfigCollapse).toBeVisible();
-
-      const advancedConfigHeader = page.getByText(/advanced config/i);
+      const advancedConfigHeader = page.getByRole('button', {
+        name: /advanced config/i,
+      });
 
       await expect(advancedConfigHeader).toBeVisible();
     });
@@ -654,12 +650,13 @@ test.describe('SSO Configuration Tests', () => {
     test('should collapse advanced config by default', async ({ page }) => {
       await selectSSOProvider(page, 'google');
 
-      const advancedConfigPanel = page.locator(
-        '.sso-advanced-properties-collapse .ant-collapse-item'
-      );
+      const advancedConfigHeader = page.getByRole('button', {
+        name: /advanced config/i,
+      });
 
-      await expect(advancedConfigPanel).not.toHaveClass(
-        /ant-collapse-item-active/
+      await expect(advancedConfigHeader).toHaveAttribute(
+        'aria-expanded',
+        'false'
       );
     });
 
@@ -668,23 +665,27 @@ test.describe('SSO Configuration Tests', () => {
     }) => {
       await selectSSOProvider(page, 'google');
 
-      const advancedConfigHeader = page.getByText(/advanced config/i);
-      const advancedConfigPanel = page.locator(
-        '.sso-advanced-properties-collapse .ant-collapse-item'
-      );
+      const advancedConfigHeader = page.getByRole('button', {
+        name: /advanced config/i,
+      });
 
-      await expect(advancedConfigPanel).not.toHaveClass(
-        /ant-collapse-item-active/
+      await expect(advancedConfigHeader).toHaveAttribute(
+        'aria-expanded',
+        'false'
       );
 
       await advancedConfigHeader.click();
 
-      await expect(advancedConfigPanel).toHaveClass(/ant-collapse-item-active/);
+      await expect(advancedConfigHeader).toHaveAttribute(
+        'aria-expanded',
+        'true'
+      );
 
       await advancedConfigHeader.click();
 
-      await expect(advancedConfigPanel).not.toHaveClass(
-        /ant-collapse-item-active/
+      await expect(advancedConfigHeader).toHaveAttribute(
+        'aria-expanded',
+        'false'
       );
     });
 

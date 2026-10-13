@@ -731,7 +731,10 @@ export const addUser = async (
 
   await fillDescriptionBox(page, 'Adding new user');
 
-  await page.click(':nth-child(2) > .ant-radio > .ant-radio-input');
+  await page
+    .getByRole('radiogroup')
+    .getByText('Create Password', { exact: true })
+    .click();
   await page.fill('input[name="password"]', password);
   await page.fill('input[name="confirmPassword"]', password);
 
@@ -795,7 +798,10 @@ export const checkForUserExistError = async (
 
   await fillDescriptionBox(page, 'Adding new user');
 
-  await page.click(':nth-child(2) > .ant-radio > .ant-radio-input');
+  await page
+    .getByRole('radiogroup')
+    .getByText('Create Password', { exact: true })
+    .click();
   await page.fill('input[name="password"]', password);
   await page.fill('input[name="confirmPassword"]', password);
 

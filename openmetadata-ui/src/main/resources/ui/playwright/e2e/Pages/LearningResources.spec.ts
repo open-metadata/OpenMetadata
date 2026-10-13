@@ -91,7 +91,7 @@ async function fillResourceForm(
   await expect(categorySelector).toBeVisible();
   await categorySelector.click();
   await selectDropdownOption(page, data.category);
-  await page.locator('.ant-drawer-header').click();
+  await page.getByRole('dialog').locator('header').click();
   await expect(page.locator('.ant-select-dropdown:visible')).not.toBeVisible();
 
   const contextSelector = page
@@ -103,7 +103,7 @@ async function fillResourceForm(
     .locator('.ant-select-dropdown:visible')
     .getByTitle(data.context, { exact: true })
     .click();
-  await page.locator('.ant-drawer-header').click();
+  await page.getByRole('dialog').locator('header').click();
   await expect(page.locator('.ant-select-dropdown:visible')).not.toBeVisible();
 
   const urlInput = page.getByTestId('source-url-input');
