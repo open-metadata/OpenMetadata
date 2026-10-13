@@ -83,11 +83,8 @@ public class RedisCacheProvider implements CacheProvider {
   private volatile boolean available = false;
   private final ConcurrentLinkedDeque<Long> failureTimestamps = new ConcurrentLinkedDeque<>();
   private final AtomicInteger consecutiveSuccesses = new AtomicInteger(0);
-  // Cleanup and recovery share this lock with skipped/failed-write tracking. Otherwise steady
-  // traffic can refill the tracker during every cleanup and prevent a healthy Redis from
-  // recovering.
-  // Writers that find Redis unavailable wait through the bounded cleanup, then recheck
-  // availability.
+  // Recovery cleanup shares this lock with skipped/failed-write tracking so steady traffic
+  // cannot prevent recovery. Cleanup while available must leave the lock free for request outcomes.
   private final Object stateLock = new Object();
 
   // A write skipped while unavailable, or one that failed, leaves Redis holding the value from
@@ -156,9 +153,14 @@ public class RedisCacheProvider implements CacheProvider {
         return;
       }
       synchronized (stateLock) {
-        deleteUnconfirmedWrites();
-        recordSuccess();
+        if (!available) {
+          deleteUnconfirmedWrites();
+          recordSuccess();
+          return;
+        }
       }
+      deleteUnconfirmedWrites();
+      recordSuccess();
     } catch (Exception e) {
       recordFailure(e);
     }
