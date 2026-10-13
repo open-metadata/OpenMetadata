@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { useContext } from 'react';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { MOCK_TABLE } from '../../../../mocks/TableData.mock';
@@ -98,6 +104,41 @@ jest.mock('./ProfilerSettingsModal/ProfilerSettingsModal', () =>
 jest.mock(
   '../../../DataQuality/AddDataQualityTest/components/TestCaseFormDrawer',
   () => jest.fn().mockReturnValue(null)
+);
+jest.mock('../../../DataQuality/CustomMetricForm/CustomMetricFormDrawer', () =>
+  jest.fn(
+    ({
+      open,
+      isColumnMetric,
+      metric,
+      onClose,
+    }: {
+      open: boolean;
+      isColumnMetric: boolean;
+      metric?: { name: string };
+      onClose: () => void;
+    }) => {
+      const { TableProfilerContext: ProfilerContext } = jest.requireActual(
+        './TableProfilerProvider'
+      );
+      const hasProfilerContext = Boolean(
+        jest.requireActual('react').useContext(ProfilerContext).permissions
+      );
+
+      return open ? (
+        <div data-testid="custom-metric-drawer">
+          <span data-testid="drawer-column-metric">
+            {String(isColumnMetric)}
+          </span>
+          <span data-testid="drawer-metric">{metric?.name ?? 'new'}</span>
+          <span data-testid="drawer-has-context">
+            {String(hasProfilerContext)}
+          </span>
+          <button onClick={onClose}>close drawer</button>
+        </div>
+      ) : null;
+    }
+  )
 );
 jest.mock('../../../../constants/constants', () => ({
   PAGE_SIZE: 10,
@@ -253,6 +294,76 @@ describe('TableProfilerProvider', () => {
         expect(screen.getByTestId('paging-total')).toBeInTheDocument();
         expect(screen.getByTestId('table-test-suite')).toBeInTheDocument();
       });
+    });
+  });
+
+  describe('Custom metric drawer', () => {
+    const DrawerOpener = () => {
+      const { onCustomMetricDrawerOpen } = useContext(TableProfilerContext);
+
+      return (
+        <>
+          <button onClick={() => onCustomMetricDrawerOpen(false)}>
+            add table metric
+          </button>
+          <button
+            onClick={() =>
+              onCustomMetricDrawerOpen(true, {
+                name: 'column_metric',
+                expression: 'SELECT 1',
+                columnName: 'address_id',
+              })
+            }>
+            edit column metric
+          </button>
+        </>
+      );
+    };
+
+    const renderProvider = async () => {
+      await act(async () => {
+        render(
+          <TableProfilerProvider
+            permissions={mockPermissions}
+            table={MOCK_TABLE}>
+            <DrawerOpener />
+          </TableProfilerProvider>
+        );
+      });
+    };
+
+    it('opens one shared drawer for adding and editing, outside the profiler context', async () => {
+      await renderProvider();
+
+      expect(
+        screen.queryByTestId('custom-metric-drawer')
+      ).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByText('add table metric'));
+
+      expect(
+        await screen.findByTestId('drawer-column-metric')
+      ).toHaveTextContent('false');
+      expect(screen.getByTestId('drawer-metric')).toHaveTextContent('new');
+      // The preview graphs inside must not see the profiler's edit permissions.
+      expect(screen.getByTestId('drawer-has-context')).toHaveTextContent(
+        'false'
+      );
+
+      fireEvent.click(screen.getByText('edit column metric'));
+
+      expect(screen.getByTestId('drawer-column-metric')).toHaveTextContent(
+        'true'
+      );
+      expect(screen.getByTestId('drawer-metric')).toHaveTextContent(
+        'column_metric'
+      );
+
+      fireEvent.click(screen.getByText('close drawer'));
+
+      expect(
+        screen.queryByTestId('custom-metric-drawer')
+      ).not.toBeInTheDocument();
     });
   });
 });

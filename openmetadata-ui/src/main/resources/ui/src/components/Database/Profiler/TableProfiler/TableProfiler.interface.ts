@@ -16,6 +16,7 @@ import { OperationPermission } from '../../../../context/PermissionProvider/Perm
 import {
   Column,
   ColumnProfilerConfig,
+  CustomMetric,
   PartitionProfilerConfig,
   ProfileSampleType,
   Table,
@@ -57,6 +58,10 @@ export interface TableProfilerContextInterface {
   table?: Table;
   isTestCaseDrawerOpen: boolean;
   onTestCaseDrawerOpen: (type: TestLevel) => void;
+  onCustomMetricDrawerOpen: (
+    isColumnMetric: boolean,
+    metric?: CustomMetric
+  ) => void;
 }
 
 export type TableTestsType = {

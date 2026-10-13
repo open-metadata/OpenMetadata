@@ -20,14 +20,12 @@ import {
   Input,
   Select,
 } from '@openmetadata/ui-core-components';
-import QueryString from 'qs';
 import { lazy, useEffect, useMemo } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { CustomMetric } from '../../../generated/tests/customMetric';
-import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { CustomMetricFormProps } from './CustomMetricForm.interface';
@@ -45,7 +43,6 @@ const CustomMetricForm = ({
   isEditMode = false,
 }: CustomMetricFormProps) => {
   const { t } = useTranslation();
-  const location = useCustomLocation();
   const localForm = useForm<CustomMetric>({
     defaultValues: { name: '', expression: '', ...initialValues },
   });
@@ -64,19 +61,15 @@ const CustomMetricForm = ({
     [queryLabel, queryError]
   );
 
-  const { activeColumnFqn } = useMemo(() => {
-    const param = location.search;
-
-    return QueryString.parse(
-      param.startsWith('?') ? param.substring(1) : param
-    ) as { activeColumnFqn: string };
-  }, [location.search]);
+  const columnName = useWatch({
+    control: activeForm.control,
+    name: 'columnName',
+  });
 
   const { metricNames, columnOptions } = useMemo(() => {
     const customMetrics = isColumnMetric
-      ? table?.columns?.find(
-          (column) => column.fullyQualifiedName === activeColumnFqn
-        )?.customMetrics ?? []
+      ? table?.columns?.find((column) => column.name === columnName)
+          ?.customMetrics ?? []
       : table?.customMetrics ?? [];
 
     return {
@@ -87,7 +80,7 @@ const CustomMetricForm = ({
           label: getEntityName(column),
         })) ?? [],
     };
-  }, [activeColumnFqn, isColumnMetric, table]);
+  }, [columnName, isColumnMetric, table]);
 
   useEffect(() => {
     if (initialValues) {
