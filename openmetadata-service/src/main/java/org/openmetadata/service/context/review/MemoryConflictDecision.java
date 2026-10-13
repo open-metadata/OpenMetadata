@@ -45,28 +45,47 @@ final class MemoryConflictDecision {
 
   private MemoryConflictDecision() {}
 
-  /** Superseding comes first, so a retried approval skips what an interrupted one retired. */
-  static List<MemoryChange> approve(ContextMemory reviewed, Map<UUID, ContextMemory> disputedById) {
-    requireInReview(reviewed);
+  /**
+   * Superseding comes first, so a retried approval skips what an interrupted one retired. A memory
+   * that is already Approved had its approval written before the task could resolve: retrying
+   * converges on superseding what is still Approved.
+   */
+  static List<MemoryChange> approve(
+      ContextMemory reviewed, List<MemoryDispute> disputes, Map<UUID, ContextMemory> disputedById) {
+    boolean isApprovedAlready = reviewed.getEntityStatus() == ContextMemoryStatus.APPROVED;
+    requireUndecided(reviewed, isApprovedAlready);
+    List<MemoryChange> changes = new ArrayList<>(supersessions(reviewed, disputes, disputedById));
+    if (!isApprovedAlready) {
+      changes.add(stageChange(reviewed, ContextMemoryStatus.APPROVED, null));
+    }
+    return List.copyOf(changes);
+  }
+
+  /** A memory that is already Rejected had its rejection written before the task could resolve. */
+  static List<MemoryChange> reject(ContextMemory reviewed, String comment) {
+    boolean isRejectedAlready = reviewed.getEntityStatus() == ContextMemoryStatus.REJECTED;
+    requireUndecided(reviewed, isRejectedAlready);
+    return isRejectedAlready
+        ? List.of()
+        : List.of(stageChange(reviewed, ContextMemoryStatus.REJECTED, rejectionReason(comment)));
+  }
+
+  private static List<MemoryChange> supersessions(
+      ContextMemory reviewed, List<MemoryDispute> disputes, Map<UUID, ContextMemory> disputedById) {
     List<MemoryChange> changes = new ArrayList<>();
-    for (MemoryDispute dispute : listOrEmpty(reviewed.getDisputes())) {
+    for (MemoryDispute dispute : listOrEmpty(disputes)) {
       ContextMemory disputed = disputedById.get(dispute.getMemory().getId());
       if (isApproved(disputed)) {
         requireUnchangedSinceDetection(disputed, dispute, reviewed);
         changes.add(supersede(disputed, reviewed));
       }
     }
-    changes.add(stageChange(reviewed, ContextMemoryStatus.APPROVED, null));
-    return List.copyOf(changes);
+    return changes;
   }
 
-  static List<MemoryChange> reject(ContextMemory reviewed, String comment) {
-    requireInReview(reviewed);
-    return List.of(stageChange(reviewed, ContextMemoryStatus.REJECTED, rejectionReason(comment)));
-  }
-
-  private static void requireInReview(ContextMemory reviewed) {
-    if (reviewed.getEntityStatus() != ContextMemoryStatus.DRAFT) {
+  /** Only a memory still in review, or one this same decision already moved, can be decided. */
+  private static void requireUndecided(ContextMemory reviewed, boolean isDecidedThisWay) {
+    if (!isDecidedThisWay && reviewed.getEntityStatus() != ContextMemoryStatus.DRAFT) {
       throw new PreconditionFailedException(String.format(NO_LONGER_IN_REVIEW, label(reviewed)));
     }
   }

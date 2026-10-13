@@ -27,6 +27,8 @@ import java.util.Optional;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
+import org.openmetadata.schema.entity.context.MemoryDispute;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -65,7 +67,27 @@ public final class MemoryConflictResolution {
           TaskResolutionType.Rejected, Verdict.REJECT,
           TaskResolutionType.AutoRejected, Verdict.REJECT);
 
+  /**
+   * The memory whose review this thread is deciding. Its own writes take it out of review and must
+   * not close the task they resolve; every other write that does, a governance workflow's included,
+   * must.
+   */
+  private static final ThreadLocal<UUID> DECIDING = new ThreadLocal<>();
+
   private MemoryConflictResolution() {}
+
+  static boolean isDeciding(UUID memoryId) {
+    return memoryId != null && memoryId.equals(DECIDING.get());
+  }
+
+  static void whileDeciding(UUID memoryId, Runnable writes) {
+    DECIDING.set(memoryId);
+    try {
+      writes.run();
+    } finally {
+      DECIDING.remove();
+    }
+  }
 
   public static boolean decides(Task task) {
     return task.getType() == MemoryConflictReviewTasks.TASK_TYPE;
@@ -82,15 +104,48 @@ public final class MemoryConflictResolution {
 
   private static void apply(Verdict verdict, Task task, String comment, String user) {
     ContextMemory reviewed = reviewedMemory(task);
-    List<MemoryChange> changes =
-        verdict == Verdict.APPROVE
-            ? MemoryConflictDecision.approve(reviewed, disputedMemories(reviewed))
-            : MemoryConflictDecision.reject(reviewed, comment);
+    List<MemoryChange> changes = changesFor(verdict, task, reviewed, comment);
     changes.stream()
         .filter(change -> !change.before().getId().equals(reviewed.getId()))
         .forEach(change -> requireMaySupersede(change, user));
-    changes.forEach(change -> write(change, user));
+    whileDeciding(reviewed.getId(), () -> changes.forEach(change -> write(change, user)));
     LOG.info("[MemoryConflictReview] {} decided {} for memory {}", user, verdict, reviewed.getId());
+  }
+
+  private static List<MemoryChange> changesFor(
+      Verdict verdict, Task task, ContextMemory reviewed, String comment) {
+    List<MemoryDispute> disputes = disputesOf(task, reviewed);
+    return verdict == Verdict.APPROVE
+        ? MemoryConflictDecision.approve(reviewed, disputes, disputedMemories(disputes))
+        : MemoryConflictDecision.reject(reviewed, comment);
+  }
+
+  /**
+   * A memory in review holds its disputes; leaving Draft releases them, so a decision retried after
+   * its writes landed reads the disputes the task recorded.
+   */
+  private static List<MemoryDispute> disputesOf(Task task, ContextMemory reviewed) {
+    return reviewed.getEntityStatus() == ContextMemoryStatus.DRAFT
+        ? listOrEmpty(reviewed.getDisputes())
+        : recordedDisputes(task);
+  }
+
+  private static List<MemoryDispute> recordedDisputes(Task task) {
+    MemoryConflictReviewTasks.OpenedFor openedFor =
+        task.getPayload() == null
+            ? null
+            : JsonUtils.convertValueLenient(
+                task.getPayload(), MemoryConflictReviewTasks.OpenedFor.class);
+    return openedFor == null
+        ? List.of()
+        : listOrEmpty(openedFor.disputes()).stream()
+            .map(
+                contradiction ->
+                    new MemoryDispute()
+                        .withMemory(contradiction.memory())
+                        .withReason(contradiction.reason())
+                        .withDetectedAt(contradiction.detectedAt()))
+            .toList();
   }
 
   private static ContextMemory reviewedMemory(Task task) {
@@ -101,19 +156,18 @@ public final class MemoryConflictResolution {
     return Entity.getEntity(Entity.CONTEXT_MEMORY, about.getId(), "owners", Include.NON_DELETED);
   }
 
-  private static Map<UUID, ContextMemory> disputedMemories(ContextMemory reviewed) {
+  private static Map<UUID, ContextMemory> disputedMemories(List<MemoryDispute> disputes) {
     Map<UUID, ContextMemory> disputed = new HashMap<>();
-    listOrEmpty(reviewed.getDisputes())
-        .forEach(
-            dispute -> {
-              UUID id = dispute.getMemory().getId();
-              try {
-                disputed.put(
-                    id, Entity.getEntity(Entity.CONTEXT_MEMORY, id, "owners", Include.NON_DELETED));
-              } catch (EntityNotFoundException deleted) {
-                LOG.debug("[MemoryConflictReview] disputed memory {} is gone", id, deleted);
-              }
-            });
+    disputes.forEach(
+        dispute -> {
+          UUID id = dispute.getMemory().getId();
+          try {
+            disputed.put(
+                id, Entity.getEntity(Entity.CONTEXT_MEMORY, id, "owners", Include.NON_DELETED));
+          } catch (EntityNotFoundException deleted) {
+            LOG.debug("[MemoryConflictReview] disputed memory {} is gone", id, deleted);
+          }
+        });
     return disputed;
   }
 

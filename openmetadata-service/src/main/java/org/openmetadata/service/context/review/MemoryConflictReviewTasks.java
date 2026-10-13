@@ -44,7 +44,6 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.governance.workflows.EntityStatusWorkflows;
 import org.openmetadata.service.jdbi3.TaskRepository;
 
 /**
@@ -114,7 +113,7 @@ public final class MemoryConflictReviewTasks {
     try {
       if (isHeldForConflicts(current)) {
         openOrRefresh(previous, current);
-      } else if (isHeldForConflicts(previous) && !EntityStatusWorkflows.isWorkflowChange(current)) {
+      } else if (leavesReviewOutsideTheTask(previous, current)) {
         closeOpenTask(
             current,
             String.format(CLOSED_OUTSIDE_REVIEW, String.valueOf(current.getEntityStatus())));
@@ -142,6 +141,14 @@ public final class MemoryConflictReviewTasks {
           memory.getId(),
           failure);
     }
+  }
+
+  /**
+   * A write that takes a held memory out of review closes its task, unless it is that task's own
+   * decision: a governance workflow's write, made as {@code governance-bot}, closes it too.
+   */
+  static boolean leavesReviewOutsideTheTask(ContextMemory previous, ContextMemory current) {
+    return isHeldForConflicts(previous) && !MemoryConflictResolution.isDeciding(current.getId());
   }
 
   static boolean isHeldForConflicts(ContextMemory memory) {

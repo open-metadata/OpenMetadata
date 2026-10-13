@@ -70,6 +70,44 @@ class MemoryConflictReviewTasksTest {
     assertFalse(MemoryConflictReviewTasks.isHeldForConflicts(null));
   }
 
+  /** A governance workflow moves memories as governance-bot; that must still close the review. */
+  @Test
+  void aGovernanceWorkflowTakingTheMemoryOutOfReviewClosesTheTask() {
+    ContextMemory disputed = memory("five-orders", ContextMemoryStatus.APPROVED, CURATOR);
+    ContextMemory held = reviewed(disputed);
+    ContextMemory approvedByWorkflow =
+        copy(held)
+            .withEntityStatus(ContextMemoryStatus.APPROVED)
+            .withUpdatedBy("governance-bot")
+            .withImpersonatedBy("governance-bot");
+
+    assertTrue(MemoryConflictReviewTasks.leavesReviewOutsideTheTask(held, approvedByWorkflow));
+  }
+
+  @Test
+  void theTasksOwnDecisionDoesNotCloseIt() {
+    ContextMemory disputed = memory("five-orders", ContextMemoryStatus.APPROVED, CURATOR);
+    ContextMemory held = reviewed(disputed);
+    ContextMemory approved = copy(held).withEntityStatus(ContextMemoryStatus.APPROVED);
+    boolean[] closes = new boolean[1];
+
+    MemoryConflictResolution.whileDeciding(
+        held.getId(),
+        () -> closes[0] = MemoryConflictReviewTasks.leavesReviewOutsideTheTask(held, approved));
+
+    assertFalse(closes[0]);
+    assertTrue(MemoryConflictReviewTasks.leavesReviewOutsideTheTask(held, approved));
+  }
+
+  @Test
+  void aMemoryThatWasNotHeldHasNoReviewToClose() {
+    ContextMemory draft = memory("low-confidence", ContextMemoryStatus.DRAFT, REVIEWER);
+
+    assertFalse(
+        MemoryConflictReviewTasks.leavesReviewOutsideTheTask(
+            draft, copy(draft).withEntityStatus(ContextMemoryStatus.APPROVED)));
+  }
+
   @Test
   void theTaskIsAServerOpenedReviewAboutTheDisputedDraft() {
     ContextMemory disputed = memory("five-orders", ContextMemoryStatus.APPROVED, CURATOR);

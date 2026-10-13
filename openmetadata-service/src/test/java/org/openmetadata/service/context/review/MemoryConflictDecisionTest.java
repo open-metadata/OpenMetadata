@@ -41,7 +41,7 @@ class MemoryConflictDecisionTest {
     ContextMemory approved = memory("five-orders", ContextMemoryStatus.APPROVED, 100L);
     ContextMemory reviewed = reviewed("three-orders", approved);
 
-    List<MemoryChange> changes = MemoryConflictDecision.approve(reviewed, byId(approved));
+    List<MemoryChange> changes = approve(reviewed, approved);
 
     assertEquals(2, changes.size());
     ContextMemory superseded = changes.getFirst().after();
@@ -59,8 +59,7 @@ class MemoryConflictDecisionTest {
   void aLegacyMemoryWithoutAStageCountsAsApproved() {
     ContextMemory legacy = memory("legacy", null, 100L);
 
-    List<MemoryChange> changes =
-        MemoryConflictDecision.approve(reviewed("correction", legacy), byId(legacy));
+    List<MemoryChange> changes = approve(reviewed("correction", legacy), legacy);
 
     assertEquals(ContextMemoryStatus.SUPERSEDED, changes.getFirst().after().getEntityStatus());
   }
@@ -73,7 +72,7 @@ class MemoryConflictDecisionTest {
     ContextMemory retired = memory("retired", stage, 100L);
     ContextMemory reviewed = reviewed("correction", retired);
 
-    List<MemoryChange> changes = MemoryConflictDecision.approve(reviewed, byId(retired));
+    List<MemoryChange> changes = approve(reviewed, retired);
 
     assertEquals(1, changes.size());
     assertEquals(reviewed.getId(), changes.getFirst().after().getId());
@@ -83,8 +82,7 @@ class MemoryConflictDecisionTest {
   void aDeletedDisputedMemoryIsLeftAlone() {
     ContextMemory gone = memory("gone", ContextMemoryStatus.APPROVED, 100L);
 
-    List<MemoryChange> changes =
-        MemoryConflictDecision.approve(reviewed("correction", gone), Map.of());
+    List<MemoryChange> changes = approve(reviewed("correction", gone));
 
     assertEquals(1, changes.size());
     assertEquals(ContextMemoryStatus.APPROVED, changes.getFirst().after().getEntityStatus());
@@ -97,7 +95,7 @@ class MemoryConflictDecisionTest {
     PreconditionFailedException error =
         assertThrows(
             PreconditionFailedException.class,
-            () -> MemoryConflictDecision.approve(reviewed("correction", edited), byId(edited)));
+            () -> approve(reviewed("correction", edited), edited));
 
     assertTrue(error.getMessage().contains("changed after the conflict was detected"));
   }
@@ -108,8 +106,7 @@ class MemoryConflictDecisionTest {
         memory("legacy-clock", ContextMemoryStatus.APPROVED, null).withUpdatedAt(DETECTED_AT + 1);
 
     assertThrows(
-        PreconditionFailedException.class,
-        () -> MemoryConflictDecision.approve(reviewed("correction", legacy), byId(legacy)));
+        PreconditionFailedException.class, () -> approve(reviewed("correction", legacy), legacy));
   }
 
   @Test
@@ -140,15 +137,55 @@ class MemoryConflictDecisionTest {
   @ParameterizedTest
   @EnumSource(
       value = ContextMemoryStatus.class,
-      names = {"APPROVED", "UNPROCESSED", "REJECTED"})
-  void aMemoryThatLeftReviewCannotBeDecided(ContextMemoryStatus stage) {
+      names = {"UNPROCESSED", "REJECTED", "SUPERSEDED"})
+  void aMemoryThatLeftReviewCannotBeApproved(ContextMemoryStatus stage) {
     ContextMemory approved = memory("five-orders", ContextMemoryStatus.APPROVED, 100L);
     ContextMemory moved = reviewed("three-orders", approved).withEntityStatus(stage);
 
-    assertThrows(
-        PreconditionFailedException.class,
-        () -> MemoryConflictDecision.approve(moved, byId(approved)));
+    assertThrows(PreconditionFailedException.class, () -> approve(moved, approved));
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ContextMemoryStatus.class,
+      names = {"UNPROCESSED", "APPROVED", "SUPERSEDED"})
+  void aMemoryThatLeftReviewCannotBeRejected(ContextMemoryStatus stage) {
+    ContextMemory approved = memory("five-orders", ContextMemoryStatus.APPROVED, 100L);
+    ContextMemory moved = reviewed("three-orders", approved).withEntityStatus(stage);
+
     assertThrows(PreconditionFailedException.class, () -> MemoryConflictDecision.reject(moved, ""));
+  }
+
+  /** The approval was written but the task could not resolve: retrying changes nothing. */
+  @Test
+  void aRetriedApprovalWhoseWritesLandedChangesNothing() {
+    ContextMemory superseded = memory("five-orders", ContextMemoryStatus.SUPERSEDED, 100L);
+    ContextMemory approved =
+        reviewed("three-orders", superseded).withEntityStatus(ContextMemoryStatus.APPROVED);
+
+    assertTrue(approve(approved, superseded).isEmpty());
+  }
+
+  @Test
+  void aRetriedApprovalStillSupersedesWhatIsApproved() {
+    ContextMemory stillApproved = memory("five-orders", ContextMemoryStatus.APPROVED, 100L);
+    ContextMemory approved =
+        reviewed("three-orders", stillApproved).withEntityStatus(ContextMemoryStatus.APPROVED);
+
+    List<MemoryChange> changes = approve(approved, stillApproved);
+
+    assertEquals(1, changes.size());
+    assertEquals(ContextMemoryStatus.SUPERSEDED, changes.getFirst().after().getEntityStatus());
+    assertEquals(stillApproved.getId(), changes.getFirst().before().getId());
+  }
+
+  @Test
+  void aRetriedRejectionWhoseWriteLandedChangesNothing() {
+    ContextMemory approved = memory("five-orders", ContextMemoryStatus.APPROVED, 100L);
+    ContextMemory rejected =
+        reviewed("three-orders", approved).withEntityStatus(ContextMemoryStatus.REJECTED);
+
+    assertTrue(MemoryConflictDecision.reject(rejected, "").isEmpty());
   }
 
   @Test
@@ -156,10 +193,14 @@ class MemoryConflictDecisionTest {
     ContextMemory reviewed =
         memory("orphan", ContextMemoryStatus.DRAFT, 100L).withStatusReason("contradicts: x");
 
-    List<MemoryChange> changes = MemoryConflictDecision.approve(reviewed, Map.of());
+    List<MemoryChange> changes = approve(reviewed);
 
     assertEquals(1, changes.size());
     assertNull(changes.getFirst().after().getSupersededBy());
+  }
+
+  private static List<MemoryChange> approve(ContextMemory reviewed, ContextMemory... disputed) {
+    return MemoryConflictDecision.approve(reviewed, reviewed.getDisputes(), byId(disputed));
   }
 
   private static ContextMemory reviewed(String name, ContextMemory disputed) {

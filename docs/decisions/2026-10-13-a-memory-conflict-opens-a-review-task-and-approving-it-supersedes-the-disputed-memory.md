@@ -53,11 +53,15 @@ Approved — and nothing wrote it.
    policy check its own PATCH would face — so the author of a correction cannot retire someone
    else's knowledge by approving their own memory.
 4. A resolution is refused, leaving the task open and every memory unchanged, when the reviewed
-   memory is no longer Draft, when a disputed memory's content changed after its dispute was
-   detected, or when the resolver may not supersede a disputed memory. A decision made against claims
-   that no longer hold, or by someone without authority over them, is not applied.
+   memory left Draft for any outcome other than the one being decided, when a disputed memory's
+   content changed after its dispute was detected, or when the resolver may not supersede a disputed
+   memory. A decision made against claims that no longer hold, or by someone without authority over
+   them, is not applied. A reviewed memory that already holds the decided outcome is a retry of
+   that decision, not a change of mind: it is not refused.
 5. A change that takes the memory out of review outside the task — an approval or rejection in
-   Context Center, an explicit requeue to Unprocessed, a soft delete — closes the open task.
+   Context Center, a governance workflow's transition (written as `governance-bot`), an explicit
+   requeue to Unprocessed, a soft delete — closes the open task. Only the task's own decision is
+   exempt: its writes are marked, for the thread that resolves it, as deciding that memory.
    Restoring a memory that is still held for conflicts opens a fresh one.
 
 ## Consequences
@@ -66,7 +70,9 @@ Approved — and nothing wrote it.
 - The server checks that whoever records a dispute can read the disputed memory, but it cannot check
   every assignee. Writers link only memories the review audience may read; Collate links
   same-audience pairs only.
-- The writes of an approval are not one transaction. Superseding before approving makes a retried
-  resolution converge: an already superseded memory is skipped.
+- The writes of a decision are not one transaction, and the task resolves only after they land.
+  A retried resolution converges: an already superseded memory is skipped, an already Approved or
+  Rejected reviewed memory is not written again, and the disputes, released when the memory left
+  Draft, are read from the task's payload.
 - Keeping both memories, or recording a local exception to an organization-wide default, is not a
   decision this task offers yet; that arrives with cross-scope conflicts in ai-platform#1462.
