@@ -160,6 +160,7 @@ describe('RelatedTerms', () => {
     jest.clearAllMocks();
     mockContext.data = MOCKED_GLOSSARY_TERMS[2];
     mockContext.permissions = MOCK_PERMISSIONS;
+    mockContext.isVersionView = false;
   });
 
   it('should render the component', async () => {
@@ -277,5 +278,30 @@ describe('RelatedTerms overflow', () => {
 
     expect(getByText('Related 6')).toBeInTheDocument();
     expect(queryByText('Synonym 6')).toBeNull();
+  });
+
+  it('should keep an unchanged relation in version view when another relation type to the same term is added', () => {
+    const [relatedTo] = buildRelatedTerms(1, 'relatedTo', 'Target');
+    const narrower = { ...relatedTo, relationType: 'narrower' };
+    mockContext.isVersionView = true;
+    mockContext.data = {
+      ...MOCKED_GLOSSARY_TERMS[2],
+      relatedTerms: [relatedTo, narrower],
+      changeDescription: {
+        fieldsAdded: [
+          { name: 'relatedTerms', newValue: JSON.stringify([narrower]) },
+        ],
+        fieldsDeleted: [],
+        fieldsUpdated: [],
+      },
+    };
+    const { getAllByTestId } = render(<RelatedTerms />);
+
+    const chips = getAllByTestId('Target 0');
+
+    expect(chips).toHaveLength(2);
+    expect(chips.filter((c) => c.classList.contains('diff-added'))).toHaveLength(
+      1
+    );
   });
 });
