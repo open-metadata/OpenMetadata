@@ -92,6 +92,10 @@ public class ContextMemoryConflictReviewIT {
     assertTrue(
         task.getDescription()
             .contains("- " + conflict.disputed().getTitle() + ": " + THRESHOLD_REASON));
+    assertEquals(
+        conflict.disputed().getTitle(),
+        conflict.reviewed().getDisputes().getFirst().getMemory().getDisplayName(),
+        "a stored memory reference reads as the memory's title");
     Map<?, ?> payload = JsonUtils.convertValue(task.getPayload(), Map.class);
     assertEquals(conflict.reviewed().getTitle(), payload.get("memoryTitle"));
     Map<?, ?> dispute = (Map<?, ?>) ((List<?>) payload.get("disputes")).getFirst();
@@ -148,6 +152,7 @@ public class ContextMemoryConflictReviewIT {
     ContextMemory superseded = admin().get(idOf(conflict.disputed()));
     assertEquals(ContextMemoryStatus.SUPERSEDED, superseded.getEntityStatus());
     assertEquals(conflict.reviewed().getId(), superseded.getSupersededBy().getId());
+    assertEquals(conflict.reviewed().getTitle(), superseded.getSupersededBy().getDisplayName());
     assertTrue(superseded.getStatusReason().contains(conflict.reviewed().getTitle()));
     assertTrue(openTasks(conflict.reviewed()).isEmpty());
   }

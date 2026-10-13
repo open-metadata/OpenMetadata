@@ -34,7 +34,8 @@ Approved — and nothing wrote it.
    memory tries again. No workflow drives it: its Approve and Reject transitions are fixed when it
    opens, and its decision applies synchronously when it is resolved. The task names every memory
    by its title, because memory names are generated: its payload records the reviewed memory's
-   `memoryTitle` and each disputed memory with its title as the display name. A write that changes
+   `memoryTitle` and each disputed memory with its title as the display name, as do the
+   `supersededBy` and dispute references a memory stores. A write that changes
    the memory's title, disputes or owners rewrites the open task's title, description, assignees
    and payload, so the task shows what its decision acts on.
 3. Resolving the task decides the conflict, writing as the resolver, impersonated by

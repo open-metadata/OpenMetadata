@@ -653,13 +653,26 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
               Include.NON_DELETED);
       boolean admin = SubjectContext.getSubjectContext(userName).isAdmin();
       if (ContextMemoryVisibility.isVisibleToUser(target, userName, admin)) {
-        return target.getEntityReference();
+        return titledReference(target);
       }
     } catch (EntityNotFoundException e) {
       // Report the same error for missing and unreadable memories.
     }
     throw new BadRequestException(
         String.format("%s must reference a readable, non-deleted context memory", field));
+  }
+
+  /**
+   * Memory names are generated (an extracted memory is named after its source plus a UUID), so a
+   * stored reference to a memory reads as its title unless the memory has a display name.
+   */
+  private static EntityReference titledReference(ContextMemory memory) {
+    EntityReference reference = memory.getEntityReference();
+    String title = memory.getTitle();
+    boolean untitled = nullOrEmpty(title) || title.isBlank();
+    return nullOrEmpty(memory.getDisplayName()) && !untitled
+        ? reference.withDisplayName(title)
+        : reference;
   }
 
   /** A new memory follows its anchor's single domain for policy and search access. */
