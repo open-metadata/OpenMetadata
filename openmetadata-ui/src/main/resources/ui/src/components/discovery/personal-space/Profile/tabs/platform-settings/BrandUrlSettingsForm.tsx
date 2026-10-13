@@ -24,12 +24,15 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
+import SettingsSourceBanner from '../../../../../platform/settings/SettingsSourceBanner/SettingsSourceBanner';
 import { fetchBrandUrlConfig } from './BrandUrlSettings';
+import { BRAND_URL_FIELDS } from './PlatformSettings.constants';
 import type { PlatformSettingsFormProps } from './PlatformSettings.types';
 import SettingsFormLayout, {
   SettingsFormSection,
   SettingsSkeleton,
 } from './SettingsFormLayout';
+import { useDeploymentManagedFields } from './useDeploymentManagedFields';
 import { useFormFieldDocs } from './useFormFieldDocs';
 import { useSettingsFetch } from './useSettingsFetch';
 
@@ -43,7 +46,21 @@ const BrandUrlSettingsForm = ({
 }: PlatformSettingsFormProps) => {
   const { t } = useTranslation();
   const docs = useFormFieldDocs('OpenMetadataUrlConfiguration');
-  const { data: config, isLoading } = useSettingsFetch(fetchBrandUrlConfig);
+  const {
+    data: config,
+    isLoading,
+    reload,
+  } = useSettingsFetch(fetchBrandUrlConfig);
+  const {
+    sources,
+    refetch: refetchSources,
+    isFieldManaged,
+    isFullyManaged,
+  } = useDeploymentManagedFields(
+    SettingType.OpenMetadataBaseURLConfiguration,
+    BRAND_URL_FIELDS
+  );
+  const isUrlManaged = isFieldManaged('openMetadataUrl');
   const [isSaving, setIsSaving] = useState(false);
   const form = useForm<BrandUrlFormValues>({
     defaultValues: { openMetadataUrl: '' },
@@ -60,7 +77,10 @@ const BrandUrlSettingsForm = ({
       type: FieldTypes.TEXT,
       required: true,
       doc: docs.openMetadataUrl,
-      props: { 'data-testid': 'open-metadata-url-input' },
+      props: {
+        'data-testid': 'open-metadata-url-input',
+        isDisabled: isUrlManaged,
+      },
       rules: {
         required: t('label.field-required', {
           field: t('label.brand-name-url'),
@@ -72,7 +92,7 @@ const BrandUrlSettingsForm = ({
         },
       },
     }),
-    [docs, t]
+    [docs, isUrlManaged, t]
   );
 
   const backToView = () =>
@@ -111,11 +131,17 @@ const BrandUrlSettingsForm = ({
   return (
     <SettingsFormLayout
       form={form}
+      isSaveDisabled={isFullyManaged}
       isSaving={isSaving}
       showHint={showHint}
       testId="brand-url-form"
       onCancel={backToView}
       onSubmit={handleSubmit}>
+      <SettingsSourceBanner
+        sources={sources}
+        onAdopted={reload}
+        onRefetch={refetchSources}
+      />
       <SettingsFormSection title={t('label.general')}>
         {getField(urlField)}
       </SettingsFormSection>

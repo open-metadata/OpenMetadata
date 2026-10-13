@@ -23,11 +23,12 @@ import { Node } from 'reactflow';
 import { WorkflowModeProvider } from '../../../../contexts/WorkflowModeContext';
 import { EntityLifecycleStages } from '../../../../generated/api/governance/entityLifecycleStages';
 import { getEntityLifecycleStages } from '../../../../rest/metadataTypeAPI';
-import { getTags } from '../../../../rest/tagAPI';
+import { searchQuery } from '../../../../rest/searchAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { SetActionForm } from './SetActionForm';
 
 jest.mock('../../../../rest/metadataTypeAPI');
+jest.mock('../../../../rest/searchAPI');
 jest.mock('../../../../rest/tagAPI');
 jest.mock('../../../../utils/ToastUtils');
 
@@ -181,24 +182,15 @@ describe('workflow certification value', () => {
   };
 
   beforeEach(() => {
-    (getTags as jest.MockedFunction<typeof getTags>).mockResolvedValue({
-      data: [
-        {
-          id: 'gold-id',
-          name: 'Gold',
-          displayName: 'Gold',
-          fullyQualifiedName: 'Certification.Gold',
-          description: '',
-        },
-        {
-          id: 'silver-id',
-          name: 'Silver',
-          displayName: 'Silver',
-          fullyQualifiedName: 'Certification.Silver',
-          description: '',
-        },
-      ],
-      paging: { total: 2 },
+    const tags = [
+      { name: 'Gold', fullyQualifiedName: 'Certification.Gold' },
+      { name: 'Silver', fullyQualifiedName: 'Certification.Silver' },
+    ];
+    (searchQuery as jest.Mock).mockResolvedValue({
+      hits: {
+        hits: tags.map((tag) => ({ _source: tag })),
+        total: { value: tags.length },
+      },
     });
   });
 

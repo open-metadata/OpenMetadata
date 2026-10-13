@@ -140,6 +140,49 @@ describe('TreeSelect', () => {
     expect(fetchData).toHaveBeenCalledTimes(1);
   });
 
+  it('reopens on the controlled value after an immediate pick the parent never echoed', async () => {
+    const fetchData = vi.fn().mockResolvedValue({
+      nodes: [
+        { id: 'a', label: 'Node A', value: 'a', isLeaf: true },
+        { id: 'b', label: 'Node B', value: 'b', isLeaf: true },
+      ],
+    });
+    const value: TreeSelectNode = { id: 'a', label: 'Node A', value: 'a' };
+    // A parent whose save failed: it gets the pick but keeps passing `a`.
+    const renderPicker = (isOpen: boolean) => (
+      <TreeSelect
+        fetchData={fetchData}
+        isOpen={isOpen}
+        renderTrigger={() => <span>trigger</span>}
+        value={value}
+        onChange={vi.fn()}
+      />
+    );
+    const { rerender } = render(renderPicker(true));
+
+    fireEvent.click(await screen.findByText('Node B'));
+
+    expect(screen.getByTestId('tree-node-b')).toHaveAttribute(
+      'data-selected',
+      'true'
+    );
+
+    rerender(renderPicker(false));
+    rerender(renderPicker(true));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('tree-node-a')).toHaveAttribute(
+        'data-selected',
+        'true'
+      )
+    );
+
+    expect(screen.getByTestId('tree-node-b')).toHaveAttribute(
+      'data-selected',
+      'false'
+    );
+  });
+
   it('opens the dropdown below the trigger by default', async () => {
     renderCustomTrigger(fetchNodes(), true);
 
