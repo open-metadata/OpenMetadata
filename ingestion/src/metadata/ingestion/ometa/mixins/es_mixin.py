@@ -17,7 +17,7 @@ To be used by OpenMetadata class
 import functools
 import json
 import traceback
-from collections.abc import Iterable, Iterator
+from collections.abc import Collection, Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from typing import (
     Annotated,
@@ -42,6 +42,15 @@ from metadata.utils.logger import ometa_logger
 logger = ometa_logger()
 
 T = TypeVar("T", bound=BaseModel)
+
+# Search requests are GETs that carry every term in the URL; 100 checksums or ids
+# keep the request line well under the server's default 8 KiB header limit
+SEARCH_TERMS_BATCH_SIZE = 100
+
+
+def _batched(values: Sequence[str], size: int) -> Iterator[list[str]]:
+    for start in range(0, len(values), size):
+        yield list(values[start : start + size])
 
 
 @dataclass(frozen=True)
@@ -404,6 +413,56 @@ class ESMixin(Generic[T]):
             logger.debug(traceback.format_exc())
             logger.warning(f"Unknown error extracting results from ES query [{err}]")
             return None
+
+    def es_get_lineage_processed_queries(self, service_name: str, checksums: Collection[str]) -> dict[str, set[str]]:
+        """
+        Map the checksum of each given query that the service already processed for
+        lineage to the ids of the entities the query is used in (`queryUsedIn`).
+
+        A query missing from the result was not processed, or could not be looked up.
+        """
+        processed: dict[str, set[str]] = {}
+        for batch in _batched(sorted(checksums), SEARCH_TERMS_BATCH_SIZE):
+            query_filter = {
+                "query": {
+                    "bool": {
+                        "must": [
+                            {"term": {"processedLineage": True}},
+                            {"term": {"service.name.keyword": service_name}},
+                            {"terms": {"checksum.keyword": batch}},
+                        ]
+                    }
+                }
+            }
+            for hit in self._search_page(
+                ES_INDEX_MAP[Query.__name__], query_filter, size=len(batch), fields=["checksum", "queryUsedIn"]
+            ):
+                processed[hit.source["checksum"]] = {ref["id"] for ref in hit.source.get("queryUsedIn") or []}
+        return processed
+
+    def es_get_indexed_ids(self, entity: type[T], entity_ids: Collection[str]) -> set[str]:
+        """
+        The given ids that belong to an indexed entity of the given type, soft-deleted
+        entities included. An id missing from the result has no entity, or could not
+        be looked up.
+        """
+        indexed: set[str] = set()
+        index = ES_INDEX_MAP[entity.__name__]
+        for batch in _batched(sorted(entity_ids), SEARCH_TERMS_BATCH_SIZE):
+            query_filter = {"query": {"ids": {"values": batch}}}
+            indexed.update(hit.id for hit in self._search_page(index, query_filter, size=len(batch), fields=["id"]))
+        return indexed
+
+    def _search_page(self, index: str, query_filter: dict, size: int, fields: list[str]) -> list[HitsModel]:
+        """
+        Hits of a single search request. Leaving `deleted` unset matches soft-deleted
+        entities too; a failed search is logged and returns no hits.
+        """
+        response = self._get_es_response(
+            f"/search/query?q=&index={index}&size={size}"
+            f"{self._get_include_fields_query(fields)}&query_filter={quote_plus(json.dumps(query_filter))}"
+        )
+        return response.hits.hits if response else []
 
     def _get_include_fields_query(self, fields: list[str] | None) -> str:
         """Get the include fields query"""

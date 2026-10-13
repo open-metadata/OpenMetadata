@@ -29,6 +29,9 @@ from metadata.generated.schema.entity.data.storedProcedure import (
     StoredProcedure,
     StoredProcedureCode,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import (
     QueryParserType,
 )
@@ -40,6 +43,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.models.ometa_lineage import OMetaFQNLineageRequest
 from metadata.ingestion.models.topology import Queue as TopologyQueue
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.database.lineage_processors import (
     ProcedureAndQuery,
     QueryByProcedure,
@@ -53,6 +57,7 @@ from metadata.ingestion.source.database.lineage_source import (
     LineageSource as LineageSourceBase,
 )
 from metadata.ingestion.source.models import TableView
+from metadata.utils.fqn import get_query_checksum
 
 
 class TestLineageQueryIdentification(unittest.TestCase):
@@ -83,6 +88,8 @@ class TestQueryLineageProcessor(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures"""
         self.mock_metadata = Mock()
+        self.mock_metadata.es_get_lineage_processed_queries = Mock(return_value={})
+        self.mock_metadata.es_get_indexed_ids = Mock(return_value=set())
         self.mock_queue = TopologyQueue()
         self.dialect = Dialect.MYSQL
         self.graph = nx.DiGraph()
@@ -106,9 +113,6 @@ class TestQueryLineageProcessor(unittest.TestCase):
                 query_type="SELECT",
             ),
         ]
-
-        # Mock the ES query check
-        self.mock_metadata.es_get_queries_with_lineage = Mock(return_value=set())
 
         # Mock get_lineage_by_query
         mock_lineage = Either(
@@ -145,7 +149,7 @@ class TestQueryLineageProcessor(unittest.TestCase):
             self.assertIsInstance(results[0], Either)
 
     def test_query_already_processed_check(self):
-        """Test that already processed queries are skipped"""
+        """Test that already processed queries are skipped while their tables exist"""
         query = TableQuery(
             query="INSERT INTO target SELECT * FROM source",
             databaseName="test_db",
@@ -153,9 +157,12 @@ class TestQueryLineageProcessor(unittest.TestCase):
             serviceName="test_service",
         )
 
-        # Mock that query is already processed
+        # Mock that query is already processed and its tables still exist
         with patch("metadata.utils.fqn.get_query_checksum", return_value="checksum123"):
-            self.mock_metadata.es_get_queries_with_lineage = Mock(return_value={"checksum123"})
+            self.mock_metadata.es_get_lineage_processed_queries = Mock(
+                return_value={"checksum123": {"source-id", "target-id"}}
+            )
+            self.mock_metadata.es_get_indexed_ids = Mock(return_value={"source-id", "target-id"})
 
             # Process query
             query_lineage_processor(
@@ -184,8 +191,6 @@ class TestQueryLineageProcessor(unittest.TestCase):
             serviceName="service1",
         )
 
-        self.mock_metadata.es_get_queries_with_lineage = Mock(return_value=set())
-
         with patch(
             "metadata.ingestion.source.database.lineage_processors.get_lineage_by_query",
             return_value=[],
@@ -206,6 +211,119 @@ class TestQueryLineageProcessor(unittest.TestCase):
 
             # Verify service names were extended
             # This would be checked in the get_lineage_by_query call
+
+
+COPY_QUERY = "INSERT INTO target SELECT * FROM source"
+SOURCE_ID, OTHER_SOURCE_ID, TARGET_ID = (str(uuid.uuid4()) for _ in range(3))
+
+
+class FakeLineageCatalog:
+    """Stands in for the OpenMetadata search lookups: the queries the service already
+    processed for lineage with the tables they connected, and the indexed tables."""
+
+    def __init__(self, processed=None, indexed=()):
+        self._processed = processed or {}
+        self._indexed = set(indexed)
+
+    def es_get_lineage_processed_queries(self, service_name, checksums):
+        return {checksum: ids for checksum, ids in self._processed.items() if checksum in checksums}
+
+    def es_get_indexed_ids(self, entity, entity_ids):
+        return self._indexed & set(entity_ids)
+
+
+def _edge(from_id, to_id, source="source"):
+    return Either(
+        right=OMetaFQNLineageRequest(
+            from_entity_fqn=f"svc.db.schema.{source}",
+            from_entity_type="table",
+            to_entity_fqn="svc.db.schema.target",
+            to_entity_type="table",
+            from_entity_id=from_id,
+            to_entity_id=to_id,
+        )
+    )
+
+
+def _process_copy_query(catalog, lineage):
+    queue = TopologyQueue()
+    with patch(
+        "metadata.ingestion.source.database.lineage_processors.get_lineage_by_query",
+        return_value=lineage,
+    ):
+        query_lineage_processor(
+            table_queries=[
+                TableQuery(query=COPY_QUERY, serviceName="test_service", databaseName="db", databaseSchema="schema")
+            ],
+            queue=queue,
+            metadata=catalog,
+            dialect=Dialect.MYSQL,
+            graph=nx.DiGraph(),
+            processCrossDatabaseLineage=False,
+            crossDatabaseServiceNames=[],
+            parsingTimeoutLimit=10,
+            serviceName="test_service",
+            parser_type=QueryParserType.Auto,
+        )
+    return [either.right for either in queue.process() if either.right is not None]
+
+
+def _linked_table_ids(records):
+    (query,) = [record for record in records if isinstance(record, CreateQueryRequest)]
+    return {model_str(ref.id) for ref in query.queryUsedIn.root}
+
+
+class TestProcessedQueryLineage:
+    """A processed query is skipped only while every table its lineage connected exists"""
+
+    def test_query_whose_tables_still_exist_is_skipped(self):
+        catalog = FakeLineageCatalog(
+            processed={get_query_checksum(COPY_QUERY): {SOURCE_ID, TARGET_ID}},
+            indexed={SOURCE_ID, TARGET_ID},
+        )
+
+        assert _process_copy_query(catalog, [_edge(SOURCE_ID, TARGET_ID)]) == []
+
+    def test_query_is_reprocessed_once_a_table_it_connected_is_recreated(self):
+        recreated_source_id = str(uuid.uuid4())
+        catalog = FakeLineageCatalog(
+            processed={get_query_checksum(COPY_QUERY): {SOURCE_ID, TARGET_ID}},
+            indexed={recreated_source_id, TARGET_ID},
+        )
+
+        records = _process_copy_query(catalog, [_edge(recreated_source_id, TARGET_ID)])
+
+        assert [type(record) for record in records] == [OMetaFQNLineageRequest, CreateQueryRequest]
+        assert records[1].processedLineage is True
+        assert _linked_table_ids(records) == {recreated_source_id, TARGET_ID}
+
+    def test_query_processed_before_its_tables_were_recorded_is_reprocessed(self):
+        catalog = FakeLineageCatalog(
+            processed={get_query_checksum(COPY_QUERY): set()},
+            indexed={SOURCE_ID, TARGET_ID},
+        )
+
+        records = _process_copy_query(catalog, [_edge(SOURCE_ID, TARGET_ID)])
+
+        assert _linked_table_ids(records) == {SOURCE_ID, TARGET_ID}
+
+    def test_processed_query_is_stored_once_with_every_table_its_edges_connect(self):
+        records = _process_copy_query(
+            FakeLineageCatalog(),
+            [_edge(SOURCE_ID, TARGET_ID), _edge(OTHER_SOURCE_ID, TARGET_ID, source="other_source")],
+        )
+
+        assert [type(record) for record in records] == [
+            OMetaFQNLineageRequest,
+            OMetaFQNLineageRequest,
+            CreateQueryRequest,
+        ]
+        assert _linked_table_ids(records) == {SOURCE_ID, OTHER_SOURCE_ID, TARGET_ID}
+
+    def test_query_without_lineage_is_not_marked_processed(self):
+        failure = Either(left=StackTraceError(name="Lineage", error="Unparsable query", stackTrace=""))
+
+        assert _process_copy_query(FakeLineageCatalog(), [failure]) == []
 
 
 class TestViewLineageProcessor(unittest.TestCase):
@@ -618,7 +736,8 @@ class TestMemoryEfficiency(unittest.TestCase):
         ]
 
         mock_metadata = Mock()
-        mock_metadata.es_get_queries_with_lineage = Mock(return_value=set())
+        mock_metadata.es_get_lineage_processed_queries = Mock(return_value={})
+        mock_metadata.es_get_indexed_ids = Mock(return_value=set())
         mock_queue = TopologyQueue()
 
         with patch(
