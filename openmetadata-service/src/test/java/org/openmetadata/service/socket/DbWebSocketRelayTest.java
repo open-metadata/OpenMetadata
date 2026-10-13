@@ -157,6 +157,35 @@ class DbWebSocketRelayTest {
   }
 
   @Test
+  void aBurstLargerThanAnyFixedDedupeCapIsNotRedelivered() {
+    // A single fan-out (sendToMany -> one row per receiver) can land more frames inside the overlap
+    // window than a count-capped dedupe set would hold, evicting ids that are still re-read and
+    // re-delivering them. The dedupe set is scoped to the overlap window, not a fixed count, so
+    // every
+    // frame in the window is remembered and delivered exactly once however large the burst.
+    InMemoryDao dao = new InMemoryDao();
+    Capture capB = new Capture();
+    DbWebSocketRelay podA = relay(dao, "podA", new Capture());
+    DbWebSocketRelay podB = relay(dao, "podB", capB);
+    podA.start();
+    podB.start();
+
+    int count = 9000; // > the old 8192 count cap, all within the overlap window (floor == 0 here)
+    for (int i = 0; i < count; i++) {
+      podA.publishToUser(UUID.randomUUID(), "e", "m" + i);
+    }
+    podA.flushQueue();
+
+    podB.dispatchOnce();
+    podB.dispatchOnce(); // re-reads the whole window; none may be delivered a second time
+
+    assertEquals(count, capB.rows.size(), "every frame delivered exactly once, no re-delivery");
+
+    podA.stop();
+    podB.stop();
+  }
+
+  @Test
   void aFrameVisibleOutOfInsertOrderIsStillDelivered() {
     // A row can become visible with a lower createdAt after a higher one (commit ordering). The
     // trailing overlap re-reads it, so it is still delivered.
