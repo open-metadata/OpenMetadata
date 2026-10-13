@@ -216,14 +216,9 @@ public final class AssetEditService {
         .withNumberOfRowsFailed(failed.size())
         .withSuccessRequest(passed)
         .withFailedRequest(failed)
-        .withStatus(statusOf(passed, failed));
-  }
-
-  private static ApiStatus statusOf(List<BulkResponse> passed, List<BulkResponse> failed) {
-    if (failed.isEmpty()) {
-      return ApiStatus.SUCCESS;
-    }
-    return passed.isEmpty() ? ApiStatus.FAILURE : ApiStatus.PARTIAL_SUCCESS;
+        .withStatus(
+            EntityRepository.deriveBulkOperationStatus(
+                passed.size(), passed.size() + failed.size()));
   }
 
   private void failAll(List<Selection> selections, String message) {
