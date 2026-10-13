@@ -30,6 +30,7 @@ import java.lang.reflect.Field;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -120,6 +121,102 @@ class RedisCacheProviderUnconfirmedWritesTest {
     provider.healthCheck();
 
     assertEquals(0L, redis.exists("om-test:e:table:2"));
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void cleanupWhileAvailableDoesNotBlockSuccessfulRequests() throws Exception {
+    String failedKey = "om-test:failed-write";
+    redis.set(failedKey, "not-a-hash");
+    assertFalse(provider.tryHset(failedKey, Map.of("base", "fresh"), TTL));
+    assertTrue(provider.available());
+    redis.set("om-test:read", "read-value");
+    redis.hset("om-test:hash", "base", "hash-value");
+
+    CountDownLatch cleanupStarted = new CountDownLatch(1);
+    CountDownLatch finishCleanup = new CountDownLatch(1);
+    RedisAsyncCommands<String, String> commands =
+        mock(RedisAsyncCommands.class, delegatesTo(connection.async()));
+    doAnswer(
+            invocation -> {
+              cleanupStarted.countDown();
+              assertTrue(finishCleanup.await(10, TimeUnit.SECONDS));
+              return connection.async().unlink(failedKey);
+            })
+        .when(commands)
+        .unlink(failedKey);
+    Field asyncCommands = RedisCacheProvider.class.getDeclaredField("asyncCommands");
+    asyncCommands.setAccessible(true);
+    asyncCommands.set(provider, commands);
+
+    FutureTask<Void> cleanup =
+        new FutureTask<>(
+            () -> {
+              provider.healthCheck();
+              return null;
+            });
+    FutureTask<Optional<String>> request =
+        new FutureTask<>(
+            () -> {
+              assertEquals(Optional.of("read-value"), provider.get("om-test:read"));
+              assertTrue(provider.trySet("om-test:write", "written-value", TTL));
+              return provider.hget("om-test:hash", "base");
+            });
+    Thread requestThread = new Thread(request);
+    new Thread(cleanup).start();
+    try {
+      assertTrue(cleanupStarted.await(5, TimeUnit.SECONDS));
+      requestThread.start();
+      Awaitility.await()
+          .atMost(Duration.ofSeconds(5))
+          .until(() -> requestThread.getState() == Thread.State.BLOCKED || request.isDone());
+      assertTrue(request.isDone(), "healthy requests must complete before cleanup is released");
+      assertEquals(Optional.of("hash-value"), request.get(5, TimeUnit.SECONDS));
+      assertEquals("written-value", redis.get("om-test:write"));
+    } finally {
+      finishCleanup.countDown();
+      cleanup.get(5, TimeUnit.SECONDS);
+      requestThread.join(TimeUnit.SECONDS.toMillis(5));
+    }
+    assertEquals(0L, redis.exists(failedKey));
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void breakerOpeningDuringAvailableCleanupKeepsSkippedWritesPending() throws Exception {
+    String failedKey = "om-test:failed-write";
+    String racingKey = "om-test:racing-write";
+    redis.set(failedKey, "not-a-hash");
+    redis.set(racingKey, "before-outage");
+    assertFalse(provider.tryHset(failedKey, Map.of("base", "fresh"), TTL));
+    assertTrue(provider.available());
+
+    RedisAsyncCommands<String, String> commands =
+        mock(RedisAsyncCommands.class, delegatesTo(connection.async()));
+    doAnswer(
+            invocation -> {
+              for (int failure = 1; failure < FAILURES_TO_OPEN_BREAKER; failure++) {
+                assertFalse(provider.tryHset(failedKey, Map.of("base", "fresh"), TTL));
+              }
+              assertFalse(provider.available());
+              assertFalse(provider.trySet(racingKey, "during-outage", TTL));
+              return connection.async().unlink(failedKey);
+            })
+        .when(commands)
+        .unlink(failedKey);
+    Field asyncCommands = RedisCacheProvider.class.getDeclaredField("asyncCommands");
+    asyncCommands.setAccessible(true);
+    asyncCommands.set(provider, commands);
+
+    provider.healthCheck();
+
+    assertFalse(provider.available());
+    assertEquals(Optional.empty(), provider.get(racingKey));
+    assertEquals("before-outage", redis.get(racingKey));
+    asyncCommands.set(provider, connection.async());
+    recover();
+    assertTrue(provider.available());
+    assertEquals(0L, redis.exists(failedKey, racingKey));
   }
 
   @Test
