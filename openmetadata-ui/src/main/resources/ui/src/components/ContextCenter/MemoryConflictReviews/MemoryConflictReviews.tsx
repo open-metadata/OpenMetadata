@@ -187,7 +187,7 @@ const MemoryConflictReviews: FC<MemoryConflictReviewsProps> = ({
         <EmptyPlaceholder
           description={t('message.no-memory-conflicts-to-review')}
           icon={<NoFilterResultsIcon className="tw:text-quaternary" />}
-          title={t('label.no-entity', { entity: t('label.needs-review') })}
+          title={t('label.nothing-to-review')}
           variant="blank"
         />
       </div>

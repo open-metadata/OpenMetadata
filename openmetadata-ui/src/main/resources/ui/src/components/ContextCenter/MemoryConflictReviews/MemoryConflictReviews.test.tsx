@@ -150,6 +150,7 @@ describe('MemoryConflictReviews', () => {
   it('says when nothing is waiting for a decision', () => {
     renderReviews([]);
 
+    expect(screen.getByText('label.nothing-to-review')).toBeInTheDocument();
     expect(
       screen.getByText('message.no-memory-conflicts-to-review')
     ).toBeInTheDocument();
