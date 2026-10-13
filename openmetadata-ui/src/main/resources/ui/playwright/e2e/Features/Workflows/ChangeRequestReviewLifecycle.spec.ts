@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page, Response } from '@playwright/test';
-import { expect, test } from '../../fixtures/pages';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { okJson } from '../../../utils/apiResponse';
 import {
@@ -22,6 +21,7 @@ import {
 } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
+import { expect, test } from '../../fixtures/pages';
 
 /**
  * The held-change review lifecycle on a glossary that an Enforce-mode workflow gates: a requester's
