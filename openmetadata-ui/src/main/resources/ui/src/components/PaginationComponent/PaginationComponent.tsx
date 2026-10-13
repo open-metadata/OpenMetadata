@@ -52,7 +52,7 @@ const PaginationComponent = (props: PaginationProps) => {
     if (type === 'prev') {
       return (
         <PageNavLabel data-testid="previous">
-          <ArrowRightOutlined className="pagination-prev-icon tw:size-3.5 tw:shrink-0" />
+          <ArrowRightOutlined className="tw:-mt-[3px] tw:rotate-180 tw:size-3.5 tw:shrink-0" />
           {t('label.previous')}
         </PageNavLabel>
       );
@@ -61,7 +61,7 @@ const PaginationComponent = (props: PaginationProps) => {
       return (
         <PageNavLabel data-testid="next">
           {t('label.next')}
-          <ArrowRightOutlined className="pagination-next-icon tw:size-3.5 tw:shrink-0" />
+          <ArrowRightOutlined className="tw:size-3.5 tw:shrink-0" />
         </PageNavLabel>
       );
     }

@@ -73,14 +73,14 @@ const MetadataUploadStatusCard = ({
           className={classNames(
             'flex-shrink flex items-center justify-center rounded-full w-6 h-6',
             {
-              'metadata-upload-status-icon-success': isSuccess,
-              'metadata-upload-status-icon-error': !isSuccess,
+              'tw:bg-success-solid': isSuccess,
+              'tw:bg-error-solid': !isSuccess,
             }
           )}>
           {isSuccess ? (
-            <Check className="tw:text-white" size={16} />
+            <Check className="tw:text-fg-white tw:shrink-0" size={16} />
           ) : (
-            <XClose className="tw:text-white" size={16} />
+            <XClose className="tw:text-fg-white tw:shrink-0" size={16} />
           )}
         </div>
         <Typography className="text-grey-body text-sm font-medium">
