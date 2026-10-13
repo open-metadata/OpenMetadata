@@ -34,7 +34,12 @@ from _openmetadata_testutils.pii.fake_classification_manager import (
     FakeClassificationManager,
 )
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
-from metadata.generated.schema.entity.data.table import ColumnName, DataType, Table
+from metadata.generated.schema.entity.data.table import (
+    ColumnName,
+    DataType,
+    Table,
+    TableProfilerConfig,
+)
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
     SQLiteConnection,
     SQLiteScheme,
@@ -53,7 +58,13 @@ from metadata.generated.schema.type.predefinedRecognizer import Name
 from metadata.generated.schema.type.recognizer import Target
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.pii.tag_processor import TagProcessor
-from metadata.sampler.models import SampleData, SamplerResponse
+from metadata.sampler.config import get_sample_data_count_config
+from metadata.sampler.models import (
+    DatabaseAndSchemaConfig,
+    SampleData,
+    SamplerResponse,
+    TableConfig,
+)
 from metadata.sampler.sampler_config import DatabaseSamplerConfig
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 from metadata.utils.constants import (
@@ -221,3 +232,41 @@ def test_row_60_email_reaches_tag_processor(make_sampler, tag_processor, sample_
 
     tagged = {(tag.column_fqn, tag.tag_label.tagFQN.root) for tag in result.column_tags}
     assert (("sqlite.main.main.sample_budget_test.contact_email", "PII.Sensitive") in tagged) is expect_tag
+
+
+@pytest.mark.parametrize(
+    "yaml_config",
+    [
+        TableConfig(fullyQualifiedName=TABLE_ENTITY.fullyQualifiedName.root, profileQuery=CUSTOM_QUERY),
+        TableConfig.from_database_and_schema_config(
+            DatabaseAndSchemaConfig(fullyQualifiedName="sqlite.main.main", profileSample=10),
+            TABLE_ENTITY.fullyQualifiedName.root,
+        ),
+    ],
+    ids=["table-config", "schema-config"],
+)
+def test_yaml_config_without_count_keeps_pipeline_budget(yaml_config):
+    """A YAML entry set for another reason (a query, a sample %) must not pick its own row budget."""
+    resolved = get_sample_data_count_config(
+        entity=TABLE_ENTITY,
+        schema_entity=None,
+        database_entity=None,
+        entity_config=yaml_config,
+        default_sample_data_count=SAMPLE_DATA_DEFAULT_COUNT,
+    )
+
+    assert resolved == SAMPLE_DATA_DEFAULT_COUNT
+
+
+def test_yaml_config_without_count_defers_to_table_profiler_config():
+    entity = TABLE_ENTITY.model_copy(update={"tableProfilerConfig": TableProfilerConfig(sampleDataCount=75)})
+
+    resolved = get_sample_data_count_config(
+        entity=entity,
+        schema_entity=None,
+        database_entity=None,
+        entity_config=TableConfig(fullyQualifiedName=TABLE_ENTITY.fullyQualifiedName.root, profileQuery=CUSTOM_QUERY),
+        default_sample_data_count=SAMPLE_DATA_DEFAULT_COUNT,
+    )
+
+    assert resolved == 75

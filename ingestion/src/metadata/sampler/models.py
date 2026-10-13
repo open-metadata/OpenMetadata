@@ -44,7 +44,7 @@ class BaseProfileConfig(ConfigModel):
     profileSample: float | int | None = None  # noqa: N815
     profileSampleType: ProfileSampleType | None = None  # noqa: N815
     samplingMethodType: SamplingMethodType | None = None  # noqa: N815
-    sampleDataCount: int | None = 100  # noqa: N815
+    sampleDataCount: int | None = None  # noqa: N815
     randomizedSample: bool | None = True  # noqa: N815
     profileSampleConfig: ProfileSampleConfig | None = None  # noqa: N815
 
