@@ -333,8 +333,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/MyData/Widgets/DomainsWidget/**",
-        "openmetadata-ui/src/main/resources/ui/src/components/MyData/Widgets/DataProductsWidget/**",
         "openmetadata-ui/src/main/resources/ui/src/components/DataAssets/AssetsSelectionModal/**",
         "openmetadata-ui/src/main/resources/ui/src/rest/domainAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/rest/queries/domainQuery.ts",
@@ -659,7 +657,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/utils/customizeLandingPage.ts",
         "openmetadata-ui/src/main/resources/ui/playwright/utils/widgetFilters.ts"
       ],
-      "projects": ["chromium", "Data Insight"],
+      "projects": ["chromium", "Data Insight", "Basic"],
       "specs": [
         "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/CuratedAssets.spec.ts",
@@ -670,6 +668,29 @@
         "playwright/e2e/Flow/CustomizeWidgets.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts",
         "playwright/e2e/Pages/DataInsight.spec.ts"
+      ]
+    },
+    {
+      "_comment": "The persona-driven home page: its shell, the topic-card widgets and the hooks that feed them. Every card has its behaviour spec under Features/LandingPageWidgets; CustomizeWidgets and CustomizeLandingPage drive the same cards through the persona layout editor. The landing-page fixture is listed because every spec in that folder signs in through it.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/MyData/Widgets/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/MyData/HomeLandingPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useDataEstate.ts",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useKpiProgress.ts",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useDataQualitySummary.ts",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useCuratedAssets.ts",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useDataProducts.ts",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useDomainOverview.ts",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useOwnedAndFollowed.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/CustomizeMyDataPage*",
+        "openmetadata-ui/src/main/resources/ui/src/constants/CustomizeMyDataPage.constants.ts",
+        "openmetadata-ui/src/main/resources/ui/playwright/support/fixtures/landingPageUser.ts"
+      ],
+      "projects": ["chromium", "Basic"],
+      "specs": [
+        "playwright/e2e/Features/LandingPageWidgets/**/*.spec.ts",
+        "playwright/e2e/Flow/CustomizeWidgets.spec.ts",
+        "playwright/e2e/Flow/CustomizeLandingPage.spec.ts"
       ]
     },
     {
