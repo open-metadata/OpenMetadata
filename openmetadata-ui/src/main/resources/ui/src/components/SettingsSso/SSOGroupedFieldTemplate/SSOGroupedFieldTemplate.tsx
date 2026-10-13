@@ -11,13 +11,12 @@
  *  limitations under the License.
  */
 
-import { Box } from '@openmetadata/ui-core-components';
-import { Plus } from '@openmetadata/ui-core-components/icons';
+import { Box, Button } from '@openmetadata/ui-core-components';
 import {
   ObjectFieldTemplatePropertyType,
   ObjectFieldTemplateProps,
 } from '@rjsf/utils';
-import { Button, Collapse } from 'antd';
+import { Collapse } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
 import { createElement, Fragment, FunctionComponent } from 'react';
@@ -30,6 +29,7 @@ import {
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import './sso-grouped-field-template.less';
 import { FieldGroup, PropertyMap } from './SSOGroupedFieldTemplate.interface';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 
 interface SSOFieldGroupingFlags {
   isAuthConfigRoot: boolean;
@@ -391,12 +391,15 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
 
           {schema.additionalProperties && (
             <Button
+              aria-label={t('label.add')}
+              color="primary"
               data-testid={`add-item-${title}`}
-              disabled={disabled}
-              icon={<Plus className="tw:shrink-0" size={12} />}
+              iconLeading={
+                <Plus size={14} style={{ color: 'white', fontSize: '12px' }} />
+              }
               id={`${idSchema.$id}`}
-              size="small"
-              type="primary"
+              isDisabled={disabled}
+              size="xs"
               onClick={() => {
                 onAddClick(schema)();
               }}

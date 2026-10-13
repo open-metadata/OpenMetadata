@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import Modal from 'antd/lib/modal/Modal';
+import {
+  Dialog,
+  Modal,
+  ModalOverlay,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { Fragment } from 'react';
 import { ReactComponent as IconCreateIngestion } from '../../../assets/svg/creating-ingestion.svg';
@@ -37,57 +41,64 @@ const DeployIngestionLoaderModal = ({
   };
 
   return (
-    <Modal
-      centered
-      destroyOnClose
-      className={classNames('h-40', className)}
-      closable={false}
-      data-testid="deploy-modal"
-      footer={null}
-      maskClosable={false}
-      open={visible}>
-      <div className="p-y-lg d-flex flex-col" data-testid="body-text">
-        <div className={classNames('ingestion-content relative', className)}>
-          <Fragment>
-            <Typography
-              className={classNames('ingestion-deploy-line')}
-              style={{
-                background: `linear-gradient(to right, ${theme.primaryColor} ${progress}%, ${LITE_GRAY_COLOR} ${progress}%)`,
-              }}
-            />
+    <ModalOverlay isKeyboardDismissDisabled isOpen={visible}>
+      <Modal>
+        <Dialog aria-label={action} data-testid="deploy-modal" width={520}>
+          <Dialog.Content>
+            <div className="p-y-lg d-flex flex-col" data-testid="body-text">
+              <div
+                className={classNames('ingestion-content relative', className)}>
+                <Fragment>
+                  <Typography
+                    className={classNames('ingestion-deploy-line')}
+                    style={{
+                      background: `linear-gradient(to right, ${theme.primaryColor} ${progress}%, ${LITE_GRAY_COLOR} ${progress}%)`,
+                    }}
+                  />
 
-            <div className="ingestion-wrappe absolute" style={{ left: '16%' }}>
-              <Typography
-                className={classNames('ingestion-deploy-rounder self-center')}
-                style={{
-                  background: isActive(isIngestionCreated),
-                }}>
-                <Typography className="flex-center h-full">
-                  <IconCreateIngestion className="tw:align-middle tw:size-[26px] tw:shrink-0" />
+                  <div
+                    className="ingestion-wrappe absolute"
+                    style={{ left: '16%' }}>
+                    <Typography
+                      className={classNames(
+                        'ingestion-deploy-rounder self-center'
+                      )}
+                      style={{
+                        background: isActive(isIngestionCreated),
+                      }}>
+                      <Typography className="flex-center h-full">
+                        <IconCreateIngestion className="align-middle tw:size-3.5 tw:shrink-0" />
+                      </Typography>
+                    </Typography>
+                  </div>
+                  <div
+                    className="ingestion-wrapper absolute"
+                    style={{ left: '72%' }}>
+                    <Typography
+                      className={classNames(
+                        'ingestion-deploy-rounder self-center'
+                      )}
+                      style={{
+                        background: isActive(isDeployed),
+                      }}>
+                      <Typography className="flex-center h-full">
+                        <IconDeployIngestion className="align-middle tw:size-3.5 tw:shrink-0" />
+                      </Typography>
+                    </Typography>
+                  </div>
+                </Fragment>
+              </div>
+              <Typography className="text-center mt-24">
+                {action}
+                <Typography className="font-semibold m-l-xss">
+                  {`“${ingestionName}”`}
                 </Typography>
               </Typography>
             </div>
-            <div className="ingestion-wrapper absolute" style={{ left: '72%' }}>
-              <Typography
-                className={classNames('ingestion-deploy-rounder self-center')}
-                style={{
-                  background: isActive(isDeployed),
-                }}>
-                <Typography className="flex-center h-full">
-                  <IconDeployIngestion className="tw:align-middle tw:size-[26px] tw:shrink-0" />
-                </Typography>
-              </Typography>
-            </div>
-          </Fragment>
-        </div>
-        <Typography className="text-center mt-24">
-          {action}
-          <Typography className="font-semibold m-l-xss">
-            {`“${ingestionName}”`}
-          </Typography>
-        </Typography>
-      </div>
-    </Modal>
+          </Dialog.Content>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 };
 

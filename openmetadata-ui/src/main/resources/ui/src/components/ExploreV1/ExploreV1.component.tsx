@@ -217,7 +217,7 @@ const ExploreExportScopeModal = ({
           onClose={onCancel}>
           <Dialog.Header
             className={classNames(
-              'tw:border-b tw:border-[var(--om-legacy-color-dde3ea)] tw:px-6 tw:py-4',
+              'tw:border-b tw:border-secondary tw:px-6 tw:py-4',
               'tw:sm:px-6 tw:sm:pt-4 tw:*:font-medium! tw:*:leading-[22px]!',
               'tw:*:text-black/85! tw:dark:border-subtle tw:dark:*:text-primary!'
             )}>
@@ -331,7 +331,7 @@ const ExploreExportScopeModal = ({
               </CoreCard>
             </RadioGroup>
           </Dialog.Content>
-          <Dialog.Footer className="tw:mt-0 tw:border-[var(--om-legacy-color-dde3ea)] tw:sm:mt-0 tw:dark:border-subtle tw:*:gap-[13px]! tw:*:px-[23px]! tw:*:py-4!">
+          <Dialog.Footer className="tw:mt-0 tw:border-secondary tw:sm:mt-0 tw:*:gap-[13px]! tw:*:px-[23px]! tw:*:py-4!">
             <Button
               className="tw:h-10 tw:rounded-lg tw:px-[15px] tw:py-0 tw:font-normal tw:text-[var(--ant-primary-color)] tw:hover:bg-transparent tw:hover:text-[var(--ant-primary-color-hover)]"
               color="tertiary"
@@ -1316,7 +1316,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
               <Button
                 hideFocusOutline
                 color="tertiary"
-                iconTrailing={<ChevronDown size={14} />}
+                iconTrailing={ChevronDown}
                 size="sm">
                 {t('label.tool-plural')}
               </Button>

@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Pagination, PaginationProps } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Pagination, PaginationProps } from 'antd';
+import { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ArrowRightOutlined } from '../../assets/svg/arrow-right.svg';
 import {
@@ -18,6 +20,27 @@ import {
   PAGE_SIZE_LARGE,
   PAGE_SIZE_MEDIUM,
 } from '../../constants/constants';
+
+// rc-pagination puts the click handler, focus and aria-disabled on its own <li>
+// and clones this element with `disabled`. It must stay non-interactive so the
+// click reaches the <li>: a react-aria Button would stop the event.
+const PageNavLabel = ({
+  children,
+  disabled,
+  ...props
+}: {
+  children: ReactNode;
+  disabled?: boolean;
+  'data-testid': string;
+}) => (
+  <Typography
+    {...props}
+    aria-disabled={disabled}
+    className="tw:inline-flex tw:items-center tw:gap-1 tw:px-2"
+    role="button">
+    {children}
+  </Typography>
+);
 
 const PaginationComponent = (props: PaginationProps) => {
   const { t } = useTranslation();
@@ -28,26 +51,18 @@ const PaginationComponent = (props: PaginationProps) => {
   ) => {
     if (type === 'prev') {
       return (
-        <Button
-          className="pagination-button hover-button h-full"
-          data-testid="previous"
-          icon={
-            <ArrowRightOutlined className="pagination-prev-icon tw:size-3 tw:shrink-0 tw:mr-2" />
-          }
-          type="text">
-          <span>{t('label.previous')}</span>
-        </Button>
+        <PageNavLabel data-testid="previous">
+          <ArrowRightOutlined className="pagination-prev-icon tw:size-3.5 tw:shrink-0" />
+          {t('label.previous')}
+        </PageNavLabel>
       );
     }
     if (type === 'next') {
       return (
-        <Button
-          className="pagination-button hover-button h-full"
-          data-testid="next"
-          type="text">
-          <span> {t('label.next')}</span>
-          <ArrowRightOutlined className="pagination-next-icon tw:size-3 tw:shrink-0 tw:mr-2" />
-        </Button>
+        <PageNavLabel data-testid="next">
+          {t('label.next')}
+          <ArrowRightOutlined className="pagination-next-icon tw:size-3.5 tw:shrink-0" />
+        </PageNavLabel>
       );
     }
 

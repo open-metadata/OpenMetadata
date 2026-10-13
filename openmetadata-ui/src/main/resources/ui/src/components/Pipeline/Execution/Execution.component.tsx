@@ -13,16 +13,13 @@
 
 import {
   Box,
-  Button as CoreButton,
+  Button,
   ButtonGroup,
   ButtonGroupItem,
   Dropdown,
   Grid,
 } from '@openmetadata/ui-core-components';
-import { XCircle } from '@openmetadata/ui-core-components/icons';
-import { Button } from 'antd';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { isNaN, map } from 'lodash';
 import { Key, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -51,6 +48,7 @@ import DatePicker, {
 import './execution.less';
 import ListView from './ListView/ListViewTab.component';
 import TreeViewTab from './TreeView/TreeViewTab.component';
+import { XCircle } from '@openmetadata/ui-core-components/icons';
 
 interface ExecutionProps {
   pipelineFQN: string;
@@ -67,7 +65,6 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
     getEpochMillisForPastDays(EXECUTION_FILTER_RANGE.last365days.days)
   );
   const [endTime, setEndTime] = useState(() => getCurrentMillis());
-  const [isClickedCalendar, setIsClickedCalendar] = useState(false);
   const [status, setStatus] = useState(MenuOptions.all);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -175,14 +172,14 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
               gap={2}
               itemClassName="layout-space-item">
               <Dropdown.Root>
-                <CoreButton
+                <Button
                   className="tw:text-brand-secondary tw:after:outline-brand"
                   color="secondary"
                   data-testid="status-button"
                   iconLeading={<FilterIcon height={12} width={12} />}
                   size="sm">
                   {status === MenuOptions.all ? t('label.status') : status}
-                </CoreButton>
+                </Button>
                 <Dropdown.Popover className="tw:w-auto" placement="bottom">
                   <Dropdown.Menu
                     aria-label={t('label.status')}
@@ -197,41 +194,16 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
                 </Dropdown.Popover>
               </Dropdown.Root>
               {view === PIPELINE_EXECUTION_TABS.LIST_VIEW ? (
-                <>
-                  <Button
-                    ghost
-                    className={classNames('range-picker-button delay-100', {
-                      'range-picker-button-width delay-100':
-                        !datesSelected && !isClickedCalendar,
-                    })}
-                    data-testid="data-range-picker-button"
-                    icon={
-                      <Calendar className="tw:size-3.5 tw:mr-2 tw:shrink-0" />
-                    }
-                    type="primary"
-                    onClick={() => {
-                      setIsClickedCalendar(true);
-                    }}>
-                    <span className="date-container">
-                      {!datesSelected && <span>{t('label.date-filter')}</span>}
-                      <DatePicker.RangePicker
-                        allowClear
-                        showNow
-                        bordered={false}
-                        className="executions-date-picker"
-                        clearIcon={
-                          <XCircle className="tw:shrink-0" size={14} />
-                        }
-                        data-testid="data-range-picker"
-                        open={isClickedCalendar}
-                        placeholder={['', '']}
-                        suffixIcon={null}
-                        onChange={onDateChange}
-                        onOpenChange={setIsClickedCalendar}
-                      />
-                    </span>
-                  </Button>
-                </>
+                <DatePicker.RangePicker
+                  allowClear
+                  showNow
+                  className="executions-date-picker"
+                  clearIcon={<XCircle size={14} />}
+                  data-testid="data-range-picker"
+                  placeholder={[t('label.date-filter'), '']}
+                  suffixIcon={<Calendar className="tw:size-3 tw:shrink-0" />}
+                  onChange={onDateChange}
+                />
               ) : null}
             </Box>
           </Box>

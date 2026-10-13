@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { Box, Card } from '@openmetadata/ui-core-components';
-import { Check, XClose } from '@openmetadata/ui-core-components/icons';
-import { Button, Select } from 'antd';
+import { Box, Button, Card } from '@openmetadata/ui-core-components';
+import { Select } from 'antd';
 import { isArray, isNil, toLower } from 'lodash';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,6 +22,7 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import RolesElement from '../RolesElement/RolesElement.component';
 import { RolesComponentProps } from './RolesCard.interfaces';
+import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 
 const RolesCard = ({
   roles,
@@ -127,19 +127,20 @@ const RolesCard = ({
                 />
                 <div className="flex justify-end" data-testid="buttons">
                   <Button
-                    className="text-sm mr-1"
+                    aria-label={t('label.cancel')}
+                    className="tw:mr-1"
+                    color="primary"
                     data-testid="cancel-roles"
-                    icon={<XClose className="tw:shrink-0" size={14} />}
-                    size="small"
-                    type="primary"
+                    iconLeading={XClose}
+                    size="xs"
                     onMouseDown={() => setIsRolesEdit(false)}
                   />
                   <Button
-                    className="text-sm"
+                    aria-label={t('label.save')}
+                    color="primary"
                     data-testid="save-roles"
-                    icon={<Check className="tw:shrink-0" size={14} />}
-                    size="small"
-                    type="primary"
+                    iconLeading={Check}
+                    size="xs"
                     onClick={handleRolesChange}
                   />
                 </div>

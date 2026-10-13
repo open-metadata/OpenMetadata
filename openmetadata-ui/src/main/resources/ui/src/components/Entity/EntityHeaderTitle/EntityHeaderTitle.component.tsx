@@ -19,6 +19,7 @@ import {
 import {
   Copy01,
   ExclamationCircleFilled,
+  LinkExternal01,
   Star01,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
@@ -26,7 +27,6 @@ import { isEmpty } from 'lodash';
 import { MouseEvent, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-link-grey.svg';
 import { ROUTES } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
@@ -129,10 +129,10 @@ const EntityHeaderTitle = ({
         {deleted && (
           <div className="text-xs tw:flex-[0_0_100px]">
             <span className="deleted-badge-button" data-testid="deleted-badge">
-              <ExclamationCircleFilled
-                className="tw:mr-1 tw:shrink-0"
-                size={14}
-              />
+              <ExclamationCircleFilled 
+        className="tw:mr-1 tw:shrink-0"
+        size={14}
+        />
               {t('label.deleted')}
             </span>
           </div>
@@ -248,15 +248,12 @@ const EntityHeaderTitle = ({
               })}
               data-testid="entity-header-name">
               {entityName}
-              {openEntityInNewPage && (
-                <IconExternalLink
-                  className="tw:align-middle tw:ml-1"
-                  height={14}
-                  width={14}
-                />
-              )}
             </Typography>
           </Tooltip>
+          {/* Outside the ellipsis so a long name can't truncate the icon away. */}
+          {openEntityInNewPage && (
+            <LinkExternal01 className="tw:text-fg-quaternary" size={14} />
+          )}
 
           <Tooltip
             placement="top right"

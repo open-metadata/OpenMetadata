@@ -39,7 +39,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     </div>
   )),
   Button: jest.fn().mockImplementation((props) => (
-    <button data-testid={props['data-testid']} onClick={props.onPress}>
+    <button
+      data-testid={props['data-testid']}
+      onClick={props.onPress ?? props.onClick}>
       {props.children}
     </button>
   )),
@@ -226,8 +228,7 @@ describe('Description', () => {
       .map(([props]) => props)
       .find((props) => props['data-testid'] === 'edit-description');
 
-    // Same pencil as WidgetEditButton, which the widgets beside the description on entity
-    // detail pages use. Other edit buttons still use edit-new.svg until they move to Edit01.
+    // Same pencil as WidgetEditButton; every EditIconButton now defaults to Edit01.
     expect(editButtonProps?.iconLeading).toBe(Edit01);
   });
 

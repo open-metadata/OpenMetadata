@@ -11,10 +11,15 @@
  *  limitations under the License.
  */
 
-import { Box, Card, Grid, Typography } from '@openmetadata/ui-core-components';
-import { Plus } from '@openmetadata/ui-core-components/icons';
+import {
+  Box,
+  Button,
+  Card,
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
-import { Button, Input, Select } from 'antd';
+import { Input, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, uniqBy } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -24,6 +29,7 @@ import { Role } from '../../../../../../generated/entity/teams/role';
 import { searchRoles } from '../../../../../../rest/rolesAPIV1';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import './ldap-role-mapping-widget.less';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 
 interface RoleMappingEntry {
   id: string;
@@ -348,11 +354,14 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
 
               <Grid.Item className="tw:flex tw:items-center" span={1}>
                 <Button
+                  aria-label={t('label.remove-entity', {
+                    entity: t('label.mapping'),
+                  })}
+                  color="tertiary"
                   data-testid={`remove-mapping-btn-${mapping.id}`}
-                  disabled={disabled || readonly}
-                  icon={<DeleteIcon height={20} width={20} />}
-                  size="large"
-                  type="text"
+                  iconLeading={<DeleteIcon height={20} width={20} />}
+                  isDisabled={disabled || readonly}
+                  size="md"
                   onClick={() => handleRemoveMapping(mapping.id)}
                 />
               </Grid.Item>
@@ -362,11 +371,11 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
 
         {!readonly && (
           <Button
-            block
-            className="add-mapping-btn"
+            className="tw:w-full"
+            color="secondary"
             data-testid="add-mapping-btn"
-            disabled={disabled}
-            icon={<Plus className="tw:shrink-0 tw:mr-2" size={14} />}
+            iconLeading={Plus}
+            isDisabled={disabled}
             onClick={handleAddMapping}>
             {t('label.add-entity', {
               entity: t('label.ldap-group-mapping'),

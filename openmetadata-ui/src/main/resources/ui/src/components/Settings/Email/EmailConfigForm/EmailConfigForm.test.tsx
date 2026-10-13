@@ -16,15 +16,6 @@ import { EMAIL_CONFIG_FORM_FIELDS } from '../../../../constants/EmailConfig.cons
 import { TransportationStrategy } from '../../../../generated/email/smtpSettings';
 import EmailConfigForm from './EmailConfigForm.component';
 
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Button: jest
-    .fn()
-    .mockImplementation(({ loading, onClick, children }) => (
-      <button onClick={onClick}>{loading ? 'Loader.Button' : children}</button>
-    )),
-}));
-
 const mockOnCancel = jest.fn();
 const mockOnFocus = jest.fn();
 const mockOnSubmit = jest.fn();
@@ -91,7 +82,9 @@ describe('Email Config Form Component', () => {
   it('submit button should be in loading state', async () => {
     render(<EmailConfigForm {...mockProps} isLoading />);
 
-    expect(screen.getByText('Loader.Button')).toBeInTheDocument();
+    expect(screen.getByText('label.save').closest('button')).toHaveAttribute(
+      'data-loading'
+    );
   });
 
   it('should call onCancel', () => {

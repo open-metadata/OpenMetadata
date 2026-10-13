@@ -10,12 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button } from 'antd';
-import { useState } from 'react';
+import { Button } from '@openmetadata/ui-core-components';
+import { CheckCircle, XCircle } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CloseCircleIcon } from '../../../assets/svg/close-circle-white.svg';
-import { ReactComponent as TickCircleIcon } from '../../../assets/svg/tick-circle-white.svg';
-import './status-action.less';
 
 interface StatusActionProps {
   onApprove: () => void;
@@ -29,29 +26,24 @@ const StatusAction = ({
   dataTestId,
 }: StatusActionProps) => {
   const { t } = useTranslation();
-  const [isRejectHovered, setIsRejectHovered] = useState<boolean>(false);
 
   return (
     <div className="flex items-center gap-2">
       <Button
-        className={`approve-btn ${isRejectHovered ? 'icon-only' : ''}`}
+        color="primary"
         data-testid={dataTestId + '-approve-btn'}
-        icon={<TickCircleIcon className="tw:size-3.5 tw:mr-2 tw:shrink-0" />}
+        iconLeading={CheckCircle}
+        size="xs"
         onClick={onApprove}>
-        {!isRejectHovered && (
-          <span className="btn-text">{t('label.approve')}</span>
-        )}
+        {t('label.approve')}
       </Button>
       <Button
-        className={`reject-btn ${isRejectHovered ? 'show-text' : ''}`}
+        color="secondary-destructive"
         data-testid={dataTestId + '-reject-btn'}
-        icon={<CloseCircleIcon className="tw:size-3.5 tw:mr-2 tw:shrink-0" />}
-        onClick={onReject}
-        onMouseEnter={() => setIsRejectHovered(true)}
-        onMouseLeave={() => setIsRejectHovered(false)}>
-        {isRejectHovered && (
-          <span className="btn-text">{t('label.reject')}</span>
-        )}
+        iconLeading={XCircle}
+        size="xs"
+        onClick={onReject}>
+        {t('label.reject')}
       </Button>
     </div>
   );

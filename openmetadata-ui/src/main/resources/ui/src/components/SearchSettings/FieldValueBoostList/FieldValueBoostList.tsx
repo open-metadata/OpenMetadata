@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as Delete } from '../../../assets/svg/delete-colored.svg';
@@ -59,7 +59,7 @@ const FieldValueBoostList: React.FC<FieldValueBoostListProps> = ({
               key: 'gt',
               width: 120,
               render: (_: unknown, record: FieldValueBoost) => (
-                <span>{record.condition?.range?.gt ?? '-'}</span>
+                <Typography>{record.condition?.range?.gt ?? '-'}</Typography>
               ),
             },
             {
@@ -67,7 +67,7 @@ const FieldValueBoostList: React.FC<FieldValueBoostListProps> = ({
               key: 'gte',
               width: 120,
               render: (_: unknown, record: FieldValueBoost) => (
-                <span>{record.condition?.range?.gte ?? '-'}</span>
+                <Typography>{record.condition?.range?.gte ?? '-'}</Typography>
               ),
             },
             {
@@ -75,7 +75,7 @@ const FieldValueBoostList: React.FC<FieldValueBoostListProps> = ({
               key: 'lt',
               width: 120,
               render: (_: unknown, record: FieldValueBoost) => (
-                <span>{record.condition?.range?.lt ?? '-'}</span>
+                <Typography>{record.condition?.range?.lt ?? '-'}</Typography>
               ),
             },
             {
@@ -83,7 +83,7 @@ const FieldValueBoostList: React.FC<FieldValueBoostListProps> = ({
               key: 'lte',
               width: 120,
               render: (_: unknown, record: FieldValueBoost) => (
-                <span>{record.condition?.range?.lte ?? '-'}</span>
+                <Typography>{record.condition?.range?.lte ?? '-'}</Typography>
               ),
             },
           ]
@@ -95,17 +95,21 @@ const FieldValueBoostList: React.FC<FieldValueBoostListProps> = ({
         render: (_: unknown, record: FieldValueBoost) => (
           <div className="d-flex items-center gap-2">
             <Button
-              className="edit-field-value-boost-btn"
+              aria-label={t('label.edit-entity', {
+                entity: t('label.field-value-boost'),
+              })}
+              color="tertiary"
               data-testid="edit-field-value-boost-btn"
-              icon={<EditIcon className="tw:size-3.5 tw:shrink-0" />}
-              type="text"
+              iconLeading={<EditIcon className="tw:size-3.5 tw:shrink-0" />}
               onClick={() => handleEditFieldValueBoost(record)}
             />
             <Button
-              className="delete-field-value-boost-btn"
+              aria-label={t('label.delete-entity', {
+                entity: t('label.field-value-boost'),
+              })}
+              color="tertiary"
               data-testid="delete-field-value-boost-btn"
-              icon={<Delete className="tw:size-3.5 tw:shrink-0" />}
-              type="text"
+              iconLeading={<Delete className="tw:size-3.5 tw:shrink-0" />}
               onClick={() => handleDeleteFieldValueBoost(record.field)}
             />
           </div>

@@ -13,17 +13,17 @@
 import {
   BadgeWithButton,
   Box,
+  Button,
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Check, XClose } from '@openmetadata/ui-core-components/icons';
-import { Button } from 'antd';
 import { FC, useState } from 'react';
 import { Pressable } from 'react-aria-components';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import DataAssetSelectList from '../../../components/DataAssets/DataAssetSelectList/DataAssetSelectList';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import i18n from '../../../utils/i18next/LocalUtil';
+import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 
 interface RelatedDataAssetsFormProps {
   initialOptions?: DataAssetOption[];
@@ -98,20 +98,21 @@ export const RelatedDataAssetsForm: FC<RelatedDataAssetsFormProps> = ({
             gap={2}
             itemClassName="layout-space-item">
             <Button
-              className="p-x-05"
+              aria-label={t('label.cancel')}
+              color="secondary"
               data-testid="cancelDataAssets"
-              disabled={isSubmitLoading}
-              icon={<XClose size={12} />}
-              size="small"
+              iconLeading={<XClose size={12} />}
+              isDisabled={isSubmitLoading}
+              size="xs"
               onClick={onCancel}
             />
             <Button
-              className="p-x-05"
+              aria-label={t('label.save')}
+              color="primary"
               data-testid="saveDataAssets"
-              icon={<Check size={12} />}
-              loading={isSubmitLoading}
-              size="small"
-              type="primary"
+              iconLeading={<Check size={12} />}
+              isLoading={isSubmitLoading}
+              size="xs"
               onClick={handleSubmit}
             />
           </Box>

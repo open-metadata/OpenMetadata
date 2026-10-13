@@ -13,13 +13,12 @@
 
 import {
   Box,
-  Button as CoreButton,
+  Button,
   Grid,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ChevronLeft } from '@openmetadata/ui-core-components/icons';
-import { Alert, Button, Carousel } from 'antd';
+import { Alert, Carousel } from 'antd';
 import { AxiosError } from 'axios';
 import { uniqueId } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -44,6 +43,7 @@ import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
 import AppLogo from '../AppLogo/AppLogo.component';
 import './market-place-app-details.less';
+import { ChevronLeft } from '@openmetadata/ui-core-components/icons';
 
 const MarketPlaceAppDetails = () => {
   const { t } = useTranslation();
@@ -161,10 +161,9 @@ const MarketPlaceAppDetails = () => {
     return (
       <div className="p-x-md p-t-md">
         <Button
-          className="p-0"
-          icon={<ChevronLeft className="tw:shrink-0 tw:mr-2" size={14} />}
-          size="small"
-          type="text"
+          color="tertiary"
+          iconLeading={ChevronLeft}
+          size="xs"
           onClick={onBrowseAppsClick}>
           <Typography className="font-medium">
             {t('label.browse-app-plural')}
@@ -180,7 +179,7 @@ const MarketPlaceAppDetails = () => {
           placement="top"
           title={tooltipTitle}
           triggerClassName="tw:block tw:w-full m-t-md">
-          <CoreButton
+          <Button
             className="tw:w-full"
             color="primary"
             data-testid="install-application"
@@ -188,7 +187,7 @@ const MarketPlaceAppDetails = () => {
             size="md"
             onPress={installApp}>
             {t('label.install')}
-          </CoreButton>
+          </Button>
         </Tooltip>
 
         {isAppDisabled && (

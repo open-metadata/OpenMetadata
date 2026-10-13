@@ -10,13 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import React, { useMemo } from 'react';
 import { Edge, useReactFlow, useViewport } from 'reactflow';
 import { ReactComponent as IconEditCircle } from '../../../assets/svg/ic-edit-circle.svg';
 import { ReactComponent as IconTimesCircle } from '../../../assets/svg/ic-times-circle.svg';
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import { computePathDataForEdge } from '../../../utils/CanvasUtils';
+import { t } from '../../../utils/i18next/LocalUtil';
 import { getAbsolutePosition } from '../../../utils/ViewportUtils';
 
 export interface EdgeInteractionOverlayProps {
@@ -68,16 +69,12 @@ export const EdgeInteractionOverlay: React.FC<EdgeInteractionOverlayProps> = ({
     return (
       <div key={`edit-${edge.id}`} style={buttonPosition}>
         <Button
-          className="cursor-pointer d-flex"
+          aria-label={t('label.add-entity', { entity: t('label.pipeline') })}
+          color="link-color"
           data-testid="add-pipeline"
-          icon={
-            <IconEditCircle
-              aria-label="edit-circle"
-              className="tw:align-middle tw:size-4 tw:shrink-0"
-              role="img"
-            />
+          iconLeading={
+            <IconEditCircle className="tw:size-3.5 tw:shrink-0" />
           }
-          type="link"
           onClick={() => onPipelineClick?.()}
         />
       </div>
@@ -94,16 +91,12 @@ export const EdgeInteractionOverlay: React.FC<EdgeInteractionOverlayProps> = ({
     return (
       <div key={`delete-${edge.id}`} style={buttonPosition}>
         <Button
-          className="cursor-pointer d-flex"
+          aria-label={t('label.delete-entity', { entity: t('label.edge') })}
+          color="link-color"
           data-testid="delete-button"
-          icon={
-            <IconTimesCircle
-              aria-label="times-circle"
-              className="tw:align-middle tw:size-4 tw:shrink-0"
-              role="img"
-            />
+          iconLeading={
+            <IconTimesCircle className="tw:size-3.5 tw:shrink-0" />
           }
-          type="link"
           onClick={() => onEdgeRemove?.()}
         />
       </div>

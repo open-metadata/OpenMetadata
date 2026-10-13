@@ -11,15 +11,14 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { ArrowUp } from '@openmetadata/ui-core-components/icons';
-import { Button } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AuthProvider } from '../../../generated/settings/settings';
 import { PROVIDER_OPTIONS } from '../../../utils/SSOUtils';
 import './provider-selector.less';
 import { ProviderSelectorProps } from './ProviderSelector.interface';
+import { ArrowUp } from '@openmetadata/ui-core-components/icons';
 
 const ProviderSelector: React.FC<ProviderSelectorProps> = ({
   selectedProvider: initialSelectedProvider,
@@ -47,8 +46,8 @@ const ProviderSelector: React.FC<ProviderSelectorProps> = ({
           {t('label.choose-provider')}
         </Typography>
         <Button
-          disabled={!selectedProvider}
-          type="primary"
+          color="primary"
+          isDisabled={!selectedProvider}
           onClick={handleConfigureClick}>
           {t('label.configure')}
           <ArrowUp className="configure-arrow tw:ml-2" height={12} width={12} />
@@ -84,7 +83,7 @@ const ProviderSelector: React.FC<ProviderSelectorProps> = ({
                 )}
               </div>
             </div>
-            <span className="provider-name">{provider.label}</span>
+            <Typography className="provider-name">{provider.label}</Typography>
           </div>
         ))}
       </div>

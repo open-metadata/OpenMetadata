@@ -42,7 +42,7 @@ const CollapseHeader = ({
         <Dropdown.Root>
           <Button
             data-testid={dataTestId}
-            iconLeading={<Plus size={14} />}
+            iconLeading={Plus}
             size="sm">
             {t('label.add')}
           </Button>
@@ -65,7 +65,7 @@ const CollapseHeader = ({
       ) : (
         <Button
           data-testid={dataTestId}
-          iconLeading={<Plus size={14} />}
+          iconLeading={Plus}
           size="sm"
           onPress={handleAddNewBoost}>
           {t('label.add')}

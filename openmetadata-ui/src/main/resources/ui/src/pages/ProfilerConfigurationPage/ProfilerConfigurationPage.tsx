@@ -12,12 +12,12 @@
  */
 import {
   Box,
+  Button,
   Grid,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus, XClose } from '@openmetadata/ui-core-components/icons';
-import { Button, Collapse, Form, Select, TreeSelect } from 'antd';
+import { Collapse, Form, Select, TreeSelect } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isEqual, values } from 'lodash';
 import { Fragment, useEffect, useMemo, useState } from 'react';
@@ -50,6 +50,7 @@ import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils'
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './profiler-configuration-page.style.less';
 import profilerConfigurationClassBase from './ProfilerConfigurationClassBase';
+import { Plus, XClose } from '@openmetadata/ui-core-components/icons';
 
 const ProfilerConfigurationPage = () => {
   const [form] = Form.useForm();
@@ -210,7 +211,7 @@ const ProfilerConfigurationPage = () => {
                         style={{ ...getLayoutGutter(16, 16) }}>
                         <Grid.Item className="layout-column" span={10}>
                           {t('label.data-type')}
-                          <span className="text-failure">*</span>
+                          <Typography color="danger">*</Typography>
                         </Grid.Item>
                         <Grid.Item className="layout-column" span={11}>
                           {t('label.metric-type')}
@@ -292,11 +293,11 @@ const ProfilerConfigurationPage = () => {
                               </Form.Item>
                               <Form.Item>
                                 <Button
+                                  aria-label={t('label.remove')}
+                                  color="secondary"
                                   data-testid={`remove-filter-${name}`}
-                                  icon={
-                                    <XClose className="tw:shrink-0" size={14} />
-                                  }
-                                  size="small"
+                                  iconLeading={XClose}
+                                  size="xs"
                                   onClick={() => remove(name)}
                                 />
                               </Form.Item>
@@ -307,15 +308,9 @@ const ProfilerConfigurationPage = () => {
                         <Grid.Item className="layout-column" span={24}>
                           <div className="matrix-collapse-footer">
                             <Button
-                              className="text-primary p-0"
+                              color="tertiary"
                               data-testid="add-fields"
-                              icon={
-                                <Plus
-                                  className="tw:shrink-0 tw:mr-2"
-                                  size={14}
-                                />
-                              }
-                              type="text"
+                              iconLeading={Plus}
                               onClick={() => add()}>
                               {t('label.add-new-field')}
                             </Button>
@@ -421,14 +416,17 @@ const ProfilerConfigurationPage = () => {
 
           <Grid.Item className="layout-column" span={24}>
             <div className="d-flex justify-end gap-2">
-              <Button data-testid="cancel-button" onClick={() => navigate(-1)}>
+              <Button
+                color="secondary"
+                data-testid="cancel-button"
+                onClick={() => navigate(-1)}>
                 {t('label.cancel')}
               </Button>
               <Button
+                color="primary"
                 data-testid="save-button"
-                htmlType="submit"
-                loading={isFormSubmitting}
-                type="primary">
+                isLoading={isFormSubmitting}
+                type="submit">
                 {t('label.save')}
               </Button>
             </div>

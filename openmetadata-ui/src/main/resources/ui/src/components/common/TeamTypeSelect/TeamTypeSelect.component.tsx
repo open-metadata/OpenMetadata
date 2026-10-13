@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { Box } from '@openmetadata/ui-core-components';
-import { Check, XClose } from '@openmetadata/ui-core-components/icons';
-import { Button, Select } from 'antd';
+import { Box, Button } from '@openmetadata/ui-core-components';
+import { Select } from 'antd';
 import { useMemo, useState } from 'react';
 import { TeamType } from '../../../generated/entity/teams/team';
 import { getTeamOptionsFromType } from '../../../utils/TeamUtils';
 import { TeamTypeSelectProps } from './TeamTypeSelect.interface';
+import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 
 function TeamTypeSelect({
   handleShowTypeSelector,
@@ -74,18 +74,16 @@ function TeamTypeSelect({
         gap={1}
         itemClassName="layout-space-item">
         <Button
-          className="h-8 p-x-xss"
+          color="primary"
           data-testid="cancel-btn"
-          size="small"
-          type="primary"
+          size="xs"
           onClick={handleCancel}>
           <XClose className="tw:shrink-0" size={14} />
         </Button>
         <Button
-          className="h-8 p-x-xss"
+          color="primary"
           data-testid="save-btn"
-          size="small"
-          type="primary"
+          size="xs"
           onClick={handleSubmit}>
           <Check className="tw:shrink-0" size={14} />
         </Button>

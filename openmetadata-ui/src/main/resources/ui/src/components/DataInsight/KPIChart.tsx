@@ -13,6 +13,7 @@
 
 import {
   Box,
+  Button,
   Card,
   Grid,
   SkeletonParagraph,
@@ -23,8 +24,6 @@ import {
   LineChart,
   useChartPalette,
 } from '@openmetadata/ui-core-components/charts';
-import { Plus } from '@openmetadata/ui-core-components/icons';
-import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, round } from 'lodash';
 import { FC, useEffect, useMemo, useState } from 'react';
@@ -57,6 +56,7 @@ import PageHeader from '../PageHeader/PageHeader.component';
 import './data-insight-detail.less';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 import KPILatestResultsV1 from './KPILatestResultsV1';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 
 interface Props {
   chartFilter: ChartFilter;
@@ -307,9 +307,8 @@ const KPIChart: FC<Props> = ({
                 <ErrorPlaceHolder
                   button={
                     <Button
-                      ghost
-                      icon={<Plus className="tw:shrink-0 tw:mr-2" size={14} />}
-                      type="primary"
+                      color="secondary-brand"
+                      iconLeading={Plus}
                       onClick={handleAddKpi}>
                       {t('label.add-entity', {
                         entity: t('label.kpi-uppercase'),

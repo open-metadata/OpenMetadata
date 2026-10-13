@@ -13,11 +13,11 @@
 
 import {
   Box,
+  Button,
   Grid,
   SkeletonParagraph,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import { isBoolean, isEmpty, isNumber, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -209,7 +209,7 @@ function EmailConfigSettingsPage() {
             </Box>
             <Box className="layout-column d-flex">
               {isAdminUser && emailConfigValues?.senderMail && (
-                <Button type="primary" onClick={handleTestEmailModal}>
+                <Button color="primary" onClick={handleTestEmailModal}>
                   {t('label.test-email')}
                 </Button>
               )}
@@ -219,9 +219,10 @@ function EmailConfigSettingsPage() {
               ) : (
                 !isManagedByDeployment && (
                   <Button
-                    className="m-l-md"
+                    className="tw:ml-4"
+                    color="secondary"
                     data-testid="edit-email-configuration"
-                    icon={
+                    iconLeading={
                       !isUndefined(emailConfigValues) && (
                         <IconEdit className="tw:size-3.5 tw:shrink-0 tw:mr-2" />
                       )

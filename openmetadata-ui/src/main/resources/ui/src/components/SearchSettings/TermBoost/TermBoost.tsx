@@ -10,9 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Divider, Typography } from '@openmetadata/ui-core-components';
-import { ChevronDown } from '@openmetadata/ui-core-components/icons';
-import { Button, Slider } from 'antd';
+import {
+  Box,
+  Button,
+  Divider,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Slider } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { ComponentProps, useEffect, useState } from 'react';
@@ -24,6 +28,7 @@ import tagClassBase from '../../../utils/TagClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { AsyncSelect } from '../../common/AsyncSelect/AsyncSelect';
 import './term-boost.less';
+import { ChevronDown } from '@openmetadata/ui-core-components/icons';
 
 interface TermBoostProps {
   className?: string;
@@ -180,9 +185,12 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
         </Box>
         <Box className="layout-column d-flex items-center justify-end gap-2">
           <Button
-            className="delete-term-boost"
+            aria-label={t('label.delete-entity', {
+              entity: t('label.term-boost'),
+            })}
+            color="secondary"
             data-testid="delete-term-boost"
-            icon={<Delete className="tw:size-3.5 tw:shrink-0" />}
+            iconLeading={<Delete className="tw:size-3.5 tw:shrink-0" />}
             onClick={() => onDeleteBoost(termBoost.value)}
           />
         </Box>

@@ -10,14 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Button, Typography } from '@openmetadata/ui-core-components';
 
 import { Plus } from '@openmetadata/ui-core-components/icons';
 import { ArrayFieldTemplateProps } from '@rjsf/utils';
-import { Button } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { Fragment, FunctionComponent } from 'react';
 import { ReactComponent as DeleteIcon } from '../../../../../assets/svg/ic-delete.svg';
+import { t } from '../../../../../utils/i18next/LocalUtil';
 
 export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
   props: ArrayFieldTemplateProps
@@ -27,14 +28,17 @@ export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
   return (
     <Fragment>
       <div className="d-flex justify-between items-center">
-        <span className="control-label">{title}</span>
+        <Typography className="control-label">{title}</Typography>
         {canAdd && (
           <Button
+            aria-label={t('label.add')}
+            color="primary"
             data-testid={`add-item-${title}`}
-            icon={<Plus className="tw:shrink-0" size={12} />}
+            iconLeading={
+              <Plus size={14} style={{ color: 'white', fontSize: '12px' }} />
+            }
             id={`${idSchema.$id}`}
-            size="small"
-            type="primary"
+            size="xs"
             onClick={onAddClick}
             onFocus={() => {
               if (!isUndefined(formContext.handleFocus)) {

@@ -11,9 +11,13 @@
  *  limitations under the License.
  */
 
-import { Toggle, Tooltip, Typography } from '@openmetadata/ui-core-components';
-import { HelpCircle, Plus } from '@openmetadata/ui-core-components/icons';
-import { Button, Form, FormItemProps, Input, InputNumber, Select } from 'antd';
+import {
+  Button,
+  Toggle,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Form, FormItemProps, Input, InputNumber, Select } from 'antd';
 import { FormListProps, RuleRender } from 'antd/lib/form';
 import { debounce, isUndefined } from 'lodash';
 import {
@@ -56,6 +60,7 @@ import {
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import '../../../Database/Profiler/TableProfiler/table-profiler.less';
 import { ParameterFormProps } from '../AddDataQualityTest.interface';
+import { HelpCircle, Plus } from '@openmetadata/ui-core-components/icons';
 
 const CodeEditor = withSuspenseFallback(
   lazy(() => import('../../../Database/SchemaEditor/CodeEditor'))
@@ -371,12 +376,13 @@ const buildArraySetField = ({
         key={data.name}
         label={
           <>
-            <span>{data.displayName}</span>
+            <Typography>{data.displayName}</Typography>
             <Button
-              className="m-x-sm list-add-btn"
-              icon={<Plus className="tw:shrink-0" size={14} />}
-              size="small"
-              type="primary"
+              aria-label={t('label.add')}
+              className="tw:mx-3"
+              color="primary"
+              iconLeading={Plus}
+              size="xs"
               onClick={() => add()}
             />
           </>
@@ -406,10 +412,11 @@ const buildArraySetField = ({
               )}
             </Form.Item>
             <Button
-              icon={
+              aria-label={t('label.remove')}
+              color="tertiary"
+              iconLeading={
                 <IconDelete className="tw:align-middle tw:size-4 tw:shrink-0" />
               }
-              type="text"
               onClick={() => remove(name)}
             />
           </div>

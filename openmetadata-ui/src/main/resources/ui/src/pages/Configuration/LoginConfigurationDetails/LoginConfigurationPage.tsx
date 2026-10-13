@@ -12,12 +12,11 @@
  */
 import {
   Box,
+  Button,
   Grid,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { InfoCircle } from '@openmetadata/ui-core-components/icons';
-import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -36,6 +35,7 @@ import { getLoginConfig } from '../../../rest/settingConfigAPI';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { InfoCircle } from '@openmetadata/ui-core-components/icons';
 
 const LoginConfigurationPage = () => {
   const { t } = useTranslation();
@@ -104,8 +104,9 @@ const LoginConfigurationPage = () => {
             </Box>
             <Box className="layout-column tw:block">
               <Button
+                color="secondary"
                 data-testid="edit-button"
-                icon={<IconEdit className="tw:size-3.5 tw:shrink-0 tw:mr-2" />}
+                iconLeading={<IconEdit className="tw:size-3 tw:shrink-0" />}
                 onClick={handleEditClick}>
                 {t('label.edit')}
               </Button>

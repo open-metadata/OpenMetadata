@@ -12,17 +12,18 @@
  */
 import {
   Box,
+  Button,
   Grid,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Collapse, Slider } from 'antd';
+import { Collapse, Slider } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as PlusOutlined } from '../../assets/svg/plus-outlined.svg';
+import { ReactComponent as Plus } from '../../assets/svg/plus-outlined.svg';
 import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -112,26 +113,23 @@ const SearchBoostsSection = ({
                 <Typography className="text-sm font-semibold m-0 tw:text-primary">
                   {t('label.term-boost')}
                 </Typography>
-                <span className="count-label">
+                <Typography className="count-label">
                   {searchConfig?.globalSettings?.termBoosts?.length ?? 0}
-                </span>
+                </Typography>
               </Box>
               <Box className="layout-column d-flex items-center gap-2">
                 <Button
-                  className="term-boost-save-btn"
+                  color="secondary"
                   data-testid="term-boost-save-btn"
-                  disabled={!termBoostsChanged}
+                  isDisabled={!termBoostsChanged}
                   onClick={onSaveTermBoost}>
                   {t('label.save')}
                 </Button>
                 <Button
-                  className="term-boost-add-btn"
+                  color="primary"
                   data-testid="term-boost-add-btn"
-                  disabled={isUpdating || showNewTermBoost}
-                  icon={
-                    <PlusOutlined className="tw:size-3.5 tw:mr-2 tw:shrink-0" />
-                  }
-                  type="primary"
+                  iconLeading={<Plus className="tw:size-3.5 tw:shrink-0" />}
+                  isDisabled={isUpdating || showNewTermBoost}
                   onClick={onAddNewTermBoost}>
                   {t('label.add')}
                 </Button>
@@ -159,18 +157,18 @@ const SearchBoostsSection = ({
                 <Typography className="text-sm font-semibold m-0 tw:text-primary">
                   {t('label.field-value-boost')}
                 </Typography>
-                <span className="count-label">
+                <Typography className="count-label">
                   {searchConfig?.globalSettings?.fieldValueBoosts?.length ?? 0}
-                </span>
+                </Typography>
               </Box>
               <Box className="layout-column d-flex items-center gap-2">
                 <Button
-                  className="field-value-boost-add-btn"
+                  color="secondary"
                   data-testid="add-field-value-boost-btn"
-                  disabled={isUpdating || showFieldValueBoostModal}
-                  icon={
-                    <PlusOutlined className="tw:size-3.5 tw:mr-2 tw:shrink-0" />
+                  iconLeading={
+                    <Plus className="text-sm tw:size-3.5 tw:shrink-0" />
                   }
+                  isDisabled={isUpdating || showFieldValueBoostModal}
                   onClick={onAddFieldValueBoost}>
                   {t('label.add')}
                 </Button>
@@ -573,8 +571,9 @@ const SearchSettingsPage = () => {
             </Typography>
             {isAdminUser && (
               <Button
+                color="secondary"
                 data-testid="reset-search-settings-btn"
-                disabled={isUpdating}
+                isDisabled={isUpdating}
                 onClick={() => setShowResetModal(true)}>
                 {t('label.reset')}
               </Button>
@@ -656,10 +655,10 @@ const SearchSettingsPage = () => {
                     {t('label.hybrid-search-weight-plural')}
                   </Typography>
                   <Button
+                    color="primary"
                     data-testid="hybrid-weights-save-btn"
-                    disabled={!hybridWeightsChanged || isUpdating}
-                    loading={isUpdating}
-                    type="primary"
+                    isDisabled={!hybridWeightsChanged || isUpdating}
+                    isLoading={isUpdating}
                     onClick={onHybridWeightSave}>
                     {t('label.save')}
                   </Button>

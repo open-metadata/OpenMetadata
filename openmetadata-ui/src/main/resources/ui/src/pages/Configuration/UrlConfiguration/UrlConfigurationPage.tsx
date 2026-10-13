@@ -10,8 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import {
+  Box,
+  Button,
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -131,10 +135,9 @@ const UrlConfigurationPage = () => {
             {!isSourceLoading && !isManagedByDeployment && (
               <Box className="layout-column tw:block">
                 <Button
+                  color="secondary"
                   data-testid="edit-button"
-                  icon={
-                    <IconEdit className="tw:size-3.5 tw:shrink-0 tw:mr-2" />
-                  }
+                  iconLeading={<IconEdit className="tw:size-3 tw:shrink-0" />}
                   onClick={handleEditClick}>
                   {t('label.edit')}
                 </Button>

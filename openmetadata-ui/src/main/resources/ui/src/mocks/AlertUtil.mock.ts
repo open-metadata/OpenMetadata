@@ -81,3 +81,21 @@ export const mockTypedEvent4: TypedEvent = {
   ],
   timestamp: 1730871300446,
 };
+
+export const mockTypedEventEmptyDataSuccessful: TypedEvent = {
+  status: Status.Successful,
+  data: [],
+  timestamp: 1700000000000,
+};
+
+export const mockTypedEventEmptyDataFailed: TypedEvent = {
+  status: Status.Failed,
+  data: [],
+  timestamp: 1700000000001,
+};
+
+export const mockTypedEventEmptyDataUnprocessed: TypedEvent = {
+  status: Status.Unprocessed,
+  data: [],
+  timestamp: 1700000000002,
+};

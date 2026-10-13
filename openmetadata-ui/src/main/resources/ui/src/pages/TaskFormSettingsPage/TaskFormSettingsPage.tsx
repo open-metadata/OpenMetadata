@@ -24,9 +24,14 @@
  *  limitations under the License.
  */
 
-import { Box, Card, Tabs, Typography } from '@openmetadata/ui-core-components';
-import { Plus } from '@openmetadata/ui-core-components/icons';
-import { Alert, Button, Form, Input, Select, Spin } from 'antd';
+import {
+  Box,
+  Button,
+  Card,
+  Tabs,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Alert, Form, Input, Select, Spin } from 'antd';
 import { AxiosError } from 'axios';
 import { FC, lazy, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -71,6 +76,7 @@ import { getDefaultTaskFormSchema } from '../../utils/TaskFormSchemaUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import TaskFormBuilderSection from './components/TaskFormBuilderSection';
 import './task-form-settings.less';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 
 const CodeEditor = withSuspenseFallback(
   lazy(() => import('../../components/Database/SchemaEditor/CodeEditor'))
@@ -191,12 +197,12 @@ const SchemaSidebarCard: FC<{
                   key={schema.id ?? schema.name}
                   type="button"
                   onClick={() => onSelectSchema(schema)}>
-                  <span className="task-form-settings-schema-item__title">
+                  <Typography className="task-form-settings-schema-item__title">
                     {schema.displayName ?? schema.name}
-                  </span>
-                  <span className="task-form-settings-schema-item__meta">
+                  </Typography>
+                  <Typography className="task-form-settings-schema-item__meta">
                     {`${schema.taskType} / ${schema.taskCategory ?? '-'}`}
-                  </span>
+                  </Typography>
                 </button>
               );
             })
@@ -209,10 +215,9 @@ const SchemaSidebarCard: FC<{
       )}
 
       <Button
-        block
-        className="task-form-settings-sidebar-action"
+        className="tw:w-full"
+        color="primary"
         data-testid="task-form-add-button"
-        type="primary"
         onClick={onAddNew}>
         {t('label.add')}
       </Button>
@@ -236,8 +241,9 @@ const TransitionFormsPane: FC<{
         </Typography>
       </div>
       <Button
+        color="secondary"
         data-testid="task-form-transition-add-button"
-        icon={<Plus className="tw:shrink-0 tw:mr-2" size={14} />}
+        iconLeading={Plus}
         onClick={() =>
           syncTransitionDesigner([
             ...transitionBuilders,
@@ -257,10 +263,9 @@ const TransitionFormsPane: FC<{
             <Card.Header
               extra={
                 <Button
-                  danger
+                  color="tertiary-destructive"
                   data-testid={`task-form-transition-remove-${index}`}
-                  size="small"
-                  type="text"
+                  size="xs"
                   onClick={() =>
                     syncTransitionDesigner(
                       transitionBuilders.filter(
@@ -347,8 +352,9 @@ const WorkflowStagesPane: FC<{
         </Typography>
       </div>
       <Button
+        color="secondary"
         data-testid="task-form-stage-mapping-add-button"
-        icon={<Plus className="tw:shrink-0 tw:mr-2" size={14} />}
+        iconLeading={Plus}
         onClick={() =>
           syncStageMappings([...stageMappings, createEmptyStageMapping()])
         }>
@@ -366,10 +372,9 @@ const WorkflowStagesPane: FC<{
             <Card.Header
               extra={
                 <Button
-                  danger
+                  color="tertiary-destructive"
                   data-testid={`task-form-stage-mapping-remove-${index}`}
-                  size="small"
-                  type="text"
+                  size="xs"
                   onClick={() =>
                     syncStageMappings(
                       stageMappings.filter(
@@ -1050,15 +1055,16 @@ const TaskFormSettingsPage = () => {
                   gap={4}
                   itemClassName="layout-space-item">
                   <Button
+                    color="secondary"
                     data-testid="task-form-cancel-button"
                     onClick={handleDiscardChanges}>
                     {t('label.cancel')}
                   </Button>
                   <Button
+                    color="primary"
                     data-testid="task-form-save-button"
-                    htmlType="submit"
-                    loading={saving}
-                    type="primary">
+                    isLoading={saving}
+                    type="submit">
                     {t('label.save')}
                   </Button>
                 </Box>
@@ -1132,6 +1138,7 @@ const TaskFormSettingsPage = () => {
                         <Input data-testid="task-form-workflow-definition-input" />
                       </Form.Item>
                       <Button
+                        color="secondary"
                         data-testid="task-form-load-template-button"
                         onClick={handleLoadTemplate}>
                         {t('label.load-built-in-template')}

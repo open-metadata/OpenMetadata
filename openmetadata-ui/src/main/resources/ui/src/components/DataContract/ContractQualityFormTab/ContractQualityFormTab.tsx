@@ -12,20 +12,18 @@
  */
 
 import {
-  Button as CoreButton,
+  Button,
   Card,
   Dropdown,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ChevronDown } from '@openmetadata/ui-core-components/icons';
-import { Button } from 'antd';
+import { ChevronDown, Plus } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { toLower } from 'lodash';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as LeftOutlined } from '../../../assets/svg/left-arrow.svg';
+import { ReactComponent as ChevronLeft } from '../../../assets/svg/left-arrow.svg';
 import { ReactComponent as RightIcon } from '../../../assets/svg/right-arrow.svg';
-import { ReactComponent as PlusIcon } from '../../../assets/svg/x-colored.svg';
 import {
   DEFAULT_SORT_ORDER,
   TEST_CASE_STATUS_LABELS,
@@ -53,7 +51,6 @@ import { ColumnsType } from '../../common/Table/Table.interface';
 import Table from '../../common/Table/TableV2';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { TestLevel } from '../../DataQuality/AddDataQualityTest/components/TestCaseFormV1.interface';
-import './contract-quality-form-tab.less';
 
 const TestCaseFormDrawer = withSuspenseFallback(
   lazy(
@@ -228,9 +225,9 @@ export const ContractQualityFormTab: React.FC<{
         </div>
 
         <Button
-          className="contract-export-button"
+          color="secondary"
           data-testid="add-test-button"
-          icon={<PlusIcon className="tw:size-3.5 tw:mr-2 tw:shrink-0" />}
+          iconLeading={Plus}
           onClick={handleOpenTestCaseDrawer}>
           {t('label.add-entity', {
             entity: t('label.test'),
@@ -245,12 +242,12 @@ export const ContractQualityFormTab: React.FC<{
           dataSource={allTestCases}
           extraTableFilters={
             <Dropdown.Root>
-              <CoreButton
+              <Button
                 color="secondary"
-                iconTrailing={<ChevronDown size={14} />}
+                iconTrailing={ChevronDown}
                 size="sm">
                 {t('label.filter-plural')}
-              </CoreButton>
+              </Button>
               <Dropdown.Popover className="tw:w-auto">
                 <Dropdown.Menu
                   aria-label={t('label.filter-plural')}
@@ -292,15 +289,12 @@ export const ContractQualityFormTab: React.FC<{
 
       <div className="d-flex justify-between m-t-md">
         <Button
-          className="contract-prev-button"
-          icon={<LeftOutlined height={22} width={20} />}
+          color="secondary"
+          iconLeading={<ChevronLeft height={22} width={20} />}
           onClick={onPrev}>
           {buttonProps.prevLabel ?? t('label.previous')}
         </Button>
-        <Button
-          className="contract-next-button"
-          type="primary"
-          onClick={onNext}>
+        <Button color="primary" onClick={onNext}>
           {buttonProps.nextLabel ?? t('label.next')}
           <RightIcon className="tw:size-3.5 tw:shrink-0" />
         </Button>

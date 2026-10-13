@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { Grid } from '@openmetadata/ui-core-components';
-import { Check, Search } from '@openmetadata/ui-core-components/icons';
-import { Input, Modal } from 'antd';
+import { Grid, SimpleModal } from '@openmetadata/ui-core-components';
+import { Input } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
@@ -35,7 +34,7 @@ import {
   renderHighlightedText,
 } from '../../../utils/EntitySearchUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import './add-attribute-modal.less';
+import { Check, Search } from '@openmetadata/ui-core-components/icons';
 
 interface Props {
   type: EntityType;
@@ -135,23 +134,13 @@ const AddAttributeModal: FC<Props> = ({
   }, []);
 
   return (
-    <Modal
-      centered
-      className="ant-attribute-modal"
-      closable={false}
-      confirmLoading={isModalLoading}
+    <SimpleModal
       data-testid="modal-container"
-      maskClosable={false}
+      isDismissable={false}
+      isOkLoading={isModalLoading}
+      isOpen={isOpen}
       okText={t('label.save')}
-      open={isOpen}
-      title={
-        <span data-testid="modal-title">
-          {title}{' '}
-          <span className="text-grey-muted text-sm">
-            {`(${selectedValues.length}/${data.length} selected)`}
-          </span>
-        </span>
-      }
+      title={`${title} (${selectedValues.length}/${data.length} selected)`}
       width={750}
       onCancel={onCancel}
       onOk={() => onSave(selectedValues)}>
@@ -159,65 +148,60 @@ const AddAttributeModal: FC<Props> = ({
         <Loader />
       ) : (
         <>
-          <Grid className="layout-row layout-grid ant-search-box-row">
-            <Grid.Item className="layout-column" span={24}>
-              <Input
-                data-testid="search-input"
-                placeholder={t('label.search-entity', {
-                  entity: type,
-                })}
-                prefix={
-                  <Search
-                    className="tw:shrink-0 tw:text-placeholder"
-                    size={14}
-                  />
-                }
-                onChange={(e) => handleSearch(e.target.value)}
-              />
-            </Grid.Item>
-          </Grid>
+          <Input
+            data-testid="search-input"
+            placeholder={t('label.search-entity', {
+              entity: type,
+            })}
+            prefix={<Search size={14} style={{ color: '#37352F4D' }} />}
+            onChange={(e) => handleSearch(e.target.value)}
+          />
           {isEmpty(searchedData) ? (
             <ErrorPlaceHolder
               className="mt-0-important p-y-lg"
               type={ERROR_PLACEHOLDER_TYPE.FILTER}
             />
           ) : (
-            searchedData.map((option) => (
-              <Grid
-                className={`layout-row layout-grid ${classNames({
-                  selected: selectedValues.includes(option.id),
-                })}`}
-                data-testid="policy-row"
-                key={option.id}
-                style={{ ...getLayoutGutter(16, 16) }}
-                onClick={() => handleValueSelect(option.id)}>
-                <Grid.Item className="layout-column" span={6}>
-                  {renderHighlightedText(
-                    highlightSearchText(getEntityName(option), searchTerm)
+            <div>
+              {searchedData.map((option) => (
+                <Grid
+                  className={classNames(
+                    'layout-row layout-grid tw:cursor-pointer tw:p-4',
+                    {
+                      'tw:bg-utility-brand-50': selectedValues.includes(
+                        option.id
+                      ),
+                    }
                   )}
-                </Grid.Item>
-                <Grid.Item className="layout-column" span={16}>
-                  <RichTextEditorPreviewerV1
-                    markdown={highlightSearchText(
-                      option.description ?? '',
-                      searchTerm
+                  data-testid="policy-row"
+                  key={option.id}
+                  style={{ ...getLayoutGutter(16, 16) }}
+                  onClick={() => handleValueSelect(option.id)}>
+                  <Grid.Item className="layout-column" span={6}>
+                    {renderHighlightedText(
+                      highlightSearchText(getEntityName(option), searchTerm)
                     )}
-                  />
-                </Grid.Item>
-                <Grid.Item className="layout-column" span={2}>
-                  {selectedValues.includes(option.id) && (
-                    <Check
-                      className="tw:text-brand-secondary tw:shrink-0"
-                      size={14}
+                  </Grid.Item>
+                  <Grid.Item className="layout-column" span={16}>
+                    <RichTextEditorPreviewerV1
+                      markdown={highlightSearchText(
+                        option.description ?? '',
+                        searchTerm
+                      )}
                     />
-                  )}
-                </Grid.Item>
-              </Grid>
-            ))
+                  </Grid.Item>
+                  <Grid.Item className="layout-column" span={2}>
+                    {selectedValues.includes(option.id) && (
+                      <Check className="text-primary" />
+                    )}
+                  </Grid.Item>
+                </Grid>
+              ))}
+            </div>
           )}
         </>
       )}
-    </Modal>
+    </SimpleModal>
   );
 };
 

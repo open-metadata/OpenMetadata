@@ -12,22 +12,23 @@
  */
 
 import {
+  Button,
   Card,
   Grid,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { Actions, JsonTree } from '@react-awesome-query-builder/ui';
-import { Button, Form, FormListFieldData, Input } from 'antd';
+import { Form, FormListFieldData, Input } from 'antd';
 import TextArea from 'antd/lib/input/TextArea';
 import classNames from 'classnames';
 import { isEmpty, isNull, isNumber } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
-import { ReactComponent as LeftOutlined } from '../../../assets/svg/left-arrow.svg';
+import { ReactComponent as ChevronLeft } from '../../../assets/svg/left-arrow.svg';
 import { ReactComponent as RightIcon } from '../../../assets/svg/right-arrow.svg';
-import { ReactComponent as PlusIcon } from '../../../assets/svg/x-colored.svg';
 import { VALIDATION_MESSAGES } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import {
@@ -189,11 +190,10 @@ export const ContractSemanticFormTab: React.FC<{
           </div>
 
           <Button
-            className="add-semantic-button"
+            color="link-color"
             data-testid="add-semantic-button"
-            disabled={!isNull(editingKey) || !addFunctionRef.current}
-            icon={<PlusIcon className="tw:size-3.5 tw:shrink-0 tw:mr-2" />}
-            type="link"
+            iconLeading={Plus}
+            isDisabled={!isNull(editingKey) || !addFunctionRef.current}
             onClick={handleAddSemantic}>
             {t('label.add-entity', {
               entity: t('label.semantic-plural'),
@@ -255,11 +255,13 @@ export const ContractSemanticFormTab: React.FC<{
                                 />
 
                                 <Button
-                                  danger
-                                  className="delete-expand-button"
+                                  aria-label={t('label.delete-entity', {
+                                    entity: t('label.semantic'),
+                                  })}
+                                  color="secondary-destructive"
                                   data-testid={`delete-semantic-${field.key}`}
-                                  icon={<DeleteIcon />}
-                                  size="middle"
+                                  iconLeading={<DeleteIcon />}
+                                  size="sm"
                                   onClick={() => {
                                     handleDeleteSemantic(field.key);
                                   }}
@@ -348,13 +350,10 @@ export const ContractSemanticFormTab: React.FC<{
 
                         <div className="semantic-form-item-actions">
                           <Button
-                            className="add-semantic-button"
+                            color="link-color"
                             data-testid="add-new-rule-btn"
-                            disabled={!queryBuilderAddRule?.addRule}
-                            icon={
-                              <PlusIcon className="tw:size-3.5 tw:shrink-0 tw:mr-2" />
-                            }
-                            type="link"
+                            iconLeading={Plus}
+                            isDisabled={!queryBuilderAddRule?.addRule}
                             onClick={handleAddNewRule}>
                             {t('label.add-new-entity', {
                               entity: t('label.rule'),
@@ -362,13 +361,15 @@ export const ContractSemanticFormTab: React.FC<{
                           </Button>
 
                           <div className="d-flex items-center">
-                            <Button onClick={() => setEditingKey(null)}>
+                            <Button
+                              color="secondary"
+                              onClick={() => setEditingKey(null)}>
                               {t('label.cancel')}
                             </Button>
                             <Button
-                              className="m-l-md"
+                              className="tw:ml-4"
+                              color="primary"
                               data-testid="save-semantic-button"
-                              type="primary"
                               onClick={handleSaveRule}>
                               {t('label.save')}
                             </Button>
@@ -406,17 +407,14 @@ export const ContractSemanticFormTab: React.FC<{
 
       <div className="d-flex justify-between m-t-md">
         <Button
-          className="contract-prev-button"
-          icon={<LeftOutlined height={22} width={20} />}
+          color="secondary"
+          iconLeading={<ChevronLeft height={22} width={20} />}
           onClick={onPrev}>
           {prevLabel ?? t('label.previous')}
         </Button>
 
         {isNextVisible && (
-          <Button
-            className="contract-next-button"
-            type="primary"
-            onClick={onNext}>
+          <Button color="primary" onClick={onNext}>
             {nextLabel ?? t('label.next')}
             <RightIcon className="tw:size-3.5 tw:shrink-0" />
           </Button>

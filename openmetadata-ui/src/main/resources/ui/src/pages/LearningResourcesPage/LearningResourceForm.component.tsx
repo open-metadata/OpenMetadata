@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { Box } from '@openmetadata/ui-core-components';
-import { XClose } from '@openmetadata/ui-core-components/icons';
-import { Button, Drawer, Form, Input, Select } from 'antd';
+import { Box, Button, Typography } from '@openmetadata/ui-core-components';
+import { Drawer, Form, Input, Select } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -38,6 +37,7 @@ import {
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './learning-resource-form.less';
 import { LearningResourceFormProps } from './LearningResourceForm.interface';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 
 const { TextArea } = Input;
 
@@ -144,26 +144,22 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
 
   const drawerTitle = (
     <div className="drawer-title-container">
-      <span className="drawer-title">
+      <Typography className="drawer-title">
         {resource ? t('label.edit-resource') : t('label.add-resource')}
-      </span>
-      <XClose
-        className="drawer-close tw:shrink-0"
-        size={14}
-        onClick={onClose}
-      />
+      </Typography>
+      <XClose className="drawer-close" onClick={onClose} />
     </div>
   );
 
   const drawerFooter = (
     <div className="drawer-footer">
-      <Button data-testid="cancel-resource" onClick={onClose}>
+      <Button color="secondary" data-testid="cancel-resource" onClick={onClose}>
         {t('label.cancel')}
       </Button>
       <Button
+        color="primary"
         data-testid="save-resource"
-        loading={isSubmitting}
-        type="primary"
+        isLoading={isSubmitting}
         onClick={handleSubmit}>
         {t('label.save')}
       </Button>

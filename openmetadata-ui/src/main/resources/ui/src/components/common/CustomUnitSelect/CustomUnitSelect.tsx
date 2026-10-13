@@ -10,9 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Divider } from '@openmetadata/ui-core-components';
-import { Plus } from '@openmetadata/ui-core-components/icons';
-import { Button, Input, Select } from 'antd';
+import { Button, Divider } from '@openmetadata/ui-core-components';
+import { Input, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { startCase } from 'lodash';
 import {
@@ -27,6 +26,7 @@ import { useTranslation } from 'react-i18next';
 import { UnitOfMeasurement } from '../../../generated/entity/data/metric';
 import { getCustomUnitsOfMeasurement } from '../../../rest/metricsAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 
 interface CustomUnitSelectProps {
   value?: string;
@@ -71,8 +71,8 @@ const renderCustomUnitDropdown = (
         }}
       />
       <Button
-        icon={<Plus className="tw:shrink-0 tw:mr-2" size={14} />}
-        type="text"
+        color="tertiary"
+        iconLeading={Plus}
         onClick={onAddCustomUnit}>
         {t('label.add')}
       </Button>

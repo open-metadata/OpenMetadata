@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Typography } from '@openmetadata/ui-core-components';
-import { Button, Form } from 'antd';
+import { Button, Card, Typography } from '@openmetadata/ui-core-components';
+import { Form } from 'antd';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as RightIcon } from '../../../assets/svg/right-arrow.svg';
@@ -165,11 +165,7 @@ export const ContractDetailFormTab: React.FC<{
       </Card>
       {isNextVisible && (
         <div className="d-flex justify-end m-t-md">
-          <Button
-            className="contract-next-button"
-            htmlType="submit"
-            type="primary"
-            onClick={onNext}>
+          <Button color="primary" type="submit" onClick={onNext}>
             {nextLabel ?? t('label.next')}
             <RightIcon className="tw:size-3.5 tw:shrink-0" />
           </Button>

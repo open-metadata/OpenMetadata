@@ -10,12 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge, Card, Typography } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import {
+  Badge,
+  Button,
+  Card,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { isEmpty, pick, uniqBy } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as LeftOutlined } from '../../../assets/svg/left-arrow.svg';
+import { ReactComponent as ChevronLeft } from '../../../assets/svg/left-arrow.svg';
 import { ReactComponent as RightIcon } from '../../../assets/svg/right-arrow.svg';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import {
@@ -568,17 +572,13 @@ export const ContractSchemaFormTab: React.FC<{
       </Card>
       <div className="d-flex justify-between m-t-md">
         <Button
-          className="contract-prev-button"
-          icon={<LeftOutlined height={22} width={20} />}
-          type="default"
+          color="secondary"
+          iconLeading={<ChevronLeft height={22} width={20} />}
           onClick={onPrev}>
           {prevLabel ?? t('label.previous')}
         </Button>
         {isNextVisible && (
-          <Button
-            className="contract-next-button"
-            type="primary"
-            onClick={onNext}>
+          <Button color="primary" onClick={onNext}>
             {nextLabel ?? t('label.next')}
             <RightIcon className="tw:size-3.5 tw:shrink-0" />
           </Button>

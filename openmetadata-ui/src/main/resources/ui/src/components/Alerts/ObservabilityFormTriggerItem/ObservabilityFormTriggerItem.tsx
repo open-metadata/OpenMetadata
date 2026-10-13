@@ -11,9 +11,13 @@
  *  limitations under the License.
  */
 
-import { Grid, Toggle, Typography } from '@openmetadata/ui-core-components';
-import { XClose } from '@openmetadata/ui-core-components/icons';
-import { Button, Form, Select } from 'antd';
+import {
+  Button,
+  Grid,
+  Toggle,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Form, Select } from 'antd';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -29,6 +33,7 @@ import {
 } from '../../../utils/Alerts/AlertsUtil';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { ObservabilityFormTriggerItemProps } from './ObservabilityFormTriggerItem.interface';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 
 function ObservabilityFormTriggerItem({
   isViewMode = false,
@@ -121,8 +126,12 @@ function ObservabilityFormTriggerItem({
                       </div>
                       {!isViewMode && (
                         <Button
+                          aria-label={t('label.remove-entity', {
+                            entity: t('label.trigger'),
+                          })}
+                          color="secondary"
                           data-testid={`remove-trigger-${name}`}
-                          icon={<XClose className="tw:shrink-0" size={14} />}
+                          iconLeading={XClose}
                           onClick={() => remove(name)}
                         />
                       )}
@@ -148,9 +157,9 @@ function ObservabilityFormTriggerItem({
               {showAddTriggerButton && (
                 <Grid.Item className="layout-column" span={24}>
                   <Button
+                    color="primary"
                     data-testid="add-trigger"
-                    disabled={isEmpty(sources)}
-                    type="primary"
+                    isDisabled={isEmpty(sources)}
                     onClick={() =>
                       add({
                         effect: Effect.Include,

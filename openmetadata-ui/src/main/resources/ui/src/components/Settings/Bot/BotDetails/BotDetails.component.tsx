@@ -13,12 +13,12 @@
 
 import {
   Badge,
+  Button,
   Card,
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Check, XClose } from '@openmetadata/ui-core-components/icons';
-import { Button, Input } from 'antd';
+import { Input } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, toLower, uniqBy } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -43,6 +43,7 @@ import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.com
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import AccessTokenCard from '../../Users/AccessTokenCard/AccessTokenCard.component';
 import { BotsDetailProps } from './BotDetails.interfaces';
+import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 
 const BotDetails: FC<BotsDetailProps> = ({
   botData,
@@ -160,20 +161,22 @@ const BotDetails: FC<BotsDetailProps> = ({
                         />
                         <div className="flex justify-end" data-testid="buttons">
                           <Button
-                            className="text-sm mr-1"
+                            aria-label={t('label.cancel')}
+                            className="tw:mr-1"
+                            color="primary"
                             data-testid="cancel-displayName"
-                            icon={<XClose className="tw:shrink-0" size={14} />}
-                            size="small"
-                            type="primary"
+                            iconLeading={XClose}
+                            size="xs"
                             onMouseDown={() => setIsDisplayNameEdit(false)}
                           />
 
                           <Button
-                            className="text-sm mr-1"
+                            aria-label={t('label.save')}
+                            className="tw:mr-1"
+                            color="primary"
                             data-testid="save-displayName"
-                            icon={<Check className="tw:shrink-0" size={14} />}
-                            size="small"
-                            type="primary"
+                            iconLeading={Check}
+                            size="xs"
                             onClick={handleDisplayNameChange}
                           />
                         </div>

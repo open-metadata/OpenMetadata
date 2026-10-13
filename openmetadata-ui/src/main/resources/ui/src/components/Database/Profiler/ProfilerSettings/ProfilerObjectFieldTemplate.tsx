@@ -10,14 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Typography } from '@openmetadata/ui-core-components';
-import { Plus } from '@openmetadata/ui-core-components/icons';
+import { Box, Button, Typography } from '@openmetadata/ui-core-components';
 import { ObjectFieldTemplateProps } from '@rjsf/utils';
-import { Button } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { FC, Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 
 export const ProfilerObjectFieldTemplate: FC<ObjectFieldTemplateProps> = (
   props: ObjectFieldTemplateProps
@@ -34,21 +33,24 @@ export const ProfilerObjectFieldTemplate: FC<ObjectFieldTemplateProps> = (
         className="layout-space layout-space-horizontal w-full justify-between"
         gap={2}
         itemClassName="layout-space-item">
-        <span
+        <Typography
           className={classNames('control-label', {
             'font-medium text-base-color text-md': !schema.additionalProperties,
           })}
           id={`${idSchema.$id}__title`}>
           {title}
-        </span>
+        </Typography>
 
         {schema.additionalProperties && (
           <Button
+            aria-label={t('label.add')}
+            color="primary"
             data-testid={`add-item-${title}`}
-            icon={<Plus className="tw:shrink-0" size={12} />}
+            iconLeading={
+              <Plus size={14} style={{ color: 'white', fontSize: '12px' }} />
+            }
             id={`${idSchema.$id}`}
-            size="small"
-            type="primary"
+            size="xs"
             onClick={() => {
               onAddClick(schema)();
             }}

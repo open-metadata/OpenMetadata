@@ -11,8 +11,14 @@
  *  limitations under the License.
  */
 
-import { Box, Card, Tabs, Typography } from '@openmetadata/ui-core-components';
-import { Button, Modal } from 'antd';
+import {
+  Box,
+  Button,
+  Card,
+  SimpleModal,
+  Tabs,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
@@ -271,8 +277,8 @@ const RolesDetailPage = () => {
             <Card.Content>
               <div className="flex justify-end m-b-md">
                 <Button
+                  color="primary"
                   data-testid="add-policy"
-                  type="primary"
                   onClick={() =>
                     setAddAttribute({
                       type: EntityType.POLICY,
@@ -361,9 +367,8 @@ const RolesDetailPage = () => {
                 })}
               </p>
               <Button
-                ghost
-                className="m-t-sm"
-                type="primary"
+                className="tw:mt-3"
+                color="secondary-brand"
                 onClick={() => navigate(rolesPath)}>
                 {t('label.go-back')}
               </Button>
@@ -434,13 +439,11 @@ const RolesDetailPage = () => {
         )}
 
         {selectedEntity && (
-          <Modal
-            centered
-            closable={false}
-            confirmLoading={isLoadingOnSave}
-            maskClosable={false}
+          <SimpleModal
+            isDismissable={false}
+            isOkLoading={isLoadingOnSave}
+            isOpen={!isUndefined(selectedEntity.record)}
             okText={t('label.confirm')}
-            open={!isUndefined(selectedEntity.record)}
             title={`${t('label.remove-entity', {
               entity: getEntityName(selectedEntity.record),
             })} ${t('label.from-lowercase')} ${roleName}`}
@@ -458,7 +461,7 @@ const RolesDetailPage = () => {
                 parent: roleName,
               })}
             </Typography>
-          </Modal>
+          </SimpleModal>
         )}
         {addAttribute && (
           <AddAttributeModal

@@ -13,17 +13,11 @@
 
 import {
   Box,
-  Button as CoreButton,
+  Button,
   Grid,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import {
-  SortAscending,
-  SortDescending,
-  XCircle,
-} from '@openmetadata/ui-core-components/icons';
-import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, uniqBy } from 'lodash';
@@ -89,6 +83,7 @@ import {
   TableQueriesProp,
 } from './TableQueries.interface';
 import TableQueryRightPanel from './TableQueryRightPanel/TableQueryRightPanel.component';
+import { SortAscending, SortDescending, XCircle } from '@openmetadata/ui-core-components/icons';
 
 const TableQueries: FC<TableQueriesProp> = ({
   isTableDeleted,
@@ -503,14 +498,14 @@ const TableQueries: FC<TableQueriesProp> = ({
       isDisabled={permissions?.query.Create}
       placement="top"
       title={t(NO_PERMISSION_FOR_ACTION)}>
-      <CoreButton
+      <Button
         color="primary"
         data-testid="add-query-btn"
         isDisabled={!permissions?.query.Create}
         size="sm"
         onPress={handleAddQueryClick}>
         {t('label.add')}
-      </CoreButton>
+      </Button>
     </Tooltip>
   );
 
@@ -634,14 +629,14 @@ const TableQueries: FC<TableQueriesProp> = ({
                         onGetInitialOptions={getInitialTagsOptions}
                         onSearch={handleTagsSearch}
                       />
-                      <Button
-                        className="p-x-0"
-                        type="text"
+                      <span
+                        className="tw:inline-flex tw:cursor-pointer tw:items-center"
+                        role="presentation"
                         onClick={() => {
                           setIsClickedCalendar(true);
                         }}>
                         <span>
-                          <span>{t('label.created-date')}</span>
+                          <Typography>{t('label.created-date')}</Typography>
                           <DatePicker.RangePicker
                             allowClear
                             showNow
@@ -659,8 +654,9 @@ const TableQueries: FC<TableQueriesProp> = ({
                             }}
                           />
                         </span>
-                      </Button>
+                      </span>
                     </Box>
+
                     <Box
                       inline
                       align="center"
@@ -673,9 +669,8 @@ const TableQueries: FC<TableQueriesProp> = ({
                         sortField={sortQuery.field}
                       />
                       <Button
-                        className="p-0"
+                        color="tertiary"
                         data-testid="sort-order-button"
-                        type="text"
                         onClick={() =>
                           handleSortOderChange(
                             isAscSortOrder ? SORT_ORDER.DESC : SORT_ORDER.ASC
