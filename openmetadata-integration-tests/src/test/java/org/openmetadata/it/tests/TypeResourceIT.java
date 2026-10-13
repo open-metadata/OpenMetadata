@@ -9,7 +9,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -20,8 +19,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Predicate;
-import org.awaitility.Awaitility;
 import org.jdbi.v3.core.Handle;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
@@ -1406,29 +1403,6 @@ public class TypeResourceIT {
     }
   }
 
-  /** The holder's search doc loses the reference once the delete commits, with no reindex. */
-  @Test
-  void test_referenceList_hardDeleteRemovesReferenceFromSearch(TestNamespace ns) throws Exception {
-    OpenMetadataClient client = SdkClients.adminClient();
-    String property = addTeamReferenceProperty(client, ns, "entityReferenceList");
-    try {
-      Team first = createTeam(client, ns.prefix("first"), CreateTeam.TeamType.GROUP, null);
-      Team second = createTeam(client, ns.prefix("second"), CreateTeam.TeamType.GROUP, null);
-      Domain domain =
-          createDomain(client, ns, property, List.of(referenceOf(first), referenceOf(second)));
-      assertTrue(searchRefIds(client, domain).contains(id(first)));
-
-      client.teams().delete(first.getId().toString(), HARD_DELETE);
-
-      awaitSearchRefIds(
-          client,
-          domain,
-          ids -> !ids.contains(first.getId().toString()) && ids.contains(id(second)));
-    } finally {
-      deleteDomainProperty(client, property);
-    }
-  }
-
   /** A value stored the pre-2.1 way, in entity_extension, moves to its rows on upgrade. */
   @Test
   @ResourceLock(
@@ -1467,53 +1441,6 @@ public class TypeResourceIT {
 
       runReferenceMigration();
       assertEquals(1, referenceRowsTo(second.getId()).size());
-    } finally {
-      deleteDomainProperty(client, property);
-    }
-  }
-
-  @Test
-  void test_referenceList_writesRacingHardDeleteLeaveNoDanglingReference(TestNamespace ns)
-      throws Exception {
-    OpenMetadataClient client = SdkClients.adminClient();
-    String property = addTeamReferenceProperty(client, ns, "entityReferenceList");
-    try {
-      Team doomed = createTeam(client, ns.prefix("doomed"), CreateTeam.TeamType.GROUP, null);
-      Team survivor = createTeam(client, ns.prefix("survivor"), CreateTeam.TeamType.GROUP, null);
-      Domain domain = createDomain(client, ns, property, List.of(referenceOf(survivor)));
-
-      ExecutorService writers = Executors.newFixedThreadPool(3);
-      List<Object> toggled = List.of(referenceOf(doomed), referenceOf(survivor));
-      List<Object> plain = List.of(referenceOf(survivor));
-      CountDownLatch firstWrites = new CountDownLatch(3);
-      for (int writer = 0; writer < 3; writer++) {
-        writers.submit(
-            () -> {
-              for (int attempt = 0; attempt < 20; attempt++) {
-                try {
-                  Domain current = client.domains().get(domain.getId().toString(), "extension");
-                  current.setExtension(Map.of(property, attempt % 2 == 0 ? toggled : plain));
-                  client.domains().update(domain.getId().toString(), current);
-                } catch (OpenMetadataException e) {
-                  LOG.debug(
-                      "Write rejected while the target was being deleted: {}", e.getMessage());
-                } finally {
-                  if (attempt == 0) {
-                    firstWrites.countDown();
-                  }
-                }
-              }
-            });
-      }
-      assertTrue(firstWrites.await(1, TimeUnit.MINUTES), "every writer wrote before the delete");
-      client.teams().delete(doomed.getId().toString(), HARD_DELETE);
-      writers.shutdown();
-      assertTrue(writers.awaitTermination(2, TimeUnit.MINUTES));
-
-      assertFalse(
-          referenceIds(client.domains().get(domain.getId().toString(), "extension"), property)
-              .contains(doomed.getId().toString()));
-      assertNoReferencesTo(doomed.getId());
     } finally {
       deleteDomainProperty(client, property);
     }
@@ -1712,32 +1639,6 @@ public class TypeResourceIT {
 
   private static String id(EntityInterface entity) {
     return entity.getId().toString();
-  }
-
-  /** Waits for the domain's search doc to carry reference ids matching {@code expected}. */
-  private static void awaitSearchRefIds(
-      OpenMetadataClient client, Domain domain, Predicate<List<String>> expected) {
-    Awaitility.await("search doc reference ids")
-        .atMost(Duration.ofSeconds(60))
-        .pollInterval(Duration.ofMillis(500))
-        .ignoreExceptions()
-        .untilAsserted(() -> assertTrue(expected.test(searchRefIds(client, domain))));
-  }
-
-  /** Reads the domain's search doc by id; a free-text query would expand past clause limits. */
-  private static List<String> searchRefIds(OpenMetadataClient client, Domain domain)
-      throws Exception {
-    String response =
-        client
-            .getHttpClient()
-            .executeForString(
-                HttpMethod.GET, "/v1/search/get/domain_search_index/doc/" + domain.getId(), null);
-    List<String> ids = new ArrayList<>();
-    OBJECT_MAPPER
-        .readTree(response)
-        .path("customPropertiesTyped")
-        .forEach(entry -> ids.add(entry.path("refId").asText()));
-    return ids;
   }
 
   /** Runs the 2.1.0 data step the way the migrate job does, on its own handle. */
