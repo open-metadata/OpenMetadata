@@ -2912,6 +2912,9 @@ public class SearchRepository {
 
   public void propagateGlossaryTags(
       String entityType, String glossaryFQN, ChangeDescription changeDescription) {
+    if (!SettingsCache.isGlossaryTagPropagationEnabled()) {
+      return;
+    }
     Map<String, Object> fieldData = new HashMap<>();
     if (changeDescription != null && entityType.equalsIgnoreCase(Entity.GLOSSARY_TERM)) {
       for (FieldChange field : changeDescription.getFieldsAdded()) {
@@ -4537,6 +4540,14 @@ public class SearchRepository {
       return emptySearchResponse();
     }
     return searchClient.aggregate(request);
+  }
+
+  public Response aggregate(AggregationRequest request, SubjectContext subjectContext)
+      throws IOException {
+    if (targetsDisabledColumnIndex(request.getIndex())) {
+      return emptySearchResponse();
+    }
+    return searchClient.aggregate(request, subjectContext);
   }
 
   public Response getEntityTypeCounts(SearchRequest request, String index) throws IOException {

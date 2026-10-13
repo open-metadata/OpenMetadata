@@ -18,7 +18,6 @@ import {
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
-
 import classNamesFunc from 'classnames';
 import { isEmpty, isNumber, isUndefined, upperFirst } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
@@ -157,9 +156,7 @@ export const IngestionRecentRuns = <
     <Box
       inline
       align="center"
-      className={`layout-space layout-space-horizontal ${classNames}`}
-      itemClassName="layout-space-item"
-      style={{ gap: 'var(--om-space-5)' }}>
+      className={classNamesFunc('tw:gap-1.25', classNames)}>
       {isEmpty(recentRunStatus) ? (
         <Typography data-testid="pipeline-status">
           {NO_DATA_PLACEHOLDER}

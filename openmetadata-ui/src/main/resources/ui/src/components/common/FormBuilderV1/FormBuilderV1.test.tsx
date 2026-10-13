@@ -31,6 +31,15 @@ const mockFormatFormDataForRender = jest.fn(
 );
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Box: jest.fn(
+    ({
+      children,
+      className,
+    }: {
+      children: React.ReactNode;
+      className?: string;
+    }) => <div className={className}>{children}</div>
+  ),
   Button: jest.fn(
     ({
       children,

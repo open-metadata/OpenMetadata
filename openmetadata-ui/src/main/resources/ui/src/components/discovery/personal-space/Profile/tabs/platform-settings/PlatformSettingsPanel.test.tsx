@@ -36,6 +36,17 @@ jest.mock('../../../../../../hooks/useApplicationStore', () => ({
     selector({ authConfig: { provider: mockProvider } }),
 }));
 
+let mockContributions: unknown[] = [];
+
+jest.mock(
+  '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider',
+  () => ({
+    useApplicationsProvider: () => ({
+      getContributions: () => mockContributions,
+    }),
+  })
+);
+
 // The pages own their data fetching; the panel test only checks which one is
 // routed to and what the header shows, so each page is a stand-in.
 jest.mock('./EmailSettings', () => () => <div data-testid="email-view" />);
@@ -101,6 +112,12 @@ jest.mock(
     ({ itemId }: { itemId: string }) =>
       <div data-testid="entity-search-view">{itemId}</div>
 );
+jest.mock('./TableSchemaSettings', () => () => (
+  <div data-testid="table-schema-view" />
+));
+jest.mock('./TableSchemaSettingsForm', () => () => (
+  <div data-testid="table-schema-form" />
+));
 jest.mock('./AppModeSettingsForm', () => () => (
   <div data-testid="app-mode-form" />
 ));
@@ -122,6 +139,7 @@ describe('PlatformSettingsPanel', () => {
     jest.clearAllMocks();
     mockSubPath = '';
     mockProvider = AuthProvider.Basic;
+    mockContributions = [];
   });
 
   it('lists every legacy preferences page on the landing', () => {
@@ -140,6 +158,7 @@ describe('PlatformSettingsPanel', () => {
       'learning-resources',
       'search',
       'app-mode',
+      'table-schema',
     ].forEach((id) =>
       expect(
         screen.getByTestId(`platform-settings-card-${id}`)
@@ -324,5 +343,58 @@ describe('PlatformSettingsPanel', () => {
       'platform-settings',
       undefined
     );
+  });
+
+  describe('contributed pages', () => {
+    const ContributedIcon = () => <svg />;
+
+    beforeEach(() => {
+      mockContributions = [
+        {
+          id: 'ingestion-runner',
+          icon: ContributedIcon,
+          titleKey: 'label.contributed',
+          descriptionKey: 'message.contributed',
+          component: ({ itemId }: { itemId?: string }) => (
+            <div data-testid="contributed-view">{itemId}</div>
+          ),
+        },
+      ];
+    });
+
+    it('adds a card after the built-in pages', () => {
+      renderPanel();
+
+      const cards = screen.getAllByTestId(/^platform-settings-card-/);
+
+      expect(cards[cards.length - 1]).toHaveAttribute(
+        'data-testid',
+        'platform-settings-card-ingestion-runner'
+      );
+    });
+
+    it('hides a contribution whose isVisible rejects the auth provider', () => {
+      mockContributions = [
+        {
+          ...(mockContributions[0] as object),
+          isVisible: () => false,
+        },
+      ];
+      renderPanel();
+
+      expect(
+        screen.queryByTestId('platform-settings-card-ingestion-runner')
+      ).not.toBeInTheDocument();
+    });
+
+    it('renders the contributed component with its own header', () => {
+      mockSubPath = 'ingestion-runner';
+      renderPanel();
+
+      expect(screen.getByTestId('contributed-view')).toBeInTheDocument();
+      expect(lastHeader().title).toBe('label.contributed');
+      expect(lastHeader().description).toBe('message.contributed');
+      expect(lastHeader().icon).toBe(ContributedIcon);
+    });
   });
 });

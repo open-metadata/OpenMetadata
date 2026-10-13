@@ -510,21 +510,18 @@ export const assignTierToPanel = async (page: Page, tierName: string) => {
   // eslint-disable-next-line playwright/no-force-option -- popover trigger may be partially obstructed by animation
   await page.getByTestId('edit-icon-tier').click({ force: true });
 
-  const tierPopover = page.getByTestId('cards');
+  const tierPopover = page.getByTestId('drop-down-menu');
   await tierPopover.waitFor({ state: 'visible' });
 
   await waitForAllLoadersToDisappear(page);
 
-  const tierRadioButton = page.getByTestId(`radio-btn-${tierName}`);
-  await tierRadioButton.waitFor({ state: 'visible' });
+  const tierRow = tierPopover.getByTestId(`Tier.${tierName}`);
+  await tierRow.waitFor({ state: 'visible' });
 
   const patchPromise = waitForPatchResponse(page);
 
-  await tierRadioButton.click();
-
-  const updateButton = page.getByTestId('update-tier-card');
-  await updateButton.waitFor({ state: 'visible' });
-  await updateButton.click();
+  // Picking a tier saves it and closes the picker.
+  await tierRow.click();
 
   await patchPromise;
 
@@ -539,10 +536,10 @@ export const removeTierFromPanel = async (page: Page) => {
   // eslint-disable-next-line playwright/no-force-option -- popover trigger may be partially obstructed by animation
   await page.getByTestId('edit-icon-tier').click({ force: true });
 
-  const tierPopover = page.getByTestId('cards');
+  const tierPopover = page.getByTestId('drop-down-menu');
   await tierPopover.waitFor({ state: 'visible' });
 
-  const clearButton = tierPopover.getByTestId('clear-tier');
+  const clearButton = tierPopover.getByTestId('clear-filter-btn');
   await clearButton.waitFor({ state: 'visible' });
 
   const patchPromise = waitForPatchResponse(page);

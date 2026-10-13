@@ -445,7 +445,7 @@
         "destructiveHint": false,
         "openWorldHint": false
       },
-      "description": "For a business question when no specific asset has been chosen yet: semantically searches the company-knowledge layer (glossary term definitions, metric definitions, Context Center articles) and returns the relevant definitions PLUS the candidate data assets each concept points to (glossary terms → the tables tagged with them, metrics → the assets they apply to, articles → the assets they are about). Use this to bootstrap a data question from business concepts into candidate tables, then call get_asset_context on those candidate fullyQualifiedNames. Returns LLM-friendly markdown by default.",
+      "description": "For a business question when no specific asset has been chosen yet: semantically searches glossary definitions, metrics and Context Center articles, returning definitions and candidate assets. For a glossary term or metric hit, call get_concept_context with its type and fullyQualifiedName to resolve its exact column bindings, profiles, rule and evidence. Fetch candidate asset context with get_entity_details(include=['context']). Returns markdown by default.",
       "parameters": {
         "description": "Provide a natural-language 'query' using the business terms or concepts from the user's request.",
         "type": "object",
@@ -472,6 +472,39 @@
         "required": [
           "query"
         ]
+      }
+    },
+    {
+      "name": "get_concept_context",
+      "title": "Get Concept Context",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "description": "Resolve a glossary term or metric to its definition, typed ontology attributes, exact asset and column bindings, permission-masked profiles and sample values, related metrics and saved-query evidence. Use the concept's fullyQualifiedName from find_context. Returns the same AIContext as GET /v1/glossaryTerms/name/{fqn}/context or /v1/metrics/name/{fqn}/context. Bindings are capped at ten visible assets and 25 bindings per asset; totalAssets, totalBindings and truncated report overflow. Counting stops after 500 candidate assets, so totals are lower bounds when that cap sets truncated. Attached articles and memories share the existing knowledge budget.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entityType": {
+            "type": "string",
+            "enum": ["glossaryTerm", "metric"]
+          },
+          "fqn": {
+            "type": "string",
+            "description": "Fully qualified name of the glossary term or metric."
+          },
+          "format": {
+            "type": "string",
+            "enum": ["markdown", "json"],
+            "default": "markdown"
+          },
+          "query": {
+            "type": "string",
+            "description": "Optional question used to choose excerpts of attached knowledge."
+          }
+        },
+        "required": ["entityType", "fqn"]
       }
     },
     {

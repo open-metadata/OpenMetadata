@@ -17,6 +17,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -52,10 +53,19 @@ public class OpenSearchVectorService implements VectorIndexService {
 
   private final OpenSearchClient client;
   @Getter private final EmbeddingClient embeddingClient;
+  private final Function<VectorSearchParameters, Set<String>> readableAnchors;
 
   public OpenSearchVectorService(OpenSearchClient client, EmbeddingClient embeddingClient) {
+    this(client, embeddingClient, VectorSearchMemoryAccess::readableAnchorIds);
+  }
+
+  OpenSearchVectorService(
+      OpenSearchClient client,
+      EmbeddingClient embeddingClient,
+      Function<VectorSearchParameters, Set<String>> readableAnchors) {
     this.client = client;
     this.embeddingClient = embeddingClient;
+    this.readableAnchors = readableAnchors;
   }
 
   public static synchronized void init(OpenSearchClient client, EmbeddingClient embeddingClient) {
@@ -465,6 +475,11 @@ public class OpenSearchVectorService implements VectorIndexService {
   private volatile Set<String> stagedExpectedTypes = Set.of();
   private final Set<String> stagedCompletedTypes = ConcurrentHashMap.newKeySet();
   private volatile boolean stagedChunkRunFailed;
+  // Run-scoped staged chunk index latched by a non-coordinator participant from its ReindexContext
+  // (see latchParticipantStagedTarget). Null on the coordinator, which uses stagedChunkIndex; null
+  // on a participant whose reindex thread has not yet latched (startup race). Volatile: set by the
+  // participant's reindex thread, read by request threads via resolveChunkSinkTarget.
+  private volatile String participantStagedTarget;
 
   /**
    * Begins a staged recreate for a full-recreate run: pre-flights the embedding client (a broken
@@ -654,14 +669,33 @@ public class OpenSearchVectorService implements VectorIndexService {
   private volatile long cachedSinkTargetAt;
 
   /**
-   * Additional delete target for live chunk deletes: the coordinator's staged generation when this
-   * JVM began the recreate, else the newest un-promoted generation found in cluster state (short
-   * cache). Sink WRITES no longer use discovery — they receive the run-scoped target explicitly
-   * via ReindexContext — so this only serves deletes, where hitting a crashed run's orphan is
-   * harmless idempotent removal.
+   * Resolves the staged chunk target for the live-edit mirror ({@link #mirrorToStagedGeneration})
+   * and delete ({@link #deleteEntityChunks}) paths. Resolution order:
+   *
+   * <ol>
+   *   <li>{@link #stagedChunkIndex} — the coordinator's own run-scoped generation, set by {@link
+   *       #beginStagedChunkRecreate}. Coordinator-only; also gates promotion in {@link
+   *       #markEntityTypeReindexed}, so it must never be set on a participant.
+   *   <li>{@link #participantStagedTarget} — a non-coordinator participant's run-scoped
+   *       generation, latched from its {@code ReindexContext} by {@link
+   *       #latchParticipantStagedTarget}. Authoritative for the run, so mirroring and deletes
+   *       never depend on best-effort discovery — the gap that lost live edits when discovery
+   *       cached a stale {@code null} on a participant JVM (see fd054753fa).
+   *   <li>Best-effort cluster-state probe ({@link #findActiveStagedGeneration}) with a short
+   *       JVM-local cache that may hold {@code null} (no un-promoted {@code *_g*} index exists
+   *       yet, or a transient probe failure). Reached only before a participant latches (startup
+   *       race) or on a JVM with no run context; a {@code null} here is harmless for deletes but
+   *       causes {@link #mirrorToStagedGeneration} to skip the mirror.
+   * </ol>
+   *
+   * <p>Sink writes ({@code writeEntityChunks} / {@code backfillEntityChunks}) do not use this
+   * helper: they receive the run-scoped target explicitly via {@code ReindexContext}.
    */
   private String resolveChunkSinkTarget() {
-    String target = stagedChunkIndex;
+    String target = stagedChunkIndex; // coordinator-only fast path (also gates promotion)
+    if (target == null) {
+      target = participantStagedTarget; // participant latch from ReindexContext
+    }
     if (target == null) {
       long now = System.currentTimeMillis();
       if (now - cachedSinkTargetAt > SINK_TARGET_CACHE_MS) {
@@ -671,6 +705,35 @@ public class OpenSearchVectorService implements VectorIndexService {
       target = cachedSinkTarget;
     }
     return target;
+  }
+
+  /**
+   * Latches the run-scoped staged chunk index a participant received via its {@code
+   * ReindexContext}, so live-edit mirroring ({@link #mirrorToStagedGeneration}) and deletes ({@link
+   * #deleteEntityChunks}) read the authoritative run-scoped target instead of falling through to
+   * the best-effort probe in {@link #findActiveStagedGeneration}. That probe can hold a stale
+   * {@code null} for up to {@value SINK_TARGET_CACHE_MS}ms on a non-coordinator JVM (cached before
+   * the coordinator created the generation, or after a transient cluster-state failure), in which
+   * case the mirror silently no-ops and the live edit is stranded in the soon-to-be-removed old
+   * generation. Called once per run by {@code DistributedJobParticipant} before it streams, and
+   * cleared by {@link #clearParticipantStagedTarget} when the run ends.
+   *
+   * <p>Must NOT set {@link #stagedChunkIndex}: that field gates promotion in {@link
+   * #markEntityTypeReindexed} (checking {@code stagedCompletedTypes} against {@code
+   * stagedExpectedTypes}) and is coordinator-only. {@code participantStagedTarget} is safe because
+   * the promotion path never reads it.
+   */
+  public void latchParticipantStagedTarget(String staged) {
+    participantStagedTarget = staged;
+  }
+
+  /**
+   * Clears the participant latch set by {@link #latchParticipantStagedTarget} when its run ends, so
+   * a later run cannot mirror or delete into a generation that belongs to a finished (promoted or
+   * abandoned) run.
+   */
+  public void clearParticipantStagedTarget() {
+    participantStagedTarget = null;
   }
 
   /** Newest generation index not yet holding the read alias, or null when none exists. */
@@ -1289,13 +1352,15 @@ public class OpenSearchVectorService implements VectorIndexService {
    */
   private void mirrorToStagedGeneration(String parentId, List<Map<String, Object>> chunkDocs) {
     String staged = resolveChunkSinkTarget();
-    if (staged != null) {
-      try {
-        replaceChunks(staged, parentId, chunkDocs, previousCount(getChunkHeader(staged, parentId)));
-      } catch (IOException | RuntimeException e) {
-        LOG.warn(
-            "Failed to mirror chunks for {} into staged {}: {}", parentId, staged, e.getMessage());
-      }
+    if (staged == null) {
+      LOG.debug("No staged chunk generation to mirror the live update for {}", parentId);
+      return;
+    }
+    try {
+      replaceChunks(staged, parentId, chunkDocs, previousCount(getChunkHeader(staged, parentId)));
+    } catch (IOException | RuntimeException e) {
+      LOG.warn(
+          "Failed to mirror chunks for {} into staged {}: {}", parentId, staged, e.getMessage());
     }
   }
 
@@ -1542,10 +1607,13 @@ public class OpenSearchVectorService implements VectorIndexService {
       }
 
       String aliasName = getIndexAlias();
+      Set<String> readableAnchorIds = readableAnchors.apply(parameters);
       while (!exhausted && byParent.size() < requestedParents) {
         String queryJson =
             VectorSearchQueryBuilder.build(
-                queryVector, parameters.withPagination(overFetchSize, rawOffset));
+                queryVector,
+                parameters.withPagination(overFetchSize, rawOffset),
+                readableAnchorIds);
         String endpoint =
             SearchUtils.appendPreferenceParam(
                 "/" + aliasName + "/_search", parameters.preference());

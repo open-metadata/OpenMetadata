@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import { PieChart } from '@openmetadata/ui-core-components/charts';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -49,7 +49,6 @@ import { showErrorToast } from '../../../../utils/ToastUtils';
 import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetHeader from '../Common/WidgetHeader/WidgetHeader';
 import WidgetWrapper from '../Common/WidgetWrapper/WidgetWrapper';
-import './total-data-assets-widget.less';
 import {
   DATA_ASSETS_SORT_BY_KEYS,
   DATA_ASSETS_SORT_BY_OPTIONS,
@@ -216,14 +215,13 @@ const TotalDataAssetsWidget = ({
 
   const totalDataAssetsContent = useMemo(() => {
     return (
-      <div
-        className={classNames(
-          'total-data-assets-widget-content d-flex flex-column',
-          isFullSizeWidget ? 'gap-1' : 'gap-4'
-        )}>
-        <div className={isFullSizeWidget ? 'd-flex gap-6' : ''}>
+      <Box
+        className="total-data-assets-widget-content tw:my-auto"
+        direction="col"
+        gap={isFullSizeWidget ? 1 : 4}>
+        <Box gap={6}>
           {/* Donut Chart */}
-          <div className="flex-1 donut-chart-wrapper">
+          <div className="donut-chart-wrapper tw:relative tw:flex-1 tw:shrink-0">
             <PieChart
               ariaLabel={t('label.data-insight-total-entity-summary')}
               centerLabel={
@@ -245,19 +243,23 @@ const TotalDataAssetsWidget = ({
 
           {/* Right-side Legend */}
           {isFullSizeWidget && (
-            <div
-              className="flex-1 legend-list p-md"
-              data-testid="assets-legend">
+            <Box
+              className="legend-list tw:max-h-75 tw:flex-1 tw:p-4"
+              data-testid="assets-legend"
+              direction="col"
+              gap={3}
+              wrap="wrap">
               {sortedEntityList.map((label, index) => (
-                <div
-                  className="d-flex items-center gap-3 text-sm"
+                <Box
+                  align="center"
+                  className="tw:w-[calc(50%-6px)] tw:flex-none tw:text-sm"
                   data-testid={`legend-item-${label}`}
+                  gap={3}
                   key={label}>
                   <span
-                    className="h-3 w-3"
+                    className="tw:size-3 tw:shrink-0 tw:rounded-full"
                     data-testid={`legend-color-${label}`}
                     style={{
-                      borderRadius: '50%',
                       backgroundColor:
                         pieChartColors[index % pieChartColors.length],
                     }}
@@ -266,39 +268,46 @@ const TotalDataAssetsWidget = ({
                     {startCase(label)}
                   </Typography>
                   <span
-                    className="text-xs font-medium p-y-xss p-x-xs data-value"
+                    className="data-value tw:rounded-2xl tw:bg-utility-gray-blue-50 tw:px-2 tw:py-1 tw:text-xs tw:font-medium tw:text-secondary"
                     data-testid={`legend-count-${label}`}>
                     {selectedDateData[label] ?? 0}
                   </span>
-                </div>
+                </Box>
               ))}
-            </div>
+            </Box>
           )}
-        </div>
+        </Box>
 
         {/* Date Selector */}
-        <div className="date-selector-wrapper m-t-xs">
-          <div className="date-selector-container">
-            {availableDates.map(({ day, dayString }) => (
-              <div
-                aria-label={dayString}
-                className={`date-box ${selectedDate === day ? 'selected' : ''}`}
-                key={day}
-                role="button"
-                tabIndex={0}
-                onClick={() => setSelectedDate(day)}
-                onKeyDown={handleKeyboardActivation(() =>
-                  setSelectedDate(day)
-                )}>
-                <div className="day font-semibold text-sm">
-                  {dayString.split(' ')[0]}
-                </div>
-                <div className="month text-xs">{dayString.split(' ')[1]}</div>
+        <Box
+          className="date-selector-container tw:mt-2 tw:min-w-0 tw:px-3"
+          gap={2}
+          justify="center"
+          wrap="wrap">
+          {availableDates.map(({ day, dayString }) => (
+            <div
+              aria-label={dayString}
+              className={classNames(
+                'date-box tw:max-w-15 tw:min-w-10 tw:flex-1 tw:cursor-pointer tw:rounded-xl tw:border tw:px-3 tw:py-2 tw:text-center',
+                selectedDate === day
+                  ? 'selected tw:border-utility-brand-600 tw:bg-utility-brand-100'
+                  : 'tw:border-subtle tw:bg-utility-gray-blue-50'
+              )}
+              key={day}
+              role="button"
+              tabIndex={0}
+              onClick={() => setSelectedDate(day)}
+              onKeyDown={handleKeyboardActivation(() => setSelectedDate(day))}>
+              <div className="day tw:text-sm tw:font-semibold tw:text-primary">
+                {dayString.split(' ')[0]}
               </div>
-            ))}
-          </div>
-        </div>
-      </div>
+              <div className="month tw:text-xs tw:text-quaternary">
+                {dayString.split(' ')[1]}
+              </div>
+            </div>
+          ))}
+        </Box>
+      </Box>
     );
   }, [
     t,
@@ -368,11 +377,15 @@ const TotalDataAssetsWidget = ({
       dataTestId="KnowledgePanel.TotalAssets"
       header={widgetHeader}
       loading={isLoading}>
-      <div className="total-data-assets-widget-container">
-        <div className="widget-content flex-1 h-full">
+      <Box
+        className="total-data-assets-widget-container tw:h-full"
+        direction="col">
+        <Box
+          className="widget-content tw:h-full tw:min-h-0 tw:flex-1 tw:overflow-hidden"
+          direction="col">
           {isEmpty(graphData) ? emptyState : totalDataAssetsContent}
-        </div>
-      </div>
+        </Box>
+      </Box>
     </WidgetWrapper>
   );
 };

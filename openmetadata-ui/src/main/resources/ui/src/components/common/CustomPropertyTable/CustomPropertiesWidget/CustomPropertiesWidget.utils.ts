@@ -189,23 +189,20 @@ export const getWidgetStyle = ({
   size === 'large' ? 'fullWidth' : 'preview';
 
 /**
- * Full width shows a card per property; preview shows one-line rows. A preview
- * is one column wide, so its properties all take the full row.
+ * Switches the widget's grid size for a style. A full-width widget shows a
+ * card per property; a preview widget packs one-line rows into a single
+ * column. The style only sets the card size: the per-card half/full width a
+ * user picked in the in-place editor lives in `propertyLayout` and is left
+ * untouched, so toggling the style back and forth never overwrites it. A
+ * preview's one-column layout is enforced where it is rendered, not here.
  */
 export const withWidgetStyle = (
   settings: CustomPropertiesWidgetSettings,
   style: CustomPropertiesWidgetStyle
-): CustomPropertiesWidgetSettings =>
-  style === 'fullWidth'
-    ? { ...settings, size: 'large' }
-    : {
-        ...settings,
-        size: 'small',
-        propertyLayout: settings.propertyLayout.map((item) => ({
-          ...item,
-          width: 'full',
-        })),
-      };
+): CustomPropertiesWidgetSettings => ({
+  ...settings,
+  size: style === 'fullWidth' ? 'large' : 'small',
+});
 
 /**
  * The widget's picked properties, in stored order. Widgets that never picked

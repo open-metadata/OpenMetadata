@@ -13,10 +13,28 @@
 
 import { RJSFSchema } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { AxiosError } from 'axios';
 import { pick } from 'lodash';
+import {
+  ConfigSourceMode,
+  SettingSource,
+  SettingType,
+} from '../../../../generated/system/settingsSourceResponse';
 import { getMcpConfig, updateMcpConfig } from '../../../../rest/mcpConfigAPI';
+import {
+  adoptDeploymentConfig,
+  getSettingsSource,
+} from '../../../../rest/settingConfigAPI';
 import mcpSchema from '../../../../utils/ApplicationSchemas/McpApplication.json';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import McpApplicationConfiguration from './McpApplicationConfiguration';
@@ -28,6 +46,11 @@ jest.mock('react-i18next', () => ({
 jest.mock('../../../../rest/mcpConfigAPI', () => ({
   getMcpConfig: jest.fn(),
   updateMcpConfig: jest.fn(),
+}));
+
+jest.mock('../../../../rest/settingConfigAPI', () => ({
+  getSettingsSource: jest.fn(),
+  adoptDeploymentConfig: jest.fn(),
 }));
 
 jest.mock('../../../../utils/ToastUtils', () => ({
@@ -55,20 +78,28 @@ jest.mock('../../../common/ResizablePanels/ResizablePanels', () => {
 });
 
 jest.mock('../../../common/FormBuilder/FormBuilder', () => {
-  return jest.fn().mockImplementation(({ formData, onSubmit }) => (
-    <div data-testid="form-builder">
-      <span data-testid="form-data">{JSON.stringify(formData)}</span>
-      <button
-        data-testid="submit"
-        onClick={() =>
-          onSubmit({
-            formData: { allowedOrigins: ['https://app.example.com'] },
-          })
-        }>
-        submit
-      </button>
-    </div>
-  ));
+  return jest
+    .fn()
+    .mockImplementation(
+      ({ formData, onSubmit, uiSchema, disabled, readonly }) => (
+        <div
+          data-disabled={String(Boolean(disabled))}
+          data-readonly={String(Boolean(readonly))}
+          data-testid="form-builder">
+          <span data-testid="form-data">{JSON.stringify(formData)}</span>
+          <span data-testid="ui-schema">{JSON.stringify(uiSchema)}</span>
+          <button
+            data-testid="submit"
+            onClick={() =>
+              onSubmit({
+                formData: { allowedOrigins: ['https://app.example.com'] },
+              })
+            }>
+            submit
+          </button>
+        </div>
+      )
+    );
 });
 
 const mockJsonSchema = {
@@ -80,18 +111,33 @@ const mockJsonSchema = {
 
 const mockGetMcpConfig = getMcpConfig as jest.Mock;
 const mockUpdateMcpConfig = updateMcpConfig as jest.Mock;
+const mockGetSettingsSource = getSettingsSource as jest.Mock;
+const mockAdoptDeploymentConfig = adoptDeploymentConfig as jest.Mock;
+
+const mcpSource = (overrides: Partial<SettingSource>): SettingSource => ({
+  configType: SettingType.MCPConfiguration,
+  source: ConfigSourceMode.Env,
+  sourceVariable: 'MCP_CONFIG_SOURCE',
+  editable: false,
+  ...overrides,
+});
 
 const notFoundError = {
   response: { status: 404 },
 } as AxiosError;
 
 const renderComponent = async () => {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: 0 } },
+  });
   await act(async () => {
     render(
-      <McpApplicationConfiguration
-        appName="McpApplication"
-        jsonSchema={mockJsonSchema}
-      />
+      <QueryClientProvider client={queryClient}>
+        <McpApplicationConfiguration
+          appName="McpApplication"
+          jsonSchema={mockJsonSchema}
+        />
+      </QueryClientProvider>
     );
   });
 };
@@ -113,6 +159,8 @@ describe('McpApplicationConfiguration', () => {
       enabled: true,
       mcpServerName: 'openmetadata-mcp-server',
     });
+    mockGetSettingsSource.mockResolvedValue({ settings: [] });
+    mockAdoptDeploymentConfig.mockResolvedValue({});
   });
 
   it('should seed the form with only the editable fields of the stored mcpConfiguration', async () => {
@@ -179,6 +227,97 @@ describe('McpApplicationConfiguration', () => {
 
     expect(showErrorToast).toHaveBeenCalledWith(serverError);
     expect(showSuccessToast).not.toHaveBeenCalled();
+  });
+
+  it('should keep the form editable when the deployment owns no field', async () => {
+    await renderComponent();
+
+    expect(screen.getByTestId('form-builder')).toHaveAttribute(
+      'data-readonly',
+      'false'
+    );
+    expect(
+      screen.queryByTestId('settings-source-banner')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should disable only the fields the deployment owns', async () => {
+    mockGetSettingsSource.mockResolvedValue({
+      settings: [mcpSource({ managedPaths: ['/allowedOrigins', '/path'] })],
+    });
+    await renderComponent();
+
+    await screen.findByTestId('settings-source-env-alert');
+    const uiSchema = JSON.parse(
+      screen.getByTestId('ui-schema').textContent ?? '{}'
+    );
+
+    expect(uiSchema.allowedOrigins).toEqual({ 'ui:disabled': true });
+    expect(uiSchema.baseUrl).toBeUndefined();
+    expect(screen.getByTestId('form-builder')).toHaveAttribute(
+      'data-readonly',
+      'false'
+    );
+  });
+
+  it.each([
+    [
+      'every field the form shows',
+      ['/baseUrl', '/allowedOrigins', '/maxResponseChars'],
+    ],
+    ['the whole setting', ['/']],
+  ])(
+    'should offer no save when the deployment owns %s',
+    async (_, managedPaths) => {
+      mockGetSettingsSource.mockResolvedValue({
+        settings: [mcpSource({ managedPaths })],
+      });
+      await renderComponent();
+
+      await screen.findByTestId('settings-source-env-alert');
+
+      await waitFor(() => {
+        expect(screen.getByTestId('form-builder')).toHaveAttribute(
+          'data-readonly',
+          'true'
+        );
+      });
+
+      expect(screen.getByTestId('form-builder')).toHaveAttribute(
+        'data-disabled',
+        'true'
+      );
+    }
+  );
+
+  it('should reload the stored configuration once deployment values are adopted', async () => {
+    mockGetSettingsSource.mockResolvedValue({
+      settings: [
+        mcpSource({
+          source: ConfigSourceMode.Auto,
+          editable: true,
+          overriddenFields: [{ path: '/allowedOrigins' }],
+        }),
+      ],
+    });
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    await renderComponent();
+
+    await user.click(await screen.findByTestId('use-deployment-value-button'));
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', {
+        name: 'label.use-deployment-value',
+      })
+    );
+
+    await waitFor(() => {
+      expect(mockGetMcpConfig).toHaveBeenCalledTimes(2);
+    });
+
+    expect(mockAdoptDeploymentConfig).toHaveBeenCalledWith(
+      SettingType.MCPConfiguration,
+      ['/allowedOrigins']
+    );
   });
 });
 
