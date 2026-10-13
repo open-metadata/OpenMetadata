@@ -131,7 +131,11 @@ const getInboxRequests = (
   const filterType = CONVERSATION_FILTER[filter];
 
   return {
-    activity: ACTIVITY_REQUEST[filter]({ days, limit: ACTIVITY_LIMIT }),
+    activity: ACTIVITY_REQUEST[filter]({
+      days,
+      startTs,
+      limit: ACTIVITY_LIMIT,
+    }),
     conversations: listConversations({
       filterType,
       userId: filterType ? viewerId : undefined,
@@ -153,8 +157,14 @@ const getEntityRequests = (
 
   return {
     activity: isMentions
-      ? getMentionsActivityFeed({ days, limit: ACTIVITY_LIMIT, entityLink })
-      : getActivityByEntityLink(entityLink, { days, limit: ACTIVITY_LIMIT }),
+      ? getMentionsActivityFeed({
+          days,
+          startTs,
+          limit: ACTIVITY_LIMIT,
+          entityLink,
+        })
+      : // `/about` takes `days` only; clipToWindow trims it to the window.
+        getActivityByEntityLink(entityLink, { days, limit: ACTIVITY_LIMIT }),
     // Its columns' conversations too, as its activity includes their changes.
     conversations: listConversations({
       entityLink,
@@ -206,6 +216,8 @@ export const fetchInboxActivity = async (
   if (!userId) {
     return { activities: [], threads: [], isCapped: false };
   }
+  // startTs gives activity the same lower bound as the conversations: `days` is
+  // capped at 30, which falls short of a window starting at the start of a day.
   const days = getActivityWindowDays({ startTs, endTs });
   const { activity: activityRequest, conversations: conversationRequest } =
     getScopeRequests(scope, filter, userId, { days, startTs, endTs });

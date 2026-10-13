@@ -1850,9 +1850,3 @@ export const searchDataProductOptions = async (
   await waitForAllLoadersToDisappear(page);
   return picker.getByTestId(dataProduct.fullyQualifiedName ?? '');
 };
-
-export const waitForAntdModalToSettle = async (page: Page) => {
-  await expect(
-    page.locator('.ant-modal[class*="-appear"], .ant-modal[class*="-enter"]')
-  ).toHaveCount(0);
-};
