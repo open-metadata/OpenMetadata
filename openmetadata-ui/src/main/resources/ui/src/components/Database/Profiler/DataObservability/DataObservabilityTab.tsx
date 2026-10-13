@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Card, Tabs } from '@openmetadata/ui-core-components';
+import { Box, Card, Tabs, Typography } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import Qs from 'qs';
 import { useEffect, useMemo, useState } from 'react';
@@ -189,7 +189,7 @@ const DataObservabilityTab = (props: TableProfilerProps) => {
               </Tabs>
             ) : (
               <Link
-                className="tw:flex tw:items-center tw:gap-1 tw:font-semibold tw:no-underline!"
+                className="tw:flex tw:items-center tw:gap-1"
                 to={{
                   pathname: getEntityDetailsPath(
                     EntityType.TABLE,
@@ -203,14 +203,16 @@ const DataObservabilityTab = (props: TableProfilerProps) => {
                   }),
                 }}>
                 <DropDownIcon className="transform-90" height={16} width={16} />
-                {t(PAGE_HEADERS.COLUMN_PROFILE.header)}
+                <Typography weight="semibold">
+                  {t(PAGE_HEADERS.COLUMN_PROFILE.header)}
+                </Typography>
               </Link>
             )}
             <TabFilters />
           </Box>
-          <div className="data-observability-content-panel">
+          <Box className="data-observability-content-panel" direction="col">
             {activeTabComponent}
-          </div>
+          </Box>
         </Card.Content>
       </Card>
     </TableProfilerProvider>

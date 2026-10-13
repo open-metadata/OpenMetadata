@@ -46,6 +46,8 @@ const ClassicSingleSelect = ({
 }: ClassicSingleSelectProps) => {
   const { t } = useTranslation();
   const [search, setSearch] = useState('');
+  // Select.ComboBox gets controlled `items`, so react-aria skips its defaultFilter;
+  // local filtering has to happen here when there is no server-side search.
   const visibleItems = filter.onSearch
     ? items
     : items.filter((item) =>
@@ -67,11 +69,7 @@ const ClassicSingleSelect = ({
       {item.label}
     </Select.Item>
   );
-  const searchable =
-    filter.searchable ||
-    filter.key === 'tier' ||
-    filter.key === 'dataQualityDimension';
-  if (searchable) {
+  if (filter.searchable) {
     return (
       <Select.ComboBox
         allowsEmptyCollection
@@ -79,7 +77,6 @@ const ClassicSingleSelect = ({
         aria-label={filter.label}
         className="tw:min-w-0 tw:flex-1"
         data-testid={testId}
-        defaultFilter={filter.onSearch ? () => true : undefined}
         emptyState={filter.isLoading ? t('label.loading') : undefined}
         fontSize="sm"
         items={visibleItems}

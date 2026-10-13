@@ -240,8 +240,8 @@ const AddTestSuitePipeline = ({
           {getField(raiseOnErrorFormField)}
         </Grid.Item>
         <Grid.Item className="layout-column" span={24}>
-          <Card className="tw:bg-(--om-grey-1)">
-            <Card.Content className="tw:p-4">
+          <Card>
+            <Card.Content>
               <Grid className="layout-row layout-grid" rowGap="4">
                 <Grid.Item className="layout-column" span={24}>
                   {testCaseFormFields.map((field) => (

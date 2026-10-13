@@ -35,7 +35,8 @@ const TooltipRow: FC<TooltipRowProps> = ({ label, value }) => {
     <Box align="center" gap={6} justify="between">
       <Typography
         as="span"
-        className="tw:whitespace-nowrap tw:text-secondary"
+        className="tw:whitespace-nowrap"
+        color="secondary"
         size="text-xs">
         {label}
       </Typography>
@@ -92,10 +93,8 @@ export const HeatmapCellTooltip: FC<HeatmapCellTooltipProps> = ({ cell }) => {
 
   return (
     <Card>
-      <Card.Content className="tw:p-2.5">
-        <Typography
-          as="span"
-          className="tw:block tw:text-sm tw:font-medium tw:text-primary">
+      <Card.Content>
+        <Typography as="p" size="text-sm" weight="medium">
           {cell.date}
         </Typography>
         <Divider dashed className="tw:my-2" />

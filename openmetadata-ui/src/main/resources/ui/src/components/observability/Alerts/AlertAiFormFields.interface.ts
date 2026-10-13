@@ -141,6 +141,8 @@ export interface RuleArgumentFieldProps {
   index: number;
   name: number;
   isViewOnly?: boolean;
+  /** Names the control with `aria-label` instead of a visible label. */
+  isLabelHidden?: boolean;
   onChange?: AlertAiFormFieldsProps['onChange'];
   validationErrors?: AlertAiFormValidationErrors;
   value: AlertAiFormValue;

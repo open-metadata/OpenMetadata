@@ -12,9 +12,18 @@
  */
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { Button, Dialog, DialogTrigger, Modal } from 'react-aria-components';
+import { useState } from 'react';
+import { createPortal } from 'react-dom';
+import {
+  Button,
+  Dialog,
+  DialogTrigger,
+  ListBoxItem,
+  Modal,
+} from 'react-aria-components';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Select } from './select';
+import { SelectListBox } from './select-list-box';
 
 describe('Select in a modal', () => {
   it.each(['pointer', 'keyboard'] as const)(
@@ -56,6 +65,50 @@ describe('Select in a modal', () => {
       await waitFor(() => expect(trigger).toHaveFocus());
     }
   );
+
+  // Pins react-aria's internal `data-react-aria-top-layer` contract (see select-list-box.tsx): a listbox
+  // inserted outside the modal while the modal's ariaHideOutside observer is active must stay exposed.
+  // If react-aria renames or drops the attribute, the listbox is aria-hidden and this fails.
+  it('keeps a listbox inserted outside the modal accessible', async () => {
+    const PortaledListBox = () => {
+      const [isOpen, setIsOpen] = useState(false);
+
+      return (
+        <>
+          <Button onPress={() => setIsOpen(true)}>Show options</Button>
+          {isOpen &&
+            createPortal(
+              <SelectListBox
+                aria-label="Dimension"
+                items={[{ id: 'accuracy', label: 'Accuracy' }]}
+                size="sm"
+                virtualize={false}>
+                {(item) => <ListBoxItem id={item.id}>{item.label}</ListBoxItem>}
+              </SelectListBox>,
+              document.body
+            )}
+        </>
+      );
+    };
+    const user = userEvent.setup();
+    render(
+      <DialogTrigger>
+        <Button>Open editor</Button>
+        <Modal>
+          <Dialog aria-label="Test definition">
+            <PortaledListBox />
+          </Dialog>
+        </Modal>
+      </DialogTrigger>
+    );
+    await user.click(screen.getByRole('button', { name: 'Open editor' }));
+    await user.click(screen.getByRole('button', { name: 'Show options' }));
+
+    // Role queries skip aria-hidden subtrees.
+    expect(
+      await screen.findByRole('option', { name: 'Accuracy' })
+    ).toBeInTheDocument();
+  });
 });
 
 describe('Select dismissal', () => {

@@ -57,6 +57,7 @@ describe('ClassicTestCaseFilter', () => {
           key: 'dataQualityDimension',
           label: 'Dimension',
           controlType: 'select',
+          searchable: true,
           options: [
             { value: 'Completeness', label: 'Completeness' },
             { value: 'Accuracy', label: 'Accuracy' },
@@ -68,7 +69,7 @@ describe('ClassicTestCaseFilter', () => {
     );
     await user.type(
       screen.getByRole('combobox', { name: 'Dimension' }),
-      'Accuracy'
+      'aCCu'
     );
 
     expect(
@@ -78,6 +79,25 @@ describe('ClassicTestCaseFilter', () => {
     await user.click(await screen.findByRole('option', { name: 'Accuracy' }));
 
     expect(onChange).toHaveBeenCalledWith('Accuracy');
+  });
+
+  it('renders a non-searchable descriptor as a plain select regardless of its key', () => {
+    render(
+      <ClassicTestCaseFilter
+        filter={{
+          ...descriptor,
+          key: 'tier',
+          label: 'Tier',
+          controlType: 'select',
+        }}
+        testId="filter"
+      />
+    );
+
+    expect(
+      screen.queryByRole('combobox', { name: 'Tier' })
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Tier Tier' })).toBeVisible();
   });
 
   it('keeps multiple selections and removes only the selected chip', async () => {

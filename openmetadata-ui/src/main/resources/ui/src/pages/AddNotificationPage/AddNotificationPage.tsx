@@ -21,7 +21,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Form, Input } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty, isUndefined, pickBy } from 'lodash';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -79,6 +79,7 @@ import {
 } from '../../rest/alertsAPI';
 import { getAllNotificationTemplates } from '../../rest/notificationtemplateAPI';
 import { toCapabilitiesInput } from '../../utils/Alerts/AlertSelectionUtil';
+import { getAlertSourceChanges } from '../../utils/Alerts/ClassicAlertForm.utils';
 import alertsClassBase from '../../utils/AlertsClassBase';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
@@ -104,6 +105,10 @@ const AddNotificationPage = () => {
   const navigate = useNavigate();
   const { fqn } = useFqn();
   const { t } = useTranslation();
+  const getRuleValidationErrors = () =>
+    pickBy(validateAlertAiForm(form.getFieldsValue(true), t), (_, path) =>
+      path.startsWith('input.')
+    );
   const { setInlineAlertDetails, inlineAlertDetails, currentUser } =
     useApplicationStore();
   const { getResourceLimit } = useLimitStore();
@@ -356,7 +361,10 @@ const AddNotificationPage = () => {
                         resources: alert?.filteringRules?.resources,
                       }}
                       validateMessages={VALIDATION_MESSAGES}
-                      onFinish={handleSave}>
+                      onFinish={handleSave}
+                      onFinishFailed={() =>
+                        setRuleValidationErrors(getRuleValidationErrors())
+                      }>
                       {isLoading ? (
                         <SkeletonParagraph animation={false} rows={8} />
                       ) : (
@@ -404,15 +412,12 @@ const AddNotificationPage = () => {
                                   <AlertFormSourceItem
                                     filterResources={entityFunctions}
                                     onChange={(next, previous) => {
-                                      form.setFieldValue('input', {});
                                       setRuleValidationErrors({});
-                                      if (
-                                        previous.some(
-                                          (source) => !next.includes(source)
-                                        )
-                                      ) {
-                                        form.setFieldValue('destinations', []);
-                                      }
+                                      Object.entries(
+                                        getAlertSourceChanges(next, previous)
+                                      ).forEach(([key, value]) =>
+                                        form.setFieldValue(key, value)
+                                      );
                                     }}
                                   />
                                 </Form.Item>
@@ -438,13 +443,10 @@ const AddNotificationPage = () => {
                                             ? next(form.getFieldsValue(true))
                                             : next;
                                         form.setFieldValue('input', data.input);
-                                        if (
-                                          Object.keys(ruleValidationErrors)
-                                            .length > 0
-                                        ) {
-                                          form
-                                            .validateFields(['input'])
-                                            .catch(() => undefined);
+                                        if (!isEmpty(ruleValidationErrors)) {
+                                          setRuleValidationErrors(
+                                            getRuleValidationErrors()
+                                          );
                                         }
                                       }}
                                     />
@@ -455,29 +457,15 @@ const AddNotificationPage = () => {
                                       rules={[
                                         {
                                           validator: () => {
-                                            const errors = validateAlertAiForm(
-                                              form.getFieldsValue(true),
-                                              t
+                                            const [firstError] = Object.values(
+                                              getRuleValidationErrors()
                                             );
-                                            const ruleErrors =
-                                              Object.fromEntries(
-                                                Object.entries(errors).filter(
-                                                  ([path]) =>
-                                                    path.startsWith('input.')
-                                                )
-                                              );
-                                            setRuleValidationErrors(ruleErrors);
-                                            if (
-                                              Object.keys(ruleErrors).length > 0
-                                            ) {
-                                              return Promise.reject(
-                                                new Error(
-                                                  Object.values(ruleErrors)[0]
-                                                )
-                                              );
-                                            }
 
-                                            return Promise.resolve();
+                                            return firstError
+                                              ? Promise.reject(
+                                                  new Error(firstError)
+                                                )
+                                              : Promise.resolve();
                                           },
                                         },
                                       ]}>

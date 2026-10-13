@@ -34,8 +34,11 @@ export const SelectListBox = ({
   const listBox = (
     <ListBox
       {...props}
-      // Filtering can replace this node while a modal's visibility observer is active.
-      // Keep the new listbox interactive as part of the portaled top layer.
+      // Filtering can replace this node while a modal's ariaHideOutside observer (@react-aria/overlays)
+      // is active; that observer hides any newly added node unless it carries this internal marker
+      // (value must be exactly "true"). Upstream: adobe/react-spectrum#8268 (stacked observers leave
+      // added content hidden); maintainers recommend this attribute in #8784.
+      // Guarded by the "Select in a modal" suite in select.test.tsx.
       className={cx(
         'tw:size-full tw:outline-hidden',
         virtualize && 'tw:overflow-y-auto',

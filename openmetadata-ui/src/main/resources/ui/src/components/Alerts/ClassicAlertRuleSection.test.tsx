@@ -230,6 +230,30 @@ describe('Classic alert rules', () => {
     expect(screen.queryByTestId('filter-1')).not.toBeInTheDocument();
   });
 
+  it('mounts an added rule row once instead of remounting it after its key is assigned', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    render(<Controlled />);
+    const insertedRows: Node[] = [];
+    const observer = new MutationObserver((records) =>
+      records.forEach((record) => insertedRows.push(...record.addedNodes))
+    );
+    observer.observe(screen.getByTestId('filters-list'), { childList: true });
+
+    await user.click(screen.getByTestId('add-filters'));
+    insertedRows.push(
+      ...observer.takeRecords().flatMap((record) => [...record.addedNodes])
+    );
+    observer.disconnect();
+
+    const addedRows = insertedRows.filter(
+      (node) =>
+        node instanceof HTMLElement && node.dataset.testid === 'filter-0'
+    );
+
+    expect(addedRows).toHaveLength(1);
+    expect(screen.getByTestId('filter-0')).toBe(addedRows[0]);
+  });
+
   it('disables adding a filter until a source is selected', () => {
     render(<Controlled sources={[]} />);
 

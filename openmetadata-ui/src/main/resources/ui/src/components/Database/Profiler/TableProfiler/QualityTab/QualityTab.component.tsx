@@ -440,7 +440,7 @@ export const QualityTab = () => {
                 <Box
                   align="center"
                   className="tw:w-44"
-                  data-testid="classic-quality-filter"
+                  data-testid="classic-quality-type-filter"
                   gap={2}>
                   <Typography as="span" size="text-sm" weight="medium">
                     {t('label.type')}:
@@ -470,9 +470,9 @@ export const QualityTab = () => {
                 <Box
                   align="center"
                   className="tw:w-44"
-                  data-testid="classic-quality-filter"
+                  data-testid="classic-quality-status-filter"
                   gap={2}>
-                  <Typography as="span" size="text-sm">
+                  <Typography as="span" size="text-sm" weight="medium">
                     {t('label.status')}:
                   </Typography>
                   <Select

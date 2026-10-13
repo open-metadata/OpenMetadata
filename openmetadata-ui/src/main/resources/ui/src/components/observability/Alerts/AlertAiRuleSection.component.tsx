@@ -104,6 +104,7 @@ const AiArgumentTextInput = ({
   argument,
   testId,
   field,
+  isLabelHidden,
   isViewOnly,
   index,
   label,
@@ -123,11 +124,12 @@ const AiArgumentTextInput = ({
   return (
     <div className={ALERT_AI_FORM_CLASS_NAMES.field}>
       <Input
+        aria-label={isLabelHidden ? label : undefined}
         data-testid={testId ?? `${argument}-input`}
         hint={error}
         isDisabled={isViewOnly}
         isInvalid={Boolean(error)}
-        label={label}
+        label={isLabelHidden ? undefined : label}
         placeholder={placeholder}
         size="sm"
         value={getCommaSeparatedValues(inputValue)}
@@ -149,6 +151,7 @@ const AiArgumentMultiSelect = ({
   argument,
   testId,
   field,
+  isLabelHidden,
   isViewOnly,
   index,
   items,
@@ -176,6 +179,7 @@ const AiArgumentMultiSelect = ({
         ALERT_AI_FORM_CLASS_NAMES.autocompleteField
       )}>
       <Autocomplete
+        aria-label={isLabelHidden ? label : undefined}
         data-testid={testId ?? `${argument}-autocomplete`}
         filterOption={(item, search) =>
           [String(item.id), item.label ?? ''].some((text) =>
@@ -187,7 +191,7 @@ const AiArgumentMultiSelect = ({
         isInvalid={Boolean(error)}
         items={items}
         key={selectedValues.join('|')}
-        label={label}
+        label={isLabelHidden ? undefined : label}
         placeholder={placeholder}
         selectedItems={selectedValueItems}
         onItemCleared={(key) =>
@@ -228,6 +232,7 @@ const AiArgumentAutocomplete = ({
   sourceSearch,
   containerEntities,
   field,
+  isLabelHidden,
   isViewOnly,
   index,
   label,
@@ -374,6 +379,7 @@ const AiArgumentAutocomplete = ({
         ALERT_AI_FORM_CLASS_NAMES.autocompleteField
       )}>
       <Autocomplete
+        aria-label={isLabelHidden ? label : undefined}
         data-testid={testId ?? `${argument}-autocomplete`}
         filterOption={() => true}
         hint={error}
@@ -381,7 +387,7 @@ const AiArgumentAutocomplete = ({
         isInvalid={Boolean(error)}
         items={displayItems}
         key={resetKey}
-        label={label}
+        label={isLabelHidden ? undefined : label}
         placeholder={placeholder}
         selectedItems={selectedItems}
         onItemCleared={(key) =>
@@ -425,6 +431,7 @@ export const RuleArgumentField = ({
   sourceSearch,
   containerEntities,
   field,
+  isLabelHidden,
   isViewOnly,
   index,
   name,
@@ -448,6 +455,7 @@ export const RuleArgumentField = ({
         argument={argument}
         field={field}
         index={index}
+        isLabelHidden={isLabelHidden}
         isViewOnly={isViewOnly}
         name={name}
         sourceSearch={sourceSearch}
@@ -467,6 +475,7 @@ export const RuleArgumentField = ({
         containerEntities={containerEntities}
         field={field}
         index={index}
+        isLabelHidden={isLabelHidden}
         isViewOnly={isViewOnly}
         name={name}
         selectedSource={selectedSource}
@@ -485,6 +494,7 @@ export const RuleArgumentField = ({
       argument={argument}
       field={field}
       index={index}
+      isLabelHidden={isLabelHidden}
       isViewOnly={isViewOnly}
       name={name}
       testId={testId}

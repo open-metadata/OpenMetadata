@@ -19,8 +19,8 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { isUndefined } from 'lodash';
-import { useEffect, useMemo, useState } from 'react';
-import { FormProvider } from 'react-hook-form';
+import { useEffect, useState } from 'react';
+import { FormProvider, useWatch, Watch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { DESTINATIONS_MIN_COUNT_ERROR_PATH } from '../../../components/Alerts/DestinationFormItem/DestinationFormItem.constants';
 import InlineAlert from '../../../components/common/InlineAlert/InlineAlert';
@@ -35,6 +35,8 @@ import {
 import { ModifiedCreateEventSubscription } from '../AddObservabilityPage.interface';
 import { ObservabilityAlertFormProps } from '../hooks/useObservabilityAlertForm';
 import ObservabilityAlertFormFields from './ObservabilityAlertFormFields';
+
+const NO_ERRORS: AlertAiFormValidationErrors = {};
 
 function ObservabilityAlertForm({
   alert,
@@ -56,12 +58,15 @@ function ObservabilityAlertForm({
   templates,
 }: Readonly<ObservabilityAlertFormProps>) {
   const { t } = useTranslation();
-  const values = form.watch();
   const [hasSubmitted, setHasSubmitted] = useState(false);
-  const validationErrors = useMemo<AlertAiFormValidationErrors>(
-    () => (hasSubmitted ? validateAlertAiForm(values, t) : {}),
-    [hasSubmitted, values, t]
-  );
+  // `compute` re-renders this form only when the errors change, not on every keystroke.
+  const currentErrors = useWatch({
+    control: form.control,
+    compute: (values) => validateAlertAiForm(values, t),
+  });
+  const validationErrors: AlertAiFormValidationErrors = hasSubmitted
+    ? currentErrors
+    : NO_ERRORS;
   const { reset } = form;
   useEffect(() => {
     if (alert) {
@@ -143,13 +148,20 @@ function ObservabilityAlertForm({
 
                   {Object.entries(extraFormButtons).map(
                     ([name, ButtonComponent]) => (
-                      <ButtonComponent
-                        alertDetails={alert}
+                      <Watch
+                        control={form.control}
                         key={name}
-                        templateResourcePermission={templateResourcePermission}
-                        templates={templates}
-                        values={values}
-                        onValuesChange={onValuesChange}
+                        render={(values) => (
+                          <ButtonComponent
+                            alertDetails={alert}
+                            templateResourcePermission={
+                              templateResourcePermission
+                            }
+                            templates={templates}
+                            values={values}
+                            onValuesChange={onValuesChange}
+                          />
+                        )}
                       />
                     )
                   )}

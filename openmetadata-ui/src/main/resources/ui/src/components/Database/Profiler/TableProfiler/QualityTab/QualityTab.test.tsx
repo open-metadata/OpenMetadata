@@ -352,7 +352,7 @@ describe('QualityTab', () => {
     const filterControls = screen.getByTestId('quality-tab-filter-controls');
     const filterSpace = filterControls.querySelector('.layout-space');
     const filterItems = filterControls.querySelectorAll(
-      '[data-testid=classic-quality-filter]'
+      '[data-testid=classic-quality-type-filter], [data-testid=classic-quality-status-filter]'
     );
 
     expect(filterControls).toHaveClass('tw:ml-auto', 'tw:shrink-0');

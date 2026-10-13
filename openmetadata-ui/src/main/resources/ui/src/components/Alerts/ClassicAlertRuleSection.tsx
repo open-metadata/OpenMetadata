@@ -95,7 +95,7 @@ export const ClassicAlertRuleSection = ({
             <Grid.Item
               className="layout-column"
               data-testid={prefix + '-' + ruleIndex}
-              key={keys[ruleIndex] ?? prefix + '-' + ruleIndex}
+              key={keys[ruleIndex]}
               span={24}>
               <Box gap={4}>
                 <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={6}>
@@ -142,62 +142,61 @@ export const ClassicAlertRuleSection = ({
                         className="layout-column"
                         key={argument}
                         span={12}>
-                        <Box className="tw:[&_label]:sr-only" direction="col">
-                          {argument === 'fqnList' ? (
-                            <FQNListSelect
-                              api={search.byName}
-                              containerEntities={search.containerEntities}
-                              data-testid="fqn-list-select"
-                              hint={
-                                validationErrors?.[
-                                  getValidationPath(
-                                    'input',
-                                    field,
-                                    ruleIndex,
-                                    'arguments',
-                                    index,
-                                    'input'
-                                  )
-                                ]
-                              }
-                              isDisabled={isViewOnly}
-                              placeholder={t('label.search-by-type', {
-                                type: t('label.fqn-uppercase'),
-                              })}
-                              searchIndex={search.indexes}
-                              value={rule.arguments?.[index]?.input ?? []}
-                              onChange={(next) =>
-                                updateAlertAiValue(
-                                  value,
-                                  onChange,
-                                  [
-                                    'input',
-                                    field,
-                                    ruleIndex,
-                                    'arguments',
-                                    index,
-                                    'input',
-                                  ],
-                                  next
+                        {argument === 'fqnList' ? (
+                          <FQNListSelect
+                            api={search.byName}
+                            containerEntities={search.containerEntities}
+                            data-testid="fqn-list-select"
+                            hint={
+                              validationErrors?.[
+                                getValidationPath(
+                                  'input',
+                                  field,
+                                  ruleIndex,
+                                  'arguments',
+                                  index,
+                                  'input'
                                 )
-                              }
-                            />
-                          ) : (
-                            <RuleArgumentField
-                              argument={argument}
-                              field={field}
-                              index={index}
-                              isViewOnly={isViewOnly}
-                              name={ruleIndex}
-                              sourceSearch={search}
-                              supportedEventTypes={support.supportedEventTypes}
-                              testId={ARGUMENT_TEST_IDS[argument]}
-                              validationErrors={validationErrors}
-                              value={value}
-                              onChange={onChange}
-                            />
-                          )}
-                        </Box>
+                              ]
+                            }
+                            isDisabled={isViewOnly}
+                            placeholder={t('label.search-by-type', {
+                              type: t('label.fqn-uppercase'),
+                            })}
+                            searchIndex={search.indexes}
+                            value={rule.arguments?.[index]?.input ?? []}
+                            onChange={(next) =>
+                              updateAlertAiValue(
+                                value,
+                                onChange,
+                                [
+                                  'input',
+                                  field,
+                                  ruleIndex,
+                                  'arguments',
+                                  index,
+                                  'input',
+                                ],
+                                next
+                              )
+                            }
+                          />
+                        ) : (
+                          <RuleArgumentField
+                            isLabelHidden
+                            argument={argument}
+                            field={field}
+                            index={index}
+                            isViewOnly={isViewOnly}
+                            name={ruleIndex}
+                            sourceSearch={search}
+                            supportedEventTypes={support.supportedEventTypes}
+                            testId={ARGUMENT_TEST_IDS[argument]}
+                            validationErrors={validationErrors}
+                            value={value}
+                            onChange={onChange}
+                          />
+                        )}
                       </Grid.Item>
                     ))}
                   </Grid>

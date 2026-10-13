@@ -46,11 +46,10 @@ export const getProfilerConfigurationPayload = (
 ): ProfilerConfiguration => ({
   metricConfiguration: data.metricConfiguration.map((row) => ({
     ...row,
+    // Pass unknown metrics through: the server may support metrics newer than this client's enum.
     metrics: row.metrics?.includes('all')
       ? Object.values(MetricType)
-      : row.metrics?.flatMap((metric) =>
-          Object.values(MetricType).filter((value) => value === metric)
-        ),
+      : (row.metrics as MetricType[] | undefined),
   })),
   sampleDataConfig: data.sampleDataConfig,
 });

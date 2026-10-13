@@ -21,6 +21,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { Fragment } from 'react';
+import { useWatch, Watch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import AlertFormSourceItem from '../../../components/Alerts/AlertFormSourceItem/AlertFormSourceItem';
 import DestinationFormItem from '../../../components/Alerts/DestinationFormItem/DestinationFormItem.component';
@@ -57,7 +58,14 @@ function ObservabilityAlertFormFields({
   }
 >) {
   const { t } = useTranslation();
-  const values = form.watch();
+  // Subscribe only to what this component reads, so typing in name or the
+  // destination fields does not re-render the whole form.
+  const [resources, input] = useWatch({
+    control: form.control,
+    name: ['resources', 'input'],
+  });
+  // The rule sections read only `input`; they apply edits through `onChange`.
+  const ruleValue = { ...form.getValues(), input };
   const onChange: AlertAiFormFieldsProps['onChange'] = (next) => {
     const latest = typeof next === 'function' ? next(form.getValues()) : next;
     form.setValue('input', latest.input, { shouldDirty: true });
@@ -127,7 +135,7 @@ function ObservabilityAlertFormFields({
             <AlertFormSourceItem
               error={validationErrors.resources}
               filterResources={filterResources}
-              value={values.resources}
+              value={resources}
               onChange={(next, previous) => {
                 onValuesChange(getAlertSourceChanges(next, previous));
               }}
@@ -145,7 +153,7 @@ function ObservabilityAlertFormFields({
               <Box className="layout-column tw:block tw:max-w-full tw:basis-full tw:grow-0 tw:shrink-0">
                 <ObservabilityFormFiltersItem
                   validationErrors={validationErrors}
-                  value={values}
+                  value={ruleValue}
                   onChange={onChange}
                 />
               </Box>
@@ -163,7 +171,7 @@ function ObservabilityAlertFormFields({
               <Box className="layout-column tw:block tw:max-w-full tw:basis-full tw:grow-0 tw:shrink-0">
                 <ObservabilityFormTriggerItem
                   validationErrors={validationErrors}
-                  value={values}
+                  value={ruleValue}
                   onChange={onChange}
                 />
               </Box>
@@ -192,13 +200,20 @@ function ObservabilityAlertFormFields({
                     />
                   </Box>
                   <Box className="layout-column tw:block tw:max-w-full tw:basis-full tw:grow-0 tw:shrink-0">
-                    <Widget
-                      alertDetails={alert}
-                      loading={isLoading}
-                      templateResourcePermission={templateResourcePermission}
-                      templates={templates}
-                      values={values}
-                      onValuesChange={onValuesChange}
+                    <Watch
+                      control={form.control}
+                      render={(values) => (
+                        <Widget
+                          alertDetails={alert}
+                          loading={isLoading}
+                          templateResourcePermission={
+                            templateResourcePermission
+                          }
+                          templates={templates}
+                          values={values}
+                          onValuesChange={onValuesChange}
+                        />
+                      )}
                     />
                   </Box>
                 </Fragment>

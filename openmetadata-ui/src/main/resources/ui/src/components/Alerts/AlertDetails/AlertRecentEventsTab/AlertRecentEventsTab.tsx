@@ -205,7 +205,7 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                 <AccordionItem
                   id={`${changeEventData.id}-${changeEventData.timestamp}`}
                   key={`${changeEventData.id}-${changeEventData.timestamp}`}>
-                  <AccordionHeader className="tw:px-3 tw:py-2 tw:font-normal">
+                  <AccordionHeader>
                     <Box
                       className="layout-row"
                       data-testid={`event-collapse-${changeEventData.id}`}
@@ -294,8 +294,8 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                                       className="layout-column"
                                       span={24}>
                                       <Typography
-                                        className="font-medium"
-                                        data-testid="event-data-value">
+                                        data-testid="event-data-value"
+                                        weight="medium">
                                         {value}
                                       </Typography>
                                     </Grid.Item>
@@ -308,7 +308,7 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                       {!isEmpty(changeEventData.changeDescription) && (
                         <>
                           <Box className="layout-column tw:block tw:max-w-full tw:basis-full tw:grow-0 tw:shrink-0">
-                            <Typography className="font-medium">
+                            <Typography weight="medium">
                               {`${t('label.change-entity', {
                                 entity: t('label.description'),
                               })}:`}
@@ -374,7 +374,7 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
               className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-8)] tw:-mx-1"
               rowGap="2">
               <Grid.Item className="layout-column" span={24}>
-                <Typography className="font-medium">
+                <Typography weight="medium">
                   {`${t('label.description')}:`}
                 </Typography>
               </Grid.Item>
@@ -395,8 +395,8 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                 size="sm">
                 {filter !== AlertRecentEventFilters.ALL && (
                   <Typography
-                    className="font-medium"
-                    data-testid="applied-filter-text">{` : ${getAlertEventsFilterLabels(
+                    data-testid="applied-filter-text"
+                    weight="medium">{` : ${getAlertEventsFilterLabels(
                     filter as AlertRecentEventFilters
                   )}`}</Typography>
                 )}

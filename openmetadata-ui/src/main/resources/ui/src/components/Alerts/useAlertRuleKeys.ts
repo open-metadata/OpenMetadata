@@ -11,36 +11,45 @@
  *  limitations under the License.
  */
 
-import { useEffect, useId, useRef, useState } from 'react';
+import { useId, useState } from 'react';
 
-export const useAlertRuleKeys = (count: number) => {
-  const prefix = useId();
-  const nextId = useRef(count);
-  const [keys, setKeys] = useState(() =>
-    Array.from({ length: count }, (_, index) => prefix + '-' + index)
-  );
-  useEffect(() => {
-    setKeys((current) => {
-      if (current.length === count) {
-        return current;
-      }
-      if (current.length > count) {
-        return current.slice(0, count);
-      }
+interface RuleKeys {
+  ids: number[];
+  nextId: number;
+}
 
-      return [
-        ...current,
-        ...Array.from(
-          { length: count - current.length },
-          () => prefix + '-' + nextId.current++
-        ),
-      ];
-    });
-  }, [count, prefix]);
+const resizeRuleKeys = ({ ids, nextId }: RuleKeys, count: number): RuleKeys => {
+  if (ids.length >= count) {
+    return { ids: ids.slice(0, count), nextId };
+  }
+  const added = count - ids.length;
 
   return {
-    keys,
+    ids: [...ids, ...Array.from({ length: added }, (_, i) => nextId + i)],
+    nextId: nextId + added,
+  };
+};
+
+/**
+ * Stable React keys for a list of rules that has no ids of its own. Keys are
+ * resized during render (not in an effect) so a newly added row commits with
+ * its final key once, instead of mounting under a fallback key and remounting.
+ */
+export const useAlertRuleKeys = (count: number) => {
+  const prefix = useId();
+  const [state, setState] = useState(() =>
+    resizeRuleKeys({ ids: [], nextId: 0 }, count)
+  );
+  if (state.ids.length !== count) {
+    setState(resizeRuleKeys(state, count));
+  }
+
+  return {
+    keys: state.ids.map((id) => prefix + '-' + id),
     removeKey: (index: number) =>
-      setKeys((current) => current.filter((_, position) => position !== index)),
+      setState((current) => ({
+        ...current,
+        ids: current.ids.filter((_, position) => position !== index),
+      })),
   };
 };

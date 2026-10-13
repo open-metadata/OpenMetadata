@@ -17,6 +17,7 @@ import {
   Dropdown,
   Popover,
   RangeCalendar,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import {
   ChevronDown,
@@ -255,14 +256,15 @@ const DatePickerMenu = ({
         data-testid="date-picker-menu"
         iconTrailing={<ChevronDown size={14} />}
         size={size === 'small' ? 'sm' : 'md'}>
-        <span
+        <Typography
+          as="span"
           className={classNames(
-            'tw:min-w-0',
-            isCustomRangeSelected ? 'tw:whitespace-nowrap' : 'tw:truncate',
+            isCustomRangeSelected && 'tw:whitespace-nowrap',
             !selectedTimeRangeKey && 'tw:text-disabled'
-          )}>
+          )}
+          ellipsis={!isCustomRangeSelected}>
           {selectedTimeRange}
-        </span>
+        </Typography>
       </Button>
       <Dropdown.Popover
         className="tw:w-auto tw:min-w-44 tw:overflow-visible"
