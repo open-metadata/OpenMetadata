@@ -58,8 +58,9 @@ test('the suppressions baseline matches its recorded state exactly', () => {
     // card removes one more, and scoping the Context Center draft editor to
     // `.om-block-editor` instead of `.ProseMirror...first()` removes four. The
     // landing page's FeedWidget, Data Assets and My Tasks suites went with the
-    // widgets they drove, taking six more with them.
-    'om-playwright/no-positional-locator': 580,
+    // widgets they drove, taking six more with them, and the Data Contract
+    // core-components migration removes three more.
+    'om-playwright/no-positional-locator': 578,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 1,
     'playwright/no-wait-for-selector': 14,

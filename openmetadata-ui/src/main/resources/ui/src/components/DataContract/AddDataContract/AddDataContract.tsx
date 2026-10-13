@@ -12,6 +12,7 @@
  */
 
 import {
+  Box,
   Button,
   Card,
   Tabs,
@@ -149,6 +150,7 @@ const AddDataContract: React.FC<{
   contract?: DataContract;
 }> = ({ onCancel, onSave, contract }) => {
   const { t } = useTranslation();
+  // The UI has no control to switch modes yet, so the YAML branch below is unreachable.
   const [mode] = useState<DataContractMode>(DataContractMode.UI);
   const [yaml, setYaml] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -371,7 +373,7 @@ const AddDataContract: React.FC<{
         label: (
           <div className="d-flex items-center">
             <ContractIcon className="contract-tab-icon" />
-            <Typography>{t('label.contract-detail-plural')}</Typography>
+            <span>{t('label.contract-detail-plural')}</span>
           </div>
         ),
         key: EDataContractTab.CONTRACT_DETAIL.toString(),
@@ -391,7 +393,7 @@ const AddDataContract: React.FC<{
         label: (
           <div className="d-flex items-center">
             <TermsIcon className="contract-tab-icon" />
-            <Typography>{t('label.terms-of-service')}</Typography>
+            <span>{t('label.terms-of-service')}</span>
           </div>
         ),
         key: EDataContractTab.TERMS_OF_SERVICE.toString(),
@@ -413,7 +415,7 @@ const AddDataContract: React.FC<{
         label: (
           <div className="d-flex items-center">
             <TableIcon className="contract-tab-icon" />
-            <Typography>{t('label.schema')}</Typography>
+            <span>{t('label.schema')}</span>
           </div>
         ),
         key: EDataContractTab.SCHEMA.toString(),
@@ -435,7 +437,7 @@ const AddDataContract: React.FC<{
         label: (
           <div className="d-flex items-center">
             <SemanticsIcon className="contract-tab-icon" />
-            <Typography>{t('label.semantic-plural')}</Typography>
+            <span>{t('label.semantic-plural')}</span>
           </div>
         ),
         key: EDataContractTab.SEMANTICS.toString(),
@@ -457,7 +459,7 @@ const AddDataContract: React.FC<{
         label: (
           <div className="d-flex items-center">
             <SecurityIcon className="contract-tab-icon" />
-            <Typography>{t('label.security')}</Typography>
+            <span>{t('label.security')}</span>
           </div>
         ),
         key: EDataContractTab.SECURITY.toString(),
@@ -479,7 +481,7 @@ const AddDataContract: React.FC<{
         label: (
           <div className="d-flex items-center">
             <QualityIcon className="contract-tab-icon" />
-            <Typography>{t('label.quality')}</Typography>
+            <span>{t('label.quality')}</span>
           </div>
         ),
         key: EDataContractTab.QUALITY.toString(),
@@ -505,7 +507,7 @@ const AddDataContract: React.FC<{
         label: (
           <div className="d-flex items-center">
             <SLAIcon className="contract-tab-icon" />
-            <Typography>{t('label.sla')}</Typography>
+            <span>{t('label.sla')}</span>
           </div>
         ),
         key: EDataContractTab.SLA.toString(),
@@ -534,31 +536,31 @@ const AddDataContract: React.FC<{
     currentTabInfo,
   ]);
 
-  const cardTitle = (
-    <div>
-      <Typography className="add-contract-card-title">
-        {t('label.add-contract-detail-plural')}
-      </Typography>
-      <Typography as="p" className="add-contract-card-description">
-        {t('message.add-contract-detail-description')}
-      </Typography>
-    </div>
-  );
-
-  const cardActions = (
-    <div className="tw:flex tw:gap-2">
-      <Button color="secondary" onClick={onCancel}>
-        {t('label.cancel')}
-      </Button>
-      <Button
-        color="primary"
-        data-testid="save-contract-btn"
-        isDisabled={isSaveDisabled}
-        isLoading={isSubmitting}
-        onClick={handleSave}>
-        {t('label.save')}
-      </Button>
-    </div>
+  const cardHeader = (
+    <Card.Header
+      className="tw:items-center"
+      extra={
+        <Box gap={2}>
+          <Button color="secondary" size="md" onPress={onCancel}>
+            {t('label.cancel')}
+          </Button>
+          <Button
+            data-testid="save-contract-btn"
+            isDisabled={isSaveDisabled}
+            isLoading={isSubmitting}
+            size="md"
+            onPress={handleSave}>
+            {t('label.save')}
+          </Button>
+        </Box>
+      }
+      subtitle={t('message.add-contract-detail-description')}
+      title={
+        <Typography className="tw:block" size="text-lg" weight="semibold">
+          {t('label.add-contract-detail-plural')}
+        </Typography>
+      }
+    />
   );
 
   const cardContent = useMemo(() => {
@@ -604,7 +606,7 @@ const AddDataContract: React.FC<{
 
   return (
     <Card className="add-contract-card" data-testid="add-contract-card">
-      <Card.Header extra={cardActions} title={cardTitle} />
+      {cardHeader}
       <Card.Content>{cardContent}</Card.Content>
     </Card>
   );
