@@ -664,6 +664,45 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   }
 
   @Test
+  void test_switchingDefaultDomainDoesNotBumpVersion(TestNamespace ns) {
+    // The navbar pick is a view preference: switching it must not version the user.
+    Domain domainA =
+        SdkClients.adminClient()
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("navA"))
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("first navbar pick"));
+    Domain domainB =
+        SdkClients.adminClient()
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("navB"))
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("second navbar pick"));
+    User user = createEntity(selfLoginUserRequest());
+    Double version = user.getVersion();
+    int historySize = Users.getVersionList(user.getId()).getVersions().size();
+
+    for (Domain domain : List.of(domainA, domainB)) {
+      user.setDefaultDomain(new EntityReference().withId(domain.getId()).withType("domain"));
+      patchDefaultDomainAsSelf(user);
+      User reread = Users.get(user.getId().toString(), "defaultDomain");
+      assertEquals(domain.getId(), reread.getDefaultDomain().getId());
+      assertEquals(version, reread.getVersion(), "switching the navbar domain bumped the version");
+      user = reread;
+    }
+
+    clearDefaultDomainAsSelf(user);
+    User cleared = Users.get(user.getId().toString(), "defaultDomain");
+    assertNull(cleared.getDefaultDomain());
+    assertEquals(version, cleared.getVersion(), "clearing the navbar domain bumped the version");
+    assertEquals(historySize, Users.getVersionList(user.getId()).getVersions().size());
+  }
+
+  @Test
   void test_putWithoutDefaultDomainKeepsTheSelection(TestNamespace ns) {
     // A PUT body (CreateUser) has no defaultDomain, so a PUT must not clear the saved selection.
     Domain domain =

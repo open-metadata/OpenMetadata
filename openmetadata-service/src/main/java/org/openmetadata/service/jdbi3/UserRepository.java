@@ -2062,7 +2062,14 @@ public class UserRepository extends EntityRepository<User> {
       EntityReference updatedDefaultDomain = updated.getDefaultDomain();
       deleteTo(original.getId(), USER, Relationship.DEFAULTS_TO, Entity.DOMAIN);
       assignDefaultDomain(updated, updatedDefaultDomain);
-      recordChange("defaultDomain", originalDefaultDomain, updatedDefaultDomain, true);
+      // A view preference (e.g. the navbar pick): saved without a version bump, like lastLoginTime.
+      recordChange(
+          "defaultDomain",
+          originalDefaultDomain,
+          updatedDefaultDomain,
+          true,
+          EntityUtil.entityReferenceMatch,
+          false);
     }
 
     private void updateDefaultPersona(User original, User updated) {
