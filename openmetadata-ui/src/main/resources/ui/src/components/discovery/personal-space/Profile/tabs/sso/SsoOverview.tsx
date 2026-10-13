@@ -16,11 +16,13 @@ import { useTranslation } from 'react-i18next';
 
 interface SsoOverviewProps {
   isSelfSignupEnabled: boolean;
+  isSelfSignupManaged?: boolean;
   onSelfSignupChange: (enabled: boolean) => void;
 }
 
 const SsoOverview = ({
   isSelfSignupEnabled,
+  isSelfSignupManaged = false,
   onSelfSignupChange,
 }: SsoOverviewProps) => {
   const { t } = useTranslation();
@@ -44,6 +46,7 @@ const SsoOverview = ({
       <Toggle
         aria-label={t('label.enable-sso')}
         data-testid="sso-self-signup-toggle"
+        isDisabled={isSelfSignupManaged}
         isSelected={isSelfSignupEnabled}
         onChange={onSelfSignupChange}
       />

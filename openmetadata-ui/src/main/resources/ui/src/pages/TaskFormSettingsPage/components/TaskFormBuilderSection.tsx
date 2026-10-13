@@ -25,8 +25,8 @@
  */
 
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
-import { Box, Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Checkbox, Empty, Form, Input, Select } from 'antd';
+import { Box, Card, Typography } from '@openmetadata/ui-core-components';
+import { Button, Checkbox, Empty, Form, Input, Select } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { JsonSchemaObject } from '../../../rest/taskFormSchemasAPI';
@@ -147,167 +147,171 @@ const TaskFormBuilderSection = ({
                 <Card
                   className="task-form-builder-section__field-card"
                   data-testid={`${testIdPrefix}-field-card-${index}`}
-                  extra={
-                    <Button
-                      danger
-                      data-testid={`${testIdPrefix}-field-remove-${index}`}
-                      icon={<DeleteOutlined />}
-                      size="small"
-                      type="text"
-                      onClick={() =>
-                        onChange(
-                          fields.filter(
-                            (_, currentIndex) => currentIndex !== index
-                          )
-                        )
-                      }>
-                      {t('label.remove')}
-                    </Button>
-                  }
                   key={field.key}
-                  size="small"
-                  title={
-                    <div className="task-form-builder-section__field-heading">
-                      <Typography className="task-form-builder-section__field-title">
-                        {field.label || field.name || `Field ${index + 1}`}
-                      </Typography>
-                      <Typography className="task-form-builder-section__field-meta">
-                        {summary}
-                      </Typography>
-                    </div>
-                  }>
-                  <div className="d-grid gap-3">
-                    <div className="task-form-builder-section__field-grid">
-                      <Form.Item className="m-b-0" label="Field name">
-                        <Input
-                          data-testid={`${testIdPrefix}-field-name-${index}`}
-                          placeholder="requestReason"
-                          value={field.name}
+                  size="sm">
+                  <Card.Header
+                    extra={
+                      <Button
+                        danger
+                        data-testid={`${testIdPrefix}-field-remove-${index}`}
+                        icon={<DeleteOutlined />}
+                        size="small"
+                        type="text"
+                        onClick={() =>
+                          onChange(
+                            fields.filter(
+                              (_, currentIndex) => currentIndex !== index
+                            )
+                          )
+                        }>
+                        {t('label.remove')}
+                      </Button>
+                    }
+                    title={
+                      <div className="task-form-builder-section__field-heading">
+                        <Typography className="task-form-builder-section__field-title">
+                          {field.label || field.name || `Field ${index + 1}`}
+                        </Typography>
+                        <Typography className="task-form-builder-section__field-meta">
+                          {summary}
+                        </Typography>
+                      </div>
+                    }
+                  />
+                  <Card.Content>
+                    <div className="d-grid gap-3">
+                      <div className="task-form-builder-section__field-grid">
+                        <Form.Item className="m-b-0" label="Field name">
+                          <Input
+                            data-testid={`${testIdPrefix}-field-name-${index}`}
+                            placeholder="requestReason"
+                            value={field.name}
+                            onChange={(event) =>
+                              updateField(index, (currentField) => ({
+                                ...currentField,
+                                name: event.target.value,
+                              }))
+                            }
+                          />
+                        </Form.Item>
+                        <Form.Item className="m-b-0" label="Label">
+                          <Input
+                            data-testid={`${testIdPrefix}-field-label-${index}`}
+                            placeholder="Request Reason"
+                            value={field.label}
+                            onChange={(event) =>
+                              updateField(index, (currentField) => ({
+                                ...currentField,
+                                label: event.target.value,
+                              }))
+                            }
+                          />
+                        </Form.Item>
+                        <Form.Item className="m-b-0" label="Field type">
+                          <Select
+                            data-testid={`${testIdPrefix}-field-type-${index}`}
+                            options={FIELD_TYPE_OPTIONS}
+                            value={field.type}
+                            onChange={(value) =>
+                              updateField(index, (currentField) => ({
+                                ...currentField,
+                                type: value,
+                                schemaType:
+                                  value === 'json'
+                                    ? currentField.schemaType ?? 'object'
+                                    : currentField.schemaType,
+                                options:
+                                  value === 'singleSelect' ||
+                                  value === 'multiSelect'
+                                    ? currentField.options
+                                    : [],
+                              }))
+                            }
+                          />
+                        </Form.Item>
+                      </div>
+
+                      {supportsJsonType ? (
+                        <Form.Item className="m-b-0" label="JSON shape">
+                          <Select
+                            data-testid={`${testIdPrefix}-field-schema-type-${index}`}
+                            options={JSON_SCHEMA_TYPE_OPTIONS}
+                            value={field.schemaType ?? 'object'}
+                            onChange={(value) =>
+                              updateField(index, (currentField) => ({
+                                ...currentField,
+                                schemaType: value,
+                              }))
+                            }
+                          />
+                        </Form.Item>
+                      ) : null}
+
+                      {supportsOptions ? (
+                        <Form.Item className="m-b-0" label="Options">
+                          <Select
+                            data-testid={`${testIdPrefix}-field-options-${index}`}
+                            mode="tags"
+                            open={false}
+                            placeholder="Add options"
+                            tokenSeparators={[',']}
+                            value={field.options}
+                            onChange={(value) =>
+                              updateField(index, (currentField) => ({
+                                ...currentField,
+                                options: value,
+                              }))
+                            }
+                          />
+                        </Form.Item>
+                      ) : null}
+
+                      <Form.Item className="m-b-0" label="Help text">
+                        <Input.TextArea
+                          autoSize={{ minRows: 2, maxRows: 4 }}
+                          data-testid={`${testIdPrefix}-field-description-${index}`}
+                          placeholder="Explain what this field is used for"
+                          value={field.description}
                           onChange={(event) =>
                             updateField(index, (currentField) => ({
                               ...currentField,
-                              name: event.target.value,
+                              description: event.target.value,
                             }))
                           }
                         />
                       </Form.Item>
-                      <Form.Item className="m-b-0" label="Label">
-                        <Input
-                          data-testid={`${testIdPrefix}-field-label-${index}`}
-                          placeholder="Request Reason"
-                          value={field.label}
+
+                      <Box
+                        inline
+                        align="center"
+                        className="layout-space layout-space-horizontal"
+                        gap={6}
+                        itemClassName="layout-space-item">
+                        <Checkbox
+                          checked={field.required}
+                          data-testid={`${testIdPrefix}-field-required-${index}`}
                           onChange={(event) =>
                             updateField(index, (currentField) => ({
                               ...currentField,
-                              label: event.target.value,
+                              required: event.target.checked,
                             }))
-                          }
-                        />
-                      </Form.Item>
-                      <Form.Item className="m-b-0" label="Field type">
-                        <Select
-                          data-testid={`${testIdPrefix}-field-type-${index}`}
-                          options={FIELD_TYPE_OPTIONS}
-                          value={field.type}
-                          onChange={(value) =>
+                          }>
+                          {t('label.required')}
+                        </Checkbox>
+                        <Checkbox
+                          checked={field.hidden}
+                          data-testid={`${testIdPrefix}-field-hidden-${index}`}
+                          onChange={(event) =>
                             updateField(index, (currentField) => ({
                               ...currentField,
-                              type: value,
-                              schemaType:
-                                value === 'json'
-                                  ? currentField.schemaType ?? 'object'
-                                  : currentField.schemaType,
-                              options:
-                                value === 'singleSelect' ||
-                                value === 'multiSelect'
-                                  ? currentField.options
-                                  : [],
+                              hidden: event.target.checked,
                             }))
-                          }
-                        />
-                      </Form.Item>
+                          }>
+                          {t('label.hidden')}
+                        </Checkbox>
+                      </Box>
                     </div>
-
-                    {supportsJsonType ? (
-                      <Form.Item className="m-b-0" label="JSON shape">
-                        <Select
-                          data-testid={`${testIdPrefix}-field-schema-type-${index}`}
-                          options={JSON_SCHEMA_TYPE_OPTIONS}
-                          value={field.schemaType ?? 'object'}
-                          onChange={(value) =>
-                            updateField(index, (currentField) => ({
-                              ...currentField,
-                              schemaType: value,
-                            }))
-                          }
-                        />
-                      </Form.Item>
-                    ) : null}
-
-                    {supportsOptions ? (
-                      <Form.Item className="m-b-0" label="Options">
-                        <Select
-                          data-testid={`${testIdPrefix}-field-options-${index}`}
-                          mode="tags"
-                          open={false}
-                          placeholder="Add options"
-                          tokenSeparators={[',']}
-                          value={field.options}
-                          onChange={(value) =>
-                            updateField(index, (currentField) => ({
-                              ...currentField,
-                              options: value,
-                            }))
-                          }
-                        />
-                      </Form.Item>
-                    ) : null}
-
-                    <Form.Item className="m-b-0" label="Help text">
-                      <Input.TextArea
-                        autoSize={{ minRows: 2, maxRows: 4 }}
-                        data-testid={`${testIdPrefix}-field-description-${index}`}
-                        placeholder="Explain what this field is used for"
-                        value={field.description}
-                        onChange={(event) =>
-                          updateField(index, (currentField) => ({
-                            ...currentField,
-                            description: event.target.value,
-                          }))
-                        }
-                      />
-                    </Form.Item>
-
-                    <Box
-                      inline
-                      align="center"
-                      className="layout-space layout-space-horizontal"
-                      gap={6}
-                      itemClassName="layout-space-item">
-                      <Checkbox
-                        checked={field.required}
-                        data-testid={`${testIdPrefix}-field-required-${index}`}
-                        onChange={(event) =>
-                          updateField(index, (currentField) => ({
-                            ...currentField,
-                            required: event.target.checked,
-                          }))
-                        }>
-                        {t('label.required')}
-                      </Checkbox>
-                      <Checkbox
-                        checked={field.hidden}
-                        data-testid={`${testIdPrefix}-field-hidden-${index}`}
-                        onChange={(event) =>
-                          updateField(index, (currentField) => ({
-                            ...currentField,
-                            hidden: event.target.checked,
-                          }))
-                        }>
-                        {t('label.hidden')}
-                      </Checkbox>
-                    </Box>
-                  </div>
+                  </Card.Content>
                 </Card>
               );
             })
@@ -323,22 +327,24 @@ const TaskFormBuilderSection = ({
         <Card
           className="task-form-builder-section__preview"
           data-testid={`${testIdPrefix}-preview`}
-          size="small"
-          title="Preview">
-          {fields.length ? (
-            <div>
-              <TaskPayloadSchemaFields
-                mode="read"
-                payload={previewPayload}
-                schema={previewConfig.formSchema}
-                uiSchema={previewConfig.uiSchema}
-              />
-            </div>
-          ) : (
-            <Typography color="secondary">
-              {t('message.add-fields-to-preview-form')}
-            </Typography>
-          )}
+          size="sm">
+          <Card.Header title="Preview" />
+          <Card.Content>
+            {fields.length ? (
+              <div>
+                <TaskPayloadSchemaFields
+                  mode="read"
+                  payload={previewPayload}
+                  schema={previewConfig.formSchema}
+                  uiSchema={previewConfig.uiSchema}
+                />
+              </div>
+            ) : (
+              <Typography color="secondary">
+                {t('message.add-fields-to-preview-form')}
+              </Typography>
+            )}
+          </Card.Content>
         </Card>
       </div>
     </div>

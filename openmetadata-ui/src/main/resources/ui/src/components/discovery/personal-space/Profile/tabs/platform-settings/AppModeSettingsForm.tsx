@@ -21,6 +21,7 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { DefaultAppMode } from '../../../../../../generated/api/configuration/appConfiguration';
+import { SettingType } from '../../../../../../generated/settings/settings';
 import {
   getAppConfiguration,
   patchAppConfiguration,
@@ -29,12 +30,15 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
+import SettingsSourceBanner from '../../../../../platform/settings/SettingsSourceBanner/SettingsSourceBanner';
 import { APP_MODE_OPTIONS, NO_DEFAULT_VALUE } from './AppModeSettings';
+import { APP_MODE_FIELDS } from './PlatformSettings.constants';
 import type { PlatformSettingsFormProps } from './PlatformSettings.types';
 import SettingsFormLayout, {
   SettingsFormSection,
   SettingsSkeleton,
 } from './SettingsFormLayout';
+import { useDeploymentManagedFields } from './useDeploymentManagedFields';
 import { useSettingsFetch } from './useSettingsFetch';
 
 interface AppModeFormValues {
@@ -47,7 +51,16 @@ const AppModeSettingsForm = ({
 }: PlatformSettingsFormProps) => {
   const { t } = useTranslation();
   const pageTitle = t('label.default-app-mode');
-  const { data: config, isLoading } = useSettingsFetch(getAppConfiguration);
+  const {
+    data: config,
+    isLoading,
+    reload,
+  } = useSettingsFetch(getAppConfiguration);
+  const {
+    sources,
+    refetch: refetchSources,
+    isFullyManaged,
+  } = useDeploymentManagedFields(SettingType.AppConfiguration, APP_MODE_FIELDS);
   const [isSaving, setIsSaving] = useState(false);
   const form = useForm<AppModeFormValues>({
     defaultValues: { defaultAppMode: NO_DEFAULT_VALUE },
@@ -91,18 +104,24 @@ const AppModeSettingsForm = ({
   return (
     <SettingsFormLayout
       form={form}
-      isSaveDisabled={!form.formState.isDirty}
+      isSaveDisabled={isFullyManaged || !form.formState.isDirty}
       isSaving={isSaving}
       showHint={showHint}
       testId="app-mode-form"
       onCancel={backToView}
       onSubmit={handleSubmit}>
+      <SettingsSourceBanner
+        sources={sources}
+        onAdopted={reload}
+        onRefetch={refetchSources}
+      />
       <SettingsFormSection title={pageTitle}>
         <FormField control={form.control} name="defaultAppMode">
           {({ field }) => (
             <RadioGroup
               aria-label={pageTitle}
               data-testid="app-mode-radio-group"
+              isDisabled={isFullyManaged}
               value={field.value}
               onChange={field.onChange}>
               {APP_MODE_OPTIONS.map((option) => (

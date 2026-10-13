@@ -145,3 +145,8 @@ export const PLATFORM_SETTINGS_PAGES: PlatformSettingsPage[] = [
     hasFieldHints: false,
   },
 ];
+
+/** The fields of each deployment-backed setting that its page shows. */
+export const BRAND_URL_FIELDS = ['openMetadataUrl'] as const;
+
+export const APP_MODE_FIELDS = ['defaultAppMode'] as const;
