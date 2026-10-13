@@ -129,11 +129,6 @@ test.describe(
         const teamSelect = page.getByTestId('team-select');
         const teamSelectInput = teamSelect.getByRole('combobox');
         const dropdown = page.getByRole('tree');
-        // Selection chips only: each chip carries a "Remove <team>" button,
-        // while the typed search text is not a chip.
-        const selectedTeamChips = teamSelect.getByRole('button', {
-          name: /^Remove /,
-        });
 
         await test.step('Non-Group team with children is visible but not selectable', async () => {
           await teamSelect.click();
@@ -155,7 +150,7 @@ test.describe(
         await test.step('Non-Group team without children is hidden', async () => {
           await teamSelectInput.fill(childlessDepartmentName);
 
-          // With every option pruned antd unmounts the tree ("No data"), so a
+          // With every option pruned the tree unmounts ("No data"), so a
           // count assertion is used — not.toContainText fails on a missing
           // element instead of passing.
           await expect(dropdown.getByText(childlessDepartmentName)).toHaveCount(

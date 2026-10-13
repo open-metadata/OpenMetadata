@@ -96,7 +96,7 @@ const EditKPIPage = () => {
         activeTitle: true,
       },
     ],
-    [kpiData]
+    [kpiData, t]
   );
 
   const initialValues = useMemo(() => {
@@ -196,7 +196,7 @@ const EditKPIPage = () => {
     if (kpiData) {
       form.reset(initialValues);
     }
-  }, [kpiData, initialValues, form.reset]);
+  }, [kpiData, initialValues, form]);
 
   useEffect(() => {
     fetchKPI();

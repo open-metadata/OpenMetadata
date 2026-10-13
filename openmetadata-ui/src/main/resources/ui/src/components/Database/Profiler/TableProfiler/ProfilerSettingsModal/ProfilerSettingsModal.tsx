@@ -181,7 +181,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
     ];
 
     return { columnOptions, columnWithAllOption };
-  }, [columns]);
+  }, [columns, t]);
   const metricsOptions = useMemo(() => {
     const profilerMetrics = profilerMetricsClassBase.getProfilerMetricOptions();
     const metricsOptions = [
@@ -198,7 +198,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
     ];
 
     return toTreeSelectNodes(metricsOptions);
-  }, [columns]);
+  }, [t]);
 
   const fetchMetrics = useCallback(
     async () => ({ nodes: metricsOptions }),
@@ -342,27 +342,28 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
     }
   };
 
-  const getIncludesColumns = (
-    columns: ProfilerFormValues['includeColumns']
-  ) => {
-    const includeCols = columns.filter(
-      ({ columnName }) => !isUndefined(columnName)
-    );
+  const getIncludesColumns = useCallback(
+    (columns: ProfilerFormValues['includeColumns']) => {
+      const includeCols = columns.filter(
+        ({ columnName }) => !isUndefined(columnName)
+      );
 
-    handleStateChange({
-      includeCol: includeCols,
-    });
+      handleStateChange({
+        includeCol: includeCols,
+      });
 
-    return includeCols.map((col) => {
-      if (col.metrics && col.metrics[0] === 'all') {
-        return {
-          columnName: col.columnName,
-        };
-      }
+      return includeCols.map((col) => {
+        if (col.metrics && col.metrics[0] === 'all') {
+          return {
+            columnName: col.columnName,
+          };
+        }
 
-      return col;
-    });
-  };
+        return col;
+      });
+    },
+    [handleStateChange]
+  );
 
   const handleSave = useCallback(
     async (data: ProfilerFormValues) => {
@@ -477,7 +478,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       handleStateChange({
         selectedProfileSampleType,
       }),
-    []
+    [handleStateChange]
   );
 
   const handleProfileSample = useCallback(
@@ -485,14 +486,17 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       handleStateChange({
         profileSample: Number(value),
       }),
-    []
+    [handleStateChange]
   );
 
-  const handleCodeMirrorChange = useCallback((value: string) => {
-    handleStateChange({
-      sqlQuery: value,
-    });
-  }, []);
+  const handleCodeMirrorChange = useCallback(
+    (value: string) => {
+      handleStateChange({
+        sqlQuery: value,
+      });
+    },
+    [handleStateChange]
+  );
 
   const resetPartitionFields = (resetType: boolean) => {
     form.setValue('partitionColumnName', undefined);
