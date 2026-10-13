@@ -33,6 +33,7 @@ import { waitForSearchIndexed } from './polling';
 import { sidebarClick } from './sidebar';
 import { claimFirstBoot } from './storageStateRecovery';
 import { getToken as getTokenFromStorage } from './tokenStorage';
+import { clickUntilVisible } from './waitHelpers';
 
 export const uuid = () => randomUUID().split('-')[0];
 export const fullUuid = () => randomUUID();
@@ -1547,13 +1548,18 @@ export const testCompletePaginationWithSearch = async (
   await waitForAllLoadersToDisappear(page);
 
   const nextButton = page.locator('[data-testid="next"]');
+  const page2Indicator = page
+    .getByTestId('page-indicator')
+    .filter({ hasText: /\b2 of \d+/ });
   await expect(page.getByTestId('previous')).toBeDisabled();
 
   const page2ResponsePromise = page.waitForResponse((response) =>
     response.url().includes(normalApiPattern)
   );
 
-  await nextButton.click();
+  // Late-mounting content above the table can shift Next between pointerdown
+  // and pointerup, and react-aria then drops the press without firing onPress.
+  await clickUntilVisible(nextButton, page2Indicator);
   const page2Response = await page2ResponsePromise;
   expect(page2Response.status()).toBe(200);
   await waitForAllLoadersToDisappear(page);
@@ -1591,7 +1597,7 @@ export const testCompletePaginationWithSearch = async (
     response.url().includes(searchApiPattern)
   );
 
-  await nextButtonAfterSearch.click();
+  await clickUntilVisible(nextButtonAfterSearch, page2Indicator);
   const searchPage2Response = await searchPage2Promise;
   expect(searchPage2Response.status()).toBe(200);
 
