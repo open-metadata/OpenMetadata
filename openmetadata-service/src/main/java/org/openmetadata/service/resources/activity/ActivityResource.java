@@ -83,6 +83,11 @@ import org.openmetadata.service.util.RestUtil;
 @Produces(MediaType.APPLICATION_JSON)
 @Collection(name = "activity")
 public class ActivityResource {
+  private static final String START_TS_DESCRIPTION =
+      "Absolute lower bound in epoch millis, used instead of `days` when set. "
+          + "Floored at "
+          + ActivityStreamRepository.MAX_START_TS_DAYS
+          + " days ago.";
 
   private final ActivityStreamRepository activityStreamRepository;
   private final ConversationRepository conversationRepository;
@@ -186,6 +191,7 @@ public class ActivityResource {
           @Max(30)
           @QueryParam("days")
           int days,
+      @Parameter(description = START_TS_DESCRIPTION) @QueryParam("startTs") Long startTs,
       @Parameter(description = "Maximum number of events to return")
           @DefaultValue("50")
           @Min(1)
@@ -206,7 +212,7 @@ public class ActivityResource {
       }
     }
     return activityStreamRepository.listActivityEvents(
-        securityContext, entityType, entityId, actorId, domainsParam, domain, days, limit);
+        securityContext, entityType, entityId, actorId, domainsParam, domain, days, startTs, limit);
   }
 
   @GET
@@ -319,13 +325,14 @@ public class ActivityResource {
           @Max(30)
           @QueryParam("days")
           int days,
+      @Parameter(description = START_TS_DESCRIPTION) @QueryParam("startTs") Long startTs,
       @Parameter(description = "Maximum number of events to return")
           @DefaultValue("50")
           @Min(1)
           @Max(200)
           @QueryParam("limit")
           int limit) {
-    return activityStreamRepository.getMyFeed(securityContext, domain, days, limit);
+    return activityStreamRepository.getMyFeed(securityContext, domain, days, startTs, limit);
   }
 
   @GET
@@ -352,13 +359,14 @@ public class ActivityResource {
           @Max(30)
           @QueryParam("days")
           int days,
+      @Parameter(description = START_TS_DESCRIPTION) @QueryParam("startTs") Long startTs,
       @Parameter(description = "Maximum number of events to return")
           @DefaultValue("50")
           @Min(1)
           @Max(200)
           @QueryParam("limit")
           int limit) {
-    return activityStreamRepository.getFollowingFeed(securityContext, domain, days, limit);
+    return activityStreamRepository.getFollowingFeed(securityContext, domain, days, startTs, limit);
   }
 
   @GET
@@ -390,6 +398,10 @@ public class ActivityResource {
           @Max(30)
           @QueryParam("days")
           int days,
+      @Parameter(
+              description = START_TS_DESCRIPTION + " Compared against when the mention was made.")
+          @QueryParam("startTs")
+          Long startTs,
       @Parameter(description = "Maximum number of events to return")
           @DefaultValue("50")
           @Min(1)
@@ -400,7 +412,7 @@ public class ActivityResource {
       authorizeEntityLinkView(securityContext, entityLink);
     }
     return activityStreamRepository.getMentionsFeed(
-        securityContext, domain, entityLink, days, limit);
+        securityContext, domain, entityLink, days, startTs, limit);
   }
 
   @GET
