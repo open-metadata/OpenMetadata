@@ -22,11 +22,11 @@ import {
   AccordionPanel,
   Avatar,
   Box,
+  Button,
   Card,
   Divider,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { LIGHT_GREEN_COLOR } from '../../../../constants/constants';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
@@ -134,14 +134,18 @@ const AppInstallVerifyCard = ({
 
           <Divider className="tw:my-6" />
           <div className="d-flex justify-end gap-2">
-            <Button block data-testid="cancel" onClick={onCancel}>
+            <Button
+              className="tw:w-full"
+              color="secondary"
+              data-testid="cancel"
+              onClick={onCancel}>
               {t('label.cancel')}
             </Button>
             <Button
-              block
+              className="tw:w-full"
+              color="primary"
               data-testid="save-button"
               key="save-btn"
-              type="primary"
               onClick={onSave}>
               {nextButtonLabel}
             </Button>

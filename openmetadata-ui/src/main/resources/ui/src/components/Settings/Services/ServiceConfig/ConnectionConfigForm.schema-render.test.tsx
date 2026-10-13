@@ -439,14 +439,29 @@ describe('ConnectionConfigForm schema rendering', () => {
       )
     ).not.toBeInTheDocument();
 
+    expect(
+      gcpConfigField.querySelector(
+        '.core-object-field-template-property-universeDomain'
+      )
+    ).not.toBeInTheDocument();
+
     const advancedCredentialButton = within(gcpConfigField).getByRole(
       'button',
       {
-        name: 'Show advanced credential settings (5)',
+        name: 'Show advanced credential settings (6)',
       }
     );
 
     fireEvent.click(advancedCredentialButton);
+
+    expect(
+      within(
+        getRequiredElement(
+          gcpConfigField,
+          '.core-object-field-template-property-universeDomain'
+        )
+      ).getByRole('textbox')
+    ).toHaveValue('googleapis.com');
 
     expect(
       getRequiredElement(
@@ -468,7 +483,7 @@ describe('ConnectionConfigForm schema rendering', () => {
     ).toHaveClass('core-object-field-template-property-full-width');
     expect(
       within(gcpConfigField).getByRole('button', {
-        name: 'Hide advanced credential settings (5)',
+        name: 'Hide advanced credential settings (6)',
       })
     ).toBeInTheDocument();
     expect(

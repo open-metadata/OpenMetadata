@@ -32,7 +32,6 @@ import {
   Trash01,
   Upload01,
 } from '@openmetadata/ui-core-components/icons';
-
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { lazy, useCallback, useEffect, useMemo, useState } from 'react';
@@ -288,8 +287,8 @@ const ContractDetail: React.FC<{
     ]
   );
 
-  const handleModeChange = useCallback((mode: DataContractMode) => {
-    setMode(mode);
+  const handleModeChange = useCallback((nextMode: DataContractMode) => {
+    setMode(nextMode);
   }, []);
 
   const statusBadge = useMemo(() => {

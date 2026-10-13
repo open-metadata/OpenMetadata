@@ -13,6 +13,7 @@
 
 import {
   Box,
+  Button,
   Divider,
   FormField,
   FormItemLabel,
@@ -20,7 +21,7 @@ import {
   HookForm,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Input } from 'antd';
+import { Input } from 'antd';
 import { AxiosError } from 'axios';
 import { trim } from 'lodash';
 import { useMemo, useState } from 'react';
@@ -181,9 +182,12 @@ const AddPolicyPage = () => {
                   className="tw:my-4"
                   data-testid="add-rule-divider"
                   label={
-                    <span className="tw:text-md tw:font-medium tw:text-primary">
+                    <Typography
+                      className="tw:text-primary"
+                      size="text-md"
+                      weight="medium">
                       {t('label.add-entity', { entity: t('label.rule') })}
-                    </span>
+                    </Typography>
                   }
                 />
                 <RuleForm
@@ -198,17 +202,17 @@ const AddPolicyPage = () => {
                   gap={2}
                   itemClassName="layout-space-item">
                   <Button
+                    color="link-color"
                     data-testid="cancel-btn"
-                    type="link"
                     onClick={handleCancel}>
                     {t('label.cancel')}
                   </Button>
                   <Button
+                    color="primary"
                     data-testid="submit-btn"
                     form="policy-form"
-                    htmlType="submit"
-                    loading={isSaveLoading}
-                    type="primary">
+                    isLoading={isSaveLoading}
+                    type="submit">
                     {t('label.create')}
                   </Button>
                 </Box>

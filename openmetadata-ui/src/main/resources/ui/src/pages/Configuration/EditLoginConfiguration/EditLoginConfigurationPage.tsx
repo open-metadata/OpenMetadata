@@ -12,11 +12,11 @@
  */
 import {
   Box,
+  Button,
   FormField,
   HookForm,
   NumberInput,
 } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -165,18 +165,18 @@ const EditLoginConfiguration = () => {
         <Box className="layout-row" justify="end" wrap="wrap">
           <Box className="layout-column tw:block">
             <Button
+              color="link-color"
               data-testid="cancel-button"
-              type="link"
               onClick={handleGoBack}>
               {t('label.cancel')}
             </Button>
           </Box>
           <Box className="layout-column tw:block">
             <Button
+              color="primary"
               data-testid="save-button"
-              htmlType="submit"
-              loading={updating}
-              type="primary">
+              isLoading={updating}
+              type="submit">
               {t('label.save')}
             </Button>
           </Box>

@@ -10,13 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import '@testing-library/jest-dom';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { DataContractMode } from '../../../constants/DataContract.constants';
 import ContractViewSwitchTab from './ContractViewSwitchTab.component';
 
 const mockHandleModeChange = jest.fn();
 
-const renderTab = (mode: DataContractMode) =>
+const renderSwitch = (mode: DataContractMode) =>
   render(
     <ContractViewSwitchTab
       handleModeChange={mockHandleModeChange}
@@ -29,25 +30,28 @@ describe('ContractViewSwitchTab', () => {
     jest.clearAllMocks();
   });
 
-  it('renders the UI and YAML options as a single-choice group', () => {
-    renderTab(DataContractMode.UI);
+  it('renders a named option for each mode', () => {
+    renderSwitch(DataContractMode.UI);
 
-    expect(screen.getAllByRole('radio')).toHaveLength(2);
-    expect(screen.getByTestId('contract-view-switch-tab-ui')).toBeVisible();
-    expect(screen.getByTestId('contract-view-switch-tab-yaml')).toBeVisible();
+    expect(
+      screen.getByRole('radio', { name: 'label.editor' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('radio', { name: 'label.code' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('contract-view-switch-tab-ui')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('contract-view-switch-tab-yaml')
+    ).toBeInTheDocument();
   });
 
-  it('marks the current mode as selected and follows prop changes', () => {
-    const { rerender } = renderTab(DataContractMode.UI);
+  it('marks the current mode as selected', () => {
+    const { rerender } = renderSwitch(DataContractMode.UI);
 
-    expect(screen.getByTestId('contract-view-switch-tab-ui')).toHaveAttribute(
-      'aria-checked',
-      'true'
-    );
-    expect(screen.getByTestId('contract-view-switch-tab-yaml')).toHaveAttribute(
-      'aria-checked',
-      'false'
-    );
+    expect(screen.getByRole('radio', { name: 'label.editor' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: 'label.code' })).not.toBeChecked();
 
     rerender(
       <ContractViewSwitchTab
@@ -56,37 +60,34 @@ describe('ContractViewSwitchTab', () => {
       />
     );
 
-    expect(screen.getByTestId('contract-view-switch-tab-yaml')).toHaveAttribute(
-      'aria-checked',
-      'true'
-    );
+    expect(screen.getByRole('radio', { name: 'label.code' })).toBeChecked();
   });
 
-  it('reports the YAML mode when YAML is selected', () => {
-    renderTab(DataContractMode.UI);
+  // YAML is enum value 0, so a truthiness check would drop this selection.
+  it('reports YAML when the code option is pressed', () => {
+    renderSwitch(DataContractMode.UI);
 
-    fireEvent.click(screen.getByTestId('contract-view-switch-tab-yaml'));
+    fireEvent.click(screen.getByRole('radio', { name: 'label.code' }));
 
     expect(mockHandleModeChange).toHaveBeenCalledWith(DataContractMode.YAML);
   });
 
-  it('reports the UI mode when UI is selected', () => {
-    renderTab(DataContractMode.YAML);
+  it('reports UI when the editor option is pressed', () => {
+    renderSwitch(DataContractMode.YAML);
 
-    fireEvent.click(screen.getByTestId('contract-view-switch-tab-ui'));
+    fireEvent.click(screen.getByRole('radio', { name: 'label.editor' }));
 
     expect(mockHandleModeChange).toHaveBeenCalledWith(DataContractMode.UI);
   });
 
-  it('keeps a mode selected when the active option is clicked again', () => {
-    renderTab(DataContractMode.UI);
+  it('keeps the current mode when its option is pressed again', () => {
+    renderSwitch(DataContractMode.UI);
 
-    fireEvent.click(screen.getByTestId('contract-view-switch-tab-ui'));
+    fireEvent.click(screen.getByRole('radio', { name: 'label.editor' }));
 
-    expect(mockHandleModeChange).not.toHaveBeenCalledWith(undefined);
-    expect(screen.getByTestId('contract-view-switch-tab-ui')).toHaveAttribute(
-      'aria-checked',
-      'true'
+    expect(mockHandleModeChange).not.toHaveBeenCalledWith(
+      DataContractMode.YAML
     );
+    expect(screen.getByRole('radio', { name: 'label.editor' })).toBeChecked();
   });
 });

@@ -16,7 +16,9 @@ import {
   render,
   screen,
   waitForElementToBeRemoved,
+  within,
 } from '@testing-library/react';
+import { ReactNode } from 'react';
 import {
   AppRunRecord,
   Status,
@@ -40,7 +42,7 @@ jest.mock('../../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('username'),
 }));
 
-jest.mock('../../../common/FormBuilder/FormBuilder', () =>
+jest.mock('../../../common/FormBuilderV1/FormBuilderV1', () =>
   jest
     .fn()
     .mockImplementation(({ formData }) => (
@@ -114,17 +116,67 @@ jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest.fn().mockReturnValue(<div>ErrorPlaceHolder</div>)
 );
 
-jest.mock('../../../common/Table/TableV2', () => {
-  const ActualTable = jest.requireActual(
-    '../../../common/Table/TableV2'
-  ).default;
+type MockColumn = {
+  key?: string;
+  title?: ReactNode;
+  dataIndex?: string;
+  render?: (
+    value: unknown,
+    record: Record<string, unknown>,
+    index: number
+  ) => ReactNode;
+};
 
-  return jest.fn().mockImplementation(({ loading, ...rest }) => (
-    <div>
-      {loading ? <p>TableLoader</p> : <ActualTable {...rest} />}
-      Table
-    </div>
-  ));
+jest.mock('../../../common/Table/TableV2', () => {
+  return jest
+    .fn()
+    .mockImplementation(
+      ({
+        loading,
+        columns = [],
+        dataSource = [],
+      }: {
+        loading?: boolean;
+        columns?: MockColumn[];
+        dataSource?: Record<string, unknown>[];
+      }) => (
+        <div>
+          {loading ? (
+            <p>TableLoader</p>
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  {columns.map((column) => (
+                    <th key={column.key}>{column.title}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {dataSource.map((record, rowIndex) => (
+                  <tr key={String(record.id)}>
+                    {columns.map((column) => {
+                      const value = column.dataIndex
+                        ? record[column.dataIndex]
+                        : undefined;
+
+                      return (
+                        <td key={column.key}>
+                          {column.render
+                            ? column.render(value, record, rowIndex)
+                            : (value as ReactNode)}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          Table
+        </div>
+      )
+    );
 });
 
 jest.mock('../AppLogsViewer/AppLogsViewer.component', () =>
@@ -206,9 +258,7 @@ const getTriggeredByCell = () => {
     .findIndex((header) => header.textContent === 'label.triggered-by');
   const [, firstDataRow] = screen.getAllByRole('row');
 
-  return Array.from(
-    firstDataRow.querySelectorAll('[role="rowheader"], [role="gridcell"]')
-  )[columnIndex];
+  return within(firstDataRow).getAllByRole('cell')[columnIndex];
 };
 
 const getConfigFormData = () => {
@@ -324,14 +374,10 @@ describe('AppRunsHistory websocket merge', () => {
       .findIndex((header) => header.textContent === 'label.triggered-by');
 
     expect(
-      Array.from(
-        firstRow.querySelectorAll('[role="rowheader"], [role="gridcell"]')
-      )[triggeredByIndex]
+      within(firstRow).getAllByRole('cell')[triggeredByIndex]
     ).toHaveTextContent('alice');
     expect(
-      Array.from(
-        secondRow.querySelectorAll('[role="rowheader"], [role="gridcell"]')
-      )[triggeredByIndex]
+      within(secondRow).getAllByRole('cell')[triggeredByIndex]
     ).toHaveTextContent('bob');
   });
 

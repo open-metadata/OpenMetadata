@@ -12,8 +12,12 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Dot, Tabs, Typography } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import {
+  Button,
+  Dot,
+  Tabs,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -280,12 +284,12 @@ const NotificationBox = ({
             ))}
           </ul>
           <div className="notification-list-footer tw:px-4 tw:py-3">
-            <Button block href={viewAllPath} type="link">
-              <span>
+            <Button className="tw:w-full" color="link-color" href={viewAllPath}>
+              <Typography>
                 {t('label.view-entity', {
                   entity: t('label.all-lowercase'),
                 })}
-              </span>
+              </Typography>
             </Button>
           </div>
         </div>

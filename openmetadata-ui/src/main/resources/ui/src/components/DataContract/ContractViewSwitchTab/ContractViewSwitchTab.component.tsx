@@ -11,9 +11,15 @@
  *  limitations under the License.
  */
 import { ButtonGroup, ButtonGroupItem } from '@openmetadata/ui-core-components';
-import { BookOpen01, Code01 } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as BookOutline } from '../../../assets/svg/bookoutline.svg';
+import { ReactComponent as CodeOutline } from '../../../assets/svg/codeOutline.svg';
 import { DataContractMode } from '../../../constants/DataContract.constants';
+import {
+  SEGMENT_TOGGLE_GROUP_CLASS,
+  SEGMENT_TOGGLE_ITEM_CLASS,
+} from '../../../constants/SegmentToggle.constants';
+
 const ContractViewSwitchTab = ({
   mode,
   handleModeChange,
@@ -26,23 +32,35 @@ const ContractViewSwitchTab = ({
   return (
     <ButtonGroup
       disallowEmptySelection
-      aria-label={t('label.view')}
-      selectedKeys={new Set([mode])}
-      onSelectionChange={(keys) =>
-        handleModeChange([...keys][0] as DataContractMode)
-      }>
+      className={SEGMENT_TOGGLE_GROUP_CLASS}
+      data-testid="contract-view-switch"
+      selectedKeys={[mode]}
+      size="sm"
+      onSelectionChange={(keys) => {
+        const [selected] = [...keys];
+        // YAML is enum value 0, so test for presence, not truthiness.
+        if (selected !== undefined) {
+          handleModeChange(selected as DataContractMode);
+        }
+      }}>
       <ButtonGroupItem
-        aria-label={t('label.user-interface')}
-        data-testid="contract-view-switch-tab-ui"
-        iconLeading={BookOpen01}
-        id={DataContractMode.UI}
-      />
+        aria-label={t('label.editor')}
+        className={SEGMENT_TOGGLE_ITEM_CLASS}
+        id={DataContractMode.UI}>
+        <BookOutline
+          className="tw:size-5"
+          data-testid="contract-view-switch-tab-ui"
+        />
+      </ButtonGroupItem>
       <ButtonGroupItem
         aria-label={t('label.code')}
-        data-testid="contract-view-switch-tab-yaml"
-        iconLeading={Code01}
-        id={DataContractMode.YAML}
-      />
+        className={SEGMENT_TOGGLE_ITEM_CLASS}
+        id={DataContractMode.YAML}>
+        <CodeOutline
+          className="tw:size-5"
+          data-testid="contract-view-switch-tab-yaml"
+        />
+      </ButtonGroupItem>
     </ButtonGroup>
   );
 };

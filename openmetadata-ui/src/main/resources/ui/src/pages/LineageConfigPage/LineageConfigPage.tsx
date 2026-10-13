@@ -12,6 +12,7 @@
  */
 import {
   Box,
+  Button,
   FormField,
   FormItemLabel,
   Grid,
@@ -20,7 +21,7 @@ import {
   NumberInput,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Select } from 'antd';
+import { Select } from 'antd';
 import { AxiosError } from 'axios';
 import { FocusEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -306,16 +307,17 @@ const LineageConfigPage = () => {
                       className="layout-column d-flex justify-end gap-2"
                       style={{ maxWidth: '100%', flex: '0 0 100%' }}>
                       <Button
+                        color="secondary"
                         data-testid="cancel-button"
                         onClick={() => navigate(-1)}>
                         {t('label.cancel')}
                       </Button>
                       <Button
+                        color="primary"
                         data-testid="save-button"
                         form="lineage-config"
-                        htmlType="submit"
-                        loading={isUpdating}
-                        type="primary">
+                        isLoading={isUpdating}
+                        type="submit">
                         {t('label.save')}
                       </Button>
                     </Box>

@@ -15,7 +15,7 @@ import { PlusOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Box,
-  Button as CoreButton,
+  Button,
   FormField,
   FormItemLabel,
   Grid,
@@ -27,7 +27,7 @@ import {
   TreeSelect,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Input, Select } from 'antd';
+import { Input, Select } from 'antd';
 import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import {
   getTreeSelectValue,
@@ -533,15 +533,15 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
         className="layout-space layout-space-horizontal"
         gap={4}
         itemClassName="layout-space-item">
-        <CoreButton color="secondary" onPress={handleCancel}>
+        <Button color="secondary" onPress={handleCancel}>
           {t('label.cancel')}
-        </CoreButton>
-        <CoreButton
+        </Button>
+        <Button
           form="profiler-setting-form"
           isLoading={isLoading}
           type="submit">
           {t('label.save')}
-        </CoreButton>
+        </Button>
       </Box>
     </div>
   );
@@ -730,10 +730,10 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                   {`${t('label.include')}:`}
                 </p>
                 <Button
-                  className="include-columns-add-button flex-center"
-                  icon={<PlusOutlined />}
-                  size="small"
-                  type="primary"
+                  aria-label={t('label.add')}
+                  color="primary"
+                  iconLeading={<PlusOutlined />}
+                  size="xs"
                   onClick={() => includeFields.append({ metrics: ['all'] })}
                 />
               </div>
@@ -818,15 +818,14 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                         )}
                       </FormField>
                       <Button
-                        className="delete-btn"
-                        icon={
+                        aria-label={t('label.remove')}
+                        color="tertiary"
+                        iconLeading={
                           <Icon
-                            className="align-middle"
                             component={IconDelete}
                             style={{ fontSize: '16px' }}
                           />
                         }
-                        type="text"
                         onClick={() => includeFields.remove(name)}
                       />
                     </Grid.Item>
@@ -885,9 +884,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                     <Box className="m-b-0" direction="col" gap={2}>
                       <FormItemLabel
                         label={
-                          <span className="text-xs">
+                          <Typography size="text-xs">
                             {t('label.interval-type')}
-                          </span>
+                          </Typography>
                         }
                         required={state.enablePartition}
                       />
@@ -935,11 +934,11 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                     <Box className="m-b-0" direction="col" gap={2}>
                       <FormItemLabel
                         label={
-                          <span className="text-xs">
+                          <Typography size="text-xs">
                             {t('label.column-entity', {
                               entity: t('label.name'),
                             })}
-                          </span>
+                          </Typography>
                         }
                         required={state.enablePartition}
                       />
@@ -990,9 +989,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                         <Box className="m-b-0" direction="col" gap={2}>
                           <FormItemLabel
                             label={
-                              <span className="text-xs">
+                              <Typography size="text-xs">
                                 {t('label.interval')}
-                              </span>
+                              </Typography>
                             }
                             required={state.enablePartition}
                           />
@@ -1030,9 +1029,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                         <Box className="m-b-0" direction="col" gap={2}>
                           <FormItemLabel
                             label={
-                              <span className="text-xs">
+                              <Typography size="text-xs">
                                 {t('label.interval-unit')}
-                              </span>
+                              </Typography>
                             }
                             required={state.enablePartition}
                           />
@@ -1083,11 +1082,11 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                         <Box className="m-b-0" direction="col" gap={2}>
                           <FormItemLabel
                             label={
-                              <span className="text-xs">
+                              <Typography size="text-xs">
                                 {t('label.start-entity', {
                                   entity: t('label.range'),
                                 })}
-                              </span>
+                              </Typography>
                             }
                             required={state.enablePartition}
                           />
@@ -1133,11 +1132,11 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                         <Box className="m-b-0" direction="col" gap={2}>
                           <FormItemLabel
                             label={
-                              <span className="text-xs">
+                              <Typography size="text-xs">
                                 {t('label.end-entity', {
                                   entity: t('label.range'),
                                 })}
-                              </span>
+                              </Typography>
                             }
                             required={state.enablePartition}
                           />
@@ -1176,10 +1175,10 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                         {`${t('label.value')}:`}
                       </p>
                       <Button
-                        className="include-columns-add-button flex-center"
-                        icon={<PlusOutlined />}
-                        size="small"
-                        type="primary"
+                        aria-label={t('label.add')}
+                        color="primary"
+                        iconLeading={<PlusOutlined />}
+                        size="xs"
                         onClick={() => partitionFields.append({ value: '' })}
                       />
                     </div>
@@ -1230,15 +1229,14 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                             )}
                           </FormField>
                           <Button
-                            className="delete-btn"
-                            icon={
+                            aria-label={t('label.remove')}
+                            color="tertiary"
+                            iconLeading={
                               <Icon
-                                className="align-middle"
                                 component={IconDelete}
                                 style={{ fontSize: '16px' }}
                               />
                             }
-                            type="text"
                             onClick={() => partitionFields.remove(name)}
                           />
                         </Grid.Item>

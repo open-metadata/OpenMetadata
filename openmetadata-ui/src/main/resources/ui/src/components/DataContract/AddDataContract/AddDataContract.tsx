@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 
-import { Card, Tabs, Typography } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import {
+  Box,
+  Button,
+  Card,
+  Tabs,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -145,7 +150,8 @@ const AddDataContract: React.FC<{
   contract?: DataContract;
 }> = ({ onCancel, onSave, contract }) => {
   const { t } = useTranslation();
-  const [mode, setMode] = useState<DataContractMode>(DataContractMode.UI);
+  // The UI has no control to switch modes yet, so the YAML branch below is unreachable.
+  const [mode] = useState<DataContractMode>(DataContractMode.UI);
   const [yaml, setYaml] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { data: entityData } = useGenericContext<Table>();
@@ -530,48 +536,32 @@ const AddDataContract: React.FC<{
     currentTabInfo,
   ]);
 
-  const handleModeChange = useCallback((mode: DataContractMode) => {
-    setMode(mode);
-  }, []);
-
-  const cardTitle = useMemo(() => {
-    return (
-      <div className="add-contract-card-header d-flex items-center justify-between">
-        <div>
-          <Typography className="add-contract-card-title">
-            {t('label.add-contract-detail-plural')}
-          </Typography>
-          <Typography as="p" className="add-contract-card-description">
-            {t('message.add-contract-detail-description')}
-          </Typography>
-        </div>
-        <div>
-          <Button
-            className="add-contract-cancel-button"
-            type="default"
-            onClick={onCancel}>
+  const cardHeader = (
+    <Card.Header
+      className="tw:items-center"
+      extra={
+        <Box gap={2}>
+          <Button color="secondary" size="md" onPress={onCancel}>
             {t('label.cancel')}
           </Button>
           <Button
-            className="add-contract-save-button"
             data-testid="save-contract-btn"
-            disabled={isSaveDisabled}
-            loading={isSubmitting}
-            type="primary"
-            onClick={handleSave}>
+            isDisabled={isSaveDisabled}
+            isLoading={isSubmitting}
+            size="md"
+            onPress={handleSave}>
             {t('label.save')}
           </Button>
-        </div>
-      </div>
-    );
-  }, [
-    mode,
-    isSubmitting,
-    isSaveDisabled,
-    handleModeChange,
-    onCancel,
-    handleSave,
-  ]);
+        </Box>
+      }
+      subtitle={t('message.add-contract-detail-description')}
+      title={
+        <Typography className="tw:block" size="text-lg" weight="semibold">
+          {t('label.add-contract-detail-plural')}
+        </Typography>
+      }
+    />
+  );
 
   const cardContent = useMemo(() => {
     if (mode === DataContractMode.YAML) {
@@ -616,7 +606,7 @@ const AddDataContract: React.FC<{
 
   return (
     <Card className="add-contract-card" data-testid="add-contract-card">
-      <Card.Header title={cardTitle} />
+      {cardHeader}
       <Card.Content>{cardContent}</Card.Content>
     </Card>
   );

@@ -15,8 +15,9 @@ import {
   FormField,
   HookForm,
   NumberInput,
+  SimpleModal,
 } from '@openmetadata/ui-core-components';
-import { Modal } from 'antd';
+import React from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import {
@@ -65,9 +66,9 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
   ] as const;
 
   return (
-    <Modal
-      maskClosable={false}
-      open={visible}
+    <SimpleModal
+      isDismissable={false}
+      isOpen={visible}
       title={t('label.lineage-config')}
       onCancel={onCancel}
       onOk={handleSubmit}>
@@ -105,7 +106,7 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
           ))}
         </Box>
       </HookForm>
-    </Modal>
+    </SimpleModal>
   );
 };
 

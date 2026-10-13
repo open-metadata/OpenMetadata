@@ -63,7 +63,7 @@ describe('LineageConfigModal', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.cancel' }));
 
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
@@ -91,7 +91,7 @@ describe('LineageConfigModal', () => {
     await user.clear(fieldNodesPerLayer);
     await user.type(fieldNodesPerLayer, '7');
 
-    await user.click(screen.getByRole('button', { name: 'OK' }));
+    await user.click(screen.getByRole('button', { name: 'label.ok' }));
 
     await waitFor(() => {
       expect(onSave).toHaveBeenCalledWith({
@@ -118,7 +118,7 @@ describe('LineageConfigModal', () => {
     await user.type(fieldUpstream, '-1');
 
     // Submit form
-    fireEvent.click(screen.getByRole('button', { name: 'OK' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.ok' }));
 
     await waitFor(() => {
       expect(fieldUpstream).toHaveAttribute('aria-invalid', 'true');
@@ -143,7 +143,7 @@ describe('LineageConfigModal', () => {
     await user.type(fieldDownstream, '-1');
 
     // Submit form
-    fireEvent.click(screen.getByRole('button', { name: 'OK' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.ok' }));
 
     await waitFor(() => {
       expect(fieldDownstream).toHaveAttribute('aria-invalid', 'true');
@@ -169,7 +169,7 @@ describe('LineageConfigModal', () => {
     await user.type(fieldNodesPerLayer, '4');
 
     // Submit form
-    fireEvent.click(screen.getByRole('button', { name: 'OK' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.ok' }));
 
     await waitFor(() => {
       expect(fieldNodesPerLayer).toHaveAttribute('aria-invalid', 'true');
@@ -201,7 +201,7 @@ describe('LineageConfigModal', () => {
     await user.tab();
 
     // Submit form
-    fireEvent.click(screen.getByRole('button', { name: 'OK' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.ok' }));
 
     await waitFor(() => {
       expect(onSave).not.toHaveBeenCalled();

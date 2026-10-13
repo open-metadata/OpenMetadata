@@ -13,6 +13,7 @@
 
 import {
   Box,
+  Button,
   FormField,
   FormItemLabel,
   Grid,
@@ -22,7 +23,7 @@ import {
   Slider,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Input, Select } from 'antd';
+import { Input, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined, kebabCase } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
@@ -423,17 +424,17 @@ const AddKPIPage = () => {
                 gap={2}
                 itemClassName="layout-space-item">
                 <Button
+                  color="link-color"
                   data-testid="cancel-btn"
-                  type="link"
                   onClick={handleCancel}>
                   {t('label.cancel')}
                 </Button>
                 <Button
+                  color="primary"
                   data-testid="submit-btn"
                   form="kpi-form"
-                  htmlType="submit"
-                  loading={isCreatingKPI}
-                  type="primary">
+                  isLoading={isCreatingKPI}
+                  type="submit">
                   {t('label.create')}
                 </Button>
               </Box>

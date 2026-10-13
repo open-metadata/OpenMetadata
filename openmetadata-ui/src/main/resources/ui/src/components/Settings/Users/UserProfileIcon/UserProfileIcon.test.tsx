@@ -291,9 +291,7 @@ describe('UserProfileIcon', () => {
     expect(screen.getByText('Abmelden')).toBeInTheDocument();
   });
 
-  it('updates the theme from the profile dropdown', async () => {
-    localStorage.setItem('ui-theme', 'light');
-
+  it('has no dark-mode toggle because classic mode is light-only', async () => {
     render(
       <MockWrapper>
         <UserProfileIcon />
@@ -302,18 +300,9 @@ describe('UserProfileIcon', () => {
 
     await openDropdown();
 
-    const switcher = await screen.findByRole('switch', {
-      name: 'label.dark-mode',
-    });
-
+    expect(screen.getByText('label.logout')).toBeInTheDocument();
     expect(
-      screen.getByText('label.logout').closest('.user-profile-dropdown-overlay')
-    ).toContainElement(switcher);
-
-    await user.click(switcher);
-
-    expect(switcher).toBeChecked();
-    expect(screen.getByRole('menu')).toBeInTheDocument();
-    expect(localStorage.getItem('ui-theme')).toBe('dark');
+      screen.queryByRole('switch', { name: 'label.dark-mode' })
+    ).not.toBeInTheDocument();
   });
 });

@@ -1,9 +1,9 @@
 # Numeric fields preserve decimal edits and nullable API values
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-12 (initial)
+- **Revisions:** v1 2026-10-12 (initial); v2 2026-10-13 (SLA guard moved to the Data Contract migration's form test)
 - **Deciders:** Harshit Shah
-- **Guard:** core `number-input.test.tsx`, `ProfilerSettingsModal.test.tsx`, `ContractSLAFormTab.utils.test.ts`
+- **Guard:** core `number-input.test.tsx`, `ProfilerSettingsModal.test.tsx`, `ContractSLAFormTab.test.tsx`
 - **Related:** open-metadata/openmetadata-collate#7302, open-metadata/openmetadata-collate#7303
 
 ## Context

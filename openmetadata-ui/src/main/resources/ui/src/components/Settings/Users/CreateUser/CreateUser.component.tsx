@@ -15,6 +15,7 @@ import { PlusOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Box,
+  Button,
   FormField,
   FormItemLabel,
   HintText,
@@ -22,8 +23,9 @@ import {
   RadioButton,
   RadioGroup,
   Toggle,
+  Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Input, Select } from 'antd';
+import { Input, Select } from 'antd';
 import { AxiosError } from 'axios';
 import {
   compact,
@@ -506,7 +508,7 @@ const AdminOnlyFields = ({
           className="layout-space layout-space-horizontal"
           gap={2}
           itemClassName="layout-space-item">
-          <span> {t('label.admin')}</span>
+          <Typography> {t('label.admin')}</Typography>
           <Toggle
             data-testid="admin"
             isSelected={isAdmin}
@@ -538,10 +540,17 @@ const DomainSection = ({
             renderTrigger={({ toggle }) => (
               <DomainSelectTrigger toggle={toggle}>
                 <Button
+                  aria-label={t('label.add-entity', {
+                    entity: t('label.domain'),
+                  })}
+                  color="primary"
                   data-testid="add-domain"
-                  icon={<PlusOutlined />}
-                  size="small"
-                  type="primary"
+                  iconLeading={
+                    <PlusOutlined
+                      style={{ color: 'white', fontSize: '12px' }}
+                    />
+                  }
+                  size="xs"
                 />
               </DomainSelectTrigger>
             )}
@@ -892,15 +901,15 @@ const CreateUser = ({
         className="layout-space layout-space-horizontal w-full justify-end"
         gap={1}
         itemClassName="layout-space-item">
-        <Button data-testid="cancel-user" type="link" onClick={onCancel}>
+        <Button color="link-color" data-testid="cancel-user" onClick={onCancel}>
           {t('label.cancel')}
         </Button>
         <Button
+          color="primary"
           data-testid="save-user"
           form="create-user-bot-form"
-          htmlType="submit"
-          loading={isLoading}
-          type="primary">
+          isLoading={isLoading}
+          type="submit">
           {t('label.create')}
         </Button>
       </Box>

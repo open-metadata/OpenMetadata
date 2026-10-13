@@ -54,7 +54,6 @@ import { getEmptyTextFromUserProfileItem } from '../../../../utils/UsersPureUtil
 import InterfaceModeMenuItem from '../../../AppModeSwitcher/InterfaceModeMenuItem';
 import { useAuthProvider } from '../../../Auth/AuthProviders/AuthProvider';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
-import ThemeModeSwitcher from '../../../ThemeModeSwitcher/ThemeModeSwitcher';
 import './user-profile-icon.less';
 
 const LIST_ITEM_CLASS = 'tw:pl-6';
@@ -374,7 +373,6 @@ export const UserProfileIcon = () => {
         <div className="tw:flex tw:flex-col tw:gap-3 tw:border-t tw:border-secondary tw:px-4 tw:py-3">
           <InterfaceModeMenuItem />
           {navbarUtilClassBase.getUserProfileExtraItems()}
-          <ThemeModeSwitcher className="tw:w-full" />
         </div>
       </Dropdown.Popover>
     </Dropdown.Root>

@@ -17,16 +17,16 @@ import {
   AccordionPanel,
   Badge,
   Box,
+  Button,
   Button as CoreButton,
   ButtonUtility,
   Divider,
   Dropdown,
   NavItemBase,
   NavItemButton,
+  SimpleModal,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
-import Modal from 'antd/lib/modal/Modal';
 import classNames from 'classnames';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -305,35 +305,28 @@ const LeftSidebar = () => {
         </Box>
       </div>
       {isConfirmLogoutModalOpen && (
-        <Modal
-          centered
-          bodyStyle={{ textAlign: 'center' }}
-          closable={false}
-          closeIcon={null}
-          footer={null}
-          open={isConfirmLogoutModalOpen}
+        <SimpleModal
+          isOpen
+          footer={
+            <>
+              <Button color="secondary" onClick={hideConfirmLogoutModal}>
+                {t('label.cancel')}
+              </Button>
+              <Button
+                color="primary"
+                data-testid="confirm-logout"
+                onClick={onLogoutHandler}>
+                {t('label.logout')}
+              </Button>
+            </>
+          }
+          title={t('label.logout')}
           width={360}
           onCancel={hideConfirmLogoutModal}>
-          <Typography as="h5" size="text-md" weight="semibold">
-            {t('label.logout')}
-          </Typography>
           <Typography color="secondary">
             {t('message.logout-confirmation')}
           </Typography>
-
-          <div className="d-flex gap-2 w-full m-t-md justify-center">
-            <Button className="confirm-btn" onClick={hideConfirmLogoutModal}>
-              {t('label.cancel')}
-            </Button>
-            <Button
-              className="confirm-btn"
-              data-testid="confirm-logout"
-              type="primary"
-              onClick={onLogoutHandler}>
-              {t('label.logout')}
-            </Button>
-          </div>
-        </Modal>
+        </SimpleModal>
       )}
     </aside>
   );

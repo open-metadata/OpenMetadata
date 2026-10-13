@@ -15,12 +15,11 @@ import { LeftOutlined } from '@ant-design/icons';
 import {
   Alert,
   Box,
-  Button as CoreButton,
+  Button,
   Grid,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import { AppScreenshots } from './AppScreenshots';
 
@@ -168,10 +167,9 @@ const MarketPlaceAppDetails = () => {
     return (
       <div className="p-x-md p-t-md">
         <Button
-          className="p-0"
-          icon={<LeftOutlined />}
-          size="small"
-          type="text"
+          color="tertiary"
+          iconLeading={<LeftOutlined />}
+          size="xs"
           onClick={onBrowseAppsClick}>
           <Typography className="font-medium">
             {t('label.browse-app-plural')}
@@ -187,7 +185,7 @@ const MarketPlaceAppDetails = () => {
           placement="top"
           title={tooltipTitle}
           triggerClassName="tw:block tw:w-full m-t-md">
-          <CoreButton
+          <Button
             className="tw:w-full"
             color="primary"
             data-testid="install-application"
@@ -195,7 +193,7 @@ const MarketPlaceAppDetails = () => {
             size="md"
             onPress={installApp}>
             {t('label.install')}
-          </CoreButton>
+          </Button>
         </Tooltip>
 
         {isAppDisabled && (

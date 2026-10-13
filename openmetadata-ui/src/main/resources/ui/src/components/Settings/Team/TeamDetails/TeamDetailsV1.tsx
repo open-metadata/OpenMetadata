@@ -14,20 +14,27 @@
 import {
   Avatar,
   Box,
-  Button as CoreButton,
+  Button,
   Grid,
+  SimpleModal,
   Tabs,
   ToggleBase,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Plus } from '@openmetadata/ui-core-components/icons';
-import { Button, Modal } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import Qs from 'qs';
-import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  lazy,
+  MouseEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/add-placeholder.svg';
@@ -744,7 +751,7 @@ const TeamDetailsV1 = ({
           />
         </Typography>
         <Tooltip arrow placement="top" title={addTeamButtonTitle}>
-          <CoreButton
+          <Button
             color="secondary"
             data-testid="add-placeholder-button"
             iconLeading={Plus}
@@ -752,7 +759,7 @@ const TeamDetailsV1 = ({
             size="sm"
             onPress={handleAddTeamButtonClick}>
             {t('label.add')}
-          </CoreButton>
+          </Button>
         </Tooltip>
       </ErrorPlaceHolder>
     ) : (
@@ -860,7 +867,7 @@ const TeamDetailsV1 = ({
                   ? t('message.this-action-is-not-allowed-for-deleted-entities')
                   : t('label.add-entity', { entity: t('label.role') })
               }>
-              <CoreButton
+              <Button
                 color="secondary"
                 data-testid="add-placeholder-button"
                 iconLeading={Plus}
@@ -873,7 +880,7 @@ const TeamDetailsV1 = ({
                   })
                 }>
                 {t('label.add')}
-              </CoreButton>
+              </Button>
             </Tooltip>
           ),
         })
@@ -884,8 +891,8 @@ const TeamDetailsV1 = ({
           {canEditAll && (
             <Grid.Item className="layout-column d-flex justify-end" span={24}>
               <Button
+                color="primary"
                 data-testid="add-role"
-                type="primary"
                 onClick={() =>
                   setAddAttribute({
                     type: EntityType.ROLE,
@@ -932,7 +939,7 @@ const TeamDetailsV1 = ({
                   ? t('message.this-action-is-not-allowed-for-deleted-entities')
                   : t('label.add-entity', { entity: t('label.policy') })
               }>
-              <CoreButton
+              <Button
                 color="secondary"
                 data-testid="add-placeholder-button"
                 iconLeading={Plus}
@@ -945,7 +952,7 @@ const TeamDetailsV1 = ({
                   })
                 }>
                 {t('label.add')}
-              </CoreButton>
+              </Button>
             </Tooltip>
           ),
         })
@@ -956,11 +963,11 @@ const TeamDetailsV1 = ({
           {canEditAll && (
             <Grid.Item className="layout-column d-flex justify-end" span={24}>
               <Button
+                color="primary"
                 data-testid="add-policy"
                 title={
                   canEditAll ? addPolicy : t('message.no-permission-for-action')
                 }
-                type="primary"
                 onClick={() =>
                   setAddAttribute({
                     type: EntityType.POLICY,
@@ -991,7 +998,7 @@ const TeamDetailsV1 = ({
     const canManageTeamMembership =
       !isOrganization && !isUndefined(currentUser) && isGroupType;
     const joinTeamButton = (Boolean(currentTeam.isJoinable) || isAdminUser) && (
-      <Button data-testid="join-teams" type="primary" onClick={joinTeam}>
+      <Button color="primary" data-testid="join-teams" onClick={joinTeam}>
         {t('label.join-team')}
       </Button>
     );
@@ -1000,10 +1007,9 @@ const TeamDetailsV1 = ({
       canManageTeamMembership &&
       (isAlreadyJoinedTeam ? (
         <Button
-          ghost
+          color="secondary-brand"
           data-testid="leave-team-button"
-          type="primary"
-          onClick={(e) => {
+          onClick={(e: MouseEvent) => {
             // Used to stop click propagation event to the header collapsible panel
             e.stopPropagation();
             deleteUserHandler(currentUser.id, true);
@@ -1356,10 +1362,11 @@ const TeamDetailsV1 = ({
           ))}
         </Tabs>
 
-        <Modal
+        <SimpleModal
           cancelText={t('label.cancel')}
+          data-testid="remove-team-user-modal"
+          isOpen={deletingUser.state}
           okText={t('label.confirm')}
-          open={deletingUser.state}
           title={
             deletingUser.leave
               ? t('label.leave-team')
@@ -1368,7 +1375,7 @@ const TeamDetailsV1 = ({
           onCancel={() => setDeletingUser(DELETE_USER_INITIAL_STATE)}
           onOk={handleRemoveUser}>
           {removeUserBodyText(deletingUser.leave)}
-        </Modal>
+        </SimpleModal>
         {addAttribute && (
           <AddAttributeModal
             isModalLoading={isModalLoading}
@@ -1381,13 +1388,11 @@ const TeamDetailsV1 = ({
           />
         )}
         {selectedEntity && (
-          <Modal
-            centered
-            closable={false}
-            confirmLoading={isModalLoading}
-            maskClosable={false}
+          <SimpleModal
+            isDismissable={false}
+            isOkLoading={isModalLoading}
+            isOpen={!isUndefined(selectedEntity.record)}
             okText={t('label.confirm')}
-            open={!isUndefined(selectedEntity.record)}
             title={`${t('label.remove-entity', {
               entity: getEntityName(selectedEntity?.record),
             })} ${t('label.from-lowercase')} ${getEntityName(currentTeam)}`}
@@ -1405,7 +1410,7 @@ const TeamDetailsV1 = ({
                 parent: getEntityName(currentTeam),
               })}
             </Typography>
-          </Modal>
+          </SimpleModal>
         )}
       </Box>
     </div>

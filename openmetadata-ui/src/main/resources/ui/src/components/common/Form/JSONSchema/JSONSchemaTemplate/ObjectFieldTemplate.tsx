@@ -18,12 +18,12 @@ import {
   AccordionItem,
   AccordionPanel,
   Box,
+  Button,
 } from '@openmetadata/ui-core-components';
 import {
   ObjectFieldTemplatePropertyType,
   ObjectFieldTemplateProps,
 } from '@rjsf/utils';
-import { Button } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
 import { createElement, Fragment, FunctionComponent } from 'react';
@@ -108,11 +108,14 @@ export const ObjectFieldTemplate: FunctionComponent<
           </label>
 
           <Button
+            aria-label={t('label.add')}
+            color="primary"
             data-testid={`add-item-${title}`}
-            icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
+            iconLeading={
+              <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
+            }
             id={`${idSchema.$id}`}
-            size="small"
-            type="primary"
+            size="xs"
             onClick={() => {
               onAddClick(schema)();
             }}

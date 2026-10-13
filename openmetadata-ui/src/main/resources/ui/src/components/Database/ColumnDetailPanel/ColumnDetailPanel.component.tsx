@@ -33,10 +33,9 @@ import classNames from 'classnames';
 import { isString } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as ColumnIcon } from '../../../assets/svg/entity/column.svg';
 import { ReactComponent as KeyIcon } from '../../../assets/svg/icon-key.svg';
-import { DE_ACTIVE_COLOR, ENTITY_PATH } from '../../../constants/constants';
+import { ENTITY_PATH } from '../../../constants/constants';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
 import { Column, TableConstraint } from '../../../generated/entity/data/table';
@@ -847,7 +846,6 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         className="tw:ml-2"
         data-testid="edit-displayName-button"
         disabled={false}
-        icon={<IconEdit color={DE_ACTIVE_COLOR} height={18} width={18} />}
         size="small"
         title={t('label.edit-entity', {
           entity: t('label.display-name'),
@@ -960,6 +958,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
             </div>
             <div className="tw:shrink-0">
               <Button
+                aria-label={t('label.close')}
                 color="secondary"
                 data-testid="close-button"
                 iconLeading={XClose}
@@ -1049,6 +1048,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     <div className="tw:flex tw:justify-between tw:items-center tw:w-full navigation-container">
       <div className="tw:flex tw:items-center tw:gap-1 tw:mt-2">
         <Button
+          aria-label={t('label.previous')}
           color="secondary"
           iconLeading={ChevronUp}
           isDisabled={isPreviousDisabled}
@@ -1056,6 +1056,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           onClick={handlePreviousColumn}
         />
         <Button
+          aria-label={t('label.next')}
           color="secondary"
           iconLeading={ChevronDown}
           isDisabled={isNextDisabled}

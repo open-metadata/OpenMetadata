@@ -14,16 +14,15 @@
 import {
   Box,
   Button,
+  Select,
   SlideoutMenu,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Select } from 'antd';
 import { AxiosError } from 'axios';
 import {
   useCallback,
   useEffect,
-  useId,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -36,7 +35,6 @@ import { getReindexFailures } from '../../../../rest/searchAPI';
 import { formatDateTimeWithTimezone } from '../../../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import CopyToClipboardButton from '../../../common/CopyToClipboardButton/CopyToClipboardButton';
-import { DrawerPopupContainerProvider } from '../../../common/DrawerPopupContainerProvider/DrawerPopupContainerProvider';
 import { ColumnsType } from '../../../common/Table/Table.interface';
 import Table from '../../../common/Table/TableV2';
 import {
@@ -45,6 +43,7 @@ import {
 } from './ReindexFailures.interface';
 
 const PAGE_SIZE = 20;
+const ALL_ENTITY_TYPES_KEY = '__all__';
 
 const ErrorMessage = ({ text }: { text: string }) => {
   const { t } = useTranslation();
@@ -60,8 +59,8 @@ const ErrorMessage = ({ text }: { text: string }) => {
   }, [text, isExpanded]);
 
   return (
-    <div className="tw:flex tw:items-start tw:gap-1">
-      <div className="tw:min-w-0 tw:flex-1" ref={textRef}>
+    <Box align="start" direction="row" gap={1}>
+      <Box className="tw:min-w-0 tw:flex-1" direction="col" ref={textRef}>
         <Typography as="p" ellipsis={isExpanded ? false : { rows: 2 }}>
           {text}
         </Typography>
@@ -75,9 +74,9 @@ const ErrorMessage = ({ text }: { text: string }) => {
             {t(isExpanded ? 'label.less-lowercase' : 'label.more-lowercase')}
           </Button>
         )}
-      </div>
+      </Box>
       <CopyToClipboardButton copyText={text} />
-    </div>
+    </Box>
   );
 };
 
@@ -86,8 +85,6 @@ const ReindexFailures = ({
   onClose,
   appName,
 }: ReindexFailuresProps) => {
-  const drawerTitleId = useId();
-
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<ReindexFailureRecord[]>([]);
@@ -189,10 +186,10 @@ const ReindexFailures = ({
         width: 150,
         ellipsis: true,
         render: (text: string) => (
-          <span className="tw:inline-flex tw:items-center tw:gap-1">
+          <Box inline align="center" direction="row" gap={1}>
             <Typography className="tw:text-primary">{text || '-'}</Typography>
             {text && <CopyToClipboardButton copyText={text} />}
-          </span>
+          </Box>
         ),
       },
       {
@@ -234,79 +231,78 @@ const ReindexFailures = ({
     [t]
   );
 
-  // Popup portals belong to the drawer even though they render outside its DOM tree.
+  const entityTypeItems = useMemo(
+    () => [
+      { id: ALL_ENTITY_TYPES_KEY, label: t('label.all') },
+      ...entityTypes.map((type) => ({ id: type, label: type })),
+    ],
+    [entityTypes, t]
+  );
+
   return (
     <SlideoutMenu
       isDismissable
-      aria-labelledby={drawerTitleId}
+      data-testid="reindex-failures-drawer"
       isOpen={visible}
-      shouldCloseOnInteractOutside={(element) =>
-        !element.closest('[data-react-aria-top-layer]')
-      }
       width={900}
-      onOpenChange={(nextOpen) => {
-        if (!nextOpen) {
-          onClose();
-        }
-      }}>
-      <SlideoutMenu.Header showCloseButton id={drawerTitleId} onClose={onClose}>
-        {t('label.reindex-failure-plural')}
-      </SlideoutMenu.Header>
-      <SlideoutMenu.Content role="region">
-        <DrawerPopupContainerProvider>
-          <Box
-            inline
-            align="stretch"
-            className="layout-space w-full m-b-md"
-            direction="col"
-            gap={2}
-            itemClassName="layout-space-item">
-            <Box
-              inline
-              align="center"
-              className="layout-space layout-space-horizontal"
-              gap={2}
-              itemClassName="layout-space-item">
-              <Typography>{t('label.filter-by-entity-type')}:</Typography>
-              <Select
-                allowClear
-                placeholder={t('label.all')}
-                style={{ width: 200 }}
-                value={entityTypeFilter}
-                onChange={handleEntityTypeChange}>
-                {entityTypes.map((type) => (
-                  <Select.Option key={type} value={type}>
-                    {type}
-                  </Select.Option>
-                ))}
-              </Select>
+      onOpenChange={(isOpen) => !isOpen && onClose()}>
+      {({ close }) => (
+        <>
+          <SlideoutMenu.Header onClose={close}>
+            <Typography size="text-lg" weight="semibold">
+              {t('label.reindex-failure-plural')}
+            </Typography>
+          </SlideoutMenu.Header>
+          <SlideoutMenu.Content>
+            <Box className="tw:mb-4" direction="col" gap={2}>
+              <Box align="center" direction="row" gap={2}>
+                <Typography>{t('label.filter-by-entity-type')}:</Typography>
+                <Select
+                  aria-label={t('label.filter-by-entity-type')}
+                  className="tw:w-50"
+                  items={entityTypeItems}
+                  value={entityTypeFilter ?? ALL_ENTITY_TYPES_KEY}
+                  onChange={(key) =>
+                    handleEntityTypeChange(
+                      key && key !== ALL_ENTITY_TYPES_KEY
+                        ? String(key)
+                        : undefined
+                    )
+                  }>
+                  {(item) => (
+                    <Select.Item id={item.id} key={item.id}>
+                      {item.label}
+                    </Select.Item>
+                  )}
+                </Select>
+              </Box>
+              {total > 0 && (
+                <Typography className="tw:text-tertiary">
+                  {t('label.showing-total-failure-plural', { total })}
+                </Typography>
+              )}
             </Box>
-            {total > 0 && (
-              <Typography color="secondary">
-                {t('label.showing-total-failure-plural', { total })}
-              </Typography>
-            )}
-          </Box>
-          <Table
-            columns={columns}
-            dataSource={data}
-            loading={loading}
-            pagination={{
-              current: currentPage,
-              pageSize: PAGE_SIZE,
-              showSizeChanger: false,
-              total,
-            }}
-            rowKey="id"
-            // Columns are fixed widths summing 950px (120+150+100+400+180) — wider
-            // than the 900px drawer. Set the horizontal extent so TableV2 scrolls
-            // rather than collapsing the columns into the drawer width.
-            scroll={{ x: 950, y: 'calc(100vh - 280px)' }}
-            size="small"
-            onChange={({ current }) => handlePageChange(current ?? 1)}
-          />
-        </DrawerPopupContainerProvider>
-      </SlideoutMenu.Content>
+
+            <Table
+              columns={columns}
+              dataSource={data}
+              loading={loading}
+              pagination={{
+                current: currentPage,
+                pageSize: PAGE_SIZE,
+                showSizeChanger: false,
+                total,
+              }}
+              rowKey="id"
+              // Columns are fixed widths summing 950px (120+150+100+400+180) — wider
+              // than the 900px drawer, so the table scrolls sideways.
+              scroll={{ x: 950 }}
+              size="small"
+              onChange={({ current }) => handlePageChange(current ?? 1)}
+            />
+          </SlideoutMenu.Content>
+        </>
+      )}
     </SlideoutMenu>
   );
 };

@@ -13,11 +13,11 @@
 
 import {
   Box,
+  Button,
   Card,
   HookForm,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { trim } from 'lodash';
@@ -216,14 +216,17 @@ const EditRulePage = () => {
               className="layout-space layout-space-horizontal w-full justify-end"
               gap={2}
               itemClassName="layout-space-item">
-              <Button data-testid="cancel-btn" type="link" onClick={handleBack}>
+              <Button
+                color="link-color"
+                data-testid="cancel-btn"
+                onClick={handleBack}>
                 {t('label.cancel')}
               </Button>
               <Button
+                color="primary"
                 data-testid="submit-btn"
                 form="rule-form"
-                htmlType="submit"
-                type="primary">
+                type="submit">
                 {t('label.save')}
               </Button>
             </Box>

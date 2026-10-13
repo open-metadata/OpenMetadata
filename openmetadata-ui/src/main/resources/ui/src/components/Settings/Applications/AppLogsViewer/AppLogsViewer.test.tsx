@@ -295,12 +295,13 @@ describe('AppLogsViewer component', () => {
     expect(screen.getByText('Success')).toBeInTheDocument();
     expect(screen.getByText('label.index-states:')).toBeInTheDocument();
 
-    const overallStats = screen.getByTestId(
+    const overall = screen.getByTestId(
       'stats-component-label.overall-stat-plural'
     );
 
-    expect(within(overallStats).getAllByText('274')).toHaveLength(2);
-    expect(within(overallStats).getByText('0')).toBeInTheDocument();
+    // total, success, failed counts
+    expect(within(overall).getAllByText('274')).toHaveLength(2);
+    expect(within(overall).getByText('0')).toBeInTheDocument();
     expect(screen.getByText('label.last-updated:')).toBeInTheDocument();
     expect(screen.getByText('formatDateTimeWithTimezone')).toBeInTheDocument();
 

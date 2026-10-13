@@ -54,9 +54,14 @@ test('the suppressions baseline matches its recorded state exactly', () => {
     // the profile-menu helper no longer hovers the first avatar, the Glossary
     // language switch targets the core language selector by test id, and the
     // core assignee/schema-field selectors in the task and incident specs
-    // remove three more. The merged baseline retains independent locator
-    // fixes from both branches.
-    'om-playwright/no-positional-locator': 590,
+    // remove three more. Scoping the Policies rule description to its rule
+    // card removes one more, and scoping the Context Center draft editor to
+    // `.om-block-editor` instead of `.ProseMirror...first()` removes four. The
+    // landing page's FeedWidget, Data Assets and My Tasks suites went with the
+    // widgets they drove, taking six more with them, and the Data Contract
+    // core-components migration removes three more. Scoping the ActivityFeed
+    // thread-panel locators removes one more.
+    'om-playwright/no-positional-locator': 577,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 1,
     'playwright/no-wait-for-selector': 14,

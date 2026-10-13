@@ -18,10 +18,10 @@ import {
   Card,
   Input,
   ProgressBar,
+  SimpleModal,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Search, XClose } from '@openmetadata/ui-core-components/icons';
-import { Modal } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, isString } from 'lodash';
 import { DateTime } from 'luxon';
@@ -33,6 +33,7 @@ import AuditLogList from '../../components/AuditLog/AuditLogList.component';
 import '../../components/common/atoms/filters/FilterSelection.less';
 import Banner from '../../components/common/Banner/Banner';
 import DatePicker from '../../components/common/DatePicker/DatePicker';
+import { getPopupContainer } from '../../components/common/DrawerPopupContainerProvider/DrawerPopupContainerProvider';
 import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
@@ -599,19 +600,14 @@ const AuditLogsPage = () => {
         </Card>
       </div>
 
-      <Modal
-        centered
-        cancelButtonProps={{ disabled: isExporting }}
+      <SimpleModal
         cancelText={t('label.cancel')}
-        closable={!isExporting}
         data-testid="export-audit-logs-modal"
-        maskClosable={!isExporting}
-        okButtonProps={{
-          disabled: isExporting || !exportDateRange,
-          loading: isExporting,
-        }}
+        isDismissable={false}
+        isOkDisabled={isExporting || !exportDateRange}
+        isOkLoading={isExporting}
+        isOpen={isExportModalOpen}
         okText={t('label.export')}
-        open={isExportModalOpen}
         title={t('label.export-entity', {
           entity: t('label.audit-log-plural'),
         })}
@@ -634,6 +630,7 @@ const AuditLogsPage = () => {
               data-testid="export-date-range-picker"
               disabled={isExporting}
               disabledDate={(current) => current > DateTime.now().endOf('day')}
+              getPopupContainer={getPopupContainer}
               value={exportDateRange}
               onChange={(dates) => {
                 if (dates?.[0] && dates?.[1]) {
@@ -647,7 +644,7 @@ const AuditLogsPage = () => {
           {renderExportProgress()}
           {renderExportResult()}
         </div>
-      </Modal>
+      </SimpleModal>
     </PageLayoutV1>
   );
 };
