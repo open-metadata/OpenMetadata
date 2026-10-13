@@ -30,6 +30,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.invalid
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusiveForParentAndSubField;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.getUniqueTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.ownTagsWith;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchConstants.TAGS_FQN;
 import static org.openmetadata.service.util.EntityUtil.compareEntityReferenceById;
@@ -2011,9 +2012,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         columnFqn, FullyQualifiedName.buildHash(columnFqn), allAssetTags, glossaryTags, false);
 
     if (!dryRun && CommonUtil.nullOrEmpty(result.getFailedRequest())) {
-      List<TagLabel> columnTags = new ArrayList<>(listOrEmpty(targetColumn.getTags()));
-      columnTags.add(tagLabel);
-      applyTags(getUniqueTags(columnTags), columnFqn);
+      applyTags(ownTagsWith(targetColumn.getTags(), tagLabel), columnFqn);
       invalidateCacheAfterTagMutation(table.getEntityReference());
       searchRepository.updateEntity(table.getEntityReference());
       RdfUpdater.updateEntity(table);

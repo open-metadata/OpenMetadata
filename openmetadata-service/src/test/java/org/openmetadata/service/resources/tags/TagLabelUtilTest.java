@@ -497,6 +497,27 @@ class TagLabelUtilTest {
     }
   }
 
+  /**
+   * Bulk-adding a term to a column whose table already carries it: the column reads the term back as
+   * DERIVED, and that copy must not shadow the one being added, or nothing would be stored.
+   */
+  @Test
+  void ownTagsWithDropsDerivedLabelsSoTheAddedTermIsStored() {
+    List<TagLabel> columnTags =
+        List.of(
+            glossaryLabel("Finance.Revenue", TagLabel.LabelType.DERIVED),
+            classificationLabel("PII.Sensitive", TagLabel.LabelType.DERIVED),
+            glossaryLabel("Finance.Cost", TagLabel.LabelType.MANUAL));
+
+    List<TagLabel> stored =
+        TagLabelUtil.ownTagsWith(
+            columnTags, glossaryLabel("Finance.Revenue", TagLabel.LabelType.MANUAL));
+
+    assertEquals(
+        List.of("Finance.Cost:MANUAL", "Finance.Revenue:MANUAL"),
+        stored.stream().map(tag -> tag.getTagFQN() + ":" + tag.getLabelType().name()).toList());
+  }
+
   /** Stands in for tag_usage: the classification tags each glossary term carries. */
   private static MockedStatic<Entity> derivedTagsInTagUsage(
       Map<String, List<TagLabel>> derivedTagsByTermFqn) {

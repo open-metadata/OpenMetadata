@@ -464,6 +464,20 @@ public class TagLabelUtil {
     return updatedTagLabels;
   }
 
+  /**
+   * An asset's own labels with {@code added} appended, ready to store. Its DERIVED labels -- implied
+   * by a term, or inherited from a parent -- are left out: they never reach {@code tag_usage}, and one
+   * for the same term would otherwise shadow {@code added} when the list is de-duplicated by FQN, so
+   * nothing would be stored.
+   */
+  public static List<TagLabel> ownTagsWith(List<TagLabel> currentTags, TagLabel added) {
+    List<TagLabel> tags =
+        new ArrayList<>(
+            listOrEmpty(currentTags).stream().filter(tag -> !isSystemGenerated(tag)).toList());
+    tags.add(added);
+    return getUniqueTags(tags);
+  }
+
   public static List<TagLabel> getUniqueTags(List<TagLabel> tags) {
     Set<TagLabel> uniqueTags = new TreeSet<>(compareTagLabel);
     uniqueTags.addAll(tags);

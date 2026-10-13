@@ -23,6 +23,7 @@ import static org.openmetadata.service.Entity.FIELD_NAME;
 import static org.openmetadata.service.Entity.TAG;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusiveForParentAndSubField;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.getUniqueTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.ownTagsWith;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
 
@@ -615,9 +616,7 @@ public class TagRepository extends EntityRepository<Tag> {
         false);
 
     if (!dryRun && nullOrEmpty(result.getFailedRequest())) {
-      List<TagLabel> columnTags = new ArrayList<>(listOrEmpty(targetColumn.getTags()));
-      columnTags.add(tagLabel);
-      applyTags(getUniqueTags(columnTags), columnFqn);
+      applyTags(ownTagsWith(targetColumn.getTags(), tagLabel), columnFqn);
       invalidateCacheAfterTagMutation(table.getEntityReference());
       searchRepository.updateEntity(table.getEntityReference());
       RdfUpdater.updateEntity(table);
