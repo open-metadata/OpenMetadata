@@ -492,7 +492,8 @@ public class TagLabelUtil {
    * pin a label that should vanish with its source.
    *
    * <p>{@code PROPAGATED} is not one of them: it marks a label propagated along lineage and stored
-   * for the asset itself, so it is persisted and removable like any applied label.
+   * for the asset itself, so it is persisted and removable like any applied label. See
+   * ADR:2026-10-13-inherited-field-terms-are-derived-and-propagated-stays-lineage.
    */
   public static boolean isSystemGenerated(TagLabel tagLabel) {
     return tagLabel != null && TagLabel.LabelType.DERIVED.equals(tagLabel.getLabelType());
