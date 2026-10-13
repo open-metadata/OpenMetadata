@@ -25,19 +25,6 @@
   font-weight: var(--om-font-weight-semibold);
 }
 
-.github-star-popup-description {
-  color: @text-color;
-  font-size: var(--om-font-size-xs);
-  font-weight: var(--om-font-weight-regular);
-}
-
-// `Typography as="p"` renders the paragraph as the first child of a `.prose`
-// wrapper, so the typography plugin's `> :first-child { margin-top: 0 }` reset
-// applies at (0,2,0). Match that specificity or the gap under the header is lost.
-.prose > .github-star-popup-description {
-  margin-top: var(--om-space-10);
-}
-
 .github-star-popup-card-with-alert {
   animation: scrollInWithAlert var(--om-duration-2000) normal forwards
     ease-in-out;

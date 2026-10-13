@@ -133,50 +133,50 @@ const GithubStarCard = () => {
       )}>
       <Card data-testid="github-star-popup-card">
         <Card.Content>
-          <Box align="center" gap={2} justify="between">
-            <Box inline align="center" gap={2}>
-              <StarIcon className="github-star-icon" />
+          <Box direction="col" gap={3}>
+            <Box align="center" gap={2} justify="between">
+              <Box inline align="center" gap={2}>
+                <StarIcon className="github-star-icon" />
 
-              <Typography className="github-star-popup-header">
-                {t('label.star-us-on-github')}
-              </Typography>
+                <Typography className="github-star-popup-header">
+                  {t('label.star-us-on-github')}
+                </Typography>
+              </Box>
+              <CloseButton
+                className="tw:-mt-1"
+                data-testid="close-github-star-popup-card"
+                size="sm"
+                onPress={handleClosePopup}
+              />
             </Box>
-            <CloseButton
-              className="tw:-mt-1 tw:text-primary"
-              data-testid="close-github-star-popup-card"
-              size="sm"
-              onPress={handleClosePopup}
-            />
-          </Box>
 
-          <Typography as="p" className="github-star-popup-description">
-            {t('message.star-on-github-description')}
-          </Typography>
+            <Typography as="p" size="text-xs">
+              {t('message.star-on-github-description')}
+            </Typography>
 
-          <Box className="tw:mt-4" gap={0}>
-            <Button
-              className="tw:rounded-r-none tw:bg-secondary"
-              color="secondary"
-              href={OMD_REPOSITORY_LINK}
-              iconLeading={<Icon component={StarGithubIcon} size={12} />}
-              rel="noopener noreferrer"
-              target="_blank">
-              {t('label.star')}
-            </Button>
-            <Button
-              className="tw:-ml-px tw:rounded-l-none"
-              color="secondary"
-              href={OMD_REPOSITORY_LINK}
-              rel="noopener noreferrer"
-              target="_blank">
-              {isLoading ? (
-                <div data-testid="skeleton-loader">
-                  <Skeleton height={36} variant="rounded" width={72} />
-                </div>
-              ) : (
-                starredCount
-              )}
-            </Button>
+            <Box gap={2}>
+              <Button
+                color="secondary"
+                href={OMD_REPOSITORY_LINK}
+                iconLeading={<Icon component={StarGithubIcon} size={12} />}
+                rel="noopener noreferrer"
+                target="_blank">
+                {t('label.star')}
+              </Button>
+              <Button
+                color="secondary"
+                href={OMD_REPOSITORY_LINK}
+                rel="noopener noreferrer"
+                target="_blank">
+                {isLoading ? (
+                  <div data-testid="skeleton-loader">
+                    <Skeleton height={36} variant="rounded" width={72} />
+                  </div>
+                ) : (
+                  starredCount
+                )}
+              </Button>
+            </Box>
           </Box>
         </Card.Content>
       </Card>
