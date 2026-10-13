@@ -488,13 +488,26 @@ const KnowledgeGraphDetails = ({
     [view.loading, t]
   );
   const getRowHandlers = useMemo(
-    () => (record: DetailRow) => ({
-      onClick: () => {
+    () => (record: DetailRow) => {
+      const activate = () => {
         if (record.kind && record.target) {
           onSelect(record.kind, record.target);
         }
-      },
-    }),
+      };
+
+      return {
+        onClick: activate,
+        // TableV2 wires onClick but routes keyboard activation to a no-op
+        // onAction, so Enter/Space on a focused row would do nothing without
+        // this. Match the old core Table's onRowAction keyboard behaviour.
+        onKeyDown: (event: React.KeyboardEvent) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            activate();
+          }
+        },
+      };
+    },
     [onSelect]
   );
   const tableColumns = useMemo<ColumnsType<DetailRow>>(
