@@ -105,6 +105,7 @@ import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.governance.approval.ApprovalGate;
+import org.openmetadata.service.governance.approval.ApprovalGate.Edit;
 import org.openmetadata.service.governance.approval.ChangeRequestService;
 import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
 import org.openmetadata.service.governance.approval.StagedChange;
@@ -1430,7 +1431,7 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
           repository.get(null, original.getId(), repository.getFields("*"), Include.ALL, false);
       // A row entity carries a fresh id until the write aligns it; compare it as the same asset.
       entity.setId(original.getId());
-      staged = ApprovalGate.admit(hydrated, entity, importedBy, null);
+      staged = ApprovalGate.admit(hydrated, entity, importedBy, null, Edit.importRow());
     }
     return staged;
   }

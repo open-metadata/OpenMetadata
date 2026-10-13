@@ -18,6 +18,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.json.JsonPatch;
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ClientErrorException;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.NotFoundException;
@@ -716,6 +717,7 @@ public final class ChangeRequestService {
     lockEntityAtBase(repository, staged);
     String key = ChangeRequestKeys.activeInterceptKey(staged.entityId(), staged.requestedBy());
     ChangeRequest active = dao().changeRequestDAO().findByActiveInterceptKeyForUpdate(key);
+    requireSameReview(active, staged);
     UUID supersededTask = active == null ? null : active.getTaskId();
     ChangeRequest request = active == null ? create(staged) : supersede(repository, active, staged);
     UUID id = request.getId();
@@ -736,6 +738,17 @@ public final class ChangeRequestService {
                       ChangeRequestDelivery.deliver(id);
                     }));
     return request;
+  }
+
+  // The open request carries every change its requester holds on the asset; a later edit reviewed
+  // by another workflow would move those changes to that workflow's review.
+  private static void requireSameReview(ChangeRequest active, StagedChange staged) {
+    if (active != null
+        && !Objects.equals(active.getWorkflowDefinitionId(), staged.workflowDefinitionId())) {
+      throw new BadRequestException(
+          "%s has a change request by %s awaiting another approval workflow; withdraw it or wait for its review before submitting this change"
+              .formatted(staged.entityFqn(), staged.requestedBy()));
+    }
   }
 
   private static void lockEntityAtBase(EntityRepository<?> repository, StagedChange staged) {

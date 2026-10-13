@@ -174,6 +174,13 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   }
 
   @Override
+  public Set<String> getRelationsReplacedByImport() {
+    Set<String> replaced = new HashSet<>(super.getRelationsReplacedByImport());
+    replaced.add(Entity.FIELD_EXPERTS);
+    return Set.copyOf(replaced);
+  }
+
+  @Override
   protected void clearEntitySpecificRelationshipsForMany(List<DataProduct> entities) {
     if (entities.isEmpty()) return;
     List<UUID> ids = entities.stream().map(DataProduct::getId).toList();
@@ -392,14 +399,23 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     BulkOperationResult result =
         bulkAssetsOperation(
             dataProduct.getId(), DATA_PRODUCT, Relationship.HAS, request, false, userName);
-    ApprovalGate.withHeld(result, held);
+    // Only the assets this write removed lose their lineage and output-port links; a held asset
+    // keeps them until its removal is approved, so the held items are added afterwards.
     for (BulkResponse response : listOrEmpty(result.getSuccessRequest())) {
-      EntityReference ref = (EntityReference) response.getRequest();
-      LineageUtil.removeDataProductsLineage(
-          ref.getId(), ref.getType(), List.of(dataProduct.getEntityReference()));
-      deleteRelationship(
-          dataProduct.getId(), DATA_PRODUCT, ref.getId(), ref.getType(), Relationship.OUTPUT_PORT);
+      // BulkResponse.request is an untyped schema field; the bulk write sets it to the asset's
+      // EntityReference, and to null for the placeholder it reports when every asset was held.
+      if (response.getRequest() instanceof EntityReference ref) {
+        LineageUtil.removeDataProductsLineage(
+            ref.getId(), ref.getType(), List.of(dataProduct.getEntityReference()));
+        deleteRelationship(
+            dataProduct.getId(),
+            DATA_PRODUCT,
+            ref.getId(),
+            ref.getType(),
+            Relationship.OUTPUT_PORT);
+      }
     }
+    ApprovalGate.withHeld(result, held);
     return result;
   }
 

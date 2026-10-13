@@ -1103,6 +1103,31 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   @Override
+  public Set<String> getRelationsReplacedByPut() {
+    return withField(super.getRelationsReplacedByPut(), Entity.FIELD_RELATED_TERMS);
+  }
+
+  // The updater restores both when a PUT leaves them out.
+  @Override
+  public Set<String> getFieldsKeptByPut() {
+    Set<String> kept = new HashSet<>(super.getFieldsKeptByPut());
+    kept.add("sourceMemoryIds");
+    kept.add("mutuallyExclusive");
+    return Set.copyOf(kept);
+  }
+
+  @Override
+  public Set<String> getRelationsReplacedByImport() {
+    return withField(super.getRelationsReplacedByImport(), Entity.FIELD_RELATED_TERMS);
+  }
+
+  private static Set<String> withField(Set<String> fields, String field) {
+    Set<String> result = new HashSet<>(fields);
+    result.add(field);
+    return Set.copyOf(result);
+  }
+
+  @Override
   public void storeEntity(GlossaryTerm entity, boolean update) {
     store(entity, update);
   }

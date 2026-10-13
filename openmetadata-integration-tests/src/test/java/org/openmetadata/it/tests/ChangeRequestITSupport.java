@@ -110,6 +110,36 @@ final class ChangeRequestITSupport {
 
   static WorkflowDefinition deployWorkflow(
       TestNamespace ns, String entityType, String include, String exclude, String filter) {
+    return deployWorkflow(
+        ns,
+        entityType,
+        include,
+        exclude,
+        filter,
+        "{\"addReviewers\": true, \"addOwners\": false, \"candidates\": []}");
+  }
+
+  /** A workflow whose approval step is assigned to {@code candidate} alone. */
+  static WorkflowDefinition deployWorkflowAssigning(
+      TestNamespace ns,
+      String entityType,
+      String include,
+      String exclude,
+      String filter,
+      EntityReference candidate) {
+    String assignees =
+        "{\"addReviewers\": false, \"addOwners\": false, \"candidates\": [{\"id\": \"%s\", \"type\": \"%s\", \"fullyQualifiedName\": \"%s\"}]}"
+            .formatted(candidate.getId(), candidate.getType(), candidate.getFullyQualifiedName());
+    return deployWorkflow(ns, entityType, include, exclude, filter, assignees);
+  }
+
+  private static WorkflowDefinition deployWorkflow(
+      TestNamespace ns,
+      String entityType,
+      String include,
+      String exclude,
+      String filter,
+      String assignees) {
     // Workflow name becomes the BPMN process id, which must be a valid XML NCName (no leading
     // digit).
     String name = "Wf" + ns.shortPrefix("pendinghook" + SEQUENCE.incrementAndGet());
@@ -135,7 +165,7 @@ final class ChangeRequestITSupport {
           "nodes": [
             {"type": "startEvent", "subType": "startEvent", "name": "Start"},
             {"type": "userTask", "subType": "userApprovalTask", "name": "Approve",
-             "config": {"assignees": {"addReviewers": true, "addOwners": false, "candidates": []},
+             "config": {"assignees": %s,
                         "approvalThreshold": 1, "rejectionThreshold": 1, "stageId": "review",
                         "stageDisplayName": "Review", "taskStatus": "Open",
                         "assigneeStrategy": "reviewers-and-assignees",
@@ -157,7 +187,7 @@ final class ChangeRequestITSupport {
           ]
         }
         """
-            .formatted(name, entityType, exclude, include, filter);
+            .formatted(name, entityType, exclude, include, filter, assignees);
     CreateWorkflowDefinition request = JsonUtils.readValue(json, CreateWorkflowDefinition.class);
     return ns.trackRoot(
         Entity.WORKFLOW_DEFINITION, SdkClients.adminClient().workflowDefinitions().create(request));

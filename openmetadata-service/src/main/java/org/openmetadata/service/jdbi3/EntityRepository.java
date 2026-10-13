@@ -244,6 +244,7 @@ import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.governance.EntityLifecycle;
 import org.openmetadata.service.governance.approval.ApprovalGate;
+import org.openmetadata.service.governance.approval.ApprovalGate.Edit;
 import org.openmetadata.service.governance.approval.ApprovedApplication;
 import org.openmetadata.service.governance.approval.ChangeRequestService;
 import org.openmetadata.service.governance.approval.StagedChange;
@@ -4603,7 +4604,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // A PUT body carries a fresh id; the stored asset keeps its own, as EntityUpdater applies it.
     updated.setId(original.getId());
     Optional<StagedChange> staged =
-        ApprovalGate.admit(original, updated, updatedBy, impersonatedBy);
+        ApprovalGate.admit(original, updated, updatedBy, impersonatedBy, Edit.put());
     return staged
         .map(change -> stagedPutResponse(uriInfo, original, change))
         .orElseGet(
@@ -4673,7 +4674,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // A PUT body carries a fresh id; the stored asset keeps its own, as EntityUpdater applies it.
     updated.setId(original.getId());
     Optional<StagedChange> staged =
-        ApprovalGate.admit(original, updated, updatedBy, impersonatedBy);
+        ApprovalGate.admit(original, updated, updatedBy, impersonatedBy, Edit.importUpdate());
     return staged
         .map(change -> stagedPutResponse(uriInfo, original, change))
         .orElseGet(() -> putForImportAndStore(uriInfo, original, updated));
@@ -4845,7 +4846,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // any existing impersonatedBy value is cleared, preventing it from persisting
     updated.setImpersonatedBy(impersonatedBy);
     Optional<StagedChange> staged =
-        admitOrVerify(original, updated, user, impersonatedBy, approval);
+        admitOrVerify(original, updated, user, impersonatedBy, approval, patchedFieldNames);
     return staged
         .map(change -> stagedPatchResponse(uriInfo, original, change))
         .orElseGet(
@@ -4866,7 +4867,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    */
   public final Optional<StagedChange> previewPatch(UUID id, String user, JsonPatch patch) {
     T original = get(null, id, patchFields, NON_DELETED, false);
-    return ApprovalGate.preview(original, preparePatched(original, patch, user), user);
+    return ApprovalGate.preview(
+        original,
+        preparePatched(original, patch, user),
+        user,
+        Edit.patch(JsonUtils.extractPatchedFields(patch)));
   }
 
   /** Runs the preparation and validation a PATCH by {@code user} would, without storing anything. */
@@ -4915,10 +4920,17 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   private Optional<StagedChange> admitOrVerify(
-      T original, T updated, String user, String impersonatedBy, ApprovedApplication approval) {
+      T original,
+      T updated,
+      String user,
+      String impersonatedBy,
+      ApprovedApplication approval,
+      Set<String> patchedFieldNames) {
     Optional<StagedChange> staged = Optional.empty();
     if (approval == null) {
-      staged = ApprovalGate.admit(original, updated, user, impersonatedBy);
+      staged =
+          ApprovalGate.admit(
+              original, updated, user, impersonatedBy, Edit.patch(patchedFieldNames));
     } else {
       ApprovalGate.verifyApproved(approval, original);
     }
@@ -6106,6 +6118,31 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           "experts",
           "reviewers",
           "certification");
+
+  /** The top-level fields stored in the entity's own row, which a PUT or an import rewrites. */
+  public Set<String> getStoredFieldNames(UUID id) {
+    Set<String> names = new HashSet<>();
+    String json = dao.findById(dao.getTableName(), id, dao.getCondition(ALL));
+    if (json != null) {
+      JsonUtils.readTree(json).fieldNames().forEachRemaining(names::add);
+    }
+    return names;
+  }
+
+  /** Relationship fields a human PUT replaces with what it sends, so leaving one out clears it. */
+  public Set<String> getRelationsReplacedByPut() {
+    return Set.of(FIELD_REVIEWERS, FIELD_EXPERTS, FIELD_DATA_PRODUCTS, FIELD_CERTIFICATION);
+  }
+
+  /** Stored fields a human PUT keeps when it leaves them out. */
+  public Set<String> getFieldsKeptByPut() {
+    return Set.of(FIELD_STYLE, FIELD_LIFE_CYCLE, FIELD_ENTITY_STATUS, FIELD_EXTENSION);
+  }
+
+  /** Relationship fields a CSV import replaces with the row's values. */
+  public Set<String> getRelationsReplacedByImport() {
+    return Set.of(FIELD_TAGS, FIELD_OWNERS, FIELD_DOMAINS, FIELD_REVIEWERS, FIELD_DATA_PRODUCTS);
+  }
 
   protected List<String> getFieldsStrippedFromStorageJson() {
     return Collections.emptyList();
@@ -14026,7 +14063,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
     int pendingApproval =
         stageGatedBulkUpdates(
-            updateEntities, existingByFqn, userName, successRequests, failedRequests);
+            updateEntities,
+            existingByFqn,
+            userName,
+            overrideMetadata,
+            successRequests,
+            failedRequests);
 
     // Batch update existing entities
     bulkUpdateEntities(
@@ -14093,6 +14135,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       List<T> updateEntities,
       Map<String, T> existingByFqn,
       String userName,
+      boolean overrideMetadata,
       List<BulkResponse> successRequests,
       List<BulkResponse> failedRequests) {
     int staged = 0;
@@ -14104,7 +14147,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         T published = publishedByFqn.get(entity.getFullyQualifiedName());
         entity.setId(published.getId());
         try {
-          Optional<StagedChange> change = ApprovalGate.admit(published, entity, userName, null);
+          Optional<StagedChange> change =
+              ApprovalGate.admit(published, entity, userName, null, Edit.bulkPut(overrideMetadata));
           if (change.isPresent()) {
             candidates.remove();
             successRequests.add(pendingApprovalResponse(entity, change.get()));
@@ -14112,15 +14156,24 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           }
         } catch (WebApplicationException e) {
           candidates.remove();
+          failedRequests.add(failedBulkItem(entity, e.getResponse().getStatus(), e.getMessage()));
+        } catch (IllegalArgumentException e) {
+          // The entity updater rejects the same invalid update this way, and the bulk write
+          // reports it as a failed item.
+          candidates.remove();
           failedRequests.add(
-              new BulkResponse()
-                  .withRequest(entity.getFullyQualifiedName())
-                  .withStatus(e.getResponse().getStatus())
-                  .withMessage(e.getMessage()));
+              failedBulkItem(entity, Status.BAD_REQUEST.getStatusCode(), e.getMessage()));
         }
       }
     }
     return staged;
+  }
+
+  private BulkResponse failedBulkItem(T entity, int status, String message) {
+    return new BulkResponse()
+        .withRequest(entity.getFullyQualifiedName())
+        .withStatus(status)
+        .withMessage(message);
   }
 
   // The pre-fetched originals carry no relationship fields and are hydrated later by the bulk

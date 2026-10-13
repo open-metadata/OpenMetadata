@@ -17,13 +17,17 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.it.tests.ChangeRequestITSupport.*;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,13 +35,21 @@ import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequest;
 import org.openmetadata.schema.governance.changeRequest.DeliveryStatus;
+import org.openmetadata.schema.governance.changeRequest.MutationOp;
+import org.openmetadata.schema.governance.changeRequest.MutationOpType;
+import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.approval.ChangeRequestService;
 import org.openmetadata.service.governance.approval.MutationPlanner;
 import org.openmetadata.service.util.RestUtil;
@@ -214,6 +226,32 @@ class ChangeRequestAdmissionIT {
   }
 
   @Test
+  void laterEditReviewedByAnotherWorkflowLeavesThePendingRequestAlone(TestNamespace ns) {
+    Glossary glossary = gatedGlossary(ns, "original display name");
+    String scope = filterScopedTo(glossary.getFullyQualifiedName());
+    WorkflowDefinition descriptionReview =
+        deployWorkflow(ns, Entity.GLOSSARY, INCLUDE_DESCRIPTION, NO_EXCLUDE, scope);
+    deployWorkflow(ns, Entity.GLOSSARY, "\"displayName\"", NO_EXCLUDE, scope);
+    patchDescription(glossary.getId(), "proposed description");
+    assertEquals(
+        descriptionReview.getId(), onlyPendingRequest(glossary.getId()).getWorkflowDefinitionId());
+
+    InvalidRequestException error =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                patch(
+                    glossary.getId(),
+                    "[{\"op\":\"replace\",\"path\":\"/displayName\",\"value\":\"n\"}]"));
+
+    assertTrue(error.getMessage().contains("another approval workflow"), error.getMessage());
+    ChangeRequest pending = onlyPendingRequest(glossary.getId());
+    assertEquals(descriptionReview.getId(), pending.getWorkflowDefinitionId());
+    assertEquals(1, pending.getActiveRevisionNumber());
+    assertEquals("original display name", displayNameOf(glossary.getId()));
+  }
+
+  @Test
   void onlyTheReviewingWorkflowStartsForARequest(TestNamespace ns) {
     Glossary glossary = gated(ns);
     deployHookWorkflow(
@@ -253,5 +291,172 @@ class ChangeRequestAdmissionIT {
     patchDescription(glossary.getId(), "gated after workflow");
     assertEquals("free before workflow", descriptionOf(glossary.getId()));
     onlyPendingRequest(glossary.getId());
+  }
+
+  @Test
+  void patchClearingGatedOwnersIsHeld(TestNamespace ns) throws Exception {
+    EntityReference owner = SharedEntities.get().USER2.getEntityReference();
+    Glossary glossary = gatedGlossaryOwnedBy(ns, ORIGINAL_DN, owner);
+    deployHookWorkflow(
+        ns, "\"owners\"", NO_EXCLUDE, filterScopedTo(glossary.getFullyQualifiedName()));
+
+    HttpResponse<String> response =
+        rawPatch(glossary.getId(), "[{\"op\":\"replace\",\"path\":\"/owners\",\"value\":null}]");
+
+    assertEquals(Response.Status.ACCEPTED.getStatusCode(), response.statusCode(), response.body());
+    assertEquals(List.of(owner.getId()), ids(withRelations(glossary.getId()).getOwners()));
+    MutationOp op = onlyOpOn(glossary.getId(), "owners");
+    assertEquals(MutationOpType.REMOVE, op.getOp());
+    assertEquals(owner.getId().toString(), op.getKey());
+  }
+
+  @Test
+  void patchClearingGatedTagsIsHeld(TestNamespace ns) throws Exception {
+    TagLabel tag = SharedEntities.get().PII_SENSITIVE_TAG_LABEL;
+    Glossary glossary = glossaryTagged(ns, tag);
+    deployHookWorkflow(
+        ns, "\"tags\"", NO_EXCLUDE, filterScopedTo(glossary.getFullyQualifiedName()));
+
+    HttpResponse<String> response =
+        rawPatch(glossary.getId(), "[{\"op\":\"replace\",\"path\":\"/tags\",\"value\":null}]");
+
+    assertEquals(Response.Status.ACCEPTED.getStatusCode(), response.statusCode(), response.body());
+    assertEquals(List.of(tag.getTagFQN()), tagFqns(glossary.getId()));
+    assertEquals(MutationOpType.REMOVE, onlyOpOn(glossary.getId(), "tags").getOp());
+  }
+
+  @Test
+  void approvedPutAddsTheTagItSendsAndKeepsTheStoredOnes(TestNamespace ns) throws Exception {
+    TagLabel stored = SharedEntities.get().PERSONAL_DATA_TAG_LABEL;
+    TagLabel sent = SharedEntities.get().PII_SENSITIVE_TAG_LABEL;
+    Glossary glossary = glossaryTagged(ns, stored);
+    deployHookWorkflow(
+        ns, "\"tags\"", NO_EXCLUDE, filterScopedTo(glossary.getFullyQualifiedName()));
+
+    HttpResponse<String> response = rawPut(putOf(glossary).withTags(List.of(sent)));
+
+    assertEquals(Response.Status.ACCEPTED.getStatusCode(), response.statusCode(), response.body());
+    MutationOp op = onlyOpOn(glossary.getId(), "tags");
+    assertEquals(MutationOpType.ADD, op.getOp());
+    assertEquals(sent.getTagFQN(), op.getKey());
+    resolveAs(
+        SdkClients.user1Client(),
+        awaitOpenApprovalTask(glossary.getFullyQualifiedName()),
+        "approve",
+        TaskResolutionType.Approved,
+        null);
+    Awaitility.await("approved tag published beside the stored one")
+        .atMost(Duration.ofSeconds(120))
+        .pollInterval(Duration.ofSeconds(2))
+        .until(() -> tagFqns(glossary.getId()).contains(sent.getTagFQN()));
+    assertEquals(
+        Set.of(stored.getTagFQN(), sent.getTagFQN()), Set.copyOf(tagFqns(glossary.getId())));
+  }
+
+  @Test
+  void putTagExcludingAStoredTagIsRejected(TestNamespace ns) throws Exception {
+    List<String> exclusive = createMutuallyExclusiveTags(ns);
+    Glossary glossary = glossaryTagged(ns, classificationTag(exclusive.get(0)));
+    deployHookWorkflow(
+        ns, "\"tags\"", NO_EXCLUDE, filterScopedTo(glossary.getFullyQualifiedName()));
+
+    HttpResponse<String> response =
+        rawPut(putOf(glossary).withTags(List.of(classificationTag(exclusive.get(1)))));
+
+    assertEquals(
+        Response.Status.BAD_REQUEST.getStatusCode(), response.statusCode(), response.body());
+    assertTrue(requestsFor(glossary.getId()).isEmpty());
+    assertEquals(List.of(exclusive.get(0)), tagFqns(glossary.getId()));
+  }
+
+  @Test
+  void putSendingNoOwnersKeepsThemWithoutHolding(TestNamespace ns) throws Exception {
+    EntityReference owner = SharedEntities.get().USER2.getEntityReference();
+    Glossary glossary = gatedGlossaryOwnedBy(ns, ORIGINAL_DN, owner);
+    deployHookWorkflow(
+        ns, "\"owners\"", NO_EXCLUDE, filterScopedTo(glossary.getFullyQualifiedName()));
+
+    ObjectNode body = (ObjectNode) JsonUtils.valueToTree(putOf(glossary));
+    body.putArray("owners");
+
+    HttpResponse<String> response =
+        sendAsAdmin("PUT", "/v1/glossaries", "application/json", body.toString());
+
+    assertEquals(Response.Status.OK.getStatusCode(), response.statusCode(), response.body());
+    assertTrue(requestsFor(glossary.getId()).isEmpty());
+    assertEquals(List.of(owner.getId()), ids(withRelations(glossary.getId()).getOwners()));
+  }
+
+  @Test
+  void putOmittingGatedReviewersIsHeld(TestNamespace ns) throws Exception {
+    Glossary ungoverned = gatedGlossary(ns, ORIGINAL_DN);
+    rawPut(putOf(ungoverned).withReviewers(null));
+    assertTrue(
+        withRelations(ungoverned.getId()).getReviewers().isEmpty(),
+        "a PUT clears omitted reviewers");
+
+    Glossary glossary = gatedGlossary(ns, ORIGINAL_DN);
+    deployHookWorkflow(
+        ns, "\"reviewers\"", NO_EXCLUDE, filterScopedTo(glossary.getFullyQualifiedName()));
+
+    HttpResponse<String> response = rawPut(putOf(glossary).withReviewers(null));
+
+    assertEquals(Response.Status.ACCEPTED.getStatusCode(), response.statusCode(), response.body());
+    assertEquals(
+        List.of(SharedEntities.get().USER1.getId()),
+        ids(withRelations(glossary.getId()).getReviewers()));
+    assertEquals(MutationOpType.REMOVE, onlyOpOn(glossary.getId(), "reviewers").getOp());
+  }
+
+  private static Glossary glossaryTagged(TestNamespace ns, TagLabel tag) {
+    Glossary glossary = gatedGlossary(ns, ORIGINAL_DN);
+    patch(
+        glossary.getId(),
+        "[{\"op\":\"add\",\"path\":\"/tags\",\"value\":[%s]}]"
+            .formatted(tagLabelJson(tag.getTagFQN())));
+    return withRelations(glossary.getId());
+  }
+
+  private static TagLabel classificationTag(String tagFqn) {
+    return JsonUtils.readValue(tagLabelJson(tagFqn), TagLabel.class);
+  }
+
+  /** The glossary's create request as a PUT body, carrying its reviewer and published values. */
+  private static CreateGlossary putOf(Glossary glossary) {
+    return new CreateGlossary()
+        .withName(glossary.getName())
+        .withDisplayName(glossary.getDisplayName())
+        .withDescription(glossary.getDescription())
+        .withReviewers(List.of(SharedEntities.get().USER1.getEntityReference()));
+  }
+
+  private static HttpResponse<String> rawPut(CreateGlossary create) throws Exception {
+    return sendAsAdmin("PUT", "/v1/glossaries", "application/json", JsonUtils.pojoToJson(create));
+  }
+
+  private static Glossary withRelations(UUID glossaryId) {
+    return SdkClients.adminClient()
+        .glossaries()
+        .get(glossaryId.toString(), "owners,reviewers,tags");
+  }
+
+  private static List<String> tagFqns(UUID glossaryId) {
+    return listOrEmpty(withRelations(glossaryId).getTags()).stream()
+        .map(TagLabel::getTagFQN)
+        .toList();
+  }
+
+  private static List<UUID> ids(List<EntityReference> refs) {
+    return listOrEmpty(refs).stream().map(EntityReference::getId).toList();
+  }
+
+  // A glossary PUT also restates its ontology configuration, so only the field under test is read.
+  private static MutationOp onlyOpOn(UUID glossaryId, String field) {
+    List<MutationOp> ops =
+        onlyPendingRequest(glossaryId).getActiveRevision().getOps().stream()
+            .filter(op -> field.equals(op.getField()))
+            .toList();
+    assertEquals(1, ops.size(), ops.toString());
+    return ops.get(0);
   }
 }

@@ -24,6 +24,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
@@ -35,6 +36,7 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.governance.WithdrawChangeRequest;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.tasks.Task;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequest;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequestStatus;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
@@ -92,6 +94,35 @@ class ChangeRequestResourceIT {
     assertEquals(1, visibleCount(SdkClients.user2Client(), glossary.getId()));
     assertEquals(1, visibleCount(SdkClients.user1Client(), glossary.getId()));
     assertEquals(0, visibleCount(SdkClients.user3Client(), glossary.getId()));
+  }
+
+  @Test
+  void anAssigneeOfTheReviewTaskSeesTheRequestButOthersDoNot(TestNamespace ns) {
+    Glossary glossary = gatedGlossary(ns, "dn");
+    String fqn = glossary.getFullyQualifiedName();
+    User assignee = SharedEntities.get().USER3;
+    deployWorkflowAssigning(
+        ns,
+        Entity.GLOSSARY,
+        "\"description\"",
+        "",
+        filterScopedTo(fqn),
+        assignee.getEntityReference());
+    patchDescription(glossary.getId(), "staged");
+    UUID requestId = onlyPendingRequest(glossary.getId()).getId();
+    Task task = awaitOpenApprovalTask(fqn);
+    assertEquals(Set.of(assignee.getName()), taskAssigneeNames(fqn, task.getId()));
+
+    assertEquals(requestId, getAs(SdkClients.user3Client(), requestId).getId());
+    assertEquals(1, visibleCount(SdkClients.user3Client(), glossary.getId()));
+    assertThrows(ForbiddenException.class, () -> getAs(SdkClients.user2Client(), requestId));
+    assertEquals(0, visibleCount(SdkClients.user2Client(), glossary.getId()));
+  }
+
+  private static ChangeRequest getAs(OpenMetadataClient client, UUID id) {
+    return client
+        .getHttpClient()
+        .execute(HttpMethod.GET, "/v1/changeRequests/%s".formatted(id), null, ChangeRequest.class);
   }
 
   @Test

@@ -44,13 +44,18 @@ import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.governance.changeRequest.MutationOp;
+import org.openmetadata.schema.governance.changeRequest.MutationOpType;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowTriggerInterface;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.OntologyConfiguration;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.EntityLifecycle;
+import org.openmetadata.service.governance.approval.ApprovalGate.Edit;
 import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry.GatingRule;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -327,6 +332,9 @@ class GovernanceApprovalRegistryTest {
     @SuppressWarnings("rawtypes")
     private final EntityRepository glossaryRepository = mock(EntityRepository.class);
 
+    // The top-level fields the published glossary's own row holds.
+    private Set<String> storedFields = Set.of();
+
     @Test
     void stageChangeIsHeldLikeAnyField() {
       Glossary original = published().withEntityStatus(EntityStatus.APPROVED);
@@ -379,13 +387,16 @@ class GovernanceApprovalRegistryTest {
           rules,
           user,
           userIsBot,
-          () -> ApprovalGate.admit(original, updated, user, impersonatedBy));
+          () -> ApprovalGate.admit(original, updated, user, impersonatedBy, Edit.put()));
     }
 
     private Optional<StagedChange> preview(
         List<GatingRule> rules, Glossary original, Glossary updated) {
       return withRules(
-          rules, "alice", false, () -> ApprovalGate.preview(original, updated, "alice"));
+          rules,
+          "alice",
+          false,
+          () -> ApprovalGate.preview(original, updated, "alice", Edit.put()));
     }
 
     private Optional<StagedChange> withRules(
@@ -404,6 +415,13 @@ class GovernanceApprovalRegistryTest {
             .when(() -> Entity.getEntityRepository(Entity.GLOSSARY))
             .thenReturn(glossaryRepository);
         when(glossaryRepository.getEntityLifecycle()).thenReturn(EntityLifecycle.GENERAL);
+        when(glossaryRepository.getStoredFieldNames(any())).thenReturn(storedFields);
+        when(glossaryRepository.getRelationsReplacedByPut())
+            .thenReturn(Set.of("reviewers", "experts", "dataProducts", "certification"));
+        when(glossaryRepository.getFieldsKeptByPut())
+            .thenReturn(Set.of("style", "lifeCycle", "entityStatus", "extension"));
+        when(glossaryRepository.getRelationsReplacedByImport())
+            .thenReturn(Set.of("tags", "owners", "domains", "reviewers", "dataProducts"));
         entity
             .when(() -> Entity.findByNameOrNull(eq(Entity.USER), eq(user), any()))
             .thenReturn(new User().withName(user).withIsBot(userIsBot));
@@ -414,6 +432,12 @@ class GovernanceApprovalRegistryTest {
     private Optional<StagedChange> admitAsHuman(
         List<GatingRule> rules, Glossary original, Glossary updated) {
       return admit(rules, original, updated, "alice", null, false);
+    }
+
+    private Optional<StagedChange> admitAsHuman(
+        List<GatingRule> rules, Glossary original, Glossary updated, Edit edit) {
+      return withRules(
+          rules, "alice", false, () -> ApprovalGate.admit(original, updated, "alice", null, edit));
     }
 
     private static Set<String> fields(StagedChange change) {
@@ -686,6 +710,126 @@ class GovernanceApprovalRegistryTest {
       assertTrue(
           admitAsHuman(List.of(rule(WORKFLOW_A, List.of(), List.of())), original, updated)
               .isEmpty());
+    }
+
+    @Test
+    void patchNullClearsOnlyTheListsItTargets() {
+      EntityReference owner = new EntityReference().withId(UUID.randomUUID()).withType("user");
+      Glossary original = published().withOwners(List.of(owner));
+      Glossary updated = edited(original).withOwners(null);
+      List<GatingRule> rules = List.of(rule(WORKFLOW_A, List.of("owners"), List.of()));
+
+      StagedChange change =
+          admitAsHuman(rules, original, updated, Edit.patch(Set.of("owners"))).orElseThrow();
+
+      MutationOp op = change.ops().getFirst();
+      assertEquals(1, change.ops().size());
+      assertEquals(MutationOpType.REMOVE, op.getOp());
+      assertEquals(owner.getId().toString(), op.getKey());
+      assertTrue(
+          admitAsHuman(rules, original, updated, Edit.patch(Set.of("description"))).isEmpty());
+    }
+
+    @Test
+    void putAddsTheTagsItSendsToTheStoredOnes() {
+      Glossary original = published().withTags(List.of(tag("Tier.Tier1")));
+      Glossary updated = edited(original).withTags(List.of(tag("PII.Sensitive")));
+
+      StagedChange change =
+          admitAsHuman(
+                  List.of(rule(WORKFLOW_A, List.of("tags"), List.of())),
+                  original,
+                  updated,
+                  Edit.put())
+              .orElseThrow();
+
+      MutationOp op = change.ops().getFirst();
+      assertEquals(1, change.ops().size());
+      assertEquals(MutationOpType.ADD, op.getOp());
+      assertEquals("PII.Sensitive", op.getKey());
+    }
+
+    @Test
+    void putSendingNoOwnersKeepsThem() {
+      EntityReference owner = new EntityReference().withId(UUID.randomUUID()).withType("user");
+      Glossary original = published().withOwners(List.of(owner));
+      List<GatingRule> rules = List.of(rule(WORKFLOW_A, List.of("owners"), List.of()));
+
+      assertTrue(
+          admitAsHuman(rules, original, edited(original).withOwners(List.of()), Edit.put())
+              .isEmpty());
+      assertTrue(
+          admitAsHuman(rules, original, edited(original).withOwners(null), Edit.put()).isEmpty());
+    }
+
+    @Test
+    void putLeavingOutReviewersClearsThem() {
+      EntityReference reviewer = new EntityReference().withId(UUID.randomUUID()).withType("user");
+      Glossary original = published().withReviewers(List.of(reviewer));
+      Glossary updated = edited(original).withReviewers(null);
+      List<GatingRule> rules = List.of(rule(WORKFLOW_A, List.of("reviewers"), List.of()));
+
+      StagedChange change = admitAsHuman(rules, original, updated, Edit.put()).orElseThrow();
+
+      assertEquals(MutationOpType.REMOVE, change.ops().getFirst().getOp());
+      assertTrue(
+          admitAsHuman(rules, original, updated, Edit.patch(Set.of("description"))).isEmpty());
+    }
+
+    @Test
+    void importRowWithoutOwnersClearsThem() {
+      EntityReference owner = new EntityReference().withId(UUID.randomUUID()).withType("user");
+      Glossary original = published().withOwners(List.of(owner));
+      Glossary updated = edited(original).withOwners(null);
+      List<GatingRule> rules = List.of(rule(WORKFLOW_A, List.of("owners"), List.of()));
+
+      StagedChange change = admitAsHuman(rules, original, updated, Edit.importRow()).orElseThrow();
+
+      assertEquals(MutationOpType.REMOVE, change.ops().getFirst().getOp());
+      assertTrue(admitAsHuman(rules, original, updated, Edit.put()).isEmpty());
+    }
+
+    @Test
+    void putLeavingOutAStoredFieldClearsIt() {
+      Glossary original =
+          published().withOntologyConfiguration(new OntologyConfiguration().withReadOnly(true));
+      Glossary updated = edited(original).withOntologyConfiguration(null);
+      List<GatingRule> rules =
+          List.of(rule(WORKFLOW_A, List.of("ontologyConfiguration"), List.of()));
+
+      assertTrue(admitAsHuman(rules, original, updated, Edit.put()).isEmpty());
+      storedFields = Set.of("ontologyConfiguration");
+      assertEquals(
+          Set.of("ontologyConfiguration"),
+          fields(admitAsHuman(rules, original, updated, Edit.put()).orElseThrow()));
+    }
+
+    @Test
+    void bulkOverrideReplacesTheStoredTagsOfTheClassificationsItSends() {
+      Glossary original = published().withTags(List.of(tag("PII.Sensitive"), tag("Tier.Tier1")));
+      Glossary updated = edited(original).withTags(List.of(tag("PII.NonSensitive")));
+
+      StagedChange change =
+          admitAsHuman(
+                  List.of(rule(WORKFLOW_A, List.of("tags"), List.of())),
+                  original,
+                  updated,
+                  Edit.bulkPut(true))
+              .orElseThrow();
+
+      assertEquals(
+          Set.of("ADD PII.NonSensitive", "REMOVE PII.Sensitive"),
+          change.ops().stream()
+              .map(op -> "%s %s".formatted(op.getOp().name(), op.getKey()))
+              .collect(Collectors.toSet()));
+    }
+
+    private static TagLabel tag(String tagFqn) {
+      return new TagLabel()
+          .withTagFQN(tagFqn)
+          .withSource(TagLabel.TagSource.CLASSIFICATION)
+          .withLabelType(TagLabel.LabelType.MANUAL)
+          .withState(TagLabel.State.CONFIRMED);
     }
   }
 }

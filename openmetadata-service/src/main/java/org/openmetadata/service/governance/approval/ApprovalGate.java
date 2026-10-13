@@ -14,6 +14,7 @@
 package org.openmetadata.service.governance.approval;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.governance.workflows.WorkflowEventConsumer.isBotChange;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -51,6 +52,8 @@ import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry.G
 import org.openmetadata.service.governance.workflows.elements.triggers.WorkflowTriggerFilters;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
+import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 
 /**
@@ -78,12 +81,60 @@ public final class ApprovalGate {
   public static final String PENDING_APPROVAL = "Pending approval";
   private static final String EXTENSION = Entity.FIELD_EXTENSION;
   private static final String EXTENSION_PREFIX = EXTENSION + Entity.SEPARATOR;
+  private static final Set<String> REPLACED_BY_IMPORT_UPDATE =
+      Set.of(Entity.FIELD_TAGS, Entity.FIELD_OWNERS, Entity.FIELD_DOMAINS);
 
   private ApprovalGate() {}
 
+  /**
+   * How a write treats what its request leaves out, so a held edit stages what the write itself
+   * would publish. A null or absent value clears a stored scalar under every write, and clears a
+   * stored list or object only in a field the write replaces.
+   */
+  public record Edit(Kind kind, Set<String> patchedFields, boolean overrideMetadata) {
+    public enum Kind {
+      PUT,
+      PATCH,
+      IMPORT_UPDATE,
+      IMPORT_ROW
+    }
+
+    /**
+     * A human PUT adds the tags it sends to the stored ones, keeps the owners and domains it sends
+     * empty, and replaces the rest of the entity's row and the relationships its repository names.
+     */
+    public static Edit put() {
+      return new Edit(Kind.PUT, Set.of(), false);
+    }
+
+    /** A bulk upsert is a PUT; with {@code overrideMetadata} it replaces the tags it sends. */
+    public static Edit bulkPut(boolean overrideMetadata) {
+      return new Edit(Kind.PUT, Set.of(), overrideMetadata);
+    }
+
+    /** A PATCH replaces each top-level field its operations target. */
+    public static Edit patch(Set<String> patchedFields) {
+      return new Edit(Kind.PATCH, Set.copyOf(patchedFields), false);
+    }
+
+    /** An import of one entity replaces what a PUT does, and its tags, owners and domains too. */
+    public static Edit importUpdate() {
+      return new Edit(Kind.IMPORT_UPDATE, Set.of(), false);
+    }
+
+    /** A CSV row replaces the entity's row, extension and the relationships the import clears. */
+    public static Edit importRow() {
+      return new Edit(Kind.IMPORT_ROW, Set.of(), false);
+    }
+  }
+
   public static Optional<StagedChange> admit(
-      EntityInterface original, EntityInterface updated, String user, String impersonatedBy) {
-    return evaluate(original, updated, user, impersonatedBy, true);
+      EntityInterface original,
+      EntityInterface updated,
+      String user,
+      String impersonatedBy,
+      Edit edit) {
+    return evaluate(original, updated, user, impersonatedBy, edit, true);
   }
 
   /** Whether an edit of {@code entityType} by {@code user} can be held at all. */
@@ -94,8 +145,8 @@ public final class ApprovalGate {
 
   /** What {@link #admit} would decide for this edit, without recording metrics. */
   public static Optional<StagedChange> preview(
-      EntityInterface original, EntityInterface updated, String user) {
-    return evaluate(original, updated, user, null, false);
+      EntityInterface original, EntityInterface updated, String user, Edit edit) {
+    return evaluate(original, updated, user, null, edit, false);
   }
 
   private static Optional<StagedChange> evaluate(
@@ -103,10 +154,11 @@ public final class ApprovalGate {
       EntityInterface updated,
       String user,
       String impersonatedBy,
+      Edit edit,
       boolean record) {
     Optional<StagedChange> staged = Optional.empty();
     if (original != null && original.getId() != null) {
-      staged = stageIfGated(original, updated, user, impersonatedBy, record);
+      staged = stageIfGated(original, updated, user, impersonatedBy, edit, record);
     }
     return staged;
   }
@@ -160,7 +212,7 @@ public final class ApprovalGate {
         EntityReference asset = candidates.next();
         EntityInterface original = gated.get(asset.getId());
         if (original != null) {
-          Optional<BulkResponse> item = hold(asset, original, user, dryRun, edit);
+          Optional<BulkResponse> item = hold(asset, original, field, user, dryRun, edit);
           if (item.isPresent()) {
             candidates.remove();
             held.add(item.get());
@@ -174,6 +226,7 @@ public final class ApprovalGate {
   private static Optional<BulkResponse> hold(
       EntityReference asset,
       EntityInterface original,
+      String field,
       String user,
       boolean dryRun,
       AssetEdit edit) {
@@ -185,8 +238,11 @@ public final class ApprovalGate {
       }
       EntityInterface updated = JsonUtils.deepCopy(original, original.getClass());
       edit.apply(updated);
+      Edit write = Edit.patch(Set.of(field));
       Optional<StagedChange> staged =
-          dryRun ? preview(original, updated, user) : admit(original, updated, user, null);
+          dryRun
+              ? preview(original, updated, user, write)
+              : admit(original, updated, user, null, write);
       item =
           staged.map(
               change ->
@@ -352,6 +408,7 @@ public final class ApprovalGate {
       EntityInterface updated,
       String user,
       String impersonatedBy,
+      Edit edit,
       boolean record) {
     String entityType = Entity.getEntityTypeFromObject(updated);
     List<GatingRule> rules = GovernanceApprovalRegistry.gatingRules(entityType);
@@ -359,7 +416,7 @@ public final class ApprovalGate {
     // The bot check reads the acting user, so it runs only for an entity type a workflow gates.
     if (!rules.isEmpty() && !isBotChange(user, impersonatedBy)) {
       Timer.Sample sample = ChangeRequestMetrics.startAdmission();
-      staged = planStage(rules, entityType, original, updated, user, impersonatedBy);
+      staged = planStage(rules, entityType, original, updated, user, impersonatedBy, edit);
       if (record) {
         ChangeRequestMetrics.stopAdmission(sample, entityType);
       }
@@ -375,18 +432,21 @@ public final class ApprovalGate {
       EntityInterface original,
       EntityInterface updated,
       String user,
-      String impersonatedBy) {
+      String impersonatedBy,
+      Edit edit) {
     keepStoredStatusWhenOmitted(original, updated);
+    EntityInterface published =
+        edit.kind() == Edit.Kind.PUT ? publishedByPut(original, updated, edit) : updated;
     JsonNode base = JsonUtils.valueToTree(original);
-    JsonNode proposed = JsonUtils.valueToTree(updated);
-    Set<String> changed = changedFields(entityType, base, proposed);
+    JsonNode proposed = JsonUtils.valueToTree(published);
+    Set<String> changed = changedFields(entityType, original, base, proposed, edit);
     List<GatedBy> gating =
-        gatingWorkflows(rules, entityType, updated, triggerNames(base, proposed, changed));
+        gatingWorkflows(rules, entityType, published, triggerNames(base, proposed, changed));
     Optional<StagedChange> staged = Optional.empty();
     if (!gating.isEmpty()) {
       rejectAmbiguousReview(gating);
-      rejectMutuallyExclusiveTags(updated, changed);
-      rejectStageMoveOutsideLifecycle(entityType, original, updated, changed);
+      rejectMutuallyExclusiveTags(published, changed);
+      rejectStageMoveOutsideLifecycle(entityType, original, published, changed);
       GatedBy review = gating.get(0);
       staged =
           Optional.of(
@@ -433,27 +493,100 @@ public final class ApprovalGate {
     }
   }
 
-  private static Set<String> changedFields(String entityType, JsonNode base, JsonNode proposed) {
+  // The fields the write replaces are looked up only when it sends null for a stored list or
+  // object, since that is the only case where they decide the outcome.
+  private static Set<String> changedFields(
+      String entityType, EntityInterface original, JsonNode base, JsonNode proposed, Edit edit) {
     Set<String> names = new TreeSet<>();
     base.fieldNames().forEachRemaining(names::add);
     proposed.fieldNames().forEachRemaining(names::add);
     names.removeAll(BOOKKEEPING_FIELDS);
-    names.removeIf(name -> !isChange(entityType, name, base.get(name), proposed.get(name)));
+    boolean sendsNullForAList =
+        names.stream()
+            .anyMatch(
+                name -> clearsStoredList(entityType, name, base.get(name), proposed.get(name)));
+    Set<String> replaced =
+        sendsNullForAList ? replacedFields(entityType, original, edit) : Set.of();
+    names.removeIf(
+        name -> !isChange(entityType, name, base.get(name), proposed.get(name), replaced));
     return names;
   }
 
-  // An absent/null proposed value is a change only when it clears a scalar of a stageable field;
-  // an omitted collection is merged, not removed, by PUT.
-  private static boolean isChange(
+  private static boolean clearsStoredList(
       String entityType, String field, JsonNode oldValue, JsonNode newValue) {
+    return (newValue == null || newValue.isNull())
+        && oldValue != null
+        && !oldValue.isValueNode()
+        && isStageable(entityType, field);
+  }
+
+  // The fields a write replaces with what it sends, as the entity updater and the import apply it.
+  private static Set<String> replacedFields(
+      String entityType, EntityInterface original, Edit edit) {
+    EntityRepository<?> repository = Entity.getEntityRepository(entityType);
+    Set<String> replaced = new HashSet<>();
+    switch (edit.kind()) {
+      case PATCH -> replaced.addAll(edit.patchedFields());
+      case PUT -> {
+        replaced.addAll(repository.getStoredFieldNames(original.getId()));
+        replaced.addAll(repository.getRelationsReplacedByPut());
+        replaced.removeAll(repository.getFieldsKeptByPut());
+      }
+      case IMPORT_UPDATE -> {
+        replaced.addAll(repository.getStoredFieldNames(original.getId()));
+        replaced.addAll(repository.getRelationsReplacedByPut());
+        replaced.addAll(REPLACED_BY_IMPORT_UPDATE);
+        replaced.removeAll(repository.getFieldsKeptByPut());
+      }
+      case IMPORT_ROW -> {
+        replaced.addAll(repository.getStoredFieldNames(original.getId()));
+        replaced.addAll(repository.getRelationsReplacedByImport());
+        replaced.add(EXTENSION);
+      }
+    }
+    return replaced;
+  }
+
+  // An absent/null proposed value clears a stageable field's scalar under every write, and its
+  // list or object only when the write replaces that field.
+  private static boolean isChange(
+      String entityType, String field, JsonNode oldValue, JsonNode newValue, Set<String> replaced) {
     boolean cleared = newValue == null || newValue.isNull();
-    boolean clearsScalar =
-        cleared
-            && oldValue != null
-            && oldValue.isValueNode()
-            && !oldValue.isNull()
-            && isStageable(entityType, field);
-    return clearsScalar || (!cleared && MutationPlanner.differs(oldValue, newValue));
+    boolean clears =
+        isStageable(entityType, field)
+            && (replaced.contains(field) || (oldValue != null && oldValue.isValueNode()));
+    return (!cleared || clears) && MutationPlanner.differs(oldValue, newValue);
+  }
+
+  // A human PUT adds the tags it sends to the stored ones and keeps the owners and domains it sends
+  // empty, so the entity it would publish carries both. A bulk override replaces the stored tags of
+  // the classifications and glossaries it sends and keeps the others.
+  private static EntityInterface publishedByPut(
+      EntityInterface original, EntityInterface updated, Edit edit) {
+    EntityInterface published = JsonUtils.deepCopy(updated, updated.getClass());
+    List<TagLabel> sent = listOrEmpty(updated.getTags());
+    List<TagLabel> stored = listOrEmpty(original.getTags());
+    if (edit.overrideMetadata() && !sent.isEmpty()) {
+      Set<String> sentRoots =
+          sent.stream()
+              .filter(tag -> tag.getLabelType() != TagLabel.LabelType.DERIVED)
+              .map(tag -> FullyQualifiedName.getRoot(tag.getTagFQN()))
+              .collect(Collectors.toSet());
+      stored =
+          stored.stream()
+              .filter(tag -> !sentRoots.contains(FullyQualifiedName.getRoot(tag.getTagFQN())))
+              .toList();
+    }
+    List<TagLabel> tags = new ArrayList<>(sent);
+    EntityUtil.mergeTags(tags, stored);
+    published.setTags(tags);
+    if (nullOrEmpty(updated.getOwners())) {
+      published.setOwners(original.getOwners());
+    }
+    if (nullOrEmpty(updated.getDomains())) {
+      published.setDomains(original.getDomains());
+    }
+    return published;
   }
 
   // Custom properties trigger per property ("extension.<name>"), matching the names the change
