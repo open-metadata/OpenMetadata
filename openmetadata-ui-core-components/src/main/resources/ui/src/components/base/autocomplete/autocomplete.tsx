@@ -107,6 +107,12 @@ export interface AutocompleteProps
   popoverClassName?: string;
   /** Fires when the dropdown list scrolls — use it to page in more async results. */
   onPopoverScroll?: UIEventHandler<HTMLElement>;
+  /** Pinned above the dropdown list (e.g. a result count); the list scrolls beneath it. */
+  popoverHeader?: ReactNode;
+  /** Pinned below the dropdown list (e.g. keyboard hints). */
+  popoverFooter?: ReactNode;
+  /** Shown when the list is empty, in place of the default "no data" state (e.g. while loading). */
+  emptyState?: ReactNode;
   selectedItems: SelectItemType[] | ListData<SelectItemType>;
   icon?: IconComponentType | null;
   children: AriaListBoxProps<SelectItemType>['children'];
@@ -379,6 +385,9 @@ export const AutocompleteBase = ({
   placeholder = 'Search',
   popoverClassName,
   onPopoverScroll,
+  popoverHeader,
+  popoverFooter,
+  emptyState,
   renderTag,
   filterOption,
   onFocus,
@@ -572,12 +581,21 @@ export const AutocompleteBase = ({
         isVirtualized && 'tw:max-h-80 tw:overflow-y-auto tw:py-1'
       )}
       ref={listBoxRef}
-      renderEmptyState={() => <SelectEmptyState />}
+      renderEmptyState={() => emptyState ?? <SelectEmptyState />}
       selectionMode="multiple"
       onScroll={isVirtualized ? handleScroll : undefined}>
       {visibleChildren}
     </AriaListBox>
   );
+
+  const dropdownList = isVirtualized ? (
+    <Virtualizer layout={ListLayout} layoutOptions={VIRTUALIZED_LAYOUT_OPTIONS}>
+      {listBox}
+    </Virtualizer>
+  ) : (
+    listBox
+  );
+  const hasPopoverChrome = Boolean(popoverHeader || popoverFooter);
 
   // Match the popover width to the trigger. The base Popover relies on
   // `--trigger-width`, but react-aria only sets that on a trigger's own context
@@ -673,20 +691,32 @@ export const AutocompleteBase = ({
                   className={cx(
                     // A virtualized listbox is its own bounded scroller.
                     isVirtualized && 'tw:overflow-hidden tw:py-0',
+                    // Header/footer stay put; the list gets its own scroller.
+                    hasPopoverChrome &&
+                      'tw:flex tw:flex-col tw:overflow-hidden tw:py-0',
                     popoverClassName
                   )}
                   size="md"
                   style={{ width: popoverWidth }}
                   triggerRef={triggerRef}
-                  onScroll={isVirtualized ? undefined : handleScroll}>
-                  {isVirtualized ? (
-                    <Virtualizer
-                      layout={ListLayout}
-                      layoutOptions={VIRTUALIZED_LAYOUT_OPTIONS}>
-                      {listBox}
-                    </Virtualizer>
+                  onScroll={
+                    isVirtualized || hasPopoverChrome ? undefined : handleScroll
+                  }>
+                  {hasPopoverChrome ? (
+                    <>
+                      {popoverHeader}
+                      <div
+                        className={cx(
+                          'tw:min-h-0 tw:flex-1',
+                          !isVirtualized && 'tw:overflow-y-auto tw:py-1'
+                        )}
+                        onScroll={isVirtualized ? undefined : handleScroll}>
+                        {dropdownList}
+                      </div>
+                      {popoverFooter}
+                    </>
                   ) : (
-                    listBox
+                    dropdownList
                   )}
                 </Popover>
               )}
