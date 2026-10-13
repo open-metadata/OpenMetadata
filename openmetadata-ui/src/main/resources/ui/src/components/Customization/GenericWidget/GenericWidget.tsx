@@ -144,7 +144,7 @@ export const GenericWidget = (props: WidgetCommonProps) => {
       variant="muted">
       <Box
         align="center"
-        className="tw:-mb-px tw:min-h-12 tw:rounded-xl tw:bg-utility-gray-100 tw:px-4 tw:py-2"
+        className="tw:-mb-px tw:min-h-12 tw:rounded-xl tw:bg-active tw:px-4 tw:py-2"
         gap={2}>
         {/* Grid drag handle: react-grid-layout starts a drag on mousedown here. */}
         <span
