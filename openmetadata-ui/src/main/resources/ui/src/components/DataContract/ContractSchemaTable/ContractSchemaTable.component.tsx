@@ -16,7 +16,6 @@ import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import classNames from 'classnames';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ArrowIcon } from '../../../assets/svg/arrow-right-full.svg';
 import { ReactComponent as FailedIcon } from '../../../assets/svg/fail-badge.svg';
 import { ReactComponent as CompletedIcon } from '../../../assets/svg/ic-check-circle-colored.svg';
 import { LIST_SIZE, NO_DATA_PLACEHOLDER } from '../../../constants/constants';
@@ -47,9 +46,6 @@ const ContractSchemaTable: React.FC<{
       size: 'default',
       hideOnSinglePage: true,
       pageSize: LIST_SIZE,
-      prevIcon: <ArrowIcon className="tw:size-3.5 tw:shrink-0" />,
-      nextIcon: <ArrowIcon className="tw:size-3.5 tw:shrink-0" />,
-      className: 'schema-custom-pagination',
     }),
     []
   );
@@ -124,11 +120,11 @@ const ContractSchemaTable: React.FC<{
 
                 return (
                   <StatusIcon
-                    className={classNames(
-                      'column-status-icon tw:size-3.5 tw:shrink-0',
-                      iconClass
-                    )}
+                    className={classNames('column-status-icon', iconClass)}
                     data-testid={`schema-column-${name}-${iconClass}`}
+                    fill="currentColor"
+                    height="1em"
+                    width="1em"
                   />
                 );
               },

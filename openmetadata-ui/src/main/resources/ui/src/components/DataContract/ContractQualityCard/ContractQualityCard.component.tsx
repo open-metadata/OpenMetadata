@@ -93,14 +93,19 @@ const ContractQualityCard: React.FC<{
   }, [testCaseSummary]);
 
   const getTestCaseStatusIcon = (record: TestCase) => {
-    const TestStatusIcon =
+    const StatusIcon =
       TEST_CASE_STATUS_ICON[
         (record?.testCaseResult?.testCaseStatus ??
           'Queued') as keyof typeof TEST_CASE_STATUS_ICON
       ];
 
     return (
-      <TestStatusIcon className="test-status-icon tw:size-3.5 tw:shrink-0" />
+      <StatusIcon
+        className="test-status-icon"
+        fill="currentColor"
+        height="1em"
+        width="1em"
+      />
     );
   };
 

@@ -52,7 +52,6 @@ const ContractSemantics: React.FC<{
     <div className="contract-semantic-component-container">
       <div className="rule-item-container">
         {semantics.map((item) => {
-          const SemanticIcon = getSemanticIconPerLastExecution(item);
           const inheritedIcon = item.inherited ? (
             <Tooltip
               arrow
@@ -67,13 +66,15 @@ const ContractSemantics: React.FC<{
               />
             </Tooltip>
           ) : null;
+          const RuleIcon = getSemanticIconPerLastExecution(item);
 
           return (
             <div className="rule-item" key={item.rule}>
-              <SemanticIcon
+              <RuleIcon
                 className={classNames('rule-icon tw:size-3.5 tw:shrink-0', {
                   'rule-icon-default': !latestContractResults || !item.enabled,
                 })}
+                fill="currentColor"
               />
               <div className="rule-item-content">
                 <div className="d-flex items-center gap-1">

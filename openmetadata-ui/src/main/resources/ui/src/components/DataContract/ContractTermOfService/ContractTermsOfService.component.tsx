@@ -10,11 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Card, Typography } from '@openmetadata/ui-core-components';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ChevronLeft } from '../../../assets/svg/left-arrow.svg';
-import { ReactComponent as RightIcon } from '../../../assets/svg/right-arrow.svg';
 import { EntityType } from '../../../enums/entity.enum';
 import {
   DataContract,
@@ -23,6 +20,7 @@ import {
 import { useFqn } from '../../../hooks/useFqn';
 import BlockEditor from '../../BlockEditor/BlockEditor';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
+import { ContractFormStep } from '../ContractFormStep/ContractFormStep';
 
 export const ContractTermsOfService: React.FC<{
   initialValues?: DataContract;
@@ -55,46 +53,30 @@ export const ContractTermsOfService: React.FC<{
   };
 
   return (
-    <>
-      <Card className="container bg-grey p-box">
-        <div className="m-b-sm">
-          <Typography className="contract-detail-form-tab-title">
-            {t('label.terms-of-service')}
-          </Typography>
-          <Typography as="p" className="contract-detail-form-tab-description">
-            {t('message.data-contract-terms-of-service-description')}
-          </Typography>
+    <ContractFormStep
+      description={t('message.data-contract-terms-of-service-description')}
+      isNextVisible={buttonProps.isNextVisible}
+      nextLabel={buttonProps.nextLabel}
+      prevLabel={buttonProps.prevLabel}
+      title={t('label.terms-of-service')}
+      onNext={onNext}
+      onPrev={onPrev}>
+      <div className="contract-form-content-container">
+        <div className="p-l-xl">
+          <EntityAttachmentProvider
+            allowFileUpload
+            entityFqn={fqn}
+            entityType={EntityType.TABLE}>
+            <BlockEditor
+              editable
+              content={termsOfUseContent}
+              showInlineAlert={false}
+              onChange={handleContentOnChange}
+            />
+          </EntityAttachmentProvider>
         </div>
-
-        <div className="contract-form-content-container">
-          <div className="p-l-xl">
-            <EntityAttachmentProvider
-              allowFileUpload
-              entityFqn={fqn}
-              entityType={EntityType.TABLE}>
-              <BlockEditor
-                editable
-                content={termsOfUseContent}
-                showInlineAlert={false}
-                onChange={handleContentOnChange}
-              />
-            </EntityAttachmentProvider>
-          </div>
-        </div>
-      </Card>
-      <div className="d-flex justify-between m-t-md">
-        <Button
-          color="secondary"
-          iconLeading={<ChevronLeft height={22} width={20} />}
-          onClick={onPrev}>
-          {buttonProps.prevLabel ?? t('label.previous')}
-        </Button>
-        <Button color="primary" onClick={onNext}>
-          {buttonProps.nextLabel ?? t('label.next')}
-          <RightIcon className="tw:size-3.5 tw:shrink-0" />
-        </Button>
       </div>
-    </>
+    </ContractFormStep>
   );
 };
 

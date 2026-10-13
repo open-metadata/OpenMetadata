@@ -190,9 +190,10 @@ const ContractSLA: React.FC<{
     if (!slaValidation || !outcomeOf) {
       return (
         <DefaultIcon
-          className="sla-icon tw:shrink-0"
-          height={SLA_ICON_SIZE}
-          width={SLA_ICON_SIZE}
+          className="sla-icon"
+          fill="currentColor"
+          height="1em"
+          width="1em"
         />
       );
     }
