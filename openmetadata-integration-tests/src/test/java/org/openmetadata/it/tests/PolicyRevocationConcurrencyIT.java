@@ -44,6 +44,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ApiException;
+import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
@@ -234,9 +235,9 @@ public class PolicyRevocationConcurrencyIT extends McpTestBase {
   }
 
   private static void removeCreateGrant(Policy policy, boolean patchRule) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Policy current = admin.policies().get(policy.getId().toString(), RULES_FIELD);
     if (patchRule) {
-      Policy current =
-          SdkClients.adminClient().policies().get(policy.getId().toString(), RULES_FIELD);
       int index =
           IntStream.range(0, current.getRules().size())
               .filter(position -> CREATE_RULE.equals(current.getRules().get(position).getName()))
@@ -245,7 +246,17 @@ public class PolicyRevocationConcurrencyIT extends McpTestBase {
       patch(
           "policies/" + policy.getId(), "[{\"op\":\"remove\",\"path\":\"/rules/" + index + "\"}]");
     } else {
-      removeRule(policy, CREATE_RULE);
+      current.getRules().removeIf(rule -> CREATE_RULE.equals(rule.getName()));
+      admin
+          .getHttpClient()
+          .execute(
+              HttpMethod.PUT,
+              "/v1/policies",
+              new CreatePolicy()
+                  .withName(current.getName())
+                  .withEnabled(current.getEnabled())
+                  .withRules(current.getRules()),
+              Policy.class);
     }
     assertThat(
             SdkClients.adminClient()

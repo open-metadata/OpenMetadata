@@ -47,10 +47,12 @@ configured capacity exactly across shards; small capacities may leave some shard
 entries. Policy and user-context TTLs remain two and fifteen minutes, respectively.
 
 Per-key epoch checks were rejected because a later reader can still join an earlier Guava load.
-Striped generation tags stored with values could avoid retiring neighboring users, but would need
-to reject both stored and joined obsolete loads and prevent their publication into active entries.
-Revisit that alternative only with measured invalidation-driven database pressure and equivalent
-deterministic race coverage.
+A single cache with striped generation tags must reject both stored and joined obsolete loads;
+a value tag alone cannot prevent joining an old Guava load. Generation-keyed loads avoid that join,
+but still invalidate neighboring users sharing the stripe and leave obsolete entries occupying the
+bounded cache until eviction. Per-user generation tracking could reduce collateral reloads, with
+additional lifecycle and memory-bound requirements. Revisit only with measured database pressure
+and equivalent deterministic race coverage.
 
 The guarantee is local: a new authorization decision after a successful response uses the committed
 policy on that server. Redis propagation to peers remains asynchronous; already authorized calls

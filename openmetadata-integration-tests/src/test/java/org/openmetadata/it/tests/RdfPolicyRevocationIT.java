@@ -38,6 +38,7 @@ import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.rdf.RdfProjectionHealth;
@@ -94,7 +95,7 @@ public class RdfPolicyRevocationIT extends McpTestBase {
     String token = newCaller("mcpwarm");
     warmThroughMcp(token);
 
-    withoutGrant(EditMode.PUT, () -> assertAgentStatus(token, 403));
+    withoutGrant(EditMode.SDK_UPDATE, () -> assertAgentStatus(token, 403));
 
     assertAgentStatus(token, 200);
   }
@@ -105,7 +106,7 @@ public class RdfPolicyRevocationIT extends McpTestBase {
     warmThroughMcp(token);
     assertAgentStatus(token, 200);
 
-    withoutGrant(EditMode.PUT, () -> assertAgentStatus(token, 403));
+    withoutGrant(EditMode.SDK_UPDATE, () -> assertAgentStatus(token, 403));
   }
 
   @Test
@@ -115,7 +116,7 @@ public class RdfPolicyRevocationIT extends McpTestBase {
     warmThroughMcp(token);
 
     withoutGrant(
-        EditMode.PUT,
+        EditMode.SDK_UPDATE,
         () -> {
           assertThat(ownSparqlAccess(token)).isNotEqualTo(Permission.Access.ALLOW);
           assertThat(adminViewOfSparqlAccess(userName)).isNotEqualTo(Permission.Access.ALLOW);
@@ -146,8 +147,13 @@ public class RdfPolicyRevocationIT extends McpTestBase {
     int ruleCount = policy.getRules().size();
     policy.getRules().add(duplicateOf(policy.getRules().getFirst()));
 
-    assertThrows(
-        InvalidRequestException.class, () -> admin.policies().update(policy.getId(), policy));
+    OpenMetadataException failure =
+        assertThrows(
+            OpenMetadataException.class, () -> admin.policies().update(policy.getId(), policy));
+    assertThat(failure.getCause())
+        .isInstanceOfSatisfying(
+            InvalidRequestException.class,
+            invalid -> assertThat(invalid.getStatusCode()).isEqualTo(400));
 
     assertThat(admin.policies().getByName(DATA_CONSUMER_POLICY, RULES_FIELD).getRules())
         .hasSize(ruleCount);
@@ -311,7 +317,7 @@ public class RdfPolicyRevocationIT extends McpTestBase {
   }
 
   private enum EditMode {
-    PUT,
+    SDK_UPDATE,
     PATCH
   }
 

@@ -572,6 +572,8 @@ follow the `dev-setup` skill rather than treating missing infrastructure as a pa
   MCP-first allow removal using `create_entity`: a private glossary `Create` grant is removed via
   PUT for a direct role and PATCH for a team-inherited role; the next MCP and REST writes must be
   denied and create no entity. `EditDescription` is unsuitable because Data Consumer grants it.
+  The private-policy PUT uses an explicit HTTP PUT: the SDK's `policies().update(...)` sends PATCH.
+  Seeded SPARQL-policy edits are tested through SDK-generated and explicit PATCH requests.
 - The HTTP regression complements deterministic worker-reuse and paused-load unit tests; it does
   not assume the same Reactor worker serves both calls or claim deterministic failure on the old
   implementation. Existing REST-first denial already worked before this change.
