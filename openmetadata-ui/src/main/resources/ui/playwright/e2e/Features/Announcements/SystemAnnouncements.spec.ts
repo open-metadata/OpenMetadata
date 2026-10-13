@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, expect, Page } from '@playwright/test';
+import { APIRequestContext, expect, Locator, Page } from '@playwright/test';
 import { DateTime } from 'luxon';
 import {
   descriptionBox,
@@ -20,12 +20,11 @@ import {
 } from '../../../utils/common';
 import { pickDateInCorePicker } from '../../../utils/dateTime';
 import { getRowByName } from '../../../utils/scopedLocators';
-import { clickAndWaitFor } from '../../../utils/waitHelpers';
 import { test } from '../../fixtures/pages';
 
 const DAY = 24 * 60 * 60 * 1000;
 const LIST_PATH = '/settings/notifications/announcements';
-const ANNOUNCEMENTS_API = /\/api\/v1\/announcements(\/[^?]*)?(\?.*)?$/;
+const ANNOUNCEMENTS_PATH = /^\/api\/v1\/announcements(\/[^/]+)?$/;
 
 interface SeededAnnouncement {
   id: string;
@@ -80,6 +79,27 @@ const openList = async (page: Page) => {
 // Search filters the fetched list by title in the browser; no request to wait for.
 const searchList = async (page: Page, term: string) => {
   await page.getByTestId('announcement-search').locator('input').fill(term);
+};
+
+// Matched on method as well as path: the form's own GET of the source
+// announcement, or a list refetch, can land first on the same path.
+const clickAndWaitForWrite = async (
+  page: Page,
+  trigger: Locator,
+  method: 'POST' | 'PATCH' | 'DELETE',
+  expectedStatus = 200
+) => {
+  const written = page.waitForResponse(
+    (response) =>
+      response.request().method() === method &&
+      ANNOUNCEMENTS_PATH.test(new URL(response.url()).pathname)
+  );
+  await trigger.click();
+  const response = await written;
+
+  expect(response.status()).toBe(expectedStatus);
+
+  return response;
 };
 
 const rowActions = async (page: Page, name: string, action: string) => {
@@ -159,10 +179,10 @@ test.describe('System announcements in Settings → Notifications', () => {
       'Scheduled'
     );
 
-    const created = await clickAndWaitFor(
+    const created = await clickAndWaitForWrite(
       page,
       page.getByTestId('announcement-submit'),
-      ANNOUNCEMENTS_API,
+      'POST',
       201
     );
     const body = (await created.json()) as { entityLink?: string };
@@ -238,10 +258,10 @@ test.describe('System announcements in Settings → Notifications', () => {
 
     const editedTitle = `Town hall moved ${RUN}`;
     await page.locator('#title').fill(editedTitle);
-    await clickAndWaitFor(
+    await clickAndWaitForWrite(
       page,
       page.getByTestId('announcement-submit'),
-      ANNOUNCEMENTS_API
+      'PATCH'
     );
     await searchList(page, editedTitle);
 
@@ -252,10 +272,10 @@ test.describe('System announcements in Settings → Notifications', () => {
 
     await expect(page.locator('#title')).toHaveValue(`${editedTitle} (copy)`);
 
-    await clickAndWaitFor(
+    await clickAndWaitForWrite(
       page,
       page.getByTestId('announcement-submit'),
-      ANNOUNCEMENTS_API,
+      'POST',
       201
     );
     await searchList(page, editedTitle);
@@ -267,11 +287,7 @@ test.describe('System announcements in Settings → Notifications', () => {
 
     await expect(page.getByTestId('announcement-delete-confirm')).toBeVisible();
 
-    await clickAndWaitFor(
-      page,
-      page.getByTestId('save-button'),
-      new RegExp(`/api/v1/announcements/${seeded.id}`)
-    );
+    await clickAndWaitForWrite(page, page.getByTestId('save-button'), 'DELETE');
 
     await expect(
       page.getByTestId(`announcement-row-${seeded.name}`)
