@@ -30,6 +30,7 @@ import { selectOption } from '../../../utils/advancedSearch';
 import { deleteFixtureEntity, settleAll } from '../../../utils/apiResponse';
 import { fillDescriptionBox, uuid } from '../../../utils/common';
 import {
+  addCuratedAssetsWidget,
   selectAssetTypes,
   waitForLandingPageWidget,
 } from '../../../utils/customizeLandingPage';
@@ -934,25 +935,12 @@ test.describe(
         true
       );
 
-      await test.step('add the Curated Assets placeholder', async () => {
-        await page
-          .getByTestId('customize-landing-page-header')
-          .getByTestId('add-widget-button')
-          .click();
-        const customizeHome = page.getByRole('dialog', {
-          name: 'Customize Home',
-        });
-        await customizeHome.getByTestId('KnowledgePanel.CuratedAssets').click();
-        await customizeHome.getByTestId('apply-btn').click();
-
-        await expect(customizeHome).not.toBeVisible();
-      });
+      // The shared helper drops the default layout's unconfigured Curated
+      // Assets card first: both copies would carry the same test id.
+      const widget = await test.step('add the Curated Assets placeholder', () =>
+        addCuratedAssetsWidget(page));
 
       await test.step('configure it in the Create Widget modal', async () => {
-        const widget = await waitForLandingPageWidget(
-          page,
-          'KnowledgePanel.CuratedAssets'
-        );
         await widget.getByText('Create').click();
 
         await expect(
