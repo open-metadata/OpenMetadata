@@ -31,6 +31,7 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { Alert, Form, Input, Select, Spin } from 'antd';
 import { AxiosError } from 'axios';
 import { FC, lazy, useEffect, useMemo, useState } from 'react';
@@ -76,7 +77,6 @@ import { getDefaultTaskFormSchema } from '../../utils/TaskFormSchemaUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import TaskFormBuilderSection from './components/TaskFormBuilderSection';
 import './task-form-settings.less';
-import { Plus } from '@openmetadata/ui-core-components/icons';
 
 const CodeEditor = withSuspenseFallback(
   lazy(() => import('../../components/Database/SchemaEditor/CodeEditor'))

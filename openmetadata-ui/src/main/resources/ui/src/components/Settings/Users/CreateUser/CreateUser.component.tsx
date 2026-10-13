@@ -17,6 +17,7 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { Form, FormProps, Input, Radio, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { TFunction } from 'i18next';
@@ -72,7 +73,6 @@ import InlineAlert from '../../../common/InlineAlert/InlineAlert';
 import Loader from '../../../common/Loader/Loader';
 import TeamsSelectable from '../../Team/TeamsSelectable/TeamsSelectable';
 import { CreateUserFormData, CreateUserProps } from './CreateUser.interface';
-import { Plus } from '@openmetadata/ui-core-components/icons';
 
 // Pure builder for the domains FieldProp - no hook/prop dependency beyond its
 // arguments, so it lives at module scope.

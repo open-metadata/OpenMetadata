@@ -124,7 +124,11 @@ const FormBuilder = forwardRef<Form, Props>(
       } else if (status === 'success') {
         return (
           <Button isDisabled color="primary">
-            <Check className="tw:shrink-0" data-testid="success-icon" size={14} />
+            <Check
+              className="tw:shrink-0"
+              data-testid="success-icon"
+              size={14}
+            />
           </Button>
         );
       } else {

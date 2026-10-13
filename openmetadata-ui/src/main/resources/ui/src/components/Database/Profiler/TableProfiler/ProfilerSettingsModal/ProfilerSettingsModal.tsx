@@ -24,6 +24,7 @@ import Form from 'antd/lib/form';
 import { FormProps, List } from 'antd/lib/form/Form';
 import { getLayoutGutter } from '../../../../../utils/common/layout.utils';
 
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isEqual, isNil, isUndefined, pick, startCase } from 'lodash';
@@ -74,7 +75,6 @@ import {
   ProfilerSettingModalState,
   ProfilerSettingsModalProps,
 } from '../TableProfiler.interface';
-import { Plus } from '@openmetadata/ui-core-components/icons';
 
 const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../../../SchemaEditor/SchemaEditor'))

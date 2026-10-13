@@ -12,13 +12,13 @@
  */
 
 import { Button, Typography } from '@openmetadata/ui-core-components';
+import { ArrowUp } from '@openmetadata/ui-core-components/icons';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AuthProvider } from '../../../generated/settings/settings';
 import { PROVIDER_OPTIONS } from '../../../utils/SSOUtils';
 import './provider-selector.less';
 import { ProviderSelectorProps } from './ProviderSelector.interface';
-import { ArrowUp } from '@openmetadata/ui-core-components/icons';
 
 const ProviderSelector: React.FC<ProviderSelectorProps> = ({
   selectedProvider: initialSelectedProvider,

@@ -14,6 +14,7 @@ import { Box, Button, SimpleModal } from '@openmetadata/ui-core-components';
 import { Form } from 'antd';
 import { useForm } from 'antd/es/form/Form';
 
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -42,7 +43,6 @@ import { DrawerPopupContainerProvider } from '../../../common/DrawerPopupContain
 import { UserTag } from '../../../common/UserTag/UserTag.component';
 import { UserTagSize } from '../../../common/UserTag/UserTag.interface';
 import { AddPersonaFormProps } from './AddEditPersona.interface';
-import { Plus } from '@openmetadata/ui-core-components/icons';
 
 export const AddEditPersonaForm = ({
   onCancel,

@@ -12,6 +12,7 @@
  */
 
 import { Box, Button, Typography } from '@openmetadata/ui-core-components';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import { Drawer, Form, Input, Select } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -37,7 +38,6 @@ import {
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './learning-resource-form.less';
 import { LearningResourceFormProps } from './LearningResourceForm.interface';
-import { XClose } from '@openmetadata/ui-core-components/icons';
 
 const { TextArea } = Input;
 

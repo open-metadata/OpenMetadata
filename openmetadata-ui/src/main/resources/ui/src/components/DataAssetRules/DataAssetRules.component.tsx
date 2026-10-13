@@ -19,6 +19,7 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { Form, Input, Table } from 'antd';
 import { FormInstance } from 'antd/es/form/Form';
 import { AxiosError } from 'axios';
@@ -43,7 +44,6 @@ import QueryBuilderWidget from '../common/Form/JSONSchema/JsonSchemaWidgets/Quer
 import RichTextEditorPreviewerNew from '../common/RichTextEditor/RichTextEditorPreviewNew';
 import { SearchOutputType } from '../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import './DataAssetRules.less';
-import { Plus } from '@openmetadata/ui-core-components/icons';
 
 export const useSemanticsRulesState = () => {
   const { t } = useTranslation();

@@ -172,7 +172,10 @@ const WhatsNewAlert = () => {
                 </div>
               </Box>
               <Box className="layout-column tw:block tw:flex-[0_0_48px]">
-                <CloseIcon className="whats-new-alert-close tw:size-3.5 tw:shrink-0" onClick={handleCancel} />
+                <CloseIcon
+                  className="whats-new-alert-close tw:size-3.5 tw:shrink-0"
+                  onClick={handleCancel}
+                />
               </Box>
             </Box>
           </Card>

@@ -30,6 +30,7 @@ import {
   Card,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { Checkbox, Empty, Form, Input, Select } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -41,7 +42,6 @@ import {
   TaskFormDesignerField,
 } from '../../../utils/TaskFormDesignerUtils';
 import TaskPayloadSchemaFields from '../../TasksPage/shared/TaskPayloadSchemaFields';
-import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 
 interface TaskFormBuilderSectionProps {
   title: string;

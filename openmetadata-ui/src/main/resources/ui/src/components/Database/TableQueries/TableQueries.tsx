@@ -18,6 +18,11 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import {
+  SortAscending,
+  SortDescending,
+  XCircle,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, uniqBy } from 'lodash';
@@ -83,7 +88,6 @@ import {
   TableQueriesProp,
 } from './TableQueries.interface';
 import TableQueryRightPanel from './TableQueryRightPanel/TableQueryRightPanel.component';
-import { SortAscending, SortDescending, XCircle } from '@openmetadata/ui-core-components/icons';
 
 const TableQueries: FC<TableQueriesProp> = ({
   isTableDeleted,

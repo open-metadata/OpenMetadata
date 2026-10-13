@@ -12,12 +12,12 @@
  */
 
 import { Box, Button } from '@openmetadata/ui-core-components';
+import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import { Select } from 'antd';
 import { useMemo, useState } from 'react';
 import { TeamType } from '../../../generated/entity/teams/team';
 import { getTeamOptionsFromType } from '../../../utils/TeamUtils';
 import { TeamTypeSelectProps } from './TeamTypeSelect.interface';
-import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 
 function TeamTypeSelect({
   handleShowTypeSelector,

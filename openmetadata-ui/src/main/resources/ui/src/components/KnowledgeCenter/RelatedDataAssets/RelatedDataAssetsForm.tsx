@@ -17,13 +17,13 @@ import {
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import { FC, useState } from 'react';
 import { Pressable } from 'react-aria-components';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import DataAssetSelectList from '../../../components/DataAssets/DataAssetSelectList/DataAssetSelectList';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import i18n from '../../../utils/i18next/LocalUtil';
-import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 
 interface RelatedDataAssetsFormProps {
   initialOptions?: DataAssetOption[];

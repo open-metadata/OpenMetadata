@@ -19,6 +19,7 @@ import {
   Dropdown,
   Grid,
 } from '@openmetadata/ui-core-components';
+import { XCircle } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isNaN, map } from 'lodash';
 import { Key, useCallback, useEffect, useState } from 'react';
@@ -48,7 +49,6 @@ import DatePicker, {
 import './execution.less';
 import ListView from './ListView/ListViewTab.component';
 import TreeViewTab from './TreeView/TreeViewTab.component';
-import { XCircle } from '@openmetadata/ui-core-components/icons';
 
 interface ExecutionProps {
   pipelineFQN: string;

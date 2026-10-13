@@ -12,6 +12,7 @@
  */
 
 import { Grid, SimpleModal } from '@openmetadata/ui-core-components';
+import { Check, Search } from '@openmetadata/ui-core-components/icons';
 import { Input } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -34,7 +35,6 @@ import {
   renderHighlightedText,
 } from '../../../utils/EntitySearchUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { Check, Search } from '@openmetadata/ui-core-components/icons';
 
 interface Props {
   type: EntityType;

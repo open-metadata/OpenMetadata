@@ -12,6 +12,7 @@
  */
 
 import { Button, SimpleModal } from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { Form, Input, Select } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
@@ -39,7 +40,6 @@ import { getField } from '../../utils/formUtils';
 import { getTeamOptionsFromType } from '../../utils/TeamUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { AddTeamFormType } from './AddTeamForm.interface';
-import { Plus } from '@openmetadata/ui-core-components/icons';
 
 const AddTeamForm: React.FC<AddTeamFormType> = ({
   visible,

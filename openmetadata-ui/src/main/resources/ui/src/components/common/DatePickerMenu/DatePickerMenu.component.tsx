@@ -18,7 +18,11 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 
-import { ChevronRight, CloseCircleFilled, XCircle } from '@openmetadata/ui-core-components/icons';
+import {
+  ChevronRight,
+  CloseCircleFilled,
+  XCircle,
+} from '@openmetadata/ui-core-components/icons';
 import { SizeType } from 'antd/lib/config-provider/SizeContext';
 import classNames from 'classnames';
 import { isUndefined, pick } from 'lodash';

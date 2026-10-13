@@ -18,6 +18,7 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { ChevronLeft } from '@openmetadata/ui-core-components/icons';
 import { Alert, Carousel } from 'antd';
 import { AxiosError } from 'axios';
 import { uniqueId } from 'lodash';
@@ -43,7 +44,6 @@ import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
 import AppLogo from '../AppLogo/AppLogo.component';
 import './market-place-app-details.less';
-import { ChevronLeft } from '@openmetadata/ui-core-components/icons';
 
 const MarketPlaceAppDetails = () => {
   const { t } = useTranslation();

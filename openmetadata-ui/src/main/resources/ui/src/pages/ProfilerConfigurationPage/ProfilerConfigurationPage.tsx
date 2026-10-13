@@ -17,6 +17,7 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Plus, XClose } from '@openmetadata/ui-core-components/icons';
 import { Collapse, Form, Select, TreeSelect } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isEqual, values } from 'lodash';
@@ -50,7 +51,6 @@ import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils'
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './profiler-configuration-page.style.less';
 import profilerConfigurationClassBase from './ProfilerConfigurationClassBase';
-import { Plus, XClose } from '@openmetadata/ui-core-components/icons';
 
 const ProfilerConfigurationPage = () => {
   const [form] = Form.useForm();

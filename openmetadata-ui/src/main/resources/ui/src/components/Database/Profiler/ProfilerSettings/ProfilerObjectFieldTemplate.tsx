@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 import { Box, Button, Typography } from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { ObjectFieldTemplateProps } from '@rjsf/utils';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { FC, Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus } from '@openmetadata/ui-core-components/icons';
 
 export const ProfilerObjectFieldTemplate: FC<ObjectFieldTemplateProps> = (
   props: ObjectFieldTemplateProps

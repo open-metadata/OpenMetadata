@@ -12,6 +12,11 @@
  */
 
 import { Button, Dropdown, Typography } from '@openmetadata/ui-core-components';
+import {
+  ArrowLeft,
+  ArrowRight,
+  ChevronDown,
+} from '@openmetadata/ui-core-components/icons';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -24,11 +29,6 @@ import {
   NextPreviousWithOffsetProps,
   PagingProps,
 } from './NextPreviousWithOffset.interface';
-import {
-  ArrowLeft,
-  ArrowRight,
-  ChevronDown,
-} from '@openmetadata/ui-core-components/icons';
 
 const NextPreviousWithOffset = ({
   paging,

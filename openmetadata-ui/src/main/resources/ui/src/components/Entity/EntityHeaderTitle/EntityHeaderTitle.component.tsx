@@ -129,10 +129,10 @@ const EntityHeaderTitle = ({
         {deleted && (
           <div className="text-xs tw:flex-[0_0_100px]">
             <span className="deleted-badge-button" data-testid="deleted-badge">
-              <ExclamationCircleFilled 
-        className="tw:mr-1 tw:shrink-0"
-        size={14}
-        />
+              <ExclamationCircleFilled
+                className="tw:mr-1 tw:shrink-0"
+                size={14}
+              />
               {t('label.deleted')}
             </span>
           </div>

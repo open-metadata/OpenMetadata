@@ -18,6 +18,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EditIconButton } from '../../../../common/IconButtons/EditIconButton';
 
+import {
+  Check,
+  ExclamationCircleFilled,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
 import { Team } from '../../../../../generated/entity/teams/team';
 import { useAuth } from '../../../../../hooks/authHooks';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
@@ -26,11 +31,6 @@ import { hasEditAccess } from '../../../../../utils/EntityPermissionUtils';
 import { getDerivedPermissionFlags } from '../../../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import { TeamsHeadingLabelProps } from '../team.interface';
-import {
-  Check,
-  ExclamationCircleFilled,
-  XClose,
-} from '@openmetadata/ui-core-components/icons';
 
 const TeamsHeadingLabel = ({
   currentTeam,
@@ -185,10 +185,10 @@ const TeamsHeadingLabel = ({
           <div
             className="deleted-badge-button text-xs flex-center"
             data-testid="deleted-badge">
-            <ExclamationCircleFilled 
-       className="tw:mr-1 tw:shrink-0"
-       size={14}
-       />
+            <ExclamationCircleFilled
+              className="tw:mr-1 tw:shrink-0"
+              size={14}
+            />
             {t('label.deleted')}
           </div>
         )}

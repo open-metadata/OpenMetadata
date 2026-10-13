@@ -19,6 +19,10 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import {
+  CheckCircleFilled,
+  CloseCircleFilled,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isEqual } from 'lodash';
@@ -70,10 +74,6 @@ import {
 } from '../ActivityFeedCardNew/ActivityFeedcardNew.utils';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import './task-feed-card.less';
-import {
-  CheckCircleFilled,
-  CloseCircleFilled,
-} from '@openmetadata/ui-core-components/icons';
 
 const getTaskRowGapClassName = (
   isTaskTestCaseResult: boolean,

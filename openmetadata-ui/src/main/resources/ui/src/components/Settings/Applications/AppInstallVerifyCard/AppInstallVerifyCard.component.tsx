@@ -17,6 +17,11 @@ import {
   Divider,
   Typography,
 } from '@openmetadata/ui-core-components';
+import {
+  CheckCircle,
+  Clock,
+  User01,
+} from '@openmetadata/ui-core-components/icons';
 import { Avatar, Collapse } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { LIGHT_GREEN_COLOR } from '../../../../constants/constants';
@@ -29,7 +34,6 @@ import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import AppLogo from '../AppLogo/AppLogo.component';
 import './app-install-verify-card.less';
 import { AppInstallVerifyCardProps } from './AppInstallVerifyCard.interface';
-import { CheckCircle, Clock, User01 } from '@openmetadata/ui-core-components/icons';
 
 const AppInstallVerifyCard = ({
   appData,

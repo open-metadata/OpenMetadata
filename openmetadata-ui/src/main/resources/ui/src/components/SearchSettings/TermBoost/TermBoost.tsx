@@ -16,6 +16,7 @@ import {
   Divider,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { ChevronDown } from '@openmetadata/ui-core-components/icons';
 import { Slider } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -28,7 +29,6 @@ import tagClassBase from '../../../utils/TagClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { AsyncSelect } from '../../common/AsyncSelect/AsyncSelect';
 import './term-boost.less';
-import { ChevronDown } from '@openmetadata/ui-core-components/icons';
 
 interface TermBoostProps {
   className?: string;

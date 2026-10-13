@@ -18,6 +18,11 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import {
+  Check,
+  InfoCircle,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
 import { Form, Input } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, last } from 'lodash';
@@ -46,7 +51,6 @@ import { PersonaSelectableList } from '../../../../MyData/Persona/PersonaSelecta
 import { SubscriptionWebhook, TeamsInfoProps } from '../team.interface';
 import './teams-info.less';
 import TeamsSubscription from './TeamsSubscription.component';
-import { Check, InfoCircle, XClose } from '@openmetadata/ui-core-components/icons';
 
 const TeamsInfo = ({
   parentTeams,

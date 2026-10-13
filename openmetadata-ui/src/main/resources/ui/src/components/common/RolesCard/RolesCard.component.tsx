@@ -12,6 +12,7 @@
  */
 
 import { Box, Button, Card } from '@openmetadata/ui-core-components';
+import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import { Select } from 'antd';
 import { isArray, isNil, toLower } from 'lodash';
 import { useState } from 'react';
@@ -22,7 +23,6 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import RolesElement from '../RolesElement/RolesElement.component';
 import { RolesComponentProps } from './RolesCard.interfaces';
-import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 
 const RolesCard = ({
   roles,

@@ -18,6 +18,7 @@ import {
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { WidgetProps } from '@rjsf/utils';
 import { Input, Select } from 'antd';
 import { AxiosError } from 'axios';
@@ -29,7 +30,6 @@ import { Role } from '../../../../../../generated/entity/teams/role';
 import { searchRoles } from '../../../../../../rest/rolesAPIV1';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import './ldap-role-mapping-widget.less';
-import { Plus } from '@openmetadata/ui-core-components/icons';
 
 interface RoleMappingEntry {
   id: string;

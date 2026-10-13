@@ -17,6 +17,7 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import { Form, Select } from 'antd';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
@@ -33,7 +34,6 @@ import {
 } from '../../../utils/Alerts/AlertsUtil';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { ObservabilityFormTriggerItemProps } from './ObservabilityFormTriggerItem.interface';
-import { XClose } from '@openmetadata/ui-core-components/icons';
 
 function ObservabilityFormTriggerItem({
   isViewMode = false,

@@ -12,6 +12,7 @@
  */
 
 import { Box, Button } from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import {
   ObjectFieldTemplatePropertyType,
   ObjectFieldTemplateProps,
@@ -29,7 +30,6 @@ import {
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import './sso-grouped-field-template.less';
 import { FieldGroup, PropertyMap } from './SSOGroupedFieldTemplate.interface';
-import { Plus } from '@openmetadata/ui-core-components/icons';
 
 interface SSOFieldGroupingFlags {
   isAuthConfigRoot: boolean;

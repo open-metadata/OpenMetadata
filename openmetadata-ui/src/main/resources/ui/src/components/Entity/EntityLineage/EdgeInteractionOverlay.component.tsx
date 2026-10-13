@@ -72,9 +72,7 @@ export const EdgeInteractionOverlay: React.FC<EdgeInteractionOverlayProps> = ({
           aria-label={t('label.add-entity', { entity: t('label.pipeline') })}
           color="link-color"
           data-testid="add-pipeline"
-          iconLeading={
-            <IconEditCircle className="tw:size-3.5 tw:shrink-0" />
-          }
+          iconLeading={<IconEditCircle className="tw:size-3.5 tw:shrink-0" />}
           onClick={() => onPipelineClick?.()}
         />
       </div>
@@ -94,9 +92,7 @@ export const EdgeInteractionOverlay: React.FC<EdgeInteractionOverlayProps> = ({
           aria-label={t('label.delete-entity', { entity: t('label.edge') })}
           color="link-color"
           data-testid="delete-button"
-          iconLeading={
-            <IconTimesCircle className="tw:size-3.5 tw:shrink-0" />
-          }
+          iconLeading={<IconTimesCircle className="tw:size-3.5 tw:shrink-0" />}
           onClick={() => onEdgeRemove?.()}
         />
       </div>

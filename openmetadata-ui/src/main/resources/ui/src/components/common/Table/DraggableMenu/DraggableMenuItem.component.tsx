@@ -11,12 +11,15 @@
  *  limitations under the License.
  */
 import { Button, Typography } from '@openmetadata/ui-core-components';
+import {
+  Eye,
+  EyeInvisibleFilled,
+} from '@openmetadata/ui-core-components/icons';
 import { useCallback, useMemo } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import { ReactComponent as ColumnDragIcon } from '../../../../assets/svg/menu-duo.svg';
 import './draggable-menu-item.less';
 import { DraggableMenuItemProps } from './DraggableMenuItem.interface';
-import { Eye, EyeInvisibleFilled } from '@openmetadata/ui-core-components/icons';
 
 const DraggableMenuItem: React.FC<DraggableMenuItemProps> = ({
   currentItem,

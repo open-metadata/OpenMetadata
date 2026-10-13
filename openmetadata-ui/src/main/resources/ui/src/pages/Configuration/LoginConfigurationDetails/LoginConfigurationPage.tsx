@@ -17,6 +17,7 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { InfoCircle } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -35,7 +36,6 @@ import { getLoginConfig } from '../../../rest/settingConfigAPI';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { InfoCircle } from '@openmetadata/ui-core-components/icons';
 
 const LoginConfigurationPage = () => {
   const { t } = useTranslation();
