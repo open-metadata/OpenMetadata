@@ -11,10 +11,9 @@
  *  limitations under the License.
  */
 import { ButtonUtility } from '@openmetadata/ui-core-components';
+import { Edit01, Plus } from '@openmetadata/ui-core-components/icons';
 import type { ReactNode } from 'react';
-import { ReactComponent as EditIcon } from '../../../assets/svg/action-icons/edit.svg';
 import { ReactComponent as ListConversationIcon } from '../../../assets/svg/action-icons/list-conversation.svg';
-import { ReactComponent as PlusIcon } from '../../../assets/svg/action-icons/plus.svg';
 import { ReactComponent as RequestUpdateIcon } from '../../../assets/svg/action-icons/request-update.svg';
 import { WidgetActionButtonProps } from './WidgetActionButton.interface';
 
@@ -47,13 +46,9 @@ const createWidgetButton = (icon: ReactNode) => {
   return WidgetButton;
 };
 
-export const WidgetEditButton = createWidgetButton(
-  <EditIcon height={16} width={16} />
-);
+export const WidgetEditButton = createWidgetButton(<Edit01 size={16} />);
 
-export const WidgetPlusButton = createWidgetButton(
-  <PlusIcon height={15} width={15} />
-);
+export const WidgetPlusButton = createWidgetButton(<Plus size={15} />);
 
 export const WidgetCommentButton = createWidgetButton(
   <ListConversationIcon height={16} width={16} />

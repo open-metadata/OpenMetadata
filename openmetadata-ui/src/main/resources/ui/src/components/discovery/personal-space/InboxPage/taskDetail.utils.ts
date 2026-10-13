@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { isEmpty } from 'lodash';
 import { FQN_SEPARATOR_CHAR } from '../../../../constants/char.constants';
 import { TIER_CATEGORY } from '../../../../constants/constants';
 import {
@@ -28,7 +29,9 @@ import { TagUpdatePayload } from '../../../../generated/type/tagUpdatePayload';
 import { TestCaseResolutionPayload } from '../../../../generated/type/testCaseResolutionPayload';
 import { TierUpdatePayload } from '../../../../generated/type/tierUpdatePayload';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import Fqn from '../../../../utils/Fqn';
 import { EntityUnion } from '../../../Explore/ExplorePage.interface';
+import type { ActivityChange } from './inbox.utils';
 import {
   TaskAboutEntity,
   TaskDetailCallout,
@@ -258,10 +261,11 @@ const usersRow = (
   key: string,
   icon: TaskDetailRow['icon'],
   label: string,
-  refs?: EntityReference[]
+  refs?: EntityReference[],
+  title?: string
 ): TaskDetailRow[] =>
   refs && refs.length > 0
-    ? [{ key, icon, label, value: { kind: 'users', refs } }]
+    ? [{ key, icon, label, value: { kind: 'users', refs, title } }]
     : [];
 
 const tagsRow = (
@@ -309,7 +313,13 @@ const getCommonRows = (
   t: Translate,
   dateLabelKey = 'label.opened-on'
 ): TaskDetailRow[] => [
-  ...usersRow('assignees', 'user', t('label.assignee'), task.assignees),
+  ...usersRow(
+    'assignees',
+    'user',
+    t('label.assignee'),
+    task.assignees,
+    t('label.assignee-plural')
+  ),
   ...usersRow(
     'createdBy',
     'owner',
@@ -365,6 +375,21 @@ const describeIncident = (
   };
 };
 
+const tagNames = (tags?: TagLabel[]) =>
+  (tags ?? []).map(({ tagFQN }) => tagFQN);
+
+// The tags a request removes and adds, as an activity card shows a tags change.
+const getTagChange = (
+  payload: TagUpdatePayload
+): ActivityChange | undefined => {
+  const before = tagNames(payload.tagsToRemove);
+  const after = tagNames(payload.tagsToAdd);
+
+  return before.length || after.length
+    ? { labelKey: 'label.tag-plural', before, after, isText: false }
+    : undefined;
+};
+
 const describeTagUpdate = (
   task: Task,
   t: Translate
@@ -377,17 +402,6 @@ const describeTagUpdate = (
       approve: t('label.approve-entity', { entity: t('label.tag') }),
     },
     rows: [
-      // Approving applies both lists, so the approver sees both.
-      ...tagsRow(
-        'tags',
-        t('label.add-entity', { entity: t('label.tag-plural') }),
-        payload.tagsToAdd
-      ),
-      ...tagsRow(
-        'tagsToRemove',
-        t('label.remove-entity', { entity: t('label.tag-plural') }),
-        payload.tagsToRemove
-      ),
       ...textRow(
         'source',
         'source',
@@ -402,6 +416,8 @@ const describeTagUpdate = (
       ),
       ...dateRow('requestedOn', t('label.requested-on'), task.createdAt),
     ],
+    // Approving applies both lists, so the approver sees both.
+    change: getTagChange(payload),
     callout: descriptionCallout(task, t('label.justification')),
   };
 };
@@ -424,10 +440,16 @@ const describeDescriptionUpdate = (
         getSourceLabel(t, payload.source)
       ),
     ],
-    callout: payload.newDescription
+    change: payload.newDescription
       ? {
-          label: t('label.suggested-description'),
-          text: payload.newDescription,
+          labelKey: 'label.description',
+          // Filled from the entity when the payload carries no snapshot
+          // (withExistingValues).
+          before: payload.currentDescription
+            ? [payload.currentDescription]
+            : [],
+          after: [payload.newDescription],
+          isText: true,
         }
       : undefined,
   };
@@ -482,7 +504,11 @@ const describeOwnershipUpdate = (
             key: 'owner',
             icon: 'owner',
             label: t('label.owner'),
-            value: { kind: 'users', refs: currentOwners },
+            value: {
+              kind: 'users',
+              refs: currentOwners,
+              title: t('label.owner-plural'),
+            },
           }
         : {
             key: 'owner',
@@ -636,4 +662,132 @@ export const deriveTaskAboutEntity = (
     ownerCount: typed.owners?.length,
     updatedAt: typed.updatedAt,
   };
+};
+
+type DescribedField = {
+  name?: string;
+  description?: string;
+  tags?: TagLabel[];
+  children?: DescribedField[];
+};
+type DescribedEntity = {
+  description?: string;
+  tags?: TagLabel[];
+  columns?: DescribedField[];
+};
+
+const COLUMN_DESCRIPTION_PATH = /^columns\.(.+)\.description$/;
+const COLUMN_TAGS_PATH = /^columns\.(.+?)(?:\.tags)?$/;
+
+// The paths that name the entity itself; any other path names one of its
+// fields, and one this cannot resolve (a topic's schema field, a container's
+// data-model column) shows nothing rather than the entity's values.
+const ENTITY_LEVEL_PATHS = new Set(['', 'description', 'tags', 'entity']);
+
+// Follows a column path's names down through nested columns.
+const findColumnByPath = (
+  columns: DescribedField[] | undefined,
+  names: string[]
+): DescribedField | undefined =>
+  names.reduce<{ found?: DescribedField; level?: DescribedField[] }>(
+    ({ level }, name) => {
+      const found = level?.find((column) => column.name === name);
+
+      return { found, level: found?.children };
+    },
+    { level: columns }
+  ).found;
+
+// A nested column named on its own, without its parents.
+const findColumnByName = (
+  columns: DescribedField[] | undefined,
+  name: string
+): DescribedField | undefined =>
+  columns?.reduce<DescribedField | undefined>(
+    (found, column) =>
+      found ??
+      (column.name === name ? column : findColumnByName(column.children, name)),
+    undefined
+  );
+
+// What a field path names on its entity: the entity itself, or a column by its
+// path (`address.city`, `"a.b"` with its quotes dropped).
+const getField = (
+  entity: EntityUnion | undefined,
+  fieldPath: string | undefined,
+  columnPath: RegExp
+): DescribedField | DescribedEntity | undefined => {
+  const typed = entity as DescribedEntity | undefined;
+  const path = fieldPath ?? '';
+  if (ENTITY_LEVEL_PATHS.has(path)) {
+    return typed;
+  }
+  const column = columnPath.exec(path)?.[1];
+  const names = column
+    ? Fqn.split(column).map((name) => Fqn.unquoteName(name))
+    : [];
+  const byPath = findColumnByPath(typed?.columns, names);
+
+  return (
+    byPath ??
+    (names.length === 1
+      ? findColumnByName(typed?.columns, names[0])
+      : undefined)
+  );
+};
+
+// The description's Existing side: the payload's snapshot when it has one,
+// else the field's description as it is now.
+const withExistingDescription = (
+  change: ActivityChange,
+  task: Task,
+  entity?: EntityUnion
+): ActivityChange => {
+  const { fieldPath } = getPayload<DescriptionUpdatePayload>(task);
+  const existing = getField(
+    entity,
+    fieldPath,
+    COLUMN_DESCRIPTION_PATH
+  )?.description?.trim();
+
+  return change.before.length || !existing
+    ? change
+    : { ...change, before: [existing] };
+};
+
+// The tags a tag task keeps: the field's current tags (the payload's snapshot,
+// else the asset as it is now) less those it removes or adds.
+const withKeptTags = (
+  change: ActivityChange,
+  task: Task,
+  entity?: EntityUnion
+): ActivityChange => {
+  const payload = getPayload<TagUpdatePayload>(task);
+  // Tasks often carry an empty currentTags by default rather than a
+  // snapshot, so only a non-empty one stands in for the asset.
+  const current = isEmpty(payload.currentTags)
+    ? getField(entity, payload.fieldPath, COLUMN_TAGS_PATH)?.tags
+    : payload.currentTags;
+  const changed = new Set([...change.before, ...change.after]);
+  const unchanged = tagNames(current).filter((name) => !changed.has(name));
+
+  return { ...change, unchanged };
+};
+
+/**
+ * A task's change with what the asset holds now: a description's Existing
+ * text, or the tags a tag request keeps.
+ */
+export const withExistingValues = (
+  change: ActivityChange | undefined,
+  task: Task,
+  entity?: EntityUnion
+): ActivityChange | undefined => {
+  if (!change) {
+    return undefined;
+  }
+
+  return change.isText
+    ? withExistingDescription(change, task, entity)
+    : withKeptTags(change, task, entity);
 };

@@ -188,7 +188,9 @@ public class TableRepository extends EntityRepository<Table> {
     // field_relationship / tag_usage via the root cleanup() FQN prefix, so the bulk path skips the
     // per-table search dispatch and FQN-satellite deletes.
     descendantsCoveredByAncestorCascade = true;
-    metadataLoader = new TableMetadataLoader(() -> daoCollection.entityExtensionDAO());
+    metadataLoader =
+        new TableMetadataLoader(
+            () -> daoCollection.entityExtensionDAO(), this::customPropertyReferences, Entity.TABLE);
 
     // Register bulk field fetchers for efficient database operations
     fieldFetchers.put("usageSummary", this::fetchAndSetUsageSummaries);
@@ -196,7 +198,8 @@ public class TableRepository extends EntityRepository<Table> {
     fieldFetchers.put(TABLE_PROFILER_CONFIG, this::fetchAndSetTableProfilerConfigs);
     fieldFetchers.put("joins", this::fetchAndSetJoins);
     fieldFetchers.put(CUSTOM_METRICS, this::fetchAndSetCustomMetrics);
-    fieldFetchers.put(FIELD_TAGS, this::fetchAndSetColumnTags);
+    fieldFetchers.put(FIELD_TAGS, this::fetchAndSetTableTags);
+    fieldFetchers.put(COLUMN_FIELD, this::fetchAndSetColumnTags);
     fieldFetchers.put("pipelineObservability", this::fetchAndSetPipelineObservability);
   }
 
@@ -209,7 +212,7 @@ public class TableRepository extends EntityRepository<Table> {
               ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), table.getId())
               : table.getUsageSummary());
     }
-    if (fields.contains(COLUMN_FIELD) && fields.contains(FIELD_TAGS)) {
+    if (fields.contains(COLUMN_FIELD)) {
       populateEntityFieldTags(entityType, table.getColumns(), table.getFullyQualifiedName(), true);
     }
     table.setJoins(fields.contains("joins") ? getJoins(table) : table.getJoins());
@@ -223,6 +226,8 @@ public class TableRepository extends EntityRepository<Table> {
     }
     if (fields.contains(COLUMN_FIELD) && fields.contains("extension")) {
       metadataLoader.loadColumnExtensions(table.getId(), table.getColumns());
+    } else if (fields.contains(COLUMN_FIELD)) {
+      applyColumnReferences(List.of(table), Table::getColumns, false);
     }
   }
 
@@ -233,9 +238,10 @@ public class TableRepository extends EntityRepository<Table> {
 
     fetchAndSetFields(entities, fields);
     setInheritedFields(entities, fields);
+    if (fields.contains(COLUMN_FIELD)) {
+      applyColumnReferences(entities, Table::getColumns, fields.contains("extension"));
+    }
 
-    // Column tags come from tag_usage, not table JSON — fetched via fetchAndSetColumnTags when tags
-    // requested
     entities.forEach(table -> clearFieldsInternal(table, fields));
   }
 
@@ -280,7 +286,7 @@ public class TableRepository extends EntityRepository<Table> {
     metadataLoader.loadMetrics(tables, fields.contains(COLUMN_FIELD));
   }
 
-  private void fetchAndSetColumnTags(List<Table> tables, Fields fields) {
+  private void fetchAndSetTableTags(List<Table> tables, Fields fields) {
     if (!fields.contains(FIELD_TAGS) || tables == null || tables.isEmpty()) {
       return;
     }
@@ -291,7 +297,9 @@ public class TableRepository extends EntityRepository<Table> {
           addDerivedTagsGracefully(
               tagsMap.getOrDefault(table.getFullyQualifiedName(), Collections.emptyList())));
     }
+  }
 
+  private void fetchAndSetColumnTags(List<Table> tables, Fields fields) {
     if (fields.contains(COLUMN_FIELD)) {
       bulkPopulateEntityFieldTags(tables, Table::getColumns);
     }
@@ -2899,10 +2907,13 @@ public class TableRepository extends EntityRepository<Table> {
       List<EntityReference> piiOwners,
       Authorizer authorizer,
       SecurityContext securityContext) {
+    List<Column> columns = page.stream().map(Column.class::cast).collect(Collectors.toList());
+    if (fieldsParam == null || !fieldsParam.contains("extension")) {
+      metadataLoader.stripColumnReferences(columns);
+    }
     if (fieldsParam == null) {
       return page;
     }
-    List<Column> columns = page.stream().map(Column.class::cast).collect(Collectors.toList());
     if (fieldsParam.contains("customMetrics")) {
       metadataLoader.loadColumnMetrics(table.getId(), columns);
     }
@@ -2964,6 +2975,8 @@ public class TableRepository extends EntityRepository<Table> {
     }
     if (fieldsParam.contains("extension")) {
       metadataLoader.loadColumnExtensions(table.getId(), singleton);
+    } else {
+      metadataLoader.stripColumnReferences(singleton);
     }
     if (fieldsParam.contains("profile")) {
       setColumnProfile(singleton);
@@ -3275,6 +3288,11 @@ public class TableRepository extends EntityRepository<Table> {
 
     if (fields.contains("tags") || fields.contains("*")) {
       populateEntityFieldTags(entityType, paginatedColumns, table.getFullyQualifiedName(), true);
+    }
+    if (fields.contains("extension")) {
+      metadataLoader.loadColumnExtensions(table.getId(), paginatedColumns);
+    } else {
+      metadataLoader.stripColumnReferences(paginatedColumns);
     }
 
     if (fieldsParam != null && fieldsParam.contains("profile")) {

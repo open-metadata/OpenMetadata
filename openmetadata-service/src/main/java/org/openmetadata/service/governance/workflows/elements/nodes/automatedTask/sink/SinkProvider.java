@@ -25,6 +25,9 @@ import org.openmetadata.schema.EntityInterface;
  */
 public interface SinkProvider {
 
+  /** Entities handed to {@link #writeBatch} per call unless the provider asks for another size. */
+  int DEFAULT_BATCH_SIZE = 100;
+
   /**
    * Returns the sink type identifier that this provider handles.
    *
@@ -70,6 +73,29 @@ public interface SinkProvider {
    */
   default boolean supportsBatch() {
     return false;
+  }
+
+  /**
+   * Number of entities the provider wants in the next {@link #writeBatch} call. Batch execution
+   * asks before fetching each sub-batch, and fetches the next sub-batch while the current one is
+   * being written, so a provider that sizes its writes from their outcome is asked one call ahead.
+   *
+   * @return the preferred number of entities for the next batch write, at least 1
+   */
+  default int nextBatchSize() {
+    return DEFAULT_BATCH_SIZE;
+  }
+
+  /**
+   * Completes a batch execution after its last {@link #writeBatch} call. A provider that holds
+   * entities back across calls, to write them together, writes them here and reports them in the
+   * returned result; called once per batch execution, also when sub-batches were skipped.
+   *
+   * @param context the sink context of the batch execution
+   * @return the outcome of the writes made here; an empty successful result when there were none
+   */
+  default SinkResult finishBatch(SinkContext context) {
+    return SinkResult.builder().success(true).build();
   }
 
   /**

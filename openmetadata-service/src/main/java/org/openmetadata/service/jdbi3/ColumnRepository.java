@@ -14,6 +14,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
+import static org.openmetadata.service.Entity.FIELD_EXTENSION;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.events.ChangeEventHandler.entityChangeEvent;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
@@ -259,11 +260,17 @@ public class ColumnRepository {
     EntityRepository<? extends EntityInterface<?>> repository =
         Entity.getEntityRepository(entityType);
 
+    // Custom-property values are part of the baseline, so a value the update leaves out is removed
+    // (e.g. a reference value, which the column copy loaded without the extension field lacks).
+    String baselineFields =
+        spec.childExtensionType() == null
+            ? spec.requiredFields()
+            : spec.requiredFields() + "," + FIELD_EXTENSION;
     EntityInterface<?> original =
         repository.get(
             null,
             parentEntityRef.getId(),
-            repository.getFields(spec.requiredFields()),
+            repository.getFields(baselineFields),
             Include.NON_DELETED,
             false);
     EntityInterface<?> updated = deepCopy(original);

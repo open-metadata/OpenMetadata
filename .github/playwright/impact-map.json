@@ -737,6 +737,23 @@
       ]
     },
     {
+      "_comment": "The certification picker renders on entity headers, the Domain/Data Product certification widget, the bulk-edit grid's certification cell and the workflow Set Action form; KeyDownStopPropagationWrapper wraps the grid's popover cell editors. The generated map routed none of them, so a change ran the full suite.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Certification/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/common/CertificationWidget/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/common/KeyDownStopPropagationWrapper/**"
+      ],
+      "projects": ["chromium", "ImportExport", "SystemCertificationTags"],
+      "specs": [
+        "playwright/e2e/Features/CertificationDropdown.spec.ts",
+        "playwright/e2e/Features/SystemCertificationTags.spec.ts",
+        "playwright/e2e/Pages/Entity.spec.ts",
+        "playwright/e2e/Features/DomainTierCertificationVoting.spec.ts",
+        "playwright/e2e/Features/BulkEditEntity.spec.ts",
+        "playwright/e2e/Features/BulkImport.spec.ts"
+      ]
+    },
+    {
       "_comment": "Column bulk operations and column sorting exercise the ColumnBulkOperations page and columnAPI; keeps ColumnBulkOperationsTagsGlossary tied to both this and the Tag mapping above.",
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/pages/ColumnBulkOperations/**",
@@ -801,6 +818,18 @@
       ]
     },
     {
+      "_comment": "AI-mode settings modal, Preferences panel (theme incl. system, compact sidebar, language) and the shared theme/sidebar state it drives.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/preferences/**",
+        "openmetadata-ui/src/main/resources/ui/src/context/UntitledUIThemeProvider/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/platform/ai-shell/Sidebar/useSidebarState.ts"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/ProfilePreferences.spec.ts"
+      ]
+    },
+    {
       "_comment": "Shared shell of the AI-mode settings modal: the nav registry, its ids and the section/row layout every panel renders. A change here can move or restyle any panel, so every modal spec runs.",
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/profileNavConfig.tsx",
@@ -821,6 +850,28 @@
     {
       "_comment": "Backend integration tests are a test-only Maven module — not packaged into the server the suite runs against, nor into the UI bundle — so no change here can alter a spec outcome. Mapped to no specs rather than left unmapped: openmetadata-integration-tests/ is in UNMAPPED_CODE_ROOTS, so without this every backend-IT change escalates to a full-suite run.",
       "sources": ["openmetadata-integration-tests/**"],
+      "projects": [],
+      "specs": []
+    },
+    {
+      "_comment": "The Data Contract tab: its add/edit forms, contract cards and their utils. Every contract spec drives these forms, and the ODCS specs edit imported contracts through them.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/DataContract/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/DataContract/**"
+      ],
+      "projects": ["chromium", "ImportExport"],
+      "specs": [
+        "playwright/e2e/Pages/DataContractInheritance.spec.ts",
+        "playwright/e2e/Pages/DataContractSLAValidation.spec.ts",
+        "playwright/e2e/Pages/DataContracts.spec.ts",
+        "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts",
+        "playwright/e2e/Pages/ODCSImportExport.spec.ts",
+        "playwright/e2e/Pages/ODCSImportExportPermissions.spec.ts"
+      ]
+    },
+    {
+      "_comment": "The ESLint suppressions baseline is read only by the linter: it ships in neither the server nor the UI bundle, so no change to it can alter a spec outcome. Mapped to no specs rather than left unmapped, so pruning it does not escalate to a full-suite run.",
+      "sources": ["openmetadata-ui/src/main/resources/ui/eslint-suppressions.json"],
       "projects": [],
       "specs": []
     }

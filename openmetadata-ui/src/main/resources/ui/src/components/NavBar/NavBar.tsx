@@ -12,13 +12,15 @@
  */
 
 import {
-  Button as CoreButton,
+  Button,
+  ButtonUtility,
   Dropdown,
   Popover,
   PopoverTrigger,
   Tooltip as CoreTooltip,
+  Tooltip,
 } from '@openmetadata/ui-core-components';
-import { Alert, Badge, Button, InputRef, Tooltip } from 'antd';
+import { Alert, Badge, InputRef } from 'antd';
 import { Header } from 'antd/lib/layout/layout';
 import { AxiosError } from 'axios';
 import { CookieStorage } from 'cookie-storage';
@@ -569,8 +571,8 @@ const NavBar = () => {
           showIcon
           action={
             <Button
-              size="small"
-              type="link"
+              color="link-color"
+              size="xs"
               onClick={() => {
                 navigate(0);
               }}>
@@ -592,19 +594,16 @@ const NavBar = () => {
       <Header style={headerStyle}>
         <div className="navbar-container">
           <div className="flex-center gap-2">
-            <Tooltip placement="right" title={sidebarTooltipTitle}>
-              <Button
-                className="w-6 h-6 p-0 flex-center"
+            <Tooltip arrow placement="right" title={sidebarTooltipTitle}>
+              <ButtonUtility
+                color="tertiary"
                 data-testid="sidebar-toggle"
                 icon={
-                  isSidebarCollapsed ? (
-                    <SidebarCollapsedIcon height={20} width={20} />
-                  ) : (
-                    <SidebarExpandedIcon height={20} width={20} />
-                  )
+                  isSidebarCollapsed
+                    ? SidebarCollapsedIcon
+                    : SidebarExpandedIcon
                 }
-                size="middle"
-                type="text"
+                size="sm"
                 onClick={() =>
                   setPreference({ isSidebarCollapsed: !isSidebarCollapsed })
                 }
@@ -620,13 +619,13 @@ const NavBar = () => {
 
           <div className="flex-center gap-5 nav-bar-side-items">
             <Dropdown.Root>
-              <CoreButton
+              <Button
                 color="tertiary"
                 data-testid="language-selector-button"
                 iconTrailing={<DropDownIcon width={12} />}
                 size="sm">
                 {currentLanguage}
-              </CoreButton>
+              </Button>
               <Dropdown.Popover className="tw:w-auto" placement="bottom end">
                 <Dropdown.Menu
                   aria-label={t('label.language')}
@@ -639,7 +638,7 @@ const NavBar = () => {
               </Dropdown.Popover>
             </Dropdown.Root>
             <PopoverTrigger onOpenChange={handleBellClick}>
-              <CoreButton
+              <Button
                 aria-label={t('label.notification-plural')}
                 color="tertiary"
                 iconLeading={
@@ -665,7 +664,7 @@ const NavBar = () => {
               </Popover>
             </PopoverTrigger>
             <Dropdown.Root>
-              <CoreButton
+              <Button
                 aria-label={t('label.need-help')}
                 color="tertiary"
                 data-testid="help-icon"

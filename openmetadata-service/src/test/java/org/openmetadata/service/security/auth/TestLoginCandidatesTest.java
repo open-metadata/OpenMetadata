@@ -16,8 +16,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
+import org.openmetadata.catalog.type.IdentityProviderConfig;
+import org.openmetadata.catalog.type.SamlSecurityConfig;
+import org.openmetadata.catalog.type.ServiceProviderConfig;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.auth.LdapConfiguration;
+import org.openmetadata.schema.auth.ldapTrustStoreConfig.CustomTrustManagerConfig;
 import org.openmetadata.schema.auth.ldapTrustStoreConfig.HostNameConfig;
 import org.openmetadata.schema.auth.ldapTrustStoreConfig.TruststoreConfig;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
@@ -133,6 +138,106 @@ class TestLoginCandidatesTest {
         candidate, oidc(oidcClient(LIVE_SECRET, DISCOVERY)));
 
     assertEquals(MASK, secretOf(candidate));
+  }
+
+  @Test
+  void restoresTheTrustStorePasswordAndThenTheBindPasswordForTheSameTrustStore() {
+    // The bind check compares the whole trust store setup, so a masked trust store password must
+    // be restored first or the bind password is never restored either.
+    SecurityConfiguration live =
+        ldap(
+            withCustomTrustStore(
+                ldapBind("ldap.example.com", LIVE_BIND_PASSWORD), "/certs/ldap.jks", "store-pass"));
+
+    SecurityConfiguration restored =
+        TestLoginCandidates.withLiveSecretsRestored(
+            ldap(withCustomTrustStore(ldapBind("ldap.example.com", MASK), "/certs/ldap.jks", MASK)),
+            live);
+
+    assertEquals("store-pass", trustStorePasswordOf(restored));
+    assertEquals(LIVE_BIND_PASSWORD, bindPasswordOf(restored));
+  }
+
+  @Test
+  void keepsTheTrustStorePasswordMaskedForAnotherTrustStoreFile() {
+    SecurityConfiguration live =
+        ldap(
+            withCustomTrustStore(
+                ldapBind("ldap.example.com", LIVE_BIND_PASSWORD), "/certs/ldap.jks", "store-pass"));
+
+    SecurityConfiguration restored =
+        TestLoginCandidates.withLiveSecretsRestored(
+            ldap(withCustomTrustStore(ldapBind("ldap.example.com", MASK), "/tmp/other.jks", MASK)),
+            live);
+
+    assertEquals(MASK, trustStorePasswordOf(restored));
+    assertEquals(MASK, bindPasswordOf(restored));
+  }
+
+  @Test
+  void restoresTheSamlPrivateKeyAndKeyStorePasswordOnlyForTheSameProviders() {
+    SecurityConfiguration live = saml(samlConfig("https://idp.example.com", "live-key", "ks-pass"));
+
+    SecurityConfiguration sameIdp =
+        TestLoginCandidates.withLiveSecretsRestored(
+            saml(samlConfig("https://idp.example.com", MASK, MASK)), live);
+    SecurityConfiguration otherIdp =
+        TestLoginCandidates.withLiveSecretsRestored(
+            saml(samlConfig("https://idp.attacker.net", MASK, MASK)), live);
+
+    assertEquals("live-key", samlOf(sameIdp).getSp().getSpPrivateKey());
+    assertEquals("ks-pass", samlOf(sameIdp).getSecurity().getKeyStorePassword());
+    assertEquals(MASK, samlOf(otherIdp).getSp().getSpPrivateKey());
+    assertEquals(MASK, samlOf(otherIdp).getSecurity().getKeyStorePassword());
+  }
+
+  private static LdapConfiguration withCustomTrustStore(
+      LdapConfiguration ldap, String path, String password) {
+    return ldap.withTruststoreConfigType(LdapConfiguration.TruststoreConfigType.CUSTOM_TRUST_STORE)
+        .withTrustStoreConfig(
+            new TruststoreConfig()
+                .withCustomTrustManagerConfig(
+                    new CustomTrustManagerConfig()
+                        .withTrustStoreFilePath(path)
+                        .withTrustStoreFilePassword(password)
+                        .withTrustStoreFileFormat("JKS")));
+  }
+
+  private static SamlSSOClientConfig samlConfig(
+      String idpEntityId, String privateKey, String keyStorePassword) {
+    return new SamlSSOClientConfig()
+        .withIdp(
+            new IdentityProviderConfig()
+                .withEntityId(idpEntityId)
+                .withSsoLoginUrl(idpEntityId + "/sso"))
+        .withSp(
+            new ServiceProviderConfig()
+                .withEntityId("https://om.example.com/api/v1/saml/metadata")
+                .withSpPrivateKey(privateKey))
+        .withSecurity(
+            new SamlSecurityConfig()
+                .withKeyStoreFilePath("/certs/saml.jks")
+                .withKeyStoreAlias("om")
+                .withKeyStorePassword(keyStorePassword));
+  }
+
+  private static SecurityConfiguration saml(SamlSSOClientConfig samlConfiguration) {
+    return new SecurityConfiguration()
+        .withAuthenticationConfiguration(
+            new AuthenticationConfiguration().withSamlConfiguration(samlConfiguration));
+  }
+
+  private static SamlSSOClientConfig samlOf(SecurityConfiguration config) {
+    return config.getAuthenticationConfiguration().getSamlConfiguration();
+  }
+
+  private static String trustStorePasswordOf(SecurityConfiguration config) {
+    return config
+        .getAuthenticationConfiguration()
+        .getLdapConfiguration()
+        .getTrustStoreConfig()
+        .getCustomTrustManagerConfig()
+        .getTrustStoreFilePassword();
   }
 
   private static OidcClientConfig oidcClient(String secret, String discoveryUri) {

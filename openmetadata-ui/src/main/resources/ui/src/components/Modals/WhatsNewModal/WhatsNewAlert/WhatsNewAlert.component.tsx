@@ -11,8 +11,14 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Box, Typography } from '@openmetadata/ui-core-components';
-import { Affix, Button, Card } from 'antd';
+import {
+  Box,
+  Button,
+  Card,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Affix } from 'antd';
+import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -87,7 +93,7 @@ const WhatsNewAlert = () => {
       });
     }
     onModalCancel();
-  }, [cookieStorage, onModalCancel, getReleaseVersionExpiry, cookieKey]);
+  }, [onModalCancel, cookieKey]);
 
   useEffect(() => {
     if (cookieKey) {
@@ -107,10 +113,12 @@ const WhatsNewAlert = () => {
             data-testid="whats-new-alert-card">
             <Box className="layout-row" wrap="nowrap">
               <Box
-                className={`layout-column tw:block whats-new-alert-left${
-                  releaseDate ? '' : ' whats-new-alert-left--centered'
-                }`}
-                style={{ flex: '0 0 220px' }}>
+                className={classNames(
+                  'layout-column tw:block whats-new-alert-left',
+                  releaseDate
+                    ? 'tw:flex-[0_0_220px]'
+                    : 'tw:flex-[0_0_140px] whats-new-alert-left--centered'
+                )}>
                 <div className="whats-new-alert-version-block">
                   <div className="whats-new-alert-meta">
                     <Typography className="whats-new-alert-meta-label">
@@ -135,9 +143,7 @@ const WhatsNewAlert = () => {
                   )}
                 </div>
               </Box>
-              <Box
-                className="layout-column tw:block whats-new-alert-right"
-                style={{ flex: 'auto' }}>
+              <Box className="layout-column tw:block tw:flex-auto whats-new-alert-right">
                 <Typography className="text-md font-semibold">
                   {t('label.new-update-announcement')}
                 </Typography>
@@ -148,29 +154,25 @@ const WhatsNewAlert = () => {
                 </Typography>
                 <div className="whats-new-alert-links">
                   <Button
-                    className="p-0"
+                    color="link-color"
                     href={releaseLink}
                     rel="noopener noreferrer"
-                    target="_blank"
-                    type="link">
+                    target="_blank">
                     {t('label.release-notes')}
                   </Button>
                   {/* Only show the blog link for major releases */}
                   {isMajorRelease && (
                     <Button
-                      className="p-0"
+                      color="link-color"
                       href={blogLink}
                       rel="noopener noreferrer"
-                      target="_blank"
-                      type="link">
+                      target="_blank">
                       {t('label.blog')}
                     </Button>
                   )}
                 </div>
               </Box>
-              <Box
-                className="layout-column tw:block"
-                style={{ flex: '0 0 48px' }}>
+              <Box className="layout-column tw:block tw:flex-[0_0_48px]">
                 <Icon
                   className="whats-new-alert-close"
                   component={CloseIcon}

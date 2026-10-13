@@ -27,6 +27,7 @@ import {
 import { axisTickFormatter } from '../ChartUtils';
 import { getRandomHexColor } from '../DataInsightPureUtils';
 import { convertSecondsToHumanReadableFormat } from '../date-time/DateTimeUtils';
+import { MIN_ROWS_PER_DIMENSION_PARAM } from '../observability/data-quality/testCaseThreshold.utils';
 import {
   getTaskDetailPathFromTask,
   getTaskDisplayId,
@@ -69,6 +70,11 @@ const EXPECTED_VALUE_PARAMETERS = new Set([
 ]);
 const MIN_BOUND_PARAMETER = /^min($|[A-Z])/;
 const MAX_BOUND_PARAMETER = /^max($|[A-Z])/;
+// Named like a bound but not one: `minRowsPerDimension` decides which
+// dimension groups the roll-up counts, not where the charted value may sit.
+const NOT_BOUND_PARAMETERS = new Set([MIN_ROWS_PER_DIMENSION_PARAM]);
+const isBound = (pattern: RegExp, name: string) =>
+  pattern.test(name) && !NOT_BOUND_PARAMETERS.has(name);
 
 export const toFiniteNumber = (value?: string) => {
   // Number('') is 0, so a cleared parameter would otherwise draw a line at 0.
@@ -107,8 +113,8 @@ export const getParameterBounds = (
       return values;
     }, []);
 
-  const maxBounds = valuesOf((name) => MAX_BOUND_PARAMETER.test(name));
-  const minBounds = valuesOf((name) => MIN_BOUND_PARAMETER.test(name));
+  const maxBounds = valuesOf((name) => isBound(MAX_BOUND_PARAMETER, name));
+  const minBounds = valuesOf((name) => isBound(MIN_BOUND_PARAMETER, name));
   const [threshold] = valuesOf((name) => name === 'threshold');
 
   return {
