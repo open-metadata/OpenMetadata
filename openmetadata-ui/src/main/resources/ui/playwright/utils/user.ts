@@ -496,7 +496,7 @@ export const generateToken = async (page: Page) => {
 
   await page.click('[data-testid="token-expiry"]');
 
-  await page.locator('[title="1 hour"] div').click();
+  await page.getByRole('option', { name: '1 hour', exact: true }).click();
 
   await expect(page.locator('[data-testid="token-expiry"]')).toBeVisible();
 
@@ -521,23 +521,18 @@ export const revokeToken = async (page: Page, isBot?: boolean) => {
 
 export const updateExpiration = async (page: Page, expiry: number) => {
   await page.click('[data-testid="token-expiry"]');
-  await page.click(`text=${expiry} day${expiry > 1 ? 's' : ''}`);
+  await page
+    .getByRole('option', {
+      name: `${expiry} day${expiry > 1 ? 's' : ''}`,
+      exact: true,
+    })
+    .click();
 
   const expiryDate = customFormatDateTime(
     getEpochMillisForFutureDays(expiry as number),
     `ccc d'th' MMMM, yyyy`
   );
 
-  // eslint-disable-next-line playwright/no-wait-for-timeout -- dropdown close animation delay
-  await page.waitForTimeout(100);
-
-  // Click outside to close any open dropdowns
-  await page.mouse.click(1, 1);
-
-  // Wait for any dropdown animations to complete
-  await page.locator('.ant-select-dropdown').waitFor({ state: 'hidden' });
-
-  // Now click the save button
   await page.click('[data-testid="save-edit"]');
 
   await expect(
