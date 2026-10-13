@@ -753,7 +753,7 @@ def test_identifier_factory_preserves_configured_language_and_context():
     recognizer = configured(Name.SgFinRecognizer, ClassificationLanguage.es, context=["custom_identifier"])
     assert recognizer.supported_language == "es"
     assert recognizer.context == ["custom_identifier"]
-    assert recognizer.name == "ValidatedSgFinRecognizer"
+    assert recognizer.name == Name.SgFinRecognizer.value
 
 
 def test_vat_validator_rejects_unicode_prefix_before_normalizing():
