@@ -25,6 +25,9 @@ matching entry.
 - A grid page passes `GRID_PAGE_SIZE_OPTIONS` to `usePaging` so a list-scale size from the shared
   URL or preference is reconciled to its own scale, and the global preference only ever stores a
   list-scale size.
+- `usePaging` treats a caller that declares no options as on the list scale, so a grid size left
+  in the shared URL param, or an off-scale size an older build stored in the preference, never
+  reaches a 15/25/50 picker.
 - Shared defaults (core `PaginationCardWithControls`, `TableV2` client paging, the atoms listing
   hooks) are 15.
 - Out of scope: fetch limits that are not a paged view — typeahead/suggestion searches, tree-select

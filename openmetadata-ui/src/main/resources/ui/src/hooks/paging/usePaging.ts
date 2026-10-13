@@ -20,9 +20,8 @@ import {
 } from 'react';
 import {
   INITIAL_PAGING_VALUE,
+  LIST_PAGE_SIZE_OPTIONS,
   PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
   pagingObject,
 } from '../../constants/constants';
 import { CursorType } from '../../enums/pagination.enum';
@@ -67,35 +66,31 @@ export interface UsePagingInterface {
  * may hold: it is read by pages that declare no options of their own, so a size from some page's
  * bespoke scale would land in a picker with no matching entry.
  */
-const GLOBAL_PAGE_SIZES = new Set([
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_MEDIUM,
-  PAGE_SIZE_LARGE,
-]);
+const GLOBAL_PAGE_SIZES = new Set(LIST_PAGE_SIZE_OPTIONS);
 
 /**
  * @param defaultPageSize where to start when the URL carries no size; falls back to the app-wide
  *   `globalPageSize` preference.
- * @param pageSizeOptions the sizes this page's picker offers. Pass them when the page is not on
- *   the app-wide scale: a size from the shared URL param or preference is reconciled to this set.
+ * @param pageSizeOptions the sizes this page's picker offers; defaults to the app-wide list scale.
+ *   A size from the shared URL param or preference is reconciled to this set, so a grid's 48 left
+ *   in the URL, or an off-scale size an older build stored in the preference, cannot reach a
+ *   15/25/50 picker. Pass the grid scale on grid pages.
  *   Pass a stable reference (a module constant) — a fresh array each render re-runs the sync
  *   effect below, which is wasted work rather than a bug, since its updates bail on equal values.
  */
 export const usePaging = (
   defaultPageSize?: number,
-  pageSizeOptions?: number[]
+  pageSizeOptions: number[] = LIST_PAGE_SIZE_OPTIONS
 ): UsePagingInterface => {
   const {
     preferences: { globalPageSize },
     setPreference,
   } = useCurrentUserPreferences();
 
-  // A caller that declares no options accepts any size, so an absent list allows everything.
   const fallbackPageSize = defaultPageSize ?? globalPageSize;
-  const processedPageSize =
-    pageSizeOptions && !pageSizeOptions.includes(fallbackPageSize)
-      ? pageSizeOptions[0]
-      : fallbackPageSize;
+  const processedPageSize = !pageSizeOptions.includes(fallbackPageSize)
+    ? pageSizeOptions[0]
+    : fallbackPageSize;
 
   const { filters: urlParams, setFilters: updateUrlParams } = useTableFilters({
     cursorType: undefined,
@@ -108,17 +103,22 @@ export const usePaging = (
   // every visited route mounted against it) plus one app-wide preference — so either can hand a
   // page a size its picker has no option for, which renders as an unselectable placeholder.
   const urlPageSize = Number(urlParams.pageSize) || processedPageSize;
-  const resolvedPageSize =
-    pageSizeOptions && !pageSizeOptions.includes(urlPageSize)
-      ? processedPageSize
-      : urlPageSize;
+  const resolvedPageSize = !pageSizeOptions.includes(urlPageSize)
+    ? processedPageSize
+    : urlPageSize;
 
   const initialCurrentPage =
     Number(urlParams.currentPage) || INITIAL_PAGING_VALUE;
 
   const [paging, setPaging] = useState<Paging>(pagingObject);
   const [currentPage, setCurrentPage] = useState<number>(initialCurrentPage);
-  const [pageSize, setPageSize] = useState<number>(resolvedPageSize);
+  const [storedPageSize, setPageSize] = useState<number>(resolvedPageSize);
+  // The sync effect below corrects the stored size a render late. When the options change (a page
+  // switching between its list and grid scale), callers would fetch with the old scale's size in
+  // that render, so hand out the resolved size until the stored one catches up.
+  const pageSize = pageSizeOptions.includes(storedPageSize)
+    ? storedPageSize
+    : resolvedPageSize;
 
   // Keep pagination in sync when filters or other controls update paging params directly in the URL.
   useEffect(() => {

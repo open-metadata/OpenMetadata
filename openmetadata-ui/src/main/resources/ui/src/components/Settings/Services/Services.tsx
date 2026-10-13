@@ -27,7 +27,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import {
+  GRID_PAGE_SIZE_BASE,
+  GRID_PAGE_SIZE_OPTIONS,
   INITIAL_PAGING_VALUE,
+  LIST_PAGE_SIZE_OPTIONS,
   pagingObject,
 } from '../../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
@@ -73,6 +76,7 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ListView } from '../../common/ListView/ListView.component';
+import { ListViewOptions } from '../../common/ListView/ListView.interface';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
@@ -99,6 +103,11 @@ const Services = ({ serviceName }: ServicesProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [serviceTypeFilter, setServiceTypeFilter] =
     useState<Array<ServicesType['serviceType']>>();
+  const [currentView, setCurrentView] = useState(ListViewOptions.TABLE);
+  const isCardView = currentView === ListViewOptions.CARD;
+  const pageSizeOptions = isCardView
+    ? GRID_PAGE_SIZE_OPTIONS
+    : LIST_PAGE_SIZE_OPTIONS;
   const {
     paging,
     handlePagingChange,
@@ -108,7 +117,16 @@ const Services = ({ serviceName }: ServicesProps) => {
     handlePageSizeChange,
     showPagination,
     pagingCursor,
-  } = usePaging();
+  } = usePaging(isCardView ? GRID_PAGE_SIZE_BASE : undefined, pageSizeOptions);
+
+  // Cards and table page at different sizes, so the current page and cursor do not carry over.
+  const handleViewChange = useCallback(
+    (view: ListViewOptions) => {
+      setCurrentView(view);
+      handlePageChange(INITIAL_PAGING_VALUE, { cursorType: null });
+    },
+    [handlePageChange]
+  );
   const [deleted, setDeleted] = useState<boolean>(false);
   const { permissions } = usePermissionProvider();
 
@@ -357,6 +375,7 @@ const Services = ({ serviceName }: ServicesProps) => {
       isLoading,
       isNumberBased: !isEmpty(searchTerm) || !isEmpty(serviceTypeFilter),
       pageSize,
+      pageSizeOptions,
       paging,
       pagingHandler: handleServicePageChange,
       onShowSizeChange: handlePageSizeChange,
@@ -368,6 +387,7 @@ const Services = ({ serviceName }: ServicesProps) => {
       searchTerm,
       serviceTypeFilter,
       pageSize,
+      pageSizeOptions,
       paging,
       handleServicePageChange,
       handlePageSizeChange,
@@ -611,6 +631,7 @@ const Services = ({ serviceName }: ServicesProps) => {
       <Grid.Item className="layout-column" span={24}>
         <ListView<ServicesType>
           cardRenderer={serviceCardRenderer}
+          currentView={currentView}
           customPaginationProps={customPaginationTableProps}
           deleted={deleted}
           handleDeletedSwitchChange={handleDeletedSwitchChange}
@@ -630,6 +651,7 @@ const Services = ({ serviceName }: ServicesProps) => {
             size: 'small',
             onChange: handleTableChange,
           }}
+          onViewChange={handleViewChange}
         />
       </Grid.Item>
     </Grid>

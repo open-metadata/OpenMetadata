@@ -11,10 +11,30 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { useState } from 'react';
 import { pagingObject } from '../../../constants/constants';
 import { CursorType } from '../../../enums/pagination.enum';
 import { PagingHandlerParams } from '../NextPrevious/NextPrevious.interface';
 import { ListView } from './ListView.component';
+import { ListViewOptions, ListViewProps } from './ListView.interface';
+
+// ListView's view is owned by its parent (the parent picks the page-size scale for it).
+const ControlledListView = (
+  props: Omit<
+    ListViewProps<Record<string, unknown>>,
+    'currentView' | 'onViewChange'
+  >
+) => {
+  const [currentView, setCurrentView] = useState(ListViewOptions.TABLE);
+
+  return (
+    <ListView
+      {...props}
+      currentView={currentView}
+      onViewChange={setCurrentView}
+    />
+  );
+};
 
 const mockCardRenderer = jest.fn().mockImplementation(() => <>Card</>);
 const mockOnSearch = jest.fn();
@@ -67,7 +87,7 @@ const mockCustomPaginationProps = {
 describe('ListView component', () => {
   it('should render toggle button for card and table', async () => {
     render(
-      <ListView
+      <ControlledListView
         cardRenderer={mockCardRenderer}
         customPaginationProps={mockCustomPaginationProps}
         deleted={false}
@@ -89,7 +109,7 @@ describe('ListView component', () => {
 
   it('should render table by default', async () => {
     render(
-      <ListView
+      <ControlledListView
         cardRenderer={mockCardRenderer}
         customPaginationProps={mockCustomPaginationProps}
         deleted={false}
@@ -109,7 +129,7 @@ describe('ListView component', () => {
 
   it('should render card when card is selected', async () => {
     render(
-      <ListView
+      <ControlledListView
         cardRenderer={mockCardRenderer}
         customPaginationProps={mockCustomPaginationProps}
         deleted={false}
@@ -134,7 +154,7 @@ describe('ListView component', () => {
 
   it('should call handleDeletedSwitchChange after switch toggle', async () => {
     render(
-      <ListView
+      <ControlledListView
         cardRenderer={mockCardRenderer}
         customPaginationProps={mockCustomPaginationProps}
         deleted={false}
@@ -160,7 +180,7 @@ describe('ListView component', () => {
 
   it('should call pagingHandler in ListView', async () => {
     render(
-      <ListView
+      <ControlledListView
         cardRenderer={mockCardRenderer}
         customPaginationProps={mockCustomPaginationProps}
         deleted={false}
@@ -191,7 +211,7 @@ describe('ListView component', () => {
 
   it('should not  visible pagination in TableView', async () => {
     render(
-      <ListView
+      <ControlledListView
         cardRenderer={mockCardRenderer}
         customPaginationProps={mockCustomPaginationProps}
         deleted={false}

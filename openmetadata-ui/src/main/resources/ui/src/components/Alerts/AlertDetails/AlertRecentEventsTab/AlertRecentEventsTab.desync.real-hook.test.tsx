@@ -24,9 +24,10 @@ import AlertRecentEventsTab from './AlertRecentEventsTab';
 // Only useCurrentUserPreferences is stubbed: the real usePaging hook, its
 // useTableFilters URL-write path, and the real NextPreviousWithOffset
 // component are all exercised under MemoryRouter.
+// The preference must be a size on the list scale (15/25/50): usePaging replaces any other value.
 jest.mock('../../../../hooks/currentUserStore/useCurrentUserStore', () => ({
   useCurrentUserPreferences: () => ({
-    preferences: { globalPageSize: 5 },
+    preferences: { globalPageSize: 25 },
     setPreference: jest.fn(),
   }),
 }));
@@ -103,34 +104,34 @@ describe('AlertRecentEventsTab pagination/filter reset (real usePaging + real Ne
   it('resets currentPage to 1 on filter change and keeps Next navigation contiguous', async () => {
     await renderWithRouter();
 
-    expect(indicator()).toHaveTextContent('1/20');
+    expect(indicator()).toHaveTextContent('1/4');
 
     await clickNext();
 
-    expect(indicator()).toHaveTextContent('2/20');
+    expect(indicator()).toHaveTextContent('2/4');
 
     await clickNext();
 
-    expect(indicator()).toHaveTextContent('3/20');
-    expect(lastCallParams().paginationOffset).toBe(10);
+    expect(indicator()).toHaveTextContent('3/4');
+    expect(lastCallParams().paginationOffset).toBe(50);
 
     await selectFilter('label.successful');
 
     expect(await screen.findByTestId('applied-filter-text')).toHaveTextContent(
       ': label.successful'
     );
-    expect(indicator()).toHaveTextContent('1/20');
+    expect(indicator()).toHaveTextContent('1/4');
     expect(lastCallParams().paginationOffset).toBe(0);
     expect(lastCallParams().status).toBe(AlertRecentEventFilters.SUCCESSFUL);
 
     await clickNext();
 
-    expect(indicator()).toHaveTextContent('2/20');
-    expect(lastCallParams().paginationOffset).toBe(5);
+    expect(indicator()).toHaveTextContent('2/4');
+    expect(lastCallParams().paginationOffset).toBe(25);
 
     await clickPrevious();
 
-    expect(indicator()).toHaveTextContent('1/20');
+    expect(indicator()).toHaveTextContent('1/4');
     expect(lastCallParams().paginationOffset).toBe(0);
   });
 
@@ -161,7 +162,7 @@ describe('AlertRecentEventsTab pagination/filter reset (real usePaging + real Ne
     // fetches offset 0 (the documented mount desync, out of scope here).
     await renderWithRouter('/alert?currentPage=3');
 
-    expect(indicator()).toHaveTextContent('3/20');
+    expect(indicator()).toHaveTextContent('3/4');
     expect(lastCallParams().paginationOffset).toBe(0);
 
     // Changing the filter resets the page to 1 and rewrites the URL.
@@ -170,7 +171,7 @@ describe('AlertRecentEventsTab pagination/filter reset (real usePaging + real Ne
     expect(await screen.findByTestId('applied-filter-text')).toHaveTextContent(
       ': label.successful'
     );
-    expect(indicator()).toHaveTextContent('1/20');
+    expect(indicator()).toHaveTextContent('1/4');
     expect(lastCallParams().paginationOffset).toBe(0);
     expect(lastCallParams().status).toBe(AlertRecentEventFilters.SUCCESSFUL);
     expect(screen.getByTestId('location-search').textContent).toContain(
