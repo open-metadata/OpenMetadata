@@ -945,7 +945,11 @@ export const TreeSelect = <T = unknown,>({
         </div>
       )}
       <div
-        className="tw:max-h-64 tw:overflow-y-auto tw:pl-[14px] tw:pr-1.5"
+        className={cx(
+          'tw:max-h-64 tw:overflow-y-auto tw:pl-[14px] tw:pr-1.5',
+          // The staged footer brings its own top margin.
+          !showFooter && 'tw:pb-2'
+        )}
         onMouseDown={(event) => event.preventDefault()}>
         {loading ? (
           <div className="tw:flex tw:items-center tw:justify-center tw:gap-2 tw:px-4 tw:py-2 tw:text-xs tw:text-tertiary">
