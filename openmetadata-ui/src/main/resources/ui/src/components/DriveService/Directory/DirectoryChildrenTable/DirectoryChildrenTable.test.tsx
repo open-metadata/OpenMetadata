@@ -35,7 +35,7 @@ jest.mock('../../../common/RichTextEditor/RichTextEditorPreviewNew', () =>
     <div data-testid="rich-text-previewer">{markdown}</div>
   ))
 );
-jest.mock('../../../common/Table/Table', () =>
+jest.mock('../../../common/Table/TableV2', () =>
   jest.fn(({ columns, dataSource, locale }) => (
     <div data-testid="table">
       <div data-testid="table-columns">{JSON.stringify(columns.length)}</div>

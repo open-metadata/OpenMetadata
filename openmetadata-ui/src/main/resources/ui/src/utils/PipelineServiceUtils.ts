@@ -56,6 +56,10 @@ const pipelineSchemaLoaders: Partial<
     loadConnectionSchema('connections/pipeline/flinkConnection.json'),
   [PipelineServiceType.Prefect]: () =>
     loadConnectionSchema('connections/pipeline/prefectConnection.json'),
+  [PipelineServiceType.Data360Pipeline]: () =>
+    loadConnectionSchema('connections/pipeline/data360PipelineConnection.json'),
+  [PipelineServiceType.TableauPipeline]: () =>
+    loadConnectionSchema('connections/pipeline/tableauPipelineConnection.json'),
 };
 
 const resolveSchemaModule = (mod: SchemaModule): Record<string, unknown> => {

@@ -17,7 +17,9 @@ import { ROLES_LIST_WITH_PAGING } from '../Roles.mock';
 import RolesListPage from './RolesListPage';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
-  Box: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  // Spread the real module: TableV2 pulls Table/Button/Dropdown/Typography
+  // from here, and a wholesale mock leaves them undefined.
+  ...jest.requireActual('@openmetadata/ui-core-components'),
   Popover: jest
     .fn()
     .mockImplementation(({ children }) => <div>{children}</div>),
@@ -26,8 +28,10 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     .mockImplementation(({ children }) => <div>{children}</div>),
   Button: jest
     .fn()
-    .mockImplementation(({ children, onClick }) => (
-      <button onClick={onClick}>{children}</button>
+    .mockImplementation(({ children, onClick, 'data-testid': testId }) => (
+      <button data-testid={testId} onClick={onClick}>
+        {children}
+      </button>
     )),
   ButtonUtility: jest
     .fn()

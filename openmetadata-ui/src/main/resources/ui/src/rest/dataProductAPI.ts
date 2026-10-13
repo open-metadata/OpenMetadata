@@ -13,12 +13,11 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { QueryVote } from '../components/Database/TableQueries/TableQueries.interface';
-import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import {
   APPLICATION_JSON_CONTENT_TYPE_HEADER,
   PAGE_SIZE,
 } from '../constants/constants';
+import { AssetsOfEntity } from '../enums/Assets.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { CreateDataProduct } from '../generated/api/domains/createDataProduct';
 import {
@@ -32,10 +31,11 @@ import {
 import { EntityHistory } from '../generated/type/entityHistory';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
+import { QueryVote } from '../interface/entity/vote.interface';
 import { formatDataProductResponse } from '../utils/APIUtils';
 import { buildDomainFilter } from '../utils/elasticsearchQueryBuilder';
 import { getEncodedFqn } from '../utils/StringUtils';
-import APIClient from './index';
+import APIClient from './axiosClient';
 import { searchQuery } from './searchAPI';
 
 const BASE_URL = '/dataProducts';
@@ -98,7 +98,8 @@ export const getDataProductVersionData = async (
 export const fetchDataProductsElasticSearch = async (
   searchText: string,
   domainFQNs: string[],
-  page: number
+  page: number,
+  pageSize = PAGE_SIZE
 ): Promise<{
   data: {
     label: string;
@@ -113,7 +114,7 @@ export const fetchDataProductsElasticSearch = async (
     query: searchText,
     filters: '',
     pageNumber: page,
-    pageSize: PAGE_SIZE,
+    pageSize,
     queryFilter,
     searchIndex: SearchIndex.DATA_PRODUCT,
   });
@@ -347,20 +348,6 @@ export const exportDataProductToODPSYaml = async (
 ): Promise<string> => {
   const response = await APIClient.get<string>(
     `${BASE_URL}/${dataProductId}/odps/yaml`,
-    {
-      headers: { Accept: APPLICATION_YAML_CONTENT_TYPE },
-      responseType: 'text',
-    }
-  );
-
-  return response.data;
-};
-
-export const exportDataProductToODPSYamlByFqn = async (
-  fqn: string
-): Promise<string> => {
-  const response = await APIClient.get<string>(
-    `${BASE_URL}/name/${getEncodedFqn(fqn)}/odps/yaml`,
     {
       headers: { Accept: APPLICATION_YAML_CONTENT_TYPE },
       responseType: 'text',

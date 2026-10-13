@@ -10,18 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isEmpty, isUndefined } from 'lodash';
 import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
 import type { ModifiedGlossaryTerm } from '../components/Glossary/GlossaryTermTab/GlossaryTermTab.interface';
 import type { ModifiedGlossary } from '../components/Glossary/useGlossary.store';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { EntityType } from '../enums/entity.enum';
-import type { Glossary } from '../generated/entity/data/glossary';
 import {
   EntityStatus,
   type GlossaryTerm,
 } from '../generated/entity/data/glossaryTerm';
-import type { Domain } from '../generated/entity/domains/domain';
 import type { Task } from '../generated/entity/tasks/task';
 import type { User } from '../generated/entity/teams/user';
 import Fqn from './Fqn';
@@ -204,40 +201,6 @@ export const updateGlossaryTermByFqn = (
   }) as ModifiedGlossary[];
 };
 
-export const findItemByFqn = (
-  list: ModifiedGlossaryTerm[] | Domain[],
-  fullyQualifiedName: string,
-  withReference = true
-): GlossaryTerm | Glossary | ModifiedGlossary | Domain | null => {
-  for (const item of list) {
-    if (
-      (item.fullyQualifiedName ?? (item as ModifiedGlossaryTerm).value) ===
-      fullyQualifiedName
-    ) {
-      return withReference
-        ? item
-        : {
-            ...item,
-            fullyQualifiedName:
-              item.fullyQualifiedName ??
-              (item as ModifiedGlossaryTerm).data?.tagFQN,
-            ...((item as ModifiedGlossaryTerm).data ?? {}),
-          };
-    }
-    if (item.children) {
-      const found = findItemByFqn(
-        item.children as ModifiedGlossaryTerm[],
-        fullyQualifiedName
-      );
-      if (found) {
-        return found;
-      }
-    }
-  }
-
-  return null;
-};
-
 export const findExpandableKeys = (
   glossaryTerm?: ModifiedGlossaryTerm
 ): string[] => {
@@ -273,43 +236,6 @@ export const findExpandableKeysForArray = (
   });
 
   return expandableKeys;
-};
-
-export const filterTreeNodeOptions = (
-  options: Glossary[],
-  filterOptions: string[]
-): Glossary[] => {
-  if (isEmpty(filterOptions)) {
-    return options;
-  }
-
-  const filterNodes = (
-    nodes: ModifiedGlossaryTerm[]
-  ): ModifiedGlossaryTerm[] => {
-    return nodes.reduce(
-      (acc: ModifiedGlossaryTerm[], node: ModifiedGlossaryTerm) => {
-        const isMatching = filterOptions.includes(
-          node.fullyQualifiedName ?? ''
-        );
-
-        const filteredChildren = !isUndefined(node.children)
-          ? filterNodes(node.children as unknown as ModifiedGlossaryTerm[])
-          : [];
-
-        if (!isMatching) {
-          acc.push({
-            ...node,
-            children: filteredChildren,
-          });
-        }
-
-        return acc;
-      },
-      []
-    );
-  };
-
-  return filterNodes(options as ModifiedGlossaryTerm[]);
 };
 
 export const findAndUpdateNested = (

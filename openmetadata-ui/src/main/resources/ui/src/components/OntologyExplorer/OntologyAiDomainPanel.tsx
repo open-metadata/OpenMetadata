@@ -18,7 +18,7 @@ import {
   TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Check, Stars02 } from '@untitledui/icons';
+import { Check, Stars02 } from '@openmetadata/ui-core-components/icons';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { OntologyDomainDraftResult } from '../../generated/api/data/ontologyDomainDraftResult';

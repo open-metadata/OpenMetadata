@@ -38,6 +38,15 @@ class HiveMysqlMetaStoreDialect(HiveMetaStoreDialectMixin, MySQLDialect_pymysql)
     driver = "mysql"
     supports_statement_cache = False
 
+    table_providers_query = """
+        SELECT t.TBL_NAME, p.PARAM_VALUE
+        FROM TBLS t
+        JOIN DBS d ON t.DB_ID = d.DB_ID
+        JOIN TABLE_PARAMS p ON p.TBL_ID = t.TBL_ID
+        WHERE d.NAME = :schema_name
+          AND p.PARAM_KEY = 'spark.sql.sources.provider'
+    """
+
     def get_schema_names(self, connection, **kw):
         # Equivalent to SHOW DATABASES
         schema_names = [row[0] for row in connection.execute(text("select NAME from DBS;"))]
@@ -63,28 +72,41 @@ class HiveMysqlMetaStoreDialect(HiveMetaStoreDialectMixin, MySQLDialect_pymysql)
             else ""
         )
 
-        # Rewritten to avoid CTE syntax for MySQL < 8.0 compatibility
-        # Using direct UNION ALL of subqueries instead of WITH clause
+        # Rewritten to avoid CTE syntax for MySQL < 8.0 compatibility.
+        # Insert a Hive-style Partition Information sentinel between regular and
+        # partition columns so get_columns can flag partition keys (issue #26712).
+        # sort_order keeps the sentinel between groups; col_index (INTEGER_IDX)
+        # preserves metastore ordinals because filesort within a group is not stable.
         query = f"""
-            SELECT 
-                col.COLUMN_NAME,
-                col.TYPE_NAME, 
-                col.COMMENT
-            FROM COLUMNS_V2 col
-            JOIN CDS cds ON col.CD_ID = cds.CD_ID
-            JOIN SDS sds ON sds.CD_ID = cds.CD_ID
-            JOIN TBLS tbsl ON sds.SD_ID = tbsl.SD_ID
-                AND tbsl.TBL_NAME = '{table_name}'
-            {schema_join}
-            UNION ALL
-            SELECT 
-                pk.PKEY_NAME as COLUMN_NAME,
-                pk.PKEY_TYPE as TYPE_NAME,
-                pk.PKEY_COMMENT as COMMENT
-            FROM PARTITION_KEYS pk
-            JOIN TBLS tbsl ON pk.TBL_ID = tbsl.TBL_ID
-                AND tbsl.TBL_NAME = '{table_name}'
-            {schema_join}
+            SELECT COLUMN_NAME, TYPE_NAME, COMMENT
+            FROM (
+                SELECT 
+                    col.COLUMN_NAME,
+                    col.TYPE_NAME, 
+                    col.COMMENT,
+                    0 AS sort_order,
+                    col.INTEGER_IDX AS col_index
+                FROM COLUMNS_V2 col
+                JOIN CDS cds ON col.CD_ID = cds.CD_ID
+                JOIN SDS sds ON sds.CD_ID = cds.CD_ID
+                JOIN TBLS tbsl ON sds.SD_ID = tbsl.SD_ID
+                    AND tbsl.TBL_NAME = '{table_name}'
+                {schema_join}
+                UNION ALL
+                SELECT '# Partition Information', NULL, NULL, 1 AS sort_order, 0 AS col_index
+                UNION ALL
+                SELECT 
+                    pk.PKEY_NAME as COLUMN_NAME,
+                    pk.PKEY_TYPE as TYPE_NAME,
+                    pk.PKEY_COMMENT as COMMENT,
+                    2 AS sort_order,
+                    pk.INTEGER_IDX AS col_index
+                FROM PARTITION_KEYS pk
+                JOIN TBLS tbsl ON pk.TBL_ID = tbsl.TBL_ID
+                    AND tbsl.TBL_NAME = '{table_name}'
+                {schema_join}
+            ) AS hive_cols
+            ORDER BY sort_order, col_index
         """  # noqa: W291
 
         return connection.execute(text(query)).fetchall()

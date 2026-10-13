@@ -38,3 +38,34 @@ export const getFeedCardClassName = (
     { 'activity-feed-reply-card': isPost },
     { 'active-card is-active': isActive }
   );
+
+// The whole feed/task card is clickable but also contains its own links and
+// buttons, so it cannot be a <button> (interactive content may not nest). The
+// container takes role="button" instead, and only reacts to keys pressed on
+// itself so Enter/Space inside a nested control or editor keep their meaning.
+export const handleCardContainerKeyDown =
+  (onActivate: () => void) =>
+  (event: {
+    key: string;
+    target: EventTarget;
+    currentTarget: EventTarget;
+    preventDefault: () => void;
+  }) => {
+    if (event.target !== event.currentTarget) {
+      return;
+    }
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onActivate();
+    }
+  };
+
+// Extras for the clickable core `Card` that replaced the antd
+// `<Button block type="text">` wrapper: nowrap and select-none are what that
+// button's base style handed to the card, the core Card focus outline has no
+// colour of its own, and the transparent border reserves the 1px the ghost
+// variant's hover border adds so hovering does not shift the feed list.
+// overflow-visible undoes Card's default clipping so the reply editor's
+// absolutely positioned @mention list is not cut off at the card edge.
+export const CARD_CONTAINER_CLASS_NAME =
+  'tw:select-none tw:whitespace-nowrap tw:border tw:border-transparent tw:outline-focus-ring tw:overflow-visible';

@@ -28,7 +28,7 @@ import {
   Plus,
   RefreshCcw02,
   Trash02,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import React, {
   Dispatch,
@@ -42,7 +42,7 @@ import { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { PersonalAccessToken } from '../../../../../generated/auth/personalAccessToken';
 import { JWTTokenExpiry } from '../../../../../generated/entity/teams/user';
-import APIClient from '../../../../../rest/index';
+import APIClient from '../../../../../rest/axiosClient';
 import {
   getUserAccessToken,
   updateUserAccessToken,

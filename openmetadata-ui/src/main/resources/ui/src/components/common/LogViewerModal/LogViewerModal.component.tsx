@@ -27,8 +27,8 @@ import {
   File02,
   Maximize01,
   Minimize01,
-  SearchMd,
-} from '@untitledui/icons';
+  Search,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import {
   ChangeEvent,
@@ -64,13 +64,14 @@ const LogViewerLiveIndicator: FunctionComponent<
   const { t } = useTranslation();
 
   return isReconnecting ? (
-    <span
-      aria-label={t('label.reconnecting')}
-      className="lvm-dot lvm-dot--reconnecting"
-      data-testid="log-viewer-reconnecting-indicator"
-      role="status"
-      title={t('label.reconnecting')}
-    />
+    <Tooltip title={t('label.reconnecting')}>
+      <span
+        aria-label={t('label.reconnecting')}
+        className="lvm-dot lvm-dot--reconnecting"
+        data-testid="log-viewer-reconnecting-indicator"
+        role="status"
+      />
+    </Tooltip>
   ) : (
     <span
       aria-label={t('label.live')}
@@ -93,7 +94,7 @@ const LogViewerSearchBox: FunctionComponent<LogViewerSearchBoxProps> = ({
 
   return (
     <div className="lvm-search">
-      <SearchMd aria-hidden className="lvm-search-icon" />
+      <Search aria-hidden className="lvm-search-icon" />
       <input
         aria-label={t('label.search-entity', {
           entity: t('label.log-lowercase-plural'),

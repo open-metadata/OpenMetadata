@@ -256,6 +256,47 @@ describe('OntologyStudioQueryConsole', () => {
     );
   });
 
+  it('renders an RDF 1.2 triple term instead of crashing the results panel', async () => {
+    mockRunGlossarySparqlQuery.mockResolvedValue({
+      format: 'json',
+      body: '',
+      contentType: 'application/sparql-results+json',
+      durationMs: 12,
+      parsed: {
+        head: { vars: ['statement', 'source'] },
+        results: {
+          bindings: [
+            {
+              statement: {
+                type: Type.Triple,
+                value: {
+                  subject: { type: Type.URI, value: 'urn:s' },
+                  predicate: { type: Type.URI, value: 'urn:p' },
+                  object: {
+                    type: Type.Literal,
+                    value: 'قطة',
+                    'xml:lang': 'ar',
+                    'its:dir': 'rtl',
+                  },
+                },
+              },
+              source: { type: Type.URI, value: 'urn:g' },
+            },
+          ],
+        },
+      },
+    } as never);
+    renderConsole();
+
+    fireEvent.click(
+      screen.getByTestId('ontology-query-suggestion-ontology-relatedTo-target')
+    );
+
+    expect(
+      await screen.findByText('<<( <urn:s> <urn:p> "قطة"@ar--rtl )>>')
+    ).toBeInTheDocument();
+  });
+
   it('keeps unrestricted knowledge-graph queries admin-only', async () => {
     mockUseAuth.mockReturnValue({
       isAdminUser: true,

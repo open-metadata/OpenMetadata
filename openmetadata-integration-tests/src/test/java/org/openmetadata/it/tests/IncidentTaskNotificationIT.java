@@ -37,6 +37,8 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.alert.type.EmailAlertConfig;
 import org.openmetadata.schema.api.events.AlertFilteringInput;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
+import org.openmetadata.schema.api.tasks.Payload;
+import org.openmetadata.schema.api.tasks.ResolveTask;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.api.tests.CreateTestCaseResult;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
@@ -49,8 +51,10 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.type.TestCaseFailureReasonType;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.TaskCategory;
+import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.models.ListParams;
@@ -114,6 +118,53 @@ public class IncidentTaskNotificationIT {
     }
   }
 
+  @Test
+  void testResolvingTaskDoesNotRepeatCommentMention(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String userName = "mr" + UUID.randomUUID().toString().substring(0, 8);
+    client.users().create(new CreateUser().withName(userName).withEmail(userName + "@test.om.org"));
+
+    EventSubscription alert = createTaskMentionAlert(ns, client, userName);
+    try {
+      TestCase testCase = createTestCase(client, ns, "incident-resolve-notif");
+      createFailedTestResult(client, testCase);
+      Task incident = awaitIncidentTaskForTestCase(client, testCase);
+      String mention = "<#E::user::" + userName + ">";
+      long processedBefore = processedEventsCount(client, alert);
+
+      client.tasks().addComment(incident.getId().toString(), "Please look " + mention);
+      client.tasks().resolve(incident.getId().toString(), incidentResolution());
+      // Events are delivered in order, so seeing this second mention proves the resolve event in
+      // between was already evaluated by the alert.
+      client.tasks().addComment(incident.getId().toString(), "Resolved, thanks " + mention);
+
+      await("both comment mentions are delivered")
+          .atMost(ALERT_TIMEOUT)
+          .pollInterval(Duration.ofSeconds(2))
+          .until(() -> processedEventsCount(client, alert) >= processedBefore + 2);
+      await("the resolve event does not repeat the earlier mention")
+          .during(Duration.ofSeconds(5))
+          .atMost(Duration.ofSeconds(15))
+          .pollInterval(Duration.ofSeconds(1))
+          .untilAsserted(
+              () -> assertEquals(processedBefore + 2, processedEventsCount(client, alert)));
+    } finally {
+      client.eventSubscriptions().delete(alert.getId().toString());
+    }
+  }
+
+  private ResolveTask incidentResolution() {
+    return new ResolveTask()
+        .withTransitionId("resolve")
+        .withResolutionType(TaskResolutionType.Completed)
+        .withComment("fixed upstream")
+        .withPayload(
+            new Payload()
+                .withAdditionalProperty("resolution", "fixed upstream")
+                .withAdditionalProperty(
+                    "testCaseFailureReason", TestCaseFailureReasonType.Other.value()));
+  }
+
   private EventSubscription createTaskMentionAlert(
       TestNamespace ns, OpenMetadataClient client, String userName) {
     ArgumentsInput mentionFilter =
@@ -124,8 +175,8 @@ public class IncidentTaskNotificationIT {
                 List.of(new Argument().withName("userList").withInput(List.of(userName))));
 
     // Customer's destination shape: Email to the Mentions category. With SMTP disabled (CI default)
-    // the publisher short-circuits as a successful delivery, so the assertion stays
-    // sink-independent.
+    // nothing goes out and each event counts as failed; the assertion counts sent and failed
+    // together, so it stays sink-independent.
     SubscriptionDestination destination =
         new SubscriptionDestination()
             .withId(UUID.randomUUID())

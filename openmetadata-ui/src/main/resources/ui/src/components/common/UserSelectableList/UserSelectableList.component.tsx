@@ -10,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Popover, Tooltip } from 'antd';
+import { ButtonUtility, Tooltip } from '@openmetadata/ui-core-components';
+
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as BotIcon } from '../../../assets/svg/bot.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import {
-  DE_ACTIVE_COLOR,
   PAGE_SIZE_MEDIUM,
   TEXT_GREY_MUTED,
 } from '../../../constants/constants';
@@ -31,9 +31,10 @@ import { formatUsersResponse } from '../../../utils/APIUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceListFromEntities } from '../../../utils/EntityReferenceUtils';
 import { getTermQuery } from '../../../utils/SearchPureUtils';
+import AnchoredPopover from '../AnchoredPopover/AnchoredPopover';
 import { SelectableList } from '../SelectableList/SelectableList.component';
 import { UserTag } from '../UserTag/UserTag.component';
-import './user-select-dropdown.less';
+// import './user-select-dropdown.less';
 import { UserSelectableListProps } from './UserSelectableList.interface';
 
 type UserReferenceWithBotFlag = EntityReference & { isBot?: boolean };
@@ -44,6 +45,7 @@ export const UserSelectableList = ({
   onUpdate,
   children,
   popoverProps,
+  onClose,
   multiSelect = true,
   filterCurrentUser = false,
   includeBot = false,
@@ -170,7 +172,11 @@ export const UserSelectableList = ({
     (item: EntityReference) => (
       <div className="d-flex items-center gap-2">
         {botUserIds.current.has(item.id) && (
-          <Tooltip title={t('label.bot')}>
+          <Tooltip
+            arrow
+            excludeTriggerFromTabOrder
+            title={t('label.bot')}
+            triggerClassName="tw:inline-flex">
             <BotIcon
               aria-label={t('label.bot')}
               color={TEXT_GREY_MUTED}
@@ -190,9 +196,16 @@ export const UserSelectableList = ({
     [t]
   );
 
+  const isOpen = popoverProps?.open ?? popupVisible;
+
+  const handleOpenChange = (open: boolean) => {
+    setPopupVisible(open);
+    popoverProps?.onOpenChange?.(open);
+  };
+
   return (
-    <Popover
-      destroyTooltipOnHide
+    <AnchoredPopover
+      className="user-select-popover"
       content={
         <SelectableList
           customTagRenderer={includeBot ? botTagRenderer : undefined}
@@ -202,31 +215,31 @@ export const UserSelectableList = ({
             type: t('label.user'),
           })}
           selectedItems={selectedUsers}
-          onCancel={() => setPopupVisible(false)}
+          onCancel={() => {
+            handleOpenChange(false);
+            onClose?.();
+          }}
           onUpdate={handleUpdate}
         />
       }
-      open={popupVisible}
-      overlayClassName="user-select-popover p-0"
-      placement="bottomRight"
-      showArrow={false}
-      trigger="click"
-      onOpenChange={setPopupVisible}
-      {...popoverProps}>
+      isOpen={isOpen}
+      placement={popoverProps?.placement ?? 'bottom end'}
+      onOpenChange={handleOpenChange}>
       {children ?? (
         <Tooltip
-          placement="topRight"
-          title={hasPermission ? '' : t(NO_PERMISSION_FOR_ACTION)}>
-          <Button
-            className="p-0 flex-center"
+          arrow
+          isDisabled={hasPermission}
+          placement="top right"
+          title={t(NO_PERMISSION_FOR_ACTION)}>
+          <ButtonUtility
+            color="tertiary"
             data-testid="add-user"
-            disabled={!hasPermission}
-            icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-            size="small"
-            type="text"
+            icon={EditIcon}
+            isDisabled={!hasPermission}
+            size="xs"
           />
         </Tooltip>
       )}
-    </Popover>
+    </AnchoredPopover>
   );
 };

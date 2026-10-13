@@ -41,16 +41,14 @@ import {
 } from '../../../constants/constants';
 import { DEFAULT_SORT_ORDER } from '../../../constants/profiler.constant';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { TestCase } from '../../../generated/tests/testCase';
 import { EntityReference, TestSuite } from '../../../generated/tests/testSuite';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useChangeSummary } from '../../../hooks/useChangeSummary';
+import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
 import {
@@ -68,6 +66,7 @@ import {
   TEST_SUITE_TEST_CASE_FIELDS,
 } from '../../../rest/queries/testSuiteQuery';
 import {
+  AddTestCaseListSubmitPayload,
   addTestCasesToLogicalTestSuiteBulk,
   getListTestCaseBySearch,
   ListTestCaseParamsBySearch,
@@ -75,16 +74,14 @@ import {
 } from '../../../rest/testAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
-import {
-  checkPermission,
-  DEFAULT_ENTITY_PERMISSION,
-} from '../../../utils/PermissionsUtils';
+import { checkPermission } from '../../../utils/PermissionsUtils';
 import { ExtraTestCaseDropdownOptions } from '../../../utils/TestCaseUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { TEST_CASE_LIST_REFRESH_MAX_ATTEMPTS } from '../TestSuiteDetailsPage.constants';
 import { UseTestSuiteDetailsPageResult } from '../TestSuiteDetailsPage.interface';
 import {
   isTestCaseListSynchronized,
+  isTestCaseRemovalIndexed,
   isUnfilteredTestCaseRequest,
 } from '../TestSuiteDetailsPage.utils';
 
@@ -97,8 +94,7 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { entityRules } = useEntityRules(EntityType.TEST_SUITE);
-  const { getEntityPermissionByFqn, permissions: globalPermissions } =
-    usePermissionProvider();
+  const { permissions: globalPermissions } = usePermissionProvider();
   const { fqn: testSuiteFQN } = useFqn();
   // Query keys isolate stale GET responses, but a bulk mutation can still
   // finish after navigation and must not start follow-up work for the old suite.
@@ -134,29 +130,43 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
   const [isTestCaseModalOpen, setIsTestCaseModalOpen] =
     useState<boolean>(false);
 
+  // The owning fetch for this page's permissions (Task 8 conversion): single resource, by
+  // FQN, no `deleted` gating — old code never ANDed any of the flags below with the suite's
+  // own `deleted` field. `isPermissionLoading`/`testSuitePermissionError` replace both the
+  // old fetchTestSuitePermission's manual setIsLoading(true/false) + try/catch pair, and the
+  // raw `useQuery<OperationPermission>` upstream introduced for the same purpose — this hook
+  // is already React Query-backed internally, so no extra fetch mechanism is needed.
+  // canEditOwners/canEditDescription are also an explicit-deny-wins fix, same precedent as
+  // canViewBasic (Task 6 Finding 1): a field-specific deny now wins over a broader EditAll
+  // grant.
   const {
-    data: testSuitePermissions = DEFAULT_ENTITY_PERMISSION,
-    error: testSuitePermissionError,
+    permissions: testSuitePermissions,
     isLoading: isPermissionLoading,
-  } = useQuery<OperationPermission>({
-    queryKey: ['testSuite', 'permission', testSuiteFQN],
-    queryFn: () =>
-      getEntityPermissionByFqn(ResourceEntity.TEST_SUITE, testSuiteFQN),
-    enabled: Boolean(testSuiteFQN),
-  });
+    error: testSuitePermissionError,
+    hasViewAccess,
+    canEditAll,
+    canEditOwners,
+    canEditDescription,
+  } = useEntityPermissions(ResourceEntity.TEST_SUITE, testSuiteFQN);
 
+  // Public shape kept identical (Task 8: the page consumer isn't in this same commit's
+  // scope for a prop-contract migration) — only the source of each value changes, from raw
+  // `.EditAll`/`.ViewAll`/`.ViewBasic` reads to the named flags useEntityPermissions derives.
   const permissions = useMemo(() => {
     return {
-      hasViewPermission:
-        testSuitePermissions?.ViewAll || testSuitePermissions?.ViewBasic,
-      hasEditPermission: testSuitePermissions?.EditAll,
-      hasEditOwnerPermission:
-        testSuitePermissions?.EditAll || testSuitePermissions?.EditOwners,
-      hasEditDescriptionPermission:
-        testSuitePermissions?.EditAll || testSuitePermissions?.EditDescription,
+      hasViewPermission: hasViewAccess,
+      hasEditPermission: canEditAll,
+      hasEditOwnerPermission: canEditOwners,
+      hasEditDescriptionPermission: canEditDescription,
       hasDeletePermission: testSuitePermissions?.Delete,
     };
-  }, [testSuitePermissions]);
+  }, [
+    hasViewAccess,
+    canEditAll,
+    canEditOwners,
+    canEditDescription,
+    testSuitePermissions?.Delete,
+  ]);
 
   const testSuiteQueryKey = useMemo(
     () => testSuiteDetailsQueryKey(testSuiteFQN),
@@ -321,6 +331,10 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
     [testSuite, testSuiteId]
   );
 
+  // useEntityPermissions fetches reactively (React Query, keyed on resource+FQN) — no manual
+  // trigger effect needed. This replaces the old fetchTestSuitePermission's try/catch
+  // showErrorToast with the same user-facing behavior: a permission-fetch failure still
+  // surfaces a toast.
   useEffect(() => {
     if (testSuitePermissionError) {
       showErrorToast(testSuitePermissionError as AxiosError);
@@ -415,7 +429,7 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
 
   const refreshTestCasesUntilIndexed = useCallback(
     async (
-      authoritativeTotal: number | undefined,
+      isIndexed: (indexedTotal: number | undefined) => boolean,
       isCurrentTestSuite: () => boolean,
       targetTestSuiteId: string
     ) => {
@@ -451,7 +465,7 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
             return;
           }
 
-          if (isTestCaseListSynchronized(indexedTotal, authoritativeTotal)) {
+          if (isIndexed(indexedTotal)) {
             break;
           }
 
@@ -487,11 +501,7 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
   );
 
   const handleAddTestCaseSubmit = useCallback(
-    async (payload: {
-      selectAll: boolean;
-      includeIds: string[];
-      excludeIds: string[];
-    }) => {
+    async (payload: AddTestCaseListSubmitPayload) => {
       if (!testSuiteId) {
         return;
       }
@@ -523,7 +533,8 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
         }
 
         await refreshTestCasesUntilIndexed(
-          authoritativeTotal,
+          (indexedTotal) =>
+            isTestCaseListSynchronized(indexedTotal, authoritativeTotal),
           isCurrentTestSuite,
           testSuiteId
         );
@@ -535,6 +546,37 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
     },
     [testSuiteId, testSuiteFQN, queryClient, refreshTestCasesUntilIndexed]
   );
+
+  // Removal unlinks the relationship synchronously but the search index that
+  // backs the list catches up later, so a plain refetch can still return the
+  // removed rows.
+  const handleTestCasesRemoved = useCallback(async () => {
+    if (!testSuiteId) {
+      return;
+    }
+    const submittedTestSuiteFQN = testSuiteFQN;
+    const isCurrentTestSuite = () =>
+      submittedTestSuiteFQN === activeTestSuiteFQN.current;
+
+    try {
+      const updatedTestSuite = await queryClient.fetchQuery({
+        queryKey: testSuiteDetailsQueryKey(submittedTestSuiteFQN),
+        queryFn: testSuiteDetailsQueryFn(submittedTestSuiteFQN),
+      });
+      const authoritativeTotal = updatedTestSuite?.tests?.length;
+
+      await refreshTestCasesUntilIndexed(
+        (indexedTotal) =>
+          isTestCaseRemovalIndexed(indexedTotal, authoritativeTotal),
+        isCurrentTestSuite,
+        testSuiteId
+      );
+    } catch (error) {
+      if (isCurrentTestSuite()) {
+        showErrorToast(error as AxiosError);
+      }
+    }
+  }, [testSuiteId, testSuiteFQN, queryClient, refreshTestCasesUntilIndexed]);
 
   const updateTestSuiteData = useCallback(
     async (updatedTestSuite: TestSuite) => {
@@ -650,6 +692,25 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
     [fetchTestCases, handlePageChange, pageSize]
   );
 
+  // Removing every row of a page past the first would otherwise leave the user
+  // on an empty page with results still available before it.
+  useEffect(() => {
+    if (
+      currentPage > 1 &&
+      testCaseResponse?.data.length === 0 &&
+      !isTestCaseQueryFetching &&
+      !isSynchronizingTestCases
+    ) {
+      handleTestCasePaging({ currentPage: currentPage - 1 });
+    }
+  }, [
+    currentPage,
+    testCaseResponse,
+    isTestCaseQueryFetching,
+    isSynchronizingTestCases,
+    handleTestCasePaging,
+  ]);
+
   const handleTestSuiteUpdate = useCallback(
     (testCase?: TestCase) => {
       if (testCase) {
@@ -739,6 +800,7 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
     handleTestCaseSearch,
     handleSortTestCase,
     handleAddTestCaseSubmit,
+    handleTestCasesRemoved,
     onUpdateOwner,
     handleDomainUpdate,
     onDescriptionUpdate,

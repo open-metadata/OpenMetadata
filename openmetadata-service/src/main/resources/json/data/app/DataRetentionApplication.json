@@ -7,7 +7,8 @@
     "activityCommentsRetentionPeriod": 0,
     "profileDataRetentionPeriod": 1440,
     "testCaseResultsRetentionPeriod": 1440,
-    "auditLogRetentionPeriod": 90
+    "auditLogRetentionPeriod": 90,
+    "workflowRetentionPeriod": 30
   },
   "appSchedule": {
     "scheduleTimeline": "Custom",

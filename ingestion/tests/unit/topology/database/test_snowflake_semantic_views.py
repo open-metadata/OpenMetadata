@@ -55,6 +55,7 @@ def _semantic_source():
     """A SnowflakeSource wired only far enough to exercise the semantic catalog."""
     source = SnowflakeSource.__new__(SnowflakeSource)
     context = MagicMock()
+    context.get.return_value = MagicMock(database="TEST_DB")
     context.get_current_thread_id.return_value = "test-thread"
     source.context = context
     source._connection_map = {"test-thread": MagicMock()}
@@ -249,6 +250,32 @@ def test_semantic_catalog_refetches_for_a_different_schema():
     assert source.connection.execute.call_count == 6
 
 
+def test_semantic_catalog_does_not_leak_a_schema_across_databases():
+    """The catalog cache outlives a database: with threads=1 every database runs on
+    the same thread. Two databases sharing a schema name must each get their own
+    catalog, not the one cached for whichever database ran first."""
+    source = _semantic_source()
+    views_by_database = {
+        "MARTECH": [("COOKIE_BANNER", "EVENTS", "TOTAL_EVENTS", "NUMBER", "COUNT(*)", None, None)],
+        "PLATFORM_ENGINEERING": [("SMV_TEST", "EVENTS", "TOTAL_EVENTS", "NUMBER", "COUNT(*)", None, None)],
+    }
+
+    def execute(_clause):
+        # the bulk query reads information_schema of the connection's current database
+        return iter(views_by_database[source.context.get().database])
+
+    source.connection.execute.side_effect = execute
+
+    source.context.get.return_value = MagicMock(database="MARTECH")
+    first = source._semantic_rows("semantic_metrics", "MARTS", "COOKIE_BANNER")
+    source.context.get.return_value = MagicMock(database="PLATFORM_ENGINEERING")
+    second = source._semantic_rows("semantic_metrics", "MARTS", "SMV_TEST")
+
+    assert [row[1] for row in first] == ["TOTAL_EVENTS"]
+    assert [row[1] for row in second] == ["TOTAL_EVENTS"]
+    assert source.connection.execute.call_count == 6
+
+
 def test_semantic_catalog_cache_is_bounded():
     """A schema with very many semantic objects must not be retained for the whole
     database run -- the LRU evicts past SEMANTIC_CATALOG_CACHE_SIZE."""
@@ -273,7 +300,7 @@ def test_semantic_catalog_falls_back_to_per_view_on_too_much_data():
 
     assert [c["name"] for c in columns] == ["CUSTOMER_NAME"]
     # the None sentinel is cached, so the bulk query is not retried per view
-    assert source._semantic_catalog_cache().get("PUBLIC") is None
+    assert source._semantic_catalog_cache().get("TEST_DB.PUBLIC") is None
 
 
 def test_semantic_catalog_reraises_other_programming_errors():

@@ -11,65 +11,103 @@
  *  limitations under the License.
  */
 
-import { useCallback, useState } from 'react';
-
-export const SIDEBAR_COLLAPSED_STORAGE_KEY = 'aiShell.sidebar.mainCollapsed';
-export const SUB_COLLAPSED_STORAGE_KEY = 'aiShell.sidebar.submenuCollapsed';
-
-const readPersisted = (key: string, fallback: boolean): boolean => {
-  try {
-    const stored = localStorage.getItem(key);
-
-    return stored === null ? fallback : stored === 'true';
-  } catch {
-    return fallback;
-  }
-};
-
-const persist = (key: string, value: boolean): void => {
-  try {
-    localStorage.setItem(key, String(value));
-  } catch {
-    // ignore storage errors (e.g. private mode quota)
-  }
-};
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  SIDEBAR_COLLAPSED_EVENT,
+  SIDEBAR_COLLAPSED_STORAGE_KEY,
+} from './appModeSidebar.constants';
+import {
+  persistSidebarPreference,
+  readCompactSidebarPreference,
+} from './sidebarPreference.utils';
 
 /**
- * Persisted collapse state for a sidebar panel. The value is read from and
- * written to `localStorage` under `storageKey` so it survives a full reload —
- * navigating (or a `page.goto` in tests) never resets an explicit expand/
- * collapse choice, matching the pre-migration AskCollate sidebar. Collapse is
- * purely user-controlled via the returned `toggle`/`set`; routing never mutates
- * it, otherwise clicking into a submenu item would rail the main nav or pop the
- * submenu open on its own.
+ * Main-nav collapse state, with context-dependent precedence:
  *
- * @param storageKey persistence key
- * @param defaultCollapsed value used when nothing is stored yet
+ *  - Top level (no sub-nav): the persisted user preference wins — the user can
+ *    collapse/expand the main nav and it is remembered in `localStorage`.
+ *  - Inside a sub-context: the main nav ALWAYS starts collapsed (the icon rail);
+ *    the persisted preference does NOT keep it expanded. The user may expand it
+ *    transiently, but that is never persisted and re-collapses when the active
+ *    sub-context changes or on reload — main preference does not win here.
+ *
+ * @param inSubMode whether the active module renders a sub-nav
+ * @param contextKey identifies the active sub-context; a change re-derives the
+ *   collapse state (re-railing the main nav)
  */
-export const usePersistedCollapse = (
-  storageKey: string,
-  defaultCollapsed: boolean
+export const useMainCollapse = (
+  inSubMode: boolean,
+  contextKey: string | null
 ): readonly [boolean, () => void, (value: boolean) => void] => {
-  const [collapsed, setCollapsed] = useState<boolean>(() =>
-    readPersisted(storageKey, defaultCollapsed)
+  const inSubModeRef = useRef(inSubMode);
+  inSubModeRef.current = inSubMode;
+
+  // Persisted preference, meaningful only at the top level.
+  const [topLevelCollapsed, setTopLevelCollapsed] = useState<boolean>(
+    readCompactSidebarPreference
   );
 
+  useEffect(() => {
+    const onPreferenceChange = (event: Event) =>
+      setTopLevelCollapsed(Boolean((event as CustomEvent<boolean>).detail));
+    globalThis.addEventListener(SIDEBAR_COLLAPSED_EVENT, onPreferenceChange);
+
+    return () =>
+      globalThis.removeEventListener(
+        SIDEBAR_COLLAPSED_EVENT,
+        onPreferenceChange
+      );
+  }, []);
+
+  // Transient main-nav expand *inside* a sub-context — never persisted.
+  const [subExpanded, setSubExpanded] = useState(false);
+
+  // Re-rail the main nav (drop any transient expand) whenever the sub-context
+  // changes, synchronously during render so it lands in the same commit the new
+  // context does. The "previous context" marker MUST be state, not a ref: a ref
+  // mutation persists across a discarded/interrupted render while the paired
+  // `setSubExpanded(false)` is dropped, which would skip the reset and leave the
+  // main nav un-railed with the sub-panel open (both expanded → main hidden).
+  // This is React's documented "adjust state when a prop changes" pattern.
+  const [prevContext, setPrevContext] = useState({ inSubMode, contextKey });
+  if (
+    prevContext.inSubMode !== inSubMode ||
+    prevContext.contextKey !== contextKey
+  ) {
+    setPrevContext({ inSubMode, contextKey });
+    setSubExpanded(false);
+  }
+
+  // Derived, not transition-reset: a sub-context always rails the main nav
+  // (unless the user transiently expanded it), the top level follows the
+  // persisted preference. Deriving it means entering a sub-context rails the
+  // main nav on the very first render — no race with async module sync, and no
+  // frame showing both full panels.
+  const collapsed = inSubMode ? !subExpanded : topLevelCollapsed;
+
   const toggle = useCallback(() => {
-    setCollapsed((prev) => {
+    if (inSubModeRef.current) {
+      setSubExpanded((prev) => !prev);
+
+      return;
+    }
+    setTopLevelCollapsed((prev) => {
       const next = !prev;
-      persist(storageKey, next);
+      persistSidebarPreference(SIDEBAR_COLLAPSED_STORAGE_KEY, next);
 
       return next;
     });
-  }, [storageKey]);
+  }, []);
 
-  const set = useCallback(
-    (value: boolean) => {
-      setCollapsed(value);
-      persist(storageKey, value);
-    },
-    [storageKey]
-  );
+  const set = useCallback((value: boolean) => {
+    if (inSubModeRef.current) {
+      setSubExpanded(!value);
+
+      return;
+    }
+    setTopLevelCollapsed(value);
+    persistSidebarPreference(SIDEBAR_COLLAPSED_STORAGE_KEY, value);
+  }, []);
 
   return [collapsed, toggle, set] as const;
 };

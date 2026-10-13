@@ -15,6 +15,7 @@ import userEvent from '@testing-library/user-event';
 import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs } from '../../enums/entity.enum';
 import { Include } from '../../generated/type/include';
@@ -24,15 +25,40 @@ import {
   getContainerChildrenByName,
 } from '../../rest/storageAPI';
 import { renderWithQueryClient } from '../../test/unit/test-utils';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import ContainerPage from './ContainerPage';
 import {
   MOCK_CONTAINER_DATA,
   MOCK_CONTAINER_DATA_1,
 } from './ContainerPage.mock';
 
-const mockGetEntityPermissionByFqn = jest.fn().mockResolvedValue({
-  ViewBasic: true,
-});
+// The page now reads permissions via useEntityPermissions rather than the raw
+// PermissionProvider context — see TableDetailsPageV1.test.tsx's setMockPermissions for
+// the full rationale (partial-object fidelity, mockReturnValue over mockImplementationOnce,
+// the `deleted`-gating blind spot), mirrored here without repeating it.
+const mockUseEntityPermissions = jest.fn();
+
+const setMockPermissions = (
+  overrides: Partial<OperationPermission> = {},
+  {
+    isLoading = false,
+    error = null as unknown,
+  }: { isLoading?: boolean; error?: unknown } = {}
+) => {
+  const permissions = overrides as OperationPermission;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading,
+    error,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
+
+jest.mock('../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
+}));
 
 jest.mock(
   '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
@@ -169,10 +195,6 @@ jest.mock('../../components/Lineage/Lineage.component', () =>
   jest.fn().mockReturnValue(<>EntityLineage</>)
 );
 
-jest.mock('../../context/LineageProvider/LineageProvider', () =>
-  jest.fn().mockReturnValue(<>LineageProvider</>)
-);
-
 jest.mock('../../components/common/Loader/Loader', () => ({
   __esModule: true,
   default: jest
@@ -186,12 +208,6 @@ jest.mock('../../components/common/Loader/Loader', () => ({
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
   jest.fn().mockImplementation(({ children }) => <>{children}</>)
 );
-
-jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockImplementation(() => ({
-    getEntityPermissionByFqn: mockGetEntityPermissionByFqn,
-  })),
-}));
 
 jest.mock('../../components/common/TabsLabel/TabsLabel.component', () =>
   jest.fn().mockImplementation(({ name }) => <div>{name}</div>)
@@ -250,22 +266,19 @@ jest.mock('../../utils/EntitySortUtils', () => ({
   getColumnSorter: jest.fn(),
 }));
 
-jest.mock('../../utils/PermissionsUtils', () => ({
-  DEFAULT_ENTITY_PERMISSION: {},
-  getPrioritizedEditPermission: jest.fn().mockReturnValue(true),
-  getPrioritizedViewPermission: jest.fn().mockReturnValue(true),
-}));
-
 jest.mock('../../utils/StringUtils', () => ({
   getDecodedFqn: jest.fn().mockImplementation((fqn) => fqn),
   getEncodedFqn: jest.fn().mockImplementation((fqn) => fqn),
-  stringToHTML: jest.fn().mockImplementation((str) => str),
   getErrorText: jest
     .fn()
     .mockImplementation(
       (error: Error, defaultMessage: string) =>
         error?.message || defaultMessage || 'Error'
     ),
+}));
+
+jest.mock('../../utils/RichTextStringUtils', () => ({
+  stringToHTML: jest.fn().mockImplementation((str) => str),
 }));
 
 jest.mock('../../utils/TableUtils', () => {
@@ -355,33 +368,40 @@ jest.mock('../../hooks/useEntityRules', () => ({
 
 describe('Container Page Component', () => {
   beforeEach(() => {
-    mockGetEntityPermissionByFqn.mockResolvedValue({
-      ViewBasic: true,
-    });
+    // ViewAll/EditAll: true grants every named view/edit flag via the real
+    // getDerivedPermissionFlags fallback (see setMockPermissions) — the equivalent of the
+    // old blanket getPrioritizedEditPermission/getPrioritizedViewPermission === true stubs.
+    setMockPermissions({ ViewAll: true, EditAll: true });
     mockUseParams.mockReturnValue({
       fqn: MOCK_CONTAINER_DATA.fullyQualifiedName,
       tab: 'schema',
     });
 
-    const { getPrioritizedEditPermission, getPrioritizedViewPermission } =
-      jest.requireMock('../../utils/PermissionsUtils');
-    getPrioritizedEditPermission.mockReturnValue(true);
-    getPrioritizedViewPermission.mockReturnValue(true);
     (getContainerChildrenByName as jest.Mock).mockResolvedValue({
       data: [],
       paging: { total: 0 },
     });
   });
 
-  it('should show error-placeholder, if not have view permission', async () => {
-    mockGetEntityPermissionByFqn.mockResolvedValueOnce({
-      ViewBasic: false,
-    });
+  // Guardrail for the two-call pattern (see the comment on setMockPermissions and the
+  // early/late useEntityPermissions call sites in ContainerPage.tsx). Unlike
+  // TableDetailsPageV1's stable tableFqn, ContainerPage's identifier (resolvedEntityFqn)
+  // legitimately changes ACROSS renders (empty on first paint, then the resolved FQN, then
+  // possibly a parent FQN on a column-deep-link fallback) — so this checks each render's
+  // PAIR of calls against each other, not every call against the very first.
+  afterEach(() => {
+    const calls = mockUseEntityPermissions.mock.calls;
+    for (let i = 0; i + 1 < calls.length; i += 2) {
+      const [resource, identifier] = calls[i];
+      const [laterResource, laterIdentifier] = calls[i + 1];
 
-    const { getPrioritizedViewPermission } = jest.requireMock(
-      '../../utils/PermissionsUtils'
-    );
-    getPrioritizedViewPermission.mockReturnValue(false);
+      expect(laterResource).toBe(resource);
+      expect(laterIdentifier).toBe(identifier);
+    }
+  });
+
+  it('should show error-placeholder, if not have view permission', async () => {
+    setMockPermissions({ ViewBasic: false, ViewAll: false });
 
     (getContainerByName as jest.Mock).mockResolvedValue({});
 
@@ -391,11 +411,12 @@ describe('Container Page Component', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('Loader')).toBeVisible();
-
-    await waitFor(() =>
-      expect(mockGetEntityPermissionByFqn).toHaveBeenCalled()
-    );
+    // No transient Loader assertion here: unlike the old async
+    // usePermissionProvider().getEntityPermissionByFqn round-trip, the mocked
+    // useEntityPermissions resolves synchronously, and a denied view permission disables
+    // the container useQuery outright (never fetches) — so the page goes straight from
+    // first render to the permission ErrorPlaceHolder with no loading frame to observe.
+    await waitFor(() => expect(mockUseEntityPermissions).toHaveBeenCalled());
 
     expect(
       await screen.findByText(ERROR_PLACEHOLDER_TYPE.PERMISSION)
@@ -415,9 +436,7 @@ describe('Container Page Component', () => {
 
     (getContainerByName as jest.Mock).mockResolvedValue(MOCK_CONTAINER_DATA);
 
-    await waitFor(() =>
-      expect(mockGetEntityPermissionByFqn).toHaveBeenCalled()
-    );
+    await waitFor(() => expect(mockUseEntityPermissions).toHaveBeenCalled());
 
     await waitFor(() =>
       expect(getContainerByName).toHaveBeenCalledWith(
@@ -453,9 +472,7 @@ describe('Container Page Component', () => {
 
     expect(screen.getByText('Loader')).toBeVisible();
 
-    await waitFor(() =>
-      expect(mockGetEntityPermissionByFqn).toHaveBeenCalled()
-    );
+    await waitFor(() => expect(mockUseEntityPermissions).toHaveBeenCalled());
 
     await waitFor(() => expect(getContainerByName).toHaveBeenCalledTimes(1));
 
@@ -473,9 +490,7 @@ describe('Container Page Component', () => {
 
     expect(screen.getByText('Loader')).toBeVisible();
 
-    await waitFor(() =>
-      expect(mockGetEntityPermissionByFqn).toHaveBeenCalled()
-    );
+    await waitFor(() => expect(mockUseEntityPermissions).toHaveBeenCalled());
 
     await waitFor(() =>
       expect(getContainerByName).toHaveBeenCalledWith(

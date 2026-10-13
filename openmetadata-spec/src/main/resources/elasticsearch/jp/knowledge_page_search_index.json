@@ -8,7 +8,10 @@
         "lowercase_normalizer": {
           "type": "custom",
           "char_filter": [],
-          "filter": ["lowercase"]
+          "filter": [
+            "lowercase",
+            "asciifolding"
+          ]
         }
       },
       "tokenizer": {
@@ -16,18 +19,28 @@
           "type": "ngram",
           "min_gram": 3,
           "max_gram": 10,
-          "token_chars": ["letter", "digit"]
+          "token_chars": [
+            "letter",
+            "digit"
+          ]
         }
       },
       "analyzer": {
         "om_analyzer": {
           "tokenizer": "letter",
-          "filter": ["lowercase", "om_stemmer"]
+          "filter": [
+            "lowercase",
+            "asciifolding",
+            "om_stemmer"
+          ]
         },
         "om_ngram": {
           "type": "custom",
           "tokenizer": "om_ngram_tokenizer",
-          "filter": ["lowercase"]
+          "filter": [
+            "lowercase",
+            "asciifolding"
+          ]
         }
       },
       "filter": {
@@ -157,6 +170,53 @@
           }
         }
       },
+      "domains": {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "displayName": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "keyword"
+          },
+          "description": {
+            "type": "text"
+          },
+          "deleted": {
+            "type": "boolean"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
+      },
       "reviewers": {
         "properties": {
           "id": {
@@ -263,7 +323,7 @@
           }
         }
       },
-      "pageType" : {
+      "pageType": {
         "type": "keyword"
       },
       "relatedEntities": {
@@ -360,7 +420,7 @@
           }
         }
       },
-      "parent" : {
+      "parent": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -407,7 +467,7 @@
           }
         }
       },
-      "children" : {
+      "children": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -479,6 +539,17 @@
       },
       "parentId": {
         "type": "keyword"
+      },
+      "totalVotes": {
+        "type": "long"
+      },
+      "page": {
+        "properties": {
+          "publicationDate": {
+            "type": "date",
+            "format": "epoch_millis||strict_date_optional_time||epoch_second"
+          }
+        }
       }
     }
   }

@@ -12,6 +12,7 @@
  */
 import { expect, type Page } from '@playwright/test';
 import { performAdminLogin } from './admin';
+import { getApiContext } from './common';
 
 export const waitForEntitySearchable = async (
   page: Page,
@@ -43,7 +44,9 @@ export const waitForEntitySearchable = async (
           );
 
           if (!response.ok()) {
-            return false;
+            throw new Error(
+              `HTTP ${response.status()} querying ${response.url()}`
+            );
           }
 
           const payload = await response.json();
@@ -61,6 +64,45 @@ export const waitForEntitySearchable = async (
         }
       )
       .toBe(true);
+  } finally {
+    await afterAction();
+  }
+};
+
+/**
+ * The widget snapshots this aggregation on page load. DOM polling cannot
+ * recover if navigation captures a count before the search index refreshes.
+ */
+export const waitForDomainAssetCount = async (
+  page: Page,
+  domainFqn: string,
+  expectedCount: number
+) => {
+  const { apiContext, afterAction } = await getApiContext(page);
+
+  try {
+    await expect
+      .poll(
+        async () => {
+          const response = await apiContext.get(
+            '/api/v1/domains/assets/counts'
+          );
+
+          expect(
+            response.ok(),
+            `Domain counts: HTTP ${response.status()}`
+          ).toBe(true);
+
+          const payload = (await response.json()) as Record<string, number>;
+
+          return payload[domainFqn] ?? null;
+        },
+        {
+          intervals: [1_000, 2_000, 5_000],
+          timeout: 60_000,
+        }
+      )
+      .toBe(expectedCount);
   } finally {
     await afterAction();
   }

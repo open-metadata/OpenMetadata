@@ -23,17 +23,6 @@ export enum SuggestionField {
   SERVICE_TYPE = 'serviceType',
 }
 
-export enum AdvancedFields {
-  COLUMN = 'column_suggest',
-  DATABASE = 'database_suggest',
-  SCHEMA = 'schema_suggest',
-  SERVICE = 'service_suggest',
-  CHART = 'chart_suggest',
-  DATA_MODEL = 'data_model_suggest',
-  TASK = 'task_suggest',
-  FIELD = 'field_suggest',
-}
-
 // This enum contains list of fields that are used in the advanced search for elastic search query
 export enum EntityFields {
   SERVICE_TYPE = 'serviceType',
@@ -124,6 +113,8 @@ export enum EntityReferenceFields {
   VERSION = 'version',
   RELATED_TERMS = 'relatedTerms',
   SYNONYMS = 'synonyms',
+  ASSETS_COUNT = 'assetsCount',
   ENTITY_STATUS = 'entityStatus',
+  OUTPUT_PORTS_COUNT = 'outputPortsCount',
   TEST_SUITE = 'testSuite.name',
 }

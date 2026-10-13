@@ -26,6 +26,12 @@ export * from './utils';
 // Types (kept at root for convenience)
 export * from './types';
 
+// DatePicker values must come from the same date-package instance as its types.
+export { parseDate } from '@internationalized/date';
+
+// Chart tooltips, without loading echarts (the charts live in `/charts`)
+export { hideChartTooltips } from './charts/tooltip-events';
+
 // i18n
 export * from './locale';
 export * from './i18n/useCoreTranslation';

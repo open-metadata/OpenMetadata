@@ -13,8 +13,9 @@ Test Hive using the topology
 """
 
 import types
+from contextlib import contextmanager
 from unittest import TestCase
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, PropertyMock, patch
 
 from sqlalchemy.types import INTEGER, VARCHAR, Integer, String
 
@@ -30,6 +31,9 @@ from metadata.generated.schema.entity.data.table import (
     Column,
     ColumnName,
     DataType,
+    PartitionColumnDetails,
+    PartitionIntervalTypes,
+    TablePartition,
     TableType,
 )
 from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
@@ -58,6 +62,7 @@ from metadata.generated.schema.security.ssl.verifySSLConfig import SslConfig
 from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.custom_pydantic import CustomSecretStr
+from metadata.ingestion.source.database.common_db_source import TableNameAndType
 from metadata.ingestion.source.database.hive.connection import (
     HiveConnection as HiveConnectionHandler,
 )
@@ -65,6 +70,12 @@ from metadata.ingestion.source.database.hive.connection import (
     get_validated_metastore_connection,
 )
 from metadata.ingestion.source.database.hive.metadata import HiveSource
+from metadata.ingestion.source.database.hive.metastore_dialects.mysql.dialect import (
+    HiveMysqlMetaStoreDialect,
+)
+from metadata.ingestion.source.database.hive.metastore_dialects.postgres.dialect import (
+    HivePostgresMetaStoreDialect,
+)
 from metadata.ingestion.source.database.hive.utils import get_table_comment
 
 mock_hive_config = {
@@ -215,36 +226,6 @@ EXPECTED_TABLE = [
     )
 ]
 
-EXPECTED_COMPLEX_COL_TYPE = [
-    {
-        "name": "id",
-        "type": Integer,
-        "comment": None,
-        "nullable": True,
-        "default": None,
-        "system_data_type": "int",
-        "is_complex": False,
-    },
-    {
-        "name": "data",
-        "type": String(),
-        "comment": None,
-        "nullable": True,
-        "default": None,
-        "system_data_type": "struct<a:struct<b:decimal(20,0)>>",
-        "is_complex": True,
-    },
-    {
-        "name": "data2",
-        "type": String(),
-        "comment": None,
-        "nullable": True,
-        "default": None,
-        "system_data_type": "struct<colll:decimal(20,0)>",
-        "is_complex": True,
-    },
-]
-
 # SSL-specific mock configurations
 mock_hive_ssl_config = {
     "source": {
@@ -374,6 +355,42 @@ class HiveUnitTest(TestCase):
         results = [either.right for either in self.hive.yield_table(("sample_table", "Regular"))]
         assert EXPECTED_TABLE == results  # noqa: SIM300
 
+    def test_yield_table_partitioned_delta_is_typed_partitioned(self):
+        """A partitioned Delta table ships as Partitioned: the partition flag wins over DeltaLake.
+
+        common_db_source overwrites tableType with Partitioned after the request is built, so
+        Delta + partitions is indistinguishable from Hive + partitions downstream. Pinned here
+        so the Delta typing work does not silently change it.
+        """
+        self.hive.inspector.get_columns = lambda table_name, schema_name, table_type, db_name: MOCK_COLUMN_VALUE
+        partition = TablePartition(
+            columns=[
+                PartitionColumnDetails(
+                    columnName="year",
+                    intervalType=PartitionIntervalTypes.COLUMN_VALUE,
+                    interval=None,
+                )
+            ]
+        )
+        # The topology context is a class attribute shared by every source instance, so it is
+        # set here rather than inherited from whichever test happened to run first -- and set
+        # through patch.dict, which restores it on exit. Left behind, it reds out other test
+        # files that share the worker process under `pytest -n auto --dist loadfile`.
+        context = {
+            "database_service": MOCK_DATABASE_SERVICE.name.root,
+            "database": MOCK_DATABASE.name.root,
+            "database_schema": MOCK_DATABASE_SCHEMA.name.root,
+        }
+        with (
+            patch.dict(self.hive.context.get().__dict__, context),
+            patch.object(HiveSource, "get_table_partition_details", return_value=(True, partition)),
+        ):
+            results = [either.right for either in self.hive.yield_table(("delta_sales", TableType.DeltaLake))]
+
+        assert len(results) == 1
+        assert results[0].tableType == TableType.Partitioned.value
+        assert results[0].tablePartition == partition
+
     def test_col_data_type(self):
         """
         Test different col type ingested as expected
@@ -397,13 +414,16 @@ class HiveUnitTest(TestCase):
                     schema="sample_schema",
                 )
             )
-        for _, (expected, original) in enumerate(zip(EXPECTED_COMPLEX_COL_TYPE, col_list)):  # noqa: B905
+        columns = {col["name"]: col for col in col_list}
+        assert [col["name"] for col in col_list] == ["id", "data", "data2"]
 
-            def custom_eq(self, __value: object) -> bool:
-                return self.length == __value.length and self.collation == __value.collation
+        assert columns["id"]["system_data_type"] == "int"
+        assert columns["id"]["is_complex"] is False
 
-            String.__eq__ = custom_eq
-            self.assertEqual(expected, original)
+        assert columns["data"]["system_data_type"] == "struct<a:struct<b:decimal(20,0)>>"
+        assert columns["data"]["is_complex"] is True
+        assert columns["data2"]["system_data_type"] == "struct<colll:decimal(20,0)>"
+        assert columns["data2"]["is_complex"] is True
 
     def test_get_columns_nested_decimal_in_complex_types(self):
         """
@@ -516,7 +536,7 @@ class HiveUnitTest(TestCase):
         """
         Standard Hive DESCRIBE output: partition columns are repeated after
         a '# Partition Information' sentinel row.
-        get_columns must stop at the sentinel and return each column once.
+        get_columns must return each column once and flag partition keys.
         """
         table_columns = [
             ("id", "int", None),
@@ -548,6 +568,157 @@ class HiveUnitTest(TestCase):
             f"dt should appear exactly once but got: {col_names}",
         )
         self.assertEqual(col_names, ["id", "name", "dt"])
+        columns = {col["name"]: col for col in col_list}
+        self.assertFalse(columns["id"]["is_partition"])
+        self.assertFalse(columns["name"]["is_partition"])
+        self.assertTrue(columns["dt"]["is_partition"])
+
+    def test_get_columns_marks_partition_only_keys_after_sentinel(self):
+        """Partition keys that appear only under Partition Information are kept."""
+        table_columns = [
+            ("id", "int", None),
+            ("amount", "decimal(10,2)", None),
+            ("# Partition Information", None, None),
+            ("# col_name", "data_type", "comment"),
+            ("year", "int", None),
+            ("country", "string", None),
+            ("# Detailed Table Information", None, None),
+            ("Owner:", "hive", None),
+        ]
+        with patch.object(
+            hive_dialect,
+            "_get_table_columns",
+            return_value=table_columns,
+            create=True,
+        ):
+            col_list = hive_dialect.get_columns(
+                self=hive_dialect,
+                connection=mock_hive_config["source"],
+                table_name="partitioned_table",
+                schema="test_schema",
+            )
+            partition_only = hive_dialect.get_columns(
+                self=hive_dialect,
+                connection=mock_hive_config["source"],
+                table_name="partitioned_table",
+                schema="test_schema",
+                only_partition_columns=True,
+            )
+
+        self.assertEqual(
+            [col["name"] for col in col_list],
+            ["id", "amount", "year", "country"],
+        )
+        columns = {col["name"]: col for col in col_list}
+        self.assertFalse(columns["id"]["is_partition"])
+        self.assertTrue(columns["year"]["is_partition"])
+        self.assertTrue(columns["country"]["is_partition"])
+        self.assertEqual([col["name"] for col in partition_only], ["year", "country"])
+
+    def test_get_table_partition_details(self):
+        """Fallback path: when cache is empty, fetch columns once and mark partitions."""
+        mock_inspector = Mock()
+        mock_inspector.get_columns.return_value = [
+            {
+                "name": "id",
+                "type": Integer,
+                "is_partition": False,
+            },
+            {
+                "name": "year",
+                "type": Integer,
+                "is_partition": True,
+            },
+            {
+                "name": "country",
+                "type": String(),
+                "is_partition": True,
+            },
+        ]
+
+        is_partitioned, partition_details = self.hive.get_table_partition_details(
+            table_name="sales",
+            schema_name="analytics",
+            inspector=mock_inspector,
+        )
+
+        self.assertTrue(is_partitioned)
+        self.assertIsNotNone(partition_details)
+        self.assertEqual(
+            [col.columnName for col in partition_details.columns],
+            ["year", "country"],
+        )
+        mock_inspector.get_columns.assert_called_once_with(
+            table_name="sales",
+            schema="analytics",
+        )
+
+    def test_get_table_partition_details_uses_cached_columns(self):
+        """After _get_columns_internal, partition details must not DESCRIBE again."""
+        raw_columns = [
+            {"name": "id", "type": Integer, "is_partition": False},
+            {"name": "year", "type": Integer, "is_partition": True},
+            {"name": "country", "type": String(), "is_partition": True},
+        ]
+        mock_inspector = Mock()
+        mock_inspector.get_columns.return_value = raw_columns
+
+        fetched = self.hive._get_columns_internal(
+            schema_name="analytics",
+            table_name="sales",
+            db_name="default",
+            inspector=mock_inspector,
+        )
+        self.assertEqual([col["name"] for col in fetched], ["id", "year", "country"])
+        self.assertEqual(mock_inspector.get_columns.call_count, 1)
+
+        is_partitioned, partition_details = self.hive.get_table_partition_details(
+            table_name="sales",
+            schema_name="analytics",
+            inspector=mock_inspector,
+        )
+
+        self.assertTrue(is_partitioned)
+        self.assertEqual(
+            [col.columnName for col in partition_details.columns],
+            ["year", "country"],
+        )
+        self.assertEqual(
+            mock_inspector.get_columns.call_count,
+            1,
+            "get_table_partition_details should reuse cached raw columns",
+        )
+
+    def test_get_table_partition_details_non_partitioned(self):
+        """No partition-flagged columns -> Regular table (False, None)."""
+        mock_inspector = Mock()
+        mock_inspector.get_columns.return_value = [
+            {"name": "id", "type": Integer, "is_partition": False},
+            {"name": "name", "type": String(), "is_partition": False},
+        ]
+
+        is_partitioned, partition_details = self.hive.get_table_partition_details(
+            table_name="plain",
+            schema_name="analytics",
+            inspector=mock_inspector,
+        )
+
+        self.assertFalse(is_partitioned)
+        self.assertIsNone(partition_details)
+
+    def test_get_table_partition_details_handles_errors(self):
+        """A failure while fetching columns degrades to Regular, never raising."""
+        mock_inspector = Mock()
+        mock_inspector.get_columns.side_effect = Exception("boom")
+
+        is_partitioned, partition_details = self.hive.get_table_partition_details(
+            table_name="broken",
+            schema_name="analytics",
+            inspector=mock_inspector,
+        )
+
+        self.assertFalse(is_partitioned)
+        self.assertIsNone(partition_details)
 
     def test_ssl_connection_configuration(self):
         """
@@ -1297,19 +1468,242 @@ class TestGetTableComment:
 
         return connection
 
+    @staticmethod
+    def _dialect():
+        dialect = Mock()
+        dialect.identifier_preparer.quote_identifier.side_effect = lambda identifier: (
+            f"`{identifier.replace('`', '``')}`"
+        )
+        return dialect
+
     def test_returns_table_comment(self):
         rows = [
             ("id", "int", "customer id"),
             ("", "comment             ", "customer master     "),
         ]
 
-        result = get_table_comment(Mock(), self._connection_returning(rows), "customers", "sales_db")
+        result = get_table_comment(
+            self._dialect(),
+            self._connection_returning(rows),
+            "customers",
+            "sales_db",
+        )
 
         assert result == {"text": "customer master"}
 
     def test_returns_none_without_comment(self):
         rows = [("id", "int", "customer id")]
 
-        result = get_table_comment(Mock(), self._connection_returning(rows), "customers", "sales_db")
+        result = get_table_comment(
+            self._dialect(),
+            self._connection_returning(rows),
+            "customers",
+            "sales_db",
+        )
 
         assert result == {"text": None}
+
+    def test_quotes_catalog_names_in_describe_query(self):
+        connection = self._connection_returning([])
+
+        get_table_comment(
+            self._dialect(),
+            connection,
+            "orders`; DROP TABLE secret; --",
+            "sales`; DROP SCHEMA secret; --",
+        )
+
+        query = str(connection.execute.call_args.args[0])
+        assert ("`sales``; DROP SCHEMA secret; --`.`orders``; DROP TABLE secret; --`") in query
+
+
+class TestHiveMetastoreDeltaDetection:
+    """Delta typing driven by the metastore's own `spark.sql.sources.provider` parameter.
+
+    The provider rows below are the values a live Hive metastore returns: Trino stores the
+    marker upper-cased (`DELTA`), Spark stores it lower-cased (`delta`).
+    """
+
+    # A configured metastore is the default for these cases; `metastore=None` is HiveServer2 mode.
+    DEFAULT_METASTORE = MysqlConnection(username="hive", hostPort="localhost:3306", databaseSchema="metastore")
+
+    @contextmanager
+    def _source(
+        self,
+        table_names,
+        provider_rows,
+        *,
+        metastore=DEFAULT_METASTORE,
+        dialect=None,
+        view_names=(),
+        execute_error=None,
+    ):
+        """`inspector` and `connection` are read-only properties on the real class.
+
+        The dialect is a real metastore dialect so the SQL under test is the SQL that ships, and
+        the real `get_validated_metastore_connection` decides the mode from the config we set
+        here; only the DBAPI round trip is mocked.
+        """
+        source = HiveSource.__new__(HiveSource)
+        source.service_connection = MagicMock()
+        source.service_connection.metastoreConnection = metastore
+        inspector = MagicMock()
+        inspector.get_table_names.return_value = table_names
+        inspector.get_view_names.return_value = list(view_names)
+        connection = MagicMock()
+        connection.dialect = dialect if dialect is not None else HiveMysqlMetaStoreDialect()
+        if execute_error is not None:
+            connection.execute.side_effect = execute_error
+        else:
+            connection.execute.return_value = provider_rows
+        with (
+            patch.object(HiveSource, "inspector", new_callable=PropertyMock, return_value=inspector),
+            patch.object(HiveSource, "connection", new_callable=PropertyMock, return_value=connection),
+        ):
+            yield source, connection
+
+    def test_lower_case_delta_provider_is_detected(self):
+        """Spark and Databricks write 'delta'."""
+        with self._source(["delta_sales"], [("delta_sales", "delta")]) as (source, _):
+            result = source.query_table_names_and_types("delta_schema")
+        assert result == [TableNameAndType(name="delta_sales", type_=TableType.DeltaLake)]
+
+    def test_upper_case_delta_provider_is_detected(self):
+        """Trino writes 'DELTA'; a case-sensitive == 'delta' check would miss this exact row."""
+        with self._source(["delta_sales"], [("delta_sales", "DELTA")]) as (source, _):
+            result = source.query_table_names_and_types("delta_schema")
+        assert result == [TableNameAndType(name="delta_sales", type_=TableType.DeltaLake)]
+
+    def test_managed_table_without_provider_param_stays_regular(self):
+        """A plain managed Hive table has no spark.sql.sources.provider row at all."""
+        with self._source(["hive_orders"], []) as (source, _):
+            result = source.query_table_names_and_types("hive_schema")
+        assert result == [TableNameAndType(name="hive_orders", type_=TableType.Regular)]
+
+    def test_null_provider_value_stays_regular(self):
+        """TABLE_PARAMS.PARAM_VALUE is nullable, so the driver can hand back a real None.
+
+        Verified against a live Hive metastore: `PARAM_VALUE mediumtext ... DEFAULT NULL`.
+        Without the `or ""` guard in metadata.py this row raises AttributeError and takes the
+        whole schema down, so the guard — and the `str | None` value type — is load-bearing.
+        """
+        with self._source(["ghost_table"], [("ghost_table", None)]) as (source, _):
+            result = source.query_table_names_and_types("hive_schema")
+        assert result == [TableNameAndType(name="ghost_table", type_=TableType.Regular)]
+
+    def test_external_parquet_table_stays_regular_for_now(self):
+        """PINNING, not endorsing: EXTERNAL_TABLE is not mapped to TableType.External yet.
+
+        Typing external tables would change every Hive user's catalog and would make metastore
+        mode diverge from HiveServer2, which stays byte-identical to main. Deferred on purpose.
+        """
+        with self._source(["parquet_events"], [("parquet_events", "parquet")]) as (source, _):
+            result = source.query_table_names_and_types("hive_schema")
+        assert result == [TableNameAndType(name="parquet_events", type_=TableType.Regular)]
+
+    def test_iceberg_provider_is_not_typed_delta(self):
+        """PINNING, not endorsing: Hive maps no Iceberg type, so an Iceberg table stays Regular.
+
+        trino, presto, glue and athena all set TableType.Iceberg; the Hive connector does not, and
+        this pin only guarantees the Delta override does not claim an Iceberg table. If Hive ever
+        grows Iceberg typing, change this expectation deliberately rather than by accident.
+        """
+        with self._source(["iceberg_events"], [("iceberg_events", "iceberg")]) as (source, _):
+            result = source.query_table_names_and_types("lake_schema")
+        assert result == [TableNameAndType(name="iceberg_events", type_=TableType.Regular)]
+
+    def test_only_the_delta_table_is_retyped_in_a_mixed_schema(self):
+        """A schema holds both kinds, and exactly one provider row comes back for it.
+
+        Without this case a regression that retyped every table as soon as any provider row
+        matched would still pass the single-table tests above.
+        """
+        with self._source(["delta_sales", "hive_orders"], [("delta_sales", "DELTA")]) as (source, _):
+            result = source.query_table_names_and_types("mixed_schema")
+        assert result == [
+            TableNameAndType(name="delta_sales", type_=TableType.DeltaLake),
+            TableNameAndType(name="hive_orders", type_=TableType.Regular),
+        ]
+
+    def test_views_are_untouched_by_the_delta_override(self):
+        """Views go through query_view_names_and_types, which the override must not reach."""
+        with self._source([], [("delta_view", "DELTA")], view_names=["delta_view"]) as (source, connection):
+            result = source.query_view_names_and_types("delta_schema")
+        assert result == [TableNameAndType(name="delta_view", type_=TableType.View)]
+        connection.execute.assert_not_called()
+
+    def test_hiveserver2_mode_does_not_query_the_metastore(self):
+        """Without a metastore connection the provider query must not run at all.
+
+        `None` is what the real `get_validated_metastore_connection` returns here, and the real
+        function is what runs: nothing in this class stubs the metastore predicate.
+        """
+        with self._source(["delta_sales"], [("delta_sales", "DELTA")], metastore=None) as (source, connection):
+            result = source.query_table_names_and_types("delta_schema")
+        assert result == [TableNameAndType(name="delta_sales", type_=TableType.Regular)]
+        connection.execute.assert_not_called()
+
+    def test_defaults_only_metastore_payload_is_hiveserver2_mode(self):
+        """Picking "None" for the metastore in the UI submits a defaults-only object, not null.
+
+        It carries no hostPort, so it means "no metastore". A truthiness check on the raw config
+        would read this dict as a configured metastore and query TBLS against HiveServer2.
+        """
+        payload = {"type": "Mysql", "scheme": "mysql+pymysql", "username": "openmetadata_user"}
+        with self._source(["delta_sales"], [("delta_sales", "DELTA")], metastore=payload) as (source, connection):
+            result = source.query_table_names_and_types("delta_schema")
+        assert result == [TableNameAndType(name="delta_sales", type_=TableType.Regular)]
+        connection.execute.assert_not_called()
+
+    def test_mysql_metastore_runs_the_unquoted_variant(self):
+        """MySQL folds unquoted identifiers, and the metastore DDL creates them unquoted there."""
+        metastore = MysqlConnection(username="hive", hostPort="localhost:3306", databaseSchema="metastore")
+        with self._source(
+            ["delta_sales"],
+            [("delta_sales", "DELTA")],
+            metastore=metastore,
+            dialect=HiveMysqlMetaStoreDialect(),
+        ) as (source, connection):
+            result = source.query_table_names_and_types("delta_schema")
+
+        query = str(connection.execute.call_args[0][0])
+        assert "TBLS" in query
+        assert '"TBLS"' not in query
+        assert connection.execute.call_args[0][1] == {"schema_name": "delta_schema"}
+        assert result == [TableNameAndType(name="delta_sales", type_=TableType.DeltaLake)]
+
+    def test_postgres_metastore_runs_the_quoted_variant(self):
+        """Regression: the Hive metastore's Postgres DDL creates quoted upper-case identifiers.
+
+        Unquoted `TBLS`/`TABLE_PARAMS` fold to lower case there and the query raises
+        UndefinedTable, so Delta detection would silently never fire on a Postgres metastore.
+        """
+        metastore = PostgresConnection(username="hive", hostPort="localhost:5432", database="metastore")
+        with self._source(
+            ["delta_sales"],
+            [("delta_sales", "DELTA")],
+            metastore=metastore,
+            dialect=HivePostgresMetaStoreDialect(),
+        ) as (source, connection):
+            result = source.query_table_names_and_types("delta_schema")
+
+        query = str(connection.execute.call_args[0][0])
+        assert '"TBLS"' in query
+        assert '"TABLE_PARAMS"' in query
+        assert '"PARAM_KEY"' in query
+        assert '"DBS"' in query
+        assert connection.execute.call_args[0][1] == {"schema_name": "delta_schema"}
+        assert result == [TableNameAndType(name="delta_sales", type_=TableType.DeltaLake)]
+
+    def test_provider_query_failure_falls_back_to_the_base_table_list(self):
+        """A metastore without TABLE_PARAMS access must not abort the schema."""
+        with self._source(
+            ["delta_sales", "hive_orders"],
+            None,
+            execute_error=Exception("permission denied for table TABLE_PARAMS"),
+        ) as (source, _):
+            result = source.query_table_names_and_types("delta_schema")
+        assert result == [
+            TableNameAndType(name="delta_sales", type_=TableType.Regular),
+            TableNameAndType(name="hive_orders", type_=TableType.Regular),
+        ]

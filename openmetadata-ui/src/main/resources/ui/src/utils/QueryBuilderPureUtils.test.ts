@@ -10,7 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { getSelectEqualsNotEqualsProperties } from './QueryBuilderPureUtils';
+import type { QueryFieldInterface } from '../pages/ExplorePage/ExplorePage.interface';
+import {
+  getJsonTreePropertyFromQueryFilter,
+  getSelectEqualsNotEqualsProperties,
+} from './QueryBuilderPureUtils';
 
 type RuleProperties = {
   valueType: string[];
@@ -64,5 +68,77 @@ describe('getSelectEqualsNotEqualsProperties valueType and asyncListValues branc
     expect(properties.asyncListValues).toEqual([
       { key: 'x', value: 'x', children: 'x' },
     ]);
+  });
+});
+
+// `Not in [a, b]` is written as one `must_not` clause per value, AND-ed. Reading
+// it back as two separate `!=` rows changed nothing about the query, but the user
+// lost the row they filled — and the old OR-ed shape has to keep loading, since
+// saved filters and shared URLs still carry it.
+describe('getJsonTreePropertyFromQueryFilter – multi-value negated select', () => {
+  const FIELD = 'columns.tags.tagFQN';
+  const mustNotTerm = (value: string) =>
+    ({
+      bool: { must_not: { term: { [FIELD]: value } } },
+    } as QueryFieldInterface);
+
+  const firstRule = (result: Record<string, unknown>) =>
+    Object.values(result)[0] as {
+      type: string;
+      properties: { field: string; operator: string; value: unknown };
+    };
+
+  it('reads AND-ed negated terms on one field as a single Not in rule', () => {
+    const rule = firstRule(
+      getJsonTreePropertyFromQueryFilter(
+        [],
+        [{ bool: { must: [mustNotTerm('tag1'), mustNotTerm('tag2')] } }]
+      )
+    );
+
+    expect(rule.type).toBe('rule');
+    expect(rule.properties.field).toBe(FIELD);
+    expect(rule.properties.operator).toBe('select_not_any_in');
+    expect(rule.properties.value).toEqual([['tag1', 'tag2']]);
+  });
+
+  it('still reads the legacy OR-ed shape as a Not in rule', () => {
+    const rule = firstRule(
+      getJsonTreePropertyFromQueryFilter(
+        [],
+        [{ bool: { should: [mustNotTerm('tag1'), mustNotTerm('tag2')] } }]
+      )
+    );
+
+    expect(rule.properties.operator).toBe('select_not_any_in');
+    expect(rule.properties.value).toEqual([['tag1', 'tag2']]);
+  });
+
+  it('keeps negated terms on different fields as separate conditions', () => {
+    const result = getJsonTreePropertyFromQueryFilter(
+      [],
+      [
+        {
+          bool: {
+            must: [
+              mustNotTerm('tag1'),
+              {
+                bool: {
+                  must_not: { term: { 'owners.displayName.keyword': 'x' } },
+                },
+              } as QueryFieldInterface,
+            ],
+          },
+        },
+      ]
+    );
+
+    expect(Object.values(result)).toHaveLength(2);
+    expect(
+      Object.values(result).map(
+        (entry) =>
+          (entry as { properties: { operator: string } }).properties.operator
+      )
+    ).toEqual(['select_not_equals', 'select_not_equals']);
   });
 });

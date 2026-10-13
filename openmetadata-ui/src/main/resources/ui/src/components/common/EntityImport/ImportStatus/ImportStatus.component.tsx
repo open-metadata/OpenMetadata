@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { BadgeWithIcon } from '@openmetadata/ui-core-components';
-import { CheckCircle, XCircle } from '@untitledui/icons';
+import { CheckCircle, XCircle } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import { CSVImportResult } from '../../../../generated/type/csvImportResult';
 interface ImportStatusProps {

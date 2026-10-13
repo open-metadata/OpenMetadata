@@ -12,6 +12,12 @@
  */
 
 import {
+  Box,
+  ButtonUtility,
+  Divider,
+  TextArea,
+} from '@openmetadata/ui-core-components';
+import {
   ArrowUpRight,
   Bold01,
   BookOpen02,
@@ -23,12 +29,12 @@ import {
   Italic01,
   List,
   Plus,
-  SearchLg,
+  Search,
   Sliders02,
   Tag01,
   Type01,
-} from '@untitledui/icons';
-import Select, { DefaultOptionType } from 'antd/lib/select';
+} from '@openmetadata/ui-core-components/icons';
+import Select from 'antd/lib/select';
 import { isEmpty, startCase, toString } from 'lodash';
 import {
   CSSProperties,
@@ -39,6 +45,7 @@ import {
   ReactNode,
   RefObject,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -47,14 +54,18 @@ import type { RenderEditCellProps } from 'react-data-grid';
 import { createPortal } from 'react-dom';
 import { withSuspenseFallback } from '../../components/AppRouter/withSuspenseFallback';
 import Certification from '../../components/Certification/Certification.component';
-import TreeAsyncSelectList from '../../components/common/AsyncSelectList/TreeAsyncSelectList';
 import { lazyTextEditor } from '../../components/common/DataGrid/LazyDataGrid';
 import DomainSelectableList from '../../components/common/DomainSelectableList/DomainSelectableList.component';
 import CsvCellPreview from '../../components/common/EntityImport/CsvCellPreview/CsvCellPreview.component';
 import ExpressionCodeCell from '../../components/common/EntityImport/ExpressionCodeCell/ExpressionCodeCell.component';
 import { useMultiContainerFocusTrap } from '../../components/common/FocusTrap/FocusTrapWithContainer';
+import { fqnsToGlossaryTags } from '../../components/common/GlossaryTermPicker/GlossaryTagSuggestionUtils';
+import GlossaryTermPicker from '../../components/common/GlossaryTermPicker/GlossaryTermPicker';
 import InlineEdit from '../../components/common/InlineEdit/InlineEdit.component';
-import { KeyDownStopPropagationWrapper } from '../../components/common/KeyDownStopPropagationWrapper/KeyDownStopPropagationWrapper';
+import {
+  KeyDownStopPropagationWrapper,
+  onKeyDownStopPropagation,
+} from '../../components/common/KeyDownStopPropagationWrapper/KeyDownStopPropagationWrapper';
 import TierCard from '../../components/common/TierCard/TierCard';
 import { UserTeamSelectableList } from '../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { ValueRendererOnEditCell } from '../../components/common/ValueRendererOnEditCell/ValueRendererOnEditCell';
@@ -1219,7 +1230,7 @@ const InlineBulkEditReferencePickerEditor = ({
         onMouseDown={(event) => event.stopPropagation()}>
         <div className="bulk-edit-picker-body-card">
           <div className="bulk-edit-picker-search">
-            <SearchLg size={14} />
+            <Search size={14} />
             <input
               // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the search input when the picker opens
               autoFocus
@@ -1398,13 +1409,16 @@ const InlineCustomPropertiesEditor = ({
   }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line sonarjs/no-identical-functions -- distinct effect closure; extraction would cross scopes
     const handleMouseDown = (event: globalThis.MouseEvent) => {
       const target = event.target as Node;
 
+      // Select dropdowns portal to document.body, outside the editor.
       if (
         triggerRef.current?.contains(target) ||
-        editorRef.current?.contains(target)
+        editorRef.current?.contains(target) ||
+        (target as Element).closest?.(
+          '.bulk-edit-custom-property-select-dropdown'
+        )
       ) {
         return;
       }
@@ -1501,11 +1515,10 @@ const InlineCustomPropertiesEditor = ({
     propertyValue: ExtensionDataTypes | undefined,
     isReferenceList: boolean
   ) => {
-    const mode = isReferenceList ? 'multiple' : undefined;
     const initialOptions = getEntityReferenceInitialOptions(propertyValue);
 
     const handleReferenceChange = (
-      option: DataAssetOption | DataAssetOption[]
+      option?: DataAssetOption | DataAssetOption[]
     ) => {
       if (Array.isArray(option)) {
         handleUpdateDraft(
@@ -1524,16 +1537,14 @@ const InlineCustomPropertiesEditor = ({
 
     return (
       <DataAssetAsyncSelectList
-        className="bulk-edit-custom-property-reference-select"
-        getPopupContainer={() => document.body}
         initialOptions={initialOptions}
-        mode={mode}
+        multiple={isReferenceList}
         placeholder={
           isReferenceList
             ? t('label.entity-reference-plural')
             : t('label.entity-reference')
         }
-        popupClassName="bulk-edit-custom-property-select-dropdown"
+        popoverClassName="bulk-edit-custom-property-select-dropdown"
         searchIndex={getCustomPropertyReferenceSearchIndex(customProperty)}
         value={getEntityReferenceSelectValue(propertyValue)}
         onChange={handleReferenceChange}
@@ -1699,7 +1710,7 @@ const InlineCustomPropertiesEditor = ({
               ) : (
                 customProperties.map((customProperty) => {
                   const propertyLabel =
-                    customProperty.displayName ??
+                    customProperty.displayName ||
                     startCase(customProperty.name);
 
                   return (
@@ -1908,7 +1919,7 @@ const InlineDescriptionEditor = ({
     onComplete(draft);
   };
 
-  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyDown = (event: KeyboardEvent) => {
     if (event.key === 'Escape') {
       event.preventDefault();
       onCancel();
@@ -1924,73 +1935,70 @@ const InlineDescriptionEditor = ({
 
   return (
     <KeyDownStopPropagationWrapper keys={['Enter', 'Escape', 'Tab']}>
-      <div
-        className="bulk-edit-description-editor"
+      <Box
+        className="bulk-edit-description-editor tw:z-10 tw:gap-2.5 tw:px-3.5 tw:pt-2.5 tw:pb-3"
         data-testid="bulk-edit-description-editor"
+        direction="col"
         role="presentation"
         onBlur={handleBlur}>
-        <div className="bulk-edit-description-editor-toolbar">
-          <button
-            aria-label={t('label.bold')}
-            className="bulk-edit-description-editor-button"
-            type="button"
-            onClick={() => applyInlineFormat('**')}
-            onMouseDown={handleToolbarMouseDown}>
-            <Bold01 size={16} />
-          </button>
-          <button
-            aria-label={t('label.italic')}
-            className="bulk-edit-description-editor-button"
-            type="button"
-            onClick={() => applyInlineFormat('_')}
-            onMouseDown={handleToolbarMouseDown}>
-            <Italic01 size={16} />
-          </button>
-          <button
-            aria-label={t('label.bulleted-list')}
-            className="bulk-edit-description-editor-button"
-            type="button"
-            onClick={() => applyLineFormat(() => '- ')}
-            onMouseDown={handleToolbarMouseDown}>
-            <List size={16} />
-          </button>
-          <button
-            aria-label={t('label.numbered-list')}
-            className="bulk-edit-description-editor-button"
-            type="button"
-            onClick={() => applyLineFormat((index) => `${index + 1}. `)}
-            onMouseDown={handleToolbarMouseDown}>
-            <span className="bulk-edit-description-editor-numbered-icon">
-              1.
-            </span>
-          </button>
-          <button
-            aria-label={t('label.code')}
-            className="bulk-edit-description-editor-button"
-            type="button"
-            onClick={() => applyInlineFormat('`')}
-            onMouseDown={handleToolbarMouseDown}>
-            <Code01 size={16} />
-          </button>
-          <span className="bulk-edit-description-editor-separator" />
-          <button
-            aria-label={t('label.clear-formatting')}
-            className="bulk-edit-description-editor-button"
-            type="button"
+        <Box
+          align="center"
+          className="bulk-edit-description-editor-toolbar tw:pb-2"
+          gap={1}>
+          {[
+            {
+              label: 'label.bold',
+              icon: Bold01,
+              onClick: () => applyInlineFormat('**'),
+            },
+            {
+              label: 'label.italic',
+              icon: Italic01,
+              onClick: () => applyInlineFormat('_'),
+            },
+            {
+              label: 'label.bulleted-list',
+              icon: List,
+              onClick: () => applyLineFormat(() => '- '),
+            },
+            {
+              label: 'label.numbered-list',
+              icon: <span className="tw:text-xs tw:font-semibold">1.</span>,
+              onClick: () => applyLineFormat((index) => `${index + 1}. `),
+            },
+            {
+              label: 'label.code',
+              icon: Code01,
+              onClick: () => applyInlineFormat('`'),
+            },
+          ].map(({ label, icon, onClick }) => (
+            <ButtonUtility
+              color="tertiary"
+              icon={icon}
+              key={label}
+              tooltip={t(label)}
+              onClick={onClick}
+              onMouseDown={handleToolbarMouseDown}
+            />
+          ))}
+          <Divider className="tw:mx-2 tw:h-5" orientation="vertical" />
+          <ButtonUtility
+            color="tertiary"
+            icon={Type01}
+            tooltip={t('label.clear-formatting')}
             onClick={clearFormatting}
-            onMouseDown={handleToolbarMouseDown}>
-            <Type01 size={16} />
-          </button>
-        </div>
-        <textarea
+            onMouseDown={handleToolbarMouseDown}
+          />
+        </Box>
+        <TextArea
           aria-label={t('label.description')}
-          className="bulk-edit-description-editor-textarea"
-          ref={textareaRef}
+          textAreaClassName="bulk-edit-description-editor-textarea"
+          textAreaRef={textareaRef}
           value={draft}
-          onChange={(event) => setDraft(event.target.value)}
+          onChange={setDraft}
           onKeyDown={handleKeyDown}
         />
-      </div>
+      </Box>
     </KeyDownStopPropagationWrapper>
   );
 };
@@ -2082,6 +2090,20 @@ const getCsvOwnerEditor: CSVEditorFactory = ({
   };
 };
 
+// The modal's focus scope restores focus to the cell node rdg replaced while
+// editing, which leaves focus on <body> and breaks arrow-key navigation.
+// Focus the cell right away, so the next key press is not lost, and again once
+// the scope's own restore has run.
+const focusActiveGridCell = () => {
+  const focusCell = () =>
+    document
+      .querySelector<HTMLElement>('.rdg-cell[aria-selected="true"]')
+      ?.focus();
+
+  focusCell();
+  requestAnimationFrame(() => requestAnimationFrame(focusCell));
+};
+
 const getCsvDescriptionEditor: CSVEditorFactory = ({ options }) => {
   if (options.usePlainTextEditor) {
     return ({
@@ -2121,6 +2143,11 @@ const getCsvDescriptionEditor: CSVEditorFactory = ({ options }) => {
     const value = row[column.key];
     const handleSave = async (description: string) => {
       onRowChange({ ...row, [column.key]: description }, true);
+      focusActiveGridCell();
+    };
+    const handleCancel = () => {
+      onClose(false);
+      focusActiveGridCell();
     };
 
     return (
@@ -2131,7 +2158,7 @@ const getCsvDescriptionEditor: CSVEditorFactory = ({ options }) => {
           header="Edit Description"
           placeholder="Description"
           value={value}
-          onCancel={() => onClose(false)}
+          onCancel={handleCancel}
           onSave={handleSave}
         />
       </>
@@ -2206,6 +2233,18 @@ const getCsvTagsEditor: CSVEditorFactory = ({ entityType, options }) => {
   };
 };
 
+const CSV_GLOSSARY_PICKER_TESTID = 'csv-glossary-terms-picker';
+// Matches react-aria's own trigger-to-popover gap.
+const CSV_PICKER_POPOVER_GAP = 8;
+// Focus the popover's search box: the in-cell trigger has nothing to type into.
+const CSV_PICKER_FOCUS_TRAP = {
+  initialFocus: `[data-testid="${CSV_GLOSSARY_PICKER_TESTID}-popover"] input`,
+};
+
+// CSV stores glossary terms as a `;`-joined list of FQNs.
+const csvValueToGlossaryTags = (value: string): TagLabel[] =>
+  fqnsToGlossaryTags(value ? value.split(';') : []);
+
 const getCsvGlossaryTermsEditor: CSVEditorFactory = ({
   column,
   entityType,
@@ -2227,47 +2266,89 @@ const getCsvGlossaryTermsEditor: CSVEditorFactory = ({
     column,
   }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
     const containerRef = useRef<HTMLDivElement | null>(null);
-    const dropdownContainerRef = useRef<HTMLDivElement | null>(null);
+    const triggerRef = useRef<HTMLDivElement | null>(null);
+    const [popoverEl, setPopoverEl] = useState<HTMLElement | null>(null);
+    const [popoverOffset, setPopoverOffset] = useState(CSV_PICKER_POPOVER_GAP);
+
+    // The popover is portaled and mounts a frame late, so poll until it is there.
+    useEffect(() => {
+      let frame = 0;
+      const findPopover = () => {
+        const el = document.querySelector<HTMLElement>(
+          `[data-testid="${CSV_GLOSSARY_PICKER_TESTID}-popover"]`
+        );
+        if (el) {
+          setPopoverEl(el);
+        } else {
+          frame = requestAnimationFrame(findPopover);
+        }
+      };
+      findPopover();
+
+      return () => cancelAnimationFrame(frame);
+    }, []);
+
+    // Hang the popover off the cell: its own gap would overlap the taller row.
+    useLayoutEffect(() => {
+      const trigger = triggerRef.current;
+      const cell = trigger?.closest('.rdg-cell');
+
+      if (trigger && cell) {
+        setPopoverOffset(
+          cell.getBoundingClientRect().bottom -
+            trigger.getBoundingClientRect().bottom +
+            CSV_PICKER_POPOVER_GAP
+        );
+      }
+    }, []);
+
     useMultiContainerFocusTrap({
-      containers: [containerRef.current, dropdownContainerRef.current],
+      containers: [containerRef.current, popoverEl],
       active: true,
+      options: CSV_PICKER_FOCUS_TRAP,
     });
+
     useEditCellHeightReporter(
       containerRef,
       rowIdx,
       options.onEditCellHeightChange
     );
 
-    const value = row[column.key];
-    const tags = value ? value?.split(';') : [];
+    const value = toString(row[column.key] ?? '');
+    const terms = useMemo(() => csvValueToGlossaryTags(value), [value]);
 
-    const handleChange = (option: DefaultOptionType | DefaultOptionType[]) => {
-      if (Array.isArray(option)) {
-        onRowChange({
-          ...row,
-          [column.key]: option.map((tag) => toString(tag.value)).join(';'),
-        });
-      } else {
-        onRowChange({
-          ...row,
-          [column.key]: toString(option.value),
-        });
-      }
+    const handleChange = (selected: TagLabel[]) => {
+      onRowChange({
+        ...row,
+        [column.key]: selected.map((term) => term.tagFQN).join(';'),
+      });
     };
 
     return (
-      <div ref={containerRef}>
-        <TreeAsyncSelectList
-          defaultValue={tags}
-          dropdownContainerRef={dropdownContainerRef}
-          dropdownMatchSelectWidth={false}
-          optionClassName="tag-select-box"
-          tagType={TagSource.Glossary}
-          onCancel={() => {
-            onClose(false);
-          }}
+      // No save/cancel: each toggle is written to the row, so closing is enough.
+      // No height: the row is measured from this container, so it must not stretch.
+      <div
+        ref={containerRef}
+        role="presentation"
+        onKeyDown={onKeyDownStopPropagation}>
+        <GlossaryTermPicker
+          isOpen
+          // Fill the cell; the wrapper is inline-block, which would shrink the trigger.
+          className="tw:block tw:w-full"
+          data-testid={CSV_GLOSSARY_PICKER_TESTID}
+          offset={popoverOffset}
+          // A custom trigger moves the search box and footer into the popover.
+          renderTrigger={() => (
+            <div
+              className="bulk-edit-custom-property-cell-trigger"
+              data-testid={CSV_GLOSSARY_PICKER_TESTID}
+              ref={triggerRef}>
+              <CsvCellPreview column={column.key} value={value} />
+            </div>
+          )}
+          value={terms}
           onChange={handleChange}
-          onSubmit={() => onClose(true)}
+          onOpenChange={(open) => !open && onClose(true, true)}
         />
       </div>
     );
@@ -2334,14 +2415,20 @@ const getCsvTiersEditor: CSVEditorFactory = ({ entityType, options }) => {
       );
     };
 
+    // The popover takes focus on open, so its keydowns bubble (via the portal)
+    // to the rdg EditCell, which closes the editor on Enter / navigates on Tab.
+    // The trigger fills the cell, so the popover opens below the cell.
     return (
-      <TierCard
-        currentTier={value}
-        popoverProps={{ open: true }}
-        updateTier={handleChange}
-        onClose={() => onClose(false)}>
-        <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
-      </TierCard>
+      <KeyDownStopPropagationWrapper className="tw:h-full">
+        <TierCard
+          open
+          className="tw:flex tw:size-full"
+          currentTier={value}
+          updateTier={handleChange}
+          onClose={() => onClose(false)}>
+          <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
+        </TierCard>
+      </KeyDownStopPropagationWrapper>
     );
   };
 };
@@ -2366,15 +2453,20 @@ const getCsvCertificationEditor: CSVEditorFactory =
       );
     };
 
+    // The search box takes focus on open; keep its keydowns from the rdg EditCell.
+    // The trigger fills the cell, so the popover opens below the cell.
     return (
-      <Certification
-        permission
-        currentCertificate={value}
-        popoverProps={{ open: true }}
-        onCertificationUpdate={handleChange}
-        onClose={() => onClose(false)}>
-        <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
-      </Certification>
+      <KeyDownStopPropagationWrapper className="tw:h-full">
+        <Certification
+          permission
+          className="tw:flex tw:size-full"
+          currentCertificate={value}
+          popoverProps={{ open: true }}
+          onCertificationUpdate={handleChange}
+          onClose={() => onClose(false)}>
+          <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
+        </Certification>
+      </KeyDownStopPropagationWrapper>
     );
   };
 
@@ -2435,10 +2527,8 @@ const getCsvDomainsEditor: CSVEditorFactory = ({ entityType, options }) => {
       <DomainSelectableList
         hasPermission
         multiple
-        getPopupContainer={() => document.body}
         popoverProps={{ open: true }}
         selectedDomain={domains}
-        wrapInButton={false}
         onUpdate={(domain) => handleChange(domain as EntityReference[])}>
         <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
       </DomainSelectableList>

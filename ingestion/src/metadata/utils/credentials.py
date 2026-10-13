@@ -15,7 +15,6 @@ Credentials helper module
 import base64
 import json
 import os
-import tempfile
 
 from cryptography.hazmat.primitives import serialization
 from google import auth
@@ -37,10 +36,16 @@ from metadata.generated.schema.security.credentials.gcpValues import (
     GcpCredentialsValues,
 )
 from metadata.utils.logger import utils_logger
+from metadata.utils.secure_tempfile import write_secret_temp_file
 
 logger = utils_logger()
 
 GOOGLE_CREDENTIALS = "GOOGLE_APPLICATION_CREDENTIALS"
+
+# google-auth defaults to this domain when a service account has no `universe_domain`.
+# Sovereign / partner clouds (e.g. S3NS PREMI3NS with `s3nsapis.fr`) override it via
+# `GcpCredentialsValues.universeDomain`.
+DEFAULT_GOOGLE_UNIVERSE_DOMAIN = "googleapis.com"
 
 GOOGLE_CLOUD_SCOPES = [
     "https://www.googleapis.com/auth/cloud-platform",
@@ -115,25 +120,21 @@ def create_credential_tmp_file(credentials: dict) -> str:
     Given a credentials' dict, store it in a tmp file
     :param credentials: dictionary to store
     :return: path to find the file
+
+    The file deliberately outlives this call: its path goes into
+    ``GOOGLE_APPLICATION_CREDENTIALS`` and the Google auth library reads it lazily
+    for the rest of the process. That is why this cannot use
+    ``secret_temp_file`` — there is no scope to close.
     """
-    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-        cred_json = json.dumps(credentials, indent=4, separators=(",", ": "))
-        temp_file.write(cred_json.encode())
-        # Get the path of the temporary file
-        temp_file_path = temp_file.name
+    cred_json = json.dumps(credentials, indent=4, separators=(",", ": "))
 
-        # The temporary file will be automatically closed when exiting the "with" block,
-        # but we can explicitly close it here to free up resources immediately.
-        temp_file.close()
-
-        # Return the path of the temporary file
-        return temp_file_path
+    return str(write_secret_temp_file(cred_json, suffix=".json"))
 
 
 def build_google_credentials_dict(
     gcp_values: GcpCredentialsValues | GcpExternalAccount,
     single_project: bool = False,
-) -> dict[str, str]:
+) -> dict[str, str | list[str] | dict[str, str] | None]:
     """
     Given GcPCredentialsValues, build a dictionary as the JSON file
     downloaded from GCP with the service_account
@@ -166,6 +167,7 @@ def build_google_credentials_dict(
             "token_uri": str(gcp_values.tokenUri),
             "auth_provider_x509_cert_url": str(gcp_values.authProviderX509CertUrl),
             "client_x509_cert_url": str(gcp_values.clientX509CertUrl),
+            "universe_domain": gcp_values.universeDomain or DEFAULT_GOOGLE_UNIVERSE_DOMAIN,
         }
     if isinstance(gcp_values, GcpExternalAccount):
         return {

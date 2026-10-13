@@ -16,6 +16,7 @@ package org.openmetadata.service.rdf;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.util.List;
+import java.util.function.BooleanSupplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.rdf.RdfProjectionState;
 import org.openmetadata.schema.entity.app.AppExtension;
@@ -28,9 +29,16 @@ import org.openmetadata.service.jdbi3.TimeSeriesDAOs.AppExtensionTimeSeries;
 public final class RdfProjectionStateResolver {
   static final String RDF_INDEX_APP = "RdfIndexApp";
   private final AppExtensionTimeSeries runStore;
+  private final BooleanSupplier isDegraded;
 
   public RdfProjectionStateResolver(final AppExtensionTimeSeries runStore) {
+    this(runStore, RdfProjectionHealth::isDegraded);
+  }
+
+  public RdfProjectionStateResolver(
+      final AppExtensionTimeSeries runStore, final BooleanSupplier isDegraded) {
     this.runStore = runStore;
+    this.isDegraded = isDegraded;
   }
 
   public RdfProjectionState resolve() {
@@ -44,8 +52,8 @@ public final class RdfProjectionStateResolver {
     return applyRuntimeHealth(state);
   }
 
-  private static RdfProjectionState applyRuntimeHealth(final RdfProjectionState persistedState) {
-    return persistedState == RdfProjectionState.READY && RdfProjectionHealth.isDegraded()
+  private RdfProjectionState applyRuntimeHealth(final RdfProjectionState persistedState) {
+    return persistedState == RdfProjectionState.READY && isDegraded.getAsBoolean()
         ? RdfProjectionState.DEGRADED
         : persistedState;
   }

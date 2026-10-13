@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/services/connections/database/microsoftFabricConnection.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "MicrosoftFabricConnection",
   "description": "Microsoft Fabric Warehouse and Lakehouse Connection Config",
   "type": "object",
@@ -47,16 +47,24 @@
       "description": "Azure Application (client) ID for Service Principal authentication.",
       "type": "string"
     },
-    "clientSecret": {
-      "title": "Client Secret",
-      "description": "Azure Application client secret for Service Principal authentication.",
-      "type": "string",
-      "format": "password"
-    },
     "tenantId": {
       "title": "Tenant ID",
       "description": "Azure Directory (tenant) ID for Service Principal authentication.",
       "type": "string"
+    },
+    "authType": {
+      "title": "Authentication Type",
+      "description": "Credential the service principal uses to obtain Microsoft Entra ID access tokens for the Fabric SQL endpoint.",
+      "oneOf": [
+        {
+          "title": "Client Secret",
+          "$ref": "./microsoftFabric/clientSecretAuthentication.json"
+        },
+        {
+          "title": "Certificate",
+          "$ref": "./microsoftFabric/certificateAuthentication.json"
+        }
+      ]
     },
     "driver": {
       "title": "Driver",
@@ -113,12 +121,8 @@
     "supportsDatabase": {
       "title": "Supports Database",
       "$ref": "../connectionBasicType.json#/definitions/supportsDatabase"
-    },
-    "sampleDataStorageConfig": {
-      "title": "Storage Config for Sample Data",
-      "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
     }
   },
   "additionalProperties": false,
-  "required": ["hostPort", "clientId", "clientSecret", "tenantId"]
+  "required": ["hostPort", "clientId", "tenantId", "authType"]
 }

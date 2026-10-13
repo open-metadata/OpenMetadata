@@ -51,7 +51,7 @@ import './data-marketplace-page.less';
 // customize page still uses the grid, which is where drag and resize happen.
 const WIDGET_GAP = 18;
 
-// In AI mode the caller's `HeaderShell` owns the 20px gap to the content below
+// In AI mode the caller's `PageHeader` owns the 20px gap to the content below
 // through its own bottom margin, matching the Domains/Data Products list pages —
 // the column must not stack another offset on top of it. The classic hero keeps
 // the original 8px offset it was designed against.
@@ -161,6 +161,8 @@ const DataMarketplacePage = ({
   const gridWrapperClassName = `marketplace-grid-wrapper${
     renderPageHeader ? ' tw:!max-w-none' : ''
   }`;
+  // The AI shell header band sits 8px in; its content follows the 16px gutter.
+  const contentPaddingClassName = renderPageHeader ? 'tw:px-4' : 'p-x-box';
 
   return (
     <div className="tw:h-full tw:overflow-y-auto">
@@ -185,11 +187,11 @@ const DataMarketplacePage = ({
           </div>
         )}
         <div className={gridWrapperClassName} dir="ltr">
-          <div className="p-x-box">
+          <div className={contentPaddingClassName}>
             <AnnouncementsWidgetV2 widgetKey="announcements" />
           </div>
           <div
-            className="grid-container p-x-box tw:flex tw:flex-col"
+            className={`grid-container tw:flex tw:flex-col ${contentPaddingClassName}`}
             style={renderPageHeader ? AI_MODE_GRID_STYLE : CLASSIC_GRID_STYLE}>
             {widgets}
           </div>

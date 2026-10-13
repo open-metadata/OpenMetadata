@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Tooltip } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { capitalize, isUndefined } from 'lodash';
 import type { CurrentState } from 'Models';
@@ -24,7 +25,8 @@ const Loader = lazy(() => import('../components/common/Loader/Loader'));
 export const getCountBadge = (
   count = 0,
   className = '',
-  isActive?: boolean
+  isActive?: boolean,
+  excludeTriggerFromTabOrder?: boolean
 ) => {
   const activeCls = isActive ? 'bg-primary text-white no-border' : 'ant-tag';
   const clsBG = isUndefined(isActive) ? '' : activeCls;
@@ -36,12 +38,13 @@ export const getCountBadge = (
         clsBG,
         className
       )}>
-      <span
-        className="text-xs"
-        data-testid="filter-count"
+      <Tooltip
+        excludeTriggerFromTabOrder={excludeTriggerFromTabOrder}
         title={count.toString()}>
-        {count}
-      </span>
+        <span className="text-xs" data-testid="filter-count">
+          {count}
+        </span>
+      </Tooltip>
     </span>
   );
 };
@@ -65,14 +68,23 @@ export const requiredField = (label: string, excludeSpace = false) => (
   </>
 );
 
-export const getEntityMissingError = (entityType: string, fqn: string) => {
+/**
+ * Inline "<entity> instance for <fqn> not found" message, without any block
+ * wrapper, so it can be dropped into inline containers such as the
+ * `EmptyPlaceholder` description slot.
+ */
+export const getEntityMissingMessage = (entityType: string, fqn: string) => {
   return (
-    <p className="tw:m-0!">
+    <>
       {capitalize(entityType)} {t('label.instance-lowercase')}{' '}
       {t('label.for-lowercase')} <strong>{fqn}</strong>{' '}
       {t('label.not-found-lowercase')}
-    </p>
+    </>
   );
+};
+
+export const getEntityMissingError = (entityType: string, fqn: string) => {
+  return <p className="tw:m-0!">{getEntityMissingMessage(entityType, fqn)}</p>;
 };
 
 export const getEntityDeleteMessage = (entity: string, dependents: string) => {

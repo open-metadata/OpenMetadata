@@ -16,23 +16,18 @@ package org.openmetadata.service.notifications.recipients.context;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.Invocation.Builder;
 import jakarta.ws.rs.client.WebTarget;
+import java.net.URI;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
 import lombok.Getter;
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.schema.entity.events.SubscriptionDestination;
-import org.openmetadata.schema.entity.events.authentication.WebhookBearerAuth;
-import org.openmetadata.schema.entity.events.authentication.WebhookOAuth2Config;
-import org.openmetadata.schema.entity.teams.Team;
-import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.Profile;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.type.profile.SubscriptionConfig;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.security.SecurityUtil;
-import org.openmetadata.service.util.OAuth2TokenManager;
 import org.openmetadata.service.util.SubscriptionUtil;
 import org.openmetadata.service.util.URLValidator;
 
@@ -49,56 +44,38 @@ import org.openmetadata.service.util.URLValidator;
 public final class WebhookRecipient extends Recipient {
   private final Webhook webhook;
 
+  private record Identity(URI endpoint, Map<String, String> queryParams) {}
+
   public WebhookRecipient(Webhook webhook) {
+    this(webhook, CONFIGURED);
+  }
+
+  public WebhookRecipient(Webhook webhook, String name) {
+    super(name);
     this.webhook = Objects.requireNonNull(webhook, "webhook cannot be null");
   }
 
   /**
-   * Create a webhook recipient from a user.
-   *
-   * @param user the user to create a recipient from
-   * @param notificationType the webhook notification type
-   * @return a WebhookRecipient instance, or null if webhook is not configured
+   * The endpoint as written, with the query parameters its configuration adds, which some
+   * endpoints route by. Nothing else is normalised, so no two endpoints that get separate
+   * messages today become one.
    */
-  public static WebhookRecipient fromUser(
-      User user, SubscriptionDestination.SubscriptionType notificationType) {
-    Webhook webhook = extractWebhookConfig(user.getProfile(), notificationType);
-    if (webhook == null) {
-      return null;
-    }
-    return new WebhookRecipient(webhook);
+  @Override
+  public Object identity() {
+    Map<String, String> queryParams =
+        CommonUtil.nullOrEmpty(webhook.getQueryParams()) ? Map.of() : webhook.getQueryParams();
+    return new Identity(webhook.getEndpoint(), Map.copyOf(queryParams));
   }
 
   /**
-   * Create a webhook recipient from a team.
-   *
-   * @param team the team to create a recipient from
-   * @param notificationType the webhook notification type
-   * @return a WebhookRecipient instance, or null if webhook is not configured
+   * The webhook a profile keeps for one channel, which the channel picks out of the profile's
+   * subscriptions. Null when there is none or its endpoint is not an allowed URL.
    */
-  public static WebhookRecipient fromTeam(
-      Team team, SubscriptionDestination.SubscriptionType notificationType) {
-    Webhook webhook = extractWebhookConfig(team.getProfile(), notificationType);
-    if (webhook == null) {
-      return null;
-    }
-    return new WebhookRecipient(webhook);
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (!(o instanceof WebhookRecipient that)) {
-      return false;
-    }
-    return Objects.equals(webhook.getEndpoint(), that.webhook.getEndpoint());
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(webhook.getEndpoint());
+  public static WebhookRecipient ofProfile(
+      String name, Profile profile, Function<SubscriptionConfig, Webhook> ofTheChannel) {
+    boolean hasSubscriptions = profile != null && profile.getSubscription() != null;
+    Webhook webhook = hasSubscriptions ? ofTheChannel.apply(profile.getSubscription()) : null;
+    return isUsable(webhook) ? new WebhookRecipient(webhook, name) : null;
   }
 
   /**
@@ -123,7 +100,7 @@ public final class WebhookRecipient extends Recipient {
     Builder requestBuilder = SecurityUtil.addHeaders(target, authHeaders);
 
     // Add webhook-specific headers (custom headers + HMAC signature)
-    prepareWebhookHeaders(requestBuilder, webhook, payload);
+    SubscriptionUtil.prepareWebhookHeaders(requestBuilder, webhook, payload);
 
     return requestBuilder;
   }
@@ -139,80 +116,16 @@ public final class WebhookRecipient extends Recipient {
     return target;
   }
 
-  private static void prepareWebhookHeaders(
-      Builder requestBuilder, Webhook webhook, String payload) {
-    boolean oauth2Active = false;
-
-    if (webhook.getAuthType() instanceof Map<?, ?> authMap) {
-      String authType = (String) authMap.get("type");
-
-      if (WebhookBearerAuth.Type.BEARER.value().equals(authType)) {
-        WebhookBearerAuth bearerAuth =
-            JsonUtils.convertValue(webhook.getAuthType(), WebhookBearerAuth.class);
-        if (bearerAuth != null && !CommonUtil.nullOrEmpty(bearerAuth.getSecretKey())) {
-          String hmac =
-              "sha256="
-                  + CommonUtil.calculateHMAC(
-                      SubscriptionUtil.decryptWebhookSecretKey(bearerAuth.getSecretKey()), payload);
-          requestBuilder.header("X-OM-Signature", hmac);
-        }
-      } else if (WebhookOAuth2Config.Type.OAUTH_2.value().equals(authType)) {
-        WebhookOAuth2Config oauth2Config =
-            JsonUtils.convertValue(webhook.getAuthType(), WebhookOAuth2Config.class);
-        if (oauth2Config != null) {
-          String accessToken = OAuth2TokenManager.getInstance().getAccessToken(oauth2Config);
-          requestBuilder.header("Authorization", "Bearer " + accessToken);
-          oauth2Active = true;
-        }
+  private static boolean isUsable(Webhook webhook) {
+    boolean usable = webhook != null && webhook.getEndpoint() != null;
+    if (usable) {
+      try {
+        URLValidator.validateURL(webhook.getEndpoint().toString());
+      } catch (Exception e) {
+        LOG.error("Failed to validate webhook endpoint: {}", e.getMessage());
+        usable = false;
       }
     }
-
-    if (webhook.getHeaders() != null && !webhook.getHeaders().isEmpty()) {
-      for (Map.Entry<String, String> entry : webhook.getHeaders().entrySet()) {
-        if (oauth2Active && "Authorization".equalsIgnoreCase(entry.getKey())) {
-          continue;
-        }
-        requestBuilder.header(entry.getKey(), entry.getValue());
-      }
-    }
-  }
-
-  private static Webhook extractWebhookConfig(
-      Profile profile, SubscriptionDestination.SubscriptionType type) {
-    if (profile == null || profile.getSubscription() == null) {
-      return null;
-    }
-
-    SubscriptionConfig subscription = profile.getSubscription();
-    Webhook webhook;
-
-    switch (type) {
-      case SLACK:
-        webhook = subscription.getSlack();
-        break;
-      case MS_TEAMS:
-        webhook = subscription.getMsTeams();
-        break;
-      case G_CHAT:
-        webhook = subscription.getgChat();
-        break;
-      case WEBHOOK:
-        webhook = subscription.getGeneric();
-        break;
-      default:
-        return null;
-    }
-
-    if (webhook == null || webhook.getEndpoint() == null) {
-      return null;
-    }
-
-    try {
-      URLValidator.validateURL(webhook.getEndpoint().toString());
-      return webhook;
-    } catch (Exception e) {
-      LOG.error("Failed to validate webhook endpoint: {}", e.getMessage());
-      return null;
-    }
+    return usable;
   }
 }

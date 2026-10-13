@@ -110,7 +110,7 @@ export const COMMON_UI_FIELDS = {
   },
   oidcCallbackUrl: {
     'ui:title': OIDC_CALLBACK_URL_TITLE,
-    'ui:placeholder': 'e.g. https://myapp.com/auth/callback',
+    'ui:placeholder': 'e.g. https://myapp.com/callback',
   },
   oidcServerUrl: {
     'ui:title': 'OIDC Server URL',
@@ -131,11 +131,14 @@ export const COMMON_UI_FIELDS = {
   oidcClientAuthenticationMethod: {
     'ui:title': 'OIDC Client Authentication Method',
   },
-  oidcTokenValidity: { 'ui:title': 'OIDC Token Validity' },
+  oidcTokenValidity: { 'ui:title': 'OpenMetadata Access Token Validity' },
   oidcCustomParameters: { 'ui:title': 'OIDC Custom Parameters' },
   oidcMaxAge: { 'ui:title': 'OIDC Max Age' },
   oidcPrompt: { 'ui:title': 'OIDC Prompt' },
   oidcSessionExpiry: { 'ui:title': 'OIDC Session Expiry' },
+  oidcEndSessionWithProvider: {
+    'ui:title': 'End Session With Identity Provider',
+  },
   // Common non-OIDC fields
   authority: {
     'ui:title': 'Authority',
@@ -143,7 +146,7 @@ export const COMMON_UI_FIELDS = {
   },
   callbackUrl: {
     'ui:title': 'Callback URL',
-    'ui:placeholder': 'e.g. https://myapp.com/auth/callback',
+    'ui:placeholder': 'e.g. https://myapp.com/callback',
   },
   publicKeyUrls: {
     'ui:title': 'Public Key URLs',
@@ -406,6 +409,7 @@ export const OIDC_UI_SCHEMA = {
     maxAge: COMMON_UI_FIELDS.oidcMaxAge,
     prompt: COMMON_UI_FIELDS.oidcPrompt,
     sessionExpiry: COMMON_UI_FIELDS.oidcSessionExpiry,
+    endSessionWithProvider: COMMON_UI_FIELDS.oidcEndSessionWithProvider,
   },
   // Hide LDAP/SAML specific fields for OIDC
   ldapConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
@@ -444,6 +448,7 @@ export const STANDARD_OAUTH_UI_SCHEMA = {
     maxAge: COMMON_UI_FIELDS.oidcMaxAge,
     prompt: COMMON_UI_FIELDS.oidcPrompt,
     sessionExpiry: COMMON_UI_FIELDS.oidcSessionExpiry,
+    endSessionWithProvider: COMMON_UI_FIELDS.oidcEndSessionWithProvider,
   },
   tokenValidationAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
   enableSelfSignup: { 'ui:title': ENABLE_SELF_SIGNUP_TITLE },
@@ -480,6 +485,7 @@ export const AZURE_OAUTH_UI_SCHEMA = {
     maxAge: COMMON_UI_FIELDS.oidcMaxAge,
     prompt: COMMON_UI_FIELDS.oidcPrompt,
     sessionExpiry: COMMON_UI_FIELDS.oidcSessionExpiry,
+    endSessionWithProvider: COMMON_UI_FIELDS.oidcEndSessionWithProvider,
   },
   tokenValidationAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
   enableSelfSignup: { 'ui:title': ENABLE_SELF_SIGNUP_TITLE },
@@ -516,6 +522,7 @@ export const OKTA_OAUTH_UI_SCHEMA = {
     maxAge: COMMON_UI_FIELDS.oidcMaxAge,
     prompt: COMMON_UI_FIELDS.oidcPrompt,
     sessionExpiry: COMMON_UI_FIELDS.oidcSessionExpiry,
+    endSessionWithProvider: COMMON_UI_FIELDS.oidcEndSessionWithProvider,
   },
   tokenValidationAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
   enableSelfSignup: { 'ui:title': ENABLE_SELF_SIGNUP_TITLE },
@@ -544,7 +551,7 @@ export const GOOGLE_OAUTH_UI_SCHEMA = {
     maxClockSkew: COMMON_UI_FIELDS.oidcMaxClockSkew,
     clientAuthenticationMethod: { 'ui:widget': 'hidden', 'ui:hideError': true },
     tokenValidity: {
-      'ui:title': 'OIDC Token Validity',
+      'ui:title': 'OpenMetadata Access Token Validity',
       'ui:placeholder': `Default: ${OIDC_SSO_DEFAULTS.tokenValidity}`,
     },
     customParams: COMMON_UI_FIELDS.oidcCustomParameters,
@@ -561,6 +568,7 @@ export const GOOGLE_OAUTH_UI_SCHEMA = {
       'ui:title': 'OIDC Session Expiry',
       'ui:placeholder': `Default: ${OIDC_SSO_DEFAULTS.sessionExpiry}`,
     },
+    endSessionWithProvider: COMMON_UI_FIELDS.oidcEndSessionWithProvider,
   },
   authority: {
     'ui:title': 'Authority',
@@ -606,6 +614,21 @@ export const COMMON_FIELD_TITLES = {
   },
   enableSelfSignup: { 'ui:title': ENABLE_SELF_SIGNUP_TITLE },
   enableAutoRedirect: { 'ui:title': 'Enable Auto Redirect' },
+  emailClaim: {
+    'ui:title': 'Email Claim',
+    'ui:placeholder': 'e.g. email',
+    'ui:help':
+      "JWT/SAML/LDAP attribute containing the user's email. " +
+      'When configured, enables email-first identity resolution. ' +
+      'Replaces jwtPrincipalClaims for simpler configuration.',
+  },
+  displayNameClaim: {
+    'ui:title': 'Display Name Claim',
+    'ui:placeholder': 'e.g. name',
+    'ui:help':
+      "JWT/SAML/LDAP attribute containing the user's display name. " +
+      'Only used when Email Claim is configured.',
+  },
   clientType: {
     'ui:title': 'Client Type',
     'ui:widget': 'radio',
@@ -643,6 +666,24 @@ export const AUTHORIZER_FIELD_TITLES = {
     'ui:title': 'Allowed Email Registration Domains',
     'ui:placeholder':
       'Enter domain (e.g. example.com) and press ENTER. Use "all" to allow all domains.',
+  },
+  adminEmails: {
+    'ui:title': 'Admin Emails',
+    'ui:placeholder': 'Enter email (e.g. admin@company.com) and press ENTER',
+    'ui:help':
+      'Preferred over Admin Principals. Uses full email addresses for admin designation.',
+  },
+  allowedEmailDomains: {
+    'ui:title': 'Allowed Email Domains',
+    'ui:placeholder': 'Enter domain (e.g. company.com) and press ENTER',
+    'ui:help':
+      'Restrict authentication to users from these email domains. If empty, all domains are allowed.',
+  },
+  botDomain: {
+    'ui:title': 'Bot Domain',
+    'ui:placeholder': 'e.g. openmetadata.org',
+    'ui:help':
+      'Email domain for system-created bots (e.g. ingestion-bot@{botDomain}).',
   },
 };
 
@@ -703,51 +744,21 @@ export const ALLOWED_EMAIL_REGISTRATION_DOMAINS_VISIBILITY: Record<
   'aws-cognito': { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
 
-// Provider-specific field removal mapping for cleanup
+// Provider-specific field removal mapping for cleanup. Fields every provider shares, such as
+// enableSelfSignup, stay out of these lists: removing one here drops the admin's value on save.
 export const PROVIDER_FIELD_MAPPINGS: Record<string, string[]> = {
-  ldap: ['samlConfiguration', 'oidcConfiguration', 'enableSelfSignup'],
-  saml: [
-    'ldapConfiguration',
-    'oidcConfiguration',
-    'tokenValidationAlgorithm',
-    'enableSelfSignup',
-  ],
-  customoidc: ['ldapConfiguration', 'samlConfiguration', 'enableSelfSignup'],
-  google: [
-    'ldapConfiguration',
-    'samlConfiguration',
-    'oidcConfiguration',
-    'enableSelfSignup',
-  ],
-  auth0: [
-    'ldapConfiguration',
-    'samlConfiguration',
-    'oidcConfiguration',
-    'enableSelfSignup',
-  ],
-  azure: [
-    'ldapConfiguration',
-    'samlConfiguration',
-    'oidcConfiguration',
-    'enableSelfSignup',
-  ],
-  okta: [
-    'ldapConfiguration',
-    'samlConfiguration',
-    'oidcConfiguration',
-    'enableSelfSignup',
-  ],
-  basic: [
-    'ldapConfiguration',
-    'samlConfiguration',
-    'oidcConfiguration',
-    'enableSelfSignup',
-  ],
+  ldap: ['samlConfiguration', 'oidcConfiguration'],
+  saml: ['ldapConfiguration', 'oidcConfiguration', 'tokenValidationAlgorithm'],
+  customoidc: ['ldapConfiguration', 'samlConfiguration'],
+  google: ['ldapConfiguration', 'samlConfiguration', 'oidcConfiguration'],
+  auth0: ['ldapConfiguration', 'samlConfiguration', 'oidcConfiguration'],
+  azure: ['ldapConfiguration', 'samlConfiguration', 'oidcConfiguration'],
+  okta: ['ldapConfiguration', 'samlConfiguration', 'oidcConfiguration'],
+  basic: ['ldapConfiguration', 'samlConfiguration', 'oidcConfiguration'],
   'aws-cognito': [
     'ldapConfiguration',
     'samlConfiguration',
     'oidcConfiguration',
-    'enableSelfSignup',
   ],
 };
 
@@ -834,6 +845,7 @@ export interface AuthenticationConfiguration {
   enableSelfSignup: boolean;
   enableAutoRedirect?: boolean;
   clientType?: ClientType;
+  responseType?: string;
   secret?: string;
   ldapConfiguration?: Record<string, unknown>;
   samlConfiguration?: Record<string, unknown>;
@@ -849,3 +861,50 @@ export interface AuthorizerConfiguration {
   enableSecureSocketConnection: boolean;
   botPrincipals?: string[];
 }
+
+/**
+ * How the SSO configuration form groups its fields into cards. Shared by the
+ * classic settings page (`SSOGroupedFieldTemplate`) and the profile modal so
+ * both lay the form out the same way.
+ */
+export const SSO_AUTHENTICATION_FIELD_GROUPS = {
+  basic: ['provider', 'providerName'],
+  client: ['clientType', 'enableSelfSignup', 'clientId', 'callbackUrl'],
+  authority: ['authority', 'domain'],
+  security: ['publicKeyUrls', 'tokenValidationAlgorithm'],
+  credentials: ['secret', 'clientSecret'],
+  // Each provider object is a card of its own.
+  providerConfigs: [
+    'oidcConfiguration',
+    'ldapConfiguration',
+    'samlConfiguration',
+  ],
+  // Every provider honours these: LDAP maps them onto directory attributes (falling back to
+  // mailAttributeName/displayName) and SAML reads them as assertion attribute names, so the
+  // fields stay configurable for all of them.
+  identity: [
+    'emailClaim',
+    'displayNameClaim',
+    'jwtPrincipalClaims',
+    'jwtPrincipalClaimsMapping',
+    'jwtTeamClaimMapping',
+  ],
+};
+
+export const SSO_AUTHORIZER_FIELD_GROUPS = {
+  admin: ['adminEmails'],
+  domain: ['allowedEmailDomains', 'botDomain'],
+  connection: [
+    'enableSecureSocketConnection',
+    'className',
+    'containerRequestFilter',
+    'useRolesFromProvider',
+  ],
+  deprecated: [
+    'adminPrincipals',
+    'principalDomain',
+    'enforcePrincipalDomain',
+    'allowedDomains',
+    'botPrincipals',
+  ],
+};

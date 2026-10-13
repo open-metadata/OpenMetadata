@@ -157,7 +157,7 @@ describe('ExploreSearchInput', () => {
 
     const searchInput = screen.getByRole('textbox');
 
-    expect(searchInput).toHaveClass('tw:placeholder:text-tertiary');
+    expect(searchInput).toHaveClass('tw:placeholder:text-placeholder');
     expect(searchInput).not.toHaveClass('placeholder:tw:text-tertiary');
   });
 

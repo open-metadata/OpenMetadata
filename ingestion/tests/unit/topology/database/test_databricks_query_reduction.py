@@ -20,7 +20,9 @@ from unittest.mock import MagicMock, Mock
 from metadata.ingestion.source.database.databricks.metadata import (
     DatabricksSource,
     _fetch_table_describe_json,
+    _format_identifier_query,
     _json_type_to_sql_string,
+    _qualified_identifier,
     get_columns,
     get_table_type,
     get_view_definition,
@@ -35,6 +37,19 @@ from metadata.ingestion.source.database.databricks.models import (
 _METADATA = "metadata.ingestion.source.database.databricks.metadata"
 
 
+def test_identifier_helpers_keep_catalog_names_inside_backticks():
+    schema = "sales`; DROP SCHEMA secret; --"
+    table = "orders`; DROP TABLE secret; --"
+
+    assert _qualified_identifier(schema, table) == (
+        "`sales``; DROP SCHEMA secret; --`.`orders``; DROP TABLE secret; --`"
+    )
+    assert _format_identifier_query(
+        "SELECT * FROM {database_name}.information_schema.table_tags",
+        database_name="catalog`; DROP CATALOG secret; --",
+    ) == ("SELECT * FROM `catalog``; DROP CATALOG secret; --`.information_schema.table_tags")
+
+
 def test_get_table_type_uses_one_bulk_query_per_schema():
     """All tables in a schema resolve their type from a single
     information_schema.tables query, not a DESCRIBE per table."""
@@ -42,9 +57,9 @@ def test_get_table_type_uses_one_bulk_query_per_schema():
     connection = Mock()
     connection.info = {}
     connection.execute.return_value = [
-        ("orders", "MANAGED"),
-        ("customers", "EXTERNAL"),
-        ("legacy_feed", "FOREIGN"),
+        ("orders", "MANAGED", "DELTA"),
+        ("customers", "EXTERNAL", "DELTA"),
+        ("legacy_feed", "FOREIGN", "UNKNOWN_DATA_SOURCE_FORMAT"),
     ]
 
     assert get_table_type(dialect, connection, "main_prod", "sales", "orders") == "MANAGED"
@@ -60,8 +75,8 @@ def test_get_table_type_refetches_for_a_different_schema():
     connection = Mock()
     connection.info = {}
     connection.execute.side_effect = [
-        [("orders", "MANAGED")],
-        [("events", "MANAGED")],
+        [("orders", "MANAGED", "DELTA")],
+        [("events", "MANAGED", "DELTA")],
     ]
 
     assert get_table_type(dialect, connection, "main_prod", "sales", "orders") == "MANAGED"
@@ -386,9 +401,9 @@ def test_get_table_type_cache_is_bounded_to_current_schema():
     connection = Mock()
     connection.info = {}
     connection.execute.side_effect = [
-        [("orders", "MANAGED")],
-        [("events", "MANAGED")],
-        [("orders", "MANAGED")],
+        [("orders", "MANAGED", "DELTA")],
+        [("events", "MANAGED", "DELTA")],
+        [("orders", "MANAGED", "DELTA")],
     ]
 
     get_table_type(dialect, connection, "main_prod", "sales", "orders")
@@ -397,4 +412,4 @@ def test_get_table_type_cache_is_bounded_to_current_schema():
 
     # 'sales' was evicted by 'analytics', so the third lookup re-queries.
     assert connection.execute.call_count == 3
-    assert list(connection.info["databricks_table_types"]) == [("main_prod", "sales")]
+    assert list(connection.info["databricks_table_info"]) == [("main_prod", "sales")]

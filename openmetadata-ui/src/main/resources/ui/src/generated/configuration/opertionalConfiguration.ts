@@ -14,8 +14,8 @@
  * This schema defines the Operations Configuration.
  */
 export interface OpertionalConfiguration {
-    email?:     SMTPSettings;
-    serverUrl?: OpenMetadataBaseURLConfiguration;
+    email:     SMTPSettings;
+    serverUrl: OpenMetadataBaseURLConfiguration;
 }
 
 /**

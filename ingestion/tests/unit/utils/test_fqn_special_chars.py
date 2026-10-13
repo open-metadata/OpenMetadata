@@ -15,8 +15,12 @@ Tests happy paths, edge cases, error scenarios, and boundaries.
 """
 
 import unittest
+from typing import Any
 from unittest.mock import Mock, patch
 
+import pytest
+
+from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
@@ -28,6 +32,43 @@ from metadata.ingestion.models.custom_basemodel_validation import (
 )
 from metadata.utils import fqn
 from metadata.utils.fqn import FQNBuildingException
+
+
+@pytest.mark.parametrize("skip_es_search", [True, False])
+@pytest.mark.parametrize(
+    ("service", "parent", "expected"),
+    [
+        ("demo_service", "demo_service.my_bucket", "demo_service.my_bucket.documents"),
+        ("demo_service", "my_bucket", "demo_service.my_bucket.documents"),
+        ("demo.service", '"demo.service".my_bucket', '"demo.service".my_bucket.documents'),
+        ("demo.service", "my_bucket", '"demo.service".my_bucket.documents'),
+        ("demo_service.", '"demo_service.".my_bucket', '"demo_service.".my_bucket.documents'),
+        ("demo_service.", "my_bucket", '"demo_service.".my_bucket.documents'),
+        ('"demo.service"', '"demo.service".my_bucket', '"demo.service".my_bucket.documents'),
+        ("demo.service", '"demo.service"."my.bucket"."my.folder"', '"demo.service"."my.bucket"."my.folder".documents'),
+    ],
+)
+def test_container_parent_keeps_one_quoted_service_prefix(
+    service: str, parent: str, expected: str, skip_es_search: bool
+):
+    metadata = Mock()
+
+    def search(*, fqn_search_string: str, **kwargs: Any):
+        assert fqn_search_string == expected
+        return []
+
+    metadata.es_search_from_fqn.side_effect = search
+    assert (
+        fqn.build(
+            metadata,
+            Container,
+            service_name=service,
+            parent_container=parent,
+            container_name="documents",
+            skip_es_search=skip_es_search,
+        )
+        == expected
+    )
 
 
 class TestFQNSpecialCharacters(unittest.TestCase):

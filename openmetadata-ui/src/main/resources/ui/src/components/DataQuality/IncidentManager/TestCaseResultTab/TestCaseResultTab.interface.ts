@@ -10,23 +10,30 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 import { EntityTags } from 'Models';
+import { ReactNode } from 'react';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import {
   TagLabel,
   TestCase,
   TestCaseParameterValue,
 } from '../../../../generated/tests/testCase';
-
-export interface SqlParamsSectionProps {
-  withSqlParams: TestCaseParameterValue[];
-  hasEditPermission: boolean | undefined;
-  onEditParameter: () => void;
-}
+import { TestDefinition } from '../../../../generated/tests/testDefinition';
+import { ChangeSummaryEntry } from '../../../../rest/changeSummaryAPI';
+import { ConfigurationParameterRow } from './TestCaseConfigurationCard/TestCaseConfigurationCard.types';
 
 export interface TestCaseSidePanelProps {
   testCaseData: TestCase | undefined;
+  testDefinition: TestDefinition | undefined;
+  parameterRows: ConfigurationParameterRow[];
+  withSqlParams: TestCaseParameterValue[];
+  versionParameterDiff?: ReactNode;
+  showEditParameterButton: boolean;
+  onEditParameter: () => void;
+  description: string | undefined;
+  descriptionChangeSummaryEntry: ChangeSummaryEntry | undefined;
+  hasEditDescriptionPermission: boolean | undefined;
+  handleDescriptionChange: (updatedDescription: string) => Promise<void>;
   hasEditTagsPermission: boolean | undefined;
   hasEditGlossaryTermsPermission: boolean | undefined;
   updatedTags: TagLabel[];
