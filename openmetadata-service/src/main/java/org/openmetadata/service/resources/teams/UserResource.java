@@ -571,7 +571,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
     if (Boolean.TRUE.equals(authorizerConfiguration.getUseRolesFromProvider())
         && !(user.getIsBot() != null && user.getIsBot())) {
       reSyncUserRolesFromToken(
-          uriInfo, user, getRolesFromAuthorizationToken(catalogSecurityContext));
+          uriInfo,
+          user,
+          getRolesFromAuthorizationToken(catalogSecurityContext),
+          SecurityConfigurationManager.getCurrentAuthzConfig());
     }
     return addHref(uriInfo, user);
   }

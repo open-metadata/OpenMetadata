@@ -220,7 +220,7 @@ public class JwtFilter implements ContainerRequestFilter {
               catalogPrincipal,
               scheme,
               SecurityContext.DIGEST_AUTH,
-              getUserRolesFromClaims(claims, isBotUser),
+              getUserRolesFromClaims(claims, isBotUser, tokenKeyId),
               isBotUser,
               impersonatedBy,
               activePersona);
@@ -321,11 +321,14 @@ public class JwtFilter implements ContainerRequestFilter {
         claims, tokenKeyId, tokenGenerator.getIssuer(), tokenGenerator.getKid());
   }
 
-  // null and an empty set say different things to the role sync downstream: "the provider told us
-  // nothing about roles" vs "the provider told us this user has none". Collapsing them would let a
-  // deployment that never configured a roles claim wipe every user's roles on login.
-  private Set<String> getUserRolesFromClaims(Map<String, Claim> claims, boolean isBot) {
-    if (!useRolesFromProvider || isBot || !claims.containsKey(ROLES_CLAIM)) {
+  // null tells the role sync downstream there is nothing to sync from. A token OpenMetadata minted
+  // (a session token or a PAT) is one of those: its roles are the ones the user had when it was
+  // minted, so syncing from it would restore roles the provider revoked since. In the provider's
+  // own token an absent roles claim means no roles - claims without a value are omitted (OIDC Core
+  // 5.1), and Entra ID drops the claim once a user's last app role is removed.
+  private Set<String> getUserRolesFromClaims(
+      Map<String, Claim> claims, boolean isBot, String tokenKeyId) {
+    if (!useRolesFromProvider || isBot || isInternallyIssuedToken(claims, tokenKeyId)) {
       return null;
     }
     return new HashSet<>(getClaimAsList(claims.get(ROLES_CLAIM)));
@@ -510,7 +513,7 @@ public class JwtFilter implements ContainerRequestFilter {
         catalogPrincipal,
         "https",
         SecurityContext.DIGEST_AUTH,
-        getUserRolesFromClaims(claims, isBotUser),
+        getUserRolesFromClaims(claims, isBotUser, JWT.decode(token).getKeyId()),
         isBotUser);
   }
 
