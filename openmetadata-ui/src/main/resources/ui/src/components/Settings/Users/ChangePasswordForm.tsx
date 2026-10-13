@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Form, Input, Modal } from 'antd';
+import { SimpleModal } from '@openmetadata/ui-core-components';
+import { Form, Input } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { VALIDATION_MESSAGES } from '../../../constants/constants';
@@ -38,20 +39,13 @@ const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({
   const newPassword = Form.useWatch('newPassword', form);
 
   return (
-    <Modal
-      centered
+    <SimpleModal
       cancelText={t('label.cancel')}
-      closable={false}
-      confirmLoading={isLoading}
       data-testid="modal-container"
-      maskClosable={false}
-      okButtonProps={{
-        form: 'change-password-form',
-        type: 'primary',
-        htmlType: 'submit',
-      }}
+      isDismissable={false}
+      isOkLoading={isLoading}
+      isOpen={visible}
       okText={t('label.update-entity', { entity: t('label.password') })}
-      open={visible}
       title={t('label.change-entity', {
         entity: t('label.password'),
       })}
@@ -59,7 +53,8 @@ const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({
       onCancel={() => {
         form.resetFields();
         onCancel();
-      }}>
+      }}
+      onOk={form.submit}>
       <Form
         form={form}
         id="change-password-form"
@@ -127,7 +122,7 @@ const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({
           />
         </Form.Item>
       </Form>
-    </Modal>
+    </SimpleModal>
   );
 };
 

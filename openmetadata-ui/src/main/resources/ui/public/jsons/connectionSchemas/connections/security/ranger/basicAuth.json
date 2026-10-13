@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Ranger Basic Auth",
   "description": "Configuration for connecting to Ranger Basic Auth.",
   "javaType": "org.openmetadata.schema.services.connections.security.ranger.RangerBasicAuth",

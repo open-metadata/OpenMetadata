@@ -1,9 +1,10 @@
 import type { BadgeColors, Sizes } from '@/components/base/badges/badge-types';
 import { Badge } from '@/components/base/badges/badges';
+import { Card } from '@/components/base/card/card';
 import { cx } from '@/utils/cx';
 import { borderAfter } from '@/utils/tailwindClasses';
 import type { ComponentPropsWithRef, ReactNode } from 'react';
-import { Fragment, createContext, useContext, useMemo } from 'react';
+import { createContext, useContext, useMemo } from 'react';
 import type {
   TabListProps as AriaTabListProps,
   TabProps as AriaTabProps,
@@ -19,6 +20,9 @@ import {
 } from 'react-aria-components';
 
 type Orientation = 'horizontal' | 'vertical';
+
+/** `card` wraps a horizontal tab list in a Card, with an `actions` slot on the right. */
+type TabListVariant = 'default' | 'card';
 
 // Types for different orientations
 type HorizontalTypes =
@@ -47,8 +51,7 @@ const getTabStyles = ({
     'tw:outline-focus-ring',
     isSelected ? 'tw:font-semibold' : 'tw:font-medium',
     isFocusVisible && 'tw:outline-2 tw:-outline-offset-2',
-    (isSelected || isHovered) &&
-      'tw:bg-brand-primary_alt tw:text-brand-secondary'
+    (isSelected || isHovered) && 'tw:bg-brand-primary tw:text-brand-secondary'
   ),
   'button-gray': cx(
     'tw:outline-focus-ring',
@@ -155,6 +158,10 @@ type TabListBaseProps<K extends Orientation> = {
   orientation?: K;
   /** Whether the tab list is full width. */
   fullWidth?: boolean;
+  /** The container variant of the tab list. */
+  variant?: TabListVariant;
+  /** Content rendered after the tabs, e.g. an expand toggle. */
+  actions?: ReactNode;
 };
 
 /** Dynamic variant: provide an items array and a render function as children. */
@@ -176,11 +183,23 @@ type TabListComponentProps<K extends Orientation> =
   | TabListWithChildrenProps<K>;
 
 const TabListContext = createContext<
-  TabListBaseProps<Orientation> & { orientation?: Orientation }
+  Omit<TabListBaseProps<Orientation>, 'actions'> & {
+    orientation?: Orientation;
+  }
 >({
   size: 'sm',
   type: 'button-brand',
 });
+
+export type TabItemState = AriaTabRenderProps & { variant: TabListVariant };
+
+const TabItemStateContext = createContext<TabItemState | null>(null);
+
+/**
+ * Render state of the enclosing `Tabs.Item`, or `null` outside one. Lets custom
+ * tab labels react to selection without a render function.
+ */
+export const useTabItemState = () => useContext(TabItemStateContext);
 
 interface TabComponentProps extends AriaTabProps {
   /** The label of the tab. */
@@ -197,6 +216,7 @@ export const Tab = (props: TabComponentProps) => {
     size = 'sm',
     type = 'button-brand',
     fullWidth,
+    variant = 'default',
   } = useContext(TabListContext);
 
   return (
@@ -207,9 +227,15 @@ export const Tab = (props: TabComponentProps) => {
           // `tw:relative` anchors the button-minimal selected ::after border — the tab's
           // own outline is reserved for the focus ring.
           'tw:relative tw:z-10 tw:flex tw:h-max tw:cursor-pointer tw:items-center tw:justify-center tw:gap-2 tw:rounded-md tw:whitespace-nowrap tw:text-quaternary tw:transition tw:duration-100 tw:ease-linear',
-          'group-orientation-vertical:tw:justify-start',
+          'tw:group-orientation-vertical:justify-start',
           fullWidth && 'tw:w-full tw:flex-1',
           sizes[size][type],
+          // Balances the underline tab inside the fixed-height card bar.
+          variant === 'card' && type === 'underline' && 'tw:pt-2.5 tw:pb-1',
+          // z-10 only lifts the underline above the list's separator line, which the card
+          // variant does not draw; keeping it would paint tabs over fixed overlays such as
+          // full-screen lineage.
+          variant === 'card' && 'tw:z-auto',
           getTabStyles(prop)[type],
           typeof props.className === 'function'
             ? props.className(prop)
@@ -217,7 +243,7 @@ export const Tab = (props: TabComponentProps) => {
         )
       }>
       {(state) => (
-        <Fragment>
+        <TabItemStateContext.Provider value={{ ...state, variant }}>
           {typeof children === 'function' ? children(state) : children || label}
           {(badge || badge === 0) && (
             <Badge
@@ -231,7 +257,7 @@ export const Tab = (props: TabComponentProps) => {
               {badge}
             </Badge>
           )}
-        </Fragment>
+        </TabItemStateContext.Provider>
       )}
     </AriaTab>
   );
@@ -242,6 +268,8 @@ export const TabList = <K extends Orientation>({
   type = 'button-brand',
   orientation: orientationProp,
   fullWidth,
+  variant = 'default',
+  actions,
   className,
   children,
   ...otherProps
@@ -251,35 +279,68 @@ export const TabList = <K extends Orientation>({
   const orientation = orientationProp ?? context?.orientation ?? 'horizontal';
 
   const contextValues = useMemo(
-    () => ({ size, type, orientation, fullWidth }),
-    [size, type, orientation, fullWidth]
+    () => ({ size, type, orientation, fullWidth, variant }),
+    [size, type, orientation, fullWidth, variant]
   );
+
+  const isCard = variant === 'card';
+
+  const tabList = (
+    <AriaTabList
+      {...(otherProps as AriaTabListProps<TabComponentProps>)}
+      className={(state) =>
+        cx(
+          'tw:group tw:flex',
+
+          getHorizontalStyles({
+            size,
+            fullWidth,
+          })[type as HorizontalTypes],
+
+          orientation === 'vertical' && 'tw:w-max tw:flex-col',
+
+          // Only horizontal tabs with underline type have bottom border; the card draws its own edge
+          orientation === 'horizontal' &&
+            type === 'underline' &&
+            !isCard &&
+            'tw:relative tw:before:absolute tw:before:inset-x-0 tw:before:bottom-0 tw:before:h-px tw:before:bg-border-secondary',
+
+          isCard &&
+            'tw:min-w-0 tw:gap-6 tw:overflow-x-auto tw:[scrollbar-width:none]',
+
+          typeof className === 'function' ? className(state) : className
+        )
+      }>
+      {children ?? ((item) => <Tab {...item}>{item.children}</Tab>)}
+    </AriaTabList>
+  );
+
+  const actionsSlot = actions ? (
+    <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-2">
+      {actions}
+    </div>
+  ) : null;
+
+  let content = tabList;
+  if (isCard) {
+    content = (
+      <Card className="tw:flex tw:min-h-12 tw:items-center tw:justify-between tw:gap-4 tw:px-5">
+        {tabList}
+        {actionsSlot}
+      </Card>
+    );
+  } else if (actionsSlot) {
+    content = (
+      <div className="tw:flex tw:items-center tw:justify-between tw:gap-4">
+        {tabList}
+        {actionsSlot}
+      </div>
+    );
+  }
 
   return (
     <TabListContext.Provider value={contextValues}>
-      <AriaTabList
-        {...(otherProps as AriaTabListProps<TabComponentProps>)}
-        className={(state) =>
-          cx(
-            'tw:group tw:flex',
-
-            getHorizontalStyles({
-              size,
-              fullWidth,
-            })[type as HorizontalTypes],
-
-            orientation === 'vertical' && 'tw:w-max tw:flex-col',
-
-            // Only horizontal tabs with underline type have bottom border
-            orientation === 'horizontal' &&
-              type === 'underline' &&
-              'tw:relative tw:before:absolute tw:before:inset-x-0 tw:before:bottom-0 tw:before:h-px tw:before:bg-border-secondary',
-
-            typeof className === 'function' ? className(state) : className
-          )
-        }>
-        {children ?? ((item) => <Tab {...item}>{item.children}</Tab>)}
-      </AriaTabList>
+      {content}
     </TabListContext.Provider>
   );
 };

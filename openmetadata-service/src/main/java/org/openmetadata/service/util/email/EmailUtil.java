@@ -52,6 +52,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.common.utils.CommonUtil;
@@ -60,10 +61,10 @@ import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.email.EmailMessage;
 import org.openmetadata.service.events.scheduled.template.DataInsightDescriptionAndOwnerTemplate;
 import org.openmetadata.service.events.scheduled.template.DataInsightTotalAssetTemplate;
-import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.simplejavamail.api.email.Email;
 import org.simplejavamail.api.email.EmailPopulatingBuilder;
@@ -251,7 +252,17 @@ public class EmailUtil {
    * @param htmlContent Pre-rendered HTML content (already processed by HandlebarsNotificationMessageEngine)
    */
   public static void sendNotificationEmail(String to, String subject, String htmlContent) {
-    if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
+    handOverNotificationEmail(to, subject, htmlContent);
+  }
+
+  /**
+   * Hands the email to the mail library and answers with the mail server's verdict, which a caller
+   * may wait for. It is already complete when nothing was handed over.
+   */
+  public static CompletableFuture<Void> handOverNotificationEmail(
+      String to, String subject, String htmlContent) {
+    CompletableFuture<Void> outcome = CompletableFuture.completedFuture(null);
+    if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer()) && mailer != null) {
       Email email =
           EmailBuilder.startingBlank()
               .withSubject(subject)
@@ -259,11 +270,11 @@ public class EmailUtil {
               .from(getSmtpSettings().getSenderMail())
               .withHTMLText(htmlContent)
               .buildEmail();
-
-      sendMail(email, true);
+      outcome = mailer.sendMail(email, true);
     } else {
       LOG.warn(EMAIL_IGNORE_MSG, to);
     }
+    return outcome;
   }
 
   public static void sendInviteMailToAdmin(User user, String password) {
@@ -436,8 +447,10 @@ public class EmailUtil {
   }
 
   public static String getOMBaseURL() {
+    // The registered repository, not a new one: the SystemRepository constructor re-registers
+    // itself, which would replace a distribution's subclass (and its status cards) at runtime.
     Settings setting =
-        new SystemRepository()
+        Entity.getSystemRepository()
             .getConfigWithKey(SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION.value());
     OpenMetadataBaseUrlConfiguration urlConfiguration =
         (OpenMetadataBaseUrlConfiguration) setting.getConfigValue();

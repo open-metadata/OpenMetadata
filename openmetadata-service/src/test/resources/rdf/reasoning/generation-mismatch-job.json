@@ -1,0 +1,23 @@
+{
+  "id": "9f8e7d6c-5b4a-4392-8170-6f5e4d3c2b1a",
+  "requestId": "0b6c9f53-3c1e-4a8f-9a2e-6a1f0d2c7e41",
+  "operation": "REFRESH",
+  "state": "FAILED",
+  "cancelRequested": false,
+  "input": {
+    "sourceRevision": {
+      "datasetGeneration": "9d72cf3b-3657-4ee3-809c-5bc70b9308bd",
+      "liveWriteWatermark": 18460
+    },
+    "ontologySelection": "APPROVED",
+    "ruleBundleDigest": "sha256:9e4f1c2b3a4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7"
+  },
+  "problem": {
+    "code": "GENERATION_MISMATCH",
+    "message": "Dataset generation 9d72cf3b-3657-4ee3-809c-5bc70b9308bd no longer serves.",
+    "step": "publish"
+  },
+  "submittedAt": 1791497000000,
+  "startedAt": 1791497000300,
+  "completedAt": 1791497051000
+}

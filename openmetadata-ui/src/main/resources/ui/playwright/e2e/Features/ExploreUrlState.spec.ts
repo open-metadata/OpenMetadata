@@ -23,6 +23,7 @@ import {
 } from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { clickUpdateButtonIfVisible } from '../../utils/explore';
+import { waitForSearchIndexed } from '../../utils/polling';
 import { sidebarClick } from '../../utils/sidebar';
 
 // use the admin user to login
@@ -54,11 +55,6 @@ const ownerPatch = (): Operation => ({
   },
 });
 
-/**
- * Facet options are aggregated once when the dropdown opens, so a freshly
- * indexed fixture can miss the first fetch. Retry by closing and reopening
- * the dropdown (each open re-fetches the facet aggregation).
- */
 const ensureFilterOptionVisible = async (
   page: Page,
   label: string,
@@ -66,24 +62,12 @@ const ensureFilterOptionVisible = async (
   searchText?: string
 ) => {
   const menu = page.getByTestId('drop-down-menu');
-  const option = menu.getByTestId(optionKey);
-
-  await expect(async () => {
-    const isMenuOpen = await menu.isVisible().catch(() => false);
-    if (!isMenuOpen) {
-      await page.getByTestId(`search-dropdown-${label}`).click();
-      await menu.waitFor({ state: 'visible' });
-    }
-    if (searchText) {
-      await menu.getByTestId('search-input').fill(searchText);
-    }
-    try {
-      await option.waitFor({ state: 'visible', timeout: 5_000 });
-    } catch (error) {
-      await page.keyboard.press('Escape');
-      throw error;
-    }
-  }).toPass({ timeout: 90_000, intervals: [2_000, 5_000, 10_000] });
+  if (!(await menu.isVisible())) {
+    await page.getByTestId(`search-dropdown-${label}`).click();
+  }
+  await expect(menu).toBeVisible();
+  if (searchText) await menu.getByTestId('search-input').fill(searchText);
+  await expect(menu.getByTestId(optionKey)).toBeVisible();
 };
 
 const selectOptionAndWaitForQuery = async (
@@ -101,8 +85,7 @@ const selectOptionAndWaitForQuery = async (
     if (response.url().includes('/api/v1/search/query')) {
       const queryFilter =
         new URL(response.url()).searchParams.get('query_filter') ?? '';
-      // Match the quoted query value so checkbox test ids like "table-checkbox"
-      // still assert the actual filter term, e.g. "table".
+      // Match the quoted query value for the actual filter term, e.g. "table".
       isMatch = queryFilter.includes(`"${queryValue}"`);
     }
 
@@ -127,7 +110,7 @@ const openExplore = async (page: Page) => {
 const treeNode = (page: Page, title: string) =>
   page
     .getByTestId(`explore-tree-title-${title}`)
-    .locator('xpath=ancestor::*[contains(@class, "ant-tree-treenode")]');
+    .locator('xpath=ancestor::*[@role="row"]');
 
 // A global-search term scopes every facet aggregation, so clear it before any
 // post-search facet interaction (the searchAndExpect* helpers leave the box
@@ -168,6 +151,16 @@ test.beforeAll('Setup url-state fixtures', async ({ browser }) => {
     patchData: [classificationTagPatch('Tier.Tier2')],
   });
 
+  await Promise.all(
+    [tier1Table, tier2Dashboard].map((entity) =>
+      waitForSearchIndexed(
+        apiContext,
+        entity.entityResponseData.fullyQualifiedName,
+        'dataAsset',
+        { minVersion: entity.entityResponseData.version }
+      )
+    )
+  );
   await afterAction();
 });
 
@@ -204,7 +197,7 @@ test('a deep-linked filter URL restores chips and filtered results', async ({
 
   await test.step('Open the URL in a fresh navigation — state is restored', async () => {
     await redirectToHomePage(page);
-    await page.goto(capturedUrl);
+    await page.goto(capturedUrl, { waitUntil: 'domcontentloaded' });
     await waitForAllLoadersToDisappear(page);
 
     await expect(
@@ -221,12 +214,7 @@ test('reloading the page preserves composed filters', async ({ page }) => {
 
   await selectOptionAndWaitForQuery(page, 'Tier', TIER1_KEY);
   await page.keyboard.press('Escape');
-  await selectOptionAndWaitForQuery(
-    page,
-    'Data Assets',
-    'table-checkbox',
-    'table'
-  );
+  await selectOptionAndWaitForQuery(page, 'Data Assets', 'table', 'table');
   await page.keyboard.press('Escape');
 
   await expect(
@@ -236,7 +224,7 @@ test('reloading the page preserves composed filters', async ({ page }) => {
     page.getByTestId('query-chip-entityType.keyword-table')
   ).toBeVisible();
 
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await waitForAllLoadersToDisappear(page);
 
   await expect(
@@ -264,17 +252,21 @@ test('a browse-location deep link highlights the tree and clears on chip removal
 
     expect(page.url()).toContain('browsePath');
     await expect(page.getByTestId('browse-chip-entityType')).toBeVisible();
-    await expect(page.locator('.ant-tree-node-selected')).toBeVisible();
+    await expect(
+      page.getByTestId('explore-tree').getByRole('row', { selected: true })
+    ).toBeVisible();
 
     browseUrl = page.url();
   });
 
   await test.step('Reopening the browse URL re-highlights the node', async () => {
     await redirectToHomePage(page);
-    await page.goto(browseUrl);
+    await page.goto(browseUrl, { waitUntil: 'domcontentloaded' });
     await waitForAllLoadersToDisappear(page);
 
-    await expect(page.locator('.ant-tree-node-selected')).toBeVisible();
+    await expect(
+      page.getByTestId('explore-tree').getByRole('row', { selected: true })
+    ).toBeVisible();
     await expect(page.getByTestId('browse-chip-entityType')).toBeVisible();
   });
 
@@ -287,7 +279,9 @@ test('a browse-location deep link highlights the tree and clears on chip removal
     await waitForAllLoadersToDisappear(page);
 
     await expect(page.getByTestId('browse-chip-entityType')).not.toBeVisible();
-    await expect(page.locator('.ant-tree-node-selected')).toHaveCount(0);
+    await expect(
+      page.getByTestId('explore-tree').getByRole('row', { selected: true })
+    ).toHaveCount(0);
   });
 });
 
@@ -302,11 +296,10 @@ test('selecting an asset type grays out and collapses incompatible categories', 
   // Databases).
   await test.step('Databases category is expanded', async () => {
     // Databases auto-expands on load, so wait for that rather than clicking its
-    // switcher: clicking would toggle the already-open node closed, and the
-    // loading-state spinner (class ant-tree-switcher-loading-icon, a substring
-    // match for "ant-tree-switcher") makes a switcher click ambiguous.
-    await expect(treeNode(page, 'Databases')).toHaveClass(
-      /ant-tree-treenode-switcher-open/
+    // expand button: clicking would toggle the already-open node closed.
+    await expect(treeNode(page, 'Databases')).toHaveAttribute(
+      'aria-expanded',
+      'true'
     );
   });
 
@@ -314,19 +307,22 @@ test('selecting an asset type grays out and collapses incompatible categories', 
     await selectOptionAndWaitForQuery(
       page,
       'Data Assets',
-      'dashboard-checkbox',
+      'dashboard',
       'dashboard'
     );
     await page.keyboard.press('Escape');
 
-    await expect(treeNode(page, 'Dashboards')).not.toHaveClass(
-      /ant-tree-treenode-disabled/
+    await expect(treeNode(page, 'Dashboards')).not.toHaveAttribute(
+      'aria-disabled',
+      'true'
     );
-    await expect(treeNode(page, 'Databases')).toHaveClass(
-      /ant-tree-treenode-disabled/
+    await expect(treeNode(page, 'Databases')).toHaveAttribute(
+      'aria-disabled',
+      'true'
     );
-    await expect(treeNode(page, 'Databases')).not.toHaveClass(
-      /ant-tree-treenode-switcher-open/
+    await expect(treeNode(page, 'Databases')).not.toHaveAttribute(
+      'aria-expanded',
+      'true'
     );
   });
 });
@@ -351,12 +347,7 @@ test('an impossible filter combination shows the no-results placeholder and reco
     const ownerMust = readQuickFilterMust(page);
 
     await openExplore(page);
-    await selectOptionAndWaitForQuery(
-      page,
-      'Data Assets',
-      'topic-checkbox',
-      'topic'
-    );
+    await selectOptionAndWaitForQuery(page, 'Data Assets', 'topic', 'topic');
     await page.keyboard.press('Escape');
     const topicMust = readQuickFilterMust(page);
 
@@ -366,7 +357,9 @@ test('an impossible filter combination shows the no-results placeholder and reco
         query: { bool: { must: [...ownerMust, ...topicMust] } },
       })
     );
-    await page.goto(impossibleUrl.pathname + impossibleUrl.search);
+    await page.goto(impossibleUrl.pathname + impossibleUrl.search, {
+      waitUntil: 'domcontentloaded',
+    });
     await waitForAllLoadersToDisappear(page);
 
     await expect(page.getByTestId('no-search-results')).toBeVisible();
@@ -389,7 +382,9 @@ test('applying a filter from a deep page preserves pagination params', async ({
   test.slow();
 
   await test.step('Navigate to an explore page beyond the first', async () => {
-    await page.goto('/explore/tables?currentPage=2&pageSize=25');
+    await page.goto('/explore/tables?currentPage=2&pageSize=25', {
+      waitUntil: 'domcontentloaded',
+    });
     await waitForAllLoadersToDisappear(page);
     expect(page.url()).toContain('currentPage=2');
     expect(page.url()).toContain('pageSize=25');
@@ -429,12 +424,7 @@ test('owner filter spans asset types and ANDs with an asset-type filter', async 
     // The previous step left the owned table's name in the search box, which
     // scopes the Data Assets facet to nothing — clear it before opening it.
     await clearGlobalSearch(page);
-    await selectOptionAndWaitForQuery(
-      page,
-      'Data Assets',
-      'table-checkbox',
-      'table'
-    );
+    await selectOptionAndWaitForQuery(page, 'Data Assets', 'table', 'table');
     await page.keyboard.press('Escape');
 
     await expect(

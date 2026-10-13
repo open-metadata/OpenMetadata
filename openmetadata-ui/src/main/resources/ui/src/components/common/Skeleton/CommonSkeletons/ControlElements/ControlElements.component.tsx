@@ -10,11 +10,31 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Skeleton } from 'antd';
+import { Skeleton } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import { ButtonSkeletonProps } from '../../Skeleton.interfaces';
 
-const ButtonSkeleton = (props: ButtonSkeletonProps) => {
-  return <Skeleton.Button active block size="small" {...props} />;
+// antd Skeleton.Button sizes under OM's @btn-height-* overrides (variables.less).
+const HEIGHT_BY_SIZE = { small: 36, default: 40, large: 44 };
+
+const ButtonSkeleton = ({
+  size = 'small',
+  className,
+  style,
+  ...props
+}: ButtonSkeletonProps) => {
+  const height = HEIGHT_BY_SIZE[size];
+
+  return (
+    <Skeleton
+      className={classNames('button-skeleton', className)}
+      height={height}
+      style={{ minWidth: height * 2, ...style }}
+      variant="rounded"
+      width="100%"
+      {...props}
+    />
+  );
 };
 
 export default ButtonSkeleton;

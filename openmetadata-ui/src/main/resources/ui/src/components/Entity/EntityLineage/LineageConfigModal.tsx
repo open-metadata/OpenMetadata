@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Form, InputNumber, Modal } from 'antd';
+import { SimpleModal } from '@openmetadata/ui-core-components';
+import { Form, InputNumber } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { VALIDATION_MESSAGES } from '../../../constants/constants';
@@ -26,9 +27,9 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
   const [form] = Form.useForm();
 
   return (
-    <Modal
-      maskClosable={false}
-      open={visible}
+    <SimpleModal
+      isDismissable={false}
+      isOpen={visible}
       title={t('label.lineage-config')}
       onCancel={onCancel}
       onOk={form.submit}>
@@ -86,7 +87,7 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
           <InputNumber className="w-full" data-testid="field-nodes-per-layer" />
         </Form.Item>
       </Form>
-    </Modal>
+    </SimpleModal>
   );
 };
 

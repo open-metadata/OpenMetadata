@@ -11,17 +11,27 @@
  *  limitations under the License.
  */
 
-import { CreateGlossary } from '../../../generated/api/data/createGlossary';
-import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import { FormSelectItem } from '@openmetadata/ui-core-components';
+import { UseFormReturn } from 'react-hook-form';
+import { EntityReference } from '../../../generated/entity/type';
+import { TagLabel } from '../../../generated/type/tagLabel';
+
+export interface EntityReferenceOption extends FormSelectItem {
+  value: EntityReference;
+}
+
+export interface GlossaryFormValues {
+  name: string;
+  displayName: string;
+  description: string;
+  tags: TagLabel[];
+  mutuallyExclusive: boolean;
+  owners: EntityReferenceOption[];
+  reviewers: EntityReferenceOption[];
+  domains: EntityReferenceOption[];
+}
 
 export interface AddGlossaryProps {
-  header: string;
-  isLoading: boolean;
-  allowAccess?: boolean;
-  isTagLoading?: boolean;
-  tagList?: string[];
-  slashedBreadcrumb: TitleBreadcrumbProps['titleLinks'];
-  onCancel: () => void;
-  onSave: (data: CreateGlossary) => void;
-  fetchTags?: () => void;
+  form: UseFormReturn<GlossaryFormValues>;
+  onSubmit: (data: GlossaryFormValues) => Promise<void> | void;
 }

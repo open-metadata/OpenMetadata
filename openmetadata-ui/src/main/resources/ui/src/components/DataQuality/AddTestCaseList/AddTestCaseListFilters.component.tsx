@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { Space, Typography } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import SearchDropdown from '../../SearchDropdown/SearchDropdown';
+import FilterSelectDropdown from '../../common/FilterSelectDropdown/FilterSelectDropdown';
 import { SearchDropdownOption } from '../../SearchDropdown/SearchDropdown.interface';
 import {
   AddTestCaseListFilterKey,
@@ -27,7 +27,6 @@ const AddTestCaseListFilters = ({
   filterOptions,
   filterSelectedKeys,
   filterLoading,
-  getPopupContainer,
   hideTableFilter = false,
   onChange,
   onSearch,
@@ -58,13 +57,11 @@ const AddTestCaseListFilters = ({
   );
 
   return (
-    <Space size={8}>
-      <Typography.Text>{t('label.filter-plural')}:</Typography.Text>
+    <Box align="center" gap={2}>
+      <Typography>{t('label.filter-plural')}:</Typography>
       {filtersToShow.map((filter) => (
-        <SearchDropdown
+        <FilterSelectDropdown
           hideCounts
-          dropdownClassName="add-test-case-filter-dropdown"
-          getPopupContainer={getPopupContainer}
           hideSearchBar={!filter.enableSearch}
           isSuggestionsLoading={filterLoading?.[filter.searchKey]}
           key={filter.searchKey}
@@ -72,13 +69,12 @@ const AddTestCaseListFilters = ({
           options={filterOptions[filter.searchKey]}
           searchKey={filter.searchKey}
           selectedKeys={filterSelectedKeys[filter.searchKey]}
-          showSelectedCounts={filter.showSelectedCounts}
           singleSelect={filter.singleSelect}
           onChange={handleChange}
           onSearch={handleSearch}
         />
       ))}
-    </Space>
+    </Box>
   );
 };
 

@@ -21,7 +21,15 @@ from unittest.mock import patch
 
 import pytest
 from requests.utils import quote
+from tenacity import Retrying, retry_if_result, stop_after_delay, wait_fixed
 
+from metadata.entity_resolution.engine import (
+    EntityResolutionPlan,
+    EntityResolver,
+    FqnCandidate,
+    FqnLookupMode,
+    ResolutionTier,
+)
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -52,6 +60,41 @@ from metadata.utils import fqn
 from ..integration_base import TIER1_TAG, generate_name, get_create_entity  # noqa: TID252
 
 FIELDS = "owners,domains"
+
+
+@pytest.mark.parametrize("table_name", ["MixedCase", "with.dot", "literal*name"])
+def test_candidate_resolution_rehydrates_recreated_table(metadata, es_schema, table_name):
+    request = CreateTableRequest(
+        name=table_name,
+        databaseSchema=es_schema.fullyQualifiedName,
+        columns=[Column(name="id", dataType=DataType.BIGINT)],
+    )
+    original = metadata.create_or_update(request)
+    name = original.fullyQualifiedName.root
+    ci_plan = EntityResolutionPlan(
+        Table, (ResolutionTier((FqnCandidate(name.upper(), FqnLookupMode.CASE_INSENSITIVE_EXACT),)),)
+    )
+    wildcard_plan = EntityResolutionPlan(
+        Table, (ResolutionTier((FqnCandidate(f"{es_schema.fullyQualifiedName.root}.*", FqnLookupMode.WILDCARD),)),)
+    )
+    first = EntityResolver(metadata)
+    second = EntityResolver(metadata)
+    current = original
+    try:
+        indexed = Retrying(
+            stop=stop_after_delay(30), wait=wait_fixed(0.25), retry=retry_if_result(lambda result: not result)
+        )
+        assert [entity.id for entity in indexed(first.resolve, ci_plan)] == [original.id]
+        assert [entity.id for entity in first.resolve(wildcard_plan)] == [original.id]
+        metadata.delete(Table, original.id, hard_delete=True)
+        current = metadata.create_or_update(request)
+        assert current.id != original.id
+        assert [entity.id for entity in indexed(second.resolve, ci_plan)] == [current.id]
+        assert [entity.id for entity in second.resolve(wildcard_plan)] == [current.id]
+    finally:
+        first.close()
+        second.close()
+        metadata.delete(Table, current.id, hard_delete=True)
 
 
 @pytest.fixture(scope="module")

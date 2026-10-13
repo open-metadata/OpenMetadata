@@ -32,7 +32,7 @@ public final class PipelineShapeProfile implements EntityShapeProfile {
   }
 
   @Override
-  public EntityInterface minimal(final ShapeContext ctx) {
+  public EntityInterface<?> minimal(final ShapeContext ctx) {
     return new Pipeline()
         .withId(ctx.id())
         .withName("pipeline")
@@ -49,7 +49,7 @@ public final class PipelineShapeProfile implements EntityShapeProfile {
         .build();
   }
 
-  private EntityInterface tasks(final EntityInterface entity, final Rung rung) {
+  private EntityInterface<?> tasks(final EntityInterface<?> entity, final Rung rung) {
     final Pipeline pipeline = (Pipeline) entity;
     final List<Task> tasks = new ArrayList<>(rung.magnitude());
     for (int i = 0; i < rung.magnitude(); i++) {

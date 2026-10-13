@@ -50,6 +50,7 @@ from metadata.ingestion.source.database.postgres.queries import (
 )
 from metadata.ingestion.source.database.postgres.utils import (
     get_postgres_time_column_name,
+    validate_query_statement_source,
 )
 
 if TYPE_CHECKING:
@@ -184,7 +185,7 @@ class PostgresChecks:
         # after CheckAccess has confirmed reachability - never ahead of the gate.
         statement = POSTGRES_TEST_GET_QUERIES.format(
             time_column_name=get_postgres_time_column_name(engine=self._db.client),
-            query_statement_source=self.query_statement_source or "pg_stat_statements",
+            query_statement_source=validate_query_statement_source(self.query_statement_source),
         )
         return run_sql(self._db.client, statement, lambda _: "query history accessible")
 

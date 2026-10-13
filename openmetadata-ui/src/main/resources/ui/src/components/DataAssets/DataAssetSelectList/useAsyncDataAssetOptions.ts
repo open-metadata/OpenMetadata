@@ -34,6 +34,9 @@ export const useAsyncDataAssetOptions = ({
   debounceTimeout,
 }: UseAsyncDataAssetOptionsParams) => {
   const isFetchingMore = useRef(false);
+  // Opening the list and typing both start a search; a slower earlier
+  // response must not overwrite the results of the latest one.
+  const latestRequest = useRef(0);
   const [paging, setPaging] = useState<Paging>({} as Paging);
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -90,18 +93,26 @@ export const useAsyncDataAssetOptions = ({
 
   const loadOptions = useCallback(
     async (query: string) => {
+      const request = ++latestRequest.current;
       setOptions([]);
       setIsLoading(true);
       try {
         const res = await fetchOptions(query, 1);
+        if (request !== latestRequest.current) {
+          return;
+        }
         setOptions(res.data);
         setSearchText(query);
         setPaging(res.paging);
         setCurrentPage(1);
       } catch (error) {
-        showErrorToast(error as AxiosError);
+        if (request === latestRequest.current) {
+          showErrorToast(error as AxiosError);
+        }
       } finally {
-        setIsLoading(false);
+        if (request === latestRequest.current) {
+          setIsLoading(false);
+        }
       }
     },
     [fetchOptions]
@@ -116,11 +127,11 @@ export const useAsyncDataAssetOptions = ({
     if (!isOpen) {
       debouncedLoad.cancel();
     }
-
-    return () => {
-      debouncedLoad.cancel();
-    };
   }, [debouncedLoad, isOpen]);
+
+  // Separate from the effect above: its cleanup would also run when the list
+  // opens, cancelling the search typed into a closed combobox.
+  useEffect(() => () => debouncedLoad.cancel(), [debouncedLoad]);
 
   const handleSearchChange = useCallback(
     (value: string) => {
@@ -140,8 +151,12 @@ export const useAsyncDataAssetOptions = ({
         !isFetchingMore.current
       ) {
         isFetchingMore.current = true;
+        const request = latestRequest.current;
         try {
           const res = await fetchOptions(searchText, currentPage + 1);
+          if (request !== latestRequest.current) {
+            return;
+          }
           setOptions((prev) => [...prev, ...res.data]);
           setPaging(res.paging);
           setCurrentPage((prev) => prev + 1);

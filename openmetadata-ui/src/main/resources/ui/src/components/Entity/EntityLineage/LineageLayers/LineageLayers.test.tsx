@@ -19,6 +19,10 @@ import {
 } from '@testing-library/react';
 import { ReactFlowProvider } from 'reactflow';
 import { EntityType } from '../../../../enums/entity.enum';
+import {
+  LineageBand,
+  LineageLens,
+} from '../../../../generated/api/lineage/lineageScene';
 import { LineageLayer } from '../../../../generated/settings/settings';
 import LineageLayers from './LineageLayers';
 
@@ -85,5 +89,71 @@ describe('LineageLayers component', () => {
     expect(mockSetActiveLayer).toHaveBeenCalledWith([
       LineageLayer.DataObservability,
     ]);
+  });
+
+  it('calls scene lens handler in scene mode', async () => {
+    const onSceneBandChange = jest.fn();
+    const onSceneLensChange = jest.fn();
+
+    render(
+      <ReactFlowProvider>
+        <LineageLayers
+          entityType={EntityType.TABLE}
+          sceneBand={LineageBand.Asset}
+          sceneLens={LineageLens.Service}
+          sceneLevelLabelKey="label.lineage-map-schema-level"
+          onSceneBandChange={onSceneBandChange}
+          onSceneLensChange={onSceneLensChange}
+        />
+      </ReactFlowProvider>
+    );
+
+    expect(
+      screen.getByText('label.lineage-map-schema-level')
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('lineage-layer-btn'));
+    });
+
+    expect(
+      screen.getByText('message.lineage-map-service-lens-description')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId(`lineage-layer-band-${LineageBand.Field}`)
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('lineage-layer-lens-domain'));
+
+    expect(onSceneLensChange).toHaveBeenCalledWith(LineageLens.Domain);
+    expect(onSceneBandChange).not.toHaveBeenCalled();
+  });
+
+  it('calls scene band handler in scene mode', async () => {
+    const onSceneBandChange = jest.fn();
+    const onSceneLensChange = jest.fn();
+
+    render(
+      <ReactFlowProvider>
+        <LineageLayers
+          entityType={EntityType.TABLE}
+          sceneBand={LineageBand.Asset}
+          sceneLens={LineageLens.Service}
+          onSceneBandChange={onSceneBandChange}
+          onSceneLensChange={onSceneLensChange}
+        />
+      </ReactFlowProvider>
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('lineage-layer-btn'));
+    });
+
+    fireEvent.click(
+      screen.getByTestId(`lineage-layer-band-${LineageBand.Field}`)
+    );
+
+    expect(onSceneBandChange).toHaveBeenCalledWith(LineageBand.Field);
+    expect(onSceneLensChange).not.toHaveBeenCalled();
   });
 });

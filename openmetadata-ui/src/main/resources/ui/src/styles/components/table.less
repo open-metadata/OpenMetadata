@@ -226,3 +226,9 @@
   margin-right: var(--om-space-8);
   color: @grey-4;
 }
+
+// Table bodies sit on bg-surface, so clamped markdown fades into that rather
+// than the page colour (a dark band in dark mode).
+tbody {
+  --markdown-clamp-fade-color: var(--om-color-bg-surface);
+}

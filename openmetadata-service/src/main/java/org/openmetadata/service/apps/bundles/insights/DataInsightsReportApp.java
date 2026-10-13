@@ -1,11 +1,10 @@
 package org.openmetadata.service.apps.bundles.insights;
 
-import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.EMAIL;
 import static org.openmetadata.service.Entity.KPI;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_CONFIG;
-import static org.openmetadata.service.util.SubscriptionUtil.getAdminsData;
+import static org.openmetadata.service.util.SubscriptionUtil.getAdminEmails;
 import static org.openmetadata.service.util.Utilities.getMonthAndDateFromEpoch;
 import static org.openmetadata.service.util.email.TemplateConstants.DATA_INSIGHT_REPORT_TEMPLATE;
 
@@ -178,7 +177,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
 
   private void sendToAdmins(SearchClient searchClient, TimeConfig timeConfig) {
     // Get Admins
-    Set<String> emailList = getAdminsData(EMAIL);
+    Set<String> emailList = getAdminEmails();
     Map<String, Object> contextData = new HashMap<>();
 
     try {

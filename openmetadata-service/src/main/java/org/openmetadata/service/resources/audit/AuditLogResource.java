@@ -449,7 +449,7 @@ public class AuditLogResource {
     }
 
     @Override
-    public EntityInterface getEntity() {
+    public EntityInterface<?> getEntity() {
       return null;
     }
 

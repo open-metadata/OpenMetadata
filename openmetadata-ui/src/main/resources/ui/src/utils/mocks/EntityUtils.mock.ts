@@ -137,6 +137,20 @@ export const highlightedEntityDescription = `This dimension table contains the b
 
 export const highlightedEntityDisplayName = `dim_<span class="text-highlighter">address</span>`;
 
+export const entityWithMarkdownDescription = {
+  ...entityWithoutNameAndDescHighlight,
+  description: '**bold** text and `code` snippet',
+};
+
+export const mockHighlightsWithMarkdown = {
+  description: [
+    '**bold** text and <span class="text-highlighter">`code`</span> snippet',
+  ],
+};
+
+export const highlightedMarkdownDescription =
+  'bold text and <span class="text-highlighter">code</span> snippet';
+
 export const mockText =
   'This is a test description to verify highlightText method.';
 

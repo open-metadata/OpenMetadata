@@ -14,14 +14,16 @@ import { AxiosError } from 'axios';
 import { createContext, useContext, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DeleteType } from '../../components/common/DeleteWidget/DeleteWidget.interface';
+import {
+  AsyncDeleteJob,
+  AsyncDeleteWebsocketResponse,
+} from '../../interface/entity/asyncDelete.interface';
 import { deleteAsyncEntity } from '../../rest/miscAPI';
 import deleteWidgetClassBase from '../../utils/DeleteWidget/DeleteWidgetClassBase';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import {
   AsyncDeleteContextType,
-  AsyncDeleteJob,
   AsyncDeleteProviderProps,
-  AsyncDeleteWebsocketResponse,
   DeleteWidgetAsyncFormFields,
 } from './AsyncDeleteProvider.interface';
 

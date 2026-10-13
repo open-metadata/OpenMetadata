@@ -12,34 +12,8 @@
  */
 import { Chart, ChartType } from '../generated/entity/data/chart';
 
-import { AreaChartColorScheme } from '../components/Visualisations/Chart/Chart.interface';
-import {
-  DQ_CHART_FAILED_COLOR,
-  DQ_CHART_SUCCESS_COLOR,
-  DQ_CHART_WARNING_COLOR,
-} from './Color.constants';
-import { WHITE_COLOR } from './constants';
-
 export const CHART_BASE_SIZE = 300;
 export const CHART_SMALL_SIZE = 200;
-
-export const ABORTED_CHART_COLOR_SCHEME: AreaChartColorScheme = {
-  gradientEndColor: WHITE_COLOR,
-  gradientStartColor: DQ_CHART_WARNING_COLOR,
-  strokeColor: DQ_CHART_WARNING_COLOR,
-};
-
-export const FAILED_CHART_COLOR_SCHEME: AreaChartColorScheme = {
-  gradientEndColor: WHITE_COLOR,
-  gradientStartColor: DQ_CHART_FAILED_COLOR,
-  strokeColor: DQ_CHART_FAILED_COLOR,
-};
-
-export const SUCCESS_CHART_COLOR_SCHEME: AreaChartColorScheme = {
-  gradientEndColor: WHITE_COLOR,
-  gradientStartColor: DQ_CHART_SUCCESS_COLOR,
-  strokeColor: DQ_CHART_SUCCESS_COLOR,
-};
 
 export const CHART_DUMMY_DATA: Chart = {
   id: '21dd6360-d1f2-4810-8759-6ab92c4f033e',

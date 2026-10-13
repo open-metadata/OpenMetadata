@@ -8,6 +8,11 @@
             "type": "command",
             "command": "if echo \"$CLAUDE_TOOL_INPUT\" | grep -q -- '--no-verify'; then echo '{\"decision\": \"block\", \"reason\": \"Do not skip pre-commit hooks with --no-verify. Fix the underlying issue instead.\"}'; exit 2; fi",
             "description": "Block --no-verify on git commits"
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.github/scripts/java_impact_map_hook.sh\" pre-pr",
+            "description": "Block git push / gh pr create while the branch leaves Java code or ITs without an impact-map area"
           }
         ]
       },
@@ -45,6 +50,16 @@
             "type": "command",
             "command": "FILE=$(echo \"$CLAUDE_TOOL_INPUT\" | jq -r '.file_path // empty' 2>/dev/null); UI=openmetadata-ui/src/main/resources/ui; case \"$FILE\" in *\"$UI\"/src/*.ts|*\"$UI\"/src/*.tsx) REL=\"${FILE#*$UI/}\"; cd \"$UI\" || exit 0; yarn --silent lint:base \"$REL\" || exit 2;; esac",
             "description": "Lint a just-written UI file so the agent sees the same eslint errors CI would report, in the same turn"
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.github/scripts/java_impact_map_hook.sh\" written",
+            "description": "Report a just-written Java or schema file no impact-map area owns, so the agent owns it in the same turn"
           }
         ]
       }

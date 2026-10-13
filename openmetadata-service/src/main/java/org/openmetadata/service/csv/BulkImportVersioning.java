@@ -48,12 +48,13 @@ public final class BulkImportVersioning {
    * keeps the outcome from becoming a cross-domain existence oracle.
    */
   public static void recordVersion(
-      EntityRepository<EntityInterface> versioningRepo,
+      EntityRepository<EntityInterface<?>> versioningRepo,
       UriInfo uriInfo,
       String targetFqn,
       String updatedBy,
       CsvImportResult result) {
-    EntityInterface target = resolveAccessibleTarget(versioningRepo, uriInfo, targetFqn, updatedBy);
+    EntityInterface<?> target =
+        resolveAccessibleTarget(versioningRepo, uriInfo, targetFqn, updatedBy);
     if (target == null) {
       LOG.info("Skipping bulk import versioning for target '{}'", targetFqn);
     } else {
@@ -61,17 +62,17 @@ public final class BulkImportVersioning {
     }
   }
 
-  private static EntityInterface resolveAccessibleTarget(
-      EntityRepository<EntityInterface> versioningRepo,
+  private static EntityInterface<?> resolveAccessibleTarget(
+      EntityRepository<EntityInterface<?>> versioningRepo,
       UriInfo uriInfo,
       String targetFqn,
       String updatedBy) {
     // Resolved before the lookup so an unresolvable principal is not mistaken for a missing target.
     SubjectContext subjectContext = SubjectContext.getSubjectContext(updatedBy);
-    EntityInterface target = null;
+    EntityInterface<?> target = null;
     try {
       String fields = versioningRepo.isSupportsDomains() ? Entity.FIELD_DOMAINS : "";
-      EntityInterface candidate =
+      EntityInterface<?> candidate =
           versioningRepo.getByName(
               uriInfo,
               targetFqn,

@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "StorageConfig",
   "description": "DeltaLake Storage Connection Config",
   "type": "object",
@@ -18,7 +17,6 @@
       "description": "Available sources to fetch files.",
       "oneOf": [
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "S3Config",
           "description": "DataLake S3 bucket will ingest metadata of files in bucket",
           "type": "object",
@@ -26,7 +24,6 @@
           "properties": {
             "securityConfig": {
               "title": "DataLake S3 Security Config",
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "description": "AWS credentials configs.",
               "type": "object",
               "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",
@@ -56,7 +53,8 @@
                 "awsSessionToken": {
                   "title": "AWS Session Token",
                   "description": "AWS Session Token.",
-                  "type": "string"
+                  "type": "string",
+                  "format": "password"
                 },
                 "endPointURL": {
                   "title": "Endpoint URL",

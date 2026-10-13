@@ -90,7 +90,7 @@ public final class CentralityComputation {
 
     String json;
     try {
-      json = repository.executeSparqlQuery(sparql, "application/sparql-results+json");
+      json = repository.executeAssertedSparqlQuery(sparql, "application/sparql-results+json");
     } catch (Exception e) {
       LOG.error("Failed to extract centrality graph for {}", classLocalName, e);
       return Map.of();

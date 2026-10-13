@@ -55,6 +55,11 @@ import org.openmetadata.service.jdbi3.ListFilter;
  *       set hasn't justified it yet.</li>
  * </ul>
  *
+ * <p>Because invalidation is write-driven, a filter whose row set changes <em>without</em> a write
+ * can never be cached safely: see {@link ListFilter#isTimeDependent()}, which {@link #getOrCompute}
+ * treats like a bypass. The announcement window filters are the case in point — an announcement
+ * crossing its start or end time changes the count with nothing to invalidate on.
+ *
  * <p>The actual listing data is always live — {@code dao.listAfter} reads from the DB on every
  * call — only {@code paging.total} can ever be stale. Falls back transparently to the supplier
  * when Redis is disabled or unavailable.
@@ -83,7 +88,7 @@ public final class ListCountCache {
    * direct compute — listing must not fail because Redis is down.
    */
   public static int getOrCompute(String entityType, ListFilter filter, IntSupplier supplier) {
-    if (EntityCacheBypass.isSkipped()) {
+    if (EntityCacheBypass.isSkipped() || filter.isTimeDependent()) {
       return supplier.getAsInt();
     }
     CacheProvider provider = CacheBundle.getCacheProvider();

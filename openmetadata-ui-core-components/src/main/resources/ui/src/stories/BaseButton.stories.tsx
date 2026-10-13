@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Edit01, Plus, Trash01 } from '@untitledui/icons';
+import { Edit01, Plus, Trash01 } from '../icons';
 import type { Meta, StoryObj } from '@storybook/react';
 import { Button } from '../components/base/buttons/button';
 
@@ -35,6 +35,7 @@ export const Default: Story = {
 };
 
 export const Colors: StoryObj = {
+  parameters: { theme: 'both' },
   render: () => (
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
       <Button color="primary">Primary</Button>
@@ -73,6 +74,7 @@ export const Sizes: StoryObj = {
 };
 
 export const WithLeadingIcon: StoryObj = {
+  parameters: { theme: 'both' },
   render: () => (
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
       <Button color="primary" iconLeading={Plus} size="xs">
@@ -108,6 +110,7 @@ export const WithTrailingIcon: StoryObj = {
 };
 
 export const IconOnly: StoryObj = {
+  parameters: { theme: 'both' },
   render: () => (
     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
       <Button color="primary" iconLeading={Plus} size="xs" />
@@ -151,6 +154,7 @@ export const Disabled: StoryObj = {
 };
 
 export const LinkColors: StoryObj = {
+  parameters: { theme: 'both' },
   render: () => (
     <div style={{ display: 'flex', gap: 16 }}>
       <Button color="link-gray">Link Gray</Button>
@@ -165,6 +169,22 @@ export const LinkColorWithTrailingIcon: StoryObj = {
     <Button color="link-color" iconTrailing={Plus}>
       Learn more
     </Button>
+  ),
+};
+
+export const BoxedLink: StoryObj = {
+  render: () => (
+    <div className="tw:flex tw:items-center tw:gap-3">
+      <Button color="link-color" size="md">
+        Back
+      </Button>
+      <Button boxed color="link-color" size="md">
+        Back
+      </Button>
+      <Button color="primary" size="md">
+        Create
+      </Button>
+    </div>
   ),
 };
 

@@ -1,6 +1,7 @@
 package org.openmetadata.service.search.lineage;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.search.SearchClient.FQN_FIELD;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -27,6 +28,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.search.LineagePathPreserver;
 import org.openmetadata.service.search.QueryFilterParser;
 import org.openmetadata.service.search.lineage.LineageFilterClassifier.FilterClassification;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
  * Abstract base class for lineage graph builders.
@@ -517,6 +519,47 @@ public abstract class AbstractLineageGraphBuilder implements LineageGraphExecuto
 
     return estimateGraphSize(estimationContext);
   }
+
+  /**
+   * What a lineage walk reads from each document: the name, and each upstream edge's source and
+   * timestamps, which find the next level and apply the time window. Whole documents (every column,
+   * every edge's column mappings and SQL) are loaded only for the page being returned.
+   */
+  public static final List<String> LINEAGE_WALK_FIELDS =
+      List.of(
+          FQN_FIELD,
+          "upstreamLineage.fromEntity.fqnHash",
+          "upstreamLineage.fromEntity.fullyQualifiedName",
+          "upstreamLineage.createdAt",
+          "upstreamLineage.updatedAt");
+
+  /**
+   * The page's whole documents, with the fields the caller asked for. The root keeps the document
+   * it was loaded with; an upstream walk also passes through it, but only with the walk's fields.
+   */
+  protected Map<String, Map<String, Object>> pageDocuments(
+      List<String> pageFqns, EntityCountLineageRequest request, SearchLineageResult result)
+      throws IOException {
+    Map<String, Map<String, Object>> documents = new HashMap<>();
+    NodeInformation root = result.getNodes().get(request.getFqn());
+    if (root != null) {
+      documents.put(request.getFqn(), JsonUtils.getMap(root.getEntity()));
+    }
+    Set<String> hashes = new HashSet<>();
+    for (String fqn : pageFqns) {
+      if (!documents.containsKey(fqn)) {
+        hashes.add(FullyQualifiedName.buildHash(fqn));
+      }
+    }
+    if (!hashes.isEmpty()) {
+      documents.putAll(documentsByHash(hashes, request));
+    }
+    return documents;
+  }
+
+  /** Whole documents for these FQN hashes, with the fields the request asked for, keyed by FQN. */
+  protected abstract Map<String, Map<String, Object>> documentsByHash(
+      Set<String> hashes, EntityCountLineageRequest request) throws IOException;
 
   /**
    * Abstract method for backend-specific graph size estimation.

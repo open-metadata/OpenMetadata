@@ -1,0 +1,198 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import {
+  Box,
+  Button,
+  FieldProp,
+  FieldTypes,
+  FormFields,
+  HookForm,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { AxiosError } from 'axios';
+import { trim } from 'lodash';
+import React, { useRef, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
+import { ERROR_MESSAGE } from '../../../../../../constants/constants';
+import {
+  CreatePolicy,
+  Rule,
+} from '../../../../../../generated/api/policies/createPolicy';
+import { addPolicy } from '../../../../../../rest/rolesAPIV1';
+import { getIsErrorMatch } from '../../../../../../utils/APIUtils';
+import {
+  showErrorToast,
+  showSuccessToast,
+} from '../../../../../../utils/ToastUtils';
+import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
+import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
+import { INITIAL_RULE } from './AccessControl.constants';
+import type { AccessControlView } from './AccessControl.types';
+import AccessControlRuleForm from './AccessControlRuleForm';
+
+interface FormValues {
+  name: string;
+}
+
+interface AccessControlAddPolicyFormProps {
+  onNavigate: (view: AccessControlView) => void;
+}
+
+const AccessControlAddPolicyForm: React.FC<AccessControlAddPolicyFormProps> = ({
+  onNavigate,
+}) => {
+  const { t } = useTranslation();
+  const descEditorRef = useRef<EditorContentRef>(null);
+
+  const form = useForm<FormValues>({
+    defaultValues: { name: '' },
+  });
+
+  const ruleForm = useForm<Rule>({ defaultValues: INITIAL_RULE });
+
+  const nameFields: FieldProp[] = [
+    {
+      name: 'name',
+      label: t('label.name'),
+      type: FieldTypes.TEXT,
+      required: true,
+      placeholder: t('label.policy-name'),
+      props: { 'data-testid': 'policy-name-input' },
+      rules: {
+        required: t('label.field-required', { field: t('label.name') }),
+      },
+    },
+  ];
+
+  const [isSaveLoading, setIsSaveLoading] = useState(false);
+
+  const handleCreate = async () => {
+    let ruleData: Rule | undefined;
+
+    // Validate rule form first — sets isSubmitted=true so errors clear on change
+    await ruleForm.handleSubmit((data) => {
+      ruleData = data;
+    })();
+
+    // Validate policy form separately — shows name error even if rule form was invalid
+    await form.handleSubmit(async (policyData) => {
+      if (!ruleData) {
+        return; // rule form invalid: its errors are already visible, abort save
+      }
+
+      setIsSaveLoading(true);
+      try {
+        const description = descEditorRef.current?.getEditorContent() ?? '';
+        const { condition, ...rest } = {
+          ...ruleData,
+          name: trim(ruleData.name),
+        };
+        const payload: CreatePolicy = {
+          name: trim(policyData.name),
+          description,
+          rules: [condition ? { ...rest, condition } : rest],
+        };
+        await addPolicy(payload);
+        showSuccessToast(
+          t('server.create-entity-success', { entity: t('label.policy') })
+        );
+        onNavigate({ type: 'policies' });
+      } catch (error) {
+        showErrorToast(
+          getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
+            ? t('server.entity-already-exist', {
+                entity: t('label.policy'),
+                entityPlural: t('label.policy-plural'),
+                name: trim(policyData.name),
+              })
+            : (error as AxiosError)
+        );
+      } finally {
+        setIsSaveLoading(false);
+      }
+    })();
+  };
+
+  return (
+    <Box className="tw:h-full tw:min-h-0" direction="col">
+      {/* Scrollable form area */}
+      <div className="tw:overflow-y-auto">
+        <HookForm form={form}>
+          <Box
+            className="tw:flex-1 tw:p-6 tw:max-w-[50%] tw:w-full tw:pt-0"
+            data-testid="add-policy-container"
+            direction="col"
+            gap={5}>
+            <FormFields fields={nameFields} />
+
+            <Box direction="col" gap={1}>
+              <Typography
+                className="tw:text-secondary"
+                size="text-sm"
+                weight="medium">
+                {t('label.description')}
+              </Typography>
+              <RichTextEditor
+                className="new-form-style"
+                data-testid="policy-description-input"
+                placeHolder={t('message.write-your-description')}
+                ref={descEditorRef}
+              />
+            </Box>
+
+            {/* Rule section */}
+            <Box direction="col" gap={3}>
+              <Box
+                className="tw:border-t tw:border-secondary tw:pt-4"
+                direction="col">
+                <Typography
+                  className="tw:text-primary"
+                  size="text-sm"
+                  weight="semibold">
+                  {t('label.add-entity', { entity: t('label.rule') })}
+                </Typography>
+              </Box>
+              <AccessControlRuleForm form={ruleForm} />
+            </Box>
+          </Box>
+        </HookForm>
+      </div>
+
+      {/* Fixed footer */}
+      <Box
+        className="tw:shrink-0 tw:border-t tw:border-secondary tw:bg-primary tw:px-6 tw:py-4"
+        data-testid="add-policy-footer"
+        direction="row"
+        gap={3}
+        justify="end">
+        <Button
+          color="tertiary"
+          data-testid="cancel-btn"
+          onPress={() => onNavigate({ type: 'policies' })}>
+          {t('label.cancel')}
+        </Button>
+        <Button
+          color="primary"
+          data-testid="submit-btn"
+          isLoading={isSaveLoading}
+          onPress={() => void handleCreate()}>
+          {t('label.create')}
+        </Button>
+      </Box>
+    </Box>
+  );
+};
+
+export default AccessControlAddPolicyForm;

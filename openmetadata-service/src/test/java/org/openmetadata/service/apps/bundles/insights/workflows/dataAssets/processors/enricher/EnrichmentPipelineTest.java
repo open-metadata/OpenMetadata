@@ -312,7 +312,7 @@ class EnrichmentPipelineTest {
   }
 
   private static EnrichmentTarget newTargetWithFqn(String fqn) {
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     when(entity.getFullyQualifiedName()).thenReturn(fqn);
     return new EnrichmentTarget(
         entity,

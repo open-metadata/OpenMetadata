@@ -42,7 +42,7 @@ public record ConversationResourceContext(Conversation conversation)
   }
 
   @Override
-  public EntityInterface getEntity() {
+  public EntityInterface<?> getEntity() {
     return null;
   }
 

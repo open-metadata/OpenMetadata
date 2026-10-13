@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Tooltip, Typography } from 'antd';
+import { Tooltip, Typography } from '@openmetadata/ui-core-components';
 import {
   cloneDeep,
   groupBy,
@@ -64,11 +64,11 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   highlightSearchArrayElement,
   highlightSearchText,
+  renderHighlightedText,
 } from '../../../utils/EntitySearchUtils';
 import { getColumnSorter } from '../../../utils/EntitySortUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { makeData } from '../../../utils/SearchIndexUtils';
-import { stringToHTML } from '../../../utils/StringUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
   getHighlightedRowClassName,
@@ -255,10 +255,14 @@ const SearchIndexFieldsTable = ({
           {shouldShowPlainText ? (
             toLower(displayValue)
           ) : (
-            <Tooltip title={toLower(displayValue)}>
-              <Typography.Text ellipsis className="cursor-pointer">
+            <Tooltip
+              arrow
+              excludeTriggerFromTabOrder
+              title={toLower(displayValue)}
+              triggerClassName="tw:block tw:min-w-0">
+              <Typography ellipsis className="cursor-pointer">
                 {highlightSearchArrayElement(displayValue, searchText)}
-              </Typography.Text>
+              </Typography>
             </Tooltip>
           )}
         </div>
@@ -310,7 +314,7 @@ const SearchIndexFieldsTable = ({
             className="d-inline-flex items-start gap-1 hover-icon-group flex-column"
             style={{ maxWidth: '80%' }}>
             <span className="break-word text-link-color">
-              {stringToHTML(
+              {renderHighlightedText(
                 highlightSearchText(getEntityName(record), searchText)
               )}
             </span>

@@ -12,7 +12,7 @@
  */
 
 import { Badge, ButtonUtility } from '@openmetadata/ui-core-components';
-import { Trash01 } from '@untitledui/icons';
+import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { deleteEntity } from '../../../../rest/miscAPI';

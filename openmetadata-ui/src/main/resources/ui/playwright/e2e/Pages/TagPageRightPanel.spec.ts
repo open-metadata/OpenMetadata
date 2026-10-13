@@ -145,8 +145,11 @@ test.describe('Tag Page Assets - Right Panel', () => {
     await rightPanel.waitForPanelLoaded();
 
     await expect(
-      rightPanel.getSummaryPanel().getByTestId('entity-link').first()
-    ).toBeVisible();
+      rightPanel
+        .getSummaryPanel()
+        .getByTestId('entity-link')
+        .filter({ visible: true })
+    ).not.toHaveCount(0);
   });
 
   test('Should display overview tab content in tag assets page context', async ({
@@ -170,7 +173,8 @@ test.describe('Tag Page Assets - Right Panel', () => {
   }) => {
     test.slow();
     await adminPage.goto(
-      `/tag/${encodeURIComponent(testTag.responseData.fullyQualifiedName)}`
+      `/tag/${encodeURIComponent(testTag.responseData.fullyQualifiedName)}`,
+      { waitUntil: 'domcontentloaded' }
     );
 
     const panelLocator = adminPage.locator('.entity-summary-panel-container');

@@ -10,6 +10,8 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.teams.User;
@@ -19,6 +21,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
 import org.openmetadata.service.search.queries.QueryBuilderFactory;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
+import org.openmetadata.service.security.policyevaluator.ServiceAttributeResolver;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.springframework.expression.ExpressionParser;
 import org.springframework.expression.spel.SpelNode;
@@ -26,6 +29,7 @@ import org.springframework.expression.spel.ast.MethodReference;
 import org.springframework.expression.spel.ast.OpAnd;
 import org.springframework.expression.spel.ast.OpOr;
 import org.springframework.expression.spel.ast.OperatorNot;
+import org.springframework.expression.spel.ast.StringLiteral;
 import org.springframework.expression.spel.standard.SpelExpression;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
@@ -40,6 +44,17 @@ public class RBACConditionEvaluator {
   private final StandardEvaluationContext spelContext;
   private static final Set<MetadataOperation> SEARCH_RELEVANT_OPS =
       Set.of(MetadataOperation.VIEW_BASIC, MetadataOperation.VIEW_ALL, MetadataOperation.ALL);
+
+  /**
+   * Function names already reported by {@link #warnUntranslatedFunction}. Conditions that ship in
+   * the product hit that path — {@code TeamOnlyPolicy} carries {@code !matchTeam()} on {@code All}
+   * operations — and the ElasticSearch path has no compiled-query cache, so warning per call would
+   * emit a line on every search request from every affected user. Capped because the names come
+   * from user-authored policy conditions.
+   */
+  private static final Set<String> WARNED_UNTRANSLATED_FUNCTIONS = ConcurrentHashMap.newKeySet();
+
+  private static final int MAX_WARNED_UNTRANSLATED_FUNCTIONS = 128;
 
   public RBACConditionEvaluator(QueryBuilderFactory queryBuilderFactory) {
     this.queryBuilderFactory = queryBuilderFactory;
@@ -241,17 +256,63 @@ public class RBACConditionEvaluator {
         List<String> teams = extractMethodArguments(methodRef);
         inAnyTeam(teams, collector);
       }
+      case "matchAnyServiceTag" -> matchAnyServiceAttribute(
+          extractMethodArguments(methodRef),
+          ServiceAttributeResolver::serviceIdsForTags,
+          collector);
+      case "matchAnyServiceName" -> matchAnyServiceAttribute(
+          extractMethodArguments(methodRef),
+          ServiceAttributeResolver::serviceIdsForNames,
+          collector);
+      case "matchAnyServiceEnvironment" -> matchAnyServiceAttribute(
+          extractMethodArguments(methodRef),
+          ServiceAttributeResolver::serviceIdsForEnvironments,
+          collector);
+      case "matchAnyServiceType" -> matchAnyServiceType(
+          extractMethodArguments(methodRef), collector);
+      default -> warnUntranslatedFunction(methodName);
     }
+  }
+
+  /**
+   * A {@code @Function} with no case above contributes no clause, and the resulting query is wrong
+   * in a way nothing else reports: a scoped Allow rule widens to every document in its indices, a
+   * scoped Deny hides those indices outright, and an {@code All}-scoped rule is dropped entirely.
+   * Warn so adding a policy function without a search translation is at least visible.
+   */
+  private void warnUntranslatedFunction(String methodName) {
+    if (WARNED_UNTRANSLATED_FUNCTIONS.size() >= MAX_WARNED_UNTRANSLATED_FUNCTIONS
+        || !WARNED_UNTRANSLATED_FUNCTIONS.add(methodName)) {
+      return;
+    }
+    LOG.warn(
+        "No search translation for policy condition function '{}'. Its clause is omitted from the "
+            + "RBAC search filter, so search results may not match the authorization decision "
+            + "for this rule. This is logged once per function name.",
+        methodName);
   }
 
   private List<String> extractMethodArguments(MethodReference methodRef) {
     List<String> args = new ArrayList<>();
     for (int i = 0; i < methodRef.getChildCount(); i++) {
-      SpelNode childNode = methodRef.getChild(i);
-      String value = childNode.toStringAST().replace("'", "");
-      args.add(value);
+      args.add(literalArgumentValue(methodRef.getChild(i)));
     }
     return args;
+  }
+
+  /**
+   * Reads a condition argument as the value the SpEL parser resolved, not as its source text. The
+   * previous approach stripped every {@code '} from {@code toStringAST()}, which mangled any
+   * argument whose own content contains an apostrophe — {@code 'Business Glossary.Men''s Wear'}
+   * became {@code Business Glossary.Mens Wear}. The REST evaluator receives the un-mangled literal
+   * from SpEL, so a mangled argument here makes the search filter disagree with the authorization
+   * decision on the very same rule.
+   */
+  private String literalArgumentValue(SpelNode node) {
+    if (node instanceof StringLiteral stringLiteral) {
+      return String.valueOf(stringLiteral.getLiteralValue().getValue());
+    }
+    return node.toStringAST();
   }
 
   public void matchAnyTag(List<String> tags, ConditionCollector collector) {
@@ -279,6 +340,70 @@ public class RBACConditionEvaluator {
       OMQueryBuilder tagQuery = queryBuilderFactory.termQuery("tags.tagFQN", tag);
       collector.addMust(tagQuery);
     }
+  }
+
+  /**
+   * Matches every asset ingested by a service that {@code resolveServiceIds} maps {@code arguments}
+   * to, plus the service documents themselves so a Deny hides a service alongside its assets —
+   * mirroring {@code ResourceContext} treating a service as its own service.
+   *
+   * <p>No arguments, or arguments matching no service, means the condition is provably false for
+   * every document, and that must be said explicitly rather than by emitting {@code
+   * terms(service.id, [])}. An empty terms clause is indistinguishable from a real one to {@link
+   * ConditionCollector} — it is neither {@code isEmpty}, {@code isMatchNone} nor {@code isMatchAll}
+   * — so the OR and NOT short-circuits never fire, and the correctness of the resulting query rests
+   * on undocumented empty-terms behaviour in two client libraries. {@code setMatchNothing} is what
+   * {@code hasAnyRole} and {@code inAnyTeam} already use for the same "decided in Java" situation.
+   */
+  private void matchAnyServiceAttribute(
+      List<String> arguments,
+      Function<List<String>, Set<String>> resolveServiceIds,
+      ConditionCollector collector) {
+    if (arguments.isEmpty()) {
+      collector.setMatchNothing(true);
+      return;
+    }
+    Set<String> serviceIds = resolveServiceIds.apply(arguments);
+    if (serviceIds.isEmpty()) {
+      collector.setMatchNothing(true);
+      return;
+    }
+    List<String> ids = List.copyOf(serviceIds);
+    collector.addMust(
+        queryBuilderFactory
+            .boolQuery()
+            .should(
+                List.of(
+                    queryBuilderFactory.termsQuery("service.id", ids),
+                    queryBuilderFactory.termsQuery("id.keyword", ids))));
+  }
+
+  /**
+   * {@code serviceType} is indexed on most asset documents and on the service document, and its
+   * mapping carries a lowercase normalizer that is applied to the query term too — matching the
+   * case-insensitive comparison the REST evaluator makes.
+   *
+   * <p>It is not enough on its own. Six indexes — {@code ingestion_pipeline}, {@code query},
+   * {@code query_cost_record}, {@code test_case}, {@code test_case_result} and
+   * {@code test_case_resolution_status} — index {@code service} without {@code serviceType}, so a
+   * type-only clause would leave those documents visible under a Deny the REST path enforces. The
+   * resolved service ids are OR'd in to cover them; the two clauses are redundant everywhere else,
+   * which is harmless.
+   */
+  private void matchAnyServiceType(List<String> serviceTypes, ConditionCollector collector) {
+    if (serviceTypes.isEmpty()) {
+      collector.setMatchNothing(true);
+      return;
+    }
+    List<OMQueryBuilder> clauses = new ArrayList<>();
+    clauses.add(queryBuilderFactory.termsQuery("serviceType", serviceTypes));
+    Set<String> serviceIds = ServiceAttributeResolver.serviceIdsForTypes(serviceTypes);
+    if (!serviceIds.isEmpty()) {
+      List<String> ids = List.copyOf(serviceIds);
+      clauses.add(queryBuilderFactory.termsQuery("service.id", ids));
+      clauses.add(queryBuilderFactory.termsQuery("id.keyword", ids));
+    }
+    collector.addMust(queryBuilderFactory.boolQuery().should(clauses));
   }
 
   public void matchAnyCertification(

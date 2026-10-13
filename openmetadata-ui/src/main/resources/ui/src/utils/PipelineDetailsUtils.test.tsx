@@ -14,7 +14,7 @@
 import { Pipeline, TagSource } from '../generated/entity/data/pipeline';
 import { EntityReference } from '../generated/type/entityReference';
 import { LabelType, State } from '../generated/type/tagLabel';
-import { extractPipelineTasks } from './PipelineDetailsUtils';
+import { extractPipelineTasks } from './TablePureUtils';
 
 type PipelineTestData = Partial<Pipeline> &
   Pick<Omit<EntityReference, 'type'>, 'id'>;

@@ -15,6 +15,7 @@ Test dbt cloud using the topology
 import json
 import uuid
 from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
@@ -2980,3 +2981,72 @@ class DBTCloudUnitTest(TestCase):
         self.assertEqual(len(edges), 1)
         self.assertEqual(str(edges[0].edge.fromEntity.id.root), str(mock_source_table.id.root))
         self.assertEqual(str(edges[0].edge.toEntity.id.root), str(mock_model_table.id.root))
+
+
+class TestDbtCloudLineageObservabilityContext:
+    """
+    yield_pipeline_lineage_details is what populates the context the observability stage
+    reads, and that context outlives the job being processed while ``latest_run`` is
+    refreshed for every job. So a path that leaves this stage without repopulating the
+    context hands the *previous* job's entity and tables to *this* job's run, rewriting
+    rows that were already correct.
+    """
+
+    @staticmethod
+    def _source(pipeline_entity=None, lineage_error=None):
+        source = DbtcloudSource.__new__(DbtcloudSource)
+        source.metadata = MagicMock()
+        source.metadata.get_by_name.return_value = pipeline_entity
+        source.client = MagicMock()
+        if lineage_error is not None:
+            source.client.get_models_with_lineage.side_effect = lineage_error
+
+        ctx = SimpleNamespace(
+            pipeline_service="dbtcloud_pipeline_test",
+            pipeline="Current Job",
+            latest_run_id=12345,
+            current_pipeline_entity="stale entity from the previous job",
+            current_table_fqns={"local_redshift.dev.dbt_test_new.previous_model"},
+        )
+        source.context = MagicMock()
+        source.context.get.return_value = ctx
+        return source, ctx
+
+    def test_resets_observability_context_when_the_pipeline_is_missing(self):
+        """
+        A job whose pipeline entity cannot be resolved -- the entity failed to be
+        created, or its PUT errored -- returns early, so it must clear the previous
+        job's entity and tables first.
+        """
+        source, ctx = self._source(pipeline_entity=None)
+
+        with patch(
+            "metadata.ingestion.source.pipeline.dbtcloud.metadata.fqn.build",
+            return_value="dbtcloud_pipeline_test.Current Job",
+        ):
+            results = list(source.yield_pipeline_lineage_details(EXPECTED_JOB_DETAILS))
+
+        assert results == []
+        assert ctx.current_pipeline_entity is None
+        assert ctx.current_table_fqns == set()
+
+    def test_resets_observability_context_when_lineage_fails(self):
+        """
+        The stage swallows its own failures into an Either(left), and the observability
+        stage still runs after it, so a mid-stage error must not leave the previous
+        job's context behind either.
+        """
+        source, ctx = self._source(
+            pipeline_entity=MagicMock(),
+            lineage_error=RuntimeError("dbt Cloud GraphQL is down"),
+        )
+
+        with patch(
+            "metadata.ingestion.source.pipeline.dbtcloud.metadata.fqn.build",
+            return_value="dbtcloud_pipeline_test.Current Job",
+        ):
+            results = list(source.yield_pipeline_lineage_details(EXPECTED_JOB_DETAILS))
+
+        assert [result for result in results if result.left is not None]
+        assert ctx.current_pipeline_entity is None
+        assert ctx.current_table_fqns == set()

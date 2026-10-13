@@ -109,9 +109,10 @@ public class PatchEntityTool implements McpTool {
     // policy model.
     CommonUtils.enforceEntityVisibility(entityType, fqn, securityContext);
 
-    EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
+    EntityRepository<? extends EntityInterface<?>> repository =
+        Entity.getEntityRepository(entityType);
     String userName = securityContext.getUserPrincipal().getName();
-    RestUtil.PatchResponse<? extends EntityInterface> response =
+    RestUtil.PatchResponse<? extends EntityInterface<?>> response =
         repository.patch(
             null,
             fqn,

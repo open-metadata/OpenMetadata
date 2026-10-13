@@ -1,0 +1,138 @@
+{
+  "$id": "https://open-metadata.org/schema/api/rdf/rdfReasoningJob.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RdfReasoningJob",
+  "description": "Durable state of a reasoning job in the RDF store. Execution state, the answer of a check, and the freshness of a published snapshot are separate: a SUCCEEDED check can answer INCOMPLETE, and a SUCCEEDED refresh can publish a snapshot that is already STALE.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.rdf.RdfReasoningJob",
+  "definitions": {
+    "state": {
+      "javaType": "org.openmetadata.schema.api.rdf.RdfReasoningJobState",
+      "description": "Execution state. A refresh SUCCEEDED once its snapshot is published; a check or explanation once it has an outcome. CANCELLED is reported only after execution has stopped. INTERRUPTED means the store restarted while the job was unfinished and discarded its unpublished work.",
+      "type": "string",
+      "enum": [
+        "QUEUED",
+        "RUNNING",
+        "SUCCEEDED",
+        "FAILED",
+        "CANCELLED",
+        "INTERRUPTED"
+      ]
+    },
+    "outcome": {
+      "javaType": "org.openmetadata.schema.api.rdf.RdfReasoningOutcome",
+      "description": "Answer of a check or explanation, as the entailment of one axiom: SUBSUMPTION checks classExpression subClassOf superClassExpression, ENTAILMENT and EXPLAIN check the statement, SATISFIABILITY checks classExpression subClassOf owl:Nothing (ENTAILED means unsatisfiable), and a consistent closure answers CONSISTENCY with NOT_ENTAILED. NOT_ENTAILED means a complete check found no entailment; it does not prove the negation. INCONSISTENT means the closure has no model, so the answer carries no information. INCOMPLETE means a problem stopped the check before it could answer.",
+      "type": "string",
+      "enum": ["ENTAILED", "NOT_ENTAILED", "INCONSISTENT", "INCOMPLETE"]
+    },
+    "problemCode": {
+      "javaType": "org.openmetadata.schema.api.rdf.RdfReasoningProblemCode",
+      "description": "INVALID_REQUEST: the request failed validation. NOT_READY: reasoning is disabled or cannot run safely. GENERATION_MISMATCH: the requested dataset generation no longer serves. SUPERSEDED: a refresh with a later source revision has already published. MISSING_IMPORT, PROFILE_VIOLATION and INCONSISTENT_ONTOLOGY: an import closure is missing an import, is not OWL 2 DL, or has no model. LIMIT_EXCEEDED: a configured limit was reached. MEMORY_BUDGET_EXHAUSTED: the worker ran out of heap. WORKER_LOST: the worker exited without a result. RULE_FAILED: a governance rule failed to evaluate. INTERNAL: any other error.",
+      "type": "string",
+      "enum": [
+        "INVALID_REQUEST",
+        "NOT_READY",
+        "GENERATION_MISMATCH",
+        "SUPERSEDED",
+        "MISSING_IMPORT",
+        "PROFILE_VIOLATION",
+        "INCONSISTENT_ONTOLOGY",
+        "LIMIT_EXCEEDED",
+        "MEMORY_BUDGET_EXHAUSTED",
+        "WORKER_LOST",
+        "RULE_FAILED",
+        "INTERNAL"
+      ]
+    },
+    "problem": {
+      "javaType": "org.openmetadata.schema.api.rdf.RdfReasoningProblem",
+      "description": "Why a job FAILED, or why a check answered INCOMPLETE.",
+      "type": "object",
+      "properties": {
+        "code": {
+          "$ref": "#/definitions/problemCode"
+        },
+        "message": {
+          "type": "string"
+        },
+        "subject": {
+          "description": "What the problem concerns: the ontology IRI for an import-closure problem, the limit's name in capabilities for LIMIT_EXCEEDED, or the rule's name for RULE_FAILED.",
+          "type": "string"
+        },
+        "step": {
+          "description": "The step that hit the problem, such as capture, classify, rules or publish.",
+          "type": "string"
+        }
+      },
+      "required": ["code", "message"],
+      "additionalProperties": false
+    },
+    "progress": {
+      "javaType": "org.openmetadata.schema.api.rdf.RdfReasoningProgress",
+      "description": "Coarse progress for display, not a time estimate.",
+      "type": "object",
+      "properties": {
+        "step": {
+          "type": "string"
+        },
+        "completedSteps": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "totalSteps": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Job identifier.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "requestId": {
+      "description": "Idempotency key of the request that created the job.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "operation": {
+      "$ref": "rdfReasoningJobRequest.json#/definitions/operation"
+    },
+    "state": {
+      "$ref": "#/definitions/state"
+    },
+    "cancelRequested": {
+      "description": "Cancellation was requested. The state stays RUNNING until execution has stopped.",
+      "type": "boolean",
+      "default": false
+    },
+    "input": {
+      "$ref": "rdfReasoningSnapshot.json#/definitions/input"
+    },
+    "outcome": {
+      "$ref": "#/definitions/outcome"
+    },
+    "snapshotId": {
+      "description": "Snapshot a SUCCEEDED refresh published.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "progress": {
+      "$ref": "#/definitions/progress"
+    },
+    "problem": {
+      "$ref": "#/definitions/problem"
+    },
+    "submittedAt": {
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "startedAt": {
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "completedAt": {
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    }
+  },
+  "required": ["id", "requestId", "operation", "state", "input", "submittedAt"],
+  "additionalProperties": false
+}

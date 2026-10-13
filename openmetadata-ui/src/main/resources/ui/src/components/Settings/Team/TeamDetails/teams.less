@@ -36,7 +36,7 @@
 }
 
 .roles-and-policy {
-  > .ant-space-item:first-child {
+  > :is(.ant-space-item, .layout-space-item):first-child {
     align-self: flex-end;
   }
 }
@@ -122,14 +122,8 @@
   }
 
   .teams-profile-container {
-    .ant-card {
-      background: var(--tw-color-bg-primary);
-    }
     .collapse-panel-container {
       padding: var(--om-space-20);
-    }
-    .ant-card-head {
-      background: var(--tw-color-bg-primary);
     }
 
     .ant-collapse-header,

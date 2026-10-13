@@ -72,12 +72,12 @@ export const getIsImpersonationOnlyDisclosure = (
 
 export const getBodyClassName = (
   isGatedCredentialConfig: boolean,
-  isNestedConfigGrid: boolean
+  isGenericNestedConfig: boolean
 ): string => {
   if (isGatedCredentialConfig) {
     return 'core-object-field-template-body-gated';
   }
-  if (isNestedConfigGrid) {
+  if (isGenericNestedConfig) {
     return 'core-object-field-template-body-grid tw:grid tw:grid-flow-row-dense tw:[grid-template-columns:repeat(3,minmax(0,1fr))] tw:[gap:16px] tw:items-start tw:w-full tw:min-w-0';
   }
 
@@ -97,9 +97,6 @@ export const shouldRenderNullTemplate = (
 
 export const getNonRootPanelClassName = (
   flatPropertyLayout: boolean,
-  isSampleDataSection: boolean,
-  isSampleDataConfig: boolean,
-  isAwsS3StorageConfig: boolean,
   isGatedCredentialConfig: boolean,
   isGenericNestedConfig: boolean
 ): string =>
@@ -107,11 +104,6 @@ export const getNonRootPanelClassName = (
     'core-object-field-template core-object-field-template-non-root tw:flex tw:flex-col tw:w-full tw:min-w-0',
     'tw:gap-4',
     !flatPropertyLayout && 'tw:rounded-xl tw:bg-utility-gray-blue-50',
-    isSampleDataSection && 'core-object-field-template-sample-data-section',
-    isSampleDataConfig &&
-      'core-object-field-template-sample-data-config tw:mt-4 tw:box-border tw:w-full tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:p-4',
-    isAwsS3StorageConfig &&
-      'core-object-field-template-storage-config tw:mt-4 tw:gap-4 tw:box-border tw:w-full tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:p-4',
     isGatedCredentialConfig &&
       'core-object-field-template-gated-credential-block',
     isGenericNestedConfig && 'core-object-field-template-credential-block'

@@ -98,6 +98,7 @@ export enum Operation {
     EditUsage = "EditUsage",
     EditUserNotificationTemplate = "EditUserNotificationTemplate",
     EditUsers = "EditUsers",
+    ExecuteSparqlQuery = "ExecuteSparqlQuery",
     GenerateToken = "GenerateToken",
     Impersonate = "Impersonate",
     Kill = "Kill",

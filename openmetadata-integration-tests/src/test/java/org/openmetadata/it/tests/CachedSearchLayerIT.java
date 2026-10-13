@@ -59,6 +59,21 @@ class CachedSearchLayerIT {
   private static final String SEARCH_PATH = "/v1/search/query";
   private static final String STATS_PATH = "/v1/system/cache/stats";
 
+  @Test
+  void entityTypeCountsReuseTheAuthorizedSearchCache() {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String query = "count_cache_" + System.nanoTime();
+    Stats before = readStats(client);
+    String first = client.search().entityTypeCounts().query(query).index("table").execute();
+    String second = client.search().entityTypeCounts().query(query).index("table").execute();
+    if (before.cacheEnabled) {
+      assertEquals(first, second, "cached counts retain the same result and search metadata");
+      assertTrue(
+          readStats(client).searchHits - before.searchHits >= 1,
+          "the per-type count should reuse its cached search");
+    }
+  }
+
   /**
    * The same query from the same principal hits the cache on call 2+. Verify by capturing the
    * application-level metrics block delta — we expect at least one increment in

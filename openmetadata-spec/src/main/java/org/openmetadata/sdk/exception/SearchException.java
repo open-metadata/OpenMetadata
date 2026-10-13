@@ -15,6 +15,14 @@ public class SearchException extends WebServiceException {
     super(status, ERROR_TYPE, message);
   }
 
+  /**
+   * Reports {@code message} under an explicit status. Search failures caused by the caller's own
+   * request are a 400, not the 500 the single-argument constructor implies.
+   */
+  public static SearchException withStatus(Response.Status status, String message) {
+    return new SearchException(status, message);
+  }
+
   public static SearchException byMessage(
       String name, String errorMessage, Response.Status status) {
     return new SearchException(status, buildMessageByName(name, errorMessage));

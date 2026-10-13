@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import React, { useMemo } from 'react';
 import { Edge, useReactFlow, useViewport } from 'reactflow';
 import { ReactComponent as IconEditCircle } from '../../../assets/svg/ic-edit-circle.svg';
 import { ReactComponent as IconTimesCircle } from '../../../assets/svg/ic-times-circle.svg';
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import { computePathDataForEdge } from '../../../utils/CanvasUtils';
+import { t } from '../../../utils/i18next/LocalUtil';
 import { getAbsolutePosition } from '../../../utils/ViewportUtils';
 
 export interface EdgeInteractionOverlayProps {
@@ -69,17 +70,16 @@ export const EdgeInteractionOverlay: React.FC<EdgeInteractionOverlayProps> = ({
     return (
       <div key={`edit-${edge.id}`} style={buttonPosition}>
         <Button
-          className="cursor-pointer d-flex"
+          aria-label={t('label.add-entity', { entity: t('label.pipeline') })}
+          color="link-color"
           data-testid="add-pipeline"
-          icon={
+          iconLeading={
             <Icon
               alt="edit-circle"
-              className="align-middle"
               component={IconEditCircle}
               style={{ fontSize: '16px' }}
             />
           }
-          type="link"
           onClick={() => onPipelineClick?.()}
         />
       </div>
@@ -96,17 +96,16 @@ export const EdgeInteractionOverlay: React.FC<EdgeInteractionOverlayProps> = ({
     return (
       <div key={`delete-${edge.id}`} style={buttonPosition}>
         <Button
-          className="cursor-pointer d-flex"
+          aria-label={t('label.delete-entity', { entity: t('label.edge') })}
+          color="link-color"
           data-testid="delete-button"
-          icon={
+          iconLeading={
             <Icon
               alt="times-circle"
-              className="align-middle"
               component={IconTimesCircle}
               style={{ fontSize: '16px' }}
             />
           }
-          type="link"
           onClick={() => onEdgeRemove?.()}
         />
       </div>

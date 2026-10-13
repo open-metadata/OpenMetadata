@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "MetadataESConnection",
   "description": "Metadata to ElasticSearch Connection Config",
   "type": "object",

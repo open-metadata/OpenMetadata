@@ -10,97 +10,41 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Browser, Page } from '@playwright/test';
-import { test as base } from '../../support/fixtures/base';
-import { installServerLoadReducers } from '../../support/fixtures/serverLoad';
-import { disableEtagConditionalReads } from '../../utils/common';
+import { Page } from '@playwright/test';
+import {
+  test as userPagesTest,
+  UserPages,
+} from '../../support/fixtures/userPages';
 
-// Define the type for our custom fixtures
-export type CustomFixtures = {
+/**
+ * The role-page fixtures with the built-in `page` aliased to `adminPage`.
+ *
+ * This is the only difference from `support/fixtures/userPages.ts`, which owns
+ * every role page and all the construction logic. The two used to be
+ * near-identical copies that had already drifted — one had `viewOnlyPage`, the
+ * other did not — so the pages themselves now live in exactly one place and this
+ * module adds only the alias.
+ *
+ * Which one to import:
+ *
+ * - **this module** when the spec is admin-first and wants `{ page }` to be a
+ *   signed-in admin, optionally taking a role page alongside it;
+ * - **`support/fixtures/userPages`** when the spec drives named roles explicitly
+ *   and wants `page` left as Playwright's own (so a file-level
+ *   `test.use({ storageState })` still applies).
+ *
+ * `page` here ignores `test.use({ storageState })` — it is always the admin
+ * storage state. That is deliberate and long-standing; use the other module if
+ * you need `storageState` to win.
+ */
+export type CustomFixtures = UserPages & {
   page: Page;
-  dataConsumerPage: Page;
-  dataStewardPage: Page;
-  editDescriptionPage: Page;
-  editTagsPage: Page;
-  editGlossaryTermPage: Page;
-  viewOnlyPage: Page;
-  ownerPage: Page;
 };
 
-// Open a role page with conditional reads disabled so fixture-based specs
-// always receive fresh entity state.
-const openRolePage = async (browser: Browser, storageState: string) => {
-  const page = await browser.newPage({ storageState });
-  await installServerLoadReducers(page.context());
-  await disableEtagConditionalReads(page);
-
-  return page;
-};
-
-// Create a new test object with our custom fixtures
-export const test = base.extend<CustomFixtures>({
-  // Admin page as default page value
-  page: async ({ browser }, use) => {
-    const adminPage = await openRolePage(
-      browser,
-      'playwright/.auth/admin.json'
-    );
-
+export const test = userPagesTest.extend<{ page: Page }>({
+  page: async ({ adminPage }, use) => {
     await use(adminPage);
-    await adminPage.close();
-  },
-  dataConsumerPage: async ({ browser }, use) => {
-    const page = await openRolePage(
-      browser,
-      'playwright/.auth/dataConsumer.json'
-    );
-
-    await use(page);
-    await page.close();
-  },
-  dataStewardPage: async ({ browser }, use) => {
-    const page = await openRolePage(
-      browser,
-      'playwright/.auth/dataSteward.json'
-    );
-
-    await use(page);
-    await page.close();
-  },
-  ownerPage: async ({ browser }, use) => {
-    const page = await openRolePage(browser, 'playwright/.auth/owner.json');
-
-    await use(page);
-    await page.close();
-  },
-  editDescriptionPage: async ({ browser }, use) => {
-    const page = await openRolePage(
-      browser,
-      'playwright/.auth/editDescription.json'
-    );
-
-    await use(page);
-    await page.close();
-  },
-  editTagsPage: async ({ browser }, use) => {
-    const page = await openRolePage(browser, 'playwright/.auth/editTags.json');
-
-    await use(page);
-    await page.close();
-  },
-  editGlossaryTermPage: async ({ browser }, use) => {
-    const page = await openRolePage(
-      browser,
-      'playwright/.auth/editGlossaryTerm.json'
-    );
-
-    await use(page);
-    await page.close();
-  },
-  viewOnlyPage: async ({ browser }, use) => {
-    const page = await openRolePage(browser, 'playwright/.auth/viewOnly.json');
-
-    await use(page);
-    await page.close();
   },
 });
+
+export { expect } from '@playwright/test';

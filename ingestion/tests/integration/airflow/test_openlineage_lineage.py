@@ -166,13 +166,13 @@ def ensure_ol_settings():
     assert resp.status_code == 200, f"Failed to set OL settings: {resp.text}"
 
 
-def _send_ol_event(
+def _post_ol_event(
     job_namespace: str,
     job_name: str,
     inputs: list,
     outputs: list,
     run_id: str = None,  # noqa: RUF013
-) -> dict:
+) -> requests.Response:
     event = {
         "eventType": "COMPLETE",
         "eventTime": "2026-03-23T12:00:00Z",
@@ -183,7 +183,17 @@ def _send_ol_event(
         "inputs": inputs,
         "outputs": outputs,
     }
-    resp = requests.post(OL_ENDPOINT, headers=AUTH_HEADERS, json=event, timeout=10)
+    return requests.post(OL_ENDPOINT, headers=AUTH_HEADERS, json=event, timeout=10)
+
+
+def _send_ol_event(
+    job_namespace: str,
+    job_name: str,
+    inputs: list,
+    outputs: list,
+    run_id: str = None,  # noqa: RUF013
+) -> dict:
+    resp = _post_ol_event(job_namespace, job_name, inputs, outputs, run_id)
     assert resp.status_code == 200, f"OL endpoint returned {resp.status_code}: {resp.text}"
     return resp.json()
 
@@ -221,13 +231,16 @@ def ol_lineage_result(ensure_ol_settings, ol_entities):
     deadline = time.monotonic() + 120
     result = {}
     while time.monotonic() < deadline:
-        result = _send_ol_event(
+        # Until the tables resolve, the event is rejected with 400 and the datasets it could not
+        # resolve, so keep retrying rather than asserting on the first answer.
+        resp = _post_ol_event(
             job_namespace="airflow_e2e_lineage",
             job_name="sample_transform",
             inputs=[_dataset(SOURCE_TABLE)],
             outputs=[_dataset(TARGET_TABLE)],
         )
-        if result.get("lineageEdgesCreated", 0) > 0:
+        result = resp.json()
+        if resp.status_code == 200 and result.get("lineageEdgesCreated", 0) > 0:
             return result
         time.sleep(5)
 
@@ -290,15 +303,18 @@ class TestOpenLineageResolvesExistingTables:
         assert pipeline_ref["type"] == "pipeline"
         assert PIPELINE_NAME in pipeline_ref.get("fullyQualifiedName", "")
 
-    def test_no_edges_for_nonexistent_tables(self, ensure_ol_settings):
-        """OL events with unknown table names should create 0 edges."""
-        result = _send_ol_event(
+    def test_rejects_event_whose_tables_do_not_resolve(self, ensure_ol_settings):
+        """An event whose datasets match no table, under an unmapped namespace, is rejected."""
+        resp = _post_ol_event(
             job_namespace="test",
             job_name="unknown_job",
             inputs=[{"namespace": "nonexistent_service", "name": "fake_schema.fake_table"}],
             outputs=[{"namespace": "nonexistent_service", "name": "fake_schema.fake_output"}],
         )
+        assert resp.status_code == 400, resp.text
+        result = resp.json()
         assert result["lineageEdgesCreated"] == 0
+        assert {dataset["reason"] for dataset in result["unresolvedDatasets"]} == {"namespaceNotMapped"}
 
     def test_no_edges_for_empty_inputs_outputs(self, ensure_ol_settings):
         """OL events with no inputs/outputs should create 0 edges."""

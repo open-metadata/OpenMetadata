@@ -11,8 +11,5 @@
  *  limitations under the License.
  */
 
-export const NOTIFICATION_TEMPLATES_DOCS =
-  'https://docs.getcollate.io/how-to-guides/data-quality-observability/alerts-notifications/notification-templates/index';
-
 // Service doc panel constant for the observability alert form.
 export const OBSERVABILITY_ALERT_FORM = 'ObservabilityAlertForm';

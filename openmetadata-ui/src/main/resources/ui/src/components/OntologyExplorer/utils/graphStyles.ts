@@ -95,6 +95,13 @@ import {
   EDGE_LABEL_FONT_WEIGHT,
   EDGE_LABEL_LETTER_SPACING,
   LABEL_TEXT_ALIGN_LEFT,
+  METRIC_NODE_FILL,
+  METRIC_NODE_FILL_FALLBACK,
+  METRIC_NODE_LINE_DASH,
+  METRIC_NODE_MUTED_COLOR,
+  METRIC_NODE_MUTED_COLOR_FALLBACK,
+  METRIC_NODE_STROKE,
+  METRIC_NODE_STROKE_FALLBACK,
   NODE_BORDER_COLOR,
   NODE_BORDER_RADIUS,
   NODE_FILL_DEFAULT,
@@ -110,6 +117,7 @@ import {
   NODE_SHADOW_COLOR_FALLBACK,
   NODE_SHADOW_OFFSET_Y,
   RELATION_META,
+  STUDIO_METRIC_NODE_KIND,
   TERM_LABEL_BG_PADDING,
 } from '../OntologyExplorer.constants';
 import { computeCardinalityLabelAttrs } from './cardinalityLabelUtils';
@@ -197,6 +205,40 @@ export const getCanvasColor = resolveCssColor;
 export const STUDIO_EDIT_PORT_KEY = 'ontology-edit';
 export const STUDIO_EDIT_PORT_CLASS_NAME = `port-${STUDIO_EDIT_PORT_KEY}`;
 
+export interface StudioMetricNodeStyle {
+  fill: string;
+  lineDash: number[];
+  stroke: string;
+  studioEditMode: false;
+  studioMutedColor: string;
+  studioNodeKind: typeof STUDIO_METRIC_NODE_KIND;
+}
+
+// Metrics have no typed relationships to author, so they get no edit handle.
+export function buildStudioMetricNodeStyle(
+  getColor: (cssVar: string, fallback: string) => string
+): StudioMetricNodeStyle {
+  return {
+    fill: getColor(METRIC_NODE_FILL, METRIC_NODE_FILL_FALLBACK),
+    lineDash: METRIC_NODE_LINE_DASH,
+    stroke: getColor(METRIC_NODE_STROKE, METRIC_NODE_STROKE_FALLBACK),
+    studioEditMode: false,
+    studioMutedColor: getColor(
+      METRIC_NODE_MUTED_COLOR,
+      METRIC_NODE_MUTED_COLOR_FALLBACK
+    ),
+    studioNodeKind: STUDIO_METRIC_NODE_KIND,
+  };
+}
+
+// Bar-chart glyph drawn in place of the accent dot: [x offset, bar height].
+const METRIC_GLYPH_BARS: ReadonlyArray<[number, number]> = [
+  [-3.5, 4],
+  [0, 7],
+  [3.5, 10],
+];
+const METRIC_GLYPH_BASELINE_OFFSET = 5;
+
 class StudioTermNode extends RectNode {
   override render(
     attributes: Required<RectStyleProps>,
@@ -211,22 +253,16 @@ class StudioTermNode extends RectNode {
     }
 
     const centerY = (bounds.min[1] + bounds.max[1]) / 2;
-    const dotCenterX = bounds.min[0] + 15.5;
     const labelX = bounds.min[0] + 26;
-    const accentColor =
-      typeof attrs.studioAccentColor === 'string'
-        ? getCanvasColor(attrs.studioAccentColor, '#84CAFF')
-        : '#84CAFF';
+    const mutedColor =
+      typeof attrs.studioMutedColor === 'string'
+        ? attrs.studioMutedColor
+        : undefined;
 
-    this.upsert(
-      'studio-dot',
-      GCircle,
-      {
-        cx: dotCenterX,
-        cy: centerY,
-        r: 3.5,
-        fill: accentColor,
-      },
+    this.renderMarker(
+      attrs,
+      [bounds.min[0] + 15.5, centerY],
+      mutedColor,
       container
     );
     this.upsert(
@@ -236,7 +272,9 @@ class StudioTermNode extends RectNode {
         x: labelX,
         y: centerY,
         text: String(attrs.studioLabelText ?? ''),
-        fill: getCanvasColor(NODE_LABEL_FILL, NODE_LABEL_FILL_FALLBACK),
+        fill:
+          mutedColor ??
+          getCanvasColor(NODE_LABEL_FILL, NODE_LABEL_FILL_FALLBACK),
         fontFamily: 'Inter',
         fontSize: NODE_LABEL_FONT_SIZE,
         fontWeight: NODE_LABEL_FONT_WEIGHT,
@@ -274,6 +312,48 @@ class StudioTermNode extends RectNode {
       container
     );
   }
+
+  // A metric shows a bar-chart glyph where a concept shows its accent dot.
+  private renderMarker(
+    attrs: Record<string, unknown>,
+    [centerX, centerY]: [number, number],
+    mutedColor: string | undefined,
+    container: Group
+  ): void {
+    const isMetric = attrs.studioNodeKind === STUDIO_METRIC_NODE_KIND;
+    const accentColor =
+      typeof attrs.studioAccentColor === 'string'
+        ? getCanvasColor(attrs.studioAccentColor, '#84CAFF')
+        : '#84CAFF';
+    const baselineY = centerY + METRIC_GLYPH_BASELINE_OFFSET;
+
+    this.upsert(
+      'studio-dot',
+      GCircle,
+      isMetric
+        ? false
+        : { cx: centerX, cy: centerY, r: 3.5, fill: accentColor },
+      container
+    );
+    METRIC_GLYPH_BARS.forEach(([offsetX, height], index) => {
+      this.upsert(
+        `studio-metric-bar-${index}`,
+        GLine,
+        isMetric
+          ? {
+              x1: centerX + offsetX,
+              y1: baselineY,
+              x2: centerX + offsetX,
+              y2: baselineY - height,
+              stroke: mutedColor,
+              lineWidth: 2,
+              lineCap: 'round',
+            }
+          : false,
+        container
+      );
+    });
+  }
 }
 register(ExtensionCategory.NODE, 'studio-term', StudioTermNode);
 
@@ -306,9 +386,12 @@ function parseColorToRgbTriplet(val: string): [number, number, number] | null {
 function mixAccentLikeScale50(rgb: [number, number, number]): string {
   const t = GLOSSARY_HEADER_MIX_ACCENT;
   const clamp = (n: number) => Math.min(255, Math.max(0, n));
-  const r = clamp(Math.round(rgb[0] * t + 255 * (1 - t)));
-  const g = clamp(Math.round(rgb[1] * t + 255 * (1 - t)));
-  const b = clamp(Math.round(rgb[2] * t + 255 * (1 - t)));
+  const surface = parseColorToRgbTriplet(
+    getCanvasColor(NODE_FILL_DEFAULT, '#ffffff')
+  ) ?? [255, 255, 255];
+  const r = clamp(Math.round(rgb[0] * t + surface[0] * (1 - t)));
+  const g = clamp(Math.round(rgb[1] * t + surface[1] * (1 - t)));
+  const b = clamp(Math.round(rgb[2] * t + surface[2] * (1 - t)));
   const x = (n: number) => n.toString(16).padStart(2, '0');
 
   return `#${x(r)}${x(g)}${x(b)}`;
@@ -316,10 +399,10 @@ function mixAccentLikeScale50(rgb: [number, number, number]): string {
 
 /**
  * Glossary combo header: light "50" wash matching the glossary accent (title + border stroke).
- * For `var(--color-*-scale)` strokes, resolves `var(--color-*-50)`. For hex palette strokes, blends toward white.
+ * Token strokes use the palette’s 50 shade. Stored custom colors blend toward the active surface.
  */
 export function glossaryComboHeaderFill(stroke: string): string {
-  const blendTowardWhite = (): string => {
+  const blendTowardSurface = (): string => {
     const resolved = stroke.startsWith('var(')
       ? getCanvasColor(stroke, '#94a3b8')
       : stroke;
@@ -329,13 +412,13 @@ export function glossaryComboHeaderFill(stroke: string): string {
   };
 
   if (stroke.startsWith('var(')) {
-    const m = stroke.match(/^var\((--color-[a-z0-9-]+)-\d{2,3}\)$/i);
+    const m = /^var\((--tw-color-[a-z0-9-]+)-\d{2,3}\)$/i.exec(stroke);
     if (m) {
-      return getCanvasColor(`var(${m[1]}-50)`, blendTowardWhite());
+      return getCanvasColor(`var(${m[1]}-50)`, blendTowardSurface());
     }
   }
 
-  return blendTowardWhite();
+  return blendTowardSurface();
 }
 
 export const LABEL_PLACEMENT_BOTTOM = 'bottom';
@@ -511,17 +594,24 @@ const STUDIO_EDGE_LABEL_PADDING: [number, number, number, number] = [
   2, 7, 2, 7,
 ];
 const STUDIO_EDGE_BORDER_BY_COLOR: Record<string, string> = {
-  '#079455': '#ABEFC6',
-  '#0e9384': '#99E5D9',
-  '#1570ef': '#D1E9FF',
-  '#3538cd': '#C7D7FE',
-  '#5925dc': '#D9D6FE',
-  '#6172f3': '#C7D7FE',
-  '#717680': '#E9EAEB',
-  '#7a5af8': '#E3DEFC',
-  '#c11574': '#FCCEEE',
-  '#dc6803': '#FEDF89',
-  '#e31b54': '#FECDD6',
+  // Built-in foregrounds use utility-700; their badge border uses the same palette's utility-200.
+  ...Object.fromEntries(
+    Object.values(COLOR_META_BY_HEX).map(({ color }) => [
+      color,
+      color.replace('-700)', '-200)'),
+    ])
+  ),
+  '#079455': 'var(--tw-color-utility-success-200)',
+  '#0e9384': 'var(--tw-color-utility-teal-200)',
+  '#1570ef': 'var(--tw-color-utility-brand-200)',
+  '#3538cd': 'var(--tw-color-utility-indigo-200)',
+  '#5925dc': 'var(--tw-color-utility-violet-200)',
+  '#6172f3': 'var(--tw-color-utility-indigo-200)',
+  '#717680': 'var(--tw-color-utility-gray-200)',
+  '#7a5af8': 'var(--tw-color-utility-purple-200)',
+  '#c11574': 'var(--tw-color-utility-pink-200)',
+  '#dc6803': 'var(--tw-color-utility-warning-200)',
+  '#e31b54': 'var(--tw-color-utility-rose-200)',
 };
 
 export function getEffectiveRelationColor(
@@ -568,7 +658,7 @@ const getEdgeLabelBackgroundFill = (
   getColor: (cssVar: string, fallback: string) => string
 ): string => {
   if (studioMode) {
-    return '#FFFFFF';
+    return getColor(EDGE_LABEL_BG_FILL, '#FFFFFF');
   }
 
   return meta
@@ -583,7 +673,10 @@ const getEdgeLabelBackgroundStroke = (
   getColor: (cssVar: string, fallback: string) => string
 ): string => {
   if (studioMode) {
-    return studioBorderColor ?? '#E9EAEB';
+    return getColor(
+      studioBorderColor ?? 'var(--tw-color-border-primary)',
+      '#E9EAEB'
+    );
   }
 
   return meta ? 'none' : getColor(EDGE_LABEL_BG_STROKE, '#FFF');

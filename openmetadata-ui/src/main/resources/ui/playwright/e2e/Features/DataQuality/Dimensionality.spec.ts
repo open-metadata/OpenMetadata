@@ -18,6 +18,7 @@ import {
 import { TableClass } from '../../../support/entity/TableClass';
 import { createNewPage, redirectToHomePage } from '../../../utils/common';
 import {
+  expectFormHint,
   ObservabilityFeature,
   selectAddObservabilityFeature,
 } from '../../../utils/dataQuality';
@@ -84,20 +85,15 @@ test(
       await testCaseDoc;
 
       await page.click('[id="root\\/column"]');
-      await page.locator('[data-id="column"]').waitFor({ state: 'visible' });
-
-      await expect(page.locator('[data-id="column"]')).toBeVisible();
+      await expectFormHint(page, 'Select Column');
 
       await page
         .getByRole('option')
         .filter({ hasText: NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.column })
-        .first()
         .click();
 
       await page.locator('[id="root\\/dimensionColumns"]').click();
-      await page.locator('[data-id="dimensionColumns"]').waitFor({
-        state: 'visible',
-      });
+      await expectFormHint(page, 'Select Dimensions');
 
       await expect(
         page
@@ -106,11 +102,7 @@ test(
       ).not.toBeVisible();
 
       for (const dimension of NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.dimensions) {
-        await page
-          .getByRole('option')
-          .filter({ hasText: dimension })
-          .first()
-          .click();
+        await page.getByRole('option').filter({ hasText: dimension }).click();
       }
 
       await page.keyboard.press('Escape');
@@ -156,9 +148,7 @@ test(
       );
 
       await page.locator('[id="root\\/dimensionColumns"]').click();
-      await page.locator('[data-id="dimensionColumns"]').waitFor({
-        state: 'visible',
-      });
+      await expectFormHint(page, 'Select Dimensions');
 
       await expect(
         page
@@ -171,7 +161,6 @@ test(
         .filter({
           hasText: NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.editDimensions[0],
         })
-        .first()
         .click();
 
       await page.keyboard.press('Escape');

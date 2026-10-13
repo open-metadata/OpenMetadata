@@ -20,8 +20,10 @@ type PickerRange = { start: DateValue; end: DateValue } | null;
 export interface DqDateRangeFilterProps {
   startTs?: number;
   endTs?: number;
-  /** `sm` shrinks the core `md` trigger to match the sm filter inputs. */
+  /** `sm` matches the trigger to the sm filter inputs. */
   size?: 'sm' | 'md';
+  /** Stretch the trigger across its container, like the inputs beside it. */
+  fullWidth?: boolean;
   /** Controlled popover open state (for single-open filter coordination). */
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -38,6 +40,7 @@ export const DqDateRangeFilter = ({
   startTs,
   endTs,
   size = 'md',
+  fullWidth = false,
   isOpen,
   onOpenChange,
   onApply,
@@ -58,15 +61,28 @@ export const DqDateRangeFilter = ({
     setValue(start && end ? { start, end } : null);
   }, [startTs, endTs]);
 
-  // Discard any uncommitted (staged) selection whenever the picker closes —
-  // including when single-open coordination force-closes it (isOpen -> false,
-  // which react-aria won't report via onOpenChange) — so reopening shows the
-  // applied range, not an abandoned one.
+  // Discard any uncommitted (staged) selection when single-open coordination
+  // force-closes the picker (isOpen -> false). react-aria does NOT emit
+  // onOpenChange for this externally-driven close, so the effect below is the
+  // only signal for that path. User-initiated closes (Escape / outside click /
+  // Apply / Cancel) are handled by `handleOpenChange` instead (see below).
   useEffect(() => {
     if (isOpen === false) {
       setValue(buildValue());
     }
   }, [isOpen]);
+
+  // Intercept every close event — including uncontrolled usage where the
+  // caller passes no `isOpen`/`onOpenChange` — so an abandoned (never-applied)
+  // selection is reverted and reopening shows the committed range. The
+  // `[isOpen]` effect above covers the force-close path react-aria won't
+  // report here; together they cover both close origins.
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      setValue(buildValue());
+    }
+    onOpenChange?.(open);
+  };
 
   const handleApply = () => {
     if (value?.start && value?.end) {
@@ -83,23 +99,17 @@ export const DqDateRangeFilter = ({
     setValue(buildValue());
   };
 
-  const picker = (
+  return (
     <DateRangePicker
+      fullWidth={fullWidth}
       isOpen={isOpen}
+      size={size}
       value={value}
       onApply={handleApply}
       onCancel={handleCancel}
       onChange={setValue}
-      onOpenChange={onOpenChange}
+      onOpenChange={handleOpenChange}
     />
-  );
-
-  // The core DateRangePicker trigger is a hardcoded `md` button; scope-override
-  // its inline trigger padding down to `sm` so it lines up with the sm inputs.
-  return size === 'sm' ? (
-    <div className="tw:[&_button]:px-3! tw:[&_button]:py-2!">{picker}</div>
-  ) : (
-    picker
   );
 };
 

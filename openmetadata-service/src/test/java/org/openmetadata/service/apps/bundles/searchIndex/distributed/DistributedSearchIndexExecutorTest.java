@@ -49,6 +49,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.ElasticSearchBulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder;
 import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
+import org.openmetadata.service.apps.bundles.searchIndex.ReindexStopSignal;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingConfiguration;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingMetrics;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingProgressListener;
@@ -318,6 +319,64 @@ class DistributedSearchIndexExecutorTest {
     assertTrue(executor.isStopped());
     verify(worker, times(1)).stop();
     verify(coordinator, times(1)).requestStop(job.getId());
+  }
+
+  /**
+   * Regression: a stop that lands while {@code createJob()} is still building partitions finds no
+   * job to stop. {@code execute()} then started the job anyway, leaving it RUNNING with none of our
+   * workers on it, so peer servers adopted it as an orphan, reindexed what the user had stopped,
+   * and the app run stayed "running" for good.
+   */
+  @Test
+  void executeEndsJobStoppedBeforeItStartedInsteadOfStartingIt() throws Exception {
+    UUID jobId = UUID.randomUUID();
+    SearchIndexJob readyJob =
+        SearchIndexJob.builder().id(jobId).status(IndexJobStatus.READY).build();
+    ReindexingProgressListener listener = mock(ReindexingProgressListener.class);
+    executor.addListener(listener);
+    executor.stop();
+    setField("currentJob", readyJob);
+    when(coordinator.getJob(jobId)).thenReturn(Optional.of(readyJob));
+    when(coordinator.getJobWithAggregatedStats(jobId))
+        .thenReturn(readyJob.withStatus(IndexJobStatus.STOPPED));
+
+    DistributedSearchIndexExecutor.ExecutionResult result =
+        executor.execute(
+            mock(BulkSink.class),
+            stagedContext("table"),
+            ReindexingConfiguration.builder().entities(Set.of("table")).build());
+
+    assertEquals(IndexJobStatus.STOPPED, result.status());
+    verify(coordinator, never()).startJob(jobId);
+    verify(coordinator).requestStop(jobId);
+    verify(coordinator).releaseReindexLock(jobId);
+    verify(listener, never()).onJobStarted(any());
+  }
+
+  @Test
+  void executorCreatedForAnAlreadyStoppedRunIsStopped() {
+    ReindexStopSignal stopSignal = new ReindexStopSignal();
+    stopSignal.requestStop();
+
+    DistributedSearchIndexExecutor lateExecutor =
+        new DistributedSearchIndexExecutor(collectionDAO, 10, stopSignal);
+
+    assertTrue(lateExecutor.isStopped());
+  }
+
+  @Test
+  void stoppingTheRunStopsTheExecutorAndItsJob() throws Exception {
+    ReindexStopSignal stopSignal = new ReindexStopSignal();
+    executor = new DistributedSearchIndexExecutor(collectionDAO, 10, stopSignal);
+    setField("coordinator", coordinator);
+    SearchIndexJob job =
+        SearchIndexJob.builder().id(UUID.randomUUID()).status(IndexJobStatus.RUNNING).build();
+    setField("currentJob", job);
+
+    stopSignal.requestStop();
+
+    assertTrue(executor.isStopped());
+    verify(coordinator).requestStop(job.getId());
   }
 
   /**

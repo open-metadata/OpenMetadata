@@ -42,7 +42,7 @@ final class IntakeChecks {
 
   private IntakeChecks() {}
 
-  static IntakeChecksResponse compute(EntityInterface entity) {
+  static IntakeChecksResponse compute(EntityInterface<?> entity) {
     List<IntakeCheck> checks = new ArrayList<>();
     checks.add(intakeCheck(OWNER_ASSIGNED, hasOwner(entity), null));
     checks.add(intakeCheck(RISK_CLASSIFIED, hasRisk(entity), null));
@@ -57,11 +57,11 @@ final class IntakeChecks {
     return new IntakeCheck().withName(name).withPassing(passing).withEvidenceRef(evidenceRef);
   }
 
-  private static boolean hasOwner(EntityInterface entity) {
+  private static boolean hasOwner(EntityInterface<?> entity) {
     return !nullOrEmpty(entity.getOwners());
   }
 
-  private static boolean hasRisk(EntityInterface entity) {
+  private static boolean hasRisk(EntityInterface<?> entity) {
     boolean result =
         riskAssessmentDeclared(entity) || euRiskClassificationPresent(aiCompliance(entity));
     if (!result && entity instanceof LLMModel llm) {
@@ -70,7 +70,7 @@ final class IntakeChecks {
     return result;
   }
 
-  private static boolean hasFairnessEvidence(EntityInterface entity) {
+  private static boolean hasFairnessEvidence(EntityInterface<?> entity) {
     boolean result = false;
     if (entity instanceof AIApplication app
         && app.getBiasMetrics() != null
@@ -84,12 +84,12 @@ final class IntakeChecks {
     return result;
   }
 
-  private static boolean hasDpia(EntityInterface entity) {
+  private static boolean hasDpia(EntityInterface<?> entity) {
     AIEvidence evidence = evidence(entity);
     return evidence != null && !nullOrEmpty(evidence.getDpiaUrl());
   }
 
-  private static boolean hasTransparency(EntityInterface entity) {
+  private static boolean hasTransparency(EntityInterface<?> entity) {
     AICompliance aiCompliance = aiCompliance(entity);
     boolean result = false;
     if (aiCompliance != null && aiCompliance.getComplianceRecords() != null) {
@@ -106,7 +106,7 @@ final class IntakeChecks {
     return result;
   }
 
-  private static boolean riskAssessmentDeclared(EntityInterface entity) {
+  private static boolean riskAssessmentDeclared(EntityInterface<?> entity) {
     boolean result = false;
     if (entity instanceof AIApplication app && app.getGovernanceMetadata() != null) {
       GovernanceMetadata governance = app.getGovernanceMetadata();
@@ -135,7 +135,7 @@ final class IntakeChecks {
     return result;
   }
 
-  private static AICompliance aiCompliance(EntityInterface entity) {
+  private static AICompliance aiCompliance(EntityInterface<?> entity) {
     AICompliance result = null;
     if (entity instanceof AIApplication app && app.getGovernanceMetadata() != null) {
       result = app.getGovernanceMetadata().getAiCompliance();
@@ -145,7 +145,7 @@ final class IntakeChecks {
     return result;
   }
 
-  private static AIEvidence evidence(EntityInterface entity) {
+  private static AIEvidence evidence(EntityInterface<?> entity) {
     AIEvidence result = null;
     if (entity instanceof AIApplication app && app.getGovernanceMetadata() != null) {
       result = app.getGovernanceMetadata().getEvidence();

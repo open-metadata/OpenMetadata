@@ -35,6 +35,9 @@ export interface FormData {
   authorizerConfiguration: AuthorizerConfiguration;
 }
 
+/** JSON pointers, per setting, of the fields the deployment configuration owns. */
+export type SecurityManagedPaths = Partial<Record<keyof FormData, string[]>>;
+
 export interface SSOConfigurationFormProps {
   forceEditMode?: boolean;
   onChangeProvider?: () => void;
@@ -42,4 +45,7 @@ export interface SSOConfigurationFormProps {
   selectedProvider?: string;
   hideBorder?: boolean;
   securityConfig?: SecurityConfiguration | null;
+  managedPaths?: SecurityManagedPaths;
+  /** Nothing here can be changed, so the form only displays the configuration. */
+  isReadOnly?: boolean;
 }

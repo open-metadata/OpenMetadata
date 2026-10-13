@@ -716,14 +716,13 @@ export const EntityExportModalProvider = ({
     // CSV-only exports skip the modal and surface in the global CsvJobsTray
     // (the metrics export UX). Fire the async export, then nudge the tray to
     // pick up the new job.
-    const exportGeneration = ++exportGenerationRef.current;
+    // A new tray export invalidates modal-bound work, but not another tray
+    // export: every invocation owns its response and can complete concurrently.
+    exportGenerationRef.current++;
     setExportData(null);
     try {
       const result = await data.onExport(data.name, { recursive: true });
-      if (
-        !isMountedRef.current ||
-        exportGenerationRef.current !== exportGeneration
-      ) {
+      if (!isMountedRef.current) {
         return;
       }
       if (isString(result)) {
@@ -735,10 +734,7 @@ export const EntityExportModalProvider = ({
         window.dispatchEvent(new Event(CSV_JOBS_REFRESH_EVENT));
       }
     } catch (error) {
-      if (
-        !isMountedRef.current ||
-        exportGenerationRef.current !== exportGeneration
-      ) {
+      if (!isMountedRef.current) {
         return;
       }
       showErrorToast(error as AxiosError);

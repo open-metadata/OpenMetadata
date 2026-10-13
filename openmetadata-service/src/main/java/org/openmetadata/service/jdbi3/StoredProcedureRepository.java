@@ -196,12 +196,13 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
 
   @Override
   protected void applyInheritance(
-      StoredProcedure entity, EntityUtil.Fields fields, EntityInterface parent) {
+      StoredProcedure entity, EntityUtil.Fields fields, EntityInterface<?> parent) {
     if (!(parent instanceof DatabaseSchema schema)) {
       return;
     }
     inheritOwners(entity, fields, schema);
     inheritDomains(entity, fields, schema);
+    inheritTags(entity, fields, schema);
   }
 
   private void setDefaultFields(StoredProcedure storedProcedure) {
@@ -258,7 +259,7 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
   }
 
   @Override
-  public EntityInterface getParentEntity(StoredProcedure entity, String fields) {
+  public EntityInterface<?> getParentEntity(StoredProcedure entity, String fields) {
     return Entity.getEntity(entity.getDatabaseSchema(), fields, Include.ALL);
   }
 

@@ -14,6 +14,7 @@ import { APIRequestContext, expect, Page } from '@playwright/test';
 import { omit } from 'lodash';
 import {
   createOrFetch,
+  deleteFixtureEntity,
   okJson,
   withNotFoundRetry,
 } from '../../utils/apiResponse';
@@ -97,7 +98,8 @@ export class Glossary extends EntityClass {
     const fqn =
       this?.responseData?.fullyQualifiedName ?? this.data.fullyQualifiedName;
 
-    const response = await apiContext.delete(
+    const response = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/glossaries/name/${encodeURIComponent(
         fqn
       )}?recursive=true&hardDelete=true`

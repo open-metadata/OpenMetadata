@@ -217,7 +217,9 @@ describe('BulkEditEntity', () => {
     it('should render breadcrumb with correct links', () => {
       renderComponent();
 
-      const breadcrumbItems = screen.getAllByTestId('breadcrumb-item');
+      const breadcrumbItems = within(
+        screen.getByTestId('title-breadcrumb')
+      ).getAllByRole('listitem');
 
       expect(breadcrumbItems).toHaveLength(4);
       expect(breadcrumbItems[0]).toHaveTextContent('label.governance');
@@ -557,7 +559,9 @@ describe('BulkEditEntity', () => {
       renderComponent({ breadcrumbList: [] });
 
       expect(screen.getByTestId('title-breadcrumb')).toBeInTheDocument();
-      expect(screen.getAllByTestId('breadcrumb-item')).toHaveLength(2);
+      expect(
+        within(screen.getByTestId('title-breadcrumb')).getAllByRole('listitem')
+      ).toHaveLength(2);
     });
 
     it('should handle undefined validationData at UPDATE step', () => {

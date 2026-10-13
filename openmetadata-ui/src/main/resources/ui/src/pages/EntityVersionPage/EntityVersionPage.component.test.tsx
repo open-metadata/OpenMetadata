@@ -11,11 +11,9 @@
  *  limitations under the License.
  */
 import { act, render, screen } from '@testing-library/react';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { Operation } from '../../generated/entity/policies/policy';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import EntityVersionPage from './EntityVersionPage.component';

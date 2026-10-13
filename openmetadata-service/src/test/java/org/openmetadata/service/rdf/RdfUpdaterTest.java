@@ -16,23 +16,32 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.openmetadata.schema.api.rdf.RdfReasoningFreshness;
+import org.openmetadata.schema.api.rdf.RdfReasoningInput;
+import org.openmetadata.schema.api.rdf.RdfSourceRevision;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityRelationship;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.rdf.reasoning.ReasoningFreshness;
 import org.openmetadata.service.util.PostCommitActionQueue;
 
 class RdfUpdaterTest {
@@ -137,6 +146,50 @@ class RdfUpdaterTest {
     RdfUpdater.removeGlossaryTermRelation(fromId, toId, "broader");
     assertEquals(
         List.of(new RdfLiveWrite.GlossaryRelationChange(fromId, toId, "broader", true)), submitted);
+  }
+
+  @Test
+  void anUntrackedWriteThatCannotBeRecordedLeavesReasoningFreshnessUnknown()
+      throws ReflectiveOperationException {
+    final AtomicLong failures = new AtomicLong();
+    final RdfLiveWriteStore store = mock(RdfLiveWriteStore.class);
+    when(store.recordUntrackedWrite()).thenThrow(new IllegalStateException("SQL unavailable"));
+    doAnswer(
+            invocation -> {
+              failures.incrementAndGet();
+              return null;
+            })
+        .when(store)
+        .markDegraded(anyString());
+    when(store.isDegraded()).thenAnswer(invocation -> failures.get() > 0);
+    final Field storeField = RdfUpdater.class.getDeclaredField("liveWriteStore");
+    storeField.setAccessible(true);
+    final Object originalStore = storeField.get(null);
+    storeField.set(null, store);
+    RdfProjectionHealth.initialize(store);
+    try {
+      final UUID generation = UUID.randomUUID();
+      final RdfReasoningInput input =
+          new RdfReasoningInput()
+              .withSourceRevision(
+                  new RdfSourceRevision()
+                      .withDatasetGeneration(generation)
+                      .withLiveWriteWatermark(0L));
+
+      RdfUpdater.recordUntrackedWrite();
+
+      assertTrue(RdfProjectionHealth.isDegraded());
+      assertEquals(
+          RdfReasoningFreshness.UNKNOWN,
+          ReasoningFreshness.of(
+              input,
+              new ReasoningFreshness.Serving(
+                  generation, 0, RdfProjectionHealth.isDegraded(), null, null)));
+    } finally {
+      storeField.set(null, originalStore);
+      RdfProjectionHealth.initialize(null);
+      RdfProjectionHealth.markReady();
+    }
   }
 
   @Test

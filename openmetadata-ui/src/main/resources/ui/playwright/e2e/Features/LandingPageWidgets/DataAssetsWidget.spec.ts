@@ -21,6 +21,7 @@ import { TopicClass } from '../../../support/entity/TopicClass';
 import { test } from '../../../support/fixtures/base';
 import { createNewPage, redirectToHomePage } from '../../../utils/common';
 import { checkDataAssetWidget } from '../../../utils/entity';
+import { pickEntityMatrix } from '../../../utils/entityMatrix';
 
 const entities = [
   TableClass,
@@ -30,12 +31,12 @@ const entities = [
   ContainerClass,
   MlModelClass,
   SearchIndexClass,
-] as const;
+];
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-entities.forEach((EntityClass) => {
+pickEntityMatrix(__filename, entities, [TableClass]).forEach((EntityClass) => {
   const entity = new EntityClass();
 
   test.describe(entity.getType(), () => {

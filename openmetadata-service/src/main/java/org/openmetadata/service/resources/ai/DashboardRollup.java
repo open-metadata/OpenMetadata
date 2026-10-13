@@ -85,15 +85,15 @@ final class DashboardRollup {
 
   private static void collectAssets(String entityType, String fields, List<RolledAsset> out) {
     try {
-      EntityRepository<? extends EntityInterface> repository =
+      EntityRepository<? extends EntityInterface<?>> repository =
           Entity.getEntityRepository(entityType);
       Fields parsedFields = repository.getFields(fields);
       ListFilter filter = new ListFilter();
       String after = null;
       do {
-        ResultList<? extends EntityInterface> page =
+        ResultList<? extends EntityInterface<?>> page =
             repository.listAfter(null, parsedFields, filter, PAGE_SIZE, after);
-        for (EntityInterface entity : page.getData()) {
+        for (EntityInterface<?> entity : page.getData()) {
           out.add(RolledAsset.from(entityType, entity));
         }
         after = page.getPaging() == null ? null : page.getPaging().getAfter();
@@ -194,14 +194,14 @@ final class DashboardRollup {
   private static Map<String, Long> enabledFrameworkDeadlines() {
     Map<String, Long> result = new LinkedHashMap<>();
     try {
-      EntityRepository<? extends EntityInterface> repository =
+      EntityRepository<? extends EntityInterface<?>> repository =
           Entity.getEntityRepository(Entity.AI_GOVERNANCE_FRAMEWORK);
       ListFilter filter = new ListFilter();
       String after = null;
       do {
-        ResultList<? extends EntityInterface> page =
+        ResultList<? extends EntityInterface<?>> page =
             repository.listAfter(null, Fields.EMPTY_FIELDS, filter, PAGE_SIZE, after);
-        for (EntityInterface entity : page.getData()) {
+        for (EntityInterface<?> entity : page.getData()) {
           collectEnabledFramework(entity, result);
         }
         after = page.getPaging() == null ? null : page.getPaging().getAfter();
@@ -212,7 +212,7 @@ final class DashboardRollup {
     return result;
   }
 
-  private static void collectEnabledFramework(EntityInterface entity, Map<String, Long> out) {
+  private static void collectEnabledFramework(EntityInterface<?> entity, Map<String, Long> out) {
     if (entity instanceof AIGovernanceFramework framework
         && Boolean.TRUE.equals(framework.getEnabled())
         && framework.getName() != null) {
@@ -440,7 +440,7 @@ final class DashboardRollup {
           .withEntityType(entityType);
     }
 
-    static RolledAsset from(String entityType, EntityInterface entity) {
+    static RolledAsset from(String entityType, EntityInterface<?> entity) {
       GovernanceSnapshot governance = governance(entity);
       List<FrameworkStatusSnapshot> frameworks = new ArrayList<>();
       String euRisk = extractCompliance(governance.aiCompliance(), frameworks);
@@ -537,7 +537,7 @@ final class DashboardRollup {
       return result;
     }
 
-    private static GovernanceSnapshot governance(EntityInterface entity) {
+    private static GovernanceSnapshot governance(EntityInterface<?> entity) {
       GovernanceSnapshot result = GovernanceSnapshot.EMPTY;
       if (entity instanceof AIApplication app) {
         result = governance(app.getGovernanceMetadata());

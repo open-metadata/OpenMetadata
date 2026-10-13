@@ -31,6 +31,9 @@ jest.mock('../date-time/DateTimeUtils', () => ({
 
     return monthNames[new Date(timestamp).getMonth()];
   }),
+  customFormatDateTime: jest.fn(
+    (milliseconds: number, format: string) => `${format}@${milliseconds}`
+  ),
   getCurrentMillis: jest.fn(() => 1640995200000),
   getEpochMillisForPastDays: jest.fn(
     (days) => 1640995200000 - days * 24 * 60 * 60 * 1000
@@ -49,8 +52,8 @@ import { DataContract } from '../../generated/entity/data/dataContract';
 import { DataContractResult } from '../../generated/entity/datacontract/dataContractResult';
 import { ContractExecutionStatus } from '../../generated/type/contractExecutionStatus';
 import {
-  createContractExecutionCustomScale,
   downloadContractYamlFile,
+  formatContractExecutionDayTick,
   formatContractExecutionTick,
   generateMonthTickPositions,
   generateSelectOptionsFromString,
@@ -146,76 +149,6 @@ describe('DataContractUtils', () => {
     });
   });
 
-  describe('createContractExecutionCustomScale', () => {
-    const mockData = [
-      { name: '1234567890000_0', displayTimestamp: 1234567890000 },
-      { name: '1234567890001_1', displayTimestamp: 1234567890001 },
-      { name: '1234567890002_2', displayTimestamp: 1234567890002 },
-    ];
-
-    it('should create a scale function that maps values to positions', () => {
-      const scale = createContractExecutionCustomScale(
-        mockData as DataContractProcessedResultCharts[]
-      );
-
-      expect(scale('1234567890000_0')).toBe(0);
-      expect(scale('1234567890001_1')).toBe(28); // 0 + 1 * (20 + 8)
-      expect(scale('1234567890002_2')).toBe(56); // 0 + 2 * (20 + 8)
-    });
-
-    it('should return 0 for unknown values', () => {
-      const scale = createContractExecutionCustomScale(
-        mockData as DataContractProcessedResultCharts[]
-      );
-
-      expect(scale('unknown_value')).toBe(0);
-    });
-
-    it('should have chainable domain method', () => {
-      const scale = createContractExecutionCustomScale(
-        mockData as DataContractProcessedResultCharts[]
-      );
-      const result = scale.domain();
-
-      expect(result).toEqual([
-        '1234567890000_0',
-        '1234567890001_1',
-        '1234567890002_2',
-      ]);
-
-      const chained = scale.domain(['new_domain']);
-
-      expect(chained).toBe(scale);
-    });
-
-    it('should have chainable range method', () => {
-      const scale = createContractExecutionCustomScale(
-        mockData as DataContractProcessedResultCharts[]
-      );
-      const result = scale.range();
-
-      expect(result).toEqual([0, 800]);
-
-      const chained = scale.range([0, 1000]);
-
-      expect(chained).toBe(scale);
-      expect(scale.range()).toEqual([0, 1000]);
-    });
-
-    it('should have other required scale methods', () => {
-      const scale = createContractExecutionCustomScale(
-        mockData as DataContractProcessedResultCharts[]
-      );
-
-      expect(scale.bandwidth()).toBe(20);
-      expect(scale.ticks()).toEqual([]);
-      expect(scale.tickFormat()).toBeDefined();
-      expect(scale.copy()).toBeDefined();
-      expect(scale.nice()).toBe(scale);
-      expect(scale.type).toBe('band');
-    });
-  });
-
   describe('generateMonthTickPositions', () => {
     it('should generate unique month tick positions', () => {
       const processedData = [
@@ -255,24 +188,61 @@ describe('DataContractUtils', () => {
 
       expect(result).toEqual(['1640995200000_0']); // Only first occurrence
     });
+
+    it('starts a new month across a year boundary', () => {
+      const processedData = [
+        {
+          name: `${Date.UTC(2021, 11, 30)}_0`,
+          displayTimestamp: Date.UTC(2021, 11, 30),
+        },
+        {
+          name: `${Date.UTC(2021, 11, 31)}_1`,
+          displayTimestamp: Date.UTC(2021, 11, 31),
+        },
+        {
+          name: `${Date.UTC(2022, 0, 2)}_2`,
+          displayTimestamp: Date.UTC(2022, 0, 2),
+        },
+      ];
+
+      expect(
+        generateMonthTickPositions(
+          processedData as DataContractProcessedResultCharts[]
+        )
+      ).toEqual([processedData[0].name, processedData[2].name]);
+    });
   });
 
   describe('formatContractExecutionTick', () => {
     it('should extract timestamp and format as month', () => {
-      const result = formatContractExecutionTick('1640995200000_0');
+      const result = formatContractExecutionTick(
+        `${new Date(2022, 0, 1).getTime()}_0`
+      );
 
       expect(result).toBe('Jan');
     });
 
     it('should handle different months', () => {
-      expect(formatContractExecutionTick('1643673600000_0')).toBe('Feb');
-      expect(formatContractExecutionTick('1646092800000_0')).toBe('Mar');
+      expect(
+        formatContractExecutionTick(`${new Date(2022, 1, 1).getTime()}_0`)
+      ).toBe('Feb');
+      expect(
+        formatContractExecutionTick(`${new Date(2022, 2, 1).getTime()}_0`)
+      ).toBe('Mar');
     });
 
     it('should handle invalid timestamp gracefully', () => {
       const result = formatContractExecutionTick('invalid_0');
 
       expect(result).toBeUndefined(); // formatMonth returns undefined for NaN
+    });
+  });
+
+  describe('formatContractExecutionDayTick', () => {
+    it("formats the run's timestamp as its day", () => {
+      expect(formatContractExecutionDayTick('1640995200000_7')).toBe(
+        'MMM d@1640995200000'
+      );
     });
   });
 
@@ -336,6 +306,30 @@ describe('DataContractUtils', () => {
       );
 
       expect(result).toEqual({});
+    });
+
+    it('should fail the SLA when any evaluated requirement was missed', () => {
+      const result = getConstraintStatus({
+        slaValidation: { refreshFrequencyMet: true, availabilityMet: false },
+      } as DataContractResult);
+
+      expect(result).toEqual({ sla: 'label.failed' });
+    });
+
+    it('should pass the SLA when every evaluated requirement was met', () => {
+      const result = getConstraintStatus({
+        slaValidation: { refreshFrequencyMet: true },
+      } as DataContractResult);
+
+      expect(result).toEqual({ sla: 'label.passed' });
+    });
+
+    it('should not pass an SLA nothing could evaluate', () => {
+      const result = getConstraintStatus({
+        slaValidation: { message: 'Not evaluated' },
+      } as DataContractResult);
+
+      expect(result).toEqual({ sla: 'label.not-evaluated' });
     });
   });
 

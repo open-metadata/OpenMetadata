@@ -24,12 +24,14 @@ import static org.mockito.Mockito.when;
 
 import java.net.URI;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 import org.apache.jena.query.Dataset;
 import org.apache.jena.query.DatasetFactory;
 import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.Property;
 import org.apache.jena.update.UpdateAction;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -40,8 +42,10 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.entity.data.RelationshipType;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.EntityRelationship;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -55,9 +59,12 @@ class RdfLiveWriteTest {
   private static final String BASE = "https://open-metadata.org/";
   private static final String GRAPH = BASE + "graph/knowledge";
   private static final String BROADER = "http://www.w3.org/2004/02/skos/core#broader";
+  private static final String PROV_WAS_DERIVED_FROM = "http://www.w3.org/ns/prov#wasDerivedFrom";
   private final Dataset dataset = DatasetFactory.create();
   private final AtomicBoolean unavailable = new AtomicBoolean();
   private Table currentEntity;
+  private LineageDetails currentLineageDetails;
+  private boolean lineageEdgeExists = true;
   private final RdfRepository repository = repository();
 
   @AfterEach
@@ -99,6 +106,58 @@ class RdfLiveWriteTest {
     replay(RdfLiveWrite.RelationshipChange.capture(relationship, false));
     assertFalse(dataset.getNamedModel(GRAPH).isEmpty());
     replay(RdfLiveWrite.RelationshipChange.capture(relationship, true));
+    assertTrue(dataset.getNamedModel(GRAPH).isEmpty());
+  }
+
+  @Test
+  void replayedLineageProjectsTheEdgesCurrentColumnLineage() {
+    final String sourceColumn = "service.db.schema.customers.email";
+    final String targetColumn = "service.db.schema.contacts.email";
+    final EntityRelationship lineage = lineage(UUID.randomUUID(), UUID.randomUUID());
+    currentLineageDetails =
+        new LineageDetails()
+            .withColumnsLineage(
+                List.of(
+                    new ColumnLineage()
+                        .withFromColumns(List.of(sourceColumn))
+                        .withToColumn(targetColumn)));
+    replay(RdfLiveWrite.RelationshipChange.capture(lineage, false));
+    final Model graph = dataset.getNamedModel(GRAPH);
+    final Property fromColumn = graph.createProperty(BASE + "ontology/fromColumn");
+    final Property toColumn = graph.createProperty(BASE + "ontology/toColumn");
+    assertTrue(
+        graph.contains(
+            null, fromColumn, graph.createResource(RdfUtils.columnUri(BASE, sourceColumn))));
+    assertTrue(
+        graph.contains(
+            null, toColumn, graph.createResource(RdfUtils.columnUri(BASE, targetColumn))));
+    replay(RdfLiveWrite.RelationshipChange.capture(lineage, true));
+    assertTrue(graph.isEmpty());
+  }
+
+  @Test
+  void replayedLineageWithoutStoredDetailsStillProjectsTheEdge() {
+    final UUID from = UUID.randomUUID();
+    final UUID to = UUID.randomUUID();
+    replay(RdfLiveWrite.RelationshipChange.capture(lineage(from, to), false));
+    final Model graph = dataset.getNamedModel(GRAPH);
+    assertTrue(
+        graph.contains(
+            graph.createResource(BASE + "entity/table/" + to),
+            graph.createProperty(PROV_WAS_DERIVED_FROM),
+            graph.createResource(BASE + "entity/table/" + from)));
+  }
+
+  @Test
+  void lineageAdditionReplayedAfterTheEdgeWasDeletedDoesNotResurrectIt() {
+    final EntityRelationship lineage = lineage(UUID.randomUUID(), UUID.randomUUID());
+    final RdfLiveWrite addition = RdfLiveWrite.RelationshipChange.capture(lineage, false);
+    replay(addition);
+    lineageEdgeExists = false;
+    replay(RdfLiveWrite.RelationshipChange.capture(lineage, true));
+
+    replay(addition);
+
     assertTrue(dataset.getNamedModel(GRAPH).isEmpty());
   }
 
@@ -190,12 +249,26 @@ class RdfLiveWriteTest {
         storage,
         new JsonLdTranslator(JsonUtils.getObjectMapper(), BASE),
         () -> new RelationshipTypeResolver(types),
-        (type, id) -> {
-          if (currentEntity == null) {
-            throw new EntityNotFoundException("Entity was hard deleted");
-          }
-          return currentEntity;
-        });
+        new RdfProjectionLoaders(
+            (type, id) -> {
+              if (currentEntity == null) {
+                throw new EntityNotFoundException("Entity was hard deleted");
+              }
+              return currentEntity;
+            },
+            (fromId, toId) ->
+                lineageEdgeExists
+                    ? Optional.of(new RdfProjectionLoaders.StoredLineageEdge(currentLineageDetails))
+                    : Optional.empty()));
+  }
+
+  private static EntityRelationship lineage(final UUID fromId, final UUID toId) {
+    return new EntityRelationship()
+        .withFromId(fromId)
+        .withToId(toId)
+        .withFromEntity(Entity.TABLE)
+        .withToEntity(Entity.TABLE)
+        .withRelationshipType(Relationship.UPSTREAM);
   }
 
   private void requireAvailable() {
@@ -219,6 +292,8 @@ class RdfLiveWriteTest {
         Arguments.of(new RdfLiveWrite.EntityDelete(Entity.TABLE, from)),
         Arguments.of(RdfLiveWrite.RelationshipChange.capture(relationship, false)),
         Arguments.of(RdfLiveWrite.RelationshipChange.capture(relationship, true)),
+        Arguments.of(RdfLiveWrite.RelationshipChange.capture(lineage(from, to), false)),
+        Arguments.of(RdfLiveWrite.RelationshipChange.capture(lineage(from, to), true)),
         Arguments.of(new RdfLiveWrite.GlossaryRelationChange(from, to, "broader", false)),
         Arguments.of(new RdfLiveWrite.GlossaryRelationChange(from, to, "broader", true)));
   }

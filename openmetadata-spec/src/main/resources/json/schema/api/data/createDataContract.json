@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/api/data/createDataContract.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "CreateDataContractRequest",
   "description": "Request to create a Data Contract entity.",
   "type": "object",
@@ -22,8 +22,7 @@
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "entityStatus": {
-      "$ref": "../../type/status.json",
-      "default": "Draft"
+      "$ref": "../../type/status.json"
     },
     "entity": {
       "description": "Reference to the data entity (table, topic, etc.) this contract applies to.",

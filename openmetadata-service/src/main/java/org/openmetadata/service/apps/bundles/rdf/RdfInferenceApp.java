@@ -15,6 +15,7 @@ package org.openmetadata.service.apps.bundles.rdf;
 
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_RUN_STATS;
 
+import jakarta.ws.rs.ClientErrorException;
 import java.time.Clock;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -30,9 +31,9 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.rdf.RdfRepository;
-import org.openmetadata.service.rdf.inference.InferenceMaterializer;
-import org.openmetadata.service.rdf.inference.InferenceRuleRepository;
 import org.openmetadata.service.rdf.inference.InferenceRuleService;
+import org.openmetadata.service.rdf.inference.InferenceRunInProgressException;
+import org.openmetadata.service.rdf.inference.InferenceRunSupersededException;
 import org.openmetadata.service.search.SearchRepository;
 import org.quartz.JobExecutionContext;
 
@@ -62,6 +63,8 @@ public final class RdfInferenceApp extends AbstractNativeApplication {
     initializeRun();
     try {
       completeRun(runConfiguredMaterialization());
+    } catch (InferenceRunInProgressException | InferenceRunSupersededException exception) {
+      skipRun(exception);
     } catch (RuntimeException exception) {
       failRun(exception);
     }
@@ -71,7 +74,7 @@ public final class RdfInferenceApp extends AbstractNativeApplication {
     final RdfRepository repository = RdfRepository.getInstanceOrNull();
     final InferenceMaterializationResult result;
     if (repository == null
-        || !Boolean.TRUE.equals(repository.getConfig().getMaterializedInferenceEnabled())) {
+        || !RdfRepository.supportsMaterializedInference(repository.getConfig())) {
       final long now = System.currentTimeMillis();
       result = emptyResult(now);
     } else {
@@ -90,13 +93,8 @@ public final class RdfInferenceApp extends AbstractNativeApplication {
   }
 
   private InferenceRuleService createService() {
-    final RdfRepository rdfRepository = RdfRepository.getInstance();
-    final Clock clock = Clock.systemUTC();
-    final InferenceRuleRepository ruleRepository =
-        new InferenceRuleRepository(
-            collectionDAO.rdfInferenceRuleDAO(), clock, rdfRepository.getBaseUri());
-    return new InferenceRuleService(
-        ruleRepository, new InferenceMaterializer(rdfRepository, ruleRepository, clock));
+    return InferenceRuleService.forRepository(
+        RdfRepository.getInstance(), collectionDAO, Clock.systemUTC());
   }
 
   private void initializeRun() {
@@ -115,6 +113,17 @@ public final class RdfInferenceApp extends AbstractNativeApplication {
             ? null
             : result.getFailedRules() + " inference rule materializations failed";
     updateRunRecord(status, error);
+  }
+
+  /**
+   * A run that finds another one in progress, or whose inputs changed before it converged, is
+   * redundant rather than broken, so it ends STOPPED with the reason, as an overlapping RDF reindex
+   * does, and does not trip failure alerting.
+   */
+  private void skipRun(final ClientErrorException exception) {
+    LOG.warn(exception.getMessage());
+    stats.setJobStats(stepStats(0, 0, 0));
+    updateRunRecord(AppRunRecord.Status.STOPPED, exception.getMessage());
   }
 
   private void failRun(final RuntimeException exception) {

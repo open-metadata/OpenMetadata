@@ -21,13 +21,26 @@ import { LineageEdgeColors } from '../utils/EdgeStyleUtils';
  * dark mode is handled via CSS variables rather than a recomputed palette.
  */
 export const useLineageEdgeColors = (): LineageEdgeColors => {
-  const { brandColors } = useTheme();
+  const { brandColors, theme } = useTheme();
 
   return useMemo(() => {
+    const rootStyles =
+      typeof globalThis.document === 'undefined'
+        ? undefined
+        : globalThis.getComputedStyle(globalThis.document.documentElement);
+
     return {
       primary: brandColors?.primaryColor ?? '#1570ef',
       columnHighlight: '#444ce7', // It's a replacement to indigo-600 not a theme color
       dqHighlight: brandColors?.errorColor ?? '#d92d20',
+      labelBackground:
+        rootStyles?.getPropertyValue('--color-bg-primary').trim() ||
+        rootStyles?.backgroundColor ||
+        'Canvas',
+      labelText:
+        rootStyles?.getPropertyValue('--color-text-tertiary').trim() ||
+        rootStyles?.color ||
+        'CanvasText',
     };
-  }, [brandColors]);
+  }, [brandColors, theme]);
 };

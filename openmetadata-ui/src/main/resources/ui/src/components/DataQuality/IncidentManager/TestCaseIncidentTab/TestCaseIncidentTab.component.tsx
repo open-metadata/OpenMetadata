@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import {
@@ -161,7 +161,7 @@ const TestCaseIncidentTab = () => {
         data-testid="left-container"
         id="left-container">
         <div className="d-flex gap-4 p-sm p-x-lg">
-          <Typography.Text
+          <Typography
             className={classNames(
               'cursor-pointer p-l-xss d-flex items-center',
               {
@@ -172,8 +172,8 @@ const TestCaseIncidentTab = () => {
             onClick={() => handleOpenCloseTaskClick('open')}>
             <TaskIcon className="m-r-xss" width={14} /> {openTasksCount}{' '}
             {t('label.open')}
-          </Typography.Text>
-          <Typography.Text
+          </Typography>
+          <Typography
             className={classNames('cursor-pointer d-flex items-center', {
               'font-medium': taskFilter === 'close',
             })}
@@ -181,7 +181,7 @@ const TestCaseIncidentTab = () => {
             onClick={() => handleOpenCloseTaskClick('close')}>
             <CheckIcon className="m-r-xss" width={14} /> {closedTasksCount}{' '}
             {t('label.closed')}
-          </Typography.Text>
+          </Typography>
         </div>
 
         <TaskListV1

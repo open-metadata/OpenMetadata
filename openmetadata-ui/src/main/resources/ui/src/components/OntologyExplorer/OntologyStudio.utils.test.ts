@@ -19,6 +19,7 @@ import {
   buildOntologyQuerySuggestions,
   buildOntologyTreeGroups,
   getOntologyHealthSummary,
+  resolveOntologyTermLabel,
 } from './OntologyStudio.utils';
 
 const FILTERS: GraphFilters = {
@@ -95,7 +96,45 @@ const GRAPH: OntologyGraphData = {
   ],
 };
 
+const parentOf = (from: string, to: string) => ({
+  from,
+  to,
+  label: 'Parent of',
+  relationType: 'parentOf',
+});
+
 describe('OntologyStudio utils', () => {
+  it('resolves a human label without allowing an entity UUID to win', () => {
+    const id = '002e5485-0c59-45cc-912e-15fbc7e350bf';
+
+    expect(
+      resolveOntologyTermLabel({
+        displayName: 'Customer Account',
+        fullyQualifiedName: 'Finance.customer_account',
+        id,
+        label: id,
+        name: 'customer_account',
+      })
+    ).toBe('Customer Account');
+    expect(
+      resolveOntologyTermLabel({
+        displayName: '  ',
+        fullyQualifiedName: 'Finance.customer_account',
+        id,
+        label: id,
+        name: 'customer_account',
+      })
+    ).toBe('customer_account');
+    expect(
+      resolveOntologyTermLabel({
+        fullyQualifiedName: 'Finance."Customer.Account"',
+        id,
+        label: id,
+        name: id,
+      })
+    ).toBe('Customer.Account');
+  });
+
   it('computes scoped health without letting unrelated filters hide isolated terms', () => {
     const health = getOntologyHealthSummary(GRAPH, {
       ...FILTERS,
@@ -124,6 +163,128 @@ describe('OntologyStudio utils', () => {
     expect(groups[0].glossaryName).toBe('Finance');
     expect(child).toMatchObject({ depth: 1, parentCount: 2 });
     expect(detached).toMatchObject({ isIsolated: true, relationCount: 0 });
+  });
+
+  it('nests the part under the whole and counts an inverse pair once', () => {
+    const graph: OntologyGraphData = {
+      nodes: [
+        {
+          id: 'whole',
+          label: 'Retention',
+          type: 'glossaryTerm',
+          glossaryId: 'g1',
+        },
+        {
+          id: 'part',
+          label: 'Churn Rate',
+          type: 'glossaryTerm',
+          glossaryId: 'g1',
+        },
+      ],
+      edges: [
+        {
+          id: 'relation-1',
+          from: 'part',
+          to: 'whole',
+          label: 'partOf',
+          relationType: 'partOf',
+        },
+        {
+          id: 'relation-1',
+          from: 'whole',
+          to: 'part',
+          label: 'hasPart',
+          relationType: 'hasPart',
+        },
+      ],
+    };
+    const [group] = buildOntologyTreeGroups(
+      graph,
+      { ...FILTERS, glossaryIds: ['g1'] },
+      GLOSSARIES,
+      [
+        createRelationshipTypeMock({ name: 'partOf' }),
+        createRelationshipTypeMock({ name: 'hasPart' }),
+      ]
+    );
+
+    expect(group.rows.map((row) => row.node.id)).toEqual(['whole', 'part']);
+    expect(group.rows[0]).toMatchObject({
+      depth: 0,
+      parentCount: 0,
+      relationCount: 1,
+    });
+    expect(group.rows[1]).toMatchObject({
+      depth: 1,
+      parentCount: 1,
+      relationCount: 1,
+    });
+  });
+
+  it('lists every child directly under its own parent', () => {
+    const term = (id: string, label: string) => ({
+      id,
+      label,
+      type: 'glossaryTerm',
+      glossaryId: 'g1',
+    });
+    const [group] = buildOntologyTreeGroups(
+      {
+        nodes: [
+          term('retention', 'Retention'),
+          term('churn', 'Churn'),
+          term('voluntary', 'Voluntary Churn'),
+          term('churnRate', 'Churn Rate'),
+        ],
+        edges: [
+          parentOf('retention', 'churn'),
+          parentOf('churn', 'voluntary'),
+          parentOf('retention', 'churnRate'),
+        ],
+      },
+      { ...FILTERS, glossaryIds: ['g1'] },
+      GLOSSARIES,
+      RELATION_TYPES
+    );
+
+    expect(group.rows.map((row) => [row.node.label, row.depth])).toEqual([
+      ['Retention', 0],
+      ['Churn', 1],
+      ['Voluntary Churn', 2],
+      ['Churn Rate', 1],
+    ]);
+  });
+
+  it('starts a term whose parent is in another glossary at the root of its own glossary', () => {
+    const term = (id: string, label: string, glossaryId: string) => ({
+      id,
+      label,
+      type: 'glossaryTerm',
+      glossaryId,
+    });
+    const groups = buildOntologyTreeGroups(
+      {
+        nodes: [
+          term('revenue', 'Revenue', 'g1'),
+          term('policy', 'Revenue Policy', 'g2'),
+          term('rule', 'Recognition Rule', 'g2'),
+        ],
+        edges: [parentOf('revenue', 'policy'), parentOf('policy', 'rule')],
+      },
+      { ...FILTERS, glossaryIds: ['g1', 'g2'] },
+      GLOSSARIES,
+      RELATION_TYPES
+    );
+    const rowsOf = (glossaryName: string) =>
+      groups
+        .find((group) => group.glossaryName === glossaryName)
+        ?.rows.map((row) => [row.node.label, row.depth]);
+
+    expect(rowsOf('Finance')).toEqual([['Revenue', 0]]);
+    expect(rowsOf('Compliance')).toEqual([
+      ['Revenue Policy', 0],
+      ['Recognition Rule', 1],
+    ]);
   });
 
   it('derives executable query suggestions from scoped ontology relations', () => {

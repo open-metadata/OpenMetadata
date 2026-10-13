@@ -16,14 +16,17 @@ export enum ExportFormat {
   JSONLD = 'jsonld',
   TURTLE = 'turtle',
   RDFXML = 'rdfxml',
+  CSV = 'csv',
 }
 
 export interface ExportGraphPanelProps {
+  description?: string;
   supportedExports?: ExportFormat[];
   onExportPng: () => Promise<void>;
   onExportSvg?: () => Promise<void>;
   onExportJsonLd?: () => Promise<void>;
   onExportTurtle?: () => Promise<void>;
   onExportRdfXml?: () => Promise<void>;
+  onExportCsv?: () => Promise<void>;
   'data-testid'?: string;
 }

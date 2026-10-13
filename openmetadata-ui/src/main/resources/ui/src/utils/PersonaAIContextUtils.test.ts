@@ -18,6 +18,7 @@ import {
   getDefaultPersonaContextSections,
   getPersonaContextSections,
   getRuleConditionCount,
+  getRuleExplorePath,
   getRuleFilterTree,
   getScopedRuleCount,
   isKnowledgeContextRule,
@@ -328,5 +329,72 @@ describe('PersonaAIContextUtils', () => {
         },
       ]);
     });
+
+    it('reports a prompt-only edit as an AI context change', () => {
+      const history = {
+        entityType: 'persona',
+        versions: [
+          versionSnapshot(3.1, { characterBudget: 120000, rules: [] }),
+          versionSnapshot(3.2, {
+            characterBudget: 120000,
+            prompt: 'You assist finance analysts.',
+            rules: [],
+          }),
+        ],
+      };
+
+      const entries = buildPersonaContextVersionHistory(history as never);
+
+      // Left out of the comparison, a prompt edit read as "no AI context change".
+      expect(entries[0].changes).toEqual([
+        { key: 'message.persona-context-history-prompt' },
+      ]);
+    });
+  });
+});
+
+// Explore validates a deep-linked tree against its own config and silently
+// resets when a field is unknown. This editor is pinned to one entity type, so
+// its custom-property keys omit the entity segment Explore expects — without
+// the rewrite the link landed on the unfiltered estate with no filter chip.
+describe('getRuleExplorePath', () => {
+  const filterJsonTree = JSON.stringify({
+    id: 'root',
+    type: 'group',
+    properties: { conjunction: 'AND', not: false },
+    children1: {
+      r1: {
+        type: 'rule',
+        id: 'r1',
+        properties: {
+          field: 'extension.testCp.keyword',
+          operator: 'equal',
+          value: ['2026-09-03'],
+          valueSrc: ['value'],
+        },
+      },
+    },
+  });
+
+  const fieldsIn = (path: string) =>
+    decodeURIComponent(path).match(/"field":"[^"]+"/g) ?? [];
+
+  it('should deep link with the entity-segmented custom property key', () => {
+    const path = getRuleExplorePath(EntityType.TABLE, filterJsonTree);
+
+    expect(fieldsIn(path)).toContain(
+      '"field":"extension.table.testCp.keyword"'
+    );
+  });
+
+  it('should not rewrite a key that already carries the segment', () => {
+    const already = filterJsonTree.replace(
+      'extension.testCp.keyword',
+      'extension.table.testCp.keyword'
+    );
+
+    expect(fieldsIn(getRuleExplorePath(EntityType.TABLE, already))).toContain(
+      '"field":"extension.table.testCp.keyword"'
+    );
   });
 });

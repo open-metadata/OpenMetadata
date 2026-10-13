@@ -37,8 +37,8 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 class SearchIndexHandlerTest {
 
   @Mock private SearchRepository mockSearchRepository;
-  @Mock private EntityInterface mockEntity;
-  @Mock private EntityInterface mockEntity2;
+  @Mock private EntityInterface<?> mockEntity;
+  @Mock private EntityInterface<?> mockEntity2;
   @Mock private EntityReference mockEntityRef;
   @Mock private EntityReference mockEntityRef2;
   @Mock private ChangeDescription mockChangeDescription;
@@ -128,7 +128,7 @@ class SearchIndexHandlerTest {
 
   @Test
   void testOnEntitiesUpdatedUsesBulkApi() {
-    List<EntityInterface> entities = List.of(mockEntity, mockEntity2);
+    List<EntityInterface<?>> entities = List.of(mockEntity, mockEntity2);
 
     searchIndexHandler.onEntitiesUpdated(entities, mockChangeDescription, mockSubjectContext);
 
@@ -138,7 +138,7 @@ class SearchIndexHandlerTest {
 
   @Test
   void testOnEntitiesUpdatedFallsBackToIndividualUpdates() {
-    List<EntityInterface> entities = List.of(mockEntity, mockEntity2);
+    List<EntityInterface<?>> entities = List.of(mockEntity, mockEntity2);
     doThrow(new RuntimeException("Bulk update failed"))
         .when(mockSearchRepository)
         .updateEntitiesIndex(entities, Map.of());
@@ -153,7 +153,7 @@ class SearchIndexHandlerTest {
 
   @Test
   void testOnEntitiesUpdatedForwardsRelationshipRevisions() {
-    List<EntityInterface> entities = List.of(mockEntity, mockEntity2);
+    List<EntityInterface<?>> entities = List.of(mockEntity, mockEntity2);
     Map<UUID, Long> revisions = Map.of(mockEntity.getId(), 11L, mockEntity2.getId(), 12L);
 
     searchIndexHandler.onEntitiesUpdated(
@@ -165,7 +165,7 @@ class SearchIndexHandlerTest {
 
   @Test
   void testOnEntitiesUpdatedRetainsRelationshipRevisionsInFallback() {
-    List<EntityInterface> entities = List.of(mockEntity, mockEntity2);
+    List<EntityInterface<?>> entities = List.of(mockEntity, mockEntity2);
     Map<UUID, Long> revisions = Map.of(mockEntity.getId(), 11L, mockEntity2.getId(), 12L);
     doThrow(new RuntimeException("Bulk update failed"))
         .when(mockSearchRepository)
@@ -252,7 +252,7 @@ class SearchIndexHandlerTest {
 
   @Test
   void testOnEntitiesCreatedSameType() throws IOException {
-    List<EntityInterface> entities = List.of(mockEntity, mockEntity2);
+    List<EntityInterface<?>> entities = List.of(mockEntity, mockEntity2);
 
     searchIndexHandler.onEntitiesCreated(entities, mockSubjectContext);
 
@@ -265,7 +265,7 @@ class SearchIndexHandlerTest {
     // Setup different entity types
     when(mockEntityRef2.getType()).thenReturn(Entity.DASHBOARD);
 
-    List<EntityInterface> entities = List.of(mockEntity, mockEntity2);
+    List<EntityInterface<?>> entities = List.of(mockEntity, mockEntity2);
 
     searchIndexHandler.onEntitiesCreated(entities, mockSubjectContext);
 
@@ -277,7 +277,7 @@ class SearchIndexHandlerTest {
 
   @Test
   void testOnEntitiesCreatedWithFallback() throws IOException {
-    List<EntityInterface> entities = List.of(mockEntity, mockEntity2);
+    List<EntityInterface<?>> entities = List.of(mockEntity, mockEntity2);
 
     // Make bulk operation fail
     doThrow(new RuntimeException("Bulk indexing failed"))

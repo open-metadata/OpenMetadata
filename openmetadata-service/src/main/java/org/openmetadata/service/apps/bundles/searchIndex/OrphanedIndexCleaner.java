@@ -18,8 +18,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.search.IndexManagementClient.IndexStats;
 import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchRepository;
 
 /**
  * Cleans up orphaned rebuild indices from failed or interrupted reindex operations. An index is
@@ -32,6 +34,9 @@ import org.openmetadata.service.search.SearchClient;
  *
  * <p>This is safe because active indices always have at least one alias (the entity type alias like
  * "table", "user", etc.). Zero aliases = definitively not serving traffic.
+ *
+ * <p>It also detaches indexes left behind by an entity-type rename from the aliases this release
+ * manages — see {@link #detachOrphanedIndexesFromAliases(SearchRepository)}.
  */
 @Slf4j
 public class OrphanedIndexCleaner {
@@ -121,6 +126,123 @@ public class OrphanedIndexCleaner {
 
   public int countOrphanedIndices(SearchClient client) {
     return findOrphanedRebuildIndices(client).size();
+  }
+
+  /**
+   * Every entity index registered in {@code indexMapping.json} is named {@code *_search_index}.
+   * Requiring the suffix turns the sweep into an allow-rule rather than a deny-rule: an index it has
+   * never heard of is left alone instead of being assumed disposable.
+   *
+   * <p>That is what keeps it off the indexes a release manages outside {@code entityIndexMap} — the
+   * vector chunk index {@code data_asset_embeddings_chunks} and its generations, which carry the
+   * {@code dataAssetEmbeddings} alias so the vector read path sees chunk docs, and the Data Insights
+   * datastreams. Detaching either would silently empty semantic search.
+   *
+   * <p>The rule can only ever under-detach. The five {@code *_report_data_index} mappings lack the
+   * suffix, so an orphan of one would be missed — they have been registered in every release shipped
+   * so far, and a missed orphan is the status quo this repairs, whereas detaching a live index is a
+   * new outage.
+   */
+  private static final String ENTITY_INDEX_SUFFIX = "_search_index";
+
+  /**
+   * Detach every index that no longer backs a registered entity type from the aliases this release
+   * manages, and report how many alias links were removed.
+   *
+   * <p>An index whose entity type was renamed or dropped between releases is never revisited:
+   * {@code createIndexes()}, {@code updateIndexes()} and {@code deleteIndex()} all walk
+   * {@code entityIndexMap}, so none of them can even see an index that has left it. The orphan keeps
+   * the parent alias its own release attached, so {@code index=all} still expands onto it and queries
+   * it with clauses written against this release's mappings. 1.12's {@code aiAgent} index — renamed
+   * to {@code aiApplication} since — maps {@code owners} as a plain object, so the nested
+   * {@code owners} filter {@code RBACConditionEvaluator} adds for every non-admin user throws
+   * {@code query_shard_exception} on that shard. The engine still answers 200 from the surviving
+   * shards, and {@code SearchShardFailures} then refuses the zero-hit ones, turning an ordinary "no
+   * results" search into a 500.
+   *
+   * <p>Detaching rather than deleting: the alias is the only thing that makes an orphan reachable,
+   * so removing it is the entire fix, and the documents stay put for an operator to inspect or
+   * reindex before dropping the index.
+   *
+   * <p>Runs as a SearchIndexApp preflight rather than from {@code SearchRepository}, so no server
+   * pays a cluster-wide alias walk on startup. An upgrade reindexes, which is what reaches this.
+   */
+  public int detachOrphanedIndexesFromAliases(SearchRepository repository) {
+    SearchClient client = repository.getSearchClient();
+    int detached = 0;
+    for (String alias : managedAliases(repository)) {
+      for (String indexName : client.getIndicesByAlias(alias)) {
+        detached += detachIfOrphaned(repository, indexName, alias);
+      }
+    }
+    LOG.info("Detached {} orphaned index-to-alias links", detached);
+    return detached;
+  }
+
+  private int detachIfOrphaned(SearchRepository repository, String indexName, String alias) {
+    if (!isOrphanedIndex(repository, indexName)) {
+      return 0;
+    }
+    SearchClient client = repository.getSearchClient();
+    try {
+      client.removeAliases(indexName, Set.of(alias));
+    } catch (Exception ex) {
+      LOG.warn("Failed to detach orphaned index '{}' from alias '{}'", indexName, alias, ex);
+      return 0;
+    }
+    // Both index managers log and swallow an unavailable client, a rejected request and an
+    // unacknowledged response, so returning normally does not mean the alias is gone. Re-read it:
+    // a count that cannot be trusted is worse than no count.
+    if (client.getIndicesByAlias(alias).contains(indexName)) {
+      LOG.warn(
+          "Detach of orphaned index '{}' from alias '{}' did not take effect", indexName, alias);
+      return 0;
+    }
+    LOG.info(
+        "Detached orphaned index '{}' from alias '{}': no registered entity type maps to it",
+        indexName,
+        alias);
+    return 1;
+  }
+
+  private boolean isOrphanedIndex(SearchRepository repository, String indexName) {
+    // The _rebuild_ term is redundant today — DefaultRecreateHandler stages as
+    // <canonical>_rebuild_<millis>, which the suffix rule already excludes — but a staged index
+    // holds the aliases it is about to be promoted into, so it stays as an interlock against a
+    // future change to that naming.
+    return indexName.endsWith(ENTITY_INDEX_SUFFIX)
+        && !indexName.contains(REBUILD_PATTERN)
+        && !isKnownCanonicalIndex(repository, indexName);
+  }
+
+  private boolean isKnownCanonicalIndex(SearchRepository repository, String indexName) {
+    for (IndexMapping mapping : repository.getEntityIndexMap().values()) {
+      if (mapping != null && indexName.equals(mapping.getIndexName(repository.getClusterAlias()))) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * The aliases this release attaches to its own indexes, and so the only ones it may detach an
+   * index from. Data Insights aliases are deliberately left out: they front datastream indexes that
+   * never appear in {@code entityIndexMap}, so every one of them would read as an orphan here.
+   */
+  private Set<String> managedAliases(SearchRepository repository) {
+    String clusterAlias = repository.getClusterAlias();
+    Set<String> aliases = new HashSet<>();
+    for (IndexMapping mapping : repository.getEntityIndexMap().values()) {
+      // The cluster-prefixing getters dereference the raw lists, which a mapping is free to leave
+      // unset.
+      if (mapping.getAlias() != null) {
+        aliases.add(mapping.getAlias(clusterAlias));
+      }
+      if (mapping.getParentAliases() != null) {
+        aliases.addAll(mapping.getParentAliases(clusterAlias));
+      }
+    }
+    return aliases;
   }
 
   public int countRebuildIndices(SearchClient client) {

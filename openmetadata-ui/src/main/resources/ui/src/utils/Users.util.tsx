@@ -11,8 +11,16 @@
  *  limitations under the License.
  */
 
-import { Popover, Skeleton, Space, Tag, Tooltip } from 'antd';
+import {
+  Badge,
+  Box,
+  Popover,
+  PopoverTrigger,
+  Skeleton,
+  Tooltip,
+} from '@openmetadata/ui-core-components';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
+import { Button as AriaButton } from 'react-aria-components';
 import { Link } from 'react-router-dom';
 import { ReactComponent as BotIcon } from '../assets/svg/bot.svg';
 import UserPopOverCard from '../components/common/PopOverCard/UserPopOverCard';
@@ -43,9 +51,18 @@ export const commonUserDetailColumns = (
     key: 'username',
     ellipsis: { showTitle: false },
     render: (_, record) => (
-      <Space size={4}>
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal"
+        gap={1}
+        itemClassName="layout-space-item">
         {record.isBot && (
-          <Tooltip title={t('label.bot')}>
+          <Tooltip
+            arrow
+            excludeTriggerFromTabOrder
+            title={t('label.bot')}
+            triggerClassName="tw:inline-flex">
             <BotIcon
               aria-label={t('label.bot')}
               color={TEXT_GREY_MUTED}
@@ -56,7 +73,7 @@ export const commonUserDetailColumns = (
           </Tooltip>
         )}
         {userCellRenderer(record)}
-      </Space>
+      </Box>
     ),
   },
   {
@@ -73,7 +90,7 @@ export const commonUserDetailColumns = (
 
     render: (_, record) => {
       if (isLoading) {
-        return <Skeleton active paragraph={false} />;
+        return <Skeleton height={16} />;
       }
       const listLength = record.teams?.length ?? 0;
       const hasMore = listLength > LIST_CAP;
@@ -82,7 +99,14 @@ export const commonUserDetailColumns = (
         return <>{t('label.no-entity', { entity: t('label.team') })}</>;
       } else {
         return (
-          <Space wrap data-testid="policy-link" size={4}>
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal"
+            data-testid="policy-link"
+            gap={1}
+            itemClassName="layout-space-item"
+            wrap="wrap">
             {record.teams.slice(0, LIST_CAP).map((team) => (
               <Link
                 className="cursor-pointer"
@@ -92,10 +116,27 @@ export const commonUserDetailColumns = (
               </Link>
             ))}
             {hasMore && (
-              <Popover
-                className="cursor-pointer"
-                content={
-                  <Space wrap size={4}>
+              <PopoverTrigger>
+                <AriaButton
+                  className="tw:cursor-pointer tw:rounded-md tw:outline-focus-ring tw:focus-visible:outline-2"
+                  data-testid="plus-more-count">
+                  <Badge
+                    className="tw:inline-flex tw:mr-2 m-l-xs"
+                    color="gray"
+                    size="sm"
+                    type="color">{`+${listLength - LIST_CAP} more`}</Badge>
+                </AriaButton>
+                <Popover
+                  arrow
+                  containerClassName="tw:w-40 tw:px-4 tw:py-3"
+                  placement="bottom">
+                  <Box
+                    inline
+                    align="center"
+                    className="layout-space layout-space-horizontal"
+                    gap={1}
+                    itemClassName="layout-space-item"
+                    wrap="wrap">
                     {record.teams.slice(LIST_CAP).map((team) => (
                       <Link
                         className="cursor-pointer"
@@ -104,16 +145,11 @@ export const commonUserDetailColumns = (
                         {getEntityName(team)}
                       </Link>
                     ))}
-                  </Space>
-                }
-                overlayClassName="w-40"
-                trigger="click">
-                <Tag className="m-l-xs" data-testid="plus-more-count">{`+${
-                  listLength - LIST_CAP
-                } more`}</Tag>
-              </Popover>
+                  </Box>
+                </Popover>
+              </PopoverTrigger>
             )}
-          </Space>
+          </Box>
         );
       }
     },
@@ -127,14 +163,21 @@ export const commonUserDetailColumns = (
       const hasMore = listLength > LIST_CAP;
 
       if (isLoading) {
-        return <Skeleton active paragraph={false} />;
+        return <Skeleton height={16} />;
       }
 
       if (isUndefined(record.roles) || isEmpty(record.roles)) {
         return <>{t('label.no-entity', { entity: t('label.role') })}</>;
       } else {
         return (
-          <Space wrap data-testid="policy-link" size={4}>
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal"
+            data-testid="policy-link"
+            gap={1}
+            itemClassName="layout-space-item"
+            wrap="wrap">
             {record.roles.slice(0, LIST_CAP).map((role) => (
               <Link
                 className="cursor-pointer"
@@ -144,10 +187,27 @@ export const commonUserDetailColumns = (
               </Link>
             ))}
             {hasMore && (
-              <Popover
-                className="cursor-pointer"
-                content={
-                  <Space wrap size={4}>
+              <PopoverTrigger>
+                <AriaButton
+                  className="tw:cursor-pointer tw:rounded-md tw:outline-focus-ring tw:focus-visible:outline-2"
+                  data-testid="plus-more-count">
+                  <Badge
+                    className="tw:inline-flex tw:mr-2 m-l-xs"
+                    color="gray"
+                    size="sm"
+                    type="color">{`+${listLength - LIST_CAP} more`}</Badge>
+                </AriaButton>
+                <Popover
+                  arrow
+                  containerClassName="tw:w-40 tw:px-4 tw:py-3"
+                  placement="bottom">
+                  <Box
+                    inline
+                    align="center"
+                    className="layout-space layout-space-horizontal"
+                    gap={1}
+                    itemClassName="layout-space-item"
+                    wrap="wrap">
                     {record.roles.slice(LIST_CAP).map((role) => (
                       <Link
                         className="cursor-pointer"
@@ -156,16 +216,11 @@ export const commonUserDetailColumns = (
                         {getEntityName(role)}
                       </Link>
                     ))}
-                  </Space>
-                }
-                overlayClassName="w-40"
-                trigger="click">
-                <Tag className="m-l-xs" data-testid="plus-more-count">{`+${
-                  listLength - LIST_CAP
-                } more`}</Tag>
-              </Popover>
+                  </Box>
+                </Popover>
+              </PopoverTrigger>
             )}
-          </Space>
+          </Box>
         );
       }
     },

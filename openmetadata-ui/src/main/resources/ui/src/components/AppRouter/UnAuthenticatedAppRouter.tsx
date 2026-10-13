@@ -52,9 +52,7 @@ const Auth0Callback = withPageSuspenseFallback(
 );
 
 const LoginCallback = withPageSuspenseFallback(
-  lazy(() =>
-    import('@okta/okta-react').then((m) => ({ default: m.LoginCallback }))
-  )
+  lazy(() => import('../Auth/AppCallbacks/OktaCallback/OktaCallback'))
 );
 
 export const UnAuthenticatedAppRouter = () => {

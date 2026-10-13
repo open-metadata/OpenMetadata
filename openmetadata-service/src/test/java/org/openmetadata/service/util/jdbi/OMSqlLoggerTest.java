@@ -13,7 +13,13 @@
 package org.openmetadata.service.util.jdbi;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+import io.micrometer.core.instrument.Metrics;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import java.sql.SQLException;
+import org.jdbi.v3.core.statement.StatementContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,5 +50,35 @@ class OMSqlLoggerTest {
 
     OMSqlLogger.setSlowQueryThresholdMs(50);
     assertEquals(50, OMSqlLogger.getSlowQueryThresholdMs());
+  }
+
+  @Test
+  void countsEachDeadlockOnceAgainstTheStatementThatLostIt() {
+    SimpleMeterRegistry meters = new SimpleMeterRegistry();
+    Metrics.addRegistry(meters);
+    try {
+      StatementContext statement = mock(StatementContext.class);
+      when(statement.getRenderedSql()).thenReturn("/* OMSqlLoggerTest.lose */ SELECT 1");
+      OMSqlLogger logger = new OMSqlLogger();
+      SQLException postgresDeadlock = new SQLException("deadlock detected", "40P01");
+
+      logger.logException(statement, postgresDeadlock);
+      logger.logException(
+          statement, new SQLException("current transaction is aborted", "25P02", postgresDeadlock));
+      logger.logException(
+          statement,
+          new SQLException(
+              "Lock wait timeout exceeded; try restarting transaction", "40001", 1205));
+
+      assertEquals(
+          1.0,
+          meters
+              .get(OMSqlLogger.DEADLOCK_METRIC)
+              .tag(OMSqlLogger.STATEMENT_TAG, "OMSqlLoggerTest.lose")
+              .counter()
+              .count());
+    } finally {
+      Metrics.removeRegistry(meters);
+    }
   }
 }

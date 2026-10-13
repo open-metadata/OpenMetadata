@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Button } from '@openmetadata/ui-core-components';
 
-import { Button, Result } from 'antd';
+import { Result } from 'antd';
 
 import React from 'react';
 import { FallbackProps } from 'react-error-boundary';
@@ -54,10 +55,7 @@ const ErrorFallback: React.FC<FallbackProps> = ({
     <Result
       className="error-boundary-result"
       extra={
-        <Button
-          className="ant-btn-primary-custom"
-          type="primary"
-          onClick={handleReset}>
+        <Button color="primary" onClick={handleReset}>
           {isChunkLoadError ? t('label.refresh') : t('label.home')}
         </Button>
       }

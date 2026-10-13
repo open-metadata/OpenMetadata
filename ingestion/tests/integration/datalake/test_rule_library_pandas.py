@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Integration tests for Rule Library Pandas Expression validator on Datalake (S3/MinIO)
+Integration tests for Rule Library Pandas Expression validator on Datalake (S3)
 """
 
 from copy import deepcopy

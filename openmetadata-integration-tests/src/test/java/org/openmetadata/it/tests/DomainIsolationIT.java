@@ -1,6 +1,8 @@
 package org.openmetadata.it.tests;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -35,6 +37,7 @@ import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.teams.CreateRole;
+import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
@@ -49,6 +52,8 @@ import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Role;
+import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.TestCase;
@@ -59,6 +64,7 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
@@ -134,6 +140,121 @@ public class DomainIsolationIT {
       assertFalse(
           dbGraphNodes.contains(t2.getFullyQualifiedName()),
           "DB-graph lineage must NOT expose foreign-domain node");
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  @Test
+  void test_userDomainChange_appliesToAuthorizationImmediately(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      Domain domain = createDomain(admin, p + "_d1", cleanup);
+      Table table = createTable(admin, p + "_t1", createSchema(ns, cleanup), domain, cleanup);
+      Role domainOnlyRole = admin.roles().getByName("DomainOnlyAccessRole");
+      String email = p + "_late@test.openmetadata.org";
+      User user =
+          admin
+              .users()
+              .create(
+                  new CreateUser()
+                      .withName(p + "_late")
+                      .withEmail(email)
+                      .withRoles(List.of(domainOnlyRole.getId())));
+      cleanup.push(() -> admin.users().delete(user.getId()));
+      OpenMetadataClient client = SdkClients.createClient(email, email, new String[] {});
+      String tableId = table.getId().toString();
+
+      // The denied read caches the domainless user for authorization
+      assertThrows(ForbiddenException.class, () -> client.tables().get(tableId));
+
+      User withDomain = admin.users().get(user.getId().toString(), "domains");
+      withDomain.setDomains(List.of(domain.getEntityReference()));
+      admin.users().update(user.getId().toString(), withDomain);
+
+      assertEquals(tableId, client.tables().get(tableId).getId().toString());
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  @Test
+  void test_adminRevocation_appliesToAuthorizationImmediately(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      Domain domain = createDomain(admin, p + "_d1", cleanup);
+      Table table = createTable(admin, p + "_t1", createSchema(ns, cleanup), domain, cleanup);
+      Role domainOnlyRole = admin.roles().getByName("DomainOnlyAccessRole");
+      String email = p + "_exadmin@test.openmetadata.org";
+      User user =
+          admin
+              .users()
+              .create(
+                  new CreateUser()
+                      .withName(p + "_exadmin")
+                      .withEmail(email)
+                      .withIsAdmin(true)
+                      .withRoles(List.of(domainOnlyRole.getId())));
+      cleanup.push(() -> admin.users().delete(user.getId()));
+      OpenMetadataClient client = SdkClients.createClient(email, email, new String[] {});
+      String tableId = table.getId().toString();
+
+      // The admin read caches the user for authorization
+      assertEquals(tableId, client.tables().get(tableId).getId().toString());
+
+      User demoted = admin.users().get(user.getId().toString());
+      demoted.setIsAdmin(false);
+      admin.users().update(user.getId().toString(), demoted);
+
+      assertThrows(ForbiddenException.class, () -> client.tables().get(tableId));
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  @Test
+  void test_teamDomainChange_appliesToMemberAuthorizationImmediately(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      Domain domain = createDomain(admin, p + "_d1", cleanup);
+      Table table = createTable(admin, p + "_t1", createSchema(ns, cleanup), domain, cleanup);
+      Role domainOnlyRole = admin.roles().getByName("DomainOnlyAccessRole");
+      String email = p + "_member@test.openmetadata.org";
+      User user =
+          admin
+              .users()
+              .create(
+                  new CreateUser()
+                      .withName(p + "_member")
+                      .withEmail(email)
+                      .withRoles(List.of(domainOnlyRole.getId())));
+      cleanup.push(() -> admin.users().delete(user.getId()));
+      Team team =
+          admin
+              .teams()
+              .create(
+                  new CreateTeam()
+                      .withName(p + "_team")
+                      .withTeamType(CreateTeam.TeamType.GROUP)
+                      .withUsers(List.of(user.getId())));
+      cleanup.push(() -> admin.teams().delete(team.getId()));
+      OpenMetadataClient client = SdkClients.createClient(email, email, new String[] {});
+      String tableId = table.getId().toString();
+
+      // The denied read caches the member, who has no domain yet, for authorization
+      assertThrows(ForbiddenException.class, () -> client.tables().get(tableId));
+
+      Team withDomain = admin.teams().get(team.getId().toString(), "domains");
+      withDomain.setDomains(List.of(domain.getEntityReference()));
+      admin.teams().update(team.getId().toString(), withDomain);
+
+      assertEquals(tableId, client.tables().get(tableId).getId().toString());
     } finally {
       drain(cleanup);
     }
@@ -230,6 +351,54 @@ public class DomainIsolationIT {
     } finally {
       drain(cleanup);
     }
+  }
+
+  @Test
+  void test_entityTypeCounts_respectPermissionsAndCachePrincipal(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String prefix = ns.shortPrefix();
+      Domain own = createDomain(admin, prefix + "_own", cleanup);
+      createDomain(admin, prefix + "_foreign", cleanup);
+      OpenMetadataClient restricted = createRestrictedUserClient(admin, prefix, own, cleanup);
+      boolean original = enableSearchAccessControl(admin);
+      cleanup.push(() -> restoreSearchAccessControl(admin, original));
+      Awaitility.await()
+          .atMost(Duration.ofSeconds(30))
+          .untilAsserted(
+              () -> {
+                for (boolean includeTopHit : List.of(false, true)) {
+                  assertEquals(2, domainCount(admin, prefix, includeTopHit));
+                  assertEquals(1, domainCount(restricted, prefix, includeTopHit));
+                  assertEquals(2, domainCount(admin, prefix, includeTopHit));
+                }
+              });
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  private long domainCount(OpenMetadataClient client, String prefix, boolean includeTopHit)
+      throws Exception {
+    JsonNode results =
+        MAPPER.readTree(client.search().query(prefix + "*").index("domain").size(100).execute());
+    JsonNode counts =
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/search/entityTypeCounts",
+                null,
+                JsonNode.class,
+                RequestOptions.builder()
+                    .queryParam("q", prefix + "*")
+                    .queryParam("index", "domain")
+                    .queryParam("include_top_hit", Boolean.toString(includeTopHit))
+                    .build());
+    assertEquals(results.at("/hits/total/value").asLong(), counts.at("/hits/total/value").asLong());
+    return counts.at("/hits/total/value").asLong();
   }
 
   @Test

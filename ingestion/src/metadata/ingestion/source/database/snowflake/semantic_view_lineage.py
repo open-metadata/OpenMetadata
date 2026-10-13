@@ -28,18 +28,12 @@ from sqlalchemy import text
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.metric import Metric
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName
-from metadata.generated.schema.type.entityLineage import (
-    ColumnLineage,
-    EntitiesEdge,
-    LineageDetails,
-)
-from metadata.generated.schema.type.entityLineage import (
-    Source as LineageSource,
-)
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
-from metadata.ingestion.lineage.sql_lineage import get_column_fqn
+from metadata.ingestion.source.database.semantic_metric_lineage import (
+    column_lineage,
+    metric_lineage_request,
+    view_lineage_request,
+)
 from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_DATABASES,
     SNOWFLAKE_GET_SEMANTIC_COLUMNS_IN_DB,
@@ -164,11 +158,6 @@ def resolve_base_columns(
                 if base_table is not None and (base_table, column_ref) not in results:
                     results.append((base_table, column_ref))
     return results
-
-
-def _table_reference(entity: Table) -> EntityReference:
-    """Build a table EntityReference for a lineage edge endpoint."""
-    return EntityReference(id=entity.id, type="table")  # pyright: ignore[reportCallIssue]
 
 
 class SnowflakeSemanticViewLineage:
@@ -318,19 +307,7 @@ class SnowflakeSemanticViewLineage:
             name = build_metric_name(self.service_name, database, schema, view, logical_table, metric_name)
             metric = self.resolve_metric_by_name(name)
             if metric is not None:
-                requests.append(
-                    Either(  # pyright: ignore[reportCallIssue]
-                        right=AddLineageRequest(
-                            edge=EntitiesEdge(
-                                fromEntity=_table_reference(view_entity),
-                                toEntity=EntityReference(id=metric.id, type="metric"),  # pyright: ignore[reportCallIssue]
-                                lineageDetails=LineageDetails(  # pyright: ignore[reportCallIssue]
-                                    source=LineageSource.ViewLineage,
-                                ),
-                            )
-                        )
-                    )
-                )
+                requests.append(metric_lineage_request(view_entity, metric))
         return requests
 
     def _build_view_lineage(
@@ -384,44 +361,8 @@ class SnowflakeSemanticViewLineage:
         base_entity = self.resolve_table_by_fqn(fqn._build(self.service_name, base_catalog, base_schema, base_name))
         result = None
         if base_entity is not None:
-            column_lineage = self._build_column_lineage(base_entity, view_entity, pairs)
-            result = Either(  # pyright: ignore[reportCallIssue]
-                right=AddLineageRequest(
-                    edge=EntitiesEdge(
-                        fromEntity=_table_reference(base_entity),
-                        toEntity=_table_reference(view_entity),
-                        lineageDetails=LineageDetails(  # pyright: ignore[reportCallIssue]
-                            source=LineageSource.ViewLineage,
-                            columnsLineage=column_lineage or None,
-                        ),
-                    )
-                )
-            )
+            result = view_lineage_request(base_entity, view_entity, column_lineage(base_entity, view_entity, pairs))
         return result
-
-    @staticmethod
-    def _build_column_lineage(
-        base_entity: Table,
-        view_entity: Table,
-        pairs: list[tuple[str, str]],
-    ) -> list[ColumnLineage]:
-        """Group (base_column, view_column) pairs into ColumnLineage entries by
-        destination column, resolving each side to its materialized column FQN."""
-        grouped: dict[str, list[str]] = {}
-        for base_column, view_column in pairs:
-            from_fqn = get_column_fqn(base_entity, base_column)
-            to_fqn = get_column_fqn(view_entity, view_column)
-            if from_fqn and to_fqn:
-                sources = grouped.setdefault(to_fqn, [])
-                if from_fqn not in sources:
-                    sources.append(from_fqn)
-        return [
-            ColumnLineage(  # pyright: ignore[reportCallIssue]
-                fromColumns=[FullyQualifiedEntityName(source) for source in sources],
-                toColumn=FullyQualifiedEntityName(to_fqn),
-            )
-            for to_fqn, sources in grouped.items()
-        ]
 
     def _run(self, query: str) -> list[tuple]:
         """Execute a query on the shared connection and return all rows.

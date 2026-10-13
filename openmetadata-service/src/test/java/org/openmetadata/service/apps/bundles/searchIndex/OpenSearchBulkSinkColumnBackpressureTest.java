@@ -65,7 +65,7 @@ class OpenSearchBulkSinkColumnBackpressureTest {
           new OpenSearchBulkSink(searchRepository, 10, 2, 1_000L) {
             @Override
             protected void indexTableColumns(
-                EntityInterface entity, ReindexContext reindexContext) {
+                EntityInterface<?> entity, ReindexContext reindexContext) {
               started.incrementAndGet();
               try {
                 gate.await(30, TimeUnit.SECONDS);
@@ -130,8 +130,8 @@ class OpenSearchBulkSinkColumnBackpressureTest {
         "column-submit-producer");
   }
 
-  private EntityInterface tableEntity(int index) {
-    EntityInterface entity = mock(EntityInterface.class);
+  private EntityInterface<?> tableEntity(int index) {
+    EntityInterface<?> entity = mock(EntityInterface.class);
     when(entity.getId()).thenReturn(UUID.randomUUID());
     when(entity.getName()).thenReturn("table-" + index);
     return entity;

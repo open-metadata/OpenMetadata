@@ -34,6 +34,11 @@ on:
       # freshness (check 6) sources:
       - 'openmetadata-spec/src/main/resources/json/schema/entity/**'
       - 'openmetadata-service/src/main/java/org/openmetadata/service/resources/**'
+      # java-impact-map (check 8) sources: a new IT must land in a bucket of the impact map.
+      - 'openmetadata-integration-tests/src/test/java/**'
+      - 'openmetadata-integration-tests/pom.xml'
+      - '.github/java-tests/**'
+      - '.github/scripts/plan_local_java_tests.py'
   workflow_dispatch:
 
 permissions:

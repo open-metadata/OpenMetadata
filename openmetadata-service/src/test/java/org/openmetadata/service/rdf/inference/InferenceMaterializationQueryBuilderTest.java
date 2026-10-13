@@ -14,12 +14,16 @@
 package org.openmetadata.service.rdf.inference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URI;
+import java.util.List;
 import org.apache.jena.query.Dataset;
 import org.apache.jena.query.DatasetFactory;
 import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.Property;
+import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.rdf.model.ResourceFactory;
 import org.apache.jena.update.UpdateAction;
 import org.apache.jena.update.UpdateFactory;
@@ -32,33 +36,53 @@ class InferenceMaterializationQueryBuilderTest {
   private static final String SOURCE_PREDICATE = "urn:source-predicate";
   private static final String TARGET_PREDICATE = "urn:target-predicate";
   private static final String GRAPH = "https://open-metadata.org/graph/inferred/test-rule";
+  private static final String OTHER_GRAPH = "https://open-metadata.org/graph/inferred/other-rule";
 
   @Test
-  void rewritesConstructIntoClearAndNamedGraphInsert() {
-    final String update = InferenceMaterializationQueryBuilder.build(status());
+  void rewritesConstructIntoASingleNamedGraphInsert() {
+    final String update = InferenceMaterializationQueryBuilder.insert(status());
 
-    assertEquals(2, UpdateFactory.create(update).getOperations().size());
-    assertTrue(update.contains("CLEAR SILENT GRAPH <" + GRAPH + ">"));
+    assertEquals(1, UpdateFactory.create(update).getOperations().size());
     assertTrue(update.contains("GRAPH <" + GRAPH + ">"));
+    assertFalse(update.contains("CLEAR"));
+    assertFalse(update.contains("USING"));
   }
 
   @Test
-  void updateMaterializesIntoTargetGraph() {
+  void repeatedInsertsKeepEarlierConclusions() {
     final Dataset dataset = DatasetFactory.createTxnMem();
-    final Model source = dataset.getDefaultModel();
-    source.add(
-        ResourceFactory.createResource(SOURCE),
-        ResourceFactory.createProperty(SOURCE_PREDICATE),
-        ResourceFactory.createResource("urn:object"));
+    addSource(dataset, "urn:first");
+    UpdateAction.parseExecute(InferenceMaterializationQueryBuilder.insert(status()), dataset);
+    dataset.getDefaultModel().removeAll();
+    addSource(dataset, "urn:second");
 
-    UpdateAction.parseExecute(InferenceMaterializationQueryBuilder.build(status()), dataset);
+    UpdateAction.parseExecute(InferenceMaterializationQueryBuilder.insert(status()), dataset);
 
     final Model inferred = dataset.getNamedModel(GRAPH);
-    assertTrue(
-        inferred.contains(
-            ResourceFactory.createResource(SOURCE),
-            ResourceFactory.createProperty(TARGET_PREDICATE)));
+    assertTrue(inferred.contains(null, property(TARGET_PREDICATE), resource("urn:first")));
+    assertTrue(inferred.contains(null, property(TARGET_PREDICATE), resource("urn:second")));
     dataset.close();
+  }
+
+  @Test
+  void clearsEveryRequestedGraphSilently() {
+    final String update = InferenceMaterializationQueryBuilder.clear(List.of(GRAPH, OTHER_GRAPH));
+
+    assertEquals(2, UpdateFactory.create(update).getOperations().size());
+    assertTrue(update.contains("CLEAR SILENT GRAPH <" + GRAPH + ">"));
+    assertTrue(update.contains("CLEAR SILENT GRAPH <" + OTHER_GRAPH + ">"));
+  }
+
+  private static void addSource(final Dataset dataset, final String object) {
+    dataset.getDefaultModel().add(resource(SOURCE), property(SOURCE_PREDICATE), resource(object));
+  }
+
+  private static Resource resource(final String uri) {
+    return ResourceFactory.createResource(uri);
+  }
+
+  private static Property property(final String uri) {
+    return ResourceFactory.createProperty(uri);
   }
 
   private static InferenceRuleStatus status() {

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { useEffect, useState } from 'react';
@@ -19,9 +19,9 @@ import { useTranslation } from 'react-i18next';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import BotDetails from '../../components/Settings/Bot/BotDetails/BotDetails.component';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { TabSpecificField } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { Bot } from '../../generated/entity/bot';
 import { User } from '../../generated/entity/teams/user';
 import { Include } from '../../generated/type/include';
@@ -151,14 +151,14 @@ const BotDetailsPage = () => {
   if (isError) {
     return (
       <ErrorPlaceHolder>
-        <Typography.Paragraph className="text-base" data-testid="error-message">
+        <Typography as="p" className="text-base" data-testid="error-message">
           {t('message.no-entity-available-with-name', {
             entity: t('label.bot-plural'),
           })}{' '}
           <span className="font-medium" data-testid="username">
             {botsName}
           </span>{' '}
-        </Typography.Paragraph>
+        </Typography>
       </ErrorPlaceHolder>
     );
   }

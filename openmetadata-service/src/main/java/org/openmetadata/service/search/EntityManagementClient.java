@@ -154,6 +154,22 @@ public interface EntityManagementClient {
       throws IOException;
 
   /**
+   * Like {@link #updateChildren(List, String, List, Pair)}, but matches documents by id ({@code
+   * docIds}) or where {@code field} under any of {@code nestedPaths}, nested or not, equals any of
+   * {@code values}. A path an index does not map is ignored for that index.
+   */
+  default void updateChildrenByNestedField(
+      List<String> indexNames,
+      List<String> docIds,
+      List<String> nestedPaths,
+      String field,
+      List<String> values,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    throw new UnsupportedOperationException("Nested-field child updates are not supported");
+  }
+
+  /**
    * Gets a document by ID from the specified index.
    *
    * @param indexName the name of the index

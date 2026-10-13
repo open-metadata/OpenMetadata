@@ -212,14 +212,6 @@ jest.mock('../../TableProfiler/ProfilerClassBase', () => ({
   },
 }));
 
-const mockGetPrioritizedEditPermission = jest.fn();
-
-jest.mock('../../../../../utils/PermissionsUtils', () => ({
-  getPrioritizedEditPermission: jest.fn(() =>
-    mockGetPrioritizedEditPermission()
-  ),
-}));
-
 jest.mock('../../../../../utils/RouterUtils', () => ({
   getAddCustomMetricPath: jest.fn(() => '/custom-metric-path'),
   getEntityDetailsPath: jest.fn(() => '/entity-details-path'),
@@ -272,7 +264,6 @@ const renderComponent = () => {
 describe('TabFilters', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetPrioritizedEditPermission.mockReturnValue(true);
     mockUseCustomLocation.mockReturnValue({
       search: '?startTs=1711065600000&endTs=1711670399000&key=last7days',
       pathname: '/table/test-table/profiler',
@@ -447,7 +438,6 @@ describe('TabFilters', () => {
 
   describe('Permissions', () => {
     it('should not render add button when user lacks edit permissions', () => {
-      mockGetPrioritizedEditPermission.mockReturnValue(false);
       mockUseTableProfiler.mockReturnValue({
         permissions: buildOperationPermission({
           EditDataProfile: false,
@@ -464,12 +454,9 @@ describe('TabFilters', () => {
       expect(
         screen.queryByTestId('profiler-add-table-test-btn')
       ).not.toBeInTheDocument();
-
-      mockGetPrioritizedEditPermission.mockReturnValue(true);
     });
 
     it('should not render settings button when user lacks edit permissions', () => {
-      mockGetPrioritizedEditPermission.mockReturnValue(false);
       mockUseTableProfiler.mockReturnValue({
         permissions: buildOperationPermission({
           EditDataProfile: false,
@@ -486,8 +473,6 @@ describe('TabFilters', () => {
       expect(
         screen.queryByTestId('profiler-setting-btn')
       ).not.toBeInTheDocument();
-
-      mockGetPrioritizedEditPermission.mockReturnValue(true);
     });
 
     it('should not render buttons when table is deleted', () => {

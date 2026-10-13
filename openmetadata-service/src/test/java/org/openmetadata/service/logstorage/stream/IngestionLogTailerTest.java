@@ -18,8 +18,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -122,6 +125,52 @@ class IngestionLogTailerTest {
     assertTrue(
         late.events().stream().anyMatch(LogStreamEvent::getTruncated),
         "a viewer that cannot be given the whole backlog must be told so");
+  }
+
+  /**
+   * The tailer and the storage source each have their own tests, both against a fake of the other.
+   * This wires the real source over a growing, line-paginated log (the shape {@code
+   * S3LogStorage.getLogs} returns) so lines a run writes while it is being watched reach the viewer
+   * in order, each with a cursor that moves forward, and the stream closes once the run finishes.
+   */
+  @Test
+  void streamsLinesAppendedToStorageWhileTheRunIsWatched() {
+    GrowingLogStorage storage = new GrowingLogStorage();
+    IngestionLogTailer tailer =
+        new IngestionLogTailer(
+            new LogStreamRun(
+                RUN_ID, new StorageLogTailSource(storage, null, 2), runState::get, null),
+            SETTINGS,
+            clock,
+            terminations::incrementAndGet);
+    RecordingSseEventSink sink = attach(tailer);
+
+    storage.append("connecting to source");
+    tailer.poll();
+    storage.append("ingested table one", "ingested table two", "ingested table three");
+    tailer.poll();
+    tailer.poll();
+
+    assertEquals(
+        "connecting to source\ningested table one\ningested table two\ningested table three",
+        sink.logs());
+    assertCursorAdvancesOnEveryChunk(sink);
+    assertFalse(sink.isClosed(), "a run still writing must keep its stream open");
+
+    runState.set(RunState.FINISHED);
+    clock.advanceSeconds(SETTINGS.finishGraceSeconds());
+    tailer.poll();
+
+    assertEquals(LogStreamEndReason.RUN_FINISHED, endReason(sink));
+    assertTrue(sink.isClosed());
+  }
+
+  private static void assertCursorAdvancesOnEveryChunk(RecordingSseEventSink sink) {
+    List<String> cursors = sink.events().stream().map(LogStreamEvent::getAfter).toList();
+    assertEquals(
+        cursors.size(),
+        cursors.stream().distinct().count(),
+        "every chunk must advance the cursor, got: " + cursors);
   }
 
   @Test
@@ -431,6 +480,28 @@ class IngestionLogTailerTest {
         offset += next.length();
       }
       return new LogChunk(next == null ? "" : next, cursor());
+    }
+  }
+
+  /** Line-offset pagination over a log that keeps growing, as {@code S3LogStorage.getLogs} pages. */
+  private static final class GrowingLogStorage implements StorageLogTailSource.LogPageReader {
+
+    private final List<String> lines = new ArrayList<>();
+
+    void append(String... newLines) {
+      lines.addAll(List.of(newLines));
+    }
+
+    @Override
+    public Map<String, Object> read(String afterCursor, int limit) {
+      int start = afterCursor == null ? 0 : Integer.parseInt(afterCursor);
+      int end = Math.min(start + limit, lines.size());
+      List<String> page = start < lines.size() ? lines.subList(start, end) : List.of();
+      Map<String, Object> result = new HashMap<>();
+      result.put("logs", String.join("\n", page));
+      result.put("after", end < lines.size() ? String.valueOf(end) : null);
+      result.put("total", (long) lines.size());
+      return result;
     }
   }
 

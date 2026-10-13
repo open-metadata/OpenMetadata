@@ -54,7 +54,7 @@ a violation; new work should prefer `var(--om-*)`.
 
 | Command | What it does |
 | --- | --- |
-| `yarn tw-audit` | **(go-forward)** Lint `.tsx`/`.ts` for hardcoded Tailwind values. Exit 1 on error. |
+| `yarn tw-audit` | **(go-forward)** Lint `.tsx`/`.ts` for hardcoded values. Explicit `tw:dark:*` and `--ai-*` usage are review warnings; resolvable arbitrary values remain errors. |
 | `yarn tw-audit:report` | Full inventory + which token each raw hex matches + Antd/Less debt count. |
 | `yarn tw-guard` | Fails on NEW `antd` imports / NEW `.less` files (deprecation). |
 | `yarn token-audit` | _(legacy)_ Lint CSS/LESS for hardcoded values. **Exit 1 on any error.** CI-ready. |
@@ -65,6 +65,10 @@ a violation; new work should prefer `var(--om-*)`.
 
 Errors (fail CI): **hardcoded colors, hardcoded spacing**.
 Warnings: uncommon values (fractional off-grid sizes, exotic durations).
+
+Dark-theme warnings do not fail CI while AI-mode migration is in progress. Resolve them with a
+shared semantic token or document them using the fixed-color and dark-override review template in
+[`docs/colors.md`](../docs/colors.md).
 
 ## Rules for contributors and AI agents
 

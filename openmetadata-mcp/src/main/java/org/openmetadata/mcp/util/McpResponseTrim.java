@@ -5,7 +5,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.openmetadata.schema.api.configuration.MCPConfiguration;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 /**
  * Shared payload-trimming primitives for MCP tools. The truncation budgets, the response size cap,
@@ -40,6 +42,18 @@ public final class McpResponseTrim {
 
   /** Final safety net: even slimmed, a wide payload can blow the LLM/MCP context limit. */
   public static final int MAX_RESPONSE_CHARS = 100_000;
+
+  /**
+   * The cap in force: the MCP server's {@code maxResponseChars} setting when an admin set one,
+   * otherwise {@link #MAX_RESPONSE_CHARS}. Read per call, so a saved change applies without a
+   * restart.
+   */
+  public static int maxResponseChars() {
+    MCPConfiguration config = SecurityConfigurationManager.getCurrentMcpConfig();
+    return config == null || config.getMaxResponseChars() == null
+        ? MAX_RESPONSE_CHARS
+        : config.getMaxResponseChars();
+  }
 
   /**
    * Machine-readable marker keys shared by tools, the dispatch layer and MCP clients. A tool signals
@@ -259,7 +273,7 @@ public final class McpResponseTrim {
     }
     envelope.put(TRUNCATED_KEY, Boolean.TRUE);
     envelope.put(RESPONSE_SIZE_CHARS_KEY, sizeChars);
-    envelope.put(MAX_RESPONSE_CHARS_KEY, MAX_RESPONSE_CHARS);
+    envelope.put(MAX_RESPONSE_CHARS_KEY, maxResponseChars());
     envelope.put(MESSAGE_KEY, advice);
     return envelope;
   }

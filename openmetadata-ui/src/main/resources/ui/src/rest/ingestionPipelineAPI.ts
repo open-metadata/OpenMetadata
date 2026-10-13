@@ -19,6 +19,7 @@ import {
   CreateIngestionPipeline,
   PipelineType,
 } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import { RunIngestionPipelineForEntity } from '../generated/api/services/ingestionPipelines/runIngestionPipelineForEntity';
 import { AgentType } from '../generated/entity/services/ingestionPipelines/agentType';
 import {
   IngestionPipeline,
@@ -30,7 +31,7 @@ import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
 import { IngestionPipelineLogByIdInterface } from '../interface/IngestionPipelineLogs.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 export const addIngestionPipeline = async (data: CreateIngestionPipeline) => {
   const response = await APIClient.post<
@@ -92,6 +93,18 @@ export const triggerIngestionPipelineById = async (id: string) => {
     unknown,
     AxiosResponse<IngestionPipeline>
   >(`/services/ingestionPipelines/trigger/${id}`);
+
+  return response.data;
+};
+
+/** Runs the pipeline of a type that owns an entity, scoped to that entity alone. */
+export const runIngestionPipelineForEntity = async (
+  data: RunIngestionPipelineForEntity
+) => {
+  const response = await APIClient.post<
+    RunIngestionPipelineForEntity,
+    AxiosResponse<PipelineServiceClientResponse>
+  >('/services/ingestionPipelines/run', data);
 
   return response.data;
 };

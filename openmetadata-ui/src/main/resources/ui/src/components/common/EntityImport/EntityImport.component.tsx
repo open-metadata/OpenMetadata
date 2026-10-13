@@ -10,7 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Affix, Button, Card, Col, Row, Space, Typography } from 'antd';
+import {
+  Box,
+  Button,
+  Card,
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Affix } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined, startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -27,6 +34,7 @@ import {
   CSVImportAsyncWebsocketResponse,
   CSVImportJobType,
 } from '../../../pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage.interface';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Stepper from '../../Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component';
 import UploadFile from '../../UploadFile/UploadFile';
@@ -213,15 +221,22 @@ export const EntityImport = ({
   }, [activeAsyncImportJob]);
 
   return (
-    <Row className="entity-import-container" gutter={[16, 16]}>
-      <Col span={24}>
+    <Grid
+      className="layout-row layout-grid entity-import-container"
+      style={getLayoutGutter(16, 16)}>
+      <Grid.Item className="layout-column" span={24}>
         <Stepper activeStep={activeStep} steps={translatedSteps} />
-      </Col>
+      </Grid.Item>
       <>
         {activeStep === 1 && (
           <>
-            <Col span={24}>{importStartedBanner}</Col>
-            <Col data-testid="upload-file-container" span={24}>
+            <Grid.Item className="layout-column" span={24}>
+              {importStartedBanner}
+            </Grid.Item>
+            <Grid.Item
+              className="layout-column"
+              data-testid="upload-file-container"
+              span={24}>
               <UploadFile
                 beforeUpload={(file) => {
                   setFileName(file.name);
@@ -231,109 +246,141 @@ export const EntityImport = ({
               />
 
               <Affix className="bg-white p-md import-preview-footer">
-                <Space className="justify-end w-full p-r-md">
+                <Box
+                  inline
+                  align="center"
+                  className="layout-space layout-space-horizontal justify-end w-full p-r-md"
+                  gap={2}
+                  itemClassName="layout-space-item">
                   <Button
-                    ghost
+                    color="secondary-brand"
                     data-testid="cancel-button"
-                    type="primary"
                     // as we need to redirect back, from where we enter import screen
                     onClick={onCancel}>
                     {t('label.cancel')}
                   </Button>
-                </Space>
+                </Box>
               </Affix>
-            </Col>
+            </Grid.Item>
           </>
         )}
         {activeStep === 2 && !isUndefined(csvImportResult) && (
-          <Col span={24}>
+          <Grid.Item className="layout-column" span={24}>
             {isAborted ? (
               <Card className="m-t-lg">
-                <Space
-                  align="center"
-                  className="w-full justify-center p-lg text-center"
-                  direction="vertical"
-                  size={16}>
-                  <Typography.Text
-                    className="text-center"
-                    data-testid="abort-reason">
-                    <strong className="d-block">{t('label.aborted')}</strong>{' '}
-                    {csvImportResult.abortReason}
-                  </Typography.Text>
-                  <Space size={16}>
-                    <Button
-                      ghost
-                      data-testid="cancel-button"
-                      type="primary"
-                      onClick={handleCancel}>
-                      {t('label.back')}
-                    </Button>
-                  </Space>
-                </Space>
+                <Card.Content>
+                  <Box
+                    inline
+                    align="center"
+                    className="layout-space w-full justify-center p-lg text-center"
+                    direction="col"
+                    gap={4}
+                    itemClassName="layout-space-item">
+                    <Typography
+                      className="text-center"
+                      data-testid="abort-reason">
+                      <strong className="d-block">{t('label.aborted')}</strong>{' '}
+                      {csvImportResult.abortReason}
+                    </Typography>
+                    <Box
+                      inline
+                      align="center"
+                      className="layout-space layout-space-horizontal"
+                      gap={4}
+                      itemClassName="layout-space-item">
+                      <Button
+                        color="secondary-brand"
+                        data-testid="cancel-button"
+                        onClick={handleCancel}>
+                        {t('label.back')}
+                      </Button>
+                    </Box>
+                  </Box>
+                </Card.Content>
               </Card>
             ) : (
               // added extra margin to prevent data lost due to fixed footer at bottom
               <div className="mb-16 m-t-lg">
-                <Row data-testid="import-results" gutter={[16, 16]}>
-                  <Col span={24}>{importStartedBanner}</Col>
-                  <Col span={24}>
+                <Grid
+                  className="layout-row layout-grid"
+                  data-testid="import-results"
+                  style={getLayoutGutter(16, 16)}>
+                  <Grid.Item className="layout-column" span={24}>
+                    {importStartedBanner}
+                  </Grid.Item>
+                  <Grid.Item className="layout-column" span={24}>
                     <ImportStatus csvImportResult={csvImportResult} />
-                  </Col>
-                  <Col span={24}>{children}</Col>
-                </Row>
+                  </Grid.Item>
+                  <Grid.Item className="layout-column" span={24}>
+                    {children}
+                  </Grid.Item>
+                </Grid>
                 <Affix className="bg-white p-md import-preview-footer">
-                  <Space className="justify-end w-full p-r-md">
+                  <Box
+                    inline
+                    align="center"
+                    className="layout-space layout-space-horizontal justify-end w-full p-r-md"
+                    gap={2}
+                    itemClassName="layout-space-item">
                     <Button
-                      ghost
+                      color="secondary-brand"
                       data-testid="preview-cancel-button"
-                      disabled={isImporting}
-                      type="primary"
+                      isDisabled={isImporting}
                       onClick={handleCancel}>
                       {t('label.back')}
                     </Button>
                     {!isFailure && (
                       <Button
+                        color="primary"
                         data-testid="import-button"
-                        disabled={isImporting}
-                        type="primary"
+                        isDisabled={isImporting}
                         onClick={handleImport}>
                         {t('label.import')}
                       </Button>
                     )}
-                  </Space>
+                  </Box>
                 </Affix>
               </div>
             )}
-          </Col>
+          </Grid.Item>
         )}
 
         {activeStep > 2 && (
-          <Col span={24}>
+          <Grid.Item className="layout-column" span={24}>
             <Card className="m-t-lg">
-              <Space
-                align="center"
-                className="w-full justify-center p-lg"
-                direction="vertical"
-                size={16}>
-                <SuccessBadgeIcon data-testid="success-badge" width={36} />
+              <Card.Content>
+                <Box
+                  inline
+                  align="center"
+                  className="layout-space w-full justify-center p-lg"
+                  direction="col"
+                  gap={4}
+                  itemClassName="layout-space-item">
+                  <SuccessBadgeIcon data-testid="success-badge" width={36} />
 
-                <Typography.Text>
-                  <strong data-testid="file-name">{fileName}</strong>{' '}
-                  {`${t('label.successfully-uploaded')}.`}
-                </Typography.Text>
-                <Space size={16}>
-                  <Button
-                    data-testid="preview-button"
-                    type="primary"
-                    onClick={onSuccess}>
-                    {t('label.view')}
-                  </Button>
-                </Space>
-              </Space>
+                  <Typography>
+                    <strong data-testid="file-name">{fileName}</strong>{' '}
+                    {`${t('label.successfully-uploaded')}.`}
+                  </Typography>
+                  <Box
+                    inline
+                    align="center"
+                    className="layout-space layout-space-horizontal"
+                    gap={4}
+                    itemClassName="layout-space-item">
+                    <Button
+                      color="primary"
+                      data-testid="preview-button"
+                      onClick={onSuccess}>
+                      {t('label.view')}
+                    </Button>
+                  </Box>
+                </Box>
+              </Card.Content>
             </Card>
-          </Col>
+          </Grid.Item>
         )}
       </>
-    </Row>
+    </Grid>
   );
 };

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Typography } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';
 import Qs from 'qs';
@@ -412,22 +412,22 @@ const Suggestions = ({
 
     return (
       <div data-testid="ai-query-suggestions">
-        <Typography.Text strong className="m-b-sm d-block">
+        <Typography className="m-b-sm d-block" weight="semibold">
           {t('label.ai-queries')}
-        </Typography.Text>
+        </Typography>
         {aiQueries.map((query) => (
           <Button
-            block
-            className="m-b-md w-100 text-left d-flex items-center p-0"
+            className="tw:mb-2 tw:w-full tw:justify-start"
+            color="tertiary"
             data-testid="nlp-suggestions-button"
-            icon={
-              <div className="nlp-button w-6 h-6 flex-center m-r-md">
+            iconLeading={
+              <div className="nlp-button w-6 h-6 flex-center">
                 <IconSuggestionsBlue />
               </div>
             }
             key={query}
-            type="text"
-            onClick={() => onSearchTextUpdate?.(query)}>
+            size="sm"
+            onPress={() => onSearchTextUpdate?.(query)}>
             {query}
           </Button>
         ))}
@@ -446,7 +446,7 @@ const Suggestions = ({
 
   if (options.length === 0 && !isTourOpen && !isEmpty(searchText)) {
     return (
-      <Typography.Text>
+      <Typography>
         <Transi18next
           i18nKey="message.please-enter-to-find-data-assets"
           renderElement={<strong />}
@@ -454,7 +454,7 @@ const Suggestions = ({
             keyword: `"${searchText}"`,
           }}
         />
-      </Typography.Text>
+      </Typography>
     );
   }
 

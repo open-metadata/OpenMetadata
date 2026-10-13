@@ -12,13 +12,13 @@
  */
 
 import { AxiosResponse } from 'axios';
-import axiosClient from '.';
 import { ChangePasswordRequest } from '../generated/auth/changePasswordRequest';
 import { LoginRequest } from '../generated/auth/loginRequest';
 import { LogoutRequest } from '../generated/auth/logoutRequest';
 import { PasswordResetRequest } from '../generated/auth/passwordResetRequest';
 import { RegistrationRequest } from '../generated/auth/registrationRequest';
 import { TokenRefreshRequest } from '../generated/auth/tokenRefreshRequest';
+import axiosClient from './axiosClient';
 
 export interface AccessTokenResponse {
   accessToken: string;

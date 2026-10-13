@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -21,12 +22,18 @@ import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.hc.core5.http.HttpEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.DTOs;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 class ElasticSearchVectorServiceTest {
 
@@ -53,6 +60,56 @@ class ElasticSearchVectorServiceTest {
         .thenReturn(new float[] {0.1f, 0.2f, 0.3f});
 
     vectorService = new ElasticSearchVectorService(mockEsClient, mockEmbeddingClient);
+  }
+
+  @Test
+  void readableAnchorsAreResolvedOnceAndReachEveryOverfetchPage() throws Exception {
+    String anchorId = UUID.randomUUID().toString();
+    AtomicInteger resolutions = new AtomicInteger();
+    ElasticSearchVectorService service =
+        new ElasticSearchVectorService(
+            mockEsClient,
+            mockEmbeddingClient,
+            2,
+            parameters -> {
+              resolutions.incrementAndGet();
+              return Set.of(anchorId);
+            });
+    String firstPage =
+        "{\"hits\":{\"total\":{\"value\":2},\"hits\":[{\"_score\":0.9,\"_source\":{\"parentId\":\"first\"}}]}}";
+    String secondPage =
+        "{\"hits\":{\"total\":{\"value\":2},\"hits\":[{\"_score\":0.8,\"_source\":{\"parentId\":\"second\"}}]}}";
+    mockRestClientResponseSequence(firstPage, secondPage);
+    SubjectContext subject =
+        new SubjectContext(new User().withId(UUID.randomUUID()).withName("reader"), null);
+    VectorSearchParameters parameters =
+        new VectorSearchParameters(
+            "orders",
+            Map.of("primaryEntityId", List.of(anchorId)),
+            1,
+            0,
+            10,
+            0,
+            null,
+            subject,
+            null);
+
+    DTOs.VectorSearchResponse response = service.search(parameters);
+
+    assertEquals(1, resolutions.get());
+    assertEquals("first", response.hits.getFirst().get("parentId"));
+    assertTrue(response.hasMore);
+    ArgumentCaptor<Request> captor = ArgumentCaptor.forClass(Request.class);
+    verify(mockRestClient, times(2)).performRequest(captor.capture());
+    List<Request> requests = captor.getAllValues();
+    for (int i = 0; i < requests.size(); i++) {
+      try (var content = requests.get(i).getEntity().getContent()) {
+        var body = JsonUtils.readTree(new String(content.readAllBytes(), StandardCharsets.UTF_8));
+        String visibility = body.path("knn").path("filter").path("bool").path("filter").toString();
+        assertTrue(visibility.contains("\"anchorId\":[\"" + anchorId + "\"]"), visibility);
+        assertEquals(i, body.path("from").asInt());
+      }
+    }
   }
 
   @Test

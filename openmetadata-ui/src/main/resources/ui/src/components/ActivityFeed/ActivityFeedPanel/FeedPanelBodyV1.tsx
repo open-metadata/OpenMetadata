@@ -11,10 +11,14 @@
  *  limitations under the License.
  */
 
-import { Button } from 'antd';
+import { Card } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { FC, useCallback } from 'react';
 import ActivityFeedCardNew from '../ActivityFeedCardNew/ActivityFeedcardNew.component';
+import {
+  CARD_CONTAINER_CLASS_NAME,
+  handleCardContainerKeyDown,
+} from '../ActivityFeedCardNew/ActivityFeedcardNew.utils';
 import '../ActivityFeedTab/activity-feed-tab.less';
 import './feed-panel-body-v1.less';
 import { FeedPanelBodyPropV1 } from './FeedPanelBodyV1.interface';
@@ -49,14 +53,21 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
   };
 
   return (
-    <Button
-      block
-      className={classNames('activity-feed-card-container ', className)}
+    <Card
+      className={classNames(
+        'activity-feed-card-container',
+        'tw:cursor-pointer',
+        CARD_CONTAINER_CLASS_NAME,
+        className
+      )}
       data-testid="message-container"
-      type="text"
-      onClick={handleFeedClick}>
+      role="button"
+      tabIndex={0}
+      variant="ghost"
+      onClick={handleFeedClick}
+      onKeyDown={handleCardContainerKeyDown(handleFeedClick)}>
       {renderFeedContent()}
-    </Button>
+    </Card>
   );
 };
 

@@ -111,6 +111,10 @@ Now review the implementation quality.
 - [ ] No SQL injection vectors (parameterized queries)
 - [ ] No XSS vectors in frontend (proper escaping)
 
+**Decisions (`docs/decisions/`, rules in its `README.md`):**
+- [ ] No change undoes an Accepted record without adding the record that supersedes it
+- [ ] A durable decision — a contract another component or repo must agree with, a new default or limit, an ordering that must hold, a rule stated only in the PR description — ships its record in this PR
+
 ### Report Format (Stage 2)
 
 ```

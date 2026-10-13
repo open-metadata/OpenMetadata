@@ -31,6 +31,10 @@ describe('RadioButtons.stories', () => {
     const story = RadioButtonsStories.Default;
 
     expect(() => render(story.render({ ...story.args }))).not.toThrow();
+    expect(screen.getByText('Select an option')).toBeInTheDocument();
+    expect(
+      screen.getByRole('radiogroup', { name: /Select an option/ })
+    ).toBeInTheDocument();
     expect(screen.getByText('Option 1')).toBeInTheDocument();
     expect(screen.getByText('Option 2')).toBeInTheDocument();
     expect(screen.getByText('Option 3')).toBeInTheDocument();
@@ -41,6 +45,14 @@ describe('RadioButtons.stories', () => {
 
     expect(() => render(story.render())).not.toThrow();
     expect(screen.getAllByRole('radiogroup')).toHaveLength(2);
+    expect(screen.getByText('Small')).toBeInTheDocument();
+    expect(screen.getByText('Medium')).toBeInTheDocument();
+    expect(
+      screen.getByRole('radiogroup', { name: /Small/ })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('radiogroup', { name: /Medium/ })
+    ).toBeInTheDocument();
     expect(screen.getAllByText('Option A')).toHaveLength(2);
     expect(screen.getAllByText('Option B')).toHaveLength(2);
     expect(screen.getAllByText('Option C')).toHaveLength(2);
@@ -50,6 +62,10 @@ describe('RadioButtons.stories', () => {
     const story = RadioButtonsStories.WithHints;
 
     expect(() => render(story.render())).not.toThrow();
+    expect(screen.getByText('Pricing plan')).toBeInTheDocument();
+    expect(
+      screen.getByRole('radiogroup', { name: /Pricing plan/ })
+    ).toBeInTheDocument();
     expect(screen.getByText('Basic')).toBeInTheDocument();
     expect(
       screen.getByText('Up to 5 users, 10 GB storage')
@@ -60,6 +76,10 @@ describe('RadioButtons.stories', () => {
     const story = RadioButtonsStories.WithDisabled;
 
     expect(() => render(story.render())).not.toThrow();
+    expect(screen.getByText('Options')).toBeInTheDocument();
+    expect(
+      screen.getByRole('radiogroup', { name: /Options/ })
+    ).toBeInTheDocument();
     expect(screen.getByText('Available')).toBeInTheDocument();
     expect(screen.getByLabelText('Disabled option')).toBeDisabled();
   });

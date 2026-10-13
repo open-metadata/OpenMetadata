@@ -16,7 +16,6 @@ import { AnnouncementEntity } from '../../../rest/announcementsAPI';
 export interface AnnouncementsWidgetV3BodyProps {
   announcements: AnnouncementEntity[];
   onItemClick: (announcement: AnnouncementEntity) => void;
-  onViewAll?: () => void;
   loading?: boolean;
   testId?: string;
   className?: string;

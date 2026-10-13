@@ -1,6 +1,8 @@
 package org.openmetadata.service.governance.workflows.elements;
 
+import java.util.List;
 import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
+import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
 import org.openmetadata.schema.governance.workflows.elements.NodeSubType;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.ApplyRecognizerFeedbackTaskDefinition;
@@ -22,6 +24,7 @@ import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.Crea
 import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.UserApprovalTaskDefinition;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityType;
+import org.openmetadata.service.governance.workflows.BatchExecutionPlan.NodeMode;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.ApplyRecognizerFeedbackTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.CheckChangeDescriptionTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.CheckEntityAttributesTask;
@@ -47,19 +50,38 @@ public class NodeFactory {
       WorkflowNodeDefinitionInterface nodeDefinition,
       WorkflowConfiguration config,
       String workflowDefinitionName) {
+    return createNode(nodeDefinition, config, workflowDefinitionName, List.of());
+  }
+
+  /** {@code edges} are the workflow's edges, from which a node learns how its results are routed. */
+  public static NodeInterface createNode(
+      WorkflowNodeDefinitionInterface nodeDefinition,
+      WorkflowConfiguration config,
+      String workflowDefinitionName,
+      List<EdgeDefinition> edges) {
+    return createNode(nodeDefinition, config, workflowDefinitionName, edges, NodeMode.PER_ENTITY);
+  }
+
+  /** {@code batchMode} tells a per-entity node whether it handles every entity of a batch. */
+  public static NodeInterface createNode(
+      WorkflowNodeDefinitionInterface nodeDefinition,
+      WorkflowConfiguration config,
+      String workflowDefinitionName,
+      List<EdgeDefinition> edges,
+      NodeMode batchMode) {
     return switch (NodeSubType.fromValue(nodeDefinition.getSubType())) {
       case START_EVENT -> new StartEvent((StartEventDefinition) nodeDefinition, config);
       case END_EVENT -> new EndEvent((EndEventDefinition) nodeDefinition, config);
       case CHECK_ENTITY_ATTRIBUTES_TASK -> new CheckEntityAttributesTask(
-          (CheckEntityAttributesTaskDefinition) nodeDefinition, config);
+          (CheckEntityAttributesTaskDefinition) nodeDefinition, config, batchMode);
       case CHECK_CHANGE_DESCRIPTION_TASK -> new CheckChangeDescriptionTask(
-          (CheckChangeDescriptionTaskDefinition) nodeDefinition, config);
+          (CheckChangeDescriptionTaskDefinition) nodeDefinition, config, batchMode);
       case SET_ENTITY_ATTRIBUTE_TASK -> new SetEntityAttributeTask(
-          (SetEntityAttributeTaskDefinition) nodeDefinition, config);
+          (SetEntityAttributeTaskDefinition) nodeDefinition, config, batchMode);
       case SET_ENTITY_CERTIFICATION_TASK -> new SetEntityCertificationTask(
-          (SetEntityCertificationTaskDefinition) nodeDefinition, config);
+          (SetEntityCertificationTaskDefinition) nodeDefinition, config, batchMode);
       case SET_GLOSSARY_TERM_STATUS_TASK -> new SetGlossaryTermStatusTask(
-          (SetGlossaryTermStatusTaskDefinition) nodeDefinition, config);
+          (SetGlossaryTermStatusTaskDefinition) nodeDefinition, config, batchMode);
       case USER_APPROVAL_TASK -> new UserApprovalTask(
           (UserApprovalTaskDefinition) nodeDefinition,
           config,
@@ -69,12 +91,15 @@ public class NodeFactory {
           (CreateAndRunIngestionPipelineTaskDefinition) nodeDefinition, config);
       case RUN_APP_TASK -> new RunAppTask((RunAppTaskDefinition) nodeDefinition, config);
       case ROLLBACK_ENTITY_TASK -> new RollbackEntityTask(
-          (RollbackEntityTaskDefinition) nodeDefinition, config);
+          (RollbackEntityTaskDefinition) nodeDefinition, config, batchMode);
       case DATA_COMPLETENESS_TASK -> new DataCompletenessTask(
           (DataCompletenessTaskDefinition) nodeDefinition, config);
       case PARALLEL_GATEWAY -> new ParallelGateway(
           (ParallelGatewayDefinition) nodeDefinition, config);
-      case SINK_TASK -> new SinkTask((SinkTaskDefinition) nodeDefinition, config);
+      case SINK_TASK -> new SinkTask(
+          (SinkTaskDefinition) nodeDefinition,
+          config,
+          SinkTask.isFailureHandledByBranch(nodeDefinition.getName(), edges));
       case CREATE_RECOGNIZER_FEEDBACK_APPROVAL_TASK -> new CreateRecognizerFeedbackApprovalTask(
           (CreateRecognizerFeedbackApprovalTaskDefinition) nodeDefinition, config);
       case APPLY_RECOGNIZER_FEEDBACK_TASK -> new ApplyRecognizerFeedbackTask(

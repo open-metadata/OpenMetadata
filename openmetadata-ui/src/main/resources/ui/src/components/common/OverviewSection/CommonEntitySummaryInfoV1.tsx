@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isNil } from 'lodash';
@@ -69,11 +68,10 @@ const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
           rel="noopener noreferrer"
           target="_blank">
           {info.value}
-          <Icon
-            className="m-l-xs"
-            component={IconExternalLink}
+          <IconExternalLink
+            className="m-l-xs tw:inline-block tw:align-middle"
             data-testid="external-link-icon"
-            style={ICON_DIMENSION}
+            {...ICON_DIMENSION}
           />
         </a>
       );

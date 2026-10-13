@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "McpConnection",
   "description": "MCP (Model Context Protocol) Service Connection for discovering and cataloging MCP servers, their tools, resources, and prompts.",
   "type": "object",

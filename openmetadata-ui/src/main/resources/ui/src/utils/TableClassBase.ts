@@ -84,6 +84,7 @@ const SIZEABLE_WIDGET_KEYS: TableWidgetKeys[] = [
   DetailPageWidgetKeys.DATA_PRODUCTS,
   DetailPageWidgetKeys.TAGS,
   DetailPageWidgetKeys.GLOSSARY_TERMS,
+  DetailPageWidgetKeys.CUSTOM_PROPERTIES,
   DetailPageWidgetKeys.TABLE_CONSTRAINTS,
   DetailPageWidgetKeys.PARTITIONED_KEYS,
   DetailPageWidgetKeys.TABLE_ALIASES,

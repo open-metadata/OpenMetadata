@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { Handle, Position } from 'reactflow';
 import { ReactComponent as DataProductIcon } from '../../../../assets/svg/ic-data-product.svg';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { LINEAGE_NODE_DARK_CLASS } from '../../../Entity/EntityLineage/CustomNode.utils';
 import './PortsLineageView.style.less';
 import { DataProductNodeProps } from './PortsLineageView.types';
 
@@ -26,7 +27,7 @@ const DataProductNode = memo(({ data }: DataProductNodeProps) => {
 
   return (
     <div
-      className="data-product-center-node"
+      className={`data-product-center-node ${LINEAGE_NODE_DARK_CLASS}`}
       data-testid="data-product-center-node">
       <Handle
         className="lineage-node-handle"

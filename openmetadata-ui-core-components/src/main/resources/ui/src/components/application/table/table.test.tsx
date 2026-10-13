@@ -13,7 +13,7 @@
 
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { Table } from './table';
+import { Table, TableCard } from './table';
 
 const ROWS = [
   { id: 'r1', name: 'alpha' },
@@ -212,5 +212,27 @@ describe('Table', () => {
       'colspan',
       '3'
     );
+  });
+});
+
+describe('TableCard theme roles', () => {
+  it('uses shared surface and subtle-border roles', () => {
+    const { container } = render(
+      <TableCard.Root data-testid="table-card">
+        <TableCard.Header title="Assets" />
+      </TableCard.Root>
+    );
+    const header = container.firstElementChild?.firstElementChild;
+
+    expect(screen.getByTestId('table-card')).toHaveClass(
+      'tw:bg-surface',
+      'tw:outline-subtle'
+    );
+    // Drawn inside the card: an outer outline is clipped by any scrolling
+    // parent the card sits flush against (e.g. the top of a modal body).
+    expect(screen.getByTestId('table-card')).toHaveClass(
+      'tw:-outline-offset-1'
+    );
+    expect(header).toHaveClass('tw:bg-surface', 'tw:border-subtle');
   });
 });

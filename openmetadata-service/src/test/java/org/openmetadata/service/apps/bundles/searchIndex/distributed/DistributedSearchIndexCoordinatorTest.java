@@ -119,9 +119,9 @@ class DistributedSearchIndexCoordinatorTest {
   @Test
   void precomputedPartitionCursorsUseRepositoryReindexFilter() throws Exception {
     @SuppressWarnings("unchecked")
-    EntityRepository<EntityInterface> repository = mock(EntityRepository.class);
+    EntityRepository<EntityInterface<?>> repository = mock(EntityRepository.class);
     @SuppressWarnings("unchecked")
-    EntityDAO<EntityInterface> dao = mock(EntityDAO.class);
+    EntityDAO<EntityInterface<?>> dao = mock(EntityDAO.class);
     ListFilter reindexFilter = mock(ListFilter.class);
     when(repository.getReindexFilter()).thenReturn(reindexFilter);
     when(repository.getDao()).thenReturn(dao);

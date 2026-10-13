@@ -28,6 +28,20 @@ import {
   ResponseDataWithServiceType,
 } from './Entity.interface';
 import { EntityClass } from './EntityClass';
+import { resolveParents } from './ParentResolver';
+import { DashboardServiceClass } from './service/DashboardServiceClass';
+
+/**
+ * Without `service` the data model sits in the shard's shared
+ * dashboardService. Pass a DashboardServiceClass when the test needs its own
+ * service — to assert on a unique service name, visit the service page, or
+ * mutate it.
+ */
+export type DashboardDataModelClassOptions = {
+  name?: string;
+  service?: DashboardServiceClass;
+  sharedInfraKey?: string;
+};
 
 export interface DashboardDataModel extends ResponseDataWithServiceType {
   columns: EntityReference[];
@@ -47,22 +61,8 @@ export interface Column {
 export class DashboardDataModelClass extends EntityClass {
   private readonly dashboardDataModelName: string;
   private readonly projectName: string;
-  service: {
-    name: string;
-    serviceType: string;
-    connection: {
-      config: {
-        type: string;
-        hostPort: string;
-        connection: {
-          provider: string;
-          username: string;
-          password: string;
-        };
-        supportsMetadataExtraction: boolean;
-      };
-    };
-  };
+  service = new DashboardServiceClass().entity;
+  private readonly serviceOverride?: DashboardServiceClass;
 
   children: Column[];
 
@@ -79,28 +79,17 @@ export class DashboardDataModelClass extends EntityClass {
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
   entityResponseData: DashboardDataModel = {} as DashboardDataModel;
 
-  constructor(name?: string) {
+  constructor(options: DashboardDataModelClassOptions = {}) {
     super(EntityTypeEndpoint.DataModel);
+    this.serviceOverride = options.service;
+    this.sharedInfraKey = options.sharedInfraKey;
+    if (options.service) {
+      this.service = options.service.entity;
+    }
 
-    this.dashboardDataModelName = `pw-dashboard-data-model-${uuid()}`;
+    this.dashboardDataModelName =
+      options.name ?? `pw-dashboard-data-model-${uuid()}`;
     this.projectName = `pw-project-${uuid()}`;
-
-    this.service = {
-      name: name ?? `pw-dashboard-service-${uuid()}`,
-      serviceType: 'Superset',
-      connection: {
-        config: {
-          type: 'Superset',
-          hostPort: 'http://localhost:8088',
-          connection: {
-            provider: 'ldap',
-            username: 'admin',
-            password: 'admin',
-          },
-          supportsMetadataExtraction: true,
-        },
-      },
-    };
 
     this.children = [
       {
@@ -162,17 +151,17 @@ export class DashboardDataModelClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    this.serviceResponseData = await createOrFetch(apiContext, {
-      label: 'DashboardDataModelClass.create service',
-      createPath: '/api/v1/services/dashboardServices',
-      fqnSegments: [this.service.name],
-      data: this.service,
-    });
+    const { parents, ownedRootPath, ownedOverride } = await resolveParents(
+      apiContext,
+      'dashboard',
+      { service: this.serviceOverride },
+      this.sharedInfraKey
+    );
+    this.serviceResponseData = parents.service as ResponseDataType;
+    this.adoptOwnership({ ownedRootPath, ownedOverride });
+    this.service = { ...this.service, name: this.serviceResponseData.name };
+    this.entity.service = this.serviceResponseData.name;
 
-    // Both hand-rolled loops that used to live here — a 409 fallback for the
-    // service and a 5xx re-post for the data model — are now inside
-    // createOrFetch, which additionally looks the conflicting entity up with
-    // include=all so a soft-deleted leftover is found rather than 404ing.
     this.entityResponseData = await createOrFetch(apiContext, {
       label: 'DashboardDataModelClass.create dataModel',
       createPath: '/api/v1/dashboard/datamodels',
@@ -216,7 +205,6 @@ export class DashboardDataModelClass extends EntityClass {
         }
       )
     );
-
     this.entityResponseData = await okJson(
       response,
       'DashboardDataModelClass.patch'
@@ -231,15 +219,21 @@ export class DashboardDataModelClass extends EntityClass {
     return {
       service: this.serviceResponseData,
       entity: this.entityResponseData,
+      ownedRootPath: this.ownedRootPath,
     };
   }
 
   public set(data: {
     entity: DashboardDataModel;
     service: ResponseDataType;
+    ownedRootPath?: string;
   }): void {
     this.entityResponseData = data.entity;
     this.serviceResponseData = data.service;
+    this.ownedRootPath = data.ownedRootPath;
+    this.entity.name = data.entity.name;
+    this.entity.service = data.service.name;
+    this.service = { ...this.service, name: data.service.name };
   }
 
   async visitEntityPage(page: Page) {
@@ -251,15 +245,11 @@ export class DashboardDataModelClass extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.delete(
-      `/api/v1/services/dashboardServices/name/${encodeURIComponent(
-        this.serviceResponseData?.fullyQualifiedName ?? ''
-      )}?recursive=true&hardDelete=true`
+    await this.deleteOwnedOrLeaf(
+      apiContext,
+      `/api/v1/dashboard/datamodels/${this.entityResponseData?.id}`
     );
 
-    return {
-      service: serviceResponse.body,
-      entity: this.entityResponseData,
-    };
+    return { entity: this.entityResponseData };
   }
 }

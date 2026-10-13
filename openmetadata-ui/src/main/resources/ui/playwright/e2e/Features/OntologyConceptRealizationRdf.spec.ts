@@ -287,7 +287,9 @@ test.describe(
                 )}`
               );
               if (!response.ok()) {
-                return [];
+                throw new Error(
+                  `HTTP ${response.status()} querying ${response.url()}`
+                );
               }
               const body = await response.json();
 
@@ -323,7 +325,9 @@ test.describe(
                 data: { query },
               });
               if (!response.ok()) {
-                return [];
+                throw new Error(
+                  `HTTP ${response.status()} querying ${response.url()}`
+                );
               }
               const body = await response.json();
 

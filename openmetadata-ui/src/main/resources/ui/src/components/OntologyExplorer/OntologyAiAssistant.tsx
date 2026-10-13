@@ -12,7 +12,7 @@
  */
 
 import { Alert, Tabs, Typography } from '@openmetadata/ui-core-components';
-import { Stars02 } from '@untitledui/icons';
+import { Stars02 } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { RelationshipType } from '../../generated/entity/data/relationshipType';

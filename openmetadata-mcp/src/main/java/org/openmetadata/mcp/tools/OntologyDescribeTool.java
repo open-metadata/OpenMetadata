@@ -65,9 +65,9 @@ public class OntologyDescribeTool extends RdfMcpTool<OntologyDescribeTool.Result
 
     int maxBytes =
         RdfBody.clamp(
-            parameters.integer("maxBytes", RdfBody.MAX_BYTES),
+            parameters.integer("maxBytes", RdfBody.maxBytes()),
             RdfBody.MIN_BYTES,
-            RdfBody.MAX_BYTES);
+            RdfBody.maxBytes());
 
     return McpToolParameters.isBlank(resource)
         ? fullOntology(format, maxBytes)

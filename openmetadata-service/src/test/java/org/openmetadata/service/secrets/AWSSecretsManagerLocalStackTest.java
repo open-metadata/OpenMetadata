@@ -130,6 +130,48 @@ class AWSSecretsManagerLocalStackTest {
         "the connection password must be stored and retrievable from the vault");
   }
 
+  @Test
+  void hardDeletingAMigratedServiceRemovesTheSecretAtItsOldPath() {
+    String serviceName = "ls-fabric-migrated";
+    String legacySecretName =
+        secretsManager.buildSecretId(true, "database", serviceName) + "/clientsecret";
+    secretsManager.upsertSecret(legacySecretName, "legacy-client-secret");
+
+    secretsManager.deleteSecretsFromServiceConnectionConfig(
+        fabricConnection("secret:" + legacySecretName),
+        "MicrosoftFabric",
+        serviceName,
+        ServiceType.DATABASE);
+
+    assertFalse(
+        secretsManager.existSecret(legacySecretName),
+        "the secret the moved field still references must be deleted with the service");
+  }
+
+  @Test
+  void hardDeleteKeepsAVaultSecretTheServiceOnlyReferences() {
+    String sharedSecretName = "/shared/vault/ls-fabric-client-secret";
+    secretsManager.upsertSecret(sharedSecretName, "managed-by-the-user");
+
+    secretsManager.deleteSecretsFromServiceConnectionConfig(
+        fabricConnection("secret:" + sharedSecretName),
+        "MicrosoftFabric",
+        "ls-fabric-shared",
+        ServiceType.DATABASE);
+
+    assertTrue(
+        secretsManager.existSecret(sharedSecretName),
+        "a secret the user manages outside the service must survive its hard delete");
+  }
+
+  private static Map<String, Object> fabricConnection(String clientSecret) {
+    return Map.of(
+        "hostPort", "fabric.datawarehouse.fabric.microsoft.com",
+        "clientId", "client-id",
+        "tenantId", "tenant-id",
+        "authType", Map.of("clientSecret", clientSecret));
+  }
+
   private SecretsManager.SecretsConfig localStackConfig() {
     Parameters parameters = new Parameters();
     parameters.setAdditionalProperty("region", LOCALSTACK.getRegion());

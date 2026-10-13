@@ -11,13 +11,27 @@
  *  limitations under the License.
  */
 import { uniq } from 'lodash';
-import type { Edge, Node } from 'reactflow';
+import { LoadingState } from 'Models';
+import type {
+  Edge,
+  EdgeChange,
+  Node,
+  NodeChange,
+  ReactFlowInstance,
+} from 'reactflow';
+import { applyEdgeChanges, applyNodeChanges } from 'reactflow';
 import { create } from 'zustand';
-import type { LineageConfig } from '../components/Entity/EntityLineage/EntityLineage.interface';
-import type { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { ZOOM_VALUE } from '../constants/Lineage.constants';
-import { LineagePlatformView } from '../context/LineageProvider/LineageProvider.interface';
+import { EntityType } from '../enums/entity.enum';
+import { LineageBand } from '../generated/api/lineage/lineageScene';
 import { LineageLayer, PipelineViewMode } from '../generated/settings/settings';
+import type {
+  EntityLineageResponse,
+  LineageConfig,
+} from '../interface/lineage.interface';
+import type { ExploreQuickFilterField } from '../interface/quickFilter.interface';
+import type { SourceType } from '../interface/source.interface';
+import { LineagePlatformView, LineageTimeRange } from './lineage/types';
 
 interface LineageState {
   // state properties
@@ -41,6 +55,29 @@ interface LineageState {
   nodeFilterState: Map<string, boolean>;
   isRepositioning: boolean;
   isCanvasReady: boolean;
+  lineageMutationTick: number;
+  sceneBand?: LineageBand;
+  nodes: Node[];
+  edges: Edge[];
+  columnEdges: Edge[];
+  entityLineage: EntityLineageResponse;
+  updatedEntityLineage?: EntityLineageResponse;
+  dataQualityLineage?: EntityLineageResponse;
+  dqHighlightedEdges: Set<string>;
+  status: LoadingState;
+  init: boolean;
+  loading: boolean;
+  entity?: SourceType;
+  entityType?: EntityType;
+  entityFqn: string;
+  reactFlowInstance?: ReactFlowInstance;
+  selectedQuickFilters: ExploreQuickFilterField[];
+  timeFilter: LineageTimeRange;
+  showAddEdgeModal: boolean;
+  showDeleteModal: boolean;
+  isDrawerOpen: boolean;
+  newAddedNode?: Node;
+  deletionState: { loading: boolean; status: LoadingState };
 
   // Actions
   setIsEditMode: (isEditMode: boolean) => void;
@@ -71,7 +108,44 @@ interface LineageState {
   setNodeFilterState: (nodeId: string, isVisible: boolean) => void;
   setIsRepositioning: (isRepositioning: boolean) => void;
   setIsCanvasReady: (isCanvasReady: boolean) => void;
+  bumpLineageMutationTick: () => void;
+  setSceneBand: (sceneBand?: LineageBand) => void;
   reset: () => void;
+  setNodes: (nodes: Node[]) => void;
+  setEdges: (edges: Edge[]) => void;
+  setColumnEdges: (edges: Edge[]) => void;
+  applyNodesChange: (changes: NodeChange[]) => void;
+  applyEdgesChange: (changes: EdgeChange[]) => void;
+  redraw: () => void;
+  resetGraph: () => void;
+  beginLoad: () => void;
+  setLineageData: (data: EntityLineageResponse) => void;
+  setUpdatedEntityLineage: (data?: EntityLineageResponse) => void;
+  setDQLineage: (data?: EntityLineageResponse) => void;
+  setDQHighlightedEdges: (ids: Set<string>) => void;
+  setLoadError: () => void;
+  commitEdits: () => void;
+  resetData: () => void;
+  setEntityContext: (args: {
+    entity?: SourceType;
+    entityType?: EntityType;
+    entityFqn: string;
+  }) => void;
+  setReactFlowInstance: (instance?: ReactFlowInstance) => void;
+  setSelectedQuickFilters: (
+    next:
+      | ExploreQuickFilterField[]
+      | ((prev: ExploreQuickFilterField[]) => ExploreQuickFilterField[])
+  ) => void;
+  setTimeFilter: (range: LineageTimeRange) => void;
+  openAddEdgeModal: () => void;
+  closeAddEdgeModal: () => void;
+  openDeleteModal: () => void;
+  closeDeleteModal: () => void;
+  openDrawer: () => void;
+  closeDrawer: () => void;
+  setNewAddedNode: (node?: Node) => void;
+  setDeletionState: (next: { loading: boolean; status: LoadingState }) => void;
 }
 
 const defaultLineageSettings = {
@@ -98,6 +172,26 @@ export const useLineageStore = create<LineageState>((set, get) => ({
   nodeFilterState: new Map(),
   isRepositioning: false,
   isCanvasReady: false,
+  lineageMutationTick: 0,
+  nodes: [],
+  edges: [],
+  columnEdges: [],
+  entityLineage: {} as EntityLineageResponse,
+  dqHighlightedEdges: new Set(),
+  status: 'initial',
+  init: false,
+  loading: false,
+  entity: undefined,
+  entityType: undefined,
+  entityFqn: '',
+  reactFlowInstance: undefined,
+  selectedQuickFilters: [],
+  timeFilter: {},
+  showAddEdgeModal: false,
+  showDeleteModal: false,
+  isDrawerOpen: false,
+  newAddedNode: undefined,
+  deletionState: { loading: false, status: 'initial' },
 
   // Actions
   setLineageConfig: (lineageConfig: LineageConfig) => set({ lineageConfig }),
@@ -105,10 +199,14 @@ export const useLineageStore = create<LineageState>((set, get) => ({
   setIsEditMode: (isEditMode: boolean) => set({ isEditMode }),
 
   toggleEditMode: () => {
-    const { isEditMode, isColumnLevelLineage } = get();
+    const { isEditMode, isColumnLevelLineage, sceneBand } = get();
     const updatedEditMode = !isEditMode;
 
-    if (updatedEditMode && !isColumnLevelLineage) {
+    if (
+      updatedEditMode &&
+      sceneBand === LineageBand.Field &&
+      !isColumnLevelLineage
+    ) {
       set({
         activeLayer: [LineageLayer.ColumnLevelLineage],
         isColumnLevelLineage: true,
@@ -241,6 +339,13 @@ export const useLineageStore = create<LineageState>((set, get) => ({
 
   setIsCanvasReady: (isCanvasReady: boolean) => set({ isCanvasReady }),
 
+  bumpLineageMutationTick: () =>
+    set((state) => ({
+      lineageMutationTick: state.lineageMutationTick + 1,
+    })),
+
+  setSceneBand: (sceneBand?: LineageBand) => set({ sceneBand }),
+
   reset: () =>
     set({
       isEditMode: false,
@@ -263,5 +368,124 @@ export const useLineageStore = create<LineageState>((set, get) => ({
       nodeFilterState: new Map(),
       isRepositioning: false,
       isCanvasReady: false,
+      lineageMutationTick: 0,
+      sceneBand: undefined,
+      nodes: [],
+      edges: [],
+      columnEdges: [],
+      entityLineage: {} as EntityLineageResponse,
+      updatedEntityLineage: undefined,
+      dataQualityLineage: undefined,
+      dqHighlightedEdges: new Set(),
+      status: 'initial',
+      init: false,
+      loading: false,
+      entity: undefined,
+      entityType: undefined,
+      entityFqn: '',
+      reactFlowInstance: undefined,
+      selectedQuickFilters: [],
+      timeFilter: {},
+      showAddEdgeModal: false,
+      showDeleteModal: false,
+      isDrawerOpen: false,
+      newAddedNode: undefined,
+      deletionState: { loading: false, status: 'initial' },
     }),
+
+  setNodes: (nodes: Node[]) => set({ nodes }),
+
+  setEdges: (edges: Edge[]) => set({ edges }),
+
+  setColumnEdges: (columnEdges: Edge[]) => set({ columnEdges }),
+
+  applyNodesChange: (changes: NodeChange[]) =>
+    set((state) => ({ nodes: applyNodeChanges(changes, state.nodes) })),
+
+  applyEdgesChange: (changes: EdgeChange[]) =>
+    set((state) => ({ edges: applyEdgeChanges(changes, state.edges) })),
+
+  redraw: () =>
+    set((state) => ({
+      lineageMutationTick: state.lineageMutationTick + 1,
+    })),
+
+  resetGraph: () =>
+    set((state) => ({
+      nodes: [],
+      edges: [],
+      columnEdges: [],
+      lineageMutationTick: state.lineageMutationTick + 1,
+    })),
+
+  beginLoad: () => set({ loading: true, status: 'waiting' }),
+
+  setLineageData: (data: EntityLineageResponse) =>
+    set({
+      entityLineage: data,
+      loading: false,
+      init: true,
+      status: 'success',
+    }),
+
+  setUpdatedEntityLineage: (updatedEntityLineage?: EntityLineageResponse) =>
+    set({ updatedEntityLineage }),
+
+  setDQLineage: (dataQualityLineage?: EntityLineageResponse) =>
+    set({ dataQualityLineage }),
+
+  setDQHighlightedEdges: (dqHighlightedEdges: Set<string>) =>
+    set({ dqHighlightedEdges }),
+
+  setLoadError: () => set({ loading: false, status: 'initial' }),
+
+  commitEdits: () =>
+    set((state) => ({
+      entityLineage: state.updatedEntityLineage ?? state.entityLineage,
+      updatedEntityLineage: undefined,
+    })),
+
+  resetData: () =>
+    set({
+      entityLineage: {} as EntityLineageResponse,
+      updatedEntityLineage: undefined,
+      dataQualityLineage: undefined,
+      dqHighlightedEdges: new Set(),
+      status: 'initial',
+      init: false,
+      loading: false,
+    }),
+
+  setEntityContext: ({ entity, entityType, entityFqn }) =>
+    set({ entity, entityType, entityFqn }),
+
+  setReactFlowInstance: (reactFlowInstance?: ReactFlowInstance) =>
+    set({ reactFlowInstance }),
+
+  setSelectedQuickFilters: (next) =>
+    set((s) => ({
+      selectedQuickFilters:
+        typeof next === 'function' ? next(s.selectedQuickFilters) : next,
+    })),
+
+  setTimeFilter: (timeFilter: LineageTimeRange) => set({ timeFilter }),
+
+  openAddEdgeModal: () => set({ showAddEdgeModal: true }),
+
+  closeAddEdgeModal: () => set({ showAddEdgeModal: false }),
+
+  openDeleteModal: () => set({ showDeleteModal: true }),
+
+  closeDeleteModal: () => set({ showDeleteModal: false }),
+
+  openDrawer: () => set({ isDrawerOpen: true }),
+
+  closeDrawer: () => set({ isDrawerOpen: false }),
+
+  setNewAddedNode: (newAddedNode?: Node) => set({ newAddedNode }),
+
+  setDeletionState: (deletionState: {
+    loading: boolean;
+    status: LoadingState;
+  }) => set({ deletionState }),
 }));

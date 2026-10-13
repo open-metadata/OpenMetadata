@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { render } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import TableDataCardV2 from './TableDataCardV2';
 
@@ -54,5 +54,23 @@ describe('Test TableDataCard Component', () => {
 
     expect(tableDataCard).toBeInTheDocument();
     expect(entityHeader).toBeInTheDocument();
+  });
+
+  it('should call handleSummaryPanelDisplay once when the checkbox is clicked', () => {
+    mockHandleSummaryPanelDisplay.mockClear();
+    render(
+      <TableDataCardV2
+        showCheckboxes
+        checked={false}
+        handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
+        id="1"
+        source={{ id: '1', name: 'Name1', fullyQualifiedName: 'test' }}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    fireEvent.click(screen.getByRole('checkbox'));
+
+    expect(mockHandleSummaryPanelDisplay).toHaveBeenCalledTimes(1);
   });
 });

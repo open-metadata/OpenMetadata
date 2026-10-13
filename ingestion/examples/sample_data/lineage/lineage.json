@@ -142,6 +142,24 @@
       "type": "table"
     },
     "sql_query": "select customer_id, first_name, last_name, email from raw_customer",
+    "columnsLineage": [
+      {
+        "fromColumns": ["sample_data.ecommerce_db.shopify.raw_customer.customer"],
+        "toColumn": "sample_data.ecommerce_db.shopify.dim_customer.customer"
+      },
+      {
+        "fromColumns": ["sample_data.ecommerce_db.shopify.raw_customer.shipping_address"],
+        "toColumn": "sample_data.ecommerce_db.shopify.dim_customer.shipping_address"
+      },
+      {
+        "fromColumns": ["sample_data.ecommerce_db.shopify.raw_customer.orders"],
+        "toColumn": "sample_data.ecommerce_db.shopify.dim_customer.orders"
+      },
+      {
+        "fromColumns": ["sample_data.ecommerce_db.shopify.raw_customer.transaction_date"],
+        "toColumn": "sample_data.ecommerce_db.shopify.dim_customer.created_at"
+      }
+    ],
     "edge_meta": { "fqn": "sample_dbtcloud.dbt_staging_shopify", "type": "pipeline" },
     "source": "DbtLineage",
     "created_at_days_ago": 45,
@@ -187,6 +205,20 @@
       "type": "table"
     },
     "sql_query": "select customer_id, order_date, total_amount from dim_customer join orders",
+    "columnsLineage": [
+      {
+        "fromColumns": ["sample_data.ecommerce_db.shopify.dim_customer.customer_id"],
+        "toColumn": "sample_data.ecommerce_db.shopify.fact_orders.customer_id"
+      },
+      {
+        "fromColumns": ["sample_data.ecommerce_db.shopify.dim_customer.last_order_date"],
+        "toColumn": "sample_data.ecommerce_db.shopify.fact_orders.order_date"
+      },
+      {
+        "fromColumns": ["sample_data.ecommerce_db.shopify.dim_customer.total_order_value"],
+        "toColumn": "sample_data.ecommerce_db.shopify.fact_orders.total_amount"
+      }
+    ],
     "edge_meta": { "fqn": "sample_dbtcloud.dbt_transform_orders", "type": "pipeline" },
     "source": "DbtLineage",
     "created_at_days_ago": 20,
@@ -217,6 +249,24 @@
       "type": "table"
     },
     "sql_query": "select customer_id, order_date, total_amount, product_count from dim_customer",
+    "columnsLineage": [
+      {
+        "fromColumns": ["sample_data.ecommerce_db.shopify.dim_customer.customer_id"],
+        "toColumn": "sample_data.ecommerce_db.shopify.fact_orders.customer_id"
+      },
+      {
+        "fromColumns": ["sample_data.ecommerce_db.shopify.dim_customer.last_order_date"],
+        "toColumn": "sample_data.ecommerce_db.shopify.fact_orders.order_date"
+      },
+      {
+        "fromColumns": ["sample_data.ecommerce_db.shopify.dim_customer.total_order_value"],
+        "toColumn": "sample_data.ecommerce_db.shopify.fact_orders.total_amount"
+      },
+      {
+        "fromColumns": ["sample_data.ecommerce_db.shopify.dim_customer.total_order_count"],
+        "toColumn": "sample_data.ecommerce_db.shopify.fact_orders.product_count"
+      }
+    ],
     "edge_meta": { "fqn": "sample_dbtcloud.dbt_transform_orders", "type": "pipeline" },
     "source": "DbtLineage",
     "created_at_days_ago": 8,
@@ -232,6 +282,24 @@
       "type": "table"
     },
     "sql_query": "select customer_id, sum(total_amount) as lifetime_value from fact_orders group by customer_id",
+    "columnsLineage": [
+      {
+        "fromColumns": ["sample_data.ecommerce_db.shopify.fact_orders.customer_id"],
+        "toColumn": "sample_data.ecommerce_db.shopify.dim_customer.customer_id"
+      },
+      {
+        "fromColumns": ["sample_data.ecommerce_db.shopify.fact_orders.order_date"],
+        "toColumn": "sample_data.ecommerce_db.shopify.dim_customer.last_order_date"
+      },
+      {
+        "fromColumns": ["sample_data.ecommerce_db.shopify.fact_orders.total_amount"],
+        "toColumn": "sample_data.ecommerce_db.shopify.dim_customer.total_order_value"
+      },
+      {
+        "fromColumns": ["sample_data.ecommerce_db.shopify.fact_orders.product_count"],
+        "toColumn": "sample_data.ecommerce_db.shopify.dim_customer.total_order_count"
+      }
+    ],
     "edge_meta": { "fqn": "sample_dbtcloud.dbt_analytics_customers", "type": "pipeline" },
     "source": "DbtLineage",
     "created_at_days_ago": 7,
@@ -247,6 +315,20 @@
       "type": "table"
     },
     "sql_query": "select customer_id, count(*) as total_orders, avg(total_amount) as avg_order_value from fact_orders group by customer_id",
+    "columnsLineage": [
+      {
+        "fromColumns": ["sample_data.ecommerce_db.shopify.fact_orders.customer_id"],
+        "toColumn": "sample_data.ecommerce_db.shopify.customer_features.customer_id"
+      },
+      {
+        "fromColumns": ["sample_data.ecommerce_db.shopify.fact_orders.product_count"],
+        "toColumn": "sample_data.ecommerce_db.shopify.customer_features.total_orders"
+      },
+      {
+        "fromColumns": ["sample_data.ecommerce_db.shopify.fact_orders.total_amount"],
+        "toColumn": "sample_data.ecommerce_db.shopify.customer_features.avg_order_value"
+      }
+    ],
     "edge_meta": { "fqn": "sample_dbtcloud.dbt_ml_features", "type": "pipeline" },
     "source": "DbtLineage",
     "created_at_days_ago": 5,
@@ -262,6 +344,20 @@
       "type": "table"
     },
     "sql_query": "select customer_id, preferred_category, churn_probability from dim_customer",
+    "columnsLineage": [
+      {
+        "fromColumns": ["sample_data.ecommerce_db.shopify.dim_customer.customer_id"],
+        "toColumn": "sample_data.ecommerce_db.shopify.customer_features.customer_id"
+      },
+      {
+        "fromColumns": ["sample_data.ecommerce_db.shopify.dim_customer.total_order_count"],
+        "toColumn": "sample_data.ecommerce_db.shopify.customer_features.total_orders"
+      },
+      {
+        "fromColumns": ["sample_data.ecommerce_db.shopify.dim_customer.total_order_value"],
+        "toColumn": "sample_data.ecommerce_db.shopify.customer_features.customer_lifetime_value"
+      }
+    ],
     "edge_meta": { "fqn": "sample_dbtcloud.dbt_ml_features", "type": "pipeline" },
     "source": "DbtLineage",
     "created_at_days_ago": 5,
@@ -277,6 +373,16 @@
       "type": "table"
     },
     "sql_query": "select customer_id, sum(total_amount) as total_spend from fact_orders group by customer_id",
+    "columnsLineage": [
+      {
+        "fromColumns": ["sample_data.ecommerce_db.shopify.fact_orders.customer_id"],
+        "toColumn": "sample_data.ecommerce_db.shopify.customer_features.customer_id"
+      },
+      {
+        "fromColumns": ["sample_data.ecommerce_db.shopify.fact_orders.total_amount"],
+        "toColumn": "sample_data.ecommerce_db.shopify.customer_features.total_spend"
+      }
+    ],
     "edge_meta": { "fqn": "sample_airflow.ml_feature_pipeline", "type": "pipeline" },
     "source": "PipelineLineage",
     "created_at_days_ago": 2,
@@ -334,6 +440,28 @@
     "from": { "fqn": "sample_data.ecommerce_db.shopify.raw_order", "type": "table" },
     "to": { "fqn": "sample_data.ecommerce_db.shopify.fact_orders", "type": "table" },
     "edge_meta": { "fqn": "", "type": "" },
+    "columnsLineage": [
+      {
+        "fromColumns": ["sample_data.ecommerce_db.shopify.raw_order.orders"],
+        "toColumn": "sample_data.ecommerce_db.shopify.fact_orders.order_id"
+      },
+      {
+        "fromColumns": ["sample_data.ecommerce_db.shopify.raw_order.transaction_date"],
+        "toColumn": "sample_data.ecommerce_db.shopify.fact_orders.order_date"
+      },
+      {
+        "fromColumns": ["sample_data.ecommerce_db.shopify.raw_order.total_order_value"],
+        "toColumn": "sample_data.ecommerce_db.shopify.fact_orders.total_amount"
+      },
+      {
+        "fromColumns": ["sample_data.ecommerce_db.shopify.raw_order.total_order_count"],
+        "toColumn": "sample_data.ecommerce_db.shopify.fact_orders.product_count"
+      },
+      {
+        "fromColumns": ["sample_data.ecommerce_db.shopify.raw_order.preference"],
+        "toColumn": "sample_data.ecommerce_db.shopify.fact_orders.status"
+      }
+    ],
     "source": "QueryLineage",
     "created_at_days_ago": 75,
     "updated_at_days_ago": 40,
@@ -347,6 +475,20 @@
     "from": { "fqn": "sample_data.ecommerce_db.shopify.raw_customer", "type": "table" },
     "to": { "fqn": "sample_data.ecommerce_db.shopify.dim_customer", "type": "table" },
     "edge_meta": { "fqn": "", "type": "" },
+    "columnsLineage": [
+      {
+        "fromColumns": ["sample_data.ecommerce_db.shopify.raw_customer.customer"],
+        "toColumn": "sample_data.ecommerce_db.shopify.dim_customer.customer"
+      },
+      {
+        "fromColumns": ["sample_data.ecommerce_db.shopify.raw_customer.shipping_address"],
+        "toColumn": "sample_data.ecommerce_db.shopify.dim_customer.shipping_address"
+      },
+      {
+        "fromColumns": ["sample_data.ecommerce_db.shopify.raw_customer.orders"],
+        "toColumn": "sample_data.ecommerce_db.shopify.dim_customer.orders"
+      }
+    ],
     "source": "QueryLineage",
     "created_at_days_ago": 60,
     "updated_at_days_ago": 30,

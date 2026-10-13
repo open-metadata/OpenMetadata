@@ -12,16 +12,25 @@
  */
 
 import '@github/g-emoji-element';
-import { Button, Popover } from 'antd';
-import { groupBy, uniqueId } from 'lodash';
-import { FC, useState } from 'react';
+import {
+  Button,
+  Popover,
+  PopoverTrigger,
+} from '@openmetadata/ui-core-components';
+import { FaceSmile } from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
+import { groupBy } from 'lodash';
+import { FC, MouseEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddReactionIcon } from '../../../assets/svg/ic-add-emoji.svg';
 import {
   REACTION_LIST,
   REACTION_TYPE_LIST,
 } from '../../../constants/reactions.constant';
-import { ReactionOperation } from '../../../enums/reactions.enum';
+import {
+  ReactionOperation,
+  ReactionsVariant,
+} from '../../../enums/reactions.enum';
 import {
   Reaction as ReactionProp,
   ReactionType,
@@ -29,27 +38,29 @@ import {
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import Emoji from './Emoji';
 import Reaction from './Reaction';
-import './reactions.less';
+
+const isPill = (variant: ReactionsVariant) => variant === ReactionsVariant.Pill;
 
 interface ReactionsProps {
   reactions: ReactionProp[];
+  variant?: ReactionsVariant;
   onReactionSelect: (
     reaction: ReactionType,
     operation: ReactionOperation
-  ) => void;
+  ) => void | Promise<void>;
 }
 
-const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
+const Reactions: FC<ReactionsProps> = ({
+  reactions,
+  variant = ReactionsVariant.Default,
+  onReactionSelect,
+}) => {
   const { t } = useTranslation();
   const [visible, setVisible] = useState(false);
   const { currentUser } = useApplicationStore();
 
   const hide = () => {
     setVisible(false);
-  };
-
-  const handleVisibleChange = (newVisible: boolean) => {
-    setVisible(newVisible);
   };
 
   /**
@@ -70,7 +81,7 @@ const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
     return (
       <Reaction
         isReacted={isReacted(reaction.reaction)}
-        key={uniqueId()}
+        key={reaction.reaction}
         reaction={reaction}
         onHide={hide}
         onReactionSelect={onReactionSelect}
@@ -91,6 +102,7 @@ const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
           key={reaction}
           reaction={reaction}
           reactionList={reactionListValue}
+          variant={variant}
           onReactionSelect={onReactionSelect}
         />
       )
@@ -98,31 +110,46 @@ const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
   });
 
   return (
-    <div className="d-flex items-center" data-testid="feed-reaction-container">
+    <div
+      className={classNames(
+        'tw:inline-flex tw:items-center',
+        isPill(variant) ? 'tw:gap-1.5' : 'tw:gap-2'
+      )}
+      data-testid="feed-reaction-container">
       {emojis}
-      <Popover
-        arrowPointAtCenter
-        align={{ targetOffset: [0, -10] }}
-        content={reactionList}
-        open={visible}
-        overlayClassName="ant-popover-feed-reactions"
-        placement="topLeft"
-        trigger="click"
-        zIndex={9999}
-        onOpenChange={handleVisibleChange}>
+      <PopoverTrigger isOpen={visible} onOpenChange={setVisible}>
         <Button
-          className="flex-center p-0"
+          aria-label={t('label.add-entity', {
+            entity: t('label.reaction-lowercase-plural'),
+          })}
+          className={
+            isPill(variant)
+              ? 'tw:h-6.5 tw:w-7 tw:rounded-full! tw:p-1! tw:*:data-icon:text-fg-secondary tw:hover:*:data-icon:text-fg-secondary_hover'
+              : 'tw:size-[22px] tw:rounded-md! tw:p-[3px]!'
+          }
+          color="tertiary"
           data-testid="add-reactions"
-          icon={<AddReactionIcon height={16} />}
-          shape="circle"
-          size="small"
+          iconLeading={
+            isPill(variant) ? (
+              <FaceSmile data-icon size={16} />
+            ) : (
+              <AddReactionIcon data-icon height={16} width={16} />
+            )
+          }
+          size="xs"
           title={t('label.add-entity', {
             entity: t('label.reaction-lowercase-plural'),
           })}
-          type="text"
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e: MouseEvent) => e.stopPropagation()}
         />
-      </Popover>
+        <Popover
+          arrow
+          containerClassName="tw:flex tw:gap-2 tw:p-1"
+          data-testid="feed-reactions-popover"
+          placement="top start">
+          {reactionList}
+        </Popover>
+      </PopoverTrigger>
     </div>
   );
 };

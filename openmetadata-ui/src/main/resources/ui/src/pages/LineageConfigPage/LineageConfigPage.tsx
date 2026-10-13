@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Form, InputNumber, Row, Select, Typography } from 'antd';
+import {
+  Box,
+  Button,
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Form, InputNumber, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { FocusEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -35,6 +41,7 @@ import {
   getSettingsByType,
   updateSettingsConfig,
 } from '../../rest/settingConfigAPI';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
@@ -127,20 +134,24 @@ const LineageConfigPage = () => {
           allowScroll: true,
           children: (
             <div data-testid="add-metric-container">
-              <Row gutter={[16, 16]}>
-                <Col span={24}>
+              <Grid
+                className="layout-row layout-grid"
+                style={{ ...getLayoutGutter(16, 16) }}>
+                <Grid.Item className="layout-column" span={24}>
                   <TitleBreadcrumb titleLinks={breadcrumbs} />
-                </Col>
+                </Grid.Item>
 
-                <Col span={24}>
-                  <Typography.Title
+                <Grid.Item className="layout-column" span={24}>
+                  <Typography
+                    as="h5"
                     className="m-b-0"
                     data-testid="heading"
-                    level={5}>
+                    size="text-md"
+                    weight="semibold">
                     {t('label.lineage')}
-                  </Typography.Title>
-                </Col>
-                <Col span={24}>
+                  </Typography>
+                </Grid.Item>
+                <Grid.Item className="layout-column" span={24}>
                   <Form
                     form={form}
                     id="lineage-config"
@@ -221,25 +232,28 @@ const LineageConfigPage = () => {
                       </Select>
                     </Form.Item>
                   </Form>
-                  <Row className="m-b-xl" justify="end">
-                    <Col className="d-flex justify-end gap-2" span={24}>
+                  <Box className="layout-row m-b-xl" justify="end" wrap="wrap">
+                    <Box
+                      className="layout-column d-flex justify-end gap-2"
+                      style={{ maxWidth: '100%', flex: '0 0 100%' }}>
                       <Button
+                        color="secondary"
                         data-testid="cancel-button"
                         onClick={() => navigate(-1)}>
                         {t('label.cancel')}
                       </Button>
                       <Button
+                        color="primary"
                         data-testid="save-button"
                         form="lineage-config"
-                        htmlType="submit"
-                        loading={isUpdating}
-                        type="primary">
+                        isLoading={isUpdating}
+                        type="submit">
                         {t('label.save')}
                       </Button>
-                    </Col>
-                  </Row>
-                </Col>
-              </Row>
+                    </Box>
+                  </Box>
+                </Grid.Item>
+              </Grid>
             </div>
           ),
           minWidth: 700,

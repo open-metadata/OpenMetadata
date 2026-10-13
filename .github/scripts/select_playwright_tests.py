@@ -13,7 +13,10 @@ from typing import Any
 
 UI_ROOT = "openmetadata-ui/src/main/resources/ui/"
 RUNNABLE_SPEC_PREFIX = f"{UI_ROOT}playwright/e2e/"
-LINEAGE_MATRIX_SPEC = "playwright/e2e/Pages/Lineage/DataAssetLineage.spec.ts"
+# Gating events run one representative entity per entity-matrix spec (see
+# playwright/utils/entityMatrix.ts); the nightly schedule and manual dispatches
+# keep every entity.
+REPRESENTATIVE_ENTITY_EVENTS = {"pull_request", "pull_request_target", "merge_group"}
 
 # Path prefixes that always mean "product/test code" — a change here that is
 # also unmapped by the impact-map is treated as "we don't know what to run,
@@ -110,9 +113,6 @@ def remove_delegated_specs(
 
 def write_github_output(path: Path, plan: dict[str, Any]) -> None:
     direct_changed_specs = plan.get("directChangedSpecs", [])
-    lineage_representative_only = (
-        plan["mode"] == "targeted" and LINEAGE_MATRIX_SPEC not in direct_changed_specs
-    )
     with path.open("a", encoding="utf-8") as output:
         output.write(f"mode={plan['mode']}\n")
         output.write(f"selection={json.dumps(plan, separators=(',', ':'))}\n")
@@ -121,9 +121,7 @@ def write_github_output(path: Path, plan: dict[str, Any]) -> None:
             "direct_changed_specs="
             f"{json.dumps(direct_changed_specs, separators=(',', ':'))}\n"
         )
-        output.write(
-            f"lineage_representative_only={str(lineage_representative_only).lower()}\n"
-        )
+        output.write(f"entity_matrix={plan.get('entityMatrix', 'full')}\n")
 
 
 def main() -> None:
@@ -272,6 +270,10 @@ def main() -> None:
                     if not matches(spec, impact_map.get("delegatedSpecs", []))
                 ],
             }
+
+    plan["entityMatrix"] = (
+        "representative" if args.event_name in REPRESENTATIVE_ENTITY_EVENTS else "full"
+    )
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(plan, indent=2) + "\n", encoding="utf-8")

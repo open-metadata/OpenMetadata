@@ -10,7 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { MOCK_DOMAIN } from '../../../mocks/Domains.mock';
 import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
@@ -82,5 +89,75 @@ describe('DomainTypeWidget permissions', () => {
     render(<DomainTypeWidget />);
 
     expect(screen.getByTestId('add-domainType-button')).toBeInTheDocument();
+  });
+});
+
+describe('DomainTypeWidget picker', () => {
+  beforeEach(() => {
+    setMockContext({ ...ENTITY_PERMISSIONS, EditAll: true });
+  });
+
+  it('lists every domain type by its label, the current one checked', async () => {
+    render(<DomainTypeWidget />);
+
+    fireEvent.click(screen.getByTestId('edit-domainType-button'));
+    const aggregate = await screen.findByTestId('Aggregate');
+
+    expect(within(aggregate).getByText('label.aggregate')).toBeInTheDocument();
+    expect(aggregate).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByTestId('Consumer-aligned')).toHaveAttribute(
+      'aria-checked',
+      'false'
+    );
+    expect(screen.getByTestId('Source-aligned')).toBeInTheDocument();
+  });
+
+  it('filters the domain types by search', async () => {
+    render(<DomainTypeWidget />);
+
+    fireEvent.click(screen.getByTestId('edit-domainType-button'));
+    fireEvent.change(await screen.findByTestId('search-input'), {
+      target: { value: 'label.source' },
+    });
+
+    expect(screen.getByTestId('Source-aligned')).toBeInTheDocument();
+    expect(screen.queryByTestId('Aggregate')).not.toBeInTheDocument();
+  });
+
+  it('opens from the edit button and saves a pick at once', async () => {
+    render(<DomainTypeWidget />);
+
+    fireEvent.click(screen.getByTestId('edit-domainType-button'));
+    await act(async () => {
+      fireEvent.click(await screen.findByTestId('Source-aligned'));
+    });
+
+    expect(mockContext.onUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ domainType: 'Source-aligned' })
+    );
+  });
+
+  it('shows no selection footer for the required domain type', async () => {
+    render(<DomainTypeWidget />);
+
+    fireEvent.click(screen.getByTestId('edit-domainType-button'));
+    await screen.findByTestId('Source-aligned');
+
+    expect(screen.queryByTestId('selected-count')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('clear-filter-btn')).not.toBeInTheDocument();
+  });
+
+  it('closes on a second press of the edit button without saving', async () => {
+    render(<DomainTypeWidget />);
+
+    fireEvent.click(screen.getByTestId('edit-domainType-button'));
+    await screen.findByTestId('Source-aligned');
+    fireEvent.click(screen.getByTestId('edit-domainType-button'));
+
+    await waitFor(() =>
+      expect(screen.queryByTestId('Source-aligned')).not.toBeInTheDocument()
+    );
+
+    expect(mockContext.onUpdate).not.toHaveBeenCalled();
   });
 });

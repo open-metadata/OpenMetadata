@@ -74,6 +74,10 @@ export interface AppRunRecord {
      * Update time of the job status.
      */
     timestamp?: number;
+    /**
+     * User who triggered the run on demand, when known. Not set for scheduled runs.
+     */
+    triggeredBy?: string;
 }
 
 /**

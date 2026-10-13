@@ -14,7 +14,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.rules.RuleEngine;
 
-public interface EntityMapper<T extends EntityInterface, C extends CreateEntity> {
+public interface EntityMapper<T extends EntityInterface<?>, C extends CreateEntity> {
   T createToEntity(C create, String user);
 
   default T copy(T entity, CreateEntity request, String updatedBy) {

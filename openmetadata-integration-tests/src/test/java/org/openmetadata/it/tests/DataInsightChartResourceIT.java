@@ -37,6 +37,7 @@ public class DataInsightChartResourceIT
     extends BaseEntityIT<DataInsightChart, CreateDataInsightChart> {
 
   public DataInsightChartResourceIT() {
+    supportsEntityStatus = false;
     supportsPatch = false;
     supportsFollowers = false;
     supportsTags = false;

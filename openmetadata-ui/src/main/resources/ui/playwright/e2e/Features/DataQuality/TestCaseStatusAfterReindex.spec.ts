@@ -25,6 +25,7 @@
  */
 
 import test, { expect } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../../constant/common';
 import { TableClass } from '../../../support/entity/TableClass';
 import { createNewPage } from '../../../utils/common';
 
@@ -69,7 +70,7 @@ test('Test case status survives a full entity reindex', async ({ browser }) => {
         {
           message:
             'pre-reindex: test case search doc must include testCaseResult.testCaseStatus',
-          timeout: 30_000,
+          timeout: ACTION_TIMEOUT,
         }
       )
       .toBe(TEST_CASE_STATUS);
@@ -111,7 +112,7 @@ test('Test case status survives a full entity reindex', async ({ browser }) => {
         {
           message:
             'post-reindex: test case search doc must still include testCaseResult.testCaseStatus',
-          timeout: 30_000,
+          timeout: ACTION_TIMEOUT,
         }
       )
       .toBe(TEST_CASE_STATUS);

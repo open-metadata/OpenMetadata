@@ -100,14 +100,6 @@ describe('DraggableMenuItem', () => {
     expect(dragIcon).toBeInTheDocument();
   });
 
-  it('should render button with correct class', () => {
-    renderComponent();
-
-    const button = screen.getByRole('button');
-
-    expect(button).toHaveClass('draggable-menu-item-button');
-  });
-
   it('should render label with correct class', () => {
     renderComponent();
 

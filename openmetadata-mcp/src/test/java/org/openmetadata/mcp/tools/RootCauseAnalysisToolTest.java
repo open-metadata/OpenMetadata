@@ -14,6 +14,7 @@
 package org.openmetadata.mcp.tools;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -25,6 +26,7 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.mcp.util.McpResponseTrim;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.search.SearchListFilter;
 
 /**
  * Pins the in-memory slimming that {@link RootCauseAnalysisTool} applies to the raw {@code
@@ -55,6 +57,15 @@ class RootCauseAnalysisToolTest {
     ref.put("type", type);
     ref.put("fqnHash", fqnHash);
     return ref;
+  }
+
+  @Test
+  void failingTestsAreScopedToTheAssetBeforeGrouping() {
+    SearchListFilter filter = RootCauseAnalysisTool.failingTestsFilter("svc.db.schema.t", "suite");
+
+    assertEquals("svc.db.schema.t", filter.getQueryParam("entityFQN"));
+    assertEquals("suite", filter.getQueryParam("testSuiteId"));
+    assertEquals("Failed", filter.getQueryParam("testCaseStatus"));
   }
 
   @Test

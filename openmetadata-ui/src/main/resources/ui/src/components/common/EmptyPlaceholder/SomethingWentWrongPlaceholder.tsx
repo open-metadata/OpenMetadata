@@ -12,7 +12,7 @@
  */
 
 import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
-import { AlertTriangle } from '@untitledui/icons';
+import { AlertTriangle } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import { SomethingWentWrongPlaceholderProps } from './EmptyPlaceholder.interface';
 import { resolveSingleAction } from './EmptyPlaceholder.utils';

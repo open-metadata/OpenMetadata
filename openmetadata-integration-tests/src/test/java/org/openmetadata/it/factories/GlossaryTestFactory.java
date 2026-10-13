@@ -13,6 +13,12 @@ import org.openmetadata.service.Entity;
  * SdkClients.initializeFluentAPIs).
  */
 public class GlossaryTestFactory {
+  public static final String STATUS_TEST_GLOSSARY_PREFIX = "status_fixture_glossary";
+
+  /** Glossary whose terms the test bootstrap excludes from automatic approval. */
+  public static Glossary createForStatusTests(TestNamespace ns) {
+    return createWithName(ns, STATUS_TEST_GLOSSARY_PREFIX);
+  }
 
   /**
    * Create a glossary with default settings using fluent API.

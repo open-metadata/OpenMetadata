@@ -61,7 +61,7 @@ test('filter survives a tree click and both stack as removable chips', async ({
     const applyRes = page.waitForResponse(
       '/api/v1/search/query?*index=dataAsset*'
     );
-    await page.getByTestId('table-checkbox').check();
+    await page.getByTestId('drop-down-menu').getByTestId('table').click();
     await applyRes;
     await page.keyboard.press('Escape');
 
@@ -124,17 +124,17 @@ test('selecting an asset type grays out incompatible tree categories', async ({
   const applyRes = page.waitForResponse(
     '/api/v1/search/query?*index=dataAsset*'
   );
-  await page.getByTestId('table-checkbox').check();
+  await page.getByTestId('drop-down-menu').getByTestId('table').click();
   await applyRes;
   await page.keyboard.press('Escape');
 
   const databasesNode = page
     .getByTestId('explore-tree-title-Databases')
-    .locator('xpath=ancestor::*[contains(@class, "ant-tree-treenode")]');
+    .locator('xpath=ancestor::*[@role="row"]');
   const dashboardsNode = page
     .getByTestId('explore-tree-title-Dashboards')
-    .locator('xpath=ancestor::*[contains(@class, "ant-tree-treenode")]');
+    .locator('xpath=ancestor::*[@role="row"]');
 
-  await expect(databasesNode).not.toHaveClass(/ant-tree-treenode-disabled/);
-  await expect(dashboardsNode).toHaveClass(/ant-tree-treenode-disabled/);
+  await expect(databasesNode).not.toHaveAttribute('aria-disabled', 'true');
+  await expect(dashboardsNode).toHaveAttribute('aria-disabled', 'true');
 });

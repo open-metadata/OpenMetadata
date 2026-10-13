@@ -56,7 +56,7 @@ public class DataCompletenessImpl implements JavaDelegate {
                       inputNamespaces.namespaceFor(RELATED_ENTITY_VARIABLE),
                       RELATED_ENTITY_VARIABLE));
 
-      EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
+      EntityInterface<?> entity = Entity.getEntity(entityLink, "*", Include.ALL);
       Map<String, Object> entityMap = JsonUtils.getMap(entity);
 
       // Calculate completeness

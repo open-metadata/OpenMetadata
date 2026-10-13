@@ -1,0 +1,87 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+.data-quality-settings-page {
+  .dimension-technical-name {
+    margin-bottom: 0;
+    font-family: monospace;
+    font-size: var(--om-font-size-xs);
+    color: var(--om-color-text-tertiary);
+  }
+}
+
+.dimension-color-dot {
+  display: inline-block;
+  width: var(--om-space-8);
+  height: var(--om-space-8);
+  border-radius: var(--om-radius-full);
+  margin-top: var(--om-space-6);
+}
+
+.dimension-color-swatch {
+  width: var(--om-space-24);
+  height: var(--om-space-24);
+  border-radius: var(--om-radius-full);
+  border: 2px solid transparent;
+  padding: 0;
+  cursor: pointer;
+
+  // Drawn as an outline rather than a ring: rings compile to box-shadow, which WebKit does not
+  // pixel-snap, so the selected indicator thins or vanishes in Safari at non-100% zoom.
+  &.selected {
+    outline: 2px solid currentColor;
+    outline-offset: var(--om-space-2);
+  }
+}
+
+.dimension-form-drawer {
+  .dimension-side-panel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--om-space-12);
+    padding: var(--om-space-16);
+    border: 1px solid var(--om-color-border);
+    border-radius: var(--om-radius-sm);
+    background-color: var(--om-color-bg-secondary);
+  }
+
+  .dimension-preview {
+    display: flex;
+    align-items: center;
+    gap: var(--om-space-12);
+    padding: var(--om-space-12);
+    border: 1px solid var(--om-color-border);
+    border-radius: var(--om-radius-lg);
+    background-color: var(--om-color-bg-surface);
+  }
+}
+
+// Inline elements: the shared delete modal renders its message inside a <p>, so the impact
+// block is laid out with flex on spans rather than nesting block elements there.
+.dimension-delete-warning {
+  display: flex;
+  flex-direction: column;
+  gap: var(--om-space-8);
+  margin-top: var(--om-space-12);
+  padding: var(--om-space-12);
+  border: 1px solid var(--om-color-border-warning-subtle);
+  border-radius: var(--om-radius-lg);
+  background-color: var(--om-color-bg-warning);
+  text-align: left;
+}
+
+.dimension-delete-impact {
+  display: flex;
+  flex-direction: column;
+  gap: var(--om-space-4);
+}

@@ -22,11 +22,15 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.BiConsumer;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.openmetadata.schema.api.data.ConceptMapping;
 import org.openmetadata.schema.api.data.DeleteOntologyResource;
@@ -37,13 +41,16 @@ import org.openmetadata.schema.api.data.OntologyImpactReport;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TermRelation;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.security.jwt.InternalActionTokenSigner;
 import org.openmetadata.service.security.jwt.InternalActionTokenSigner.Claims;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 
 /** Computes version-bound ontology impacts and enforces their confirmation at deletion time. */
@@ -86,14 +93,52 @@ public final class OntologyImpactService {
   }
 
   public OntologyDeleteResult delete(
-      final UUID termId, final DeleteOntologyResource request, final String principal) {
+      final UUID termId,
+      final DeleteOntologyResource request,
+      final String principal,
+      final BiConsumer<Supplier<List<UUID>>, MetadataOperation> authorizeTerms) {
+    Objects.requireNonNull(authorizeTerms);
     final ImpactSnapshot snapshot = loadSnapshot(termId);
     verify(request.getImpactToken(), snapshot, principal);
     final DeletionPlan plan = deletionPlan(request, snapshot);
+    authorizeAffectedTerms(snapshot, plan, authorizeTerms);
     final int reassignedChildren = reassignChildren(snapshot, plan.target(), principal);
     final DeleteResponse<GlossaryTerm> response =
         repository.delete(principal, termId, plan.cascade(), plan.hardDelete());
     return result(response.entity(), reassignedChildren, plan);
+  }
+
+  private void authorizeAffectedTerms(
+      final ImpactSnapshot snapshot,
+      final DeletionPlan plan,
+      final BiConsumer<Supplier<List<UUID>>, MetadataOperation> authorizeTerms) {
+    if (plan.cascade() || plan.target() != null) {
+      final MetadataOperation operation =
+          plan.cascade() ? MetadataOperation.DELETE : MetadataOperation.EDIT_GLOSSARY_TERMS;
+      // Admin authorization must be able to return without discovering or loading descendants.
+      authorizeTerms.accept(() -> affectedTermIds(snapshot, plan), operation);
+    }
+  }
+
+  private List<UUID> affectedTermIds(final ImpactSnapshot snapshot, final DeletionPlan plan) {
+    final String parentFqn = snapshot.term().getFullyQualifiedName();
+    final List<String> descendants =
+        repository.getDaoCollection().glossaryTermDAO().getNestedTerms(parentFqn);
+    final Set<String> reassignmentRoots =
+        snapshot.dependencies().children().stream()
+            .map(EntityReference::getFullyQualifiedName)
+            .collect(Collectors.toSet());
+    final int childDepth = FullyQualifiedName.split(parentFqn).length + 1;
+    return JsonUtils.readObjects(descendants, GlossaryTerm.class).stream()
+        .filter(
+            term -> plan.cascade() || reassignmentRoots.contains(subtreeRootFqn(term, childDepth)))
+        .map(GlossaryTerm::getId)
+        .toList();
+  }
+
+  private static String subtreeRootFqn(final GlossaryTerm term, final int childDepth) {
+    final String[] parts = FullyQualifiedName.split(term.getFullyQualifiedName());
+    return FullyQualifiedName.build(Arrays.copyOf(parts, childDepth));
   }
 
   private ImpactSnapshot loadSnapshot(final UUID termId) {

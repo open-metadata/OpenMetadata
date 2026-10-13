@@ -40,7 +40,7 @@ public interface EntityLifecycleEventHandler {
   /**
    * Called after an entity is successfully created.
    */
-  default void onEntityCreated(EntityInterface entity, SubjectContext subjectContext) {
+  default void onEntityCreated(EntityInterface<?> entity, SubjectContext subjectContext) {
     // Default empty implementation
   }
 
@@ -48,12 +48,14 @@ public interface EntityLifecycleEventHandler {
    * Called after an entity is successfully updated.
    */
   default void onEntityUpdated(
-      EntityInterface entity, ChangeDescription changeDescription, SubjectContext subjectContext) {
+      EntityInterface<?> entity,
+      ChangeDescription changeDescription,
+      SubjectContext subjectContext) {
     // Default empty implementation
   }
 
   default void onEntityUpdated(
-      EntityInterface entity,
+      EntityInterface<?> entity,
       ChangeDescription changeDescription,
       SubjectContext subjectContext,
       EntityUpdateContext updateContext) {
@@ -65,13 +67,13 @@ public interface EntityLifecycleEventHandler {
    * the single-entity onEntityUpdated for backward compatibility.
    */
   default void onEntitiesUpdated(
-      List<? extends EntityInterface> entities,
+      List<? extends EntityInterface<?>> entities,
       ChangeDescription changeDescription,
       SubjectContext subjectContext) {
     if (entities == null || entities.isEmpty()) {
       return;
     }
-    for (EntityInterface entity : entities) {
+    for (EntityInterface<?> entity : entities) {
       onEntityUpdated(
           entity,
           entity.getChangeDescription() != null ? entity.getChangeDescription() : changeDescription,
@@ -80,7 +82,7 @@ public interface EntityLifecycleEventHandler {
   }
 
   default void onEntitiesUpdated(
-      List<? extends EntityInterface> entities,
+      List<? extends EntityInterface<?>> entities,
       ChangeDescription changeDescription,
       SubjectContext subjectContext,
       EntityUpdateContext updateContext) {
@@ -98,8 +100,8 @@ public interface EntityLifecycleEventHandler {
    * Called after multiple entities are successfully created in bulk.
    * Default implementation delegates to individual onEntityCreated calls.
    */
-  default void onEntitiesCreated(List<EntityInterface> entities, SubjectContext subjectContext) {
-    for (EntityInterface entity : entities) {
+  default void onEntitiesCreated(List<EntityInterface<?>> entities, SubjectContext subjectContext) {
+    for (EntityInterface<?> entity : entities) {
       onEntityCreated(entity, subjectContext);
     }
   }
@@ -107,7 +109,7 @@ public interface EntityLifecycleEventHandler {
   /**
    * Called after an entity is successfully deleted.
    */
-  default void onEntityDeleted(EntityInterface entity, SubjectContext subjectContext) {
+  default void onEntityDeleted(EntityInterface<?> entity, SubjectContext subjectContext) {
     // Default empty implementation
   }
 
@@ -115,7 +117,7 @@ public interface EntityLifecycleEventHandler {
    * Called after an entity is soft deleted or restored.
    */
   default void onEntitySoftDeletedOrRestored(
-      EntityInterface entity, boolean isDeleted, SubjectContext subjectContext) {
+      EntityInterface<?> entity, boolean isDeleted, SubjectContext subjectContext) {
     // Default empty implementation
   }
 

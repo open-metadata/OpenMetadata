@@ -34,3 +34,8 @@ export const APP_MODE_SIDEBAR_VISIBLE_ITEM_COUNT = 10;
  */
 export const APP_MODE_SIDEBAR_CUSTOMIZATION_CHANGED_EVENT =
   'appMode:sidebar-customization-changed';
+
+export const SIDEBAR_COLLAPSED_STORAGE_KEY = 'aiShell.sidebar.mainCollapsed';
+
+/** Dispatched on `window` when the compact sidebar preference changes outside the sidebar. */
+export const SIDEBAR_COLLAPSED_EVENT = 'aiShell.sidebar.mainCollapsedChange';

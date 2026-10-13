@@ -11,291 +11,260 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { ReactNode, UIEvent } from 'react';
 import { SearchIndex } from '../../../enums/search.enum';
 import { searchQuery } from '../../../rest/searchAPI';
 import DataAssetAsyncSelectList from './DataAssetAsyncSelectList';
 import { DataAssetOption } from './DataAssetAsyncSelectList.interface';
 
-jest.mock('../../../rest/searchAPI');
-jest.mock('../../../utils/TableUtils');
-jest.mock('../../../utils/EntityNameUtils', () => ({
-  getEntityName: jest.fn().mockReturnValue('Test'),
+type MockItem = { id: string; label?: string };
+
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Autocomplete: Object.assign(
+    ({
+      items,
+      selectedItems,
+      placeholder,
+      children,
+      onItemInserted,
+      onItemCleared,
+      onOpenChange,
+      onPopoverScroll,
+    }: {
+      items: MockItem[];
+      selectedItems: MockItem[];
+      placeholder?: string;
+      children: (item: MockItem) => ReactNode;
+      onItemInserted: (key: string) => void;
+      onItemCleared: (key: string) => void;
+      onOpenChange: (isOpen: boolean) => void;
+      onPopoverScroll: (e: UIEvent<HTMLElement>) => void;
+    }) => (
+      <div data-testid="asset-select-list">
+        <span data-testid="placeholder">{placeholder}</span>
+        <button
+          aria-label="open"
+          data-testid="open"
+          onClick={() => onOpenChange(true)}
+        />
+        {selectedItems.map((item) => (
+          <button
+            data-testid={`chip-${item.id}`}
+            key={item.id}
+            onClick={() => onItemCleared(item.id)}>
+            {item.label}
+          </button>
+        ))}
+        <div data-testid="listbox" onScroll={onPopoverScroll}>
+          {items.map((item) => (
+            <button key={item.id} onClick={() => onItemInserted(item.id)}>
+              {children(item)}
+            </button>
+          ))}
+        </div>
+      </div>
+    ),
+    {
+      Item: ({
+        label,
+        children,
+        'data-testid': testId,
+      }: {
+        label?: string;
+        children?: ReactNode;
+        'data-testid'?: string;
+      }) => <div data-testid={testId}>{children ?? label}</div>,
+    }
+  ),
 }));
 
-jest.mock('../../../utils/EntityReferenceUtils', () => ({
-  getEntityReferenceFromEntity: jest
-    .fn()
-    .mockImplementation((entity, type) => ({
-      ...entity,
-      entityType: undefined,
-      type: type,
-    })),
+jest.mock('../../../rest/searchAPI');
+jest.mock('../../../utils/SearchClassBase', () => ({
+  getEntityIconWithBg: jest.fn().mockReturnValue(null),
 }));
-jest.mock('../../common/ProfilePicture/ProfilePicture', () => {
-  return jest
-    .fn()
-    .mockReturnValue(<p data-testid="profile-pic">ProfilePicture</p>);
+jest.mock('../../common/ProfilePicture/ProfilePicture', () =>
+  jest.fn().mockReturnValue(<p data-testid="profile-pic">ProfilePicture</p>)
+);
+
+const mockSearchQuery = searchQuery as jest.Mock;
+
+const searchResponse = (
+  sources: { fqn: string; name: string; entityType: string }[],
+  total = sources.length
+) => ({
+  hits: {
+    hits: sources.map(({ fqn, name, entityType }) => ({
+      _source: {
+        id: `id-${fqn}`,
+        name,
+        displayName: name,
+        fullyQualifiedName: fqn,
+        entityType,
+      },
+    })),
+    total: { value: total },
+  },
 });
 
-const mockLocationPathname = '/mock-path';
+const TABLES = [
+  { fqn: 'svc.db.orders', name: 'orders', entityType: 'table' },
+  { fqn: 'svc.db.users', name: 'users', entityType: 'table' },
+];
 
-jest.mock('react-router-dom', () => ({
-  useLocation: jest.fn().mockImplementation(() => ({
-    pathname: mockLocationPathname,
-  })),
-  useNavigate: jest.fn().mockReturnValue(jest.fn()),
-}));
-
-const mockUserData = {
-  data: {
-    hits: {
-      hits: [
-        {
-          _source: {
-            id: '4d499590-89ef-438d-9c49-3f05c4041144',
-            name: 'admin',
-            fullyQualifiedName: 'admin',
-            entityType: 'user',
-            displayName: 'admin',
-          },
-        },
-        {
-          _source: {
-            id: '93057069-3836-4fc0-b85e-a456e52b4424',
-            name: 'user1',
-            fullyQualifiedName: 'user1',
-            entityType: 'user',
-            displayName: 'user1',
-          },
-        },
-      ],
-      total: {
-        value: 2,
-      },
-    },
-  },
-};
-
-const mockSearchAPIResponse = {
-  data: {
-    hits: {
-      hits: [
-        {
-          _source: {
-            id: '1',
-            name: 'test 1',
-            fullyQualifiedName: 'test-1',
-            entityType: 'table',
-            href: '',
-            description: '',
-            deleted: false,
-          },
-        },
-        {
-          _source: {
-            id: '2',
-            name: 'test 2',
-            fullyQualifiedName: 'test-2',
-            entityType: 'table',
-            href: '',
-            description: '',
-            deleted: false,
-          },
-        },
-      ],
-      total: {
-        value: 2,
-      },
-    },
-  },
+const open = async () => {
+  await act(async () => {
+    fireEvent.click(screen.getByTestId('open'));
+  });
 };
 
 describe('DataAssetAsyncSelectList', () => {
-  it('should render without crashing', async () => {
-    await act(async () => {
-      render(<DataAssetAsyncSelectList />);
-    });
-
-    expect(screen.getByTestId('asset-select-list')).toBeInTheDocument();
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockSearchQuery.mockResolvedValue(searchResponse(TABLES));
   });
 
-  it('should call searchQuery when focused', async () => {
-    (searchQuery as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve(mockSearchAPIResponse.data)
+  it('searches the given index, excluding bots, only once opened', async () => {
+    render(<DataAssetAsyncSelectList searchIndex={SearchIndex.TABLE} />);
+
+    expect(mockSearchQuery).not.toHaveBeenCalled();
+
+    await open();
+
+    expect(mockSearchQuery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        query: '*',
+        pageNumber: 1,
+        searchIndex: SearchIndex.TABLE,
+        queryFilter: {
+          query: { bool: { must_not: [{ match: { isBot: true } }] } },
+        },
+      })
+    );
+    expect(screen.getByTestId('option-svc.db.orders')).toHaveTextContent(
+      'orders'
+    );
+  });
+
+  it('hides options whose FQN is in filterFqns', async () => {
+    render(<DataAssetAsyncSelectList filterFqns={['svc.db.orders']} />);
+    await open();
+
+    expect(
+      screen.queryByTestId('option-svc.db.orders')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('option-svc.db.users')).toBeInTheDocument();
+  });
+
+  it('renders a profile picture for user options', async () => {
+    mockSearchQuery.mockResolvedValue(
+      searchResponse([{ fqn: 'admin', name: 'admin', entityType: 'user' }])
+    );
+    render(<DataAssetAsyncSelectList searchIndex={SearchIndex.USER} />);
+    await open();
+
+    expect(screen.getByTestId('profile-pic')).toBeInTheDocument();
+    expect(screen.getByTestId('admin')).toBeInTheDocument();
+  });
+
+  it('reports a single pick as one option and a cleared pick as undefined', async () => {
+    const onChange = jest.fn();
+    render(<DataAssetAsyncSelectList onChange={onChange} />);
+    await open();
+
+    fireEvent.click(screen.getByTestId('option-svc.db.orders'));
+
+    expect(onChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        value: 'svc.db.orders',
+        displayName: 'orders',
+        reference: expect.objectContaining({
+          fullyQualifiedName: 'svc.db.orders',
+          type: 'table',
+        }),
+      })
     );
 
-    const { container } = render(<DataAssetAsyncSelectList />);
+    fireEvent.click(screen.getByTestId('chip-svc.db.orders'));
 
-    await act(async () => {
-      const inputBox = container.querySelector('.ant-select-selector');
-      inputBox && userEvent.click(inputBox);
-    });
-
-    expect(searchQuery).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenLastCalledWith(undefined);
   });
 
-  it('should render profile picture if search index is user', async () => {
-    const mockSearchQuery = searchQuery as jest.Mock;
-    mockSearchQuery.mockImplementationOnce((params) => {
-      expect(params).toEqual(
-        expect.objectContaining({ searchIndex: SearchIndex.USER })
-      );
+  it('accumulates picks in multiple mode and removes a cleared one', async () => {
+    const onChange = jest.fn();
+    render(<DataAssetAsyncSelectList multiple onChange={onChange} />);
+    await open();
 
-      return Promise.resolve(mockUserData.data);
-    });
+    fireEvent.click(screen.getByTestId('option-svc.db.orders'));
+    fireEvent.click(screen.getByTestId('option-svc.db.users'));
 
-    const { container } = render(
-      <DataAssetAsyncSelectList
-        mode="multiple"
-        searchIndex={SearchIndex.USER}
-      />
-    );
+    const option = (fqn: string) => expect.objectContaining({ value: fqn });
 
-    await act(async () => {
-      const inputBox = container.querySelector('.ant-select-selector');
-      inputBox && fireEvent.click(inputBox);
-    });
+    expect(onChange).toHaveBeenLastCalledWith([
+      option('svc.db.orders'),
+      option('svc.db.users'),
+    ]);
 
-    expect(searchQuery).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByTestId('chip-svc.db.orders'));
+
+    expect(onChange).toHaveBeenLastCalledWith([option('svc.db.users')]);
   });
 
-  it('should call onChange when an option is selected', async () => {
-    const mockOnChange = jest.fn();
-
-    const mockOptions: DataAssetOption[] = [
+  it('resolves FQN values against initialOptions, falling back to the FQN', () => {
+    const initialOptions: DataAssetOption[] = [
       {
-        displayName: 'Test',
-        label: 'Test',
+        displayName: 'Orders',
+        label: 'Orders',
+        value: 'svc.db.orders',
         reference: {
           id: '1',
           type: 'table',
-          name: 'test 1',
-          deleted: false,
-          description: '',
-          fullyQualifiedName: 'test-1',
-          href: '',
+          fullyQualifiedName: 'svc.db.orders',
         },
-        value: 'test-1',
       },
     ];
 
-    (searchQuery as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve(mockSearchAPIResponse.data)
-    );
-
-    const { container } = render(
-      <DataAssetAsyncSelectList mode="multiple" onChange={mockOnChange} />
-    );
-
-    await act(async () => {
-      const inputBox = container.querySelector('.ant-select-selector');
-      inputBox && userEvent.click(inputBox);
-    });
-
-    expect(searchQuery).toHaveBeenCalledTimes(1);
-
-    const inputBox = screen.getByRole('combobox');
-
-    await act(async () => {
-      fireEvent.change(inputBox, {
-        target: { value: 'test 1' },
-      });
-    });
-
-    const option = screen.getByTestId('option-test-1');
-
-    fireEvent.click(option);
-
-    expect(mockOnChange).toHaveBeenCalledWith(mockOptions);
-  });
-
-  it("should render the placeholder when there's no value", async () => {
-    const placeholder = 'test placeholder';
-
-    await act(async () => {
-      render(
-        <DataAssetAsyncSelectList mode="multiple" placeholder={placeholder} />
-      );
-    });
-
-    expect(screen.getByText(placeholder)).toBeInTheDocument();
-  });
-
-  it("should render the default value when there's a default value and initial option", async () => {
-    const defaultValue = ['1'];
-    const initialOptions: DataAssetOption[] = [
-      {
-        displayName: 'Test',
-        label: 'Test',
-        reference: { id: '1', type: 'table' },
-        value: '1',
-      },
-    ];
-
-    await act(async () => {
-      render(
-        <DataAssetAsyncSelectList
-          defaultValue={defaultValue}
-          initialOptions={initialOptions}
-          mode="multiple"
-        />
-      );
-    });
-
-    expect(screen.getByText('Test')).toBeInTheDocument();
-  });
-
-  it("should render the default value when there's a value and initial option", async () => {
-    const defaultValue = ['1'];
-    const initialOptions: DataAssetOption[] = [
-      {
-        displayName: 'Test',
-        label: 'Test',
-        reference: { id: '1', type: 'table' },
-        value: '1',
-      },
-    ];
-
-    await act(async () => {
-      render(
-        <DataAssetAsyncSelectList
-          defaultValue={defaultValue}
-          initialOptions={initialOptions}
-          mode="multiple"
-        />
-      );
-    });
-
-    expect(screen.getByText('Test')).toBeInTheDocument();
-  });
-
-  it('searchQuery should be called with queryFilter', async () => {
-    const mockSearchQuery = searchQuery as jest.Mock;
-    mockSearchQuery.mockImplementationOnce((params) => {
-      expect(params).toEqual(
-        expect.objectContaining({
-          queryFilter: {
-            query: { bool: { must_not: [{ match: { isBot: true } }] } },
-          },
-        })
-      );
-
-      return Promise.resolve(mockUserData.data);
-    });
-
-    const { container } = render(
+    render(
       <DataAssetAsyncSelectList
-        mode="multiple"
-        searchIndex={SearchIndex.USER}
+        multiple
+        initialOptions={initialOptions}
+        value={['svc.db.orders', 'svc.db.unknown']}
       />
     );
 
-    await act(async () => {
-      const inputBox = container.querySelector('.ant-select-selector');
-      inputBox && userEvent.click(inputBox);
+    expect(screen.getByTestId('chip-svc.db.orders')).toHaveTextContent(
+      'Orders'
+    );
+    expect(screen.getByTestId('chip-svc.db.unknown')).toHaveTextContent(
+      'svc.db.unknown'
+    );
+  });
+
+  it('loads the next page when the list is scrolled to the bottom', async () => {
+    mockSearchQuery.mockResolvedValue(searchResponse(TABLES, 20));
+    render(<DataAssetAsyncSelectList />);
+    await open();
+
+    const listbox = screen.getByTestId('listbox');
+    Object.defineProperties(listbox, {
+      scrollTop: { value: 400 },
+      offsetHeight: { value: 100 },
+      scrollHeight: { value: 500 },
     });
 
-    expect(searchQuery).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      fireEvent.scroll(listbox);
+    });
+
+    expect(mockSearchQuery).toHaveBeenLastCalledWith(
+      expect.objectContaining({ pageNumber: 2 })
+    );
+  });
+
+  it('passes the placeholder through', () => {
+    render(<DataAssetAsyncSelectList placeholder="Pick an asset" />);
+
+    expect(screen.getByTestId('placeholder')).toHaveTextContent(
+      'Pick an asset'
+    );
   });
 });

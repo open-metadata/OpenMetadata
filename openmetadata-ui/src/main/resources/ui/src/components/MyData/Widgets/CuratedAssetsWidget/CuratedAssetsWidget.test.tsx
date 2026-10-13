@@ -432,6 +432,31 @@ describe('CuratedAssetsWidget', () => {
     });
   });
 
+  it('lays out entities in two columns when the widget is full size', async () => {
+    render(<CuratedAssetsWidget {...defaultProps} />);
+
+    const item = await screen.findByTestId('Curated Assets-Test Entity');
+
+    expect(item.closest('a')?.parentElement).toHaveStyle({
+      gridColumn: 'span 12',
+    });
+  });
+
+  it('lists entities in a single column when the widget is half size', async () => {
+    render(
+      <CuratedAssetsWidget
+        {...defaultProps}
+        currentLayout={[{ ...defaultProps.currentLayout[0], w: 1 }]}
+      />
+    );
+
+    const item = await screen.findByTestId('Curated Assets-Test Entity');
+
+    expect(item.closest('a')?.parentElement).not.toHaveStyle({
+      gridColumn: 'span 12',
+    });
+  });
+
   it('renders entity description when available', async () => {
     render(<CuratedAssetsWidget {...defaultProps} />);
     await waitFor(() => {

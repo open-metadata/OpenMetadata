@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
-import { VotingDataProps } from '../../Entity/Voting/voting.interface';
+import { VotingDataProps } from '../../../interface/entity/vote.interface';
 
 export interface GlossaryHeaderProps {
   supportAddOwner?: boolean;

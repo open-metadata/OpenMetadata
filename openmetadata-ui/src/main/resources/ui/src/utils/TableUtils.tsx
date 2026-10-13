@@ -12,10 +12,10 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Space, Tooltip, Typography } from 'antd';
+import { Box, Tooltip, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { uniqBy } from 'lodash';
-import { Fragment } from 'react';
+import { FC, Fragment } from 'react';
 import { ReactComponent as IconArray } from '../assets/svg/data-type-icon/array.svg';
 import { ReactComponent as IconBinary } from '../assets/svg/data-type-icon/binary.svg';
 import { ReactComponent as IconBitmap } from '../assets/svg/data-type-icon/bitmap.svg';
@@ -158,10 +158,11 @@ export const getConstraintIcon = ({
 
   return (
     <Tooltip
-      className={classNames(className)}
+      arrow
+      excludeTriggerFromTabOrder
       placement="bottom"
       title={title}
-      trigger="hover">
+      triggerClassName={classNames('tw:inline-flex', className)}>
       <Icon
         alt={title}
         className={classNames({
@@ -242,13 +243,14 @@ export const getColumnDataTypeIcon = ({
 
 export function getTableExpandableConfig<T>(
   isDraggable?: boolean,
-  expandIconClass?: string
+  expandIconClass?: string,
+  DragIcon: FC<{ className?: string }> = IconDrag
 ): ExpandableConfig<T> {
   const expandableConfig: ExpandableConfig<T> = {
     expandIcon: ({ expanded, onExpand, expandable, record }) =>
       expandable ? (
         <>
-          {isDraggable && <IconDrag className="drag-icon" />}
+          {isDraggable && <DragIcon className="drag-icon" />}
           <Icon
             className={classNames(
               'table-expand-icon vertical-baseline',
@@ -262,7 +264,7 @@ export function getTableExpandableConfig<T>(
       ) : (
         isDraggable && (
           <>
-            <IconDrag className="drag-icon" />
+            <DragIcon className="drag-icon" />
             <span className="expand-cell-empty-icon-container" />
           </>
         )
@@ -340,13 +342,16 @@ export const tableConstraintRendererBasedOnType = (
 
   return (
     <div
-      className="d-flex constraint-columns"
+      className="d-flex constraint-columns tw:bg-(--om-legacy-color-f8f8f8) tw:dark:bg-transparent"
       data-testid={`${constraintType}-container`}
       key={constraintType}>
-      <Space
-        className="constraint-icon-container"
-        direction="vertical"
-        size={0}>
+      <Box
+        inline
+        align="stretch"
+        className="layout-space constraint-icon-container"
+        direction="col"
+        gap={0}
+        itemClassName="layout-space-item">
         {columns?.map((column, index) => (
           <Fragment key={column}>
             {(columns?.length ?? 0) - 1 !== index || isSingleColumn ? (
@@ -357,15 +362,21 @@ export const tableConstraintRendererBasedOnType = (
             ) : null}
           </Fragment>
         ))}
-      </Space>
+      </Box>
 
-      <Space direction="vertical" size={16}>
+      <Box
+        inline
+        align="stretch"
+        className="layout-space"
+        direction="col"
+        gap={4}
+        itemClassName="layout-space-item">
         {columns?.map((column) => (
-          <Typography.Text ellipsis={{ tooltip: true }} key={column}>
+          <Typography ellipsis={{ tooltip: true }} key={column}>
             {column}
-          </Typography.Text>
+          </Typography>
         ))}
-      </Space>
+      </Box>
     </div>
   );
 };

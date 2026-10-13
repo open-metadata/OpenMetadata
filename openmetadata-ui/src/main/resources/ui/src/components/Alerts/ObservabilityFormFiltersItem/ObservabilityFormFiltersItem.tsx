@@ -12,29 +12,33 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import { Button, Col, Form, Row, Select, Switch, Typography } from 'antd';
-import { isEmpty, isNil } from 'lodash';
+import {
+  Button,
+  Grid,
+  Toggle,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Form, Select } from 'antd';
+import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import FormCardSection from '../../../components/common/FormCardSection/FormCardSection';
-import {
-  CreateEventSubscription,
-  Effect,
-} from '../../../generated/events/api/createEventSubscription';
+import { Effect } from '../../../generated/events/api/createEventSubscription';
 import { EventFilterRule } from '../../../generated/events/eventSubscription';
+import { useAlertSelectionContext } from '../../../hooks/useAlertSelection';
 import {
   getConditionalField,
   getSupportedFilterOptions,
 } from '../../../utils/Alerts/AlertsUtil';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { ObservabilityFormFiltersItemProps } from './ObservabilityFormFiltersItem.interface';
 
 function ObservabilityFormFiltersItem({
-  supportedFilters,
-  containerEntities,
-  supportedEventTypes,
   isViewMode = false,
 }: Readonly<ObservabilityFormFiltersItemProps>) {
   const { t } = useTranslation();
+  const { sources, support, search } = useAlertSelectionContext();
+  const { supportedFilters, supportedEventTypes } = support;
 
   const form = Form.useFormInstance();
 
@@ -43,10 +47,6 @@ function ObservabilityFormFiltersItem({
     ['input', 'filters'],
     form
   );
-  const [selectedTrigger] =
-    Form.useWatch<CreateEventSubscription['resources']>(['resources'], form) ??
-    [];
-
   // Run time values needed for conditional rendering
   const filterOptions = useMemo(() => {
     return getSupportedFilterOptions(selectedFilters, supportedFilters);
@@ -62,7 +62,11 @@ function ObservabilityFormFiltersItem({
             fields.length < (supportedFilters?.length ?? 1) && !isViewMode;
 
           return (
-            <Row data-testid="filters-list" gutter={[16, 16]} key="filters">
+            <Grid
+              className="layout-row layout-grid"
+              data-testid="filters-list"
+              key="filters"
+              style={{ ...getLayoutGutter(16, 16) }}>
               {fields.map(({ key, name }) => {
                 const effect =
                   form.getFieldValue(['input', 'filters', name, 'effect']) ??
@@ -72,14 +76,17 @@ function ObservabilityFormFiltersItem({
                   !isEmpty(selectedFilters) && selectedFilters[name];
 
                 return (
-                  <Col
+                  <Grid.Item
+                    className="layout-column"
                     data-testid={`filter-${name}`}
                     key={`observability-${key}`}
                     span={24}>
                     <div className="flex gap-4">
                       <div className="flex-1 w-min-0">
-                        <Row gutter={[8, 8]}>
-                          <Col span={12}>
+                        <Grid
+                          className="layout-row layout-grid"
+                          style={{ ...getLayoutGutter(8, 8) }}>
+                          <Grid.Item className="layout-column" span={12}>
                             <Form.Item
                               key={`filter-${key}`}
                               name={[name, 'name']}
@@ -105,51 +112,52 @@ function ObservabilityFormFiltersItem({
                                 }}
                               />
                             </Form.Item>
-                          </Col>
+                          </Grid.Item>
                           {showConditionalFields &&
                             getConditionalField(
                               selectedFilters[name].name ?? '',
                               name,
-                              selectedTrigger,
+                              search,
                               supportedFilters,
-                              containerEntities,
                               supportedEventTypes
                             )}
-                        </Row>
+                        </Grid>
                       </div>
 
                       {!isViewMode && (
                         <Button
+                          aria-label={t('label.remove-entity', {
+                            entity: t('label.filter'),
+                          })}
+                          color="secondary"
                           data-testid={`remove-filter-${name}`}
-                          icon={<CloseOutlined />}
+                          iconLeading={<CloseOutlined />}
                           onClick={() => remove(name)}
                         />
                       )}
                     </div>
                     <Form.Item
-                      label={
-                        <Typography.Text>{t('label.include')}</Typography.Text>
-                      }
+                      label={<Typography>{t('label.include')}</Typography>}
                       name={[name, 'effect']}
                       normalize={(value) =>
                         value ? Effect.Include : Effect.Exclude
                       }>
-                      <Switch
-                        checked={effect === Effect.Include}
+                      <Toggle
                         data-testid={`filter-switch-${name}`}
+                        isDisabled={isViewMode}
+                        isSelected={effect === Effect.Include}
+                        size="sm"
                       />
                     </Form.Item>
-                  </Col>
+                  </Grid.Item>
                 );
               })}
               {showAddFilterButton ? (
-                <Col span={24}>
+                <Grid.Item className="layout-column" span={24}>
                   <Button
+                    color="primary"
                     data-testid="add-filters"
-                    disabled={
-                      isEmpty(selectedTrigger) || isNil(selectedTrigger)
-                    }
-                    type="primary"
+                    isDisabled={isEmpty(sources)}
                     onClick={() =>
                       add({
                         effect: Effect.Include,
@@ -159,10 +167,13 @@ function ObservabilityFormFiltersItem({
                       entity: t('label.filter'),
                     })}
                   </Button>
-                </Col>
+                </Grid.Item>
               ) : null}
-              <Form.ErrorList errors={errors} />
-            </Row>
+              {/* Empty error lists must not reserve a grid row and its gutter. */}
+              <Grid.Item className="layout-column tw:empty:hidden" span={24}>
+                <Form.ErrorList errors={errors} />
+              </Grid.Item>
+            </Grid>
           );
         }}
       </Form.List>

@@ -393,6 +393,11 @@ public class SearchSettingsHandler {
             ? incomingGlobalSettings.getEnableAccessControl()
             : defaultGlobalSettings.getEnableAccessControl());
 
+    mergedGlobalSettings.setEnableColumnIndexing(
+        incomingGlobalSettings != null && incomingGlobalSettings.getEnableColumnIndexing() != null
+            ? incomingGlobalSettings.getEnableColumnIndexing()
+            : defaultGlobalSettings.getEnableColumnIndexing());
+
     mergedGlobalSettings.setKeywordWeight(
         incomingGlobalSettings != null && incomingGlobalSettings.getKeywordWeight() != null
             ? incomingGlobalSettings.getKeywordWeight()

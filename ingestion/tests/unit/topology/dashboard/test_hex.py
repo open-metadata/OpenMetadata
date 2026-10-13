@@ -269,23 +269,20 @@ class TestHexSource(TestCase):
         tags = self.hex_source._extract_tags_from_project(SAMPLE_PROJECT_NO_OWNER)
         self.assertEqual(tags, [])
 
-    @patch("metadata.ingestion.source.dashboard.hex.metadata.get_tag_labels")
-    def test_get_dashboard_tags(self, mock_get_tag_labels):
-        """Test getting dashboard tags"""
-        mock_tag_labels = [
-            TagLabel(
-                tagFQN="HexCategories.Analytics",
-                labelType=LabelType.Manual,
-                state=State.Suggested,
-                source=TagSource.Classification,
-            )
-        ]
-        mock_get_tag_labels.return_value = mock_tag_labels
-
+    def test_get_dashboard_tags(self):
+        definitions = list(self.hex_source.yield_tags(SAMPLE_PROJECT))
+        assert all(record.left is None for record in definitions)
+        assert {record.right.tag_request.name.root for record in definitions} == {
+            "Analytics",
+            "Sales",
+            "Published",
+        }
+        self.metadata.get_by_name.side_effect = lambda **kwargs: (
+            None if kwargs["fqn"] == "HexCategories.Sales" else object()
+        )
         tags = self.hex_source._get_dashboard_tags(SAMPLE_PROJECT)
-
-        mock_get_tag_labels.assert_called_once()
-        self.assertEqual(tags, mock_tag_labels)
+        assert {tag.tagFQN.root for tag in tags} == {"HexCategories.Analytics", "HexCategories.Published"}
+        assert all(tag.labelType == LabelType.Automated and tag.state == State.Suggested for tag in tags)
 
     def test_yield_dashboard_success(self):
         """Test successful dashboard creation"""

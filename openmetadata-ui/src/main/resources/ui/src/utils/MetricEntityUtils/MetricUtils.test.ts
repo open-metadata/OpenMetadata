@@ -11,11 +11,14 @@
  *  limitations under the License.
  */
 import { CSMode } from '../../enums/codemirror.enum';
+import { EntityType } from '../../enums/entity.enum';
 import {
   Language,
   UnitOfMeasurement,
 } from '../../generated/entity/data/metric';
 import {
+  getMetricAssetSelectionQueryFilter,
+  getMetricAssetsQueryFilter,
   getMetricExpressionLanguageName,
   getSortedOptions,
 } from './MetricPureUtils';
@@ -101,5 +104,35 @@ describe('getMetricExpressionLanguageName', () => {
     const result = getMetricExpressionLanguageName(Language.Python);
 
     expect(result).toBe('python');
+  });
+});
+
+describe('getMetricAssetsQueryFilter', () => {
+  it('targets the linked assets by search document id', () => {
+    expect(getMetricAssetsQueryFilter(['a', 'b'])).toEqual({
+      query: { bool: { must: [{ ids: { values: ['a', 'b'] } }] } },
+    });
+  });
+
+  it('matches nothing when no asset is linked', () => {
+    expect(getMetricAssetsQueryFilter([])).toEqual({
+      query: { bool: { must: [{ ids: { values: [] } }] } },
+    });
+  });
+});
+
+describe('getMetricAssetSelectionQueryFilter', () => {
+  it('excludes linked assets and entity types that cannot be metric assets', () => {
+    const mustNot = getMetricAssetSelectionQueryFilter(['a']).query.bool
+      .must_not;
+
+    expect(mustNot).toEqual([
+      { ids: { values: ['a'] } },
+      { term: { entityType: EntityType.METRIC } },
+      { term: { entityType: EntityType.GLOSSARY_TERM } },
+      { term: { entityType: EntityType.TAG } },
+      { term: { entityType: EntityType.DATA_PRODUCT } },
+      { term: { entityType: EntityType.TABLE_COLUMN } },
+    ]);
   });
 });

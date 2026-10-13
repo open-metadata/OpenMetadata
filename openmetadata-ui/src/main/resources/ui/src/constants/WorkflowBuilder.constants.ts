@@ -17,7 +17,6 @@ import { NodeSubType } from '../generated/governance/workflows/elements/nodeSubT
 import { NodeType } from '../generated/governance/workflows/elements/nodeType';
 import { Type } from '../generated/governance/workflows/workflowDefinition';
 import { WorkflowStatus } from '../generated/governance/workflows/workflowInstance';
-import { WORKFLOW_DATA_ASSETS_LIST } from '../utils/WorkflowsUtils';
 
 export enum ConditionValue {
   TRUE = 'TRUE',
@@ -118,7 +117,6 @@ export const DEFAULT_QUALITY_BANDS = [
 export const ALL_DATA_ASSETS_OPTION_VALUE = '__ALL_DATA_ASSETS__';
 
 export const AVAILABLE_OPTIONS = {
-  DATA_ASSETS: WORKFLOW_DATA_ASSETS_LIST,
   TRIGGER_TYPES: [
     { value: Type.PeriodicBatchEntity, label: 'Schedule' },
     { value: Type.EventBasedEntity, label: 'Event' },

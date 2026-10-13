@@ -1,6 +1,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -100,6 +101,7 @@ public class IngestionPipelineResourceIT
 
   // IngestionPipeline only supports owners,followers fields - no tags, no domain
   {
+    supportsEntityStatus = false;
     supportsTags = false;
     supportsDomains = false;
     supportsDataProducts = false;
@@ -602,6 +604,59 @@ public class IngestionPipelineResourceIT
   }
 
   @Test
+  void test_listPipelinesWhoseServiceIsSoftDeleted(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    IngestionPipeline pipeline =
+        createEntity(
+            createRequest(ns.prefix("orphaned"), ns).withService(service.getEntityReference()));
+
+    softDeleteServiceRecursively(service);
+    restoreEntity(pipeline.getId().toString());
+
+    ListParams params =
+        new ListParams().withService(service.getFullyQualifiedName()).withLimit(100);
+    ListResponse<IngestionPipeline> result = listEntities(params);
+
+    IngestionPipeline listed =
+        result.getData().stream()
+            .filter(p -> p.getId().equals(pipeline.getId()))
+            .findFirst()
+            .orElseThrow();
+    assertEquals(service.getId(), listed.getService().getId());
+    assertTrue(listed.getService().getDeleted());
+  }
+
+  @Test
+  void test_restoreServiceWithDeployedPipeline(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    CreateIngestionPipeline request =
+        createRequest(ns.prefix("restored"), ns).withService(service.getEntityReference());
+    IngestionPipeline pipeline = createEntity(request);
+    PipelineServiceClientResponse deployResponse =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.POST,
+                IngestionPipelineResource.COLLECTION_PATH + "deploy/" + pipeline.getId(),
+                null,
+                PipelineServiceClientResponse.class);
+    assertEquals(200, deployResponse.getCode());
+
+    softDeleteServiceRecursively(service);
+    SdkClients.adminClient().databaseServices().restore(service.getId().toString());
+
+    IngestionPipeline restored = getEntity(pipeline.getId().toString());
+    assertFalse(restored.getDeleted());
+    assertTrue(restored.getDeployed());
+  }
+
+  private void softDeleteServiceRecursively(DatabaseService service) {
+    Map<String, String> params = new HashMap<>();
+    params.put("recursive", "true");
+    SdkClients.adminClient().databaseServices().delete(service.getId().toString(), params);
+  }
+
+  @Test
   void test_updatePipelineScheduleInterval(TestNamespace ns) {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
 
@@ -902,6 +957,52 @@ public class IngestionPipelineResourceIT
 
     assertNotNull(retrieved);
     assertEquals(PipelineStatusType.SUCCESS, retrieved.getPipelineState());
+  }
+
+  @Test
+  void test_statusReportsCannotSetWhoTriggeredTheRun(TestNamespace ns)
+      throws OpenMetadataException {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    CreateIngestionPipeline request =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("triggered_by_test"))
+            .withPipelineType(PipelineType.METADATA)
+            .withService(service.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(new DatabaseServiceMetadataPipeline()))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+
+    IngestionPipeline pipeline = createEntity(request);
+
+    String runId = UUID.randomUUID().toString();
+    OpenMetadataClient client = SdkClients.adminClient();
+    String path =
+        "/v1/services/ingestionPipelines/" + pipeline.getFullyQualifiedName() + "/pipelineStatus";
+
+    // triggeredBy is recorded only from the trigger request; a status report claiming it on a new
+    // run or on a later update of the same run must not be stored.
+    for (PipelineStatusType state :
+        List.of(PipelineStatusType.QUEUED, PipelineStatusType.SUCCESS)) {
+      client
+          .getHttpClient()
+          .execute(
+              HttpMethod.PUT,
+              path,
+              new PipelineStatus()
+                  .withPipelineState(state)
+                  .withRunId(runId)
+                  .withTimestamp(System.currentTimeMillis())
+                  .withTriggeredBy("mallory"),
+              PipelineStatus.class);
+
+      PipelineStatus stored =
+          client
+              .getHttpClient()
+              .execute(HttpMethod.GET, path + "/" + runId, null, PipelineStatus.class);
+
+      assertEquals(state, stored.getPipelineState());
+      assertNull(stored.getTriggeredBy());
+    }
   }
 
   @Test

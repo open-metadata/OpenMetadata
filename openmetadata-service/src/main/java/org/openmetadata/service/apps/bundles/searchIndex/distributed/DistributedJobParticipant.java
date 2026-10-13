@@ -30,6 +30,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchClusterMetrics;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.vector.OpenSearchVectorService;
 
 /**
  * Background service that monitors for active distributed indexing jobs and joins them to help
@@ -311,6 +312,17 @@ public class DistributedJobParticipant implements Managed {
         return;
       }
       ReindexContext reindexContext = stagedIndexContext.orElseThrow();
+      // Latch the run-scoped staged chunk index into the vector service so live edits handled on
+      // this JVM — which is NOT running the reindex job, so its stagedChunkIndex is null — mirror
+      // into this run's generation instead of relying on lossy cluster-state discovery (a 15s
+      // JVM-local null cache that can silently drop the mirror write). Sink writes already
+      // receive this target via ReindexContext; this closes the same gap for the live-edit mirror
+      // path. Cleared in the finally below. No-op when the OpenSearch vector service is not
+      // initialized (Elasticsearch backend, or embeddings disabled).
+      OpenSearchVectorService vectorService = OpenSearchVectorService.getInstance();
+      if (vectorService != null) {
+        reindexContext.getStagedChunkIndex().ifPresent(vectorService::latchParticipantStagedTarget);
+      }
 
       appCtx = resolveAppRunRecordContext();
       if (appCtx != null) {
@@ -471,6 +483,13 @@ public class DistributedJobParticipant implements Managed {
         } catch (Exception e) {
           LOG.warn("Error closing bulk sink", e);
         }
+      }
+      // Drop the participant's run-scoped staged chunk latch so a later run cannot mirror or
+      // delete into a generation that belongs to this finished (promoted or abandoned) run.
+      // No-op when the OpenSearch vector service was never initialized or never latched.
+      OpenSearchVectorService vectorService = OpenSearchVectorService.getInstance();
+      if (vectorService != null) {
+        vectorService.clearParticipantStagedTarget();
       }
     }
   }

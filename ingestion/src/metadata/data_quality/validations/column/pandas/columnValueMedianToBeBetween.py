@@ -88,104 +88,99 @@ class ColumnValueMedianToBeBetweenValidator(BaseColumnValueMedianToBeBetweenVali
         checker = self._get_validation_checker(test_params)
         dimension_results = []
 
-        try:
-            dfs = self.runner
-            median_impl = Metrics.median(column).get_pandas_computation()
+        dfs = self.runner
+        median_impl = Metrics.median(column).get_pandas_computation()
 
-            dimension_aggregates = defaultdict(
-                lambda: {
-                    Metrics.median.name: median_impl.create_accumulator(),
-                    DIMENSION_TOTAL_COUNT_KEY: 0,
+        dimension_aggregates = defaultdict(
+            lambda: {
+                Metrics.median.name: median_impl.create_accumulator(),
+                DIMENSION_TOTAL_COUNT_KEY: 0,
+            }
+        )
+
+        for df in dfs:
+            df_typed = cast(pd.DataFrame, df)  # noqa: TC006
+            grouped = df_typed.groupby(dimension_col.name, dropna=False)
+
+            for dimension_value, group_df in grouped:
+                dimension_value = self.format_dimension_value(dimension_value)  # noqa: PLW2901
+
+                dimension_aggregates[dimension_value][Metrics.median.name] = median_impl.update_accumulator(
+                    dimension_aggregates[dimension_value][Metrics.median.name],
+                    group_df,
+                )
+
+                dimension_aggregates[dimension_value][DIMENSION_TOTAL_COUNT_KEY] += len(group_df)
+
+        results_data = []
+        for dimension_value, agg in dimension_aggregates.items():
+            median_value = median_impl.aggregate_accumulator(agg[Metrics.median.name])
+
+            if median_value is None:
+                logger.warning(
+                    "Skipping '%s=%s' dimension since 'median' is 'None'",
+                    dimension_col.name,
+                    dimension_value,
+                )
+                continue
+
+            total_rows = agg[DIMENSION_TOTAL_COUNT_KEY]
+
+            # Statistical validator: when mean fails, ALL rows in dimension fail
+            failed_count = total_rows if checker.violates_pandas({Metrics.median.name: median_value}) else 0
+
+            results_data.append(
+                {
+                    DIMENSION_VALUE_KEY: dimension_value,
+                    Metrics.median.name: median_value,
+                    Metrics.valuesCount.name: agg[Metrics.median.name].count_value,
+                    "RAW_MEDIAN_ARRAYS": agg[Metrics.median.name].arrays,
+                    DIMENSION_TOTAL_COUNT_KEY: total_rows,
+                    DIMENSION_FAILED_COUNT_KEY: failed_count,
                 }
             )
 
-            for df in dfs:
-                df_typed = cast(pd.DataFrame, df)  # noqa: TC006
-                grouped = df_typed.groupby(dimension_col.name, dropna=False)
+        results_df = pd.DataFrame(results_data)
 
-                for dimension_value, group_df in grouped:
-                    dimension_value = self.format_dimension_value(dimension_value)  # noqa: PLW2901
+        if not results_df.empty:
+            results_df = calculate_impact_score_pandas(
+                results_df,
+                failed_column=DIMENSION_FAILED_COUNT_KEY,
+                total_column=DIMENSION_TOTAL_COUNT_KEY,
+            )
 
-                    dimension_aggregates[dimension_value][Metrics.median.name] = median_impl.update_accumulator(
-                        dimension_aggregates[dimension_value][Metrics.median.name],
-                        group_df,
-                    )
+            def recalculate_median(df_aggregated, others_mask, metric_column):
+                result = df_aggregated[metric_column].copy()
+                if others_mask.any():
+                    others_arrays = df_aggregated.loc[others_mask, "RAW_MEDIAN_ARRAYS"].iloc[0]
+                    others_count = df_aggregated.loc[others_mask, Metrics.valuesCount.name].iloc[0]
+                    if others_count > 0:
+                        result.loc[others_mask] = median_impl.aggregate_accumulator(
+                            MedianAccumulator(arrays=others_arrays, count_value=others_count)
+                        )
+                return result
 
-                    dimension_aggregates[dimension_value][DIMENSION_TOTAL_COUNT_KEY] += len(group_df)
+            results_df = aggregate_others_statistical_pandas(
+                results_df,
+                dimension_column=DIMENSION_VALUE_KEY,
+                agg_functions={
+                    "RAW_MEDIAN_ARRAYS": lambda s: list(chain.from_iterable(s)),
+                    Metrics.valuesCount.name: "sum",
+                    DIMENSION_TOTAL_COUNT_KEY: "sum",
+                    DIMENSION_FAILED_COUNT_KEY: "sum",
+                },
+                final_metric_calculators={Metrics.median.name: recalculate_median},
+                exclude_from_final=["RAW_MEDIAN_ARRAYS", Metrics.valuesCount.name],
+                top_n=top_n,
+                violation_metrics=[Metrics.median.name],
+                violation_predicate=checker.violates_pandas,
+            )
 
-            results_data = []
-            for dimension_value, agg in dimension_aggregates.items():
-                median_value = median_impl.aggregate_accumulator(agg[Metrics.median.name])
-
-                if median_value is None:
-                    logger.warning(
-                        "Skipping '%s=%s' dimension since 'median' is 'None'",
-                        dimension_col.name,
-                        dimension_value,
-                    )
-                    continue
-
-                total_rows = agg[DIMENSION_TOTAL_COUNT_KEY]
-
-                # Statistical validator: when mean fails, ALL rows in dimension fail
-                failed_count = total_rows if checker.violates_pandas({Metrics.median.name: median_value}) else 0
-
-                results_data.append(
-                    {
-                        DIMENSION_VALUE_KEY: dimension_value,
-                        Metrics.median.name: median_value,
-                        Metrics.valuesCount.name: agg[Metrics.median.name].count_value,
-                        "RAW_MEDIAN_ARRAYS": agg[Metrics.median.name].arrays,
-                        DIMENSION_TOTAL_COUNT_KEY: total_rows,
-                        DIMENSION_FAILED_COUNT_KEY: failed_count,
-                    }
-                )
-
-            results_df = pd.DataFrame(results_data)
-
-            if not results_df.empty:
-                results_df = calculate_impact_score_pandas(
-                    results_df,
-                    failed_column=DIMENSION_FAILED_COUNT_KEY,
-                    total_column=DIMENSION_TOTAL_COUNT_KEY,
-                )
-
-                def recalculate_median(df_aggregated, others_mask, metric_column):
-                    result = df_aggregated[metric_column].copy()
-                    if others_mask.any():
-                        others_arrays = df_aggregated.loc[others_mask, "RAW_MEDIAN_ARRAYS"].iloc[0]
-                        others_count = df_aggregated.loc[others_mask, Metrics.valuesCount.name].iloc[0]
-                        if others_count > 0:
-                            result.loc[others_mask] = median_impl.aggregate_accumulator(
-                                MedianAccumulator(arrays=others_arrays, count_value=others_count)
-                            )
-                    return result
-
-                results_df = aggregate_others_statistical_pandas(
-                    results_df,
-                    dimension_column=DIMENSION_VALUE_KEY,
-                    agg_functions={
-                        "RAW_MEDIAN_ARRAYS": lambda s: list(chain.from_iterable(s)),
-                        Metrics.valuesCount.name: "sum",
-                        DIMENSION_TOTAL_COUNT_KEY: "sum",
-                        DIMENSION_FAILED_COUNT_KEY: "sum",
-                    },
-                    final_metric_calculators={Metrics.median.name: recalculate_median},
-                    exclude_from_final=["RAW_MEDIAN_ARRAYS", Metrics.valuesCount.name],
-                    top_n=top_n,
-                    violation_metrics=[Metrics.median.name],
-                    violation_predicate=checker.violates_pandas,
-                )
-
-                dimension_results = self._process_dimension_rows(
-                    results_df.to_dict("records"),
-                    dimension_col.name,
-                    metrics_to_compute,
-                    test_params,
-                )
-
-        except Exception as exc:
-            logger.warning(f"Error executing dimensional query: {exc}")
-            logger.debug("Full error details: ", exc_info=True)
+            dimension_results = self._process_dimension_rows(
+                results_df.to_dict("records"),
+                dimension_col.name,
+                metrics_to_compute,
+                test_params,
+            )
 
         return dimension_results

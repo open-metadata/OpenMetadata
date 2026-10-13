@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/api/data/ontologyDomainDraftRequest.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "OntologyDomainDraftRequest",
   "description": "Generate a reviewable ontology Draft without applying any entity mutation.",
   "type": "object",

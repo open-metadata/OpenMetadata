@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/type/tagLabelMetadata.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "TagLabelMetadata",
   "description": "Additional metadata associated with a tag label, including information about how the tag was applied.",
   "type": "object",

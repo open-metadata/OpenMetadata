@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { Form } from 'antd';
 import CustomMetricForm from './CustomMetricForm.component';
 
@@ -77,8 +77,12 @@ describe('CustomMetricForm', () => {
     expect(
       await screen.findByText(initialValues.columnName)
     ).toBeInTheDocument();
+    // The line-number and fold gutters live inside the container, so read the
+    // expression from the editor's content element instead of the whole box.
     expect(
-      (await screen.findByTestId('code-mirror-container')).textContent
-    ).toEqual(initialValues.expression);
+      within(await screen.findByTestId('code-mirror-container')).getByRole(
+        'textbox'
+      )
+    ).toHaveTextContent(initialValues.expression);
   });
 });

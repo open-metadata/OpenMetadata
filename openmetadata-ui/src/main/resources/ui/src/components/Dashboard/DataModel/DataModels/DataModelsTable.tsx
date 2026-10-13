@@ -11,9 +11,12 @@
  *  limitations under the License.
  */
 
-import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import {
+  EmptyPlaceholder,
+  Toggle,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Assets, NoSearch } from '@openmetadata/ui-core-components/icons';
-import { Switch, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
@@ -39,16 +42,18 @@ import { usePaging } from '../../../../hooks/paging/usePaging';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../hooks/useFqn';
 import { useTableFilters } from '../../../../hooks/useTableFilters';
-import { ServicePageData } from '../../../../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
+import { ServicePageData } from '../../../../interface/platform/service.interface';
 import { getDataModels } from '../../../../rest/dashboardAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { buildSchemaQueryFilter } from '../../../../utils/DatabaseSchemaDetailsUtils';
 import { commonTableFields } from '../../../../utils/DatasetDetailsUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { highlightSearchText } from '../../../../utils/EntitySearchUtils';
+import {
+  highlightSearchText,
+  renderHighlightedText,
+} from '../../../../utils/EntitySearchUtils';
 import { getColumnSorter } from '../../../../utils/EntitySortUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
-import { stringToHTML } from '../../../../utils/StringUtils';
 import {
   dataProductTableObject,
   descriptionTableObject,
@@ -149,7 +154,7 @@ const DataModelTable = ({
                   EntityType.DASHBOARD_DATA_MODEL,
                   record.fullyQualifiedName || ''
                 )}>
-                {stringToHTML(
+                {renderHighlightedText(
                   highlightSearchText(dataModelDisplayName, searchValue)
                 )}
               </Link>
@@ -282,15 +287,14 @@ const DataModelTable = ({
       defaultVisibleColumns={DEFAULT_DATA_MODEL_TYPE_VISIBLE_COLUMNS}
       entityType="dashboardDataModelTable"
       extraTableFilters={
-        <span>
-          <Switch
-            checked={showDeleted}
+        <span className="tw:inline-flex tw:items-center">
+          <Toggle
             data-testid="show-deleted"
-            onClick={handleShowDeletedChange}
+            isSelected={showDeleted}
+            size="sm"
+            onChange={handleShowDeletedChange}
           />
-          <Typography.Text className="m-l-xs">
-            {t('label.deleted')}
-          </Typography.Text>
+          <Typography className="m-l-xs">{t('label.deleted')}</Typography>
         </span>
       }
       loading={isLoading}

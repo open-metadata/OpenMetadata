@@ -4,9 +4,11 @@ import static org.openmetadata.service.monitoring.MetricUtils.LATENCY_SLA_BUCKET
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
+import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import java.time.Duration;
+import java.util.function.Supplier;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
@@ -14,12 +16,13 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Singleton
 public class OpenMetadataMetrics {
+  private static final String HIKARICP_TOTAL_CONNECTIONS = "hikaricp.connections";
+
   private final MeterRegistry meterRegistry;
 
   private final DistributionSummary httpResponseSize;
 
   private final Timer jdbiQueryTimer;
-  private final Counter jdbiConnectionCounter;
   private final Counter jdbiErrorCounter;
 
   private final Counter entityCreatedCounter;
@@ -50,10 +53,9 @@ public class OpenMetadataMetrics {
             .sla(LATENCY_SLA_BUCKETS)
             .register(meterRegistry);
 
-    this.jdbiConnectionCounter =
-        Counter.builder("db.connections.total")
-            .description("Total database connections created")
-            .register(meterRegistry);
+    Gauge.builder("db.pool.connections", this::poolConnections)
+        .description("Database connections held across all OpenMetadata connection pools")
+        .register(meterRegistry);
 
     this.jdbiErrorCounter =
         Counter.builder("db.errors.total")
@@ -135,10 +137,6 @@ public class OpenMetadataMetrics {
         .record(Duration.ofMillis(durationMs));
   }
 
-  public void incrementDatabaseConnections() {
-    jdbiConnectionCounter.increment();
-  }
-
   public void incrementDatabaseErrors(String errorType) {
     meterRegistry.counter("db.errors.total", "type", errorType).increment();
   }
@@ -198,14 +196,33 @@ public class OpenMetadataMetrics {
   }
 
   // Gauge registration methods
-  public void registerGauge(
-      String name, java.util.function.Supplier<Number> supplier, String description) {
-    io.micrometer.core.instrument.Gauge.builder(name, () -> supplier.get().doubleValue())
+  public void registerGauge(String name, Supplier<Number> supplier, String description) {
+    Gauge.builder(name, () -> supplier.get().doubleValue())
         .description(description)
         .register(meterRegistry);
   }
 
   public MeterRegistry getMeterRegistry() {
     return meterRegistry;
+  }
+
+  /**
+   * Sums HikariCP's own total-connections gauge over every pool. OpenMetadata opens several — the
+   * request pool plus the Quartz and Flowable subsystem pools — so the number an operator compares
+   * against the database's {@code max_connections} only exists as the sum; reading one gauge would
+   * silently report whichever pool the registry happened to return first. Per-pool detail stays
+   * available under {@code hikaricp_connections{pool="..."}}. Micrometer holds gauge state weakly,
+   * so a pool dropped without being closed reads NaN until it is collected; those are skipped
+   * rather than allowed to turn the whole sum into NaN.
+   */
+  private double poolConnections() {
+    double total = 0.0;
+    for (Gauge poolGauge : meterRegistry.find(HIKARICP_TOTAL_CONNECTIONS).gauges()) {
+      double connections = poolGauge.value();
+      if (Double.isFinite(connections)) {
+        total += connections;
+      }
+    }
+    return total;
   }
 }

@@ -163,6 +163,25 @@ risk** — run the visual-QA harness (baselines under the collate visual-
 regression project) on the affected pages before merging each sweep PR, not
 just spot-checking a sample.
 
+### Ellipsis tooltip inside a link or button
+
+`ellipsis={{ tooltip }}` wraps the text in a tooltip trigger that renders as a
+`<button>`. Inside a `Link`, `<a>`, `Button`, `Pressable` or an element with
+`role="button"`, that nests one interactive element in another: invalid HTML
+and an extra tab stop. Opt into the span trigger at those call sites:
+
+```tsx
+<Link to={path}>
+  <Typography ellipsis={{ tooltip: true, excludeTriggerFromTabOrder: true }}>
+    {name}
+  </Typography>
+</Link>
+```
+
+Hover still shows the tooltip; keyboard focus stays on the link. The
+`openmetadata-ui-patterns/no-nested-ellipsis-tooltip-trigger` lint rule flags
+the nested case when the ancestor is in the same file (#30779).
+
 ## Hand-finish punch list (do not block the bulk codemod run on these)
 
 - **`copyable`** — 2 sites (`ReindexFailures.component.tsx:108`, `:134`)

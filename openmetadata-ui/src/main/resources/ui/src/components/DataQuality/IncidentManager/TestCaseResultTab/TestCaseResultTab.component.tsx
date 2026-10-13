@@ -11,24 +11,19 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Tooltip } from 'antd';
-import chunk from 'lodash/chunk';
-import startCase from 'lodash/startCase';
-import React, { lazy, useCallback, useMemo } from 'react';
+import { Box } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CSMode } from '../../../../enums/codemirror.enum';
 import { EntityType } from '../../../../enums/entity.enum';
 
 import { TagSource } from '../../../../generated/api/domains/createDataProduct';
 import { ChangeDescription } from '../../../../generated/tests/testCase';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useEntityRules } from '../../../../hooks/useEntityRules';
 import { TestCaseTabProps } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
-import { getDefaultTestCaseFormVariant } from '../../../../utils/DataQuality/TestCaseFormVariantUtils';
-import { getParameterValueDiffDisplay } from '../../../../utils/EntityVersionUtils';
-import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
+import { getParameterValueDiffRows } from '../../../../utils/EntityVersionUtils';
 import Description from '../../../common/EntityDescription/Description';
-import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import TestSummary from '../../../Database/Profiler/TestSummary/TestSummary';
 import DataProductsContainer from '../../../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import TagsContainerV2 from '../../../Tag/TagsContainerV2/TagsContainerV2';
@@ -36,96 +31,30 @@ import { DisplayType } from '../../../Tag/TagsViewer/TagsViewer.interface';
 import TestCaseFormDrawer from '../../AddDataQualityTest/components/TestCaseFormDrawer';
 import '../incident-manager.style.less';
 import './test-case-result-tab.style.less';
-import {
-  SqlParamsSectionProps,
-  TestCaseSidePanelProps,
-} from './TestCaseResultTab.interface';
+import TestCaseConfigurationCard from './TestCaseConfigurationCard/TestCaseConfigurationCard';
+import { ConfigurationParameterRow } from './TestCaseConfigurationCard/TestCaseConfigurationCard.types';
+import { TestCaseSidePanelProps } from './TestCaseResultTab.interface';
 import {
   canEditTestCaseParameters,
-  getSidePanelColSpanClass,
+  formatParameterValue,
+  getResultTabGridClass,
   hasAdditionalComponents,
   resolveIsSidePanelVisible,
   shouldRenderTestSummary,
   shouldShowAILearningBanner,
   shouldShowEditParameterButton,
-  shouldShowSqlParamsSection,
 } from './TestCaseResultTab.utils';
-import {
-  ParameterDisplayItem,
-  useTestCaseResultTab,
-} from './useTestCaseResultTab';
-const SchemaEditor = withSuspenseFallback(
-  lazy(() => import('../../../Database/SchemaEditor/SchemaEditor'))
-);
-
-function ParameterTooltipText({
-  className,
-  title,
-}: Readonly<{
-  className: string;
-  title: string;
-}>) {
-  return (
-    <Tooltip
-      overlayClassName="test-case-result-tooltip"
-      placement="bottomLeft"
-      showArrow={false}
-      title={title}>
-      <span className={className}>{title}</span>
-    </Tooltip>
-  );
-}
-
-function SqlParamsSection({
-  withSqlParams,
-  hasEditPermission,
-  onEditParameter,
-}: Readonly<SqlParamsSectionProps>) {
-  const { t } = useTranslation();
-
-  return (
-    <div className="tw:w-full">
-      {withSqlParams.map((param) => (
-        <div
-          className="sql-expression-container"
-          data-testid="sql-expression-container"
-          key={param.name}>
-          <div className="tw:flex tw:w-full tw:flex-col tw:gap-1">
-            <div className="tw:flex tw:flex-row tw:items-center tw:gap-1">
-              <Typography as="span" className="parameter-title tw:text-body">
-                {startCase(param.name)}
-              </Typography>
-              {hasEditPermission && (
-                <EditIconButton
-                  newLook
-                  data-testid="edit-sql-param-icon"
-                  size="small"
-                  title={t('label.edit-entity', {
-                    entity: t('label.parameter'),
-                  })}
-                  onClick={onEditParameter}
-                />
-              )}
-            </div>
-            <SchemaEditor
-              className="custom-code-mirror-theme query-editor-min-h-60"
-              editorClass="table-query-editor"
-              mode={{ name: CSMode.SQL }}
-              options={{
-                styleActiveLine: false,
-                readOnly: true,
-              }}
-              value={param.value ?? ''}
-            />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
+import TestCaseTestSuitesCard from './TestCaseTestSuitesCard/TestCaseTestSuitesCard';
+import { useTestCaseResultTab } from './useTestCaseResultTab';
 
 function TestCaseSidePanel({
   testCaseData,
+  testDefinition,
+  parameterRows,
+  withSqlParams,
+  versionParameterDiff,
+  showEditParameterButton,
+  onEditParameter,
   description,
   descriptionChangeSummaryEntry,
   hasEditDescriptionPermission,
@@ -142,9 +71,21 @@ function TestCaseSidePanel({
 }: Readonly<TestCaseSidePanelProps>) {
   return (
     <div
-      className="transition-all-200ms tw:col-span-3"
+      className="transition-all-200ms tw:min-w-0"
       data-testid="test-case-rail">
-      <div className="tw:flex tw:w-full tw:flex-col tw:gap-2.5">
+      <Box className="tw:w-full" direction="col" gap={4}>
+        <div className="tw:w-full">
+          <TestCaseConfigurationCard
+            isVersionPage={isVersionPage}
+            parameterRows={parameterRows}
+            showEditButton={showEditParameterButton}
+            testCaseData={testCaseData}
+            testDefinition={testDefinition}
+            versionParameterDiff={versionParameterDiff}
+            withSqlParams={withSqlParams}
+            onEditParameter={onEditParameter}
+          />
+        </div>
         <div className="tw:w-full">
           <Description
             wrapInCard
@@ -152,9 +93,13 @@ function TestCaseSidePanel({
             description={description}
             entityType={EntityType.TEST_CASE}
             hasEditAccess={hasEditDescriptionPermission}
+            headerVariant="widget"
             showCommentsIcon={false}
             onDescriptionUpdate={handleDescriptionChange}
           />
+        </div>
+        <div className="tw:w-full">
+          <TestCaseTestSuitesCard testSuites={testCaseData?.testSuites} />
         </div>
         <div className="tw:w-full">
           <TagsContainerV2
@@ -195,20 +140,18 @@ function TestCaseSidePanel({
             onSave={handleDataProductsSave}
           />
         </div>
-      </div>
+      </Box>
     </div>
   );
 }
 
-const TestCaseResultTab = ({
-  showSidePanel,
-  editVariant = getDefaultTestCaseFormVariant(),
-}: TestCaseTabProps) => {
+const TestCaseResultTab = ({ showSidePanel }: TestCaseTabProps) => {
   const { t } = useTranslation();
   const {
     testCase: testCaseData,
     setTestCase,
     isVersionPage,
+    testDefinition,
     showComputeRowCount,
     computeRowCountDisplay,
     hasEditPermission,
@@ -216,7 +159,7 @@ const TestCaseResultTab = ({
     hasEditTagsPermission,
     hasEditGlossaryTermsPermission,
     withSqlParams,
-    parameterItems,
+    withoutSqlParams,
     description,
     descriptionChangeSummaryEntry,
     updatedTags,
@@ -232,182 +175,110 @@ const TestCaseResultTab = ({
     additionalComponents,
     shouldRenderDefaultGraph,
   } = useTestCaseResultTab();
+  const isAiMode = useIsAiMode();
   const { entityRules, isRulesLoaded } = useEntityRules(EntityType.TEST_CASE);
   const isSidePanelVisible = resolveIsSidePanelVisible(
     showSidePanel,
     isTabExpanded
   );
 
-  const renderParameterRows = useCallback(
-    (items: ParameterDisplayItem[]) => {
-      if (items.length === 0) {
-        return (
-          <Typography as="span" className="tw:text-body tw:text-tertiary">
-            {t('label.no-parameter-available')}
-          </Typography>
-        );
-      }
-
-      const rows = chunk(items, 2);
-
-      return (
-        <div className="parameter-rows-container">
-          {rows.map((row, rowIndex) => {
-            // Create a stable key from the row items' labels
-            const rowKey = row.map((item) => item.label ?? '').join('-');
-
-            return (
-              <div key={rowKey}>
-                <div className="parameter-row">
-                  {row.map((item) => (
-                    <div
-                      className={
-                        row.length === 1
-                          ? 'parameter-row-cell parameter-row-cell--full'
-                          : 'parameter-row-cell parameter-row-cell--half'
-                      }
-                      key={item.label ?? ''}>
-                      <div className="parameter-row-cell-content">
-                        {item.label && (
-                          <ParameterTooltipText
-                            className="parameter-label"
-                            title={`${item.label}:`}
-                          />
-                        )}
-                        {typeof item.value === 'string' ? (
-                          <ParameterTooltipText
-                            className="parameter-value-text parameter-value-text-flex"
-                            title={item.value}
-                          />
-                        ) : (
-                          item.value
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                {rowIndex < rows.length - 1 && (
-                  <div aria-hidden className="parameter-row-divider" />
-                )}
-              </div>
-            );
-          })}
-        </div>
-      );
-    },
-    [t]
+  // The version page shows each parameter's change in the card's own rows;
+  // only the assertion SQL keeps a diff block of its own.
+  const versionDiff = useMemo(
+    () =>
+      isVersionPage
+        ? getParameterValueDiffRows(
+            testCaseData?.changeDescription as ChangeDescription,
+            testCaseData?.parameterValues
+          )
+        : undefined,
+    [
+      isVersionPage,
+      testCaseData?.changeDescription,
+      testCaseData?.parameterValues,
+    ]
   );
 
-  const testCaseParams = useMemo(() => {
-    if (isVersionPage) {
-      // For version page, get the diff display and add compute row count
-      const versionParams = getParameterValueDiffDisplay(
-        testCaseData?.changeDescription as ChangeDescription,
-        testCaseData?.parameterValues
-      );
+  /**
+   * A dynamic-assertion test has its bounds learned, so it has no parameter
+   * rows of its own — the card renders its callout instead. On the version
+   * page the rows are the parameters' diff.
+   */
+  const parameterRows = useMemo<ConfigurationParameterRow[]>(() => {
+    const definitions = new Map(
+      testDefinition?.parameterDefinition?.map((definition) => [
+        definition.name,
+        definition,
+      ])
+    );
+    const labelOf = (name = '') => definitions.get(name)?.displayName ?? name;
+    let rows: ConfigurationParameterRow[] = [];
 
-      // Add compute row count to version page if it should be shown
-      if (showComputeRowCount) {
-        const computeRowCountItem: Array<{
-          label: string;
-          value: string | React.ReactNode;
-        }> = [
-          {
-            label: t('label.compute-row-count'),
-            value: computeRowCountDisplay,
-          },
-        ];
-
-        return (
-          <div>
-            {versionParams}
-            <div aria-hidden className="parameter-row-divider" />
-            {renderParameterRows(computeRowCountItem)}
-          </div>
-        );
-      }
-
-      return versionParams;
+    if (versionDiff) {
+      rows = versionDiff.rows.map((row) => ({
+        ...row,
+        name: row.label,
+        label: labelOf(row.label),
+      }));
+    } else if (!testCaseData?.useDynamicAssertion) {
+      rows = withoutSqlParams.map((param) => ({
+        name: param.name,
+        label: labelOf(param.name),
+        value: formatParameterValue(
+          param.value,
+          definitions.get(param.name)?.dataType
+        ),
+      }));
     }
 
-    if (!parameterItems || parameterItems.length === 0) {
-      return (
-        <Typography as="span" className="tw:text-body tw:text-tertiary">
-          {t('label.no-parameter-available')}
-        </Typography>
-      );
+    if (showComputeRowCount) {
+      rows.push({
+        label: t('label.compute-row-count'),
+        value: computeRowCountDisplay,
+      });
     }
 
-    return renderParameterRows(parameterItems);
+    return rows;
   }, [
-    parameterItems,
-    testCaseData?.changeDescription,
-    testCaseData?.parameterValues,
-    isVersionPage,
+    versionDiff,
+    withoutSqlParams,
+    testCaseData?.useDynamicAssertion,
     showComputeRowCount,
     computeRowCountDisplay,
-    renderParameterRows,
+    testDefinition?.parameterDefinition,
+    t,
   ]);
 
   return (
-    <div
-      className="p-md test-case-result-tab tw:grid tw:w-full tw:grid-cols-12 tw:gap-2.5"
-      data-testid="test-case-result-tab-container">
+    <div className="tw:@container">
       <div
-        className={`transition-all-200ms ${getSidePanelColSpanClass(
-          isSidePanelVisible
-        )}`}>
-        <div className="tw:flex tw:w-full tw:flex-col tw:gap-2.5">
+        className={classNames(
+          // The mock's 22px between the results and the rail.
+          'p-md test-case-result-tab tw:grid tw:w-full tw:gap-5.5',
+          getResultTabGridClass(isSidePanelVisible)
+        )}
+        data-testid="test-case-result-tab-container">
+        <Box
+          className="transition-all-200ms tw:min-w-0 tw:gap-2.5"
+          direction="col">
           {shouldShowAILearningBanner(showAILearningBanner, testCaseData) &&
             AlertComponent && (
-              <div className="tw:w-full">
+              <Box direction="col">
                 <AlertComponent />
-              </div>
+              </Box>
             )}
           {shouldRenderTestSummary(testCaseData, shouldRenderDefaultGraph) && (
-            <div className="test-case-result-tab-graph tw:w-full">
+            // AI mode sets the result history straight on the page, as the mock
+            // does: the tiles carry the only borders in that section.
+            <Box
+              className={classNames({
+                'test-case-result-tab-graph': !isAiMode,
+              })}
+              data-testid="test-case-result-tab-graph"
+              direction="col">
               <TestSummary data={testCaseData} />
-            </div>
+            </Box>
           )}
-
-          <div className="tw:w-full" data-testid="parameter-container">
-            <div className="parameter-container">
-              <div className="tw:flex tw:w-full tw:flex-col tw:gap-1">
-                <div className="tw:mb-4 tw:flex tw:flex-row tw:items-center tw:gap-1">
-                  <Typography
-                    as="span"
-                    className="parameter-title tw:text-body">
-                    {t('label.parameter')}
-                  </Typography>
-                  {shouldShowEditParameterButton(
-                    hasEditPermission,
-                    testCaseData,
-                    showComputeRowCount
-                  ) && (
-                    <EditIconButton
-                      newLook
-                      data-testid="edit-parameter-icon"
-                      size="small"
-                      title={t('label.edit-entity', {
-                        entity: t('label.parameter'),
-                      })}
-                      onClick={() => setIsParameterEdit(true)}
-                    />
-                  )}
-                </div>
-
-                {testCaseParams}
-              </div>
-            </div>
-          </div>
-
-          {shouldShowSqlParamsSection(withSqlParams, isVersionPage) ? (
-            <SqlParamsSection
-              hasEditPermission={hasEditPermission}
-              withSqlParams={withSqlParams}
-              onEditParameter={() => setIsParameterEdit(true)}
-            />
-          ) : null}
 
           {hasAdditionalComponents(additionalComponents) &&
             additionalComponents.map(({ Component, id }) => (
@@ -421,31 +292,43 @@ const TestCaseResultTab = ({
                 open={isParameterEdit}
                 showDocPanel={false}
                 testCase={testCaseData}
-                variant={editVariant}
                 onClose={handleCancelParameter}
                 onUpdate={setTestCase}
               />
             )}
-        </div>
+        </Box>
+        {isSidePanelVisible && (
+          <TestCaseSidePanel
+            description={description}
+            descriptionChangeSummaryEntry={descriptionChangeSummaryEntry}
+            handleDataProductsSave={handleDataProductsSave}
+            handleDescriptionChange={handleDescriptionChange}
+            handleTagSelection={handleTagSelection}
+            hasEditDescriptionPermission={hasEditDescriptionPermission}
+            hasEditGlossaryTermsPermission={hasEditGlossaryTermsPermission}
+            hasEditPermission={hasEditPermission}
+            hasEditTagsPermission={hasEditTagsPermission}
+            isRulesLoaded={isRulesLoaded}
+            isVersionPage={isVersionPage}
+            parameterRows={parameterRows}
+            requireDomainForDataProduct={
+              entityRules.requireDomainForDataProduct
+            }
+            showEditParameterButton={shouldShowEditParameterButton(
+              hasEditPermission,
+              testCaseData,
+              showComputeRowCount,
+              Boolean(testCaseData?.dataQualityDimension)
+            )}
+            testCaseData={testCaseData}
+            testDefinition={testDefinition}
+            updatedTags={updatedTags}
+            versionParameterDiff={versionDiff?.sqlDiff}
+            withSqlParams={withSqlParams}
+            onEditParameter={() => setIsParameterEdit(true)}
+          />
+        )}
       </div>
-      {isSidePanelVisible && (
-        <TestCaseSidePanel
-          description={description}
-          descriptionChangeSummaryEntry={descriptionChangeSummaryEntry}
-          handleDataProductsSave={handleDataProductsSave}
-          handleDescriptionChange={handleDescriptionChange}
-          handleTagSelection={handleTagSelection}
-          hasEditDescriptionPermission={hasEditDescriptionPermission}
-          hasEditGlossaryTermsPermission={hasEditGlossaryTermsPermission}
-          hasEditPermission={hasEditPermission}
-          hasEditTagsPermission={hasEditTagsPermission}
-          isRulesLoaded={isRulesLoaded}
-          isVersionPage={isVersionPage}
-          requireDomainForDataProduct={entityRules.requireDomainForDataProduct}
-          testCaseData={testCaseData}
-          updatedTags={updatedTags}
-        />
-      )}
     </div>
   );
 };

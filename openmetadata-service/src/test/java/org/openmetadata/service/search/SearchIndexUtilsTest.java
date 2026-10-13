@@ -12,7 +12,13 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.entity.data.Table;
@@ -28,10 +34,98 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.change.ChangeSummary;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
 
 class SearchIndexUtilsTest {
+
+  @ParameterizedTest
+  @MethodSource("indexTargets")
+  void getEntityTypesForIndexSelectsOnlyRequestedMembers(String index, List<String> expected) {
+    assertEquals(
+        expected,
+        SearchIndexUtils.getEntityTypesForIndex(index, resolutionMappings(), Map.of(), "cluster"));
+  }
+
+  static Stream<Arguments> indexTargets() {
+    return Stream.of(
+        Arguments.of("table", List.of("table")),
+        Arguments.of("table_search_index", List.of("table")),
+        Arguments.of("cluster_table_search_index", List.of("table")),
+        Arguments.of("table, table_search_index, table", List.of("table")),
+        Arguments.of(" table , databaseSchema ", List.of("databaseSchema", "table")),
+        Arguments.of("dataAsset", List.of("databaseSchema", "table", "tableColumn")),
+        Arguments.of("cluster_dataAsset", List.of("databaseSchema", "table", "tableColumn")),
+        Arguments.of("all", List.of("databaseSchema", "table", "tableColumn", "team")),
+        Arguments.of("customEntity", List.of("customEntity")),
+        Arguments.of("table, ,unknown,", List.of("table")),
+        Arguments.of("cluster_all", List.of("databaseSchema", "table", "tableColumn", "team")),
+        Arguments.of("tableColumn", List.of("tableColumn")));
+  }
+
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(strings = {"unknown", "", " , "})
+  void getEntityTypesForIndexReturnsEmptyForUnknownTargets(String index) {
+    assertEquals(
+        List.of(),
+        SearchIndexUtils.getEntityTypesForIndex(index, resolutionMappings(), Map.of(), "cluster"));
+  }
+
+  @Test
+  void getEntityTypesForIndexWorksWithoutClusterPrefixAndReturnsImmutableResults() {
+    List<String> types =
+        SearchIndexUtils.getEntityTypesForIndex(
+            "table,dataAsset", resolutionMappings(), Map.of(), null);
+    assertEquals(List.of("databaseSchema", "table", "tableColumn"), types);
+    assertThrows(UnsupportedOperationException.class, () -> types.add("team"));
+  }
+
+  private static Map<String, IndexMapping> resolutionMappings() {
+    return Map.of(
+        "table", resolutionMapping("table", List.of("all", "dataAsset")),
+        "tableColumn", resolutionMapping("column", List.of("all", "dataAsset", "table")),
+        "databaseSchema", resolutionMapping("schema", List.of("all", "dataAsset")),
+        "team", resolutionMapping("team", List.of("all")),
+        "customEntity", resolutionMapping("custom", null));
+  }
+
+  private static IndexMapping resolutionMapping(String name, List<String> parents) {
+    return IndexMapping.builder().indexName(name + "_search_index").parentAliases(parents).build();
+  }
+
+  @Test
+  void getEntityTypesForIndexSupportsRegisteredAliases() {
+    Map<String, IndexMapping> mappings = resolutionMappings();
+    assertEquals(
+        List.of("customEntity"),
+        SearchIndexUtils.getEntityTypesForIndex(
+            "customAlias",
+            mappings,
+            Map.of("customAlias", mappings.get("customEntity")),
+            "cluster"));
+  }
+
+  @Test
+  void getEntityTypesForIndexSupportsEmptyRegistryAndClusterPrefix() {
+    assertEquals(
+        List.of(), SearchIndexUtils.getEntityTypesForIndex("all", Map.of(), Map.of(), null));
+    assertEquals(List.of(), SearchIndexUtils.getEntityTypesForIndex("all", null, null, "cluster"));
+    assertEquals(
+        List.of("table"),
+        SearchIndexUtils.getEntityTypesForIndex(
+            "table_search_index", resolutionMappings(), Map.of(), ""));
+  }
+
+  @Test
+  void getIndexOrAliasNamePreservesNullAndUnknownTargetsWithoutRegistry() {
+    assertNull(SearchIndexUtils.getIndexOrAliasName(null, null, null, null));
+    assertEquals("", SearchIndexUtils.getIndexOrAliasName("", null, null, "cluster"));
+    assertEquals("unknown", SearchIndexUtils.getIndexOrAliasName("unknown", null, null, null));
+    assertEquals(
+        "cluster_unknown", SearchIndexUtils.getIndexOrAliasName("unknown", null, null, "cluster"));
+  }
 
   @Test
   void testParseHelpersAndRemoveFieldByPathSupportsNestedLists() {

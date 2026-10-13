@@ -75,13 +75,13 @@ public class CreateEntityTool implements McpTool {
     String entityType = CommonUtils.requireNonBlank(params.get("entityType"), "entityType");
     EntityCreationSpec type = EntityCreationSpec.resolve(entityType);
     String userName = CommonUtils.principal(securityContext);
-    EntityInterface entity = buildEntity(type, params, userName);
+    EntityInterface<?> entity = buildEntity(type, params, userName);
     Boolean requestedMutuallyExclusive = requestedMutuallyExclusive(entity);
 
     applyRepositoryDefaults(entity);
     authorizeCreate(authorizer, limits, securityContext, entityType, entity);
     RuleEngine.getInstance().evaluate(entity);
-    RestUtil.PutResponse<EntityInterface> response = persist(type, entity, userName);
+    RestUtil.PutResponse<EntityInterface<?>> response = persist(type, entity, userName);
 
     Map<String, Object> result =
         McpResponseUtils.compact(response.getEntity(), response.getChangeType());
@@ -95,19 +95,19 @@ public class CreateEntityTool implements McpTool {
       Limits limits,
       CatalogSecurityContext securityContext,
       String entityType,
-      EntityInterface entity) {
+      EntityInterface<?> entity) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
-    CreateResourceContext<EntityInterface> resourceContext =
+    CreateResourceContext<EntityInterface<?>> resourceContext =
         new CreateResourceContext<>(entityType, entity);
     limits.enforceLimits(securityContext, resourceContext, operationContext);
     authorizer.authorize(securityContext, operationContext, resourceContext);
   }
 
-  private static RestUtil.PutResponse<EntityInterface> persist(
-      EntityCreationSpec type, EntityInterface entity, String userName) {
-    EntityRepository<EntityInterface> repository = type.typedRepository();
+  private static RestUtil.PutResponse<EntityInterface<?>> persist(
+      EntityCreationSpec type, EntityInterface<?> entity, String userName) {
+    EntityRepository<EntityInterface<?>> repository = type.typedRepository();
     String impersonatedBy = ImpersonationContext.getImpersonatedBy();
-    EntityInterface saved;
+    EntityInterface<?> saved;
     try {
       saved = repository.create(null, entity, userName, impersonatedBy);
     } catch (RuntimeException failure) {
@@ -127,7 +127,7 @@ public class CreateEntityTool implements McpTool {
               + " FQN to modify it.",
           failure);
     }
-    RestUtil.PutResponse<EntityInterface> response =
+    RestUtil.PutResponse<EntityInterface<?>> response =
         new RestUtil.PutResponse<>(Response.Status.CREATED, saved, EventType.ENTITY_CREATED);
     McpChangeEventUtil.publishChangeEvent(response.getEntity(), response.getChangeType(), userName);
     return response;
@@ -146,7 +146,7 @@ public class CreateEntityTool implements McpTool {
   }
 
   /** Shared parameters plus attributes bound to the entity class owned by the repository. */
-  private static EntityInterface buildEntity(
+  private static EntityInterface<?> buildEntity(
       EntityCreationSpec type, Map<String, Object> params, String userName) {
     Set<String> bindable = DescribeEntityTypeTool.bindableNames(type);
     // Before resolving anything: owners and reviewers cost a directory lookup, and a name that does
@@ -156,13 +156,13 @@ public class CreateEntityTool implements McpTool {
     rejectUnsupportedShared(type, bindable, params);
     Map<String, Object> attributes = attributes(type, bindable, params);
     requireFields(type, params, attributes);
-    EntityInterface entity = convert(type, attributes);
+    EntityInterface<?> entity = convert(type, attributes);
     applySharedFields(entity, params, userName);
     applyMcpDefaults(entity);
     return entity;
   }
 
-  private static void applyRepositoryDefaults(EntityInterface entity) {
+  private static void applyRepositoryDefaults(EntityInterface<?> entity) {
     if (entity instanceof Tag tag) {
       deriveTagClassification(tag);
     }
@@ -208,7 +208,7 @@ public class CreateEntityTool implements McpTool {
   }
 
   private static void applySharedFields(
-      EntityInterface entity, Map<String, Object> params, String userName) {
+      EntityInterface<?> entity, Map<String, Object> params, String userName) {
     entity.setId(UUID.randomUUID());
     entity.setName(CommonUtils.requireNonBlank(params.get(NAME), NAME));
     entity.setDescription(
@@ -223,7 +223,7 @@ public class CreateEntityTool implements McpTool {
     entity.setUpdatedAt(System.currentTimeMillis());
   }
 
-  private static void applyMcpDefaults(EntityInterface entity) {
+  private static void applyMcpDefaults(EntityInterface<?> entity) {
     if (entity instanceof Domain domain && domain.getDomainType() == null) {
       domain.setDomainType(CreateDomain.DomainType.AGGREGATE);
     }
@@ -260,14 +260,17 @@ public class CreateEntityTool implements McpTool {
     }
   }
 
-  private static Boolean requestedMutuallyExclusive(EntityInterface entity) {
+  private static Boolean requestedMutuallyExclusive(EntityInterface<?> entity) {
     return entity instanceof Classification classification
         ? classification.getMutuallyExclusive()
         : null;
   }
 
   private static void addClassificationWarning(
-      Boolean requested, EntityInterface saved, EventType changeType, Map<String, Object> result) {
+      Boolean requested,
+      EntityInterface<?> saved,
+      EventType changeType,
+      Map<String, Object> result) {
     if (requested != null
         && saved instanceof Classification classification
         && !EventType.ENTITY_CREATED.equals(changeType)
@@ -440,8 +443,8 @@ public class CreateEntityTool implements McpTool {
     return attributes;
   }
 
-  private static EntityInterface convert(EntityCreationSpec type, Map<String, Object> payload) {
-    EntityInterface entity;
+  private static EntityInterface<?> convert(EntityCreationSpec type, Map<String, Object> payload) {
+    EntityInterface<?> entity;
     try {
       entity = JsonUtils.convertValue(payload, type.entityClass());
     } catch (RuntimeException e) {

@@ -10,8 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
-import { Button, Input, Popover, Tooltip } from 'antd';
+import {
+  Box,
+  ButtonUtility,
+  Input,
+  SelectPopover,
+} from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { debounce, isEmpty, isString } from 'lodash';
 import Qs from 'qs';
@@ -24,6 +28,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { useInteractOutside } from 'react-aria';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconSuggestionsActive } from '../../../../assets/svg/ic-suggestions-active.svg';
@@ -40,7 +45,6 @@ import {
   inPageSearchOptions,
   isInPageSearchAllowed,
 } from '../../../../utils/RouterUtils';
-import './customise-search-bar.less';
 
 const SearchOptions = lazy(() => import('../../../AppBar/SearchOptions'));
 const Suggestions = lazy(() => import('../../../AppBar/Suggestions'));
@@ -86,9 +90,10 @@ export const CustomiseSearchBar = ({ disabled }: { disabled?: boolean }) => {
     [setSuggestionSearch]
   );
 
-  const debounceOnSearch = useCallback(debounce(debouncedOnChange, 400), [
-    debouncedOnChange,
-  ]);
+  const debounceOnSearch = useMemo(
+    () => debounce(debouncedOnChange, 400),
+    [debouncedOnChange]
+  );
 
   const searchHandler = (value: string) => {
     if (!isTourOpen) {
@@ -113,26 +118,28 @@ export const CustomiseSearchBar = ({ disabled }: { disabled?: boolean }) => {
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    const target = e.target as HTMLInputElement;
+  const handleKeyDown = (e: { key: string }) => {
     if (e.key === 'Enter') {
       if (isTourOpen && searchValue === 'tour') {
         updateTourPage(CurrentTourPageType.EXPLORE_PAGE);
         updateTourSearch('');
       }
 
-      searchHandler(target.value);
+      searchHandler(searchValue);
     }
   };
 
-  const handleSearchChange = (value: string) => {
-    setSearchValue(value);
-    if (isTourOpen) {
-      updateTourSearch(value);
-    } else {
-      value ? setIsSearchBoxOpen(true) : setIsSearchBoxOpen(false);
-    }
-  };
+  const handleSearchChange = useCallback(
+    (value: string) => {
+      setSearchValue(value);
+      if (isTourOpen) {
+        updateTourSearch(value);
+      } else {
+        setIsSearchBoxOpen(Boolean(value));
+      }
+    },
+    [isTourOpen, updateTourSearch]
+  );
 
   const popoverContent = useMemo(() => {
     if (!isSearchBoxOpen) {
@@ -178,75 +185,95 @@ export const CustomiseSearchBar = ({ disabled }: { disabled?: boolean }) => {
     handleSearchChange,
   ]);
 
+  // Non-modal popovers skip react-aria's outside-press dismissal; restore the
+  // antd behaviour. The popover is portaled, so presses inside it land
+  // outside the search container and are filtered by class.
+  useInteractOutside({
+    ref: searchContainerRef,
+    isDisabled: !isSearchBoxOpen,
+    onInteractOutside: (event) => {
+      if (!(event.target as Element).closest('.customise-search-overlay')) {
+        setIsSearchBoxOpen(false);
+      }
+    },
+  });
+
   useEffect(() => {
     if (!isEmpty(currentUser)) {
       initNLP();
     }
-  }, [currentUser]);
+  }, [currentUser, initNLP]);
+
+  const nlpLabel = isNLPActive
+    ? t('message.natural-language-search-active')
+    : t('label.use-natural-language-search');
 
   return (
-    <div
-      className="flex-center search-input"
+    <Box
+      align="center"
+      className="tw:relative tw:min-w-0 tw:flex-auto tw:rounded-xl tw:border tw:border-bg-secondary_subtle tw:bg-primary tw:px-3 tw:py-2 tw:shadow-xs"
       data-testid="customise-search-container"
+      justify="center"
       ref={searchContainerRef}>
       {isNLPEnabled && (
-        <Tooltip
-          title={
+        <ButtonUtility
+          aria-pressed={isNLPActive}
+          className={classNames(
+            'tw:size-6 tw:shrink-0 tw:rounded-lg tw:p-0 tw:transition-none',
             isNLPActive
-              ? t('message.natural-language-search-active')
-              : t('label.use-natural-language-search')
-          }>
-          <Button
-            className={classNames('nlp-search-button w-6 h-6', {
-              active: isNLPActive,
-            })}
-            data-testid="nlp-suggestions-button"
-            icon={
-              <Icon
-                component={
-                  isNLPActive ? IconSuggestionsActive : IconSuggestionsBlue
-                }
-              />
-            }
-            type="text"
-            onClick={() => setNLPActive(!isNLPActive)}
-          />
-        </Tooltip>
-      )}
-      <Popover
-        align={{ offset: [0, 12] }}
-        content={popoverContent}
-        getPopupContainer={() => searchContainerRef.current || document.body}
-        open={isSearchBoxOpen}
-        overlayClassName="customise-search-overlay"
-        overlayStyle={{ paddingTop: 0, width: '100%' }}
-        placement="bottom"
-        showArrow={false}
-        trigger={['click']}
-        onOpenChange={(open) => {
-          setIsSearchBoxOpen(isNLPActive ? open : !!searchValue && open);
-        }}>
-        <Input
-          autoComplete="off"
-          bordered={false}
-          className="rounded-4 appbar-search"
-          data-testid="searchBox"
-          disabled={disabled}
-          id="searchBox"
-          placeholder={t('label.search-for-type', {
-            type: 'Tables, Database, Schema...',
-          })}
-          type="text"
-          value={searchValue}
-          onChange={(e) => {
-            const { value } = e.target;
-            debounceOnSearch(value);
-            handleSearchChange(value);
-          }}
-          onKeyDown={handleKeyDown}
+              ? 'tw:bg-transparent tw:hover:bg-transparent'
+              : 'tw:border-[0.5px] tw:border-utility-blue-light-200 tw:bg-utility-brand-50 tw:hover:bg-utility-brand-50'
+          )}
+          color="tertiary"
+          data-testid="nlp-suggestions-button"
+          icon={
+            isNLPActive ? (
+              <IconSuggestionsActive className="tw:size-6 tw:fill-none" />
+            ) : (
+              <IconSuggestionsBlue className="tw:size-3.5 tw:fill-transparent" />
+            )
+          }
+          tooltip={nlpLabel}
+          onClick={() => setNLPActive(!isNLPActive)}
         />
-      </Popover>
-    </div>
+      )}
+      <Input
+        autoComplete="off"
+        className="tw:flex-1"
+        fontSize="sm"
+        id="searchBox"
+        inputClassName="tw:px-3 tw:py-2 tw:text-sm tw:leading-5.5 tw:text-primary"
+        inputDataTestId="searchBox"
+        isDisabled={disabled}
+        placeholder={t('label.search-for-type', {
+          type: `${t('label.table-plural')}, ${t('label.database')}, ${t(
+            'label.schema'
+          )}...`,
+        })}
+        value={searchValue}
+        wrapperClassName="tw:bg-transparent tw:shadow-none! tw:outline-0! tw:focus-within:outline-0!"
+        onChange={(value) => {
+          debounceOnSearch(value);
+          handleSearchChange(value);
+        }}
+        onFocus={() => setIsSearchBoxOpen(isNLPActive || Boolean(searchValue))}
+        onKeyDown={handleKeyDown}
+      />
+      <SelectPopover
+        isNonModal
+        className="tw:max-h-100! tw:overflow-y-auto tw:rounded-xl tw:px-0! tw:py-4! tw:shadow-lg"
+        containerPadding={0}
+        data-testid="customise-search-popover"
+        isOpen={isSearchBoxOpen}
+        offset={12}
+        placement="bottom"
+        size="sm"
+        style={{ width: searchContainerRef.current?.offsetWidth }}
+        triggerRef={searchContainerRef}
+        onOpenChange={setIsSearchBoxOpen}>
+        {popoverContent}
+      </SelectPopover>
+    </Box>
   );
 };
 

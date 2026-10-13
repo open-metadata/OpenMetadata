@@ -1,0 +1,192 @@
+{
+  "$id": "https://open-metadata.org/schema/api/rdf/rdfReasoningCapabilities.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RdfReasoningCapabilities",
+  "description": "What the RDF store's reasoning capability supports and whether it may run now. OpenMetadata reads this before submitting work and never falls back to reasoning in its own process.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.rdf.RdfReasoningCapabilities",
+  "definitions": {
+    "readiness": {
+      "javaType": "org.openmetadata.schema.api.rdf.RdfReasoningReadiness",
+      "description": "READY admits jobs. NOT_READY means reasoning is enabled but cannot run safely, for example because the memory budget does not fit the container limit; reasons say why. DISABLED means reasoning is switched off.",
+      "type": "string",
+      "enum": ["READY", "NOT_READY", "DISABLED"]
+    },
+    "engine": {
+      "javaType": "org.openmetadata.schema.api.rdf.RdfReasoningEngine",
+      "description": "A reasoning engine and the profile it answers.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "Engine name, such as HermiT, ELK or governance-rules.",
+          "type": "string"
+        },
+        "version": {
+          "description": "Exact engine build.",
+          "type": "string"
+        },
+        "profile": {
+          "description": "Fragment the engine answers, such as OWL 2 DL, OWL 2 EL or CONSTRUCT rules.",
+          "type": "string"
+        }
+      },
+      "required": ["name", "version"],
+      "additionalProperties": false
+    },
+    "memoryBudget": {
+      "javaType": "org.openmetadata.schema.api.rdf.RdfReasoningMemoryBudget",
+      "description": "The memory budget the store checks before admitting work: every JVM region is capped, and the capped total plus a page-cache floor must fit under the container limit with the safety margin.",
+      "type": "object",
+      "properties": {
+        "containerLimitBytes": {
+          "description": "Container memory limit, or physical memory when unlimited.",
+          "type": "integer",
+          "minimum": 0,
+          "existingJavaType": "java.lang.Long"
+        },
+        "requiredBytes": {
+          "description": "Limit the budget needs: (Fuseki heap + Fuseki off-heap + worker heap + worker off-heap + page-cache floor) / (1 - margin).",
+          "type": "integer",
+          "minimum": 0,
+          "existingJavaType": "java.lang.Long"
+        },
+        "fusekiHeapBytes": {
+          "type": "integer",
+          "minimum": 0,
+          "existingJavaType": "java.lang.Long"
+        },
+        "fusekiOffHeapBytes": {
+          "type": "integer",
+          "minimum": 0,
+          "existingJavaType": "java.lang.Long"
+        },
+        "workerHeapBytes": {
+          "type": "integer",
+          "minimum": 0,
+          "existingJavaType": "java.lang.Long"
+        },
+        "workerOffHeapBytes": {
+          "type": "integer",
+          "minimum": 0,
+          "existingJavaType": "java.lang.Long"
+        },
+        "pageCacheFloorBytes": {
+          "description": "Page cache kept free for serving queries.",
+          "type": "integer",
+          "minimum": 0,
+          "existingJavaType": "java.lang.Long"
+        },
+        "safetyMargin": {
+          "description": "Fraction of the container limit kept free, such as 0.1.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "required": ["containerLimitBytes", "requiredBytes"],
+      "additionalProperties": false
+    },
+    "limits": {
+      "javaType": "org.openmetadata.schema.api.rdf.RdfReasoningLimits",
+      "description": "Admission and execution limits. A job that reaches one stops without publishing a partial result, and a check answers INCOMPLETE. The store reports NOT_READY when a limit is unset.",
+      "type": "object",
+      "properties": {
+        "maxQueuedJobs": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxClosureAxioms": {
+          "description": "Axioms in one ontology import closure.",
+          "type": "integer",
+          "minimum": 1,
+          "existingJavaType": "java.lang.Long"
+        },
+        "maxIndividuals": {
+          "type": "integer",
+          "minimum": 1,
+          "existingJavaType": "java.lang.Long"
+        },
+        "maxExpressionDepth": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxImports": {
+          "description": "Ontologies in one import closure.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxJobSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "existingJavaType": "java.lang.Long"
+        },
+        "maxQuerySeconds": {
+          "description": "Deadline for one snapshot query.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxDerivedTriples": {
+          "description": "Triples one refresh may derive.",
+          "type": "integer",
+          "minimum": 1,
+          "existingJavaType": "java.lang.Long"
+        },
+        "maxRulePasses": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxDiskBytes": {
+          "description": "Disk for job directories, working datasets and snapshots together.",
+          "type": "integer",
+          "minimum": 1,
+          "existingJavaType": "java.lang.Long"
+        },
+        "maxResultRows": {
+          "description": "Rows one snapshot query returns.",
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "protocolVersion": {
+      "description": "Version of this reasoning protocol. OpenMetadata refuses versions it does not know.",
+      "type": "string",
+      "pattern": "^[1-9][0-9]*$"
+    },
+    "readiness": {
+      "$ref": "#/definitions/readiness"
+    },
+    "reasons": {
+      "description": "Why reasoning is not ready, one sentence each.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "engines": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/engine"
+      }
+    },
+    "coverage": {
+      "description": "OWL 2 constructs the engines answer with full semantics, by structural-specification name such as ObjectSomeValuesFrom or TransitiveObjectProperty. A closure using anything else is reported as incomplete, never approximated.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "memoryBudget": {
+      "$ref": "#/definitions/memoryBudget"
+    },
+    "limits": {
+      "$ref": "#/definitions/limits"
+    }
+  },
+  "required": ["protocolVersion", "readiness"],
+  "additionalProperties": false
+}

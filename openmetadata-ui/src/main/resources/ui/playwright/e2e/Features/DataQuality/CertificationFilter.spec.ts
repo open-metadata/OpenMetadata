@@ -180,7 +180,9 @@ test('TagPage: Certification detail page routes through certification.tagLabel.t
   const reloadFired = page.waitForResponse((res) =>
     isDashboardReportBatchResponse(res, certFqn)
   );
-  await page.goto(`/tag/${certFqnEncoded}/data_observability`);
+  await page.goto(`/tag/${certFqnEncoded}/data_observability`, {
+    waitUntil: 'domcontentloaded',
+  });
   await reloadFired;
   await waitForAllLoadersToDisappear(page);
 

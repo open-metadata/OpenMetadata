@@ -33,6 +33,8 @@ import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -48,6 +50,8 @@ import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 
 /** Durable delivery through real MySQL/PostgreSQL transactions and HTTP/TDB2 writes. */
+@Tag("rdf")
+@EnabledIfSystemProperty(named = "enableRdf", matches = "true")
 @Execution(ExecutionMode.SAME_THREAD)
 public class RdfLiveWriteRecoveryIT {
   private static final String BASE = "https://open-metadata.org/";
@@ -314,6 +318,106 @@ public class RdfLiveWriteRecoveryIT {
 
   @ParameterizedTest
   @EnumSource(RdfTestDatabase.Backend.class)
+  void theWatermarkPassesAWriteOnlyOnceItIsApplied(final RdfTestDatabase.Backend backend) {
+    try (Fixture fixture = new Fixture(backend)) {
+      fixture.primary.enqueue(insert(1));
+      final long first = fixture.primary.enqueuedWatermark();
+      fixture.other.enqueue(insert(2));
+      final long second = fixture.other.enqueuedWatermark();
+      assertTrue(first < second);
+
+      assertFalse(
+          fixture.primary.processNext(
+              payload -> {
+                throw new IllegalStateException("Fuseki temporarily unavailable");
+              }));
+      assertTrue(fixture.other.acknowledgedWatermark() < first);
+
+      fixture.clock.advance(1000);
+      assertTrue(fixture.other.processNext(fixture::apply));
+      final long afterFirst = fixture.primary.acknowledgedWatermark();
+      assertTrue(first <= afterFirst && afterFirst < second);
+
+      assertTrue(fixture.primary.processNext(fixture::apply));
+      assertEquals(second, fixture.newStore().acknowledgedWatermark());
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(RdfTestDatabase.Backend.class)
+  void aWriteOutsideTheQueueTakesTheNextIdWithoutAnythingToDeliver(
+      final RdfTestDatabase.Backend backend) {
+    try (Fixture fixture = new Fixture(backend)) {
+      fixture.primary.enqueue(insert(1));
+      final long queued = fixture.primary.enqueuedWatermark();
+
+      final long untracked = fixture.other.recordUntrackedWrite();
+
+      assertTrue(untracked > queued);
+      assertEquals(untracked, fixture.primary.enqueuedWatermark());
+      assertEquals(1, fixture.primary.pendingWrites());
+      assertTrue(fixture.primary.acknowledgedWatermark() < queued);
+      assertTrue(fixture.primary.processNext(fixture::apply));
+      assertFalse(fixture.primary.processNext(fixture::apply));
+      assertEquals(untracked, fixture.other.acknowledgedWatermark());
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(RdfTestDatabase.Backend.class)
+  void aDeadLetteredWriteMovesTheWatermarkOnAndLeavesTheGraphDegraded(
+      final RdfTestDatabase.Backend backend) {
+    try (Fixture fixture = new Fixture(backend)) {
+      fixture.primary.enqueue("malformed");
+      final long malformed = fixture.primary.enqueuedWatermark();
+      fixture.primary.enqueue(insert(1));
+      for (int attempt = 1; attempt < 10; attempt++) {
+        assertFalse(fixture.primary.processNext(fixture::apply));
+        fixture.clock.advance(60_000);
+      }
+
+      assertTrue(fixture.primary.processNext(fixture::apply));
+
+      assertTrue(fixture.other.acknowledgedWatermark() >= malformed);
+      assertTrue(fixture.other.isDegraded());
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(RdfTestDatabase.Backend.class)
+  void aDeliveredWriteFromAnOlderServerStaysInTheEnqueuedWatermark(
+      final RdfTestDatabase.Backend backend) {
+    try (Fixture fixture = new Fixture(backend)) {
+      final long legacy = fixture.enqueueWithoutRecordingTheWatermark(insert(1));
+      assertEquals(legacy, fixture.other.enqueuedWatermark());
+
+      assertTrue(fixture.primary.processNext(fixture::apply));
+
+      assertEquals(0, fixture.other.pendingWrites());
+      assertEquals(legacy, fixture.other.enqueuedWatermark());
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(RdfTestDatabase.Backend.class)
+  void aDeadLetteredWriteFromAnOlderServerStaysInTheEnqueuedWatermark(
+      final RdfTestDatabase.Backend backend) {
+    try (Fixture fixture = new Fixture(backend)) {
+      final long legacy = fixture.enqueueWithoutRecordingTheWatermark("malformed");
+      for (int attempt = 1; attempt < 10; attempt++) {
+        assertFalse(fixture.primary.processNext(fixture::apply));
+        fixture.clock.advance(60_000);
+      }
+
+      assertTrue(fixture.primary.processNext(fixture::apply));
+
+      assertEquals(1, fixture.deadLetters());
+      assertEquals(legacy, fixture.other.enqueuedWatermark());
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(RdfTestDatabase.Backend.class)
   void anExhaustedWriteCannotBeReplayedAfterALaterDelete(final RdfTestDatabase.Backend backend) {
     try (Fixture fixture = new Fixture(backend)) {
       final UUID id = UUID.randomUUID();
@@ -431,6 +535,23 @@ public class RdfLiveWriteRecoveryIT {
 
     RdfLiveWriteStore newStore() {
       return new RdfLiveWriteStore(database.jdbi(), clock);
+    }
+
+    /** Enqueues as a server that predates rdf_projection_health.enqueuedWatermark does. */
+    long enqueueWithoutRecordingTheWatermark(final String payload) {
+      return database
+          .jdbi()
+          .withHandle(
+              handle ->
+                  handle
+                      .createUpdate(
+                          "INSERT INTO rdf_live_write_queue (payload, createdAt) "
+                              + "VALUES (:payload, :createdAt)")
+                      .bind("payload", payload)
+                      .bind("createdAt", clock.millis())
+                      .executeAndReturnGeneratedKeys("id")
+                      .mapTo(Long.class)
+                      .one());
     }
 
     void apply(final String payload) {

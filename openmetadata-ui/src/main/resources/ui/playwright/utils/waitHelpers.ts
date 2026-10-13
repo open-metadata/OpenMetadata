@@ -11,7 +11,44 @@
  *  limitations under the License.
  */
 
-import { Locator, Page, Response } from '@playwright/test';
+import { expect, Locator, Page, Response } from '@playwright/test';
+
+export const waitForAntOverlayToOpen = async (overlay: Locator) => {
+  await expect(overlay).toBeVisible();
+  // Ant's invisible enter-start frame has a stable box, so click auto-waiting
+  // can finish before the zoom motion starts changing the target's position.
+  await expect(overlay).not.toHaveClass(
+    /\bant-zoom(?:-big)?-(?:appear|enter|leave)(?:-|\b)/
+  );
+  await expect(overlay).toHaveCSS('opacity', '1');
+};
+
+/** Match the request first so a later HTTP 200 cannot hide its earlier failure. */
+export const waitForResponseWithStatus = (
+  page: Page,
+  matchesRequest: (response: Response) => boolean | Promise<boolean>,
+  expectedStatus: number | number[] | 'ok',
+  options?: { timeout?: number }
+): Promise<Response> => {
+  const statuses = Array.isArray(expectedStatus)
+    ? expectedStatus
+    : [expectedStatus];
+  const label = expectedStatus === 'ok' ? '2xx' : statuses.join(' or ');
+  return page.waitForResponse(matchesRequest, options).then((response) => {
+    if (
+      expectedStatus === 'ok'
+        ? !response.ok()
+        : !statuses.includes(response.status())
+    ) {
+      throw new Error(
+        `${response.request().method()} ${
+          new URL(response.url()).pathname
+        }: expected HTTP ${label}, received ${response.status()}`
+      );
+    }
+    return response;
+  });
+};
 
 /**
  * Registers the response listener *before* triggering the click, which is the
@@ -44,4 +81,34 @@ export const clickAndWaitFor = async (
   }
 
   return response;
+};
+
+/** React Aria counterpart of `waitForAntOverlayToOpen`: a click landing mid-slide cancels the press. */
+export const waitForAriaOverlayToSettle = async (page: Page) => {
+  await expect(page.locator('[data-entering]')).toHaveCount(0);
+};
+
+/**
+ * Clicks `trigger` until `target` appears; a click swallowed by a re-layout
+ * fires no event, so retrying is the only fix. `force` is off by default — it
+ * also clicks through a real intercepting overlay and would hide that bug.
+ */
+export const clickUntilVisible = async (
+  trigger: Locator,
+  target: Locator,
+  options?: { timeout?: number; force?: 'onRetry' | 'always' }
+) => {
+  let attempt = 0;
+  await expect(async () => {
+    const isRetry = attempt++ > 0;
+    if (!(await target.isVisible())) {
+      await trigger.click({
+        force:
+          options?.force === 'always' ||
+          (options?.force === 'onRetry' && isRetry),
+        timeout: 5_000,
+      });
+    }
+    await expect(target).toBeVisible({ timeout: 5_000 });
+  }).toPass({ timeout: options?.timeout ?? 30_000, intervals: [500, 1_000] });
 };

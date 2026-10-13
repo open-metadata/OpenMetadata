@@ -19,6 +19,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.rdf.model.Model;
@@ -59,28 +61,39 @@ public class RdfPropertyMapper {
 
   // Properties that should be mapped to structured RDF instead of JSON literals
   private static final Set<String> STRUCTURED_PROPERTIES =
-      Set.of("lifeCycle", "customProperties", "extension", "certification");
+      Set.of("lifeCycle", "customProperties", "extension", "certification", "realizedIn");
 
-  // Properties skipped by the generic field-mapping loop. Three reasons:
+  // Properties that never belong in the graph, for three reasons:
   //   1. Audit/helper data with no place in the graph: changeDescription, votes.
-  //   2. Handled by a dedicated structured-emission step elsewhere in this class, so they must not
-  //      also be written as opaque JSON literals: tableConstraints (emitTableConstraints, needs the
-  //      parent table FQN to mint constrained-column URIs), profile (RdfQualityMapper DQV
-  //      measurements), pipelineStatus (RdfActivityMapper prov:Activity), usageSummary
-  //      (RdfUsageMapper usage-count triples).
-  //   3. Embedded time-series data with no structured RDF equivalent, belonging in the time-series
+  //   2. Embedded time-series data with no structured RDF equivalent, belonging in the time-series
   //      store rather than the knowledge graph: testCaseResult. A testCase carries its latest
   //      testCaseResult inline; serializing it would push per-run test-result time-series into the
   //      graph on every reindex/update.
+  //   3. Authentication material, which must not become SPARQL-queryable metadata:
+  //      identityProviderSubject is the IdP's 'sub' claim, stored only to bind an account to one
+  //      provider identity. It carries no discovery value and is an identity correlator. Contrast
+  //      user email, which reaches the graph only through a deliberate foaf:mbox mapping.
+  //
+  // These must not be fetched at all — see isIndexableEntityField.
+  private static final Set<String> NON_GRAPH_PROPERTIES =
+      Set.of("changeDescription", "votes", "testCaseResult", "identityProviderSubject");
+
+  // Properties that DO belong in the graph but are emitted by a dedicated structured-emission step
+  // (emitStructuredProperties) rather than the generic field loop, so the generic loop must not
+  // also write them as opaque JSON literals: tableConstraints (emitTableConstraints, needs the
+  // parent table FQN to mint constrained-column URIs), profile (RdfQualityMapper DQV measurements),
+  // pipelineStatus (RdfActivityMapper prov:Activity), usageSummary (RdfUsageMapper usage-count
+  // triples).
+  //
+  // Skipping the generic loop is NOT a reason to skip fetching them: the dedicated mappers read the
+  // same entity JSON, so a field that is not loaded silently emits nothing.
+  private static final Set<String> DEDICATED_MAPPER_PROPERTIES =
+      Set.of("tableConstraints", "profile", "pipelineStatus", "usageSummary");
+
+  // The generic field-mapping loop skips both groups, for the two different reasons above.
   private static final Set<String> IGNORED_PROPERTIES =
-      Set.of(
-          "changeDescription",
-          "votes",
-          "tableConstraints",
-          "profile",
-          "pipelineStatus",
-          "usageSummary",
-          "testCaseResult");
+      Stream.concat(NON_GRAPH_PROPERTIES.stream(), DEDICATED_MAPPER_PROPERTIES.stream())
+          .collect(Collectors.toUnmodifiableSet());
 
   // Lineage properties that need special handling
   private static final Set<String> LINEAGE_PROPERTIES =
@@ -128,8 +141,10 @@ public class RdfPropertyMapper {
           OM_NS + "hasTag",
           OM_NS + "hasGlossaryTerm",
           OM_NS + "hasTier",
-          // Domain / data product
+          // Domain / data product. om:domains is no longer emitted; keeping it here lets the next
+          // write of an entity delete the triples older releases projected.
           OM_NS + "belongsToDomain",
+          OM_NS + "domains",
           OM_NS + "hasDataProduct",
           // Source provenance (translator only, not a hook)
           DCT_NS + "source",
@@ -141,7 +156,12 @@ public class RdfPropertyMapper {
           OM_NS + "hasLifeCycle",
           OM_NS + "hasCertification",
           OM_NS + "hasExtension",
-          OM_NS + "hasCustomProperty");
+          OM_NS + "hasCustomProperty",
+          // Concept realization roles. om:mappedTo itself comes from the MAPPED_TO relationship
+          // and belongs to the relationship writers.
+          RdfRealizationMapper.HAS_PRIMARY_STORE,
+          RdfRealizationMapper.HAS_DERIVED_ASSET,
+          RdfRealizationMapper.HAS_REPLICA);
 
   private final String baseUri;
   private final ObjectMapper objectMapper;
@@ -165,10 +185,23 @@ public class RdfPropertyMapper {
   }
 
   /**
+   * Whether a field must be loaded onto the entity before it is translated to RDF.
+   *
+   * <p>Deliberately not the negation of {@link #isIgnoredEntityField(String)}: that answers "does
+   * the generic field loop emit this as a JSON literal", and the dedicated-mapper fields answer no
+   * to it while still needing to be fetched. Selecting index fields with the wrong predicate
+   * starves {@code emitStructuredProperties} and silently drops table constraints, profiles,
+   * pipeline status and usage from the graph.
+   */
+  public static boolean isIndexableEntityField(String fieldName) {
+    return !NON_GRAPH_PROPERTIES.contains(fieldName);
+  }
+
+  /**
    * Convert all entity properties to RDF triples based on context mappings
    */
-  public void mapEntityToRdf(EntityInterface entity, Resource entityResource, Model model) {
-    EntityInterface requiredEntity = Objects.requireNonNull(entity, "entity");
+  public void mapEntityToRdf(EntityInterface<?> entity, Resource entityResource, Model model) {
+    EntityInterface<?> requiredEntity = Objects.requireNonNull(entity, "entity");
     Resource requiredResource = Objects.requireNonNull(entityResource, "entityResource");
     Model requiredModel = Objects.requireNonNull(model, "model");
     JsonNode entityJson = objectMapper.valueToTree(requiredEntity);
@@ -192,7 +225,7 @@ public class RdfPropertyMapper {
   }
 
   private void emitStructuredProperties(
-      EntityInterface entity, JsonNode entityJson, Resource entityResource, Model model) {
+      EntityInterface<?> entity, JsonNode entityJson, Resource entityResource, Model model) {
     RdfJsonNode.array(entityJson, "tableConstraints")
         .ifPresent(
             constraints ->
@@ -262,7 +295,7 @@ public class RdfPropertyMapper {
   // can't simply skip — we expand each array element as an entity reference using
   // an `om:<fieldName>` predicate so the data isn't lost.
   private static final Set<String> ENTITY_REFERENCE_ARRAY_FIELDS =
-      Set.of("owners", "followers", "reviewers", "voters", "experts", "domains", "dataProducts");
+      Set.of("owners", "followers", "reviewers", "voters", "experts", "dataProducts");
 
   private void processContextMappings(
       Map<String, Object> contextMap, JsonNode entityJson, Resource entityResource, Model model) {
@@ -613,8 +646,9 @@ public class RdfPropertyMapper {
 
   private Optional<UUID> findEntityId(String entityType, String fqn) {
     try {
-      EntityInterface entity = Entity.findEntityByNameOrNull(entityType, fqn, Include.NON_DELETED);
-      return Optional.ofNullable(entity).map(EntityInterface::getId);
+      EntityInterface<?> entity =
+          Entity.findEntityByNameOrNull(entityType, fqn, Include.NON_DELETED);
+      return Optional.ofNullable(entity).map(EntityInterface<?>::getId);
     } catch (RuntimeException exception) {
       LOG.debug("Could not resolve {} id for FQN {}", entityType, fqn, exception);
       return Optional.empty();
@@ -664,11 +698,15 @@ public class RdfPropertyMapper {
    */
   private void addStructuredArrayProperty(
       String fieldName, JsonNode value, Resource entityResource, Model model) {
-    if ("customProperties".equals(fieldName)) {
-      Property property = model.createProperty(OM_NS, "hasCustomProperty");
-      for (JsonNode item : value) {
-        addCustomProperty(item, entityResource, property, model);
+    switch (fieldName) {
+      case "customProperties" -> {
+        Property property = model.createProperty(OM_NS, "hasCustomProperty");
+        for (JsonNode item : value) {
+          addCustomProperty(item, entityResource, property, model);
+        }
       }
+      case "realizedIn" -> RdfRealizationMapper.emit(value, entityResource, model, baseUri);
+      default -> LOG.warn("Unknown structured array property: {}", fieldName);
     }
   }
 
@@ -1487,7 +1525,7 @@ public class RdfPropertyMapper {
     }
   }
 
-  private void addStandardProperties(EntityInterface entity, Resource resource, Model model) {
+  private void addStandardProperties(EntityInterface<?> entity, Resource resource, Model model) {
     // Add timestamps. updatedAt is epoch millis on the entity; convert to an
     // ISO-8601 instant before tagging it as xsd:dateTime so the lexical form is
     // valid (a long literal would be a malformed xsd:dateTime).

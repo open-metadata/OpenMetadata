@@ -50,7 +50,9 @@ public class DomainSyncHandler implements EntityLifecycleEventHandler {
 
   @Override
   public void onEntityUpdated(
-      EntityInterface entity, ChangeDescription changeDescription, SubjectContext subjectContext) {
+      EntityInterface<?> entity,
+      ChangeDescription changeDescription,
+      SubjectContext subjectContext) {
     if (entity == null || changeDescription == null) {
       return;
     }

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
-import { Button, Space, Tooltip, Typography } from 'antd';
+import { Box, Button, Typography } from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/add-placeholder.svg';
@@ -46,27 +46,29 @@ const CreateErrorPlaceHolder = ({
   }
 
   return (
-    <div
+    <Box
+      align="center"
       className={classNames(
         className,
-        'h-full flex-center border-default border-radius-sm bg-white w-full'
+        'h-full border-default border-radius-sm tw:bg-surface w-full'
       )}
-      data-testid={`create-error-placeholder-${heading}`}>
-      <Space align="center" className="w-full" direction="vertical" size={10}>
+      data-testid={`create-error-placeholder-${heading}`}
+      justify="center">
+      <Box align="center" className="tw:w-full tw:gap-2.5" direction="col">
         <AddPlaceHolderIcon
           data-testid="no-data-image"
           height={size}
           width={size}
         />
         <div className="text-center text-sm font-normal">
-          <Typography.Paragraph>
+          <Typography as="p" className="tw:mb-3.5!">
             {placeholderText ??
               t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
                 entity: heading,
               })}
-          </Typography.Paragraph>
+          </Typography>
           {!placeholderText && (
-            <Typography.Paragraph>
+            <Typography as="p" className="tw:mb-3.5!">
               <Transi18next
                 i18nKey="message.refer-to-our-doc"
                 renderElement={
@@ -82,27 +84,22 @@ const CreateErrorPlaceHolder = ({
                   doc: t('label.doc-plural-lowercase'),
                 }}
               />
-            </Typography.Paragraph>
+            </Typography>
           )}
 
           {onClick && (
-            <Tooltip
-              placement="top"
-              title={!permission && t('message.admin-only-action')}>
-              <Button
-                ghost
-                className="p-x-lg"
-                data-testid={buttonId ?? 'add-placeholder-button'}
-                icon={<PlusOutlined />}
-                type="primary"
-                onClick={onClick}>
-                {t('label.add')}
-              </Button>
-            </Tooltip>
+            <Button
+              color="secondary-brand"
+              data-testid={buttonId ?? 'add-placeholder-button'}
+              iconLeading={Plus}
+              size="sm"
+              onPress={onClick}>
+              {t('label.add')}
+            </Button>
           )}
         </div>
-      </Space>
-    </div>
+      </Box>
+    </Box>
   );
 };
 

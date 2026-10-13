@@ -48,7 +48,7 @@ from metadata.ingestion.source.dashboard.qlikcloud.models import (
     QlikSpaceType,
 )
 from metadata.ingestion.source.dashboard.qliksense.metadata import QliksenseSource
-from metadata.ingestion.source.dashboard.qliksense.models import QlikTable  # noqa: TC001
+from metadata.ingestion.source.dashboard.qliksense.models import QlikDashboard, QlikTable
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart, filter_by_project
 from metadata.utils.fqn import build_es_fqn_search_string
@@ -126,10 +126,12 @@ class QlikcloudSource(QliksenseSource):
         """
         return dashboard.name
 
-    def get_project_name(self, dashboard_details: QlikApp | None) -> str | None:
+    def get_project_name(self, dashboard_details: QlikDashboard | QlikApp | None) -> str | None:
         """
         Get Project Name
         """
+        if isinstance(dashboard_details, QlikDashboard):
+            return super().get_project_name(dashboard_details)
         if not dashboard_details:
             return None
 

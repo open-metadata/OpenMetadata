@@ -15,7 +15,7 @@ import * as fs from 'fs';
 import { isUndefined } from 'lodash';
 import * as path from 'path';
 import { CUSTOM_PROPERTIES_ENTITIES } from '../../constant/customProperty';
-import { okJson } from '../../utils/apiResponse';
+import { okJson, settleAll } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { getCustomPropertyCreationData } from '../../utils/customPropertyAdvancedSearchUtils';
 import { DataProduct } from '../domain/DataProduct';
@@ -108,43 +108,102 @@ export class EntityDataClass {
     classification: 'Tier',
   });
   static readonly classification1 = new ClassificationClass({
-    provider: 'system',
+    provider: 'user',
     mutuallyExclusive: true,
   });
   static readonly tag1 = new TagClass({
     classification: this.classification1.data.name,
   });
-  static readonly table1 = new TableClass();
-  static readonly table2 = new TableClass(undefined, 'MaterializedView');
-  static readonly topic1 = new TopicClass();
-  static readonly topic2 = new TopicClass();
-  static readonly dashboard1 = new DashboardClass();
-  static readonly dashboard2 = new DashboardClass(undefined, 'LookMlExplore');
-  static readonly mlModel1 = new MlModelClass();
-  static readonly mlModel2 = new MlModelClass();
-  static readonly pipeline1 = new PipelineClass(undefined, [
-    { name: 'snowflake_task', displayName: 'Snowflake Task' },
-    { name: 'bigquery_task', displayName: 'BigQuery Task' },
-  ]);
-  static readonly pipeline2 = new PipelineClass(undefined, [
-    { name: 'presto_task', displayName: 'Presto Task' },
-    { name: 'databricks_task', displayName: 'Databricks Task' },
-  ]);
-  static readonly dashboardDataModel1 = new DashboardDataModelClass();
-  static readonly dashboardDataModel2 = new DashboardDataModelClass();
-  static readonly apiCollection1 = new ApiCollectionClass();
-  static readonly apiCollection2 = new ApiCollectionClass();
-  static readonly apiEndpoint1 = new ApiEndpointClass();
-  static readonly apiEndpoint2 = new ApiEndpointClass();
-  static readonly storedProcedure1 = new StoredProcedureClass();
-  static readonly storedProcedure2 = new StoredProcedureClass();
-  static readonly searchIndex1 = new SearchIndexClass();
-  static readonly searchIndex2 = new SearchIndexClass();
-  static readonly container1 = new ContainerClass();
-  static readonly container2 = new ContainerClass();
+  // EntityDataClass leaf fixtures must own their own service chain: they
+  // are created in `preRequisitesForTests` before `seedLineageAndSharedInfra`
+  // populates SharedInfra in the same setup process, so a shared-mode create
+  // here would build parents that never get registered, orphaning them on
+  // teardown. table1/table2 (and every paired fixture) also need distinct
+  // services so specs that assume per-fixture isolation keep working. Opt
+  // every leaf into full hierarchy explicitly.
+  static readonly table1 = new TableClass({
+    service: new DatabaseServiceClass(),
+  });
+  static readonly table2 = new TableClass({
+    tableType: 'MaterializedView',
+    service: new DatabaseServiceClass(),
+  });
+  static readonly topic1 = new TopicClass({
+    service: new MessagingServiceClass(),
+  });
+  static readonly topic2 = new TopicClass({
+    service: new MessagingServiceClass(),
+  });
+  static readonly dashboard1 = new DashboardClass({
+    service: new DashboardServiceClass(),
+  });
+  static readonly dashboard2 = new DashboardClass({
+    dataModelType: 'LookMlExplore',
+    service: new DashboardServiceClass(),
+  });
+  static readonly mlModel1 = new MlModelClass({
+    service: new MlmodelServiceClass(),
+  });
+  static readonly mlModel2 = new MlModelClass({
+    service: new MlmodelServiceClass(),
+  });
+  static readonly pipeline1 = new PipelineClass({
+    tasks: [
+      { name: 'snowflake_task', displayName: 'Snowflake Task' },
+      { name: 'bigquery_task', displayName: 'BigQuery Task' },
+    ],
+    service: new PipelineServiceClass(),
+  });
+  static readonly pipeline2 = new PipelineClass({
+    tasks: [
+      { name: 'presto_task', displayName: 'Presto Task' },
+      { name: 'databricks_task', displayName: 'Databricks Task' },
+    ],
+    service: new PipelineServiceClass(),
+  });
+  static readonly dashboardDataModel1 = new DashboardDataModelClass({
+    service: new DashboardServiceClass(),
+  });
+  static readonly dashboardDataModel2 = new DashboardDataModelClass({
+    service: new DashboardServiceClass(),
+  });
+  static readonly apiCollection1 = new ApiCollectionClass({
+    service: new ApiServiceClass(),
+  });
+  static readonly apiCollection2 = new ApiCollectionClass({
+    service: new ApiServiceClass(),
+  });
+  static readonly apiEndpoint1 = new ApiEndpointClass({
+    service: new ApiServiceClass(),
+  });
+  static readonly apiEndpoint2 = new ApiEndpointClass({
+    service: new ApiServiceClass(),
+  });
+  static readonly storedProcedure1 = new StoredProcedureClass({
+    service: new DatabaseServiceClass(),
+  });
+  static readonly storedProcedure2 = new StoredProcedureClass({
+    service: new DatabaseServiceClass(),
+  });
+  static readonly searchIndex1 = new SearchIndexClass({
+    service: new SearchIndexServiceClass(),
+  });
+  static readonly searchIndex2 = new SearchIndexClass({
+    service: new SearchIndexServiceClass(),
+  });
+  static readonly container1 = new ContainerClass({
+    service: new StorageServiceClass(),
+  });
+  static readonly container2 = new ContainerClass({
+    service: new StorageServiceClass(),
+  });
   static readonly databaseService = new DatabaseServiceClass();
-  static readonly database = new DatabaseClass();
-  static readonly databaseSchema = new DatabaseSchemaClass();
+  static readonly database = new DatabaseClass({
+    service: new DatabaseServiceClass(),
+  });
+  static readonly databaseSchema = new DatabaseSchemaClass({
+    service: new DatabaseServiceClass(),
+  });
   static readonly apiService = new ApiServiceClass();
   static readonly dashboardService = new DashboardServiceClass();
   static readonly messagingService = new MessagingServiceClass();
@@ -157,15 +216,29 @@ export class EntityDataClass {
   static readonly dataProduct2 = new DataProduct([this.domain1]);
   static readonly dataProduct3 = new DataProduct([this.domain2]);
   static readonly metric1 = new MetricClass();
-  static readonly chart1 = new ChartClass();
-  static readonly directory1 = new DirectoryClass();
-  static readonly directory2 = new DirectoryClass();
-  static readonly file1 = new FileClass();
-  static readonly file2 = new FileClass();
-  static readonly spreadsheet1 = new SpreadsheetClass();
-  static readonly spreadsheet2 = new SpreadsheetClass();
-  static readonly worksheet1 = new WorksheetClass();
-  static readonly worksheet2 = new WorksheetClass();
+  static readonly chart1 = new ChartClass({
+    service: new DashboardServiceClass(),
+  });
+  static readonly directory1 = new DirectoryClass({
+    service: new DriveServiceClass(),
+  });
+  static readonly directory2 = new DirectoryClass({
+    service: new DriveServiceClass(),
+  });
+  static readonly file1 = new FileClass({ service: new DriveServiceClass() });
+  static readonly file2 = new FileClass({ service: new DriveServiceClass() });
+  static readonly spreadsheet1 = new SpreadsheetClass({
+    service: new DriveServiceClass(),
+  });
+  static readonly spreadsheet2 = new SpreadsheetClass({
+    service: new DriveServiceClass(),
+  });
+  static readonly worksheet1 = new WorksheetClass({
+    service: new DriveServiceClass(),
+  });
+  static readonly worksheet2 = new WorksheetClass({
+    service: new DriveServiceClass(),
+  });
   static readonly customProperties: Record<
     string,
     Record<string, string | number | boolean | object>
@@ -204,11 +277,15 @@ export class EntityDataClass {
       const typeData = cpCreationData[type.name as keyof typeof cpCreationData];
 
       if (!isUndefined(typeData)) {
-        await apiContext.put(
+        const response = await apiContext.put(
           `/api/v1/metadata/types/${createdMetadataType.id}`,
           {
             data: typeData,
           }
+        );
+        await okJson(
+          response,
+          `Create ${type.name} custom property for ${entityType}`
         );
       }
     }
@@ -275,7 +352,7 @@ export class EntityDataClass {
       this.worksheet2.create(apiContext),
     ];
 
-    await Promise.allSettled(promises);
+    await settleAll(promises);
 
     // Keeping these creations separate as they depend on
     // Entity creation above
@@ -288,7 +365,7 @@ export class EntityDataClass {
       this.tag1.create(apiContext),
     ];
 
-    await Promise.allSettled(dependentEntityCreationPromises);
+    await settleAll(dependentEntityCreationPromises);
 
     const entityTypesToSetup = Object.values(CUSTOM_PROPERTIES_ENTITIES).map(
       (entity) => entity.name
@@ -360,7 +437,7 @@ export class EntityDataClass {
       this.worksheet2.delete(apiContext),
     ];
 
-    return await Promise.allSettled(promises);
+    return await settleAll(promises);
   }
 
   static saveResponseData() {
@@ -652,7 +729,7 @@ export class EntityDataClass {
         }
       }
     } catch (error) {
-      // Silently fail if file doesn't exist or can't be read
+      throw new Error(`Unable to load shared fixture data: ${String(error)}`);
     }
   }
 }

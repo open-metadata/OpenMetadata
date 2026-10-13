@@ -21,7 +21,7 @@ import {
   ResizableTableContainer,
   TableBody as AriaTableBody,
 } from 'react-aria-components';
-import { ChevronDown, ChevronRight } from '@untitledui/icons';
+import { ChevronDown, ChevronRight } from '../icons';
 import { Badge } from '../components/base/badges/badges';
 import { PaginationPageDefault } from '../components/application/pagination/pagination';
 import {

@@ -1,3 +1,11 @@
 # Data Contract Validation Application
 
 The Data Contract Validation application is designed to validate data contracts and ensure compliance with your standards. It ensures schemas, semantics, and data quality are maintained across your data assets.
+
+## SLA validation
+
+For tables, SLA validation uses refresh information already stored in OpenMetadata: the latest profile of the SLA column, collected system metrics, or the table's life cycle metadata, in that order. It does not query the source data during validation or create a freshness data quality test. Requirements without enough recorded information are shown as not evaluated.
+
+Profiler results reflect the data seen when the profiler ran. If an ETL updates a table hourly but the profiler runs daily or before the hourly load, validation can report a missed SLA even when the source data is current. Latency also reflects the age of the newest data when it was profiled. These results depend on the profiler's timing as well as the ETL's timing.
+
+When an SLA check based on profiler results fails, the SLA card includes a note to check the profiler runtime configuration and its schedule. Schedule profiling after the relevant ETL completes and frequently enough for the SLA interval, especially for hourly SLAs. Review the recorded refresh time and source alongside the failure details before treating a missed SLA as an ETL issue.

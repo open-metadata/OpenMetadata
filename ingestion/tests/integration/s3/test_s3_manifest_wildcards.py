@@ -11,7 +11,7 @@
 
 """Integration tests for manifest wildcards and the defaultManifest fallback.
 
-Runs against MinIO using the same fixtures as ``test_s3_storage.py``.
+Runs against the S3 test container using the same fixtures as ``test_s3_storage.py``.
 Each test uses a unique service name and a unique bucket so manifests
 don't collide between scenarios.
 """
@@ -36,7 +36,7 @@ from metadata.workflow.metadata import MetadataWorkflow
 def _build_pipeline_config(
     *,
     service_name: str,
-    minio_container,
+    s3_container,
     default_manifest_json: str | None = None,
 ) -> dict:
     """Build a storage ingestion pipeline config. ``default_manifest_json``
@@ -53,10 +53,10 @@ def _build_pipeline_config(
                 "config": {
                     "type": "S3",
                     "awsConfig": {
-                        "awsAccessKeyId": minio_container.access_key,
-                        "awsSecretAccessKey": minio_container.secret_key,
+                        "awsAccessKeyId": s3_container.access_key,
+                        "awsSecretAccessKey": s3_container.secret_key,
                         "awsRegion": "us-east-1",
-                        "endPointURL": f"http://localhost:{minio_container.get_exposed_port(9000)}",
+                        "endPointURL": f"http://localhost:{s3_container.get_exposed_port(9000)}",
                     },
                     "bucketNames": [service_name],
                 }
@@ -83,8 +83,8 @@ def _run_workflow(config: dict) -> None:
     workflow.stop()
 
 
-def _put_object(minio_client, bucket: str, key: str, body: bytes) -> None:
-    minio_client.put_object(bucket, key, BytesIO(body), length=len(body))
+def _put_object(s3_client, bucket: str, key: str, body: bytes) -> None:
+    s3_client.put_object(bucket, key, BytesIO(body), length=len(body))
 
 
 def _cleanup_service(metadata, service_name: str) -> None:
@@ -98,20 +98,20 @@ def _cleanup_service(metadata, service_name: str) -> None:
         )
 
 
-def _copy_parquet_files(minio_client, src_bucket: str, src_prefix: str, dst_bucket: str, dst_prefix: str) -> None:
+def _copy_parquet_files(s3_client, src_bucket: str, src_prefix: str, dst_bucket: str, dst_prefix: str) -> None:
     """Copy all objects from ``src_bucket/src_prefix`` into
     ``dst_bucket/dst_prefix``. Used so each test bucket has fresh sample
     data independent of the shared ``test-bucket`` fixture."""
-    for obj in minio_client.list_objects(src_bucket, prefix=src_prefix, recursive=True):
+    for obj in s3_client.list_objects(src_bucket, prefix=src_prefix, recursive=True):
         relative = obj.object_name[len(src_prefix) :].lstrip("/")
         dst_key = f"{dst_prefix.rstrip('/')}/{relative}".lstrip("/") if relative else dst_prefix
-        response = minio_client.get_object(src_bucket, obj.object_name)
+        response = s3_client.get_object(src_bucket, obj.object_name)
         try:
             body = response.read()
         finally:
             response.close()
             response.release_conn()
-        _put_object(minio_client, dst_bucket, dst_key, body)
+        _put_object(s3_client, dst_bucket, dst_key, body)
 
 
 # ----------------------------------------------------------------------
@@ -120,27 +120,27 @@ def _copy_parquet_files(minio_client, src_bucket: str, src_prefix: str, dst_buck
 
 
 @pytest.fixture
-def wildcard_bucket(minio, bucket_name, create_data):
+def wildcard_bucket(s3, bucket_name, create_data):
     """A dedicated bucket seeded with a few parquet files grouped into
     Hive-style partitions so we can exercise glob matching + partition
     auto-detection. Dropped after each test."""
-    _, minio_client = minio
+    _, s3_client = s3
     bucket = f"wildcards-{uuid.uuid4().hex[:8]}"
-    minio_client.make_bucket(bucket)
+    s3_client.make_bucket(bucket)
 
     # Reuse the already-uploaded ``cities`` dataset (State=AL/State=AZ
     # partitions with parquet files). We copy it into a couple of
     # distinct logical paths to exercise the glob expansion.
-    _copy_parquet_files(minio_client, bucket_name, "cities/", bucket, "data/sales/")
-    _copy_parquet_files(minio_client, bucket_name, "cities/", bucket, "data/orders/")
-    _copy_parquet_files(minio_client, bucket_name, "cities/", bucket, "archive/old_sales/")
+    _copy_parquet_files(s3_client, bucket_name, "cities/", bucket, "data/sales/")
+    _copy_parquet_files(s3_client, bucket_name, "cities/", bucket, "data/orders/")
+    _copy_parquet_files(s3_client, bucket_name, "cities/", bucket, "archive/old_sales/")
 
     yield bucket
 
     # Tear down: empty bucket then remove.
-    for obj in minio_client.list_objects(bucket, recursive=True):
-        minio_client.remove_object(bucket, obj.object_name)
-    minio_client.remove_bucket(bucket)
+    for obj in s3_client.list_objects(bucket, recursive=True):
+        s3_client.remove_object(bucket, obj.object_name)
+    s3_client.remove_bucket(bucket)
 
 
 # ----------------------------------------------------------------------
@@ -151,8 +151,8 @@ def wildcard_bucket(minio, bucket_name, create_data):
 class TestBucketManifestWildcards:
     """A bucket with an openmetadata.json whose dataPath is a glob."""
 
-    def test_glob_datapath_resolves_to_multiple_containers(self, minio, metadata, wildcard_bucket):
-        _, minio_client = minio
+    def test_glob_datapath_resolves_to_multiple_containers(self, s3, metadata, wildcard_bucket):
+        _, s3_client = s3
         service_name = f"wc-glob-{uuid.uuid4().hex[:8]}"
 
         manifest = {
@@ -166,7 +166,7 @@ class TestBucketManifestWildcards:
             ]
         }
         _put_object(
-            minio_client,
+            s3_client,
             wildcard_bucket,
             "openmetadata.json",
             json.dumps(manifest).encode(),
@@ -175,7 +175,7 @@ class TestBucketManifestWildcards:
         # Service points at exactly this bucket.
         config = _build_pipeline_config(
             service_name=service_name,
-            minio_container=minio[0],
+            s3_container=s3[0],
         )
         config["source"]["serviceConnection"]["config"]["bucketNames"] = [wildcard_bucket]
 
@@ -218,7 +218,7 @@ class TestDefaultManifestFallback:
     """defaultManifest on the pipeline config is applied when a bucket
     has no openmetadata.json of its own."""
 
-    def test_default_manifest_used_when_bucket_has_no_file(self, minio, metadata, wildcard_bucket):
+    def test_default_manifest_used_when_bucket_has_no_file(self, s3, metadata, wildcard_bucket):
         service_name = f"wc-default-{uuid.uuid4().hex[:8]}"
 
         default_manifest = json.dumps(
@@ -235,7 +235,7 @@ class TestDefaultManifestFallback:
         )
         config = _build_pipeline_config(
             service_name=service_name,
-            minio_container=minio[0],
+            s3_container=s3[0],
             default_manifest_json=default_manifest,
         )
         config["source"]["serviceConnection"]["config"]["bucketNames"] = [wildcard_bucket]
@@ -264,8 +264,8 @@ class TestBucketFileWinsOverDefault:
     """When both a bucket openmetadata.json and a defaultManifest exist,
     the bucket file must win (precedence)."""
 
-    def test_bucket_file_takes_precedence(self, minio, metadata, wildcard_bucket):
-        _, minio_client = minio
+    def test_bucket_file_takes_precedence(self, s3, metadata, wildcard_bucket):
+        _, s3_client = s3
         service_name = f"wc-prec-{uuid.uuid4().hex[:8]}"
 
         # Bucket manifest: only data/sales
@@ -279,7 +279,7 @@ class TestBucketFileWinsOverDefault:
             ]
         }
         _put_object(
-            minio_client,
+            s3_client,
             wildcard_bucket,
             "openmetadata.json",
             json.dumps(bucket_manifest).encode(),
@@ -300,7 +300,7 @@ class TestBucketFileWinsOverDefault:
         )
         config = _build_pipeline_config(
             service_name=service_name,
-            minio_container=minio[0],
+            s3_container=s3[0],
             default_manifest_json=default_manifest,
         )
         config["source"]["serviceConnection"]["config"]["bucketNames"] = [wildcard_bucket]
@@ -354,8 +354,8 @@ class TestInvalidDefaultManifest:
     """Invalid JSON in defaultManifest must be ignored rather than
     breaking the whole ingestion. The bucket file, if any, still wins."""
 
-    def test_invalid_default_manifest_is_ignored(self, minio, metadata, wildcard_bucket):
-        _, minio_client = minio
+    def test_invalid_default_manifest_is_ignored(self, s3, metadata, wildcard_bucket):
+        _, s3_client = s3
         service_name = f"wc-bad-{uuid.uuid4().hex[:8]}"
 
         # Bucket has a valid manifest covering data/sales only.
@@ -369,7 +369,7 @@ class TestInvalidDefaultManifest:
             ]
         }
         _put_object(
-            minio_client,
+            s3_client,
             wildcard_bucket,
             "openmetadata.json",
             json.dumps(bucket_manifest).encode(),
@@ -377,7 +377,7 @@ class TestInvalidDefaultManifest:
 
         config = _build_pipeline_config(
             service_name=service_name,
-            minio_container=minio[0],
+            s3_container=s3[0],
             default_manifest_json="this is not valid json {",
         )
         config["source"]["serviceConnection"]["config"]["bucketNames"] = [wildcard_bucket]
@@ -406,13 +406,13 @@ class TestMalformedBucketManifest:
     workflow. Ingestion falls back to the defaultManifest (if any) and
     surfaces a warning so users can diagnose."""
 
-    def test_invalid_json_falls_back_to_default(self, minio, metadata, wildcard_bucket):
-        _, minio_client = minio
+    def test_invalid_json_falls_back_to_default(self, s3, metadata, wildcard_bucket):
+        _, s3_client = s3
         service_name = f"wc-bad-bucket-{uuid.uuid4().hex[:8]}"
 
         # Bucket file is malformed JSON.
         _put_object(
-            minio_client,
+            s3_client,
             wildcard_bucket,
             "openmetadata.json",
             b"{ this is not valid json",
@@ -432,7 +432,7 @@ class TestMalformedBucketManifest:
         )
         config = _build_pipeline_config(
             service_name=service_name,
-            minio_container=minio[0],
+            s3_container=s3[0],
             default_manifest_json=default_manifest,
         )
         config["source"]["serviceConnection"]["config"]["bucketNames"] = [wildcard_bucket]
@@ -451,14 +451,14 @@ class TestMalformedBucketManifest:
         finally:
             _cleanup_service(metadata, service_name)
 
-    def test_invalid_json_no_default_still_gets_bucket_container(self, minio, metadata, wildcard_bucket):
+    def test_invalid_json_no_default_still_gets_bucket_container(self, s3, metadata, wildcard_bucket):
         """Without a defaultManifest, a broken bucket file leaves only the
         top-level bucket container. Ingestion MUST NOT abort."""
-        _, minio_client = minio
+        _, s3_client = s3
         service_name = f"wc-bad-only-{uuid.uuid4().hex[:8]}"
 
         _put_object(
-            minio_client,
+            s3_client,
             wildcard_bucket,
             "openmetadata.json",
             b'{ "entries": [ broken',
@@ -466,7 +466,7 @@ class TestMalformedBucketManifest:
 
         config = _build_pipeline_config(
             service_name=service_name,
-            minio_container=minio[0],
+            s3_container=s3[0],
         )
         config["source"]["serviceConnection"]["config"]["bucketNames"] = [wildcard_bucket]
 
@@ -491,16 +491,16 @@ class TestMalformedBucketManifest:
         finally:
             _cleanup_service(metadata, service_name)
 
-    def test_schema_violation_in_bucket_manifest(self, minio, metadata, wildcard_bucket):
+    def test_schema_violation_in_bucket_manifest(self, s3, metadata, wildcard_bucket):
         """Valid JSON but schema violation (entry missing required
         ``dataPath``). Pydantic should flag; ingestion falls back."""
-        _, minio_client = minio
+        _, s3_client = s3
         service_name = f"wc-schema-{uuid.uuid4().hex[:8]}"
 
         # Valid JSON, but an entry is missing the required ``dataPath``.
         bad_manifest = {"entries": [{"structureFormat": "parquet"}]}  # no dataPath
         _put_object(
-            minio_client,
+            s3_client,
             wildcard_bucket,
             "openmetadata.json",
             json.dumps(bad_manifest).encode(),
@@ -520,7 +520,7 @@ class TestMalformedBucketManifest:
         )
         config = _build_pipeline_config(
             service_name=service_name,
-            minio_container=minio[0],
+            s3_container=s3[0],
             default_manifest_json=default_manifest,
         )
         config["source"]["serviceConnection"]["config"]["bucketNames"] = [wildcard_bucket]
@@ -536,15 +536,15 @@ class TestMalformedBucketManifest:
         finally:
             _cleanup_service(metadata, service_name)
 
-    def test_empty_entries_in_bucket_manifest(self, minio, metadata, wildcard_bucket):
+    def test_empty_entries_in_bucket_manifest(self, s3, metadata, wildcard_bucket):
         """Bucket file with ``entries: []`` is valid but produces no
         nested containers. Ingestion should complete cleanly and fall
         through to defaultManifest (if any)."""
-        _, minio_client = minio
+        _, s3_client = s3
         service_name = f"wc-empty-{uuid.uuid4().hex[:8]}"
 
         _put_object(
-            minio_client,
+            s3_client,
             wildcard_bucket,
             "openmetadata.json",
             json.dumps({"entries": []}).encode(),
@@ -563,7 +563,7 @@ class TestMalformedBucketManifest:
         )
         config = _build_pipeline_config(
             service_name=service_name,
-            minio_container=minio[0],
+            s3_container=s3[0],
             default_manifest_json=default_manifest,
         )
         config["source"]["serviceConnection"]["config"]["bucketNames"] = [wildcard_bucket]
@@ -593,15 +593,15 @@ class TestFileReadEdgeCases:
     issues — corrupt content, unknown extensions, etc. These exercise
     ``expand_entry`` / schema extraction error isolation."""
 
-    def test_corrupt_file_does_not_break_other_tables(self, minio, metadata, wildcard_bucket):
+    def test_corrupt_file_does_not_break_other_tables(self, s3, metadata, wildcard_bucket):
         """One unreadable parquet in one table should not block other
         tables matched by the same glob."""
-        _, minio_client = minio
+        _, s3_client = s3
         service_name = f"wc-corrupt-{uuid.uuid4().hex[:8]}"
 
         # Drop a bogus parquet into data/orders/ alongside the real ones.
         _put_object(
-            minio_client,
+            s3_client,
             wildcard_bucket,
             "data/orders/State=AL/corrupt.parquet",
             b"this is not a valid parquet file, just random bytes",
@@ -617,7 +617,7 @@ class TestFileReadEdgeCases:
             ]
         }
         _put_object(
-            minio_client,
+            s3_client,
             wildcard_bucket,
             "openmetadata.json",
             json.dumps(manifest).encode(),
@@ -625,7 +625,7 @@ class TestFileReadEdgeCases:
 
         config = _build_pipeline_config(
             service_name=service_name,
-            minio_container=minio[0],
+            s3_container=s3[0],
         )
         config["source"]["serviceConnection"]["config"]["bucketNames"] = [wildcard_bucket]
 
@@ -644,10 +644,10 @@ class TestFileReadEdgeCases:
         finally:
             _cleanup_service(metadata, service_name)
 
-    def test_glob_matches_no_files_yields_only_bucket(self, minio, metadata, wildcard_bucket):
+    def test_glob_matches_no_files_yields_only_bucket(self, s3, metadata, wildcard_bucket):
         """Glob pattern matches zero files — ingestion succeeds, bucket
         container exists, no nested containers are created."""
-        _, minio_client = minio
+        _, s3_client = s3
         service_name = f"wc-nomatch-{uuid.uuid4().hex[:8]}"
 
         manifest = {
@@ -659,7 +659,7 @@ class TestFileReadEdgeCases:
             ]
         }
         _put_object(
-            minio_client,
+            s3_client,
             wildcard_bucket,
             "openmetadata.json",
             json.dumps(manifest).encode(),
@@ -667,7 +667,7 @@ class TestFileReadEdgeCases:
 
         config = _build_pipeline_config(
             service_name=service_name,
-            minio_container=minio[0],
+            s3_container=s3[0],
         )
         config["source"]["serviceConnection"]["config"]["bucketNames"] = [wildcard_bucket]
 
@@ -689,22 +689,22 @@ class TestFileReadEdgeCases:
         finally:
             _cleanup_service(metadata, service_name)
 
-    def test_glob_without_structureformat_and_unknown_extension_is_skipped(self, minio, metadata, wildcard_bucket):
+    def test_glob_without_structureformat_and_unknown_extension_is_skipped(self, s3, metadata, wildcard_bucket):
         """When the file extension is not recognized and no
         ``structureFormat`` is set, the expand step should skip the
         container (WARNING log) rather than crash."""
-        _, minio_client = minio
+        _, s3_client = s3
         service_name = f"wc-unknown-ext-{uuid.uuid4().hex[:8]}"
 
         # Put files with an unknown extension.
         _put_object(
-            minio_client,
+            s3_client,
             wildcard_bucket,
             "blobs/item1.bin",
             b"\x00\x01\x02\x03",
         )
         _put_object(
-            minio_client,
+            s3_client,
             wildcard_bucket,
             "blobs/item2.bin",
             b"\x00\x01\x02\x03",
@@ -717,7 +717,7 @@ class TestFileReadEdgeCases:
             ]
         }
         _put_object(
-            minio_client,
+            s3_client,
             wildcard_bucket,
             "openmetadata.json",
             json.dumps(manifest).encode(),
@@ -725,7 +725,7 @@ class TestFileReadEdgeCases:
 
         config = _build_pipeline_config(
             service_name=service_name,
-            minio_container=minio[0],
+            s3_container=s3[0],
         )
         config["source"]["serviceConnection"]["config"]["bucketNames"] = [wildcard_bucket]
 
@@ -748,15 +748,15 @@ class TestFileReadEdgeCases:
         finally:
             _cleanup_service(metadata, service_name)
 
-    def test_unstructured_catalogs_one_container_per_file(self, minio, metadata, wildcard_bucket):
+    def test_unstructured_catalogs_one_container_per_file(self, s3, metadata, wildcard_bucket):
         """With ``unstructuredData: true`` each matched file becomes its
         own container (no schema extraction)."""
-        _, minio_client = minio
+        _, s3_client = s3
         service_name = f"wc-unstr-{uuid.uuid4().hex[:8]}"
 
-        _put_object(minio_client, wildcard_bucket, "images/a.png", b"\x89PNG\x00")
-        _put_object(minio_client, wildcard_bucket, "images/b.png", b"\x89PNG\x00")
-        _put_object(minio_client, wildcard_bucket, "images/nested/c.png", b"\x89PNG\x00")
+        _put_object(s3_client, wildcard_bucket, "images/a.png", b"\x89PNG\x00")
+        _put_object(s3_client, wildcard_bucket, "images/b.png", b"\x89PNG\x00")
+        _put_object(s3_client, wildcard_bucket, "images/nested/c.png", b"\x89PNG\x00")
 
         manifest = {
             "entries": [
@@ -767,7 +767,7 @@ class TestFileReadEdgeCases:
             ]
         }
         _put_object(
-            minio_client,
+            s3_client,
             wildcard_bucket,
             "openmetadata.json",
             json.dumps(manifest).encode(),
@@ -775,7 +775,7 @@ class TestFileReadEdgeCases:
 
         config = _build_pipeline_config(
             service_name=service_name,
-            minio_container=minio[0],
+            s3_container=s3[0],
         )
         config["source"]["serviceConnection"]["config"]["bucketNames"] = [wildcard_bucket]
 
@@ -811,8 +811,8 @@ class TestReIngestionIdempotency:
     """Running the same manifest twice must update the same entity, not
     create duplicates. This is the migration guarantee — FQN stability."""
 
-    def test_glob_re_ingestion_preserves_entity_id(self, minio, metadata, wildcard_bucket):
-        _, minio_client = minio
+    def test_glob_re_ingestion_preserves_entity_id(self, s3, metadata, wildcard_bucket):
+        _, s3_client = s3
         service_name = f"wc-idemp-{uuid.uuid4().hex[:8]}"
 
         manifest = {
@@ -825,7 +825,7 @@ class TestReIngestionIdempotency:
             ]
         }
         _put_object(
-            minio_client,
+            s3_client,
             wildcard_bucket,
             "openmetadata.json",
             json.dumps(manifest).encode(),
@@ -833,7 +833,7 @@ class TestReIngestionIdempotency:
 
         config = _build_pipeline_config(
             service_name=service_name,
-            minio_container=minio[0],
+            s3_container=s3[0],
         )
         config["source"]["serviceConnection"]["config"]["bucketNames"] = [wildcard_bucket]
 
@@ -859,11 +859,11 @@ class TestReIngestionIdempotency:
         finally:
             _cleanup_service(metadata, service_name)
 
-    def test_literal_to_glob_migration_preserves_entity_id(self, minio, metadata, wildcard_bucket):
+    def test_literal_to_glob_migration_preserves_entity_id(self, s3, metadata, wildcard_bucket):
         """A user starts with a literal-path manifest. Later they switch
         to a glob that resolves to the *same* container name. FQNs must
         match so existing lineage/tags/descriptions are preserved."""
-        _, minio_client = minio
+        _, s3_client = s3
         service_name = f"wc-migrate-{uuid.uuid4().hex[:8]}"
 
         # Phase 1: literal manifest
@@ -877,7 +877,7 @@ class TestReIngestionIdempotency:
             ]
         }
         _put_object(
-            minio_client,
+            s3_client,
             wildcard_bucket,
             "openmetadata.json",
             json.dumps(literal).encode(),
@@ -885,7 +885,7 @@ class TestReIngestionIdempotency:
 
         config = _build_pipeline_config(
             service_name=service_name,
-            minio_container=minio[0],
+            s3_container=s3[0],
         )
         config["source"]["serviceConnection"]["config"]["bucketNames"] = [wildcard_bucket]
 
@@ -911,7 +911,7 @@ class TestReIngestionIdempotency:
                 ]
             }
             _put_object(
-                minio_client,
+                s3_client,
                 wildcard_bucket,
                 "openmetadata.json",
                 json.dumps(glob).encode(),
@@ -941,11 +941,11 @@ class TestPerEntryResilience:
     bad regex, runtime error in our code) must NOT block the other
     entries in the same manifest."""
 
-    def test_bad_entry_does_not_block_good_entry(self, minio, metadata, wildcard_bucket, monkeypatch):
+    def test_bad_entry_does_not_block_good_entry(self, s3, metadata, wildcard_bucket, monkeypatch):
         """Simulate: one entry triggers an exception deep in expand_entry;
         the other entry is a clean literal path that must still
         produce its container."""
-        _, minio_client = minio
+        _, s3_client = s3
         service_name = f"wc-resilience-{uuid.uuid4().hex[:8]}"
 
         manifest = {
@@ -961,7 +961,7 @@ class TestPerEntryResilience:
             ]
         }
         _put_object(
-            minio_client,
+            s3_client,
             wildcard_bucket,
             "openmetadata.json",
             json.dumps(manifest).encode(),
@@ -982,7 +982,7 @@ class TestPerEntryResilience:
 
         config = _build_pipeline_config(
             service_name=service_name,
-            minio_container=minio[0],
+            s3_container=s3[0],
         )
         config["source"]["serviceConnection"]["config"]["bucketNames"] = [wildcard_bucket]
 
@@ -1010,12 +1010,12 @@ class TestSpecialCharsInPaths:
     brackets, plus). A literal dataPath containing such chars MUST be
     matched exactly — pattern_to_regex should escape them."""
 
-    def test_path_with_regex_special_chars_matches_literally(self, minio, metadata, wildcard_bucket):
-        _, minio_client = minio
+    def test_path_with_regex_special_chars_matches_literally(self, s3, metadata, wildcard_bucket):
+        _, s3_client = s3
         service_name = f"wc-special-{uuid.uuid4().hex[:8]}"
 
         # Upload a parquet into a directory whose name contains a '+'.
-        _copy_parquet_files(minio_client, "test-bucket", "cities/", wildcard_bucket, "rare+data/")
+        _copy_parquet_files(s3_client, "test-bucket", "cities/", wildcard_bucket, "rare+data/")
 
         # Literal dataPath — passes through expand_entry unchanged.
         manifest = {
@@ -1028,7 +1028,7 @@ class TestSpecialCharsInPaths:
             ]
         }
         _put_object(
-            minio_client,
+            s3_client,
             wildcard_bucket,
             "openmetadata.json",
             json.dumps(manifest).encode(),
@@ -1036,7 +1036,7 @@ class TestSpecialCharsInPaths:
 
         config = _build_pipeline_config(
             service_name=service_name,
-            minio_container=minio[0],
+            s3_container=s3[0],
         )
         config["source"]["serviceConnection"]["config"]["bucketNames"] = [wildcard_bucket]
 
@@ -1066,10 +1066,10 @@ class TestContainerFilterPatternAgainstManifestPaths:
     inference. Both paths now go through ``filter_manifest_entries``
     and ``_is_excluded_artifact``."""
 
-    def test_success_sentinel_in_manifest_is_skipped(self, minio, metadata, wildcard_bucket):
+    def test_success_sentinel_in_manifest_is_skipped(self, s3, metadata, wildcard_bucket):
         """A manifest that accidentally lists ``_SUCCESS`` (or a path
         containing ``_SUCCESS``) must NOT produce a container."""
-        _, minio_client = minio
+        _, s3_client = s3
         service_name = f"wc-succ-{uuid.uuid4().hex[:8]}"
 
         manifest = {
@@ -1085,14 +1085,14 @@ class TestContainerFilterPatternAgainstManifestPaths:
             ]
         }
         _put_object(
-            minio_client,
+            s3_client,
             wildcard_bucket,
             "openmetadata.json",
             json.dumps(manifest).encode(),
         )
         config = _build_pipeline_config(
             service_name=service_name,
-            minio_container=minio[0],
+            s3_container=s3[0],
         )
         config["source"]["serviceConnection"]["config"]["bucketNames"] = [wildcard_bucket]
 
@@ -1121,11 +1121,11 @@ class TestContainerFilterPatternAgainstManifestPaths:
         finally:
             _cleanup_service(metadata, service_name)
 
-    def test_container_filter_excludes_applies_to_manifest_paths(self, minio, metadata, wildcard_bucket):
+    def test_container_filter_excludes_applies_to_manifest_paths(self, s3, metadata, wildcard_bucket):
         """``containerFilterPattern.excludes`` set on the pipeline
         config must drop matching entries from a bucket manifest, not
         just top-level buckets."""
-        _, minio_client = minio
+        _, s3_client = s3
         service_name = f"wc-excl-{uuid.uuid4().hex[:8]}"
 
         manifest = {
@@ -1143,7 +1143,7 @@ class TestContainerFilterPatternAgainstManifestPaths:
             ]
         }
         _put_object(
-            minio_client,
+            s3_client,
             wildcard_bucket,
             "openmetadata.json",
             json.dumps(manifest).encode(),
@@ -1151,7 +1151,7 @@ class TestContainerFilterPatternAgainstManifestPaths:
 
         config = _build_pipeline_config(
             service_name=service_name,
-            minio_container=minio[0],
+            s3_container=s3[0],
         )
         config["source"]["serviceConnection"]["config"]["bucketNames"] = [wildcard_bucket]
         # Exclude orders at the pipeline level. containerFilterPattern
@@ -1179,10 +1179,10 @@ class TestContainerFilterPatternAgainstManifestPaths:
         finally:
             _cleanup_service(metadata, service_name)
 
-    def test_container_filter_includes_applies_to_manifest_paths(self, minio, metadata, wildcard_bucket):
+    def test_container_filter_includes_applies_to_manifest_paths(self, s3, metadata, wildcard_bucket):
         """Likewise ``containerFilterPattern.includes`` restricts which
         manifest entries become containers."""
-        _, minio_client = minio
+        _, s3_client = s3
         service_name = f"wc-incl-{uuid.uuid4().hex[:8]}"
 
         manifest = {
@@ -1200,7 +1200,7 @@ class TestContainerFilterPatternAgainstManifestPaths:
             ]
         }
         _put_object(
-            minio_client,
+            s3_client,
             wildcard_bucket,
             "openmetadata.json",
             json.dumps(manifest).encode(),
@@ -1208,7 +1208,7 @@ class TestContainerFilterPatternAgainstManifestPaths:
 
         config = _build_pipeline_config(
             service_name=service_name,
-            minio_container=minio[0],
+            s3_container=s3[0],
         )
         config["source"]["serviceConnection"]["config"]["bucketNames"] = [wildcard_bucket]
         # Left-anchored regex: ``.*sales`` matches any path that contains 'sales'.
@@ -1231,13 +1231,13 @@ class TestContainerFilterPatternAgainstManifestPaths:
         finally:
             _cleanup_service(metadata, service_name)
 
-    def test_filter_applies_after_glob_expansion(self, minio, metadata, wildcard_bucket):
+    def test_filter_applies_after_glob_expansion(self, s3, metadata, wildcard_bucket):
         """End-to-end: a glob ``dataPath`` plus a pipeline-level
         ``containerFilterPattern`` must expand the glob THEN drop the
         matching excludes. Without this ordering, an innocent
         ``data/**/*.parquet`` pattern would sweep archive/staging dirs
         that the user already tried to exclude at the pipeline level."""
-        _, minio_client = minio
+        _, s3_client = s3
         service_name = f"wc-glob-excl-{uuid.uuid4().hex[:8]}"
 
         manifest = {
@@ -1250,7 +1250,7 @@ class TestContainerFilterPatternAgainstManifestPaths:
             ]
         }
         _put_object(
-            minio_client,
+            s3_client,
             wildcard_bucket,
             "openmetadata.json",
             json.dumps(manifest).encode(),
@@ -1258,7 +1258,7 @@ class TestContainerFilterPatternAgainstManifestPaths:
 
         config = _build_pipeline_config(
             service_name=service_name,
-            minio_container=minio[0],
+            s3_container=s3[0],
         )
         config["source"]["serviceConnection"]["config"]["bucketNames"] = [wildcard_bucket]
         # Drop orders even though the glob would match it.
@@ -1283,21 +1283,21 @@ class TestContainerFilterPatternAgainstManifestPaths:
         finally:
             _cleanup_service(metadata, service_name)
 
-    def test_success_file_in_sample_directory_is_not_picked(self, minio, metadata, wildcard_bucket):
+    def test_success_file_in_sample_directory_is_not_picked(self, s3, metadata, wildcard_bucket):
         """Sample-file selection must skip ``_SUCCESS`` so pyarrow
         doesn't crash on a 0-byte sentinel (original reported crash)."""
-        _, minio_client = minio
+        _, s3_client = s3
         service_name = f"wc-sampsucc-{uuid.uuid4().hex[:8]}"
 
         # Drop 0-byte Spark sentinels alongside the valid parquet files.
         _put_object(
-            minio_client,
+            s3_client,
             wildcard_bucket,
             "data/sales/State=AL/_SUCCESS",
             b"",
         )
         _put_object(
-            minio_client,
+            s3_client,
             wildcard_bucket,
             "data/sales/State=AL/_SUCCESS.crc",
             b"",
@@ -1313,7 +1313,7 @@ class TestContainerFilterPatternAgainstManifestPaths:
             ]
         }
         _put_object(
-            minio_client,
+            s3_client,
             wildcard_bucket,
             "openmetadata.json",
             json.dumps(manifest).encode(),
@@ -1321,7 +1321,7 @@ class TestContainerFilterPatternAgainstManifestPaths:
 
         config = _build_pipeline_config(
             service_name=service_name,
-            minio_container=minio[0],
+            s3_container=s3[0],
         )
         config["source"]["serviceConnection"]["config"]["bucketNames"] = [wildcard_bucket]
 
@@ -1345,7 +1345,7 @@ class TestContainerFilterPatternAgainstManifestPaths:
 class TestMalformedDefaultManifest:
     """Symmetric coverage for defaultManifest parse errors."""
 
-    def test_default_manifest_schema_violation_is_ignored(self, minio, metadata, wildcard_bucket):
+    def test_default_manifest_schema_violation_is_ignored(self, s3, metadata, wildcard_bucket):
         """Valid JSON but wrong schema — e.g. an entry missing required
         ``containerName`` / ``dataPath``. Must be logged & skipped."""
         service_name = f"wc-bad-default-{uuid.uuid4().hex[:8]}"
@@ -1354,7 +1354,7 @@ class TestMalformedDefaultManifest:
         default_manifest = json.dumps({"entries": [{"structureFormat": "parquet"}]})
         config = _build_pipeline_config(
             service_name=service_name,
-            minio_container=minio[0],
+            s3_container=s3[0],
             default_manifest_json=default_manifest,
         )
         config["source"]["serviceConnection"]["config"]["bucketNames"] = [wildcard_bucket]

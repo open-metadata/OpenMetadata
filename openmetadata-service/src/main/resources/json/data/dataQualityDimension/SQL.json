@@ -1,0 +1,8 @@
+{
+  "name": "SQL",
+  "fullyQualifiedName": "SQL",
+  "displayName": "SQL",
+  "description": "Custom SQL assertions that do not fit another dimension.",
+  "style": { "color": "#475467" },
+  "provider": "system"
+}

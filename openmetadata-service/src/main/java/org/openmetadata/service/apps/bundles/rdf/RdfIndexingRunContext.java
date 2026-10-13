@@ -19,9 +19,8 @@ import org.openmetadata.service.rdf.RdfWriteMode;
 
 /**
  * Per-run configuration threaded into {@link RdfBatchProcessor}. {@code jobId}/{@code serverId}
- * are the failure-record identity: null on the legacy (non-distributed) path, where failures are
- * accounted only in stats; set by the distributed executor so failed records land in
- * rdf_index_failures and can be retried at end-of-run.
+ * are the failure-record identity: a reindex run sets them so its failed records land in
+ * rdf_index_failures for operators; without them failures are accounted only in stats.
  */
 public record RdfIndexingRunContext(
     RdfWriteMode writeMode,

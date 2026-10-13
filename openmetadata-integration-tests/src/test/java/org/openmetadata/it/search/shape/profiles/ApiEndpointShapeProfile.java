@@ -34,7 +34,7 @@ public final class ApiEndpointShapeProfile implements EntityShapeProfile {
   }
 
   @Override
-  public EntityInterface minimal(final ShapeContext ctx) {
+  public EntityInterface<?> minimal(final ShapeContext ctx) {
     return new APIEndpoint()
         .withId(ctx.id())
         .withName("endpoint")
@@ -53,13 +53,13 @@ public final class ApiEndpointShapeProfile implements EntityShapeProfile {
         .build();
   }
 
-  private EntityInterface requestFields(final EntityInterface entity, final Rung rung) {
+  private EntityInterface<?> requestFields(final EntityInterface<?> entity, final Rung rung) {
     final APIEndpoint endpoint = (APIEndpoint) entity;
     endpoint.setRequestSchema(new APISchema().withSchemaFields(fields("req_", rung.magnitude())));
     return endpoint;
   }
 
-  private EntityInterface responseFields(final EntityInterface entity, final Rung rung) {
+  private EntityInterface<?> responseFields(final EntityInterface<?> entity, final Rung rung) {
     final APIEndpoint endpoint = (APIEndpoint) entity;
     endpoint.setResponseSchema(new APISchema().withSchemaFields(fields("resp_", rung.magnitude())));
     return endpoint;

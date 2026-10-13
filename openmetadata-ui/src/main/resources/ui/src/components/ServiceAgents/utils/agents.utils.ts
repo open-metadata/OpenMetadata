@@ -19,7 +19,7 @@ import {
   LayersThree01,
   Shield01,
   Zap,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { TFunction } from 'i18next';
 import { ReactComponent as LineageIcon } from '../../../assets/svg/agents/lineage.svg';
 import { ReactComponent as SparkleIcon } from '../../../assets/svg/agents/sparkle.svg';

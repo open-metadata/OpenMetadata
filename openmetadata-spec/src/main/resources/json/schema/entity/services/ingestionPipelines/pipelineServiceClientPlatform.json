@@ -1,0 +1,10 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/ingestionPipelines/pipelineServiceClientPlatform.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PipelineServiceClientPlatform",
+  "description": "Values the server itself reports as the `platform` of a Pipeline Service Client response, independently of any client. That field stays a free string, since every pipeline service client reports its own platform name. `disabled` means no pipeline service client is configured: the status is still a 200, so the platform is the only thing that tells a caller that deploying or running a pipeline will do nothing.",
+  "type": "string",
+  "javaType": "org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientPlatform",
+  "enum": ["disabled"],
+  "javaEnums": [{ "name": "DISABLED" }]
+}

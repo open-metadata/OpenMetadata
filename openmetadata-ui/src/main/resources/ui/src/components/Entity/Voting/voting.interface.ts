@@ -12,15 +12,14 @@
  */
 
 import { Votes } from '../../../generated/type/votes';
-import { QueryVoteType } from '../../Database/TableQueries/TableQueries.interface';
+import {
+  QueryVoteType,
+  VotingDataProps,
+} from '../../../interface/entity/vote.interface';
 
 export interface VotingProps {
   votes?: Votes;
   disabled?: boolean;
   voteStatus: QueryVoteType;
   onUpdateVote: (updatedVoteType: VotingDataProps) => void | Promise<void>;
-}
-
-export interface VotingDataProps {
-  updatedVoteType: QueryVoteType;
 }

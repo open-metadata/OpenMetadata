@@ -10,88 +10,90 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-// keeping same name as variable.less
-
-import { DEFAULT_THEME } from './Appearance.constants';
+// Keeping the legacy export names avoids a broad consumer migration while the
+// values move to the shared token cascade.
+const WARNING_500 = 'var(--om-color-warning-500)';
+const UTILITY_WARNING_700 = 'var(--om-color-utility-warning-700)';
 
 export const TEST_STATUS_COLORS = {
-  SUCCESS: '#12B76A',
-  FAILED: '#F04438',
-  ABORTED: '#F79009',
-  QUEUED: '#414651',
+  SUCCESS: 'var(--om-color-visualization-test-success)',
+  FAILED: 'var(--om-color-error-500)',
+  ABORTED: WARNING_500,
+  QUEUED: 'var(--om-color-gray-700)',
 };
 
-export const GREEN_1 = '#067647';
-export const GREEN_6 = '#079455';
-export const GREEN_3 = '#48ca9e';
-export const GREEN_4 = '#039855';
-export const GREEN_3_OPACITY = '#48ca9e30';
-export const YELLOW_2 = '#ffbe0e';
-export const YELLOW_3 = '#f79009';
-export const RED_1 = '#F04438';
-export const RED_3 = '#f24822';
-export const RED_3_OPACITY = '#FF7C501A';
-export const PURPLE_2 = '#7147e8';
-export const TEXT_COLOR = '#414651';
-export const GRAY_700 = '#344054';
-export const WHITE_SMOKE = '#F8F8F8';
-export const GRAY_1 = '#A1A1AA';
-export const LIGHT_GRAY = '#F1F4F9';
-export const INDIGO_1 = '#3538CD';
-export const PRIMARY_COLOR = DEFAULT_THEME.primaryColor;
-export const BLUE_1 = '#175cd3';
-export const BLUE_2 = '#3ca2f4';
-export const BLUE_500 = '#2E90FA';
-export const BLUE_800 = '#1849A9';
-export const BLUE_50 = '#EFF8FF';
-export const CHART_BLUE_1 = '#4689FF';
-export const BLUE_600 = '#1677ff';
-export const BLUE_CHART_AREA_FILL = '#e6f4ff';
-export const CHART_CURSOR_STROKE = '#e8e8e8';
-export const RIPTIDE = '#76E9C6';
-export const MY_SIN = '#FEB019';
-export const SAN_MARINO = '#416BB3';
-export const SILVER_TREE = '#5CAE95';
-export const DESERT = '#B56727';
-export const PINK_SALMON = '#FF92AE';
-export const ELECTRIC_VIOLET = '#9747FF';
-export const LEMON_ZEST = '#FFD700';
-export const GREY_100 = '#f5f5f5';
-export const GREY_200 = '#E9EAEB';
-export const GRAY_600 = '#535862';
-export const COLOR_GREY_400 = '#98A2B3';
-export const COLOR_GREY_300 = '#D0D5DD';
+export const GREEN_1 = 'var(--om-color-success-700)';
+export const GREEN_6 = 'var(--om-color-success-600)';
+export const GREEN_3 = 'var(--om-color-visualization-green-3)';
+export const GREEN_4 = 'var(--om-color-visualization-green-4)';
+export const GREEN_3_OPACITY =
+  'var(--om-color-visualization-green-3-translucent)';
+export const YELLOW_2 = 'var(--om-color-visualization-yellow-2)';
+export const YELLOW_3 = WARNING_500;
+export const RED_1 = 'var(--om-color-error-500)';
+export const RED_3 = 'var(--om-color-visualization-red-3)';
+export const RED_3_OPACITY = 'var(--om-color-visualization-red-3-translucent)';
+export const PURPLE_2 = 'var(--om-color-visualization-purple-2)';
+export const TEXT_COLOR = 'var(--om-color-text-secondary)';
+export const GRAY_700 = 'var(--om-color-text-secondary)';
+export const WHITE_SMOKE = 'var(--om-color-bg-secondary)';
+export const GRAY_1 = 'var(--om-color-visualization-gray-1)';
+export const LIGHT_GRAY = 'var(--om-color-bg-tertiary)';
+export const INDIGO_1 = 'var(--om-color-indigo-700)';
+export const PRIMARY_COLOR = 'var(--om-color-bg-brand-solid)';
+export const BLUE_1 = 'var(--om-color-brand-700)';
+export const BLUE_2 = 'var(--om-color-visualization-blue-2)';
+export const BLUE_500 = 'var(--om-color-brand-500)';
+export const BLUE_800 = 'var(--om-color-brand-800)';
+export const BLUE_50 = 'var(--om-color-bg-brand)';
+export const CHART_BLUE_1 = 'var(--om-color-visualization-chart-blue-1)';
+export const BLUE_600 = 'var(--om-color-visualization-blue-600)';
+export const BLUE_CHART_AREA_FILL = 'var(--om-color-bg-brand)';
+export const CHART_CURSOR_STROKE = 'var(--om-color-border-secondary)';
+export const RIPTIDE = 'var(--om-color-visualization-riptide)';
+export const MY_SIN = 'var(--om-color-visualization-my-sin)';
+export const SAN_MARINO = 'var(--om-color-visualization-san-marino)';
+export const SILVER_TREE = 'var(--om-color-visualization-silver-tree)';
+export const DESERT = 'var(--om-color-visualization-desert)';
+export const PINK_SALMON = 'var(--om-color-visualization-pink-salmon)';
+export const ELECTRIC_VIOLET = 'var(--om-color-visualization-electric-violet)';
+export const LEMON_ZEST = 'var(--om-color-visualization-lemon-zest)';
+export const GREY_100 = 'var(--om-color-bg-tertiary)';
+export const GREY_200 = 'var(--om-color-border-secondary)';
+export const GRAY_600 = 'var(--om-color-text-tertiary)';
+export const COLOR_GREY_400 = 'var(--om-color-visualization-gray-400)';
+export const COLOR_GREY_300 = 'var(--om-color-visualization-gray-300)';
 
 // Data Quality dashboard chart palette (2.0 redesign shades)
-export const DQ_CHART_SUCCESS_COLOR = '#17b26a';
-export const DQ_CHART_WARNING_COLOR = '#f79009';
-export const DQ_CHART_FAILED_COLOR = '#cb5a50';
-export const DQ_CHART_BLUE_COLOR = '#1570ef';
+export const DQ_CHART_SUCCESS_COLOR = 'var(--om-color-success-500)';
+export const DQ_CHART_WARNING_COLOR = WARNING_500;
+export const DQ_CHART_FAILED_COLOR = 'var(--om-color-visualization-dq-failed)';
+export const DQ_CHART_BLUE_COLOR = 'var(--om-color-brand-600)';
 
 export const SEVERITY_COLORS: Record<string, { bg: string; color: string }> = {
   Severity1: {
-    bg: 'rgba(222, 57, 49, 0.1)',
-    color: '#9c0700',
+    bg: 'var(--om-color-utility-error-100)',
+    color: 'var(--om-color-utility-error-700)',
   },
   Severity2: {
-    bg: 'rgba(247, 99, 33, 0.1)',
-    color: '#be3b00',
+    bg: 'var(--om-color-utility-orange-100)',
+    color: 'var(--om-color-utility-orange-700)',
   },
   Severity3: {
-    bg: 'rgba(255, 165, 33, 0.1)',
-    color: '#c27400',
+    bg: 'var(--om-color-utility-warning-100)',
+    color: UTILITY_WARNING_700,
   },
   Severity4: {
-    bg: 'rgba(255, 206, 41, 0.1)',
-    color: '#ad8600',
+    bg: 'var(--om-color-utility-yellow-100)',
+    color: 'var(--om-color-utility-yellow-700)',
   },
   Severity5: {
-    bg: 'rgba(181, 198, 33, 0.1)',
-    color: '#6e7343',
+    bg: 'var(--om-color-utility-green-100)',
+    color: 'var(--om-color-utility-green-700)',
   },
   NoSeverity: {
-    bg: 'rgba(154, 154, 154, 0.1)',
-    color: '#6B7280',
+    bg: 'var(--om-color-utility-gray-100)',
+    color: 'var(--om-color-utility-gray-700)',
   },
 };
 
@@ -99,12 +101,30 @@ export const STATUS_COLORS: Record<
   string,
   { bg: string; color: string; border: string }
 > = {
-  New: { bg: '#E1D3FF', color: '#7147E8', border: '#7147E8' },
-  Ack: { bg: '#EBF6FE', color: '#3DA2F3', border: '#3DA2F3' },
-  Assigned: { bg: '#FFF6E1', color: '#D99601', border: '#D99601' },
-  Resolved: { bg: '#E8F5E9', color: '#4CAF50', border: '#81C784' },
+  New: {
+    bg: 'var(--om-color-utility-purple-100)',
+    color: 'var(--om-color-utility-purple-700)',
+    border: 'var(--om-color-utility-purple-700)',
+  },
+  Ack: {
+    bg: 'var(--om-color-utility-blue-light-100)',
+    color: 'var(--om-color-utility-blue-light-700)',
+    border: 'var(--om-color-utility-blue-light-700)',
+  },
+  Assigned: {
+    bg: 'var(--om-color-utility-warning-100)',
+    color: UTILITY_WARNING_700,
+    border: UTILITY_WARNING_700,
+  },
+  Resolved: {
+    bg: 'var(--om-color-utility-success-100)',
+    color: 'var(--om-color-utility-success-700)',
+    border: 'var(--om-color-utility-success-700)',
+  },
 };
 
+// Canvas cannot evaluate CSS custom properties. The renderer resolves semantic
+// tokens at draw time and uses these values only when the cascade is unavailable.
 export const CANVAS_BUTTON_COLORS = {
   DEFAULT: {
     border: '#eaecf5',

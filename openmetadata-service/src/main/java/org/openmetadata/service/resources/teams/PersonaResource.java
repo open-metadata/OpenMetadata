@@ -341,6 +341,11 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
     definition.setEnabled(requested.getEnabled());
     definition.setCharacterBudget(requested.getCharacterBudget());
     definition.setCacheTtlMinutes(requested.getCacheTtlMinutes());
+    // Null leaves the prompt alone: clients that only send the three settings above must not wipe
+    // it. A blank prompt clears it (PersonaRepository.validateContextDefinition).
+    if (requested.getPrompt() != null) {
+      definition.setPrompt(requested.getPrompt());
+    }
     Persona updated = persistDefinition(uriInfo, securityContext, original, definition);
     PersonaContextCache.getInstance().refreshAsync(updated);
     return configurationWithDerivedState(updated);

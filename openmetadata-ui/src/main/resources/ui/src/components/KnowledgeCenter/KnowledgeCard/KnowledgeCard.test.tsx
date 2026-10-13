@@ -12,10 +12,8 @@
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { KnowledgePage } from '../../../interface/knowledge-center.interface';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import KnowledgeCard, { KnowledgeCardProps } from './KnowledgeCard';
@@ -87,7 +85,27 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     .mockImplementation(({ children, ...props }) => (
       <div {...props}>{children}</div>
     )),
+  ClassificationTag: jest
+    .fn()
+    .mockImplementation(({ label, color, icon, ...props }) => (
+      <span
+        data-color={color}
+        data-icon={icon}
+        data-testid={props['data-testid'] ?? 'tag-chip'}>
+        {label}
+      </span>
+    )),
   Dot: jest.fn().mockReturnValue(<span data-testid="dot" />),
+  GlossaryTag: jest
+    .fn()
+    .mockImplementation(({ label, color, icon, ...props }) => (
+      <span
+        data-color={color}
+        data-icon={icon}
+        data-testid={props['data-testid'] ?? 'tag-chip'}>
+        {label}
+      </span>
+    )),
   TooltipTrigger: jest
     .fn()
     .mockImplementation(({ children }) => <span>{children}</span>),
@@ -100,29 +118,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 
 jest.mock('../../../utils/ColorUtils', () => ({
   reduceColorOpacity: jest.fn().mockReturnValue('rgba(0,0,0,0.05)'),
-}));
-
-jest.mock('../../common/atoms/Tag', () => ({
-  ClassificationTag: jest
-    .fn()
-    .mockImplementation(({ label, color, icon, ...props }) => (
-      <span
-        data-color={color}
-        data-icon={icon}
-        data-testid={props['data-testid'] ?? 'tag-chip'}>
-        {label}
-      </span>
-    )),
-  GlossaryTag: jest
-    .fn()
-    .mockImplementation(({ label, color, icon, ...props }) => (
-      <span
-        data-color={color}
-        data-icon={icon}
-        data-testid={props['data-testid'] ?? 'tag-chip'}>
-        {label}
-      </span>
-    )),
 }));
 
 jest.mock('../../../components/common/PopOverCard/UserPopOverCard', () =>
@@ -147,7 +142,8 @@ jest.mock('../../../components/common/DeleteModal/DeleteModal', () =>
     .mockReturnValue(<div data-testid="delete-widget-modal">DeleteModal</div>)
 );
 
-jest.mock('../../../utils/StringUtils', () => ({
+jest.mock('../../../utils/RichTextStringUtils', () => ({
+  ...jest.requireActual('../../../utils/RichTextStringUtils'),
   stripMarkdown: jest.fn().mockImplementation((text: string) => text),
 }));
 
@@ -399,6 +395,36 @@ describe('Knowledge Card', () => {
     expect(screen.getByTestId('knowledge-link')).toHaveAttribute(
       'target',
       '_blank'
+    );
+  });
+
+  it('should neutralise a javascript: quick link url (XSS guard)', () => {
+    const maliciousQuickLink: KnowledgePage = {
+      ...QUICK_LINK_MOCK_DATA,
+      page: { url: 'javascript:alert(document.domain)' },
+    } as KnowledgePage;
+    render(
+      <KnowledgeCard {...mockProps} knowledgeItem={maliciousQuickLink} />,
+      { wrapper: MemoryRouter }
+    );
+
+    const link = screen.getByTestId('knowledge-link');
+
+    // getSafeHttpUrl rejects the javascript: scheme, so the '#' fallback is
+    // used — React Router renders that as href="/", never the script url.
+    expect(link.getAttribute('href')).not.toContain('javascript:');
+    expect(link).toHaveAttribute('href', '/');
+  });
+
+  it('should render a safe http(s) quick link url unchanged', () => {
+    render(
+      <KnowledgeCard {...mockProps} knowledgeItem={QUICK_LINK_MOCK_DATA} />,
+      { wrapper: MemoryRouter }
+    );
+
+    expect(screen.getByTestId('knowledge-link')).toHaveAttribute(
+      'href',
+      'https://open-metadata.org'
     );
   });
 

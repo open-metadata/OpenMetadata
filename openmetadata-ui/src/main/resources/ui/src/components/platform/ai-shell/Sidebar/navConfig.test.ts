@@ -122,6 +122,14 @@ describe('navConfig', () => {
     expect(resolveActiveSubNavKey(sections, '/table/fqn', state)).toBe('tests');
   });
 
+  it('matches the breadcrumb origin url on its path alone', () => {
+    const state = {
+      breadcrumbData: [{ url: '/obs/tests?groupBy=table&group=orders#top' }],
+    };
+
+    expect(resolveActiveSubNavKey(sections, '/table/fqn', state)).toBe('tests');
+  });
+
   it('falls back to the pathname when breadcrumb url is not a string', () => {
     const state = { breadcrumbData: [{ url: 42 }] };
 

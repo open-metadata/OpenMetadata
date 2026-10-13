@@ -27,6 +27,7 @@ from metadata.data_quality.validations.base_test_handler import (
 from metadata.data_quality.validations.checkers.between_bounds_checker import (
     BetweenBoundsChecker,
 )
+from metadata.data_quality.validations.result_messages import SamplingStability
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
     TestCaseStatus,
@@ -41,6 +42,8 @@ logger = test_suite_logger()
 
 class BaseColumnValueMinToBeBetweenValidator(BaseTestValidator):
     """Validator for column value min to be between test case"""
+
+    SAMPLING_STABILITY = SamplingStability.BIASED_INWARD
 
     MIN_BOUND = "minValueForMinInCol"
     MAX_BOUND = "maxValueForMinInCol"
@@ -97,9 +100,10 @@ class BaseColumnValueMinToBeBetweenValidator(BaseTestValidator):
         Returns:
             dict: Test parameters including min and max bounds
         """
+        min_bound, max_bound = self.get_bounds(self.MIN_BOUND, self.MAX_BOUND)
         return {
-            self.MIN_BOUND: self.get_min_bound(self.MIN_BOUND),
-            self.MAX_BOUND: self.get_max_bound(self.MAX_BOUND),
+            self.MIN_BOUND: min_bound,
+            self.MAX_BOUND: max_bound,
         }
 
     def _get_metrics_to_compute(self, test_params: dict | None = None) -> dict:
@@ -172,13 +176,13 @@ class BaseColumnValueMinToBeBetweenValidator(BaseTestValidator):
         min_bound = test_params[self.MIN_BOUND]
         max_bound = test_params[self.MAX_BOUND]
 
-        if dimension_info:
-            return (
-                f"Dimension {dimension_info['dimension_name']}={dimension_info['dimension_value']}: "
-                f"Found min={min_value} vs. the expected min={min_bound}, max={max_bound}"
-            )
-        else:  # noqa: RET505
-            return f"Found min={min_value} vs. the expected min={min_bound}, max={max_bound}."
+        return self.format_statistic_message(
+            f"Minimum of {self.column_label()}",
+            min_value,
+            (min_bound, max_bound),
+            self._matched(metric_values, test_params),
+            dimension_info,
+        )
 
     def _get_test_result_values(self, metric_values: dict) -> list[TestResultValue]:
         """Get test result values for min-to-be-between test

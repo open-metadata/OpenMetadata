@@ -12,7 +12,12 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Space, Tag as AntdTag, Tooltip, Typography } from 'antd';
+import {
+  Badge,
+  Box,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isString } from 'lodash';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
@@ -36,6 +41,7 @@ import {
 } from '../rest/tagAPI';
 import { getEntityName } from './EntityNameUtils';
 import { getQueryFilterToIncludeApprovedTerm } from './GlossaryPureUtils';
+import { t } from './i18next/LocalUtil';
 import { getTagDisplay } from './TagsPureUtils';
 
 export const getClassifications = async (
@@ -155,26 +161,34 @@ export const tagRender = (customTagProps: CustomTagProps) => {
   };
 
   return (
-    <AntdTag
-      closable
-      className="text-sm flex-center m-r-xss p-r-xss m-y-2 border-light-gray"
-      closeIcon={
-        <CloseOutlined data-testid="remove-tags" height={8} width={8} />
-      }
+    <Badge
+      className="tw:gap-1 text-sm m-r-xss m-y-2"
+      color="gray"
       data-testid={`selected-tag-${tagLabel}`}
-      onClose={onClose}
+      size="sm"
+      type="color"
       onMouseDown={onPreventMouseDown}>
       <Tooltip
-        className="cursor-pointer"
-        mouseEnterDelay={1.5}
-        placement="topLeft"
+        arrow
+        excludeTriggerFromTabOrder
+        delay={1500}
+        placement="top left"
         title={getTagTooltip(label as string)}
-        trigger="hover">
-        <Typography.Paragraph className="m-0 d-inline-block break-all whitespace-normal">
+        triggerClassName="tw:inline-flex cursor-pointer">
+        <Typography
+          as="p"
+          className="m-0 d-inline-block break-all whitespace-normal">
           {tagLabel}
-        </Typography.Paragraph>
+        </Typography>
       </Tooltip>
-    </AntdTag>
+      <button
+        aria-label={t('label.remove')}
+        className="tw:flex tw:cursor-pointer tw:border-0 tw:bg-transparent tw:p-0 tw:text-quaternary"
+        type="button"
+        onClick={onClose}>
+        <CloseOutlined data-testid="remove-tags" height={8} width={8} />
+      </button>
+    </Badge>
   );
 };
 
@@ -213,9 +227,14 @@ export const fetchGlossaryList = async (
 
 export const TagListItemRenderer = (props: EntityReference) => {
   return (
-    <Space>
+    <Box
+      inline
+      align="center"
+      className="layout-space layout-space-horizontal"
+      gap={2}
+      itemClassName="layout-space-item">
       <ClassificationIcon className="d-block'" height={22} width={16} />
-      <Typography.Text>{getEntityName(props)}</Typography.Text>
-    </Space>
+      <Typography>{getEntityName(props)}</Typography>
+    </Box>
   );
 };

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../enums/permissions.enum';
 
 export const permissionQueryKeys = {
   all: ['permissions'] as const,

@@ -14,6 +14,7 @@ import {
   fromDate,
   getLocalTimeZone,
   toCalendarDate,
+  today,
 } from '@internationalized/date';
 import type { DateValue } from 'react-aria-components';
 
@@ -30,3 +31,17 @@ export const millisToDateValue = (ms?: number): DateValue | null =>
 
 export const dateValueToMillis = (value: DateValue): number =>
   value.toDate(getLocalTimeZone()).getTime();
+
+/**
+ * The last `days` days through the end of today, bounded at local midnight -
+ * the same window the core date pickers produce when a range is applied, so a
+ * default range and a picked one read the same in the picker's trigger.
+ */
+export const getPastDaysRange = (days: number) => {
+  const todayValue = today(getLocalTimeZone());
+
+  return {
+    startTs: dateValueToMillis(todayValue.subtract({ days })),
+    endTs: dateValueToMillis(todayValue.add({ days: 1 })) - 1,
+  };
+};

@@ -12,6 +12,7 @@
  */
 
 import { expect, Page, Route } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 
 import { redirectToHomePage } from '../../utils/common';
 import { test } from '../fixtures/pages';
@@ -77,7 +78,7 @@ test.describe('CsvJobsTray', () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
     await page.goto('/metrics', { waitUntil: 'domcontentloaded' });
-    await page.waitForURL(/\/metrics/);
+    await page.waitForURL(/\/metrics/, { waitUntil: 'domcontentloaded' });
   });
 
   test('shows a running export job and its progress text', async ({ page }) => {
@@ -278,7 +279,7 @@ test.describe('CsvJobsTray', () => {
     ]);
 
     await expect(page.locator('.csv-jobs-tray-item-success')).toHaveCount(1, {
-      timeout: 30_000,
+      timeout: ACTION_TIMEOUT,
     });
     await expect(page.getByRole('button', { name: /download/i })).toBeVisible();
   });
@@ -297,7 +298,7 @@ test.describe('CsvJobsTray', () => {
     ]);
 
     await expect(page.locator('.csv-jobs-tray-popover')).toBeVisible({
-      timeout: 30_000,
+      timeout: ACTION_TIMEOUT,
     });
     await expect(page.getByRole('button', { name: /download/i })).toBeVisible();
   });

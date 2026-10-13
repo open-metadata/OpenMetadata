@@ -11,24 +11,96 @@
  *  limitations under the License.
  */
 
-import React, { PropsWithChildren } from 'react';
+import { PageLayout } from '@openmetadata/ui-core-components';
+import React, { PropsWithChildren, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
+import { useAnalytics } from 'use-analytics';
+import { useSettingsHash } from '../../../hooks/useSettingsHash';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import { isFullscreenPersonaHash } from '../../discovery/personal-space/Profile/tabs/personas/Personas.utils';
+import { useAppModeBanners, useAppModeOverlays } from './appModeExtensions';
+import './AssistantLayout/assistant-layout.less';
+import Sidebar from './Sidebar/Sidebar';
 
-const AssistantLayout = withSuspenseFallback(
-  React.lazy(() => import('./AssistantLayout/AssistantLayout'))
+// Core personal-space chrome is OSS-owned, while proprietary overlays continue
+// to arrive through the app-mode extension registry below.
+const PersonalSpaceModal = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../discovery/personal-space/PersonalSpaceModal/PersonalSpaceModal'
+      )
+  )
+);
+
+const PersonaFullscreenPortal = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../discovery/personal-space/PersonaFullscreenPortal/PersonaFullscreenPortal'
+      )
+  )
 );
 
 /**
- * Outer chrome for app mode — sidebar, top bar, and content slot.
- *
- * Mounted exactly once by `AppModeRoutes` so module routes can stop carrying
- * per-route layout wrapping. Today it is a thin wrapper over `AssistantLayout`;
- * keeping a named indirection here gives future shell-only concerns (header
- * variants, content padding, sticky widgets) a single place to live without
- * re-touching every module file.
+ * Outer chrome for app mode — sidebar, banners, routed content, and overlays.
+ * Mounted exactly once by `AppModeRoutes` so individual modules only own their
+ * page layout.
  */
 export const AppShell = ({ children }: PropsWithChildren) => {
-  return <AssistantLayout>{children}</AssistantLayout>;
+  const banners = useAppModeBanners();
+  const overlays = useAppModeOverlays();
+  const { pathname, search, hash } = useLocation();
+  const analytics = useAnalytics();
+  const { state: settingsHash } = useSettingsHash();
+  // Hidden, not unmounted: the routed page keeps its state for when the
+  // persona fullscreen view closes and the personal-space modal reopens on it.
+  const isPersonaFullscreen = isFullscreenPersonaHash(
+    settingsHash.tab,
+    settingsHash.subPath
+  );
+
+  // App-mode routes render outside `AppContainer`, so the shell owns the page
+  // tracking that authenticated OpenMetadata routes normally receive there.
+  useEffect(() => {
+    if (pathname !== '/') {
+      analytics?.page();
+    }
+  }, [pathname, search, hash, analytics]);
+
+  return (
+    <>
+      <PageLayout
+        className={`assistant-layout tw:p-0!${
+          isPersonaFullscreen ? ' tw:hidden!' : ''
+        }`}
+        data-testid="app-shell">
+        <PageLayout.LeftPanel
+          bordered={false}
+          className="tw:p-0!"
+          data-testid="app-shell-sidebar"
+          width="auto">
+          <Sidebar />
+        </PageLayout.LeftPanel>
+
+        {/* Routed pages own the main landmark. A neutral grid cell here avoids
+            nesting a second main around every PageLayout.Content. */}
+        <div
+          className="assistant-content tw:my-1.5 tw:mr-1.5 tw:rounded-2xl"
+          data-testid="app-shell-content">
+          {banners.map(({ key, component: Banner }) => (
+            <Banner key={key} />
+          ))}
+          {children}
+        </div>
+      </PageLayout>
+      {overlays.map(({ key, component: Overlay }) => (
+        <Overlay key={key} />
+      ))}
+      <PersonalSpaceModal />
+      <PersonaFullscreenPortal />
+    </>
+  );
 };
 
 export default AppShell;

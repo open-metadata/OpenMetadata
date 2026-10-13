@@ -14,10 +14,16 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doCallRealMethod;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.service.jdbi3.EventSubscriptionDAOs.EventSubscriptionDAO;
+import org.openmetadata.service.jdbi3.EventSubscriptionDAOs.EventSubscriptionDAO.FailedEventRow;
 
 class EventSubscriptionDaoDedupTest {
 
@@ -58,5 +64,32 @@ class EventSubscriptionDaoDedupTest {
 
     assertEquals(List.of("a", "c"), EventSubscriptionDAO.pickByIndex(source, List.of(0, 2)));
     assertEquals(List.of("b"), EventSubscriptionDAO.pickByIndex(source, List.of(1)));
+  }
+
+  @Test
+  void lastIndexOfEachKeyKeepsTheLastInTheOrderKeysFirstAppear() {
+    assertEquals(List.of(2, 1), EventSubscriptionDAO.lastIndexOfEachKey(List.of("a", "b", "a")));
+    assertEquals(List.of(), EventSubscriptionDAO.lastIndexOfEachKey(List.of()));
+  }
+
+  // Whatever the caller hands it, the batch writes one row per key: the last one.
+  @Test
+  void failedEventBatchWritesTheLastRowOfEachKey() {
+    EventSubscriptionDAO dao = mock(EventSubscriptionDAO.class);
+    doCallRealMethod().when(dao).batchUpsertFailedEvents(anyString(), anyList());
+
+    dao.batchUpsertFailedEvents(
+        "alert",
+        List.of(
+            new FailedEventRow("a", "first", "SUBSCRIBER"),
+            new FailedEventRow("b", "other", "PUBLISHER"),
+            new FailedEventRow("a", "last", "SUBSCRIBER")));
+
+    verify(dao)
+        .batchUpsertFailedEventsInternal(
+            List.of("alert", "alert"),
+            List.of("a", "b"),
+            List.of("last", "other"),
+            List.of("SUBSCRIBER", "PUBLISHER"));
   }
 }

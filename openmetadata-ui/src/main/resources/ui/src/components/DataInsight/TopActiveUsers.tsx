@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Card, Typography } from 'antd';
+import {
+  Card,
+  SkeletonParagraph,
+  Typography,
+} from '@openmetadata/ui-core-components';
+
 import { AxiosError } from 'axios';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -82,7 +87,7 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
         dataIndex: 'team',
         key: 'team',
         render: (team: string) => (
-          <Typography.Text>{team ?? '--'}</Typography.Text>
+          <Typography className="tw:text-primary">{team ?? '--'}</Typography>
         ),
       },
       {
@@ -90,7 +95,9 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
         dataIndex: 'lastSession',
         key: 'lastSession',
         render: (lastSession: number) => (
-          <Typography.Text>{formatDateTime(lastSession)}</Typography.Text>
+          <Typography className="tw:text-primary">
+            {formatDateTime(lastSession)}
+          </Typography>
         ),
       },
       {
@@ -100,7 +107,7 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
         dataIndex: 'sessions',
         key: 'sessions',
         render: (sessions: number) => (
-          <Typography.Text>{sessions}</Typography.Text>
+          <Typography className="tw:text-primary">{sessions}</Typography>
         ),
       },
       {
@@ -108,9 +115,9 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
         dataIndex: 'avgSessionDuration',
         key: 'avgSessionDuration',
         render: (avgSessionDuration: number) => (
-          <Typography.Text>
+          <Typography className="tw:text-primary">
             {formatTimeDurationFromSeconds(avgSessionDuration)}
-          </Typography.Text>
+          </Typography>
         ),
       },
     ],
@@ -120,27 +127,36 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
   return (
     <Card
       className="data-insight-card"
-      data-testid="entity-summary-card-percentage"
-      loading={isLoading}
-      title={
-        <PageHeader
-          data={{
-            header: t('label.data-insight-active-user-summary'),
-            subHeader: t('message.most-active-users'),
-          }}
-        />
-      }>
-      <Table
-        className="data-insight-table-wrapper"
-        columns={columns}
-        dataSource={mostActiveUsers}
-        loading={isLoading}
-        locale={{
-          emptyText: <EmptyGraphPlaceholder />,
-        }}
-        pagination={false}
-        size="small"
+      data-testid="entity-summary-card-percentage">
+      <Card.Header
+        title={
+          <PageHeader
+            data={{
+              header: t('label.data-insight-active-user-summary'),
+              subHeader: t('message.most-active-users'),
+            }}
+          />
+        }
       />
+      <Card.Content>
+        {isLoading ? (
+          <SkeletonParagraph rows={4} />
+        ) : (
+          <>
+            <Table
+              className="data-insight-table-wrapper"
+              columns={columns}
+              dataSource={mostActiveUsers}
+              loading={isLoading}
+              locale={{
+                emptyText: <EmptyGraphPlaceholder />,
+              }}
+              pagination={false}
+              size="small"
+            />
+          </>
+        )}
+      </Card.Content>
     </Card>
   );
 };

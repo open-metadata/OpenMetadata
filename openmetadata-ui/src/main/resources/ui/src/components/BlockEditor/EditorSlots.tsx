@@ -23,7 +23,7 @@ import LinkPopup from './LinkPopup/LinkPopup';
 import TableMenu from './TableMenu/TableMenu';
 
 const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
-  ({ editor, menuType }, ref) => {
+  ({ editable = true, editor, menuType }, ref) => {
     const [isLinkModalOpen, setIsLinkModalOpen] = useState<boolean>(false);
 
     const handleLinkToggle = () => {
@@ -163,7 +163,7 @@ const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
      * render the bubble menu only if the editor is available
      * and the menu type is bubble
      */
-    const menus = !isNil(editor) && menuType === 'bubble' && (
+    const menus = !isNil(editor) && editable && menuType === 'bubble' && (
       <BubbleMenu editor={editor} toggleLink={handleLinkToggle} />
     );
 
@@ -193,7 +193,9 @@ const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
           />
         )}
         {menus}
-        {!isNil(editor) && (
+        {/* Read-only previews never use these menus. Their react-aria buttons
+            would also capture the trigger of any tooltip they render inside. */}
+        {!isNil(editor) && editable && (
           <>
             <BlockMenu editor={editor} />
             <TableMenu editor={editor} />

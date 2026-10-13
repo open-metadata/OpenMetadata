@@ -12,12 +12,13 @@
 """Unit tests for DataFrame validator."""
 
 from collections.abc import Generator
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pandas as pd
 import pytest
 from pandas import DataFrame
 
+from metadata.data_quality.validations.base_test_handler import BaseTestValidator
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.sdk.data_quality import (
@@ -253,6 +254,28 @@ class TestEdgeCases:
 
         assert result.success is False
         assert result.test_results[0].testCaseStatus is TestCaseStatus.Aborted
+
+    def test_a_run_records_its_duration(self):
+        validator = DataFrameValidator(Mock())
+        validator.add_test(ColumnValuesToBeNotNull(column="email"))
+
+        result = validator.validate(pd.DataFrame({"email": ["a@b.c"]})).test_results[0]
+
+        assert result.testCaseStatus is TestCaseStatus.Success
+        assert result.duration > 0
+
+    def test_a_validator_crash_is_aborted_with_duration_and_error_details(self):
+        df = pd.DataFrame({"email": ["a@b.c"]})
+        validator = DataFrameValidator(Mock())
+        validator.add_test(ColumnValuesToBeNotNull(column="email"))
+
+        with patch.object(BaseTestValidator, "run_validation", side_effect=RuntimeError("boom")):
+            aborted = validator.validate(df).test_results[0]
+
+        assert aborted.testCaseStatus is TestCaseStatus.Aborted
+        assert "boom" in aborted.result
+        assert aborted.errorDetails.errorType == "RuntimeError"
+        assert aborted.duration is not None
 
     def test_no_tests_configured(self):
         """Test validation with no tests configured."""

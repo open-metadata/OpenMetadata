@@ -24,6 +24,10 @@ correctly and that a poisoned ``DagContext`` no longer breaks the build.
 """
 
 import uuid
+from datetime import datetime
+from datetime import timezone as datetime_timezone
+from types import SimpleNamespace
+from unittest.mock import patch
 
 import pytest
 
@@ -33,6 +37,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     AirflowConfig,
     IngestionPipeline,
+    PipelineState,
     PipelineType,
 )
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
@@ -49,7 +54,9 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
     OpenMetadataJWTClientConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from openmetadata_managed_apis.workflows.ingestion.common import build_dag
+from metadata.ingestion.ometa.utils import model_str
+from openmetadata_managed_apis.api.response import ResponseFormat
+from openmetadata_managed_apis.workflows.ingestion.common import build_dag, send_failed_status_callback
 
 TASK_NAME = "ingestion_task"
 
@@ -138,3 +145,66 @@ def test_build_dag_does_not_use_dag_context_stack():
     _build("stack_dag")
 
     assert dag_context.get_current_dag() is None
+
+
+@pytest.mark.parametrize(
+    "airflow_run_id",
+    [str(uuid.uuid4()), "manual__2026-09-10T22:50:44.270627+00:00", "scheduled__2026-09-10T22:50:44.270627+00:00"],
+)
+def test_run_identity_survives_the_queued_to_running_handoff(airflow_run_id):
+    name = "run_identity_handoff"
+    config = _workflow_config(name)
+    dag = build_dag(
+        TASK_NAME, _ingestion_pipeline(name), config, lambda workflow_config: model_str(workflow_config.pipelineRunId)
+    )
+    now = datetime.now(datetime_timezone.utc)
+    dag_run = SimpleNamespace(
+        dag_id=name, run_id=airflow_run_id, logical_date=now, start_date=None, end_date=None, get_state=lambda: "queued"
+    )
+    queued = ResponseFormat.format_dag_run_state(dag_run)
+
+    actual = dag.get_task(TASK_NAME).execute({"dag_run": dag_run})
+
+    assert actual == queued.runId
+    assert str(uuid.UUID(actual)) == actual
+
+
+def test_each_execution_gets_its_own_identity_without_reparsing_the_dag():
+    name = "per_execution_identity"
+    config = _workflow_config(name)
+    dag = build_dag(
+        TASK_NAME, _ingestion_pipeline(name), config, lambda workflow_config: model_str(workflow_config.pipelineRunId)
+    )
+    task = dag.get_task(TASK_NAME)
+    first = str(uuid.uuid4())
+    second = str(uuid.uuid4())
+
+    assert task.execute({"dag_run": SimpleNamespace(dag_id=name, run_id=first)}) == first
+    assert task.execute({"dag_run": SimpleNamespace(dag_id=name, run_id=second)}) == second
+
+
+@pytest.mark.parametrize("airflow_run_id", [str(uuid.uuid4()), "scheduled__2026-09-10T22:50:44+00:00"])
+def test_failure_callback_after_dag_reparse_updates_the_same_run(airflow_run_id):
+    name = "reparsed_failure"
+    now = datetime.now(datetime_timezone.utc)
+    dag_run = SimpleNamespace(
+        dag_id=name, run_id=airflow_run_id, logical_date=now, start_date=now, end_date=None, get_state=lambda: "running"
+    )
+    running = ResponseFormat.format_dag_run_state(dag_run)
+    config = _workflow_config(name)
+    submitted = []
+    with patch("openmetadata_managed_apis.workflows.ingestion.common.OpenMetadata") as client:
+        metadata = client.return_value
+        metadata.get_pipeline_status.side_effect = lambda fqn, run_id: (
+            running.model_copy(deep=True) if fqn == f"svc.{name}" and run_id == running.runId else None
+        )
+        metadata.create_or_update_pipeline_status.side_effect = lambda fqn, status: submitted.append((fqn, status))
+
+        send_failed_status_callback(config, {"dag_run": dag_run})
+
+    assert len(submitted) == 1
+    fqn, status = submitted[0]
+    assert fqn == f"svc.{name}"
+    assert status.runId == running.runId
+    assert status.pipelineState == PipelineState.failed
+    assert status.endDate is not None

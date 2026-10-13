@@ -75,39 +75,30 @@ class ColumnValuesMissingCountValidator(BaseColumnValuesMissingCountValidator, S
         Returns:
             List[DimensionResult]: Top N dimensions plus "Others"
         """
-        dimension_results = []
+        missing_values = test_params.get(self.MISSING_VALUE_MATCH)
+        expected_missing_count = test_params.get(self.MISSING_COUNT_VALUE, 0)
 
-        try:
-            missing_values = test_params.get(self.MISSING_VALUE_MATCH)
-            expected_missing_count = test_params.get(self.MISSING_COUNT_VALUE, 0)
+        row_count_expr = Metrics.rowCount().fn()
+        total_missing_expr = Metrics.nullMissingCount(column).fn()
 
-            row_count_expr = Metrics.rowCount().fn()
-            total_missing_expr = Metrics.nullMissingCount(column).fn()
-
-            if missing_values:
-                total_missing_expr = (
-                    total_missing_expr + add_props(values=missing_values)(Metrics.countInSet.value)(column).fn()
-                )
-
-            metric_expressions = {
-                self.TOTAL_MISSING_COUNT: total_missing_expr,
-                DIMENSION_TOTAL_COUNT_KEY: row_count_expr,
-                DIMENSION_FAILED_COUNT_KEY: func.abs(total_missing_expr - expected_missing_count),
-            }
-
-            normalized_dimension = self._get_normalized_dimension_expression(dimension_col)
-
-            result_rows = self._run_dimensional_validation_query(
-                source=self.runner.dataset,
-                dimension_expr=normalized_dimension,
-                metric_expressions=metric_expressions,
-                top_n=top_n,
+        if missing_values:
+            total_missing_expr = (
+                total_missing_expr + add_props(values=missing_values)(Metrics.countInSet.value)(column).fn()
             )
 
-            return self._process_dimension_rows(result_rows, dimension_col.name, metrics_to_compute, test_params)
+        metric_expressions = {
+            self.TOTAL_MISSING_COUNT: total_missing_expr,
+            DIMENSION_TOTAL_COUNT_KEY: row_count_expr,
+            DIMENSION_FAILED_COUNT_KEY: func.abs(total_missing_expr - expected_missing_count),
+        }
 
-        except Exception as exc:
-            logger.warning(f"Error executing dimensional query: {exc}")
-            logger.debug("Full error details: ", exc_info=True)
+        normalized_dimension = self._get_normalized_dimension_expression(dimension_col)
 
-        return dimension_results
+        result_rows = self._run_dimensional_validation_query(
+            source=self.runner.dataset,
+            dimension_expr=normalized_dimension,
+            metric_expressions=metric_expressions,
+            top_n=top_n,
+        )
+
+        return self._process_dimension_rows(result_rows, dimension_col.name, metrics_to_compute, test_params)

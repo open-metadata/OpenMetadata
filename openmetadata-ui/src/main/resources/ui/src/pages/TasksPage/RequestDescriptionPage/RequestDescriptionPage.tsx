@@ -11,11 +11,21 @@
  *  limitations under the License.
  */
 
-import { Button, Form, FormProps, Input, Space, Typography } from 'antd';
-import { useForm } from 'antd/lib/form/Form';
+import {
+  Box,
+  Button,
+  Card,
+  FieldTypes,
+  FormField,
+  getField,
+  HintText,
+  HookForm,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
@@ -59,14 +69,15 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Assignees from '../shared/Assignees';
 import TaskPayloadSchemaFields from '../shared/TaskPayloadSchemaFields';
-import '../task-page.style.less';
 import { EntityData, Option } from '../TasksPage.interface';
 
 const RequestDescription = () => {
   const { t } = useTranslation();
   const location = useCustomLocation();
   const navigate = useNavigate();
-  const [form] = useForm();
+  const form = useForm<{ title: string; assignees: Option[] }>({
+    defaultValues: { title: '', assignees: [] },
+  });
 
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
 
@@ -114,7 +125,10 @@ const RequestDescription = () => {
     return getDescriptionTaskFieldPath(field, value);
   };
 
-  const onCreateTask: FormProps['onFinish'] = async (formValues) => {
+  const onCreateTask = async (formValues: {
+    title: string;
+    assignees: Option[];
+  }) => {
     setIsLoading(true);
     if (assignees.length) {
       const data: CreateTask = {
@@ -174,11 +188,9 @@ const RequestDescription = () => {
       setAssignees(defaultAssignee);
       setOptions(defaultAssignee);
     }
-    form.setFieldsValue({
-      title: taskMessage.trimEnd(),
-      assignees: defaultAssignee,
-    });
-  }, [entityData]);
+    form.setValue('title', taskMessage.trimEnd());
+    form.setValue('assignees', defaultAssignee ?? []);
+  }, [entityData, form, taskMessage]);
 
   useEffect(() => {
     setPayload({
@@ -203,105 +215,109 @@ const RequestDescription = () => {
       className="content-height-with-resizable-panel"
       firstPanel={{
         className: 'content-resizable-panel-container',
-        cardClassName: 'max-width-md m-x-auto',
+        wrapInCard: false,
         allowScroll: true,
         minWidth: 700,
         flex: 0.6,
         children: (
-          <div className="d-grid gap-4">
-            <TitleBreadcrumb
-              titleLinks={[
-                ...getBreadCrumbList(entityData, entityType),
-                {
-                  name: t('label.create-entity', {
-                    entity: t('label.task'),
-                  }),
-                  activeTitle: true,
-                  url: '',
-                },
-              ]}
-            />
-
-            <div
-              className="m-t-0 request-description"
-              key="request-description">
-              <Typography.Paragraph
-                className="text-base"
-                data-testid="form-title">
-                {t('label.create-entity', {
-                  entity: t('label.task'),
-                })}
-              </Typography.Paragraph>
-              <Form
-                data-testid="form-container"
-                form={form}
-                layout="vertical"
-                onFinish={onCreateTask}>
-                <Form.Item
-                  data-testid="title"
-                  label={`${t('label.task-entity', {
-                    entity: t('label.title'),
-                  })}:`}
-                  name="title">
-                  <Input
-                    disabled
-                    placeholder={t('label.task-entity', {
-                      entity: t('label.title'),
-                    })}
-                  />
-                </Form.Item>
-                <Form.Item
-                  data-testid="assignees"
-                  label={`${t('label.assignee-plural')}:`}
-                  name="assignees"
-                  rules={[
+          <Card className="tw:mx-auto tw:max-w-3xl">
+            <Card.Content>
+              <Box direction="col" gap={4}>
+                <TitleBreadcrumb
+                  titleLinks={[
+                    ...getBreadCrumbList(entityData, entityType),
                     {
-                      required: true,
-                      message: t('message.field-text-is-required', {
-                        fieldText: t('label.assignee-plural'),
+                      name: t('label.create-entity', {
+                        entity: t('label.task'),
                       }),
+                      activeTitle: true,
+                      url: '',
                     },
-                  ]}>
-                  <Assignees
-                    options={options}
-                    value={assignees}
-                    onChange={setAssignees}
-                    onSearch={onSearch}
-                  />
-                </Form.Item>
-                <TaskPayloadSchemaFields
-                  payload={payload}
-                  schema={taskFormSchema?.formSchema}
-                  uiSchema={taskFormSchema?.uiSchema}
-                  onChange={setPayload}
+                  ]}
                 />
 
-                <Form.Item noStyle>
-                  <Space
-                    className="w-full justify-end"
-                    data-testid="cta-buttons"
-                    size={16}>
-                    <Button data-testid="cancel-btn" type="link" onClick={back}>
-                      {t('label.back')}
-                    </Button>
-                    <Button
-                      data-testid="submit-btn"
-                      htmlType="submit"
-                      loading={isLoading}
-                      type="primary">
-                      {payload.newDescription
-                        ? t('label.suggest')
-                        : t('label.save')}
-                    </Button>
-                  </Space>
-                </Form.Item>
-              </Form>
-            </div>
-          </div>
+                <div key="request-description">
+                  <Typography as="p" data-testid="form-title" size="text-md">
+                    {t('label.create-entity', {
+                      entity: t('label.task'),
+                    })}
+                  </Typography>
+                  <HookForm
+                    className="tw:flex tw:flex-col tw:gap-6"
+                    data-testid="form-container"
+                    form={form}
+                    onSubmit={form.handleSubmit(onCreateTask)}>
+                    {getField({
+                      name: 'title',
+                      type: FieldTypes.TEXT,
+                      label: t('label.task-entity', {
+                        entity: t('label.title'),
+                      }),
+                      props: { 'data-testid': 'title', isDisabled: true },
+                    })}
+                    <FormField
+                      control={form.control}
+                      name="assignees"
+                      rules={{
+                        required: t('message.field-text-is-required', {
+                          fieldText: t('label.assignee-plural'),
+                        }),
+                      }}>
+                      {({ field, fieldState }) => (
+                        <Box data-testid="assignees" direction="col" gap={1}>
+                          <Assignees
+                            isRequired
+                            isInvalid={fieldState.invalid}
+                            label={t('label.assignee-plural')}
+                            options={options}
+                            value={field.value}
+                            onBlur={field.onBlur}
+                            onChange={(values) => {
+                              field.onChange(values);
+                              setAssignees(values);
+                            }}
+                            onSearch={onSearch}
+                          />
+                          {fieldState.error?.message && (
+                            <HintText isInvalid>
+                              {fieldState.error.message}
+                            </HintText>
+                          )}
+                        </Box>
+                      )}
+                    </FormField>
+                    <TaskPayloadSchemaFields
+                      payload={payload}
+                      schema={taskFormSchema?.formSchema}
+                      uiSchema={taskFormSchema?.uiSchema}
+                      onChange={setPayload}
+                    />
+                    <Box data-testid="cta-buttons" gap={4} justify="end">
+                      <Button
+                        color="link-gray"
+                        data-testid="cancel-btn"
+                        onPress={back}>
+                        {t('label.back')}
+                      </Button>
+                      <Button
+                        data-testid="submit-btn"
+                        isLoading={isLoading}
+                        type="submit">
+                        {payload.newDescription
+                          ? t('label.suggest')
+                          : t('label.save')}
+                      </Button>
+                    </Box>
+                  </HookForm>
+                </div>
+              </Box>
+            </Card.Content>
+          </Card>
         ),
       }}
       pageTitle={t('label.request-description')}
       secondPanel={{
+        wrapInCard: false,
         className: 'content-resizable-panel-container',
         minWidth: 60,
         flex: 0.4,

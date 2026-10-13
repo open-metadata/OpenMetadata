@@ -60,7 +60,9 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
     def _evaluate_test_condition(self, metric_values: dict, test_params: dict | None = None) -> TestEvaluation:
         """Evaluate the uniqueness test condition and calculate derived values
 
-        For uniqueness test: all values should be unique, meaning COUNT == UNIQUE_COUNT
+        For uniqueness test: the duplicates (COUNT - UNIQUE_COUNT) must stay within the
+        failure threshold, counted against the non-null values. With the default threshold,
+        that means COUNT == UNIQUE_COUNT.
 
         Args:
             metric_values: Dictionary with keys from Metrics enum names
@@ -69,7 +71,7 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
 
         Returns:
             TestEvaluation: TypedDict with keys:
-                - matched: bool - whether test passed (count == unique_count)
+                - matched: bool - whether the duplicates are within the threshold
                 - passed_rows: int - number of unique values
                 - failed_rows: int - number of duplicate values
                 - total_rows: int - total row count
@@ -78,7 +80,7 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
         unique_count = metric_values[Metrics.uniqueCount.name]
 
         return {
-            "matched": count == unique_count,
+            "matched": self._apply_row_threshold(count - unique_count, count),
             "passed_rows": unique_count,
             "failed_rows": count - unique_count,
             "total_rows": count,
@@ -103,16 +105,13 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
         count = metric_values[Metrics.valuesCount.name]
         unique_count = metric_values[Metrics.uniqueCount.name]
 
-        if dimension_info:
-            return (
-                f"Dimension {dimension_info['dimension_name']}={dimension_info['dimension_value']}: "
-                f"Found valuesCount={count} vs. uniqueCount={unique_count}"
-            )
-        else:  # noqa: RET505
-            return (
-                f"Found valuesCount={count} vs. uniqueCount={unique_count}. "
-                "Both counts should be equal for column values to be unique."
-            )
+        return self.format_violation_message(
+            violations=count - unique_count,
+            population=count,
+            violation_noun="duplicate values",
+            matched=self._matched(metric_values, test_params),
+            dimension_info=dimension_info,
+        )
 
     def _get_test_result_values(self, metric_values: dict) -> list[TestResultValue]:
         """Get test result values for uniqueness test

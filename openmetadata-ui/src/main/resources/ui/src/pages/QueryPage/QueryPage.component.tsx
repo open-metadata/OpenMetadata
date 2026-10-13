@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row } from 'antd';
+import { Grid } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
+
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
@@ -22,14 +24,14 @@ import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import QueryCard from '../../components/Database/TableQueries/QueryCard';
-import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { Query } from '../../generated/entity/data/query';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
+import { QueryVote } from '../../interface/entity/vote.interface';
 import {
   getQueryById,
   patchQueries,
@@ -189,11 +191,13 @@ const QueryPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.query')}>
-      <Row gutter={[0, 16]}>
-        <Col span={24}>
+      <Grid
+        className="layout-row layout-grid"
+        style={{ ...getLayoutGutter(0, 16) }}>
+        <Grid.Item className="layout-column" span={24}>
           <TitleBreadcrumb titleLinks={titleBreadcrumb} />
-        </Col>
-        <Col span={24}>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
           <QueryCard
             isExpanded
             afterDeleteAction={afterDeleteAction}
@@ -202,8 +206,8 @@ const QueryPage = () => {
             onQueryUpdate={handleQueryUpdate}
             onUpdateVote={updateVote}
           />
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
     </PageLayoutV1>
   );
 };

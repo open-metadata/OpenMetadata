@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 
-import { Card, Skeleton } from '@openmetadata/ui-core-components';
+import { Card, PageLayout, Skeleton } from '@openmetadata/ui-core-components';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import { KnowledgePage } from '../../../interface/knowledge-center.interface';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
+import { getContextCenterHeaderPresentation } from '../../../utils/ContextCenterPureUtils';
 import { getKnowledgePageName } from '../../../utils/KnowledgePagePureUtils';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import HeaderShell from '../../common/HeaderShell/HeaderShell.component';
 
 interface ArticleVersionHeaderProps {
   knowledgePage?: KnowledgePage;
@@ -29,7 +30,9 @@ const ArticleVersionHeader: FC<ArticleVersionHeaderProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  const isEmbedded = contextCenterClassBase.isEmbeddedMode();
+  const isAiMode = useIsAiMode();
+  const { breadcrumbInsideCard, isEmbedded } =
+    getContextCenterHeaderPresentation(isAiMode);
 
   const breadcrumbItems = [
     contextCenterClassBase.getContextCenterRootBreadcrumb(t),
@@ -55,8 +58,6 @@ const ArticleVersionHeader: FC<ArticleVersionHeaderProps> = ({
     );
   }
 
-  const breadcrumbInsideCard = contextCenterClassBase.isBreadcrumbInsideCard();
-
   const breadcrumbEl = (
     <HeaderBreadcrumb noMargin items={breadcrumbItems} showHome={!isEmbedded} />
   );
@@ -64,9 +65,8 @@ const ArticleVersionHeader: FC<ArticleVersionHeaderProps> = ({
   return (
     <div className="tw:mb-5" data-testid="article-version-header">
       {!breadcrumbInsideCard && <div className="tw:mb-3">{breadcrumbEl}</div>}
-      <HeaderShell
+      <PageLayout.PageHeader
         breadcrumb={breadcrumbInsideCard ? breadcrumbEl : undefined}
-        padding="comfortable"
         title={getKnowledgePageName(knowledgePage, t)}
         variant={isEmbedded ? 'gradient' : 'flat'}
       />

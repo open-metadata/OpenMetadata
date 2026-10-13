@@ -10,53 +10,58 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Radio, RadioChangeEvent } from 'antd';
+import { ButtonGroup, ButtonGroupItem } from '@openmetadata/ui-core-components';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as BookOutline } from '../../../assets/svg/bookoutline.svg';
 import { ReactComponent as CodeOutline } from '../../../assets/svg/codeOutline.svg';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { DataContractMode } from '../../../constants/DataContract.constants';
-import './contract-view-switch-tab.less';
+import {
+  SEGMENT_TOGGLE_GROUP_CLASS,
+  SEGMENT_TOGGLE_ITEM_CLASS,
+} from '../../../constants/SegmentToggle.constants';
 
 const ContractViewSwitchTab = ({
   mode,
   handleModeChange,
 }: {
   mode: DataContractMode;
-  handleModeChange: (e: RadioChangeEvent) => void;
+  handleModeChange: (mode: DataContractMode) => void;
 }) => {
+  const { t } = useTranslation();
+
   return (
-    <Radio.Group
-      className="contract-mode-radio-group"
-      optionType="button"
-      options={[
-        {
-          label: (
-            <BookOutline
-              className="align-middle"
-              color={DE_ACTIVE_COLOR}
-              data-testid="contract-view-switch-tab-ui"
-              height={20}
-              width={20}
-            />
-          ),
-          value: DataContractMode.UI,
-        },
-        {
-          label: (
-            <CodeOutline
-              className="align-middle"
-              color={DE_ACTIVE_COLOR}
-              data-testid="contract-view-switch-tab-yaml"
-              height={20}
-              width={20}
-            />
-          ),
-          value: DataContractMode.YAML,
-        },
-      ]}
-      value={mode}
-      onChange={handleModeChange}
-    />
+    <ButtonGroup
+      disallowEmptySelection
+      className={SEGMENT_TOGGLE_GROUP_CLASS}
+      data-testid="contract-view-switch"
+      selectedKeys={[mode]}
+      size="sm"
+      onSelectionChange={(keys) => {
+        const [selected] = [...keys];
+        // YAML is enum value 0, so test for presence, not truthiness.
+        if (selected !== undefined) {
+          handleModeChange(selected as DataContractMode);
+        }
+      }}>
+      <ButtonGroupItem
+        aria-label={t('label.editor')}
+        className={SEGMENT_TOGGLE_ITEM_CLASS}
+        id={DataContractMode.UI}>
+        <BookOutline
+          className="tw:size-5"
+          data-testid="contract-view-switch-tab-ui"
+        />
+      </ButtonGroupItem>
+      <ButtonGroupItem
+        aria-label={t('label.code')}
+        className={SEGMENT_TOGGLE_ITEM_CLASS}
+        id={DataContractMode.YAML}>
+        <CodeOutline
+          className="tw:size-5"
+          data-testid="contract-view-switch-tab-yaml"
+        />
+      </ButtonGroupItem>
+    </ButtonGroup>
   );
 };
 

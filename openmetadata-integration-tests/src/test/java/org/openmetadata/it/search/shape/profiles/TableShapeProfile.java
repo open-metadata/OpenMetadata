@@ -33,7 +33,7 @@ public final class TableShapeProfile implements EntityShapeProfile {
   }
 
   @Override
-  public EntityInterface minimal(final ShapeContext ctx) {
+  public EntityInterface<?> minimal(final ShapeContext ctx) {
     return new Table()
         .withId(ctx.id())
         .withName("table")
@@ -54,7 +54,7 @@ public final class TableShapeProfile implements EntityShapeProfile {
     return cases.build();
   }
 
-  private EntityInterface flatColumns(final EntityInterface entity, final Rung rung) {
+  private EntityInterface<?> flatColumns(final EntityInterface<?> entity, final Rung rung) {
     final Table table = (Table) entity;
     final List<Column> columns = new ArrayList<>(rung.magnitude());
     for (int i = 0; i < rung.magnitude(); i++) {
@@ -64,7 +64,7 @@ public final class TableShapeProfile implements EntityShapeProfile {
     return table;
   }
 
-  private EntityInterface nestedColumns(final EntityInterface entity, final Rung rung) {
+  private EntityInterface<?> nestedColumns(final EntityInterface<?> entity, final Rung rung) {
     final Table table = (Table) entity;
     Column leaf = new Column().withName("leaf").withDataType(ColumnDataType.STRING);
     for (int depth = 0; depth < rung.magnitude(); depth++) {

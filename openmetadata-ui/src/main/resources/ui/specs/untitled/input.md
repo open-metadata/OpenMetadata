@@ -40,7 +40,7 @@ icon**, **input**, **trailing slot** (tooltip / invalid icon / shortcut),
 | Group surface | `tw:bg-primary` `tw:shadow-xs` `tw:rounded-lg` |
 | Group border | `tw:outline-1 tw:-outline-offset-1 tw:outline-primary` |
 | Focus border | `tw:outline-2 tw:-outline-offset-2 tw:outline-brand` |
-| Input text / placeholder | `tw:text-primary` / `tw:placeholder:text-tertiary` |
+| Input text / placeholder | `tw:text-primary` / `tw:placeholder:text-placeholder` |
 | Leading icon | `tw:text-fg-quaternary` (disabled `tw:text-fg-disabled`) |
 | Padding (sm / md) | `tw:px-3 tw:py-2` / `tw:px-3.5 tw:py-2.5` |
 | Disabled | `tw:bg-disabled_subtle` `tw:outline-disabled` `tw:text-disabled` |

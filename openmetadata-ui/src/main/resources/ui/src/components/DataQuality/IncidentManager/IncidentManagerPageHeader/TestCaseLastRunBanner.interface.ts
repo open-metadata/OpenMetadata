@@ -14,7 +14,7 @@
 import type { ReactNode } from 'react';
 import type { Task } from '../../../../generated/entity/tasks/task';
 import type {
-  TestCaseParameterValue,
+  TestCase,
   TestCaseResolutionStatus,
   TestCaseResult,
   TestCaseStatus,
@@ -27,9 +27,12 @@ import type {
 import type { TaskLinkInfo } from './useTestCaseIncidentHeader';
 
 export interface TestCaseLastRunBannerProps {
+  hasEditStatusPermission?: boolean;
   incidentTask: Task | null;
-  nextRunTimestamp?: number;
-  parameterValues?: TestCaseParameterValue[];
+  /** `null` when no run is scheduled; absent while the schedule is unknown. */
+  nextRunTimestamp?: number | null;
+  onAcknowledge?: () => Promise<void>;
+  testCase?: TestCase;
   testCaseResult?: TestCaseResult;
   testCaseStatus?: TestCaseStatus;
   testCaseStatusData?: TestCaseResolutionStatus;
@@ -44,15 +47,17 @@ export interface LastRunBannerLayoutProps {
 }
 
 export interface IncidentDetailsProps {
+  canAcknowledge?: boolean;
   config: StatusConfig;
   description?: string;
   incidentId?: string;
   incidentLink: TaskLinkInfo | null;
+  onAcknowledge?: () => Promise<void>;
   statusConfig?: IncidentStatusConfig;
 }
 
 export interface LastRunTimeProps {
-  nextRunTimestamp?: number;
+  nextRunTimestamp?: number | null;
   testCaseStatus: TestCaseStatus;
   timestamp?: number;
 }

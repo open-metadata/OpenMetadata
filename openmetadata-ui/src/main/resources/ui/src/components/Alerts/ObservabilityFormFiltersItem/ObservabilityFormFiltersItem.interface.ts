@@ -11,12 +11,6 @@
  *  limitations under the License.
  */
 
-import { EventFilterRule } from '../../../generated/events/eventSubscription';
-import { EventType } from '../../../generated/type/changeEvent';
-
 export interface ObservabilityFormFiltersItemProps {
-  supportedFilters?: EventFilterRule[];
-  containerEntities?: string[];
-  supportedEventTypes?: EventType[];
   isViewMode?: boolean;
 }

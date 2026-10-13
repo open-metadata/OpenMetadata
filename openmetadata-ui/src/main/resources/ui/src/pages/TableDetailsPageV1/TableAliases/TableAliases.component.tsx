@@ -13,8 +13,8 @@
 import { isEmpty } from 'lodash';
 import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import Table from '../../../components/common/Table/Table';
 import { TableComponentProps } from '../../../components/common/Table/Table.interface';
+import Table from '../../../components/common/Table/TableV2';
 import WidgetCard from '../../../components/common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericContext';
 import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
@@ -74,6 +74,12 @@ export const TableAliases = ({
         key: 'name',
         ellipsis: true,
         render: (name: string, record: AliasRow) => (
+          // Native title, not the design-system <Tooltip>: this cell lives in an
+          // antd Table `ellipsis` column, whose own overflow tooltip is native
+          // title-based, and react-aria's Tooltip does not reliably open on hover
+          // when nested inside that cell. A native title carrying the full FQN is
+          // the column's idiomatic overflow affordance.
+          // eslint-disable-next-line openmetadata-ui-patterns/no-raw-title-attribute -- see comment above
           <span title={record.fqn}>{name}</span>
         ),
       },

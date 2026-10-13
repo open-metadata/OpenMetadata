@@ -67,6 +67,24 @@ describe('theme restore boot script', () => {
     expect(document.documentElement).toHaveStyle({ colorScheme: 'light' });
   });
 
+  it.each([
+    [true, 'dark'],
+    [false, 'light'],
+  ])(
+    'restores a system preference from the OS scheme (prefers dark: %s)',
+    (prefersDark, expected) => {
+      localStorage.setItem('ui-theme', 'system');
+      window.matchMedia = jest.fn().mockReturnValue({ matches: prefersDark });
+
+      executeThemeRestore();
+
+      expect(document.documentElement.classList.contains('dark-mode')).toBe(
+        expected === 'dark'
+      );
+      expect(document.documentElement).toHaveStyle({ colorScheme: expected });
+    }
+  );
+
   it('uses light mode when the stored preference cannot be read', () => {
     jest.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
       throw new Error('Storage is unavailable');

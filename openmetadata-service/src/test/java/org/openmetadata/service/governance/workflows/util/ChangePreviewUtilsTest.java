@@ -447,7 +447,7 @@ class ChangePreviewUtilsTest {
 
   @Test
   void buildProposedChangesPayload_entityWithoutChanges_returnsInput() {
-    EntityInterface entity = new GlossaryTerm().withName("t");
+    EntityInterface<?> entity = new GlossaryTerm().withName("t");
     Map<String, Object> existing = Map.of("k", "v");
     assertEquals(existing, ChangePreviewUtils.buildProposedChangesPayload(entity, existing));
   }
@@ -458,7 +458,7 @@ class ChangePreviewUtilsTest {
     // removal that the prior task payload already cancelled, while the latest hop only
     // touches a different field. Without incremental preference, the cumulative removal
     // double-counts and re-introduces the cancelled tag on the removed side.
-    EntityInterface entity =
+    EntityInterface<?> entity =
         new GlossaryTerm()
             .withName("t")
             .withChangeDescription(
@@ -489,7 +489,7 @@ class ChangePreviewUtilsTest {
 
   @Test
   void buildProposedChangesPayload_freshChanges_writesKey() {
-    EntityInterface entity =
+    EntityInterface<?> entity =
         new GlossaryTerm()
             .withName("t")
             .withChangeDescription(
@@ -515,7 +515,7 @@ class ChangePreviewUtilsTest {
         "proposedChanges",
         Map.of("tags", Map.of("added", List.of("PII.Sensitive"), "removed", List.of("PII.None"))));
 
-    EntityInterface entity =
+    EntityInterface<?> entity =
         new GlossaryTerm()
             .withName("t")
             .withChangeDescription(
@@ -543,7 +543,7 @@ class ChangePreviewUtilsTest {
         "proposedChanges",
         Map.of("tags", Map.of("added", List.of("PII.Sensitive"), "removed", List.of())));
 
-    EntityInterface entity =
+    EntityInterface<?> entity =
         new GlossaryTerm()
             .withName("t")
             .withChangeDescription(

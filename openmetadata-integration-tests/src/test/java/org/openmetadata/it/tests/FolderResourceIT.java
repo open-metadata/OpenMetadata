@@ -36,6 +36,7 @@ import org.openmetadata.sdk.services.drives.FolderService;
 public class FolderResourceIT extends BaseEntityIT<Folder, CreateFolder> {
 
   {
+    supportsEntityStatus = false;
     supportsFollowers = false;
     supportsDataProducts = false;
     supportsCustomExtension = false;

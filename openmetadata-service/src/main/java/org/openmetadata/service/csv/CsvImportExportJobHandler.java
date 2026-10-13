@@ -105,7 +105,7 @@ public class CsvImportExportJobHandler implements JobHandler {
           }
         };
 
-    EntityRepository<EntityInterface> repository = getRepository(args.getEntityType());
+    EntityRepository<EntityInterface<?>> repository = getRepository(args.getEntityType());
     CsvImportResult result =
         nullOrEmpty(args.getVersioningEntityType())
             ? repository.importFromCsv(
@@ -131,7 +131,7 @@ public class CsvImportExportJobHandler implements JobHandler {
 
   private void runExport(BackgroundJob job, CsvAsyncJobArgs args) throws IOException {
     String jobId = String.valueOf(job.getId());
-    EntityRepository<EntityInterface> repository = getRepository(args.getEntityType());
+    EntityRepository<EntityInterface<?>> repository = getRepository(args.getEntityType());
     CsvExportProgressCallback progressCallback =
         new CsvExportProgressCallback() {
           @Override
@@ -351,7 +351,8 @@ public class CsvImportExportJobHandler implements JobHandler {
         || Boolean.TRUE.equals(args.getDryRun())) {
       return;
     }
-    EntityRepository<EntityInterface> versioningRepo = getRepository(effectiveVersioningEntityType);
+    EntityRepository<EntityInterface<?>> versioningRepo =
+        getRepository(effectiveVersioningEntityType);
     if (!versioningRepo.supportsBulkImportVersioning()) {
       return;
     }
@@ -389,8 +390,8 @@ public class CsvImportExportJobHandler implements JobHandler {
   }
 
   @SuppressWarnings("unchecked")
-  private EntityRepository<EntityInterface> getRepository(String entityType) {
-    return (EntityRepository<EntityInterface>) Entity.getEntityRepository(entityType);
+  private EntityRepository<EntityInterface<?>> getRepository(String entityType) {
+    return (EntityRepository<EntityInterface<?>>) Entity.getEntityRepository(entityType);
   }
 
   private String getStartedMessage(CsvAsyncJobArgs args) {

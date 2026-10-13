@@ -21,7 +21,7 @@ import { Role } from '../generated/entity/teams/role';
 import { Function } from '../generated/type/function';
 import { Paging } from '../generated/type/paging';
 import { getEncodedFqn } from '../utils/StringUtils';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 const patchConfig = {
   headers: { 'Content-type': 'application/json-patch+json' },

@@ -60,7 +60,7 @@ describe('LineageConfigModal', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.cancel' }));
 
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
@@ -87,7 +87,7 @@ describe('LineageConfigModal', () => {
     fireEvent.change(fieldNodesPerLayer, { target: { value: '7' } });
 
     // Submit form
-    fireEvent.click(screen.getByRole('button', { name: 'OK' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.ok' }));
 
     await waitFor(() => {
       expect(onSave).toHaveBeenCalledWith({
@@ -114,7 +114,7 @@ describe('LineageConfigModal', () => {
     fireEvent.change(fieldUpstream, { target: { value: '-1' } });
 
     // Submit form
-    fireEvent.click(screen.getByRole('button', { name: 'OK' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.ok' }));
 
     await waitFor(() => {
       expect(onSave).not.toHaveBeenCalled();
@@ -137,7 +137,7 @@ describe('LineageConfigModal', () => {
     fireEvent.change(fieldDownstream, { target: { value: '-1' } });
 
     // Submit form
-    fireEvent.click(screen.getByRole('button', { name: 'OK' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.ok' }));
 
     await waitFor(() => {
       expect(onSave).not.toHaveBeenCalled();
@@ -162,7 +162,7 @@ describe('LineageConfigModal', () => {
     fireEvent.change(fieldNodesPerLayer, { target: { value: '4' } });
 
     // Submit form
-    fireEvent.click(screen.getByRole('button', { name: 'OK' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.ok' }));
 
     await waitFor(() => {
       expect(onSave).not.toHaveBeenCalled();
@@ -191,7 +191,7 @@ describe('LineageConfigModal', () => {
     fireEvent.change(fieldNodesPerLayer, { target: { value: '' } });
 
     // Submit form
-    fireEvent.click(screen.getByRole('button', { name: 'OK' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.ok' }));
 
     await waitFor(() => {
       expect(onSave).not.toHaveBeenCalled();

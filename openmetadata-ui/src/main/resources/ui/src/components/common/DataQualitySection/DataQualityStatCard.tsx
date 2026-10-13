@@ -10,9 +10,28 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import React from 'react';
-import { DataQualityStatCardProps } from './DataQualitySection.interface';
+import {
+  DataQualityStatCardProps,
+  DataQualityType,
+} from './DataQualitySection.interface';
+
+const ACTIVE_BUTTON_COLOR: Record<
+  DataQualityType,
+  'secondary-success' | 'secondary-warning' | 'secondary-destructive'
+> = {
+  success: 'secondary-success',
+  aborted: 'secondary-warning',
+  failed: 'secondary-destructive',
+};
+
+const ACTIVE_BACKGROUND: Record<DataQualityType, string> = {
+  success: 'tw:bg-success-primary',
+  aborted: 'tw:bg-warning-primary',
+  failed: 'tw:bg-error-primary',
+};
 
 export const DataQualityStatCard: React.FC<DataQualityStatCardProps> = ({
   count,
@@ -21,22 +40,32 @@ export const DataQualityStatCard: React.FC<DataQualityStatCardProps> = ({
   isActive,
   onClick,
 }) => (
-  <button
-    className={`data-quality-stat-card ${type}-card ${
-      isActive ? 'active' : ''
-    }`}
+  <Button
+    aria-pressed={isActive}
+    className={classNames(
+      `data-quality-stat-card ${type}-card`,
+      'tw:m-2 tw:flex-1',
+      isActive && ACTIVE_BACKGROUND[type],
+      {
+        active: isActive,
+      }
+    )}
+    color={isActive ? ACTIVE_BUTTON_COLOR[type] : 'tertiary'}
     data-testid={`data-quality-stat-card-${type}`}
-    type="button"
-    onClick={onClick}>
-    <Typography.Text
-      className={`stat-count ${type}`}
-      data-testid={`data-quality-stat-card-count-${type}`}>
-      {count}
-    </Typography.Text>
-    <Typography.Text
-      className={`stat-label ${type}`}
-      data-testid={`data-quality-stat-card-label-${type}`}>
-      {label}
-    </Typography.Text>
-  </button>
+    onPress={onClick}>
+    <span className="tw:flex tw:flex-col tw:items-center">
+      <Typography
+        className={`stat-count ${type}`}
+        data-testid={`data-quality-stat-card-count-${type}`}
+        weight="semibold">
+        {count}
+      </Typography>
+      <Typography
+        className={`stat-label ${type}`}
+        data-testid={`data-quality-stat-card-label-${type}`}
+        size="text-xs">
+        {label}
+      </Typography>
+    </span>
+  </Button>
 );

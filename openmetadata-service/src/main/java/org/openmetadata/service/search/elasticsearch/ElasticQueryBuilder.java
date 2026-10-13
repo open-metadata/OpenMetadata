@@ -472,11 +472,16 @@ public class ElasticQueryBuilder {
   public static Query scriptScoreQuery(Query query, String source, Map<String, Double> params) {
     Map<String, JsonData> scriptParams = new HashMap<>();
     params.forEach((name, value) -> scriptParams.put(name, JsonData.of(value)));
+    // Lucene 10 NPE guard (mirrors OpenSearchQueryBuilder): a script_score whose inner query
+    // matches zero docs on a segment returns a null sub-scorer that DisjunctionMaxScorer rejects.
+    // A single-clause bool[should, minimumShouldMatch=1] wrapper yields an empty iterator instead
+    // of null; scoring is identical since a single-clause bool scores exactly its clause.
+    Query guardedQuery = boolQuery().should(query).minimumShouldMatch(1).build();
     return Query.of(
         q ->
             q.scriptScore(
                 ss ->
-                    ss.query(query)
+                    ss.query(guardedQuery)
                         .script(
                             Script.of(
                                 s ->

@@ -66,6 +66,11 @@ public final class RdfDatasetManager implements AutoCloseable {
     return active;
   }
 
+  /** Identity of the serving dataset; reasoning results record it to detect promotions. */
+  public UUID servingGeneration() {
+    return store.servingGeneration();
+  }
+
   RdfStorageInterface servingStorage() {
     return storage(activeDataset());
   }

@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/type/personaContext.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "PersonaContext",
   "description": "Structured form of the materialized AI context shared by members of a Persona.",
   "type": "object",
@@ -137,6 +137,10 @@
   "properties": {
     "persona": {
       "$ref": "entityReference.json"
+    },
+    "prompt": {
+      "description": "The persona's prompt from its context definition; absent when unset or while the context is disabled. Carried only here because consumers treat the markdown document as reference data, not instructions.",
+      "type": "string"
     },
     "generatedAt": {
       "$ref": "basic.json#/definitions/timestamp"

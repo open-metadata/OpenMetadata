@@ -15,7 +15,7 @@ import {
   Button as CoreButton,
   EmptyPlaceholder,
 } from '@openmetadata/ui-core-components';
-import { File02, Plus } from '@untitledui/icons';
+import { File02, Plus } from '@openmetadata/ui-core-components/icons';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { GlossaryTermEmptyPlaceholderProps } from './GlossaryTermTab.interface';
 

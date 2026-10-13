@@ -21,7 +21,7 @@ import {
   Server04,
   Settings02,
   SlashDivider,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import React from 'react';
 import { ReactComponent as AlertIcon } from '../assets/svg/alert.svg';
 import { ReactComponent as AnnouncementIcon } from '../assets/svg/announcements-black.svg';

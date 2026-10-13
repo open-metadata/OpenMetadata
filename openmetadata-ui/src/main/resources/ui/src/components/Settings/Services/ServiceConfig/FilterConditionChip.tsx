@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Button } from '@openmetadata/ui-core-components';
-import { XClose } from '@untitledui/icons';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FilterCondition } from './FiltersConfigForm.types';
 import { conditionKey } from './FiltersConfigForm.utils';

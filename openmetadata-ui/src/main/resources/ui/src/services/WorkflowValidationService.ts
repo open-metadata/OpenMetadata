@@ -33,6 +33,10 @@ import {
 import { validateWorkflowDefinition } from '../rest/workflowDefinitionsAPI';
 import { showErrorToast, showSuccessToast } from '../utils/ToastUtils';
 import {
+  getGitSinkTriggerConfig,
+  isGitSinkNode,
+} from '../utils/WorkflowConfigUtils';
+import {
   getNodeConfiguration,
   getNodeName,
 } from '../utils/WorkflowNodeConfigUtils';
@@ -773,11 +777,15 @@ export const buildWorkflowForSave = async (
     validTrigger?.type
   );
 
-  const finalTriggerConfig = buildTriggerConfig(
+  const triggerConfig = buildTriggerConfig(
     startNodeConfig,
     triggerType,
     validTrigger?.config
   );
+  // A Git sink workflow's trigger cannot include entity types the sink does not sync.
+  const finalTriggerConfig = nodes.some(isGitSinkNode)
+    ? getGitSinkTriggerConfig(triggerConfig)
+    : triggerConfig;
 
   const triggerEntityTypes = resolveTriggerEntityTypes(finalTriggerConfig);
   assertTriggerHasEntityTypes(triggerType, triggerEntityTypes);

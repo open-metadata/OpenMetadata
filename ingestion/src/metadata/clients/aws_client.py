@@ -159,7 +159,7 @@ class AWSClient:
     def _get_session(
         aws_access_key_id: str | None,
         aws_secret_access_key: CustomSecretStr | None,
-        aws_session_token: str | None,
+        aws_session_token: CustomSecretStr | None,
         aws_region: str,
         profile=None,
         refresh_using: Callable | None = None,
@@ -182,7 +182,7 @@ class AWSClient:
         return Session(
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=(aws_secret_access_key.get_secret_value() if aws_secret_access_key else None),
-            aws_session_token=aws_session_token,
+            aws_session_token=(aws_session_token.get_secret_value() if aws_session_token else None),
             region_name=aws_region,
             profile_name=profile,
         )

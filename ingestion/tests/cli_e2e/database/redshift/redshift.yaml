@@ -8,6 +8,7 @@ source:
       authType:
         password: $E2E_REDSHIFT_PASSWORD
       database: $E2E_REDSHIFT_DB
+      sslMode: require
       type: Redshift
   sourceConfig:
     config:

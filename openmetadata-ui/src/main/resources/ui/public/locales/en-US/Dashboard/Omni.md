@@ -6,6 +6,8 @@ In this section, we provide guides and references to use the Omni connector.
 
 OpenMetadata relies on Omni's REST API. To know more you can read the <a href="https://docs.omni.co/api" target="_blank">Omni API docs</a>. You will need an Organization API key or a Personal Access Token (PAT) with access to your models and documents. The connector ingests Omni models and topics as data models, documents/workbooks as dashboards (with their tiles as charts), and builds lineage from your warehouse tables through topics to dashboards.
 
+You can find further information on the Omni connector in the <a href="https://docs.open-metadata.org/connectors/dashboard/omni" target="_blank">docs</a>.
+
 ## Connection Details
 
 $$section

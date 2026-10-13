@@ -1,0 +1,103 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+/**
+ * Databend Database Connection Config
+ */
+export interface DatabendConnection {
+    connectionArguments?: { [key: string]: any };
+    /**
+     * Additional options appended to the Databend SQLAlchemy connection URL. For a non-TLS HTTP
+     * endpoint, such as the default self-hosted port 8000, set sslmode to disable. For a TLS
+     * endpoint, set sslmode to enable.
+     */
+    connectionOptions?: { [key: string]: string };
+    /**
+     * Regex to include or exclude Databend catalogs. Only the `default` catalog is currently
+     * ingested.
+     */
+    databaseFilterPattern?: FilterPattern;
+    /**
+     * Optional Databend database to ingest. It is also used as the initial database of the
+     * connection. When omitted, the connection starts in the `default` database and all
+     * accessible Databend databases are scanned as OpenMetadata schemas.
+     */
+    databaseSchema?: string;
+    /**
+     * Host and port of the Databend HTTP query service. The default self-hosted port is 8000.
+     */
+    hostPort: string;
+    /**
+     * Password to connect to Databend.
+     */
+    password: string;
+    /**
+     * Regex to include or exclude Databend databases.
+     */
+    schemaFilterPattern?: FilterPattern;
+    /**
+     * SQLAlchemy driver scheme options.
+     */
+    scheme?:                     DatabendScheme;
+    supportsMetadataExtraction?: boolean;
+    supportsProfiler?:           boolean;
+    /**
+     * Regex to include or exclude tables and views.
+     */
+    tableFilterPattern?: FilterPattern;
+    /**
+     * Service Type
+     */
+    type?: DatabendType;
+    /**
+     * Username to connect to Databend. The user must be able to read system and
+     * information_schema metadata.
+     */
+    username: string;
+}
+
+/**
+ * Regex to include or exclude Databend catalogs. Only the `default` catalog is currently
+ * ingested.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex to include or exclude Databend databases.
+ *
+ * Regex to include or exclude tables and views.
+ */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
+}
+
+/**
+ * SQLAlchemy driver scheme options.
+ */
+export enum DatabendScheme {
+    Databend = "databend",
+}
+
+/**
+ * Service Type
+ *
+ * Service type.
+ */
+export enum DatabendType {
+    Databend = "Databend",
+}

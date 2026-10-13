@@ -218,7 +218,11 @@ class PresidioRecognizerFactory:
         )
         factory = cast(Callable[..., EntityRecognizer], factory_or_class)  # noqa: TC006
 
-        return factory(**args)
+        predefined_recognizer = factory(**args)
+        # Factories may return a subclass (e.g. ValidatedDateRecognizer); keep the configured
+        # name so results can be attributed back to the recognizer config.
+        predefined_recognizer.name = config.name.value
+        return predefined_recognizer
 
     @staticmethod
     def create_recognizers_for_tag(tag: Tag) -> list[EntityRecognizer]:

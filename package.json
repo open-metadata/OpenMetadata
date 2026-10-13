@@ -14,7 +14,7 @@
     "quicktype": "20.0.27"
   },
   "resolutions": {
-    "brace-expansion": "1.1.18",
+    "brace-expansion": "1.1.21",
     "lodash": "4.18.1",
     "stream-json": "3.5.0"
   },

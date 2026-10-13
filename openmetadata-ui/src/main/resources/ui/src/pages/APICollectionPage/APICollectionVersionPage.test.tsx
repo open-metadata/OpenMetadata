@@ -12,10 +12,8 @@
  */
 import { act, render, screen } from '@testing-library/react';
 import { useParams } from 'react-router-dom';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { getApiCollectionByFQN } from '../../rest/apiCollectionsAPI';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import APICollectionVersionPage from './APICollectionVersionPage';

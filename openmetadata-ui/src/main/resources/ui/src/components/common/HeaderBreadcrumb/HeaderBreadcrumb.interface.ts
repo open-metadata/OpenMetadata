@@ -51,7 +51,7 @@ export interface HeaderBreadcrumbProps {
   /**
    * When true, drops the default bottom margin (`tw:mb-3`). Use when the
    * breadcrumb is placed inside a container that already owns the spacing
-   * (e.g. `HeaderShell`, which controls the breadcrumb→title gap via its own
+   * (e.g. `PageHeader`, which controls the breadcrumb→title gap via its own
    * layout). Defaults to false.
    */
   noMargin?: boolean;

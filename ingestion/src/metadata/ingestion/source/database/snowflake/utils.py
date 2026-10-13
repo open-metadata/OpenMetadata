@@ -481,7 +481,19 @@ def _fetch_ddl(connection: Connection, object_type: str, object_name: str) -> st
 
 
 @reflection.cache
-def get_view_definition(self, connection, table_name, schema=None, **kw):  # pylint: disable=unused-argument
+def get_view_definition(self, connection, table_name, schema=None, include_ddl: bool = False, **kw):  # pylint: disable=unused-argument
+    """
+    INFORMATION_SCHEMA.VIEWS.VIEW_DEFINITION is the CREATE statement as it was submitted
+    (COPY GRANTS kept, column list and view COMMENT missing), whereas GET_DDL regenerates the
+    DDL from the live view. The bulk read serves lineage without a round trip per view, so
+    GET_DDL leads only when the DDL itself is being ingested.
+    """
+    view_name = _qualified_identifier(schema or self.default_schema_name, table_name)
+    if include_ddl:
+        view_ddl = _fetch_ddl(connection, "VIEW", view_name)
+        if view_ddl:
+            return view_ddl
+
     view_definition = get_view_definition_wrapper(
         self,
         connection,
@@ -491,13 +503,12 @@ def get_view_definition(self, connection, table_name, schema=None, **kw):  # pyl
     )
     if view_definition:
         return view_definition
+    if include_ddl:
+        return None
 
     # If the view definition is not found via optimized query,
     # we need to get the view definition from the view ddl
     logger.debug(f"View definition not found via optimized query for {schema}.{table_name}, falling back to DDL query")
-
-    schema = schema or self.default_schema_name
-    view_name = _qualified_identifier(schema, table_name)
     return _fetch_ddl(connection, "VIEW", view_name)
 
 

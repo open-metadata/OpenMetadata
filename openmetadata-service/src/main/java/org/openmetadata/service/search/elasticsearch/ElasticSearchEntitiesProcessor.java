@@ -23,7 +23,7 @@ import org.openmetadata.service.workflows.interfaces.Processor;
 
 @Slf4j
 public class ElasticSearchEntitiesProcessor
-    implements Processor<List<BulkOperation>, ResultList<? extends EntityInterface>> {
+    implements Processor<List<BulkOperation>, ResultList<? extends EntityInterface<?>>> {
   private final StepStats stats = new StepStats();
 
   public ElasticSearchEntitiesProcessor(int total) {
@@ -32,7 +32,7 @@ public class ElasticSearchEntitiesProcessor
 
   @Override
   public List<BulkOperation> process(
-      ResultList<? extends EntityInterface> input, Map<String, Object> contextData)
+      ResultList<? extends EntityInterface<?>> input, Map<String, Object> contextData)
       throws SearchIndexException {
     String entityType = (String) contextData.get(ENTITY_TYPE_KEY);
     if (CommonUtil.nullOrEmpty(entityType)) {
@@ -71,16 +71,16 @@ public class ElasticSearchEntitiesProcessor
   }
 
   private static List<BulkOperation> buildBulkOperations(
-      String entityType, List<? extends EntityInterface> entities) {
+      String entityType, List<? extends EntityInterface<?>> entities) {
     List<BulkOperation> operations = new ArrayList<>();
-    for (EntityInterface entity : entities) {
+    for (EntityInterface<?> entity : entities) {
       BulkOperation operation = getUpdateOperation(entityType, entity);
       operations.add(operation);
     }
     return operations;
   }
 
-  public static BulkOperation getUpdateOperation(String entityType, EntityInterface entity) {
+  public static BulkOperation getUpdateOperation(String entityType, EntityInterface<?> entity) {
     IndexMapping indexMapping = Entity.getSearchRepository().getIndexMapping(entityType);
     String indexName = indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias());
     String doc =

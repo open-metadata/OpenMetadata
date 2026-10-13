@@ -19,3 +19,15 @@ export enum TestCaseType {
   table = 'table',
   column = 'column',
 }
+
+/**
+ * Tabs of the test case detail page. Lives here rather than beside the page so
+ * the routing utilities that build these URLs — a lower layer — do not have to
+ * import a route-level module to name a tab.
+ */
+export enum TestCasePageTabs {
+  TEST_CASE_RESULTS = 'test-case-results',
+  DIMENSIONALITY = 'dimensionality',
+  SQL_QUERY = 'sql-query',
+  ISSUES = 'issues',
+}

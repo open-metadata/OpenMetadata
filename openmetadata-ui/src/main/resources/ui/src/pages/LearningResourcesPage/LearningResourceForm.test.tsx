@@ -11,9 +11,24 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
+import { SOURCE_URL_PLACEHOLDERS } from '../../constants/Learning.constants';
+import { ResourceType } from '../../generated/entity/learning/learningResource';
 import { LearningResource } from '../../rest/learningResourceAPI';
 import { LearningResourceForm } from './LearningResourceForm.component';
+
+const openSelect = (formItemTestId: string) => {
+  fireEvent.mouseDown(
+    within(screen.getByTestId(formItemTestId)).getByRole('combobox')
+  );
+};
 
 const mockCreateLearningResource = jest.fn();
 const mockUpdateLearningResource = jest.fn();
@@ -193,5 +208,89 @@ describe('LearningResourceForm', () => {
     });
 
     expect(mockProps.onClose).toHaveBeenCalled();
+  });
+
+  it('should offer Video, Storylane, Link and PDF resource types', async () => {
+    await act(async () => {
+      render(<LearningResourceForm {...mockProps} />);
+    });
+
+    await act(async () => {
+      openSelect('resource-type-form-item');
+    });
+
+    expect(screen.getByText('label.video')).toBeInTheDocument();
+    expect(screen.getByText('label.storylane')).toBeInTheDocument();
+    expect(screen.getByText('label.link')).toBeInTheDocument();
+    expect(screen.getByText('label.pdf')).toBeInTheDocument();
+  });
+
+  it('should suggest a PDF URL once the PDF type is selected', async () => {
+    await act(async () => {
+      render(<LearningResourceForm {...mockProps} />);
+    });
+
+    await act(async () => {
+      openSelect('resource-type-form-item');
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByText('label.pdf'));
+    });
+
+    expect(screen.getByTestId('source-url-input')).toHaveAttribute(
+      'placeholder',
+      SOURCE_URL_PLACEHOLDERS[ResourceType.PDF]
+    );
+  });
+
+  it('should create a Link resource pointing at the entered URL', async () => {
+    const guideUrl = 'https://sharepoint.example.com/sites/data/guide';
+    await act(async () => {
+      render(<LearningResourceForm {...mockProps} />);
+    });
+
+    fireEvent.change(screen.getByTestId('name-input'), {
+      target: { value: 'DataSeekerGuide' },
+    });
+    fireEvent.change(screen.getByTestId('description-input'), {
+      target: { value: 'Internal guidance for Data Seekers' },
+    });
+    fireEvent.change(screen.getByTestId('source-url-input'), {
+      target: { value: guideUrl },
+    });
+    await act(async () => {
+      openSelect('resource-type-form-item');
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByText('label.link'));
+    });
+    await act(async () => {
+      openSelect('categories-form-item');
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTitle('Discovery'));
+    });
+    await act(async () => {
+      openSelect('contexts-form-item');
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTitle('Domain'));
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('save-resource'));
+    });
+
+    await waitFor(() => {
+      expect(mockCreateLearningResource).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'DataSeekerGuide',
+          resourceType: ResourceType.Link,
+          categories: ['Discovery'],
+          contexts: [{ pageId: 'domain', componentId: undefined }],
+          source: { provider: undefined, url: guideUrl },
+        })
+      );
+    });
   });
 });

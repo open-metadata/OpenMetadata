@@ -15,21 +15,6 @@ import { cleanup, render, screen } from '@testing-library/react';
 import { ProfilerProgressWidgetProps } from '../TableProfiler.interface';
 import ProfilerProgressWidget from './ProfilerProgressWidget';
 
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Progress: jest
-    .fn()
-    .mockImplementation(() => (
-      <span data-testid="progress-bar">progress bar</span>
-    )),
-  Row: jest
-    .fn()
-    .mockImplementation(({ children }) => (
-      <div data-testid="profiler-progress-bar-container">{children}</div>
-    )),
-  Col: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-}));
-
 const mockProps: ProfilerProgressWidgetProps = {
   value: 0.2,
 };
@@ -54,5 +39,29 @@ describe('Test ProfilerProgressWidget component', () => {
       `${Math.round(mockProps.value * 100)}%`
     );
     expect(progressBar).toBeInTheDocument();
+    expect(screen.getByRole('progressbar')).toHaveAttribute(
+      'aria-valuenow',
+      '20'
+    );
+  });
+
+  it('should put the percentage after the bar and apply strokeColor when direction is right', () => {
+    render(
+      <ProfilerProgressWidget
+        direction="right"
+        strokeColor="var(--om-color-success-500)"
+        value={0.5}
+      />
+    );
+
+    const container = screen.getByTestId('profiler-progress-bar-container');
+
+    expect(container).toHaveClass('tw:flex-row-reverse');
+    expect(container.style.getPropertyValue('--progress-stroke')).toBe(
+      'var(--om-color-success-500)'
+    );
+    expect(screen.getByRole('progressbar').firstElementChild).toHaveClass(
+      'tw:bg-(--progress-stroke)'
+    );
   });
 });

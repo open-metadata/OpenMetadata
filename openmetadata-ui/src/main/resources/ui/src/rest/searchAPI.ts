@@ -24,7 +24,7 @@ import {
 } from '../interface/search.interface';
 import { omitDeep } from '../utils/APIUtils';
 import { getQueryWithSlash } from '../utils/StringUtils';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 const getSearchIndexParam: (
   si: SearchIndex | SearchIndex[] | undefined
@@ -194,7 +194,7 @@ export const rawSearchQuery = <
   >(apiUrl, {
     params: {
       index: getSearchIndexParam(searchIndex),
-      from: (pageNumber - 1) * pageSize,
+      from: (Math.max(1, pageNumber) - 1) * pageSize,
       size: pageSize,
       deleted: includeDeletedParam,
       query_filter: JSON.stringify(queryFilter),
@@ -248,6 +248,29 @@ export const searchPreview = async (payload: PreviewSearchRequest) => {
   return response.data;
 };
 
+export const searchEntityTypeCounts = async (
+  request: Pick<
+    SearchRequest<SearchIndex[]>,
+    'query' | 'searchIndex' | 'queryFilter' | 'postFilter' | 'includeDeleted'
+  > & { includeTopHit?: boolean }
+) => {
+  const response = await APIClient.get<SearchResponse<SearchIndex>>(
+    '/search/entityTypeCounts',
+    {
+      params: {
+        q: request.query,
+        index: request.searchIndex?.join(','),
+        query_filter: JSON.stringify(request.queryFilter),
+        post_filter: JSON.stringify(request.postFilter),
+        deleted: request.includeDeleted,
+        include_top_hit: request.includeTopHit,
+      },
+    }
+  );
+
+  return formatSearchQueryResponse(response.data);
+};
+
 export const nlqSearch = async (payload: SearchRequest<SearchIndex>) => {
   const {
     pageNumber = 1,
@@ -268,7 +291,7 @@ export const nlqSearch = async (payload: SearchRequest<SearchIndex>) => {
         q: query,
         index: searchIndex,
         size: pageSize,
-        from: (pageNumber - 1) * pageSize,
+        from: (Math.max(1, pageNumber) - 1) * pageSize,
         deleted: includeDeletedParam,
         sort_field: sortField,
         sort_order: sortOrder,

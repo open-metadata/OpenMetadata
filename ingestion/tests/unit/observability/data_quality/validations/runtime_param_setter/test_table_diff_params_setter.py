@@ -272,3 +272,126 @@ class TestForSnowflake:
         )
 
         assert setter.get_parameters(test_case) == IsInstance(TableDiffRuntimeParameters)
+
+
+class TestResolvedConnection:
+    """The workflow's resolved connection, from the YAML serviceConnections or the server, must build the diff URL.
+
+    A non-bot token reads the stored connection with its secrets masked, and a service may store no connection.
+    """
+
+    @pytest.fixture
+    def service_connection_config(self) -> SnowflakeConnection:
+        return SnowflakeConnection(account="account", username="username", warehouse="warehouse", password="secret")
+
+    @pytest.fixture
+    def service1(self) -> DatabaseService:
+        return DatabaseService.model_construct(
+            id=uuid.uuid4(),
+            name="TestService1",
+            fullyQualifiedName="TestService1",
+            serviceType=DatabaseServiceType.Snowflake,
+            connection=DatabaseConnection(
+                config=SnowflakeConnection(
+                    account="account", username="username", warehouse="warehouse", password="*********"
+                )
+            ),
+        )
+
+    @pytest.fixture
+    def service2(self, service_connection_config: SnowflakeConnection) -> DatabaseService:
+        return DatabaseService.model_construct(
+            id=uuid.uuid4(),
+            name="TestService2",
+            fullyQualifiedName="TestService2",
+            serviceType=DatabaseServiceType.Snowflake,
+            connection=DatabaseConnection(config=service_connection_config),
+        )
+
+    @pytest.fixture
+    def setter(
+        self,
+        metadata: OpenMetadata,
+        service_connection_config: SnowflakeConnection,
+        sampler: SamplerInterface,
+        table1: Table,
+    ) -> TableDiffParamsSetter:
+        return TableDiffParamsSetter(
+            ometa_client=metadata,
+            service_connection_config=service_connection_config,
+            sampler=sampler,
+            table_entity=table1,
+        )
+
+    def test_table1_url_uses_the_resolved_connection(
+        self, setter: TableDiffParamsSetter, parameter_values: list[TestCaseParameterValue]
+    ) -> None:
+        test_case = TestCase.model_construct(
+            parameterValues=[*parameter_values, TestCaseParameterValue(name="keyColumns", value=json.dumps(["name"]))],
+        )
+        service_url = setter.get_parameters(test_case).table1.serviceUrl
+        assert ":secret@" in str(service_url)
+        assert "*********" not in str(service_url)
+
+    def test_table1_url_falls_back_to_the_stored_connection(
+        self,
+        metadata: OpenMetadata,
+        sampler: SamplerInterface,
+        table1: Table,
+        parameter_values: list[TestCaseParameterValue],
+    ) -> None:
+        setter = TableDiffParamsSetter(
+            ometa_client=metadata, service_connection_config=None, sampler=sampler, table_entity=table1
+        )
+        test_case = TestCase.model_construct(
+            parameterValues=[*parameter_values, TestCaseParameterValue(name="keyColumns", value=json.dumps(["name"]))],
+        )
+        assert "%2A%2A%2A" in str(setter.get_parameters(test_case).table1.serviceUrl)
+
+    def test_service_without_a_stored_connection_uses_the_resolved_one(
+        self, setter: TableDiffParamsSetter, metadata: OpenMetadata, service1: DatabaseService, table1: Table, service2
+    ) -> None:
+        unstored = service1.model_copy(update={"connection": None})
+        services = {table1.service.id: unstored, service2.id: service2}
+        metadata.get_by_id.side_effect = lambda entity, entity_id, **kwargs: services.get(entity_id, service2)
+        test_case = TestCase.model_construct(
+            parameterValues=[
+                TestCaseParameterValue(name="table2", value="TestService2.test_db.test_schema.table2"),
+                TestCaseParameterValue(name="keyColumns", value=json.dumps(["name"])),
+            ],
+        )
+        assert ":secret@" in str(setter.get_parameters(test_case).table1.serviceUrl)
+
+    def test_same_service_diff_reads_key_pair_from_the_resolved_connection(
+        self, metadata: OpenMetadata, sampler: SamplerInterface, table1: Table, table2: Table
+    ) -> None:
+        resolved = SnowflakeConnection(
+            account="account",
+            username="username",
+            warehouse="warehouse",
+            privateKey="resolved-key",
+            snowflakePrivatekeyPassphrase="resolved-passphrase",
+        )
+        # Same service ID, but a reference projected with different optional fields.
+        same_service_table2 = table2.model_copy(
+            update={"service": table1.service.model_copy(update={"displayName": "Another projection"})}
+        )
+        metadata.get_by_name.side_effect = lambda entity, fqn, **kwargs: same_service_table2
+        setter = TableDiffParamsSetter(
+            ometa_client=metadata,
+            service_connection_config=resolved,
+            sampler=sampler,
+            table_entity=table1,
+            service_url_getter=lambda param_setter, service: "snowflake://username@account/test_db",
+        )
+        test_case = TestCase.model_construct(
+            parameterValues=[
+                TestCaseParameterValue(name="table2", value="TestService1.test_db.test_schema.table2"),
+                TestCaseParameterValue(name="keyColumns", value=json.dumps(["name"])),
+                TestCaseParameterValue(name="table2.keyColumns", value=json.dumps(["table_id"])),
+            ],
+        )
+        params = setter.get_parameters(test_case)
+        for table in (params.table1, params.table2):
+            assert table.privateKey.get_secret_value() == "resolved-key"
+            assert table.passPhrase.get_secret_value() == "resolved-passphrase"

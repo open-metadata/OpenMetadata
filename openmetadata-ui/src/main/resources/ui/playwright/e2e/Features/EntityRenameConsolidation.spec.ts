@@ -347,7 +347,11 @@ test.describe(
 
         // Navigate to classification
         await sidebarClick(page, SidebarItem.TAGS);
-        await page.getByTestId('side-panel-classification').first().waitFor();
+        await expect(
+          page
+            .getByTestId('side-panel-classification')
+            .filter({ visible: true })
+        ).not.toHaveCount(0);
         await page
           .locator('[data-testid="side-panel-classification"]')
           .filter({ hasText: classification.data.displayName })
@@ -410,7 +414,11 @@ test.describe(
         await redirectToHomePage(page);
 
         await sidebarClick(page, SidebarItem.TAGS);
-        await page.getByTestId('side-panel-classification').first().waitFor();
+        await expect(
+          page
+            .getByTestId('side-panel-classification')
+            .filter({ visible: true })
+        ).not.toHaveCount(0);
         await page
           .locator('[data-testid="side-panel-classification"]')
           .filter({ hasText: classification.data.displayName })
@@ -474,7 +482,11 @@ test.describe(
 
         // Navigate to tag
         await sidebarClick(page, SidebarItem.TAGS);
-        await page.getByTestId('side-panel-classification').first().waitFor();
+        await expect(
+          page
+            .getByTestId('side-panel-classification')
+            .filter({ visible: true })
+        ).not.toHaveCount(0);
         await page
           .locator('[data-testid="side-panel-classification"]')
           .filter({ hasText: classification.data.displayName })
@@ -528,7 +540,11 @@ test.describe(
         await redirectToHomePage(page);
 
         await sidebarClick(page, SidebarItem.TAGS);
-        await page.getByTestId('side-panel-classification').first().waitFor();
+        await expect(
+          page
+            .getByTestId('side-panel-classification')
+            .filter({ visible: true })
+        ).not.toHaveCount(0);
         await page
           .locator('[data-testid="side-panel-classification"]')
           .filter({ hasText: classification.data.displayName })

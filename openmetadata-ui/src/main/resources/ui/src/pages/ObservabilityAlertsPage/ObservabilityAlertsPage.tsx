@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row } from 'antd';
+import { Grid } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
+
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import DeleteModal from '../../components/common/DeleteModal/DeleteModal';
@@ -65,16 +67,18 @@ const ObservabilityAlertsPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.observability-alert')}>
-      <Row gutter={[0, 16]}>
-        <Col span={24}>
+      <Grid
+        className="layout-row layout-grid"
+        style={{ ...getLayoutGutter(0, 16) }}>
+        <Grid.Item className="layout-column" span={24}>
           <ObservabilityAlertsHeader
             canCreate={Boolean(
               alertResourcePermission?.Create || alertResourcePermission?.All
             )}
             onAddAlert={handleAddAlert}
           />
-        </Col>
-        <Col span={24}>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
           <ObservabilityAlertsTable
             alertPermissions={alertPermissions}
             alertResourcePermission={alertResourcePermission}
@@ -95,8 +99,8 @@ const ObservabilityAlertsPage = () => {
             onSelectAlert={handleSelectAlert}
             onViewAlert={onViewAlert}
           />
-        </Col>
-        <Col span={24}>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
           <DeleteModal
             entityTitle={getEntityName(selectedAlert)}
             isDeleting={isDeleting}
@@ -107,8 +111,8 @@ const ObservabilityAlertsPage = () => {
             onCancel={() => handleSelectAlert(undefined)}
             onDelete={handleAlertHardDelete}
           />
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
     </PageLayoutV1>
   );
 };

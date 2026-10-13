@@ -14,10 +14,11 @@ import {
   Box,
   EmptyPlaceholder,
   EmptyPlaceholderAction,
+  Owner,
   Skeleton,
   Table,
+  Typography,
 } from '@openmetadata/ui-core-components';
-import { Typography } from 'antd';
 import { useMemo } from 'react';
 import type { SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
@@ -36,7 +37,6 @@ import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterC
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
-import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import { ProfilerTabPath } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import ProfilerProgressWidget from '../../../Database/Profiler/TableProfiler/ProfilerProgressWidget/ProfilerProgressWidget';
 
@@ -152,13 +152,13 @@ export const TestSuitesTable = ({
     <Table.Row id={record.id ?? record.name} key={record.id ?? record.name}>
       <Table.Cell>{renderNameCell(record)}</Table.Cell>
       <Table.Cell>
-        <Typography.Text>
+        <Typography className="tw:text-primary">
           {(record.summary as TestSummary)?.total ?? 0}
-        </Typography.Text>
+        </Typography>
       </Table.Cell>
       <Table.Cell>{renderSuccessCell(record.summary)}</Table.Cell>
       <Table.Cell>
-        <OwnerLabel
+        <Owner
           isCompactView={false}
           maxVisibleOwners={4}
           owners={record.owners}

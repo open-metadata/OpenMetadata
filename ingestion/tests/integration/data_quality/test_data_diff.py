@@ -564,7 +564,10 @@ def test_error_paths(
         "sink": sink_config,
         "workflowConfig": workflow_config,
     }
-    run_workflow(TestSuiteWorkflow, workflow_config)
+    # An aborted case is a step failure now, which puts the run under the 90% success
+    # threshold and makes raise_from_status raise. These cases exercise exactly that, and
+    # what is asserted is the TestCaseResult, not the verdict of the run.
+    run_workflow(TestSuiteWorkflow, workflow_config, raise_from_status=False)
     test_case_entity: TestCase = metadata.get_or_create_test_case(f"{table1.fullyQualifiedName.root}.{parameters.name}")
     expected.timestamp = test_case_entity.testCaseResult.timestamp  # timestamp is not deterministic
     assert_equal_pydantic_objects(expected, test_case_entity.testCaseResult)

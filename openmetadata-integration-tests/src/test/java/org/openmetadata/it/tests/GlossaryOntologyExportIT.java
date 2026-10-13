@@ -23,13 +23,13 @@ import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.GlossaryTermTestFactory;
 import org.openmetadata.it.factories.GlossaryTestFactory;
+import org.openmetadata.it.util.RdfTestUtils;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
-import org.openmetadata.service.rdf.RdfUpdater;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
@@ -82,6 +82,8 @@ public class GlossaryOntologyExportIT {
 
   private static GenericContainer<?> localFusekiContainer;
 
+  private static boolean enabledServerRdf;
+
   @BeforeAll
   static void enableRdf() {
     String fusekiEndpoint;
@@ -107,12 +109,12 @@ public class GlossaryOntologyExportIT {
     rdfConfig.setUsername("admin");
     rdfConfig.setPassword(FUSEKI_ADMIN_PASSWORD);
     rdfConfig.setDataset(FUSEKI_DATASET);
-    RdfUpdater.initialize(rdfConfig);
+    enabledServerRdf = RdfTestUtils.enableServerRdf(rdfConfig);
   }
 
   @AfterAll
   static void disableRdf() {
-    RdfUpdater.disable();
+    RdfTestUtils.disableServerRdf(enabledServerRdf);
     if (localFusekiContainer != null) {
       localFusekiContainer.stop();
       localFusekiContainer = null;

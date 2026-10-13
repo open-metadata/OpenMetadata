@@ -63,7 +63,6 @@ from metadata.utils.filters import filter_by_chart
 from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.helpers import clean_uri, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.tag_utils import get_tag_labels
 
 logger = ingestion_logger()
 
@@ -88,7 +87,6 @@ class GrafanaSource(DashboardServiceSource):
         self.folders: list[GrafanaFolder] = []
         self.datasources: dict[str, GrafanaDatasource] = {}
         self.dashboards: list[GrafanaSearchResult] = []
-        self.tags: set[str] = set()
 
     @classmethod
     def create(
@@ -170,11 +168,12 @@ class GrafanaSource(DashboardServiceSource):
                 ],
                 service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                 sourceUrl=SourceUrl(dashboard_url),
-                tags=get_tag_labels(
-                    metadata=self.metadata,
+                tags=self.get_tag_labels(
+                    entity_fqn=fqn._build(
+                        vars(self.context.get())["dashboard_service"], dashboard_details.dashboard.uid
+                    ),
                     tags=dashboard_details.dashboard.tags,
                     classification_name=GRAFANA_TAG_CATEGORY,
-                    include_tags=self.source_config.includeTags,
                 ),
                 owners=self.get_owner_ref(dashboard_details),
             )

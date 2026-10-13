@@ -6,9 +6,11 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ClientErrorException;
 import jakarta.ws.rs.Consumes;
@@ -41,7 +43,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
-import javax.validation.constraints.NotEmpty;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.configuration.rdf.CustomOntology;
 import org.openmetadata.schema.api.configuration.rdf.InferenceMaterializationResult;
@@ -49,6 +50,9 @@ import org.openmetadata.schema.api.configuration.rdf.InferenceRule;
 import org.openmetadata.schema.api.configuration.rdf.InferenceRuleList;
 import org.openmetadata.schema.api.configuration.rdf.InferenceRuleStatus;
 import org.openmetadata.schema.api.data.RdfEntityDiff;
+import org.openmetadata.schema.api.rdf.AgentSparqlError;
+import org.openmetadata.schema.api.rdf.AgentSparqlQuery;
+import org.openmetadata.schema.api.rdf.AgentSparqlResponse;
 import org.openmetadata.schema.api.rdf.RdfInferenceStatus;
 import org.openmetadata.schema.api.rdf.RdfProjectionState;
 import org.openmetadata.schema.api.rdf.RdfStatus;
@@ -61,7 +65,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.DocumentRepository;
-import org.openmetadata.service.llm.LLMClientHolder;
+import org.openmetadata.service.ontology.OntologyAiAvailability;
 import org.openmetadata.service.rdf.OntologyDocument;
 import org.openmetadata.service.rdf.RdfEntityDiffService;
 import org.openmetadata.service.rdf.RdfEntityTypeValidator;
@@ -73,11 +77,13 @@ import org.openmetadata.service.rdf.RdfValidationService;
 import org.openmetadata.service.rdf.SavedSparqlQueryService;
 import org.openmetadata.service.rdf.SavedSparqlQueryStore;
 import org.openmetadata.service.rdf.SparqlQueryExecutionGuard;
+import org.openmetadata.service.rdf.agent.AgentSparqlAudit;
+import org.openmetadata.service.rdf.agent.AgentSparqlCaller;
+import org.openmetadata.service.rdf.agent.AgentSparqlResult;
+import org.openmetadata.service.rdf.agent.AgentSparqlService;
 import org.openmetadata.service.rdf.extension.CustomOntologyRepository;
 import org.openmetadata.service.rdf.extension.CustomOntologyValidator;
 import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
-import org.openmetadata.service.rdf.inference.InferenceMaterializer;
-import org.openmetadata.service.rdf.inference.InferenceRuleRepository;
 import org.openmetadata.service.rdf.inference.InferenceRuleService;
 import org.openmetadata.service.rdf.inference.InferenceRuleValidator;
 import org.openmetadata.service.rdf.insights.RdfInsightsService;
@@ -85,6 +91,8 @@ import org.openmetadata.service.rdf.semantic.SemanticSearchEngine;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.ImpersonationContext;
+import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 
@@ -105,10 +113,11 @@ public class RdfResource {
   private final Authorizer authorizer;
   private final Supplier<RdfRepository> repositorySupplier;
   private final Supplier<RdfProjectionState> projectionStateSupplier;
+  private final AgentSparqlService agentSparqlService;
   private volatile RdfEntityDiffService entityDiffService;
   private volatile SemanticSearchEngine semanticSearchEngine;
   private volatile SparqlFederationGuard federationGuard;
-  private volatile boolean askCollateEnabled;
+  private volatile boolean aiEnabled;
   private volatile String configuredBaseUri = DEFAULT_RDF_BASE_URI;
 
   public static final String RDF_XML = "application/rdf+xml";
@@ -120,6 +129,8 @@ public class RdfResource {
   public static final String SPARQL_CSV = "text/csv";
   public static final String SPARQL_TSV = "text/tab-separated-values";
   public static final String INFERENCE_WARNING_HEADER = "X-OpenMetadata-Inference-Warning";
+  private static final String NO_INFERENCE_LEVEL = "NONE";
+  private static final String CUSTOM_INFERENCE_LEVEL = "CUSTOM";
 
   public RdfResource(Authorizer authorizer) {
     this(
@@ -180,6 +191,9 @@ public class RdfResource {
     this.entityDiffService = entityDiffService;
     this.inferenceRuleService = inferenceRuleService;
     this.projectionStateSupplier = Objects.requireNonNull(projectionStateSupplier);
+    this.agentSparqlService =
+        new AgentSparqlService(
+            this::sparqlService, projectionStateSupplier, SPARQL_EXECUTION_GUARD);
   }
 
   private static RdfProjectionState configuredProjectionState() {
@@ -240,13 +254,8 @@ public class RdfResource {
   }
 
   private InferenceRuleService createInferenceRuleService() {
-    final RdfRepository repository = requireRdfRepository();
-    final Clock clock = Clock.systemUTC();
-    final InferenceRuleRepository ruleRepository =
-        new InferenceRuleRepository(
-            Entity.getCollectionDAO().rdfInferenceRuleDAO(), clock, repository.getBaseUri());
-    return new InferenceRuleService(
-        ruleRepository, new InferenceMaterializer(repository, ruleRepository, clock));
+    return InferenceRuleService.forRepository(
+        requireRdfRepository(), Entity.getCollectionDAO(), Clock.systemUTC());
   }
 
   private CustomOntologyRepository customOntologyRepository() {
@@ -288,10 +297,7 @@ public class RdfResource {
     this.federationGuard = new SparqlFederationGuard(config.getRdfConfiguration());
     this.configuredBaseUri = rdfBaseUri(config);
     this.entityDiffService = new RdfEntityDiffService(configuredBaseUri);
-    this.askCollateEnabled =
-        config.getRdfConfiguration() != null
-            && Boolean.TRUE.equals(config.getRdfConfiguration().getAskCollateEnabled())
-            && LLMClientHolder.isEnabled();
+    this.aiEnabled = OntologyAiAvailability.isEnabled(config.getRdfConfiguration());
   }
 
   private static String rdfBaseUri(final OpenMetadataApplicationConfig config) {
@@ -344,7 +350,7 @@ public class RdfResource {
         .withStorageType(storageType)
         .withInference(inferenceStatus)
         .withProjectionState(projectionState)
-        .withAskCollateEnabled(askCollateEnabled);
+        .withAiEnabled(aiEnabled);
   }
 
   private RdfProjectionState projectionState(final boolean enabled) {
@@ -353,10 +359,15 @@ public class RdfResource {
 
   private static RdfInferenceStatus inferenceStatus(
       final RdfRepository repository, final boolean enabled) {
+    final boolean materialized =
+        enabled && RdfRepository.supportsMaterializedInference(repository.getConfig());
     return new RdfInferenceStatus()
-        .withEnabled(enabled && repository.isInferenceEnabledByDefault())
-        .withDefaultLevel(enabled ? repository.getDefaultInferenceLevel() : "NONE")
-        .withAvailableLevels(Set.of("NONE", "RDFS", "OWL_LITE", "OWL_DL", "CUSTOM"));
+        .withEnabled(materialized)
+        .withDefaultLevel(NO_INFERENCE_LEVEL)
+        .withAvailableLevels(
+            materialized
+                ? Set.of(NO_INFERENCE_LEVEL, CUSTOM_INFERENCE_LEVEL)
+                : Set.of(NO_INFERENCE_LEVEL));
   }
 
   @POST
@@ -454,10 +465,15 @@ public class RdfResource {
   @Operation(
       operationId = "deleteInferenceRule",
       summary = "Delete a custom inference rule and its materialized graph",
+      description =
+          "Marks the remaining rules dirty, since they may have read the deleted rule's "
+              + "conclusions. When a materialization run is in progress, the next run removes "
+              + "the deleted rule's graph.",
       responses = {
         @ApiResponse(responseCode = "204", description = "Rule deleted"),
         @ApiResponse(responseCode = "400", description = "System rules cannot be deleted"),
-        @ApiResponse(responseCode = "403", description = "Forbidden")
+        @ApiResponse(responseCode = "403", description = "Forbidden"),
+        @ApiResponse(responseCode = "503", description = "Materialized inference is disabled")
       })
   public Response deleteInferenceRule(
       @Context final SecurityContext securityContext, @PathParam("name") final String name) {
@@ -471,16 +487,33 @@ public class RdfResource {
   @Produces(MediaType.APPLICATION_JSON)
   @Operation(
       operationId = "materializeInferenceRules",
-      summary = "Materialize dirty inference rules inside Fuseki",
+      summary = "Materialize inference rules to a fixed point inside Fuseki",
+      description =
+          "Recomputes every rule from the stored graph when any rule is dirty, or when forced. "
+              + "Rules read each other's conclusions, so the whole bundle always runs together.",
       responses = {
         @ApiResponse(responseCode = "200", description = "Materialization completed"),
         @ApiResponse(responseCode = "403", description = "Forbidden"),
+        @ApiResponse(responseCode = "404", description = "The requested rule does not exist"),
+        @ApiResponse(
+            responseCode = "409",
+            description =
+                "Another run is in progress or took this run over, or writes kept changing the"
+                    + " rules' inputs until the run ran out of passes; the rules stay dirty"),
         @ApiResponse(responseCode = "503", description = "Materialized inference is disabled")
       })
   public Response materializeInferenceRules(
       @Context final SecurityContext securityContext,
-      @QueryParam("force") @DefaultValue("false") final boolean force,
-      @QueryParam("ruleName") final String ruleName) {
+      @Parameter(description = "Recompute even when no rule is dirty")
+          @QueryParam("force")
+          @DefaultValue("false")
+          final boolean force,
+      @Parameter(
+              description =
+                  "Rule that must exist. The run still computes every rule, because rules read "
+                      + "each other's conclusions.")
+          @QueryParam("ruleName")
+          final String ruleName) {
     authorizer.authorizeAdmin(securityContext);
     final InferenceMaterializationResult result =
         inferenceRuleService().materialize(force, ruleName);
@@ -1017,7 +1050,7 @@ public class RdfResource {
       @Parameter(description = "Entity ID", required = true) @QueryParam("entityId") UUID entityId,
       @Parameter(description = "Entity type", required = true) @QueryParam("entityType")
           String entityType,
-      @Parameter(description = "Depth of relationships to explore")
+      @Parameter(description = "Relationship steps to explore (0 returns only the selected entity)")
           @QueryParam("depth")
           @DefaultValue("2")
           int depth,
@@ -1062,7 +1095,7 @@ public class RdfResource {
       @Parameter(description = "Entity ID", required = true) @QueryParam("entityId") UUID entityId,
       @Parameter(description = "Entity type", required = true) @QueryParam("entityType")
           String entityType,
-      @Parameter(description = "Depth of relationships to explore")
+      @Parameter(description = "Relationship steps to explore (0 exports only the selected entity)")
           @QueryParam("depth")
           @DefaultValue("2")
           int depth,
@@ -1272,6 +1305,96 @@ public class RdfResource {
     String format = sparqlQuery.getFormat() != null ? sparqlQuery.getFormat().toString() : "json";
     return executeSparqlQuery(
         requireAuthenticatedUserName(securityContext), sparqlQuery.getQuery(), format, inference);
+  }
+
+  @POST
+  @Path(AgentSparqlTransport.RESOURCE_PATH)
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Produces(MediaType.APPLICATION_JSON)
+  @Operation(
+      operationId = "queryAgentSparql",
+      summary = "Execute a permissioned read-only SPARQL SELECT for agent tools",
+      description =
+          "Runs a SPARQL SELECT against the server-configured RDF dataset and default graph with"
+              + " inference disabled. Requires the ExecuteSparqlQuery operation on the rdf"
+              + " resource, granted by a policy that names it. FROM, FROM NAMED, GRAPH, SERVICE,"
+              + " and non-SELECT forms are rejected. Results are not filtered by persona or by"
+              + " asset-level permissions. Returns 503 PROJECTION_NOT_READY while the RDF"
+              + " projection is rebuilding or degraded.",
+      requestBody =
+          @RequestBody(
+              required = true,
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON,
+                      schema = @Schema(implementation = AgentSparqlQuery.class))),
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Typed SELECT result with completeness metadata",
+            content =
+                @Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = @Schema(implementation = AgentSparqlResponse.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description =
+                "QUERY_INVALID, QUERY_FORM_NOT_ALLOWED, GRAPH_SELECTION_NOT_ALLOWED, or"
+                    + " QUERY_LIMIT_EXCEEDED",
+            content = @Content(schema = @Schema(implementation = AgentSparqlError.class))),
+        @ApiResponse(
+            responseCode = "401",
+            description = "AUTHENTICATION_REQUIRED",
+            content = @Content(schema = @Schema(implementation = AgentSparqlError.class))),
+        @ApiResponse(
+            responseCode = "403",
+            description =
+                "RDF_QUERY_FORBIDDEN, IMPERSONATION_NOT_ALLOWED, or FEDERATION_NOT_ALLOWED",
+            content = @Content(schema = @Schema(implementation = AgentSparqlError.class))),
+        @ApiResponse(
+            responseCode = "413",
+            description = "RESULT_OUTPUT_LIMIT_EXCEEDED",
+            content = @Content(schema = @Schema(implementation = AgentSparqlError.class))),
+        @ApiResponse(
+            responseCode = "429",
+            description = "EXECUTION_CAPACITY_EXHAUSTED",
+            content = @Content(schema = @Schema(implementation = AgentSparqlError.class))),
+        @ApiResponse(
+            responseCode = "500",
+            description = "RDF_BACKEND_FAILURE",
+            content = @Content(schema = @Schema(implementation = AgentSparqlError.class))),
+        @ApiResponse(
+            responseCode = "503",
+            description = "EXECUTION_TIMEOUT, RDF_REPOSITORY_UNAVAILABLE, or PROJECTION_NOT_READY",
+            content = @Content(schema = @Schema(implementation = AgentSparqlError.class)))
+      })
+  public Response queryAgentSparql(@Context SecurityContext securityContext, String requestBody) {
+    final AgentSparqlCaller caller = agentSparqlCaller(securityContext);
+    final AgentSparqlResult result =
+        AgentSparqlAudit.record(
+            caller,
+            () -> {
+              authorizer.authorize(
+                  securityContext,
+                  new OperationContext(Entity.RDF, MetadataOperation.EXECUTE_SPARQL_QUERY),
+                  RdfQueryResourceContext.INSTANCE);
+              return agentSparqlService.execute(
+                  caller.effectiveUser(), AgentSparqlTransport.readQuery(requestBody));
+            });
+    return Response.ok(result.body(), MediaType.APPLICATION_JSON_TYPE).build();
+  }
+
+  private static AgentSparqlCaller agentSparqlCaller(SecurityContext securityContext) {
+    // The audit must attribute impersonated calls to the bot behind the validated swap, but
+    // Jersey may hand the resource a wrapped context; fall back to the request thread's
+    // ImpersonationContext the way DefaultAuthorizer does. JwtFilter sets both only after
+    // approving the swap, so a non-null value here never reflects an untrusted header.
+    String serviceActor = ImpersonationContext.getImpersonatedBy();
+    if (securityContext instanceof CatalogSecurityContext catalogSecurityContext
+        && catalogSecurityContext.impersonatedUser() != null) {
+      serviceActor = catalogSecurityContext.impersonatedUser();
+    }
+    return AgentSparqlCaller.of(requireAuthenticatedUserName(securityContext), serviceActor);
   }
 
   @POST

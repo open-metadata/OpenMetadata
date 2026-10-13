@@ -14,6 +14,7 @@ import test, { expect } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { MetricClass } from '../../support/entity/MetricClass';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 
 const metricSuffix = uuid();
@@ -116,10 +117,9 @@ test.describe(
       });
 
       await test.step('Verify no error toast and results are shown', async () => {
-        await page
-          .getByTestId('search-container')
-          .getByTestId('loader')
-          .waitFor({ state: 'detached', timeout: 30_000 });
+        await waitForAllLoadersToDisappear(
+          page.getByTestId('search-container')
+        );
 
         await page.getByTestId('search-results').waitFor({
           state: 'visible',

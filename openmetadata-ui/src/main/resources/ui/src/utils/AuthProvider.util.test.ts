@@ -19,8 +19,8 @@ import {
 import { AuthProvider } from '../generated/settings/settings';
 import {
   getAuthConfig,
-  getCandidateUserManagerConfig,
   getUserManagerConfig,
+  isRefreshableAuthError,
 } from './AuthProvider.util';
 
 const baseAuthConfig = (
@@ -128,12 +128,64 @@ describe('getAuthConfig — every OIDC provider respects the server-provided res
   });
 });
 
-describe('getCandidateUserManagerConfig — SSO test-login popup respects responseType', () => {
-  it('should use the configured response_type instead of a hardcoded "id_token"', () => {
-    const config = getCandidateUserManagerConfig(
-      withScope({ responseType: ResponseType.Code })
-    );
+describe('isRefreshableAuthError — 401 allow-list semantics (auth-coordinator-refactor Bug 2)', () => {
+  it('returns false for any non-401 status', () => {
+    expect(isRefreshableAuthError(403, '/tables/name/foo', {})).toBe(false);
+    expect(isRefreshableAuthError(500, '/users/loggedInUser', {})).toBe(false);
+  });
 
-    expect(config.response_type).toBe('code');
+  it('returns false for every excluded path regardless of message', () => {
+    expect(isRefreshableAuthError(401, '/users/refresh', {})).toBe(false);
+    expect(isRefreshableAuthError(401, 'auth/refresh', {})).toBe(false);
+    expect(isRefreshableAuthError(401, '/auth/refresh', {})).toBe(false);
+    expect(isRefreshableAuthError(401, '/users/login', {})).toBe(false);
+  });
+
+  it('returns false for a /users/loggedInUser 401 whose message is not refreshable', () => {
+    expect(
+      isRefreshableAuthError(401, '/users/loggedInUser', {
+        message: 'token not valid',
+      })
+    ).toBe(false);
+  });
+
+  it('returns false for a /users/loggedInUser 401 with no body at all', () => {
+    expect(isRefreshableAuthError(401, '/users/loggedInUser', undefined)).toBe(
+      false
+    );
+  });
+
+  it('returns true for a /users/loggedInUser 401 whose message is "Expired token!"', () => {
+    expect(
+      isRefreshableAuthError(401, '/users/loggedInUser', {
+        message: 'Expired token!',
+      })
+    ).toBe(true);
+  });
+
+  it('returns true for a /users/loggedInUser 401 whose message contains "Token signing key not found"', () => {
+    expect(
+      isRefreshableAuthError(401, '/users/loggedInUser', {
+        message:
+          'Not Authorized! Token signing key not found in configured public keys',
+      })
+    ).toBe(true);
+  });
+
+  // A cold load with a time-valid JWT whose OpenMetadata session has ended
+  // (session expiry, per-user session limit) must reach the coordinator so the
+  // session can be re-established at the identity provider, not dropped on
+  // /signin.
+  it('returns true for a /users/loggedInUser 401 whose OpenMetadata session has ended', () => {
+    expect(
+      isRefreshableAuthError(401, '/users/loggedInUser', {
+        code: 401,
+        message: 'Not Authorized! Invalid session.',
+      })
+    ).toBe(true);
+  });
+
+  it('returns true for a normal 401 on any other endpoint', () => {
+    expect(isRefreshableAuthError(401, '/tables/name/foo', {})).toBe(true);
   });
 });

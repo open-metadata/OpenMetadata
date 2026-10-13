@@ -83,7 +83,7 @@ public class DriveServiceRepository extends ServiceEntityRepository<DriveService
             repository.getFields("name,owners,tags,domains,extension"),
             driveService.getFullyQualifiedName());
 
-    directories.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
+    directories.sort(Comparator.comparing(EntityInterface<?>::getFullyQualifiedName));
     return new DriveServiceCsv(driveService, user, recursive)
         .exportAllCsv(directories, recursive, callback);
   }
@@ -225,7 +225,7 @@ public class DriveServiceRepository extends ServiceEntityRepository<DriveService
       }
     }
 
-    protected void addEntityToCSV(CsvFile csvFile, EntityInterface entity, String entityType) {
+    protected void addEntityToCSV(CsvFile csvFile, EntityInterface<?> entity, String entityType) {
       List<String> recordList = new ArrayList<>();
       addField(recordList, entity.getName());
       addField(recordList, entity.getDisplayName());

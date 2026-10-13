@@ -15,23 +15,27 @@
 
 .versions-list-container {
   position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--om-z-dropdown);
+  display: flex;
+  flex-direction: column;
+  width: 330px;
+  background: var(--om-color-bg-surface);
+  border-left: 1px solid @border-color;
 
-  .ant-drawer-content-wrapper {
-    box-shadow: none;
-    border-left: 1px solid @border-color;
-  }
-
-  .ant-drawer-body {
+  .versions-list-header {
     padding: var(--om-space-16);
-  }
-
-  .ant-drawer-header {
-    padding: var(--om-space-16);
-    padding-bottom: 0;
-  }
-
-  .ant-drawer-title {
     font-size: var(--om-font-size-sm);
+    border-bottom: 1px solid @border-color;
+  }
+
+  .versions-list-body {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    padding: var(--om-space-16);
   }
 }
 

@@ -13,7 +13,10 @@
 
 package org.openmetadata.service.resources.ai;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -27,13 +30,16 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.ai.AIFrameworkControl;
+import org.openmetadata.schema.entity.ai.AIGovernanceFramework;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.AIFrameworkControlRepository;
+import org.openmetadata.service.jdbi3.AIGovernanceFrameworkRepository;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 class FrameworkSeedLoaderTest {
@@ -70,6 +76,73 @@ class FrameworkSeedLoaderTest {
         dottedFramework,
         persistedControls.get("\"framework.with.dot\".shared-control").getFramework());
     verify(repository, times(3)).create(isNull(), any(AIFrameworkControl.class));
+  }
+
+  @Test
+  void concurrentDuplicateControlIsRecovered() throws Exception {
+    // A second replica inserts the control between our existence check and create(), so the
+    // pre-check misses (null) but create() trips the fqnHash unique constraint. The re-fetch
+    // then finds the row another instance wrote, and seeding must continue without failing.
+    AIFrameworkControlRepository repository = mock(AIFrameworkControlRepository.class);
+    when(repository.findByNameOrNull(eq("gov.c1"), eq(Include.ALL)))
+        .thenReturn(null)
+        .thenReturn(new AIFrameworkControl().withName("c1"));
+    when(repository.create(isNull(), any(AIFrameworkControl.class)))
+        .thenThrow(new UnableToExecuteStatementException("duplicate key value (fqnhash)"));
+    JsonNode controls = JsonUtils.readTree("[{\"name\":\"c1\"}]");
+
+    assertDoesNotThrow(
+        () -> FrameworkSeedLoader.seedControls(controls, framework("gov"), repository));
+  }
+
+  @Test
+  void genuineControlCreateFailurePropagates() {
+    // If create() fails for a real reason (the row is still absent on re-fetch), the exception
+    // must propagate so loadFromResources records a seed failure and the seed gate stays
+    // retryable — it must never be swallowed as a benign duplicate.
+    AIFrameworkControlRepository repository = mock(AIFrameworkControlRepository.class);
+    when(repository.findByNameOrNull(eq("gov.c1"), eq(Include.ALL))).thenReturn(null);
+    when(repository.create(isNull(), any(AIFrameworkControl.class)))
+        .thenThrow(new UnableToExecuteStatementException("connection reset"));
+    JsonNode controls = JsonUtils.readTree("[{\"name\":\"c1\"}]");
+
+    assertThrows(
+        UnableToExecuteStatementException.class,
+        () -> FrameworkSeedLoader.seedControls(controls, framework("gov"), repository));
+  }
+
+  @Test
+  void concurrentDuplicateFrameworkIsReused() {
+    // Mirror of the control race on the framework path: the pre-check missed, create() trips the
+    // fqnHash unique constraint, and the re-fetch returns the framework a concurrent replica wrote.
+    // createOrReuse must return that row (so seedBundle still seeds its controls), not throw.
+    AIGovernanceFrameworkRepository repository = mock(AIGovernanceFrameworkRepository.class);
+    AIGovernanceFramework raced = new AIGovernanceFramework().withName("gov");
+    when(repository.create(isNull(), any(AIGovernanceFramework.class)))
+        .thenThrow(new UnableToExecuteStatementException("duplicate key value (fqnhash)"));
+    when(repository.findByNameOrNull(eq("gov"), eq(Include.ALL))).thenReturn(raced);
+
+    AIGovernanceFramework result =
+        FrameworkSeedLoader.createOrReuse(
+            repository, new AIGovernanceFramework().withName("gov"), "gov");
+
+    assertSame(raced, result);
+  }
+
+  @Test
+  void genuineFrameworkCreateFailurePropagates() {
+    // If the framework row is still absent on re-fetch, the failure is real and must propagate so
+    // loadFromResources records a seed failure and the seed gate stays retryable.
+    AIGovernanceFrameworkRepository repository = mock(AIGovernanceFrameworkRepository.class);
+    when(repository.create(isNull(), any(AIGovernanceFramework.class)))
+        .thenThrow(new UnableToExecuteStatementException("connection reset"));
+    when(repository.findByNameOrNull(eq("gov"), eq(Include.ALL))).thenReturn(null);
+
+    assertThrows(
+        UnableToExecuteStatementException.class,
+        () ->
+            FrameworkSeedLoader.createOrReuse(
+                repository, new AIGovernanceFramework().withName("gov"), "gov"));
   }
 
   private EntityReference framework(String name) {

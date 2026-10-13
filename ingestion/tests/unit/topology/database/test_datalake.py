@@ -19,10 +19,11 @@ from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
+import pandas as pd
 import pytest
 
 from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.table import Column
+from metadata.generated.schema.entity.data.table import Column, DataType, TableType
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
@@ -35,6 +36,8 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
 from metadata.readers.dataframe.avro import AvroDataFrameReader
 from metadata.readers.dataframe.json import JSONDataFrameReader
+from metadata.readers.dataframe.reader_factory import SupportedTypes
+from metadata.readers.file.base import ReadException
 from metadata.utils.datalake.datalake_utils import (
     GenericDataFrameColumnParser,
     JsonDataFrameColumnParser,
@@ -741,7 +744,7 @@ class DatalakeYieldTableNameTest(TestCase):
                 return_value="local_datalake.default.my_bucket",
             ),
         ):
-            results = list(self.source.yield_table((table_name, TableType.Regular, None, None)))
+            results = list(self.source.yield_table((table_name, TableType.Regular, None, None, None)))
 
         rights = [r.right for r in results if r.right is not None]
         return rights[0] if rights else None
@@ -770,3 +773,149 @@ class DatalakeYieldTableNameTest(TestCase):
         self.assertEqual(request.name.root, expected_hash)
         self.assertEqual(len(request.name.root), 32)
         self.assertEqual(request.displayName, table_name)
+
+
+@pytest.fixture
+def datalake_manifest_source():
+    with patch("metadata.ingestion.source.database.datalake.metadata.DatalakeSource.test_connection"):
+        config = OpenMetadataWorkflowConfig.model_validate(mock_datalake_config)
+        source = DatalakeSource.create(
+            mock_datalake_config["source"],
+            config.workflowConfig.openMetadataServerConfig,
+        )
+
+    source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+    source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+    source.context.get().__dict__["database_schema"] = "my_bucket"
+    source.client = MagicMock()
+    source.client.get_table_names.return_value = [("semicolon.csv", 32)]
+    source.reader = MagicMock()
+    return source
+
+
+def discover_table_and_schema_wrapper(source):
+    discovered_table = next(source.get_tables_name_and_type())
+
+    with patch(
+        "metadata.ingestion.source.database.datalake.metadata.fetch_dataframe_first_chunk",
+        return_value=(None, None),
+    ) as fetch_dataframe:
+        assert list(source.yield_table(discovered_table)) == []
+
+    return discovered_table, fetch_dataframe.call_args.kwargs["file_fqn"]
+
+
+def test_manifest_separator_reaches_schema_inference(datalake_manifest_source):
+    datalake_manifest_source.reader.read.return_value = """
+    {
+      "entries": [
+        {
+          "dataPath": "semicolon.csv",
+          "structureFormat": "csv",
+          "separator": ";"
+        }
+      ]
+    }
+    """
+
+    discovered_table, schema_wrapper = discover_table_and_schema_wrapper(datalake_manifest_source)
+
+    assert discovered_table[-1] == ";"
+    assert schema_wrapper.separator == ";"
+
+
+@pytest.mark.parametrize(
+    "manifest_response",
+    [
+        """
+        {
+          "entries": [
+            {
+              "dataPath": "another.csv",
+              "structureFormat": "csv",
+              "separator": ";"
+            }
+          ]
+        }
+        """,
+        ReadException("openmetadata.json not found"),
+    ],
+)
+def test_missing_manifest_separator_uses_default(datalake_manifest_source, manifest_response):
+    if isinstance(manifest_response, ReadException):
+        datalake_manifest_source.reader.read.side_effect = manifest_response
+    else:
+        datalake_manifest_source.reader.read.return_value = manifest_response
+
+    discovered_table, schema_wrapper = discover_table_and_schema_wrapper(datalake_manifest_source)
+
+    assert discovered_table[-1] is None
+    assert schema_wrapper.separator is None
+
+
+class TestYieldTableSchemaInferenceLimits:
+    """Issue #29832: the Datalake pipeline bounds the children inferred for a JSON file before
+    the CreateTableRequest is built, and adds one status warning for the file.
+    """
+
+    RECORDS = (
+        {"id": 1, "payload": {"c": {"x": 1}, "a": {"x": 1}, "d": {"x": 1}, "b": {"x": 1}}},
+        {"id": 2, "payload": {"e": {"x": 2}}},
+    )
+
+    @staticmethod
+    def _source(**limits) -> DatalakeSource:
+        config = deepcopy(mock_datalake_config)
+        config["source"]["sourceConfig"]["config"].update(limits)
+        with patch("metadata.ingestion.source.database.datalake.metadata.DatalakeSource.test_connection"):
+            source = DatalakeSource.create(
+                config["source"],
+                OpenMetadataWorkflowConfig.model_validate(config).workflowConfig.openMetadataServerConfig,
+            )
+        source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+        source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+        source.context.get().__dict__["database_schema"] = "my_bucket"
+        return source
+
+    def _payload(self, source: DatalakeSource) -> Column:
+        with (
+            patch(
+                "metadata.ingestion.source.database.datalake.metadata.fetch_dataframe_first_chunk",
+                return_value=(iter([pd.DataFrame.from_records(self.RECORDS)]), None),
+            ),
+            patch(
+                "metadata.ingestion.source.database.datalake.metadata.fqn.build",
+                return_value="local_datalake.default.my_bucket",
+            ),
+        ):
+            results = list(
+                source.yield_table(("events/part-0.jsonl", TableType.Regular, SupportedTypes.JSONL, None, None))
+            )
+        request = results[0].right
+        return {col.name.root: col for col in request.columns}["payload"]
+
+    def test_configured_limits_bound_the_create_request(self):
+        source = self._source(maxSchemaInferenceDepth=1, maxChildrenPerColumn=2)
+
+        payload = self._payload(source)
+
+        assert [(child.name.root, child.dataType, child.children) for child in payload.children] == [
+            ("a", DataType.JSON, []),
+            ("b", DataType.JSON, []),
+        ]
+        assert source.status.warnings == [
+            {
+                "my_bucket/events/part-0.jsonl": "Schema inference limits dropped nested columns. "
+                "maxSchemaInferenceDepth=1 cut the children of 2 column(s): payload.a, payload.b. "
+                "maxChildrenPerColumn=2 cut the children of 1 column(s): payload."
+            }
+        ]
+
+    def test_unset_limits_keep_every_inferred_child(self):
+        source = self._source()
+
+        payload = self._payload(source)
+
+        assert [child.name.root for child in payload.children] == ["c", "a", "d", "b", "e"]
+        assert all(child.children[0].name.root == "x" for child in payload.children)
+        assert source.status.warnings == []

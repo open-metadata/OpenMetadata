@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/api/tests/createTestCase.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "CreateTestCaseRequest",
   "description": "Test is a test definition to capture data quality tests.",
   "type": "object",
@@ -31,6 +31,10 @@
       "items": {
         "$ref": "../../tests/testCase.json#/definitions/testCaseParameterValue"
       }
+    },
+    "dataQualityDimension": {
+      "description": "Name of the data quality dimension this test case belongs to. When not set, it defaults to the dimension of the test definition. Any dimension registered in Settings > Preferences > Data Quality can be used, system and custom alike.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "owners": {
       "description": "Owners of this test",

@@ -833,7 +833,13 @@ public class RedisCacheProvider implements CacheProvider {
 
   @Override
   public long scanDelete(String pattern) {
-    if (!available || pattern == null || pattern.isEmpty()) {
+    if (pattern == null || pattern.isEmpty()) {
+      return 0L;
+    }
+    if (!available) {
+      LOG.error(
+          "Cannot invalidate cache pattern={} while Redis is unavailable; entries may remain until TTL",
+          pattern);
       return 0L;
     }
     long deleted = 0L;
@@ -857,7 +863,8 @@ public class RedisCacheProvider implements CacheProvider {
       }
       return deleted;
     } catch (Exception e) {
-      LOG.warn("scanDelete failed for pattern={}", pattern, e);
+      LOG.error(
+          "Cache invalidation failed for pattern={}; entries may remain until TTL", pattern, e);
       CacheMetrics m = metrics();
       if (m != null) m.recordError();
       return deleted;

@@ -12,15 +12,17 @@
  */
 
 import {
+  ButtonUtility,
   Toggle,
   Tooltip as UTTooltip,
   TooltipTrigger,
+  Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Space, Tooltip, Typography } from 'antd';
+import { Icon } from '@openmetadata/ui-core-components/icon';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconDisableTag } from '../assets/svg/disable-tag.svg';
 import { ReactComponent as EditIcon } from '../assets/svg/edit-new.svg';
-import { Icon } from '../components/common/Icon/Icon';
+import { TagUsageCount } from '../components/Classifications/TagUsageCount/TagUsageCount.component';
 import { ManageButtonItemLabel } from '../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { ColumnsType } from '../components/common/Table/Table.interface';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
@@ -108,7 +110,7 @@ export const getCommonColumns = (options?: {
       key: 'displayName',
       width: 200,
       render: (text) => (
-        <Typography.Text>{text || NO_DATA_PLACEHOLDER}</Typography.Text>
+        <Typography as="span">{text || NO_DATA_PLACEHOLDER}</Typography>
       ),
     },
     ...descriptionTableObject<Tag>({ width: 300 })
@@ -126,6 +128,8 @@ export const getTagsTableColumn = ({
   isVersionView,
   disableEditButton,
   handleToggleDisable,
+  usageCounts,
+  isUsageCountsLoading,
 }: {
   classificationPermissions: OperationPermission;
   isClassificationDisabled: boolean;
@@ -135,6 +139,8 @@ export const getTagsTableColumn = ({
   handleActionDeleteTag?: (record: Tag) => void;
   disableEditButton?: boolean;
   handleToggleDisable?: (tag: Tag) => void;
+  usageCounts?: Record<string, number>;
+  isUsageCountsLoading?: boolean;
 }): ColumnsType<Tag> => {
   const columns: ColumnsType<Tag> = getCommonColumns({
     handleToggleDisable,
@@ -143,6 +149,27 @@ export const getTagsTableColumn = ({
   });
 
   if (!isVersionView) {
+    // Sits right after the display name, ahead of the much wider description
+    const displayNameIndex = columns.findIndex(
+      ({ key }) => key === 'displayName'
+    );
+    const usageIndex =
+      displayNameIndex === -1 ? columns.length : displayNameIndex + 1;
+
+    columns.splice(usageIndex, 0, {
+      title: t('label.usage'),
+      key: 'usageCount',
+      width: 120,
+      align: 'center',
+      render: (_, record: Tag) => (
+        <TagUsageCount
+          isLoading={isUsageCountsLoading}
+          record={record}
+          usageCounts={usageCounts}
+        />
+      ),
+    });
+
     columns.push({
       title: t('label.action-plural'),
       dataIndex: 'actions',
@@ -157,21 +184,23 @@ export const getTagsTableColumn = ({
             isClassificationDisabled,
             classificationPermissions
           );
+        let editDisabledMessage = '';
+        if (disableEditButton) {
+          editDisabledMessage = isClassificationDisabled
+            ? t('message.disabled-classification-actions-message')
+            : t('message.no-permission-for-action');
+        }
 
         return (
-          <Space align="center" size={8}>
-            <Tooltip
-              placement="topRight"
-              title={
-                disableEditButton &&
-                (isClassificationDisabled
-                  ? t('message.disabled-classification-actions-message')
-                  : t('message.no-permission-for-action'))
-              }>
-              <Button
-                className="p-0 flex-center"
+          <div className="tw:flex tw:items-center tw:justify-center tw:gap-2">
+            {/* The Tooltip, not ButtonUtility's own, so the reason still shows while the button is disabled. */}
+            <UTTooltip
+              isDisabled={!editDisabledMessage}
+              placement="top right"
+              title={editDisabledMessage}>
+              <ButtonUtility
+                color="tertiary"
                 data-testid="edit-button"
-                disabled={disableEditButton}
                 icon={
                   <EditIcon
                     data-testid="editTagDescription"
@@ -180,34 +209,30 @@ export const getTagsTableColumn = ({
                     width={14}
                   />
                 }
-                size="small"
-                type="text"
-                onClick={() =>
-                  handleEditTagClick ? handleEditTagClick(record) : null
-                }
+                isDisabled={disableEditButton}
+                size="xs"
+                onClick={() => handleEditTagClick?.(record)}
               />
-            </Tooltip>
+            </UTTooltip>
 
-            <Tooltip
-              placement="topRight"
-              title={disableDeleteButton && disabledDeleteMessage}>
-              <Button
-                className="p-0 flex-center"
+            <UTTooltip
+              isDisabled={!disableDeleteButton}
+              placement="top right"
+              title={disabledDeleteMessage}>
+              <ButtonUtility
+                color="tertiary"
                 data-testid="delete-tag"
-                disabled={disableDeleteButton}
                 icon={getDeleteIcon({
                   deleteTagId: deleteTags?.data?.id,
                   status: deleteTags?.data?.status,
                   id: record.id ?? '',
                 })}
-                size="small"
-                type="text"
-                onClick={() =>
-                  handleActionDeleteTag ? handleActionDeleteTag(record) : null
-                }
+                isDisabled={disableDeleteButton}
+                size="xs"
+                onClick={() => handleActionDeleteTag?.(record)}
               />
-            </Tooltip>
-          </Space>
+            </UTTooltip>
+          </div>
         );
       },
     });

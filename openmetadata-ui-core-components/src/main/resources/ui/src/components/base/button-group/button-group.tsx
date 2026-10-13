@@ -32,7 +32,7 @@ export const styles = sortCx({
       // Selected styles
       'tw:selected:bg-active tw:selected:text-secondary_hover tw:selected:disabled:bg-disabled_subtle',
     ].join(' '),
-    icon: 'tw:pointer-events-none tw:text-fg-quaternary tw:transition-[inherit] group-hover/button-group:tw:text-fg-quaternary_hover group-disabled/button-group:tw:text-fg-disabled_subtle',
+    icon: 'tw:pointer-events-none tw:text-fg-quaternary tw:transition-[inherit] tw:group-hover/button-group:text-fg-quaternary_hover tw:group-disabled/button-group:text-fg-disabled_subtle',
   },
 
   sizes: {

@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 import '@testing-library/jest-dom/extend-expect';
-import { act, render, screen } from '@testing-library/react';
+import { act, screen } from '@testing-library/react';
 import { TestCaseStatus } from '../../../../generated/entity/feed/testCaseResult';
 import { fetchTestCaseSummary } from '../../../../rest/dataQualityDashboardAPI';
+import { renderWithQueryClient } from '../../../../test/unit/test-utils';
 import { formatDate } from '../../../../utils/date-time/DateTimeUtils';
 import CustomPieChart from '../../../Visualisations/Chart/CustomPieChart.component';
 import TestCaseStatusPieChartWidget from './TestCaseStatusPieChartWidget.component';
@@ -110,7 +111,7 @@ describe('TestCaseStatusPieChartWidget', () => {
   });
 
   it('should render the component', async () => {
-    render(<TestCaseStatusPieChartWidget />);
+    renderWithQueryClient(<TestCaseStatusPieChartWidget />);
 
     expect(
       await screen.findByText('label.test-case-result')
@@ -121,7 +122,7 @@ describe('TestCaseStatusPieChartWidget', () => {
   });
 
   it('fetchTestCaseSummary should be called', async () => {
-    render(<TestCaseStatusPieChartWidget />);
+    renderWithQueryClient(<TestCaseStatusPieChartWidget />);
 
     await act(async () => {
       await Promise.resolve();
@@ -136,7 +137,9 @@ describe('TestCaseStatusPieChartWidget', () => {
       tags: ['tag1', 'tag2'],
       ownerFqn: 'ownerFqn',
     };
-    render(<TestCaseStatusPieChartWidget chartFilter={filters} />);
+    renderWithQueryClient(
+      <TestCaseStatusPieChartWidget chartFilter={filters} />
+    );
 
     await act(async () => {
       await Promise.resolve();
@@ -155,11 +158,9 @@ describe('TestCaseStatusPieChartWidget', () => {
       }
     ).__getMockNavigate();
 
-    render(<TestCaseStatusPieChartWidget />);
+    renderWithQueryClient(<TestCaseStatusPieChartWidget />);
 
-    await act(async () => {
-      await Promise.resolve();
-    });
+    await screen.findByText('CustomPieChart.component');
 
     expect(CustomPieChart).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -220,7 +221,7 @@ describe('TestCaseStatusPieChartWidget', () => {
   it('should use the supplied navigate function and test cases path', async () => {
     const navigate = jest.fn();
 
-    render(
+    renderWithQueryClient(
       <TestCaseStatusPieChartWidget
         chartFilter={{ startTs: 100, endTs: 200 }}
         navigate={navigate}
@@ -259,5 +260,58 @@ describe('TestCaseStatusPieChartWidget', () => {
       startTs: 100,
       endTs: 200,
     });
+  });
+
+  it('should keep the latest chartFilter data when a stale request resolves last', async () => {
+    const release: Record<number, () => void> = {};
+    const gates: Record<number, Promise<void>> = {
+      1: new Promise((resolve) => {
+        release[1] = resolve;
+      }),
+      100: new Promise((resolve) => {
+        release[100] = resolve;
+      }),
+    };
+    (fetchTestCaseSummary as jest.Mock).mockImplementation(
+      async (filters: { startTs: number }) => {
+        await gates[filters.startTs];
+
+        return {
+          data: [
+            {
+              document_count: String(filters.startTs),
+              'testCaseResult.testCaseStatus': 'success',
+            },
+          ],
+        };
+      }
+    );
+
+    const { rerender } = renderWithQueryClient(
+      <TestCaseStatusPieChartWidget chartFilter={{ startTs: 1, endTs: 10 }} />
+    );
+    rerender(
+      <TestCaseStatusPieChartWidget
+        chartFilter={{ startTs: 100, endTs: 200 }}
+      />
+    );
+
+    await act(async () => release[100]());
+    await screen.findByText('CustomPieChart.component');
+    await act(async () => release[1]());
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+
+    expect(CustomPieChart).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        data: [
+          expect.objectContaining({ value: 100 }),
+          expect.objectContaining({ value: 0 }),
+          expect.objectContaining({ value: 0 }),
+        ],
+      }),
+      expect.anything()
+    );
   });
 });

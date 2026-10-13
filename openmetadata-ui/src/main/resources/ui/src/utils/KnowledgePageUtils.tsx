@@ -30,6 +30,7 @@ import contextCenterClassBase from './ContextCenterClassBase';
 import { t } from './i18next/LocalUtil';
 import { getKnowledgePageName } from './KnowledgePagePureUtils';
 import { arraySorterByKey } from './RecentActivityUtils';
+import { getSafeHttpUrl } from './StringUtils';
 
 export const setRecentlyViewedData = (
   recentData: RecentlyViewedQuickLinks['data']
@@ -101,7 +102,7 @@ export const updateKnowledgeCenterRecentViewed = (
 export const getLink = (knowledgePage: KnowledgePage, testIdPrefix: string) => {
   const isQuickLink = knowledgePage.pageType === PageType.QUICK_LINK;
   const path = isQuickLink
-    ? (knowledgePage.page as QuickLink).url
+    ? getSafeHttpUrl((knowledgePage.page as QuickLink).url) ?? '#'
     : contextCenterClassBase.getArticlePath(knowledgePage.fullyQualifiedName);
 
   return (

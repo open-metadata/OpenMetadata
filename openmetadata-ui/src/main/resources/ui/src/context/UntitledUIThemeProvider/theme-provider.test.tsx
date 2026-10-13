@@ -12,14 +12,17 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { createPortal } from 'react-dom';
 import { ThemeProvider, useTheme } from './theme-provider';
+import { BrandColors } from './theme-provider.interface';
 
 const ThemeProbe = () => {
-  const { setTheme, theme } = useTheme();
+  const { setTheme, theme, themePreference } = useTheme();
 
   return (
     <>
       <span data-testid="active-theme">{theme}</span>
+      <span data-testid="theme-preference">{themePreference}</span>
       <span data-testid="theme-class-ready">
         {String(
           document.documentElement.classList.contains('dark-mode') ===
@@ -32,7 +35,19 @@ const ThemeProbe = () => {
       <button type="button" onClick={() => setTheme('light')}>
         Use light theme
       </button>
+      <button type="button" onClick={() => setTheme('system')}>
+        Follow the system theme
+      </button>
     </>
+  );
+};
+
+const PortalThemeProbe = () => {
+  const { theme } = useTheme();
+
+  return createPortal(
+    <span data-testid="portal-theme">{theme}</span>,
+    document.body
   );
 };
 
@@ -52,7 +67,13 @@ const setSystemTheme = (theme: 'light' | 'dark') => {
         changeListener = listener;
       }
     ),
-    removeEventListener: jest.fn(),
+    removeEventListener: jest.fn(
+      (_event: string, listener: (event: MediaQueryListEvent) => void) => {
+        if (changeListener === listener) {
+          changeListener = undefined;
+        }
+      }
+    ),
   };
 
   window.matchMedia = jest
@@ -71,6 +92,13 @@ describe('ThemeProvider', () => {
     localStorage.clear();
     document.documentElement.classList.remove('dark-mode');
     document.documentElement.style.removeProperty('color-scheme');
+    // Branding expands one input into several aliases, so clear the family to
+    // prevent one test's root styles from affecting another test's assertions.
+    Array.from(document.documentElement.style)
+      .filter((property) => property.startsWith('--tw-'))
+      .forEach((property) =>
+        document.documentElement.style.removeProperty(property)
+      );
   });
 
   it('uses light mode when no preference is stored', () => {
@@ -124,6 +152,42 @@ describe('ThemeProvider', () => {
 
     expect(screen.getByTestId('active-theme')).toHaveTextContent('light');
     expect(document.documentElement).not.toHaveClass('dark-mode');
+  });
+
+  it('follows a stored system preference, including later system changes', () => {
+    localStorage.setItem('ui-theme', 'system');
+    const changeSystemTheme = setSystemTheme('dark');
+    renderProvider();
+
+    expect(screen.getByTestId('theme-preference')).toHaveTextContent('system');
+    expect(screen.getByTestId('active-theme')).toHaveTextContent('dark');
+    expect(document.documentElement).toHaveClass('dark-mode');
+
+    act(() => changeSystemTheme('light'));
+
+    expect(screen.getByTestId('active-theme')).toHaveTextContent('light');
+    expect(document.documentElement).not.toHaveClass('dark-mode');
+    expect(document.documentElement).toHaveStyle({ colorScheme: 'light' });
+  });
+
+  it('persists a switch to the system theme and stops following it on an explicit choice', () => {
+    const changeSystemTheme = setSystemTheme('dark');
+    renderProvider();
+
+    expect(screen.getByTestId('active-theme')).toHaveTextContent('light');
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Follow the system theme' })
+    );
+
+    expect(localStorage.getItem('ui-theme')).toBe('system');
+    expect(screen.getByTestId('active-theme')).toHaveTextContent('dark');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use light theme' }));
+    act(() => changeSystemTheme('dark'));
+
+    expect(screen.getByTestId('theme-preference')).toHaveTextContent('light');
+    expect(screen.getByTestId('active-theme')).toHaveTextContent('light');
   });
 
   it('uses light mode when the stored preference cannot be read', () => {
@@ -190,5 +254,126 @@ describe('ThemeProvider', () => {
     renderProvider();
 
     expect(toggleSpy).not.toHaveBeenCalled();
+  });
+
+  it('governs a body-mounted portal through the root theme', () => {
+    render(
+      <ThemeProvider>
+        <ThemeProbe />
+        <PortalThemeProbe />
+      </ThemeProvider>
+    );
+
+    const portal = screen.getByTestId('portal-theme');
+
+    expect(portal.parentElement).toBe(document.body);
+    expect(portal).toHaveTextContent('light');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use dark theme' }));
+
+    expect(portal).toHaveTextContent('dark');
+    expect(document.documentElement).toHaveClass('dark-mode');
+    expect(document.body).not.toHaveClass('dark-mode');
+    expect(portal).not.toHaveClass('dark-mode');
+  });
+
+  it('preserves customer brand variables across theme switches', () => {
+    const brandColors: BrandColors = {
+      errorColor: '#a10000',
+      primaryColor: '#123456',
+    };
+
+    render(
+      <ThemeProvider brandColors={brandColors}>
+        <ThemeProbe />
+      </ThemeProvider>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use dark theme' }));
+
+    expect(
+      document.documentElement.style.getPropertyValue('--tw-color-brand-600')
+    ).toBe('#123456');
+    expect(
+      document.documentElement.style.getPropertyValue('--tw-color-error-600')
+    ).toBe('#a10000');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use light theme' }));
+
+    expect(
+      document.documentElement.style.getPropertyValue('--tw-color-brand-600')
+    ).toBe('#123456');
+    expect(
+      document.documentElement.style.getPropertyValue('--tw-color-error-600')
+    ).toBe('#a10000');
+  });
+
+  it('drops light-only brand shades in dark so the dark palette applies', () => {
+    const brandColors: BrandColors = {
+      hoverColor: '#d1e9ff',
+      primaryColor: '#1570ef',
+      selectedColor: '#175cd3',
+    };
+    const inlineVar = (name: string) =>
+      document.documentElement.style.getPropertyValue(name);
+
+    render(
+      <ThemeProvider brandColors={brandColors}>
+        <ThemeProbe />
+      </ThemeProvider>
+    );
+
+    expect(inlineVar('--tw-background-color-brand-secondary')).toBe('#d1e9ff');
+    expect(inlineVar('--tw-color-utility-brand-700')).toBe('#175cd3');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use dark theme' }));
+
+    expect(inlineVar('--tw-background-color-brand-secondary')).toBe('');
+    expect(inlineVar('--tw-color-utility-brand-700')).toBe('');
+    expect(inlineVar('--tw-color-brand-600')).toBe('#1570ef');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use light theme' }));
+
+    expect(inlineVar('--tw-background-color-brand-secondary')).toBe('#d1e9ff');
+  });
+
+  it('replaces customer branding without retaining stale variables', () => {
+    const { rerender } = render(
+      <ThemeProvider
+        brandColors={{ errorColor: '#a10000', primaryColor: '#123456' }}>
+        <ThemeProbe />
+      </ThemeProvider>
+    );
+
+    rerender(
+      <ThemeProvider brandColors={{ primaryColor: '#654321' }}>
+        <ThemeProbe />
+      </ThemeProvider>
+    );
+
+    expect(
+      document.documentElement.style.getPropertyValue('--tw-color-brand-600')
+    ).toBe('#654321');
+    expect(
+      document.documentElement.style.getPropertyValue('--tw-color-error-600')
+    ).toBe('');
+  });
+
+  it('clears customer brand variables when branding is removed', () => {
+    const { rerender } = render(
+      <ThemeProvider brandColors={{ primaryColor: '#123456' }}>
+        <ThemeProbe />
+      </ThemeProvider>
+    );
+
+    rerender(
+      <ThemeProvider>
+        <ThemeProbe />
+      </ThemeProvider>
+    );
+
+    expect(
+      document.documentElement.style.getPropertyValue('--tw-color-brand-600')
+    ).toBe('');
   });
 });

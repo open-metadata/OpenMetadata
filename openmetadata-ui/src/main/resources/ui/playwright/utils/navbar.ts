@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Locator, Page } from '@playwright/test';
+import { expect, Locator, Page } from '@playwright/test';
 
 export const navbarSearchItems = [
   {
@@ -112,9 +112,7 @@ export const selectOption = async (
   await page.mouse.move(1280, 0);
 
   await dropdownLocator.click();
-  await page.locator('.ant-select-dropdown:visible').first().waitFor({
-    state: 'visible',
-  });
+  await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);
 
   // Logic to scroll to find the option
   // Since antd dropdown only ingests 10 option at a time in the DOM.

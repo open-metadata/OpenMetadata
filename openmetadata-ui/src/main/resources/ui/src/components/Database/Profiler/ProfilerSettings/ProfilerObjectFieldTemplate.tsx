@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { PlusOutlined } from '@ant-design/icons';
+import { Box, Button, Typography } from '@openmetadata/ui-core-components';
 import { ObjectFieldTemplateProps } from '@rjsf/utils';
-import { Button, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { FC, Fragment } from 'react';
@@ -27,30 +27,38 @@ export const ProfilerObjectFieldTemplate: FC<ObjectFieldTemplateProps> = (
 
   return (
     <Fragment>
-      <Space className="w-full justify-between">
-        <span
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal w-full justify-between"
+        gap={2}
+        itemClassName="layout-space-item">
+        <Typography
           className={classNames('control-label', {
             'font-medium text-base-color text-md': !schema.additionalProperties,
           })}
           id={`${idSchema.$id}__title`}>
           {title}
-        </span>
+        </Typography>
 
         {schema.additionalProperties && (
           <Button
+            aria-label={t('label.add')}
+            color="primary"
             data-testid={`add-item-${title}`}
-            icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
+            iconLeading={
+              <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
+            }
             id={`${idSchema.$id}`}
-            size="small"
-            type="primary"
+            size="xs"
             onClick={() => {
               onAddClick(schema)();
             }}
           />
         )}
-      </Space>
+      </Box>
       {isEmpty(properties) ? (
-        <Typography>{t('message.no-config-plural')}</Typography>
+        <Typography as="article">{t('message.no-config-plural')}</Typography>
       ) : (
         properties.map((element) => (
           <div

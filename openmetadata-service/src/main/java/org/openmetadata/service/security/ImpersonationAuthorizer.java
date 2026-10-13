@@ -41,7 +41,7 @@ public final class ImpersonationAuthorizer {
     if (!Boolean.TRUE.equals(bot.getIsBot()) || !Boolean.TRUE.equals(bot.getAllowImpersonation())) {
       LOG.warn(
           "Impersonation denied: bot={} does not have allowImpersonation enabled", bot.getName());
-      throw new AuthorizationException(
+      throw new ImpersonationDeniedException(
           "Bot " + bot.getName() + " does not have impersonation enabled");
     }
     authorizeTarget(bot.getName(), targetUser);
@@ -54,11 +54,11 @@ public final class ImpersonationAuthorizer {
       bot = Entity.getEntityByName(Entity.USER, botName, BOT_FIELDS, ALL);
     } catch (Exception e) { // deliberately broad: any failure to resolve the bot denies the swap
       LOG.error("Failed to get bot user: {}", botName, e);
-      throw new AuthorizationException("Bot user not found: " + botName);
+      throw new ImpersonationDeniedException("Bot user not found: " + botName);
     }
     if (bot == null) {
       LOG.warn("Impersonation denied: bot user {} was not found", botName);
-      throw new AuthorizationException("Bot user not found: " + botName);
+      throw new ImpersonationDeniedException("Bot user not found: " + botName);
     }
     return bot;
   }
@@ -80,7 +80,7 @@ public final class ImpersonationAuthorizer {
           "Impersonation denied: bot={} is not authorized to impersonate user={}",
           botName,
           targetUser.getName());
-      throw new AuthorizationException(
+      throw new ImpersonationDeniedException(
           "Bot " + botName + " is not authorized to impersonate user " + targetUser.getName());
     }
   }

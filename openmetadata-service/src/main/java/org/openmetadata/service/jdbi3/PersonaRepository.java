@@ -57,6 +57,7 @@ public class PersonaRepository extends EntityRepository<Persona> {
   private static final int MAX_CHARACTER_BUDGET = 2_000_000;
   private static final int MIN_CACHE_TTL_MINUTES = 1;
   private static final int MAX_CACHE_TTL_MINUTES = 1_440;
+  private static final int MAX_PROMPT_LENGTH = 8_000;
   private static final Set<ContextSection> ASSET_SECTIONS =
       Set.of(
           ContextSection.DESCRIPTION,
@@ -196,6 +197,7 @@ public class PersonaRepository extends EntityRepository<Persona> {
     definition.setLastGeneratedAt(null);
     definition.setCacheState(null);
     definition.setLastError(null);
+    definition.setPrompt(normalizedPrompt(definition.getPrompt()));
     if (definition.getCharacterBudget() == null
         || definition.getCharacterBudget() < MIN_CHARACTER_BUDGET
         || definition.getCharacterBudget() > MAX_CHARACTER_BUDGET) {
@@ -261,6 +263,16 @@ public class PersonaRepository extends EntityRepository<Persona> {
         }
       }
     }
+  }
+
+  /** Trimmed, or null when blank so an emptied editor clears the prompt instead of storing "". */
+  private static String normalizedPrompt(String prompt) {
+    String trimmed = prompt == null ? "" : prompt.strip();
+    if (trimmed.length() > MAX_PROMPT_LENGTH) {
+      throw new IllegalArgumentException(
+          "Persona context prompt must be at most " + MAX_PROMPT_LENGTH + " characters");
+    }
+    return trimmed.isEmpty() ? null : trimmed;
   }
 
   private static Set<ContextSection> allowedSections(String entityType) {

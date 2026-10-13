@@ -73,7 +73,8 @@ test.describe('TestCase Version Page', () => {
 
     await redirectToHomePage(page);
     await page.goto(
-      `/test-case/${encodeURIComponent(testCase.fullyQualifiedName)}`
+      `/test-case/${encodeURIComponent(testCase.fullyQualifiedName)}`,
+      { waitUntil: 'domcontentloaded' }
     );
     await waitForAllLoadersToDisappear(page);
     await verifyTestCaseLastRunBanner(page, 'not-run-yet');
@@ -166,19 +167,17 @@ test.describe('TestCase Version Page', () => {
 
       await page.getByTestId('version-button').click();
 
-      await expect(
-        page.getByTestId('minValue').getByTestId('diff-removed')
-      ).toHaveText('12');
-      await expect(
-        page.getByTestId('minValue').getByTestId('diff-added')
-      ).toHaveText('20');
+      const minValueRow = page.getByTestId('configuration-parameter-minValue');
+      const maxValueRow = page.getByTestId('configuration-parameter-maxValue');
 
-      await expect(
-        page.getByTestId('maxValue').getByTestId('diff-removed')
-      ).toHaveText('34');
-      await expect(
-        page.getByTestId('maxValue').getByTestId('diff-added')
-      ).toHaveText('40');
+      await expect(minValueRow.getByTestId('diff-removed')).toHaveText('12');
+      await expect(minValueRow.getByTestId('diff-added')).toHaveText('20');
+      await expect(maxValueRow.getByTestId('diff-removed')).toHaveText('34');
+      await expect(maxValueRow.getByTestId('diff-added')).toHaveText('40');
+
+      // Each change reads whole: a character diff glued the digits together.
+      await expect(minValueRow).toContainText('12 → 20');
+      await expect(maxValueRow).toContainText('34 → 40');
     });
   });
 });

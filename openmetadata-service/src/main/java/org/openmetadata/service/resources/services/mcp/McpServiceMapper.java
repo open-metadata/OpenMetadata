@@ -22,6 +22,7 @@ public class McpServiceMapper implements EntityMapper<McpService, CreateMcpServi
   public McpService createToEntity(CreateMcpService create, String user) {
     return copy(new McpService(), create, user)
         .withServiceType(create.getServiceType())
+        .withServiceAttributes(create.getServiceAttributes())
         .withConnection(create.getConnection())
         .withIngestionRunner(create.getIngestionRunner());
   }

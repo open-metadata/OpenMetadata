@@ -102,6 +102,26 @@ def get_partition_details(
     return None
 
 
+_BIGQUERY_GRANULARITY_WINDOW: dict[str, tuple[PartitionIntervalUnit, int]] = {
+    # (unit, interval) pairs sized so even lagging tables yield non-empty samples.
+    # HOUR: 24 h covers any table updated less frequently than once per hour.
+    # DAY:  3 days covers common ~2-day ingestion delays (e.g. GA4 exports).
+    # MONTH/YEAR: sized to exceed one full period so monthly/yearly tables are not
+    #             silently empty when the most-recent partition is > 3 days old.
+    "HOUR": (PartitionIntervalUnit.HOUR, 24),
+    "DAY": (PartitionIntervalUnit.DAY, 3),
+    "MONTH": (PartitionIntervalUnit.DAY, 35),
+    "YEAR": (PartitionIntervalUnit.DAY, 370),
+}
+
+
+def _bigquery_window_for_granularity(
+    interval: str | None,
+) -> tuple[PartitionIntervalUnit, int]:
+    """Return (unit, count) for the default profiler window matching *interval*."""
+    return _BIGQUERY_GRANULARITY_WINDOW.get(interval or "", (PartitionIntervalUnit.DAY, 3))
+
+
 def _handle_bigquery_partition(entity: Table, table_partition: TablePartition) -> PartitionProfilerConfig | None:
     """Bigquery specific logic for partitions"""
     if table_partition:
@@ -112,22 +132,24 @@ def _handle_bigquery_partition(entity: Table, table_partition: TablePartition) -
         partition = column_partitions[0]
 
         if partition.intervalType == PartitionIntervalTypes.TIME_UNIT:
+            interval_unit, interval_days = _bigquery_window_for_granularity(partition.interval)
             return PartitionProfilerConfig(
                 enablePartitioning=True,
                 partitionColumnName=partition.columnName,
-                partitionIntervalUnit=PartitionIntervalUnit.DAY if partition.interval != "HOUR" else partition.interval,
-                partitionInterval=1,
+                partitionIntervalUnit=interval_unit,
+                partitionInterval=interval_days,
                 partitionIntervalType=partition.intervalType.value,
                 partitionValues=None,
                 partitionIntegerRangeStart=None,
                 partitionIntegerRangeEnd=None,
             )
         if partition.intervalType == PartitionIntervalTypes.INGESTION_TIME:
+            interval_unit, interval_days = _bigquery_window_for_granularity(partition.interval)
             return PartitionProfilerConfig(
                 enablePartitioning=True,
                 partitionColumnName="_PARTITIONDATE" if partition.interval == "DAY" else "_PARTITIONTIME",
-                partitionIntervalUnit=PartitionIntervalUnit.DAY if partition.interval != "HOUR" else partition.interval,
-                partitionInterval=1,
+                partitionIntervalUnit=interval_unit,
+                partitionInterval=interval_days,
                 partitionIntervalType=partition.intervalType.value,
                 partitionValues=None,
                 partitionIntegerRangeStart=None,

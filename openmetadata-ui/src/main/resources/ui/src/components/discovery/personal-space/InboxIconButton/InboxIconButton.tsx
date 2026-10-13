@@ -14,20 +14,15 @@
 import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
 import { useQuery } from '@tanstack/react-query';
 import classNames from 'classnames';
-import React, { useMemo } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ReactComponent as InboxIconActive } from '../../../../assets/svg/ask-collate-nav-bar/inbox-active.svg';
 import { ReactComponent as InboxIconDefault } from '../../../../assets/svg/ask-collate-nav-bar/inbox-default.svg';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
-import { usePersonalSpaceStore } from '../../../../hooks/usePersonalSpaceStore';
 import { useUnreadInboxActivity } from '../../../../hooks/useUnreadInboxActivity';
-import { listMyVisibleTasks, TaskStatusGroup } from '../../../../rest/tasksAPI';
-import { INBOX_OPEN_TASK_COUNT_QUERY_KEY } from '../inbox.constants';
-import { getDefaultInboxDateRange } from '../InboxPage/inbox.utils';
+import { openTaskCountQuery } from '../openTaskCount';
 import { PERSONAL_SPACE_ROUTES } from '../personalSpace.constants';
-
-const OPEN_TASK_COUNT_STALE_TIME = 30 * 1000;
 
 // Keep badge positioning local to this component
 const INBOX_BADGE_CLASS =
@@ -40,8 +35,8 @@ const INBOX_BADGE_CLASS =
  * collapsed `Rail`). The badge combines OPEN tasks the user needs to act on
  * (Open/InProgress/Pending — closed and already-granted tasks are excluded) with
  * activity they have not looked at yet, so a chat shared with them is visible
- * without opening the Inbox. Fetched here (independent of the Inbox page's
- * all-tasks counts) so it shows before the Inbox is opened.
+ * without opening the Inbox. It reads the same open-task query as the Triage
+ * tab badge (`openTaskCountQuery`), so the two agree and share one fetch.
  */
 const InboxIconButton: React.FC = () => {
   const { t } = useTranslation();
@@ -49,31 +44,8 @@ const InboxIconButton: React.FC = () => {
   const { pathname } = useLocation();
   const { currentUser } = useApplicationStore();
   const userId = currentUser?.id;
-  const storedDateRange = usePersonalSpaceStore((s) => s.inboxDateRange);
-  const dateRange = useMemo(
-    () => storedDateRange ?? getDefaultInboxDateRange(),
-    [storedDateRange]
-  );
 
-  const { data: openTaskCount = 0 } = useQuery({
-    queryKey: [
-      ...INBOX_OPEN_TASK_COUNT_QUERY_KEY,
-      dateRange.startTs,
-      dateRange.endTs,
-      userId,
-    ],
-    queryFn: () =>
-      listMyVisibleTasks({
-        limit: 1,
-        startTs: dateRange.startTs,
-        endTs: dateRange.endTs,
-        statusGroup: TaskStatusGroup.Open,
-      })
-        .then((res) => res.paging?.total ?? 0)
-        .catch(() => 0),
-    enabled: Boolean(userId),
-    staleTime: OPEN_TASK_COUNT_STALE_TIME,
-  });
+  const { data: openTaskCount = 0 } = useQuery(openTaskCountQuery(userId));
 
   const unreadActivityCount = useUnreadInboxActivity();
   const pendingCount = openTaskCount + unreadActivityCount;

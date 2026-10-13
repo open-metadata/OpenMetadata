@@ -28,9 +28,12 @@ import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.models.ListParams;
@@ -1122,6 +1125,61 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
     assertEquals(
         "#123456", updated.getStyle().getColor(), "Empty style must preserve the existing value");
     assertEquals("updated desc", updated.getDescription());
+  }
+
+  /**
+   * An import row is matched from stored JSON, which holds no reviewers, so the import loads them
+   * before the reviewer rule decides who may move a tag out of review.
+   */
+  @Test
+  void test_importClassificationCsv_onlyAReviewerApprovesATagInReview(TestNamespace ns) {
+    Classification classification = createEntity(createMinimalRequest(ns));
+    EntityReference admin =
+        SdkClients.adminClient().users().getByName("admin").getEntityReference();
+    Tag reviewedByOthers =
+        tagInReview(classification, ns.prefix("reviewedByOthers"), testUser1Ref());
+    Tag reviewedByAdmin = tagInReview(classification, ns.prefix("reviewedByAdmin"), admin);
+    String csv =
+        "parent,name*,displayName,description,reviewers,owner,tagStatus,color,iconURL,domains,mutuallyExclusive\n"
+            + ",%s,,,,,APPROVED,,,,\n".formatted(reviewedByOthers.getName())
+            + ",%s,,,,,APPROVED,,,,\n".formatted(reviewedByAdmin.getName());
+
+    CsvImportResult result =
+        JsonUtils.readValue(
+            SdkClients.adminClient()
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.PUT,
+                    "/v1/classifications/name/"
+                        + classification.getFullyQualifiedName()
+                        + "/import?dryRun=false",
+                    csv),
+            CsvImportResult.class);
+
+    assertEquals(1, result.getNumberOfRowsFailed(), result.getImportResultsCsv());
+    assertTrue(
+        result.getImportResultsCsv().contains("is not a reviewer"), result.getImportResultsCsv());
+    assertEquals(EntityStatus.IN_REVIEW, stageOf(reviewedByOthers));
+    assertEquals(EntityStatus.APPROVED, stageOf(reviewedByAdmin));
+  }
+
+  private static Tag tagInReview(
+      Classification classification, String name, EntityReference reviewer) {
+    Tag tag =
+        SdkClients.adminClient()
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName(name)
+                    .withDescription("Tag that only its reviewer approves")
+                    .withClassification(classification.getFullyQualifiedName())
+                    .withReviewers(List.of(reviewer)));
+    tag.setEntityStatus(EntityStatus.IN_REVIEW);
+    return SdkClients.adminClient().tags().update(tag.getId().toString(), tag);
+  }
+
+  private static EntityStatus stageOf(Tag tag) {
+    return SdkClients.adminClient().tags().get(tag.getId().toString()).getEntityStatus();
   }
 
   @Test

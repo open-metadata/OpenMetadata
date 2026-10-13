@@ -50,7 +50,7 @@ public class IngestionPipelineFormatter implements EntityFormatter {
 
   private String transformIngestionPipelineStatus(
       MessageDecorator<?> messageFormatter, FormattedMessage thread, FieldChange fieldChange) {
-    EntityInterface entity =
+    EntityInterface<?> entity =
         Entity.getEntity(
             thread.getEntityRef().getType(), thread.getEntityRef().getId(), "id", Include.ALL);
     String ingestionPipelineName = entity.getName();
@@ -75,7 +75,7 @@ public class IngestionPipelineFormatter implements EntityFormatter {
   }
 
   public static String getIngestionPipelineUrl(
-      MessageDecorator<?> formatter, String entityType, EntityInterface entityInterface) {
+      MessageDecorator<?> formatter, String entityType, EntityInterface<?> entityInterface) {
     if (entityType.equals(Entity.INGESTION_PIPELINE)) {
       // Tags need to be redirected to Classification Page
       IngestionPipeline ingestionPipeline = (IngestionPipeline) entityInterface;
@@ -117,7 +117,7 @@ public class IngestionPipelineFormatter implements EntityFormatter {
 
   // Provide the URL of the table the Data Contract belongs to
   public static String getDataContractUrl(
-      MessageDecorator<?> formatter, String entityType, EntityInterface entityInterface) {
+      MessageDecorator<?> formatter, String entityType, EntityInterface<?> entityInterface) {
     if (entityType.equals(Entity.DATA_CONTRACT)) {
       DataContract contract = (DataContract) entityInterface;
       EntityReference tableRef = contract.getEntity();

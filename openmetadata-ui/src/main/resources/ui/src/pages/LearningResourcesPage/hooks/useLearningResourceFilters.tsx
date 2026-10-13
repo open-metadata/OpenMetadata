@@ -18,11 +18,10 @@ import {
   ButtonUtility,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { XClose } from '@untitledui/icons';
-import { Space } from 'antd';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import SearchDropdown from '../../../components/SearchDropdown/SearchDropdown';
+import FilterSelectDropdown from '../../../components/common/FilterSelectDropdown/FilterSelectDropdown';
 import { SearchDropdownOption } from '../../../components/SearchDropdown/SearchDropdown.interface';
 import {
   CATEGORIES,
@@ -164,27 +163,24 @@ export const useLearningResourceFilters = (
 
   const quickFilters = useMemo(
     () => (
-      <Space wrap className="explore-quick-filters-container" size={[8, 0]}>
+      <Box className="explore-quick-filters-container" gap={2} wrap="wrap">
         {FILTER_FIELDS.map((field) => (
-          <SearchDropdown
+          <FilterSelectDropdown
             hideCounts
-            showSelectedCounts
             isSuggestionsLoading={false}
             key={field.key}
             label={translateWithNestedKeys(field.labelKey)}
             options={optionsByKey[field.key] ?? field.options}
             searchKey={field.key}
             selectedKeys={getSelectedKeys(field.key)}
-            triggerButtonSize="middle"
             onChange={handleDropdownChange}
             onGetInitialOptions={handleGetInitialOptions}
             onSearch={handleSearch}
           />
         ))}
-      </Space>
+      </Box>
     ),
     [
-      filterState,
       optionsByKey,
       getSelectedKeys,
       handleDropdownChange,
@@ -272,7 +268,7 @@ export const useLearningResourceFilters = (
                   <Typography
                     ellipsis
                     as="p"
-                    className="tw:text-brand-600"
+                    className="tw:text-brand-secondary"
                     title={filter.value}
                     weight="medium">
                     {filter.value}

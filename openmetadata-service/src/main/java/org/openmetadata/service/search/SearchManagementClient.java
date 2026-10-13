@@ -2,8 +2,11 @@ package org.openmetadata.service.search;
 
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
+import java.util.List;
 import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.search.SearchRequest;
+import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 /**
@@ -76,6 +79,31 @@ public interface SearchManagementClient {
       String fieldName, String fieldValue, String index, Boolean deleted, int from, int size)
       throws IOException;
 
+  Response searchByFieldWithOptions(
+      String fieldName,
+      String fieldValue,
+      String index,
+      Boolean deleted,
+      int from,
+      int size,
+      List<String> sourceIncludes,
+      String requiredExistsField,
+      boolean trackTotalHits)
+      throws IOException;
+
+  Response searchByTerms(
+      String fieldName,
+      List<String> fieldValues,
+      String index,
+      Boolean deleted,
+      int from,
+      int size,
+      List<String> sourceIncludes,
+      boolean trackTotalHits)
+      throws IOException;
+
+  boolean isFieldMappedInIndex(String index, String fieldPath) throws IOException;
+
   /**
    * List entities with pagination support.
    *
@@ -113,7 +141,7 @@ public interface SearchManagementClient {
    * @return response containing paginated search results
    * @throws IOException if search execution fails
    */
-  SearchResultListMapper listWithOffset(
+  default SearchResultListMapper listWithOffset(
       String filter,
       int limit,
       int offset,
@@ -122,6 +150,30 @@ public interface SearchManagementClient {
       String q,
       String queryString,
       SubjectContext subjectContext)
+      throws IOException {
+    return listWithOffset(
+        filter,
+        limit,
+        offset,
+        index,
+        searchSortFilter,
+        q,
+        queryString,
+        subjectContext,
+        ContextMemorySearchVisibility.SEARCHABLE_STATUSES);
+  }
+
+  /** As above, admitting context memories in any of {@code memoryStatuses}. */
+  SearchResultListMapper listWithOffset(
+      String filter,
+      int limit,
+      int offset,
+      String index,
+      SearchSortFilter searchSortFilter,
+      String q,
+      String queryString,
+      SubjectContext subjectContext,
+      List<ContextMemoryStatus> memoryStatuses)
       throws IOException;
 
   /**

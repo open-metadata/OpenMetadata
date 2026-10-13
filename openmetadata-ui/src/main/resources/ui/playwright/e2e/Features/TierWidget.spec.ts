@@ -39,46 +39,48 @@ test.describe('TierWidget stale state regression', () => {
     await redirectToHomePage(page);
     await table.visitEntityPage(page);
 
-    await test.step('Radio resets to persisted tier after cancelling a change', async () => {
+    await test.step('Persisted tier stays selected after dismissing the picker', async () => {
       // Set Tier1 as the starting state.
       await addTierWidget(page, 'Tier1', 'tables', true);
 
-      // Open the editor and change the radio to Tier2 without saving.
+      // Open the editor and dismiss it without picking a tier.
       // Tier tags are cached from addTierWidget above, so no API call fires here.
       await page.getByTestId('edit-tier').click();
-      await page.getByTestId('cards').waitFor({ state: 'visible' });
+      await page.getByTestId('drop-down-menu').waitFor({ state: 'visible' });
       await waitForAllLoadersToDisappear(page);
-      await page.getByTestId('radio-btn-Tier2').click();
-
-      // Cancel — the radio selection must NOT be persisted.
       await closeTierDropdown(page);
 
       // Reopen — tier tags are already cached so no API call fires; skip the
       // response wait that openTierDropdown uses and go straight to the UI signal.
       await page.getByTestId('edit-tier').click();
-      await page.getByTestId('cards').waitFor({ state: 'visible' });
+      await page.getByTestId('drop-down-menu').waitFor({ state: 'visible' });
       await waitForAllLoadersToDisappear(page);
 
-      await expect(page.getByTestId('radio-btn-Tier1')).toBeChecked();
-      await expect(page.getByTestId('radio-btn-Tier2')).not.toBeChecked();
+      await expect(
+        page.getByTestId('drop-down-menu').getByTestId('Tier.Tier1')
+      ).toBeChecked();
+      await expect(
+        page.getByTestId('drop-down-menu').getByTestId('Tier.Tier2')
+      ).not.toBeChecked();
 
       await closeTierDropdown(page);
     });
 
     await test.step('Radio shows newly saved tier on reopen after a successful save', async () => {
-      // Ensure Tier1 is set (carried over from step A).
-      await addTierWidget(page, 'Tier1', 'tables', true);
-
-      // Save Tier2.
+      // Tier1 is still set from the step above; save Tier2.
       await addTierWidget(page, 'Tier2', 'tables', true);
 
       // Reopen the editor — should show Tier2, not the stale Tier1.
       await page.getByTestId('edit-tier').click();
-      await page.getByTestId('cards').waitFor({ state: 'visible' });
+      await page.getByTestId('drop-down-menu').waitFor({ state: 'visible' });
       await waitForAllLoadersToDisappear(page);
 
-      await expect(page.getByTestId('radio-btn-Tier2')).toBeChecked();
-      await expect(page.getByTestId('radio-btn-Tier1')).not.toBeChecked();
+      await expect(
+        page.getByTestId('drop-down-menu').getByTestId('Tier.Tier2')
+      ).toBeChecked();
+      await expect(
+        page.getByTestId('drop-down-menu').getByTestId('Tier.Tier1')
+      ).not.toBeChecked();
 
       await closeTierDropdown(page);
     });

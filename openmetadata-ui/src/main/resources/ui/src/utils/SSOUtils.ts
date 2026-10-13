@@ -419,9 +419,10 @@ export const getDefaultsForProvider = (
       tenant: '',
       serverUrl,
       callbackUrl: DEFAULT_CALLBACK_URL,
-      maxAge: 0,
+      maxAge: '',
       prompt: '',
       sessionExpiry,
+      endSessionWithProvider: false,
     };
   } else if (!isSaml) {
     // For public clients, use root level fields (excluding SAML)
@@ -497,8 +498,6 @@ const cleanupAuthenticationConfig = (
     const oidcConfig = authConfig.oidcConfiguration;
     cleanupOidcConfiguration(authConfig, oidcConfig);
   }
-
-  authConfig.enableSelfSignup ??= true;
 };
 
 /**

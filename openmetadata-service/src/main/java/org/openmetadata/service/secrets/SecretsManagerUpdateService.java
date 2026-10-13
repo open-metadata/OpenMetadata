@@ -224,7 +224,7 @@ public class SecretsManagerUpdateService {
 
   private Optional<ServiceEntityRepository<?, ?>> retrieveServiceRepository(String entityType) {
     try {
-      EntityRepository<? extends EntityInterface> repository =
+      EntityRepository<? extends EntityInterface<?>> repository =
           Entity.getEntityRepository(entityType);
       if (ServiceEntityRepository.class.isAssignableFrom(repository.getClass())) {
         return Optional.of(((ServiceEntityRepository<?, ?>) repository));

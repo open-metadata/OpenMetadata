@@ -224,7 +224,13 @@ const AUTOMATED_TASK_OUTPUT_MAP: Record<
     ],
   },
   [NodeSubType.SinkTask]: {
-    output: ['syncResult', 'syncedCount', 'failedCount', 'result'],
+    output: [
+      'syncResult',
+      'syncedCount',
+      'failedCount',
+      'skippedCount',
+      'result',
+    ],
     branches: ['success', 'failure'],
   },
 };

@@ -10,67 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { create } from 'zustand';
-import { EntityLineageResponse } from '../../../components/Lineage/Lineage.interface';
-import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { TestCase } from '../../../generated/tests/testCase';
 
-export interface UseTestCaseStoreInterface {
-  testCase: TestCase | undefined;
-  isLoading: boolean;
-  isPermissionLoading: boolean;
-  showAILearningBanner: boolean;
-  testCasePermission: OperationPermission | undefined;
-  setTestCasePermission: (
-    testCasePermission: OperationPermission | undefined
-  ) => void;
-  setIsPermissionLoading: (isPermissionLoading: boolean) => void;
-  setTestCase: (testCase: TestCase) => void;
-  setIsLoading: (isLoading: boolean) => void;
-  setShowAILearningBanner: (showBanner: boolean) => void;
-  reset: () => void;
-  dqLineageData: EntityLineageResponse | undefined;
-  setDqLineageData: (data: EntityLineageResponse | undefined) => void;
-  isTabExpanded: boolean;
-  setIsTabExpanded: (isTabExpanded: boolean) => void;
-}
-export const useTestCaseStore = create<UseTestCaseStoreInterface>()((set) => ({
-  testCase: undefined,
-  dqLineageData: undefined,
-  isLoading: true,
-  isPermissionLoading: true,
-  showAILearningBanner: false,
-  testCasePermission: undefined,
-  isTabExpanded: true,
-  setTestCase: (testCase: TestCase) => {
-    set({ testCase });
-  },
-  setTestCasePermission: (
-    testCasePermission: OperationPermission | undefined
-  ) => {
-    set({ testCasePermission });
-  },
-  setIsPermissionLoading: (isPermissionLoading: boolean) => {
-    set({ isPermissionLoading });
-  },
-  setIsLoading: (isLoading: boolean) => {
-    set({ isLoading });
-  },
-  setShowAILearningBanner: (showAILearningBanner: boolean) => {
-    set({ showAILearningBanner });
-  },
-  setDqLineageData: (data: EntityLineageResponse | undefined) => {
-    set({ dqLineageData: data });
-  },
-  setIsTabExpanded: (isTabExpanded: boolean) => {
-    set({ isTabExpanded });
-  },
-  reset: () => {
-    set({
-      testCase: undefined,
-      isLoading: true,
-      showAILearningBanner: false,
-      isTabExpanded: true,
-    });
-  },
-}));
+// The store lives with the components that use it; this path stays for existing importers.
+export * from '../../../components/DataQuality/IncidentManager/useTestCase.store';

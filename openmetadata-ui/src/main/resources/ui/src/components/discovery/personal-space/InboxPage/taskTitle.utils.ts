@@ -13,20 +13,41 @@
 
 import { TFunction } from 'i18next';
 import { TASK_ENTITY_TYPES } from '../../../../constants/Task.constant';
-import { Task } from '../../../../generated/entity/tasks/task';
+import { EntityType } from '../../../../enums/entity.enum';
+import {
+  Task,
+  TaskCategory,
+  TaskType,
+} from '../../../../generated/entity/tasks/task';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import Fqn from '../../../../utils/Fqn';
+import {
+  getPlainDescription,
+  resolveIncidentTestCaseFqn,
+} from './taskDetail.utils';
 
 // `TASK_ENTITY_TYPES` is keyed by the createTask `TaskType` enum while a Task
 // carries the identically-valued entity enum, so index it by the raw value.
 const TASK_TYPE_MESSAGE_KEYS = TASK_ENTITY_TYPES as Record<string, string>;
 
+// The server names incident tasks itself ("Test Case Incident - <test case
+// display name>"), and a test case usually has no display name, so the title
+// reads "… - null". Nobody wrote it: compose one instead, as the entity-page
+// task card does.
+const isSystemTitled = (task: Task) =>
+  task.category === TaskCategory.Incident ||
+  task.type === TaskType.TestCaseResolution ||
+  task.type === TaskType.IncidentResolution;
+
 // An author-supplied title wins; the id-derived default is not a title.
 // Extracted so this lookup doesn't add to the cyclomatic complexity of
 // getTaskTitle that calls it.
 const getAuthoredTaskTitle = (task: Task) =>
-  [task.displayName, task.name]
-    .map((value) => value?.trim())
-    .find((value) => value && value !== task.taskId);
+  isSystemTitled(task)
+    ? undefined
+    : [task.displayName, task.name]
+        .map((value) => value?.trim())
+        .find((value) => value && value !== task.taskId);
 
 // Several task-type message keys are unset upstream and i18next echoes the
 // key back — that must never reach the UI, so treat it as no label.
@@ -37,15 +58,46 @@ const getTaskTypeLabel = (task: Task, t?: TFunction) => {
   return typeLabel && typeLabel !== typeKey ? typeLabel : '';
 };
 
-const getPrefixedEntityTitle = (task: Task, t?: TFunction) => {
-  const prefix = getTaskTypeLabel(task, t);
-  const entityName = task.about ? getEntityName(task.about) : '';
+// What the task is about: its `about` reference, or — for an incident that
+// names none — the failing test case read off its description.
+const getTitleEntity = (task: Task) => {
+  if (task.about) {
+    return { name: getEntityName(task.about), type: task.about.type };
+  }
+  const testCaseFqn = resolveIncidentTestCaseFqn(task);
 
-  return prefix && entityName ? `${prefix} ${entityName}` : '';
+  return testCaseFqn
+    ? { name: Fqn.split(testCaseFqn).pop() ?? '', type: EntityType.TEST_CASE }
+    : undefined;
+};
+
+export interface TaskTitleParts {
+  title: string;
+  /**
+   * The kind of asset a composed title names ("testCase"), shown beside the
+   * title as a badge. Unset for a title someone wrote.
+   */
+  entityType?: string;
+}
+
+// "<type message> <entity>", as the entity-page task card reads it:
+// "Request TestCase Failure Resolution for orders_rows", with the entity type
+// returned apart so it can be drawn as a badge.
+const getPrefixedEntityTitle = (
+  task: Task,
+  t?: TFunction
+): TaskTitleParts | undefined => {
+  const prefix = getTaskTypeLabel(task, t);
+  const entity = getTitleEntity(task);
+
+  return prefix && entity?.name
+    ? { title: `${prefix} ${entity.name}`, entityType: entity.type }
+    : undefined;
 };
 
 /**
- * The title to show for a task.
+ * The title to show for a task, and — when it is composed rather than written
+ * — the type of the asset it names.
  *
  * A Task has no title field, and `name` is defaulted to the taskId server-side
  * (`TaskRepository.prepare`) for anything opened without one — every governance
@@ -57,10 +109,128 @@ const getPrefixedEntityTitle = (task: Task, t?: TFunction) => {
  * falls back to the authored value / description / taskId, so callers that
  * don't have a translator on hand still get a sensible title.
  */
-export const getTaskTitle = (task: Task, t?: TFunction): string => {
+export const getTaskTitleParts = (
+  task: Task,
+  t?: TFunction
+): TaskTitleParts => {
   const authored = getAuthoredTaskTitle(task);
-  const prefixedEntity = getPrefixedEntityTitle(task, t);
-  const preferredTitle = authored || prefixedEntity || task.description?.trim();
+  if (authored) {
+    return { title: authored };
+  }
 
-  return preferredTitle || task.taskId || '';
+  return (
+    getPrefixedEntityTitle(task, t) ?? {
+      // A title is one run of text; the description's lines join with spaces.
+      title: getPlainDescription(task).replace(/\n/g, ' ') || task.taskId || '',
+    }
+  );
+};
+
+export const getTaskTitle = (task: Task, t?: TFunction): string =>
+  getTaskTitleParts(task, t).title;
+
+// Fewer leading words than this are too common ("Request") to read as a type.
+const MIN_TYPE_WORDS = 2;
+
+export interface TaskTitleSearch {
+  // The leading words, as typed, that read as a composed title's task type;
+  // empty for a plain search.
+  titleWords: string;
+  // What is left for the server to match against the task's stored fields.
+  text: string;
+  // The whole search.
+  query: string;
+}
+
+const toWords = (value: string) => value.trim().split(/\s+/).filter(Boolean);
+
+// How many of the search's leading words a title prefix starts with. The last
+// search word may be half-typed, so it need only start that prefix word.
+const countPrefixWords = (search: string[], prefix: string[]) => {
+  let count = 0;
+  while (count < search.length && count < prefix.length) {
+    const isLast = count === search.length - 1;
+    const word = search[count];
+    const matches = isLast
+      ? prefix[count].startsWith(word)
+      : prefix[count] === word;
+    if (!matches) {
+      break;
+    }
+    count++;
+  }
+
+  return count;
+};
+
+/**
+ * Read a search the way a composed task title reads. A composed title opens
+ * with its task type ("Request TestCase Failure Resolution for orders"), which
+ * the server never stores. A search that opens with at least two words of a
+ * type's prefix has those words matched against the title shown here, and only
+ * the words after them go to the server; any other search is plain text. The
+ * prefix is compared in the viewer's language.
+ */
+export const splitTaskTitleSearch = (
+  query: string,
+  t: TFunction
+): TaskTitleSearch => {
+  const words = toWords(query);
+  const lowered = words.map((word) => word.toLowerCase());
+  const best = Math.max(
+    0,
+    ...Object.values(TASK_TYPE_MESSAGE_KEYS).map((key) => {
+      const label = t(key);
+
+      return label && label !== key
+        ? countPrefixWords(lowered, toWords(label.toLowerCase()))
+        : 0;
+    })
+  );
+  const isTitleSearch = best >= MIN_TYPE_WORDS;
+
+  return {
+    titleWords: isTitleSearch ? words.slice(0, best).join(' ') : '',
+    text: words.slice(isTitleSearch ? best : 0).join(' '),
+    // Trimmed only, as the server reads it.
+    query: query.trim(),
+  };
+};
+
+// The stored fields the server's task search reads (ListFilter), so a task it
+// would have matched on the whole search still matches here.
+const getSearchableText = (task: Task) =>
+  [
+    task.name,
+    task.displayName,
+    (task.payload as { reason?: string } | undefined)?.reason,
+    task.about?.displayName,
+    task.about?.fullyQualifiedName,
+  ]
+    .filter(Boolean)
+    .join('\n')
+    .toLowerCase();
+
+/**
+ * The loaded tasks a title search keeps: those whose shown title holds the
+ * typed title words, whatever their type (an authored title can share them),
+ * and those whose stored fields hold the whole search, as the server would
+ * have matched them. A plain search keeps every task; the server narrowed it.
+ */
+export const filterTasksByTitleSearch = (
+  tasks: Task[],
+  search: TaskTitleSearch,
+  t: TFunction
+): Task[] => {
+  if (!search.titleWords) {
+    return tasks;
+  }
+  const titleWords = search.titleWords.toLowerCase();
+  const query = search.query.toLowerCase();
+
+  return tasks.filter(
+    (task) =>
+      getTaskTitle(task, t).toLowerCase().includes(titleWords) ||
+      getSearchableText(task).includes(query)
+  );
 };

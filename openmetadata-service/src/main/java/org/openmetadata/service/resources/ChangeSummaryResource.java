@@ -113,8 +113,8 @@ public class ChangeSummaryResource {
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
     EntityRepository<?> repository = Entity.getEntityRepository(entityType);
-    EntityInterface entity =
-        (EntityInterface) repository.get(uriInfo, id, repository.getFields("changeDescription"));
+    EntityInterface<?> entity =
+        (EntityInterface<?>) repository.get(uriInfo, id, repository.getFields("changeDescription"));
 
     return buildResponse(entity, fieldPrefix, limit, offset);
   }
@@ -171,15 +171,15 @@ public class ChangeSummaryResource {
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
     EntityRepository<?> repository = Entity.getEntityRepository(entityType);
-    EntityInterface entity =
-        (EntityInterface)
+    EntityInterface<?> entity =
+        (EntityInterface<?>)
             repository.getByName(uriInfo, fqn, repository.getFields("changeDescription"));
 
     return buildResponse(entity, fieldPrefix, limit, offset);
   }
 
   private Response buildResponse(
-      EntityInterface entity, String fieldPrefix, int limit, int offset) {
+      EntityInterface<?> entity, String fieldPrefix, int limit, int offset) {
     ChangeDescription changeDescription = entity.getChangeDescription();
     ChangeSummaryMap changeSummaryMap =
         changeDescription != null ? changeDescription.getChangeSummary() : null;

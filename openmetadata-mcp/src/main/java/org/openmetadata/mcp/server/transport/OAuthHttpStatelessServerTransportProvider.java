@@ -63,7 +63,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
   private volatile URI resourceMetadataUrl;
 
-  private final JwtFilter jwtFilter;
+  private volatile JwtFilter jwtFilter;
 
   private volatile List<String> allowedOrigins;
 
@@ -204,6 +204,8 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       org.openmetadata.schema.api.security.AuthenticationConfiguration authConfig,
       org.openmetadata.schema.api.security.AuthorizerConfiguration authzConfig,
       org.openmetadata.schema.api.configuration.MCPConfiguration mcpConfig) {
+    // Tokens must be checked against the reloaded security settings, not the ones at startup.
+    this.jwtFilter = new JwtFilter(authConfig, authzConfig);
     if (mcpConfig != null) {
       if (mcpConfig.getAllowedOrigins() != null) {
         updateAllowedOrigins(mcpConfig.getAllowedOrigins());

@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 
-import { Button, Form, FormProps, Select, Space, Typography } from 'antd';
+import { Box, Button, Typography } from '@openmetadata/ui-core-components';
+import { Form, FormProps, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { FC, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VALIDATION_MESSAGES } from '../../../../constants/constants';
+import { ClientErrors } from '../../../../enums/Axios.enum';
 import {
   PersonalAccessToken,
   TokenType,
@@ -28,11 +30,40 @@ import {
 } from '../../../../generated/entity/teams/user';
 import { ScimConfiguration } from '../../../../generated/scim/scimConfiguration';
 import { SettingType } from '../../../../generated/settings/settings';
-import { updateSettingsConfig } from '../../../../rest/settingConfigAPI';
+import {
+  patchSettingsConfig,
+  updateSettingsConfig,
+} from '../../../../rest/settingConfigAPI';
 import { getJWTTokenExpiryOptions } from '../../../../utils/BotsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 
 const { Option } = Select;
+
+const DEFAULT_SCIM_CONFIGURATION: ScimConfiguration = {
+  enabled: true,
+  identityProvider: 'default',
+};
+
+/**
+ * Patches only `enabled`, so the other SCIM fields an operator configured survive. A server whose
+ * configuration file has no SCIM section stores nothing until the first write, and a patch needs a
+ * stored value, so that case creates the setting instead.
+ */
+const enableScimProvisioning = async () => {
+  try {
+    await patchSettingsConfig(SettingType.ScimConfiguration, [
+      { op: 'add', path: '/enabled', value: true },
+    ]);
+  } catch (error) {
+    if ((error as AxiosError)?.response?.status !== ClientErrors.NOT_FOUND) {
+      throw error;
+    }
+    await updateSettingsConfig({
+      config_type: SettingType.ScimConfiguration,
+      config_value: DEFAULT_SCIM_CONFIGURATION,
+    });
+  }
+};
 
 interface Props {
   isUpdating: boolean;
@@ -93,18 +124,9 @@ const AuthMechanismForm: FC<Props> = ({
   }, [isBot, authenticationMechanism]);
 
   const handleGenerateSCIMToken = useCallback(async () => {
-    // Update SCIM configuration when generating token for SCIM bot
     if (isSCIMBot) {
       try {
-        const scimConfig: ScimConfiguration = {
-          enabled: true,
-          identityProvider: 'default',
-        };
-
-        await updateSettingsConfig({
-          config_type: SettingType.ScimConfiguration,
-          config_value: scimConfig,
-        });
+        await enableScimProvisioning();
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
@@ -122,20 +144,19 @@ const AuthMechanismForm: FC<Props> = ({
   return isSCIMBot ? (
     <div className="flex  justify-between items-center">
       <div className="flex flex-col gap-2">
-        <Typography.Text className="card-title m-t-0 m-b-2 text-md">
+        <Typography className="card-title m-t-0 m-b-2 text-md">
           {t('message.automate-provisioning-with-scim')}
-        </Typography.Text>
-        <Typography.Paragraph className="m-b-0 card-description">
+        </Typography>
+        <Typography as="p" className="m-b-0 card-description">
           {t(
             'message.scim-allows-automatic-user-and-group-management-directly-from-your-sso-provider'
           )}
-        </Typography.Paragraph>
+        </Typography>
       </div>
       <Button
-        className="text-sm generate-scim-token-btn"
+        color="primary"
         data-testid="generate-scim-token"
-        size="small"
-        type="primary"
+        size="xs"
         onClick={handleGenerateSCIMToken}>
         {t('label.generate-token')}
       </Button>
@@ -171,21 +192,29 @@ const AuthMechanismForm: FC<Props> = ({
         </Select>
       </Form.Item>
 
-      <Space className="w-full justify-end" size={4}>
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal w-full justify-end"
+        gap={1}
+        itemClassName="layout-space-item">
         {!isEmpty(authenticationMechanism) && (
-          <Button data-testid="cancel-edit" type="link" onClick={onCancel}>
+          <Button
+            color="link-color"
+            data-testid="cancel-edit"
+            onClick={onCancel}>
             {t('label.cancel')}
           </Button>
         )}
         <Button
+          color="primary"
           data-testid="save-edit"
           form="update-auth-mechanism-form"
-          htmlType="submit"
-          loading={isUpdating}
-          type="primary">
+          isLoading={isUpdating}
+          type="submit">
           {t('label.generate')}
         </Button>
-      </Space>
+      </Box>
     </Form>
   );
 };

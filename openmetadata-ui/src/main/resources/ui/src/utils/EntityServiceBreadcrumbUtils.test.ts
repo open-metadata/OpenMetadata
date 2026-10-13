@@ -23,7 +23,7 @@ describe('getServiceCategoryBreadcrumb', () => {
   it('points at the settings services page by default', () => {
     const [crumb] = getServiceCategoryBreadcrumb(ServiceCategory.API_SERVICES);
 
-    expect(crumb.name).toBe('Api Services');
+    expect(crumb.name).toBe('label.api-uppercase-plural');
     expect(crumb.url).toBe('/settings/services/apiServices');
   });
 

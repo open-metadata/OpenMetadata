@@ -25,6 +25,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';
 import { REDIRECT_PATHNAME } from '../../constants/router.constants';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import {
   permissionQueryKeys,
@@ -46,7 +47,6 @@ import {
 import {
   PermissionContextType,
   PermissionProviderProps,
-  ResourceEntity,
   UIPermission,
 } from './PermissionProvider.interface';
 
@@ -77,15 +77,16 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
     {} as UIPermission
   );
   const { currentUser } = useApplicationStore();
-  const cookieStorage = new CookieStorage();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
 
   const redirectToStoredPath = useCallback(() => {
-    const urlPathname = cookieStorage.getItem(REDIRECT_PATHNAME);
+    const urlPathname = new CookieStorage().getItem(REDIRECT_PATHNAME);
     if (urlPathname) {
       setUrlPathnameExpiryAfterRoute(urlPathname);
-      navigate(urlPathname);
+      if (urlPathname !== window.location.pathname) {
+        navigate(urlPathname);
+      }
     }
     // `navigate` is the actual dependency this callback reads (the router's
     // navigate function) — `history` was never declared in this file and

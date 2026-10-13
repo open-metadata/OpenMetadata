@@ -13,6 +13,7 @@
 import { APIRequestContext } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import {
+  deleteFixtureEntity,
   okJson,
   quoteFqnSegment,
   withNotFoundRetry,
@@ -77,7 +78,8 @@ export class SubDomain {
   }
 
   async delete(apiContext: APIRequestContext) {
-    const response = await apiContext.delete(
+    const response = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/domains/name/${encodeURIComponent(
         this.responseData?.fullyQualifiedName ?? this.data.name
       )}?recursive=true&hardDelete=true`
@@ -101,7 +103,6 @@ export class SubDomain {
         },
       })
     );
-
     this.responseData = await okJson(response, 'SubDomain.patch');
 
     return {

@@ -39,4 +39,10 @@ export interface DescriptionProps {
    * by pages without a GenericProvider; context supplies it otherwise.
    */
   changeSummaryEntry?: ChangeSummaryEntry;
+  /**
+   * `widget` heads the card like the widget cards beside it in a rail (Tags,
+   * Glossary Terms, Data Products): their title style, and their ghost action
+   * buttons in place of the bordered ones.
+   */
+  headerVariant?: 'default' | 'widget';
 }

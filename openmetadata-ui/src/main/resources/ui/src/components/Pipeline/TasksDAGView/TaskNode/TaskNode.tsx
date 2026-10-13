@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Space } from 'antd';
+import { Box } from '@openmetadata/ui-core-components';
+
 import classNames from 'classnames';
 import { CSSProperties, Fragment } from 'react';
 import { Handle, HandleType, NodeProps, Position } from 'reactflow';
@@ -70,7 +71,13 @@ const TaskNode = (props: NodeProps) => {
       data-testid="task-node-container">
       {getHandle(type, isConnectable)}
       {/* Node label could be simple text or reactNode */}
-      <Space className="p-x-sm p-y-sm w-full" data-testid="node-label">
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal p-x-sm p-y-sm w-full"
+        data-testid="node-label"
+        gap={2}
+        itemClassName="layout-space-item">
         <div
           className={classNames(
             'custom-node-label',
@@ -79,7 +86,7 @@ const TaskNode = (props: NodeProps) => {
           data-testid="node-label-status"
         />
         {label}
-      </Space>
+      </Box>
     </div>
   );
 };

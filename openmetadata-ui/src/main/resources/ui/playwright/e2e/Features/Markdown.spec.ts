@@ -49,16 +49,50 @@ multiple lines
 
 :smile: emoji`;
 
+// Already-rendered HTML carrying nested lists, with prose that also looks like
+// markdown. Descriptions written through the block editor and saved back come
+// in this shape. Routing it through the markdown converter makes Showdown hash
+// the list markup as inline spans, and its unhash pass gives up after 10
+// levels of nesting — leaving `\u00a8C<n>C` placeholders where the list items
+// should be.
+const htmlGlossary = new Glossary();
+htmlGlossary.data.description =
+  'Legacy notes: **see wiki**' +
+  '<p><strong>Discontinued UEs:</strong></p>' +
+  '<ol class="om-list-decimal">' +
+  '<li class="om-leading-normal"><p>High Definition Media UEs</p>' +
+  '<ul class="om-list-disc">' +
+  '<li class="om-leading-normal"><p>HD: Capable</p></li>' +
+  '<li class="om-leading-normal"><p>HD: Display Capable</p></li>' +
+  '<li class="om-leading-normal"><p>HD: Receivable</p></li>' +
+  '</ul></li>' +
+  '<li class="om-leading-normal"><p>VCR and Analog UEs</p>' +
+  '<ul class="om-list-disc">' +
+  '<li class="om-leading-normal"><p>AnalogCableOnlyWithPay</p></li>' +
+  '<li class="om-leading-normal"><p>PresVCRYes</p></li>' +
+  '</ul></li>' +
+  '<li class="om-leading-normal"><p>Cable UE</p>' +
+  '<ul class="om-list-disc">' +
+  '<li class="om-leading-normal"><p>CableNotADS</p></li>' +
+  '<li class="om-leading-normal"><p>CableAndADS</p></li>' +
+  '</ul></li>' +
+  '</ol>';
+
+// The placeholder Showdown leaves behind when it cannot finish unhashing.
+const SHOWDOWN_SPAN_PLACEHOLDER = /\u00a8C\d+C/;
+
 test.describe('Markdown', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
     await glossary.create(apiContext);
+    await htmlGlossary.create(apiContext);
     await afterAction();
   });
 
   test.afterAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
     await glossary.delete(apiContext);
+    await htmlGlossary.delete(apiContext);
     await afterAction();
   });
 
@@ -71,11 +105,11 @@ test.describe('Markdown', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     // Verify various markdown elements are rendered correctly
     const container = page.getByTestId('asset-description-container');
 
-    // check if read-more-button exists the perform click
-    const readMoreButton = page.getByTestId('read-more-button');
-    if (await readMoreButton.isVisible()) {
-      await readMoreButton.click();
-    }
+    // A glossary with no terms opens its description expanded, but the
+    // previewer renders collapsed first and expands in an effect. Clicking
+    // "more" raced that flip: the button became "less" and the click hung.
+    // Wait for the settled, expanded state instead of toggling it.
+    await expect(container.getByTestId('read-less-button')).toBeVisible();
 
     await expect(container.locator('h1')).toHaveText('Heading 1');
     await expect(container.locator('h2')).toHaveText('Heading 2');
@@ -88,5 +122,30 @@ test.describe('Markdown', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await expect(container.locator('table')).toBeVisible();
     await expect(container.locator('ol > li')).toHaveCount(2);
     await expect(container.locator('ul > li')).toHaveCount(3);
+  });
+
+  test('should render nested lists in an HTML description', async ({
+    page,
+  }) => {
+    await htmlGlossary.visitPage(page);
+
+    const container = page.getByTestId('asset-description-container');
+
+    // Count the items first: the assertion retries until the description has
+    // rendered, so the text assertions below cannot pass against an empty
+    // container. Both read the DOM rather than the layout, which keeps them
+    // independent of whether the preview is clamped — no Read More click, and
+    // so no race against the button's own asynchronous overflow measurement.
+    await expect(container.locator('ol > li')).toHaveCount(3);
+    await expect(container.locator('ul > li')).toHaveCount(7);
+
+    // Every list item must carry its own text. Before the fix only the first
+    // ~11 hashed spans were restored and the rest rendered as `¨C45C`.
+    await expect(container).not.toContainText(SHOWDOWN_SPAN_PLACEHOLDER);
+
+    await expect(container).toContainText('VCR and Analog UEs');
+    await expect(container).toContainText('AnalogCableOnlyWithPay');
+    await expect(container).toContainText('Cable UE');
+    await expect(container).toContainText('CableAndADS');
   });
 });

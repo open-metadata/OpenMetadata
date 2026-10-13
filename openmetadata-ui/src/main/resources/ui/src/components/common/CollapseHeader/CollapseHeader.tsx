@@ -10,16 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
-import { Button, Dropdown, Typography } from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { Button, Dropdown, Typography } from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as PlusOutlined } from '../../../assets/svg/plus-outlined.svg';
-import './collapse-header.less';
+
+export interface CollapseHeaderMenuItem {
+  key: string;
+  label: string;
+  onClick: () => void;
+}
 
 interface CollapseHeaderProps {
   title: string;
-  menuItems?: ItemType[];
+  menuItems?: CollapseHeaderMenuItem[];
   handleAddNewBoost?: () => void;
   dataTestId?: string;
 }
@@ -32,42 +35,39 @@ const CollapseHeader = ({
 }: CollapseHeaderProps) => {
   const { t } = useTranslation();
 
-  const getPopupContainer = (triggerNode: HTMLElement) =>
-    triggerNode.parentElement ?? document.body;
-
   return (
     <div className="d-flex items-center justify-between">
-      <Typography.Text className="text-md font-semibold">
-        {title}
-      </Typography.Text>
+      <Typography className="text-md font-semibold">{title}</Typography>
       {menuItems ? (
-        <Dropdown
-          getPopupContainer={getPopupContainer}
-          menu={{
-            items: menuItems,
-            className: 'menu-items',
-          }}
-          placement="bottomLeft"
-          trigger={['click']}>
+        <Dropdown.Root>
           <Button
-            className="add-field-btn"
             data-testid={dataTestId}
-            icon={<Icon className="text-xs" component={PlusOutlined} />}
-            type="primary"
-            onClick={(e) => e.stopPropagation()}>
+            iconLeading={<Plus size={14} />}
+            size="sm">
             {t('label.add')}
           </Button>
-        </Dropdown>
+          <Dropdown.Popover placement="bottom start">
+            <Dropdown.Menu
+              aria-label={t('label.add')}
+              className="tw:max-h-70 tw:overflow-y-auto"
+              selectionMode="none">
+              {menuItems.map((item) => (
+                <Dropdown.Item
+                  id={item.key}
+                  key={item.key}
+                  label={item.label}
+                  onAction={item.onClick}
+                />
+              ))}
+            </Dropdown.Menu>
+          </Dropdown.Popover>
+        </Dropdown.Root>
       ) : (
         <Button
-          className="add-field-btn"
           data-testid={dataTestId}
-          icon={<Icon className="text-xs" component={PlusOutlined} />}
-          type="primary"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleAddNewBoost?.();
-          }}>
+          iconLeading={<Plus size={14} />}
+          size="sm"
+          onPress={handleAddNewBoost}>
           {t('label.add')}
         </Button>
       )}

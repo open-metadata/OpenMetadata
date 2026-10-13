@@ -25,6 +25,23 @@ public interface AggregationManagementClient {
   Response aggregate(AggregationRequest request) throws IOException;
 
   /**
+   * Same as {@link #aggregate(AggregationRequest)} but evaluates the caller's policies against the
+   * aggregation query, so an aggregation cannot surface documents the caller may not read. Defaults
+   * to the subject-less overload, which applies no policy filtering.
+   *
+   * @param request the aggregation request containing query parameters, field names, and other
+   *     aggregation settings
+   * @param subjectContext the caller, used to build the RBAC query and per-subject memory
+   *     visibility filter
+   * @return the response containing aggregation results
+   * @throws IOException if the aggregation operation fails
+   */
+  default Response aggregate(AggregationRequest request, SubjectContext subjectContext)
+      throws IOException {
+    return aggregate(request);
+  }
+
+  /**
    * Execute a generic aggregation for data quality reporting.
    *
    * @param query the search query

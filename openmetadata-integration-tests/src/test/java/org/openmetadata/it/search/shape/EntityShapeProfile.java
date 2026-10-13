@@ -18,7 +18,7 @@ import org.openmetadata.schema.EntityInterface;
 public interface EntityShapeProfile {
   String entityType();
 
-  EntityInterface minimal(ShapeContext ctx);
+  EntityInterface<?> minimal(ShapeContext ctx);
 
   default List<PlannedCase> entitySpecificCases(ShapeContext ctx) {
     return List.of();

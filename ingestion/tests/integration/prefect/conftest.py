@@ -37,7 +37,7 @@ class _PrefectContainer(DockerContainer):
     def __init__(self):
         super().__init__("prefecthq/prefect:3-latest")
         self.with_exposed_ports(4200)
-        self.with_command(["prefect", "server", "start", "--host", "0.0.0.0"])
+        self.with_command(["prefect", "server", "start", "--no-services", "--host", "0.0.0.0"])
 
     def start(self) -> "_PrefectContainer":
         super().start()

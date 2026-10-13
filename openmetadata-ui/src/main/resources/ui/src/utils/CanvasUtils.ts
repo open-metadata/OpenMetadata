@@ -12,7 +12,6 @@
  */
 import type { Edge, Node, Viewport } from 'reactflow';
 import { Position } from 'reactflow';
-import { EntityChildren } from '../components/Entity/EntityLineage/NodeChildren/NodeChildren.interface';
 import {
   COLUMN_NODE_HEIGHT,
   LINEAGE_CHILD_ITEMS_PER_PAGE,
@@ -24,6 +23,7 @@ import {
 } from '../constants/Lineage.constants';
 import { EntityType } from '../enums/entity.enum';
 import { useLineageStore } from '../hooks/useLineageStore';
+import { EntityChildren } from '../interface/lineage.interface';
 import { getEdgePathData } from './EntityLineageEdgeUtils';
 import { getEntityChildrenAndLabel } from './EntityLineageNodeUtils';
 

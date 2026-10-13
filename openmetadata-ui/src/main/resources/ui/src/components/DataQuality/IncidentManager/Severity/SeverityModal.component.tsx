@@ -11,69 +11,76 @@
  *  limitations under the License.
  */
 
-import { Form, Modal, Select } from 'antd';
-import { FormProps, useForm } from 'antd/lib/form/Form';
-import { keys, startCase } from 'lodash';
+import { Form, Select, SimpleModal } from '@openmetadata/ui-core-components';
+import { startCase } from 'lodash';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Severities } from '../../../../generated/tests/testCaseResolutionStatus';
 import { SeverityModalProps } from './Severity.interface';
+
+const NO_SEVERITY = 'none';
 
 const SeverityModal = ({
   initialSeverity,
   onCancel,
   onSubmit,
 }: SeverityModalProps) => {
-  const [form] = useForm();
   const { t } = useTranslation();
+  const [severity, setSeverity] = useState<Severities | undefined>(
+    initialSeverity
+  );
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const handleFormSubmit: FormProps['onFinish'] = (data) => {
+  // The leading "No severity" item stands in for antd's allowClear.
+  const severityItems = [
+    {
+      id: NO_SEVERITY,
+      label: t('label.no-entity', { entity: t('label.severity') }),
+    },
+    ...Object.values(Severities).map((value) => ({
+      id: value,
+      label: startCase(value),
+    })),
+  ];
+
+  const handleSubmit = () => {
     setIsLoading(true);
-    onSubmit(data.severity).finally(() => {
+    onSubmit(severity).finally(() => {
       setIsLoading(false);
     });
   };
 
   return (
-    <Modal
-      centered
-      destroyOnClose
-      open
+    <SimpleModal
+      isOpen
       cancelText={t('label.cancel')}
-      closable={false}
-      confirmLoading={isLoading}
-      maskClosable={false}
+      isDismissable={false}
+      isOkLoading={isLoading}
       okText={t('label.save')}
-      title={`${t('label.edit-entity', {
-        entity: t('label.severity'),
-      })}`}
+      title={t('label.edit-entity', { entity: t('label.severity') })}
       width={600}
       onCancel={onCancel}
-      onOk={() => form.submit()}>
-      <Form
-        data-testid="severity-form"
-        form={form}
-        initialValues={{ severity: initialSeverity }}
-        layout="vertical"
-        name="severity"
-        onFinish={handleFormSubmit}>
-        <Form.Item label={t('label.severity')} name="severity">
-          <Select
-            allowClear
-            data-testid="severity-select"
-            placeholder={t('label.please-select-entity', {
-              entity: t('label.severity'),
-            })}>
-            {keys(Severities).map((severity) => (
-              <Select.Option key={severity}>
-                {startCase(severity)}
-              </Select.Option>
-            ))}
-          </Select>
-        </Form.Item>
+      onOk={handleSubmit}>
+      <Form data-testid="severity-form">
+        <Select
+          data-testid="severity-select"
+          items={severityItems}
+          label={t('label.severity')}
+          placeholder={t('label.please-select-entity', {
+            entity: t('label.severity'),
+          })}
+          selectedKey={severity ?? null}
+          onSelectionChange={(key) =>
+            setSeverity(
+              key === NO_SEVERITY || key === null
+                ? undefined
+                : (key as Severities)
+            )
+          }>
+          {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+        </Select>
       </Form>
-    </Modal>
+    </SimpleModal>
   );
 };
 

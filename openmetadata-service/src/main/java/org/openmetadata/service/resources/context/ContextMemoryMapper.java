@@ -30,7 +30,7 @@ public class ContextMemoryMapper implements EntityMapper<ContextMemory, CreateCo
         .withAnswer(create.getAnswer())
         .withMemoryType(create.getMemoryType())
         .withMemoryScope(create.getMemoryScope())
-        .withStatus(create.getStatus())
+        .withEntityStatus(create.getEntityStatus())
         .withShareConfig(create.getShareConfig())
         .withPrimaryEntity(create.getPrimaryEntity())
         .withRelatedEntities(create.getRelatedEntities())

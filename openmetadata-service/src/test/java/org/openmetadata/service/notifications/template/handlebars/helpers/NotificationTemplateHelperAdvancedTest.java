@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
 
@@ -281,22 +282,20 @@ class NotificationTemplateHelperAdvancedTest {
 
   @Test
   void buildEntityUrlHelperDefaultBaseUrlDelegatesToEmailUtil() {
+    SystemRepository previous = Entity.getSystemRepository();
+    SystemRepository repository = mock(SystemRepository.class);
+    org.mockito.Mockito.when(
+            repository.getConfigWithKey(SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION.value()))
+        .thenReturn(
+            new Settings()
+                .withConfigType(SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION)
+                .withConfigValue(
+                    new OpenMetadataBaseUrlConfiguration()
+                        .withOpenMetadataUrl("https://openmetadata.example/")));
+    Entity.setSystemRepository(repository);
     try (MockedStatic<SettingsCache> settingsCache = mockStatic(SettingsCache.class);
         MockedConstruction<DefaultTemplateProvider> ignoredTemplateProvider =
-            mockConstruction(DefaultTemplateProvider.class);
-        MockedConstruction<SystemRepository> ignored =
-            mockConstruction(
-                SystemRepository.class,
-                (repository, context) ->
-                    org.mockito.Mockito.when(
-                            repository.getConfigWithKey(
-                                SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION.value()))
-                        .thenReturn(
-                            new Settings()
-                                .withConfigType(SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION)
-                                .withConfigValue(
-                                    new OpenMetadataBaseUrlConfiguration()
-                                        .withOpenMetadataUrl("https://openmetadata.example/"))))) {
+            mockConstruction(DefaultTemplateProvider.class)) {
       settingsCache
           .when(
               () -> SettingsCache.getSetting(SettingsType.EMAIL_CONFIGURATION, SmtpSettings.class))
@@ -310,6 +309,8 @@ class NotificationTemplateHelperAdvancedTest {
 
       assertEquals(
           "https://openmetadata.example", new ExposedBuildEntityUrlHelper().exposedBaseUrl());
+    } finally {
+      Entity.setSystemRepository(previous);
     }
   }
 

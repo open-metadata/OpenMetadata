@@ -20,22 +20,12 @@ import {
   isNode,
   Position,
 } from 'reactflow';
-import type {
-  EntityChildren,
-  Flatten,
-} from '../components/Entity/EntityLineage/NodeChildren/NodeChildren.interface';
-import type {
-  EdgeDetails,
-  LineageEntityReference,
-  LineageNodeType,
-} from '../components/Lineage/Lineage.interface';
-import type { LineagePagingInfo } from '../components/LineageTable/LineageTable.interface';
+import type { LineageEntityReference } from '../components/Lineage/Lineage.interface';
 import {
   DATATYPES_HAVING_SUBFIELDS,
   NODE_HEIGHT,
   NODE_WIDTH,
 } from '../constants/Lineage.constants';
-import { LineagePlatformView } from '../context/LineageProvider/LineageProvider.interface';
 import { EntityLineageNodeType, EntityType } from '../enums/entity.enum';
 import { LineageDirection } from '../generated/api/lineage/lineageDirection';
 import type { APIEndpoint } from '../generated/entity/data/apiEndpoint';
@@ -44,6 +34,14 @@ import type { SearchIndex } from '../generated/entity/data/searchIndex';
 import type { Table } from '../generated/entity/data/table';
 import type { Topic } from '../generated/entity/data/topic';
 import type { EntityReference } from '../generated/type/entityReference';
+import { LineagePlatformView } from '../hooks/lineage/types';
+import type {
+  EdgeDetails,
+  EntityChildren,
+  Flatten,
+  LineageNodeType,
+  LineagePagingInfo,
+} from '../interface/lineage.interface';
 import { getEntityName } from './EntityNameUtils';
 import { isDeleted } from './EntityStatusUtils';
 import { t } from './i18next/LocalUtil';
@@ -117,6 +115,21 @@ const getSearchIndexEntityChildren = (
   childrenCount: node.fields?.length ?? 0,
 });
 
+/**
+ * A metric has no columns of its own -- it *is* the leaf a table column feeds,
+ * e.g. Total Sales = sum(Sales.Amount). So it exposes itself as its single
+ * column-lineage endpoint, keyed by its own FQN like the backend expects.
+ * childrenCount stays 0 so the node keeps its compact label with no
+ * "1 column" footer outside the column layer.
+ */
+const getMetricEntityChildren = (
+  node: LineageNodeType
+): EntityChildrenMapping => ({
+  data: [node],
+  label: t('label.metric'),
+  childrenCount: 0,
+});
+
 const ENTITY_CHILDREN_RESOLVERS: Partial<
   Record<EntityType, (node: LineageNodeType) => EntityChildrenMapping>
 > = {
@@ -128,6 +141,7 @@ const ENTITY_CHILDREN_RESOLVERS: Partial<
   [EntityType.TOPIC]: getTopicEntityChildren,
   [EntityType.API_ENDPOINT]: getApiEndpointEntityChildren,
   [EntityType.SEARCH_INDEX]: getSearchIndexEntityChildren,
+  [EntityType.METRIC]: getMetricEntityChildren,
 };
 
 export function getEntityChildrenAndLabel(node: LineageNodeType) {
@@ -241,6 +255,24 @@ const getTracedNode = (
   return nodes.filter((n) => tracedEdgeIds.has(n.id));
 };
 
+// Appends every newly visited node to the caller's accumulator. Kept separate
+// from the traversal so each stays a single, readable loop.
+const collectTracedNodes = (
+  visitedNodeIds: Set<string>,
+  nodes: Node[],
+  prevTraced: Node[]
+) => {
+  for (const nodeId of visitedNodeIds) {
+    if (prevTraced.some((n) => n.id === nodeId)) {
+      continue;
+    }
+    const tracedNode = nodes.find((n) => n.id === nodeId);
+    if (tracedNode) {
+      prevTraced.push(tracedNode);
+    }
+  }
+};
+
 export const getAllTracedNodes = (
   node: Node,
   nodes: Node[],
@@ -273,14 +305,7 @@ export const getAllTracedNodes = (
     }
   }
 
-  for (const nodeId of visitedNodeIds) {
-    if (!prevTraced.some((n) => n.id === nodeId)) {
-      const tracedNode = nodes.find((n) => n.id === nodeId);
-      if (tracedNode) {
-        prevTraced.push(tracedNode);
-      }
-    }
-  }
+  collectTracedNodes(visitedNodeIds, nodes, prevTraced);
 
   return result;
 };

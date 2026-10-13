@@ -23,7 +23,10 @@ import {
   toggleThumbsUpReaction,
   visitTableActivityFeed,
 } from '../../utils/activityAPI';
-import { postActivityComment } from '../../utils/activityFeed';
+import {
+  clickFeedReaction,
+  postActivityComment,
+} from '../../utils/activityFeed';
 import { createAdminApiContext } from '../../utils/admin';
 import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
 import { waitForLandingPageWidget } from '../../utils/customizeLandingPage';
@@ -345,7 +348,7 @@ test.describe(
             response.url().endsWith('/reaction/rocket') &&
             response.request().method() === 'PUT'
         );
-        await page.locator('[title="rocket"]:visible').click();
+        await clickFeedReaction(page, 'rocket');
         await reactionResponse;
 
         await editedReplyCard.getByTestId('emoji-button').hover();
@@ -365,7 +368,12 @@ test.describe(
               .includes(`/api/v1/conversations/${firstActivityId}/replies/`) &&
             response.request().method() === 'DELETE'
         );
-        await page.locator('.ant-modal').getByTestId('save-button').click();
+        // The reply delete confirm is ConfirmationModal, which is a core
+        // Dialog — scope by its own test id rather than `.ant-modal`.
+        await page
+          .getByTestId('confirmation-modal')
+          .getByTestId('save-button')
+          .click();
         await deleteResponse;
 
         await expect(editedReplyCard).toHaveCount(0);
@@ -498,7 +506,7 @@ test.describe(
       const feedItems = feedWidget.getByTestId('message-container');
 
       await expect(feedWidget).toBeVisible();
-      await expect(feedItems.first()).toBeVisible({
+      await expect(feedItems.filter({ visible: true })).not.toHaveCount(0, {
         timeout: FEED_ITEM_TIMEOUT,
       });
     });
@@ -598,8 +606,8 @@ test.describe(
         feedWidget
           .getByTestId('message-container')
           .filter({ hasText: followedActivitySummary })
-          .first()
-      ).toBeVisible({ timeout: FEED_ITEM_TIMEOUT });
+          .filter({ visible: true })
+      ).not.toHaveCount(0, { timeout: FEED_ITEM_TIMEOUT });
     });
   }
 );

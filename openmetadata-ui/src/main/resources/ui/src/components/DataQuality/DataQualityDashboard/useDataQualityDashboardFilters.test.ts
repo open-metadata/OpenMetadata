@@ -13,6 +13,7 @@
 import { renderHook } from '@testing-library/react';
 import { act } from 'react';
 import { SearchDropdownOption } from '../../../components/SearchDropdown/SearchDropdown.interface';
+import { DQ_FILTER_TYPES } from '../../../constants/DataQuality.constants';
 import { EntityReference } from '../../../generated/type/entityReference';
 import {
   getEndOfDayInMillis,
@@ -37,18 +38,32 @@ const option = (key: string): SearchDropdownOption => ({ key, label: key });
 
 const findSearch = (filters: DqFilterDescriptor[], searchKey: string) => {
   const descriptor = filters.find(
-    (filter) => filter.type === 'search' && filter.searchKey === searchKey
+    (filter) =>
+      filter.type === DQ_FILTER_TYPES.SEARCH && filter.searchKey === searchKey
   );
-  if (descriptor?.type !== 'search') {
+  if (descriptor?.type !== DQ_FILTER_TYPES.SEARCH) {
     throw new Error(`No search filter for ${searchKey}`);
   }
 
   return descriptor;
 };
 
+const findGlossaryTerm = (filters: DqFilterDescriptor[]) => {
+  const descriptor = filters.find(
+    (filter) => filter.type === DQ_FILTER_TYPES.GLOSSARY_TERM
+  );
+  if (descriptor?.type !== DQ_FILTER_TYPES.GLOSSARY_TERM) {
+    throw new Error('No glossary-term filter');
+  }
+
+  return descriptor;
+};
+
 const findOwner = (filters: DqFilterDescriptor[]) => {
-  const descriptor = filters.find((filter) => filter.type === 'owner');
-  if (descriptor?.type !== 'owner') {
+  const descriptor = filters.find(
+    (filter) => filter.type === DQ_FILTER_TYPES.OWNER
+  );
+  if (descriptor?.type !== DQ_FILTER_TYPES.OWNER) {
     throw new Error('No owner filter');
   }
 
@@ -164,9 +179,7 @@ describe('useDataQualityDashboardFilters', () => {
       ]);
     });
     act(() => {
-      findSearch(result.current.filters, 'glossaryTerms').searchProps.onChange([
-        option('Glossary.Term'),
-      ]);
+      findGlossaryTerm(result.current.filters).onChange(['Glossary.Term']);
     });
 
     expect(result.current.chartFilter.glossaryTerms).toEqual(['Glossary.Term']);

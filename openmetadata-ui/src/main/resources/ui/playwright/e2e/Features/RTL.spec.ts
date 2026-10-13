@@ -13,6 +13,7 @@
 
 import { expect } from '@playwright/test';
 import { toLower } from 'lodash';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { clickOutside, redirectToHomePage } from '../../utils/common';
 import {
@@ -30,13 +31,13 @@ test.describe('Verify RTL Layout for landing page', () => {
     await page.getByTestId('language-selector-button').click();
     await Promise.all([
       page.waitForEvent('load'),
-      page.locator('.ant-dropdown:visible [data-menu-id*="-he-HE"]').click(),
+      page.getByRole('menu').locator('[data-key="he-HE"]').click(),
     ]);
     await expect(page.getByTestId('domain-selector')).toBeVisible();
     // wait for translation to reflect in the UI
     await expect(page.getByTestId('domain-selector')).toHaveText(
       'כל הדומיינים',
-      { timeout: 30_000 }
+      { timeout: ACTION_TIMEOUT }
     );
   });
 
@@ -55,17 +56,16 @@ test.describe('Verify RTL Layout for landing page', () => {
 
     await quickFilterResponse;
 
-    await expect(
-      page.getByRole('button', { name: 'סוג השירות : (1)' })
-    ).toBeAttached();
+    await expect(page.getByTestId('search-dropdown-סוג השירות')).toBeAttached();
+    await expect(page.getByTestId('filter-count-badge')).toHaveText('1');
 
     await expect(
       page
         .getByTestId('explore-tree')
-        .locator('span')
+        .getByRole('row')
         .filter({ hasText: serviceType })
         .first()
-    ).toHaveClass(/ant-tree-node-selected/);
+    ).toHaveAttribute('aria-selected', 'true');
   });
 
   test('Verify Following widget functionality', async ({ page }) => {

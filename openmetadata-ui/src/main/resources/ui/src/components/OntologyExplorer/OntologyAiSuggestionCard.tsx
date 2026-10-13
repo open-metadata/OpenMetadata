@@ -17,7 +17,7 @@ import {
   Card,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Check, XClose } from '@untitledui/icons';
+import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 
 interface OntologyAiSuggestionCardProps {

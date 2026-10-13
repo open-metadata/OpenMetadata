@@ -1589,7 +1589,7 @@ class TestIterArchiveEntriesWithSchema:
         zip_bytes = _make_zip({"a.csv": _CSV_CONTENT, "b.csv": _CSV2_CONTENT})
         call_count = {"n": 0}
 
-        def _infer_side_effect(entry, fmt):
+        def _infer_side_effect(entry, fmt, limits=None, report=None):
             call_count["n"] += 1
             if call_count["n"] == 1:
                 return []

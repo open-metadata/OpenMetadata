@@ -105,7 +105,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
   };
 });
 
-jest.mock('@untitledui/icons', () => ({ SearchLg: () => <span /> }));
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
+  Search: () => <span />,
+}));
 
 jest.mock('./TestSuitesTable.component', () => ({
   TestSuitesTable: (props: {
@@ -220,6 +222,28 @@ describe('TestSuiteListPanel', () => {
     });
 
     expect(onSearch).toHaveBeenCalledWith('sales');
+
+    jest.useRealTimers();
+  });
+
+  it('should drop a pending search when the panel unmounts', () => {
+    // Opening a suite from the list unmounts the panel. A search still pending
+    // then would call onSearch, whose navigate({ search }) resolves against the
+    // list route and pulls the user back off the suite they just opened.
+    jest.useFakeTimers();
+    const onSearch = jest.fn();
+    const { unmount } = renderPanel({ onSearch });
+
+    fireEvent.change(screen.getByTestId('search-input'), {
+      target: { value: 'sales' },
+    });
+    unmount();
+
+    act(() => {
+      jest.advanceTimersByTime(500);
+    });
+
+    expect(onSearch).not.toHaveBeenCalled();
 
     jest.useRealTimers();
   });

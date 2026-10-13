@@ -10,12 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import { DownOutlined, UpOutlined } from '@ant-design/icons';
-import { Button, Dropdown } from 'antd';
-import { MenuInfo } from 'rc-menu/lib/interface';
-import { useState } from 'react';
-import './widget-sort-filter.less';
+import { Button, Dropdown } from '@openmetadata/ui-core-components';
+import { ChevronDown, ChevronUp } from '@openmetadata/ui-core-components/icons';
+import { Key, useState } from 'react';
 
 export interface SortOption {
   key: string;
@@ -25,7 +22,7 @@ export interface SortOption {
 export interface WidgetSortFilterProps {
   sortOptions: SortOption[];
   selectedSortBy: string;
-  onSortChange: (e: MenuInfo) => void;
+  onSortChange: (key: string) => void;
   isEditView?: boolean;
 }
 
@@ -37,43 +34,46 @@ const WidgetSortFilter = ({
 }: WidgetSortFilterProps) => {
   const [isOpen, setIsOpen] = useState<boolean>(false);
 
-  const handleSortByClick = (e: MenuInfo) => {
-    if (!isEditView) {
-      onSortChange(e);
-      setIsOpen(false);
-    }
-  };
-
   if (isEditView) {
     return null;
   }
 
+  const selectedLabel = sortOptions.find(
+    (option) => option.key === selectedSortBy
+  )?.label;
+
   return (
-    <Dropdown
-      className="widget-header-options"
-      getPopupContainer={(triggerNode: HTMLElement) => triggerNode}
-      menu={{
-        items: sortOptions,
-        selectable: true,
-        multiple: false,
-        activeKey: selectedSortBy,
-        onClick: handleSortByClick,
-        className: 'widget-sort-filter-menu',
-      }}
-      open={isOpen}
-      trigger={['click']}
-      onOpenChange={(open) => setIsOpen(open)}>
+    <Dropdown.Root isOpen={isOpen} onOpenChange={setIsOpen}>
       <Button
-        className="widget-sort-by-dropdown"
-        data-testid="widget-sort-by-dropdown">
-        {sortOptions.find((option) => option.key === selectedSortBy)?.label}
-        {isOpen ? (
-          <UpOutlined className="widget-sort-filter-icon" />
-        ) : (
-          <DownOutlined className="widget-sort-filter-icon" />
-        )}
+        className="widget-header-options"
+        color="secondary"
+        data-testid="widget-sort-by-dropdown"
+        iconTrailing={
+          isOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />
+        }
+        size="sm">
+        {selectedLabel}
       </Button>
-    </Dropdown>
+      <Dropdown.Popover className="tw:w-auto" placement="bottom end">
+        <Dropdown.Menu
+          aria-label={selectedLabel}
+          selectionMode="none"
+          onAction={(key: Key) => onSortChange(String(key))}>
+          {sortOptions.map((option) => (
+            <Dropdown.Item
+              className={
+                option.key === selectedSortBy
+                  ? 'tw:[&>div]:bg-active'
+                  : undefined
+              }
+              id={option.key}
+              key={option.key}
+              label={option.label}
+            />
+          ))}
+        </Dropdown.Menu>
+      </Dropdown.Popover>
+    </Dropdown.Root>
   );
 };
 

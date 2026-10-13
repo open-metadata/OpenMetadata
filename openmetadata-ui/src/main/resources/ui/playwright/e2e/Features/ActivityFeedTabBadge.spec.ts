@@ -12,11 +12,16 @@
  */
 
 import { APIRequestContext } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { createConversationThread } from '../../utils/activityAPI';
 import { performAdminLogin } from '../../utils/admin';
+import {
+  dismissHoverPopovers,
+  waitForAntdPopupToSettle,
+} from '../../utils/common';
 import { waitForPageLoaded } from '../../utils/polling';
 import { waitForTaskListResponse } from '../../utils/task';
 
@@ -64,17 +69,18 @@ function badge(page: import('@playwright/test').Page) {
   return page.getByTestId('left-panel-task-count').getByTestId('filter-count');
 }
 
-async function switchToClosedFilter(page: import('@playwright/test').Page) {
-  await page.getByTestId('user-profile-page-task-filter-icon').click();
+async function switchTaskFilter(
+  page: import('@playwright/test').Page,
+  optionTestId: 'open-tasks' | 'closed-tasks'
+) {
+  const filter = page.getByTestId('user-profile-page-task-filter-icon');
+  await dismissHoverPopovers(page);
+  await filter.click();
+  const option = page.getByTestId(optionTestId);
+  await expect(option).toBeVisible();
+  await waitForAntdPopupToSettle(page);
   const tasksListResponse = waitForTaskListResponse(page);
-  await page.getByTestId('closed-tasks').click();
-  await tasksListResponse;
-}
-
-async function switchToOpenFilter(page: import('@playwright/test').Page) {
-  await page.getByTestId('user-profile-page-task-filter-icon').click();
-  const tasksListResponse = waitForTaskListResponse(page);
-  await page.getByTestId('open-tasks').click();
+  await option.click();
   await tasksListResponse;
 }
 const waitForMentionedConversationResponse = (
@@ -131,18 +137,18 @@ test.describe('ActivityFeedTab — task filter badge, placeholder and mentions',
 
       await expect(badge(page)).toHaveText('1');
 
-      await switchToClosedFilter(page);
+      await switchTaskFilter(page, 'closed-tasks');
       await expect(badge(page)).toHaveText('0');
 
       await resolveTask(apiContext, task.id);
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForPageLoaded(page);
       await navigateToTasksPanel(page);
 
       await expect(badge(page)).toHaveText('0');
 
-      await switchToClosedFilter(page);
+      await switchTaskFilter(page, 'closed-tasks');
       await expect(badge(page)).toHaveText('1');
     } finally {
       await afterAction();
@@ -164,12 +170,12 @@ test.describe('ActivityFeedTab — task filter badge, placeholder and mentions',
       await navigateToTasksPanel(page);
 
       await expect(page.getByText(/Great News/i)).toBeVisible();
-      await switchToClosedFilter(page);
+      await switchTaskFilter(page, 'closed-tasks');
 
       await expect(page.getByText(/Nothing Closed Yet/i)).toBeVisible();
       await expect(page.getByText(/Great News/i)).not.toBeVisible();
 
-      await switchToOpenFilter(page);
+      await switchTaskFilter(page, 'open-tasks');
       await expect(page.getByText(/Great News/i)).toBeVisible();
       await expect(page.getByText(/Nothing Closed Yet/i)).not.toBeVisible();
     } finally {
@@ -219,7 +225,7 @@ test.describe('ActivityFeedTab — task filter badge, placeholder and mentions',
 
       await expect(allBadge).toBeVisible();
       // Open filter is the default, and exactly one task is still open.
-      await expect(badge(page)).toHaveText('1', { timeout: 30_000 });
+      await expect(badge(page)).toHaveText('1', { timeout: ACTION_TIMEOUT });
 
       // Poll the difference: all three numbers land after first paint, so a
       // single read races the count request and compares stale values. A
@@ -239,7 +245,7 @@ test.describe('ActivityFeedTab — task filter badge, placeholder and mentions',
               (Number(all.trim()) + Number(tasks.trim()))
             );
           },
-          { timeout: 30_000 }
+          { timeout: ACTION_TIMEOUT }
         )
         .toBe(0);
     } finally {
@@ -314,7 +320,7 @@ test.describe('ActivityFeedTab — task filter badge, placeholder and mentions',
       await page.getByTestId('mentions-toggle').click();
       await mentionsAgain;
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForPageLoaded(page);
 
       await expect(mentionCards).toHaveCount(1);

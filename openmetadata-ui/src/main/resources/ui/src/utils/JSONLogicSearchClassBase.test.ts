@@ -12,6 +12,7 @@
  */
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { getEntityLifecycleStages } from '../rest/metadataTypeAPI';
 import { JSONLogicSearchClassBase } from './JSONLogicSearchClassBase';
 
 // Define extended widget interface for testing widget properties
@@ -145,7 +146,10 @@ describe('JSONLogicSearchClassBase', () => {
       expect(typeof result).toBe('number');
       expect(result).toBeGreaterThan(0);
 
-      // Test jsonLogicImport function (converts from timestamp to ISO string)
+      // jsonLogicImport must hand back the widget's own value format. The date
+      // widget is a native `<input type="date">`, which renders its value
+      // verbatim and blanks anything that is not `YYYY-MM-DD` — an ISO
+      // datetime came back from the API as an empty field.
       expect((dateWidget as ExtendedWidget).jsonLogicImport).toBeDefined();
 
       const timestamp = 1704067200000; // 2024-01-01T00:00:00Z
@@ -153,6 +157,10 @@ describe('JSONLogicSearchClassBase', () => {
         utils: {
           moment: {
             utc: (val: number) => ({
+              format: (fmt: string) =>
+                fmt === 'YYYY-MM-DD'
+                  ? new Date(val).toISOString().slice(0, 10)
+                  : new Date(val).toISOString(),
               toISOString: () => new Date(val).toISOString(),
             }),
           },
@@ -164,8 +172,8 @@ describe('JSONLogicSearchClassBase', () => {
         >
       ).call(mockContext2, timestamp);
 
-      expect(typeof result2).toBe('string');
-      expect(result2).toMatch(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
+      expect(result2).toBe('2024-01-01');
+      expect(result2).not.toMatch(/T\d{2}:\d{2}/);
     });
 
     it('should have multiselect widget with proper configuration', () => {
@@ -240,7 +248,9 @@ describe('JSONLogicSearchClassBase', () => {
     it('should return config with proper operators for non-explore page', () => {
       const config = jsonLogicSearchClassBase.getQbConfigs(
         [SearchIndex.TABLE],
-        false
+        {
+          showLabels: false,
+        }
       );
 
       expect(config.operators.equal.label).toContain('label.is');
@@ -252,7 +262,9 @@ describe('JSONLogicSearchClassBase', () => {
     it('should return config with original labels for explore page', () => {
       const config = jsonLogicSearchClassBase.getQbConfigs(
         [SearchIndex.TABLE],
-        true
+        {
+          showLabels: true,
+        }
       );
 
       // For explore page, labels should be original from base config
@@ -359,6 +371,36 @@ describe('JSONLogicSearchClassBase', () => {
         EntityReferenceFields.COLUMN_TAG
       );
     });
+
+    it.each(['Superseded', 'Invalidated'])(
+      'does not offer %s when filtering tables',
+      async (status) => {
+        const config = jsonLogicSearchClassBase.getCommonConfig([
+          SearchIndex.TABLE,
+        ]);
+        const field = config[EntityReferenceFields.ENTITY_STATUS];
+        if (!('fieldSettings' in field)) {
+          throw new Error('Status must be a selectable field');
+        }
+        const settings = field.fieldSettings;
+        const fetch =
+          settings && 'asyncFetch' in settings
+            ? settings.asyncFetch
+            : undefined;
+        if (typeof fetch !== 'function') {
+          throw new Error(
+            'Status options must resolve through lifecycle discovery'
+          );
+        }
+
+        await expect(fetch('', 0)).resolves.toMatchObject({
+          values: expect.arrayContaining([
+            expect.objectContaining({ value: 'Approved' }),
+          ]),
+        });
+        await expect(fetch(status, 0)).resolves.toMatchObject({ values: [] });
+      }
+    );
   });
 
   describe('getNegativeQueryForNotContainsReverserOperation', () => {
@@ -535,7 +577,37 @@ describe('JSONLogicSearchClassBase', () => {
       const props = jsonLogicSearchClassBase.mainWidgetProps;
 
       expect(props.fullWidth).toBe(true);
-      expect(props.valueLabel).toContain('label.criteria');
+      // The canvas draws the Value column's own label, so the widget no longer
+      // carries a "Criteria:" prefix of its own.
+      expect(props.valueLabel).toContain('label.value');
     });
+  });
+});
+
+jest.mock('../rest/metadataTypeAPI', () => ({
+  getEntityLifecycleStages: jest.fn(),
+}));
+
+beforeEach(() => {
+  (
+    getEntityLifecycleStages as jest.MockedFunction<
+      typeof getEntityLifecycleStages
+    >
+  ).mockResolvedValue({
+    stages: ['Approved', 'In Review', 'Superseded', 'Invalidated'],
+    entityTypes: [
+      {
+        entityType: 'table',
+        stages: ['Approved', 'In Review'],
+        transitions: [],
+        stageWorkflows: [],
+      },
+      {
+        entityType: 'contextMemory',
+        stages: ['Approved', 'Superseded', 'Invalidated'],
+        transitions: [],
+        stageWorkflows: [],
+      },
+    ],
   });
 });

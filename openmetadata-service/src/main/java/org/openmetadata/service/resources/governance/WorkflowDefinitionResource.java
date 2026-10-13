@@ -1,5 +1,7 @@
 package org.openmetadata.service.resources.governance;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -32,6 +34,7 @@ import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.governance.CreateWorkflowDefinition;
@@ -50,10 +53,12 @@ import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.secrets.masker.WorkflowDefinitionMasker;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.JsonPatchUtils;
 
 @Path("/v1/governance/workflowDefinitions")
 @Tag(
@@ -128,8 +133,9 @@ public class WorkflowDefinitionResource
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = new ListFilter(include);
-    return super.listInternal(
-        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    return maskList(
+        super.listInternal(
+            uriInfo, securityContext, fieldsParam, filter, limitParam, before, after));
   }
 
   @GET
@@ -153,7 +159,7 @@ public class WorkflowDefinitionResource
       @Parameter(description = "Id of the Workflow Definition", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    return WorkflowDefinitionMasker.mask(super.listVersionsInternal(securityContext, id));
   }
 
   @GET
@@ -200,7 +206,8 @@ public class WorkflowDefinitionResource
               schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
           @QueryParam("includeRelations")
           String includeRelations) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations);
+    return WorkflowDefinitionMasker.mask(
+        getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations));
   }
 
   @POST
@@ -282,7 +289,8 @@ public class WorkflowDefinitionResource
               schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
           @QueryParam("includeRelations")
           String includeRelations) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include, includeRelations);
+    return WorkflowDefinitionMasker.mask(
+        getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include, includeRelations));
   }
 
   @GET
@@ -315,7 +323,7 @@ public class WorkflowDefinitionResource
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    return WorkflowDefinitionMasker.mask(super.getVersionInternal(securityContext, id, version));
   }
 
   @POST
@@ -339,7 +347,7 @@ public class WorkflowDefinitionResource
       @Valid CreateWorkflowDefinition create) {
     WorkflowDefinition workflowDefinition =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    return super.create(uriInfo, securityContext, workflowDefinition);
+    return maskResponse(super.create(uriInfo, securityContext, workflowDefinition));
   }
 
   @PATCH
@@ -368,7 +376,8 @@ public class WorkflowDefinitionResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    authorizeCopyAndMove(securityContext, patch, () -> getResourceContextById(id));
+    return maskResponse(patchInternal(uriInfo, securityContext, id, patch));
   }
 
   @PATCH
@@ -397,7 +406,8 @@ public class WorkflowDefinitionResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+    authorizeCopyAndMove(securityContext, patch, () -> getResourceContextByName(fqn));
+    return maskResponse(patchInternal(uriInfo, securityContext, fqn, patch));
   }
 
   @PUT
@@ -421,7 +431,7 @@ public class WorkflowDefinitionResource
       @Valid CreateWorkflowDefinition create) {
     WorkflowDefinition workflowDefinition =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    return super.createOrUpdate(uriInfo, securityContext, workflowDefinition);
+    return maskResponse(super.createOrUpdate(uriInfo, securityContext, workflowDefinition));
   }
 
   @DELETE
@@ -451,7 +461,7 @@ public class WorkflowDefinitionResource
       @Parameter(description = "Id of the Workflow Definition", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete);
+    return maskResponse(delete(uriInfo, securityContext, id, recursive, hardDelete));
   }
 
   @DELETE
@@ -513,7 +523,7 @@ public class WorkflowDefinitionResource
               schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
+    return maskResponse(deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete));
   }
 
   @PUT
@@ -535,7 +545,7 @@ public class WorkflowDefinitionResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return maskResponse(restoreEntity(uriInfo, securityContext, restore.getId()));
   }
 
   @POST
@@ -753,5 +763,48 @@ public class WorkflowDefinitionResource
                 "resumedAt",
                 System.currentTimeMillis()))
         .build();
+  }
+
+  @Override
+  protected ResultList<WorkflowDefinition> listEntityHistoryByTimestampInternal(
+      SecurityContext securityContext,
+      long startTs,
+      long endTs,
+      String before,
+      String after,
+      int limit) {
+    return maskList(
+        super.listEntityHistoryByTimestampInternal(
+            securityContext, startTs, endTs, before, after, limit));
+  }
+
+  /**
+   * Requires EditAll for a patch with a {@code copy} or {@code move} operation, which reads the
+   * value at its {@code from} location; patch authorization covers each operation's target path.
+   */
+  private void authorizeCopyAndMove(
+      SecurityContext securityContext,
+      JsonPatch patch,
+      Supplier<ResourceContext<WorkflowDefinition>> resourceContext) {
+    if (JsonPatchUtils.readsFromAnotherPath(patch)) {
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(entityType, MetadataOperation.EDIT_ALL),
+          resourceContext.get());
+    }
+  }
+
+  private static ResultList<WorkflowDefinition> maskList(ResultList<WorkflowDefinition> list) {
+    list.setData(listOrEmpty(list.getData()).stream().map(WorkflowDefinitionMasker::mask).toList());
+    return list;
+  }
+
+  private static Response maskResponse(Response response) {
+    // A JAX-RS Response holds its entity as Object; the create, update, delete and restore
+    // endpoints return the WorkflowDefinition itself. The masked copy keeps the status and the
+    // change-type header, from which the change event is built.
+    return response.getEntity() instanceof WorkflowDefinition definition
+        ? Response.fromResponse(response).entity(WorkflowDefinitionMasker.mask(definition)).build()
+        : response;
   }
 }

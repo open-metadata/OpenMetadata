@@ -1,0 +1,88 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/tableauPipelineConnection.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TableauPipelineConnection",
+  "description": "Tableau Pipeline Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.pipeline.TableauPipelineConnection",
+  "definitions": {
+    "TableauPipelineType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["TableauPipeline"],
+      "default": "TableauPipeline"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/TableauPipelineType",
+      "default": "TableauPipeline"
+    },
+    "hostPort": {
+      "expose": true,
+      "title": "Host and Port",
+      "description": "Tableau Server URL.",
+      "type": "string",
+      "format": "uri"
+    },
+    "authType": {
+      "mask": true,
+      "title": "Authentication type for Tableau",
+      "description": "Types of methods used to authenticate to the tableau instance",
+      "oneOf": [
+        {
+          "$ref": "../../../../security/credentials/basicAuth.json"
+        },
+        {
+          "$ref": "../../../../security/credentials/accessTokenAuth.json"
+        }
+      ]
+    },
+    "siteName": {
+      "title": "Site Name",
+      "description": "Tableau Site Name.",
+      "type": "string",
+      "default": null
+    },
+    "apiVersion": {
+      "title": "API Version",
+      "description": "Tableau API version. If not provided, the version will be used from the tableau server.",
+      "type": "string",
+      "default": null
+    },
+    "verifySSL": {
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/verifySSL",
+      "default": "no-ssl"
+    },
+    "sslConfig": {
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
+    },
+    "pipelineFilterPattern": {
+      "description": "Regex exclude or include pipelines that match the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default Pipeline Filter Pattern"
+    },
+    "numberOfStatus": {
+      "title": "Number of Status",
+      "description": "Number of recent runs to fetch per flow or extract refresh.",
+      "type": "integer",
+      "default": 10,
+      "minimum": 1,
+      "maximum": 100
+    },
+    "includeExtractRefreshes": {
+      "title": "Include Extract Refreshes",
+      "description": "Ingest the extract refresh tasks of published data sources and workbooks as pipelines, with their refresh jobs as pipeline status. Reading refresh job history requires a site administrator.",
+      "type": "boolean",
+      "default": true
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["hostPort", "authType"]
+}

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { TestCaseStatus } from '../../../../generated/tests/testCase';
 import { getTestCaseDimensionResultsByFqn } from '../../../../rest/testAPI';
 import DimensionalityTab from './DimensionalityTab';
 
@@ -58,6 +59,11 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
+    Badge: jest
+      .fn()
+      .mockImplementation(({ children, ...props }) => (
+        <span data-testid={props['data-testid']}>{children}</span>
+      )),
     Select: Object.assign(
       jest
         .fn()
@@ -171,6 +177,39 @@ describe('DimensionalityTab', () => {
     expect(JSON.parse(link.getAttribute('data-state') ?? '{}')).toEqual(
       mockNavigationState
     );
+  });
+
+  it('marks a dimension excluded from the roll-up next to its status', async () => {
+    mockGetTestCaseDimensionResultsByFqn.mockResolvedValueOnce({
+      data: [
+        {
+          id: 'ad',
+          testCaseResultId: 'result',
+          dimensionKey: 'country=AD',
+          dimensionValues: [{ name: 'country', value: 'AD' }],
+          testCaseStatus: TestCaseStatus.Failed,
+          excludedFromRollUp: true,
+          timestamp: 1709576999999,
+        },
+        {
+          id: 'us',
+          testCaseResultId: 'result',
+          dimensionKey: 'country=US',
+          dimensionValues: [{ name: 'country', value: 'US' }],
+          testCaseStatus: TestCaseStatus.Failed,
+          timestamp: 1709576999999,
+        },
+      ],
+      paging: { total: 2 },
+    });
+
+    render(<DimensionalityTab />);
+
+    expect(await screen.findAllByTestId('status-badge')).toHaveLength(2);
+    expect(screen.getAllByTestId('excluded-from-roll-up-badge')).toHaveLength(
+      1
+    );
+    expect(screen.getByText('label.excluded-from-roll-up')).toBeInTheDocument();
   });
 
   it('preserves the picker boundaries for a custom date range', async () => {

@@ -215,10 +215,12 @@ export enum JobType {
     AuditExport = "AUDIT_EXPORT",
     CSVExport = "CSV_EXPORT",
     CSVImport = "CSV_IMPORT",
+    ContextMemoryExtraction = "CONTEXT_MEMORY_EXTRACTION",
     CustomPropertyEnumCleanup = "CUSTOM_PROPERTY_ENUM_CLEANUP",
     DeleteEntity = "DELETE_ENTITY",
     DeleteToken = "DELETE_TOKEN",
     OntologyBulk = "ONTOLOGY_BULK",
+    OntologyMemoryDerivation = "ONTOLOGY_MEMORY_DERIVATION",
 }
 
 /**

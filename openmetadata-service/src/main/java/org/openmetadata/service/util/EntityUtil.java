@@ -22,6 +22,7 @@ import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_R
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.SecurityContext;
@@ -40,6 +41,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
@@ -63,6 +65,7 @@ import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.type.*;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -457,7 +460,7 @@ public final class EntityUtil {
     return CommonUtil.getResources(Pattern.compile(path));
   }
 
-  public static <T extends EntityInterface> List<String> toFQNs(List<T> entities) {
+  public static <T extends EntityInterface<?>> List<String> toFQNs(List<T> entities) {
     if (entities == null) {
       return Collections.emptyList();
     }
@@ -877,7 +880,7 @@ public final class EntityUtil {
     return ref == null ? null : ref.getFullyQualifiedName();
   }
 
-  public static String getFqn(EntityInterface entity) {
+  public static String getFqn(EntityInterface<?> entity) {
     return entity == null ? null : entity.getFullyQualifiedName();
   }
 
@@ -892,7 +895,7 @@ public final class EntityUtil {
     return fqns;
   }
 
-  public static EntityReference getEntityReference(EntityInterface entity) {
+  public static EntityReference getEntityReference(EntityInterface<?> entity) {
     return entity == null ? null : entity.getEntityReference();
   }
 
@@ -937,9 +940,9 @@ public final class EntityUtil {
         .orElse(null);
   }
 
-  public static void sortByFQN(List<? extends EntityInterface> entities) {
+  public static void sortByFQN(List<? extends EntityInterface<?>> entities) {
     // Sort entities by fullyQualifiedName
-    entities.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
+    entities.sort(Comparator.comparing(EntityInterface<?>::getFullyQualifiedName));
   }
 
   /**
@@ -1002,22 +1005,6 @@ public final class EntityUtil {
       return Hex.encodeHexString(checksum);
     }
     return null;
-  }
-
-  public static boolean isDescriptionTask(TaskType taskType) {
-    return taskType == TaskType.RequestDescription || taskType == TaskType.UpdateDescription;
-  }
-
-  public static boolean isTagTask(TaskType taskType) {
-    return taskType == TaskType.RequestTag || taskType == TaskType.UpdateTag;
-  }
-
-  public static boolean isApprovalTask(TaskType taskType) {
-    return taskType == TaskType.RequestApproval;
-  }
-
-  public static boolean isTestCaseFailureResolutionTask(TaskType taskType) {
-    return taskType == TaskType.RequestTestCaseFailureResolution;
   }
 
   public static Column findColumn(List<Column> columns, String columnName) {
@@ -1233,7 +1220,7 @@ public final class EntityUtil {
    * This method checks if the entity supports the given field and returns its value.
    * If the field is not supported, returns null.
    */
-  public static Object getEntityField(EntityInterface entity, String fieldName) {
+  public static Object getEntityField(EntityInterface<?> entity, String fieldName) {
     if (entity == null || fieldName == null || fieldName.isEmpty()) {
       return null;
     }
@@ -1363,7 +1350,9 @@ public final class EntityUtil {
     if (hasText(idNode)) {
       resolveReferenceById(type, idNode.asText(), fieldName);
     } else if (hasText(fqnNode)) {
-      resolveReferenceByName(type, fqnNode.asText(), fieldName);
+      EntityReference resolved = resolveReferenceByName(type, fqnNode.asText(), fieldName);
+      // Stored values are matched by id downstream, so a name-only reference is completed here.
+      ((ObjectNode) ref).put(REF_FIELD_ID, resolved.getId().toString());
     } else {
       throw new IllegalArgumentException(
           customPropertyError(
@@ -1382,11 +1371,47 @@ public final class EntityUtil {
     }
   }
 
-  private static void resolveReferenceByName(String type, String fqn, String fieldName) {
+  private static EntityReference resolveReferenceByName(String type, String fqn, String fieldName) {
     try {
-      Entity.getEntityReferenceByName(type, fqn, NON_DELETED);
+      return Entity.getEntityReferenceByName(type, fqn, NON_DELETED);
     } catch (EntityNotFoundException e) {
       throw new IllegalArgumentException(missingReferenceError(fieldName, type, fqn), e);
+    }
+  }
+
+  /**
+   * Completes name-only references with the id of the entity they name, without validating them,
+   * so an update that echoes a stored value compares equal to it by id. Names that resolve to
+   * nothing are left as they are for the validator to reject if the field changed.
+   */
+  public static void fillCustomPropertyReferenceIds(JsonNode value) {
+    if (value == null || value.isNull()) {
+      return;
+    }
+    if (value.isArray()) {
+      value.forEach(EntityUtil::fillReferenceId);
+    } else {
+      fillReferenceId(value);
+    }
+  }
+
+  private static void fillReferenceId(JsonNode ref) {
+    boolean nameOnly =
+        ref.isObject()
+            && !hasText(ref.get(REF_FIELD_ID))
+            && hasText(ref.get(REF_FIELD_TYPE))
+            && hasText(ref.get(REF_FIELD_FQN));
+    if (nameOnly) {
+      lookUpReferenceByName(ref.get(REF_FIELD_TYPE).asText(), ref.get(REF_FIELD_FQN).asText())
+          .ifPresent(id -> ((ObjectNode) ref).put(REF_FIELD_ID, id.toString()));
+    }
+  }
+
+  private static Optional<UUID> lookUpReferenceByName(String type, String fqn) {
+    try {
+      return Optional.of(Entity.getEntityReferenceByName(type, fqn, ALL).getId());
+    } catch (EntityNotFoundException | IllegalArgumentException e) {
+      return Optional.empty();
     }
   }
 

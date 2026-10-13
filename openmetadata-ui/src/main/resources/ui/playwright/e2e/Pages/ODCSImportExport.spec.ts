@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import {
   generateODCSContract,
+  getODCSWithRunnableQualityRules,
   ODCS_INVALID_EMPTY_FILE_YAML,
   ODCS_INVALID_MALFORMED_JSON,
   ODCS_INVALID_MALFORMED_YAML,
@@ -41,13 +43,17 @@ import {
   redirectToHomePage,
   toastNotification,
 } from '../../utils/common';
+import { fillContractName } from '../../utils/dataContracts';
+import { selectDropdownOption } from '../../utils/destination';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   clickImportODCSButton,
+  getContractForTable,
   importODCSYaml,
   navigateToContractTab,
   openODCSImportDropdown,
 } from '../../utils/odcsImportExport';
+import { clickAndWaitFor } from '../../utils/waitHelpers';
 import { test } from '../fixtures/pages';
 
 test.describe('ODCS Import/Export', { tag: '@import-export' }, () => {
@@ -307,7 +313,7 @@ test.describe('ODCS Import/Export', { tag: '@import-export' }, () => {
       await page.getByTestId('file-info-card').waitFor();
 
       // Should show validation success for valid JSON
-      await expect(page.getByTestId('validation-success-panel')).toBeVisible({
+      await expect(page.getByTestId('odcs-import-summary')).toBeVisible({
         timeout: 10000,
       });
 
@@ -395,12 +401,15 @@ test.describe('ODCS Import/Export', { tag: '@import-export' }, () => {
         buffer: Buffer.from(ODCS_INVALID_WRONG_APIVERSION_YAML),
       });
 
-      // Should show error for wrong apiVersion
+      // An unsupported version is a blocking issue in the import report
+      await expect(page.getByTestId('odcs-import-summary')).toContainText(
+        'Cannot Import',
+        { timeout: 10000 }
+      );
       await expect(
-        page.getByTestId('server-validation-error-panel')
-      ).toBeVisible({
-        timeout: 10000,
-      });
+        page.getByTestId('odcs-report-blocking-issues')
+      ).toContainText('v1.0.0');
+      await expect(page.getByTestId('import-button')).toBeDisabled();
     } finally {
       await table.delete(apiContext);
     }
@@ -425,12 +434,14 @@ test.describe('ODCS Import/Export', { tag: '@import-export' }, () => {
         buffer: Buffer.from(ODCS_INVALID_WRONG_KIND_YAML),
       });
 
-      // Should show error for wrong kind
+      // A wrong kind is a blocking issue in the import report
+      await expect(page.getByTestId('odcs-import-summary')).toContainText(
+        'Cannot Import',
+        { timeout: 10000 }
+      );
       await expect(
-        page.getByTestId('server-validation-error-panel')
-      ).toBeVisible({
-        timeout: 10000,
-      });
+        page.getByTestId('odcs-report-blocking-issues')
+      ).toContainText('WrongKind');
     } finally {
       await table.delete(apiContext);
     }
@@ -1340,19 +1351,13 @@ version: "1.0.0"`;
       // Wait for file to be parsed and preview to show
       await page.getByTestId('file-info-card').waitFor();
 
-      // Wait for server-side validation to complete - validation panel shows error
-      await expect(
-        page.getByTestId('server-validation-failed-error-panel')
-      ).toBeVisible({
+      // Columns the table does not have are blocking issues in the import report
+      const blockingIssues = page.getByTestId('odcs-report-blocking-issues');
+
+      await expect(blockingIssues).toContainText('customers', {
         timeout: 15000,
       });
-
-      // Verify failed fields are listed in the validation panel
-      await expect(page.getByTestId('failed-fields-list')).toBeVisible();
-      await expect(page.getByTestId('failed-field-0')).toContainText(
-        'customers'
-      );
-      await expect(page.getByTestId('failed-field-1')).toContainText('orders');
+      await expect(blockingIssues).toContainText('orders');
 
       // Close modal
       await page
@@ -1385,12 +1390,10 @@ version: "1.0.0"`;
         buffer: Buffer.from(ODCS_INVALID_SCHEMA_FIELDS_YAML),
       });
 
-      // Wait for server-side validation to complete - validation panel shows error
-      await expect(
-        page.getByTestId('server-validation-failed-error-panel')
-      ).toBeVisible({
-        timeout: 15000,
-      });
+      await expect(page.getByTestId('odcs-import-summary')).toContainText(
+        'Cannot Import',
+        { timeout: 15000 }
+      );
 
       // Verify import button is disabled
       const importButton = page.getByTestId('import-button');
@@ -1433,7 +1436,7 @@ version: "1.0.0"`;
       await page.getByTestId('file-info-card').waitFor();
 
       // Wait for validation to complete - should show success
-      await expect(page.getByTestId('validation-success-panel')).toBeVisible({
+      await expect(page.getByTestId('odcs-import-summary')).toBeVisible({
         timeout: 15000,
       });
 
@@ -1477,7 +1480,7 @@ version: "1.0.0"`;
       await page.getByTestId('file-info-card').waitFor();
 
       // Wait for validation to complete - should show success
-      await expect(page.getByTestId('validation-success-panel')).toBeVisible({
+      await expect(page.getByTestId('odcs-import-summary')).toBeVisible({
         timeout: 15000,
       });
 
@@ -1486,9 +1489,9 @@ version: "1.0.0"`;
 
       await expect(importButton).toBeEnabled({ timeout: 10000 });
 
-      // No error state should be visible in the validation panel
+      // Nothing blocks the import
       await expect(
-        page.getByTestId('server-validation-failed-error-panel')
+        page.getByTestId('odcs-report-blocking-issues')
       ).not.toBeVisible();
 
       // Close modal
@@ -1586,7 +1589,7 @@ version: "1.0.0"`;
       );
 
       // Wait for server validation to complete after selecting object
-      await expect(page.getByTestId('validation-success-panel')).toBeVisible({
+      await expect(page.getByTestId('odcs-import-summary')).toBeVisible({
         timeout: 15000,
       });
 
@@ -1637,9 +1640,11 @@ version: "1.0.0"`;
         buffer: Buffer.from(ODCS_VALID_MULTI_OBJECT_YAML),
       });
 
-      await page.getByTestId('file-info-card').waitFor({ timeout: 30000 });
+      await page
+        .getByTestId('file-info-card')
+        .waitFor({ timeout: ACTION_TIMEOUT });
       await expect(page.getByTestId('object-selector-section')).toBeVisible({
-        timeout: 30000,
+        timeout: ACTION_TIMEOUT,
       });
 
       // Open the dropdown to see all options
@@ -1751,22 +1756,26 @@ version: "1.0.0"`;
       await page.getByRole('tab', { name: 'SLA' }).click();
 
       // Add refresh frequency
-      await page.getByTestId('refresh-frequency-interval-input').fill('24');
-      await page.getByTestId('refresh-frequency-unit-select').click();
-      await expect(
-        page.locator(".refresh-frequency-unit-select [title*='Hour']")
-      ).toBeVisible();
       await page
-        .locator(".refresh-frequency-unit-select [title*='Hour']")
-        .click();
+        .getByTestId('refresh-frequency-interval-input')
+        .locator('input')
+        .fill('24');
+      await selectDropdownOption({
+        page,
+        testId: 'refresh-frequency-unit-select',
+        optionName: 'Hour',
+      });
 
       // Add max latency
-      await page.getByTestId('max-latency-value-input').fill('2');
-      await page.getByTestId('max-latency-unit-select').click();
-      await expect(
-        page.locator(".max-latency-unit-select [title*='Hour']")
-      ).toBeVisible();
-      await page.locator(".max-latency-unit-select [title*='Hour']").click();
+      await page
+        .getByTestId('max-latency-value-input')
+        .locator('input')
+        .fill('2');
+      await selectDropdownOption({
+        page,
+        testId: 'max-latency-unit-select',
+        optionName: 'Hour',
+      });
 
       // Save the contract
       const saveContractResponse = page.waitForResponse(
@@ -1848,12 +1857,24 @@ version: "1.0.0"`;
       await page.getByRole('tab', { name: 'SLA' }).click();
 
       // Update refresh frequency from 12 to 48 hours
-      await page.getByTestId('refresh-frequency-interval-input').clear();
-      await page.getByTestId('refresh-frequency-interval-input').fill('48');
+      await page
+        .getByTestId('refresh-frequency-interval-input')
+        .locator('input')
+        .clear();
+      await page
+        .getByTestId('refresh-frequency-interval-input')
+        .locator('input')
+        .fill('48');
 
       // Update max latency from 2 to 4 hours
-      await page.getByTestId('max-latency-value-input').clear();
-      await page.getByTestId('max-latency-value-input').fill('4');
+      await page
+        .getByTestId('max-latency-value-input')
+        .locator('input')
+        .clear();
+      await page
+        .getByTestId('max-latency-value-input')
+        .locator('input')
+        .fill('4');
 
       // Save the contract
       const saveContractResponse = page.waitForResponse(
@@ -1980,9 +2001,7 @@ version: "1.0.0"`;
         await page.getByTestId('create-contract-button').click();
         await expect(page.getByTestId('add-contract-card')).toBeVisible();
 
-        await page
-          .getByTestId('contract-name')
-          .fill('OM Merge Round Trip Contract');
+        await fillContractName(page, 'OM Merge Round Trip Contract');
         await page.fill(
           '.om-block-editor[contenteditable="true"]',
           'Original contract description'
@@ -1991,21 +2010,25 @@ version: "1.0.0"`;
         const contractCard = page.getByTestId('add-contract-card');
         await contractCard.getByRole('tab', { name: 'SLA' }).click();
 
-        await page.getByTestId('refresh-frequency-interval-input').fill('12');
-        await page.getByTestId('refresh-frequency-unit-select').click();
-        await expect(
-          page.locator(".refresh-frequency-unit-select [title*='Hour']")
-        ).toBeVisible();
         await page
-          .locator(".refresh-frequency-unit-select [title*='Hour']")
-          .click();
+          .getByTestId('refresh-frequency-interval-input')
+          .locator('input')
+          .fill('12');
+        await selectDropdownOption({
+          page,
+          testId: 'refresh-frequency-unit-select',
+          optionName: 'Hour',
+        });
 
-        await page.getByTestId('max-latency-value-input').fill('3');
-        await page.getByTestId('max-latency-unit-select').click();
-        await expect(
-          page.locator(".max-latency-unit-select [title*='Hour']")
-        ).toBeVisible();
-        await page.locator(".max-latency-unit-select [title*='Hour']").click();
+        await page
+          .getByTestId('max-latency-value-input')
+          .locator('input')
+          .fill('3');
+        await selectDropdownOption({
+          page,
+          testId: 'max-latency-unit-select',
+          optionName: 'Hour',
+        });
 
         const saveContractResponse = page.waitForResponse(
           '/api/v1/dataContracts*'
@@ -2218,6 +2241,119 @@ version: "1.0.0"`;
 
       // Cleanup temp file
       fsModule.unlinkSync(omTempPath);
+    } finally {
+      await table.delete(apiContext);
+    }
+  });
+
+  test('Import report shows what quality rules become and imports them as test cases', async ({
+    page,
+  }) => {
+    const table = new TableClass();
+    const { apiContext } = await getApiContext(page);
+    await table.create(apiContext);
+    const column = table.columnsName[1];
+
+    try {
+      await navigateToContractTab(page, table);
+      await openODCSImportDropdown(page);
+      await clickImportODCSButton(page);
+      await page.getByTestId('import-contract-modal').waitFor();
+
+      await page.getByTestId('file-upload-input').setInputFiles({
+        name: 'quality-report.yaml',
+        mimeType: 'application/yaml',
+        buffer: Buffer.from(getODCSWithRunnableQualityRules(column)),
+      });
+
+      await expect(page.getByTestId('odcs-import-summary')).toContainText(
+        'Ready with Warnings',
+        { timeout: 15000 }
+      );
+
+      const rules = page.getByTestId('odcs-report-quality-rules');
+
+      await expect(rules).toContainText('columnValuesToBeNotNull');
+      await expect(rules).toContainText('tableRowCountToBeBetween');
+      await expect(rules).toContainText('Not Run');
+      await expect(
+        page.getByTestId('odcs-report-not-imported-schema')
+      ).toContainText('businessName');
+      await expect(
+        page.getByRole('checkbox', {
+          name: 'Create Test Cases from Quality Rules',
+        })
+      ).toBeChecked();
+
+      await clickAndWaitFor(
+        page,
+        page.getByRole('button', { name: 'Import with Warnings' }),
+        /\/api\/v1\/dataContracts\/odcs\/yaml/,
+        201
+      );
+
+      const contract = await getContractForTable(apiContext, table);
+
+      expect(
+        contract.qualityExpectations.map(
+          (testCase: { name: string }) => testCase.name
+        )
+      ).toEqual(
+        expect.arrayContaining(['odcs_id_is_set', 'odcs_table_is_not_empty'])
+      );
+    } finally {
+      await table.delete(apiContext);
+    }
+  });
+
+  test('Import without test cases keeps quality rules but creates no test cases', async ({
+    page,
+  }) => {
+    const table = new TableClass();
+    const { apiContext } = await getApiContext(page);
+    await table.create(apiContext);
+
+    try {
+      await navigateToContractTab(page, table);
+      await openODCSImportDropdown(page);
+      await clickImportODCSButton(page);
+      await page.getByTestId('import-contract-modal').waitFor();
+
+      await page.getByTestId('file-upload-input').setInputFiles({
+        name: 'quality-report.yaml',
+        mimeType: 'application/yaml',
+        buffer: Buffer.from(
+          getODCSWithRunnableQualityRules(table.columnsName[1])
+        ),
+      });
+
+      const checkbox = page.getByRole('checkbox', {
+        name: 'Create Test Cases from Quality Rules',
+      });
+
+      await expect(checkbox).toBeChecked({ timeout: 15000 });
+      await clickAndWaitFor(
+        page,
+        page.getByTestId('create-test-cases-checkbox'),
+        /\/api\/v1\/dataContracts\/odcs\/validate\/yaml.*createTestCases=false/
+      );
+      await expect(checkbox).not.toBeChecked();
+
+      await expect(
+        page.getByTestId('odcs-report-quality-rules')
+      ).not.toContainText('columnValuesToBeNotNull');
+
+      await clickAndWaitFor(
+        page,
+        page.getByRole('button', { name: 'Import with Warnings' }),
+        /\/api\/v1\/dataContracts\/odcs\/yaml/,
+        201
+      );
+
+      const contract = await getContractForTable(apiContext, table);
+
+      expect(contract.qualityExpectations ?? []).toHaveLength(0);
+      expect(contract.odcsQualityRules).toHaveLength(3);
     } finally {
       await table.delete(apiContext);
     }

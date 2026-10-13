@@ -12,21 +12,9 @@
 Sampler configuration helpers
 """
 
-from typing import Any
-
-from metadata.generated.schema.entity.data.database import (
-    Database,
-    DatabaseProfilerConfig,
-)
-from metadata.generated.schema.entity.data.databaseSchema import (
-    DatabaseSchema,
-    DatabaseSchemaProfilerConfig,
-)
+from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import ColumnProfilerConfig, Table
-from metadata.generated.schema.entity.services.connections.connectionBasicType import (
-    DataStorageConfig,
-)
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.generated.schema.type.dynamicSamplingConfig import DynamicSamplingConfig
 from metadata.generated.schema.type.samplingConfig import (
@@ -34,7 +22,6 @@ from metadata.generated.schema.type.samplingConfig import (
     SampleConfigType,
 )
 from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
-from metadata.profiler.api.models import ProfilerProcessorConfig
 from metadata.profiler.config import (
     get_database_profiler_config,
     get_schema_profiler_config,
@@ -44,56 +31,6 @@ from metadata.sampler.models import (
     SampleConfig,
     TableConfig,
 )
-
-
-def get_sample_storage_config(
-    config: DatabaseSchemaProfilerConfig | DatabaseProfilerConfig | DatabaseAndSchemaConfig,
-) -> DataStorageConfig | dict[str, Any] | None:
-    """Get sample storage config"""
-    if config and config.sampleDataStorageConfig and config.sampleDataStorageConfig.config:
-        return config.sampleDataStorageConfig.config
-    return None
-
-
-def get_storage_config_for_table(
-    entity: Table,
-    schema_entity: DatabaseSchema,
-    database_entity: Database,
-    db_service: DatabaseService | None,
-    profiler_config: ProfilerProcessorConfig,
-) -> DataStorageConfig | dict[str, Any] | None:
-    """Get storage config for a specific entity"""
-    schema_profiler_config = get_schema_profiler_config(schema_entity=schema_entity)
-    database_profiler_config = get_database_profiler_config(database_entity=database_entity)
-
-    for schema_config in profiler_config.schemaConfig or []:
-        if (
-            entity.databaseSchema
-            and schema_config.fullyQualifiedName.root == entity.databaseSchema.fullyQualifiedName
-            and get_sample_storage_config(schema_config)
-        ):
-            return get_sample_storage_config(schema_config)
-
-    for database_config in profiler_config.databaseConfig or []:
-        if (
-            entity.database
-            and database_config.fullyQualifiedName.root == entity.database.fullyQualifiedName
-            and get_sample_storage_config(database_config)
-        ):
-            return get_sample_storage_config(database_config)
-
-    if schema_profiler_config and get_sample_storage_config(schema_profiler_config):
-        return get_sample_storage_config(schema_profiler_config)
-
-    if database_profiler_config and get_sample_storage_config(database_profiler_config):
-        return get_sample_storage_config(database_profiler_config)
-
-    try:
-        return db_service.connection.config.sampleDataStorageConfig.config  # pyright: ignore[reportAttributeAccessIssue]
-    except AttributeError:
-        pass
-
-    return None
 
 
 def _resolve_profile_sample_config(

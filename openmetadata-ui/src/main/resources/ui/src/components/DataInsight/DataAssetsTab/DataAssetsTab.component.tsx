@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row } from 'antd';
+import { Grid } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
+
 import { useTranslation } from 'react-i18next';
 import { SystemChartType } from '../../../enums/DataInsight.enum';
 import { useDataInsightProvider } from '../../../pages/DataInsightPage/DataInsightProvider';
@@ -26,15 +28,15 @@ const DataAssetsTab = () => {
   }
 
   return (
-    <Row gutter={[16, 16]}>
-      <Col span={24}>
+    <Grid className="layout-row layout-grid" style={getLayoutGutter(16, 16)}>
+      <Grid.Item className="layout-column" span={24}>
         <DataInsightChartCard
           header={t('label.data-insight-total-entity-summary')}
           subHeader={t('message.total-entity-insight')}
           type={SystemChartType.TotalDataAssets}
         />
-      </Col>
-      <Col span={24}>
+      </Grid.Item>
+      <Grid.Item className="layout-column" span={24}>
         <DataInsightChartCard
           listAssets
           header={t('label.data-insight-description-summary-type', {
@@ -45,8 +47,8 @@ const DataAssetsTab = () => {
           })}
           type={SystemChartType.PercentageOfDataAssetWithDescription}
         />
-      </Col>
-      <Col span={24}>
+      </Grid.Item>
+      <Grid.Item className="layout-column" span={24}>
         <DataInsightChartCard
           listAssets
           header={t('label.data-insight-owner-summary-type', {
@@ -57,8 +59,8 @@ const DataAssetsTab = () => {
           })}
           type={SystemChartType.PercentageOfDataAssetWithOwner}
         />
-      </Col>
-      <Col span={24}>
+      </Grid.Item>
+      <Grid.Item className="layout-column" span={24}>
         <DataInsightChartCard
           header={t('label.data-insight-description-summary-type', {
             type: t('label.service'),
@@ -68,8 +70,8 @@ const DataAssetsTab = () => {
           })}
           type={SystemChartType.PercentageOfServiceWithDescription}
         />
-      </Col>
-      <Col span={24}>
+      </Grid.Item>
+      <Grid.Item className="layout-column" span={24}>
         <DataInsightChartCard
           header={t('label.data-insight-owner-summary-type', {
             type: t('label.service'),
@@ -79,8 +81,8 @@ const DataAssetsTab = () => {
           })}
           type={SystemChartType.PercentageOfServiceWithOwner}
         />
-      </Col>
-      <Col span={24}>
+      </Grid.Item>
+      <Grid.Item className="layout-column" span={24}>
         <DataInsightChartCard
           header={t('label.data-insight-tier-summary')}
           subHeader={t('message.field-insight', {
@@ -88,8 +90,8 @@ const DataAssetsTab = () => {
           })}
           type={SystemChartType.TotalDataAssetsByTier}
         />
-      </Col>
-    </Row>
+      </Grid.Item>
+    </Grid>
   );
 };
 

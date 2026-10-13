@@ -32,7 +32,9 @@ export const getTabs = (
     },
     users: {
       name: i18n.t('label.user-plural'),
-      count: currentTeam.users?.length ?? 0,
+      // userCount already includes sub-group members inherited by non-Group teams; fall back to the
+      // direct users array so Group teams and partial fetches still render a count.
+      count: currentTeam.userCount ?? currentTeam.users?.length ?? 0,
       key: TeamsPageTab.USERS,
     },
     assets: {
@@ -50,9 +52,13 @@ export const getTabs = (
       count: currentTeam?.policies?.length,
       key: TeamsPageTab.POLICIES,
     },
+    customProperties: {
+      name: i18n.t('label.custom-property-plural'),
+      key: TeamsPageTab.CUSTOM_PROPERTIES,
+    },
   };
 
-  const commonTabs = [tabs.roles, tabs.policies];
+  const commonTabs = [tabs.roles, tabs.policies, tabs.customProperties];
 
   if (isOrganization) {
     return [tabs.teams, ...commonTabs];

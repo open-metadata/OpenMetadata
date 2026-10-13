@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { AssetsOfEntity } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
+import { AssetsOfEntity } from '../../enums/Assets.enum';
 import { getEntityTypeString } from './AssetsUtils';
 
 describe('getEntityTypeString', () => {

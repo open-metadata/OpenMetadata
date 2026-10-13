@@ -31,6 +31,8 @@ jest.mock('./RouterUtils', () => ({
 }));
 
 jest.mock('./ServicePureUtils', () => ({
+  getCountLabel: (type: string) =>
+    type === 'databaseServices' ? 'Databases' : 'Assets',
   getServiceRouteFromServiceType: (type: string) => `${type}Route`,
 }));
 
@@ -99,6 +101,24 @@ describe('ConnectionsRouterClassBase', () => {
         router.getServiceDetailsPath('databaseServices', 'my-db', 'connection')
       ).toBe('/service/databaseServices/my-db/connection');
     });
+  });
+
+  describe('getServiceDataAssetsTabPath', () => {
+    it('should return the service asset-listing tab path', () => {
+      expect(
+        router.getServiceDataAssetsTabPath('databaseServices', 'my-db')
+      ).toBe('/service/databaseServices/my-db/databases');
+    });
+
+    // Metadata and security services have no asset-listing tab.
+    it.each(['metadataServices', 'securityServices'])(
+      'should fall back to the default tab for %s',
+      (serviceCategory) => {
+        expect(
+          router.getServiceDataAssetsTabPath(serviceCategory, 'my-service')
+        ).toBe(`/service/${serviceCategory}/my-service`);
+      }
+    );
   });
 
   describe('getEditConnectionPath', () => {

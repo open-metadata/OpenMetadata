@@ -26,7 +26,7 @@ from metadata.generated.schema.entity.data.table import SystemProfile
 from metadata.profiler.metrics.core import SystemMetric
 from metadata.profiler.orm.registry import PythonDialects
 from metadata.utils.helpers import deep_size_of_dict
-from metadata.utils.importer import DynamicImportException, import_from_module
+from metadata.utils.importer import DynamicImportException, import_side_effects
 from metadata.utils.logger import profiler_logger
 from metadata.utils.lru_cache import LRU_CACHE_SIZE, LRUCache
 from metadata.utils.profiler_utils import QueryResult
@@ -139,7 +139,7 @@ class SystemMetricsComputer(Protocol):
 
 
 class SystemMetricsRegistry:
-    _registry: dict[str, type["SystemMetricsComputer"]] = {}  # noqa: RUF012
+    _registry: dict[str, type["SystemMetricsComputer"] | None] = {}  # noqa: RUF012
 
     @classmethod
     def register(cls, dialect: PythonDialects, implementation: type):
@@ -153,13 +153,23 @@ class SystemMetricsRegistry:
 
     @classmethod
     def _discover_implementation(cls, dialect: PythonDialects):
-        """Auto-discover the implementation in the profiler metrics"""
+        """Auto-discover the implementation in the profiler metrics.
+
+        The module is imported for its side effect: ``@register_system_metrics`` puts the
+        class in the registry. Reading a ``system`` attribute off the dialect package
+        instead never resolves, because these are namespace packages whose submodule is
+        not an attribute until something imports it.
+
+        A dialect with no implementation is cached as ``None``. The profiler builds one
+        interface per table, so leaving the miss uncached retries the failing import and
+        re-logs it for every table profiled.
+        """
+        dialect_name = dialect.name.lower()
         try:
-            implementation = import_from_module(f"metadata.profiler.metrics.system.{dialect.name.lower()}.system")
+            import_side_effects(f"metadata.profiler.metrics.system.{dialect_name}.system")
         except DynamicImportException:
-            logger.warning(f"No implementation found for {dialect.name.lower()}")
-            return
-        cls._registry[dialect.name.lower()] = implementation
+            logger.debug("No implementation found for %s", dialect_name)
+        cls._registry.setdefault(dialect_name, None)
 
 
 def register_system_metrics(

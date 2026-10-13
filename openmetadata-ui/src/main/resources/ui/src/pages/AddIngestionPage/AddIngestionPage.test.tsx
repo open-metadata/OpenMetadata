@@ -61,6 +61,8 @@ jest.mock('../../components/common/ServiceDocPanel/ServiceDocPanel', () =>
 );
 
 jest.mock('../../utils/ServicePureUtils', () => ({
+  getServiceCategoryLabel: jest.requireActual('../../utils/ServicePureUtils')
+    .getServiceCategoryLabel,
   getServiceType: jest.fn(),
   getServiceRouteFromServiceType: jest
     .fn()

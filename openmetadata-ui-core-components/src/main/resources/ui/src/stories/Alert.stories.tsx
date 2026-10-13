@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { InfoCircle } from '@untitledui/icons';
+import { InfoCircle } from '../icons';
 import type { Meta, StoryObj } from '@storybook/react';
 import { Alert } from '../components/base/alert/alert';
 import { Button } from '../components/base/buttons/button';

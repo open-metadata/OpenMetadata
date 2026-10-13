@@ -160,65 +160,6 @@ class EnvVarUtilsTest {
   }
 
   @Test
-  void testValidateEnvVarsWithValidVars() {
-    List<EnvVar> envVars =
-        Arrays.asList(
-            new EnvVarBuilder().withName("VAR1").withValue("value1").build(),
-            new EnvVarBuilder()
-                .withName("VAR2")
-                .withValueFrom(
-                    new EnvVarSourceBuilder()
-                        .withConfigMapKeyRef(
-                            new ConfigMapKeySelectorBuilder()
-                                .withName("config")
-                                .withKey("key")
-                                .build())
-                        .build())
-                .build());
-
-    assertTrue(EnvVarUtils.validateEnvVars(envVars));
-  }
-
-  @Test
-  void testValidateEnvVarsWithEmptyValueFrom() {
-    List<EnvVar> envVars =
-        List.of(
-            new EnvVarBuilder()
-                .withName("INVALID")
-                .withValueFrom(new EnvVarSource()) // Empty valueFrom is invalid
-                .build());
-
-    assertFalse(EnvVarUtils.validateEnvVars(envVars));
-  }
-
-  @Test
-  void testValidateEnvVarsWithBothValueAndValueFrom() {
-    List<EnvVar> envVars =
-        List.of(
-            new EnvVarBuilder()
-                .withName("INVALID")
-                .withValue("value")
-                .withValueFrom(
-                    new EnvVarSourceBuilder()
-                        .withConfigMapKeyRef(
-                            new ConfigMapKeySelectorBuilder()
-                                .withName("config")
-                                .withKey("key")
-                                .build())
-                        .build())
-                .build());
-
-    assertFalse(EnvVarUtils.validateEnvVars(envVars));
-  }
-
-  @Test
-  void testValidateEnvVarsWithMissingName() {
-    List<EnvVar> envVars = List.of(new EnvVarBuilder().withValue("value").build());
-
-    assertFalse(EnvVarUtils.validateEnvVars(envVars));
-  }
-
-  @Test
   void testRealWorldScenarioFromFailedCronOMJob() {
     // This recreates the exact scenario from the failed CronOMJob
     List<EnvVar> envVars =
@@ -242,14 +183,8 @@ class EnvVarUtilsTest {
                 .withValue("openmetadata-pipelines-test")
                 .build());
 
-    // Before sanitization - validation should fail
-    assertFalse(EnvVarUtils.validateEnvVars(envVars), "Original env vars should be invalid");
-
     // After sanitization
     List<EnvVar> sanitized = EnvVarUtils.sanitizeEnvVars(envVars);
-
-    // Should pass validation now
-    assertTrue(EnvVarUtils.validateEnvVars(sanitized), "Sanitized env vars should be valid");
 
     // Check that all vars are present
     assertEquals(6, sanitized.size());

@@ -10,25 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) '../../../../../styles/variables.less';
 .widget-wrapper-container {
-  height: 100%;
-  border-radius: var(--om-radius-lg);
-  box-shadow: 0 2px 8px var(--om-legacy-color-0-0-0-0-1);
   transition: box-shadow var(--om-duration-300) ease;
-
-  &:hover {
-    box-shadow: 0 4px 12px var(--om-legacy-color-0-0-0-0-15);
-  }
-
-  .ant-card-body {
-    padding: 0;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden; // Ensure card body contains all content
-    position: relative; // Provide positioning context for absolute elements
-  }
 
   .entity-list-skeleton {
     height: 100%;
@@ -65,31 +48,6 @@
       .widget-footer {
         flex-shrink: 0;
         margin-top: auto;
-      }
-    }
-  }
-
-  .widget-wrapper-more-options {
-    position: absolute;
-    top: 16px;
-    right: 16px;
-    z-index: var(--om-z-10);
-
-    .widget-wrapper-more-button {
-      border: none;
-      background: transparent;
-      transition: color var(--om-duration-300) ease;
-
-      &:hover {
-        color: @primary-color;
-      }
-    }
-
-    .widget-wrapper-more-menu {
-      .ant-dropdown-menu-item {
-        padding: var(--om-space-8) var(--om-space-16);
-        font-size: var(--om-font-size-sm);
-        line-height: 20px;
       }
     }
   }

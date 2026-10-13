@@ -102,7 +102,7 @@ If it says `Fixes #NNNN` / `Closes #NNNN`, read the issue — a PR can be techni
 gh issue view <NNNN> -R "$REPO" --json title,body,state
 ```
 
-**No linked issue** is itself a soft blocker: OpenMetadata's "Validate PR Metadata" check fails without one, so a missing `Fixes #NNNN` means the PR can't merge as-is regardless of code quality — note it in BLOCKERS.
+**No linked issue** is itself a soft blocker: OpenMetadata's "Validate PR Metadata" check fails without one, so a missing `Fixes #NNNN` means the PR can't merge as-is regardless of code quality — note it in BLOCKERS. The exception is a test fix (a PR whose purpose is to fix a failing or flaky test). It needs no issue, and it carries the `skip-pr-checks` label, which that check honors. Flag only a test fix that is missing the label.
 
 For a large diff, don't skim — read the core logic files in full and skim the rest. The damage (botched rebases, vendored deps, accidental deletions) usually hides in the files you'd skip.
 
@@ -164,6 +164,10 @@ The high-signal checks, distilled — use these to decide *which* rule to open, 
 - No committed secrets, `.orig` merge artifacts, `package-lock.json` in a yarn repo, CRLF conversions, or vendored dependency trees.
 - **`.github/workflows/**` changes are a supply-chain surface.** Any workflow edit in a contributor PR gets read line by line — new `pull_request_target` triggers, third-party actions pinned by tag instead of SHA, and secrets exposed to fork-run jobs are blockers.
 - **License headers are per-module and only the UI is enforced.** `ingestion/` and `openmetadata-airflow-apis/` Python files carry the Collate Community License header, UI TS/TSX carries Apache-2.0, Java mostly carries none. A wrong Python or Java header ships silently — check it by eye against a sibling file in the same directory.
+
+**Decision records** (`docs/decisions/`, rules in its `README.md`) — two different findings
+- **Contradiction.** A change that undoes an Accepted record — read the records the touched code cites as `ADR:<date>-<slug>` — is NEEDS_WORK unless the PR adds the record that supersedes it.
+- **Omission.** A PR that makes a durable decision and records none goes in BLOCKERS: a contract another component or repo must agree with (schema field, REST path, payload or derived format), a new default or limit whose value was a judgment call, an ordering that must hold and is visible from no single file, or a rule its description states that exists nowhere in the tree — the squash-merge drops the description. Name the sentence the record would state; "needs an ADR" is not actionable. Not a trigger: a self-evident bug fix, a behavior-neutral refactor, a dependency bump, a test-only change, or compliance with an existing record.
 
 ### Step 4 — Assess the test (integration if possible, and meaningful)
 
@@ -227,7 +231,7 @@ Repo-specific gates worth knowing:
 
 | Check | What it actually gates |
 |---|---|
-| `Validate PR Metadata` | a linked issue (`Fixes #NNNN`) **and** its Shipping-project fields. Does not re-run on issue edits — needs a push or manual re-run |
+| `Validate PR Metadata` | a linked issue (`Fixes #NNNN`) **and** its Shipping-project fields. Does not re-run on issue edits — needs a push or manual re-run. Skipped entirely when the PR has the `skip-pr-checks` label (test fixes, which need no issue) |
 | `python / Unit Tests & Static Checks (<ver>)` | ruff **and** basedpyright. Existing violations are grandfathered in `ingestion/.basedpyright/baseline.json`; **any new violation in any file fails**, so a new connector must land type-clean, not baseline-clean |
 | `py-checkstyle` | ruff format only — passes even when static-checks is red |
 | `ui-checkstyle` | ESLint + Prettier + the Apache-2.0 UI header |

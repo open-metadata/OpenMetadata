@@ -12,23 +12,16 @@
  */
 
 import { TFunction } from 'i18next';
-import { Type } from '../../../generated/events/eventSubscription';
+import {
+  SubscriptionCategory,
+  Type,
+} from '../../../generated/events/eventSubscription';
+import { EventType } from '../../../generated/type/changeEvent';
 import {
   getAuthTypeItems,
-  getTemplateItems,
+  getDestinationCategoryItems,
+  getSelectArgumentConfig,
 } from './AlertAiFormFieldsSelectUtils';
-import {
-  CUSTOM_TEMPLATE_VALUE,
-  SYSTEM_DEFAULT_TEMPLATES,
-} from './Template.constants';
-
-jest.mock('./NotificationTemplateUtils', () => ({
-  getTemplateEntityRefObject: jest.fn((template) => ({
-    id: template.id,
-    name: template.name,
-    type: 'notificationTemplate',
-  })),
-}));
 
 const t = ((key: string, params?: Record<string, string>) =>
   params ? `${key}:${Object.values(params).join(':')}` : key) as TFunction;
@@ -45,25 +38,64 @@ describe('AlertAiFormFieldsSelectUtils', () => {
     ]);
   });
 
-  it('includes selected unloaded notification template in options', () => {
-    const selectedTemplate = JSON.stringify({
-      displayName: 'Custom Alert Template',
-      name: 'custom_alert_template',
+  it('limits event types to the ones the selected source supports', () => {
+    const config = getSelectArgumentConfig('eventTypeList', t, [
+      EventType.EntityCreated,
+      EventType.EntityDeleted,
+    ]);
+
+    expect(config?.items.map((item) => item.id)).toEqual([
+      EventType.EntityCreated,
+      EventType.EntityDeleted,
+    ]);
+  });
+
+  it('offers every event type when the source declares none', () => {
+    const config = getSelectArgumentConfig('eventTypeList', t, []);
+
+    expect(config?.items).toHaveLength(Object.values(EventType).length);
+  });
+
+  describe('destination categories are the ones the server offers (classic parity)', () => {
+    const categoryIds = (offered?: string[], current?: string) =>
+      getDestinationCategoryItems(t, offered, current).map((item) => item.id);
+
+    it('offers only the internal categories the server offers, and every external one', () => {
+      const ids = categoryIds([
+        SubscriptionCategory.Owners,
+        SubscriptionCategory.Followers,
+      ]);
+
+      expect(ids).toEqual(
+        expect.arrayContaining([
+          SubscriptionCategory.Owners,
+          SubscriptionCategory.Followers,
+        ])
+      );
+      expect(ids).not.toContain(SubscriptionCategory.Assignees);
+      expect(ids).not.toContain(SubscriptionCategory.Mentions);
+      expect(ids).toContain('header-external');
     });
 
-    expect(getTemplateItems([], selectedTemplate, t)).toEqual([
-      {
-        id: selectedTemplate,
-        label: 'Custom Alert Template',
-      },
-      {
-        id: SYSTEM_DEFAULT_TEMPLATES,
-        label: 'label.system-default-template',
-      },
-      {
-        id: CUSTOM_TEMPLATE_VALUE,
-        label: 'label.create-entity:label.custom-template',
-      },
-    ]);
+    it('keeps the category a destination already has, so a saved alert stays editable', () => {
+      const ids = categoryIds(
+        [SubscriptionCategory.Owners],
+        SubscriptionCategory.Assignees
+      );
+
+      expect(ids).toEqual(
+        expect.arrayContaining([
+          SubscriptionCategory.Owners,
+          SubscriptionCategory.Assignees,
+        ])
+      );
+    });
+
+    it('offers no internal category until the server has answered', () => {
+      const ids = categoryIds();
+
+      expect(ids).not.toContain(SubscriptionCategory.Owners);
+      expect(ids).toContain('header-external');
+    });
   });
 });

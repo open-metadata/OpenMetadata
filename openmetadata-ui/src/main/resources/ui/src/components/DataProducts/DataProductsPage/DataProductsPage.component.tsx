@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Button } from '@openmetadata/ui-core-components';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -19,7 +19,6 @@ import { toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { QueryVote } from '../../../components/Database/TableQueries/TableQueries.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
@@ -27,6 +26,7 @@ import { EntityHistory } from '../../../generated/type/entityHistory';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
+import { QueryVote } from '../../../interface/entity/vote.interface';
 import {
   addFollower,
   deleteDataProduct,
@@ -336,10 +336,9 @@ const DataProductsPage = () => {
             })}
           </p>
           <Button
-            ghost
-            className="m-t-sm"
-            type="primary"
-            onClick={() => navigate(getDomainPath())}>
+            className="tw:mt-2"
+            color="secondary"
+            onPress={() => navigate(getDomainPath())}>
             {t('label.go-back')}
           </Button>
         </div>

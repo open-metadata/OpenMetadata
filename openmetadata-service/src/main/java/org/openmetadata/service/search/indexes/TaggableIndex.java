@@ -41,7 +41,7 @@ public interface TaggableIndex extends SearchIndex {
    */
   default void applyTagFields(Map<String, Object> doc) {
     Object entity = getEntity();
-    if (!(entity instanceof EntityInterface ei)) {
+    if (!(entity instanceof EntityInterface<?> ei)) {
       return;
     }
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(getEntityTypeName(), ei));

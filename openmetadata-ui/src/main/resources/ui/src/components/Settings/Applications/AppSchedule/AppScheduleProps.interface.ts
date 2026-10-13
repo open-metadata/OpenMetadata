@@ -22,6 +22,10 @@ export interface AppScheduleProps {
   disabled?: boolean;
   disabledReason?: string;
   jsonSchema?: RJSFSchema;
+  /** Per-action permission gates; omitted means allowed (legacy behaviour). */
+  canEdit?: boolean;
+  canTrigger?: boolean;
+  canDeploy?: boolean;
   onSave: (cron: string) => Promise<void>;
   onDemandTrigger: () => Promise<void>;
   onDeployTrigger: () => Promise<void>;

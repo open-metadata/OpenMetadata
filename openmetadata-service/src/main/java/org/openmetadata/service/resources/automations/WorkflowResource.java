@@ -682,7 +682,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
     }
     if (originalWorkflow.getRequest()
         instanceof TestServiceConnectionRequest testServiceConnection) {
-      EntityRepository<? extends EntityInterface> serviceRepository =
+      EntityRepository<? extends EntityInterface<?>> serviceRepository =
           Entity.getServiceEntityRepository(testServiceConnection.getServiceType());
       ServiceEntityInterface originalService =
           (ServiceEntityInterface)

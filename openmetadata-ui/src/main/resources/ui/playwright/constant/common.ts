@@ -10,6 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+/** Bound for a single UI action or response wait, so a miss fails here instead of hanging the test. */
+export const ACTION_TIMEOUT = 30_000;
+
+/** Same, for the few waits that legitimately need longer than {@link ACTION_TIMEOUT}. */
+export const LONG_ACTION_TIMEOUT = 120_000;
+
+/** Test timeout for specs that do more setup than the 60s default allows. */
+export const EXTENDED_TEST_TIMEOUT = 120_000;
+
 export const TAG_INVALID_NAMES = {
   MIN_LENGTH: 'c',
   MAX_LENGTH: 'a87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890ab',
@@ -30,9 +39,6 @@ export const NAME_MIN_MAX_LENGTH_VALIDATION_ERROR =
 
 export const NAME_MAX_LENGTH_VALIDATION_ERROR =
   'Name size must be between 1 and 128';
-
-export const CP_NAME_MAX_LENGTH_VALIDATION_ERROR =
-  'Name size must be between 1 and 256';
 
 export const DELETE_TERM = 'DELETE';
 

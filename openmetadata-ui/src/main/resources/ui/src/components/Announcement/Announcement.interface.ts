@@ -12,6 +12,7 @@
  */
 import { Operation } from 'fast-json-patch';
 import { HTMLAttributes } from 'react';
+import { AnnouncementStatus } from '../../generated/entity/feed/announcement';
 import { AnnouncementEntity } from '../../rest/announcementsAPI';
 
 export interface ConfirmState {
@@ -42,6 +43,8 @@ export interface AnnouncementThreadBodyProp
     > {
   refetchThread: boolean;
   editPermission: boolean;
+  /** Undefined shows every announcement — the drawer's "All" tab. */
+  statusFilter?: AnnouncementStatus;
 }
 
 export interface AnnouncementThreadListProp

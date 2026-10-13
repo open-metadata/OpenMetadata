@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { HomeLine } from '@untitledui/icons';
+import { HomeLine } from '../icons';
 import type { Meta, StoryObj } from '@storybook/react';
 import {
   Breadcrumbs,

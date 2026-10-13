@@ -18,11 +18,9 @@ import {
   screen,
 } from '@testing-library/react';
 import { MemoryRouter, useParams } from 'react-router-dom';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Pipeline } from '../../../generated/entity/data/pipeline';
 import { Paging } from '../../../generated/type/paging';
 import { mockPipelineDetails } from '../../../utils/mocks/PipelineDetailsUtils.mock';
@@ -110,8 +108,9 @@ jest.mock(
   })
 );
 
-jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn().mockReturnValue(<p>OwnerLabel</p>),
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  Owner: jest.fn().mockReturnValue(null),
 }));
 
 jest.mock('../../Entity/EntityRightPanel/EntityRightPanel', () => {
@@ -173,10 +172,6 @@ jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useParams: jest.fn().mockImplementation(() => ({ tab: 'tasks' })),
 }));
-
-jest.mock('../../../context/LineageProvider/LineageProvider', () => {
-  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
-});
 
 jest.mock('../../Lineage/Lineage.component', () => {
   return jest

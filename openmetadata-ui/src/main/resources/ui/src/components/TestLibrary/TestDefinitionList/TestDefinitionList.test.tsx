@@ -14,7 +14,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { ProviderType } from '../../../generated/entity/bot';
 import { Access } from '../../../generated/entity/policies/accessControl/resourcePermission';
 import { getEntityPermissionByFqn } from '../../../rest/permissionAPI';
@@ -130,7 +130,28 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
     Box: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+    Toggle: jest.requireActual('@openmetadata/ui-core-components').Toggle,
+    CloseButton: jest
+      .fn()
+      .mockImplementation(({ onPress }) => (
+        <button
+          aria-label="clear"
+          data-testid="clear-search"
+          onClick={onPress}
+        />
+      )),
+    Input: jest
+      .fn()
+      .mockImplementation(({ value, onChange, inputDataTestId }) => (
+        <input
+          aria-label="search"
+          data-testid={inputDataTestId}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      )),
     EmptyPlaceholder: jest.fn().mockImplementation(({ title, description }) => (
       <div data-testid="empty-placeholder">
         <span>{title}</span>
@@ -145,14 +166,20 @@ jest.mock('@openmetadata/ui-core-components', () => {
       .mockImplementation(({ children }) => <div>{children}</div>),
     Button: jest
       .fn()
-      .mockImplementation(({ children, onClick }) => (
-        <button onClick={onClick}>{children}</button>
+      .mockImplementation(({ children, onClick, 'data-testid': testId }) => (
+        <button data-testid={testId} onClick={onClick}>
+          {children}
+        </button>
       )),
     ButtonUtility: jest
       .fn()
       .mockImplementation(
-        ({ icon, onClick, className, 'data-testid': testId }) => (
-          <button className={className} data-testid={testId} onClick={onClick}>
+        ({ icon, onClick, className, isDisabled, 'data-testid': testId }) => (
+          <button
+            className={className}
+            data-testid={testId}
+            disabled={isDisabled}
+            onClick={onClick}>
             {icon}
           </button>
         )
@@ -372,6 +399,11 @@ describe('TestDefinitionList Component', () => {
         after: undefined,
         before: undefined,
         limit: 15,
+        entityType: undefined,
+        testPlatform: undefined,
+        q: undefined,
+        sortField: 'displayName',
+        sortOrder: 'asc',
       });
     });
   });
@@ -585,7 +617,7 @@ describe('TestDefinitionList Component', () => {
     });
   });
 
-  it('should disable edit and delete buttons for System test definitions', async () => {
+  it('should keep System test definitions editable but not deletable', async () => {
     render(<TestDefinitionList />, { wrapper: createWrapper() });
 
     await waitFor(() => {
@@ -596,8 +628,9 @@ describe('TestDefinitionList Component', () => {
       expect(editButtons[0]).not.toBeDisabled();
       expect(deleteButtons[0]).not.toBeDisabled();
 
-      // Second definition is System provider - should be disabled
-      expect(editButtons[1]).toBeDisabled();
+      // Second definition is System provider - the form is open for editing because its
+      // data quality dimension can be changed, but it can still never be deleted
+      expect(editButtons[1]).not.toBeDisabled();
       expect(deleteButtons[1]).toBeDisabled();
     });
   });
@@ -674,11 +707,10 @@ describe('TestDefinitionList Component', () => {
       const initialCallCount = (patchTestDefinition as jest.Mock).mock.calls
         .length;
 
-      fireEvent.click(externalSwitch);
-
-      await waitFor(() => {
-        expect(patchTestDefinition).toHaveBeenCalledTimes(initialCallCount);
-      });
+      // The guard is the native `disabled` input: browsers drop clicks on it,
+      // but jsdom still toggles a disabled checkbox on a synthetic click.
+      expect(externalSwitch).toBeDisabled();
+      expect(patchTestDefinition).toHaveBeenCalledTimes(initialCallCount);
     });
 
     it('should allow toggling OpenMetadata test definitions', async () => {

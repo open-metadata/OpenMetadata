@@ -253,7 +253,7 @@ class SearchIndexPrefetchTest {
   @Test
   void prefetchSkipsInputEntitiesWithNullId() {
     Table withId = table("svc.db.s.t1");
-    org.openmetadata.schema.EntityInterface nullIdEntity =
+    org.openmetadata.schema.EntityInterface<?> nullIdEntity =
         org.mockito.Mockito.mock(org.openmetadata.schema.EntityInterface.class);
     when(relDao.findFromBatch(any(), anyInt(), any(Include.class)))
         .thenReturn(Collections.emptyList());

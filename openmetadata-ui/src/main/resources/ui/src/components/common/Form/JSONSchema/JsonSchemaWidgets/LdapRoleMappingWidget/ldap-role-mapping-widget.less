@@ -13,24 +13,8 @@
 @import (reference) '../../../../../../styles/variables.less';
 
 .ldap-role-mapping-widget {
-  .mapping-card {
-    background-color: transparent;
-    border: none;
-
-    .ant-card-body {
-      padding: 0;
-
-      .ant-input {
-        padding: var(--om-space-10) var(--om-space-14); // custom styling to match rjsf input
-        line-height: @size-lg;
-      }
-    }
-  }
-
-  .add-mapping-btn.ant-btn.ant-btn-default:not(:hover) {
-    border-color: @grey-300;
-  }
-  .add-mapping-btn.ant-btn.ant-btn-default {
-    margin-bottom: @margin-xs;
+  .mapping-card .ant-input {
+    padding: var(--om-space-10) var(--om-space-14); // custom styling to match rjsf input
+    line-height: @size-lg;
   }
 }

@@ -58,7 +58,7 @@ public class TestCaseLineageResolver implements EntityLineageResolver {
     TestCase testCase = null;
 
     try {
-      EntityInterface entity =
+      EntityInterface<?> entity =
           Entity.getEntity(Entity.TEST_CASE, entityId, "owners", Include.NON_DELETED);
 
       if (entity instanceof TestCase tc) {
@@ -81,7 +81,7 @@ public class TestCaseLineageResolver implements EntityLineageResolver {
     try {
       MessageParser.EntityLink parentLink =
           MessageParser.EntityLink.parse(testCase.getEntityLink());
-      EntityInterface parentEntity = Entity.getEntity(parentLink, "owners", Include.NON_DELETED);
+      EntityInterface<?> parentEntity = Entity.getEntity(parentLink, "owners", Include.NON_DELETED);
 
       if (parentEntity != null) {
         parents.add(

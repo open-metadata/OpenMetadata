@@ -18,7 +18,7 @@ import {
   CheckCircle,
   InfoCircle,
   X,
-} from '@untitledui/icons';
+} from '../../../icons';
 import {
   Button,
   UNSTABLE_Toast as AriaToast,

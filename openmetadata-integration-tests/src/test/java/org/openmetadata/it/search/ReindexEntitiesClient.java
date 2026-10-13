@@ -65,7 +65,7 @@ public final class ReindexEntitiesClient {
    * "type must not be null".
    */
   public void recreateAndAwait(
-      final String entityType, final List<? extends EntityInterface> entities) {
+      final String entityType, final List<? extends EntityInterface<?>> entities) {
     if (entities == null || entities.isEmpty()) {
       throw new IllegalArgumentException("entity list must not be empty");
     }
@@ -87,13 +87,13 @@ public final class ReindexEntitiesClient {
    * live-index path that runs after entity creation.
    */
   public void awaitIndexed(
-      final String entityType, final List<? extends EntityInterface> entities) {
+      final String entityType, final List<? extends EntityInterface<?>> entities) {
     awaitIndexed(entityType, entities, DEFAULT_WAIT);
   }
 
   public void awaitIndexed(
       final String entityType,
-      final List<? extends EntityInterface> entities,
+      final List<? extends EntityInterface<?>> entities,
       final Duration maxWait) {
     final List<EntityReference> refs =
         entities.stream()

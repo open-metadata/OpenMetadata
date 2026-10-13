@@ -57,14 +57,6 @@ jest.mock('antd', () => ({
       {description}
     </div>
   ),
-  Typography: {
-    Text: ({ children }: { children?: React.ReactNode }) => (
-      <span>{children}</span>
-    ),
-    Paragraph: ({ children }: { children?: React.ReactNode }) => (
-      <p>{children}</p>
-    ),
-  },
 }));
 
 describe('IndexNotFoundBanner', () => {

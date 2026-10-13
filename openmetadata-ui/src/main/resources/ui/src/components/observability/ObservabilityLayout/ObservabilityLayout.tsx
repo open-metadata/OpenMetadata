@@ -59,13 +59,11 @@ const ObservabilityLayout: React.FC<PropsWithChildren> = ({ children }) => {
       {children}
       <BundleSuiteFormDrawer
         open={isAddBundleSuiteOpen}
-        variant="modal"
         onClose={handleCloseBundleSuite}
         onSuccess={handleCloseBundleSuite}
       />
       <TestCaseFormDrawer
         open={isAddTestCaseOpen}
-        variant="modal"
         onClose={handleClose}
         onFormSubmit={handleClose}
       />

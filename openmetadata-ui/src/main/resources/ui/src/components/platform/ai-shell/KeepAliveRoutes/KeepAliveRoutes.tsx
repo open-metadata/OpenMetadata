@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { hideChartTooltips } from '@openmetadata/ui-core-components';
 import React, {
   PropsWithChildren,
   useEffect,
@@ -25,12 +26,12 @@ import {
   Routes,
   useLocation,
 } from 'react-router-dom';
+import { RouteVisibilityProvider } from '../../../../context/RouteVisibilityProvider/RouteVisibilityProvider';
 import {
   createRouteActivationStore,
   RouteActivationProvider,
   RouteActivationStore,
 } from '../context/RouteActivationContext';
-import './keep-alive-routes.less';
 
 interface KeepAliveRoute {
   element: React.ReactNode;
@@ -212,6 +213,12 @@ export const KeepAliveRoutes = ({
     // re-running only on activeCacheablePath change is correct.
   }, [activeCacheablePath]);
 
+  // Chart tooltips are appended to <body>, so one left open on a route that has
+  // just gone hidden would float over the new page until the pointer moves.
+  useEffect(() => {
+    hideChartTooltips();
+  }, [activeCacheablePath]);
+
   // Single window-focus / tab-visibility listener for the whole shell.
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -292,7 +299,10 @@ export const KeepAliveRoutes = ({
               data-testid={`route-cache-${path}`}
               key={path}
               style={isActive ? ACTIVE_ROUTE_STYLE : INACTIVE_ROUTE_STYLE}>
-              {route.element}
+              {/* A hidden cached route must not write global state like the tab title. */}
+              <RouteVisibilityProvider isVisible={isActive}>
+                {route.element}
+              </RouteVisibilityProvider>
             </div>
           );
         })}

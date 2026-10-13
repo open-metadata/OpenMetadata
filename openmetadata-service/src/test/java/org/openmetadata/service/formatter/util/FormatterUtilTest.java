@@ -194,7 +194,7 @@ class FormatterUtilTest {
             .withId(entityId)
             .withType(Entity.TABLE)
             .withFullyQualifiedName("service.sales.orders");
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     when(entity.getId()).thenReturn(entityId);
     when(entity.getEntityReference()).thenReturn(entityRef);
     when(entity.getDomains()).thenReturn(List.of(new EntityReference().withId(UUID.randomUUID())));
@@ -335,16 +335,6 @@ class FormatterUtilTest {
     @Override
     public String getEntityUrl(String prefix, String fqn, String additionalInput) {
       return prefix + "|" + fqn + "|" + additionalInput;
-    }
-
-    @Override
-    public String buildEntityMessage(String publisherName, ChangeEvent event) {
-      return null;
-    }
-
-    @Override
-    public String buildThreadMessage(String publisherName, ChangeEvent event) {
-      return null;
     }
 
     @Override

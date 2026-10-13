@@ -14,6 +14,9 @@ Stored Procedures Utilities
 
 import re
 
+from sqlparse import tokens
+from sqlparse.lexer import tokenize
+
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
@@ -68,22 +71,40 @@ def get_procedure_name_from_call(query_text: str, sensitive_match: bool = False)
     We'll return the lowered procedure name
     """
 
+    # Comments and literal values can mention invocations that never executed.
+    # Tokenize without grouping so large query-history statements stay linear,
+    # while quoted identifiers and whitespace between name segments survive.
+    if any(marker in query_text for marker in ("--", "/*", "'", "$")):
+        query_text = "".join(
+            " "
+            if token_type in tokens.Comment
+            or token_type in tokens.Literal.String.Single
+            or token_type == tokens.Literal
+            else value
+            for token_type, value in tokenize(query_text)
+        )
+
     res = re.search(NAME_PATTERN, query_text, re.IGNORECASE if not sensitive_match else 0)
     if not res:
         return None
 
     try:
-        return (
-            res.group(0)  # Get the first match
-            .strip()  # Remove whitespace
-            .lower()  # Replace all the lowercase variants of the procedure name prefixes
-            # Drop the identifier delimiters. StoredProcedure entity names are stored
-            # undelimited, and the caller matches on `procedure.name.root.lower()`, so a name
-            # kept as `"my proc"` would never match the entity it names.
-            .replace("`", "")
-            .replace('"', "")
-            .split(".")[-1]
-        )
+        # Split only on dots that are NOT inside a "..." segment. A double-quoted
+        # identifier (Snowflake/Oracle) may hold a literal `.` as one of its
+        # characters; splitting on it would drop the head of the name and miss
+        # the lineage join, since the StoredProcedure entity is keyed by the real,
+        # undelimited name (e.g. Snowflake's `PROCEDURE_NAME` carries it verbatim
+        # and the query-history row supplies only `QUERY_TEXT`). Backtick blobs
+        # (BigQuery's `project.dataset.routine` path) have no double-quotes, so
+        # their internal dots are split here too — exactly the separator role
+        # BigQuery assigns them — then the backticks are stripped below.
+        name = res.group(0).strip()
+        parts = re.split(r"""\.(?=(?:[^"]*"[^"]*")*[^"]*$)""", name)
+        # Take the last segment and drop its identifier delimiters. StoredProcedure
+        # entity names are stored undelimited, and the caller matches on
+        # `procedure.name.root.lower()`, so a name kept as `"my proc"` would never
+        # match the entity it names.
+        return parts[-1].strip().lower().replace("`", "").replace('"', "")
     except Exception as exc:
         logger.warning(f"Error trying to get the procedure name in [{query_text}] due to [{exc}]")
         return None

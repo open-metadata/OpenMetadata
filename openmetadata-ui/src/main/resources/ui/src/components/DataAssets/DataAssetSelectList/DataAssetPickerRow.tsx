@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
-import { Check } from '@untitledui/icons';
+import { Check } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FC } from 'react';
 import { ListBoxItem as AriaListBoxItem } from 'react-aria-components';

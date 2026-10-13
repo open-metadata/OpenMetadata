@@ -53,7 +53,7 @@ test.describe('Custom Theme Config Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       .fill('incorrect url');
 
     // Check for validation error
-    await page.getByText(config.logoError).isVisible();
+    await expect(page.getByText(config.logoError)).toBeVisible();
 
     // Clear and type the correct logo URL
     await page.locator('[data-testid="customLogoUrlPath"]').fill(config.logo);
@@ -64,7 +64,7 @@ test.describe('Custom Theme Config Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       .fill('incorrect url');
 
     // Check for validation error
-    await page.getByText(config.monogramError).isVisible();
+    await expect(page.getByText(config.monogramError)).toBeVisible();
 
     // Clear and type the correct monogram URL
     await page
@@ -92,6 +92,8 @@ test.describe('Custom Theme Config Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     // Verify the updated theme color
 
+    // The cursor still hovers the button after the click; read the resting colour.
+    await page.mouse.move(0, 0);
     await expect(page.getByTestId('save-btn')).toHaveCSS(
       'background-color',
       'rgb(104, 9, 220)'
@@ -110,6 +112,8 @@ test.describe('Custom Theme Config Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     expect(defaultConfigResponse.status()).toBe(200);
 
     // Verify the default theme color
+    // The cursor still hovers the button after the click; read the resting colour.
+    await page.mouse.move(0, 0);
     await expect(page.getByTestId('reset-button')).toHaveCSS(
       'background-color',
       'rgb(21, 112, 239)'
@@ -166,6 +170,8 @@ test.describe('Custom Theme Config Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     expect(defaultConfigResponse.status()).toBe(200);
 
     // Verify the default theme color
+    // The cursor still hovers the button after the click; read the resting colour.
+    await page.mouse.move(0, 0);
     await expect(page.getByTestId('reset-button')).toHaveCSS(
       'background-color',
       'rgb(21, 112, 239)'

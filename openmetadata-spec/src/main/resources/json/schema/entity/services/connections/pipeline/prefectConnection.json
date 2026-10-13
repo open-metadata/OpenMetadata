@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/prefectConnection.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "PrefectConnection",
   "description": "Prefect Metadata Database Connection Config",
   "javaType": "org.openmetadata.schema.services.connections.pipeline.PrefectConnection",

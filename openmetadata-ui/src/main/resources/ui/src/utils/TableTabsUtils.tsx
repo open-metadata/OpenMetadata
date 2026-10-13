@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Divider, Space, Typography } from 'antd';
+import { Box, Divider, Typography } from '@openmetadata/ui-core-components';
+
 import { get, isUndefined } from 'lodash';
 import { lazy, Suspense } from 'react';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
@@ -100,11 +101,11 @@ const AssetHealthWidget = withSuspenseFallback(
   )
 );
 
+const importSampleDataTable = () =>
+  import('../components/Database/SampleDataTable/SampleDataTable.component');
+
 const SampleDataTableComponent = withSuspenseFallback(
-  lazy(
-    () =>
-      import('../components/Database/SampleDataTable/SampleDataTable.component')
-  ),
+  lazy(importSampleDataTable),
   TAB_CONTENT_FALLBACK
 );
 
@@ -122,24 +123,39 @@ const ContractTab = withSuspenseFallback(
   TAB_CONTENT_FALLBACK
 );
 
+const importDataObservabilityTab = () =>
+  import(
+    '../components/Database/Profiler/DataObservability/DataObservabilityTab'
+  );
+
 const DataObservabilityTab = withSuspenseFallback(
-  lazy(
-    () =>
-      import(
-        '../components/Database/Profiler/DataObservability/DataObservabilityTab'
-      )
+  lazy(importDataObservabilityTab),
+  TAB_CONTENT_FALLBACK
+);
+
+const importEntityLineageTab = () =>
+  import('../components/Lineage/EntityLineageTab/EntityLineageTab');
+
+const EntityLineageTab = withSuspenseFallback(
+  lazy(() =>
+    importEntityLineageTab().then((module) => ({
+      default: module.EntityLineageTab,
+    }))
   ),
   TAB_CONTENT_FALLBACK
 );
 
-const EntityLineageTab = withSuspenseFallback(
-  lazy(() =>
-    import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
-      (module) => ({ default: module.EntityLineageTab })
-    )
-  ),
-  TAB_CONTENT_FALLBACK
-);
+/**
+ * The product tour highlights elements rendered inside these lazy tabs, and react-tour closes
+ * itself when a step's selector is still missing once its fixed stepWaitTimer elapses. Loading
+ * the chunks before the tour starts keeps a slow chunk download from ending the tour.
+ */
+export const preloadTourTableTabs = () =>
+  Promise.allSettled([
+    importSampleDataTable(),
+    importDataObservabilityTab(),
+    importEntityLineageTab(),
+  ]);
 
 const TableConstraints = withSuspenseFallback(
   lazy(
@@ -150,7 +166,7 @@ const TableConstraints = withSuspenseFallback(
 );
 
 const KnowledgeGraph = withSuspenseFallback(
-  lazy(() => import('../components/KnowledgeGraph3D/KnowledgeGraph3D')),
+  lazy(() => import('../components/discovery/knowledge-graph/KnowledgeGraph')),
   TAB_CONTENT_FALLBACK
 );
 
@@ -401,7 +417,6 @@ export const getTableDetailPageBaseTabs = ({
       children: (
         <Suspense fallback={TAB_CONTENT_FALLBACK}>
           <KnowledgeGraph
-            depth={1}
             entity={
               tableDetails
                 ? {
@@ -433,31 +448,36 @@ export const getTableDetailPageBaseTabs = ({
             get(tableDetails, 'dataModel.rawSql', '')
           }
           title={
-            <Space className="p-y-xss" size="small">
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal p-y-xss"
+              gap={2}
+              itemClassName="layout-space-item">
               <div>
-                <Typography.Text className="text-grey-muted">
+                <Typography color="secondary">
                   {`${t('label.dbt-source-project')}: `}
-                </Typography.Text>
-                <Typography.Text data-testid="dbt-source-project-id">
+                </Typography>
+                <Typography data-testid="dbt-source-project-id">
                   {tableDetails?.dataModel?.dbtSourceProject ??
                     NO_DATA_PLACEHOLDER}
-                </Typography.Text>
+                </Typography>
               </div>
 
               <Divider
-                className="self-center vertical-divider"
-                type="vertical"
+                className="tw:mx-2 tw:h-[0.9em] tw:self-center"
+                orientation="vertical"
               />
 
               <div>
-                <Typography.Text className="text-grey-muted">
+                <Typography color="secondary">
                   {`${t('label.path')}: `}
-                </Typography.Text>
-                <Typography.Text>
+                </Typography>
+                <Typography className="tw:wrap-break-word">
                   {tableDetails?.dataModel?.path}
-                </Typography.Text>
+                </Typography>
               </div>
-            </Space>
+            </Box>
           }
         />
       ),

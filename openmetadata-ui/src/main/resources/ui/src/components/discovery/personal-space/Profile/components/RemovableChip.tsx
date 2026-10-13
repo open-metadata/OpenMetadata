@@ -12,7 +12,7 @@
  */
 
 import { Badge, Button } from '@openmetadata/ui-core-components';
-import { X } from '@untitledui/icons';
+import { X } from '@openmetadata/ui-core-components/icons';
 import React from 'react';
 
 interface RemovableChipProps {
@@ -43,6 +43,7 @@ const RemovableChip: React.FC<RemovableChipProps> = ({
       iconLeading={X}
       isDisabled={isDisabled}
       size="xs"
+      slot={null}
       onPress={onRemove}
     />
   </Badge>

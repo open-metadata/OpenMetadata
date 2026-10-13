@@ -71,6 +71,7 @@ from metadata.readers.file.config_source_factory import get_reader
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_container
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.schema_inference import InferenceReport
 
 logger = ingestion_logger()
 
@@ -304,8 +305,11 @@ class GcsSource(StorageServiceSource):
         bucket_client = client.bucket(bucket_name)
         blob = GCSBlobAdapter(bucket_client, archive_path)
         structure_format = metadata_entry.structureFormat or ""
+        inference_report = InferenceReport()
         with open_archive_reader(blob, structure_format) as reader:
-            for entry, columns, entry_format in iter_archive_entries_with_schema(reader):
+            for entry, columns, entry_format in iter_archive_entries_with_schema(
+                reader, limits=self.inference_limits, report=inference_report
+            ):
                 yield from self._generate_inner_file_container(
                     entry=entry,
                     archive_ref=archive_ref,
@@ -314,6 +318,7 @@ class GcsSource(StorageServiceSource):
                     entry_format=entry_format,
                     bucket_response=bucket_response,
                 )
+        inference_report.emit(self.status, f"{bucket_name}/{archive_path}", self.inference_limits)
 
     def _generate_container_details(
         self,

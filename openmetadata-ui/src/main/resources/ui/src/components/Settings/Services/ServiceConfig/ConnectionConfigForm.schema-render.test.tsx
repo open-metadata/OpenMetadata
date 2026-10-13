@@ -553,6 +553,36 @@ describe('ConnectionConfigForm schema rendering', () => {
     }
   );
 
+  it('renders the Snowflake private key as a credential drop zone', async () => {
+    const { container } = await renderConnectionSchema('Snowflake');
+
+    fireEvent.click(screen.getByTestId('auth-method-1'));
+
+    const privateKey = getRequiredElement(
+      container,
+      '[data-field-name="privateKey"]'
+    );
+
+    expect(
+      within(privateKey).getByTestId('credential-file-dropzone')
+    ).toBeInTheDocument();
+    // `fileOrInput` keeps the paste path alongside the drop zone.
+    expect(within(privateKey).getByRole('textbox')).toBeInTheDocument();
+  });
+
+  it('keeps a plain password field free of any file affordance', async () => {
+    const { container } = await renderConnectionSchema('Snowflake');
+
+    const password = getRequiredElement(
+      container,
+      '[data-field-name="password"]'
+    );
+
+    expect(
+      within(password).queryByTestId('credential-file-dropzone')
+    ).not.toBeInTheDocument();
+  });
+
   it('keeps Airflow five-way connection choices as a compact select', async () => {
     const { container } = await renderConnectionSchema(
       'Airflow',
@@ -569,6 +599,45 @@ describe('ConnectionConfigForm schema rendering', () => {
     ).toBeInTheDocument();
     expect(
       field.querySelector('.core-one-of-field-tabs')
+    ).not.toBeInTheDocument();
+  });
+
+  it('switches Microsoft Fabric between client secret and certificate credentials', async () => {
+    const { container } = await renderConnectionSchema('MicrosoftFabric');
+
+    expect(screen.getByTestId('auth-select-field')).toBeInTheDocument();
+    expect(
+      container.querySelector('[data-field-name="clientSecret"]')
+    ).toBeInTheDocument();
+    expect(
+      container.querySelector('[data-field-name="certificate"]')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('auth-method-1'));
+
+    expect(
+      container.querySelector('[data-field-name="clientSecret"]')
+    ).not.toBeInTheDocument();
+
+    ['certificate', 'privateKey'].forEach((fieldName) => {
+      const field = getRequiredElement(
+        container,
+        `[data-field-name="${fieldName}"]`
+      );
+
+      expect(
+        within(field).getByTestId('credential-file-dropzone')
+      ).toBeInTheDocument();
+      expect(within(field).getByRole('textbox')).toBeInTheDocument();
+    });
+
+    const passphrase = getRequiredElement(
+      container,
+      '[data-field-name="privateKeyPassphrase"]'
+    );
+
+    expect(
+      within(passphrase).queryByTestId('credential-file-dropzone')
     ).not.toBeInTheDocument();
   });
 });

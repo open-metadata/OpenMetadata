@@ -38,3 +38,33 @@ export const TEST_DEFINITION_DEFAULT_QUICK_FILTERS = [
   'entityType',
   'testPlatforms',
 ];
+
+/**
+ * Table column id -> the `sortField` the listing endpoint understands. Only the
+ * three columns the server can order by appear here; a column absent from this
+ * map renders without a sort affordance, so the UI can never ask for an
+ * ordering the API would reject.
+ *
+ * The Name column maps to `displayName` because that is what it renders — the
+ * server falls back to the internal name for definitions that have no display
+ * name.
+ */
+export const TEST_DEFINITION_SORT_FIELD_BY_COLUMN: Record<string, string> = {
+  name: 'displayName',
+  entityType: 'entityType',
+  testPlatforms: 'testPlatforms',
+};
+
+export const TEST_DEFINITION_COLUMN_BY_SORT_FIELD: Record<string, string> =
+  Object.fromEntries(
+    Object.entries(TEST_DEFINITION_SORT_FIELD_BY_COLUMN).map(
+      ([column, field]) => [field, column]
+    )
+  );
+
+export const DEFAULT_TEST_DEFINITION_SORT_FIELD = 'displayName';
+
+export const DEFAULT_TEST_DEFINITION_SORT_ORDER: TestDefinitionSortOrder =
+  'asc';
+
+export type TestDefinitionSortOrder = 'asc' | 'desc';

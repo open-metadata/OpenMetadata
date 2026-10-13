@@ -26,7 +26,7 @@ public final class DataProductShapeProfile implements EntityShapeProfile {
   }
 
   @Override
-  public EntityInterface minimal(final ShapeContext ctx) {
+  public EntityInterface<?> minimal(final ShapeContext ctx) {
     return new DataProduct()
         .withId(ctx.id())
         .withName("dataProduct")

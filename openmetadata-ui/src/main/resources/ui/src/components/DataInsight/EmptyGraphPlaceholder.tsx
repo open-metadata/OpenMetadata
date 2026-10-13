@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
+import { Tooltip, Typography } from '@openmetadata/ui-core-components';
 import { ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DATA_INSIGHT_DOCS } from '../../constants/docs.constants';
@@ -28,28 +28,34 @@ export const EmptyGraphPlaceholder = ({ icon }: { icon?: ReactElement }) => {
       icon={icon}
       size={SIZE.MEDIUM}
       type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-      <Typography.Paragraph style={{ marginBottom: '0' }}>
+      <Typography
+        as="p"
+        className="tw:text-primary"
+        style={{ marginBottom: '0' }}>
         {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
           entity: t('label.data-insight'),
         })}
-      </Typography.Paragraph>
-      <Typography.Paragraph>
-        <Transi18next
-          i18nKey="message.refer-to-our-doc"
-          renderElement={
-            <a
-              aria-label={t('label.documentation')}
-              href={DATA_INSIGHT_DOCS}
-              rel="noreferrer"
-              target="_blank"
-              title="Data Insight Documentation"
+      </Typography>
+      <Typography as="p" className="tw:mb-3.5! tw:text-primary">
+        <Tooltip title={t('label.documentation')}>
+          <span>
+            <Transi18next
+              i18nKey="message.refer-to-our-doc"
+              renderElement={
+                <a
+                  aria-label={t('label.documentation')}
+                  href={DATA_INSIGHT_DOCS}
+                  rel="noreferrer"
+                  target="_blank"
+                />
+              }
+              values={{
+                doc: t('label.doc-plural-lowercase'),
+              }}
             />
-          }
-          values={{
-            doc: t('label.doc-plural-lowercase'),
-          }}
-        />
-      </Typography.Paragraph>
+          </span>
+        </Tooltip>
+      </Typography>
     </ErrorPlaceHolder>
   );
 };

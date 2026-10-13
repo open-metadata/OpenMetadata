@@ -34,7 +34,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.basic import Uuid
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
-from metadata.generated.schema.type.tagLabel import LabelType, State, TagLabel, TagSource
+from metadata.ingestion.models.topology import TopologyContextManager
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.ingestion.source.pipeline.prefect.client import (
     DEPLOYMENTS_PAGE_SIZE,
@@ -111,6 +111,8 @@ def prefect_source() -> PrefectSource:
     with patch.object(PipelineServiceSource, "test_connection"):
         source = PrefectSource(workflow_source, Mock())
     source.client = Mock(spec=PrefectClient)
+    source.context = TopologyContextManager(source.topology)
+    source.context.get().upsert("pipeline_service", "test_prefect")
     return source
 
 
@@ -129,6 +131,8 @@ def _self_hosted_source() -> PrefectSource:
     with patch.object(PipelineServiceSource, "test_connection"):
         source = PrefectSource(workflow_source, Mock())
     source.client = Mock(spec=PrefectClient)
+    source.context = TopologyContextManager(source.topology)
+    source.context.get().upsert("pipeline_service", "test_prefect")
     return source
 
 
@@ -374,24 +378,8 @@ class TestPrefectSource:
         prefect_source.client.get_task_runs.return_value = [
             PrefectTaskRun(id="tr-1", flow_run_id="run-1", name="extract")
         ]
-        stub_tags = [
-            TagLabel(
-                tagFQN="PrefectTags.production",
-                source=TagSource.Classification,
-                labelType=LabelType.Automated,
-                state=State.Suggested,
-            )
-        ]
-
-        with (
-            patch.object(prefect_source.context, "get", return_value=_context()),
-            patch(
-                "metadata.ingestion.source.pipeline.prefect.metadata.get_tag_labels",
-                return_value=stub_tags,
-            ),
-            patch.object(prefect_source, "register_record") as mock_register,
-        ):
-            results = list(prefect_source.yield_pipeline(MOCK_FLOWS[0]))
+        list(prefect_source.yield_tag_details(MOCK_FLOWS[0]))
+        results = list(prefect_source.yield_pipeline_details(MOCK_FLOWS[0]))
 
         assert len(results) == 1
         request = results[0].right
@@ -399,8 +387,8 @@ class TestPrefectSource:
         assert request.name.root == "test-flow"
         assert len(request.tasks) == 1
         assert request.tasks[0].name == "extract"
-        assert request.tags == stub_tags
-        mock_register.assert_called_once_with(pipeline_request=request)
+        assert [label.tagFQN.root for label in request.tags] == ["PrefectTags.nightly"]
+        assert "test_prefect.test-flow" in prefect_source.pipeline_source_state
 
     def test_yield_pipeline_error_is_a_stack_trace_error(self, prefect_source):
         """Either.left must be a StackTraceError, not a raw exception, or
@@ -425,69 +413,41 @@ class TestPrefectSource:
 
         with (
             patch.object(source.context, "get", return_value=_context()),
-            patch(
-                "metadata.ingestion.source.pipeline.prefect.metadata.get_tag_labels",
-                return_value=None,
-            ),
         ):
             results = list(source.yield_pipeline(MOCK_FLOWS[1]))
 
         assert len(results) == 1
         assert results[0].right.sourceUrl.root == "http://localhost:4200/flows/flow/flow-2"
 
-    def test_yield_tag_delegates_to_tag_utils(self, prefect_source):
-        """Flow-level tags are never a source (nothing in the Prefect SDK
-        writes them, see _get_all_tags) — only deployment and task-run tags
-        are merged."""
-        prefect_source.client.get_deployments.return_value = [PrefectDeployment(tags=["nightly"])]
+    def test_flow_and_task_tags_are_attached_to_their_own_entities(self, prefect_source):
+        prefect_source.client.get_deployments.return_value = [PrefectDeployment(tags=["nightly", "shared"])]
         prefect_source.client.get_flow_runs.return_value = [MOCK_FLOW_RUNS[0]]
         prefect_source.client.get_task_runs.return_value = [
-            PrefectTaskRun(id="tr-1", flow_run_id="run-1", tags=["urgent"])
+            PrefectTaskRun(id="tr-1", flow_run_id="run-1", task_key="extract", tags=["urgent", "shared"]),
+            PrefectTaskRun(id="tr-2", flow_run_id="run-1", task_key="extract", tags=["pii", "urgent"]),
+            PrefectTaskRun(id="tr-3", flow_run_id="run-1", task_key="load", tags=[]),
         ]
+        records = list(prefect_source.yield_tag_details(MOCK_FLOWS[0]))
+        assert {record.right.tag_request.name.root for record in records} == {"nightly", "shared", "urgent", "pii"}
+        (request,) = [record.right for record in prefect_source.yield_pipeline_details(MOCK_FLOWS[0])]
+        assert {label.tagFQN.root for label in request.tags} == {"PrefectTags.nightly", "PrefectTags.shared"}
+        tasks = {task.name: task for task in request.tasks}
+        assert sorted(label.tagFQN.root for label in tasks["extract"].tags) == [
+            "PrefectTags.pii",
+            "PrefectTags.shared",
+            "PrefectTags.urgent",
+        ]
+        assert tasks["load"].tags is None
+        assert prefect_source.tags_registry.stats()["live_entities"] == 0
 
-        with patch(
-            "metadata.ingestion.source.pipeline.prefect.metadata.get_ometa_tag_and_classification",
-            return_value=iter(["stub-tag"]),
-        ) as mock_get_tags:
-            results = list(prefect_source.yield_tag(MOCK_FLOWS[0]))
-
-        assert results == ["stub-tag"]
-        _, kwargs = mock_get_tags.call_args
-        assert set(kwargs["tags"]) == {"nightly", "urgent"}
-        assert kwargs["classification_name"] == "PrefectTags"
-
-    def test_yield_tag_skips_task_fetch_when_flow_never_ran(self, prefect_source):
-        """No flow runs yet means no task runs to fetch, not a crash."""
-        prefect_source.client.get_deployments.return_value = []
+    def test_flow_without_runs_can_still_publish_deployment_tags(self, prefect_source):
+        prefect_source.client.get_deployments.return_value = [PrefectDeployment(tags=["nightly"])]
         prefect_source.client.get_flow_runs.return_value = []
-
-        with patch(
-            "metadata.ingestion.source.pipeline.prefect.metadata.get_ometa_tag_and_classification",
-            return_value=iter([]),
-        ):
-            list(prefect_source.yield_tag(MOCK_FLOWS[0]))
-
-        prefect_source.client.get_task_runs.assert_not_called()
-
-    def test_build_task_dag_resolves_task_level_tags(self, prefect_source):
-        """Each Task's own tags are resolved into TagLabels via the same
-        PrefectTags classification used for pipeline-level tags."""
-        task_runs = [
-            PrefectTaskRun(id="tr-1", flow_run_id="run-1", name="extract", tags=["urgent", "pii"]),
-            PrefectTaskRun(id="tr-2", flow_run_id="run-1", name="load", tags=[]),
-        ]
-
-        with patch(
-            "metadata.ingestion.source.pipeline.prefect.metadata.get_tag_labels",
-            return_value=None,
-        ) as mock_get_tag_labels:
-            prefect_source._build_task_dag(task_runs)
-
-        assert len(mock_get_tag_labels.call_args_list) == 2
-        assert set(mock_get_tag_labels.call_args_list[0].kwargs["tags"]) == {"urgent", "pii"}
-        assert mock_get_tag_labels.call_args_list[1].kwargs["tags"] == []
-        for call in mock_get_tag_labels.call_args_list:
-            assert call.kwargs["classification_name"] == "PrefectTags"
+        records = list(prefect_source.yield_tag_details(MOCK_FLOWS[0]))
+        assert [record.right.tag_request.name.root for record in records] == ["nightly"]
+        (request,) = [record.right for record in prefect_source.yield_pipeline_details(MOCK_FLOWS[0])]
+        assert request.tasks is None
+        assert [label.tagFQN.root for label in request.tags] == ["PrefectTags.nightly"]
 
     def test_build_task_dag_links_downstream_tasks_via_task_inputs(self, prefect_source):
         task_runs = [
@@ -501,8 +461,7 @@ class TestPrefectSource:
             ),
         ]
 
-        with patch("metadata.ingestion.source.pipeline.prefect.metadata.get_tag_labels", return_value=None):
-            tasks = prefect_source._build_task_dag(task_runs)
+        tasks = prefect_source._build_task_dag(task_runs, "test_prefect.test-flow")
 
         by_name = {task.name: task for task in tasks}
         assert by_name["extract"].downstreamTasks == ["load"]
@@ -516,8 +475,7 @@ class TestPrefectSource:
             PrefectTaskRun(id="tr-2", flow_run_id="run-1", task_key="extract", name="extract-run-2"),
         ]
 
-        with patch("metadata.ingestion.source.pipeline.prefect.metadata.get_tag_labels", return_value=None):
-            tasks = prefect_source._build_task_dag(task_runs)
+        tasks = prefect_source._build_task_dag(task_runs, "test_prefect.test-flow")
 
         assert len(tasks) == 1
         assert tasks[0].name == "extract"
@@ -535,8 +493,7 @@ class TestPrefectSource:
             ),
         ]
 
-        with patch("metadata.ingestion.source.pipeline.prefect.metadata.get_tag_labels", return_value=None):
-            tasks = prefect_source._build_task_dag(task_runs)
+        tasks = prefect_source._build_task_dag(task_runs, "test_prefect.test-flow")
 
         assert tasks[0].downstreamTasks is None
 
@@ -644,10 +601,6 @@ class TestPrefectSource:
 
         with (
             patch.object(prefect_source.context, "get", return_value=context),
-            patch(
-                "metadata.ingestion.source.pipeline.prefect.metadata.get_tag_labels",
-                return_value=None,
-            ),
         ):
             list(prefect_source.yield_pipeline(MOCK_FLOWS[0]))
 

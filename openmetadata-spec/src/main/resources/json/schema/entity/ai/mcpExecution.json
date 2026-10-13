@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/ai/mcpExecution.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "McpExecution",
   "$comment": "@om-entity-type",
   "description": "MCP Execution entity representing a single execution session of an MCP server. Tracks tool calls, resource accesses, prompt uses, and data lineage for audit trails and governance. This is a time-series entity for observability and compliance.",

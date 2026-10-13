@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tabs } from '@openmetadata/ui-core-components';
-import { Form, Select, Space } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Form, Select } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
@@ -31,9 +31,9 @@ import {
 import { INITIAL_TEST_SUMMARY } from '../../../../../constants/TestSuite.constant';
 import { useLimitStore } from '../../../../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../../../enums/entity.enum';
+import { ResourceEntity } from '../../../../../enums/permissions.enum';
 import { TestCaseType } from '../../../../../enums/TestSuite.enum';
 import { Operation } from '../../../../../generated/entity/policies/policy';
 import { PipelineType } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -43,10 +43,8 @@ import { getIngestionPipelines } from '../../../../../rest/ingestionPipelineAPI'
 import { ListTestCaseParamsBySearch } from '../../../../../rest/testAPI';
 import { getBreadcrumbForTable } from '../../../../../utils/EntityDataBreadcrumbUtils';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
-import {
-  checkPermission,
-  getPrioritizedEditPermission,
-} from '../../../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../../../utils/PermissionDerivation';
+import { checkPermission } from '../../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../../utils/RouterUtils';
 import { ExtraTestCaseDropdownOptions } from '../../../../../utils/TestCaseUtils';
 import ManageButton from '../../../../common/EntityPageInfos/ManageButton/ManageButton';
@@ -70,6 +68,7 @@ export const QualityTab = () => {
     fetchAllTests,
     onTestCaseUpdate,
     allTestCases,
+    allTestCasesPermissions,
     isTestsLoading,
     testCasePaging,
     table,
@@ -87,16 +86,12 @@ export const QualityTab = () => {
     showPagination,
   } = testCasePaging;
 
-  const { editTest } = useMemo(() => {
-    return {
-      editTest:
-        permissions &&
-        getPrioritizedEditPermission(permissions, Operation.EditTests),
-      editDataProfile:
-        permissions &&
-        getPrioritizedEditPermission(permissions, Operation.EditDataProfile),
-    };
-  }, [permissions, getPrioritizedEditPermission]);
+  const editTest = useMemo(
+    () =>
+      permissions &&
+      getDerivedPermissionFlags(permissions).can(Operation.EditTests),
+    [permissions]
+  );
 
   const navigate = useNavigate();
   const location = useCustomLocation();
@@ -433,10 +428,12 @@ export const QualityTab = () => {
               className="new-form-style tw:ml-auto tw:shrink-0"
               data-testid="quality-tab-filter-controls"
               layout="inline">
-              <Space
+              <Box
+                inline
                 align="center"
-                className="tw:w-full tw:justify-end"
-                size={12}>
+                className="layout-space layout-space-horizontal tw:w-full tw:justify-end"
+                gap={3}
+                itemClassName="layout-space-item">
                 <Form.Item className="tw:m-0 tw:w-44" label={t('label.type')}>
                   <Select
                     options={TEST_CASE_TYPE_OPTION}
@@ -463,7 +460,7 @@ export const QualityTab = () => {
                   extraDropdownContent={extraDropdownContent}
                   isRecursiveDelete={false}
                 />
-              </Space>
+              </Box>
             </Form>
           )}
         </div>
@@ -477,6 +474,7 @@ export const QualityTab = () => {
                 (await getResourceLimit('dataQuality', true, true));
             }}
             breadcrumbData={tableBreadcrumb}
+            entityPermissions={allTestCasesPermissions}
             fetchTestCases={handleSortTestCase}
             hasActiveFilters={hasActiveFilters}
             isEditAllowed={editTest}

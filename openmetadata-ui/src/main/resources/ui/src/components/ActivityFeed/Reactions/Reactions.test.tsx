@@ -12,16 +12,9 @@
  */
 
 import { fireEvent, render } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { ReactionType } from '../../../generated/type/reaction';
 import Reactions from './Reactions';
-
-jest.mock('./Emoji', () =>
-  jest.fn().mockReturnValue(<button data-testid="emoji">Emoji</button>)
-);
-
-jest.mock('./Reaction', () =>
-  jest.fn().mockReturnValue(<button data-testid="reaction">Reaction</button>)
-);
 
 const onReactionSelect = jest.fn();
 
@@ -147,8 +140,26 @@ describe('Text Reactions component', () => {
 
     fireEvent.click(addReationButton);
 
-    const reactionList = await findAllByTestId('reaction');
+    const reactionList = await findAllByTestId('reaction-button');
 
     expect(reactionList).toHaveLength(8);
+  });
+
+  it('keeps a focused reaction operable when the feed re-renders', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const { getByTestId, findByRole, rerender } = render(
+      <Reactions {...mockProps} />
+    );
+    await user.click(getByTestId('add-reactions'));
+    const reaction = await findByRole('button', { name: 'hooray' });
+    reaction.focus();
+
+    rerender(<Reactions {...mockProps} reactions={[...reactions]} />);
+
+    expect(reaction).toHaveFocus();
+
+    await user.keyboard('{Enter}');
+
+    expect(onReactionSelect).toHaveBeenCalledWith(ReactionType.Hooray, 'add');
   });
 });

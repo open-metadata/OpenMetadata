@@ -54,6 +54,17 @@ jobs:
           gpg-private-key: ${{ secrets.OSSRH_GPG_SECRET_KEY }}
           gpg-passphrase: MAVEN_GPG_PASSPHRASE
 
+      - name: Pin Maven 3.9.16
+        # ubuntu-24.04 image 20261004 ships Maven 3.10.0, whose staging layout makes
+        # Central reject the bundle ("Bundle has content that does NOT have a .pom file").
+        run: |
+          MVN=apache-maven-3.9.16
+          curl -fsSLO "https://archive.apache.org/dist/maven/maven-3/3.9.16/binaries/$MVN-bin.tar.gz"
+          echo "831a8591fe20c8243b1dbe7d71e3244f31d1665b0804b2e825e38cbbe5ce0cafb8338851f90780735568773e0a6cd07bbec107cda0b896b008b861075358b6f6  $MVN-bin.tar.gz" | sha512sum -c -
+          tar xzf "$MVN-bin.tar.gz" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/$MVN/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/$MVN/bin/mvn" -v
+
       - name: Install Ubuntu dependencies
         run: |
           sudo apt-get update

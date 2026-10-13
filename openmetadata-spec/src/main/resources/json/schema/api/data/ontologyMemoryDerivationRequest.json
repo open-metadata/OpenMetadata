@@ -1,0 +1,22 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/ontologyMemoryDerivationRequest.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OntologyMemoryDerivationRequest",
+  "description": "Queue glossary-term suggestions grounded in published context memories.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.OntologyMemoryDerivationRequest",
+  "properties": {
+    "glossary": {
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "memoryIds": {
+      "type": "array",
+      "items": { "$ref": "../../type/basic.json#/definitions/uuid" },
+      "minItems": 1,
+      "maxItems": 20,
+      "uniqueItems": true
+    }
+  },
+  "required": ["memoryIds"],
+  "additionalProperties": false
+}

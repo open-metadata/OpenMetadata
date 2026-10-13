@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { DefaultOptionType } from 'antd/lib/select';
 import { PagingResponse } from 'Models';
+import { RefObject } from 'react';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { TagLabel } from '../../../generated/type/tagLabel';
@@ -30,10 +30,11 @@ export interface AsyncSelectListProps {
   placeholder?: string;
   debounceTimeout?: number;
   defaultValue?: string[];
-  value?: string[];
+  // antd Form.Item feeds back the options emitted by onChange.
+  value?: Array<string | SelectOption>;
   initialOptions?: SelectOption[];
   filterOptions?: string[]; // array of fqn
-  onChange?: (option: DefaultOptionType | DefaultOptionType[]) => void;
+  onChange?: (options: SelectOption[]) => void;
   onCancel?: () => void;
   isSubmitLoading?: boolean;
   fetchOptions: (
@@ -42,4 +43,12 @@ export interface AsyncSelectListProps {
   ) => Promise<PagingResponse<SelectOption[]>>;
   open?: boolean;
   hasNoActionButtons?: boolean;
+  autoFocus?: boolean;
+  id?: string;
+  className?: string;
+  popupClassName?: string;
+  dropdownContainerRef?: RefObject<HTMLDivElement>;
+  // antd-era hints still passed by callers; the core popover places and sizes itself.
+  getPopupContainer?: (triggerNode: HTMLElement) => HTMLElement | null;
+  size?: 'small' | 'middle' | 'large';
 }

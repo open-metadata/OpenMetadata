@@ -19,12 +19,10 @@ import java.util.Map;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.SubscriptionAction;
-import org.openmetadata.schema.alert.type.EmailAlertConfig;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.schema.type.Webhook;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.subscription.channels.Channels;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.notifications.recipients.downstream.EntityLineageResolver;
 import org.openmetadata.service.notifications.recipients.downstream.impl.ConversationLineageResolver;
@@ -100,70 +98,67 @@ public class RecipientResolver {
   }
 
   /**
-   * Resolves and deduplicates recipients across multiple destinations of the same type.
-   * Deduplication uses Recipient.equals() (email for EmailRecipient, endpoint for WebhookRecipient).
-   *
-   * @param event the change event triggering the notification
-   * @param destinations list of subscription destinations to resolve recipients for
-   * @return deduplicated set of resolved recipients
+   * The recipients of several destinations for one event, deduplicated, for callers that send to
+   * whoever could be found. A lookup that failed is logged and costs only what it could not find.
    */
   public Set<Recipient> resolveRecipients(
       ChangeEvent event, List<SubscriptionDestination> destinations) {
-
-    Set<Recipient> allRecipients = new HashSet<>();
-
-    for (SubscriptionDestination destination : destinations) {
-      Set<Recipient> recipients = resolveRecipientsForDestination(event, destination);
-      allRecipients.addAll(recipients);
-    }
-
-    return allRecipients;
+    Recipients reached =
+        destinations.stream()
+            .map(destination -> guarded(event, destination))
+            .collect(Recipients.combined());
+    reached
+        .failures()
+        .forEach(
+            failure ->
+                LOG.warn(
+                    "A recipient of event {} could not be looked up: {}", event.getId(), failure));
+    return new HashSet<>(reached.found());
   }
 
-  /**
-   * Resolves recipients for a single destination by extracting the action config from the
-   * destination configuration.
-   */
-  private Set<Recipient> resolveRecipientsForDestination(
-      ChangeEvent event, SubscriptionDestination destination) {
-
-    Set<Recipient> recipients = new HashSet<>();
-
+  // An unexpected error costs its own destination only.
+  private Recipients guarded(ChangeEvent event, SubscriptionDestination destination) {
+    Recipients reached;
     try {
-      SubscriptionDestination.SubscriptionCategory category = destination.getCategory();
-
-      // 1. Get primary recipients based on category
-      RecipientResolutionStrategy strategy = STRATEGIES.get(category);
-      if (strategy == null) {
-        LOG.error("No strategy found for category {}", category);
-        return Set.of();
-      }
-
-      SubscriptionAction action = extractActionConfig(destination);
-      // All entities (including threads) use the same category-based strategy routing
-      // Use ChangeEvent method to safely handle deleted entities via payload snapshot
-      recipients.addAll(strategy.resolve(event, action, destination));
-
-      // 2. Add downstream recipients if enabled (only for INTERNAL categories)
-      if (Boolean.TRUE.equals(destination.getNotifyDownstream())
-          && category != SubscriptionDestination.SubscriptionCategory.EXTERNAL) {
-        LineageBasedDownstreamHandler downstreamHandler =
-            new LineageBasedDownstreamHandler(LINEAGE_RESOLVERS, strategy);
-        Set<Recipient> downstreamRecipients =
-            downstreamHandler.resolveDownstreamRecipients(
-                action, destination, event, destination.getDownstreamDepth());
-        recipients.addAll(downstreamRecipients);
-      }
-
-    } catch (Exception e) {
-      LOG.error(
-          "Failed to resolve recipients for event {}-{}",
-          event.getEntityType(),
-          event.getEntityId(),
-          e);
+      reached = recipientsOf(event, destination);
+    } catch (RuntimeException e) {
+      LOG.error("Recipients of destination {} could not be resolved", destination.getId(), e);
+      reached = Recipients.failed(String.valueOf(e.getMessage()));
     }
+    return reached;
+  }
 
-    return recipients;
+  /** The recipients of one destination for one event, and the lookups that failed. */
+  public Recipients recipientsOf(ChangeEvent event, SubscriptionDestination destination) {
+    Recipients reached = Recipients.none();
+    SubscriptionDestination.SubscriptionCategory category = destination.getCategory();
+    RecipientResolutionStrategy strategy = STRATEGIES.get(category);
+    if (strategy == null) {
+      LOG.error("No strategy found for category {}", category);
+    } else {
+      SubscriptionAction action = extractActionConfig(destination);
+      reached =
+          strategy
+              .resolve(event, action, destination)
+              .and(downstreamRecipients(event, action, destination, strategy));
+    }
+    return reached;
+  }
+
+  // Only for internal categories: an external destination names its receivers itself.
+  private Recipients downstreamRecipients(
+      ChangeEvent event,
+      SubscriptionAction action,
+      SubscriptionDestination destination,
+      RecipientResolutionStrategy strategy) {
+    boolean wanted =
+        Boolean.TRUE.equals(destination.getNotifyDownstream())
+            && destination.getCategory() != SubscriptionDestination.SubscriptionCategory.EXTERNAL;
+    return wanted
+        ? new LineageBasedDownstreamHandler(LINEAGE_RESOLVERS, strategy)
+            .resolveDownstreamRecipients(
+                action, destination, event, destination.getDownstreamDepth())
+        : Recipients.none();
   }
 
   /**
@@ -179,10 +174,6 @@ public class RecipientResolver {
       return action;
     }
 
-    return switch (destination.getType()) {
-      case EMAIL -> JsonUtils.convertValue(config, EmailAlertConfig.class);
-      case SLACK, MS_TEAMS, G_CHAT, WEBHOOK -> JsonUtils.convertValue(config, Webhook.class);
-      default -> null;
-    };
+    return Channels.required(destination).configRules().receiversOf(destination);
   }
 }

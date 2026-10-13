@@ -18,7 +18,6 @@ export const ALERT_UPDATED_DESCRIPTION = 'New alert description';
 export const TEST_SUITE_NAME = `0-pw-test-suite-${uuid()}`;
 export const TEST_CASE_NAME = `0-pw-test-case-${uuid()}`;
 
-export const INGESTION_PIPELINE_NAME = `0-playwright-ingestion-pipeline-${uuid()}`;
 export const WEBHOOK_DELIVERY_COLUMN_NAME = 'webhook_delivery_field';
 
 export const ALERT_WITH_PERMISSION_POLICY_NAME = `alert-policy-${uuid()}`;

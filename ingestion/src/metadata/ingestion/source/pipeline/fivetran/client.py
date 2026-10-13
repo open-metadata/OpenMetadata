@@ -30,9 +30,9 @@ logger = ingestion_logger()
 class FivetranClient:
     def __init__(self, config: FivetranConnection):
         self.config = config
-        api_token = base64.b64encode(f"{config.apiKey}:{config.apiSecret.get_secret_value()}".encode("ascii")).decode(
-            "ascii"
-        )
+        api_token = base64.b64encode(
+            f"{config.apiKey.get_secret_value()}:{config.apiSecret.get_secret_value()}".encode("ascii")
+        ).decode("ascii")
 
         verify_ssl = get_verify_ssl_fn(config.verifySSL)
         client_config: ClientConfig = ClientConfig(

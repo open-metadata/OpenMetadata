@@ -14,17 +14,84 @@ Unit tests for Presidio utilities
 
 from unittest.mock import Mock, patch
 
-from presidio_analyzer import AnalyzerEngine, RecognizerRegistry
-from presidio_analyzer.nlp_engine import SpacyNlpEngine
+import pytest
+from presidio_analyzer import AnalyzerEngine, RecognizerRegistry, RecognizerResult
+from presidio_analyzer.nlp_engine import NlpArtifacts, SpacyNlpEngine
 
 from metadata.generated.schema.type.classificationLanguages import (
     ClassificationLanguage,
 )
+from metadata.pii.algorithms.feature_extraction import split_column_name
 from metadata.pii.algorithms.presidio_utils import (
+    ContextAwareUsBankRecognizer,
     build_analyzer_engine,
+    context_matches,
     load_nlp_engine,
 )
 from metadata.pii.constants import SPACY_EN_MODEL, SUPPORTED_LANG
+
+
+@pytest.mark.parametrize(
+    ("configured_context", "column_name", "expected"),
+    [
+        ("first name", "first_name", True),
+        ("first name", "firstName", True),
+        ("first name", "customer_first_name_text", True),
+        ("account number", "bank_account_number", True),
+        ("first name", "first_namespace", False),
+        ("first name", "prefirst_name", False),
+        ("first name", "first_nameplate", False),
+        ("first name", "first_middle_name", False),
+        ("first name", "name_first", False),
+        ("cid", "acid_level", False),
+        ("firstname", "firstname", True),
+        ("first name", "firstname", False),
+        ("prénom usuel", "prénom_usuel", True),
+        (" first name ", "user_first_name_value", True),
+        ("(first name)", "user(first_name)value", True),
+    ],
+)
+def test_context_matches_complete_column_terms(configured_context: str, column_name: str, expected: bool) -> None:
+    assert context_matches([configured_context], split_column_name(column_name)) is expected
+
+
+@pytest.mark.parametrize(
+    ("configured_context", "column_context", "expected"),
+    [
+        ("", ["ordinary", "column"], True),
+        ("()", ["user()value"], True),
+        ("()", ["user", "value"], False),
+    ],
+)
+def test_context_matches_existing_literal_edge_cases(
+    configured_context: str, column_context: list[str], expected: bool
+) -> None:
+    assert context_matches([configured_context], column_context) is expected
+
+
+@pytest.mark.parametrize(
+    ("column_name", "expected_score"),
+    [("customer_account_number", 1.0), ("customer_account_numbering", 0.05)],
+)
+def test_bank_context_enhancement_requires_complete_phrase(column_name: str, expected_score: float) -> None:
+    recognizer = ContextAwareUsBankRecognizer(context=["account number"])
+    result = RecognizerResult(
+        entity_type="US_BANK_NUMBER",
+        start=0,
+        end=10,
+        score=0.05,
+        recognition_metadata={},
+    )
+
+    enhanced = recognizer.enhance_using_context(
+        text="1234567890",
+        raw_recognizer_results=[result],
+        other_raw_recognizer_results=[],
+        nlp_artifacts=Mock(spec=NlpArtifacts),
+        context=split_column_name(column_name),
+    )
+
+    assert enhanced[0].score == expected_score
 
 
 class TestSpacyModelLoading:

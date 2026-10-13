@@ -24,24 +24,30 @@ export class CustomPropertiesPageObject extends RightPanelBase {
   // ============ PRIVATE LOCATORS (scoped to container) ============
   private readonly container: Locator;
   private readonly searchBar: Locator;
-  private readonly propertyCard: Locator;
+  private readonly propertyRows: Locator;
   private readonly emptyCustomPropertiesContainer: Locator;
   private readonly customPropertiesContainer: Locator;
 
   constructor(rightPanel: RightPanelPageObject) {
     super(rightPanel);
     this.container = this.getSummaryPanel().locator(
-      '.custom-properties-container'
+      '.custom-properties-section-container'
     );
     this.customPropertiesContainer = this.page.locator(
       '.custom-properties-section-container'
     );
-    this.searchBar = this.page.getByTestId('searchbar');
-    this.propertyCard = this.page.getByTestId(
-      'custom-property-right-panel-card'
-    );
+    this.searchBar = this.customPropertiesContainer.getByTestId('searchbar');
+    this.propertyRows = this.customPropertiesContainer
+      .getByTestId('custom-properties-list')
+      .getByRole('listitem');
     this.emptyCustomPropertiesContainer = this.page.getByTestId(
       'no-data-placeholder'
+    );
+  }
+
+  private getPropertyRow(propertyName: string): Locator {
+    return this.customPropertiesContainer.getByTestId(
+      `custom-property-${propertyName}-row`
     );
   }
 
@@ -117,12 +123,12 @@ export class CustomPropertiesPageObject extends RightPanelBase {
    */
   async verifyPropertyValue(
     propertyName: string,
-    expectedValue: any
+    expectedValue: string | number | boolean
   ): Promise<void> {
-    const propertyCard = this.page.getByTestId(propertyName);
-    await propertyCard.waitFor({ state: 'visible' });
+    const propertyRow = this.getPropertyRow(propertyName);
+    await propertyRow.waitFor({ state: 'visible' });
 
-    const valueElement = propertyCard.getByTestId('property-value');
+    const valueElement = propertyRow.getByTestId('property-value');
     await expect(valueElement).toBeVisible();
     await expect(valueElement).toContainText(String(expectedValue));
   }
@@ -133,10 +139,10 @@ export class CustomPropertiesPageObject extends RightPanelBase {
    * @param expectedType - Expected type (string, integer, markdown, etc.)
    */
   async verifyPropertyType(propertyName: string): Promise<void> {
-    const propertyCard = this.page.getByTestId(propertyName);
-    await propertyCard.waitFor({ state: 'visible' });
+    const propertyRow = this.getPropertyRow(propertyName);
+    await propertyRow.waitFor({ state: 'visible' });
 
-    const propertyNameElement = propertyCard.getByTestId('property-name');
+    const propertyNameElement = propertyRow.getByTestId('property-name');
     await expect(propertyNameElement).toBeVisible();
     await expect(propertyNameElement).toContainText(propertyName);
   }
@@ -153,12 +159,13 @@ export class CustomPropertiesPageObject extends RightPanelBase {
     await this.searchCustomProperties(searchTerm);
 
     if (expectedCount === 0) {
-      const noResultsText = this.page.getByText(
-        /No Custom Properties found for/i
-      );
-      await expect(noResultsText).toBeVisible();
+      await expect(
+        this.customPropertiesContainer.getByTestId(
+          'no-matching-custom-properties'
+        )
+      ).toBeVisible();
     } else {
-      await expect(this.propertyCard).toHaveCount(expectedCount);
+      await expect(this.propertyRows).toHaveCount(expectedCount);
     }
   }
 
@@ -168,13 +175,13 @@ export class CustomPropertiesPageObject extends RightPanelBase {
    */
   async verifyAllPropertyTypesDisplay(propertyTypes: string[]): Promise<void> {
     for (const propertyType of propertyTypes) {
-      const propertyCard = this.page.getByTestId(propertyType);
-      await expect(propertyCard).toBeVisible();
+      const propertyRow = this.getPropertyRow(propertyType);
+      await expect(propertyRow).toBeVisible();
 
-      const propertyNameElement = propertyCard.getByTestId('property-name');
+      const propertyNameElement = propertyRow.getByTestId('property-name');
       await expect(propertyNameElement).toBeVisible();
 
-      const propertyValueElement = propertyCard.locator('.value-container');
+      const propertyValueElement = propertyRow.getByTestId('property-value');
       await expect(propertyValueElement).toBeVisible();
     }
   }
@@ -195,12 +202,9 @@ export class CustomPropertiesPageObject extends RightPanelBase {
    * @param propertyName - Name of the custom property
    */
   async shouldShowCustomProperty(propertyName: string): Promise<void> {
-    // Use semantic selectors - look for property by name text
-    const propertyCard = this.customPropertiesContainer.getByTestId(
-      `${propertyName}`
-    );
-    await propertyCard.scrollIntoViewIfNeeded();
-    await propertyCard.waitFor({ state: 'visible' });
+    const propertyRow = this.getPropertyRow(propertyName);
+    await propertyRow.scrollIntoViewIfNeeded();
+    await propertyRow.waitFor({ state: 'visible' });
   }
 
   /**
@@ -208,9 +212,7 @@ export class CustomPropertiesPageObject extends RightPanelBase {
    * @param propertyName - Name of the custom property
    */
   async shouldNotShowCustomProperty(propertyName: string): Promise<void> {
-    // Use semantic selectors - look for property by name text
-    const propertyCard = this.propertyCard.filter({ hasText: propertyName });
-    await propertyCard.waitFor({ state: 'hidden' });
+    await this.getPropertyRow(propertyName).waitFor({ state: 'hidden' });
   }
 
   /**
@@ -222,14 +224,12 @@ export class CustomPropertiesPageObject extends RightPanelBase {
     propertyName: string,
     expectedValue: string
   ): Promise<void> {
-    const propertyCard = this.propertyCard.filter({ hasText: propertyName });
-    await propertyCard.waitFor({ state: 'visible' });
+    const propertyRow = this.getPropertyRow(propertyName);
+    await propertyRow.waitFor({ state: 'visible' });
 
-    const valueElement = propertyCard.locator(
-      '.value, [class*="value"], [data-testid="value"]'
+    await expect(propertyRow.getByTestId('property-value')).toContainText(
+      expectedValue
     );
-    await valueElement.waitFor({ state: 'visible' });
-    await expect(valueElement).toContainText(expectedValue);
   }
 
   /**
@@ -237,7 +237,7 @@ export class CustomPropertiesPageObject extends RightPanelBase {
    * @param expectedCount - Expected number of custom properties
    */
   async shouldShowCustomPropertiesCount(expectedCount: number): Promise<void> {
-    await expect(this.propertyCard).toHaveCount(expectedCount);
+    await expect(this.propertyRows).toHaveCount(expectedCount);
   }
 
   /**

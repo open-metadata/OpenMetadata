@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 
-import { Space } from 'antd';
+import { Box } from '@openmetadata/ui-core-components';
+
 import { debounce } from 'lodash';
 import { DateTime } from 'luxon';
 import { DateRangeObject } from 'Models';
 import { FC, useCallback, useMemo, useState } from 'react';
+import FilterSelectDropdown from '../common/FilterSelectDropdown/FilterSelectDropdown';
 
 import { useTranslation } from 'react-i18next';
 import { AUDIT_LOG_TIME_FILTER_RANGE } from '../../constants/auditLog.constant';
@@ -40,7 +42,6 @@ import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import searchClassBase from '../../utils/SearchClassBase';
 import { getTermQuery } from '../../utils/SearchPureUtils';
 import DatePickerMenu from '../common/DatePickerMenu/DatePickerMenu.component';
-import SearchDropdown from '../SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
 import {
   AuditLogFiltersProps,
@@ -340,11 +341,14 @@ const AuditLogFilters: FC<AuditLogFiltersProps> = ({
   );
 
   return (
-    <Space
-      wrap
-      className="explore-quick-filters-container"
+    <Box
+      inline
+      align="center"
+      className="layout-space layout-space-horizontal explore-quick-filters-container"
       data-testid="audit-log-filters"
-      size={[8, 0]}>
+      itemClassName="layout-space-item"
+      style={{ columnGap: 'var(--om-space-8)', rowGap: 'var(--om-space-0)' }}
+      wrap="wrap">
       <DatePickerMenu
         showSelectedCustomRange
         defaultDateRange={timeDefaultDateRange}
@@ -352,49 +356,43 @@ const AuditLogFilters: FC<AuditLogFiltersProps> = ({
         key={timeFilter?.value.key ?? 'no-time-filter'}
         options={auditTimeFilterRange}
       />
-      <SearchDropdown
+      <FilterSelectDropdown
         hideCounts
-        showSelectedCounts
         singleSelect
         isSuggestionsLoading={isLoadingUsers}
         label={t('label.user')}
         options={userOptions}
         searchKey="user"
         selectedKeys={getSelectedKeys('user')}
-        triggerButtonSize="middle"
         onChange={handleDropdownChange}
         onGetInitialOptions={handleGetInitialOptions}
         onSearch={handleSearch}
       />
-      <SearchDropdown
+      <FilterSelectDropdown
         hideCounts
-        showSelectedCounts
         singleSelect
         isSuggestionsLoading={isLoadingBots}
         label={t('label.bot')}
         options={botOptions}
         searchKey="bot"
         selectedKeys={getSelectedKeys('bot')}
-        triggerButtonSize="middle"
         onChange={handleDropdownChange}
         onGetInitialOptions={handleGetInitialOptions}
         onSearch={handleSearch}
       />
-      <SearchDropdown
+      <FilterSelectDropdown
         hideCounts
-        showSelectedCounts
         singleSelect
         isSuggestionsLoading={false}
         label={t('label.entity-type')}
         options={filteredEntityTypeOptions}
         searchKey="entityType"
         selectedKeys={getSelectedKeys('entityType')}
-        triggerButtonSize="middle"
         onChange={handleDropdownChange}
         onGetInitialOptions={handleGetInitialOptions}
         onSearch={handleSearch}
       />
-    </Space>
+    </Box>
   );
 };
 

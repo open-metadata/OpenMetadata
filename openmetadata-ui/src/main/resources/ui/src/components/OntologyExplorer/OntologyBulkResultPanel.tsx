@@ -17,7 +17,7 @@ import {
   Card,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Download01 } from '@untitledui/icons';
+import { Download01 } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import { OntologyBulkResultArtifact } from '../../generated/api/data/ontologyBulkResultArtifact';
 import { downloadFile } from '../../utils/Export/ExportUtils';

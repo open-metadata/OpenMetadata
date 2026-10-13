@@ -189,12 +189,12 @@ class TestLightdashApiClient(TestCase):
         client = LightdashApiClient(self.client.config)
         client.client = mock_rest_instance
         client.client.get = MagicMock(return_value=mock_response)
-        client.add_dashboard_lineage = MagicMock()
 
         dashboards = client.test_get_dashboards_list()
 
         self.assertEqual(len(dashboards), 1)
         self.assertEqual(dashboards[0].name, "Dashboard 1")
+        self.assertEqual(client.client.get.call_count, 3)
 
     @patch("metadata.ingestion.source.dashboard.lightdash.client.TrackedREST")
     def test_test_get_dashboards_list_no_results_returns_empty(self, mock_rest):
@@ -256,6 +256,132 @@ class TestLightdashApiClient(TestCase):
             client.test_get_dashboards_list()
 
         self.assertIn("404 Not Found", str(context.exception))
+
+    @patch("metadata.ingestion.source.dashboard.lightdash.client.TrackedREST")
+    def test_test_get_dashboards_list_bounded_call_count(self, mock_rest):
+        """Test the probe issues a bounded number of GETs regardless of N dashboards."""
+        mock_rest_instance = Mock()
+        mock_rest.return_value = mock_rest_instance
+
+        dashboards_raw = [
+            {
+                "organizationUuid": "org-1",
+                "name": f"Dashboard {i}",
+                "uuid": f"dash-{i}",
+                "projectUuid": "test-project-uuid",
+                "updatedAt": "2024-01-01T00:00:00Z",
+                "spaceUuid": "test-space-uuid",
+                "views": 100.0,
+                "firstViewedAt": "2024-01-01T00:00:00Z",
+            }
+            for i in range(100)
+        ]
+
+        space_response = {"results": {"name": "Test Space", "dashboards": dashboards_raw}}
+
+        client = LightdashApiClient(self.client.config)
+        client.client = mock_rest_instance
+        client.client.get = MagicMock(return_value=space_response)
+
+        dashboards = client.test_get_dashboards_list()
+
+        self.assertEqual(len(dashboards), 100)
+        self.assertEqual(client.client.get.call_count, 3)
+
+    @patch("metadata.ingestion.source.dashboard.lightdash.client.TrackedREST")
+    def test_test_get_dashboards_list_propagates_dashboard_detail_error(self, mock_rest):
+        """Test test_get_dashboards_list propagates errors from the dashboard-detail fetch."""
+        mock_rest_instance = Mock()
+        mock_rest.return_value = mock_rest_instance
+
+        space_response = {
+            "results": {
+                "name": "Test Space",
+                "dashboards": [
+                    {
+                        "organizationUuid": "org-1",
+                        "name": "Dashboard 1",
+                        "uuid": "dash-1",
+                        "projectUuid": "test-project-uuid",
+                        "updatedAt": "2024-01-01T00:00:00Z",
+                        "spaceUuid": "test-space-uuid",
+                        "views": 100.0,
+                        "firstViewedAt": "2024-01-01T00:00:00Z",
+                    }
+                ],
+            }
+        }
+
+        client = LightdashApiClient(self.client.config)
+        client.client = mock_rest_instance
+
+        def get_side_effect(url, *args, **kwargs):
+            if "api/v1/dashboards/" in url:
+                raise RuntimeError("dashboard detail fetch failed")
+            return space_response
+
+        client.client.get = MagicMock(side_effect=get_side_effect)
+
+        with self.assertRaises(RuntimeError) as context:
+            client.test_get_dashboards_list()
+
+        self.assertIn("dashboard detail fetch failed", str(context.exception))
+
+    @patch("metadata.ingestion.source.dashboard.lightdash.client.TrackedREST")
+    def test_test_get_dashboards_list_propagates_charts_list_error(self, mock_rest):
+        """Test test_get_dashboards_list propagates errors from the project-charts fetch."""
+        mock_rest_instance = Mock()
+        mock_rest.return_value = mock_rest_instance
+
+        space_response = {
+            "results": {
+                "name": "Test Space",
+                "dashboards": [
+                    {
+                        "organizationUuid": "org-1",
+                        "name": "Dashboard 1",
+                        "uuid": "dash-1",
+                        "projectUuid": "test-project-uuid",
+                        "updatedAt": "2024-01-01T00:00:00Z",
+                        "spaceUuid": "test-space-uuid",
+                        "views": 100.0,
+                        "firstViewedAt": "2024-01-01T00:00:00Z",
+                    }
+                ],
+            }
+        }
+
+        client = LightdashApiClient(self.client.config)
+        client.client = mock_rest_instance
+
+        def get_side_effect(url, *args, **kwargs):
+            if "/charts" in url:
+                raise RuntimeError("charts fetch failed")
+            return space_response
+
+        client.client.get = MagicMock(side_effect=get_side_effect)
+
+        with self.assertRaises(RuntimeError) as context:
+            client.test_get_dashboards_list()
+
+        self.assertIn("charts fetch failed", str(context.exception))
+
+    @patch("metadata.ingestion.source.dashboard.lightdash.client.TrackedREST")
+    def test_test_get_dashboards_list_empty_space_bounded(self, mock_rest):
+        """Test the probe makes a single GET when the space has no dashboards."""
+        mock_rest_instance = Mock()
+        mock_rest.return_value = mock_rest_instance
+
+        mock_response = {"results": {"name": "Empty Space", "dashboards": []}}
+
+        client = LightdashApiClient(self.client.config)
+        client.client = mock_rest_instance
+        client.client.get = MagicMock(return_value=mock_response)
+
+        dashboards = client.test_get_dashboards_list()
+
+        self.assertEqual(len(dashboards), 0)
+        self.assertEqual(client.client.get.call_count, 1)
 
     @patch("metadata.ingestion.source.dashboard.lightdash.client.TrackedREST")
     def test_get_dashboards_list_invalid_dashboard_data_fails(self, mock_rest):

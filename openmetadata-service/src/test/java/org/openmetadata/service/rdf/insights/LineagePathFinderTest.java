@@ -144,7 +144,7 @@ class LineagePathFinderTest {
 
     private RdfRepository mockRepo() {
       RdfRepository repo = mock(RdfRepository.class);
-      lenient().when(repo.executeSparqlQuery(anyString(), anyString())).thenReturn(EMPTY);
+      lenient().when(repo.executeAssertedSparqlQuery(anyString(), anyString())).thenReturn(EMPTY);
       return repo;
     }
 
@@ -165,7 +165,7 @@ class LineagePathFinderTest {
     @DisplayName("Direct neighbour found in one hop")
     void directNeighbour() {
       RdfRepository repo = mockRepo();
-      when(repo.executeSparqlQuery(anyString(), anyString()))
+      when(repo.executeAssertedSparqlQuery(anyString(), anyString()))
           .thenAnswer(
               inv -> {
                 String sparql = inv.getArgument(0);
@@ -189,7 +189,7 @@ class LineagePathFinderTest {
     @DisplayName("Multi-hop A → B → C → D resolves with three predicate-tagged hops")
     void multiHop() {
       RdfRepository repo = mockRepo();
-      when(repo.executeSparqlQuery(anyString(), anyString()))
+      when(repo.executeAssertedSparqlQuery(anyString(), anyString()))
           .thenAnswer(
               inv -> {
                 String sparql = inv.getArgument(0);
@@ -220,7 +220,7 @@ class LineagePathFinderTest {
     @DisplayName("BFS prefers shorter paths even when a longer one is also reachable")
     void bfsShortest() {
       RdfRepository repo = mockRepo();
-      when(repo.executeSparqlQuery(anyString(), anyString()))
+      when(repo.executeAssertedSparqlQuery(anyString(), anyString()))
           .thenAnswer(
               inv -> {
                 String sparql = inv.getArgument(0);
@@ -246,7 +246,7 @@ class LineagePathFinderTest {
     @DisplayName("Cycle A → B → A does not loop forever; resolves to nearest path")
     void cycleSafe() {
       RdfRepository repo = mockRepo();
-      when(repo.executeSparqlQuery(anyString(), anyString()))
+      when(repo.executeAssertedSparqlQuery(anyString(), anyString()))
           .thenAnswer(
               inv -> {
                 String sparql = inv.getArgument(0);
@@ -273,7 +273,7 @@ class LineagePathFinderTest {
     @DisplayName("Disconnected target: BFS exhausts the frontier and reports found=false")
     void disconnected() {
       RdfRepository repo = mockRepo();
-      when(repo.executeSparqlQuery(anyString(), anyString()))
+      when(repo.executeAssertedSparqlQuery(anyString(), anyString()))
           .thenAnswer(
               inv -> {
                 String sparql = inv.getArgument(0);
@@ -297,7 +297,7 @@ class LineagePathFinderTest {
     @DisplayName("maxHops budget is honoured; deeper targets are not found")
     void maxHopsBudget() {
       RdfRepository repo = mockRepo();
-      when(repo.executeSparqlQuery(anyString(), anyString()))
+      when(repo.executeAssertedSparqlQuery(anyString(), anyString()))
           .thenAnswer(
               inv -> {
                 String sparql = inv.getArgument(0);
@@ -324,7 +324,7 @@ class LineagePathFinderTest {
     @DisplayName("SPARQL exception during frontier expansion → not-found, no exception bubbles")
     void sparqlError() {
       RdfRepository repo = mock(RdfRepository.class);
-      when(repo.executeSparqlQuery(anyString(), anyString()))
+      when(repo.executeAssertedSparqlQuery(anyString(), anyString()))
           .thenThrow(new RuntimeException("Fuseki down"));
 
       LineagePathFinder.Path path =
@@ -349,7 +349,7 @@ class LineagePathFinderTest {
     @DisplayName("Type decoration: each path node carries its om: rdf:types")
     void typeDecoration() {
       RdfRepository repo = mockRepo();
-      when(repo.executeSparqlQuery(anyString(), anyString()))
+      when(repo.executeAssertedSparqlQuery(anyString(), anyString()))
           .thenAnswer(
               inv -> {
                 String sparql = inv.getArgument(0);
@@ -376,7 +376,7 @@ class LineagePathFinderTest {
     @DisplayName("Type decoration failure does not break the path response")
     void typeDecorationFailure() {
       RdfRepository repo = mockRepo();
-      when(repo.executeSparqlQuery(anyString(), anyString()))
+      when(repo.executeAssertedSparqlQuery(anyString(), anyString()))
           .thenAnswer(
               inv -> {
                 String sparql = inv.getArgument(0);
@@ -401,7 +401,7 @@ class LineagePathFinderTest {
     @DisplayName("Direction defaults to upstream when null is passed")
     void directionDefault() {
       RdfRepository repo = mockRepo();
-      when(repo.executeSparqlQuery(anyString(), anyString()))
+      when(repo.executeAssertedSparqlQuery(anyString(), anyString()))
           .thenAnswer(
               inv -> {
                 String sparql = inv.getArgument(0);

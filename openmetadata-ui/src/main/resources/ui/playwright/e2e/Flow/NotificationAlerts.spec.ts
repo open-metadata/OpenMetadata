@@ -12,6 +12,7 @@
  */
 
 import { Page } from '@playwright/test';
+import { Status } from '../../../src/generated/events/testDestinationStatus';
 import { Domain } from '../../support/domain/Domain';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { TableClass } from '../../support/entity/TableClass';
@@ -30,6 +31,7 @@ import {
   visitAlertDetailsPage,
   visitEditAlertPage,
 } from '../../utils/alert';
+import { deleteFixtureEntity } from '../../utils/apiResponse';
 import { getApiContext, getDescriptionBox } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
@@ -45,6 +47,8 @@ import {
   visitNotificationAlertPage,
 } from '../../utils/notificationAlert';
 import { addExternalDestination } from '../../utils/observabilityAlert';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
+import { startWebhookReceiver, stopWebhookReceiver } from '../../utils/webhook';
 
 const dashboard = new DashboardClass();
 const table = new TableClass();
@@ -72,19 +76,19 @@ const test = base.extend<{
 }>({
   page: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await admin.login(page);
+    await admin.signIn(page);
     await use(page);
     await page.close();
   },
   userWithPermissionsPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await user1.login(page);
+    await user1.signIn(page);
     await use(page);
     await page.close();
   },
   userWithoutPermissionsPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await user2.login(page);
+    await user2.signIn(page);
     await use(page);
     await page.close();
   },
@@ -204,11 +208,12 @@ test('Single Filter Alert', async ({ page }) => {
     });
 
     // Click save
-    const updateAlert = page.waitForResponse(
+    const updateAlert = waitForResponseWithStatus(
+      page,
       (response) =>
         response.url().includes('/api/v1/events/subscriptions') &&
-        response.request().method() === 'PATCH' &&
-        response.status() === 200
+        response.request().method() === 'PATCH',
+      200
     );
     await page.click('[data-testid="save-button"]');
     await updateAlert.then(async (response) => {
@@ -286,11 +291,12 @@ test('Multiple Filters Alert', async ({ page }) => {
     }
 
     // Click save
-    const updateAlert = page.waitForResponse(
+    const updateAlert = waitForResponseWithStatus(
+      page,
       (response) =>
         response.url().includes('/api/v1/events/subscriptions') &&
-        response.request().method() === 'PATCH' &&
-        response.status() === 200
+        response.request().method() === 'PATCH',
+      200
     );
     await page.click('[data-testid="save-button"]');
     await updateAlert.then(async (response) => {
@@ -395,11 +401,12 @@ test('Conversation source alert', async ({ page }) => {
     });
 
     // Click save
-    const updateAlert = page.waitForResponse(
+    const updateAlert = waitForResponseWithStatus(
+      page,
       (response) =>
         response.url().includes('/api/v1/events/subscriptions') &&
-        response.request().method() === 'PATCH' &&
-        response.status() === 200
+        response.request().method() === 'PATCH',
+      200
     );
     await page.click('[data-testid="save-button"]');
     await updateAlert.then(async (response) => {
@@ -438,61 +445,84 @@ test('Alert operations for a user with and without permissions', async ({
   test.slow();
   const ALERT_NAME = generateAlertName();
   const { apiContext } = await getApiContext(page);
-  await visitNotificationAlertPage(userWithPermissionsPage);
+  // Set while the alert exists, so a test that stops early still removes it.
+  let createdAlertId: string | undefined;
 
-  /**
-   * Step: Create and trigger alert
-   * @description Creates a Table source alert and triggers recent events via delete/restore.
-   */
-  await test.step('Create and trigger alert', async () => {
-    data.alertDetails = await createAlertForRecentEventsCheck({
-      page: userWithPermissionsPage,
-      alertName: ALERT_NAME,
-      sourceName: SOURCE_NAME_5,
-      sourceDisplayName: SOURCE_DISPLAY_NAME_5,
-      user: user1,
-      table,
+  try {
+    // A receiver this test runs, so each event is really sent and counted as sent.
+    const destinationEndpoint = await startWebhookReceiver();
+    await visitNotificationAlertPage(userWithPermissionsPage);
+
+    /**
+     * Step: Create and trigger alert
+     * @description Creates a Table source alert and triggers recent events via delete/restore.
+     */
+    await test.step('Create and trigger alert', async () => {
+      data.alertDetails = await createAlertForRecentEventsCheck({
+        page: userWithPermissionsPage,
+        alertName: ALERT_NAME,
+        sourceName: SOURCE_NAME_5,
+        sourceDisplayName: SOURCE_DISPLAY_NAME_5,
+        user: user1,
+        destinationEndpoint,
+        table,
+      });
+      createdAlertId = data.alertDetails.id;
+
+      // Trigger alert
+      await table.deleteTable(apiContext, false);
+      await table.restore(apiContext);
     });
 
-    // Trigger alert
-    await table.deleteTable(apiContext, false);
-    await table.restore(apiContext);
-  });
-
-  /**
-   * Step: Validate user without permission
-   * @description Confirms restricted actions and views for a user without alert permissions.
-   */
-  await test.step('Checks for user without permission', async () => {
-    await checkAlertFlowForWithoutPermissionUser({
-      page: userWithoutPermissionsPage,
-      alertDetails: data.alertDetails,
-      sourceName: SOURCE_NAME_5,
-      table,
+    /**
+     * Step: Validate user without permission
+     * @description Confirms restricted actions and views for a user without alert permissions.
+     */
+    await test.step('Checks for user without permission', async () => {
+      await checkAlertFlowForWithoutPermissionUser({
+        page: userWithoutPermissionsPage,
+        alertDetails: data.alertDetails,
+        sourceName: SOURCE_NAME_5,
+        destinationEndpoint,
+        table,
+      });
     });
-  });
 
-  /**
-   * Step: Verify details and Recent Events
-   * @description Checks alert details and validates Recent Events for permissive user.
-   */
-  await test.step('Check alert details page and Recent Events tab', async () => {
-    await checkAlertDetailsForWithPermissionUser({
-      page: userWithPermissionsPage,
-      alertDetails: data.alertDetails,
-      sourceName: SOURCE_NAME_5,
-      table,
-      user: user2,
+    /**
+     * Step: Verify details and Recent Events
+     * @description Checks alert details and validates Recent Events for permissive user.
+     */
+    await test.step('Check alert details page and Recent Events tab', async () => {
+      await checkAlertDetailsForWithPermissionUser({
+        page: userWithPermissionsPage,
+        alertDetails: data.alertDetails,
+        sourceName: SOURCE_NAME_5,
+        destinationEndpoint,
+        table,
+        user: user2,
+      });
     });
-  });
 
-  /**
-   * Step: Delete alert
-   * @description Deletes the Table source alert.
-   */
-  await test.step('Delete alert', async () => {
-    await deleteAlert(userWithPermissionsPage, data.alertDetails);
-  });
+    /**
+     * Step: Delete alert
+     * @description Deletes the Table source alert.
+     */
+    await test.step('Delete alert', async () => {
+      await deleteAlert(userWithPermissionsPage, data.alertDetails);
+      createdAlertId = undefined;
+    });
+  } finally {
+    try {
+      if (createdAlertId) {
+        await deleteFixtureEntity(
+          apiContext,
+          `/api/v1/events/subscriptions/${createdAlertId}?hardDelete=true`
+        );
+      }
+    } finally {
+      await stopWebhookReceiver();
+    }
+  }
 });
 
 /**
@@ -500,79 +530,94 @@ test('Alert operations for a user with and without permissions', async ({
  * @description Validates internal/external destination configuration, tests destinations, and verifies UI result statuses.
  */
 test('destination should work properly', async ({ page }) => {
-  await visitNotificationAlertPage(page);
+  try {
+    const destinationEndpoint = await startWebhookReceiver();
+    await visitNotificationAlertPage(page);
 
-  await inputBasicAlertInformation({
-    page,
-    name: 'test-name',
-    sourceName: SOURCE_NAME_1,
-    sourceDisplayName: SOURCE_DISPLAY_NAME_1,
-  });
+    await inputBasicAlertInformation({
+      page,
+      name: 'test-name',
+      sourceName: SOURCE_NAME_1,
+      sourceDisplayName: SOURCE_DISPLAY_NAME_1,
+    });
 
-  await page.click('[data-testid="add-destination-button"]');
-  await addInternalDestination({
-    page,
-    destinationNumber: 0,
-    category: 'Owners',
-    type: 'G Chat',
-  });
+    await page.click('[data-testid="add-destination-button"]');
+    await addInternalDestination({
+      page,
+      destinationNumber: 0,
+      category: 'Owners',
+      type: 'G Chat',
+    });
 
-  await test.expect(page.getByTestId('test-destination-button')).toBeDisabled();
+    await test
+      .expect(page.getByTestId('test-destination-button'))
+      .toBeDisabled();
 
-  await addExternalDestination({
-    page,
-    destinationNumber: 0,
-    category: 'G Chat',
-    input: 'https://google.com',
-  });
+    await addExternalDestination({
+      page,
+      destinationNumber: 0,
+      category: 'G Chat',
+      input: destinationEndpoint,
+    });
 
-  await page.click('[data-testid="add-destination-button"]');
-  await addExternalDestination({
-    page,
-    destinationNumber: 1,
-    category: 'Slack',
-    input: 'https://slack.com',
-    advancedConfig: {
-      headers: [{ key: 'header1', value: 'value1' }],
-      queryParams: [{ key: 'param1', value: 'value1' }],
-    },
-  });
-  // Click add destination, to validate value with empty config should not be sent in test destination API call
-  await page.click('[data-testid="add-destination-button"]');
+    await page.click('[data-testid="add-destination-button"]');
+    await addExternalDestination({
+      page,
+      destinationNumber: 1,
+      category: 'Slack',
+      input: destinationEndpoint,
+      advancedConfig: {
+        headers: [{ key: 'header1', value: 'value1' }],
+        queryParams: [{ key: 'param1', value: 'value1' }],
+      },
+    });
+    // Click add destination, to validate value with empty config should not be sent in test destination API call
+    await page.click('[data-testid="add-destination-button"]');
 
-  // Ensure test button is enabled before clicking
-  const testButton = page.getByTestId('test-destination-button');
-  await expect(testButton).toBeVisible();
-  await expect(testButton).toBeEnabled();
+    // Ensure test button is enabled before clicking
+    const testButton = page.getByTestId('test-destination-button');
+    await expect(testButton).toBeVisible();
+    await expect(testButton).toBeEnabled();
 
-  const testDestinations = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/events/subscriptions/testDestination') &&
-      response.request().method() === 'POST' &&
-      response.status() === 200
-  );
+    const testDestinations = waitForResponseWithStatus(
+      page,
+      (response) =>
+        response
+          .url()
+          .includes('/api/v1/events/subscriptions/testDestination') &&
+        response.request().method() === 'POST',
+      200
+    );
 
-  await testButton.click();
+    await testButton.click();
 
-  await testDestinations.then(async (response) => {
-    const testResults = await response.json();
+    await testDestinations.then(async (response) => {
+      const testResults = await response.json();
 
-    expect(testResults).toHaveLength(2);
+      expect(testResults).toHaveLength(2);
 
-    for (const testResult of testResults) {
-      const isGChat = testResult.type === 'GChat';
+      for (const testResult of testResults) {
+        const isGChat = testResult.type === 'GChat';
 
-      // Destination configs carry credentials and must not be echoed back
-      expect(testResult.config).toBeUndefined();
+        expect(testResult.statusDetails).toMatchObject({
+          status: Status.Success,
+          statusCode: 200,
+        });
 
-      await test
-        .expect(
-          page
-            .getByTestId(`destination-${isGChat ? 0 : 1}`)
-            .getByRole('alert')
-            .getByText(testResult.statusDetails.status)
-        )
-        .toBeAttached();
-    }
-  });
+        // Destination configs carry credentials and must not be echoed back
+        expect(testResult.config).toBeUndefined();
+
+        await test
+          .expect(
+            page
+              .getByTestId(`destination-${isGChat ? 0 : 1}`)
+              .getByRole('alert')
+              .getByText('Status: 200 Success OK', { exact: true })
+          )
+          .toBeAttached();
+      }
+    });
+  } finally {
+    await stopWebhookReceiver();
+  }
 });

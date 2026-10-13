@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Select, Skeleton, Table } from '@openmetadata/ui-core-components';
+import {
+  Badge,
+  Select,
+  Skeleton,
+  Table,
+} from '@openmetadata/ui-core-components';
 import { isEmpty, split, toLower } from 'lodash';
 import { DateTime } from 'luxon';
 import { DateRangeObject } from 'Models';
@@ -47,6 +52,39 @@ const TransWithComponents = ReactI18nextTrans as unknown as ComponentType<{
   components: Record<number, ReactElement>;
   i18nKey: string;
 }>;
+
+const DimensionStatusCell = ({
+  result,
+}: {
+  result?: DimensionResultWithTimestamp;
+}) => {
+  const { t } = useTranslation();
+
+  if (!result?.testCaseStatus) {
+    return <span className="tw:text-sm">--</span>;
+  }
+
+  return (
+    <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-2">
+      <StatusBadge
+        dataTestId="status-badge"
+        label={TEST_CASE_STATUS_LABELS[result.testCaseStatus]}
+        status={toLower(result.testCaseStatus) as StatusType}
+      />
+      {/* Below minRowsPerDimension: its status does not fail the test case,
+          which would otherwise look like a missed failure. */}
+      {result.excludedFromRollUp && (
+        <Badge
+          color="gray"
+          data-testid="excluded-from-roll-up-badge"
+          size="sm"
+          type="pill-color">
+          {t('label.excluded-from-roll-up')}
+        </Badge>
+      )}
+    </div>
+  );
+};
 
 const DimensionalityTab = () => {
   const { t } = useTranslation();
@@ -202,15 +240,7 @@ const DimensionalityTab = () => {
     ) => {
       switch (col.id) {
         case 'status':
-          return row.result?.testCaseStatus ? (
-            <StatusBadge
-              dataTestId="status-badge"
-              label={TEST_CASE_STATUS_LABELS[row.result.testCaseStatus]}
-              status={toLower(row.result.testCaseStatus) as StatusType}
-            />
-          ) : (
-            <span className="tw:text-sm">--</span>
-          );
+          return <DimensionStatusCell result={row.result} />;
         case 'impactScore':
           return (
             <span className="tw:text-sm">

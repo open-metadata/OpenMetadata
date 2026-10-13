@@ -109,7 +109,7 @@ public class CostAnalysisWorkflow implements DataInsightsWorkflow {
 
     String keysetCursor = null;
     while (!stopped) {
-      ResultList<? extends EntityInterface> rawResult =
+      ResultList<? extends EntityInterface<?>> rawResult =
           databaseServices.readNextKeyset(keysetCursor);
       keysetCursor = rawResult.getPaging().getAfter();
       ResultList<DatabaseService> resultList = filterDatabaseServices(rawResult);
@@ -186,7 +186,7 @@ public class CostAnalysisWorkflow implements DataInsightsWorkflow {
       String tableKeysetCursor = null;
       while (!stopped) {
         try {
-          ResultList<? extends EntityInterface> resultList =
+          ResultList<? extends EntityInterface<?>> resultList =
               source.readNextKeyset(tableKeysetCursor);
           tableKeysetCursor = resultList.getPaging().getAfter();
           List<CostAnalysisTableData> costAnalysisTableData =
@@ -359,7 +359,7 @@ public class CostAnalysisWorkflow implements DataInsightsWorkflow {
   }
 
   private ResultList<DatabaseService> filterDatabaseServices(
-      ResultList<? extends EntityInterface> resultList) {
+      ResultList<? extends EntityInterface<?>> resultList) {
     return new ResultList<>(
         resultList.getData().stream()
             .map(object -> (DatabaseService) object)

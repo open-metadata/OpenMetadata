@@ -122,6 +122,19 @@ plain line.
 <Divider orientation="vertical" />
 ```
 
+## Dialog dividers
+
+New modals pass `dividers="scroll"`: no divider under the title, and a footer divider only while
+`Dialog.Content` overflows (it appears when the form scrolls, never on a short confirmation).
+Never add your own border or `<Divider>` around a dialog's header or footer.
+
+```tsx
+<Dialog dividers="scroll" title={t('label.add-entity', { entity })} onClose={onClose}>
+  <Dialog.Content>{form}</Dialog.Content>
+  <Dialog.Footer>{actions}</Dialog.Footer>
+</Dialog>
+```
+
 ## Color usage
 
 Never write a raw Tailwind palette class (`tw:bg-gray-50`, `tw:text-red-600`,

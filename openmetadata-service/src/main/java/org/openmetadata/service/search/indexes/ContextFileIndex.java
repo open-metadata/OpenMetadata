@@ -31,6 +31,9 @@ public class ContextFileIndex implements TaggableIndex {
     doc.put("contentType", file.getContentType());
     doc.put("processingStatus", file.getProcessingStatus());
     doc.put("sourceType", file.getSourceType());
+    // What ContextMemorySearchVisibility filters on. A file with no shareConfig stamps a null
+    // visibility, which that filter reads as unrestricted — the same answer the REST guard gives.
+    doc.putAll(ContextMemoryIndex.shareConfigFields(file.getShareConfig()));
     if (!nullOrEmpty(file.getExtractedText())) {
       doc.put("extractedText", file.getExtractedText());
     }

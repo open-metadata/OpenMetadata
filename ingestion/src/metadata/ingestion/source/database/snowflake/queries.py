@@ -478,6 +478,12 @@ SNOWFLAKE_DESC_STORED_PROCEDURE = "DESC PROCEDURE {database_name}.{schema_name}.
 
 SNOWFLAKE_DESC_FUNCTION = "DESC FUNCTION {database_name}.{schema_name}.{procedure_name}{procedure_signature}"
 
+# Both halves are bounded at both ends so the caller can re-read a narrower window when
+# Snowflake cancels the scan: unbounded, one statement reads QUERY_HISTORY twice end to
+# end. `query_end_date` reaches past `end_date` because a CALL that starts inside the
+# window keeps running past it, and its child queries have to stay joinable. There is
+# deliberately no ORDER BY: it sorts the entire join for nothing, since the rows are
+# processed by a thread pool and no consumer depends on the order.
 SNOWFLAKE_GET_STORED_PROCEDURE_QUERIES = textwrap.dedent(
     """
 WITH SP_HISTORY AS (
@@ -489,6 +495,7 @@ WITH SP_HISTORY AS (
     FROM {account_usage}.QUERY_HISTORY SP
     WHERE QUERY_TYPE = 'CALL'
       AND START_TIME >= '{start_date}'
+      AND START_TIME < '{end_date}'
       AND QUERY_TEXT <> ''
       AND QUERY_TEXT IS NOT NULL
 ),
@@ -508,6 +515,7 @@ Q_HISTORY AS (
       AND QUERY_TEXT NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
       AND QUERY_TEXT NOT LIKE '/* {{"app": "dbt", %%}} */%%'
       AND START_TIME >= '{start_date}'
+      AND START_TIME < '{query_end_date}'
       AND (
         QUERY_TYPE IN ('MERGE', 'UPDATE','CREATE_TABLE_AS_SELECT')
         OR (QUERY_TYPE = 'INSERT' and query_text ILIKE '%%insert%%into%%select%%')
@@ -531,7 +539,6 @@ JOIN Q_HISTORY Q
    Q.START_TIME BETWEEN SP.START_TIME AND SP.END_TIME
    OR Q.END_TIME BETWEEN SP.START_TIME AND SP.END_TIME
    )
-ORDER BY PROCEDURE_START_TIME DESC
     """
 )
 

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { startCase } from 'lodash';
 import type { ServiceTypes } from 'Models';
 import {
   ADMONITION_BLOCK_REGEX,
@@ -34,7 +33,10 @@ import entityUtilClassBase from './EntityUtilClassBase';
 import { MarkdownToHTMLConverter } from './FeedUtilsPure';
 import { t } from './i18next/LocalUtil';
 import { getBrokers } from './MessagingServiceUtils';
-import { getSearchIndexFromService } from './ServicePureUtils';
+import {
+  getSearchIndexFromService,
+  getServiceCategoryLabel,
+} from './ServicePureUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 
 export const getOptionalFields = (
@@ -179,7 +181,7 @@ export const getAddServiceEntityBreadcrumb = (
 ) => {
   return [
     {
-      label: startCase(serviceCategory),
+      label: getServiceCategoryLabel(serviceCategory),
       // Delegated so an embedded experience that owns the service listing can redirect this
       // crumb; the base implementation returns the same settings path.
       href: connectionsRouterClassBase.getSettingsServicesPath(serviceCategory),

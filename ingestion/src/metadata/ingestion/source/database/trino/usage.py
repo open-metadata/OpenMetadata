@@ -109,6 +109,7 @@ class TrinoUsageSource(TrinoQueryParserSource, UsageSource):
                             f"Fetching next page with offset {offset} (fetched {total_fetched}/{max_results}) "
                             f"for {(self.start + timedelta(days=days)).date()}"
                         )
+                    self.warn_if_query_log_truncated(total_fetched, "usage")
             except Exception as exc:
                 if query:
                     logger.debug(

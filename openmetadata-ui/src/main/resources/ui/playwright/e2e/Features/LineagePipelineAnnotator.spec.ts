@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/base';
 import {
@@ -42,7 +43,7 @@ let pipelineServiceFqn: string;
 let topicFqn: string;
 let pipelineFqn: string;
 
-const LINEAGE_API = '/api/v1/lineage/getLineage?fqn=*';
+const LINEAGE_API = '**/api/v1/lineage/scene?*';
 
 test.describe('Lineage Pipeline Annotator', () => {
   test.beforeAll(async ({ browser }) => {
@@ -54,7 +55,9 @@ test.describe('Lineage Pipeline Annotator', () => {
     const apiContext = await getAuthContext(token);
 
     try {
-      table = new TableClass();
+      // Reads serviceResponseData.fqn to drive dbService filtering — needs
+      // its own service so the filter narrows to this test's table alone.
+      table = new TableClass({ service: new DatabaseServiceClass() });
       await table.create(apiContext);
       dbServiceFqn = table.serviceResponseData.fullyQualifiedName ?? '';
 
@@ -162,14 +165,18 @@ test.describe('Lineage Pipeline Annotator', () => {
 
   test('entity lineage does not include service nodes', async ({ page }) => {
     const tableFqn = table.entityResponseData.fullyQualifiedName ?? '';
-    await page.goto(`/table/${encodeURIComponent(tableFqn)}`);
+    await page.goto(`/table/${encodeURIComponent(tableFqn)}`, {
+      waitUntil: 'domcontentloaded',
+    });
 
     const lineageResponsePromise = page.waitForResponse(LINEAGE_API);
     await page.click('[data-testid="lineage"]');
     const lineageResponse = await lineageResponsePromise;
     const lineageData = await lineageResponse.json();
 
-    const nodeFqns = Object.keys(lineageData.nodes ?? {});
+    const nodeFqns = (lineageData.nodes ?? []).map(
+      (node: { fullyQualifiedName?: string }) => node.fullyQualifiedName
+    );
 
     expect(nodeFqns).not.toContain(dbServiceFqn);
     expect(nodeFqns).not.toContain(messagingServiceFqn);
@@ -181,17 +188,20 @@ test.describe('Lineage Pipeline Annotator', () => {
     page,
   }) => {
     const tableFqn = table.entityResponseData.fullyQualifiedName ?? '';
-    await page.goto(`/table/${encodeURIComponent(tableFqn)}`);
+    await page.goto(`/table/${encodeURIComponent(tableFqn)}`, {
+      waitUntil: 'domcontentloaded',
+    });
 
     const lineageResponsePromise = page.waitForResponse(LINEAGE_API);
     await page.click('[data-testid="lineage"]');
     const lineageResponse = await lineageResponsePromise;
     const lineageData = await lineageResponse.json();
 
-    const downstreamEdges = Object.values(lineageData.downstreamEdges ?? {});
+    const sceneEdges = lineageData.edges ?? [];
 
-    const hasPipelineAnnotation = downstreamEdges.some(
-      (edge) => edge?.pipeline?.fullyQualifiedName === pipelineFqn
+    const hasPipelineAnnotation = sceneEdges.some(
+      (edge: { pipeline?: { fullyQualifiedName?: string } }) =>
+        edge.pipeline?.fullyQualifiedName === pipelineFqn
     );
 
     expect(hasPipelineAnnotation).toBe(true);
@@ -240,6 +250,42 @@ test.describe('Lineage Pipeline Annotator', () => {
     const nodeFqns = Object.keys(data.nodes ?? {});
 
     expect(nodeFqns).toContain(pipelineServiceFqn);
+    expect(nodeFqns).not.toContain(messagingServiceFqn);
+
+    await apiContext.dispose();
+  });
+
+  test('service view routes through the pipeline instead of drawing a direct edge', async ({
+    page,
+  }) => {
+    await redirectToHomePage(page);
+    const token = await getToken(page);
+    const apiContext = await getAuthContext(token);
+
+    const response = await apiContext.get(
+      '/api/v1/lineage/getPlatformLineage?view=service&upstreamDepth=3&downstreamDepth=3'
+    );
+
+    expect(response.ok()).toBe(true);
+
+    const data = await response.json();
+    const edges = [
+      ...Object.values(data.upstreamEdges ?? {}),
+      ...Object.values(data.downstreamEdges ?? {}),
+    ] as Array<{
+      fromEntity?: { fullyQualifiedName?: string };
+      toEntity?: { fullyQualifiedName?: string };
+    }>;
+    const edgePairs = edges.map(
+      (edge) =>
+        `${edge.fromEntity?.fullyQualifiedName}->${edge.toEntity?.fullyQualifiedName}`
+    );
+
+    expect(edgePairs).toContain(`${dbServiceFqn}->${pipelineServiceFqn}`);
+    expect(edgePairs).toContain(
+      `${pipelineServiceFqn}->${messagingServiceFqn}`
+    );
+    expect(edgePairs).not.toContain(`${dbServiceFqn}->${messagingServiceFqn}`);
 
     await apiContext.dispose();
   });

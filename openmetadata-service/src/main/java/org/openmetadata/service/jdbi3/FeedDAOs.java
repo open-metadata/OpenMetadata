@@ -142,7 +142,7 @@ public interface FeedDAOs {
         @Bind("id") String id, @BindJson("json") String json, @BindFQN("fqnHash") String fqn);
 
     @Override
-    default void insert(org.openmetadata.schema.EntityInterface entity, String fqn) {
+    default void insert(org.openmetadata.schema.EntityInterface<?> entity, String fqn) {
       Task task = (Task) entity;
       insertTask(task.getId().toString(), JsonUtils.pojoToJson(task), task.getFullyQualifiedName());
     }
@@ -352,6 +352,96 @@ public interface FeedDAOs {
 
     @SqlQuery("SELECT count(*) FROM task_entity <cond>")
     int listTasksByCreatedAtCount(@Define("cond") String cond, @BindMap Map<String, ?> params);
+
+    String TASK_SEARCH_PARAM = "taskSearch";
+
+    // A free-text search can't narrow the rows through an index, so filter first and sort only
+    // the matches (e.g. one entity's tasks); paging the name index would check every task.
+    @Override
+    default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
+      if (filter.getQueryParam(TASK_SEARCH_PARAM) == null) {
+        return EntityDAO.super.listAfter(filter, limit, afterName, afterId);
+      }
+      return listSearchAfter(
+          filter.getConditionForEntity(getTableName()),
+          filter.getQueryParams(),
+          limit,
+          afterName,
+          afterId);
+    }
+
+    @Override
+    default List<String> listBefore(
+        ListFilter filter, int limit, String beforeName, String beforeId) {
+      if (filter.getQueryParam(TASK_SEARCH_PARAM) == null) {
+        return EntityDAO.super.listBefore(filter, limit, beforeName, beforeId);
+      }
+      return listSearchBefore(
+          filter.getConditionForEntity(getTableName()),
+          filter.getQueryParams(),
+          limit,
+          beforeName,
+          beforeId);
+    }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT task_entity.json FROM task_entity INNER JOIN ("
+                + "SELECT task_entity.id FROM task_entity "
+                + "IGNORE INDEX (task_entity_name_index) <cond> AND "
+                + "(task_entity.name > :afterName "
+                + "OR (task_entity.name = :afterName AND task_entity.id > :afterId)) "
+                + "ORDER BY task_entity.name, task_entity.id LIMIT :limit"
+                + ") page_rows ON task_entity.id = page_rows.id "
+                + "ORDER BY task_entity.name, task_entity.id",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "WITH matched AS MATERIALIZED ("
+                + "SELECT task_entity.id, task_entity.name FROM task_entity <cond> AND "
+                + "(task_entity.name > :afterName "
+                + "OR (task_entity.name = :afterName AND task_entity.id > :afterId))) "
+                + "SELECT task_entity.json FROM task_entity INNER JOIN ("
+                + "SELECT matched.id FROM matched ORDER BY matched.name, matched.id LIMIT :limit"
+                + ") page_rows ON task_entity.id = page_rows.id "
+                + "ORDER BY task_entity.name, task_entity.id",
+        connectionType = POSTGRES)
+    List<String> listSearchAfter(
+        @Define("cond") String cond,
+        @BindMap Map<String, ?> params,
+        @Bind("limit") int limit,
+        @Bind("afterName") String afterName,
+        @Bind("afterId") String afterId);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT task_entity.json FROM task_entity INNER JOIN ("
+                + "SELECT task_entity.id FROM task_entity "
+                + "IGNORE INDEX (task_entity_name_index) <cond> AND "
+                + "(task_entity.name < :beforeName "
+                + "OR (task_entity.name = :beforeName AND task_entity.id < :beforeId)) "
+                + "ORDER BY task_entity.name DESC, task_entity.id DESC LIMIT :limit"
+                + ") page_rows ON task_entity.id = page_rows.id "
+                + "ORDER BY task_entity.name, task_entity.id",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "WITH matched AS MATERIALIZED ("
+                + "SELECT task_entity.id, task_entity.name FROM task_entity <cond> AND "
+                + "(task_entity.name < :beforeName "
+                + "OR (task_entity.name = :beforeName AND task_entity.id < :beforeId))) "
+                + "SELECT task_entity.json FROM task_entity INNER JOIN ("
+                + "SELECT matched.id FROM matched "
+                + "ORDER BY matched.name DESC, matched.id DESC LIMIT :limit"
+                + ") page_rows ON task_entity.id = page_rows.id "
+                + "ORDER BY task_entity.name, task_entity.id",
+        connectionType = POSTGRES)
+    List<String> listSearchBefore(
+        @Define("cond") String cond,
+        @BindMap Map<String, ?> params,
+        @Bind("limit") int limit,
+        @Bind("beforeName") String beforeName,
+        @Bind("beforeId") String beforeId);
   }
 
   interface AnnouncementDAO extends EntityDAO<Announcement> {
@@ -381,235 +471,12 @@ public interface FeedDAOs {
         @Bind("id") String id, @BindJson("json") String json, @BindFQN("fqnHash") String fqn);
 
     @Override
-    default void insert(org.openmetadata.schema.EntityInterface entity, String fqn) {
+    default void insert(org.openmetadata.schema.EntityInterface<?> entity, String fqn) {
       Announcement announcement = (Announcement) entity;
       insertAnnouncement(
           announcement.getId().toString(),
           JsonUtils.pojoToJson(announcement),
           announcement.getFullyQualifiedName());
-    }
-
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT count(*) FROM announcement_entity "
-                + "WHERE <condition> "
-                + "AND (:entityLink IS NULL OR entityLink = :entityLink) "
-                + "AND (:status IS NULL OR status = :status) "
-                + "AND ((:active IS NULL) "
-                + "OR (:active = TRUE AND startTime <= :currentTs AND endTime >= :currentTs) "
-                + "OR (:active = FALSE AND (startTime > :currentTs OR endTime < :currentTs)))",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT count(*) FROM announcement_entity "
-                + "WHERE <condition> "
-                + "AND (:entityLink IS NULL OR entityLink = :entityLink) "
-                + "AND (:status IS NULL OR status = :status) "
-                + "AND ((:active IS NULL) "
-                + "OR (:active = TRUE AND startTime <= :currentTs AND endTime >= :currentTs) "
-                + "OR (:active = FALSE AND (startTime > :currentTs OR endTime < :currentTs)))",
-        connectionType = POSTGRES)
-    int listAnnouncementCount(
-        @Define("condition") String condition,
-        @Bind("entityLink") String entityLink,
-        @Bind("status") String status,
-        @Bind("active") Boolean active,
-        @Bind("currentTs") long currentTs);
-
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json FROM announcement_entity "
-                + "WHERE <condition> "
-                + "AND (:entityLink IS NULL OR entityLink = :entityLink) "
-                + "AND (:status IS NULL OR status = :status) "
-                + "AND ((:active IS NULL) "
-                + "OR (:active = TRUE AND startTime <= :currentTs AND endTime >= :currentTs) "
-                + "OR (:active = FALSE AND (startTime > :currentTs OR endTime < :currentTs))) "
-                + "ORDER BY name, id LIMIT :limit OFFSET :offset",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json FROM announcement_entity "
-                + "WHERE <condition> "
-                + "AND (:entityLink IS NULL OR entityLink = :entityLink) "
-                + "AND (:status IS NULL OR status = :status) "
-                + "AND ((:active IS NULL) "
-                + "OR (:active = TRUE AND startTime <= :currentTs AND endTime >= :currentTs) "
-                + "OR (:active = FALSE AND (startTime > :currentTs OR endTime < :currentTs))) "
-                + "ORDER BY name, id LIMIT :limit OFFSET :offset",
-        connectionType = POSTGRES)
-    List<String> listAnnouncementsWithOffset(
-        @Define("condition") String condition,
-        @Bind("entityLink") String entityLink,
-        @Bind("status") String status,
-        @Bind("active") Boolean active,
-        @Bind("currentTs") long currentTs,
-        @Bind("limit") int limit,
-        @Bind("offset") int offset);
-
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json FROM ("
-                + "SELECT announcement_entity.name, announcement_entity.id, announcement_entity.json "
-                + "FROM announcement_entity "
-                + "WHERE <condition> "
-                + "AND (:entityLink IS NULL OR entityLink = :entityLink) "
-                + "AND (:status IS NULL OR status = :status) "
-                + "AND ((:active IS NULL) "
-                + "OR (:active = TRUE AND startTime <= :currentTs AND endTime >= :currentTs) "
-                + "OR (:active = FALSE AND (startTime > :currentTs OR endTime < :currentTs))) "
-                + "AND (announcement_entity.name < :beforeName "
-                + "OR (announcement_entity.name = :beforeName AND announcement_entity.id < :beforeId)) "
-                + "ORDER BY announcement_entity.name DESC, announcement_entity.id DESC "
-                + "LIMIT :limit"
-                + ") last_rows_subquery ORDER BY name, id",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json FROM ("
-                + "SELECT announcement_entity.name, announcement_entity.id, announcement_entity.json "
-                + "FROM announcement_entity "
-                + "WHERE <condition> "
-                + "AND (:entityLink IS NULL OR entityLink = :entityLink) "
-                + "AND (:status IS NULL OR status = :status) "
-                + "AND ((:active IS NULL) "
-                + "OR (:active = TRUE AND startTime <= :currentTs AND endTime >= :currentTs) "
-                + "OR (:active = FALSE AND (startTime > :currentTs OR endTime < :currentTs))) "
-                + "AND (announcement_entity.name < :beforeName "
-                + "OR (announcement_entity.name = :beforeName AND announcement_entity.id < :beforeId)) "
-                + "ORDER BY announcement_entity.name DESC, announcement_entity.id DESC "
-                + "LIMIT :limit"
-                + ") last_rows_subquery ORDER BY name, id",
-        connectionType = POSTGRES)
-    List<String> listAnnouncementsBefore(
-        @Define("condition") String condition,
-        @Bind("entityLink") String entityLink,
-        @Bind("status") String status,
-        @Bind("active") Boolean active,
-        @Bind("currentTs") long currentTs,
-        @Bind("limit") int limit,
-        @Bind("beforeName") String beforeName,
-        @Bind("beforeId") String beforeId);
-
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT announcement_entity.json FROM announcement_entity "
-                + "WHERE <condition> "
-                + "AND (:entityLink IS NULL OR entityLink = :entityLink) "
-                + "AND (:status IS NULL OR status = :status) "
-                + "AND ((:active IS NULL) "
-                + "OR (:active = TRUE AND startTime <= :currentTs AND endTime >= :currentTs) "
-                + "OR (:active = FALSE AND (startTime > :currentTs OR endTime < :currentTs))) "
-                + "AND (announcement_entity.name > :afterName "
-                + "OR (announcement_entity.name = :afterName AND announcement_entity.id > :afterId)) "
-                + "ORDER BY announcement_entity.name, announcement_entity.id "
-                + "LIMIT :limit",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT announcement_entity.json FROM announcement_entity "
-                + "WHERE <condition> "
-                + "AND (:entityLink IS NULL OR entityLink = :entityLink) "
-                + "AND (:status IS NULL OR status = :status) "
-                + "AND ((:active IS NULL) "
-                + "OR (:active = TRUE AND startTime <= :currentTs AND endTime >= :currentTs) "
-                + "OR (:active = FALSE AND (startTime > :currentTs OR endTime < :currentTs))) "
-                + "AND (announcement_entity.name > :afterName "
-                + "OR (announcement_entity.name = :afterName AND announcement_entity.id > :afterId)) "
-                + "ORDER BY announcement_entity.name, announcement_entity.id "
-                + "LIMIT :limit",
-        connectionType = POSTGRES)
-    List<String> listAnnouncementsAfter(
-        @Define("condition") String condition,
-        @Bind("entityLink") String entityLink,
-        @Bind("status") String status,
-        @Bind("active") Boolean active,
-        @Bind("currentTs") long currentTs,
-        @Bind("limit") int limit,
-        @Bind("afterName") String afterName,
-        @Bind("afterId") String afterId);
-
-    private String getAnnouncementBaseCondition(ListFilter filter) {
-      String includeCondition = filter.getIncludeCondition(getTableName());
-      return includeCondition.isEmpty() ? "TRUE" : includeCondition;
-    }
-
-    private Boolean getActiveFlag(ListFilter filter) {
-      String active = filter.getQueryParam("active");
-      return active == null ? null : Boolean.parseBoolean(active);
-    }
-
-    private String getAnnouncementStatus(ListFilter filter) {
-      return filter.getQueryParam("status");
-    }
-
-    private String getAnnouncementEntityLink(ListFilter filter) {
-      return filter.getQueryParam("entityLink");
-    }
-
-    @Override
-    default int listCount(ListFilter filter) {
-      if (filter.getQueryParam("active") == null) {
-        return EntityDAO.super.listCount(filter);
-      }
-
-      return listAnnouncementCount(
-          getAnnouncementBaseCondition(filter),
-          getAnnouncementEntityLink(filter),
-          getAnnouncementStatus(filter),
-          getActiveFlag(filter),
-          System.currentTimeMillis());
-    }
-
-    @Override
-    default List<String> listBefore(
-        ListFilter filter, int limit, String beforeName, String beforeId) {
-      if (filter.getQueryParam("active") == null) {
-        return EntityDAO.super.listBefore(filter, limit, beforeName, beforeId);
-      }
-
-      return listAnnouncementsBefore(
-          getAnnouncementBaseCondition(filter),
-          getAnnouncementEntityLink(filter),
-          getAnnouncementStatus(filter),
-          getActiveFlag(filter),
-          System.currentTimeMillis(),
-          limit,
-          beforeName,
-          beforeId);
-    }
-
-    @Override
-    default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
-      if (filter.getQueryParam("active") == null) {
-        return EntityDAO.super.listAfter(filter, limit, afterName, afterId);
-      }
-
-      return listAnnouncementsAfter(
-          getAnnouncementBaseCondition(filter),
-          getAnnouncementEntityLink(filter),
-          getAnnouncementStatus(filter),
-          getActiveFlag(filter),
-          System.currentTimeMillis(),
-          limit,
-          afterName,
-          afterId);
-    }
-
-    @Override
-    default List<String> listAfter(ListFilter filter, int limit, int offset) {
-      if (filter.getQueryParam("active") == null) {
-        return EntityDAO.super.listAfter(filter, limit, offset);
-      }
-
-      return listAnnouncementsWithOffset(
-          getAnnouncementBaseCondition(filter),
-          getAnnouncementEntityLink(filter),
-          getAnnouncementStatus(filter),
-          getActiveFlag(filter),
-          System.currentTimeMillis(),
-          limit,
-          offset);
     }
   }
 
@@ -641,7 +508,7 @@ public interface FeedDAOs {
         @Bind("id") String id, @BindJson("json") String json, @BindFQN("fqnHash") String fqn);
 
     @Override
-    default void insert(org.openmetadata.schema.EntityInterface entity, String fqn) {
+    default void insert(org.openmetadata.schema.EntityInterface<?> entity, String fqn) {
       TaskFormSchema schema = (TaskFormSchema) entity;
       insertTaskFormSchema(
           schema.getId().toString(), JsonUtils.pojoToJson(schema), schema.getFullyQualifiedName());

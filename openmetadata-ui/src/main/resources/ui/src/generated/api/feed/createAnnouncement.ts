@@ -14,6 +14,11 @@
  * Request to create a new Announcement.
  */
 export interface CreateAnnouncement {
+    color?: AnnouncementColor;
+    /**
+     * Label shown in place of the type name when the type is `Custom`.
+     */
+    customTypeName?: string;
     /**
      * Announcement content in Markdown format.
      */
@@ -42,4 +47,39 @@ export interface CreateAnnouncement {
      * Start time from when the announcement should be shown.
      */
     startTime: number;
+    /**
+     * Severity/category of the announcement, used to style it in the UI.
+     */
+    type?: AnnouncementType;
+}
+
+/**
+ * Palette family the announcement is rendered with. Only meaningful when the type is
+ * `Custom`; every other type derives its colour from the type itself.
+ */
+export enum AnnouncementColor {
+    Blue = "blue",
+    BlueDark = "blue-dark",
+    BlueLight = "blue-light",
+    Brand = "brand",
+    Error = "error",
+    Gray = "gray",
+    GrayBlue = "gray-blue",
+    Indigo = "indigo",
+    Orange = "orange",
+    Pink = "pink",
+    Purple = "purple",
+    Success = "success",
+    Warning = "warning",
+}
+
+/**
+ * Severity/category of the announcement, used to style it in the UI.
+ */
+export enum AnnouncementType {
+    Critical = "Critical",
+    Custom = "Custom",
+    Deprecation = "Deprecation",
+    Notice = "Notice",
+    Warning = "Warning",
 }

@@ -12,20 +12,34 @@
  */
 @import (reference) '../../../styles/variables.less';
 
-@lineage-border: var(--om-legacy-color-b1b1b7);
+// Node, badge and handle borders read --lineage-node-border so dark can swap
+// it for border-primary via LINEAGE_NODE_DARK_CLASS on the node element; light
+// keeps these static greys.
+@lineage-border: var(--lineage-node-border, var(--om-legacy-color-b1b1b7));
 @lineage-collapse-header: var(--om-color-gray-50);
 
 .ant-btn.ant-btn-background-ghost.expand-btn {
-  background-color: white;
+  background-color: var(--om-color-bg-surface);
   box-shadow: none;
 
   &:hover {
-    background-color: white;
+    background-color: var(--om-color-bg-surface);
   }
 }
 
 .react-flow__node {
   box-shadow: none;
+
+  &.lineage-path-highlight > .lineage-node {
+    border-color: @primary-color;
+    box-shadow: 0 0 0 3px @primary-1, @box-shadow-base;
+  }
+
+  &.lineage-path-highlight > .lineage-scene-layer-node {
+    border-color: @primary-color;
+    box-shadow: 0 0 0 1px @primary-color,
+      0 2px 8px var(--om-legacy-color-16-24-40-0-12);
+  }
 }
 
 // Node default state
@@ -35,6 +49,103 @@
   border: 1px solid @lineage-border;
   border-radius: var(--om-radius-10);
   overflow: hidden;
+  transition: border-color var(--om-duration-150) ease,
+    box-shadow var(--om-duration-150) ease, opacity var(--om-duration-150) ease;
+
+  &.lineage-path-highlight {
+    border-color: @primary-color;
+    box-shadow: 0 0 0 3px @primary-1, @box-shadow-base;
+  }
+
+  &.lineage-scene-layer-node {
+    min-height: 66px;
+    border-color: var(--lineage-node-border, @grey-200);
+    border-radius: var(--om-radius-xl);
+    box-shadow: 0 1px 3px var(--om-legacy-color-16-24-40-0-12);
+
+    &.lineage-path-highlight,
+    &.custom-node-header-active {
+      border-color: @primary-color;
+      box-shadow: 0 0 0 1px @primary-color,
+        0 2px 8px var(--om-legacy-color-16-24-40-0-12);
+    }
+
+    .lineage-node-content {
+      min-height: 66px;
+
+      .lineage-scene-drill-button {
+        top: 50%;
+        right: 14px;
+        width: 22px;
+        height: 22px;
+        border: none;
+        border-radius: var(--om-radius-md);
+        background: @primary-1;
+        box-shadow: none;
+        transform: translateY(-50%);
+        opacity: 1;
+
+        svg {
+          width: 13px;
+          height: 13px;
+        }
+      }
+
+      .label-container {
+        border-radius: var(--om-radius-xl);
+      }
+    }
+
+    .custom-node-label-container {
+      .entity-label-container {
+        min-height: 64px;
+        padding: var(--om-space-10) var(--om-space-46) var(--om-space-10)
+          var(--om-space-14);
+
+        .entity-service-icon {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 22px;
+          height: 22px;
+          margin-right: var(--om-space-10);
+
+          svg,
+          img {
+            width: 22px;
+            height: 22px;
+            margin-bottom: 0;
+          }
+        }
+
+        .entity-header-display-name {
+          width: auto !important;
+          max-width: 170px;
+          color: @grey-900;
+          font-size: var(--om-font-size-sm);
+          font-weight: var(--om-font-weight-semibold);
+          line-height: 18px;
+        }
+
+        .lineage-breadcrumbs {
+          margin-bottom: 0;
+
+          .lineage-breadcrumb-item {
+            max-width: 72px;
+            font-size: var(--om-font-size-11_5);
+            line-height: 16px;
+          }
+        }
+
+        .lineage-service-subtitle {
+          display: block;
+          color: @grey-600;
+          font-size: var(--om-font-size-11_5);
+          line-height: 16px;
+        }
+      }
+    }
+  }
 
   .lineage-expand-icon {
     width: 12px;
@@ -74,6 +185,48 @@
   }
 
   .lineage-node-content {
+    position: relative;
+
+    .lineage-scene-drill-button {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      z-index: var(--om-z-2);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      padding: 0;
+      border: 1px solid @grey-200;
+      border-radius: var(--om-radius-md);
+      background: @primary-1;
+      color: @primary-color;
+      cursor: pointer;
+      opacity: 0;
+      box-shadow: @box-shadow-base;
+      transition: opacity var(--om-duration-150) ease,
+        background-color var(--om-duration-150) ease;
+
+      svg {
+        width: 14px;
+        height: 14px;
+      }
+
+      &:hover,
+      &:focus-visible {
+        background: @white;
+        opacity: 1;
+      }
+    }
+
+    &:hover,
+    &:focus-within {
+      .lineage-scene-drill-button {
+        opacity: 1;
+      }
+    }
+
     .label-container {
       .custom-node-label-container {
         width: 100%;
@@ -293,12 +446,6 @@
           padding-left: var(--om-space-4);
           padding-right: var(--om-space-12);
         }
-
-        .ant-skeleton-element {
-          .ant-skeleton-button-sm {
-            height: 32px; // Height of the skeleton button, to match the height of the column name
-          }
-        }
       }
 
       &:not(.any-column-selected) {
@@ -474,12 +621,10 @@
     width: 68px;
     height: 15px;
 
-    border: 1px solid var(--om-legacy-color-b1b1b7);
+    border: 1px solid @lineage-border;
     border-bottom: 0px;
     border-top-left-radius: var(--om-radius-10);
     border-top-right-radius: var(--om-radius-10);
-
-    background: var(--om-color-white);
 
     .lineage-node-badge {
       position: absolute;
@@ -531,7 +676,7 @@
   padding: 0 !important;
   border: none !important;
   box-shadow: none !important;
-  background-color: @white !important;
+  background-color: var(--om-color-bg-surface) !important;
 }
 
 .react-flow__node-load-more {
@@ -633,7 +778,7 @@
     height: 20px !important;
     border-radius: var(--om-radius-sm) !important;
     border-color: @lineage-border !important;
-    background: @white !important;
+    background: var(--om-color-bg-surface) !important;
     top: min(58px, 50%) !important;
 
     gap: var(--om-space-1);
@@ -691,7 +836,7 @@
   height: 20px !important;
   border-radius: 20% !important;
   border-color: @lineage-border !important;
-  background: @white !important;
+  background: var(--om-color-bg-surface) !important;
   top: 60px !important; // Need to show handles on top half
   top: min(58px, 50%) !important;
 

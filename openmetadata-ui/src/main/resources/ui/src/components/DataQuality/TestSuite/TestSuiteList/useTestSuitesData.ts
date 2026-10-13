@@ -17,7 +17,6 @@ import { OperationPermission } from '../../../../context/PermissionProvider/Perm
 import { SORT_ORDER } from '../../../../enums/common.enum';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { TestSuiteType } from '../../../../enums/TestSuite.enum';
-import { Operation } from '../../../../generated/entity/policies/policy';
 import { TestSuite } from '../../../../generated/tests/testCase';
 import { UsePagingInterface } from '../../../../hooks/paging/usePaging';
 import { DataQualitySubTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
@@ -25,7 +24,7 @@ import {
   getListTestSuitesBySearch,
   ListTestSuitePramsBySearch,
 } from '../../../../rest/testAPI';
-import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 
@@ -160,9 +159,7 @@ export const useTestSuitesData = ({
   );
 
   useEffect(() => {
-    if (
-      getPrioritizedViewPermission(testSuitePermission, Operation.ViewBasic)
-    ) {
+    if (getDerivedPermissionFlags(testSuitePermission).canViewBasic) {
       fetchTestSuites(currentPage, {
         limit: pageSize,
       });

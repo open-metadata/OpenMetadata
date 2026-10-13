@@ -46,7 +46,7 @@ Parts: **overlay/scrim** (`ModalOverlay`), **positioner** (`Modal`), **panel**
 | Panel surface | `tw:bg-primary` `tw:rounded-2xl` `tw:shadow-xl` |
 | Header title | `tw:text-md` `tw:font-semibold` `tw:text-primary` |
 | Content stack | `tw:flex` `tw:flex-col` `tw:gap-4` |
-| Footer divider | `tw:border-t` `tw:border-secondary` |
+| Footer divider | `tw:border-t` `tw:border-subtle` — with `dividers="scroll"`, only while `Dialog.Content` overflows |
 | Footer actions | `tw:gap-3` `tw:justify-end` |
 | Enter / exit anim | `tw:animate-in tw:zoom-in-95` / `tw:animate-out tw:zoom-out-95` |
 
@@ -56,9 +56,16 @@ Parts: **overlay/scrim** (`ModalOverlay`), **positioner** (`Modal`), **panel**
 | --- | --- |
 | `ModalOverlay` | Scrim + scroll container (`AriaModalOverlayProps`: `isDismissable`, `isOpen`) |
 | `Modal` | Positioner / animated panel wrapper |
-| `Dialog` | Panel; `title`, `showCloseButton`, `width` (688), `onClose`, `panelClassName` |
+| `Dialog` | Panel; `title`, `showCloseButton`, `width` (688), `onClose`, `panelClassName`, `dividers` (`always` \| `scroll`) |
 | `Dialog.Header` / `Dialog.Content` / `Dialog.Footer` | Title, body, footer slots |
 | `DialogTrigger` | Wraps a trigger element + the modal |
+
+### Dividers
+
+`dividers="always"` (default) draws a divider under the title and above the footer.
+`dividers="scroll"` is the design direction for new modals: no title divider, and the
+footer divider appears only while `Dialog.Content` scrolls, signalling more form below.
+Use it for every new modal; a short confirmation never shows a divider.
 
 ## States
 

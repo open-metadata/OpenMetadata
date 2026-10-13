@@ -59,7 +59,7 @@ public final class DomainAccessFilter {
    * never {@code null}, whether or not any narrowing applied — callers must not rely on getting
    * their own list back.
    */
-  public static <T extends EntityInterface> List<T> retainAccessible(
+  public static <T extends EntityInterface<?>> List<T> retainAccessible(
       List<T> entities, SubjectContext subjectContext) {
     List<T> candidates = listOrEmpty(entities);
     return shouldApply(subjectContext)

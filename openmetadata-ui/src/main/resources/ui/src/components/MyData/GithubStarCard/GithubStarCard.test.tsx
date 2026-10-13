@@ -57,9 +57,9 @@ describe('GithubStarCard', () => {
       screen.getByTestId('close-github-star-popup-card')
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'label.star' })
+      screen.getByRole('link', { name: 'label.star' })
     ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '10' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '10' })).toBeInTheDocument();
   });
 
   it('check redirect buttons have correct links', async () => {

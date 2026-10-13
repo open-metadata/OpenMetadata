@@ -25,7 +25,7 @@
 # cache steps (no saves from ephemeral refs), and THIS workflow is the one
 # writer — it saves from main's scope so every downstream run gets a hit.
 #
-# It covers TWO tiers, in two independent jobs:
+# It covers THREE tiers, in three independent jobs:
 #
 #   populate     apt, yarn, browser. Cheap, no build, single runner.
 #   warm-fixture the OpenMetadata distribution, the golden fixture (seeded DB +
@@ -39,8 +39,14 @@
 #                which runs it for its cache side effects and stops before the
 #                shards. The commit was already tested by the queue entry that
 #                produced it; re-running the suite on main proves nothing.
+#   warm-venv    the ingestion Python venv, one per py-tests matrix version.
+#                py-tests-shared.yml, playwright-visual.yml and the knowledge-
+#                graph e2e all restore it, but none of them run on push, so
+#                until 2026-09-29 main never held a copy: every PR built its
+#                own ~300 MB entry under its PR ref, and merge_group always
+#                built cold. Calls the composite exactly as py-tests does.
 #
-# Keeping both tiers here is deliberate. A second warmer workflow would be a
+# Keeping all three tiers here is deliberate. A second warmer workflow would be a
 # second writer, which is exactly the drift the one-writer rule above prevents:
 # add a cache to the pipeline and you have one place to teach about it.
 #
@@ -221,11 +227,11 @@ jobs:
   # workflow_dispatch-only against release branches and so never writes main's
   # scope, but the keys should grow a flavour segment before that changes.
   warm-fixture:
-    # Newest wins: a burst of merges to main should leave one run warming the
-    # newest tree, not a queue of runs each warming a tree already stale.
+    # GitHub replaces the single pending run by default; let the active warmer finish.
+    # https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency
     concurrency:
       group: populate-playwright-caches-fixture
-      cancel-in-progress: true
+      cancel-in-progress: false
     uses: ./.github/workflows/playwright-e2e-reusable.yml
     secrets: inherit
     permissions:
@@ -246,3 +252,26 @@ jobs:
       full_suite: true
       protocol: http
       coarse_bundle: true
+  warm-venv:
+    concurrency:
+      group: populate-playwright-caches-venv-${{ matrix.py-version }}
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        py-version: ["3.10", "3.11", "3.12"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      # The composite's own "Save ingestion Python venv" step is the writer;
+      # it is gated off merge_group / pull_request, so push and schedule here
+      # are the only events that populate the main-scoped key.
+      - name: Warm ingestion Python venv (main-scoped writer)
+        uses: ./.github/actions/setup-openmetadata-test-environment
+        with:
+          python-version: ${{ matrix.py-version }}
+          install-server: 'false'

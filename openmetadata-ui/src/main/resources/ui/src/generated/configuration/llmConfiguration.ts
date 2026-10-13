@@ -48,8 +48,13 @@ export interface LlmConfiguration {
      * OpenMetadata, so it is opt-in.
      */
     memoryExtractionEnabled?: boolean;
-    openai?:                  LlmConfigurationOpenai;
-    provider?:                LlmProvider;
+    /**
+     * Whether published context memories may be used to derive reviewable ontology glossary
+     * drafts. Requires LLM completion and RDF AI to be enabled separately.
+     */
+    ontologyMemoryDerivationEnabled?: boolean;
+    openai?:                          LlmConfigurationOpenai;
+    provider?:                        LlmProvider;
 }
 
 export interface Anthropic {

@@ -75,6 +75,12 @@ export interface PersonaContextDefinition {
      */
     lastGeneratedAt?: number;
     /**
+     * Instructions for the AI assistant serving this persona, such as who its users are, what
+     * they understand and what they are responsible for. Sent to the assistant as instructions
+     * while the context is enabled; never rendered into the context document.
+     */
+    prompt?: string;
+    /**
      * Ordered dynamic entity-selection rules. An entity matched by multiple rules is rendered
      * under the first rule only.
      */

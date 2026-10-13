@@ -21,12 +21,17 @@ export const onKeyDownStopPropagation = (
 
 export const KeyDownStopPropagationWrapper = ({
   keys,
+  className,
   children,
 }: {
   keys?: string[];
+  className?: string;
   children: React.ReactNode;
 }) => (
-  <div role="presentation" onKeyDown={(e) => onKeyDownStopPropagation(e, keys)}>
+  <div
+    className={className}
+    role="presentation"
+    onKeyDown={(e) => onKeyDownStopPropagation(e, keys)}>
     {children}
   </div>
 );

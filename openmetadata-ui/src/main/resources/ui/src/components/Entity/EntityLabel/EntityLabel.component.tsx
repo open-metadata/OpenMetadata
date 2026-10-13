@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Space, Typography } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+
 import { getEntityName } from '../../../utils/EntityNameUtils';
 
 interface EntityLabelProps {
@@ -21,14 +22,20 @@ interface EntityLabelProps {
 }
 
 const EntityLabel = (entity: EntityLabelProps): JSX.Element => (
-  <Space className="w-full whitespace-normal" direction="vertical" size={0}>
-    <Typography.Paragraph className="m-b-0">
+  <Box
+    inline
+    align="stretch"
+    className="layout-space w-full whitespace-normal"
+    direction="col"
+    gap={0}
+    itemClassName="layout-space-item">
+    <Typography as="p" className="m-b-0">
       {getEntityName(entity)}
-    </Typography.Paragraph>
-    <Typography.Paragraph className="text-grey-muted text-xs">
+    </Typography>
+    <Typography as="p" className="tw:wrap-break-word text-xs" color="secondary">
       {entity?.fullyQualifiedName}
-    </Typography.Paragraph>
-  </Space>
+    </Typography>
+  </Box>
 );
 
 export default EntityLabel;

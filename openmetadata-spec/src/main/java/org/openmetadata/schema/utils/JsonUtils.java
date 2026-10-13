@@ -618,7 +618,7 @@ public final class JsonUtils {
     return jacksonPatch.apply(targetNode);
   }
 
-  public static <T extends EntityInterface> T applyJsonPatch(
+  public static <T extends EntityInterface<?>> T applyJsonPatch(
       T original, JsonPatch patch, Class<T> clz) {
     try {
       // Convert original entity to JsonNode

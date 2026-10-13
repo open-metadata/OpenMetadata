@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Tag } from 'antd';
+import { Badge } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { ArrayChange } from 'diff';
 import { uniqueId } from 'lodash';
@@ -34,14 +34,18 @@ export const TagsDiffView = ({
           data-testid="diff-added"
           key={uniqueId()}>
           {diff.value.map((tag) => (
-            <Tag
+            <Badge
+              className="tw:mr-2"
+              color="gray"
               key={uniqueId()}
+              size="sm"
               style={{
                 background: 'rgba(0, 131, 118, 0.2)',
                 color: '#008376',
-              }}>
+              }}
+              type="color">
               {tag.tagFQN}
-            </Tag>
+            </Badge>
           ))}
         </div>
       );
@@ -53,11 +57,15 @@ export const TagsDiffView = ({
           data-testid="diff-removed"
           key={uniqueId()}>
           {diff.value.map((tag) => (
-            <Tag
+            <Badge
+              className="tw:mr-2"
+              color="gray"
               key={uniqueId()}
-              style={{ color: 'grey', textDecoration: 'line-through' }}>
+              size="sm"
+              style={{ color: 'grey', textDecoration: 'line-through' }}
+              type="color">
               {tag.tagFQN}
-            </Tag>
+            </Badge>
           ))}
         </div>
       );
@@ -69,7 +77,16 @@ export const TagsDiffView = ({
         data-testid="diff-normal"
         key={uniqueId()}>
         {diff.value.length ? (
-          diff.value.map((tag) => <Tag key={uniqueId()}>{tag.tagFQN}</Tag>)
+          diff.value.map((tag) => (
+            <Badge
+              className="tw:mr-2"
+              color="gray"
+              key={uniqueId()}
+              size="sm"
+              type="color">
+              {tag.tagFQN}
+            </Badge>
+          ))
         ) : (
           <div
             className="text-grey-muted text-center"

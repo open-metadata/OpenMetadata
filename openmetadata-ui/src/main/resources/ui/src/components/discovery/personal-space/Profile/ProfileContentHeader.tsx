@@ -11,40 +11,70 @@
  *  limitations under the License.
  */
 
+import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import {
   Box,
   Breadcrumbs,
   FeaturedIcon,
   Typography,
 } from '@openmetadata/ui-core-components';
+import type { Key } from 'react';
 import React, { FC, useMemo } from 'react';
 
-interface ProfileContentHeaderProps {
+export interface ProfileContentHeaderProps {
   icon: FC<{ className?: string }>;
   title: string;
   description: string;
   /** Breadcrumb root crumb — the current item's group label (Account / Credentials). */
   breadcrumbRoot: string;
+  /**
+   * When provided, replaces the auto-computed two-level breadcrumb.
+   * Use for panels with deeper internal navigation (e.g. Access Control).
+   */
+  breadcrumbs?: BreadcrumbItemType[];
+  /** Called when the user clicks an interactive breadcrumb item. */
+  onBreadcrumbAction?: (id: Key) => void;
+  /**
+   * When provided, renders this node instead of the default `<FeaturedIcon>`.
+   * Use when the icon is dynamic (e.g. an entity-specific icon).
+   */
+  iconNode?: React.ReactNode;
+  /** Action buttons rendered on the right of the title row. */
+  actions?: React.ReactNode;
+  /** When set, renders in place of the title text (e.g. an inline rename input). */
+  titleInput?: React.ReactNode;
+  /** Node rendered inline right after the title text (e.g. a rename/edit icon button). */
+  titleSuffix?: React.ReactNode;
+  /** Extra row rendered under the description (e.g. installed / developer details). */
+  meta?: React.ReactNode;
 }
 
 /**
  * The header shown at the top of the right content panel for the selected
- * nav item: a "<group> / <item>" breadcrumb, a featured icon, and the item
- * title + description.
+ * nav item: a breadcrumb, a featured icon, and the item title + description.
  */
 const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
   icon,
   title,
   description,
   breadcrumbRoot,
+  breadcrumbs,
+  onBreadcrumbAction,
+  iconNode,
+  actions,
+  titleInput,
+  titleSuffix,
+  meta,
 }) => {
-  const breadcrumbItems = useMemo(
+  const defaultBreadcrumbs = useMemo<BreadcrumbItemType[]>(
     () => [
       { id: 'root', label: breadcrumbRoot },
       { id: 'current', label: title },
     ],
     [breadcrumbRoot, title]
   );
+
+  const resolvedBreadcrumbs = breadcrumbs ?? defaultBreadcrumbs;
 
   return (
     <Box
@@ -54,33 +84,50 @@ const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
       gap={3}>
       <Breadcrumbs
         divider="chevron"
-        items={breadcrumbItems}
+        items={resolvedBreadcrumbs}
         size="xs"
         type="text"
+        onAction={onBreadcrumbAction}
       />
       <Box align="center" direction="row" gap={3}>
-        <FeaturedIcon
-          className="tw:rounded-xl"
-          color="brand"
-          icon={icon}
-          shape="square"
-          size="md"
-          theme="dark"
-        />
-        <Box direction="col">
-          <Typography
-            className="tw:text-primary-900"
-            size="text-lg"
-            weight="bold">
-            {title}
-          </Typography>
+        {iconNode ?? (
+          <FeaturedIcon
+            className="tw:rounded-xl"
+            color="brand"
+            icon={icon}
+            shape="square"
+            size="md"
+            theme="dark"
+          />
+        )}
+        <Box className="tw:flex-1" direction="col">
+          <Box align="center" direction="row" gap={1}>
+            {titleInput ?? (
+              <Typography
+                className="tw:text-primary-900"
+                data-testid="profile-content-header-title"
+                size="text-lg"
+                weight="bold">
+                {title}
+              </Typography>
+            )}
+            {!titleInput && titleSuffix}
+          </Box>
           <Typography
             className="tw:text-tertiary"
             size="text-sm"
             weight="regular">
             {description}
           </Typography>
+          {meta}
         </Box>
+        {actions && (
+          <Box
+            className="tw:ml-auto tw:flex tw:items-center tw:gap-2"
+            direction="row">
+            {actions}
+          </Box>
+        )}
       </Box>
     </Box>
   );

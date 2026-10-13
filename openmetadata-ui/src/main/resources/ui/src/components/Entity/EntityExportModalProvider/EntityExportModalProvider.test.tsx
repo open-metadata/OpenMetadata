@@ -28,6 +28,7 @@ import {
 } from '../../../rest/csvAPI';
 import { downloadFile } from '../../../utils/Export/ExportUtils';
 import exportUtilClassBase from '../../../utils/ExportUtilClassBase';
+import { isCsvJobOwned } from '../../common/EntityImport/CsvJobsTray/CsvJobsTray.constants';
 import {
   EntityExportModalProvider,
   useEntityExportModalProvider,
@@ -208,6 +209,41 @@ const PollingConsumer = ({
       </button>
       <div data-testid="polled-export-data">{csvExportData ?? ''}</div>
       <div data-testid="polled-export-error">{csvExportError ?? ''}</div>
+    </>
+  );
+};
+
+const ConcurrentExportConsumer = ({
+  onGlossaryExport,
+  onServiceExport,
+}: {
+  onGlossaryExport: ExportData['onExport'];
+  onServiceExport: ExportData['onExport'];
+}) => {
+  const { showModal } = useEntityExportModalProvider();
+
+  return (
+    <>
+      <button
+        onClick={() =>
+          showModal({
+            name: 'database-service',
+            onExport: onServiceExport,
+            exportTypes: [ExportTypes.CSV],
+          })
+        }>
+        Export service
+      </button>
+      <button
+        onClick={() =>
+          showModal({
+            name: 'business-glossary',
+            onExport: onGlossaryExport,
+            exportTypes: [ExportTypes.CSV],
+          })
+        }>
+        Export glossary
+      </button>
     </>
   );
 };
@@ -1022,6 +1058,49 @@ describe('EntityExportModalProvider component', () => {
     );
 
     dispatchSpy.mockRestore();
+  });
+
+  it('should track concurrent CSV-only exports independently', async () => {
+    (useLocation as jest.Mock).mockReturnValue({
+      pathname: '/mock-path',
+    });
+    const serviceExport = createDeferredExport();
+    const glossaryExport = createDeferredExport();
+    const onServiceExport = jest.fn().mockReturnValue(serviceExport.promise);
+    const onGlossaryExport = jest.fn().mockReturnValue(glossaryExport.promise);
+
+    render(
+      <EntityExportModalProvider>
+        <ConcurrentExportConsumer
+          onGlossaryExport={onGlossaryExport}
+          onServiceExport={onServiceExport}
+        />
+      </EntityExportModalProvider>
+    );
+
+    fireEvent.click(screen.getByText('Export service'));
+    await waitFor(() => expect(onServiceExport).toHaveBeenCalledTimes(1));
+
+    fireEvent.click(screen.getByText('Export glossary'));
+    await waitFor(() => expect(onGlossaryExport).toHaveBeenCalledTimes(1));
+
+    await act(async () => {
+      glossaryExport.resolve({
+        jobId: 'glossary-job',
+        message: 'Glossary export initiated',
+      });
+      await glossaryExport.promise;
+    });
+    await act(async () => {
+      serviceExport.resolve({
+        jobId: 'service-job',
+        message: 'Service export initiated',
+      });
+      await serviceExport.promise;
+    });
+
+    expect(isCsvJobOwned('glossary-job')).toBe(true);
+    expect(isCsvJobOwned('service-job')).toBe(true);
   });
 
   it('should notify onError and show a generic error when a bulk-edit export job fails', async () => {

@@ -18,7 +18,7 @@ import {
 } from '../generated/entity/data/searchIndex';
 import { EntityReference } from '../generated/type/entityReference';
 import { LabelType, State } from '../generated/type/tagLabel';
-import { extractSearchIndexFields } from './SearchIndexUtils';
+import { extractSearchIndexFields } from './TablePureUtils';
 
 type SearchIndexTestData = Partial<SearchIndex> &
   Pick<Omit<EntityReference, 'type'>, 'id'>;

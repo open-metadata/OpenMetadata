@@ -174,8 +174,6 @@ describe('useTestCaseListPage', () => {
     expect(typeof current.testCaseSummary).toBe('object');
     expect(typeof current.pagingData).toBe('object');
     expect(typeof current.params).toBe('object');
-    expect(current.form).toBeDefined();
-    expect(typeof current.form).toBe('object');
 
     expect(typeof current.pagingData.pagingHandler).toBe('function');
 
@@ -238,10 +236,9 @@ describe('useTestCaseListPage', () => {
     await waitFor(() => expect(getListTestCaseBySearch).toHaveBeenCalled());
 
     act(() => {
-      result.current.handleFilterChange?.(
-        { testCaseStatus: TestCaseStatus.Failed },
-        {}
-      );
+      result.current.handleFilterChange({
+        testCaseStatus: TestCaseStatus.Failed,
+      });
     });
 
     expect(mockNavigate).toHaveBeenCalledWith(
@@ -368,20 +365,19 @@ describe('useTestCaseListPage', () => {
   });
 
   it('should remove an active filter and reset its form field when its menu item is clicked again', async () => {
-    const { result } = renderHook(() => useTestCaseListPage());
+    const form = { setFieldsValue: jest.fn(), resetFields: jest.fn() };
+    const { result } = renderHook(() => useTestCaseListPage({ form }));
 
     await waitFor(() => expect(getListTestCaseBySearch).toHaveBeenCalled());
-
-    const setFieldsSpy = jest
-      .spyOn(result.current.form, 'setFieldsValue')
-      .mockImplementation(() => undefined);
 
     act(() => {
       result.current.handleMenuClick({ key: 'testCaseStatus' });
     });
 
     expect(result.current.selectedFilter).not.toContain('testCaseStatus');
-    expect(setFieldsSpy).toHaveBeenCalledWith({ testCaseStatus: undefined });
+    expect(form.setFieldsValue).toHaveBeenCalledWith({
+      testCaseStatus: undefined,
+    });
   });
 
   it('should send the pinned request payload on mount with empty params', async () => {
@@ -615,13 +611,10 @@ describe('useTestCaseListPage', () => {
       tableFqn: 'svc.db.tbl',
     });
 
-    const { result } = renderHook(() => useTestCaseListPage());
+    const form = { setFieldsValue: jest.fn(), resetFields: jest.fn() };
+    const { result } = renderHook(() => useTestCaseListPage({ form }));
 
     await waitFor(() => expect(getListTestCaseBySearch).toHaveBeenCalled());
-
-    const resetFieldsSpy = jest
-      .spyOn(result.current.form, 'resetFields')
-      .mockImplementation(() => undefined);
 
     act(() => {
       result.current.clearAll();
@@ -633,7 +626,7 @@ describe('useTestCaseListPage', () => {
       TEST_CASE_FILTERS.table,
       TEST_CASE_FILTERS.tags,
     ]);
-    expect(resetFieldsSpy).toHaveBeenCalled();
+    expect(form.resetFields).toHaveBeenCalled();
     expect(mockNavigate).toHaveBeenLastCalledWith({
       search: 'searchValue=orders',
     });

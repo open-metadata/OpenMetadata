@@ -43,32 +43,30 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     children?: ReactNode;
     onClick?: (...args: unknown[]) => void;
   }) => <button onClick={onClick}>{children}</button>,
+  PageLayout: {
+    PageHeader: ({
+      breadcrumb,
+      title,
+      subtitle,
+      actions,
+      'data-testid': dataTestId = 'page-header',
+    }: any) => (
+      <div data-testid={dataTestId}>
+        {breadcrumb}
+        <span>{title}</span>
+        <span>{subtitle}</span>
+        {actions}
+      </div>
+    ),
+  },
 }));
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-// The full-AI-mode list header renders the shared OM HeaderShell + HeaderBreadcrumb.
-// Stub them so the gating can be asserted without a Router (HeaderBreadcrumb calls
-// useNavigate) and without depending on OM's internal markup.
-jest.mock('components/common/HeaderShell/HeaderShell.component', () => ({
-  __esModule: true,
-  default: ({
-    breadcrumb,
-    title,
-    subtitle,
-    actions,
-    'data-testid': dataTestId = 'header-shell',
-  }: any) => (
-    <div data-testid={dataTestId}>
-      {breadcrumb}
-      <span>{title}</span>
-      <span>{subtitle}</span>
-      {actions}
-    </div>
-  ),
-}));
+// PageLayout.PageHeader is mocked above; stub the breadcrumb separately because it owns
+// router navigation, which this module gating test does not exercise.
 
 jest.mock(
   'components/common/HeaderBreadcrumb/HeaderBreadcrumb.component',

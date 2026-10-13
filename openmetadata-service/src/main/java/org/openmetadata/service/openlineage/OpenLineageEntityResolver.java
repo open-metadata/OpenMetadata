@@ -14,28 +14,27 @@
 package org.openmetadata.service.openlineage;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.api.lineage.openlineage.UnresolvedReason.CREATION_DISABLED;
+import static org.openmetadata.schema.api.lineage.openlineage.UnresolvedReason.NAMESPACE_NOT_MAPPED;
+import static org.openmetadata.schema.api.lineage.openlineage.UnresolvedReason.NOT_FOUND;
+import static org.openmetadata.schema.api.lineage.openlineage.UnresolvedReason.PIPELINE_NOT_FOUND;
+import static org.openmetadata.schema.api.lineage.openlineage.UnresolvedReason.UNPARSABLE_NAME;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
+import static org.openmetadata.service.openlineage.OpenLineageResolution.resolved;
+import static org.openmetadata.service.openlineage.OpenLineageResolution.unresolved;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.lineage.openlineage.DatasetFacets;
 import org.openmetadata.schema.api.lineage.openlineage.DatasourceFacet;
-import org.openmetadata.schema.api.lineage.openlineage.DocumentationFacet;
 import org.openmetadata.schema.api.lineage.openlineage.OpenLineageInputDataset;
 import org.openmetadata.schema.api.lineage.openlineage.OpenLineageOutputDataset;
-import org.openmetadata.schema.api.lineage.openlineage.Owner;
-import org.openmetadata.schema.api.lineage.openlineage.OwnershipFacet;
-import org.openmetadata.schema.api.lineage.openlineage.SchemaFacet;
-import org.openmetadata.schema.api.lineage.openlineage.SchemaField;
 import org.openmetadata.schema.entity.data.Container;
-import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.type.Column;
-import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
@@ -43,6 +42,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.openlineage.OpenLineageDatasetNameNormalizer.DatasetCandidate;
+import org.openmetadata.service.openlineage.OpenLineageEntityCreator.TableLocation;
 import org.openmetadata.service.util.LikeEscape;
 
 @Slf4j
@@ -55,20 +55,34 @@ public class OpenLineageEntityResolver {
   private final Map<String, EntityReference> containerCache = new ConcurrentHashMap<>();
   private final boolean autoCreateEntities;
   private final String defaultPipelineService;
-  private final Map<String, String> namespaceToServiceMapping;
+  private final OpenLineageNamespaceMapping namespaceMapping;
+  private final OpenLineageEntityCreator entityCreator;
 
   public OpenLineageEntityResolver(boolean autoCreateEntities, String defaultPipelineService) {
     this(autoCreateEntities, defaultPipelineService, null);
   }
 
+  /** Resolves only: with no caller to authorize creates against, nothing is ever created. */
   public OpenLineageEntityResolver(
       boolean autoCreateEntities,
       String defaultPipelineService,
       Map<String, String> namespaceToServiceMapping) {
+    this(
+        autoCreateEntities,
+        defaultPipelineService,
+        namespaceToServiceMapping,
+        OpenLineageEntityCreator.withoutCaller());
+  }
+
+  public OpenLineageEntityResolver(
+      boolean autoCreateEntities,
+      String defaultPipelineService,
+      Map<String, String> namespaceToServiceMapping,
+      OpenLineageEntityCreator entityCreator) {
     this.autoCreateEntities = autoCreateEntities;
     this.defaultPipelineService = defaultPipelineService;
-    this.namespaceToServiceMapping =
-        namespaceToServiceMapping != null ? namespaceToServiceMapping : Map.of();
+    this.namespaceMapping = new OpenLineageNamespaceMapping(namespaceToServiceMapping);
+    this.entityCreator = entityCreator;
   }
 
   public EntityReference resolveTable(OpenLineageInputDataset dataset) {
@@ -110,32 +124,114 @@ public class OpenLineageEntityResolver {
     }
   }
 
-  public EntityReference resolveOrCreateTable(OpenLineageInputDataset dataset, String updatedBy) {
-    EntityReference ref = resolveTable(dataset);
-    if (ref != null) {
-      return ref;
-    }
-
-    if (!autoCreateEntities) {
-      LOG.debug("Auto-create disabled, skipping table creation for: {}", dataset.getName());
-      return null;
-    }
-
-    return createTableFromInput(dataset, updatedBy);
+  public OpenLineageResolution resolveDataset(OpenLineageInputDataset dataset, String updatedBy) {
+    return resolveDataset(
+        dataset.getNamespace(), dataset.getName(), dataset.getFacets(), updatedBy);
   }
 
-  public EntityReference resolveOrCreateTable(OpenLineageOutputDataset dataset, String updatedBy) {
-    EntityReference ref = resolveTable(dataset);
-    if (ref != null) {
-      return ref;
-    }
+  public OpenLineageResolution resolveDataset(OpenLineageOutputDataset dataset, String updatedBy) {
+    return resolveDataset(
+        dataset.getNamespace(), dataset.getName(), dataset.getFacets(), updatedBy);
+  }
 
-    if (!autoCreateEntities) {
-      LOG.debug("Auto-create disabled, skipping table creation for: {}", dataset.getName());
-      return null;
-    }
+  /**
+   * Resolves a dataset to an existing table or container, or creates its table under the service
+   * its namespace is mapped to. Anything else comes back unresolved with the reason, so the caller
+   * learns about it instead of the edge silently disappearing.
+   */
+  private OpenLineageResolution resolveDataset(
+      String namespace, String name, DatasetFacets facets, String updatedBy) {
+    EntityReference existing = resolveExisting(namespace, name, facets);
+    return existing != null
+        ? resolved(existing)
+        : createMissingTable(namespace, name, facets, updatedBy);
+  }
 
-    return createTableFromOutput(dataset, updatedBy);
+  private EntityReference resolveExisting(String namespace, String name, DatasetFacets facets) {
+    EntityReference table = resolveTableInternal(namespace, name, facets);
+    return table == null && isStorageDataset(namespace) ? resolveContainer(namespace, name) : table;
+  }
+
+  private OpenLineageResolution createMissingTable(
+      String namespace, String name, DatasetFacets facets, String updatedBy) {
+    List<DatasetCandidate> candidates =
+        OpenLineageDatasetNameNormalizer.extractCandidates(namespace, name, facets);
+    OpenLineageResolution result;
+    if (candidates.isEmpty()) {
+      result = unresolvedWithoutTableName(namespace, name);
+    } else if (!autoCreateEntities) {
+      result =
+          unresolved(CREATION_DISABLED, "No matching table exists and autoCreateEntities is off");
+    } else {
+      result = createInMappedService(namespace, candidates, facets, updatedBy);
+    }
+    if (result instanceof OpenLineageResolution.Resolved created) {
+      tableCache.put(buildCacheKey(namespace, name), created.entity());
+    }
+    return result;
+  }
+
+  /**
+   * A bare token is a table name without its schema (Spark emits one when a relation misses the Glue
+   * symlink), so it is reported as such even under a storage namespace, where only a real path
+   * means a missing container.
+   */
+  private OpenLineageResolution unresolvedWithoutTableName(String namespace, String name) {
+    OpenLineageResolution result;
+    if (bareToken(name) != null) {
+      result =
+          unresolved(
+              UNPARSABLE_NAME,
+              "A bare table name carries no schema: it only matches an existing table through "
+                  + "namespaceToServiceMapping and is never created");
+    } else if (isStorageDataset(namespace)) {
+      result =
+          unresolved(
+              NOT_FOUND,
+              "No container matches this storage path, and containers are never created");
+    } else {
+      result =
+          unresolved(
+              UNPARSABLE_NAME,
+              "The dataset name has no schema and table to match or create a table with");
+    }
+    return result;
+  }
+
+  private OpenLineageResolution createInMappedService(
+      String namespace, List<DatasetCandidate> candidates, DatasetFacets facets, String updatedBy) {
+    return candidates.stream()
+        .map(this::locateInMappedService)
+        .flatMap(Optional::stream)
+        .findFirst()
+        .map(location -> entityCreator.createTable(location, facets, updatedBy))
+        .orElseGet(
+            () ->
+                unresolved(
+                    NAMESPACE_NOT_MAPPED,
+                    String.format(
+                        "No matching table exists, and namespace '%s' has no "
+                            + "namespaceToServiceMapping entry to create one under",
+                        namespace)));
+  }
+
+  private Optional<TableLocation> locateInMappedService(DatasetCandidate candidate) {
+    return namespaceMapping
+        .serviceFor(candidate.namespace())
+        .map(service -> tableLocation(service, candidate));
+  }
+
+  /**
+   * A two-part name carries no database. For a Glue symlink the ARN's account id stands in, since
+   * that is what the Glue connector ingests as the database; otherwise the creator decides.
+   */
+  private static TableLocation tableLocation(String service, DatasetCandidate candidate) {
+    String[] parts = candidate.tableName().split("\\.");
+    String database =
+        parts.length >= 3
+            ? parts[parts.length - 3]
+            : OpenLineageDatasetNameNormalizer.extractGlueCatalogId(candidate.namespace());
+    return new TableLocation(service, database, parts[parts.length - 2], parts[parts.length - 1]);
   }
 
   public boolean isStorageDataset(String namespace) {
@@ -174,53 +270,51 @@ public class OpenLineageEntityResolver {
     return null;
   }
 
-  public EntityReference resolveOrCreatePipeline(String namespace, String name, String updatedBy) {
-    if (nullOrEmpty(name)) {
-      return null;
-    }
+  /**
+   * Finds the pipeline of an OpenLineage job. Pipelines are never created: a job knows too little
+   * to describe one, so an unknown job is reported and its edges are written without a pipeline.
+   */
+  public OpenLineageResolution resolvePipeline(String namespace, String name) {
+    EntityReference pipeline = nullOrEmpty(name) ? null : findPipeline(namespace, name);
+    return pipeline != null
+        ? resolved(pipeline)
+        : unresolved(
+            PIPELINE_NOT_FOUND,
+            String.format(
+                "No pipeline '%s' exists, and pipelines are never created from OpenLineage events",
+                nullOrEmpty(name) ? "" : buildPipelineFqn(buildPipelineName(namespace, name))));
+  }
 
-    String pipelineName = buildPipelineName(namespace, name);
+  private EntityReference findPipeline(String namespace, String name) {
     String cacheKey = namespace + "/" + name;
-
-    EntityReference cached = pipelineCache.get(cacheKey);
-    if (cached != null) {
-      return cached;
+    EntityReference pipeline = pipelineCache.get(cacheKey);
+    if (pipeline == null) {
+      pipeline = findPipelineByName(namespace, name);
     }
+    if (pipeline != null) {
+      pipelineCache.put(cacheKey, pipeline);
+    }
+    return pipeline;
+  }
 
-    String pipelineFqn = buildPipelineFqn(pipelineName);
+  /** Falls back to the namespace as service name, e.g. fasfas.stackoverflow_etl_lineage. */
+  private EntityReference findPipelineByName(String namespace, String name) {
+    EntityReference pipeline =
+        findPipelineByFqn(buildPipelineFqn(buildPipelineName(namespace, name)));
+    if (pipeline == null && !nullOrEmpty(namespace)) {
+      pipeline = findPipelineByFqn(namespace + "." + name);
+    }
+    return pipeline;
+  }
+
+  private EntityReference findPipelineByFqn(String fqn) {
+    EntityReference pipeline = null;
     try {
-      EntityReference ref =
-          Entity.getEntityReferenceByName(Entity.PIPELINE, pipelineFqn, NON_DELETED);
-      if (ref != null) {
-        pipelineCache.put(cacheKey, ref);
-        return ref;
-      }
+      pipeline = Entity.getEntityReferenceByName(Entity.PIPELINE, fqn, NON_DELETED);
     } catch (EntityNotFoundException e) {
-      LOG.debug("Pipeline not found: {}", pipelineFqn);
+      LOG.debug("Pipeline not found: {}", fqn);
     }
-
-    // Fallback: try namespace as service name, e.g. fasfas.stackoverflow_etl_lineage
-    if (!nullOrEmpty(namespace)) {
-      String fallbackFqn = namespace + "." + name;
-      try {
-        EntityReference ref =
-            Entity.getEntityReferenceByName(Entity.PIPELINE, fallbackFqn, NON_DELETED);
-        if (ref != null) {
-          LOG.info("Resolved pipeline via namespace fallback: {}", fallbackFqn);
-          pipelineCache.put(cacheKey, ref);
-          return ref;
-        }
-      } catch (EntityNotFoundException e) {
-        LOG.debug("Pipeline not found by namespace fallback: {}", fallbackFqn);
-      }
-    }
-
-    if (!autoCreateEntities) {
-      LOG.debug("Auto-create disabled, skipping pipeline creation for: {}", pipelineName);
-      return null;
-    }
-
-    return createPipeline(pipelineName, updatedBy);
+    return pipeline;
   }
 
   private String resolveTableFqn(String namespace, String datasetName, DatasetFacets facets) {
@@ -389,23 +483,7 @@ public class OpenLineageEntityResolver {
   }
 
   private String lookupServiceFromNamespace(String namespace) {
-    if (namespace == null || namespaceToServiceMapping.isEmpty()) {
-      return null;
-    }
-
-    // First try exact match
-    if (namespaceToServiceMapping.containsKey(namespace)) {
-      return namespaceToServiceMapping.get(namespace);
-    }
-
-    // Try prefix matching for namespaces like "postgresql://host:5432/db"
-    for (Map.Entry<String, String> entry : namespaceToServiceMapping.entrySet()) {
-      if (namespace.startsWith(entry.getKey()) || entry.getKey().startsWith(namespace)) {
-        return entry.getValue();
-      }
-    }
-
-    return null;
+    return namespaceMapping.serviceFor(namespace).orElse(null);
   }
 
   private String searchTableByFqnPattern(String fqnPattern) {
@@ -512,227 +590,6 @@ public class OpenLineageEntityResolver {
     return path.substring(0, lastSlash);
   }
 
-  private EntityReference createTableFromInput(OpenLineageInputDataset dataset, String updatedBy) {
-    return createTableInternal(
-        dataset.getNamespace(), dataset.getName(), dataset.getFacets(), updatedBy);
-  }
-
-  private EntityReference createTableFromOutput(
-      OpenLineageOutputDataset dataset, String updatedBy) {
-    return createTableInternal(
-        dataset.getNamespace(), dataset.getName(), dataset.getFacets(), updatedBy);
-  }
-
-  private EntityReference createTableInternal(
-      String namespace, String name, DatasetFacets facets, String updatedBy) {
-    List<DatasetCandidate> candidates =
-        OpenLineageDatasetNameNormalizer.extractCandidates(namespace, name, facets);
-    if (candidates.isEmpty()) {
-      LOG.warn("Cannot create table, invalid name format: {}", name);
-      return null;
-    }
-
-    String table = null;
-    String schemaFqn = null;
-    for (DatasetCandidate candidate : candidates) {
-      String[] parts = candidate.tableName().split("\\.");
-      schemaFqn = findSchemaFqn(parts);
-      if (schemaFqn != null) {
-        table = parts[parts.length - 1];
-        break;
-      }
-    }
-    if (schemaFqn == null) {
-      LOG.warn("Cannot create table, schema not found for candidates: {}", candidates);
-      return null;
-    }
-
-    try {
-      @SuppressWarnings("unchecked")
-      EntityRepository<Table> tableRepository =
-          (EntityRepository<Table>) Entity.getEntityRepository(Entity.TABLE);
-
-      List<Column> columns = extractColumns(facets);
-      String description = extractDescription(facets);
-      List<EntityReference> owners = extractOwners(facets);
-
-      Table newTable = new Table();
-      newTable.setId(java.util.UUID.randomUUID());
-      newTable.setName(table);
-      newTable.setFullyQualifiedName(schemaFqn + "." + table);
-      newTable.setDatabaseSchema(
-          Entity.getEntityReferenceByName(Entity.DATABASE_SCHEMA, schemaFqn, NON_DELETED));
-      newTable.setColumns(columns);
-
-      if (description != null) {
-        newTable.setDescription(description);
-      }
-
-      if (!owners.isEmpty()) {
-        newTable.setOwners(owners);
-      }
-
-      Table created = tableRepository.create(null, newTable);
-      LOG.info("Created table from OpenLineage event: {}", created.getFullyQualifiedName());
-
-      EntityReference ref = created.getEntityReference();
-      String cacheKey = buildCacheKey(namespace, name);
-      tableCache.put(cacheKey, ref);
-
-      return ref;
-    } catch (Exception e) {
-      LOG.error("Failed to create table {}: {}", table, e.getMessage());
-      return null;
-    }
-  }
-
-  private String extractDescription(DatasetFacets facets) {
-    if (facets == null) {
-      return null;
-    }
-
-    DocumentationFacet documentation = facets.getDocumentation();
-    if (documentation != null && documentation.getDescription() != null) {
-      return documentation.getDescription();
-    }
-
-    return null;
-  }
-
-  private List<EntityReference> extractOwners(DatasetFacets facets) {
-    List<EntityReference> ownerRefs = new ArrayList<>();
-
-    if (facets == null) {
-      return ownerRefs;
-    }
-
-    OwnershipFacet ownership = facets.getOwnership();
-    if (ownership == null || ownership.getOwners() == null) {
-      return ownerRefs;
-    }
-
-    for (Owner owner : ownership.getOwners()) {
-      if (owner.getName() == null) {
-        continue;
-      }
-
-      try {
-        EntityReference userRef =
-            Entity.getEntityReferenceByName(Entity.USER, owner.getName(), NON_DELETED);
-        if (userRef != null) {
-          ownerRefs.add(userRef);
-        }
-      } catch (EntityNotFoundException e) {
-        LOG.debug("Owner user not found: {}", owner.getName());
-      }
-    }
-
-    return ownerRefs;
-  }
-
-  private String findSchemaFqn(String[] candidateParts) {
-    String schema = candidateParts[candidateParts.length - 2];
-    String result = null;
-    if (candidateParts.length >= 3) {
-      String database = candidateParts[candidateParts.length - 3];
-      result = searchSchemaByName(database + "." + schema);
-    }
-    if (result == null) {
-      result = searchSchemaByName(schema);
-    }
-    return result;
-  }
-
-  private String searchSchemaByName(String schemaName) {
-    try {
-      @SuppressWarnings("unchecked")
-      EntityRepository<?> schemaRepository = Entity.getEntityRepository(Entity.DATABASE_SCHEMA);
-
-      String searchPattern = "%" + schemaName;
-      List<?> schemas =
-          schemaRepository.listAll(
-              schemaRepository.getFields(""), new ListFilterByFqnSuffix(searchPattern));
-
-      if (!schemas.isEmpty()) {
-        Object schema = schemas.get(0);
-        if (schema instanceof org.openmetadata.schema.entity.data.DatabaseSchema dbSchema) {
-          return dbSchema.getFullyQualifiedName();
-        }
-      }
-    } catch (Exception e) {
-      LOG.debug("Error searching for schema {}: {}", schemaName, e.getMessage());
-    }
-    return null;
-  }
-
-  private List<Column> extractColumns(DatasetFacets facets) {
-    List<Column> columns = new ArrayList<>();
-
-    if (facets == null) {
-      return columns;
-    }
-
-    SchemaFacet schemaFacet = facets.getSchema();
-    if (schemaFacet == null || schemaFacet.getFields() == null) {
-      return columns;
-    }
-
-    for (SchemaField field : schemaFacet.getFields()) {
-      Column column = new Column();
-      column.setName(field.getName());
-      column.setDataType(mapDataType(field.getType()));
-      column.setDataTypeDisplay(field.getType());
-      if (field.getDescription() != null) {
-        column.setDescription(field.getDescription());
-      }
-      columns.add(column);
-    }
-
-    return columns;
-  }
-
-  private ColumnDataType mapDataType(String olType) {
-    if (olType == null) {
-      return ColumnDataType.UNKNOWN;
-    }
-
-    String upperType = olType.toUpperCase();
-
-    if (upperType.contains("STRING")
-        || upperType.contains("VARCHAR")
-        || upperType.contains("CHAR")) {
-      return ColumnDataType.VARCHAR;
-    } else if (upperType.contains("INT")) {
-      return ColumnDataType.INT;
-    } else if (upperType.contains("LONG") || upperType.contains("BIGINT")) {
-      return ColumnDataType.BIGINT;
-    } else if (upperType.contains("DOUBLE") || upperType.contains("FLOAT")) {
-      return ColumnDataType.DOUBLE;
-    } else if (upperType.contains("DECIMAL") || upperType.contains("NUMERIC")) {
-      return ColumnDataType.DECIMAL;
-    } else if (upperType.contains("BOOLEAN") || upperType.contains("BOOL")) {
-      return ColumnDataType.BOOLEAN;
-    } else if (upperType.contains("DATE")) {
-      return ColumnDataType.DATE;
-    } else if (upperType.contains("TIMESTAMP")) {
-      return ColumnDataType.TIMESTAMP;
-    } else if (upperType.contains("TIME")) {
-      return ColumnDataType.TIME;
-    } else if (upperType.contains("ARRAY")) {
-      return ColumnDataType.ARRAY;
-    } else if (upperType.contains("MAP")) {
-      return ColumnDataType.MAP;
-    } else if (upperType.contains("STRUCT")) {
-      return ColumnDataType.STRUCT;
-    } else if (upperType.contains("BINARY") || upperType.contains("BYTES")) {
-      return ColumnDataType.BINARY;
-    } else if (upperType.contains("JSON")) {
-      return ColumnDataType.JSON;
-    }
-
-    return ColumnDataType.UNKNOWN;
-  }
-
   private String buildPipelineName(String namespace, String name) {
     if (nullOrEmpty(namespace)) {
       return name;
@@ -742,39 +599,6 @@ public class OpenLineageEntityResolver {
 
   private String buildPipelineFqn(String pipelineName) {
     return defaultPipelineService + "." + pipelineName;
-  }
-
-  private EntityReference createPipeline(String pipelineName, String updatedBy) {
-    try {
-      @SuppressWarnings("unchecked")
-      EntityRepository<Pipeline> pipelineRepository =
-          (EntityRepository<Pipeline>) Entity.getEntityRepository(Entity.PIPELINE);
-
-      EntityReference serviceRef =
-          Entity.getEntityReferenceByName(
-              Entity.PIPELINE_SERVICE, defaultPipelineService, NON_DELETED);
-
-      Pipeline newPipeline = new Pipeline();
-      newPipeline.setId(java.util.UUID.randomUUID());
-      newPipeline.setName(pipelineName);
-      newPipeline.setFullyQualifiedName(buildPipelineFqn(pipelineName));
-      newPipeline.setService(serviceRef);
-      newPipeline.setDescription("Pipeline created from OpenLineage event");
-
-      Pipeline created = pipelineRepository.create(null, newPipeline);
-      LOG.info("Created pipeline from OpenLineage event: {}", created.getFullyQualifiedName());
-
-      return created.getEntityReference();
-    } catch (EntityNotFoundException e) {
-      LOG.warn(
-          "Pipeline service '{}' not found. Cannot auto-create pipeline: {}",
-          defaultPipelineService,
-          pipelineName);
-      return null;
-    } catch (Exception e) {
-      LOG.error("Failed to create pipeline {}: {}", pipelineName, e.getMessage());
-      return null;
-    }
   }
 
   private String buildCacheKey(String namespace, String name) {

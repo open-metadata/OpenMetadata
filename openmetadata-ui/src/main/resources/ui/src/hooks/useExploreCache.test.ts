@@ -82,4 +82,50 @@ describe('useExploreCache', () => {
     expect(cache().entries.size).toBe(0);
     expect(cache().getCached('a')).toBeUndefined();
   });
+
+  it('shares an in-flight count request and expires it after two seconds', async () => {
+    const load = jest.fn().mockResolvedValue({ table: 12 });
+    const first = cache().getOrLoad('counts', load);
+    const second = cache().getOrLoad('counts', load);
+
+    await expect(first).resolves.toEqual({ table: 12 });
+    await expect(second).resolves.toEqual({ table: 12 });
+    expect(load).toHaveBeenCalledTimes(1);
+
+    jest.advanceTimersByTime(2001);
+    await cache().getOrLoad('counts', load);
+
+    expect(load).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not retain failed requests', async () => {
+    const load = jest
+      .fn()
+      .mockRejectedValueOnce(new Error('unavailable'))
+      .mockResolvedValue(12);
+
+    await expect(cache().getOrLoad('counts', load)).rejects.toThrow(
+      'unavailable'
+    );
+    await expect(cache().getOrLoad('counts', load)).resolves.toBe(12);
+    expect(load).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not restore a previous user request after clearing the cache', async () => {
+    let complete: (value: number) => void = (_value) => undefined;
+    const first = cache().getOrLoad(
+      'counts',
+      () =>
+        new Promise<number>((resolve) => {
+          complete = resolve;
+        })
+    );
+    await Promise.resolve();
+    cache().clearCache();
+    complete(87);
+    await first;
+
+    expect(cache().getCached('counts')).toBeUndefined();
+    await expect(cache().getOrLoad('counts', async () => 12)).resolves.toBe(12);
+  });
 });

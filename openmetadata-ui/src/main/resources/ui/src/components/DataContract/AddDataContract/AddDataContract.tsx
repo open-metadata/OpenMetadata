@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { Button, Card, RadioChangeEvent, Tabs, Typography } from 'antd';
+import {
+  Box,
+  Button,
+  Card,
+  Tabs,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -36,6 +42,7 @@ import {
   TermsOfUse,
 } from '../../../generated/entity/data/dataContract';
 import { Table } from '../../../generated/entity/data/table';
+import { useVisitedTabs } from '../../../hooks/useVisitedTabs';
 import { createContract, updateContract } from '../../../rest/contractAPI';
 import {
   getContractTabLabel,
@@ -143,7 +150,8 @@ const AddDataContract: React.FC<{
   contract?: DataContract;
 }> = ({ onCancel, onSave, contract }) => {
   const { t } = useTranslation();
-  const [mode, setMode] = useState<DataContractMode>(DataContractMode.UI);
+  // The UI has no control to switch modes yet, so the YAML branch below is unreachable.
+  const [mode] = useState<DataContractMode>(DataContractMode.UI);
   const [yaml, setYaml] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { data: entityData } = useGenericContext<Table>();
@@ -200,6 +208,10 @@ const AddDataContract: React.FC<{
     entityContractTabs[0]?.toString() ||
       EDataContractTab.CONTRACT_DETAIL.toString()
   );
+
+  // Each form tab seeds itself from `initialValues` on mount, so a remount would
+  // drop in-progress edits.
+  const visitedTabs = useVisitedTabs(activeTab);
 
   const handleTabChange = useCallback((key: string) => {
     setActiveTab(key);
@@ -524,79 +536,78 @@ const AddDataContract: React.FC<{
     currentTabInfo,
   ]);
 
-  const handleModeChange = useCallback((e: RadioChangeEvent) => {
-    setMode(e.target.value);
-  }, []);
-
-  const cardTitle = useMemo(() => {
-    return (
-      <div className="add-contract-card-header d-flex items-center justify-between">
-        <div>
-          <Typography.Text className="add-contract-card-title">
-            {t('label.add-contract-detail-plural')}
-          </Typography.Text>
-          <Typography.Paragraph className="add-contract-card-description">
-            {t('message.add-contract-detail-description')}
-          </Typography.Paragraph>
-        </div>
-        <div>
-          <Button
-            className="add-contract-cancel-button"
-            type="default"
-            onClick={onCancel}>
+  const cardHeader = (
+    <Card.Header
+      className="tw:items-center"
+      extra={
+        <Box gap={2}>
+          <Button color="secondary" size="md" onPress={onCancel}>
             {t('label.cancel')}
           </Button>
           <Button
-            className="add-contract-save-button"
             data-testid="save-contract-btn"
-            disabled={isSaveDisabled}
-            loading={isSubmitting}
-            type="primary"
-            onClick={handleSave}>
+            isDisabled={isSaveDisabled}
+            isLoading={isSubmitting}
+            size="md"
+            onPress={handleSave}>
             {t('label.save')}
           </Button>
-        </div>
-      </div>
-    );
-  }, [
-    mode,
-    isSubmitting,
-    isSaveDisabled,
-    handleModeChange,
-    onCancel,
-    handleSave,
-  ]);
+        </Box>
+      }
+      subtitle={t('message.add-contract-detail-description')}
+      title={
+        <Typography className="tw:block" size="text-lg" weight="semibold">
+          {t('label.add-contract-detail-plural')}
+        </Typography>
+      }
+    />
+  );
 
   const cardContent = useMemo(() => {
     if (mode === DataContractMode.YAML) {
       return (
         <Card>
-          <SchemaEditor
-            mode={{ name: CSMode.YAML }}
-            value={yaml}
-            onChange={setYaml}
-          />
+          <Card.Content>
+            <SchemaEditor
+              mode={{ name: CSMode.YAML }}
+              value={yaml}
+              onChange={setYaml}
+            />
+          </Card.Content>
         </Card>
       );
     }
 
     return (
       <Tabs
-        activeKey={activeTab.toString()}
-        className="contract-tabs"
-        items={items}
-        tabPosition="left"
-        onChange={handleTabChange}
-      />
+        className="contract-tabs tw:flex-row"
+        orientation="vertical"
+        selectedKey={activeTab}
+        onSelectionChange={(key) => handleTabChange(String(key))}>
+        <Tabs.List className="tw:w-50 tw:shrink-0 tw:pt-5" type="line">
+          {items.map(({ key, label }) => (
+            <Tabs.Item id={key} key={key}>
+              {label}
+            </Tabs.Item>
+          ))}
+        </Tabs.List>
+        {items.map(({ key, children }) => (
+          <Tabs.Panel
+            className="tw:min-h-125 tw:min-w-0 tw:flex-1 tw:rounded-r-lg tw:bg-primary tw:p-6 tw:data-inert:hidden"
+            id={key}
+            key={key}
+            shouldForceMount={visitedTabs.has(key)}>
+            {children}
+          </Tabs.Panel>
+        ))}
+      </Tabs>
     );
-  }, [mode, items, handleTabChange, activeTab, yaml]);
+  }, [mode, items, handleTabChange, activeTab, visitedTabs, yaml]);
 
   return (
-    <Card
-      className="add-contract-card"
-      data-testid="add-contract-card"
-      title={cardTitle}>
-      {cardContent}
+    <Card className="add-contract-card" data-testid="add-contract-card">
+      {cardHeader}
+      <Card.Content>{cardContent}</Card.Content>
     </Card>
   );
 };

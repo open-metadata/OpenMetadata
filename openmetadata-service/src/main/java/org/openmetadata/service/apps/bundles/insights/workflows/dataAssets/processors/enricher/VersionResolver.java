@@ -50,7 +50,7 @@ public final class VersionResolver {
    * @param context the workflow window + entity type
    * @return windows in newest-to-oldest order
    */
-  public List<VersionedWindow> resolve(EntityInterface latest, EnrichmentContext context) {
+  public List<VersionedWindow> resolve(EntityInterface<?> latest, EnrichmentContext context) {
     long startTs = context.workflowWindowStartTimestamp();
     long endTs = context.workflowWindowEndTimestamp();
 
@@ -63,7 +63,7 @@ public final class VersionResolver {
     }
 
     EntityRepository<?> entityRepository = Entity.getEntityRepository(context.entityType());
-    Class<? extends EntityInterface> entityClass =
+    Class<? extends EntityInterface<?>> entityClass =
         ENTITY_TYPE_TO_CLASS_MAP.get(context.entityType().toLowerCase());
 
     List<VersionedWindow> windows = new ArrayList<>();
@@ -81,7 +81,7 @@ public final class VersionResolver {
       nextOffset = page.nextOffset();
 
       for (Object version : versions) {
-        EntityInterface versionEntity = JsonUtils.readOrConvertValue(version, entityClass);
+        EntityInterface<?> versionEntity = JsonUtils.readOrConvertValue(version, entityClass);
         // Consume isFirst up front: every continue/return below leaves it correctly false.
         boolean wasFirst = isFirst;
         isFirst = false;

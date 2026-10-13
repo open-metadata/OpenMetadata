@@ -12,6 +12,11 @@
  */
 import test, { expect, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
+import {
+  LabelType,
+  State,
+  TagSource,
+} from '../../../src/generated/entity/data/table';
 import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
 import { DashboardClass } from '../../support/entity/DashboardClass';
@@ -27,6 +32,7 @@ import {
 } from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { clickUpdateButtonIfVisible } from '../../utils/explore';
+import { waitForSearchIndexed } from '../../utils/polling';
 import { sidebarClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -70,18 +76,18 @@ const glossaryTermTagPatch = (index: number): Operation => ({
   },
 });
 
+const certificationLabel = (tagFQN: string) => ({
+  tagFQN,
+  source: TagSource.Classification,
+  labelType: LabelType.Manual,
+  state: State.Confirmed,
+});
+
 // Certification is a first-class entity field — patch /certification, not /tags
 const certificationPatch = (tagFQN: string): Operation => ({
   op: 'add',
   path: '/certification',
-  value: {
-    tagLabel: {
-      tagFQN,
-      source: 'Classification',
-      labelType: 'Manual',
-      state: 'Confirmed',
-    },
-  },
+  value: { tagLabel: certificationLabel(tagFQN) },
 });
 
 const domainPatch = (): Operation => ({
@@ -99,11 +105,6 @@ const domainPatch = (): Operation => ({
 // testids and chip keys are the lowercased FQN / display name
 const lowercaseKey = (value: string) => value.toLowerCase();
 
-/**
- * Facet options are aggregated once when the dropdown opens, so a freshly
- * indexed fixture can miss the first fetch. Retry by closing and reopening
- * the dropdown (each open re-fetches the facet aggregation).
- */
 const ensureFilterOptionVisible = async (
   page: Page,
   label: string,
@@ -111,24 +112,12 @@ const ensureFilterOptionVisible = async (
   searchText?: string
 ) => {
   const menu = page.getByTestId('drop-down-menu');
-  const option = menu.getByTestId(optionKey);
-
-  await expect(async () => {
-    const isMenuOpen = await menu.isVisible().catch(() => false);
-    if (!isMenuOpen) {
-      await page.getByTestId(`search-dropdown-${label}`).click();
-      await menu.waitFor({ state: 'visible' });
-    }
-    if (searchText) {
-      await menu.getByTestId('search-input').fill(searchText);
-    }
-    try {
-      await option.waitFor({ state: 'visible', timeout: 5_000 });
-    } catch (error) {
-      await page.keyboard.press('Escape');
-      throw error;
-    }
-  }).toPass({ timeout: 90_000, intervals: [2_000, 5_000, 10_000] });
+  if (!(await menu.isVisible())) {
+    await page.getByTestId(`search-dropdown-${label}`).click();
+  }
+  await expect(menu).toBeVisible();
+  if (searchText) await menu.getByTestId('search-input').fill(searchText);
+  await expect(menu.getByTestId(optionKey)).toBeVisible();
 };
 
 /**
@@ -242,6 +231,22 @@ test.beforeAll(
     goldCertification = new TagClass({ classification: 'Certification' });
     silverCertification = new TagClass({ classification: 'Certification' });
 
+    await goldCertification.create(apiContext);
+    await silverCertification.create(apiContext);
+
+    // Certified at create so its column docs are indexed from the certified
+    // table in one bulk write. A later certification PATCH reaches column docs
+    // only through an async cascade that can lose a version conflict to the
+    // concurrent inherited-fields update, leaving the columns uncertified.
+    tierOneTable.entity.certification = {
+      tagLabel: certificationLabel(
+        goldCertification.responseData.fullyQualifiedName
+      ),
+      // Required by create validation; the server re-stamps both on create
+      appliedDate: Date.now(),
+      expiryDate: Date.now(),
+    };
+
     await tierOneTable.create(apiContext);
     await tierTwoTable.create(apiContext);
     await tierOneDashboard.create(apiContext);
@@ -250,15 +255,12 @@ test.beforeAll(
     await assetDomain.create(apiContext);
     await compositionGlossary.create(apiContext);
     await compositionTerm.create(apiContext);
-    await goldCertification.create(apiContext);
-    await silverCertification.create(apiContext);
 
     await tierOneTable.patch({
       apiContext,
       patchData: [
         classificationTagPatch('Tier.Tier1', 0),
         classificationTagPatch('PersonalData.Personal', 1),
-        certificationPatch(goldCertification.responseData.fullyQualifiedName),
         domainPatch(),
       ],
     });
@@ -286,6 +288,22 @@ test.beforeAll(
       ],
     });
 
+    await Promise.all(
+      [
+        tierOneTable,
+        tierTwoTable,
+        tierOneDashboard,
+        tierTwoTopic,
+        untieredTable,
+      ].map((entity) =>
+        waitForSearchIndexed(
+          apiContext,
+          entity.entityResponseData.fullyQualifiedName,
+          'dataAsset',
+          { minVersion: entity.entityResponseData.version }
+        )
+      )
+    );
     await afterAction();
   }
 );
@@ -557,12 +575,12 @@ test('domain filter spans asset types and ANDs with an asset-type filter', async
 
 test('certification union shows assets certified with either level', async ({
   page,
+  browser,
 }) => {
   test.slow();
 
-  const goldKey = lowercaseKey(
-    goldCertification.responseData.fullyQualifiedName
-  );
+  const goldFqn = goldCertification.responseData.fullyQualifiedName;
+  const goldKey = lowercaseKey(goldFqn);
   const silverKey = lowercaseKey(
     silverCertification.responseData.fullyQualifiedName
   );
@@ -577,6 +595,13 @@ test('certification union shows assets certified with either level', async ({
     await page.keyboard.press('Escape');
 
     await searchAndExpectEntityVisible(page, tierOneTable);
+    await expect(
+      page
+        .getByTestId(
+          `table-data-card_${tierOneTable.entityResponseData.fullyQualifiedName}`
+        )
+        .getByTestId(`certification-${goldFqn}`)
+    ).toBeVisible();
     await searchAndExpectEntityVisible(page, tierTwoTopic);
     await searchAndExpectEntityNotVisible(page, tierOneDashboard);
   });
@@ -623,5 +648,55 @@ test('certification union shows assets certified with either level', async ({
     await searchAndExpectEntityVisible(page, tierTwoTopic);
     await searchAndExpectEntityVisible(page, tierOneDashboard);
     await searchAndExpectEntityNotVisible(page, tierTwoTable);
+  });
+
+  await test.step('A column of a certified table does not show the table certification', async () => {
+    const columnName = tierOneTable.columnsName[0];
+    const columnFqn = `${tierOneTable.entityResponseData.fullyQualifiedName}.${columnName}`;
+
+    // Column docs are indexed asynchronously; wait until one carries the
+    // table's certification so the badge-absent assertion below is not vacuous.
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await expect
+      .poll(
+        async () => {
+          const response = await apiContext.get(
+            `/api/v1/search/query?q=${encodeURIComponent(
+              `"${columnFqn}"`
+            )}&index=tableColumn&from=0&size=1`
+          );
+
+          if (!response.ok()) {
+            throw new Error(
+              `HTTP ${response.status()} querying ${response.url()}`
+            );
+          }
+
+          const data = await response.json();
+
+          return data?.hits?.hits?.[0]?._source?.certification?.tagLabel
+            ?.tagFQN;
+        },
+        { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }
+      )
+      .toBe(goldFqn);
+    await afterAction();
+
+    const columnSearch = page.waitForResponse(
+      '/api/v1/search/query?*index=tableColumn*'
+    );
+    await page.goto(
+      `/explore/columns?search=${encodeURIComponent(columnName)}`,
+      { waitUntil: 'domcontentloaded' }
+    );
+    expect((await columnSearch).status()).toBe(200);
+    await waitForAllLoadersToDisappear(page);
+
+    const columnCard = page.getByTestId(`table-data-card_${columnFqn}`);
+
+    await expect(columnCard).toBeVisible();
+    await expect(
+      columnCard.getByTestId(`certification-${goldFqn}`)
+    ).not.toBeVisible();
   });
 });

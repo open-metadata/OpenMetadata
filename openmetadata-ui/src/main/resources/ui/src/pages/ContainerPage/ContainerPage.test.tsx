@@ -195,10 +195,6 @@ jest.mock('../../components/Lineage/Lineage.component', () =>
   jest.fn().mockReturnValue(<>EntityLineage</>)
 );
 
-jest.mock('../../context/LineageProvider/LineageProvider', () =>
-  jest.fn().mockReturnValue(<>LineageProvider</>)
-);
-
 jest.mock('../../components/common/Loader/Loader', () => ({
   __esModule: true,
   default: jest
@@ -273,13 +269,16 @@ jest.mock('../../utils/EntitySortUtils', () => ({
 jest.mock('../../utils/StringUtils', () => ({
   getDecodedFqn: jest.fn().mockImplementation((fqn) => fqn),
   getEncodedFqn: jest.fn().mockImplementation((fqn) => fqn),
-  stringToHTML: jest.fn().mockImplementation((str) => str),
   getErrorText: jest
     .fn()
     .mockImplementation(
       (error: Error, defaultMessage: string) =>
         error?.message || defaultMessage || 'Error'
     ),
+}));
+
+jest.mock('../../utils/RichTextStringUtils', () => ({
+  stringToHTML: jest.fn().mockImplementation((str) => str),
 }));
 
 jest.mock('../../utils/TableUtils', () => {

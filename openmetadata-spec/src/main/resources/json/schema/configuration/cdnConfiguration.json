@@ -1,0 +1,21 @@
+{
+  "$id": "https://open-metadata.org/schema/configuration/cdnConfiguration.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CdnConfiguration",
+  "description": "This schema defines the CDN Configuration for serving the UI's static assets from a CDN. It is disabled by default and not exposed in the default openmetadata.yaml; downstream distributions can bind it from their own configuration.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.configuration.CdnConfiguration",
+  "properties": {
+    "enabled": {
+      "description": "Indicates whether static assets are served from the CDN.",
+      "type": "boolean",
+      "default": false
+    },
+    "baseUrl": {
+      "description": "CDN base URL, without the application version and without a trailing slash.",
+      "type": "string",
+      "default": ""
+    }
+  },
+  "additionalProperties": false
+}

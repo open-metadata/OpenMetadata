@@ -14,8 +14,6 @@
 Module to manage SSL certificates
 """
 
-import os
-import tempfile
 import traceback
 from functools import singledispatch, singledispatchmethod
 from ssl import CERT_REQUIRED, SSLContext
@@ -80,6 +78,10 @@ from metadata.ingestion.connections.builders import (
 from metadata.ingestion.models.custom_pydantic import CustomSecretStr  # noqa: TC001
 from metadata.ingestion.source.connections import get_connection
 from metadata.utils.logger import utils_logger
+from metadata.utils.secure_tempfile import (
+    remove_secret_temp_file,
+    write_secret_temp_file,
+)
 
 logger = utils_logger()
 
@@ -107,20 +109,21 @@ class SSLManager:
                 if value:
                     setattr(self, f"{dict_key}", self.create_temp_file(value))
 
-    def create_temp_file(self, content: SecretStr):
-        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-            temp_file.write(content.get_secret_value().encode())
-            temp_file.close()
-        self.temp_files.append(temp_file.name)
-        return temp_file.name
+    def create_temp_file(self, content: SecretStr) -> str:
+        """
+        Materialise a certificate for the lifetime of this manager.
 
-    def cleanup_temp_files(self):
-        for temp_file in self.temp_files:
-            try:  # noqa: SIM105
-                os.remove(temp_file)  # noqa: PTH107
-            except FileNotFoundError:
-                pass
-        self.temp_files = []
+        Scoped to the connection rather than a ``with`` block, so this uses the
+        write/remove pair instead of ``secret_temp_file``: callers hold the path
+        until they call :meth:`cleanup_temp_files` on teardown.
+        """
+        path = write_secret_temp_file(content.get_secret_value())
+        self.temp_files.append(str(path))
+
+        return str(path)
+
+    def cleanup_temp_files(self) -> None:
+        self.temp_files = [temp_file for temp_file in self.temp_files if not remove_secret_temp_file(temp_file)]
 
     @singledispatchmethod
     def setup_ssl(self, connection):
@@ -280,6 +283,64 @@ class SSLManager:
 
         return connection
 
+    @staticmethod
+    def _setup_mssql_pyodbc_ssl(connection) -> None:
+        """
+        ODBC takes both switches natively, so pyodbc is the only MSSQL scheme
+        that can enforce encryption without a CA certificate.
+        """
+        if connection.encrypt:
+            connection.connectionArguments.root["Encrypt"] = "yes"
+
+        if connection.trustServerCertificate:
+            connection.connectionArguments.root["TrustServerCertificate"] = "yes"
+
+    def _setup_mssql_pytds_ssl(self, connection) -> None:
+        """
+        pytds supports cafile, certfile, and keyfile as native connection params.
+        certfile and keyfile were previously extracted by check_ssl_and_init but
+        never applied here, making mutual TLS silently non-functional for pytds.
+
+        pytds has no encrypt switch: it enables TLS only when a CA certificate is
+        supplied, and then always verifies the chain (tls.create_context sets
+        VERIFY_PEER). Host validation is the one check it can drop, which is what
+        a certificate issued to a name other than the configured host needs, so
+        that is where trustServerCertificate maps. Encrypt with no CA certificate
+        cannot be honoured by this driver, and saying so beats connecting in the
+        clear while the configuration claims otherwise.
+        """
+        if self.ca_file_path:
+            connection.connectionArguments.root["cafile"] = self.ca_file_path
+            if connection.trustServerCertificate:
+                connection.connectionArguments.root["validate_host"] = False
+        if self.cert_file_path:
+            connection.connectionArguments.root["certfile"] = self.cert_file_path
+        if self.key_file_path:
+            connection.connectionArguments.root["keyfile"] = self.key_file_path
+
+        if connection.encrypt and not self.ca_file_path:
+            logger.warning(
+                "Encrypt Connection is enabled but no CA certificate is configured: the "
+                "mssql+pytds driver enables TLS only when one is supplied, so this connection "
+                "will NOT be encrypted. Add the CA certificate under SSL Configuration, or use "
+                "the mssql+pyodbc scheme."
+            )
+
+    @staticmethod
+    def _warn_mssql_pymssql_ssl(connection) -> None:
+        """
+        pymssql takes no TLS parameters at all - FreeTDS configuration decides
+        whether the connection is encrypted - so every TLS setting configured
+        against this scheme is inert.
+        """
+        if connection.encrypt or connection.trustServerCertificate or connection.sslConfig:
+            logger.warning(
+                "TLS settings are configured but the mssql+pymssql scheme cannot apply them: "
+                "pymssql leaves encryption to FreeTDS configuration (encryption = require in "
+                "freetds.conf), so this connection may NOT be encrypted. Use mssql+pyodbc, or "
+                "mssql+pytds with a CA certificate, to enforce TLS from OpenMetadata."
+            )
+
     @setup_ssl.register(MssqlConnection)
     def _(self, connection):
         connection = cast(MssqlConnection, connection)  # noqa: TC006
@@ -289,23 +350,11 @@ class SSLManager:
 
         # Handle driver-specific SSL configuration
         if connection.scheme.value == "mssql+pyodbc":
-            # ODBC Driver SSL parameters
-            if connection.encrypt:
-                connection.connectionArguments.root["Encrypt"] = "yes"
-
-            if connection.trustServerCertificate:
-                connection.connectionArguments.root["TrustServerCertificate"] = "yes"
-
+            self._setup_mssql_pyodbc_ssl(connection)
         elif connection.scheme.value == "mssql+pytds":
-            # pytds supports cafile, certfile, and keyfile as native connection params.
-            # certfile and keyfile were previously extracted by check_ssl_and_init but
-            # never applied here, making mutual TLS silently non-functional for pytds.
-            if self.ca_file_path:
-                connection.connectionArguments.root["cafile"] = self.ca_file_path
-            if self.cert_file_path:
-                connection.connectionArguments.root["certfile"] = self.cert_file_path
-            if self.key_file_path:
-                connection.connectionArguments.root["keyfile"] = self.key_file_path
+            self._setup_mssql_pytds_ssl(connection)
+        else:
+            self._warn_mssql_pymssql_ssl(connection)
 
         return connection
 

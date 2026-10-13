@@ -13,17 +13,14 @@
 
 import { PlusOutlined } from '@ant-design/icons';
 import {
+  Box,
   Button,
-  Col,
-  Form,
-  Input,
-  Modal,
-  Row,
-  Space,
-  Switch,
-  Table,
+  Grid,
+  SimpleModal,
+  Toggle,
   Typography,
-} from 'antd';
+} from '@openmetadata/ui-core-components';
+import { Form, Input, Table } from 'antd';
 import { FormInstance } from 'antd/es/form/Form';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -221,9 +218,10 @@ export const AddEditSemanticsRuleModal: React.FC<{
   };
 
   return (
-    <Modal
-      open
-      okButtonProps={{ loading: isSaveLoading }}
+    <SimpleModal
+      isOpen
+      isDismissable={false}
+      isOkLoading={isSaveLoading}
       okText={t('label.save')}
       title={
         semanticsRule.name
@@ -238,7 +236,7 @@ export const AddEditSemanticsRuleModal: React.FC<{
         otherSemanticsRules={otherSemanticsRules}
         semanticsRule={semanticsRule}
       />
-    </Modal>
+    </SimpleModal>
   );
 };
 
@@ -249,9 +247,10 @@ export const DeleteSemanticsRuleConfirmationModal: React.FC<{
   isSaveLoading?: boolean;
 }> = ({ semanticsRule, onCancel, onConfirm, isSaveLoading }) => {
   return (
-    <Modal
-      open
-      okButtonProps={{ loading: isSaveLoading }}
+    <SimpleModal
+      isOpen
+      isOkLoading={isSaveLoading}
+      okButtonColor="primary-destructive"
       okText={t('label.delete')}
       title={t('label.delete-data-asset-rule')}
       onCancel={onCancel}
@@ -261,7 +260,7 @@ export const DeleteSemanticsRuleConfirmationModal: React.FC<{
           name: semanticsRule.name,
         })}
       </p>
-    </Modal>
+    </SimpleModal>
   );
 };
 
@@ -350,8 +349,9 @@ export const useSemanticsRuleList = ({
         title: t('label.enabled'),
         dataIndex: 'enabled',
         render: (enabled: boolean, record: SemanticsRule) => (
-          <Switch
-            checked={enabled}
+          <Toggle
+            isSelected={enabled}
+            size="sm"
             onChange={() => {
               handleSave({ ...record, enabled: !enabled });
             }}
@@ -364,8 +364,8 @@ export const useSemanticsRuleList = ({
 
   const dataAssetRuleList = useMemo(() => {
     return (
-      <Row className="m-t-md table-container">
-        <Col span={24}>
+      <Grid className="layout-row layout-grid m-t-md table-container">
+        <Grid.Item className="layout-column" span={24}>
           <Table
             columns={columns}
             dataSource={semanticsRules}
@@ -376,41 +376,45 @@ export const useSemanticsRuleList = ({
             pagination={false}
             rowKey="name"
           />
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
     );
   }, [semanticsRules, isLoading, isSaveLoading, columns]);
 
   const quickAddSemanticsRule = !isLoading && semanticsRules.length === 0 && (
-    <Row align="middle" className="h-full" justify="center">
-      <Col>
-        <Space
+    <Box
+      align="center"
+      className="layout-row h-full"
+      justify="center"
+      wrap="wrap">
+      <Box className="layout-column tw:block">
+        <Box
+          inline
           align="center"
-          className="w-full custom-icon-button"
-          direction="vertical"
-          size={0}>
+          className="layout-space w-full custom-icon-button"
+          direction="col"
+          gap={0}
+          itemClassName="layout-space-item">
           <AddPlaceHolderIcon
             data-testid="no-data-image"
             height={SIZE.MEDIUM}
             width={SIZE.MEDIUM}
           />
-          <Typography.Text>
+          <Typography>
             {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
               entity: t('label.data-asset-rules'),
             })}
-          </Typography.Text>
+          </Typography>
           <Button
-            ghost
-            className="add-button"
+            color="secondary-brand"
             data-testid="add-widget-button"
-            icon={<PlusOutlined />}
-            type="primary"
+            iconLeading={<PlusOutlined />}
             onClick={handleAddDataAssetRule}>
             {t('label.add')}
           </Button>
-        </Space>
-      </Col>
-    </Row>
+        </Box>
+      </Box>
+    </Box>
   );
 
   return {

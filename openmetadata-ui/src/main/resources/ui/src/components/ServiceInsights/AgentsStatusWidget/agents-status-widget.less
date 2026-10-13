@@ -13,44 +13,6 @@
 @import (reference) '../../../styles/variables.less';
 
 .agents-status-widget {
-  .ant-card.agent-status-card {
-    height: 100%;
-
-    .ant-card-body {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: var(--om-space-8);
-      padding: var(--om-space-8) var(--om-space-12);
-
-      &::before,
-      &::after {
-        display: none;
-      }
-
-      .agent-icon-container {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: none;
-        border-radius: 50%;
-        padding: var(--om-space-10);
-        background-color: @grey-50;
-        color: @grey-600;
-      }
-    }
-  }
-
-  .collate-agent.ant-card.ant-card-bordered {
-    border-color: @blue-39;
-    background-color: @blue-33;
-
-    .agent-icon-container {
-      background-color: var(--tw-color-bg-primary);
-      color: @blue-32;
-    }
-  }
-
   .status-summary-icon-container {
     display: flex;
     align-items: center;
@@ -122,7 +84,8 @@
         &.Running {
           background-color: @blue-22;
           border-color: @blue-31;
-          .ant-typography {
+          .ant-typography,
+          .agent-status-summary-text {
             color: @blue-31;
           }
         }
@@ -130,7 +93,8 @@
         &.Successful {
           background-color: @green-9;
           border-color: @green-10;
-          .ant-typography {
+          .ant-typography,
+          .agent-status-summary-text {
             color: @green-10;
           }
         }
@@ -138,7 +102,8 @@
         &.Pending {
           background-color: @yellow-10;
           border-color: @yellow-11;
-          .ant-typography {
+          .ant-typography,
+          .agent-status-summary-text {
             color: @yellow-11;
           }
         }
@@ -146,7 +111,8 @@
         &.Failed {
           background-color: @red-9;
           border-color: @red-10;
-          .ant-typography {
+          .ant-typography,
+          .agent-status-summary-text {
             color: @red-10;
           }
         }

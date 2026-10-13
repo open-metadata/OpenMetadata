@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { renderHook, waitFor } from '@testing-library/react';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { TestCaseResolutionStatus } from '../../generated/tests/testCaseResolutionStatus';
 import { TestCaseIncidentStatusData } from '../../pages/IncidentManager/IncidentManager.interface';
 import { useIncidentRowPermissions } from './useIncidentRowPermissions';

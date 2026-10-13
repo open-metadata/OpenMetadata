@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row } from 'antd';
+import { Box, Card, Grid } from '@openmetadata/ui-core-components';
+
 import { useCallback, useLayoutEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, useNavigate } from 'react-router-dom';
@@ -20,13 +21,14 @@ import ResizableLeftPanels from '../../components/common/ResizablePanels/Resizab
 import { ENTITIES_CHARTS } from '../../constants/DataInsight.constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { SystemChartType } from '../../enums/DataInsight.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { Operation } from '../../generated/entity/policies/policy';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import { DataInsightTabs } from '../../interface/data-insight.interface';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
 import { getDataInsightPathWithFqn } from '../../utils/DataInsightPureUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -131,8 +133,14 @@ const DataInsightPage = () => {
 
   if (noDataInsightPermission || noKPIPermission) {
     return (
-      <Row align="middle" className="w-full h-full" justify="center">
-        <Col span={24}>
+      <Box
+        align="center"
+        className="layout-row w-full h-full"
+        justify="center"
+        wrap="wrap">
+        <Box
+          className="layout-column tw:block"
+          style={{ maxWidth: '100%', flex: '0 0 100%' }}>
           <ErrorPlaceHolder
             className="border-none"
             permissionValue={t('label.view-entity', {
@@ -140,8 +148,8 @@ const DataInsightPage = () => {
             })}
             type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
           />
-        </Col>
-      </Row>
+        </Box>
+      </Box>
     );
   }
 
@@ -163,14 +171,23 @@ const DataInsightPage = () => {
         children: (
           <DataInsightProvider>
             <Card className="h-full overflow-y-auto">
-              <Row data-testid="data-insight-container" gutter={[16, 16]}>
-                {isHeaderVisible && (
-                  <Col span={24}>
-                    <DataInsightHeader onScrollToChart={handleScrollToChart} />
-                  </Col>
-                )}
-                <Col span={24}>{renderTabComponent}</Col>
-              </Row>
+              <Card.Content>
+                <Grid
+                  className="layout-row layout-grid"
+                  data-testid="data-insight-container"
+                  style={getLayoutGutter(16, 16)}>
+                  {isHeaderVisible && (
+                    <Grid.Item className="layout-column" span={24}>
+                      <DataInsightHeader
+                        onScrollToChart={handleScrollToChart}
+                      />
+                    </Grid.Item>
+                  )}
+                  <Grid.Item className="layout-column" span={24}>
+                    {renderTabComponent}
+                  </Grid.Item>
+                </Grid>
+              </Card.Content>
             </Card>
           </DataInsightProvider>
         ),

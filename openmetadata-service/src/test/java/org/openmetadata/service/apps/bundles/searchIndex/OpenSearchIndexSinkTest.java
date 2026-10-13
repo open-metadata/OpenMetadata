@@ -62,7 +62,7 @@ class OpenSearchIndexSinkTest {
 
   @Test
   void writeDoesNotSendEmptyOverflowBatchAndCountsEntitySuccessOnce() throws Exception {
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     UUID entityId = UUID.randomUUID();
     when(entity.getId()).thenReturn(entityId);
 
@@ -111,8 +111,8 @@ class OpenSearchIndexSinkTest {
 
   @Test
   void writeTracksBulkItemFailuresWithoutDoubleCountingStats() throws Exception {
-    EntityInterface firstEntity = mock(EntityInterface.class);
-    EntityInterface secondEntity = mock(EntityInterface.class);
+    EntityInterface<?> firstEntity = mock(EntityInterface.class);
+    EntityInterface<?> secondEntity = mock(EntityInterface.class);
     UUID firstId = UUID.randomUUID();
     UUID secondId = UUID.randomUUID();
     when(firstEntity.getId()).thenReturn(firstId);
@@ -147,7 +147,7 @@ class OpenSearchIndexSinkTest {
 
   @Test
   void writeTracksConversionFailuresWithoutDoubleCountingBulkResults() throws Exception {
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     UUID entityId = UUID.randomUUID();
     when(entity.getId()).thenReturn(entityId);
 
@@ -177,7 +177,7 @@ class OpenSearchIndexSinkTest {
 
   @Test
   void writeWrapsAsyncClientIoFailures() throws Exception {
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     UUID entityId = UUID.randomUUID();
     when(entity.getId()).thenReturn(entityId);
 

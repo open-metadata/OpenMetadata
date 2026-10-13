@@ -1,0 +1,33 @@
+{
+  "$id": "https://open-metadata.org/schema/system/testLoginSession.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TestLoginSession",
+  "description": "Handle for an in-flight Test Login round-trip. The caller either opens 'authorizationUrl' in a popup (OIDC/SAML) or submits credentials (LDAP/Basic), then polls the result endpoint with 'testSessionId'.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.system.TestLoginSession",
+  "properties": {
+    "testSessionId": {
+      "description": "Opaque identifier for this test login. Bound to the admin who started it.",
+      "type": "string"
+    },
+    "protocol": {
+      "$ref": "testLoginResult.json#/definitions/protocol"
+    },
+    "authorizationUrl": {
+      "description": "Identity-provider URL the admin must be sent to in an isolated popup. Present for OIDC and SAML only.",
+      "type": "string",
+      "format": "uri"
+    },
+    "requiresCredentials": {
+      "description": "True when the protocol is credential-based (LDAP/Basic) and the caller must submit a username and password instead of opening a popup.",
+      "type": "boolean",
+      "default": false
+    },
+    "expiresAt": {
+      "description": "Time after which this test session is no longer valid.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    }
+  },
+  "required": ["testSessionId", "protocol"],
+  "additionalProperties": false
+}

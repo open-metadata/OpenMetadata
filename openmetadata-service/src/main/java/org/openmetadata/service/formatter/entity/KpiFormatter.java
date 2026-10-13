@@ -42,7 +42,7 @@ public class KpiFormatter implements EntityFormatter {
 
   private String transformKpiResult(
       MessageDecorator<?> messageFormatter, FormattedMessage thread, FieldChange fieldChange) {
-    EntityInterface entity =
+    EntityInterface<?> entity =
         Entity.getEntity(
             thread.getEntityRef().getType(), thread.getEntityRef().getId(), "id", Include.ALL);
     String kpiName = entity.getName();

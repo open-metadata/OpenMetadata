@@ -11,8 +11,15 @@
  *  limitations under the License.
  */
 
-import { Button, Form, Input, Typography } from 'antd';
-import classNames from 'classnames';
+import {
+  Button,
+  Card,
+  FieldProp,
+  FieldTypes,
+  FormFields,
+  HookForm,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import {
   useCallback,
   useEffect,
@@ -21,6 +28,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import IconAuth0 from '../../assets/img/icon-auth0.svg';
@@ -29,20 +37,26 @@ import IconAzure from '../../assets/img/icon-azure.png';
 import IconGoogle from '../../assets/img/icon-google.png';
 import IconOkta from '../../assets/img/icon-okta.png';
 import { useAuthProvider } from '../../components/Auth/AuthProviders/AuthProvider';
-import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
+import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthContext';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
 import Loader from '../../components/common/Loader/Loader';
 import LoginButton from '../../components/common/LoginButton/LoginButton';
 import { CarouselLayout } from '../../components/Layout/CarouselLayout/CarouselLayout';
-import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
+import { ROUTES } from '../../constants/constants';
 import { EMAIL_REG_EX } from '../../constants/regex.constants';
 import { AuthProvider } from '../../generated/settings/settings';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import './login.style.less';
+
+interface LoginFormValues {
+  email: string;
+  password: string;
+}
 
 const SignInPage = () => {
   const [loading, setLoading] = useState(false);
-  const [form] = Form.useForm();
+  const form = useForm<LoginFormValues>({
+    defaultValues: { email: '', password: '' },
+  });
   const hasTriggeredAutoRedirect = useRef(false);
 
   const navigate = useNavigate();
@@ -130,11 +144,11 @@ const SignInPage = () => {
       }
       default: {
         return (
-          <div>
+          <Typography as="div" color="secondary" size="text-md">
             {t('message.sso-provider-not-supported', {
               provider: authConfig?.provider,
             })}
-          </div>
+          </Typography>
         );
       }
     }
@@ -146,15 +160,13 @@ const SignInPage = () => {
         onClick={handleSignIn}
       />
     );
-  }, [authConfig?.provider, handleSignIn]);
+  }, [authConfig?.provider, authConfig?.providerName, handleSignIn, t]);
 
   useEffect(() => {
-    // If the user is already logged in or if security is disabled
-    // redirect the user to the home page.
     if (isAuthenticated) {
       navigate(ROUTES.HOME);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, navigate]);
 
   if (!authConfig) {
     return <Loader fullScreen />;
@@ -168,13 +180,7 @@ const SignInPage = () => {
     return <Loader fullScreen />;
   }
 
-  const handleSubmit = async ({
-    email,
-    password,
-  }: {
-    email: string;
-    password: string;
-  }) => {
+  const handleSubmit = async ({ email, password }: LoginFormValues) => {
     setLoading(true);
     await Promise.resolve(handleLogin(email, password));
     setLoading(false);
@@ -188,112 +194,126 @@ const SignInPage = () => {
     navigate(ROUTES.FORGOT_PASSWORD);
   };
 
+  const emailField: FieldProp = {
+    name: 'email',
+    type: FieldTypes.TEXT,
+    label: t('label.email'),
+    id: 'root/email',
+    placeholder: t('label.email'),
+    required: true,
+    rules: {
+      required: t('message.field-text-is-required', {
+        fieldText: t('label.email'),
+      }),
+      pattern: {
+        value: EMAIL_REG_EX,
+        message: t('message.field-text-is-invalid', {
+          fieldText: t('label.email'),
+        }),
+      },
+    },
+    props: {
+      'data-testid': 'email',
+      size: 'md',
+    },
+  };
+
+  const passwordField: FieldProp = {
+    name: 'password',
+    type: FieldTypes.PASSWORD,
+    label: t('label.password'),
+    id: 'root/password',
+    placeholder: t('label.password'),
+    required: true,
+    rules: {
+      required: t('message.field-text-is-required', {
+        fieldText: t('label.password'),
+      }),
+    },
+    props: {
+      'data-testid': 'password',
+      size: 'md',
+    },
+  };
+
   return (
     <CarouselLayout pageTitle={t('label.sign-in')}>
-      <div className="login-form-container" data-testid="login-form-container">
-        <div
-          className={classNames('login-box', {
-            'sso-container': !isAuthProviderBasic,
-          })}>
-          <BrandImage isMonoGram height={50} width={50} />
-          <Typography.Title className="header-text display-sm" level={3}>
-            {t('label.welcome-to')} {brandName}
-          </Typography.Title>
-          {isAuthProviderBasic ? (
-            <div className="login-form ">
-              <Form
-                className="w-full"
-                form={form}
-                layout="vertical"
-                validateMessages={VALIDATION_MESSAGES}
-                onFinish={handleSubmit}>
-                <Form.Item
-                  data-testid="email"
-                  label={t('label.email')}
-                  name="email"
-                  rules={[
-                    { required: true },
-                    {
-                      pattern: EMAIL_REG_EX,
-                      type: 'email',
-                      message: t('message.field-text-is-invalid', {
-                        fieldText: t('label.email'),
-                      }),
-                    },
-                  ]}>
-                  <Input
-                    // eslint-disable-next-line jsx-a11y/no-autofocus -- focus first field of sign-in form
-                    autoFocus
-                    className="input-field"
-                    placeholder={t('label.email')}
-                  />
-                </Form.Item>
-                <Form.Item
-                  data-testid="password"
-                  label={
-                    <>
-                      <Typography.Text className="mr-1">
-                        {t('label.password')}
-                      </Typography.Text>
-                      <Typography.Link
-                        className="forgot-password-link"
-                        data-testid="forgot-password"
-                        onClick={onClickForgotPassword}>
-                        {t('label.forgot-password')}
-                      </Typography.Link>
-                    </>
-                  }
-                  name="password"
-                  rules={[{ required: true }]}>
-                  <Input.Password
-                    autoComplete="off"
-                    className="input-field"
-                    placeholder={t('label.password')}
-                  />
-                </Form.Item>
+      <div
+        className="tw:m-auto tw:flex tw:w-full tw:max-w-[520px] tw:flex-col tw:justify-center tw:px-6 tw:py-10"
+        data-testid="login-form-container">
+        <Card
+          className="tw:w-full tw:border-none tw:rounded-[20px]"
+          variant="elevated">
+          <Card.Content className="tw:flex tw:flex-col tw:items-center tw:gap-6 tw:p-10">
+            <BrandImage isMonoGram height={50} width={50} />
+            <Typography
+              as="h1"
+              className="tw:whitespace-nowrap tw:text-center"
+              size="display-sm"
+              weight="semibold">
+              {t('label.welcome-to')} {brandName}
+            </Typography>
 
-                <Button
-                  block
-                  className="login-btn"
-                  data-testid="login"
-                  disabled={loading}
-                  htmlType="submit"
-                  loading={loading}
-                  size="large"
-                  type="primary">
-                  {t('label.sign-in')}
-                </Button>
-              </Form>
-              {!isAuthProviderLDAP && (
-                <>
-                  {authConfig?.enableSelfSignup && (
-                    <div className="mt-4 d-flex flex-center signup-text">
-                      <Typography.Text>
-                        {t('message.new-to-the-platform')}
-                      </Typography.Text>
-                      <Button
-                        className="link-btn"
-                        data-testid="signup"
-                        type="link"
-                        onClick={onClickSignUp}>
-                        {t('label.create-entity', {
-                          entity: t('label.account'),
-                        })}
-                      </Button>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          ) : (
-            <div className=" login-form">
-              <Typography.Text className="text-xl text-grey-muted m-t-lg">
-                {t('message.om-description')}
-              </Typography.Text>
-              <div className="sso-signup">{signInButton}</div>
-            </div>
-          )}
-        </div>
+            {isAuthProviderBasic ? (
+              <div className="tw:flex tw:w-full tw:flex-col tw:gap-6">
+                <HookForm
+                  className="tw:flex tw:flex-col tw:gap-5"
+                  form={form}
+                  onSubmit={form.handleSubmit(handleSubmit)}>
+                  <FormFields fields={[emailField, passwordField]} />
+
+                  <Button
+                    color="link-color"
+                    data-testid="forgot-password"
+                    size="sm"
+                    onPress={onClickForgotPassword}>
+                    {t('label.forgot-password')}
+                  </Button>
+
+                  <Button
+                    showTextWhileLoading
+                    className="tw:w-full tw:justify-center"
+                    color="primary"
+                    data-testid="login"
+                    isDisabled={loading}
+                    isLoading={loading}
+                    size="lg"
+                    type="submit">
+                    {t('label.sign-in')}
+                  </Button>
+                </HookForm>
+
+                {!isAuthProviderLDAP && authConfig?.enableSelfSignup && (
+                  <div className="tw:flex tw:items-center tw:justify-center tw:gap-1">
+                    <Typography color="secondary" size="text-sm">
+                      {t('message.new-to-the-platform')}
+                    </Typography>
+                    <Button
+                      color="link-color"
+                      data-testid="signup"
+                      size="sm"
+                      onPress={onClickSignUp}>
+                      {t('label.create-entity', {
+                        entity: t('label.account'),
+                      })}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="tw:flex tw:w-full tw:flex-col tw:items-center tw:gap-6">
+                <Typography
+                  as="p"
+                  className="tw:text-center"
+                  color="secondary"
+                  size="text-md">
+                  {t('message.om-description')}
+                </Typography>
+                <div className="tw:w-full">{signInButton}</div>
+              </div>
+            )}
+          </Card.Content>
+        </Card>
       </div>
     </CarouselLayout>
   );

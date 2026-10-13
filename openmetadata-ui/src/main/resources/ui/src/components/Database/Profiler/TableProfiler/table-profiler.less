@@ -44,18 +44,6 @@
     margin-left: @margin-mlg;
     background-color: var(--tw-color-bg-primary);
   }
-
-  .quality-tab-container {
-    .ant-tabs.tabs-new .ant-tabs-tabpane {
-      background-color: var(--tw-color-bg-primary);
-    }
-  }
-}
-
-.include-columns-add-button.ant-btn-icon-only.ant-btn-sm {
-  width: 18px;
-  height: 18px;
-  font-size: var(--om-font-size-8);
 }
 
 .profiler-settings-drawer {
@@ -76,9 +64,8 @@
   .profiler-settings-drawer-content {
     flex: 1;
     overflow-y: auto;
-    padding-top: @padding-lg;
-    padding-right: @padding-sm;
-    padding-bottom: @padding-lg;
+    // The slideout content owns the gutters; nested padding narrows the form.
+    padding: 0;
 
     .delete-btn {
       &.ant-btn-icon-only {
@@ -89,7 +76,7 @@
   }
 
   .profiler-settings-form {
-    padding-right: @padding-sm;
+    padding-right: 0;
   }
 }
 

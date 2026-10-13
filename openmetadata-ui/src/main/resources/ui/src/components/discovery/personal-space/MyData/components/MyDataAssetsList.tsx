@@ -18,8 +18,8 @@ import { useNavigate } from 'react-router-dom';
 import EntitySummaryPanel from '../../../../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { EntityDetailsObjectInterface } from '../../../../../components/Explore/ExplorePage.interface';
 import AssetsTabs from '../../../../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
-import { AssetsOfEntity } from '../../../../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { ROUTES } from '../../../../../constants/constants';
+import { AssetsOfEntity } from '../../../../../enums/Assets.enum';
 import { User } from '../../../../../generated/entity/teams/user';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../../utils/PermissionsUtils';
 import { getTermQuery } from '../../../../../utils/SearchPureUtils';
@@ -54,11 +54,11 @@ const MyDataAssetsList: React.FC<MyDataAssetsListProps> = ({ userData }) => {
 
   return (
     <Box
-      className="ai-mydata-assets tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:overflow-hidden tw:rounded-[10px] tw:border tw:border-secondary"
+      className="ai-mydata-assets tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:overflow-hidden tw:rounded-[10px] tw:border tw:border-secondary tw:bg-surface"
       data-testid="my-data-assets"
       direction="col">
       <Box className="tw:grid tw:min-h-0 tw:flex-1 tw:grid-cols-[1fr_1fr]">
-        <div className="tw:h-full tw:overflow-y-auto tw:border-r tw:border-utility-gray-blue-100 tw:[&_.assets-tab-container]:p-4">
+        <div className="tw:h-full tw:overflow-y-auto tw:border-r tw:border-utility-gray-blue-100 tw:dark:border-secondary tw:[&_.assets-tab-container]:p-4">
           <AssetsTabs
             isSummaryPanelOpen={Boolean(previewAsset)}
             noDataPlaceholder={{

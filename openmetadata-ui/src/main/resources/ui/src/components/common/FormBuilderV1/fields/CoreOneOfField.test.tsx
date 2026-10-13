@@ -196,22 +196,6 @@ describe('CoreOneOfField', () => {
     );
   });
 
-  it('keeps sample data storage oneOf choices as a compact select', () => {
-    render(
-      <CoreOneOfField
-        {...getBaseProps(
-          {},
-          DEFAULT_SCHEMA,
-          {},
-          'root/sampleDataStorageConfig/config/storageConfig'
-        )}
-      />
-    );
-
-    expect(screen.getByTestId('selected-key')).toHaveTextContent('0');
-    expect(screen.queryByRole('tab')).not.toBeInTheDocument();
-  });
-
   it('keeps selectors with four or more branches as a compact select', () => {
     render(
       <CoreOneOfField
@@ -258,7 +242,7 @@ describe('CoreOneOfField', () => {
             title: 'Storage Config',
           },
           {},
-          'root/sampleDataStorageConfig/config/storageConfig'
+          'root/configSource'
         )}
       />
     );
@@ -270,27 +254,6 @@ describe('CoreOneOfField', () => {
       screen.getByRole('button', { name: 'GCS Config' })
     ).toBeInTheDocument();
     expect(screen.queryByText('S 3 Config')).not.toBeInTheDocument();
-  });
-
-  it('shows the storage config icon for AWS S3 config choices', () => {
-    render(
-      <CoreOneOfField
-        {...getBaseProps(
-          {},
-          {
-            oneOf: [
-              { title: 'AWS S3 Storage Config', type: 'object' },
-              { title: 'GCS Config', type: 'object' },
-            ],
-            title: 'Storage Config',
-          },
-          {},
-          'root/sampleDataStorageConfig/config/storageConfig'
-        )}
-      />
-    );
-
-    expect(screen.getByTestId('storage-config-title-icon')).toBeInTheDocument();
   });
 
   it('ignores no-op and null compact selector changes', () => {

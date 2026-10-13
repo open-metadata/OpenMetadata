@@ -13,7 +13,7 @@
 import { render } from '@testing-library/react';
 import AsyncSelectList from '../../../components/common/AsyncSelectList/AsyncSelectList';
 import { SelectOption } from '../../../components/common/AsyncSelectList/AsyncSelectList.interface';
-import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
+import { TagLabel } from '../../../generated/type/tagLabel';
 import TagSuggestion from './TagSuggestion';
 
 jest.mock('../../../components/common/AsyncSelectList/AsyncSelectList', () => {
@@ -25,7 +25,6 @@ describe('TagSuggestion', () => {
   const value: TagLabel[] = [];
   const placeholder = 'Select tags';
   const initialOptions: SelectOption[] = [];
-  const tagType = TagSource.Classification;
   const selectProps = {};
 
   beforeEach(() => {
@@ -34,7 +33,6 @@ describe('TagSuggestion', () => {
         initialOptions={initialOptions}
         placeholder={placeholder}
         selectProps={selectProps}
-        tagType={tagType}
         value={value}
         onChange={onChange}
       />
@@ -61,7 +59,6 @@ describe('TagSuggestion', () => {
         selectProps={{
           open: true,
         }}
-        tagType={tagType}
         value={value}
         onChange={onChange}
       />

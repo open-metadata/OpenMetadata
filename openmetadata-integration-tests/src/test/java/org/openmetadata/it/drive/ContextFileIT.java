@@ -26,6 +26,8 @@ import org.openmetadata.schema.api.data.CreateFolder;
 import org.openmetadata.schema.api.data.MoveContextFileRequest;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
+import org.openmetadata.schema.entity.context.MemoryShareConfig;
+import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ContextFileSourceType;
 import org.openmetadata.schema.entity.data.ContextFileType;
@@ -508,6 +510,25 @@ class ContextFileIT {
     assertEquals(ProcessingStatus.Processed, updated.getProcessingStatus());
   }
 
+  @Test
+  void testSharingChangeIsStored(TestNamespace ns) throws Exception {
+    RestClient rest = RestClient.admin();
+    ContextFile file =
+        createFile(
+            rest,
+            new CreateContextFile()
+                .withName(ns.prefix("sharing-test"))
+                .withProcessingStatus(ProcessingStatus.Uploaded));
+
+    String original = JsonUtils.pojoToJson(file);
+    file.setShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE));
+    rest.patch(FILE_PATH, file.getId(), original, file, ContextFile.class);
+
+    ContextFile stored = getFile(rest, file.getId(), "");
+    assertNotNull(stored.getShareConfig(), "A sharing change must survive a re-read");
+    assertEquals(MemoryVisibility.PRIVATE, stored.getShareConfig().getVisibility());
+  }
+
   // --- Permissions ---
 
   @Test
@@ -670,6 +691,41 @@ class ContextFileIT {
     HttpResponseException ex =
         assertThrows(HttpResponseException.class, () -> moveFile(rest, file.getId(), bogus));
     assertEquals(404, ex.getStatusCode());
+  }
+
+  @Test
+  void testCreateSameNameAsArchivedFileReturnsActionableError(TestNamespace ns)
+      throws HttpResponseException {
+    // A deleted file is archived (soft-deleted) and keeps its name reserved so it stays
+    // restorable. Re-adding a same-name file to the same folder must fail with an actionable
+    // message pointing to the Archive, not the generic DB "Entity already exists" 409. Enforced
+    // at the create chokepoint, so it holds for the direct create path too (not just upload/move).
+    RestClient rest = RestClient.admin();
+    Folder folder = createFolder(rest, new CreateFolder().withName(ns.prefix("archive-folder")));
+    String sharedName = ns.prefix("report");
+
+    ContextFile file =
+        createFile(
+            rest,
+            new CreateContextFile()
+                .withName(sharedName)
+                .withFileType(ContextFileType.PDF)
+                .withFolder(folder.getFullyQualifiedName())
+                .withProcessingStatus(ProcessingStatus.Uploaded));
+    rest.delete(FILE_PATH, file.getId()); // soft-delete -> archived, name still reserved
+
+    CreateContextFile duplicate =
+        new CreateContextFile()
+            .withName(sharedName)
+            .withFileType(ContextFileType.PDF)
+            .withFolder(folder.getFullyQualifiedName())
+            .withProcessingStatus(ProcessingStatus.Uploaded);
+    HttpResponseException ex =
+        assertThrows(HttpResponseException.class, () -> createFile(rest, duplicate));
+    assertEquals(400, ex.getStatusCode());
+    assertTrue(
+        ex.getMessage().contains("in the Archive"),
+        "Expected an actionable Archive message, got: " + ex.getMessage());
   }
 
   @Test

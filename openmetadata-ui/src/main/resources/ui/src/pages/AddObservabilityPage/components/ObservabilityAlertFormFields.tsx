@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Divider, Form, Input, Row } from 'antd';
+import { Box, Divider, Grid } from '@openmetadata/ui-core-components';
+import { Form, Input } from 'antd';
 import { isEmpty } from 'lodash';
 import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -25,34 +26,28 @@ import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEd
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { ProviderType } from '../../../generated/entity/events/notificationTemplate';
 import { AlertType } from '../../../generated/events/eventSubscription';
-import {
-  ModifiedCreateEventSubscription,
-  ObservabilityAlertFormFieldsProps,
-} from '../AddObservabilityPage.interface';
+import { ModifiedCreateEventSubscription } from '../AddObservabilityPage.interface';
+import { ObservabilityAlertFormFieldsProps } from '../hooks/useObservabilityAlertForm';
 
 function ObservabilityAlertFormFields({
   alert,
-  containerEntities,
   extraFormWidgets,
   filterResources,
   form,
   isLoading,
   shouldShowActionsSection,
   shouldShowFiltersSection,
-  supportedFilters,
-  supportedTriggers,
   templateResourcePermission,
   templates,
 }: Readonly<ObservabilityAlertFormFieldsProps>) {
   const { t } = useTranslation();
-  const resources = Form.useWatch('resources', form);
   const destinations = Form.useWatch('destinations', form);
   const timeout = Form.useWatch('timeout', form);
   const readTimeout = Form.useWatch('readTimeout', form);
 
   return (
     <>
-      <Col span={24}>
+      <Grid.Item className="layout-column" span={24}>
         <Form.Item
           label={t('label.name')}
           labelCol={{ span: 24 }}
@@ -60,8 +55,8 @@ function ObservabilityAlertFormFields({
           rules={NAME_FIELD_RULES}>
           <Input placeholder={t('label.name')} />
         </Form.Item>
-      </Col>
-      <Col span={24}>
+      </Grid.Item>
+      <Grid.Item className="layout-column" span={24}>
         <Form.Item
           label={t('label.description')}
           labelCol={{ span: 24 }}
@@ -72,41 +67,56 @@ function ObservabilityAlertFormFields({
             initialValue={alert?.description}
           />
         </Form.Item>
-      </Col>
-      <Col span={24}>
-        <Row justify="center">
-          <Col span={24}>
+      </Grid.Item>
+      <Grid.Item className="layout-column" span={24}>
+        <Box className="layout-row" justify="center" wrap="wrap">
+          <Box
+            className="layout-column tw:block"
+            style={{ maxWidth: '100%', flex: '0 0 100%' }}>
             <AlertFormSourceItem filterResources={filterResources} />
-          </Col>
+          </Box>
           {shouldShowFiltersSection && (
             <>
-              <Col>
-                <Divider dashed type="vertical" />
-              </Col>
-              <Col span={24}>
-                <ObservabilityFormFiltersItem
-                  containerEntities={containerEntities}
-                  supportedFilters={supportedFilters}
+              <Box className="layout-column tw:block">
+                <Divider
+                  dashed
+                  className="tw:mx-2 tw:h-6 tw:border-r"
+                  orientation="vertical"
                 />
-              </Col>
+              </Box>
+              <Box
+                className="layout-column tw:block"
+                style={{ maxWidth: '100%', flex: '0 0 100%' }}>
+                <ObservabilityFormFiltersItem />
+              </Box>
             </>
           )}
           {shouldShowActionsSection && (
             <>
-              <Col>
-                <Divider dashed type="vertical" />
-              </Col>
-              <Col span={24}>
-                <ObservabilityFormTriggerItem
-                  supportedTriggers={supportedTriggers}
+              <Box className="layout-column tw:block">
+                <Divider
+                  dashed
+                  className="tw:mx-2 tw:h-6 tw:border-r"
+                  orientation="vertical"
                 />
-              </Col>
+              </Box>
+              <Box
+                className="layout-column tw:block"
+                style={{ maxWidth: '100%', flex: '0 0 100%' }}>
+                <ObservabilityFormTriggerItem />
+              </Box>
             </>
           )}
-          <Col>
-            <Divider dashed type="vertical" />
-          </Col>
-          <Col span={24}>
+          <Box className="layout-column tw:block">
+            <Divider
+              dashed
+              className="tw:mx-2 tw:h-6 tw:border-r"
+              orientation="vertical"
+            />
+          </Box>
+          <Box
+            className="layout-column tw:block"
+            style={{ maxWidth: '100%', flex: '0 0 100%' }}>
             <DestinationFormItemFormBridge
               renderValidationField={(validate) => (
                 <Form.Item
@@ -116,7 +126,7 @@ function ObservabilityAlertFormFields({
                   <DestinationFormFieldRegistrar />
                 </Form.Item>
               )}
-              values={{ destinations, readTimeout, resources, timeout }}
+              values={{ destinations, readTimeout, timeout }}
               onChange={(values) => {
                 // Each shared field must be replaced at its root. Ant's bulk
                 // setter deep-merges destination array entries and would restore
@@ -126,16 +136,22 @@ function ObservabilityAlertFormFields({
                 );
               }}
             />
-          </Col>
+          </Box>
 
           {!isEmpty(extraFormWidgets) && (
             <>
               {Object.entries(extraFormWidgets).map(([name, Widget]) => (
                 <Fragment key={name}>
-                  <Col>
-                    <Divider dashed type="vertical" />
-                  </Col>
-                  <Col span={24}>
+                  <Box className="layout-column tw:block">
+                    <Divider
+                      dashed
+                      className="tw:mx-2 tw:h-6 tw:border-r"
+                      orientation="vertical"
+                    />
+                  </Box>
+                  <Box
+                    className="layout-column tw:block"
+                    style={{ maxWidth: '100%', flex: '0 0 100%' }}>
                     <Widget
                       alertDetails={alert}
                       formRef={form}
@@ -143,13 +159,13 @@ function ObservabilityAlertFormFields({
                       templateResourcePermission={templateResourcePermission}
                       templates={templates}
                     />
-                  </Col>
+                  </Box>
                 </Fragment>
               ))}
             </>
           )}
-        </Row>
-      </Col>
+        </Box>
+      </Grid.Item>
       <Form.Item<ModifiedCreateEventSubscription>
         hidden
         initialValue={AlertType.Observability}

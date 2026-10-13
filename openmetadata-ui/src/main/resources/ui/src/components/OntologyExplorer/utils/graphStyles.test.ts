@@ -34,7 +34,10 @@ jest.mock('@antv/g6', () => ({
 
 import { PaletteKey } from '../../../generated/entity/data/relationshipType';
 import { createRelationshipTypeMock } from '../../../mocks/Ontology.mock';
-import { RELATION_META } from '../OntologyExplorer.constants';
+import {
+  COLOR_META_BY_HEX,
+  RELATION_META,
+} from '../OntologyExplorer.constants';
 import {
   buildComboStyle,
   buildDataModeAssetNodeStyle,
@@ -62,16 +65,57 @@ const mockComputedStyle = (
 
 const resolveSemanticColor = (color: string, fallback: string): string =>
   ({
-    'var(--color-bg-primary)': 'rgb(12, 14, 18)',
-    'var(--color-bg-secondary)': 'rgb(24, 27, 33)',
-    'var(--color-border-primary)': 'rgb(55, 58, 65)',
-    'var(--color-border-secondary)': 'rgb(34, 38, 47)',
-    'var(--color-text-primary)': 'rgb(247, 247, 247)',
-    'var(--color-text-tertiary)': 'rgb(148, 153, 162)',
-    'var(--color-text-white)': 'rgb(255, 255, 255)',
+    'var(--tw-color-bg-primary)': 'rgb(12, 14, 18)',
+    'var(--tw-color-bg-secondary)': 'rgb(24, 27, 33)',
+    'var(--tw-color-border-primary)': 'rgb(55, 58, 65)',
+    'var(--tw-color-border-secondary)': 'rgb(34, 38, 47)',
+    'var(--tw-color-text-primary)': 'rgb(247, 247, 247)',
+    'var(--tw-color-text-tertiary)': 'rgb(148, 153, 162)',
+    'var(--tw-color-text-white)': 'rgb(255, 255, 255)',
   }[color] ?? fallback);
 
 describe('theme-aware graph styles', () => {
+  it('finds palette backgrounds for both saved hex colors and built-in theme tokens', () => {
+    expect(COLOR_META_BY_HEX['#1570ef'].color).toBe(
+      RELATION_META.relatedTo.color
+    );
+
+    for (const { color, background } of Object.values(RELATION_META)) {
+      expect(COLOR_META_BY_HEX[color]).toMatchObject({ color, background });
+    }
+  });
+
+  it('keeps a built-in studio badge border in the relation palette', () => {
+    const colors: Record<string, string> = {
+      'var(--tw-color-utility-error-200)': 'rgb(145, 32, 24)',
+      'var(--tw-color-utility-error-700)': 'rgb(249, 112, 102)',
+    };
+    const style = getEdgeRelationLabelStyle(
+      'SYNONYM',
+      'synonym',
+      RELATION_META.synonym.color,
+      true,
+      (color, fallback) =>
+        colors[color] ?? resolveSemanticColor(color, fallback)
+    );
+
+    expect(style.labelBackgroundStroke).toBe('rgb(145, 32, 24)');
+    expect(style.labelFill).toBe('rgb(249, 112, 102)');
+  });
+
+  it('uses the active canvas surface for studio relation badges', () => {
+    const style = getEdgeRelationLabelStyle(
+      'RELATED TO',
+      undefined,
+      undefined,
+      true,
+      resolveSemanticColor
+    );
+
+    expect(style.labelBackgroundFill).toBe('rgb(24, 27, 33)');
+    expect(style.labelBackgroundStroke).toBe('rgb(55, 58, 65)');
+  });
+
   it('resolves semantic surface colors before returning a rectangular canvas node', () => {
     const style = buildDefaultRectNodeStyle(
       resolveSemanticColor,
@@ -147,7 +191,7 @@ describe('theme-aware graph styles', () => {
       .mockReturnValue(null);
     const style = buildComboStyle(
       'Marketing',
-      'var(--color-border-primary)',
+      'var(--tw-color-border-primary)',
       0,
       resolveSemanticColor
     );
@@ -257,7 +301,9 @@ describe('getCanvasColor', () => {
       .spyOn(globalThis, 'document', 'get')
       .mockReturnValue(undefined as unknown as Document);
 
-    expect(getCanvasColor('var(--color-missing)', '#abcdef')).toBe('#abcdef');
+    expect(getCanvasColor('var(--tw-color-missing)', '#abcdef')).toBe(
+      '#abcdef'
+    );
   });
 
   it('returns the input unchanged when it is not a var() token', () => {
@@ -270,12 +316,12 @@ describe('getCanvasColor', () => {
       .spyOn(window, 'getComputedStyle')
       .mockReturnValue(mockComputedStyle('rgb(1, 2, 3)'));
 
-    const first = getCanvasColor('var(--color-cache-probe)', '#zzzzzz');
+    const first = getCanvasColor('var(--tw-color-cache-probe)', '#zzzzzz');
 
     expect(first).toBe('rgb(1, 2, 3)');
 
     spy.mockReturnValue(mockComputedStyle('rgb(9, 9, 9)'));
-    const second = getCanvasColor('var(--color-cache-probe)', '#zzzzzz');
+    const second = getCanvasColor('var(--tw-color-cache-probe)', '#zzzzzz');
 
     expect(second).toBe('rgb(1, 2, 3)');
   });
@@ -285,7 +331,7 @@ describe('getCanvasColor', () => {
       .spyOn(window, 'getComputedStyle')
       .mockReturnValue(mockComputedStyle('rgba(0, 0, 0, 0)', '12px'));
 
-    expect(getCanvasColor('var(--color-unresolvable)', '#fedcba')).toBe(
+    expect(getCanvasColor('var(--tw-color-unresolvable)', '#fedcba')).toBe(
       '#fedcba'
     );
   });

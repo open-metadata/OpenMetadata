@@ -24,8 +24,8 @@ const mockFetchRdfConfig = fetchRdfConfig as jest.MockedFunction<
   typeof fetchRdfConfig
 >;
 
-const status = (askCollateEnabled: boolean, enabled = true) => ({
-  askCollateEnabled,
+const status = (aiEnabled: boolean, enabled = true) => ({
+  aiEnabled,
   baseUri: 'https://open-metadata.org/',
   enabled,
   inference: {

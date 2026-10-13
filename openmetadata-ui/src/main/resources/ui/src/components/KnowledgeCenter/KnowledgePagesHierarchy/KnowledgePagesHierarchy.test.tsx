@@ -420,6 +420,90 @@ describe('KnowledgePagesHierarchy', () => {
     expect(screen.getByTestId('delete-widget')).toBeInTheDocument();
   });
 
+  it('should not render the delete button when Delete permission is denied', async () => {
+    await act(async () => {
+      render(
+        <KnowledgePagesHierarchy permissions={DEFAULT_ENTITY_PERMISSION} />,
+        { wrapper: TestWrapper }
+      );
+    });
+
+    expect(
+      screen.queryByTestId('How to Discover Assets of Interest-delete-page-btn')
+    ).not.toBeInTheDocument();
+  });
+
+  describe('move to top level (root drop)', () => {
+    const dropOnContainer = (sourceKey: string) => {
+      const container = screen.getByTestId(
+        'knowledge-pages-hierarchy-container'
+      );
+
+      fireEvent.drop(container, {
+        dataTransfer: { getData: () => sourceKey },
+      });
+    };
+
+    // The child article whose parent is 'Article_XJIGIKX2' — a node with a
+    // parent is the only case that can be moved up to the root.
+    const childKey = 'Article_2p7Z8MAN';
+
+    it('should open the move confirmation when a nested page is dropped on the root container', async () => {
+      await act(async () => {
+        render(
+          <KnowledgePagesHierarchy
+            permissions={{ ...DEFAULT_ENTITY_PERMISSION, EditAll: true }}
+          />,
+          { wrapper: TestWrapper }
+        );
+      });
+
+      await act(async () => {
+        dropOnContainer(childKey);
+      });
+
+      expect(
+        await screen.findByText('label.move-the-entity')
+      ).toBeInTheDocument();
+    });
+
+    it('should ignore a root drop when EditAll permission is denied', async () => {
+      await act(async () => {
+        render(
+          <KnowledgePagesHierarchy permissions={DEFAULT_ENTITY_PERMISSION} />,
+          { wrapper: TestWrapper }
+        );
+      });
+
+      await act(async () => {
+        dropOnContainer(childKey);
+      });
+
+      expect(
+        screen.queryByText('label.move-the-entity')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should ignore a root drop of a page that is already at the root', async () => {
+      await act(async () => {
+        render(
+          <KnowledgePagesHierarchy
+            permissions={{ ...DEFAULT_ENTITY_PERMISSION, EditAll: true }}
+          />,
+          { wrapper: TestWrapper }
+        );
+      });
+
+      await act(async () => {
+        dropOnContainer('Article_XJIGIKX2');
+      });
+
+      expect(
+        screen.queryByText('label.move-the-entity')
+      ).not.toBeInTheDocument();
+    });
+  });
+
   describe('loadNodeChildren', () => {
     const mockGetPageHierarchyFromES = jest.requireMock(
       'rest/knowledgeCenterAPI'

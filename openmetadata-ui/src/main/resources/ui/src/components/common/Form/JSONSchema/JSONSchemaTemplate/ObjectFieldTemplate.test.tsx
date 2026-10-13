@@ -16,7 +16,7 @@ import {
   ObjectFieldTemplateProps,
   RJSFSchema,
 } from '@rjsf/utils';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import serviceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
 import { ObjectFieldTemplate } from './ObjectFieldTemplate';
@@ -300,7 +300,7 @@ describe('ObjectFieldTemplate', () => {
       render(<ObjectFieldTemplate {...propsWithFocus} />);
 
       const addButton = screen.getByTestId('add-item-Test Title');
-      fireEvent.focus(addButton);
+      act(() => addButton.focus());
 
       expect(mockHandleFocus).toHaveBeenCalledWith('test-id');
     });

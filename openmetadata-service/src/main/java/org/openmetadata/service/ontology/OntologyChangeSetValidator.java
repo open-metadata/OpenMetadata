@@ -48,15 +48,50 @@ public final class OntologyChangeSetValidator {
       final Set<UUID> plannedTermIds) {
     final Set<UUID> operationIds = new HashSet<>();
     final Set<UUID> availablePlannedTerms = new HashSet<>();
+    final Set<UUID> availablePlannedGlossaries = new HashSet<>();
+    final Set<UUID> plannedGlossaryIds = plannedGlossaryIds(operations);
     for (int index = 0; index < operations.size(); index++) {
       final OntologyChangeOperation operation = operations.get(index);
       validateOperation(operation, operationIds, plannedTermIds, availablePlannedTerms);
+      validatePlannedGlossaryReference(operation, plannedGlossaryIds, availablePlannedGlossaries);
       operation.setState(
           index < cursor
               ? OntologyChangeOperationState.ACTIVE
               : OntologyChangeOperationState.UNDONE);
       makeCreatedTermAvailable(operation, availablePlannedTerms);
+      if (operation.getOperationType() == OntologyChangeOperationType.CREATE_GLOSSARY
+          && !availablePlannedGlossaries.add(operation.getGlossary().getId())) {
+        throw invalid(operation, "glossary id is created more than once");
+      }
     }
+  }
+
+  private static void validatePlannedGlossaryReference(
+      final OntologyChangeOperation operation,
+      final Set<UUID> plannedGlossaries,
+      final Set<UUID> availableGlossaries) {
+    if (operation.getOperationType() == OntologyChangeOperationType.CREATE_TERM
+        && operation.getTerm().getGlossary() != null) {
+      final UUID glossaryId = operation.getTerm().getGlossary().getId();
+      if (glossaryId == null
+          || (plannedGlossaries.contains(glossaryId)
+              && !availableGlossaries.contains(glossaryId))) {
+        throw invalid(operation, "term glossary must exist or be created earlier");
+      }
+    }
+  }
+
+  private static Set<UUID> plannedGlossaryIds(final List<OntologyChangeOperation> operations) {
+    final Set<UUID> ids = new HashSet<>();
+    for (final OntologyChangeOperation operation : operations) {
+      if (operation != null
+          && operation.getOperationType() == OntologyChangeOperationType.CREATE_GLOSSARY
+          && operation.getGlossary() != null
+          && operation.getGlossary().getId() != null) {
+        ids.add(operation.getGlossary().getId());
+      }
+    }
+    return ids;
   }
 
   private static void validateOperation(
@@ -117,6 +152,7 @@ public final class OntologyChangeSetValidator {
 
   private static int payloadCount(final OntologyChangeOperation operation) {
     int count = operation.getTerm() == null ? 0 : 1;
+    count += operation.getGlossary() == null ? 0 : 1;
     count += operation.getRelationship() == null ? 0 : 1;
     count += operation.getAttribute() == null ? 0 : 1;
     count += operation.getMapping() == null ? 0 : 1;
@@ -129,6 +165,7 @@ public final class OntologyChangeSetValidator {
     final boolean isPresent =
         switch (payloadKind) {
           case NONE -> false;
+          case GLOSSARY -> operation.getGlossary() != null;
           case TERM -> operation.getTerm() != null;
           case RELATIONSHIP -> operation.getRelationship() != null;
           case ATTRIBUTE -> operation.getAttribute() != null;
@@ -142,6 +179,7 @@ public final class OntologyChangeSetValidator {
       final OntologyChangeOperation operation, final Set<UUID> plannedTermIds) {
     final boolean isCreate =
         operation.getOperationType() == OntologyChangeOperationType.CREATE_TERM
+            || operation.getOperationType() == OntologyChangeOperationType.CREATE_GLOSSARY
             || (operation.getOperationType() == OntologyChangeOperationType.UPSERT_AXIOM
                 && operation.getTargetId() == null);
     final boolean targetsPlannedTerm =
@@ -208,6 +246,7 @@ public final class OntologyChangeSetValidator {
 
   private static void validateTargetConsistency(final OntologyChangeOperation operation) {
     switch (operation.getOperationType()) {
+      case CREATE_GLOSSARY -> validateCreatedGlossary(operation);
       case CREATE_TERM -> requireEntityId(operation, operation.getTerm().getId(), "term");
       case UPDATE_TERM -> requireTarget(operation, operation.getTerm().getId(), "updated term");
       case ADD_RELATIONSHIP, UPDATE_RELATIONSHIP, DELETE_RELATIONSHIP -> requireTarget(
@@ -219,6 +258,17 @@ public final class OntologyChangeSetValidator {
           UPSERT_MAPPING,
           DELETE_MAPPING,
           DELETE_AXIOM -> {}
+    }
+  }
+
+  private static void validateCreatedGlossary(final OntologyChangeOperation operation) {
+    requireEntityId(operation, operation.getGlossary().getId(), "glossary");
+    if (operation.getGlossary().getName() == null
+        || operation.getGlossary().getName().isBlank()
+        || operation.getGlossary().getFullyQualifiedName() == null
+        || operation.getGlossary().getDescription() == null
+        || operation.getGlossary().getDescription().isBlank()) {
+      throw invalid(operation, "glossary name, fullyQualifiedName, and description are required");
     }
   }
 
@@ -247,6 +297,7 @@ public final class OntologyChangeSetValidator {
   private static PayloadKind payloadKind(final OntologyChangeOperationType operationType) {
     final PayloadKind payloadKind =
         switch (operationType) {
+          case CREATE_GLOSSARY -> PayloadKind.GLOSSARY;
           case CREATE_TERM, UPDATE_TERM -> PayloadKind.TERM;
           case DELETE_TERM, DELETE_AXIOM -> PayloadKind.NONE;
           case ADD_RELATIONSHIP, UPDATE_RELATIONSHIP, DELETE_RELATIONSHIP -> PayloadKind
@@ -266,6 +317,7 @@ public final class OntologyChangeSetValidator {
 
   private enum PayloadKind {
     NONE,
+    GLOSSARY,
     TERM,
     RELATIONSHIP,
     ATTRIBUTE,

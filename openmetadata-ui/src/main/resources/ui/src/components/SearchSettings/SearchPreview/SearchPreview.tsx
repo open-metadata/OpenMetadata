@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Toggle } from '@openmetadata/ui-core-components';
-import { Button, Col, Input, Row, Typography } from 'antd';
+import {
+  Box,
+  Button,
+  Toggle,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Input } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -207,19 +212,17 @@ const SearchPreview = ({
 
   return (
     <div className="search-preview">
-      <Row className="d-flex justify-between items-center m-b-sm search-preview-header">
-        <Col>
-          <Typography.Text
-            className="header-title"
-            data-testid="search-preview">
+      <Box
+        className="layout-row d-flex justify-between items-center m-b-sm search-preview-header"
+        wrap="wrap">
+        <Box className="layout-column tw:block">
+          <Typography className="header-title" data-testid="search-preview">
             {t('label.preview')}
-          </Typography.Text>
-        </Col>
-        <Col className="search-preview-actions">
+          </Typography>
+        </Box>
+        <Box className="layout-column tw:block search-preview-actions">
           <span className="ranking-details-control">
-            <Typography.Text>
-              {t('label.ranking-detail-plural')}
-            </Typography.Text>
+            <Typography>{t('label.ranking-detail-plural')}</Typography>
             <Toggle
               aria-label={t('label.ranking-detail-plural')}
               data-testid="ranking-details-switch"
@@ -228,21 +231,21 @@ const SearchPreview = ({
             />
           </span>
           <Button
-            className="restore-defaults-btn font-semibold"
+            color="secondary"
             data-testid="restore-defaults-btn"
             onClick={handleRestoreDefaults}>
             {t('label.restore-default-plural')}
           </Button>
           <Button
-            className="save-btn font-semibold"
+            color="secondary"
             data-testid="save-btn"
-            disabled={disabledSave}
-            loading={isSaving}
+            isDisabled={disabledSave}
+            isLoading={isSaving}
             onClick={handleSaveChanges}>
             {t('label.save')}
           </Button>
-        </Col>
-      </Row>
+        </Box>
+      </Box>
 
       <Input
         allowClear

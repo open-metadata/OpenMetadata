@@ -160,7 +160,8 @@ const mockAgentsTab = async (
 
 const visitAgentsTab = async (page: Page, serviceFqn: string) => {
   await page.goto(
-    `/service/databaseServices/${getEncodedFqn(serviceFqn)}/agents/metadata`
+    `/service/databaseServices/${getEncodedFqn(serviceFqn)}/agents/metadata`,
+    { waitUntil: 'domcontentloaded' }
   );
   await page.getByTestId('data-assets-header').waitFor();
 

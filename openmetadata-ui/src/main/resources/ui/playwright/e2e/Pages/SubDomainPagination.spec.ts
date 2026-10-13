@@ -22,6 +22,7 @@ import {
   selectDomain,
 } from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { waitForSearchIndexed } from '../../utils/polling';
 import { sidebarClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -33,11 +34,17 @@ const PAGE_SIZE = 9;
 
 test.describe('SubDomain Pagination', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.beforeAll('Setup domain and subdomains', async ({ browser }) => {
+    subDomains.length = 0;
     test.slow(true);
 
     const { apiContext, afterAction } = await createNewPage(browser);
 
     await domain.create(apiContext);
+    await waitForSearchIndexed(
+      apiContext,
+      domain.data.fullyQualifiedName,
+      'domain_search_index'
+    );
 
     const createPromises = [];
     for (let i = 1; i <= SUBDOMAIN_COUNT; i++) {

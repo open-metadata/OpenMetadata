@@ -15,17 +15,12 @@ import { PlusOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Button,
-  Form,
-  FormItemProps,
-  Input,
-  InputNumber,
-  Select,
-  Switch,
+  Toggle,
   Tooltip,
   Typography,
-} from 'antd';
+} from '@openmetadata/ui-core-components';
+import { Form, FormItemProps, Input, InputNumber, Select } from 'antd';
 import { FormListProps, RuleRender } from 'antd/lib/form';
-import 'codemirror/addon/fold/foldgutter.css';
 import { debounce, isUndefined } from 'lodash';
 import {
   lazy,
@@ -67,6 +62,7 @@ import {
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import '../../../Database/Profiler/TableProfiler/table-profiler.less';
 import { ParameterFormProps } from '../AddDataQualityTest.interface';
+
 const CodeEditor = withSuspenseFallback(
   lazy(() => import('../../../Database/SchemaEditor/CodeEditor'))
 );
@@ -320,10 +316,12 @@ const buildStringField = ({
           <div className="ant-form-item-label">
             {/* eslint-disable-next-line jsx-a11y/label-has-for -- editor caption, not a form control */}
             <label className="d-flex align-items-center">
-              <Typography.Text className="form-label-title">
-                {label}
-              </Typography.Text>
-              <Tooltip title={data.description}>
+              <Typography className="form-label-title">{label}</Typography>
+              <Tooltip
+                arrow
+                excludeTriggerFromTabOrder
+                title={data.description}
+                triggerClassName="tw:inline-flex">
                 <QuestionCircleOutlined className="ant-form-item-tooltip" />
               </Tooltip>
             </label>
@@ -376,12 +374,13 @@ const buildArraySetField = ({
         key={data.name}
         label={
           <>
-            <span>{data.displayName}</span>
+            <Typography>{data.displayName}</Typography>
             <Button
-              className="m-x-sm list-add-btn"
-              icon={<PlusOutlined />}
-              size="small"
-              type="primary"
+              aria-label={t('label.add')}
+              className="tw:mx-3"
+              color="primary"
+              iconLeading={<PlusOutlined />}
+              size="xs"
               onClick={() => add()}
             />
           </>
@@ -411,14 +410,11 @@ const buildArraySetField = ({
               )}
             </Form.Item>
             <Button
-              icon={
-                <Icon
-                  className="align-middle"
-                  component={IconDelete}
-                  style={{ fontSize: '16px' }}
-                />
+              aria-label={t('label.remove')}
+              color="tertiary"
+              iconLeading={
+                <Icon component={IconDelete} style={{ fontSize: '16px' }} />
               }
-              type="text"
               onClick={() => remove(name)}
             />
           </div>
@@ -493,10 +489,10 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
         />
       );
     } else if (data.dataType === TestDataType.Boolean) {
-      Field = <Switch />;
+      Field = <Toggle size="sm" />;
       internalFormItemProps = {
         ...internalFormItemProps,
-        valuePropName: 'checked',
+        valuePropName: 'isSelected',
       };
     } else if (
       data.dataType === TestDataType.Array ||
@@ -528,7 +524,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
         <Form.Item {...commonFormItemProps} className="m-b-0">
           {Field}
         </Form.Item>
-        <Typography.Text className="font-medium">{label}</Typography.Text>
+        <Typography className="font-medium">{label}</Typography>
       </div>
     ) : (
       <Form.Item

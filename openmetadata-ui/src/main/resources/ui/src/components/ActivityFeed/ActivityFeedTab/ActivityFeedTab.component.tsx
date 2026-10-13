@@ -12,13 +12,12 @@
  */
 import {
   Button,
+  ButtonGroup,
+  ButtonGroupItem,
   Divider,
   Dropdown,
-  Menu,
-  Segmented,
-  Space,
   Typography,
-} from 'antd';
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
@@ -190,65 +189,81 @@ const ActivityFeedTabLeftPanel = ({
     return null;
   }
 
-  return (
-    <Menu
-      className="custom-menu p-t-sm"
-      data-testid="global-setting-left-panel"
-      items={[
-        {
-          label: (
-            <div className="d-flex justify-between">
-              <Space align="center" size="small">
-                <AllActivityIcon
-                  style={COMMON_ICON_STYLES}
-                  {...ICON_DIMENSION}
-                />
-                <span>{t('label.all')}</span>
-              </Space>
+  const items = [
+    {
+      key: ActivityFeedTabs.ALL,
+      icon: AllActivityIcon,
+      label: t('label.all'),
+      countTestId: 'left-panel-all-count',
+      count: isUserEntity
+        ? null
+        : getCountBadge(
+            (countData?.conversationCount ?? 0) +
+              (countData?.activityCount ?? 0),
+            '',
+            activeTab === ActivityFeedTabs.ALL,
+            true
+          ),
+    },
+    {
+      key: ActivityFeedTabs.TASKS,
+      icon: TaskListIcon,
+      label: t('label.task-plural'),
+      countTestId: 'left-panel-task-count',
+      count: getCountBadge(
+        taskFilter === TaskStatusGroup.Open
+          ? countData?.openTaskCount
+          : countData?.closedTaskCount,
+        '',
+        isTaskActiveTab,
+        true
+      ),
+    },
+  ];
+  const selectedKey =
+    activeTab === ActivityFeedTabs.ALL
+      ? ActivityFeedTabs.ALL
+      : ActivityFeedTabs.TASKS;
 
-              <span data-testid="left-panel-all-count">
-                {!isUserEntity &&
-                  getCountBadge(
-                    (countData?.conversationCount ?? 0) +
-                      (countData?.activityCount ?? 0),
-                    '',
-                    activeTab === ActivityFeedTabs.ALL
-                  )}
-              </span>
-            </div>
-          ),
-          key: ActivityFeedTabs.ALL,
-        },
-        {
-          label: (
-            <div className="d-flex justify-between">
-              <Space align="center" size="small">
-                <TaskListIcon style={COMMON_ICON_STYLES} {...ICON_DIMENSION} />
-                <span>{t('label.task-plural')}</span>
-              </Space>
-              <span data-testid="left-panel-task-count">
-                {getCountBadge(
-                  taskFilter === TaskStatusGroup.Open
-                    ? countData?.openTaskCount
-                    : countData?.closedTaskCount,
-                  '',
-                  isTaskActiveTab
+  return (
+    <nav
+      aria-label={t('label.activity-feed-plural')}
+      className="left-container tw:bg-surface"
+      data-testid="global-setting-left-panel">
+      <ul className="tw:m-0 tw:list-none tw:p-0 tw:pt-2">
+        {items.map(({ key, icon: Icon, label, countTestId, count }) => {
+          const isSelected = key === selectedKey;
+
+          return (
+            <li className="tw:mt-0.5" key={key}>
+              <button
+                aria-current={isSelected ? 'page' : undefined}
+                className={classNames(
+                  'tw:relative tw:flex tw:h-10 tw:w-full tw:cursor-pointer tw:items-center tw:justify-between tw:overflow-hidden',
+                  'tw:border-0 tw:px-4 tw:text-left tw:text-sm tw:transition-colors tw:hover:text-fg-brand-primary',
+                  'tw:outline-focus-ring tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2',
+                  isSelected
+                    ? [
+                        // antd inline Menu's selected look: brand tint + 3px left bar.
+                        'tw:bg-utility-brand-100 tw:font-semibold tw:text-fg-brand-primary tw:dark:bg-brand-primary',
+                        'tw:after:absolute tw:after:inset-y-0 tw:after:left-0 tw:after:w-0.75 tw:after:bg-fg-brand-primary',
+                      ]
+                    : 'tw:bg-transparent tw:text-primary'
                 )}
-              </span>
-            </div>
-          ),
-          key: ActivityFeedTabs.TASKS,
-        },
-      ]}
-      mode="inline"
-      rootClassName="left-container"
-      selectedKeys={[
-        activeTab === ActivityFeedTabs.ALL
-          ? ActivityFeedTabs.ALL
-          : ActivityFeedTabs.TASKS,
-      ]}
-      onClick={(info) => onTabChange(info.key)}
-    />
+                data-testid={`activity-feed-left-panel-${key}`}
+                type="button"
+                onClick={() => onTabChange(key)}>
+                <span className="tw:flex tw:items-center tw:gap-2">
+                  <Icon style={COMMON_ICON_STYLES} {...ICON_DIMENSION} />
+                  <span>{label}</span>
+                </span>
+                <span data-testid={countTestId}>{count}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
   );
 };
 
@@ -273,28 +288,36 @@ const TaskFilterBar = ({
 
   return (
     <div className="d-flex gap-4 task-filter-container  justify-between items-center ">
-      <Dropdown
-        disabled={isMentionTabSelected}
-        menu={{
-          items: taskFilterOptions,
-          selectedKeys: [taskFilter],
-        }}
-        overlayClassName="task-tab-custom-dropdown"
-        trigger={['click']}>
+      <Dropdown.Root>
         <Button
-          className={classNames('feed-filter-icon', {
-            'cursor-pointer': !isMentionTabSelected,
-            disabled: isMentionTabSelected,
-          })}
-          data-testid="user-profile-page-task-filter-icon">
-          <Space align="center" size={4}>
-            <FilterIcon height={16} style={{ verticalAlign: 'middle' }} />
-            <span className="text-xs font-medium" style={{ lineHeight: 1 }}>
-              {filterLabel}
-            </span>
-          </Space>
+          color="secondary"
+          data-testid="user-profile-page-task-filter-icon"
+          iconLeading={<FilterIcon aria-hidden height={16} width={16} />}
+          isDisabled={isMentionTabSelected}
+          size="sm">
+          {filterLabel}
         </Button>
-      </Dropdown>
+        <Dropdown.Popover
+          className="task-tab-custom-dropdown"
+          placement="bottom start">
+          <Dropdown.Menu
+            selectedKeys={[taskFilter]}
+            onAction={(key) =>
+              taskFilterOptions.find((option) => option.key === key)?.onClick()
+            }>
+            {taskFilterOptions.map(({ key, label, textValue }) => (
+              <Dropdown.Item
+                unstyled
+                className="task-tab-filter-menu-item tw:cursor-pointer tw:outline-focus-ring tw:data-focus-visible:outline-2 tw:data-focus-visible:-outline-offset-2 tw:data-hovered:bg-primary_hover"
+                id={key}
+                key={key}
+                textValue={textValue}>
+                {label}
+              </Dropdown.Item>
+            ))}
+          </Dropdown.Menu>
+        </Dropdown.Popover>
+      </Dropdown.Root>
       {taskToggle}
     </div>
   );
@@ -380,9 +403,7 @@ const ActivityFeedTabRightPanel = ({
 
   return (
     <>
-      {isThreePanel && (
-        <Divider className="feed-divider h-100 m-0" type="vertical" />
-      )}
+      {isThreePanel && <Divider color="primary" orientation="vertical" />}
 
       <div
         className={classNames('right-container', {
@@ -397,9 +418,11 @@ const ActivityFeedTabRightPanel = ({
                 <ErrorPlaceHolderNew
                   icon={<NoConversationsIcon />}
                   type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-                  <Typography.Paragraph className="placeholder-text">
+                  <Typography
+                    as="div"
+                    className="placeholder-text tw:mb-4 tw:break-words">
                     {placeholder}
-                  </Typography.Paragraph>
+                  </Typography>
                 </ErrorPlaceHolderNew>
               </div>
             )}
@@ -525,40 +548,40 @@ export const ActivityFeedTab = ({
     if (isAllTab) {
       return (
         <div className="d-flex flex-col gap-4">
-          <Typography.Text className="placeholder-title">
+          <Typography className="placeholder-title">
             {t('message.no-activity-feed-title')}
-          </Typography.Text>
-          <Typography.Text className="placeholder-text">
+          </Typography>
+          <Typography className="placeholder-text">
             {t('message.no-activity-feed-description')}
-          </Typography.Text>
+          </Typography>
         </div>
       );
     } else if (activeTab === ActivityFeedTabs.MENTIONS) {
       return (
-        <Typography.Text className="placeholder-text">
+        <Typography className="placeholder-text">
           {t('message.no-mentions')}
-        </Typography.Text>
+        </Typography>
       );
     } else if (taskFilter === TaskStatusGroup.Closed) {
       return (
         <div className="d-flex flex-col gap-4">
-          <Typography.Text className="placeholder-title">
+          <Typography className="placeholder-title">
             {t('message.no-closed-tasks-title')}
-          </Typography.Text>
-          <Typography.Text className="placeholder-text">
+          </Typography>
+          <Typography className="placeholder-text">
             {t('message.no-closed-tasks-description')}
-          </Typography.Text>
+          </Typography>
         </div>
       );
     } else {
       return (
         <div className="d-flex flex-col gap-4">
-          <Typography.Text className="placeholder-title">
+          <Typography className="placeholder-title">
             {t('message.no-open-tasks-title')}
-          </Typography.Text>
-          <Typography.Text className="placeholder-text">
+          </Typography>
+          <Typography className="placeholder-text">
             {t('message.no-open-tasks-description')}
-          </Typography.Text>
+          </Typography>
         </div>
       );
     }
@@ -828,6 +851,7 @@ export const ActivityFeedTab = ({
     () => [
       {
         key: TaskStatusGroup.Open,
+        textValue: t('label.open'),
         label: (
           <div
             className={classNames(
@@ -868,6 +892,7 @@ export const ActivityFeedTab = ({
       },
       {
         key: TaskStatusGroup.Closed,
+        textValue: t('label.closed'),
         label: (
           <div
             className={classNames(
@@ -915,31 +940,31 @@ export const ActivityFeedTab = ({
 
   const TaskToggle = useCallback(() => {
     return (
-      <Segmented
-        className="task-toggle"
-        options={[
-          {
-            label: (
-              <span className="toggle-item" data-testid="my-tasks-toggle">
-                <MyTaskIcon {...ICON_DIMENSION_USER_PAGE} />
-                {t('label.my-task-plural')}
-              </span>
-            ),
-            value: ActivityFeedTabs.TASKS,
-          },
-          {
-            label: (
-              <span className="toggle-item" data-testid="mentions-toggle">
-                <MentionIcon {...ICON_DIMENSION_USER_PAGE} />
-                {t('label.mention-plural')}
-              </span>
-            ),
-            value: ActivityFeedTabs.MENTIONS,
-          },
-        ]}
-        value={activeTab}
-        onChange={(value) => handleTabChange(value as ActivityFeedTabs)}
-      />
+      <ButtonGroup
+        disallowEmptySelection
+        selectedKeys={activeTab ? [activeTab] : []}
+        size="sm"
+        onSelectionChange={(keys) => {
+          const [key] = keys;
+          if (key) {
+            handleTabChange(key as ActivityFeedTabs);
+          }
+        }}>
+        <ButtonGroupItem
+          data-testid="my-tasks-toggle"
+          iconLeading={<MyTaskIcon aria-hidden {...ICON_DIMENSION_USER_PAGE} />}
+          id={ActivityFeedTabs.TASKS}>
+          {t('label.my-task-plural')}
+        </ButtonGroupItem>
+        <ButtonGroupItem
+          data-testid="mentions-toggle"
+          iconLeading={
+            <MentionIcon aria-hidden {...ICON_DIMENSION_USER_PAGE} />
+          }
+          id={ActivityFeedTabs.MENTIONS}>
+          {t('label.mention-plural')}
+        </ButtonGroupItem>
+      </ButtonGroup>
     );
   }, [t, activeTab, handleTabChange]);
 
@@ -1032,20 +1057,20 @@ export const ActivityFeedTab = ({
   const getRightPanelPlaceholder = useMemo(() => {
     if (activeTab === ActivityFeedTabs.MENTIONS) {
       return (
-        <Typography.Text className="placeholder-text m-t-0">
+        <Typography className="placeholder-text m-t-0">
           {t('message.no-mentions')}
-        </Typography.Text>
+        </Typography>
       );
     }
 
     return (
       <div className="d-flex flex-col gap-4">
-        <Typography.Text className="placeholder-title m-t-md">
+        <Typography className="placeholder-title m-t-md">
           {t('message.no-conversations')}
-        </Typography.Text>
-        <Typography.Text className="placeholder-text">
+        </Typography>
+        <Typography className="placeholder-text">
           {t('message.no-conversations-description')}
-        </Typography.Text>
+        </Typography>
       </div>
     );
   }, [activeTab, t]);

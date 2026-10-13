@@ -111,6 +111,13 @@ public class CachedPermissionEvaluationTest {
                     EntityRepository.CACHE_WITH_ID.get(
                         new ImmutablePair<>(Entity.POLICY, i.getArgument(1))),
                     Policy.class));
+
+    // TeamHierarchyResolver reads the team graph out of entity_relationship rather than loading a
+    // Team per node, so the graph has to exist as relationship rows, not only as cached entities.
+    TeamGraphFixture.install();
+    TeamGraphFixture.stubReferences(teamRepository, Entity.TEAM);
+    TeamGraphFixture.stubReferences(roleRepository, Entity.ROLE);
+    TeamGraphFixture.stubReferences(policyRepository, Entity.POLICY);
   }
 
   private static void setupTeamHierarchy() {
@@ -305,7 +312,7 @@ public class CachedPermissionEvaluationTest {
     return rules;
   }
 
-  private static <T extends EntityInterface> List<EntityReference> toEntityReferences(
+  private static <T extends EntityInterface<?>> List<EntityReference> toEntityReferences(
       List<T> entities) {
     List<EntityReference> references = new ArrayList<>();
     for (T entity : entities) {
@@ -326,6 +333,7 @@ public class CachedPermissionEvaluationTest {
             .withParents(parentList);
     EntityRepository.CACHE_WITH_ID.put(
         new ImmutablePair<>(Entity.TEAM, team.getId()), JsonUtils.pojoToJson(team));
+    TeamGraphFixture.register(team);
     return team;
   }
 }

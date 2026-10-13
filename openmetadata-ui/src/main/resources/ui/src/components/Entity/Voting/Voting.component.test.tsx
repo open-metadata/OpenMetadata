@@ -12,7 +12,7 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import { QueryVoteType } from '../../Database/TableQueries/TableQueries.interface';
+import { QueryVoteType } from '../../../interface/entity/vote.interface';
 import Voting from './Voting.component';
 import { VotingProps } from './voting.interface';
 

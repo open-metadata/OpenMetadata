@@ -142,3 +142,21 @@ export const WithSupportingText: StoryObj = {
     </div>
   ),
 };
+
+export const Empty: StoryObj = {
+  render: () => (
+    <div
+      style={{ display: 'flex', flexDirection: 'column', gap: 16, width: 280 }}>
+      <Select items={[]} label="Default empty state" placeholder="No options">
+        {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+      </Select>
+      <Select
+        emptyState="No teams to map yet"
+        items={[]}
+        label="Custom empty state"
+        placeholder="No options">
+        {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+      </Select>
+    </div>
+  ),
+};

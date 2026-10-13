@@ -12,7 +12,7 @@
  */
 
 import { BreadcrumbItemType } from '@openmetadata/ui-core-components';
-import { HomeLine } from '@untitledui/icons';
+import { HomeLine } from '@openmetadata/ui-core-components/icons';
 import { TFunction } from 'i18next';
 import { ReactComponent as GovernanceIcon } from '../../../assets/svg/ic-governance.svg';
 import { ROUTES } from '../../../constants/constants';

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { mockPipelineStatus } from '../../../mocks/Ingestion.mock';
 import IngestionRunDetailsModal from './IngestionRunDetailsModal';
 
@@ -44,5 +44,17 @@ describe('IngestionRunDetailsModal', () => {
         `step-summary-name-${mockPipelineStatus.status[1].name}`
       )
     ).toBeInTheDocument();
+  });
+
+  it('should call handleCancel on cancel and on Escape', () => {
+    render(<IngestionRunDetailsModal handleCancel={mockHandleCancel} />);
+
+    fireEvent.click(screen.getByText('label.cancel'));
+
+    expect(mockHandleCancel).toHaveBeenCalledTimes(1);
+
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+
+    expect(mockHandleCancel).toHaveBeenCalledTimes(2);
   });
 });

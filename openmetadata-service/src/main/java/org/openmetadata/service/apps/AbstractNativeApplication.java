@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.AppRuntime;
@@ -57,6 +58,11 @@ public class AbstractNativeApplication implements NativeApplication {
   protected CollectionDAO collectionDAO;
   private App app;
   protected SearchRepository searchRepository;
+
+  // Set on the freshly built instance by ApplicationHandler rather than passed to triggerOnDemand:
+  // apps such as AutoPilotApp override the single-argument triggerOnDemand, so adding an argument
+  // would silently route them to the base implementation instead of their override.
+  @Setter private String triggeredBy;
 
   // Default service that contains external apps' Ingestion Pipelines
   private static final String SERVICE_NAME = "OpenMetadata";
@@ -122,7 +128,7 @@ public class AbstractNativeApplication implements NativeApplication {
         appConfig.putAll(config);
       }
       validateConfig(appConfig);
-      AppScheduler.getInstance().triggerOnDemandApplication(app, config);
+      AppScheduler.getInstance().triggerOnDemandApplication(app, config, triggeredBy);
     } else {
       throw new IllegalArgumentException(NO_MANUAL_TRIGGER_ERR);
     }

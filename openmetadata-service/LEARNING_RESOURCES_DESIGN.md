@@ -30,7 +30,7 @@ The Learning Resources system provides contextual, in-product learning materials
 
 - **User-Initiated:** Resources only appear when users click the lightbulb (💡) icon - no automatic inline display
 - **Contextual:** Resources are matched to specific pages (glossary, domain, data products, etc.) and optional component IDs
-- **Multi-Format:** Supports Articles (markdown), Videos (YouTube/Vimeo), and Interactive Demos (Storylane)
+- **Multi-Format:** Supports Articles (markdown), Videos (YouTube/Vimeo), Interactive Demos (Storylane), Links to external guidance, and PDFs
 - **Simple:** No progress tracking, no badges, no gamification - just content delivery
 - **Admin-Managed:** Full CRUD interface for creating and managing learning resources
 
@@ -86,11 +86,12 @@ The Learning Resources system provides contextual, in-product learning materials
 2. **Sees lightbulb (💡) icon** in page header with badge count (e.g., "3")
 3. **Clicks lightbulb** → Side drawer opens from right
 4. **Sees list** of relevant learning resources (filtered by page context)
-5. **Clicks a resource** → Full modal opens with content player
+5. **Clicks a resource** → Full modal opens with content player (a Link opens in a new browser tab instead)
 6. **Views content:**
    - Article: Markdown rendered with full formatting
    - Video: YouTube/Vimeo embedded player
    - Storylane: Interactive demo iframe
+   - PDF: Embedded in an iframe, with an "Open in New Tab" fallback for hosts that block embedding
 7. **Closes modal** when done
 8. **Can access** other resources from drawer
 
@@ -114,7 +115,7 @@ The Learning Resources system provides contextual, in-product learning materials
 - `name` (required): Unique identifier (e.g., "Intro_GlossaryBasics")
 - `displayName`: Human-readable title
 - `description`: Brief summary
-- `resourceType`: `Article` | `Video` | `Storylane`
+- `resourceType`: `Article` | `Video` | `Storylane` | `Link` | `PDF` (`Link` and `PDF` require an `http`/`https` URL)
 - `categories`: Array of categories (Discovery, DataGovernance, DataQuality, Administration, Observability)
 - `difficulty`: `Intro` | `Intermediate` | `Advanced`
 - `source`:
@@ -287,8 +288,11 @@ switch (resource.resourceType) {
   case 'Video':     return <VideoPlayer resource={resource} />;
   case 'Storylane': return <StorylaneTour resource={resource} />;
   case 'Article':   return <ArticleViewer resource={resource} />;
+  case 'PDF':       return <PdfViewer resource={resource} />;
 }
 ```
+
+`Link` resources never reach the player: the learning drawer and the admin preview open their URL in a new tab.
 
 #### 4. VideoPlayer (YouTube/Vimeo)
 
@@ -335,6 +339,18 @@ switch (resource.resourceType) {
 - Reads content from `resource.source.embedConfig.content`
 - No truncation (`enableSeeMoreVariant={false}`)
 - Full markdown support (headers, lists, code blocks, links, etc.)
+
+#### 6a. PdfViewer (PDF Documents)
+
+**File:** `src/components/Learning/ResourcePlayer/PdfViewer.tsx`
+
+**Purpose:** Displays a PDF hosted at an `http`/`https` URL
+
+**Features:**
+- Embeds the PDF in an iframe using the browser's built-in PDF viewer
+- The iframe is not sandboxed, because browsers disable their PDF viewer inside sandboxed frames
+- "Open in New Tab" link for document hosts that block embedding (`X-Frame-Options` / `frame-ancestors`)
+- Renders nothing embeddable for non-web URLs
 
 #### 7. LearningResourceCard
 

@@ -17,7 +17,7 @@ import {
   NotificationTemplate,
   ProviderType,
 } from '../generated/entity/events/notificationTemplate';
-import APIClient from '../rest/index';
+import APIClient from './axiosClient';
 import {
   createNotificationTemplate,
   deleteNotificationTemplate,
@@ -27,7 +27,7 @@ import {
   validateNotificationTemplate,
 } from './notificationtemplateAPI';
 
-jest.mock('./index');
+jest.mock('./axiosClient');
 
 describe('notificationtemplateAPI', () => {
   const mockAPIClient = APIClient as jest.Mocked<typeof APIClient>;

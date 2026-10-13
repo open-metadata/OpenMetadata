@@ -9,6 +9,7 @@ public class SecurityServiceMapper implements EntityMapper<SecurityService, Crea
   public SecurityService createToEntity(CreateSecurityService create, String user) {
     return copy(new SecurityService(), create, user)
         .withServiceType(create.getServiceType())
+        .withServiceAttributes(create.getServiceAttributes())
         .withConnection(create.getConnection());
   }
 }

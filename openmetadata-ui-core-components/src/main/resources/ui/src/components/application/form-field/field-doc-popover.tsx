@@ -87,7 +87,7 @@ export const FieldDocPopover: FC<FieldDocPopoverProps> = ({
       isNonModal
       isOpen
       className={cx(
-        'tw:flex tw:w-75 tw:flex-col tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:shadow-lg',
+        'tw:flex tw:w-75 tw:flex-col tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-overlay-surface tw:shadow-lg',
         className
       )}
       placement="right top"

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { DotsGrid } from '@untitledui/icons';
+import { DotsGrid } from '@openmetadata/ui-core-components/icons';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';

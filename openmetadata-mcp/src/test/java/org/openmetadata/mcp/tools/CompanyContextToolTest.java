@@ -12,6 +12,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
@@ -33,6 +34,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.mcp.util.PageCursor;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
@@ -217,6 +219,7 @@ class CompanyContextToolTest {
       assertEquals(subjectContext, subject.getValue());
       assertEquals(List.of("FileExtraction"), filters.getValue().get("sourceType"));
       assertEquals(List.of("Shared"), filters.getValue().get("visibility"));
+      assertEquals(List.of("Approved"), filters.getValue().get("entityStatus"));
     }
   }
 
@@ -282,6 +285,27 @@ class CompanyContextToolTest {
 
     assertEquals("Q", result.get("question"));
     assertEquals("A", result.get("answer"));
+  }
+
+  @Test
+  void supersededFilePillIsNotReturnedByName() throws Exception {
+    stubMemory(
+        "pill-fqn",
+        sharedWith(
+            memory("pill-fqn", ContextMemorySourceType.FILE_EXTRACTION, MemoryVisibility.SHARED)
+                .withEntityStatus(ContextMemoryStatus.DEPRECATED),
+            "bob"));
+    CatalogSecurityContext securityContext = securityContextFor("bob");
+
+    Map<String, Object> result =
+        withSubject(
+            securityContext,
+            "bob",
+            () -> tool.execute(mock(Authorizer.class), securityContext, Map.of("fqn", "pill-fqn")));
+
+    assertEquals(
+        "Requested entity is not a shared Company Context knowledge pill", result.get("error"));
+    assertFalse(result.containsKey("answer"));
   }
 
   /**
@@ -398,11 +422,12 @@ class CompanyContextToolTest {
     return memory;
   }
 
+  // Lenient: a pill rejected before the visibility check never reads the caller.
   private CatalogSecurityContext securityContextFor(String userName) {
     Principal principal = mock(Principal.class);
-    when(principal.getName()).thenReturn(userName);
+    lenient().when(principal.getName()).thenReturn(userName);
     CatalogSecurityContext securityContext = mock(CatalogSecurityContext.class);
-    when(securityContext.getUserPrincipal()).thenReturn(principal);
+    lenient().when(securityContext.getUserPrincipal()).thenReturn(principal);
     return securityContext;
   }
 
@@ -423,6 +448,7 @@ class CompanyContextToolTest {
         .withFullyQualifiedName(fqn)
         .withQuestion("Q")
         .withAnswer("A")
+        .withEntityStatus(ContextMemoryStatus.APPROVED)
         .withSourceType(sourceType)
         .withShareConfig(new MemoryShareConfig().withVisibility(visibility));
   }

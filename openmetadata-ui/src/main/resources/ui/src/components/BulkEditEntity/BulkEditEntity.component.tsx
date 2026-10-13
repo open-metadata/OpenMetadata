@@ -10,16 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { BadgeWithIcon, Button, Input } from '@openmetadata/ui-core-components';
+import {
+  BadgeWithIcon,
+  Button,
+  Card,
+  Input,
+} from '@openmetadata/ui-core-components';
 import {
   Edit03,
   Lock01,
   Plus,
   RefreshCcw01,
-  SearchLg,
+  Search,
   Trash01,
   XCircle,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { isEmpty, startCase } from 'lodash';
 import {
   Fragment,
@@ -86,7 +91,7 @@ const SELECT_ONLY_ON_CLICK_COLUMNS = new Set([
 ]);
 
 const BulkEditSearchIcon = ({ className }: { className?: string }) => (
-  <SearchLg aria-hidden="true" className={className} />
+  <Search aria-hidden="true" className={className} />
 );
 
 const getBulkEditRowName = (row?: Record<string, string>) =>
@@ -341,8 +346,11 @@ const BulkEditEntity = ({
     Updating store will trigger re-render of the component
     This will cause the owner dropdown or full grid to re-render
   */
-  const editDataGrid = useMemo(() => {
-    const dataSourceWithOperations: Record<string, string>[] =
+  // react-data-grid closes an open cell editor, discarding its draft, as soon as
+  // the row object it is editing is replaced. Keep these identities stable
+  // across re-renders that do not change the data (columns, handlers, ...).
+  const dataSourceWithOperations = useMemo<Record<string, string>[]>(
+    () =>
       filteredDataSource.map((row, index) => {
         const rowId = row.id ?? `${index}`;
         const originalRow = initialRowById.get(row.id);
@@ -358,7 +366,11 @@ const BulkEditEntity = ({
           [BULK_EDIT_OPERATION_KEY]: operation,
           [BULK_EDIT_ORIGINAL_NAME_KEY]: getBulkEditRowName(originalRow),
         };
-      });
+      }),
+    [filteredDataSource, initialRowById, changedCellKeysByRowId, workflowMode]
+  );
+
+  const editDataGrid = useMemo(() => {
     const operationColumn: Column<Record<string, string>> = {
       key: BULK_EDIT_OPERATION_KEY,
       name: t('label.operation'),
@@ -483,6 +495,7 @@ const BulkEditEntity = ({
               : operationClass;
           }}
           rowHeight={52}
+          rowTestId={(row) => (row.id ? `rdg-row-${row.id}` : undefined)}
           rows={dataSourceWithOperations}
           onCellClick={(args: CellClickArgs<Record<string, string>>) => {
             const colType = (args.column.key.split('.').pop() ?? '').replace(
@@ -501,18 +514,16 @@ const BulkEditEntity = ({
   }, [
     changedCellKeysByRowId,
     columns,
-    filteredDataSource,
+    dataSourceWithOperations,
     handleCopy,
     handlePaste,
     handleOnRowsChange,
     handleRemoveRow,
     highlightedRowId,
-    initialRowById,
     isImportWorkflow,
     bulkEditConfig,
     setGridRef,
     t,
-    workflowMode,
   ]);
 
   const operationSummary = useMemo(() => {
@@ -588,7 +599,7 @@ const BulkEditEntity = ({
     }
 
     return (
-      <div className="csv-import-card bulk-edit-card">
+      <Card className="csv-import-card bulk-edit-card">
         <Banner
           className="border-radius"
           isLoading={false}
@@ -600,7 +611,7 @@ const BulkEditEntity = ({
             {t('label.try-again')}
           </Button>
         </div>
-      </div>
+      </Card>
     );
   };
 
@@ -706,13 +717,13 @@ const BulkEditEntity = ({
   );
 
   const renderStepOneCard = () => (
-    <div className="csv-import-card bulk-edit-card">
+    <Card className="csv-import-card bulk-edit-card">
       <div className="csv-import-stack bulk-edit-stack">
         {renderToolbar()}
         <div className="bulk-edit-grid-shell">{editDataGrid}</div>
         {newRowConfig && renderAddRowBar()}
       </div>
-    </div>
+    </Card>
   );
 
   const renderStepTwoCard = () => {
@@ -721,7 +732,7 @@ const BulkEditEntity = ({
     }
 
     return (
-      <div className="csv-import-card">
+      <Card className="csv-import-card tw:p-6">
         <div className="csv-import-stack">
           <div>
             <ImportStatus csvImportResult={validationData} />
@@ -741,7 +752,7 @@ const BulkEditEntity = ({
             )}
           </div>
         </div>
-      </div>
+      </Card>
     );
   };
 

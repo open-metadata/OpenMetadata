@@ -21,6 +21,7 @@ const OMTextWidget: FC<TextWidgetProps> = ({
   readonly,
 }) => (
   <Input
+    inputDataTestId="advanced-search-value-text"
     isDisabled={readonly}
     placeholder={placeholder}
     size="sm"

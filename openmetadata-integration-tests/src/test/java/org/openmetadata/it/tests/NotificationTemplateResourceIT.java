@@ -46,6 +46,7 @@ public class NotificationTemplateResourceIT
     extends BaseEntityIT<NotificationTemplate, CreateNotificationTemplate> {
 
   public NotificationTemplateResourceIT() {
+    supportsEntityStatus = false;
     supportsFollowers = false;
     supportsTags = false;
     supportsDomains = false; // NotificationTemplate doesn't support domains

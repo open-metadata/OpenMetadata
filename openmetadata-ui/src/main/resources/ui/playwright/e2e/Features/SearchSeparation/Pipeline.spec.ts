@@ -12,6 +12,7 @@
  */
 
 import { PipelineClass } from '../../../support/entity/PipelineClass';
+import { PipelineServiceClass } from '../../../support/entity/service/PipelineServiceClass';
 import { test } from '../../../support/fixtures/base';
 import { registerFilterSeparationSuite } from './SearchSeparationSuite';
 
@@ -20,5 +21,7 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 registerFilterSeparationSuite({
   suiteName: 'Pipeline',
   reindexEntityType: 'pipeline',
-  entityFactory: () => new PipelineClass(),
+  // The service facet only isolates this entity if it owns its service.
+  entityFactory: () =>
+    new PipelineClass({ service: new PipelineServiceClass() }),
 });

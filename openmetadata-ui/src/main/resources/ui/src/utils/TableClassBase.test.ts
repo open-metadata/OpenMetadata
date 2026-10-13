@@ -573,10 +573,10 @@ describe('TableClassBase', () => {
       ).toBe(3);
     });
 
-    it('should fall back to height 1 for CUSTOM_PROPERTIES widget', () => {
+    it('should return correct height for CUSTOM_PROPERTIES widget', () => {
       expect(
         tableClass.getWidgetHeight(DetailPageWidgetKeys.CUSTOM_PROPERTIES)
-      ).toBe(1);
+      ).toBe(4);
     });
 
     it('should fall back to height 1 for KNOWLEDGE_ARTICLE widget', () => {

@@ -49,7 +49,7 @@ public interface DataInsightsExtension {
   /** Enrichment can run concurrently; completion runs once, while the DI job still owns its lease. */
   interface Session extends AutoCloseable {
     /** Allows bounded bulk lookups before the batch's concurrent enrichment starts. */
-    default void beforeBatch(List<? extends EntityInterface> entities) {}
+    default void beforeBatch(List<? extends EntityInterface<?>> entities) {}
 
     default void enrich(Map<String, Object> snapshot) {}
 

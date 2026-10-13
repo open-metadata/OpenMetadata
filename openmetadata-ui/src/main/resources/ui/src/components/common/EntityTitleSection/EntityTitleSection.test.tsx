@@ -59,7 +59,7 @@ jest.mock('../../../utils/BlockEditorUtils', () => ({
   getTextFromHtmlString: jest.fn().mockImplementation((str) => str),
 }));
 
-jest.mock('../../../utils/StringUtils', () => ({
+jest.mock('../../../utils/RichTextStringUtils', () => ({
   stringToHTML: jest.fn().mockImplementation((str) => str),
 }));
 

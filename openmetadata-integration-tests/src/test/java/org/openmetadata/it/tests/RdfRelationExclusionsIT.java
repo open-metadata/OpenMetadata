@@ -91,22 +91,26 @@ public class RdfRelationExclusionsIT {
     return rdfEnabled;
   }
 
+  private static final String ENTITY_IRI_BASE = "https://open-metadata.org/entity/";
+
+  // Triples about an entity of this type. A literal that only mentions the type name, such as
+  // a retention setting in an app configuration, is not a stored entity.
+  private static String entityTriplesQuery(String entityType) {
+    String entityIri = ENTITY_IRI_BASE + entityType + "/";
+    return ("SELECT ?s ?p ?o WHERE { ?s ?p ?o . FILTER(STRSTARTS(STR(?s), '%s') "
+            + "|| (isIRI(?o) && STRSTARTS(STR(?o), '%s'))) } LIMIT 10")
+        .formatted(entityIri, entityIri);
+  }
+
   @Test
   @EnabledIf("isRdfEnabled")
   void testChangeEventNotInRdfGraph() throws Exception {
-    String sparqlQuery =
-        "PREFIX om: <https://open-metadata.org/ontology/> "
-            + "SELECT ?s ?p ?o WHERE { "
-            + "  ?s ?p ?o . "
-            + "  FILTER(CONTAINS(STR(?s), 'changeEvent') || CONTAINS(STR(?o), 'changeEvent')) "
-            + "} LIMIT 10";
-
-    String result = executeSparqlQuery(sparqlQuery);
+    String result = executeSparqlQuery(entityTriplesQuery("changeEvent"));
 
     LOG.info("SPARQL query result for changeEvent: {}", result);
 
     assertFalse(
-        result.contains("changeEvent") && result.contains("bindings"),
+        result.contains(ENTITY_IRI_BASE + "changeEvent/"),
         "changeEvent entities should not be stored in RDF");
   }
 
@@ -153,19 +157,12 @@ public class RdfRelationExclusionsIT {
   @Test
   @EnabledIf("isRdfEnabled")
   void testAuditLogNotInRdfGraph() throws Exception {
-    String sparqlQuery =
-        "PREFIX om: <https://open-metadata.org/ontology/> "
-            + "SELECT ?s ?p ?o WHERE { "
-            + "  ?s ?p ?o . "
-            + "  FILTER(CONTAINS(STR(?s), 'auditLog') || CONTAINS(STR(?o), 'auditLog')) "
-            + "} LIMIT 10";
-
-    String result = executeSparqlQuery(sparqlQuery);
+    String result = executeSparqlQuery(entityTriplesQuery("auditLog"));
 
     LOG.info("SPARQL query result for auditLog: {}", result);
 
     assertFalse(
-        result.contains("auditLog") && result.contains("bindings"),
+        result.contains(ENTITY_IRI_BASE + "auditLog/"),
         "auditLog entities should not be stored in RDF");
   }
 

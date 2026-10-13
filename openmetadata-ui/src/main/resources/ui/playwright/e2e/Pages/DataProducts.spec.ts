@@ -12,6 +12,7 @@
  */
 
 import base, { expect, Page } from '@playwright/test';
+import { SearchIndex } from '../../../src/enums/search.enum';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
@@ -23,7 +24,11 @@ import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { fillDescriptionBox, redirectToHomePage } from '../../utils/common';
+import {
+  fillDescriptionBox,
+  redirectToHomePage,
+  uuid,
+} from '../../utils/common';
 import {
   addAssetsToDataProduct,
   createDataProductFromListPage,
@@ -37,11 +42,12 @@ import {
 } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import { selectTagInTagSuggestion } from '../../utils/tag';
+import { waitForAriaOverlayToSettle } from '../../utils/waitHelpers';
 
 const user = new UserClass();
 const domain = new Domain();
 const classification = new ClassificationClass({
-  provider: 'system',
+  provider: 'user',
   mutuallyExclusive: true,
 });
 const tag = new TagClass({
@@ -63,7 +69,7 @@ const test = base.extend<{
   },
   userPage: async ({ browser }, setPage) => {
     const page = await browser.newPage();
-    await user.login(page);
+    await user.signIn(page);
     await setPage(page);
     await page.close();
   },
@@ -125,6 +131,8 @@ test.describe('Data Products', () => {
   });
 
   test('Create Data Product and Manage Assets', async ({ page }) => {
+    // Add assets flow waits on the search API which can take >30s under CI load
+    test.slow();
     const dataProduct = new DataProduct([domain]);
     const table = new TableClass();
 
@@ -192,6 +200,8 @@ test.describe('Data Products', () => {
 
     await test.step('Delete data product', async () => {
       await page.getByTestId('manage-button').click();
+      await expect(page.getByTestId('delete-button-title')).toBeVisible();
+      await waitForAriaOverlayToSettle(page);
       await page.getByTestId('delete-button-title').click();
 
       await expect(page.getByTestId('modal-header')).toContainText(
@@ -213,8 +223,9 @@ test.describe('Data Products', () => {
   });
 
   test('Search Data Products', async ({ page }) => {
-    const dataProduct1 = new DataProduct([domain]);
-    const dataProduct2 = new DataProduct([domain]);
+    // Names share no token: n-gram matching pulled a shared `catalog` in.
+    const dataProduct1 = new DataProduct([domain], `revenue${uuid()}`);
+    const dataProduct2 = new DataProduct([domain], `shipyard${uuid()}`);
 
     await test.step('Create test data products', async () => {
       const { apiContext, afterAction } = await performAdminLogin(
@@ -231,10 +242,21 @@ test.describe('Data Products', () => {
     });
 
     await test.step('Search for specific data product', async () => {
+      const searchResponse = page.waitForResponse((response) => {
+        const url = new URL(response.url());
+
+        return (
+          response.request().method() === 'GET' &&
+          url.pathname === '/api/v1/search/query' &&
+          url.searchParams.get('index') === SearchIndex.DATA_PRODUCT &&
+          url.searchParams.get('q') === dataProduct1.data.name
+        );
+      });
       await page
         .getByRole('main')
         .getByPlaceholder('Search')
         .fill(dataProduct1.data.name);
+      expect((await searchResponse).status()).toBe(200);
       await waitForAllLoadersToDisappear(page);
 
       await expect(page.getByText(dataProduct1.data.displayName)).toBeVisible();
@@ -287,7 +309,9 @@ test.describe('Data Products', () => {
       // Table should be hidden, cards should be visible
       await expect(page.getByTestId('table-view-container')).not.toBeVisible();
       await expect(page.getByTestId('card-view-container')).toBeVisible();
-      await expect(page.getByTestId('entity-card').first()).toBeVisible();
+      await expect(
+        page.getByTestId('entity-card').filter({ visible: true })
+      ).not.toHaveCount(0);
     });
 
     await test.step('Switch back to table view', async () => {
@@ -509,7 +533,7 @@ test.describe('Data Products', () => {
       await expect(
         page
           .getByTestId('add-domain-form')
-          .getByTestId('tags-container')
+          .getByTestId('filter-chip')
           .getByText(tag.data.displayName)
       ).toBeVisible();
     });
@@ -549,9 +573,15 @@ test.describe('Data Products', () => {
     });
 
     await test.step('Navigate to data product details', async () => {
-      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+      // The listing is not what this test covers; going straight to the
+      // details page avoids the sidebar click and the search-index lag.
+      await page.goto(
+        `/dataProduct/${encodeURIComponent(
+          dataProduct.responseData.fullyQualifiedName ?? dataProduct.data.name
+        )}`,
+        { waitUntil: 'domcontentloaded' }
+      );
       await waitForAllLoadersToDisappear(page);
-      await selectDataProduct(page, dataProduct.data);
     });
 
     await test.step('Data Observability tab is visible on data product page', async () => {

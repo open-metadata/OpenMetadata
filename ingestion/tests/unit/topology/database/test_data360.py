@@ -264,7 +264,7 @@ class TestData360Source:
 
     def test_get_columns(self):
         source = _build_source()
-        columns = source.get_columns(MOCK_DLO_TABLE[ResponseConstant.FIELDS])
+        columns = source.get_columns(MOCK_DLO_TABLE[ResponseConstant.FIELDS], "my_table")
         assert [str(c.name.root) for c in columns] == ["id", "amount"]
         assert columns[0].dataType == DataType.TEXT
         assert columns[0].ordinalPosition == 1

@@ -17,6 +17,8 @@ import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguratio
 import org.openmetadata.schema.api.security.OpsConfig;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.operations.OperationalConfiguration;
+import org.openmetadata.service.config.source.ConfigTemplateKind;
+import org.openmetadata.service.config.source.RawConfigCapture;
 
 @Getter
 @Setter
@@ -53,8 +55,22 @@ public class DefaultOperationalConfigProvider {
   private void parseOperationsConfig(String filePath) {
     // parse limits config file
     OperationalConfiguration configuration = readOperationsConfig(filePath);
-    this.emailSettings = configuration.getEmail();
-    this.serverUrl = configuration.getServerUrl();
+    applyConfiguration(configuration);
+  }
+
+  void applyConfiguration(OperationalConfiguration configuration) {
+    SmtpSettings email = configuration.getEmail();
+    OpenMetadataBaseUrlConfiguration serverUrl = configuration.getServerUrl();
+    if (email == null) {
+      throw new IllegalStateException(
+          "Operations configuration is missing the required 'email' block.");
+    }
+    if (serverUrl == null) {
+      throw new IllegalStateException(
+          "Operations configuration is missing the required 'serverUrl' block.");
+    }
+    this.emailSettings = email;
+    this.serverUrl = serverUrl;
   }
 
   @SneakyThrows
@@ -66,7 +82,9 @@ public class DefaultOperationalConfigProvider {
             OperationalConfiguration.class, validator, objectMapper, "dw");
     return factory.build(
         new SubstitutingSourceProvider(
-            new FileConfigurationSourceProvider(), new EnvironmentVariableSubstitutor(false)),
+            new RawConfigCapture(
+                new FileConfigurationSourceProvider(), ConfigTemplateKind.OPERATIONS),
+            new EnvironmentVariableSubstitutor(false)),
         configFilePath);
   }
 }

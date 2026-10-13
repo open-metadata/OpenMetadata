@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Skeleton } from '@openmetadata/ui-core-components';
+import { Skeleton, useTabItemState } from '@openmetadata/ui-core-components';
 import { Badge } from 'antd';
 import { isNil } from 'lodash';
 import { useTranslation } from 'react-i18next';
@@ -28,6 +28,10 @@ const TabsLabel = ({
   isLoading,
 }: TabsLabelProps) => {
   const { t } = useTranslation();
+  const tabState = useTabItemState();
+  // Inside a card tab list the tab's own selection is authoritative; route-derived isActive can lag.
+  const isCountActive =
+    tabState?.variant === 'card' ? tabState.isSelected : isActive;
 
   return (
     <div className="w-full tabs-label-container" data-testid={id}>
@@ -42,7 +46,7 @@ const TabsLabel = ({
         ) : (
           !isNil(count) && (
             <span data-testid="count">
-              {getCountBadge(count, '', isActive)}
+              {getCountBadge(count, '', isCountActive)}
             </span>
           )
         )}

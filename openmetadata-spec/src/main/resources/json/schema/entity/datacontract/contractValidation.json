@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/datacontract/contractValidation.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "ContractValidation",
   "description": "Comprehensive validation result for data contract import operations.",
   "type": "object",
@@ -28,6 +28,10 @@
       "items": {
         "type": "string"
       }
+    },
+    "odcsImportReport": {
+      "description": "For ODCS imports: what the import keeps, changes and leaves out of the ODCS document.",
+      "$ref": "odcs/odcsImportReport.json"
     }
   },
   "additionalProperties": false

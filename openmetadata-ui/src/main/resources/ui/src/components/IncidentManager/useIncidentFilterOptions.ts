@@ -23,7 +23,6 @@ import { TestCaseIncidentStatusParams } from '../../rest/incidentManagerAPI';
 import { getUserAndTeamSearch } from '../../rest/miscAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { getEntityName } from '../../utils/EntityNameUtils';
-import { FilterOptionData } from '../DataQuality/TestCases/FilterChip.interface';
 
 export interface UseIncidentFilterOptionsProps {
   filters: TestCaseIncidentStatusParams;
@@ -127,32 +126,6 @@ export const useIncidentFilterOptions = ({
     }
   }, []);
 
-  const [testCaseFilterOptions, setTestCaseFilterOptions] = useState<
-    FilterOptionData[]
-  >([]);
-  const [isTestCaseOptionsLoading, setIsTestCaseOptionsLoading] =
-    useState(false);
-
-  const fetchTestCaseFilterOptions = useCallback(
-    async (query = WILD_CARD_CHAR) => {
-      setIsTestCaseOptionsLoading(true);
-      try {
-        const results = await searchTestCases(query);
-        setTestCaseFilterOptions(
-          results
-            .filter((result) => Boolean(result.value))
-            .map((result) => ({
-              value: result.value as string,
-              label: result.label,
-            }))
-        );
-      } finally {
-        setIsTestCaseOptionsLoading(false);
-      }
-    },
-    [searchTestCases]
-  );
-
   return {
     users,
     setUsers,
@@ -160,8 +133,5 @@ export const useIncidentFilterOptions = ({
     selectedAssignees,
     fetchUserFilterOptions,
     searchTestCases,
-    testCaseFilterOptions,
-    isTestCaseOptionsLoading,
-    fetchTestCaseFilterOptions,
   };
 };

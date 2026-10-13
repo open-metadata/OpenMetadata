@@ -348,8 +348,8 @@ class RdfRepositoryBulkChunkingTest {
     JsonLdTranslator translator = mock(JsonLdTranslator.class);
     RdfRepository repository = new RdfRepository(config(), storage, translator);
 
-    EntityInterface good = entityWithId(UUID.randomUUID());
-    EntityInterface bad = entityWithId(UUID.randomUUID());
+    EntityInterface<?> good = entityWithId(UUID.randomUUID());
+    EntityInterface<?> bad = entityWithId(UUID.randomUUID());
     when(translator.toRdf(good)).thenReturn(ModelFactory.createDefaultModel());
     when(translator.toRdf(bad)).thenThrow(new IllegalStateException("tagLabel missing tagFQN"));
 
@@ -362,8 +362,8 @@ class RdfRepositoryBulkChunkingTest {
     assertEquals(good.getId(), requests.getFirst().entityId());
   }
 
-  private static EntityInterface entityWithId(UUID id) {
-    EntityInterface entity = mock(EntityInterface.class);
+  private static EntityInterface<?> entityWithId(UUID id) {
+    EntityInterface<?> entity = mock(EntityInterface.class);
     lenient().when(entity.getId()).thenReturn(id);
     lenient()
         .when(entity.getEntityReference())

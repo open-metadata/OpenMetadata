@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
@@ -23,6 +24,7 @@ import static org.openmetadata.service.apps.scheduler.AppScheduler.ON_DEMAND_JOB
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -64,6 +66,7 @@ class ReindexingOrchestratorTest {
   private SearchClient searchClient;
   private OrchestratorContext context;
   private AppRunRecord appRunRecord;
+  private ReindexStopSignal stopSignal;
   private ReindexingOrchestrator orchestrator;
 
   @BeforeEach
@@ -88,7 +91,8 @@ class ReindexingOrchestratorTest {
     when(searchRepository.getSearchClient()).thenReturn(searchClient);
     when(context.getJobRecord()).thenReturn(appRunRecord);
     when(context.getAppId()).thenReturn(appRunRecord.getAppId());
-    orchestrator = new ReindexingOrchestrator(collectionDAO, searchRepository, context);
+    stopSignal = new ReindexStopSignal();
+    orchestrator = new ReindexingOrchestrator(collectionDAO, searchRepository, context, stopSignal);
   }
 
   @Test
@@ -286,25 +290,78 @@ class ReindexingOrchestratorTest {
     }
   }
 
+  /**
+   * Regression: a stop that landed while the run was still in preflight had no strategy to reach, so
+   * the strategy created afterwards ran the whole reindex. It now shares the run's stop signal.
+   */
   @Test
-  void stopStopsActiveStrategyAndPushesStoppedStatus() throws Exception {
-    DistributedIndexingStrategy strategy = mock(DistributedIndexingStrategy.class);
-    EventPublisherJob jobData =
-        new EventPublisherJob()
-            .withEntities(Set.of(Entity.TABLE))
-            .withStatus(EventPublisherJob.Status.ACTIVE);
+  void stopDuringPreflightReachesTheStrategyCreatedAfterIt() {
+    doAnswer(
+            invocation -> {
+              stopSignal.requestStop();
+              return null;
+            })
+        .when(searchRepository)
+        .ensureHybridSearchPipeline();
 
-    setField("activeStrategy", strategy);
-    setField("jobData", jobData);
+    List<Object> strategyArguments = runWithStrategyEndingAs(ExecutionResult.Status.STOPPED);
 
-    orchestrator.stop();
+    assertTrue(strategyArguments.contains(stopSignal));
+    assertStopRecorded();
+  }
 
-    verify(strategy).stop();
-    verify(context, times(2)).storeRunRecord(anyString());
+  @Test
+  void stopBeforeTheRunStartsIsRecordedAsSoonAsItStarts() {
+    stopSignal.requestStop();
+
+    runWithStrategyEndingAs(ExecutionResult.Status.STOPPED);
+
+    assertStopRecorded();
+  }
+
+  private void assertStopRecorded() {
     verify(context).pushStatusUpdate(appRunRecord, true);
-    assertEquals(EventPublisherJob.Status.STOPPED, jobData.getStatus());
+    assertEquals(EventPublisherJob.Status.STOPPED, orchestrator.getJobData().getStatus());
     assertEquals(AppRunRecord.Status.STOPPED, appRunRecord.getStatus());
     assertNotNull(appRunRecord.getEndTime());
+  }
+
+  private List<Object> runWithStrategyEndingAs(ExecutionResult.Status status) {
+    EventPublisherJob jobData = new EventPublisherJob().withEntities(Set.of(Entity.TABLE));
+    EntityRepository entityRepository = mock(EntityRepository.class);
+    EntityDAO entityDao = mock(EntityDAO.class);
+    List<Object> strategyArguments = new ArrayList<>();
+
+    when(context.getJobName()).thenReturn("scheduled");
+    when(context.createProgressListener(jobData))
+        .thenReturn(mock(ReindexingProgressListener.class));
+    when(entityRepository.getDao()).thenReturn(entityDao);
+    when(entityDao.listCount(any())).thenReturn(5);
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<ReindexingMetrics> metricsMock = mockStatic(ReindexingMetrics.class);
+        MockedStatic<WebSocketManager> websocketMock = mockStatic(WebSocketManager.class);
+        MockedConstruction<OrphanedIndexCleaner> ignoredCleaner = mockOrphanCleaner();
+        MockedConstruction<DistributedIndexingStrategy> ignoredStrategy =
+            mockConstruction(
+                DistributedIndexingStrategy.class,
+                (strategy, construction) -> {
+                  strategyArguments.addAll(construction.arguments());
+                  when(strategy.execute(any(), any()))
+                      .thenReturn(
+                          ExecutionResult.builder()
+                              .status(status)
+                              .startTime(10L)
+                              .endTime(20L)
+                              .build());
+                })) {
+      metricsMock.when(ReindexingMetrics::getInstance).thenReturn(null);
+      websocketMock.when(WebSocketManager::getInstance).thenReturn(null);
+      entityMock.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(entityRepository);
+
+      orchestrator.run(jobData);
+    }
+    return strategyArguments;
   }
 
   @Test
@@ -467,7 +524,7 @@ class ReindexingOrchestratorTest {
             .withEntities(Set.of(Entity.TABLE))
             .withStatus(EventPublisherJob.Status.STOPPED);
     setField("jobData", jobData);
-    setField("stopped", true);
+    stopSignal.requestStop();
 
     try (MockedStatic<WebSocketManager> websocketMock = mockStatic(WebSocketManager.class);
         MockedConstruction<OrphanedIndexCleaner> cleanerConstruction =

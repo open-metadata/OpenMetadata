@@ -51,7 +51,9 @@ test.describe('Tier Dropdown', () => {
       await openTierDropdown(page);
 
       await expect(
-        page.getByTestId(`radio-btn-${tag.responseData.displayName}`)
+        page
+          .getByTestId('drop-down-menu')
+          .getByTestId(tag.responseData.fullyQualifiedName)
       ).toBeVisible();
 
       await closeTierDropdown(page);
@@ -79,11 +81,15 @@ test.describe('Tier Dropdown', () => {
       await openTierDropdown(page);
 
       await expect(
-        page.getByTestId(`radio-btn-${disabledTag.responseData.displayName}`)
+        page
+          .getByTestId('drop-down-menu')
+          .getByTestId(disabledTag.responseData.fullyQualifiedName)
       ).not.toBeVisible();
 
       await expect(
-        page.getByTestId(`radio-btn-${enabledTag.responseData.displayName}`)
+        page
+          .getByTestId('drop-down-menu')
+          .getByTestId(enabledTag.responseData.fullyQualifiedName)
       ).toBeVisible();
 
       await closeTierDropdown(page);
@@ -109,7 +115,9 @@ test.describe('Tier Dropdown', () => {
       await openTierDropdown(page);
 
       await expect(
-        page.getByTestId(`radio-btn-${tag.responseData.displayName}`)
+        page
+          .getByTestId('drop-down-menu')
+          .getByTestId(tag.responseData.fullyQualifiedName)
       ).not.toBeVisible();
 
       await closeTierDropdown(page);
@@ -121,7 +129,9 @@ test.describe('Tier Dropdown', () => {
       await openTierDropdown(page);
 
       await expect(
-        page.getByTestId(`radio-btn-${tag.responseData.displayName}`)
+        page
+          .getByTestId('drop-down-menu')
+          .getByTestId(tag.responseData.fullyQualifiedName)
       ).toBeVisible();
 
       await closeTierDropdown(page);

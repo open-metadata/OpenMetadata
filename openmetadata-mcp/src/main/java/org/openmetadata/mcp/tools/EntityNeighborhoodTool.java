@@ -97,7 +97,7 @@ public class EntityNeighborhoodTool extends RdfMcpTool<EntityNeighborhoodTool.Ne
     // 429/503 classification and must not be flattened into a generic "query failed".
     String triples =
         guardedRead(securityContext, () -> runConstruct(repository, entityUri, depth, limit));
-    RdfBody.Bounded bounded = RdfBody.bound(triples, RdfBody.MAX_BYTES);
+    RdfBody.Bounded bounded = RdfBody.bound(triples, RdfBody.maxBytes());
     List<Edge> edges = fetchEdges(repository, entityUri, limit);
     return new Neighborhood(
         entityUri,

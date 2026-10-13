@@ -11,15 +11,21 @@
  *  limitations under the License.
  */
 
-import { Tooltip } from '@openmetadata/ui-core-components';
+import {
+  Badge,
+  Grid,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { FieldProps } from '@rjsf/utils';
-import { Col, Row, Select, Typography } from 'antd';
+import { Select } from 'antd';
 import classNames from 'classnames';
 import { isArray, isEmpty, isObject, startCase } from 'lodash';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CloseIcon } from '../../../assets/svg/close.svg';
+import { DEPRECATED_SSO_PROPERTIES } from '../../../constants/Services.constant';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import { splitCSV } from '../../../utils/CSV/CSVPureUtils';
 import { isValidUrl } from '../../../utils/SSOUtils';
@@ -223,17 +229,34 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
     props.onBlur(id, convertedValue);
   }, [isScopeField, value, props.onBlur, id]);
 
+  const isDeprecated = useMemo(
+    () =>
+      Boolean(props.schema.deprecated) ||
+      DEPRECATED_SSO_PROPERTIES.includes(props.name),
+    [props.schema.deprecated, props.name]
+  );
+
   return (
-    <Row className={classNames('field-error', { 'has-error': hasError })}>
-      <Col span={24}>
+    <Grid
+      className={`layout-row layout-grid ${classNames('field-error', {
+        'has-error': hasError,
+      })}`}>
+      <Grid.Item className="layout-column" span={24}>
         <Typography
-          className={`array-field-label ${
-            props.required ? 'required-field' : ''
-          }`}>
+          as="article"
+          className={classNames('array-field-label', {
+            'required-field': props.required,
+            'sso-deprecated-field-label': isDeprecated,
+          })}>
           {startCase(props.name)}
+          {isDeprecated && (
+            <Badge className="sso-deprecated-tag" color="warning" size="sm">
+              {t('label.deprecated')}
+            </Badge>
+          )}
         </Typography>
-      </Col>
-      <Col className="sso-select-container" span={24}>
+      </Grid.Item>
+      <Grid.Item className="layout-column sso-select-container" span={24}>
         <Select
           className={classNames('m-t-xss w-full', {
             'ant-select-status-error': hasError,
@@ -271,8 +294,8 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
             {t('message.valid-urls-required')}
           </div>
         )}
-      </Col>
-    </Row>
+      </Grid.Item>
+    </Grid>
   );
 };
 

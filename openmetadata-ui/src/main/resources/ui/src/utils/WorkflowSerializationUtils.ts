@@ -13,6 +13,16 @@
 
 import { DataAssetFilter } from '../interface/workflow-builder-components.interface';
 
+// Drops filters whose asset type is no longer selected.
+export const reconcileDataAssetFilters = (
+  filters: DataAssetFilter[] | undefined,
+  selectedDataAssets: string[] | undefined
+): DataAssetFilter[] => {
+  const assets = selectedDataAssets ?? [];
+
+  return (filters ?? []).filter((filter) => assets.includes(filter.dataAsset));
+};
+
 export const serializeDataAssetFilters = (filters: DataAssetFilter[]) => {
   return filters.length > 0
     ? filters.map((df) => ({

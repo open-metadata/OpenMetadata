@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { useMemo } from 'react';
-import { useApplicationsProvider } from '../components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
+import { useApplicationsProvider } from '../context/ApplicationsProvider/ApplicationsContext';
 import { filterHiddenNavigationItems } from '../utils/CustomizaNavigation/CustomizeNavigation';
 import { useCustomPages } from './useCustomPages';
 

@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Form, FormProps, Input, Modal } from 'antd';
+import { SimpleModal } from '@openmetadata/ui-core-components';
+import { Form, FormProps, Input } from 'antd';
 import { AxiosError } from 'axios';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -41,22 +42,15 @@ const TestEmail = ({ onCancel }: TesEmailProps) => {
   };
 
   return (
-    <Modal
-      destroyOnClose
-      open
-      closable={false}
-      closeIcon={null}
+    <SimpleModal
+      isOpen
       data-testid="test-email-modal"
-      maskClosable={false}
-      okButtonProps={{
-        htmlType: 'submit',
-        id: 'test-email-form',
-        form: 'test-email-form',
-        loading: isLoading,
-      }}
+      isDismissable={false}
+      isOkLoading={isLoading}
       okText={t('label.test')}
       title={t('label.test-email-connection')}
-      onCancel={onCancel}>
+      onCancel={onCancel}
+      onOk={form.submit}>
       <Form
         data-testid="test-email-form"
         form={form}
@@ -78,7 +72,7 @@ const TestEmail = ({ onCancel }: TesEmailProps) => {
           />
         </Form.Item>
       </Form>
-    </Modal>
+    </SimpleModal>
   );
 };
 

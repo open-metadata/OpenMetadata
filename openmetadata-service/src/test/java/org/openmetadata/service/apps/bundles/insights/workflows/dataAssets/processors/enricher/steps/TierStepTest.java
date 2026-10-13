@@ -40,21 +40,21 @@ class TierStepTest {
 
   @Test
   void tierEligibleEntity_noTierTag_emitsNoTierDefault() {
-    EntityInterface entity = entityWithTags(List.of());
+    EntityInterface<?> entity = entityWithTags(List.of());
     Map<String, Object> snapshot = run(entity, "table");
     assertEquals("NoTier", snapshot.get("tier"));
   }
 
   @Test
   void tierEligibleEntity_withTierTag_emitsTagFqn() {
-    EntityInterface entity = entityWithTags(List.of(tag("Tier.Tier2")));
+    EntityInterface<?> entity = entityWithTags(List.of(tag("Tier.Tier2")));
     Map<String, Object> snapshot = run(entity, "table");
     assertEquals("Tier.Tier2", snapshot.get("tier"));
   }
 
   @Test
   void tierEligibleEntity_firstTierTagWins() {
-    EntityInterface entity =
+    EntityInterface<?> entity =
         entityWithTags(List.of(tag("PII.Sensitive"), tag("Tier.Tier3"), tag("Tier.Tier1")));
     Map<String, Object> snapshot = run(entity, "table");
     assertEquals("Tier.Tier3", snapshot.get("tier"));
@@ -62,7 +62,7 @@ class TierStepTest {
 
   @Test
   void nonTierEntity_noTierTag_emitsNothing() {
-    EntityInterface entity = entityWithTags(List.of(tag("Domain.Sales")));
+    EntityInterface<?> entity = entityWithTags(List.of(tag("Domain.Sales")));
     Map<String, Object> snapshot = run(entity, "tag");
     assertFalse(snapshot.containsKey("tier"));
   }
@@ -71,14 +71,14 @@ class TierStepTest {
   void nonTierEntity_withTierTag_emitsTagFqn() {
     // Even a NON_TIER_ENTITIES type, if explicitly tagged with Tier.*, still gets the tier
     // emitted.
-    EntityInterface entity = entityWithTags(List.of(tag("Tier.Tier4")));
+    EntityInterface<?> entity = entityWithTags(List.of(tag("Tier.Tier4")));
     Map<String, Object> snapshot = run(entity, "glossaryTerm");
     assertEquals("Tier.Tier4", snapshot.get("tier"));
   }
 
   @Test
   void tierEligibleEntity_nullTagsList_emitsNoTierDefault() {
-    EntityInterface entity = entityWithTags(null);
+    EntityInterface<?> entity = entityWithTags(null);
     Map<String, Object> snapshot = run(entity, "table");
     assertEquals("NoTier", snapshot.get("tier"));
   }
@@ -90,21 +90,21 @@ class TierStepTest {
     tags.add(null);
     tags.add(tag("Tier.Tier2"));
     tags.add(null);
-    EntityInterface entity = entityWithTags(tags);
+    EntityInterface<?> entity = entityWithTags(tags);
     Map<String, Object> snapshot = run(entity, "table");
     assertEquals("Tier.Tier2", snapshot.get("tier"));
   }
 
   @Test
   void tagWithNullFqn_doesNotMatchTierPrefix() {
-    EntityInterface entity = entityWithTags(List.of(new TagLabel())); // tagFQN null
+    EntityInterface<?> entity = entityWithTags(List.of(new TagLabel())); // tagFQN null
     Map<String, Object> snapshot = run(entity, "table");
     assertEquals("NoTier", snapshot.get("tier"));
   }
 
   // ─────────────── helpers ───────────────
 
-  private Map<String, Object> run(EntityInterface entity, String entityType) {
+  private Map<String, Object> run(EntityInterface<?> entity, String entityType) {
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock.when(() -> Entity.getEntityTypeFromObject(any())).thenReturn(entityType);
 
@@ -123,8 +123,8 @@ class TierStepTest {
     }
   }
 
-  private static EntityInterface entityWithTags(List<TagLabel> tags) {
-    EntityInterface entity = org.mockito.Mockito.mock(EntityInterface.class);
+  private static EntityInterface<?> entityWithTags(List<TagLabel> tags) {
+    EntityInterface<?> entity = org.mockito.Mockito.mock(EntityInterface.class);
     when(entity.getTags()).thenReturn(tags);
     return entity;
   }

@@ -31,20 +31,24 @@ jest.mock('./i18next/LocalUtil', () => ({
 import { AxiosError } from 'axios';
 import {
   decodeHtmlEntities,
+  stringToHTML,
+  stripMarkdown,
+} from './RichTextStringUtils';
+import {
   escapeESReservedCharacters,
   formatJsonString,
   getBase64EncodedString,
   getDecodedFqn,
   getEncodedFqn,
   getPermissionErrorText,
+  getQueryWithSlash,
+  getSafeHttpUrl,
   getTrimmedContent,
   jsonToCSV,
   ordinalize,
   removeAttachmentsWithoutUrl,
   replaceCallback,
   slugify,
-  stringToHTML,
-  stripMarkdown,
 } from './StringUtils';
 
 describe('StringUtils', () => {
@@ -390,6 +394,19 @@ describe('StringUtils', () => {
     it('should trim surrounding whitespace', () => {
       expect(stripMarkdown('  **hello world**  ')).toBe('hello world');
     });
+
+    it('should keep words apart across HTML block boundaries', () => {
+      expect(stripMarkdown('<p>First.</p><p>Second.</p>')).toBe(
+        'First. Second.'
+      );
+      expect(stripMarkdown('<ul><li>a</li><li>b</li></ul>')).toBe('a b');
+    });
+
+    it('should not pad inline HTML formatting', () => {
+      expect(stripMarkdown('<p><strong>Bold</strong> then more</p>')).toBe(
+        'Bold then more'
+      );
+    });
   });
 
   describe('getPermissionErrorText', () => {
@@ -595,6 +612,60 @@ describe('StringUtils', () => {
     });
   });
 
+  describe('getQueryWithSlash', () => {
+    it.each([['&'], ['\\'], ['&&'], ['\\\\'], ['\\&'], ['  &  ']])(
+      'should return an empty string for a query made only of %j',
+      (query) => {
+        expect(getQueryWithSlash(query)).toBe('');
+      }
+    );
+
+    // The last two cases cover backslash parity: two raw backslashes resolve
+    // to one literal backslash (quote is NOT already escaped), while three
+    // resolve to one literal backslash plus one escaping backslash (quote
+    // IS already escaped) -- so they land on opposite sides of the check.
+    it.each<[string, string, string]>([
+      ['escapes a single quote', "it's", String.raw`it\'s`],
+      [
+        'leaves a plain query untouched',
+        'sample_data orders',
+        'sample_data orders',
+      ],
+      [
+        'escapes a raw double quote from a caller that skips escapeESReservedCharacters (e.g. TagsUtils#fetchGlossaryList)',
+        '*"customer"*',
+        String.raw`*\"customer\"*`,
+      ],
+      [
+        'escapes a leading raw double quote but leaves a trailing already-escaped one alone',
+        String.raw`"customer\"`,
+        String.raw`\"customer\"`,
+      ],
+      [
+        'escapes both single and double quotes in the same query',
+        String.raw`o'brien "test"`,
+        String.raw`o\'brien \"test\"`,
+      ],
+      [
+        'does not re-escape a double quote already escaped by escapeESReservedCharacters',
+        String.raw`\"customer`,
+        String.raw`\"customer`,
+      ],
+      [
+        'escapes a quote preceded by an even (already-literal) run of backslashes',
+        String.raw`\\"customer`,
+        String.raw`\\\"customer`,
+      ],
+      [
+        'leaves a quote preceded by an odd run of backslashes alone',
+        String.raw`\\\"customer`,
+        String.raw`\\\"customer`,
+      ],
+    ])('should %s', (_description, input, expected) => {
+      expect(getQueryWithSlash(input)).toBe(expected);
+    });
+  });
+
   describe('getBase64EncodedString', () => {
     // Regression: `btoa` treats each character as a Latin-1 byte, so non-ASCII
     // passwords reached the server corrupted and login failed — issue #28694.
@@ -625,6 +696,28 @@ describe('StringUtils', () => {
       expect(getBase64EncodedString('Test\u00a7123\u00a3')).not.toBe(
         btoa('Test\u00a7123\u00a3')
       );
+    });
+  });
+
+  describe('getSafeHttpUrl', () => {
+    it.each(['https://example.com/a?b=c', 'http://example.com'])(
+      'should return http(s) URL %s unchanged',
+      (url) => {
+        expect(getSafeHttpUrl(url)).toBe(url);
+      }
+    );
+
+    it.each([
+      undefined,
+      '',
+      'javascript:alert(1)',
+      ' JavaScript:alert(1)',
+      'data:text/html,<script>alert(1)</script>',
+      'ftp://example.com',
+      's3://bucket/model',
+      'not a url',
+    ])('should return undefined for unsafe or invalid URL %s', (url) => {
+      expect(getSafeHttpUrl(url)).toBeUndefined();
     });
   });
 });

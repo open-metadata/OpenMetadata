@@ -30,17 +30,16 @@ const APP_MODE_SETTINGS_URL = '/settings/preferences/appMode';
 const APP_MODE_PREFERENCES_URL = '/settings/preferences';
 const APP_MODE_MENU_TESTID = 'preferences.appMode';
 
-// Matches only the `PUT /api/v1/system/settings` write — the boot-time
-// `GET /system/settings/appConfiguration` has a trailing segment the `($|?)`
-// anchor excludes.
-const SYSTEM_SETTINGS_PUT_URL = /\/api\/v1\/system\/settings(\?|$)/;
+// Matches the PATCH request to the specific appConfiguration endpoint
+const SYSTEM_SETTINGS_PATCH_URL =
+  /\/api\/v1\/system\/settings\/appConfiguration/;
 
 /**
- * Restores the tenant-wide app-mode default to "no default" via the same
- * generic settings PUT the Admin UI page uses. Every test in the "as admin"
- * block below can leave `appConfiguration.defaultAppMode` mutated — without
- * this, later tests here would see a polluted tenant default.
- */
+Restores the tenant-wide app-mode default to "no default" via the same
+generic settings PUT the Admin UI page uses. Every test in the "as admin"
+block below can leave `appConfiguration.defaultAppMode` mutated — without
+this, later tests here would see a polluted tenant default.
+*/
 const resetAppConfigurationToNoDefault = async (page: Page) => {
   const { apiContext, afterAction } = await getApiContext(page);
   await apiContext.put('/api/v1/system/settings', {
@@ -53,11 +52,11 @@ const resetAppConfigurationToNoDefault = async (page: Page) => {
 };
 
 /**
- * `getApiContext(page)` reads the token off the page's storage — which is
- * empty on a brand-new page in `beforeEach` (nothing has navigated yet). Use
- * the browser-scoped admin context instead so the reset is safe to call from
- * `beforeEach` too.
- */
+`getApiContext(page)` reads the token off the page's storage — which is
+empty on a brand-new page in `beforeEach` (nothing has navigated yet). Use
+the browser-scoped admin context instead so the reset is safe to call from
+`beforeEach` too.
+*/
 const resetAppConfigurationToNoDefaultViaBrowser = async (browser: Browser) => {
   const { apiContext, afterAction } = await getDefaultAdminAPIContext(browser);
   try {
@@ -73,68 +72,80 @@ const resetAppConfigurationToNoDefaultViaBrowser = async (browser: Browser) => {
 };
 
 /**
- * Intercepts BOTH halves of the settings round-trip on this page's context:
- * the boot-time `GET /system/settings/appConfiguration` and the admin
- * `PUT /system/settings`. Nothing reaches the server, so the tenant-wide row —
- * a single global value every browser context reads at boot — is never
- * mutated, this test needs no cross-worker mutex, and its starting value is
- * deterministic instead of whatever a sibling worker last left behind.
- *
- * The PUT handler writes into the same in-memory value the GET serves, so a
- * reload genuinely re-reads what the UI saved. What stays under test is the
- * UI contract this spec owns: Save issues the right PUT, and boot renders
- * whatever the settings GET reports. Server-side persistence is the backend's
- * contract, covered by `AppModeAuthGating.spec.ts` hitting the real endpoint.
- *
- * Returns a handle whose `puts` array records every intercepted PUT body, so
- * callers can assert WHAT the UI sent rather than only that it sent something.
- */
+Intercepts BOTH halves of the settings round-trip on this page's context:
+the boot-time `GET /system/settings/appConfiguration` and the admin
+`PATCH /system/settings/appConfiguration`. Nothing reaches the server, so 
+the tenant-wide row — a single global value every browser context reads at 
+boot — is never mutated, this test needs no cross-worker mutex, and its 
+starting value is deterministic instead of whatever a sibling worker last 
+left behind.
+
+The PATCH handler applies the JSON Patch operations to the in-memory value 
+the GET serves, so a reload genuinely re-reads what the UI saved. What stays 
+under test is the UI contract this spec owns: Save issues the right PATCH, 
+and boot renders whatever the settings GET reports. Server-side persistence 
+is the backend's contract, covered by `AppModeAuthGating.spec.ts` hitting 
+the real endpoint.
+
+Returns a handle whose `patches` array records every intercepted PATCH body, 
+so callers can assert WHAT the UI sent rather than only that it sent something.
+*/
 const stubSettingsRoundTrip = async (
   page: Page,
   initial: 'ai' | 'classic' | null
 ) => {
   const state: {
     value: 'ai' | 'classic' | null;
-    puts: Record<string, unknown>[];
-  } = { value: initial, puts: [] };
+    patches: Record<string, unknown>[][];
+  } = { value: initial, patches: [] };
 
   await page.route(
     '**/api/v1/system/settings/appConfiguration',
     async (route) => {
-      if (route.request().method() !== 'GET') {
-        await route.fallback();
-
+      if (route.request().method() === 'GET') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          json: {
+            config_type: 'appConfiguration',
+            config_value: { defaultAppMode: state.value },
+          },
+        });
         return;
       }
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        json: {
-          config_type: 'appConfiguration',
-          config_value: { defaultAppMode: state.value },
-        },
-      });
+
+      if (route.request().method() === 'PATCH') {
+        const body = route.request().postDataJSON() as {
+          op: string;
+          path: string;
+          value: unknown;
+        }[];
+        state.patches.push(body);
+
+        // Apply the patch to our local mock state
+        body.forEach((op) => {
+          if (
+            (op.op === 'add' || op.op === 'replace') &&
+            op.path === '/defaultAppMode'
+          ) {
+            state.value = op.value as 'ai' | 'classic' | null;
+          }
+        });
+
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          json: {
+            config_type: 'appConfiguration',
+            config_value: { defaultAppMode: state.value },
+          },
+        });
+        return;
+      }
+
+      await route.fallback();
     }
   );
-
-  await page.route('**/api/v1/system/settings', async (route) => {
-    if (route.request().method() !== 'PUT') {
-      await route.fallback();
-
-      return;
-    }
-    const body = route.request().postDataJSON() as Record<string, unknown>;
-    state.puts.push(body);
-    const configValue = (body?.config_value ?? {}) as {
-      defaultAppMode?: 'ai' | 'classic' | null;
-    };
-    state.value = configValue.defaultAppMode ?? null;
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      json: body,
-    });
-  });
 
   return state;
 };
@@ -147,9 +158,7 @@ test.describe('AppMode — Admin Settings page', { tag: ['@Platform'] }, () => {
       waitUntil: 'domcontentloaded',
     });
     await waitForAllLoadersToDisappear(page);
-
     const menuEntry = page.getByTestId(APP_MODE_MENU_TESTID);
-
     await expect(menuEntry).toBeVisible();
     // Match the entry's label only, not the description below it — an exact
     // match on the OSS label ("Default App Mode") resolves to the single label
@@ -167,7 +176,6 @@ test.describe('AppMode — Admin Settings page', { tag: ['@Platform'] }, () => {
       waitUntil: 'domcontentloaded',
     });
     await waitForAllLoadersToDisappear(dataConsumerPage);
-
     await expect(
       dataConsumerPage.getByTestId(APP_MODE_MENU_TESTID)
     ).toHaveCount(0);
@@ -180,7 +188,6 @@ test.describe('AppMode — Admin Settings page', { tag: ['@Platform'] }, () => {
       waitUntil: 'domcontentloaded',
     });
     await waitForAllLoadersToDisappear(dataConsumerPage);
-
     // `AdminProtectedRoute` wraps `DefaultAppModePage` with no `hasPermission`
     // prop, so a non-admin falls into the `PermissionErrorPlaceholder` branch
     // (403-equivalent view), not a redirect to sign-in.
@@ -199,7 +206,7 @@ test.describe('AppMode — Admin Settings page', { tag: ['@Platform'] }, () => {
       await resetAppConfigurationToNoDefault(page);
     });
 
-    // Every admin test in this block PUTs to `appConfiguration` and can race
+    // Every admin test in this block PUTs/PATCHes to `appConfiguration` and can race
     // with sibling workers. Hold the cross-worker mutex for the whole test
     // body so load-then-verify-then-click-save is atomic against sibling
     // flips.
@@ -211,22 +218,19 @@ test.describe('AppMode — Admin Settings page', { tag: ['@Platform'] }, () => {
         // Reset inside the lock so the "initial radio = null" assertion below
         // is against a value no sibling worker can flip.
         await resetAppConfigurationToNoDefaultViaBrowser(browser);
+
         await page.goto(APP_MODE_SETTINGS_URL, {
           waitUntil: 'domcontentloaded',
         });
         await waitForAllLoadersToDisappear(page);
-
         const radioGroup = page.getByTestId('app-mode-radio-group');
         const saveButton = page.getByTestId('save-app-mode-settings');
-
         await expect(radioGroup).toBeVisible();
         await expect(
           page.getByTestId('app-mode-option-null').getByRole('radio')
         ).toBeChecked();
         await expect(saveButton).toBeDisabled();
-
         await page.getByTestId('app-mode-option-ai').click();
-
         await expect(
           page.getByTestId('app-mode-option-ai').getByRole('radio')
         ).toBeChecked();
@@ -234,38 +238,34 @@ test.describe('AppMode — Admin Settings page', { tag: ['@Platform'] }, () => {
       });
     });
 
-    // Fully stubbed — no real PUT, so no global mutation and no mutex. See
+    // Fully stubbed — no real PATCH, so no global mutation and no mutex. See
     // `stubSettingsRoundTrip`. Because the stub owns the starting value, this
     // test no longer depends on a reset landing before it, and 'ai' is safe to
     // save here: it never leaves this browser context.
-    test('Saving fires the settings PUT and the selection persists on reload', async ({
+    test('Saving fires the settings PATCH and the selection persists on reload', async ({
       page,
     }) => {
       const settings = await stubSettingsRoundTrip(page, null);
-
       await page.goto(APP_MODE_SETTINGS_URL, {
         waitUntil: 'domcontentloaded',
       });
       await waitForAllLoadersToDisappear(page);
-
       await page.getByTestId('app-mode-option-ai').click();
 
       await clickAndWaitFor(
         page,
         page.getByTestId('save-app-mode-settings'),
-        SYSTEM_SETTINGS_PUT_URL
+        SYSTEM_SETTINGS_PATCH_URL
       );
 
-      // Stronger than asserting a PUT merely happened: pin the payload.
-      expect(settings.puts).toHaveLength(1);
-      expect(settings.puts[0]).toMatchObject({
-        config_type: 'appConfiguration',
-        config_value: { defaultAppMode: 'ai' },
-      });
+      // Stronger than asserting a PATCH merely happened: pin the payload.
+      expect(settings.patches).toHaveLength(1);
+      expect(settings.patches[0]).toMatchObject([
+        { op: 'add', path: '/defaultAppMode', value: 'ai' },
+      ]);
 
       await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
-
       await expect(
         page.getByTestId('app-mode-option-ai').getByRole('radio')
       ).toBeChecked();
@@ -281,34 +281,28 @@ test.describe('AppMode — Admin Settings page', { tag: ['@Platform'] }, () => {
           waitUntil: 'domcontentloaded',
         });
         await waitForAllLoadersToDisappear(page);
-
         // Start from a known non-null value so this test is meaningful even
         // if it happens to run first.
         await page.getByTestId('app-mode-option-classic').click();
         await clickAndWaitFor(
           page,
           page.getByTestId('save-app-mode-settings'),
-          SYSTEM_SETTINGS_PUT_URL
+          SYSTEM_SETTINGS_PATCH_URL
         );
-
         await page.getByTestId('app-mode-option-null').click();
-        const putResponse = await clickAndWaitFor(
+        await clickAndWaitFor(
           page,
           page.getByTestId('save-app-mode-settings'),
-          SYSTEM_SETTINGS_PUT_URL
+          SYSTEM_SETTINGS_PATCH_URL
         );
 
-        const putBody = await putResponse.json();
-
-        expect(putBody?.config_value?.defaultAppMode ?? null).toBeNull();
-
+        // Verify via GET that the state was actually cleared
         const { apiContext, afterAction } = await getApiContext(page);
         const configResponse = await apiContext.get(
           '/api/v1/system/settings/appConfiguration'
         );
         const config = await configResponse.json();
         await afterAction();
-
         expect(config?.config_value?.defaultAppMode ?? null).toBeNull();
       });
     });

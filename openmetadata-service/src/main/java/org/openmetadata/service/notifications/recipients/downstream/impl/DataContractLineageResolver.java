@@ -67,7 +67,7 @@ public class DataContractLineageResolver implements EntityLineageResolver {
     DataContract dataContract = null;
 
     try {
-      EntityInterface contractEntity =
+      EntityInterface<?> contractEntity =
           Entity.getEntity(Entity.DATA_CONTRACT, entityId, "", Include.NON_DELETED);
 
       if (contractEntity instanceof DataContract dc) {

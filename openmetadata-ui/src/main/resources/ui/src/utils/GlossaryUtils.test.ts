@@ -13,7 +13,6 @@
 import { ModifiedGlossaryTerm } from '../components/Glossary/GlossaryTermTab/GlossaryTermTab.interface';
 import { ModifiedGlossary } from '../components/Glossary/useGlossary.store';
 import { EntityType } from '../enums/entity.enum';
-import { Glossary } from '../generated/entity/data/glossary';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import {
   MOCKED_GLOSSARY_TERMS,
@@ -23,7 +22,6 @@ import {
 } from '../mocks/Glossary.mock';
 import {
   buildTree,
-  filterTreeNodeOptions,
   findAndUpdateNested,
   findExpandableKeys,
   findExpandableKeysForArray,
@@ -284,63 +282,6 @@ describe('Glossary Utils', () => {
     );
 
     expect(expandableKeys).toEqual(['example1', 'example2']);
-  });
-
-  it('Should return same Glossary when no filterOption is provided', () => {
-    const glossary = [
-      {
-        fullyQualifiedName: 'example1',
-        children: [
-          {
-            fullyQualifiedName: 'child1',
-          },
-        ],
-      },
-      {
-        fullyQualifiedName: 'example2',
-        childrenCount: 2,
-      },
-      {
-        fullyQualifiedName: 'example3',
-      },
-    ];
-
-    const filteredOptions = filterTreeNodeOptions(glossary as Glossary[], []);
-
-    expect(filteredOptions).toEqual(glossary);
-  });
-
-  it('Should return filtered Glossary when filterOption is provided', () => {
-    const glossary = [
-      {
-        fullyQualifiedName: 'example1',
-        children: [
-          {
-            fullyQualifiedName: 'child1',
-          },
-        ],
-      },
-      {
-        fullyQualifiedName: 'example3',
-      },
-    ];
-
-    const expected_glossary = [
-      {
-        fullyQualifiedName: 'example1',
-        children: [],
-      },
-      {
-        fullyQualifiedName: 'example3',
-        children: [],
-      },
-    ];
-
-    const filteredOptions = filterTreeNodeOptions(glossary as Glossary[], [
-      'child1',
-    ]);
-
-    expect(filteredOptions).toEqual(expected_glossary);
   });
 
   it('should allow glossary review actions for task assignees even when reviewers are not hydrated', () => {

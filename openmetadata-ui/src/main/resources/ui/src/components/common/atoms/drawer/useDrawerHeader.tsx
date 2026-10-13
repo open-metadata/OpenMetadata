@@ -12,6 +12,7 @@
  */
 
 import { SlideoutMenu, Typography } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import { ReactNode, useMemo } from 'react';
 
 export interface DrawerHeaderConfig {
@@ -27,8 +28,13 @@ export const useDrawerHeader = (config: DrawerHeaderConfig = {}) => {
 
   const drawerHeader = useMemo(
     () => (
+      // Flex row keeps actions beside the title; the top margin (not padding)
+      // centres the close button on it. A caller's className overrides these.
       <SlideoutMenu.Header
-        className={className}
+        className={classNames(
+          'tw:flex tw:items-center tw:gap-4 tw:mt-6 tw:pt-0',
+          className
+        )}
         onClose={showCloseButton ? onClose : undefined}>
         <div className="tw:flex tw:items-center tw:gap-2 tw:flex-1">
           {typeof title === 'string' ? (

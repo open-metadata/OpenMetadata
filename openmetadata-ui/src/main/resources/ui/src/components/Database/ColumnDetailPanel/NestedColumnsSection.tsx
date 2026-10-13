@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge } from '@openmetadata/ui-core-components';
-import { Typography } from 'antd';
+import { Badge, Button } from '@openmetadata/ui-core-components';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ColumnIcon } from '../../../assets/svg/entity/column.svg';
@@ -40,11 +39,14 @@ const NestedColumnItem: React.FC<{
             strokeWidth: '1.2px',
           }}
         />
-        <Typography.Link
-          className="nested-column-name tw:text-sm tw:font-normal group-hover:tw:underline"
+        <Button
+          noTextPadding
+          className="nested-column-name tw:text-sm tw:font-normal"
+          color="link-color"
+          size="sm"
           onClick={() => onColumnClick(column)}>
           {getEntityName(column)}
-        </Typography.Link>
+        </Button>
       </p>
       {hasChildren && (
         <div className="tw:pl-2">

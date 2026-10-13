@@ -21,7 +21,7 @@ import {
   SlideoutMenu,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { RefreshCcw01 } from '@untitledui/icons';
+import { RefreshCcw01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { useCallback, useEffect, useRef, useState } from 'react';

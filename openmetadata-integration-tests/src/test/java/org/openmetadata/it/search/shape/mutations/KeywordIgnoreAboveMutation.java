@@ -28,7 +28,7 @@ public final class KeywordIgnoreAboveMutation implements ShapeMutation {
   }
 
   @Override
-  public boolean appliesTo(final EntityInterface entity) {
+  public boolean appliesTo(final EntityInterface<?> entity) {
     return true;
   }
 
@@ -38,7 +38,7 @@ public final class KeywordIgnoreAboveMutation implements ShapeMutation {
   }
 
   @Override
-  public EntityInterface apply(final EntityInterface entity, final Rung rung) {
+  public EntityInterface<?> apply(final EntityInterface<?> entity, final Rung rung) {
     entity.setDisplayName(value(rung));
     return entity;
   }

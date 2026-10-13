@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Lightbulb05 } from '@untitledui/icons';
+import { Lightbulb05 } from '../icons';
 import type { Meta, StoryObj } from '@storybook/react';
 import { expect, userEvent, within } from '@storybook/test';
 import { useForm } from 'react-hook-form';

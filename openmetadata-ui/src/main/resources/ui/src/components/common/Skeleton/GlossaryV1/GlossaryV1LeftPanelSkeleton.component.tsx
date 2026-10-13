@@ -10,30 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Skeleton } from 'antd';
-import { uniqueId } from 'lodash';
+import { Skeleton } from '@openmetadata/ui-core-components';
 import { getSkeletonMockData } from '../../../../utils/Skeleton.utils';
-import ButtonSkeleton from '../CommonSkeletons/ControlElements/ControlElements.component';
 import { SkeletonInterface } from '../Skeleton.interfaces';
 
 const GlossaryV1Skeleton = ({ loading, children }: SkeletonInterface) => {
   return loading ? (
-    <div className="m-b-md p-md">
-      <Skeleton active paragraph={{ rows: 0 }} />
-      <Row gutter={32} justify="space-between">
-        <Col span={24}>
-          <ButtonSkeleton />
-        </Col>
-        <Col className="m-t-md" span={24}>
-          <ButtonSkeleton />
-        </Col>
-
-        <Col className="m-t-md" span={24}>
-          {getSkeletonMockData().map(() => (
-            <ButtonSkeleton className="p-xs" key={uniqueId()} />
-          ))}
-        </Col>
-      </Row>
+    <div
+      className="tw:mb-4 tw:flex tw:flex-col tw:gap-4 tw:p-4"
+      data-testid="glossary-left-panel-skeleton">
+      <Skeleton height={16} width="40%" />
+      <Skeleton height={24} variant="rounded" />
+      <Skeleton height={24} variant="rounded" />
+      <div className="tw:flex tw:flex-col tw:gap-2">
+        {getSkeletonMockData().map((key) => (
+          <Skeleton height={24} key={key} variant="rounded" />
+        ))}
+      </div>
     </div>
   ) : (
     children

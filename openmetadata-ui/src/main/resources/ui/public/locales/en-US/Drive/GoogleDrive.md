@@ -18,6 +18,8 @@ To extract metadata from Google Drive, you will need a **Service Account** with 
   - `https://www.googleapis.com/auth/drive.metadata.readonly`
   - `https://www.googleapis.com/auth/spreadsheets.readonly` (if processing Google Sheets)
 
+You can find further information on the Google Drive connector in the <a href="https://docs.open-metadata.org/connectors/drive/googledrive" target="_blank">docs</a>.
+
 ## Connection Details
 
 $$section

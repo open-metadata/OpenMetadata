@@ -450,7 +450,7 @@ describe('NestedColumnsSection', () => {
 
       const link = screen.getByText('Simple Column');
 
-      expect(link.closest('a')).toBeInTheDocument();
+      expect(link.closest('button')).toBeInTheDocument();
     });
 
     it('should render column icons for all columns', () => {

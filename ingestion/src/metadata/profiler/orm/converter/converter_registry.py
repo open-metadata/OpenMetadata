@@ -35,3 +35,7 @@ converter_registry[DatabaseServiceType.Mssql] = MssqlMapTypes
 converter_registry[DatabaseServiceType.AzureSQL] = AzureSqlMapTypes
 converter_registry[DatabaseServiceType.MariaDB] = MariaDBMapTypes
 converter_registry[DatabaseServiceType.Trino] = TrinoMapTypes
+# ClickZetta exposes standard SQL scalar types through its SQLAlchemy
+# dialect.  Keep the common OpenMetadata mapping explicit so this support is
+# visible to reviewers instead of relying on defaultdict fallback behaviour.
+converter_registry[DatabaseServiceType.Clickzetta] = CommonMapTypes

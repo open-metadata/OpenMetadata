@@ -10,16 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { AxiosError } from 'axios';
 import { cloneDeep } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { Operation } from '../../../generated/entity/policies/policy';
-import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { updateCertificationTag } from '../../../utils/TagsPureUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
 import Certification from '../../Certification/Certification.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import CertificationTag from '../CertificationTag/CertificationTag';
@@ -41,7 +39,7 @@ const CertificationWidget = () => {
 
   const canEdit = useMemo(
     () =>
-      getPrioritizedEditPermission(permissions, Operation.EditCertification) &&
+      getDerivedPermissionFlags(permissions).can(Operation.EditCertification) &&
       !isVersionView,
     [permissions, isVersionView]
   );
@@ -51,10 +49,10 @@ const CertificationWidget = () => {
       const updatedEntity = cloneDeep(entity);
       updatedEntity.certification = updateCertificationTag(newCertification);
       await onUpdate(updatedEntity);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsEditing(false);
+    } catch {
+      // The page-level updater already toasts before rethrowing, so toasting
+      // here would duplicate it. Swallow rather than rethrow: nothing above
+      // catches it, and the picker has already closed itself.
     }
   };
 
@@ -62,38 +60,30 @@ const CertificationWidget = () => {
     <WidgetEditButton
       data-testid="edit-certification"
       title={t('label.edit-entity', { entity: t('label.certification') })}
-      onClick={() => setIsEditing(true)}
     />
   ) : (
     <WidgetPlusButton
       data-testid="add-certification"
       title={t('label.add-entity', { entity: t('label.certification') })}
-      onClick={() => setIsEditing(true)}
     />
   );
 
-  const headerExtra = canEdit ? certificationButton : null;
-
-  const content = (
+  // Anchored to the header button, like the glossary and tag pickers; the
+  // button's click opens it through Certification's trigger.
+  const headerExtra = canEdit ? (
     <Certification
       currentCertificate={entity.certification?.tagLabel?.tagFQN}
       permission={canEdit}
-      popoverProps={{
-        open: isEditing,
-        onOpenChange: (visible: boolean) => {
-          if (!visible) {
-            setIsEditing(false);
-          }
-        },
-      }}
-      onCertificationUpdate={handleCertificationUpdate}
-      onClose={() => setIsEditing(false)}>
-      {entity.certification && (
-        <div data-testid="certification-label">
-          <CertificationTag showName certification={entity.certification} />
-        </div>
-      )}
+      popoverProps={{ open: isEditing, onOpenChange: setIsEditing }}
+      onCertificationUpdate={handleCertificationUpdate}>
+      {certificationButton}
     </Certification>
+  ) : null;
+
+  const content = entity.certification && (
+    <div data-testid="certification-label">
+      <CertificationTag showName certification={entity.certification} />
+    </div>
   );
 
   return (

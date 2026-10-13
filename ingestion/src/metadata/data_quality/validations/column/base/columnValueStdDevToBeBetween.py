@@ -110,9 +110,10 @@ class BaseColumnValueStdDevToBeBetweenValidator(BaseTestValidator):
         Returns:
             dict: Test parameters including min and max bounds
         """
+        min_bound, max_bound = self.get_bounds(self.MIN_BOUND, self.MAX_BOUND)
         return {
-            self.MIN_BOUND: self.get_min_bound(self.MIN_BOUND),
-            self.MAX_BOUND: self.get_max_bound(self.MAX_BOUND),
+            self.MIN_BOUND: min_bound,
+            self.MAX_BOUND: max_bound,
         }
 
     def _get_metrics_to_compute(self, test_params: dict | None = None) -> dict:
@@ -182,13 +183,13 @@ class BaseColumnValueStdDevToBeBetweenValidator(BaseTestValidator):
         min_bound = test_params[self.MIN_BOUND]
         max_bound = test_params[self.MAX_BOUND]
 
-        if dimension_info:
-            return (
-                f"Dimension {dimension_info['dimension_name']}={dimension_info['dimension_value']}: "
-                f"Found stddev={stddev_value} vs. the expected min={min_bound}, max={max_bound}"
-            )
-        else:  # noqa: RET505
-            return f"Found stddev={stddev_value} vs. the expected min={min_bound}, max={max_bound}."
+        return self.format_statistic_message(
+            f"Standard deviation of {self.column_label()}",
+            stddev_value,
+            (min_bound, max_bound),
+            self._matched(metric_values, test_params),
+            dimension_info,
+        )
 
     def _get_test_result_values(self, metric_values: dict) -> list[TestResultValue]:
         """Get test result values for stddev-to-be-between test

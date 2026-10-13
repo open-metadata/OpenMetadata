@@ -28,6 +28,9 @@ from metadata.ingestion.ometa.client import REST
 from metadata.utils.constants import ENTITY_REFERENCE_TYPE_MAP
 from metadata.utils.elasticsearch import ES_INDEX_MAP
 from metadata.utils.logger import ometa_logger
+from metadata.utils.lru_cache import LRUCache
+
+USER_REFERENCE_CACHE_SIZE = 1000
 
 logger = ometa_logger()
 
@@ -70,6 +73,35 @@ class OMetaUserMixin:
             f"""/search/query?query_filter={quote(json.dumps(query_filter), safe="")}"""
             f"&from={from_}&size={size}&index=" + ES_INDEX_MAP[entity.__name__]
         )
+
+    def _get_user_reference_cache(self) -> LRUCache:
+        """
+        Lazily create a User-reference cache scoped to this specific
+        OpenMetadata client instance, so caches from different clients or
+        catalogs never mix.
+        """
+        cache = getattr(self, "_user_reference_cache_instance", None)
+        if cache is None:
+            cache = LRUCache(USER_REFERENCE_CACHE_SIZE)
+            self._user_reference_cache_instance = cache
+        return cache
+
+    def get_cached_user_reference(self, name: str) -> EntityReference | None:
+        """
+        Cached lookup for a User EntityReference by name/FQN.
+        Used during usage ingestion, where the same username is looked up
+        repeatedly across staging and lifecycle processing.
+        Misses are cached too: a user absent from OpenMetadata at the start
+        of a run will not appear mid-run.
+        """
+        cache = self._get_user_reference_cache()
+        if name in cache:
+            return cache.get(name)
+        reference = self.get_entity_reference(  # pyright: ignore[reportAttributeAccessIssue]
+            entity=User, fqn=name
+        )
+        cache.put(name, reference)
+        return reference
 
     def _search_by_email(
         self,

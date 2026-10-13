@@ -13,12 +13,15 @@
 
 package org.openmetadata.service.exception;
 
+import static org.openmetadata.sdk.PipelineServiceClientInterface.TRIGGER_ERROR;
+
 import jakarta.ws.rs.core.Response;
 import org.openmetadata.sdk.exception.WebServiceException;
 
 public class IngestionPipelineDeploymentException extends WebServiceException {
 
   private static final String BY_NAME_MESSAGE = "Failed to deploy pipeline [%s] due to [%s].";
+  private static final String TRIGGER_MESSAGE = "Failed to trigger pipeline [%s] due to [%s].";
   private static final String ERROR_TYPE = "DEPLOYMENT_ERROR";
 
   public IngestionPipelineDeploymentException(String message) {
@@ -40,6 +43,13 @@ public class IngestionPipelineDeploymentException extends WebServiceException {
       String name, String errorType, String errorMessage) {
     return new IngestionPipelineDeploymentException(
         Response.Status.BAD_REQUEST, errorType, buildMessageByName(name, errorMessage));
+  }
+
+  /** A run the pipeline service did not start: 503 when it was not reached, so a retry may help. */
+  public static IngestionPipelineDeploymentException triggerFailed(
+      String name, String errorMessage, Response.Status status) {
+    return new IngestionPipelineDeploymentException(
+        status, TRIGGER_ERROR, String.format(TRIGGER_MESSAGE, name, errorMessage));
   }
 
   public static String buildMessageByName(String name, String errorMessage) {

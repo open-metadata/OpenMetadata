@@ -137,6 +137,24 @@ describe('CsvJobsTray', () => {
     ).not.toBeInTheDocument();
   });
 
+  // The tray portals to document.body, a sibling of react-aria modals. Without
+  // this attribute react-aria's ariaHideOutside marks it `inert` while a modal
+  // is open, so the tray (and its dismiss button) becomes unclickable.
+  it('marks the tray as a react-aria top layer so it stays interactive above modals', async () => {
+    mockGetCsvAsyncJobs.mockResolvedValue([
+      createJob({ jobId: 'running-job', status: 'RUNNING' }),
+    ]);
+
+    await renderComponent();
+
+    await waitFor(() => expect(mockGetCsvAsyncJobs).toHaveBeenCalledTimes(1));
+
+    expect(document.querySelector('.csv-jobs-tray')).toHaveAttribute(
+      'data-react-aria-top-layer',
+      'true'
+    );
+  });
+
   // A fast export can finish before the tray's first fetch resolves, so the job
   // is already terminal on that fetch and would otherwise be hidden as "stale".
   // Because the user just started it (it is marked owned), it must be surfaced

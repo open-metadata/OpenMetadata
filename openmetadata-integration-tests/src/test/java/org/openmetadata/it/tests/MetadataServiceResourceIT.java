@@ -19,11 +19,14 @@ import org.openmetadata.schema.api.services.CreateMetadataService;
 import org.openmetadata.schema.api.services.CreateMetadataService.MetadataServiceType;
 import org.openmetadata.schema.entity.services.MetadataConnection;
 import org.openmetadata.schema.entity.services.MetadataService;
+import org.openmetadata.schema.entity.services.ServiceAttributes;
 import org.openmetadata.schema.services.connections.metadata.AmundsenConnection;
 import org.openmetadata.schema.services.connections.metadata.AtlasConnection;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
 
 @Execution(ExecutionMode.CONCURRENT)
 public class MetadataServiceResourceIT
@@ -337,5 +340,82 @@ public class MetadataServiceResourceIT
     MetadataService withFields = getEntityWithFields(service.getId().toString(), "owners,tags");
     assertNotNull(withFields);
     assertEquals(service.getId(), withFields.getId());
+  }
+
+  @Test
+  void put_createOrUpdate_omittingServiceAttributes_preservesAdminSetAttributes(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String serviceName = ns.prefix("put_preserve_attrs");
+
+    ServiceAttributes adminSet =
+        new ServiceAttributes()
+            .withEnvironment(ServiceAttributes.Environment.PRODUCTION)
+            .withRegion("us-east-1")
+            .withDeployment("prod-cluster-01");
+
+    CreateMetadataService withAttributes = createMinimalRequest(ns);
+    withAttributes.setName(serviceName);
+    withAttributes.setServiceAttributes(adminSet);
+
+    MetadataService created = putCreateOrUpdate(admin, withAttributes);
+    assertNotNull(created.getServiceAttributes());
+    assertEquals(
+        ServiceAttributes.Environment.PRODUCTION, created.getServiceAttributes().getEnvironment());
+
+    CreateMetadataService withoutAttributes = createMinimalRequest(ns);
+    withoutAttributes.setName(serviceName);
+
+    putCreateOrUpdate(admin, withoutAttributes);
+
+    MetadataService reloaded = admin.metadataServices().get(created.getId().toString());
+    assertNotNull(
+        reloaded.getServiceAttributes(),
+        "serviceAttributes must be preserved when a PUT create-or-update omits the field");
+    assertEquals(
+        ServiceAttributes.Environment.PRODUCTION,
+        reloaded.getServiceAttributes().getEnvironment(),
+        "admin-set environment must survive a PUT that omits serviceAttributes");
+    assertEquals("us-east-1", reloaded.getServiceAttributes().getRegion());
+    assertEquals("prod-cluster-01", reloaded.getServiceAttributes().getDeployment());
+  }
+
+  @Test
+  void put_createOrUpdate_withExplicitServiceAttributes_updatesAndCanClearEnvironment(
+      TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String serviceName = ns.prefix("put_explicit_attrs");
+
+    CreateMetadataService withInitial = createMinimalRequest(ns);
+    withInitial.setName(serviceName);
+    withInitial.setServiceAttributes(
+        new ServiceAttributes().withEnvironment(ServiceAttributes.Environment.PRODUCTION));
+    MetadataService created = putCreateOrUpdate(admin, withInitial);
+    assertEquals(
+        ServiceAttributes.Environment.PRODUCTION, created.getServiceAttributes().getEnvironment());
+
+    CreateMetadataService withUpdated = createMinimalRequest(ns);
+    withUpdated.setName(serviceName);
+    withUpdated.setServiceAttributes(
+        new ServiceAttributes().withEnvironment(ServiceAttributes.Environment.STAGING));
+    MetadataService updated = putCreateOrUpdate(admin, withUpdated);
+    assertEquals(
+        ServiceAttributes.Environment.STAGING,
+        updated.getServiceAttributes().getEnvironment(),
+        "an explicit non-null serviceAttributes must replace the stored value");
+
+    CreateMetadataService withEmpty = createMinimalRequest(ns);
+    withEmpty.setName(serviceName);
+    withEmpty.setServiceAttributes(new ServiceAttributes());
+    MetadataService cleared = putCreateOrUpdate(admin, withEmpty);
+    assertNotNull(
+        cleared.getServiceAttributes(), "an explicit {} is a real value, not an omission");
+    assertNull(
+        cleared.getServiceAttributes().getEnvironment(), "an explicit {} clears environment");
+  }
+
+  private MetadataService putCreateOrUpdate(OpenMetadataClient admin, CreateMetadataService body) {
+    return admin
+        .getHttpClient()
+        .execute(HttpMethod.PUT, "/v1/services/metadataServices", body, MetadataService.class);
   }
 }

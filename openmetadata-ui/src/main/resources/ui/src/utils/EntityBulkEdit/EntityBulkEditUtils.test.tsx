@@ -180,9 +180,7 @@ describe('EntityBulkEditUtils', () => {
       const button = screen.getByTestId('bulk-edit-table');
 
       expect(button).toBeInTheDocument();
-      expect(button).toHaveClass('text-primary');
-      expect(button).toHaveClass('p-0');
-      expect(button).toHaveClass('remove-button-background-hover');
+      expect(button.tagName).toBe('BUTTON');
     });
 
     it('should return null when hasPermission is false', () => {

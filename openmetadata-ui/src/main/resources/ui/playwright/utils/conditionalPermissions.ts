@@ -273,7 +273,7 @@ export const checkViewAllPermission = async ({
   await redirectToHomePage(page);
 
   // visit the page of the asset with permission
-  await page.goto(url1);
+  await page.goto(url1, { waitUntil: 'domcontentloaded' });
 
   // Check if the details are shown properly
   await expect(page.getByTestId('data-assets-header')).toBeAttached();
@@ -297,7 +297,7 @@ export const checkViewAllPermission = async ({
   }
 
   // visit the page of the asset without permission
-  await page.goto(url2);
+  await page.goto(url2, { waitUntil: 'domcontentloaded' });
 
   // Check if the no permissions placeholder is shown
   await expect(page.getByTestId('permission-error-placeholder')).toBeAttached();

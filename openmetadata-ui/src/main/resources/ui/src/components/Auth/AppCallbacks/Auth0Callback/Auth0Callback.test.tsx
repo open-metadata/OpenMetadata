@@ -41,6 +41,7 @@ Object.defineProperty(window, 'localStorage', {
 });
 
 const mockHandleSuccessfulLogin = jest.fn();
+const mockHandleFailedLogin = jest.fn();
 
 jest.mock('@auth0/auth0-react', () => ({
   useAuth0: jest.fn(),
@@ -57,6 +58,7 @@ jest.mock('../../../../hooks/useApplicationStore', () => {
 jest.mock('../../AuthProviders/AuthProvider', () => ({
   useAuthProvider: jest.fn().mockImplementation(() => ({
     handleSuccessfulLogin: mockHandleSuccessfulLogin,
+    handleFailedLogin: mockHandleFailedLogin,
   })),
 }));
 
@@ -87,6 +89,28 @@ describe('Test Auth0Callback component', () => {
 
     expect(error).toHaveTextContent('server.unexpected-error');
     expect(error).toHaveTextContent('unknown error');
+    expect(mockHandleFailedLogin).not.toHaveBeenCalled();
+  });
+
+  it('sends the user to sign in when a silent re-authentication finds the Auth0 session ended', async () => {
+    // prompt=none comes back with login_required once the Auth0 session
+    // itself is gone; that is a sign-in, not an error page.
+    (useAuth0 as jest.Mock).mockReturnValue({
+      isAuthenticated: false,
+      error: Object.assign(new Error('Login required'), {
+        error: 'login_required',
+      }),
+      user: {},
+    });
+
+    await act(async () => {
+      render(<Auth0Callback />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(mockHandleFailedLogin).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId('auth0-error')).not.toBeInTheDocument();
   });
 
   it('Should call successful login handler on Success', async () => {

@@ -50,7 +50,7 @@ public final class ActivityMessageFormatter {
   private static List<FormattedMessage> formatEntityChange(
       MessageDecorator<?> messageDecorator, ChangeEvent changeEvent) {
     String message;
-    EntityInterface entity = getEntity(changeEvent);
+    EntityInterface<?> entity = getEntity(changeEvent);
     MessageParser.EntityLink about =
         new MessageParser.EntityLink(
             changeEvent.getEntityType(), entity.getFullyQualifiedName(), null, null, null);
@@ -113,7 +113,7 @@ public final class ActivityMessageFormatter {
       FormattedMessage formattedMessage,
       FormattedMessage.CardStyle cardStyle,
       String message,
-      EntityInterface entity) {
+      EntityInterface<?> entity) {
     formattedMessage
         .withMessage(message)
         .withCardStyle(cardStyle)
@@ -127,7 +127,7 @@ public final class ActivityMessageFormatter {
 
   private static FormattedMessage createMessage(
       MessageDecorator<?> decorator,
-      EntityInterface entity,
+      EntityInterface<?> entity,
       String linkString,
       String entityType,
       String updatedBy) {

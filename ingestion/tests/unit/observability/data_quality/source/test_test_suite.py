@@ -51,6 +51,18 @@ MOCK_ENTITY_REFERENCE = EntityReference(id=str(UUID(int=0)), type="test_suite", 
             },
             [],
         ),
+        # Matched on name, which is why the server scopes an on-demand run by name: a fully
+        # qualified name would select nothing and the run would pass having tested nothing.
+        (
+            {
+                "type": "TestSuite",
+                "entityFullyQualifiedName": "MyTestSuite",
+                "testCases": [
+                    "MyTestSuite.test_case1",
+                ],
+            },
+            [],
+        ),
     ],
 )
 def test_source_config(parameters, expected, monkeypatch):

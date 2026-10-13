@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Divider } from 'antd';
+import { Divider } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { FC } from 'react';
 import { FeedListSeparatorProp } from '../ActivityFeedList/ActivityFeedList.interface';
@@ -23,12 +23,20 @@ const FeedListSeparator: FC<FeedListSeparatorProp> = ({
 }) => {
   return (
     <Divider
-      className={classNames('feed-list-separator', className)}
-      data-testid="separator">
-      {relativeDay ? (
-        <span data-testid="relative-day">{relativeDay}</span>
-      ) : null}
-    </Divider>
+      className={classNames(
+        'feed-list-separator tw:gap-0',
+        relativeDay ? 'tw:my-4' : 'tw:my-6',
+        className
+      )}
+      data-testid="separator"
+      label={
+        relativeDay ? (
+          <span className="feed-list-separator-text" data-testid="relative-day">
+            {relativeDay}
+          </span>
+        ) : null
+      }
+    />
   );
 };
 

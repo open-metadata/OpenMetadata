@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
+import { Owner } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { lazy } from 'react';
 import { ReactComponent as FilterIcon } from '../assets/svg/ic-filter.svg';
@@ -37,14 +38,6 @@ const DomainLabel = withSuspenseFallback(
   lazy(() =>
     import('../components/common/DomainLabel/DomainLabel.component').then(
       (module) => ({ default: module.DomainLabel })
-    )
-  )
-);
-
-const OwnerLabel = withSuspenseFallback(
-  lazy(() =>
-    import('../components/common/OwnerLabel/OwnerLabel.component').then(
-      (module) => ({ default: module.OwnerLabel })
     )
   )
 );
@@ -88,10 +81,10 @@ export const ownerTableObject = <
     width: 280,
     filterIcon: columnFilterIcon,
     render: (owners: EntityReference[]) => (
-      <OwnerLabel
+      <Owner
         isCompactView={false}
         maxVisibleOwners={4}
-        owners={owners}
+        owners={owners ?? []}
         showLabel={false}
       />
     ),

@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Form, Input, Modal, Select, Slider, Typography } from 'antd';
+import { SimpleModal, Typography } from '@openmetadata/ui-core-components';
+import { Form, Input, Select, Slider } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -19,6 +20,7 @@ import {
   Modifier,
 } from '../../../generated/configuration/searchSettings';
 import { modifierOptions } from '../../../utils/SearchSettingsUtils';
+import { DrawerPopupContainerProvider } from '../../common/DrawerPopupContainerProvider/DrawerPopupContainerProvider';
 
 interface FieldValueBoostModalProps {
   open: boolean;
@@ -37,6 +39,7 @@ const FieldValueBoostModal: React.FC<FieldValueBoostModalProps> = ({
 }) => {
   const { t } = useTranslation();
   const [form] = useForm();
+  const selectedField = Form.useWatch('field', form);
   const [factor, setFactor] = useState<number>(selectedBoost?.factor ?? 0);
 
   useEffect(() => {
@@ -96,134 +99,135 @@ const FieldValueBoostModal: React.FC<FieldValueBoostModalProps> = ({
   };
 
   return (
-    <Modal
-      centered
-      destroyOnClose
-      className="field-value-boost-modal"
+    <SimpleModal
       data-testid="field-value-boost-modal"
-      okButtonProps={{ disabled: !form.getFieldValue('field') }}
+      isDismissable={false}
+      isOkDisabled={!selectedField}
+      isOpen={open}
       okText={t('label.save')}
-      open={open}
       title={
-        <Typography.Text strong>
-          {selectedBoost
-            ? t('label.edit-entity', { entity: t('label.field-value-boost') })
-            : t('label.add-entity', { entity: t('label.field-value-boost') })}
-        </Typography.Text>
+        selectedBoost
+          ? t('label.edit-entity', { entity: t('label.field-value-boost') })
+          : t('label.add-entity', { entity: t('label.field-value-boost') })
       }
       width={600}
       onCancel={onCancel}
       onOk={handleSubmit}>
-      <Form
-        form={form}
-        initialValues={{
-          factor: 0,
-          modifier: Modifier.None,
-          missing: 0,
-          condition: { range: {} },
-        }}
-        layout="vertical">
-        <Form.Item
-          data-testid="field"
-          label={t('label.field')}
-          name="field"
-          rules={[{ required: true, message: t('message.field-required') }]}>
-          <Select
-            showSearch
-            disabled={!!selectedBoost?.field}
-            filterOption={(input, option) =>
-              (option?.label as string)
-                .toLowerCase()
-                .includes(input.toLowerCase())
-            }
-            options={entityOptions.map((field) => ({
-              label: field,
-              value: field,
-            }))}
-            placeholder={t('label.select-field')}
-          />
-        </Form.Item>
-
-        <Form.Item>
-          <div className="d-flex items-center justify-between m-b-md">
-            <Typography.Text>{t('label.impact')}</Typography.Text>
-            <Typography.Text
-              className="font-semibold boost-value"
-              data-testid="field-boost-value">
-              {factor}
-            </Typography.Text>
-          </div>
-          <div className="m-b-lg" data-testid="field-boost-slider">
-            <Slider
-              max={100}
-              min={0}
-              step={0.1}
-              tooltip={{ open: false }}
-              value={factor}
-              onChange={handleFactorChange}
+      <DrawerPopupContainerProvider>
+        <Form
+          className="field-value-boost-modal"
+          form={form}
+          initialValues={{
+            factor: 0,
+            modifier: Modifier.None,
+            missing: 0,
+            condition: { range: {} },
+          }}
+          layout="vertical">
+          <Form.Item
+            data-testid="field"
+            label={t('label.field')}
+            name="field"
+            rules={[{ required: true, message: t('message.field-required') }]}>
+            <Select
+              showSearch
+              disabled={!!selectedBoost?.field}
+              filterOption={(input, option) =>
+                (option?.label as string)
+                  .toLowerCase()
+                  .includes(input.toLowerCase())
+              }
+              options={entityOptions.map((field) => ({
+                label: field,
+                value: field,
+              }))}
+              placeholder={t('label.select-field')}
             />
-          </div>
-        </Form.Item>
+          </Form.Item>
 
-        <Form.Item
-          className="m-b-md"
-          label={t('label.modifier')}
-          name="modifier">
-          <Select data-testid="modifier-select" options={modifierOptions} />
-        </Form.Item>
+          <Form.Item>
+            <div className="d-flex items-center justify-between m-b-md">
+              <Typography>{t('label.impact')}</Typography>
+              <Typography
+                className="font-semibold boost-value"
+                data-testid="field-boost-value">
+                {factor}
+              </Typography>
+            </div>
+            <div className="m-b-lg" data-testid="field-boost-slider">
+              <Slider
+                max={100}
+                min={0}
+                step={0.1}
+                tooltip={{ open: false }}
+                value={factor}
+                onChange={handleFactorChange}
+              />
+            </div>
+          </Form.Item>
 
-        <Form.Item
-          className="m-b-md"
-          label={t('label.missing-value')}
-          name="missing">
-          <Input data-testid="missing-value-input" min={1} type="number" />
-        </Form.Item>
+          <Form.Item
+            className="m-b-md"
+            label={t('label.modifier')}
+            name="modifier">
+            <Select data-testid="modifier-select" options={modifierOptions} />
+          </Form.Item>
 
-        <Typography.Text
-          className="m-b-sm d-block"
-          data-testid="range-condition">
-          {t('label.range-condition')}
-        </Typography.Text>
-        <div className="range-inputs d-flex flex-col gap-1">
-          <div className="d-flex gap-2">
-            <Form.Item className="flex-1" name={['condition', 'range', 'gte']}>
-              <Input
-                data-testid="gte-input"
-                min={1}
-                placeholder={t('label.greater-than-or-equal-to')}
-                type="number"
-              />
-            </Form.Item>
-            <Form.Item className="flex-1" name={['condition', 'range', 'lte']}>
-              <Input
-                data-testid="lte-input"
-                min={1}
-                placeholder={t('label.less-than-or-equal-to')}
-                type="number"
-              />
-            </Form.Item>
+          <Form.Item
+            className="m-b-md"
+            label={t('label.missing-value')}
+            name="missing">
+            <Input data-testid="missing-value-input" min={1} type="number" />
+          </Form.Item>
+
+          <Typography className="m-b-sm d-block" data-testid="range-condition">
+            {t('label.range-condition')}
+          </Typography>
+          <div className="range-inputs d-flex flex-col gap-1">
+            <div className="d-flex gap-2">
+              <Form.Item
+                className="flex-1"
+                name={['condition', 'range', 'gte']}>
+                <Input
+                  data-testid="gte-input"
+                  min={1}
+                  placeholder={t('label.greater-than-or-equal-to')}
+                  type="number"
+                />
+              </Form.Item>
+              <Form.Item
+                className="flex-1"
+                name={['condition', 'range', 'lte']}>
+                <Input
+                  data-testid="lte-input"
+                  min={1}
+                  placeholder={t('label.less-than-or-equal-to')}
+                  type="number"
+                />
+              </Form.Item>
+            </div>
+            <div className="d-flex gap-2">
+              <Form.Item className="flex-1" name={['condition', 'range', 'gt']}>
+                <Input
+                  data-testid="gt-input"
+                  min={1}
+                  placeholder={t('label.greater-than')}
+                  type="number"
+                />
+              </Form.Item>
+              <Form.Item className="flex-1" name={['condition', 'range', 'lt']}>
+                <Input
+                  data-testid="lt-input"
+                  min={1}
+                  placeholder={t('label.less-than')}
+                  type="number"
+                />
+              </Form.Item>
+            </div>
           </div>
-          <div className="d-flex gap-2">
-            <Form.Item className="flex-1" name={['condition', 'range', 'gt']}>
-              <Input
-                data-testid="gt-input"
-                min={1}
-                placeholder={t('label.greater-than')}
-                type="number"
-              />
-            </Form.Item>
-            <Form.Item className="flex-1" name={['condition', 'range', 'lt']}>
-              <Input
-                data-testid="lt-input"
-                min={1}
-                placeholder={t('label.less-than')}
-                type="number"
-              />
-            </Form.Item>
-          </div>
-        </div>
-      </Form>
-    </Modal>
+        </Form>
+      </DrawerPopupContainerProvider>
+    </SimpleModal>
   );
 };
 

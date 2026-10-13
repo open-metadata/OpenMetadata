@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { DatabaseServiceClass } from '../../../support/entity/service/DatabaseServiceClass';
 import { StoredProcedureClass } from '../../../support/entity/StoredProcedureClass';
 import { test } from '../../../support/fixtures/base';
 import { registerFilterSeparationSuite } from './SearchSeparationSuite';
@@ -20,5 +21,7 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 registerFilterSeparationSuite({
   suiteName: 'StoredProcedure',
   reindexEntityType: 'storedProcedure',
-  entityFactory: () => new StoredProcedureClass(),
+  // The service facet only isolates this entity if it owns its service.
+  entityFactory: () =>
+    new StoredProcedureClass({ service: new DatabaseServiceClass() }),
 });

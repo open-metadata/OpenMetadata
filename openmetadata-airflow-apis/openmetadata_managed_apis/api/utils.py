@@ -13,8 +13,9 @@ import importlib
 import os
 import re
 import sys
+import threading
 import traceback
-from multiprocessing import Process
+from multiprocessing import get_context
 
 from airflow import settings
 from airflow.models import DagBag
@@ -25,6 +26,12 @@ from packaging import version
 from openmetadata_managed_apis.utils.logger import api_logger
 
 logger = api_logger()
+
+# filelock (pulled in by Airflow) installs an os.fork audit hook that raises RuntimeError
+# while any other thread is inside its own fork. The API server handles deploys on
+# concurrent threads, so a bulk re-deploy made two scans fork at once and one deploy
+# failed after its DAG was already synced.
+_FORK_LOCK = threading.Lock()
 
 
 class MissingArgException(Exception):  # noqa: N818
@@ -153,7 +160,9 @@ def get_dagbag():
     return dagbag
 
 
-class ScanDagsTask(Process):
+# Deployment requests can run while other threads own file locks or database connections.
+# A fresh interpreter keeps the scanner from inheriting that unsafe state through fork.
+class ScanDagsTask(get_context("spawn").Process):
     def run(self):
         airflow_server = version.parse(airflow_version)
         if airflow_server >= version.parse("3.0.0"):
@@ -221,10 +230,17 @@ class ScanDagsTask(Process):
         return scheduler_job
 
 
-def scan_dags_job_background():
+def scan_dags_job_background() -> ScanDagsTask:
     """
-    Runs the scheduler scan in another thread
+    Runs the scheduler scan in another process
     to not block the API call
     """
     process = ScanDagsTask()
-    process.start()
+    # The lock is main's guard for two deploys forking at once (#33514). It is
+    # belt-and-braces while ScanDagsTask spawns -- a spawned child never calls
+    # os.fork, so filelock's audit hook cannot fire -- but it keeps the race
+    # closed if the context ever goes back to fork.
+    with _FORK_LOCK:
+        process.start()
+
+    return process

@@ -18,7 +18,7 @@ import { TestConnectionDefinition } from '../generated/entity/services/connectio
 import { WorkflowInstance } from '../generated/governance/workflows/workflowInstance';
 import { WorkflowInstanceState } from '../generated/governance/workflows/workflowInstanceState';
 import { getEncodedFqn } from '../utils/StringUtils';
-import APIClient from './index';
+import APIClient from './axiosClient';
 import {
   WorkflowInstanceFromApplicationParams,
   WorkflowInstanceStateParams,

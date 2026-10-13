@@ -27,6 +27,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
@@ -40,7 +41,10 @@ import org.openmetadata.service.Entity;
  * failures were never viewable — these tests pin the envelope shape, the pagination and filter
  * parameters the drawer sends, entity-type validation, and the admin-only gate.
  */
-@Execution(ExecutionMode.CONCURRENT)
+// The envelope test compares the failure count with the page it reads, while other tests here and
+// reindex runs elsewhere insert failure rows, so this class runs alone and one test at a time.
+@Execution(ExecutionMode.SAME_THREAD)
+@Isolated
 @ExtendWith(TestNamespaceExtension.class)
 public class RdfReindexFailuresIT {
 

@@ -43,7 +43,9 @@ const openTestCaseList = async (
   include: 'deleted' | 'non-deleted'
 ) => {
   const initialListResponse = waitForTestCaseListResponse(page);
-  await page.goto('/data-quality/test-cases');
+  await page.goto('/data-quality/test-cases', {
+    waitUntil: 'domcontentloaded',
+  });
   await initialListResponse;
 
   const searchResponse = waitForTestCaseListResponse(page);
@@ -264,10 +266,11 @@ test.describe(
       await expect(page.getByTestId('viewer-container')).toContainText(
         restoreTestCaseDescription
       );
-      await expect(page.getByTestId('parameter-container')).toContainText(
-        'columnCount'
-      );
-      await expect(page.getByTestId('parameter-container')).toContainText('4');
+      // The row is keyed on the parameter's name; its label is the
+      // definition's display name ("Count").
+      await expect(
+        page.getByTestId('configuration-parameter-columnCount')
+      ).toContainText('4');
       await expect(
         page.getByTestId('tags-container').getByTestId('tag-PII.Sensitive')
       ).toBeVisible();

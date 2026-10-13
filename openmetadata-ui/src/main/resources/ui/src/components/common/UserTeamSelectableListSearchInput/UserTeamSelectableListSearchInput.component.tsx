@@ -155,8 +155,6 @@ const UserTeamSelectableListSearchInput: React.FC<
           popoverProps={{
             open: popoverVisible,
             onOpenChange: handlePopoverVisibleChange,
-            trigger: 'click',
-            placement: 'bottomLeft',
           }}
           previewSelected={previewSelected}
           tooltipText={tooltipText}

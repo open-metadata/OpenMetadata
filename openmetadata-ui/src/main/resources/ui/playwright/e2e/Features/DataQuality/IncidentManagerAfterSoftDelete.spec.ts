@@ -26,6 +26,7 @@
  */
 
 import test, { expect } from '@playwright/test';
+import { LONG_ACTION_TIMEOUT } from '../../../constant/common';
 import { SidebarItem } from '../../../constant/sidebar';
 import { TableClass } from '../../../support/entity/TableClass';
 import {
@@ -79,7 +80,7 @@ test('Incident Manager renders without Jackson error after a test case is soft-d
         {
           message:
             'incident status endpoint must serve the test case before soft-delete',
-          timeout: 120_000,
+          timeout: LONG_ACTION_TIMEOUT,
         }
       )
       .toBe(200);
