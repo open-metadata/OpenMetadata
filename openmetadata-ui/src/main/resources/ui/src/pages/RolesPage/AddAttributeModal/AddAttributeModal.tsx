@@ -153,7 +153,9 @@ const AddAttributeModal: FC<Props> = ({
             placeholder={t('label.search-entity', {
               entity: type,
             })}
-            prefix={<Search className="tw:shrink-0 tw:text-placeholder" size={14} />}
+            prefix={
+              <Search className="tw:shrink-0 tw:text-placeholder" size={14} />
+            }
             onChange={(e) => handleSearch(e.target.value)}
           />
           {isEmpty(searchedData) ? (
