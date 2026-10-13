@@ -5149,6 +5149,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/utils/userDetails.ts"
       ],
       "specs": [
+        "playwright/e2e/Pages/Teams.spec.ts",
         "playwright/e2e/Pages/UserDetails.spec.ts"
       ]
     },
@@ -5648,6 +5649,16 @@
       ],
       "specs": [
         "playwright/e2e/Features/BlockEditorEmbedLink.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/BlockEditor/Extensions/image/UploadFile/UploadFileTab.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/BulkImport.spec.ts",
+        "playwright/e2e/Features/BulkImportWithDotInName.spec.ts",
+        "playwright/e2e/Features/MetricBulkImportExportEdit.spec.ts"
       ]
     },
     {
@@ -8837,7 +8848,9 @@
       ],
       "specs": [
         "playwright/e2e/Features/BulkImport.spec.ts",
-        "playwright/e2e/Features/BulkImportWithDotInName.spec.ts"
+        "playwright/e2e/Features/BulkImportWithDotInName.spec.ts",
+        "playwright/e2e/Features/ClassificationImportExport.spec.ts",
+        "playwright/e2e/Features/MetricBulkImportExportEdit.spec.ts"
       ]
     },
     {
@@ -9853,6 +9866,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/TeamsDragAndDrop.spec.ts",
+        "playwright/e2e/Pages/Entity.spec.ts",
         "playwright/e2e/Pages/ServiceListing.spec.ts"
       ]
     },
