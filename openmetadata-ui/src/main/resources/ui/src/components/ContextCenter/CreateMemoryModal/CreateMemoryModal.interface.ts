@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { FormSelectItem } from '@openmetadata/ui-core-components';
-import { Dispatch, SetStateAction } from 'react';
+import { Dispatch, ReactNode, SetStateAction } from 'react';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import {
   ContextMemory,
@@ -35,6 +35,13 @@ export interface CreateMemoryModalProps {
   canEdit?: boolean;
   canDelete?: boolean;
   currentUserName?: string;
+  /**
+   * Renders the memory as a panel inside another dialog instead of its own
+   * modal: same content, no overlay, close button or edit banner.
+   */
+  embedded?: boolean;
+  /** Replaces the modal's own actions, e.g. the choice in a conflict review. */
+  footer?: ReactNode;
 }
 
 export interface MemoryFormValues {
@@ -58,6 +65,7 @@ export interface ReadOnlyBannerProps {
   isViewOnly: boolean;
   isOwner: boolean;
   canDelete: boolean;
+  isEmbedded: boolean;
   memoryToEdit?: ContextMemory;
   t: TFunc;
 }
@@ -68,6 +76,14 @@ export interface LinkedAssetsSectionProps {
   setLinkedAssets: Dispatch<SetStateAction<DataAssetOption[]>>;
   handleAssetChange: (option?: DataAssetOption | DataAssetOption[]) => void;
   t: TFunc;
+}
+
+export interface MemoryModalShellProps {
+  embedded: boolean;
+  isOpen: boolean;
+  memoryId?: string;
+  onClose: () => void;
+  children: ReactNode;
 }
 
 export interface MemoryModalFooterProps {

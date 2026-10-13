@@ -1212,6 +1212,8 @@ const ContextCenterMemoriesPage: FC = () => {
 
                 {isReviewing ? (
                   <MemoryConflictReviews
+                    currentUserName={currentUser?.name}
+                    isAdminUser={currentUser?.isAdmin}
                     isLoading={isReviewsLoading}
                     reviews={reviews}
                     onResolved={handleReviewResolved}

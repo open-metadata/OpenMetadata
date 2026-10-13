@@ -10,27 +10,30 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { ResolutionType } from '../../../generated/api/tasks/resolveTask';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { Task } from '../../../generated/entity/tasks/task';
-import { resolveTask } from '../../../rest/tasksAPI';
-import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import MemoryConflictReviews from './MemoryConflictReviews';
+
+const mockCompare = jest.fn(
+  ({ review, onClose }: { review: Task; onClose: () => void }) => (
+    <div data-testid="memory-compare-modal">
+      {review.id}
+      <button onClick={onClose}>close-compare</button>
+    </div>
+  )
+);
+
+jest.mock('../MemoryConflictCompare/MemoryConflictCompare', () => ({
+  __esModule: true,
+  default: (props: { review: Task; onClose: () => void }) =>
+    mockCompare(props, {}),
+}));
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, options?: Record<string, unknown>) =>
       options ? `${key} ${JSON.stringify(options)}` : key,
   }),
-}));
-
-jest.mock('../../../rest/tasksAPI', () => ({
-  resolveTask: jest.fn(),
-}));
-
-jest.mock('../../../utils/ToastUtils', () => ({
-  showErrorToast: jest.fn(),
-  showSuccessToast: jest.fn(),
 }));
 
 const FIVE_ORDERS = {
@@ -81,6 +84,8 @@ const renderReviews = (reviews: Task[] = [review], isLoading = false) => {
   const onViewMemory = jest.fn();
   render(
     <MemoryConflictReviews
+      isAdminUser
+      currentUserName="ana"
       isLoading={isLoading}
       reviews={reviews}
       onResolved={onResolved}
@@ -138,21 +143,6 @@ describe('MemoryConflictReviews', () => {
     expect(approvedSide).toBe('label.older');
   });
 
-  it('says what keeping each side does to the other', () => {
-    renderReviews();
-
-    expect(
-      screen.getByText(
-        /message\.keep-reviewed-memory-hint .*Customers need five orders/
-      )
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        /message\.keep-approved-memory-hint .*Customers need three orders/
-      )
-    ).toBeInTheDocument();
-  });
-
   it('names the memory in review when the task records no claim', () => {
     renderReviews([{ ...review, payload: { disputes: [] } } as Task]);
 
@@ -162,7 +152,7 @@ describe('MemoryConflictReviews', () => {
     expect(screen.queryByTestId('reviewed-memory-claim')).toBeNull();
   });
 
-  it('keeping several approved memories rejects the memory in review', () => {
+  it('lists every memory the one in review contradicts', () => {
     const second = { ...FIVE_ORDERS, id: 'memory-first', title: 'First order' };
     renderReviews([
       {
@@ -174,12 +164,10 @@ describe('MemoryConflictReviews', () => {
       } as Task,
     ]);
 
-    expect(screen.getByTestId('keep-approved-memories')).toHaveTextContent(
-      'label.keep-these'
-    );
+    expect(screen.getByTestId('disputed-memory-memory-five')).toBeVisible();
     expect(
-      screen.getByText(/message\.keep-reviewed-memory-hint-plural .*"count":2/)
-    ).toBeInTheDocument();
+      screen.getByTestId('disputed-memory-memory-first')
+    ).toHaveTextContent('First order');
   });
 
   it('opens either memory by name', () => {
@@ -192,48 +180,26 @@ describe('MemoryConflictReviews', () => {
     expect(onViewMemory).toHaveBeenNthCalledWith(2, 'orders.pdf-5f1e');
   });
 
-  it('keeping the memory in review approves it', async () => {
-    (resolveTask as jest.Mock).mockResolvedValue({ id: 'task-1' });
+  it('compares a review in full and returns to the list when closed', () => {
     const { onResolved } = renderReviews();
 
-    fireEvent.click(screen.getByTestId('keep-reviewed-memory'));
+    fireEvent.click(screen.getByTestId('compare-review'));
 
-    await waitFor(() => expect(onResolved).toHaveBeenCalled());
-
-    expect(resolveTask).toHaveBeenCalledWith('task-1', {
-      transitionId: 'approve',
-      resolutionType: ResolutionType.Approved,
-    });
-    expect(showSuccessToast).toHaveBeenCalledWith(
-      'server.task-resolved-successfully'
+    expect(screen.getByTestId('memory-compare-modal')).toHaveTextContent(
+      'task-1'
     );
-  });
+    expect(mockCompare).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        currentUserName: 'ana',
+        isAdminUser: true,
+        onResolved,
+      }),
+      expect.anything()
+    );
 
-  it('keeping the approved memory rejects the memory in review', async () => {
-    (resolveTask as jest.Mock).mockResolvedValue({ id: 'task-1' });
-    const { onResolved } = renderReviews();
+    fireEvent.click(screen.getByText('close-compare'));
 
-    fireEvent.click(screen.getByTestId('keep-approved-memories'));
-
-    await waitFor(() => expect(onResolved).toHaveBeenCalled());
-
-    expect(resolveTask).toHaveBeenCalledWith('task-1', {
-      transitionId: 'reject',
-      resolutionType: ResolutionType.Rejected,
-    });
-  });
-
-  it('a refused decision is reported and keeps the review', async () => {
-    const refusal = new Error('changed after the conflict was detected');
-    (resolveTask as jest.Mock).mockRejectedValue(refusal);
-    const { onResolved } = renderReviews();
-
-    fireEvent.click(screen.getByTestId('keep-reviewed-memory'));
-
-    await waitFor(() => expect(showErrorToast).toHaveBeenCalledWith(refusal));
-
-    expect(onResolved).not.toHaveBeenCalled();
-    expect(screen.getByTestId('keep-reviewed-memory')).not.toBeDisabled();
+    expect(screen.queryByTestId('memory-compare-modal')).toBeNull();
   });
 
   it('says when nothing is waiting for a decision', () => {

@@ -20,8 +20,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { CheckCircle } from '@openmetadata/ui-core-components/icons';
-import { AxiosError } from 'axios';
-import { FC, useCallback, useState } from 'react';
+import { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MEMORY_STATUS_LABEL_KEYS } from '../../../constants/ContextCenter.constants';
 import {
@@ -29,15 +28,12 @@ import {
   EntityReference,
 } from '../../../generated/entity/context/contextMemory';
 import { Task } from '../../../generated/entity/tasks/task';
-import { resolveTask } from '../../../rest/tasksAPI';
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { stripMarkdown } from '../../../utils/RichTextStringUtils';
-import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import MemoryConflictCompare from '../MemoryConflictCompare/MemoryConflictCompare';
 import {
   CLAIM_RECENCY_LABELS,
-  ReviewDecision,
-  REVIEW_DECISIONS,
   REVIEW_SKELETON_KEYS,
 } from './MemoryConflictReviews.constants';
 import {
@@ -136,7 +132,7 @@ const ClaimCard: FC<ClaimCardProps> = ({
       </Box>
       {claim?.answer && (
         <Typography
-          className="tw:text-secondary tw:line-clamp-4"
+          className="tw:text-secondary tw:line-clamp-2"
           data-testid={`${testId}-claim`}
           size="text-sm">
           {stripMarkdown(claim.answer)}
@@ -156,53 +152,15 @@ const ClaimCard: FC<ClaimCardProps> = ({
   );
 };
 
-interface KeepActionProps {
-  label: string;
-  hint: string;
-  testId: string;
-  isDisabled: boolean;
-  isLoading: boolean;
-  onKeep: () => void;
-}
-
-const KeepAction: FC<KeepActionProps> = ({
-  label,
-  hint,
-  testId,
-  isDisabled,
-  isLoading,
-  onKeep,
-}) => (
-  <Box direction="col" gap={1}>
-    <Button
-      className="tw:self-start"
-      color="secondary"
-      data-testid={testId}
-      isDisabled={isDisabled}
-      isLoading={isLoading}
-      size="sm"
-      onClick={onKeep}>
-      {label}
-    </Button>
-    <Typography className="tw:text-tertiary" size="text-xs">
-      {hint}
-    </Typography>
-  </Box>
-);
-
 interface ConflictCardProps {
   review: Task;
-  resolving?: ReviewDecision;
-  isDisabled: boolean;
-  onDecide: (review: Task, decision: ReviewDecision) => void;
+  onCompare: (review: Task) => void;
   onViewMemory: (memoryName: string) => void;
 }
 
 const ConflictCard: FC<ConflictCardProps> = ({
   review,
-  resolving,
-  isDisabled,
-  onDecide,
+  onCompare,
   onViewMemory,
 }) => {
   const { t } = useTranslation();
@@ -211,11 +169,6 @@ const ConflictCard: FC<ConflictCardProps> = ({
   const recency = getConflictRecency(claim, disputes);
   const reviewedTitle =
     getReviewedMemoryTitle(review) ?? getEntityName(review.about);
-  const question =
-    claim?.question ??
-    disputes.find((dispute) => dispute.claim?.question)?.claim?.question;
-  const isSingle = disputes.length === 1;
-  const disputedTitle = isSingle ? getEntityName(disputes[0].memory) : '';
 
   return (
     <Box
@@ -223,11 +176,19 @@ const ConflictCard: FC<ConflictCardProps> = ({
       data-testid={`memory-review-${review.about?.id}`}
       direction="col"
       gap={3}>
-      {question && (
+      <Box align="center" gap={3} justify="between">
         <Typography data-testid="review-question" weight="semibold">
-          {question}
+          {claim?.question ?? reviewedTitle}
         </Typography>
-      )}
+        <Button
+          className="tw:shrink-0"
+          color="primary"
+          data-testid="compare-review"
+          size="sm"
+          onClick={() => onCompare(review)}>
+          {t('label.compare')}
+        </Button>
+      </Box>
       <Grid colGap="4" rowGap="3">
         <Grid.Item span={12}>
           <Box direction="col" gap={2}>
@@ -241,22 +202,6 @@ const ConflictCard: FC<ConflictCardProps> = ({
               testId="reviewed-memory"
               title={reviewedTitle}
               onViewMemory={onViewMemory}
-            />
-            <KeepAction
-              hint={
-                isSingle
-                  ? t('message.keep-reviewed-memory-hint', {
-                      title: disputedTitle,
-                    })
-                  : t('message.keep-reviewed-memory-hint-plural', {
-                      count: disputes.length,
-                    })
-              }
-              isDisabled={isDisabled}
-              isLoading={resolving === 'approve'}
-              label={t('label.keep-this-one')}
-              testId="keep-reviewed-memory"
-              onKeep={() => onDecide(review, 'approve')}
             />
           </Box>
         </Grid.Item>
@@ -277,24 +222,6 @@ const ConflictCard: FC<ConflictCardProps> = ({
                 onViewMemory={onViewMemory}
               />
             ))}
-            <KeepAction
-              hint={
-                isSingle
-                  ? t('message.keep-approved-memory-hint', {
-                      title: reviewedTitle,
-                    })
-                  : t('message.keep-approved-memories-hint', {
-                      title: reviewedTitle,
-                    })
-              }
-              isDisabled={isDisabled}
-              isLoading={resolving === 'reject'}
-              label={
-                isSingle ? t('label.keep-this-one') : t('label.keep-these')
-              }
-              testId="keep-approved-memories"
-              onKeep={() => onDecide(review, 'reject')}
-            />
           </Box>
         </Grid.Item>
       </Grid>
@@ -303,40 +230,20 @@ const ConflictCard: FC<ConflictCardProps> = ({
 };
 
 /**
- * Open memory conflict reviews, each comparing a Draft memory with the
- * Approved memories it contradicts. Keeping the Draft approves it and
- * supersedes them; keeping the Approved memories rejects the Draft.
+ * Open memory conflict reviews, each summarising a Draft memory and the
+ * Approved memories it contradicts. Compare opens both in full, side by side,
+ * where the reviewer keeps one.
  */
 const MemoryConflictReviews: FC<MemoryConflictReviewsProps> = ({
   reviews,
   isLoading,
+  currentUserName,
+  isAdminUser,
   onViewMemory,
   onResolved,
 }) => {
   const { t } = useTranslation();
-  const [resolving, setResolving] = useState<{
-    id: string;
-    decision: ReviewDecision;
-  }>();
-
-  const handleDecide = useCallback(
-    async (review: Task, decision: ReviewDecision) => {
-      setResolving({ id: review.id, decision });
-      try {
-        await resolveTask(review.id, {
-          transitionId: decision,
-          resolutionType: REVIEW_DECISIONS[decision],
-        });
-        showSuccessToast(t('server.task-resolved-successfully'));
-        onResolved();
-      } catch (err) {
-        showErrorToast(err as AxiosError);
-      } finally {
-        setResolving(undefined);
-      }
-    },
-    [onResolved, t]
-  );
+  const [comparing, setComparing] = useState<Task>();
 
   if (isLoading) {
     return (
@@ -372,16 +279,21 @@ const MemoryConflictReviews: FC<MemoryConflictReviewsProps> = ({
     <div data-testid="memory-conflict-reviews">
       {reviews.map((review) => (
         <ConflictCard
-          isDisabled={resolving?.id === review.id}
           key={review.id}
-          resolving={
-            resolving?.id === review.id ? resolving.decision : undefined
-          }
           review={review}
-          onDecide={handleDecide}
+          onCompare={setComparing}
           onViewMemory={onViewMemory}
         />
       ))}
+      {comparing && (
+        <MemoryConflictCompare
+          currentUserName={currentUserName}
+          isAdminUser={isAdminUser}
+          review={comparing}
+          onClose={() => setComparing(undefined)}
+          onResolved={onResolved}
+        />
+      )}
     </div>
   );
 };

@@ -780,6 +780,35 @@ describe('CreateMemoryModal', () => {
     }
   );
 
+  it('shows the same memory as a panel with the actions of its host when embedded', () => {
+    render(
+      <MemoryRouter>
+        <CreateMemoryModal
+          {...defaultProps}
+          embedded
+          viewOnly
+          currentUserName="someone-else"
+          footer={<button data-testid="keep-this-one">keep</button>}
+          memoryToEdit={
+            {
+              id: 'memory-id',
+              name: 'orders.pdf-5f1e',
+              title: 'Customers need five orders',
+              memory: 'A customer has at least five completed orders.',
+              owners: [{ id: 'owner', type: 'user', name: 'ana' }],
+            } as ContextMemory
+          }
+        />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId('memory-panel-memory-id')).toBeInTheDocument();
+    expect(screen.queryByTestId('memory-modal')).toBeNull();
+    expect(screen.getByTestId('keep-this-one')).toBeInTheDocument();
+    expect(screen.getByTestId('memory-title-input')).toBeInTheDocument();
+    expect(screen.queryByText('label.cant-edit-this-memory')).toBeNull();
+  });
+
   it('keeps the other Context Center parameters when opening the successor', () => {
     render(
       <MemoryRouter

@@ -35,3 +35,8 @@ export const CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY = [
 export const CONTEXT_CENTER_MEMORY_REVIEWS_QUERY_KEY = [
   'context-center-memory-reviews',
 ];
+
+/** One memory with its detail fields, as a conflict review compares it. */
+export const CONTEXT_CENTER_MEMORY_DETAIL_QUERY_KEY = [
+  'context-center-memory-detail',
+];

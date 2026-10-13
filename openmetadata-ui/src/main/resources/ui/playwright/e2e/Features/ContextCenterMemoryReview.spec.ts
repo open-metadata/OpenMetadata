@@ -98,7 +98,7 @@ test.describe(
       const { disputed, reviewed } = await createConflict(apiContext);
       created.push(disputed, reviewed);
 
-      await test.step('the conflict compares both claims', async () => {
+      await test.step('the conflict summarises both claims', async () => {
         await navigateToMemories(page);
         await page.getByTestId('memory-count-card-needs-review').click();
         const review = page.getByTestId(`memory-review-${reviewed.id}`);
@@ -119,15 +119,36 @@ test.describe(
         await expect(review).toContainText(CONFLICT_REASON);
       });
 
+      await test.step('compare shows both memories in full', async () => {
+        await page
+          .getByTestId(`memory-review-${reviewed.id}`)
+          .getByTestId('compare-review')
+          .click();
+        const compare = page.getByTestId('memory-compare-modal');
+
+        await expect(
+          compare.getByTestId(`memory-panel-${reviewed.id}`)
+        ).toContainText(reviewed.answer);
+        await expect(
+          compare.getByTestId(`memory-panel-${disputed.id}`)
+        ).toContainText(disputed.answer);
+        await expect(compare.getByTestId('compare-reason')).toContainText(
+          CONFLICT_REASON
+        );
+      });
+
       await test.step('keeping the new claim retires the old one', async () => {
-        const review = page.getByTestId(`memory-review-${reviewed.id}`);
+        const compare = page.getByTestId('memory-compare-modal');
         await clickAndWaitFor(
           page,
-          review.getByTestId('keep-reviewed-memory'),
+          compare.getByTestId('keep-reviewed-memory'),
           RESOLVE_TASK
         );
 
-        await expect(review).toHaveCount(0);
+        await expect(compare).toHaveCount(0);
+        await expect(
+          page.getByTestId(`memory-review-${reviewed.id}`)
+        ).toHaveCount(0);
         await expect
           .poll(
             async () =>
@@ -159,14 +180,20 @@ test.describe(
       await page.getByTestId('memory-count-card-needs-review').click();
       const review = page.getByTestId(`memory-review-${reviewed.id}`);
 
-      await expect(review).toBeVisible();
+      await review.getByTestId('compare-review').click();
+      const compare = page.getByTestId('memory-compare-modal');
+
+      await expect(
+        compare.getByTestId(`memory-panel-${disputed.id}`)
+      ).toContainText(disputed.answer);
 
       await clickAndWaitFor(
         page,
-        review.getByTestId('keep-approved-memories'),
+        compare.getByTestId('keep-approved-memories'),
         RESOLVE_TASK
       );
 
+      await expect(compare).toHaveCount(0);
       await expect(review).toHaveCount(0);
       await expect
         .poll(
