@@ -351,6 +351,7 @@ const AppearanceConfigSettingsPage = () => {
                                     <FormItemLabel label={field.label} />
                                     <ColorPicker
                                       id={field.name}
+                                      label={field.label}
                                       value={control.value ?? ''}
                                       onBlur={control.onBlur}
                                       onChange={control.onChange}

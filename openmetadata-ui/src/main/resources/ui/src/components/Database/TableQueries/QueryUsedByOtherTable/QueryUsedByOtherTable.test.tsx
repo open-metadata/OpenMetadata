@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Query } from '../../../../generated/entity/data/query';
@@ -82,7 +82,9 @@ describe('QueryUsedByOtherTable test', () => {
 
     expect(props.searchIndex).toBe(SearchIndex.TABLE);
     expect(props.multiple).toBe(true);
-    expect(props.value).toEqual(usedIn.map((t) => t.fullyQualifiedName));
+    expect(
+      props.value.map((option: { value?: string }) => option.value)
+    ).toEqual(usedIn.map((t) => t.fullyQualifiedName));
   });
 
   it('Should report the picked tables as entity references', async () => {
@@ -99,5 +101,34 @@ describe('QueryUsedByOtherTable test', () => {
     ]);
 
     expect(onChange).toHaveBeenCalledWith([reference]);
+  });
+
+  it('Should keep the picked tables when the parent re-renders', async () => {
+    const { rerender } = render(
+      <QueryUsedByOtherTable {...mockProps} isEditMode onChange={jest.fn()} />,
+      { wrapper: MemoryRouter }
+    );
+    await screen.findByText('DataAssetAsyncSelectList');
+
+    const picked = [
+      {
+        displayName: 'orders',
+        value: 'db.orders',
+        reference: { id: 'orders-id', type: 'table' },
+      },
+    ];
+    act(() => {
+      mockDataAssetSelect.mock.calls[0][0].onChange(picked);
+    });
+    rerender(
+      <QueryUsedByOtherTable {...mockProps} isEditMode onChange={jest.fn()} />
+    );
+
+    const lastProps =
+      mockDataAssetSelect.mock.calls[
+        mockDataAssetSelect.mock.calls.length - 1
+      ][0];
+
+    expect(lastProps.value).toEqual(picked);
   });
 });
