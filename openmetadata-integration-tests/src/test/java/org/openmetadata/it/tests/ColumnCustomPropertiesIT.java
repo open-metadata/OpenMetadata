@@ -3,15 +3,21 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,6 +28,7 @@ import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.factories.DashboardServiceTestFactory;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.util.BulkApi;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.SharedResourceLocks;
 import org.openmetadata.it.util.TestNamespace;
@@ -29,22 +36,37 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateDashboardDataModel;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.UpdateColumn;
+import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.type.CustomProperty;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.CustomPropertyConfig;
 import org.openmetadata.schema.type.DataModelType;
+import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.customProperties.EnumConfig;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.Columns;
 import org.openmetadata.sdk.fluent.Tables;
+import org.openmetadata.sdk.models.ListParams;
+import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ReferenceRow;
+import org.openmetadata.service.jdbi3.TableRepository;
+import org.openmetadata.service.util.FullyQualifiedName;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Integration tests for column custom properties feature.
@@ -63,6 +85,7 @@ import org.openmetadata.sdk.network.HttpMethod;
 @ExtendWith(TestNamespaceExtension.class)
 public class ColumnCustomPropertiesIT {
 
+  private static final Logger LOG = LoggerFactory.getLogger(ColumnCustomPropertiesIT.class);
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private static final String TABLE_COLUMN = "tableColumn";
   private static final String DASHBOARD_DATA_MODEL_COLUMN = "dashboardDataModelColumn";
@@ -1215,6 +1238,162 @@ public class ColumnCustomPropertiesIT {
   }
 
   // ========================================================================
+  // CHANGE-DESCRIPTION / WORKFLOW-TRIGGER TESTS
+  // ========================================================================
+
+  @Test
+  void test_tableColumn_extensionChange_recordedInTableChangeDescription(TestNamespace ns)
+      throws Exception {
+    String propName = ns.prefix("triggerProp");
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    try {
+      addCustomPropertyToColumnType(client, TABLE_COLUMN, propName, STRING_TYPE, null);
+
+      Table table = createTestTable(ns);
+      Double versionBefore = table.getVersion();
+      String columnFQN = table.getFullyQualifiedName() + ".id";
+
+      Map<String, Object> extension = new HashMap<>();
+      extension.put(propName, "trigger-me");
+      updateColumn(client, columnFQN, "table", extension);
+
+      Table afterSet = client.tables().get(table.getId().toString(), "columns,extension");
+      assertTrue(
+          afterSet.getVersion() > versionBefore,
+          "setting a column custom property must bump the table version so workflows can trigger");
+      assertNotNull(
+          findColumnExtensionChange(afterSet.getChangeDescription(), "id"),
+          "table change description must record the column extension change");
+
+      Double versionAfterSet = afterSet.getVersion();
+      updateColumn(client, columnFQN, "table", extension);
+      Table afterNoop = client.tables().get(table.getId().toString(), "columns,extension");
+      assertEquals(
+          versionAfterSet,
+          afterNoop.getVersion(),
+          "re-setting the identical column custom property must not bump the version");
+    } finally {
+      deleteCustomPropertyFromColumnType(client, TABLE_COLUMN, propName);
+    }
+  }
+
+  @Test
+  void test_tableColumn_nestedExtensionUnchangedReingest_noVersionBump(TestNamespace ns)
+      throws Exception {
+    String propName = ns.prefix("nestedTriggerProp");
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    try {
+      addCustomPropertyToColumnType(client, TABLE_COLUMN, propName, STRING_TYPE, null);
+      DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+      DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+      CreateTable request =
+          new CreateTable()
+              .withName(ns.prefix("nestedReingestTable"))
+              .withDatabaseSchema(schema.getFullyQualifiedName())
+              .withColumns(List.of(createDeeplyNestedColumn(propName)));
+      Table created = client.tables().create(request);
+      Table withExtension = client.tables().get(created.getId().toString(), "columns,extension");
+      Double versionAfterCreate = withExtension.getVersion();
+
+      // Re-ingest the identical table via PUT. The nested leaf column's extension must hydrate as
+      // the baseline (flattened read); an unchanged value must not record a FieldChange or bump the
+      // version. Without the flattened read the nested baseline is null and a spurious change
+      // fires.
+      Table reingested = client.tables().update(created.getId().toString(), withExtension);
+      assertEquals(
+          versionAfterCreate,
+          reingested.getVersion(),
+          "re-ingesting an unchanged nested column custom property must not bump the version");
+    } finally {
+      deleteCustomPropertyFromColumnType(client, TABLE_COLUMN, propName);
+    }
+  }
+
+  @Test
+  void test_tableColumn_extensionUnchangedBulkReingest_noVersionBump(TestNamespace ns)
+      throws Exception {
+    String propName = ns.prefix("bulkReingestProp");
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    try {
+      addCustomPropertyToColumnType(client, TABLE_COLUMN, propName, STRING_TYPE, null);
+      DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+      DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+      Map<String, Object> idExtension = new HashMap<>();
+      idExtension.put(propName, "unchanged-bulk-value");
+      CreateTable request =
+          new CreateTable()
+              .withName(ns.prefix("bulkReingestTable"))
+              .withDatabaseSchema(schema.getFullyQualifiedName())
+              .withColumns(
+                  List.of(
+                      new Column()
+                          .withName("id")
+                          .withDataType(ColumnDataType.BIGINT)
+                          .withExtension(idExtension),
+                      createDeeplyNestedColumn(propName)));
+      Table created = client.tables().create(request);
+      Double versionAfterCreate =
+          client.tables().get(created.getId().toString(), "columns,extension").getVersion();
+
+      // Re-ingest the identical table through the bulk upsert path. The bulk path hydrates its
+      // originals separately from the single-entity PUT, so the stored column extensions (top-level
+      // and nested) must be loaded there too; an unchanged value must not record a FieldChange.
+      BulkOperationResult result =
+          BulkApi.upsert("tables", List.of(request), false, BulkApi.botToken());
+      assertEquals(1, result.getNumberOfRowsPassed(), "bulk re-ingest row must succeed");
+
+      Table reingested = client.tables().get(created.getId().toString(), "columns,extension");
+      assertEquals(
+          versionAfterCreate,
+          reingested.getVersion(),
+          "bulk re-ingesting an unchanged column custom property must not bump the version");
+
+      // A changed value through the same bulk path must still be recorded, so the assertion above
+      // reflects a correct baseline rather than the bulk path ignoring column extensions.
+      idExtension.put(propName, "changed-bulk-value");
+      BulkOperationResult changedResult =
+          BulkApi.upsert("tables", List.of(request), false, BulkApi.botToken());
+      assertEquals(1, changedResult.getNumberOfRowsPassed(), "bulk change row must succeed");
+      Table changed = client.tables().get(created.getId().toString(), "columns,extension");
+      assertTrue(
+          changed.getVersion() > versionAfterCreate,
+          "bulk-changing a column custom property must bump the version");
+      assertNotNull(
+          findColumnExtensionChange(changed.getChangeDescription(), "id"),
+          "bulk-changing a column custom property must record the column extension change");
+    } finally {
+      deleteCustomPropertyFromColumnType(client, TABLE_COLUMN, propName);
+    }
+  }
+
+  private static FieldChange findColumnExtensionChange(ChangeDescription cd, String columnName) {
+    if (cd == null) {
+      return null;
+    }
+    List<FieldChange> allChanges = new ArrayList<>();
+    if (cd.getFieldsAdded() != null) {
+      allChanges.addAll(cd.getFieldsAdded());
+    }
+    if (cd.getFieldsUpdated() != null) {
+      allChanges.addAll(cd.getFieldsUpdated());
+    }
+    return allChanges.stream()
+        .filter(
+            fc ->
+                fc.getName() != null
+                    && fc.getName().startsWith("columns")
+                    && fc.getName().endsWith("extension")
+                    && fc.getName().contains(columnName))
+        .findFirst()
+        .orElse(null);
+  }
+
+  // ========================================================================
   // HELPER METHODS
   // ========================================================================
 
@@ -1345,6 +1524,909 @@ public class ColumnCustomPropertiesIT {
     } catch (Exception e) {
       // Ignore cleanup errors
     }
+  }
+
+  // ========================================================================
+  // ENTITY REFERENCE VALUES WHOSE TARGET IS HARD-DELETED (#29862)
+  // ========================================================================
+
+  private static final String TEAM = "team";
+  private static final Map<String, String> HARD_DELETE =
+      Map.of("hardDelete", "true", "recursive", "true");
+
+  @Test
+  void test_tableColumn_referenceList_hardDeletedTargetIsRemoved(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String propName =
+        addTeamReferenceProperty(client, TABLE_COLUMN, ns, ENTITY_REFERENCE_LIST_TYPE);
+    try {
+      Team first = createTeam(client, ns.prefix("first"));
+      Team second = createTeam(client, ns.prefix("second"));
+      Table table = createTestTable(ns);
+      String columnFqn = table.getFullyQualifiedName() + ".id";
+      updateColumn(
+          client, columnFqn, "table", Map.of(propName, List.of(teamRef(first), teamRef(second))));
+
+      client.teams().delete(first.getId().toString(), HARD_DELETE);
+      assertNoReferencesTo(first.getId());
+
+      assertEquals(
+          List.of(second.getId().toString()),
+          columnReferenceIds(tableWith(client, table, "columns,extension"), "id", propName));
+      assertFalse(
+          columnReferenceIds(tableWith(client, table, "columns"), "id", propName)
+              .contains(first.getId().toString()),
+          "column references are served only with the extension field");
+      assertNoReferencesTo(first.getId());
+      assertEquals(List.of(second.getId().toString()), storedReferenceIds(table, "id", propName));
+      assertTrue(
+          inlineReferenceIds(table, "id", propName).isEmpty(),
+          "references never live in the inline copy");
+    } finally {
+      removeColumnTypeProperty(client, TABLE_COLUMN, propName);
+    }
+  }
+
+  @Test
+  void test_tableColumn_singleReference_hardDeletedTargetUnsetsProperty(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String propName = addTeamReferenceProperty(client, TABLE_COLUMN, ns, ENTITY_REFERENCE_TYPE);
+    try {
+      Team team = createTeam(client, ns.prefix("only"));
+      Table table = createTestTable(ns);
+      updateColumn(
+          client, table.getFullyQualifiedName() + ".id", "table", Map.of(propName, teamRef(team)));
+
+      client.teams().delete(team.getId().toString(), HARD_DELETE);
+      assertNoReferencesTo(team.getId());
+
+      assertTrue(
+          columnReferenceIds(tableWith(client, table, "columns,extension"), "id", propName)
+              .isEmpty());
+      assertNoReferencesTo(team.getId());
+      assertTrue(storedReferenceIds(table, "id", propName).isEmpty());
+    } finally {
+      removeColumnTypeProperty(client, TABLE_COLUMN, propName);
+    }
+  }
+
+  @Test
+  void test_tableColumn_removedColumnDropsReferenceRows(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String propName =
+        addTeamReferenceProperty(client, TABLE_COLUMN, ns, ENTITY_REFERENCE_LIST_TYPE);
+    try {
+      Team team = createTeam(client, ns.prefix("held"));
+      Table table = createTestTable(ns);
+      updateColumn(
+          client,
+          table.getFullyQualifiedName() + ".name",
+          "table",
+          Map.of(propName, List.of(teamRef(team))));
+      assertEquals(1, referenceRowsTo(team.getId()).size());
+
+      Table current = client.tables().get(table.getId().toString(), "columns");
+      current.setColumns(
+          current.getColumns().stream().filter(c -> !"name".equals(c.getName())).toList());
+      client.tables().update(table.getId().toString(), current);
+
+      assertTrue(referenceRowsTo(team.getId()).isEmpty());
+    } finally {
+      removeColumnTypeProperty(client, TABLE_COLUMN, propName);
+    }
+  }
+
+  @Test
+  void test_dataModelColumn_referenceList_hardDeletedTargetIsRemoved(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String propName =
+        addTeamReferenceProperty(
+            client, DASHBOARD_DATA_MODEL_COLUMN, ns, ENTITY_REFERENCE_LIST_TYPE);
+    try {
+      Team first = createTeam(client, ns.prefix("first"));
+      Team second = createTeam(client, ns.prefix("second"));
+      DashboardService service = DashboardServiceTestFactory.createLooker(ns);
+      Column metric =
+          new Column()
+              .withName("metric1")
+              .withDataType(ColumnDataType.BIGINT)
+              .withExtension(Map.of(propName, List.of(teamRef(first), teamRef(second))));
+      DashboardDataModel dataModel =
+          client
+              .dashboardDataModels()
+              .create(
+                  new CreateDashboardDataModel()
+                      .withName(ns.prefix("refDataModel"))
+                      .withService(service.getFullyQualifiedName())
+                      .withDataModelType(DataModelType.LookMlView)
+                      .withColumns(List.of(metric)));
+
+      client.teams().delete(first.getId().toString(), HARD_DELETE);
+      assertNoReferencesTo(first.getId());
+
+      DashboardDataModel reloaded =
+          client.dashboardDataModels().get(dataModel.getId().toString(), "columns,extension");
+      assertEquals(
+          List.of(second.getId().toString()),
+          referenceIdsOf(columnNamed(reloaded.getColumns(), "metric1"), propName));
+      assertNoReferencesTo(first.getId());
+      String columnFqn = dataModel.getFullyQualifiedName() + ".metric1";
+      assertEquals(
+          List.of(second.getId().toString()),
+          storedReferenceIds(dataModel.getId(), columnFqn, propName));
+      DashboardDataModel stored =
+          Entity.getCollectionDAO().dashboardDataModelDAO().findEntityById(dataModel.getId());
+      assertTrue(
+          referenceIdsOf(columnNamed(stored.getColumns(), "metric1"), propName).isEmpty(),
+          "references never live in the data model's inline copy");
+      assertEquals(1, referenceRowsTo(second.getId()).size());
+    } finally {
+      removeColumnTypeProperty(client, DASHBOARD_DATA_MODEL_COLUMN, propName);
+    }
+  }
+
+  /**
+   * A second edit in the same session reverts to the pre-session snapshot, which still names a
+   * target that was hard-deleted and already compacted away; the edit must not fail on it.
+   */
+  @Test
+  void test_tableColumn_sessionConsolidationAfterHardDeleteSucceeds(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String propName =
+        addTeamReferenceProperty(client, TABLE_COLUMN, ns, ENTITY_REFERENCE_LIST_TYPE);
+    try {
+      Team first = createTeam(client, ns.prefix("first"));
+      Team second = createTeam(client, ns.prefix("second"));
+      Team third = createTeam(client, ns.prefix("third"));
+      Table table =
+          createTableWithColumnReferences(ns, propName, List.of(teamRef(first), teamRef(second)));
+      Table described = client.tables().get(table.getId().toString(), "columns");
+      described.setDescription("Edited once in this session");
+      client.tables().update(table.getId().toString(), described);
+      client.teams().delete(first.getId().toString(), HARD_DELETE);
+      assertNoReferencesTo(first.getId());
+
+      updateColumn(
+          client,
+          table.getFullyQualifiedName() + ".id",
+          "table",
+          Map.of(propName, List.of(teamRef(second), teamRef(third))));
+
+      assertEquals(
+          List.of(second.getId().toString(), third.getId().toString()),
+          columnReferenceIds(tableWith(client, table, "columns,extension"), "id", propName));
+      assertEquals(1, referenceRowsTo(third.getId()).size());
+    } finally {
+      removeColumnTypeProperty(client, TABLE_COLUMN, propName);
+    }
+  }
+
+  /**
+   * Column values stored the pre-2.1 way, in the column's entity_extension row and the inline copy,
+   * move to their rows on upgrade; a reference to a target that is already gone is dropped.
+   */
+  @Test
+  @ResourceLock(
+      value = SharedResourceLocks.CUSTOM_PROPERTY_REFERENCE_MIGRATION,
+      mode = ResourceAccessMode.READ_WRITE)
+  void test_tableColumn_migrationMovesLegacyValueAndDropsDeadTarget(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String propName =
+        addTeamReferenceProperty(client, TABLE_COLUMN, ns, ENTITY_REFERENCE_LIST_TYPE);
+    try {
+      Team first = createTeam(client, ns.prefix("first"));
+      Team second = createTeam(client, ns.prefix("second"));
+      Table table = createTestTable(ns);
+      writeLegacyValue(
+          table, "id", Map.of(propName, List.of(teamRef(first), teamRef(second))), true);
+      client.teams().delete(first.getId().toString(), HARD_DELETE);
+
+      TypeResourceIT.runReferenceMigration();
+
+      assertEquals(
+          List.of(second.getId().toString()),
+          columnReferenceIds(tableWith(client, table, "columns,extension"), "id", propName));
+      assertTrue(inlineReferenceIds(table, "id", propName).isEmpty());
+      assertNull(
+          Entity.getCollectionDAO()
+              .entityExtensionDAO()
+              .getExtension(
+                  table.getId(),
+                  FullyQualifiedName.buildHash(table.getFullyQualifiedName() + ".id")));
+      assertNoReferencesTo(first.getId());
+      assertEquals(1, referenceRowsTo(second.getId()).size());
+    } finally {
+      removeColumnTypeProperty(client, TABLE_COLUMN, propName);
+    }
+  }
+
+  /** A property the migration cannot convert stays in place without holding back the others. */
+  @Test
+  @ResourceLock(
+      value = SharedResourceLocks.CUSTOM_PROPERTY_REFERENCE_MIGRATION,
+      mode = ResourceAccessMode.READ_WRITE)
+  void test_tableColumn_migrationMovesConvertiblePropertiesNextToAnUnknownOne(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String movedProp =
+        addTeamReferenceProperty(client, TABLE_COLUMN, ns, ENTITY_REFERENCE_LIST_TYPE);
+    String keptProp = ns.prefix("unknownTeams");
+    CustomPropertyConfig teams = new CustomPropertyConfig();
+    teams.setConfig(List.of(TEAM));
+    addCustomPropertyToColumnType(
+        client, TABLE_COLUMN, keptProp, ENTITY_REFERENCE_LIST_TYPE, teams);
+    try {
+      Team team = createTeam(client, ns.prefix("moved"));
+      Table table = createTestTable(ns);
+      Map<String, Object> unknown =
+          Map.of("id", UUID.randomUUID().toString(), "type", "noSuchEntityType");
+      writeLegacyValue(
+          table, "id", Map.of(movedProp, List.of(teamRef(team)), keptProp, List.of(unknown)), true);
+
+      TypeResourceIT.runReferenceMigration();
+
+      assertEquals(1, referenceRowsTo(team.getId()).size());
+      Table stored = Entity.getCollectionDAO().tableDAO().findEntityById(table.getId());
+      JsonNode inline =
+          JsonUtils.valueToTree(columnNamed(stored.getColumns(), "id").getExtension());
+      assertTrue(inline.has(keptProp), "the unconvertible property stays in place");
+      assertFalse(inline.has(movedProp), "the convertible property moved");
+    } finally {
+      removeColumnTypeProperty(client, TABLE_COLUMN, movedProp);
+      removeColumnTypeProperty(client, TABLE_COLUMN, keptProp);
+    }
+  }
+
+  /** Column values stored by name only get their ids completed when the migration moves them. */
+  @Test
+  @ResourceLock(
+      value = SharedResourceLocks.CUSTOM_PROPERTY_REFERENCE_MIGRATION,
+      mode = ResourceAccessMode.READ_WRITE)
+  void test_tableColumn_migrationCompletesNameOnlyValues(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String propName =
+        addTeamReferenceProperty(client, TABLE_COLUMN, ns, ENTITY_REFERENCE_LIST_TYPE);
+    try {
+      Team first = createTeam(client, ns.prefix("first"));
+      Team second = createTeam(client, ns.prefix("second"));
+      Table table = createTestTable(ns);
+      writeLegacyValue(
+          table, "id", Map.of(propName, List.of(nameOnly(first), nameOnly(second))), true);
+
+      TypeResourceIT.runReferenceMigration();
+
+      assertEquals(
+          List.of(first.getId().toString(), second.getId().toString()),
+          columnReferenceIds(tableWith(client, table, "columns,extension"), "id", propName));
+      assertTrue(inlineReferenceIds(table, "id", propName).isEmpty());
+      assertEquals(1, referenceRowsTo(first.getId()).size());
+
+      TypeResourceIT.runReferenceMigration();
+      assertEquals(1, referenceRowsTo(first.getId()).size());
+    } finally {
+      removeColumnTypeProperty(client, TABLE_COLUMN, propName);
+    }
+  }
+
+  /** Holders are found from their column rows, so a value held only inline is left untouched. */
+  @Test
+  @ResourceLock(
+      value = SharedResourceLocks.CUSTOM_PROPERTY_REFERENCE_MIGRATION,
+      mode = ResourceAccessMode.READ_WRITE)
+  void test_tableColumn_migrationLeavesInlineOnlyValuesInPlace(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String propName =
+        addTeamReferenceProperty(client, TABLE_COLUMN, ns, ENTITY_REFERENCE_LIST_TYPE);
+    try {
+      Team team = createTeam(client, ns.prefix("team"));
+      Table table = createTestTable(ns);
+      writeLegacyValue(table, "id", Map.of(propName, List.of(teamRef(team))), false);
+
+      TypeResourceIT.runReferenceMigration();
+
+      assertEquals(List.of(team.getId().toString()), inlineReferenceIds(table, "id", propName));
+      assertTrue(referenceRowsTo(team.getId()).isEmpty());
+    } finally {
+      removeColumnTypeProperty(client, TABLE_COLUMN, propName);
+    }
+  }
+
+  /**
+   * A read without {@code extension} carries a column's other values but not its references; a
+   * client that PUTs that read back must not delete the references.
+   */
+  @Test
+  void test_tableColumn_putOfAReadWithoutExtensionKeepsReferences(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String refProp = addTeamReferenceProperty(client, TABLE_COLUMN, ns, ENTITY_REFERENCE_LIST_TYPE);
+    String noteProp = ns.prefix("note");
+    addCustomPropertyToColumnType(client, TABLE_COLUMN, noteProp, STRING_TYPE, null);
+    try {
+      Team team = createTeam(client, ns.prefix("kept"));
+      Table table = createTestTable(ns);
+      updateColumn(
+          client,
+          table.getFullyQualifiedName() + ".id",
+          "table",
+          Map.of(refProp, List.of(teamRef(team)), noteProp, "kept note"));
+
+      Table read = tableWith(client, table, "columns");
+      assertTrue(columnReferenceIds(read, "id", refProp).isEmpty());
+      client.tables().update(table.getId().toString(), read);
+
+      assertEquals(
+          List.of(team.getId().toString()),
+          columnReferenceIds(tableWith(client, table, "columns,extension"), "id", refProp));
+    } finally {
+      removeColumnTypeProperty(client, TABLE_COLUMN, refProp);
+      removeColumnTypeProperty(client, TABLE_COLUMN, noteProp);
+    }
+  }
+
+  /** Column values sent through a table PUT are not validated; a name-only one still gets its id. */
+  @Test
+  void test_tableColumn_nameOnlyReferenceThroughTablePutIsStoredWithId(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String propName =
+        addTeamReferenceProperty(client, TABLE_COLUMN, ns, ENTITY_REFERENCE_LIST_TYPE);
+    try {
+      Team team = createTeam(client, ns.prefix("named"));
+      Table table = createTestTable(ns);
+      Table current = tableWith(client, table, "columns,extension");
+      columnNamed(current.getColumns(), "id")
+          .setExtension(Map.of(propName, List.of(nameOnly(team))));
+      client.tables().update(table.getId().toString(), current);
+
+      assertEquals(
+          List.of(team.getId().toString()),
+          columnReferenceIds(tableWith(client, table, "columns,extension"), "id", propName));
+      assertEquals(1, referenceRowsTo(team.getId()).size());
+    } finally {
+      removeColumnTypeProperty(client, TABLE_COLUMN, propName);
+    }
+  }
+
+  @Test
+  void test_tableColumn_bulkCreateTracksReferences(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String propName =
+        addTeamReferenceProperty(client, TABLE_COLUMN, ns, ENTITY_REFERENCE_LIST_TYPE);
+    try {
+      Team first = createTeam(client, ns.prefix("first"));
+      Team second = createTeam(client, ns.prefix("second"));
+      DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+      DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+      Column idColumn =
+          new Column()
+              .withName("id")
+              .withDataType(ColumnDataType.BIGINT)
+              .withExtension(Map.of(propName, List.of(teamRef(first), teamRef(second))));
+      CreateTable create =
+          new CreateTable()
+              .withName(ns.prefix("bulkRefTable"))
+              .withDatabaseSchema(schema.getFullyQualifiedName())
+              .withColumns(List.of(idColumn));
+      client.tables().bulkCreateOrUpdate(List.of(create));
+      Table table =
+          client.tables().getByName(schema.getFullyQualifiedName() + "." + create.getName());
+
+      client.teams().delete(first.getId().toString(), HARD_DELETE);
+      assertNoReferencesTo(first.getId());
+
+      assertEquals(
+          List.of(second.getId().toString()),
+          columnReferenceIds(tableWith(client, table, "columns,extension"), "id", propName));
+      assertNoReferencesTo(first.getId());
+      assertTrue(inlineReferenceIds(table, "id", propName).isEmpty());
+    } finally {
+      removeColumnTypeProperty(client, TABLE_COLUMN, propName);
+    }
+  }
+
+  /** A bulk update that changes a column's references must apply them, as a single PUT does. */
+  @Test
+  void test_tableColumn_bulkUpdateChangesReferences(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String propName =
+        addTeamReferenceProperty(client, TABLE_COLUMN, ns, ENTITY_REFERENCE_LIST_TYPE);
+    try {
+      Team first = createTeam(client, ns.prefix("first"));
+      Team second = createTeam(client, ns.prefix("second"));
+      DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+      DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+      CreateTable create =
+          new CreateTable()
+              .withName(ns.prefix("bulkUpdateRefTable"))
+              .withDatabaseSchema(schema.getFullyQualifiedName())
+              .withColumns(
+                  List.of(
+                      new Column()
+                          .withName("id")
+                          .withDataType(ColumnDataType.BIGINT)
+                          .withExtension(Map.of(propName, List.of(teamRef(first))))));
+      client.tables().bulkCreateOrUpdate(List.of(create));
+      create.setColumns(
+          List.of(
+              new Column()
+                  .withName("id")
+                  .withDataType(ColumnDataType.BIGINT)
+                  .withExtension(Map.of(propName, List.of(teamRef(second))))));
+
+      var result = client.tables().bulkCreateOrUpdate(List.of(create));
+
+      assertEquals(0, result.getNumberOfRowsFailed(), String.valueOf(result.getFailedRequest()));
+      Table table =
+          client.tables().getByName(schema.getFullyQualifiedName() + "." + create.getName());
+      assertEquals(
+          List.of(second.getId().toString()),
+          columnReferenceIds(tableWith(client, table, "columns,extension"), "id", propName));
+      assertNoReferencesTo(first.getId());
+    } finally {
+      removeColumnTypeProperty(client, TABLE_COLUMN, propName);
+    }
+  }
+
+  /**
+   * A data-model column whose only custom property is a reference has no inline extension, so an
+   * edit of it must be applied to a baseline that includes the stored references.
+   */
+  @Test
+  void test_dataModelColumn_editOfAReferenceOnlyColumnSucceeds(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String propName =
+        addTeamReferenceProperty(
+            client, DASHBOARD_DATA_MODEL_COLUMN, ns, ENTITY_REFERENCE_LIST_TYPE);
+    try {
+      Team first = createTeam(client, ns.prefix("first"));
+      Team second = createTeam(client, ns.prefix("second"));
+      DashboardService service = DashboardServiceTestFactory.createLooker(ns);
+      DashboardDataModel dataModel =
+          client
+              .dashboardDataModels()
+              .create(
+                  new CreateDashboardDataModel()
+                      .withName(ns.prefix("refOnlyDataModel"))
+                      .withService(service.getFullyQualifiedName())
+                      .withDataModelType(DataModelType.LookMlView)
+                      .withColumns(
+                          List.of(
+                              new Column()
+                                  .withName("metric1")
+                                  .withDataType(ColumnDataType.BIGINT)
+                                  .withExtension(Map.of(propName, List.of(teamRef(first)))))));
+      DashboardDataModel read =
+          client.dashboardDataModels().get(dataModel.getId().toString(), "columns,extension");
+      columnNamed(read.getColumns(), "metric1")
+          .setExtension(Map.of(propName, List.of(teamRef(first), teamRef(second))));
+
+      client.dashboardDataModels().update(dataModel.getId().toString(), read);
+
+      DashboardDataModel reloaded =
+          client.dashboardDataModels().get(dataModel.getId().toString(), "columns,extension");
+      assertEquals(
+          List.of(first.getId().toString(), second.getId().toString()),
+          referenceIdsOf(columnNamed(reloaded.getColumns(), "metric1"), propName));
+    } finally {
+      removeColumnTypeProperty(client, DASHBOARD_DATA_MODEL_COLUMN, propName);
+    }
+  }
+
+  @Test
+  void test_tableColumn_nestedColumnReferenceIsRemoved(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String propName =
+        addTeamReferenceProperty(client, TABLE_COLUMN, ns, ENTITY_REFERENCE_LIST_TYPE);
+    try {
+      Team first = createTeam(client, ns.prefix("first"));
+      Team second = createTeam(client, ns.prefix("second"));
+      Column leaf =
+          new Column()
+              .withName("leaf")
+              .withDataType(ColumnDataType.VARCHAR)
+              .withDataLength(32)
+              .withExtension(Map.of(propName, List.of(teamRef(first), teamRef(second))));
+      DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+      DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+      Table table =
+          Tables.create()
+              .name(ns.prefix("nestedRefTable"))
+              .inSchema(schema.getFullyQualifiedName())
+              .withColumns(
+                  List.of(
+                      structColumn("outer", structColumn("middle", structColumn("inner", leaf)))))
+              .execute();
+      Column createdLeaf = getDeepestColumn(columnNamed(table.getColumns(), "outer"));
+      assertTrue(
+          FullyQualifiedName.buildHash(createdLeaf.getFullyQualifiedName()).length() > 256,
+          "a fourth-level column key must exceed 256 characters");
+      assertEquals(
+          List.of(first.getId().toString(), second.getId().toString()),
+          storedReferenceIds(table.getId(), createdLeaf.getFullyQualifiedName(), propName));
+
+      client.teams().delete(first.getId().toString(), HARD_DELETE);
+      assertNoReferencesTo(first.getId());
+
+      Table reloaded = tableWith(client, table, "columns,extension");
+      Column reloadedLeaf = getDeepestColumn(columnNamed(reloaded.getColumns(), "outer"));
+      assertEquals(List.of(second.getId().toString()), referenceIdsOf(reloadedLeaf, propName));
+      assertNoReferencesTo(first.getId());
+      assertEquals(
+          List.of(second.getId().toString()),
+          storedReferenceIds(table.getId(), reloadedLeaf.getFullyQualifiedName(), propName));
+      Table stored = Entity.getCollectionDAO().tableDAO().findEntityById(table.getId());
+      assertTrue(
+          referenceIdsOf(getDeepestColumn(columnNamed(stored.getColumns(), "outer")), propName)
+              .isEmpty());
+    } finally {
+      removeColumnTypeProperty(client, TABLE_COLUMN, propName);
+    }
+  }
+
+  @Test
+  void test_tableColumn_listEndpointFiltersDeletedTarget(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String propName =
+        addTeamReferenceProperty(client, TABLE_COLUMN, ns, ENTITY_REFERENCE_LIST_TYPE);
+    try {
+      Team first = createTeam(client, ns.prefix("first"));
+      Team second = createTeam(client, ns.prefix("second"));
+      Table table =
+          createTableWithColumnReferences(ns, propName, List.of(teamRef(first), teamRef(second)));
+
+      client.teams().delete(first.getId().toString(), HARD_DELETE);
+      assertNoReferencesTo(first.getId());
+
+      ListResponse<Table> page =
+          client
+              .tables()
+              .list(
+                  new ListParams()
+                      .setFields("columns")
+                      .withLimit(10)
+                      .addFilter(
+                          "databaseSchema", table.getDatabaseSchema().getFullyQualifiedName()));
+      Table listed =
+          page.getData().stream()
+              .filter(t -> t.getId().equals(table.getId()))
+              .findFirst()
+              .orElseThrow();
+      assertFalse(
+          columnReferenceIds(listed, "id", propName).contains(first.getId().toString()),
+          "list reads without the extension field carry no column references");
+    } finally {
+      removeColumnTypeProperty(client, TABLE_COLUMN, propName);
+    }
+  }
+
+  @Test
+  void test_columnsApi_clearsReferenceValueForTablesAndDataModels(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String tableRef =
+        addTeamReferenceProperty(client, TABLE_COLUMN, ns, ENTITY_REFERENCE_LIST_TYPE);
+    String tableText = ns.prefix("tableText");
+    addCustomPropertyToColumnType(client, TABLE_COLUMN, tableText, STRING_TYPE, null);
+    String modelRef =
+        addTeamReferenceProperty(
+            client, DASHBOARD_DATA_MODEL_COLUMN, ns, ENTITY_REFERENCE_LIST_TYPE);
+    String modelText = ns.prefix("modelText");
+    addCustomPropertyToColumnType(
+        client, DASHBOARD_DATA_MODEL_COLUMN, modelText, STRING_TYPE, null);
+    try {
+      Team team = createTeam(client, ns.prefix("team"));
+      String tableColumn = createTestTable(ns).getFullyQualifiedName() + ".id";
+      updateColumn(
+          client, tableColumn, "table", Map.of(tableRef, List.of(teamRef(team)), tableText, "x"));
+      DashboardDataModel dataModel =
+          client
+              .dashboardDataModels()
+              .create(
+                  new CreateDashboardDataModel()
+                      .withName(ns.prefix("clearRefDataModel"))
+                      .withService(
+                          DashboardServiceTestFactory.createLooker(ns).getFullyQualifiedName())
+                      .withDataModelType(DataModelType.LookMlView)
+                      .withColumns(
+                          List.of(
+                              new Column()
+                                  .withName("metric1")
+                                  .withDataType(ColumnDataType.BIGINT)
+                                  .withExtension(
+                                      Map.of(modelRef, List.of(teamRef(team)), modelText, "x")))));
+      String modelColumn = dataModel.getFullyQualifiedName() + ".metric1";
+
+      updateColumn(client, tableColumn, "table", Map.of(tableText, "x"));
+      updateColumn(client, modelColumn, "dashboardDataModel", Map.of(modelText, "x"));
+
+      Column reloadedTableColumn = getColumnByName(client, tableColumn, "table", "extension");
+      assertTrue(referenceIdsOf(reloadedTableColumn, tableRef).isEmpty());
+      assertEquals(
+          "x", JsonUtils.valueToTree(reloadedTableColumn.getExtension()).path(tableText).asText());
+      Column reloadedModelColumn =
+          getColumnByName(client, modelColumn, "dashboardDataModel", "extension");
+      assertTrue(referenceIdsOf(reloadedModelColumn, modelRef).isEmpty());
+      assertEquals(
+          "x", JsonUtils.valueToTree(reloadedModelColumn.getExtension()).path(modelText).asText());
+    } finally {
+      removeColumnTypeProperty(client, TABLE_COLUMN, tableRef);
+      removeColumnTypeProperty(client, TABLE_COLUMN, tableText);
+      removeColumnTypeProperty(client, DASHBOARD_DATA_MODEL_COLUMN, modelRef);
+      removeColumnTypeProperty(client, DASHBOARD_DATA_MODEL_COLUMN, modelText);
+    }
+  }
+
+  @Test
+  void test_columnsApi_filtersDeletedTargetForTablesAndDataModels(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String tableProp =
+        addTeamReferenceProperty(client, TABLE_COLUMN, ns, ENTITY_REFERENCE_LIST_TYPE);
+    String modelProp =
+        addTeamReferenceProperty(
+            client, DASHBOARD_DATA_MODEL_COLUMN, ns, ENTITY_REFERENCE_LIST_TYPE);
+    try {
+      Team first = createTeam(client, ns.prefix("first"));
+      Team second = createTeam(client, ns.prefix("second"));
+      Table table = createTestTable(ns);
+      String tableColumn = table.getFullyQualifiedName() + ".id";
+      updateColumn(
+          client,
+          tableColumn,
+          "table",
+          Map.of(tableProp, List.of(teamRef(first), teamRef(second))));
+      DashboardDataModel dataModel =
+          client
+              .dashboardDataModels()
+              .create(
+                  new CreateDashboardDataModel()
+                      .withName(ns.prefix("apiRefDataModel"))
+                      .withService(
+                          DashboardServiceTestFactory.createLooker(ns).getFullyQualifiedName())
+                      .withDataModelType(DataModelType.LookMlView)
+                      .withColumns(
+                          List.of(
+                              new Column()
+                                  .withName("metric1")
+                                  .withDataType(ColumnDataType.BIGINT)
+                                  .withExtension(
+                                      Map.of(
+                                          modelProp, List.of(teamRef(first), teamRef(second)))))));
+      String modelColumn = dataModel.getFullyQualifiedName() + ".metric1";
+
+      client.teams().delete(first.getId().toString(), HARD_DELETE);
+      assertNoReferencesTo(first.getId());
+      assertNoReferencesTo(first.getId());
+
+      assertEquals(
+          List.of(second.getId().toString()),
+          referenceIdsOf(getColumnByName(client, tableColumn, "table", "extension"), tableProp));
+      assertEquals(
+          List.of(second.getId().toString()),
+          referenceIdsOf(
+              getColumnByName(client, modelColumn, "dashboardDataModel", "extension"), modelProp));
+      // Without the extension field a column may or may not carry its inline copy; either way the
+      // deleted target must not be in it.
+      assertFalse(
+          referenceIdsOf(getColumnByName(client, tableColumn, "table", "tags"), tableProp)
+              .contains(first.getId().toString()));
+      assertFalse(
+          referenceIdsOf(
+                  getColumnByName(client, modelColumn, "dashboardDataModel", "tags"), modelProp)
+              .contains(first.getId().toString()));
+    } finally {
+      removeColumnTypeProperty(client, TABLE_COLUMN, tableProp);
+      removeColumnTypeProperty(client, DASHBOARD_DATA_MODEL_COLUMN, modelProp);
+    }
+  }
+
+  private Column getColumnByName(
+      OpenMetadataClient client, String columnFqn, String entityType, String fields)
+      throws Exception {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/columns/name/"
+                    + encodeURIComponent(columnFqn)
+                    + "?entityType="
+                    + entityType
+                    + "&fields="
+                    + fields,
+                null);
+    return OBJECT_MAPPER.readValue(response, Column.class);
+  }
+
+  private String addTeamReferenceProperty(
+      OpenMetadataClient client, String columnType, TestNamespace ns, Type propertyType)
+      throws Exception {
+    String propName = ns.prefix("teamRefs");
+    CustomPropertyConfig config = new CustomPropertyConfig();
+    config.setConfig(List.of(TEAM));
+    addCustomPropertyToColumnType(client, columnType, propName, propertyType, config);
+    return propName;
+  }
+
+  private static Team createTeam(OpenMetadataClient client, String name) {
+    return client
+        .teams()
+        .create(new CreateTeam().withName(name).withTeamType(CreateTeam.TeamType.GROUP));
+  }
+
+  private static Map<String, Object> teamRef(Team team) {
+    return Map.of(
+        "id",
+        team.getId().toString(),
+        "type",
+        TEAM,
+        "name",
+        team.getName(),
+        "fullyQualifiedName",
+        team.getFullyQualifiedName());
+  }
+
+  private static Map<String, Object> nameOnly(Team team) {
+    return Map.of("type", TEAM, "fullyQualifiedName", team.getFullyQualifiedName());
+  }
+
+  /**
+   * Stores a column value the pre-2.1 way: inline in the table row and, when {@code sideRow}, in the
+   * column's entity_extension row, with no reference rows.
+   */
+  private static void writeLegacyValue(
+      Table table, String columnName, Map<String, Object> extension, boolean sideRow) {
+    String columnFqn = table.getFullyQualifiedName() + "." + columnName;
+    Entity.getCollectionDAO()
+        .customPropertyReferenceDAO()
+        .deleteByHolders(List.of(table.getId().toString()));
+    if (sideRow) {
+      Entity.getCollectionDAO()
+          .entityExtensionDAO()
+          .insert(
+              table.getId(),
+              FullyQualifiedName.buildHash(columnFqn),
+              TableRepository.COLUMN_EXTENSION_JSON_SCHEMA,
+              JsonUtils.pojoToJson(extension));
+    }
+    String json = Entity.getCollectionDAO().tableDAO().findById("table_entity", table.getId(), "");
+    ObjectNode row = (ObjectNode) JsonUtils.readTree(json);
+    for (JsonNode column : row.get("columns")) {
+      if (columnName.equals(column.path("name").asText())) {
+        ((ObjectNode) column).set("extension", JsonUtils.valueToTree(extension));
+      }
+    }
+    Entity.getCollectionDAO()
+        .tableDAO()
+        .update(table.getId(), table.getFullyQualifiedName(), row.toString());
+  }
+
+  private Table createTableWithColumnReferences(
+      TestNamespace ns, String propName, List<Map<String, Object>> refs) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Column idColumn =
+        Columns.build("id")
+            .withType(ColumnDataType.BIGINT)
+            .primaryKey()
+            .create()
+            .withExtension(Map.of(propName, refs));
+    return Tables.create()
+        .name(ns.prefix("cpRefTable"))
+        .inSchema(schema.getFullyQualifiedName())
+        .withColumns(List.of(idColumn))
+        .execute();
+  }
+
+  private static Table tableWith(OpenMetadataClient client, Table table, String fields) {
+    return client.tables().get(table.getId().toString(), fields);
+  }
+
+  private static Column columnNamed(List<Column> columns, String name) {
+    return columns.stream().filter(c -> name.equals(c.getName())).findFirst().orElseThrow();
+  }
+
+  private static List<String> columnReferenceIds(Table table, String columnName, String propName) {
+    return referenceIdsOf(columnNamed(table.getColumns(), columnName), propName);
+  }
+
+  private static List<String> referenceIdsOf(Column column, String propName) {
+    return referenceIdsIn(
+        column.getExtension() == null ? null : JsonUtils.valueToTree(column.getExtension()),
+        propName);
+  }
+
+  private static List<String> referenceIdsIn(JsonNode extension, String propName) {
+    JsonNode value = extension == null ? null : extension.get(propName);
+    List<String> ids = new ArrayList<>();
+    if (value != null && value.isArray()) {
+      value.forEach(ref -> ids.add(ref.path("id").asText()));
+    } else if (value != null && value.isObject()) {
+      ids.add(value.path("id").asText());
+    }
+    return ids;
+  }
+
+  /** The side-table row, as the compaction sweep leaves it. */
+  private static List<String> storedReferenceIds(Table table, String columnName, String propName) {
+    return storedReferenceIds(
+        table.getId(), table.getFullyQualifiedName() + "." + columnName, propName);
+  }
+
+  /** The column's reference rows, in list order; references have no other home. */
+  private static List<String> storedReferenceIds(UUID holderId, String columnFqn, String propName) {
+    return Entity.getCollectionDAO()
+        .customPropertyReferenceDAO()
+        .findColumns(holderId, List.of(FullyQualifiedName.buildHash(columnFqn)))
+        .stream()
+        .filter(row -> propName.equals(row.propertyName()))
+        .sorted(Comparator.comparingInt(ReferenceRow::position))
+        .map(ReferenceRow::targetId)
+        .toList();
+  }
+
+  /** Removes a column-type property by patching the type; there is no per-property DELETE route. */
+  private static void removeColumnTypeProperty(
+      OpenMetadataClient client, String columnType, String propName) throws Exception {
+    String typeId = getColumnType(client, columnType).getId().toString();
+    for (int attempt = 0; attempt < 5; attempt++) {
+      int index = columnTypePropertyIndex(client, typeId, propName);
+      if (index < 0) {
+        return;
+      }
+      JsonNode patch =
+          OBJECT_MAPPER.readTree(
+              String.format(
+                  "[{\"op\":\"test\",\"path\":\"/customProperties/%d/name\",\"value\":\"%s\"},"
+                      + "{\"op\":\"remove\",\"path\":\"/customProperties/%d\"}]",
+                  index, propName, index));
+      try {
+        client
+            .getHttpClient()
+            .execute(HttpMethod.PATCH, "/v1/metadata/types/" + typeId, patch, Type.class);
+        return;
+      } catch (OpenMetadataException e) {
+        LOG.debug("Custom property index moved under the patch, retrying: {}", e.getMessage());
+      }
+    }
+  }
+
+  private static int columnTypePropertyIndex(
+      OpenMetadataClient client, String typeId, String propName) throws Exception {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET, "/v1/metadata/types/" + typeId + "?fields=customProperties", null);
+    JsonNode properties = OBJECT_MAPPER.readTree(response).path("customProperties");
+    for (int index = 0; index < properties.size(); index++) {
+      if (propName.equals(properties.get(index).path("name").asText())) {
+        return index;
+      }
+    }
+    return -1;
+  }
+
+  /** The copy inside the table's own JSON row, which reads without the extension field serve. */
+  private static List<String> inlineReferenceIds(Table table, String columnName, String propName) {
+    Table stored = Entity.getCollectionDAO().tableDAO().findEntityById(table.getId());
+    return referenceIdsOf(columnNamed(stored.getColumns(), columnName), propName);
+  }
+
+  private static void assertNoReferencesTo(UUID target) {
+    assertTrue(referenceRowsTo(target).isEmpty(), "no stored reference points at " + target);
+  }
+
+  private static List<ReferenceRow> referenceRowsTo(UUID target) {
+    return Entity.getCollectionDAO()
+        .customPropertyReferenceDAO()
+        .findByTargets(List.of(target.toString()));
   }
 
   private Column updateColumn(

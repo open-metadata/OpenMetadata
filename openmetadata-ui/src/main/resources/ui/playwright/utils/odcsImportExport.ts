@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, Response } from '@playwright/test';
+import { APIRequestContext, expect, Page, Response } from '@playwright/test';
 import { TableClass } from '../support/entity/TableClass';
 import { toastNotification } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
@@ -102,4 +102,15 @@ export const importODCSYaml = async (
 
   await importResponse;
   await toastNotification(page, 'ODCS Contract imported successfully');
+};
+
+export const getContractForTable = async (
+  apiContext: APIRequestContext,
+  table: TableClass
+) => {
+  const response = await apiContext.get(
+    `/api/v1/dataContracts/entity?entityId=${table.entityResponseData.id}&entityType=table`
+  );
+
+  return response.json();
 };

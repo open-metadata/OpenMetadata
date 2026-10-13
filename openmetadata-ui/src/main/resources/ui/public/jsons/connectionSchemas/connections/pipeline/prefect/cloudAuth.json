@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Prefect Cloud Authentication",
   "description": "Authentication configuration for Prefect Cloud.",
   "javaType": "org.openmetadata.schema.services.connections.pipeline.prefect.CloudAuth",

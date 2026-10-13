@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { FC, SVGProps } from 'react';
+import * as React from 'react';
+import type { SVGProps, FC } from 'react';
 interface Props extends SVGProps<SVGSVGElement> {
   color?: string;
   size?: number;

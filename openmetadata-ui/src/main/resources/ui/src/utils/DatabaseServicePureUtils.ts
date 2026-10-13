@@ -34,8 +34,12 @@ const databaseSchemaLoaders: Partial<
     loadConnectionSchema('connections/database/bigTableConnection.json'),
   [DatabaseServiceType.Clickhouse]: () =>
     loadConnectionSchema('connections/database/clickhouseConnection.json'),
+  [DatabaseServiceType.Clickzetta]: () =>
+    loadConnectionSchema('connections/database/clickzettaConnection.json'),
   [DatabaseServiceType.Cockroach]: () =>
     loadConnectionSchema('connections/database/cockroachConnection.json'),
+  [DatabaseServiceType.Databend]: () =>
+    loadConnectionSchema('connections/database/databendConnection.json'),
   [DatabaseServiceType.Databricks]: () =>
     loadConnectionSchema('connections/database/databricksConnection.json'),
   [DatabaseServiceType.Datalake]: () =>

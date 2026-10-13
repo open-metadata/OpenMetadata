@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
@@ -59,6 +60,7 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.net.ConnectException;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
@@ -93,11 +95,15 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipel
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
+import org.openmetadata.schema.metadataIngestion.SourceConfig;
+import org.openmetadata.schema.metadataIngestion.TestSuitePipeline;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
+import org.openmetadata.sdk.RunOptions;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.IngestionPipelineDeploymentException;
 import org.openmetadata.service.jdbi3.BotRepository;
@@ -159,7 +165,13 @@ class K8sPipelineClientTest {
     config.setMetadataApiEndpoint("http://localhost:8585/api");
     config.setParameters(params);
 
-    client = new K8sPipelineClient(config);
+    client =
+        new K8sPipelineClient(config) {
+          @Override
+          protected long getRetryBackoffMillis() {
+            return 0L;
+          }
+        };
     client.setBatchApi(batchApi);
     client.setCoreApi(coreApi);
     setField(client, "customObjectsApi", customObjectsApi);
@@ -246,6 +258,35 @@ class K8sPipelineClientTest {
         createdJob.getMetadata().getLabels().get("app.kubernetes.io/run-id"),
         response.getRunId(),
         "The run ID must be reported back so the server can record the queued status");
+  }
+
+  /**
+   * K8s rebuilds a run from the pipeline it is handed, so a run's scope reaches the job through the
+   * interface default: a scoped copy, leaving the caller's pipeline as it was.
+   */
+  @Test
+  void testRunPipelineScopesTheJobToTheRunsTestCases() throws Exception {
+    IngestionPipeline pipeline =
+        createTestPipeline("suite-pipeline", null)
+            .withPipelineType(PipelineType.TEST_SUITE)
+            .withSourceConfig(new SourceConfig().withConfig(new TestSuitePipeline()));
+    when(batchApi.createNamespacedJob(eq(NAMESPACE), any())).thenReturn(createJobRequest);
+    when(createJobRequest.execute()).thenReturn(new V1Job());
+
+    client.runPipelineWithOptions(
+        pipeline,
+        testService,
+        RunOptions.withSourceConfigOverride(Map.of("testCases", List.of("row_count"))));
+
+    ArgumentCaptor<V1Job> jobCaptor = ArgumentCaptor.forClass(V1Job.class);
+    verify(batchApi).createNamespacedJob(eq(NAMESPACE), jobCaptor.capture());
+    V1PodSpec podSpec = jobCaptor.getValue().getSpec().getTemplate().getSpec();
+    String workflowConfig = toEnvMap(podSpec.getContainers().getFirst().getEnv()).get("config");
+    assertTrue(workflowConfig.contains("testCases"), workflowConfig);
+    assertTrue(workflowConfig.contains("row_count"), workflowConfig);
+    assertNull(
+        JsonUtils.convertValue(pipeline.getSourceConfig().getConfig(), TestSuitePipeline.class)
+            .getTestCases());
   }
 
   @Test
@@ -615,6 +656,41 @@ class K8sPipelineClientTest {
 
     // Verify the API was only called once (no retry)
     verify(batchApi, times(1)).createNamespacedJob(eq(NAMESPACE), any());
+  }
+
+  @Test
+  void runFailureReadsAsATriggerAndIsA503WhenARetryCanHelp() throws Exception {
+    IngestionPipeline pipeline = createTestPipeline("test-pipeline", null);
+    when(batchApi.createNamespacedJob(eq(NAMESPACE), any())).thenReturn(createJobRequest);
+
+    // Code 0: the request got no answer, so a retry once the cluster API is back can work.
+    when(createJobRequest.execute())
+        .thenThrow(new ApiException(new ConnectException("Connection refused")));
+    IngestionPipelineDeploymentException unreachable =
+        assertThrows(
+            IngestionPipelineDeploymentException.class,
+            () -> client.runPipeline(pipeline, testService));
+    assertEquals(503, unreachable.getResponse().getStatus());
+    assertTrue(unreachable.getMessage().startsWith("Failed to trigger pipeline [test-pipeline]"));
+
+    // Throttled, or failing on the cluster's side: the codes the client itself retries on.
+    for (int transientCode : new int[] {429, 500}) {
+      // doThrow: re-stubbing through when() would call the mock, which still throws.
+      doThrow(new ApiException(transientCode, "Transient")).when(createJobRequest).execute();
+      IngestionPipelineDeploymentException retryable =
+          assertThrows(
+              IngestionPipelineDeploymentException.class,
+              () -> client.runPipeline(pipeline, testService));
+      assertEquals(503, retryable.getResponse().getStatus());
+    }
+
+    doThrow(new ApiException(403, "Forbidden")).when(createJobRequest).execute();
+    IngestionPipelineDeploymentException rejected =
+        assertThrows(
+            IngestionPipelineDeploymentException.class,
+            () -> client.runPipeline(pipeline, testService));
+    assertEquals(400, rejected.getResponse().getStatus());
+    assertTrue(rejected.getMessage().startsWith("Failed to trigger pipeline [test-pipeline]"));
   }
 
   @Test
@@ -1000,7 +1076,7 @@ class K8sPipelineClientTest {
     when(listConfigMapRequest.execute()).thenThrow(new ApiException(403, "forbidden configmaps"));
 
     PipelineServiceClientResponse configMapFailure = client.getServiceStatus();
-    assertEquals(500, configMapFailure.getCode());
+    assertEquals(403, configMapFailure.getCode());
     assertTrue(configMapFailure.getReason().contains("missing ConfigMap permissions"));
 
     reset(listConfigMapRequest);
@@ -1013,7 +1089,7 @@ class K8sPipelineClientTest {
     when(listSecretRequest.execute()).thenThrow(new ApiException(403, "forbidden secrets"));
 
     PipelineServiceClientResponse secretFailure = client.getServiceStatus();
-    assertEquals(500, secretFailure.getCode());
+    assertEquals(403, secretFailure.getCode());
     assertTrue(secretFailure.getReason().contains("missing Secret permissions"));
   }
 
@@ -1052,6 +1128,42 @@ class K8sPipelineClientTest {
   }
 
   @Test
+  void testGetServiceStatusRetriesThrottledPermissionProbe() throws Exception {
+    when(coreApi.listNamespacedPod(eq(NAMESPACE))).thenReturn(listPodRequest);
+    when(listPodRequest.limit(1)).thenReturn(listPodRequest);
+    when(listPodRequest.execute()).thenReturn(new V1PodList());
+
+    when(batchApi.listNamespacedJob(eq(NAMESPACE))).thenReturn(listJobRequest);
+    when(listJobRequest.limit(1)).thenReturn(listJobRequest);
+    when(listJobRequest.execute()).thenReturn(new V1JobList());
+
+    when(coreApi.listNamespacedConfigMap(eq(NAMESPACE))).thenReturn(listConfigMapRequest);
+    when(listConfigMapRequest.limit(1)).thenReturn(listConfigMapRequest);
+    when(listConfigMapRequest.execute()).thenThrow(new ApiException(429, "too many requests"));
+
+    PipelineServiceClientResponse response = client.getServiceStatus();
+
+    // Throttling clears on its own, unlike the 403 an RBAC gap produces, so it stays retryable.
+    assertEquals(500, response.getCode());
+    verify(listConfigMapRequest, times(3)).execute();
+  }
+
+  @Test
+  void testGetServiceStatusKeepsApiServerOutageRetryable() throws Exception {
+    when(coreApi.listNamespacedPod(eq(NAMESPACE))).thenReturn(listPodRequest);
+    when(listPodRequest.limit(1)).thenReturn(listPodRequest);
+    when(listPodRequest.execute()).thenThrow(new ApiException(503, "api server unavailable"));
+
+    PipelineServiceClientResponse response = client.getServiceStatus();
+
+    // 5xx from the API server is a blip, so it keeps the retryable 500 rather than its own code
+    // and getServiceStatus() gives it the full three attempts.
+    assertEquals(500, response.getCode());
+    assertTrue(response.getReason().contains("api server unavailable"));
+    verify(listPodRequest, times(3)).execute();
+  }
+
+  @Test
   void testGetServiceStatusReportsMalformedStatusAsUnhealthy() throws Exception {
     when(coreApi.listNamespacedPod(eq(NAMESPACE))).thenReturn(listPodRequest);
     when(listPodRequest.limit(1)).thenReturn(listPodRequest);
@@ -1060,7 +1172,7 @@ class K8sPipelineClientTest {
 
     PipelineServiceClientResponse response = client.getServiceStatus();
 
-    assertEquals(500, response.getCode());
+    assertEquals(422, response.getCode());
     assertTrue(response.getReason().contains("Failed to parse Kubernetes pod/job status"));
     verifyNoInteractions(batchApi, listConfigMapRequest, listSecretRequest);
   }
@@ -1085,7 +1197,7 @@ class K8sPipelineClientTest {
 
     PipelineServiceClientResponse response = client.getServiceStatus();
 
-    assertEquals(500, response.getCode());
+    assertEquals(403, response.getCode());
     assertTrue(response.getReason().contains("missing ConfigMap permissions"));
     verify(coreApi).listNamespacedConfigMap(eq(NAMESPACE));
   }

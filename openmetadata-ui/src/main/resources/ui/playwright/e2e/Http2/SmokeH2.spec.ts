@@ -61,7 +61,7 @@ test('serves JS assets over HTTP/2 with brotli encoding', async ({ page }) => {
     });
   });
 
-  await page.goto('/');
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.waitForLoadState('domcontentloaded');
 
   await expect(() => expect(responses.length).toBeGreaterThan(0)).toPass({

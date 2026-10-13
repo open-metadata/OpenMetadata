@@ -12,7 +12,7 @@
  */
 
 import type { Meta, StoryObj } from '@storybook/react';
-import { InfoCircle } from '@untitledui/icons';
+import { InfoCircle } from '../icons';
 import { FeaturedIcon } from '../components/foundations/featured-icon/featured-icon';
 
 const meta = {

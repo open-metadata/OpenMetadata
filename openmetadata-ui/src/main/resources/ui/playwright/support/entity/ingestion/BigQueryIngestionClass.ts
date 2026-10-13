@@ -12,7 +12,7 @@
  */
 
 import { Page } from '@playwright/test';
-import { selectOptionWithRetry, uuid } from '../../../utils/common';
+import { chooseSelectOption, uuid } from '../../../utils/common';
 
 import {
   checkServiceFieldSectionHighlighting,
@@ -72,12 +72,12 @@ class BigQueryIngestionClass extends ServiceBaseClass {
     const projectIdTaxonomy =
       process.env.PLAYWRIGHT_BQ_PROJECT_ID_TAXONOMY ?? '';
 
-    await selectOptionWithRetry(
+    await chooseSelectOption(
       page.getByRole('button', { name: 'GCP Credentials Values GCP' }),
       page.getByRole('option', { name: 'GCP Credentials Values' })
     );
 
-    await selectOptionWithRetry(
+    await chooseSelectOption(
       page.getByRole('button', { name: 'Single Project ID Project ID' }),
       page.getByRole('option', { name: 'Multiple Project ID' })
     );

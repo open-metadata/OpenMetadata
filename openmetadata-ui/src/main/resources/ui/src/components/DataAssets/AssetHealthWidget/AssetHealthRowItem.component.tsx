@@ -15,7 +15,7 @@ import {
   BadgeWithIcon,
   FeaturedIcon,
 } from '@openmetadata/ui-core-components';
-import { ChevronRight } from '@untitledui/icons';
+import { ChevronRight } from '@openmetadata/ui-core-components/icons';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ASSET_HEALTH_TONE_COLOR } from './AssetHealthWidget.constant';

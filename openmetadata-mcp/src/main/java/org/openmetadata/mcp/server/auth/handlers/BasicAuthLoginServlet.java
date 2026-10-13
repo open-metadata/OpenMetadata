@@ -1,5 +1,7 @@
 package org.openmetadata.mcp.server.auth.handlers;
 
+import static org.openmetadata.service.exception.CatalogExceptionMessage.INVALID_USER_OR_PASSWORD;
+
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -22,6 +24,7 @@ import org.openmetadata.mcp.server.auth.util.UriUtils;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.McpPendingAuthRequest;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
@@ -178,7 +181,8 @@ public class BasicAuthLoginServlet extends HttpServlet {
       try {
         authenticator.checkIfLoginBlocked(email);
       } catch (AuthenticationException e) {
-        LOG.warn("Login blocked for user", e);
+        // Lockout is the policy doing its job, not a fault - record the event, not a stack trace.
+        LOG.warn("Login blocked after repeated failed attempts");
         renderLoginFormWithError(request, response, pending, "Login blocked");
         return;
       }
@@ -238,12 +242,23 @@ public class BasicAuthLoginServlet extends HttpServlet {
         }
 
       } catch (AuthenticationException e) {
-        LOG.warn("Basic Auth login failed");
+        // Wrong password for an existing account. A rejected credential is an expected outcome of
+        // this endpoint, so it is logged as an event and never as a stack trace.
+        LOG.warn("Basic Auth login failed: invalid credentials");
         try {
           authenticator.recordFailedLoginAttempt(email, email);
         } catch (Exception recordEx) {
           LOG.error("Failed to record login attempt for security tracking", recordEx);
         }
+        renderLoginFormWithError(request, response, pending, "Invalid username or password");
+      } catch (CustomExceptionMessage e) {
+        // Both authenticators report an unknown account as CustomExceptionMessage, and LDAP uses
+        // the same type for a directory that is unreachable. Only INVALID_USER_OR_PASSWORD is a
+        // rejected credential; anything else is a real fault the outer handler must still log.
+        if (!INVALID_USER_OR_PASSWORD.equals(e.getErrorType())) {
+          throw e;
+        }
+        LOG.warn("Basic Auth login failed: no such account");
         renderLoginFormWithError(request, response, pending, "Invalid username or password");
       }
 

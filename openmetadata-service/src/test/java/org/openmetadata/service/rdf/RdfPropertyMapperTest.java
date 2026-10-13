@@ -31,7 +31,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.service.rdf.translator.RdfPropertyMapper;
 
 /**
@@ -1628,7 +1630,7 @@ class RdfPropertyMapperTest {
     return entityReference;
   }
 
-  private static class TestRdfEntity implements EntityInterface {
+  private static class TestRdfEntity implements EntityInterface<EntityStatus> {
     private UUID id;
     private String description;
     private String displayName;
@@ -1783,7 +1785,7 @@ class RdfPropertyMapperTest {
 
     @Override
     @SuppressWarnings("unchecked")
-    public <T extends EntityInterface> T withHref(URI href) {
+    public <T extends EntityInterface<?>> T withHref(URI href) {
       this.href = href;
       return (T) this;
     }
@@ -1862,6 +1864,51 @@ class RdfPropertyMapperTest {
             RdfPropertyMapper.TRANSLATOR_MANAGED_DIRECT_PREDICATES.contains(pred),
             "TRANSLATOR_MANAGED_DIRECT_PREDICATES must NOT include hook-managed " + pred);
       }
+    }
+  }
+
+  @Nested
+  @DisplayName("Dedicated-mapper fields must be fetched, or their emitters see nothing")
+  class DedicatedMapperFieldTests {
+
+    @Test
+    @DisplayName("tableConstraints present -> om:hasConstraint relations are emitted")
+    void tableConstraintsEmitRelationsWhenFetched() throws Exception {
+      ObjectNode entityJson = objectMapper.createObjectNode();
+      ArrayNode constraints = entityJson.putArray("tableConstraints");
+      ObjectNode fk = constraints.addObject();
+      fk.put("constraintType", "FOREIGN_KEY");
+      fk.putArray("columns").add("customer_id");
+      fk.putArray("referredColumns").add("service.db.schema.customers.id");
+
+      emitStructured(entityJson);
+
+      assertTrue(
+          model.contains(entityResource, model.createProperty(OM_NS, "hasConstraint")),
+          "a fetched tableConstraints[] must produce om:hasConstraint relations");
+    }
+
+    @Test
+    @DisplayName("tableConstraints absent -> the dedicated mapper emits nothing at all")
+    void tableConstraintsEmitNothingWhenNotFetched() throws Exception {
+      // This is the pre-fix state: RdfIndexingFields excluded tableConstraints from the field set,
+      // so the entity JSON never carried it and RdfJsonNode.array(...) returned Optional.empty().
+      // emitStructuredProperties still ran; it just had nothing to read.
+      emitStructured(objectMapper.createObjectNode());
+
+      assertFalse(
+          model.contains(entityResource, model.createProperty(OM_NS, "hasConstraint")),
+          "an unfetched tableConstraints[] silently produces no relations - the bug this guards");
+    }
+
+    private void emitStructured(JsonNode entityJson) throws Exception {
+      invokePrivate(
+          "emitStructuredProperties",
+          new Class[] {EntityInterface.class, JsonNode.class, Resource.class, Model.class},
+          new Table().withFullyQualifiedName("service.db.schema.orders"),
+          entityJson,
+          entityResource,
+          model);
     }
   }
 }

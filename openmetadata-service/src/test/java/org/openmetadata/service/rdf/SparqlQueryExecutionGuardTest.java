@@ -103,6 +103,67 @@ class SparqlQueryExecutionGuardTest {
     }
   }
 
+  @Test
+  void samePrincipalSharesOneQuotaAcrossCallers() throws Exception {
+    try (ExecutorService queryExecutor = Executors.newVirtualThreadPerTaskExecutor();
+        ExecutorService callerExecutor = Executors.newVirtualThreadPerTaskExecutor()) {
+      SparqlQueryExecutionGuard guard =
+          new SparqlQueryExecutionGuard(8, 1, 64, 1_000, queryExecutor);
+      CountDownLatch started = new CountDownLatch(1);
+      CountDownLatch release = new CountDownLatch(1);
+      CompletableFuture<String> active =
+          CompletableFuture.supplyAsync(
+              () -> guard.execute("alice", () -> awaitRelease(started, release)), callerExecutor);
+
+      assertTrue(started.await(1, TimeUnit.SECONDS));
+      // A second caller running as the same effective user shares alice's single permit.
+      SparqlQueryExecutionGuard.QueryCapacityException exhausted =
+          assertThrows(
+              SparqlQueryExecutionGuard.QueryCapacityException.class,
+              () -> guard.execute("alice", () -> "second"));
+      assertTrue(exhausted.getMessage().contains("principal"), exhausted.getMessage());
+      release.countDown();
+      assertEquals("finished", active.get(1, TimeUnit.SECONDS));
+    }
+  }
+
+  @Test
+  void differentPrincipalsDoNotShareQuota() throws Exception {
+    try (ExecutorService queryExecutor = Executors.newVirtualThreadPerTaskExecutor();
+        ExecutorService callerExecutor = Executors.newVirtualThreadPerTaskExecutor()) {
+      SparqlQueryExecutionGuard guard =
+          new SparqlQueryExecutionGuard(8, 1, 64, 1_000, queryExecutor);
+      String bob = userOnAnotherStripeThan("alice", 64);
+      CountDownLatch started = new CountDownLatch(1);
+      CountDownLatch release = new CountDownLatch(1);
+      CompletableFuture<String> active =
+          CompletableFuture.supplyAsync(
+              () -> guard.execute("alice", () -> awaitRelease(started, release)), callerExecutor);
+
+      assertTrue(started.await(1, TimeUnit.SECONDS));
+      // A second user on another stripe is keyed independently of the first: only the
+      // effective-user string enters the quota key, so alice's exhausted permit does not
+      // block bob. (Two different users can still collide on one stripe and share it.)
+      assertEquals("bob", guard.execute(bob, () -> "bob"));
+      release.countDown();
+      assertEquals("finished", active.get(1, TimeUnit.SECONDS));
+    }
+  }
+
+  /**
+   * Mirrors the guard's stripe mapping so the pair is deterministically independent: sharing a
+   * stripe would make the test pass or fail on hash luck.
+   */
+  private static String userOnAnotherStripeThan(final String first, final int stripes) {
+    final int forbidden = Math.floorMod(first.hashCode(), stripes);
+    for (int index = 0; ; index++) {
+      final String candidate = "quota-user-" + index;
+      if (Math.floorMod(candidate.hashCode(), stripes) != forbidden) {
+        return candidate;
+      }
+    }
+  }
+
   private static String awaitRelease(final CountDownLatch started, final CountDownLatch release) {
     started.countDown();
     try {

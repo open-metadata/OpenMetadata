@@ -168,6 +168,7 @@ class TestListingErrorIsolation:
         assert uc_source.status.failures[0].name == "schemas in catalog [hive_metastore]"
 
     def test_table_listing_failure_keeps_prior_tables(self, uc_source):
+        uc_source.source_config.includeTags = True
         uc_source.metadata = MagicMock()
         uc_source.metadata.es_search_from_fqn.return_value = None
         uc_source.client.tables.list.return_value = _raising_listing(
@@ -228,6 +229,7 @@ class TestTagQueryErrorIsolation:
         mock_connection.execute.side_effect = execute_side_effect
         uc_source.engine = MagicMock()
         uc_source.engine.connect.return_value = mock_connection
+        uc_source.source_config.includeTags = True
         uc_source.metadata = MagicMock()
         uc_source.metadata.es_search_from_fqn.return_value = []
         return mock_connection
@@ -239,7 +241,7 @@ class TestTagQueryErrorIsolation:
             [Exception("catalog tags query failed"), [schema_tag_row]],
         )
 
-        results = list(uc_source.yield_database_tag("hive_metastore"))
+        results = list(uc_source._process_stage(uc_source.topology.database.stages[0], "hive_metastore"))
 
         assert mock_connection.execute.call_count == 2
         tag_requests = [either.right for either in results if either.right is not None]
@@ -258,7 +260,7 @@ class TestTagQueryErrorIsolation:
             [Exception("table tags query failed"), [column_tag_row]],
         )
 
-        results = list(uc_source.yield_tag("default"))
+        results = list(uc_source._process_stage(uc_source.topology.databaseSchema.stages[0], "default"))
 
         assert mock_connection.execute.call_count == 2
         tag_requests = [either.right for either in results if either.right is not None]

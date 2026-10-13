@@ -175,71 +175,30 @@ jest.mock('@openmetadata/ui-core-components', () => {
           {children}
         </div>
       ) : null,
-    Tabs: (() => {
-      const TabsRoot = ({
-        children,
-        onSelectionChange,
-        selectedKey: _selectedKey,
-        ...props
+    Owner: jest.fn().mockImplementation(
+      ({
+        selectorContent,
       }: {
-        children: React.ReactNode;
-        onSelectionChange?: (key: React.Key) => void;
-        selectedKey?: React.Key;
-        [key: string]: unknown;
-      }) => (
-        <div data-testid={props['data-testid'] as string}>
-          {React.Children.map(children, (child) =>
-            React.isValidElement(child)
-              ? React.cloneElement(child, {
-                  onSelectionChange,
-                } as Record<string, unknown>)
-              : child
-          )}
-        </div>
-      );
-      const TabsList = ({
-        children,
-        onSelectionChange,
-      }: {
-        children: React.ReactNode;
-        onSelectionChange?: (key: React.Key) => void;
-        [key: string]: unknown;
-      }) => (
-        <div data-testid="tabs-list" role="tablist">
-          {React.Children.map(children, (child) =>
-            React.isValidElement(child)
-              ? React.cloneElement(child, {
-                  onSelectionChange,
-                } as Record<string, unknown>)
-              : child
-          )}
-        </div>
-      );
-      const TabsItem = ({
-        id,
-        label,
-        badge,
-        onSelectionChange,
-        ...itemProps
-      }: {
-        id: string;
-        label: React.ReactNode;
-        badge?: string;
-        onSelectionChange?: (key: React.Key) => void;
-        [key: string]: unknown;
-      }) => (
-        <button
-          data-testid={itemProps['data-testid'] as string}
-          role="tab"
-          type="button"
-          onClick={() => onSelectionChange?.(id)}>
-          {label}
-          {badge}
-        </button>
-      );
+        selectorContent?: React.ReactElement<{
+          onUpdate?: (owners: unknown[]) => void;
+        }>;
+      }) => {
+        const handleUpdate = selectorContent?.props?.onUpdate;
 
-      return Object.assign(TabsRoot, { List: TabsList, Item: TabsItem });
-    })(),
+        return (
+          <div data-testid="owner-label">
+            OwnerLabel.component
+            <button
+              data-testid="update-owner-btn"
+              onClick={() =>
+                handleUpdate?.([{ id: 'new-owner', type: 'user' }])
+              }>
+              Update Owner
+            </button>
+          </div>
+        );
+      }
+    ),
   };
 });
 
@@ -397,18 +356,6 @@ jest.mock('../../components/common/DomainLabel/DomainLabel.component', () => {
   };
 });
 jest.mock('../../rest/ingestionPipelineAPI');
-jest.mock('../../components/common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn().mockImplementation(({ onUpdate }) => (
-    <div data-testid="owner-label">
-      OwnerLabel.component
-      <button
-        data-testid="update-owner-btn"
-        onClick={() => onUpdate?.([{ id: 'new-owner', type: 'user' }])}>
-        Update Owner
-      </button>
-    </div>
-  )),
-}));
 jest.mock('../../components/common/TabsLabel/TabsLabel.component', () => {
   return jest.fn().mockImplementation(({ id, name }) => (
     <div className="w-full tabs-label-container" data-testid={id}>

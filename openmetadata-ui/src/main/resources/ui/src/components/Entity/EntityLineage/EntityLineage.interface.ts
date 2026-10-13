@@ -15,21 +15,7 @@ import { LoadingState } from 'Models';
 import { ReactNode } from 'react';
 import type { Edge as FlowEdge, Node } from 'reactflow';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
-import { LineageSettings } from '../../../generated/configuration/lineageSettings';
 import { EntityReference } from '../../../generated/entity/type';
-
-export interface Edge {
-  edge: {
-    fromEntity: {
-      id: string;
-      type: string;
-    };
-    toEntity: {
-      id: string;
-      type: string;
-    };
-  };
-}
 
 export interface EdgeData {
   fromEntity: string;
@@ -60,9 +46,9 @@ export interface CustomEdgeData {
 export type ElementLoadingState = Exclude<LoadingState, 'waiting'>;
 export type CustomElement = { node: Node[]; edge: FlowEdge[] };
 
-export interface LineageConfig extends Omit<LineageSettings, 'lineageLayer'> {
-  nodesPerLayer: number;
-}
+import type { Edge, LineageConfig } from '../../../interface/lineage.interface';
+
+export type { LineageConfig };
 
 export interface LineageConfigModalProps {
   visible: boolean;

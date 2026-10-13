@@ -25,7 +25,11 @@ test('the suppressions baseline matches its recorded state exactly', () => {
   const suppressions = JSON.parse(fs.readFileSync(SUPPRESSIONS, 'utf8'));
 
   const actual = {};
-  for (const file of Object.values(suppressions)) {
+  // src/ entries belong to the antd ratchet in eslint-rules/openmetadata-antd.test.mjs.
+  const playwrightFiles = Object.entries(suppressions)
+    .filter(([path]) => path.startsWith('playwright/'))
+    .map(([, file]) => file);
+  for (const file of playwrightFiles) {
     for (const [ruleId, entry] of Object.entries(file)) {
       actual[ruleId] = (actual[ruleId] ?? 0) + entry.count;
     }
@@ -40,11 +44,24 @@ test('the suppressions baseline matches its recorded state exactly', () => {
   // Known gap: counts are per file+rule, so swapping one violation for another
   // of the same rule in the same file stays invisible here.
   const EXPECTED = {
-    'om-playwright/justified-rule-disable': 12,
-    'om-playwright/no-positional-locator': 1297,
+    'om-playwright/justified-rule-disable': 10,
+    'om-playwright/no-blanket-test-slow': 1,
+    // The merged fixes target named elements in replyAnnouncement,
+    // DomainFilterQueryFilter, ActivityFeed, and SearchExport; the core
+    // Popover/Dropdown migration also removed a positional locator.
+    // Removing the S3 sample-data storage tests and scoping
+    // ChangeSummaryBadge's button lookup remove three more positional locators,
+    // the profile-menu helper no longer hovers the first avatar, the Glossary
+    // language switch targets the core language selector by test id, and the
+    // core assignee/schema-field selectors in the task and incident specs
+    // remove three more. The merged baseline retains independent locator
+    // fixes from both branches. Scoping the Context Center draft editor to
+    // `.om-block-editor` instead of `.ProseMirror...first()` removes four, and
+    // the Data Contract core-components migration removes three more.
+    'om-playwright/no-positional-locator': 584,
     'om-playwright/require-assertion-per-test': 1,
-    'playwright/no-skipped-test': 4,
-    'playwright/no-wait-for-selector': 35,
+    'playwright/no-skipped-test': 1,
+    'playwright/no-wait-for-selector': 14,
   };
 
   assert.deepStrictEqual(

@@ -22,6 +22,7 @@ import { DatabaseClass } from '../../support/entity/DatabaseClass';
 import { MetricClass } from '../../support/entity/MetricClass';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { DashboardServiceClass } from '../../support/entity/service/DashboardServiceClass';
+import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
 import { DriveServiceClass } from '../../support/entity/service/DriveServiceClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
@@ -36,7 +37,10 @@ import {
   uuid,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
-import { connectEdgeBetweenNodesViaAPI } from '../../utils/lineage';
+import {
+  connectEdgeBetweenNodesViaAPI,
+  dismissLineageMapOnboarding,
+} from '../../utils/lineage';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',
@@ -220,7 +224,9 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     let databaseFqn: string;
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
-      database = new DatabaseClass();
+      // Adds 20 databases to this service and counts pages — must not be the
+      // shard's shared service.
+      database = new DatabaseClass({ service: new DatabaseServiceClass() });
       await database.create(apiContext);
       databaseFqn = database.serviceResponseData.fullyQualifiedName;
       for (let i = 1; i <= 20; i++) {
@@ -264,13 +270,11 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page.getByTestId('insights').click();
       const response = await responsePromise;
       expect(response.status()).toBe(200);
-      await page
-        .getByTestId('total-data-assets-widget')
-        .locator('.ant-skeleton')
-        .first()
-        .waitFor({
-          state: 'detached',
-        });
+      await expect(
+        page
+          .getByTestId('total-data-assets-widget')
+          .locator('.total-data-assets-loader')
+      ).toHaveCount(0);
 
       const databaseResponsePromise = page.waitForResponse((response) =>
         response.url().includes('/api/v1/databases')
@@ -284,7 +288,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       });
 
       const paginationText = page
-        .locator('[role="tabpanel"][aria-hidden="false"]')
+        .getByRole('tabpanel')
         .getByTestId('pagination')
         .getByTestId('page-indicator');
       await expect(paginationText).toBeVisible();
@@ -597,7 +601,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page.getByTestId('stored_procedure').click();
       await page.waitForLoadState('domcontentloaded');
       const paginationText = page
-        .locator('[role="tabpanel"][aria-hidden="false"]')
+        .getByRole('tabpanel')
         .getByTestId('pagination')
         .getByTestId('page-indicator');
       await expect(paginationText).toBeVisible();
@@ -739,7 +743,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page.getByTestId('data-model').click();
       await page.waitForLoadState('domcontentloaded');
       const paginationText = page
-        .locator('[role="tabpanel"][aria-hidden="false"]')
+        .getByRole('tabpanel')
         .getByTestId('pagination')
         .getByTestId('page-indicator');
       await expect(paginationText).toBeVisible();
@@ -889,7 +893,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page.locator('table').first().waitFor({ state: 'visible' });
 
       let paginationText = page
-        .locator('[role="tabpanel"][aria-hidden="false"]')
+        .getByRole('tabpanel')
         .getByTestId('pagination')
         .getByTestId('page-indicator');
       await expect(paginationText).toBeVisible();
@@ -898,7 +902,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       expect(paginationTextContent).toMatch(/1\s*of\s*\d+/);
 
       const nextButton = page
-        .locator('[role="tabpanel"][aria-hidden="false"]')
+        .getByRole('tabpanel')
         .getByTestId('pagination')
         .getByTestId('next');
       await expect(nextButton).toBeEnabled();
@@ -935,7 +939,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page.locator('table').first().waitFor({ state: 'visible' });
 
       paginationText = page
-        .locator('[role="tabpanel"][aria-hidden="false"]')
+        .getByRole('tabpanel')
         .getByTestId('pagination')
         .getByTestId('page-indicator');
       await expect(paginationText).toBeVisible();
@@ -980,7 +984,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page.locator('table').first().waitFor({ state: 'visible' });
 
       paginationText = page
-        .locator('[role="tabpanel"][aria-hidden="false"]')
+        .getByRole('tabpanel')
         .getByTestId('pagination')
         .getByTestId('page-indicator');
       await expect(paginationText).toBeVisible();
@@ -1388,6 +1392,10 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         .locator('[data-testid="lineage-card-table"]')
         .waitFor({ state: 'visible' });
       await waitForAllLoadersToDisappear(page);
+      // Navigating straight to the lineage URL skips visitLineageTab, so the
+      // first-run onboarding modal is still up and its overlay swallows the
+      // pagination clicks below.
+      await dismissLineageMapOnboarding(page);
 
       await expect(page.getByTestId('previous')).toBeDisabled();
       await expect(
@@ -1437,6 +1445,10 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         .locator('[data-testid="lineage-card-table"]')
         .waitFor({ state: 'visible' });
       await waitForAllLoadersToDisappear(page);
+      // Navigating straight to the lineage URL skips visitLineageTab, so the
+      // first-run onboarding modal is still up and its overlay swallows the
+      // pagination clicks below.
+      await dismissLineageMapOnboarding(page);
 
       await expect(page.getByTestId('previous')).toBeDisabled();
 
@@ -1459,7 +1471,12 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page.getByTestId('filters-button').click();
       await page.getByTestId('search-dropdown-Service Type').click();
 
-      const mysqlOption = page.getByTitle('mysql', { exact: true });
+      // The option row's data-testid is the lowercased service-type key
+      // ('mysql'); the visible label is source-cased ('Mysql'), so match the
+      // stable testid rather than the label.
+      const mysqlOption = page
+        .getByTestId('drop-down-menu')
+        .getByTestId('mysql');
       await expect(mysqlOption).toBeVisible();
       await mysqlOption.click();
 
@@ -1468,7 +1485,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           response.url().includes('/api/v1/lineage/getLineageByEntityCount') &&
           response.request().method() === 'GET'
       );
-      await page.getByRole('button', { name: 'Update' }).click();
+      await page.getByTestId('update-btn').click();
       await filterResetResponse;
       await waitForAllLoadersToDisappear(page);
 

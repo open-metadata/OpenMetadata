@@ -6,12 +6,15 @@ import static org.openmetadata.service.Entity.ALL_RESOURCES;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.Permission;
+import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
@@ -19,6 +22,9 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyCo
 class CompiledRuleTest {
   private static final List<String> RESOURCE_LIST =
       listOf("all", "table", "topic", "database", "databaseService");
+  private static final String RDF = "rdf";
+  private static final MetadataOperation SPARQL = MetadataOperation.EXECUTE_SPARQL_QUERY;
+  private static final MetadataOperation IMPERSONATE = MetadataOperation.IMPERSONATE;
 
   @Test
   void testResourceMatchAll() {
@@ -94,6 +100,113 @@ class CompiledRuleTest {
     OperationContext operationContext = new OperationContext(Entity.USER, operation);
     rule.evaluateAllowRule(operationContext, null, null, null);
     return !operationContext.getOperations(null).contains(operation);
+  }
+
+  @Test
+  void wildcardAllowDoesNotGrantExecuteSparqlQuery() {
+    assertFalse(
+        allowsOnRdf(rule(ALL_RESOURCES, MetadataOperation.ALL, Rule.Effect.ALLOW), SPARQL),
+        "An All/All allow must not open the unfiltered RDF query endpoint");
+    assertFalse(allowsOnRdf(rule(RDF, MetadataOperation.ALL, Rule.Effect.ALLOW), SPARQL));
+    assertFalse(allowsOnRdf(rule(RDF, MetadataOperation.VIEW_ALL, Rule.Effect.ALLOW), SPARQL));
+  }
+
+  @Test
+  void namedAllowGrantsExecuteSparqlQueryOnAnyMatchingResource() {
+    assertTrue(allowsOnRdf(rule(RDF, SPARQL, Rule.Effect.ALLOW), SPARQL));
+    assertTrue(
+        allowsOnRdf(rule(ALL_RESOURCES, SPARQL, Rule.Effect.ALLOW), SPARQL),
+        "Naming the operation is an explicit grant even on resource All");
+  }
+
+  @Test
+  void wildcardDenyStillDeniesExecuteSparqlQuery() {
+    assertTrue(denies(rule(ALL_RESOURCES, MetadataOperation.ALL, Rule.Effect.DENY), SPARQL));
+    assertTrue(denies(rule(RDF, MetadataOperation.ALL, Rule.Effect.DENY), SPARQL));
+    assertTrue(denies(rule(RDF, SPARQL, Rule.Effect.DENY), SPARQL));
+  }
+
+  @Test
+  void impersonateMatchingIsUnchangedForDenies() {
+    assertFalse(
+        denies(rule(ALL_RESOURCES, MetadataOperation.ALL, Rule.Effect.DENY), IMPERSONATE),
+        "Wildcard denies keep not applying to Impersonate");
+    assertTrue(denies(rule(Entity.USER, IMPERSONATE, Rule.Effect.DENY), IMPERSONATE));
+  }
+
+  @Test
+  void permissionListingReflectsExplicitSparqlGrant() {
+    assertEquals(
+        Permission.Access.NOT_ALLOW,
+        listedAccess(rule(ALL_RESOURCES, MetadataOperation.ALL, Rule.Effect.ALLOW)));
+    assertEquals(Permission.Access.ALLOW, listedAccess(rule(RDF, SPARQL, Rule.Effect.ALLOW)));
+    assertEquals(
+        Permission.Access.DENY,
+        listedAccess(rule(ALL_RESOURCES, MetadataOperation.ALL, Rule.Effect.DENY)));
+  }
+
+  @Test
+  void sharedOperationMatcherModelsExplicitAndWildcardRules() {
+    assertTrue(CompiledRule.operationMatches(List.of(SPARQL), Rule.Effect.ALLOW, SPARQL));
+    assertFalse(
+        CompiledRule.operationMatches(List.of(MetadataOperation.ALL), Rule.Effect.ALLOW, SPARQL));
+    assertTrue(
+        CompiledRule.operationMatches(List.of(MetadataOperation.ALL), Rule.Effect.DENY, SPARQL));
+    assertTrue(CompiledRule.operationMatches(List.of(IMPERSONATE), Rule.Effect.ALLOW, IMPERSONATE));
+    assertFalse(
+        CompiledRule.operationMatches(
+            List.of(MetadataOperation.ALL), Rule.Effect.ALLOW, IMPERSONATE));
+    assertFalse(
+        CompiledRule.operationMatches(
+            List.of(MetadataOperation.ALL), Rule.Effect.DENY, IMPERSONATE));
+    assertTrue(
+        CompiledRule.operationMatches(
+            List.of(MetadataOperation.ALL), Rule.Effect.ALLOW, MetadataOperation.VIEW_BASIC));
+  }
+
+  private static CompiledRule rule(
+      String resource, MetadataOperation operation, Rule.Effect effect) {
+    return new CompiledRule(
+        new Rule()
+            .withName("rule")
+            .withResources(List.of(resource))
+            .withOperations(List.of(operation))
+            .withEffect(effect));
+  }
+
+  private static boolean allowsOnRdf(CompiledRule rule, MetadataOperation operation) {
+    OperationContext operationContext = new OperationContext(RDF, operation);
+    rule.evaluateAllowRule(operationContext, null, null, null);
+    return !operationContext.getOperations(null).contains(operation);
+  }
+
+  private static boolean denies(CompiledRule rule, MetadataOperation operation) {
+    String resource = operation == IMPERSONATE ? Entity.USER : RDF;
+    OperationContext operationContext = new OperationContext(resource, operation);
+    PolicyContext policyContext = new PolicyContext(Entity.ROLE, "role", "role", "policy", null);
+    SubjectContext subject = new SubjectContext(new User().withName("caller"), null);
+    try {
+      rule.evaluateDenyRule(operationContext, subject, null, policyContext);
+      return false;
+    } catch (AuthorizationException denied) {
+      return true;
+    }
+  }
+
+  private static Permission.Access listedAccess(CompiledRule rule) {
+    ResourcePermission resourcePermission =
+        new ResourcePermission()
+            .withResource(RDF)
+            .withPermissions(
+                new ArrayList<>(
+                    List.of(
+                        new Permission()
+                            .withOperation(SPARQL)
+                            .withAccess(Permission.Access.NOT_ALLOW))));
+    rule.evaluatePermission(
+        Map.of(RDF, resourcePermission),
+        new PolicyContext(Entity.ROLE, "role", "role", "policy", null));
+    return resourcePermission.getPermissions().getFirst().getAccess();
   }
 
   @Test

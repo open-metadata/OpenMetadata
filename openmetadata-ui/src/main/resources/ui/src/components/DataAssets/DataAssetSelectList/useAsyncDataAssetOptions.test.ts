@@ -290,4 +290,64 @@ describe('useAsyncDataAssetOptions', () => {
       expect.objectContaining({ query: '*' })
     );
   });
+
+  it('keeps the latest search results when an earlier search resolves last', async () => {
+    let resolveOpenLoad!: (value: unknown) => void;
+    (searchQuery as jest.Mock)
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveOpenLoad = resolve;
+          })
+      )
+      .mockResolvedValueOnce(
+        buildSearchResponse([mockHit('2', 'orders', 'Orders')], 1)
+      );
+
+    const { result } = renderHook(() =>
+      useAsyncDataAssetOptions(DEFAULT_PARAMS)
+    );
+
+    let openLoad!: Promise<void>;
+    await act(async () => {
+      openLoad = result.current.loadOptions('');
+      await result.current.loadOptions('orders');
+    });
+    await act(async () => {
+      resolveOpenLoad(buildSearchResponse([mockHit('1', 'users', 'Users')], 1));
+      await openLoad;
+    });
+
+    expect(result.current.options.map((o) => o.name)).toEqual(['orders']);
+    expect(result.current.searchText).toBe('orders');
+  });
+
+  it('still runs a search typed while the list was closed once it opens', async () => {
+    jest.useFakeTimers();
+    (searchQuery as jest.Mock).mockResolvedValue(buildSearchResponse([], 0));
+
+    const { result, rerender } = renderHook(
+      ({ isOpen }) =>
+        useAsyncDataAssetOptions({
+          ...DEFAULT_PARAMS,
+          debounceTimeout: 800,
+          isOpen,
+        }),
+      { initialProps: { isOpen: false } }
+    );
+
+    act(() => {
+      result.current.handleSearchChange('orders');
+    });
+    rerender({ isOpen: true });
+    await act(async () => {
+      jest.advanceTimersByTime(800);
+    });
+
+    expect(searchQuery).toHaveBeenCalledWith(
+      expect.objectContaining({ query: '*orders*' })
+    );
+
+    jest.useRealTimers();
+  });
 });

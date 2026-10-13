@@ -92,7 +92,10 @@ test.describe.serial('Data Insight Report Application', () => {
       minute: '00',
       period: 'AM',
     });
-    await page.click('.ant-modal-body [data-testid="deploy-button"]');
+    await page
+      .getByTestId('update-schedule-modal')
+      .getByTestId('deploy-button')
+      .click();
     await toastNotification(page, 'Schedule saved successfully');
 
     // Validate update config in the application
@@ -132,7 +135,11 @@ test.describe.serial('Data Insight Report Application', () => {
             )
             .then((res) => res.json());
 
-          return response.data[0].status;
+          // The status list is empty until the triggered run records its first
+          // state. expect.poll does not swallow exceptions, so indexing into it
+          // unguarded turns "not started yet" into an immediate TypeError
+          // instead of another poll iteration.
+          return response.data?.[0]?.status;
         },
         {
           message:
@@ -143,7 +150,7 @@ test.describe.serial('Data Insight Report Application', () => {
       )
       .toBe('success');
 
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
 
     await expect(page.getByTestId('logs')).toBeVisible();
 

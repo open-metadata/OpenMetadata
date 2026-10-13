@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { InfoCircleOutlined } from '@ant-design/icons';
-import { Col, Input, Row, Space, Tooltip } from 'antd';
+import { Box, Card, Input } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { ReactNode, useEffect, useState } from 'react';
 import { EntityType } from '../../../../enums/entity.enum';
@@ -32,9 +31,13 @@ import {
   ExtraInfoType,
 } from '../../../../interface/service.interface';
 import { getOwnHandler } from '../../../../utils/RecordUtils';
-import { getKeyValues } from '../../../../utils/ServiceConnectionDetailsUtils';
+import {
+  getKeyValues,
+  renderConnectionDetailLabel,
+} from '../../../../utils/ServiceConnectionDetailsUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
-import './service-connection-details.less';
+
+const DETAILS_CARD_CLASS = 'tw:grid tw:grid-cols-2 tw:gap-2 tw:p-4';
 
 type ServiceConnectionDetailsProps = {
   connectionDetails: ConfigData;
@@ -146,48 +149,30 @@ const ServiceConnectionDetails = ({
 
   return (
     <>
-      <div
-        className="service-connection-details"
+      <Card
+        className={DETAILS_CARD_CLASS}
         data-testid="service-connection-details">
-        <Row className="w-full" gutter={[8, 8]}>
-          {data}
-        </Row>
-      </div>
+        {data}
+      </Card>
 
       {extraInfo && (
-        <div className="service-connection-details m-t-md m-y-lg">
-          <Row className="w-full" gutter={[8, 8]}>
-            <Col span={12}>
-              <Row>
-                <Col className="d-flex items-center" span={8}>
-                  <Space size={0}>
-                    <p className="text-grey-muted m-0">{extraInfo.headerKey}</p>
-                    {extraInfo.description && (
-                      <Tooltip
-                        placement="bottom"
-                        title={extraInfo.description}
-                        trigger="hover">
-                        <InfoCircleOutlined
-                          className="m-x-xss"
-                          style={{ color: '#C4C4C4' }}
-                        />
-                      </Tooltip>
-                    )}
-                  </Space>
-                </Col>
-                <Col span={16}>
-                  <Input
-                    readOnly
-                    className="w-full border-none"
-                    data-testid="input-field"
-                    type="text"
-                    value={extraInfo.displayName ?? extraInfo.name}
-                  />
-                </Col>
-              </Row>
-            </Col>
-          </Row>
-        </div>
+        <Card className={`${DETAILS_CARD_CLASS} m-t-md m-y-lg`}>
+          <Box align="center">
+            {renderConnectionDetailLabel(
+              extraInfo.headerKey,
+              extraInfo.description
+            )}
+            <Input
+              isReadOnly
+              aria-label={extraInfo.headerKey}
+              inputDataTestId="input-field"
+              size="sm"
+              type="text"
+              value={extraInfo.displayName ?? extraInfo.name}
+              wrapperClassName="tw:flex-1"
+            />
+          </Box>
+        </Card>
       )}
     </>
   );

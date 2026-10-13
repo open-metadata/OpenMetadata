@@ -1,0 +1,16 @@
+{
+  "$id": "https://open-metadata.org/schema/system/testLoginStartRequest.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TestLoginStartRequest",
+  "description": "Admin-only request to start an interactive Test Login round-trip against a candidate (unsaved) security configuration. Starting a test never mutates the live authentication system.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.system.TestLoginStartRequest",
+  "properties": {
+    "securityConfiguration": {
+      "description": "Candidate (unsaved) security configuration to test against.",
+      "$ref": "../configuration/securityConfiguration.json"
+    }
+  },
+  "required": ["securityConfiguration"],
+  "additionalProperties": false
+}

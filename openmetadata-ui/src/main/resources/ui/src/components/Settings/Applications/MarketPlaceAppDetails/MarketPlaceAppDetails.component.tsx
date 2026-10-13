@@ -10,17 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import { LeftOutlined } from '@ant-design/icons';
 import {
-  Alert,
+  Box,
   Button,
-  Carousel,
-  Col,
-  Row,
-  Space,
+  Grid,
   Tooltip,
   Typography,
-} from 'antd';
+} from '@openmetadata/ui-core-components';
+import { Alert, Carousel } from 'antd';
 import { AxiosError } from 'axios';
 import { uniqueId } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -160,28 +159,33 @@ const MarketPlaceAppDetails = () => {
 
   const leftPanel = useMemo(() => {
     return (
-      <div className="p-x-md p-t-md ">
+      <div className="p-x-md p-t-md">
         <Button
-          className="p-0"
-          icon={<LeftOutlined />}
-          size="small"
-          type="text"
+          color="tertiary"
+          iconLeading={<LeftOutlined />}
+          size="xs"
           onClick={onBrowseAppsClick}>
-          <Typography.Text className="font-medium">
+          <Typography className="font-medium">
             {t('label.browse-app-plural')}
-          </Typography.Text>
+          </Typography>
         </Button>
         <div className="flex-center m-t-md">
           <AppLogo appName={appData?.fullyQualifiedName ?? ''} />
         </div>
-        <Tooltip placement="top" title={tooltipTitle} trigger="hover">
+        <Tooltip
+          arrow
+          excludeTriggerFromTabOrder
+          isDisabled={!tooltipTitle}
+          placement="top"
+          title={tooltipTitle}
+          triggerClassName="tw:block tw:w-full m-t-md">
           <Button
-            block
-            className="m-t-md"
+            className="tw:w-full"
+            color="primary"
             data-testid="install-application"
-            disabled={isInstalled || isAppDisabled}
-            type="primary"
-            onClick={installApp}>
+            isDisabled={isInstalled || isAppDisabled}
+            size="md"
+            onPress={installApp}>
             {t('label.install')}
           </Button>
         </Tooltip>
@@ -191,12 +195,12 @@ const MarketPlaceAppDetails = () => {
             className="m-t-md text-xs d-flex items-start p-xs"
             message={
               isCacheWarmupDisabled ? (
-                <Typography.Text>
+                <Typography>
                   {t('message.cache-service-not-configured-message')}
-                </Typography.Text>
+                </Typography>
               ) : (
                 <>
-                  <Typography.Text>
+                  <Typography>
                     <Transi18next
                       i18nKey="message.paid-addon-description"
                       renderElement={
@@ -209,11 +213,11 @@ const MarketPlaceAppDetails = () => {
                         app: appData?.displayName,
                       }}
                     />
-                  </Typography.Text>
+                  </Typography>
 
-                  <Typography.Text className="d-block">
+                  <Typography className="d-block">
                     {t('message.please-contact-us')}
-                  </Typography.Text>
+                  </Typography>
                 </>
               )
             }
@@ -222,32 +226,72 @@ const MarketPlaceAppDetails = () => {
         )}
         <div className="m-t-md">
           <CheckMarkIcon className="v-middle m-r-xss" />
-          <Typography.Text className="text-xs font-medium text-grey-muted">
+          <Typography className="text-xs font-medium" color="secondary">
             {t('message.marketplace-verify-msg')}
-          </Typography.Text>
+          </Typography>
         </div>
-        <Space className="p-t-lg" direction="vertical" size={8}>
-          <Typography.Text>
+        <Box
+          inline
+          align="stretch"
+          className="layout-space p-t-lg"
+          direction="col"
+          gap={2}
+          itemClassName="layout-space-item">
+          <Typography>
             {appData?.supportEmail && (
-              <Typography.Link
-                data-testid="app-support-email"
-                href={`mailto:${appData?.supportEmail}`}
-                target="_blank">
-                <Space>{t('label.get-app-support')}</Space>
-              </Typography.Link>
+              <Typography>
+                <a
+                  data-testid="app-support-email"
+                  href={`mailto:${appData?.supportEmail}`}
+                  rel="noopener noreferrer"
+                  target="_blank">
+                  <Box
+                    inline
+                    align="center"
+                    className="layout-space layout-space-horizontal"
+                    gap={2}
+                    itemClassName="layout-space-item">
+                    {t('label.get-app-support')}
+                  </Box>
+                </a>
+              </Typography>
             )}
             {appData?.developerUrl && (
-              <Typography.Link href={appData?.developerUrl} target="_blank">
-                <Space>{t('label.visit-developer-website')}</Space>
-              </Typography.Link>
+              <Typography>
+                <a
+                  href={appData?.developerUrl}
+                  rel="noopener noreferrer"
+                  target="_blank">
+                  <Box
+                    inline
+                    align="center"
+                    className="layout-space layout-space-horizontal"
+                    gap={2}
+                    itemClassName="layout-space-item">
+                    {t('label.visit-developer-website')}
+                  </Box>
+                </a>
+              </Typography>
             )}
             {appData?.privacyPolicyUrl && (
-              <Typography.Link href={appData?.privacyPolicyUrl} target="_blank">
-                <Space>{t('label.privacy-policy')}</Space>
-              </Typography.Link>
+              <Typography>
+                <a
+                  href={appData?.privacyPolicyUrl}
+                  rel="noopener noreferrer"
+                  target="_blank">
+                  <Box
+                    inline
+                    align="center"
+                    className="layout-space layout-space-horizontal"
+                    gap={2}
+                    itemClassName="layout-space-item">
+                    {t('label.privacy-policy')}
+                  </Box>
+                </a>
+              </Typography>
             )}
-          </Typography.Text>
-        </Space>
+          </Typography>
+        </Box>
       </div>
     );
   }, [appData, isInstalled, isCacheWarmupDisabled, tooltipTitle]);
@@ -266,15 +310,15 @@ const MarketPlaceAppDetails = () => {
       leftPanel={leftPanel}
       leftPanelWidth={260}
       pageTitle={getEntityName(appData) || t('label.application-plural')}>
-      <Row>
-        <Col span={24}>
-          <Typography.Title className="p-md m-0 p-t-xss" level={2}>
+      <Grid className="layout-row layout-grid">
+        <Grid.Item className="layout-column" span={24}>
+          <Typography as="h2" className="p-md m-0 p-t-xss">
             {getEntityName(appData)}
-          </Typography.Title>
-        </Col>
-      </Row>
-      <Row>
-        <Col span={24}>
+          </Typography>
+        </Grid.Item>
+      </Grid>
+      <Grid className="layout-row layout-grid">
+        <Grid.Item className="layout-column" span={24}>
           <Carousel
             autoplay
             dots
@@ -290,17 +334,17 @@ const MarketPlaceAppDetails = () => {
               </div>
             ))}
           </Carousel>
-        </Col>
+        </Grid.Item>
 
-        <Col span={24}>
+        <Grid.Item className="layout-column" span={24}>
           <div className="p-md">
             <RichTextEditorPreviewerV1
               enableSeeMoreVariant={false}
               markdown={appData?.description ?? ''}
             />
           </div>
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
     </PageLayoutV1>
   );
 };

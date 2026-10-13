@@ -13,6 +13,8 @@
 Validator for column values to be not null test case
 """
 
+from typing import cast
+
 from sqlalchemy import Column
 
 from metadata.data_quality.validations.base_test_handler import (
@@ -34,6 +36,7 @@ from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
 from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
@@ -55,6 +58,17 @@ class ColumnValuesToBeNotNullValidator(
             column: column
         """
         return self.run_query_results(self.runner, metric, column)
+
+    def _run_results_and_row_count(self, metric: Metrics, column: Column, **kwargs) -> dict:
+        """Compute the violation count and its row count denominator in a single query
+
+        Args:
+            metric: metric
+            column: column
+        """
+        self.runner = cast(QueryRunner, self.runner)  # noqa: TC006
+
+        return self.run_query_results_with_row_count(self.runner, metric, column, **kwargs)
 
     def _execute_dimensional_validation(
         self,
@@ -78,34 +92,25 @@ class ColumnValuesToBeNotNullValidator(
         Returns:
             List[DimensionResult]: Top N dimensions by impact score plus "Others"
         """
-        dimension_results = []
+        # Build metric expressions using enum names as keys
+        metric_expressions = {}
+        for metric_name, metric in metrics_to_compute.items():
+            metric_instance = metric.value(column)
+            metric_expressions[metric_name] = metric_instance.fn()
 
-        try:
-            # Build metric expressions using enum names as keys
-            metric_expressions = {}
-            for metric_name, metric in metrics_to_compute.items():
-                metric_instance = metric.value(column)
-                metric_expressions[metric_name] = metric_instance.fn()
+        metric_expressions[DIMENSION_TOTAL_COUNT_KEY] = Metrics.rowCount().fn()
+        metric_expressions[DIMENSION_FAILED_COUNT_KEY] = metric_expressions[Metrics.nullCount.name]
 
-            metric_expressions[DIMENSION_TOTAL_COUNT_KEY] = Metrics.rowCount().fn()
-            metric_expressions[DIMENSION_FAILED_COUNT_KEY] = metric_expressions[Metrics.nullCount.name]
+        normalized_dimension = self._get_normalized_dimension_expression(dimension_col)
 
-            normalized_dimension = self._get_normalized_dimension_expression(dimension_col)
+        result_rows = self._run_dimensional_validation_query(
+            source=self.runner.dataset,
+            dimension_expr=normalized_dimension,
+            metric_expressions=metric_expressions,
+            top_n=top_n,
+        )
 
-            result_rows = self._run_dimensional_validation_query(
-                source=self.runner.dataset,
-                dimension_expr=normalized_dimension,
-                metric_expressions=metric_expressions,
-                top_n=top_n,
-            )
-
-            return self._process_dimension_rows(result_rows, dimension_col.name, metrics_to_compute, test_params)
-
-        except Exception as exc:
-            logger.warning(f"Error executing dimensional query: {exc}")
-            logger.debug("Full error details: ", exc_info=True)
-
-        return dimension_results
+        return self._process_dimension_rows(result_rows, dimension_col.name, metrics_to_compute, test_params)
 
     def compute_row_count(self, column: Column):
         """Compute row count for the given column

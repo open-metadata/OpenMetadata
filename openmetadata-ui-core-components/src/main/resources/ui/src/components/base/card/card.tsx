@@ -36,16 +36,17 @@ export const cardStyles = sortCx({
   },
   variants: {
     default: {
-      root: 'tw:border-1 tw:border-secondary tw:bg-primary',
+      root: 'tw:border-1 tw:border-subtle tw:bg-surface',
     },
     elevated: {
-      root: 'tw:border-1 tw:border-secondary tw:bg-primary tw:shadow-md',
+      root: 'tw:border-1 tw:border-subtle tw:bg-surface tw:shadow-md',
     },
-    outlined: { root: 'tw:border-2 tw:border-primary tw:bg-primary' },
+    outlined: { root: 'tw:border-2 tw:border-primary tw:bg-surface' },
     ghost: { root: 'tw:bg-transparent' },
   },
   colors: {
     default: { root: '' },
+    secondary: { root: 'tw:bg-secondary' },
     brand: {
       root: 'tw:bg-utility-brand-50 tw:border-1 tw:border-utility-brand-200',
     },
@@ -81,6 +82,8 @@ export interface CardHeaderProps
   title?: ReactNode;
   subtitle?: ReactNode;
   extra?: ReactNode;
+  /** A header that opens a panel rather than a card body needs no rule under it. */
+  hasDivider?: boolean;
 }
 
 export interface CardContentProps extends HTMLAttributes<HTMLDivElement> {
@@ -97,6 +100,7 @@ const CardHeader = ({
   title,
   subtitle,
   extra,
+  hasDivider = true,
   className,
   ...props
 }: CardHeaderProps) => {
@@ -106,7 +110,8 @@ const CardHeader = ({
     <div
       {...props}
       className={cx(
-        'tw:flex tw:items-start tw:justify-between tw:gap-4 tw:border-b tw:border-inherit',
+        'tw:flex tw:items-start tw:justify-between tw:gap-4',
+        hasDivider && 'tw:border-b tw:border-inherit',
         sizes[size].padding,
         className
       )}>
@@ -146,7 +151,7 @@ const CardFooter = ({ children, className, ...props }: CardFooterProps) => {
     <div
       {...props}
       className={cx(
-        'tw:border-t tw:border-secondary',
+        'tw:border-t tw:border-subtle',
         sizes[size].padding,
         className
       )}>

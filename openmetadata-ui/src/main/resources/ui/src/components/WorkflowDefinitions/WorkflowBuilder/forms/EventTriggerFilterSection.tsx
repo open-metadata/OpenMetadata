@@ -12,7 +12,7 @@
  */
 
 import { Button, Card } from '@openmetadata/ui-core-components';
-import { Plus, XClose } from '@untitledui/icons';
+import { Plus, XClose } from '@openmetadata/ui-core-components/icons';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useWorkflowModeContext } from '../../../../contexts/WorkflowModeContext';

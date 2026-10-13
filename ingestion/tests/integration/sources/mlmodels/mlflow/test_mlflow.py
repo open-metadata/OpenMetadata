@@ -104,26 +104,28 @@ def create_data(mlflow_environment):
     mlflow_uri = f"http://localhost:{mlflow_environment.mlflow_configs.exposed_port}"
     mlflow.set_tracking_uri(mlflow_uri)
 
-    minio_endpoint = f"http://localhost:{mlflow_environment.minio_configs.exposed_port}"
-    os.environ["AWS_ACCESS_KEY_ID"] = mlflow_environment.minio_configs.access_key
-    os.environ["AWS_SECRET_ACCESS_KEY"] = mlflow_environment.minio_configs.secret_key
-    os.environ["MLFLOW_S3_ENDPOINT_URL"] = minio_endpoint
+    s3_endpoint = f"http://localhost:{mlflow_environment.s3_configs.exposed_port}"
+    os.environ["AWS_ACCESS_KEY_ID"] = mlflow_environment.s3_configs.access_key
+    os.environ["AWS_SECRET_ACCESS_KEY"] = mlflow_environment.s3_configs.secret_key
+    os.environ["MLFLOW_S3_ENDPOINT_URL"] = s3_endpoint
     os.environ["MLFLOW_BOTO_CLIENT_ADDRESSING_STYLE"] = "path"
 
-    # Reset boto3's cached default session so it picks up the MinIO env vars above.
+    # Reset boto3's cached default session so it picks up the S3 env vars above.
     # Earlier tests (e.g. test_ometa_secrets_manager) may have created DEFAULT_SESSION
-    # which caches credentials from ~/.aws/credentials — sending real AWS creds to MinIO
-    # instead of "minio"/"password", causing InvalidAccessKeyId.
+    # which caches credentials from ~/.aws/credentials — sending real AWS creds to the
+    # test S3 container instead of its own, causing InvalidAccessKeyId.
     import boto3
 
     boto3.DEFAULT_SESSION = None
 
-    # Verify MinIO is reachable before proceeding (may be slow under Docker load)
+    # Verify object storage is reachable before proceeding (may be slow under Docker
+    # load). S3Proxy has no health endpoint; an unauthenticated GET / answers 403 once
+    # it is serving, which is all we need here.
     import requests
 
     for _ in range(15):
         try:
-            requests.get(f"{minio_endpoint}/minio/health/live", timeout=5)
+            requests.get(s3_endpoint, timeout=5)
             break
         except Exception:
             time.sleep(2)

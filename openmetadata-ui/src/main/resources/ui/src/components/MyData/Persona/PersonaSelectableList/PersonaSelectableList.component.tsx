@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 import {
+  Box,
   Button,
+  ButtonUtility,
   Popover,
-  RefSelectProps,
-  Select,
-  Space,
-  Tooltip,
+  PopoverTrigger,
   Typography,
-} from 'antd';
+} from '@openmetadata/ui-core-components';
+import { RefSelectProps, Select } from 'antd';
 import classNames from 'classnames';
 import { debounce } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -42,15 +42,20 @@ export const PersonaListItemRenderer = (props: EntityReference) => {
   const { t } = useTranslation();
 
   return (
-    <Space>
+    <Box
+      inline
+      align="center"
+      className="layout-space layout-space-horizontal"
+      gap={2}
+      itemClassName="layout-space-item">
       {props ? (
-        <Typography.Text>{getEntityName(props)}</Typography.Text>
+        <Typography>{getEntityName(props)}</Typography>
       ) : (
-        <Typography.Text className="text-grey-body">
+        <Typography className="text-grey-body">
           {t('message.no-data-available')}
-        </Typography.Text>
+        </Typography>
       )}
-    </Space>
+    </Box>
   );
 };
 
@@ -58,15 +63,15 @@ const renderMaxTagPlaceholder = (
   count: number,
   t: ReturnType<typeof useTranslation>['t']
 ) => (
-  <span className="max-tag-text">{t('label.plus-count-more', { count })}</span>
+  <Typography className="max-tag-text">
+    {t('label.plus-count-more', { count })}
+  </Typography>
 );
 
 export const PersonaSelectableList = ({
   hasPermission,
   selectedPersonas = [],
   onUpdate,
-  children,
-  popoverProps,
   personaList,
   isDefaultPersona,
   multiSelect,
@@ -235,9 +240,21 @@ export const PersonaSelectableList = ({
   };
 
   return (
-    <Popover
-      destroyTooltipOnHide
-      content={
+    <PopoverTrigger isOpen={popupVisible} onOpenChange={setPopupVisible}>
+      <ButtonUtility
+        color="tertiary"
+        data-testid={`${isDefaultPersona ? 'default-' : ''}edit-user-persona`}
+        icon={<EditIcon height={16} width={16} />}
+        size="xs"
+        tooltip={t('label.edit-entity', {
+          entity: t('label.persona'),
+        })}
+      />
+      <Popover
+        className="profile-edit-popover-card"
+        containerClassName="tw:w-95 tw:p-5"
+        data-testid="persona-popover"
+        placement="bottom start">
         <div
           className="user-profile-edit-popover-card relative"
           style={{
@@ -248,11 +265,11 @@ export const PersonaSelectableList = ({
               <PersonaIcon height={16} />
             </div>
 
-            <Typography.Text className="user-profile-edit-popover-card-title">
+            <Typography className="user-profile-edit-popover-card-title">
               {isDefaultPersona
                 ? t('label.default-persona')
                 : t('label.persona')}
-            </Typography.Text>
+            </Typography>
           </div>
 
           <div className="border" id="area" style={{ borderRadius: '5px' }}>
@@ -273,6 +290,9 @@ export const PersonaSelectableList = ({
                 overflow: 'auto',
               }}
               filterOption={false}
+              getPopupContainer={(trigger) =>
+                trigger.parentElement ?? document.body
+              }
               maxTagCount={3}
               maxTagPlaceholder={(omittedValues) =>
                 renderMaxTagPlaceholder(omittedValues.length, t)
@@ -299,52 +319,29 @@ export const PersonaSelectableList = ({
 
           <div className="flex justify-end gap-2">
             <Button
-              className="persona-profile-edit-save"
+              aria-label={t('label.save')}
+              color="primary"
               data-testid={`user-profile${
                 isDefaultPersona ? '-default' : ''
               }persona-edit-cancel`}
-              icon={<ClosePopoverIcon height={24} />}
-              size="small"
-              type="primary"
+              iconLeading={<ClosePopoverIcon height={24} />}
+              size="xs"
               onClick={handleCloseEditTeam}
             />
             <Button
-              className="persona-profile-edit-cancel"
+              aria-label={t('label.cancel')}
+              color="primary"
               data-testid={`user-profile${
                 isDefaultPersona ? '-default' : ''
               }-persona-edit-save`}
-              icon={<SavePopoverIcon height={24} />}
-              loading={isSaving}
-              size="small"
-              type="primary"
+              iconLeading={<SavePopoverIcon height={24} />}
+              isLoading={isSaving}
+              size="xs"
               onClick={handlePersonaUpdate}
             />
           </div>
         </div>
-      }
-      data-testid="persona-popover"
-      open={popupVisible}
-      overlayClassName="profile-edit-popover-card"
-      placement="bottomLeft"
-      showArrow={false}
-      style={{ borderRadius: '12px' }}
-      trigger="click"
-      onOpenChange={setPopupVisible}
-      {...popoverProps}>
-      {children ?? (
-        <Tooltip
-          title={t('label.edit-entity', {
-            entity: t('label.persona'),
-          })}>
-          <EditIcon
-            className="cursor-pointer"
-            data-testid={`${
-              isDefaultPersona ? 'default-' : ''
-            }edit-user-persona`}
-            height={16}
-          />
-        </Tooltip>
-      )}
-    </Popover>
+      </Popover>
+    </PopoverTrigger>
   );
 };

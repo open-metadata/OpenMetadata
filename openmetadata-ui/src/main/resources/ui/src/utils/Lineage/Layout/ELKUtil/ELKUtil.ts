@@ -22,17 +22,20 @@ class ELKLayout {
   static layoutOptions: LayoutOptions = {
     'elk.algorithm': 'layered',
     'elk.direction': 'RIGHT',
-    'elk.spacing.nodeNode': '80',
-    'elk.layered.spacing.nodeNodeBetweenLayers': '200',
-    // Let ELK derive layers from edge topology instead of pinning nodes to a
-    // backend-provided nodeDepth. Partitioning forced a multi-branch node into
-    // the column of its first depth, misaligning its other edges.
-    'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF',
-    // BALANCED averages Brandes-Köpf's four extreme alignments into a centroid.
-    // Without it, a symmetric source (e.g. equal upstream/downstream branches)
-    // has multiple optimal placements and ELK snaps to a top-aligned corner
-    // instead of sitting vertically centered between its neighbors.
+    'elk.spacing.componentComponent': '180',
+    'elk.spacing.edgeEdge': '24',
+    'elk.spacing.edgeNode': '48',
+    'elk.spacing.nodeNode': '110',
+    'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
+    'elk.layered.crossingMinimization.semiInteractive': 'true',
+    'elk.layered.mergeEdges': 'false',
     'elk.layered.nodePlacement.bk.fixedAlignment': 'BALANCED',
+    'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF',
+    'elk.layered.spacing.edgeEdgeBetweenLayers': '32',
+    'elk.layered.spacing.edgeNodeBetweenLayers': '56',
+    'elk.layered.spacing.nodeNodeBetweenLayers': '280',
+    'elk.layered.thoroughness': '8',
+    'elk.partitioning.activate': 'false',
   };
 
   constructor() {}
@@ -45,10 +48,16 @@ class ELKLayout {
     return this.elk;
   }
 
-  static async layoutGraph(nodes: ElkNode[], edges: ElkExtendedEdge[]) {
+  static async layoutGraph(
+    nodes: ElkNode[],
+    edges: ElkExtendedEdge[],
+    layoutOptions?: LayoutOptions
+  ) {
     return ELKLayout.getElk().layout({
       id: 'root',
-      layoutOptions: this.layoutOptions,
+      layoutOptions: layoutOptions
+        ? { ...this.layoutOptions, ...layoutOptions }
+        : this.layoutOptions,
       children: nodes,
       edges: edges,
     });

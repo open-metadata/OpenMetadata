@@ -94,7 +94,7 @@ jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>
     )
 );
 
-jest.mock('../../components/common/Table/Table', () =>
+jest.mock('../../components/common/Table/TableV2', () =>
   jest
     .fn()
     .mockImplementation(

@@ -88,7 +88,8 @@ jest.mock('./ColorUtils', () => ({
   reduceColorOpacity: jest.fn().mockReturnValue('rgba(0,0,0,0.05)'),
 }));
 
-jest.mock('../components/common/atoms/Tag', () => ({
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
   ClassificationTag: jest
     .fn()
     .mockImplementation(({ label, color, icon, ...props }) => (
@@ -111,8 +112,9 @@ jest.mock('../components/common/atoms/Tag', () => ({
     )),
 }));
 
-jest.mock('../components/common/FieldCard', () => ({
-  FieldCard: jest.fn(({ fieldName, dataType, description }) => (
+jest.mock('../components/common/FieldCard/FieldCard', () => ({
+  __esModule: true,
+  default: jest.fn(({ fieldName, dataType, description }) => (
     <div data-testid={`field-card-${fieldName}`}>
       <div data-testid={`field-name-${fieldName}`}>{fieldName}</div>
       <div data-testid={`field-type-${fieldName}`}>{dataType}</div>

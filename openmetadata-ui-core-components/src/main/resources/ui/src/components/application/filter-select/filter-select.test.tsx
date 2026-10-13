@@ -10,7 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
+import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { FilterSelect } from './filter-select';
 import type { FilterSelectProps } from './filter-select.types';
@@ -21,6 +30,7 @@ const EN_LABELS: Record<string, string> = {
   'label.apply': 'Apply',
   'label.apply-count': 'Apply ({{count}})',
   'label.cancel': 'Cancel',
+  'label.clear': 'Clear',
   'label.clear-all': 'Clear all',
   'label.count-selected': '{{count}} selected',
   'label.loading': 'Loading…',
@@ -68,6 +78,24 @@ const renderFilter = (props: Partial<FilterSelectProps> = {}) => {
   return { onChange };
 };
 
+// react-aria fires onSelectionChange('all') for ⌘/Ctrl+A on a focused menu
+// row; drive the same native keydown the browser would.
+const selectAllByKeyboard = (focusRow = 'snowflake') => {
+  const menu = screen.getByRole('menu');
+  screen.getByTestId(focusRow).focus();
+
+  act(() =>
+    menu.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'a',
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true,
+      })
+    )
+  );
+};
+
 describe('FilterSelect', () => {
   it('renders one row per option with its count', () => {
     renderFilter();
@@ -101,7 +129,7 @@ describe('FilterSelect', () => {
 
     expect(onChange).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByTestId('apply-filter-btn'));
+    fireEvent.click(screen.getByTestId('update-btn'));
 
     expect(onChange).toHaveBeenCalledWith(
       expect.arrayContaining(['redshift', 'snowflake'])
@@ -121,16 +149,65 @@ describe('FilterSelect', () => {
     );
 
     rerender(<FilterSelect {...props} isOpen selectedValues={['snowflake']} />);
-    fireEvent.click(screen.getByTestId('apply-filter-btn'));
+    fireEvent.click(screen.getByTestId('update-btn'));
 
     expect(onChange).toHaveBeenCalledWith(['snowflake']);
+  });
+
+  it('keeps a staged click when selectedValues is re-derived while open', () => {
+    // Consumers pass `selectedValues` as a memo over server-fetched options, so
+    // a late suggestions response hands over a new array holding the same
+    // values. Re-syncing on that would discard the row just clicked.
+    const onChange = vi.fn();
+    const props = {
+      commitMode: 'staged' as const,
+      isOpen: true,
+      label: 'Service',
+      options: OPTIONS,
+      onChange,
+    };
+    const { rerender } = render(
+      <FilterSelect {...props} selectedValues={['redshift']} />
+    );
+
+    fireEvent.click(screen.getByText('Snowflake'));
+
+    // The late fetch resolves: same values, brand new array identity.
+    rerender(<FilterSelect {...props} selectedValues={['redshift']} />);
+    fireEvent.click(screen.getByTestId('update-btn'));
+
+    expect(onChange).toHaveBeenCalledWith(
+      expect.arrayContaining(['redshift', 'snowflake'])
+    );
+  });
+
+  it('applies an external selectedValues change that arrives while open', () => {
+    // Explore quick filters stay mounted and open across query-string-only
+    // navigation, so a filter cleared that way must reach the staged set —
+    // otherwise Apply writes the stale value back.
+    const onChange = vi.fn();
+    const props = {
+      commitMode: 'staged' as const,
+      isOpen: true,
+      label: 'Service',
+      options: OPTIONS,
+      onChange,
+    };
+    const { rerender } = render(
+      <FilterSelect {...props} selectedValues={['redshift']} />
+    );
+
+    rerender(<FilterSelect {...props} selectedValues={[]} />);
+    fireEvent.click(screen.getByTestId('update-btn'));
+
+    expect(onChange).toHaveBeenCalledWith([]);
   });
 
   it('does not commit staged toggles on cancel', () => {
     const { onChange } = renderFilter({ commitMode: 'staged' });
 
     fireEvent.click(screen.getByText('Snowflake'));
-    fireEvent.click(screen.getByTestId('cancel-filter-btn'));
+    fireEvent.click(screen.getByTestId('close-btn'));
 
     expect(onChange).not.toHaveBeenCalled();
   });
@@ -176,6 +253,108 @@ describe('FilterSelect', () => {
     expect(onChange).toHaveBeenCalledWith(['bigquery', 'redshift']);
   });
 
+  it('keyboard select-all (Ctrl+A) selects displayed rows, not the null option', () => {
+    const { onChange } = renderFilter({
+      showSelectAll: true,
+      nullOption: { value: 'OM_NULL_FIELD', label: 'No Service' },
+    });
+
+    selectAllByKeyboard();
+
+    expect(onChange).toHaveBeenCalledWith([
+      'snowflake',
+      'bigquery',
+      'redshift',
+    ]);
+  });
+
+  it('keyboard select-all and the checkbox select-all commit the same set', () => {
+    const changes: string[][] = [];
+    const Controlled = () => {
+      const [selected, setSelected] = useState<string[]>([]);
+
+      return (
+        <FilterSelect
+          isOpen
+          showSelectAll
+          label="Service"
+          nullOption={{ value: 'OM_NULL_FIELD', label: 'No Service' }}
+          options={OPTIONS}
+          selectedValues={selected}
+          onChange={(v) => {
+            changes.push(v);
+            setSelected(v);
+          }}
+        />
+      );
+    };
+    render(<Controlled />);
+
+    // ⌘A from a menu row excludes the null option, matching the checkbox.
+    selectAllByKeyboard();
+    expect(changes.at(-1)).toEqual(['snowflake', 'bigquery', 'redshift']);
+
+    // Deselecting via the checkbox now clears every displayed row too — the
+    // keyboard path no longer commits a wider set that strands the null.
+    fireEvent.click(screen.getByLabelText('Select all'));
+    expect(changes.at(-1)).toEqual([]);
+  });
+
+  it('keyboard select-all merges displayed rows with selections hidden by the search', () => {
+    const changes: string[][] = [];
+    const Controlled = () => {
+      const [selected, setSelected] = useState<string[]>(['snowflake']);
+
+      return (
+        <FilterSelect
+          isOpen
+          searchable
+          showSelectAll
+          label="Service"
+          nullOption={{ value: 'OM_NULL_FIELD', label: 'No Service' }}
+          options={OPTIONS}
+          selectedValues={selected}
+          onChange={(v) => {
+            changes.push(v);
+            setSelected(v);
+          }}
+        />
+      );
+    };
+    render(<Controlled />);
+
+    fireEvent.change(screen.getByPlaceholderText('Search'), {
+      target: { value: 'big' },
+    });
+
+    // 'bigquery' is the only displayed row; 'snowflake' is filtered out, so it
+    // is retained via ...current, and the null (hidden by the search) is still
+    // excluded — matching the checkbox scope.
+    selectAllByKeyboard('bigquery');
+    expect(changes.at(-1)).toEqual(['snowflake', 'bigquery']);
+  });
+
+  it('ignores keyboard select-all while the search box has focus', () => {
+    const { onChange } = renderFilter({
+      searchable: true,
+      showSelectAll: true,
+    });
+
+    screen.getByPlaceholderText('Search').focus();
+    act(() =>
+      screen.getByRole('menu').dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'a',
+          ctrlKey: true,
+          bubbles: true,
+          cancelable: true,
+        })
+      )
+    );
+
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
   it('filters locally when no onSearch is given', () => {
     renderFilter({ searchable: true });
 
@@ -208,12 +387,86 @@ describe('FilterSelect', () => {
     expect(screen.getByText('MYSQL')).toBeInTheDocument();
   });
 
+  it('single select marks the chosen row like the sidebar selected item with no tick icon', () => {
+    renderFilter({ selectionMode: 'single', selectedValues: ['snowflake'] });
+
+    const row = screen.getByTestId('snowflake');
+
+    // No check glyph any more: these options carry no icons, so the selected
+    // row must contain no svg at all (the tick used to render one).
+    expect(row.querySelector('svg')).toBeNull();
+    expect(row.querySelector('div')?.className).toContain('bg-brand-primary');
+    expect(
+      screen.getByTitle('Snowflake').parentElement?.className ?? ''
+    ).toContain('text-brand-secondary');
+  });
+
+  it('single select brands the icon and count pill of the chosen row', () => {
+    const IconStub = (props: { className?: string }) => (
+      <svg data-testid="opt-icon" {...props} />
+    );
+    renderFilter({
+      selectionMode: 'single',
+      selectedValues: ['snowflake'],
+      options: [
+        { value: 'snowflake', label: 'Snowflake', count: 1204, icon: IconStub },
+        { value: 'bigquery', label: 'BigQuery', count: 867, icon: IconStub },
+      ],
+    });
+
+    const selected = screen.getByTestId('snowflake');
+    const other = screen.getByTestId('bigquery');
+
+    // The row-level override recolors the option's svg on selection…
+    expect(selected.className).toContain('[&_svg]:text-fg-brand-secondary_alt');
+    expect(other.className).not.toContain('[&_svg]:text-fg-brand');
+    // …and the count pill flips to the brand border and text.
+    const selectedPill = within(selected).getByTestId('filter-count');
+    const otherPill = within(other).getByTestId('filter-count');
+
+    expect(selectedPill.className).toContain('border-utility-brand-200');
+    expect(selectedPill.className).toContain('text-brand-secondary');
+    expect(otherPill.className).toContain('border-secondary');
+    expect(otherPill.className).not.toContain('text-brand-secondary');
+  });
+
   it('single select applies the clicked value and reports one value', () => {
     const { onChange } = renderFilter({ selectionMode: 'single' });
 
     fireEvent.click(screen.getByText('BigQuery'));
 
     expect(onChange).toHaveBeenCalledWith(['bigquery']);
+  });
+
+  it('staged single select waits for Apply and keeps the popover open', () => {
+    const onOpenChange = vi.fn();
+    const { onChange } = renderFilter({
+      commitMode: 'staged',
+      onOpenChange,
+      selectionMode: 'single',
+    });
+
+    fireEvent.click(screen.getByText('BigQuery'));
+
+    expect(onChange).not.toHaveBeenCalled();
+    expect(onOpenChange).not.toHaveBeenCalledWith(false);
+
+    fireEvent.click(screen.getByTestId('update-btn'));
+
+    expect(onChange).toHaveBeenCalledWith(['bigquery']);
+  });
+
+  it('staged single select replaces the staged pick instead of adding', () => {
+    const { onChange } = renderFilter({
+      commitMode: 'staged',
+      selectionMode: 'single',
+    });
+
+    fireEvent.click(screen.getByText('BigQuery'));
+    fireEvent.click(screen.getByText('Snowflake'));
+    fireEvent.click(screen.getByTestId('update-btn'));
+
+    expect(onChange).toHaveBeenCalledWith(['snowflake']);
   });
 
   it('shows the selection count in the trigger', () => {
@@ -292,6 +545,117 @@ describe('FilterSelect', () => {
     );
   });
 
+  it('brands the button trigger once a value is selected', () => {
+    const renderTrigger = (selectedValues: string[]) => (
+      <FilterSelect
+        bordered
+        data-testid="trigger-test"
+        label="Service"
+        options={OPTIONS}
+        selectedValues={selectedValues}
+        triggerVariant="button"
+        onChange={() => undefined}
+      />
+    );
+    const { rerender } = render(renderTrigger(['snowflake']));
+    const selected = screen.getByTestId('trigger-test').className;
+
+    expect(selected).toContain('tw:text-fg-brand-primary');
+    expect(selected).toContain('tw:after:outline-brand');
+    expect(selected).toContain('tw:dark:after:outline-fg-brand-primary_alt');
+    // The brand set replaces the Button's neutral colours rather than racing them.
+    expect(selected).not.toContain('tw:text-secondary ');
+    expect(selected).not.toContain('tw:after:outline-primary');
+
+    rerender(renderTrigger([]));
+
+    expect(screen.getByTestId('trigger-test').className).not.toContain(
+      'text-fg-brand-primary'
+    );
+  });
+
+  it('sizes the input trigger on the Select scale', () => {
+    const renderInput = (size?: 'sm' | 'md') => (
+      <FilterSelect
+        data-testid="input-trigger"
+        label="Service"
+        options={OPTIONS}
+        selectedValues={[]}
+        size={size}
+        triggerVariant="input"
+        onChange={() => undefined}
+      />
+    );
+    const { rerender } = render(renderInput());
+
+    expect(screen.getByTestId('input-trigger')).toHaveClass(
+      'tw:px-3',
+      'tw:py-2'
+    );
+
+    rerender(renderInput('md'));
+
+    expect(screen.getByTestId('input-trigger')).toHaveClass(
+      'tw:px-3.5',
+      'tw:py-2.5'
+    );
+    expect(screen.getByTestId('input-trigger')).not.toHaveClass('tw:h-8');
+  });
+
+  it('exposes the label-keyed trigger test id as well as the key-keyed one', () => {
+    // The component this replaces put a second test id on an element inside
+    // the trigger, keyed by visible label rather than by filter key. A dozen
+    // specs click filters that way ("search-dropdown-Data Products").
+    renderFilter({ 'data-testid': 'search-dropdown-tier', label: 'Tier' });
+
+    expect(screen.getByTestId('search-dropdown-tier')).toBeInTheDocument();
+    expect(screen.getByTestId('search-dropdown-Tier')).toBeInTheDocument();
+  });
+
+  it('exposes the legacy dropdown test ids the E2E suite drives', () => {
+    // The Playwright suite addresses filters through the ids the component
+    // this replaced used. Renaming them silently breaks ~160 references across
+    // 23 spec files, so the contract is pinned here rather than in the specs.
+    renderFilter({
+      searchable: true,
+      commitMode: 'staged',
+      nullOption: { value: 'OM_NULL_FIELD', label: 'No Service' },
+    });
+
+    expect(screen.getByTestId('drop-down-menu')).toBeInTheDocument();
+    expect(screen.getByTestId('search-input')).toBeInTheDocument();
+    // Each row carries the bare value id and its checked state as
+    // aria-checked on the menu item itself.
+    expect(screen.getByTestId('snowflake')).toBeInTheDocument();
+    expect(screen.getByTestId('snowflake')).toHaveAttribute(
+      'aria-checked',
+      'false'
+    );
+    expect(screen.getByTestId('OM_NULL_FIELD')).toBeInTheDocument();
+    expect(screen.getByTestId('update-btn')).toBeInTheDocument();
+    expect(screen.getByTestId('close-btn')).toBeInTheDocument();
+  });
+
+  it('reflects the selection as aria-checked, radio role for single select', () => {
+    renderFilter({ selectedValues: ['snowflake'] });
+
+    expect(screen.getByTestId('snowflake')).toHaveAttribute(
+      'aria-checked',
+      'true'
+    );
+    expect(screen.getByTestId('bigquery')).toHaveAttribute(
+      'aria-checked',
+      'false'
+    );
+
+    cleanup();
+    renderFilter({ selectionMode: 'single', selectedValues: ['snowflake'] });
+
+    expect(
+      screen.getByRole('menuitemradio', { name: /Snowflake/ })
+    ).toHaveAttribute('aria-checked', 'true');
+  });
+
   it('shows the empty state when nothing is displayed', () => {
     renderFilter({ options: [] });
 
@@ -338,7 +702,7 @@ describe('FilterSelect', () => {
 
     expect(onChange).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByTestId('apply-filter-btn'));
+    fireEvent.click(screen.getByTestId('update-btn'));
 
     expect(onChange).toHaveBeenCalledWith([]);
   });
@@ -372,14 +736,12 @@ describe('FilterSelect', () => {
   it('apply carries the staged count, and drops it when nothing is staged', () => {
     renderFilter({ commitMode: 'staged', selectedValues: ['snowflake'] });
 
-    expect(screen.getByTestId('apply-filter-btn')).toHaveTextContent(
-      'Apply (1)'
-    );
+    expect(screen.getByTestId('update-btn')).toHaveTextContent('Apply (1)');
 
     fireEvent.click(screen.getByTestId('clear-filter-btn'));
 
-    expect(screen.getByTestId('apply-filter-btn')).toHaveTextContent('Apply');
-    expect(screen.getByTestId('apply-filter-btn')).not.toHaveTextContent('(');
+    expect(screen.getByTestId('update-btn')).toHaveTextContent('Apply');
+    expect(screen.getByTestId('update-btn')).not.toHaveTextContent('(');
   });
 
   it('staged clear all is disabled until something is staged', () => {
@@ -394,6 +756,18 @@ describe('FilterSelect', () => {
     fireEvent.click(screen.getByTestId('clear-filter-btn'));
 
     expect(screen.getByTestId('clear-filter-btn')).toBeDisabled();
+  });
+
+  it('drops the selection footer when the value is not clearable', () => {
+    renderFilter({
+      isClearable: false,
+      selectedValues: ['snowflake'],
+      selectionMode: 'single',
+      showRadio: true,
+    });
+
+    expect(screen.queryByTestId('selected-count')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('clear-filter-btn')).not.toBeInTheDocument();
   });
 
   it('immediate mode footer reports the count and clears on demand', () => {
@@ -430,7 +804,7 @@ describe('FilterSelect', () => {
     renderFilter({ commitMode: 'staged', selectedValues: ['snowflake'] });
 
     expect(screen.queryByTestId('selected-count')).not.toBeInTheDocument();
-    expect(screen.getByTestId('apply-filter-btn')).toBeInTheDocument();
+    expect(screen.getByTestId('update-btn')).toBeInTheDocument();
   });
 
   it('removing a chip does not open the popover', () => {
@@ -466,6 +840,125 @@ describe('FilterSelect', () => {
     expect(screen.getByRole('menu')).toBeInTheDocument();
   });
 
+  it('pressing the trigger of an open filter closes it', () => {
+    const onOpenChange = vi.fn();
+    renderFilter({
+      isOpen: undefined,
+      'data-testid': 'filter-trigger',
+      triggerVariant: 'button',
+      onOpenChange,
+    });
+    const trigger = screen.getByTestId('filter-trigger');
+    fireEvent.click(trigger);
+
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+
+    // A real mouse click: detail 1, so React Aria does not treat the click as
+    // a virtual (screen reader) press that reopens the menu.
+    fireEvent.pointerDown(trigger, { pointerType: 'mouse' });
+    fireEvent.click(trigger, { detail: 1 });
+
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(onOpenChange).toHaveBeenLastCalledWith(false);
+  });
+
+  it('pressing a chip remove button keeps an open filter open', () => {
+    renderFilter({
+      isOpen: undefined,
+      'data-testid': 'chips-trigger',
+      selectedValues: ['snowflake', 'bigquery'],
+      triggerDisplay: 'chips',
+      triggerVariant: 'input',
+    });
+    fireEvent.click(screen.getByTestId('chips-trigger'));
+    const [removeSnowflake] = screen.getAllByRole('button', {
+      name: 'Remove filter',
+    });
+    fireEvent.pointerDown(removeSnowflake, { pointerType: 'mouse' });
+
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+  });
+
+  it('consumes Escape so a host drawer does not also dismiss', () => {
+    const hostKeyDown = vi.fn();
+    const onOpenChange = vi.fn();
+    render(
+      <div onKeyDown={hostKeyDown} onKeyDownCapture={hostKeyDown}>
+        <FilterSelect
+          isOpen
+          searchable
+          label="Service"
+          options={OPTIONS}
+          selectedValues={[]}
+          onChange={() => undefined}
+          onOpenChange={onOpenChange}
+        />
+      </div>
+    );
+
+    fireEvent.keyDown(screen.getByTestId('search-input'), { key: 'Escape' });
+
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    // The document-level capture listener stops the event before it reaches
+    // any element handler — including the host's own capture handler.
+    expect(hostKeyDown).not.toHaveBeenCalled();
+  });
+
+  it('pins the menu scroll while a mouse press is held on an option row', () => {
+    renderFilter({ searchable: true, onSearch: vi.fn() });
+
+    const menu = screen.getByRole('menu');
+    const row = screen.getByTestId('redshift');
+    menu.scrollTop = 845;
+
+    const press = new Event('pointerdown', { bubbles: true });
+    Object.defineProperty(press, 'pointerType', { value: 'mouse' });
+    row.dispatchEvent(press);
+
+    // React Aria resets the scroll position when focus enters the menu
+    // mid-press; the pin must undo it within the same focusin dispatch.
+    menu.scrollTop = 0;
+    fireEvent.focusIn(menu);
+
+    expect(menu.scrollTop).toBe(845);
+
+    const release = new Event('pointerup', { bubbles: true });
+    row.dispatchEvent(release);
+    menu.scrollTop = 0;
+    fireEvent.focusIn(menu);
+
+    expect(menu.scrollTop).toBe(0);
+  });
+
+  it('does not pin the menu scroll for a touch press', () => {
+    renderFilter({ searchable: true, onSearch: vi.fn() });
+
+    const menu = screen.getByRole('menu');
+    menu.scrollTop = 845;
+
+    const press = new Event('pointerdown', { bubbles: true });
+    Object.defineProperty(press, 'pointerType', { value: 'touch' });
+    screen.getByTestId('redshift').dispatchEvent(press);
+
+    menu.scrollTop = 0;
+    fireEvent.focusIn(menu);
+
+    expect(menu.scrollTop).toBe(0);
+  });
+
+  it('shows the empty state alongside the null row when no options match', () => {
+    renderFilter({
+      emptyState: 'No data available.',
+      nullOption: { value: 'null-key', label: 'No Tier' },
+      options: [],
+      searchable: true,
+      onSearch: vi.fn(),
+    });
+
+    expect(screen.getByText('No Tier')).toBeInTheDocument();
+    expect(screen.getByText('No data available.')).toBeInTheDocument();
+  });
+
   it('shows the placeholder on an empty input trigger', () => {
     renderFilter({
       isOpen: false,
@@ -475,5 +968,227 @@ describe('FilterSelect', () => {
     });
 
     expect(screen.getByText('Choose services')).toBeInTheDocument();
+  });
+  it('marks single-select rows with a radio and keeps the row untinted', () => {
+    renderFilter({
+      selectionMode: 'single',
+      selectedValues: ['bigquery'],
+      showRadio: true,
+    });
+
+    const row = screen.getByTestId('bigquery');
+
+    expect(row).toHaveAttribute('aria-checked', 'true');
+    expect(row.querySelector('.tw\\:bg-brand-solid')).not.toBeNull();
+    // The indicator owns selection, so the row background is suppressed.
+    expect(row.className).toMatch(/\[&>div\]:bg-(transparent|primary_hover)!/);
+  });
+
+  it('does not unpick a radio row clicked again', () => {
+    const { onChange } = renderFilter({
+      selectionMode: 'single',
+      selectedValues: ['bigquery'],
+      showRadio: true,
+    });
+
+    fireEvent.click(screen.getByTestId('bigquery'));
+
+    expect(onChange).not.toHaveBeenCalledWith([]);
+  });
+
+  it('shows a Clear footer on a radio single select that closes it', () => {
+    const onOpenChange = vi.fn();
+    const { onChange } = renderFilter({
+      showRadio: true,
+      onOpenChange,
+      selectionMode: 'single',
+      selectedValues: ['bigquery'],
+    });
+
+    expect(screen.getByTestId('selected-count')).toHaveTextContent(
+      '1 selected'
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+
+    expect(onChange).toHaveBeenCalledWith([]);
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it('opens from a custom trigger and focuses its search box', async () => {
+    const onOpenChange = vi.fn();
+    renderFilter({
+      isOpen: undefined,
+      searchable: true,
+      trigger: <button type="button">Edit</button>,
+      onOpenChange,
+    });
+
+    expect(screen.queryByTestId('drop-down-menu')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+
+    expect(onOpenChange).toHaveBeenCalledWith(true);
+    expect(screen.getByTestId('drop-down-menu')).toBeInTheDocument();
+    // A synthetic click reads as virtual modality, which defers focus a tick.
+    await waitFor(() =>
+      expect(screen.getByTestId('search-input')).toHaveFocus()
+    );
+  });
+
+  it('stays open from a custom trigger when the page scrolls', () => {
+    const onOpenChange = vi.fn();
+    renderFilter({
+      isOpen: undefined,
+      trigger: <button type="button">Edit</button>,
+      onOpenChange,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    fireEvent.scroll(document);
+
+    expect(screen.getByTestId('drop-down-menu')).toBeInTheDocument();
+    expect(onOpenChange).not.toHaveBeenCalledWith(false);
+  });
+
+  it('disables the built-in trigger', () => {
+    renderFilter({
+      isDisabled: true,
+      isOpen: undefined,
+      triggerVariant: 'input',
+    });
+
+    expect(screen.getByRole('button')).toBeDisabled();
+  });
+
+  it('applies className to the wrapper of a custom trigger', () => {
+    renderFilter({
+      className: 'tw:flex tw:w-full',
+      isOpen: undefined,
+      trigger: <button type="button">Edit</button>,
+    });
+
+    expect(
+      screen.getByRole('button', { name: 'Edit' }).parentElement
+    ).toHaveClass('tw:flex', 'tw:w-full');
+  });
+
+  it('keeps the built-in trigger when the custom trigger is null', () => {
+    renderFilter({ isOpen: undefined, trigger: null, triggerVariant: 'input' });
+
+    expect(screen.getByTestId('search-dropdown-Service')).toBeInTheDocument();
+  });
+
+  it('names the built-in trigger by an external label and its value', () => {
+    render(
+      <>
+        <span id="field-label">Field value</span>
+        <FilterSelect
+          aria-labelledby="field-label"
+          label="Service"
+          options={OPTIONS}
+          selectedValues={['bigquery']}
+          selectionMode="single"
+          triggerVariant="input"
+          onChange={vi.fn()}
+        />
+      </>
+    );
+
+    expect(
+      screen.getByRole('button', { name: 'Field value BigQuery' })
+    ).toBeInTheDocument();
+  });
+
+  it('asks for the next page once the menu is scrolled to its end', () => {
+    const onLoadMore = vi.fn();
+    renderFilter({ onLoadMore });
+    const menu = screen.getByRole('menu');
+    Object.defineProperties(menu, {
+      scrollHeight: { configurable: true, value: 400 },
+      clientHeight: { configurable: true, value: 200 },
+    });
+
+    menu.scrollTop = 50;
+    fireEvent.scroll(menu);
+
+    expect(onLoadMore).not.toHaveBeenCalled();
+
+    menu.scrollTop = 200;
+    fireEvent.scroll(menu);
+
+    expect(onLoadMore).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows a loading row while the next page loads', () => {
+    renderFilter({ isLoadingMore: true });
+
+    expect(
+      screen.getByRole('status', { name: 'Loading…' })
+    ).toBeInTheDocument();
+  });
+
+  describe('row details', () => {
+    const TIERS = [
+      { value: 't1', label: 'Tier1', details: 'Critical metrics' },
+      { value: 't2', label: 'Tier2', details: 'Important datasets' },
+    ];
+
+    it('expands a row from its chevron without selecting it', () => {
+      const { onChange } = renderFilter({
+        options: TIERS,
+        selectionMode: 'single',
+        showRadio: true,
+      });
+
+      expect(screen.queryByText('Important datasets')).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId('t2-expand'));
+
+      expect(screen.getByText('Important datasets')).toBeInTheDocument();
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it('opens with the selected row expanded', () => {
+      renderFilter({
+        options: TIERS,
+        selectedValues: ['t1'],
+        selectionMode: 'single',
+        showRadio: true,
+      });
+
+      expect(screen.getByText('Critical metrics')).toBeInTheDocument();
+      expect(screen.queryByText('Important datasets')).not.toBeInTheDocument();
+    });
+
+    it('collapses the selected row from its chevron', () => {
+      renderFilter({
+        options: TIERS,
+        selectedValues: ['t1'],
+        selectionMode: 'single',
+        showRadio: true,
+      });
+
+      fireEvent.click(screen.getByTestId('t1-expand'));
+
+      expect(screen.queryByText('Critical metrics')).not.toBeInTheDocument();
+    });
+
+    it('expands and collapses the focused row with the arrow keys', () => {
+      renderFilter({
+        options: TIERS,
+        selectionMode: 'single',
+        showRadio: true,
+      });
+      const row = screen.getByTestId('t2');
+
+      fireEvent.keyDown(row, { key: 'ArrowRight' });
+
+      expect(screen.getByText('Important datasets')).toBeInTheDocument();
+
+      fireEvent.keyDown(row, { key: 'ArrowLeft' });
+
+      expect(screen.queryByText('Important datasets')).not.toBeInTheDocument();
+    });
   });
 });

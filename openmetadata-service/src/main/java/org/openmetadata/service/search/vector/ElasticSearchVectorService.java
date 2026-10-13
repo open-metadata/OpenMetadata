@@ -17,6 +17,8 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -39,12 +41,26 @@ public class ElasticSearchVectorService implements VectorIndexService {
   private final Rest5Client restClient;
   @Getter private final EmbeddingClient embeddingClient;
   private final int knnNumCandidatesMultiplier;
+  private final Function<VectorSearchParameters, Set<String>> readableAnchors;
 
   public ElasticSearchVectorService(
       ElasticsearchClient client, EmbeddingClient embeddingClient, int knnNumCandidatesMultiplier) {
+    this(
+        client,
+        embeddingClient,
+        knnNumCandidatesMultiplier,
+        VectorSearchMemoryAccess::readableAnchorIds);
+  }
+
+  ElasticSearchVectorService(
+      ElasticsearchClient client,
+      EmbeddingClient embeddingClient,
+      int knnNumCandidatesMultiplier,
+      Function<VectorSearchParameters, Set<String>> readableAnchors) {
     this.client = client;
     this.restClient = extractRestClient(client);
     this.embeddingClient = embeddingClient;
+    this.readableAnchors = readableAnchors;
     this.knnNumCandidatesMultiplier =
         knnNumCandidatesMultiplier > 0
             ? knnNumCandidatesMultiplier
@@ -69,7 +85,6 @@ public class ElasticSearchVectorService implements VectorIndexService {
       ElasticsearchClient client, EmbeddingClient embeddingClient, int knnNumCandidatesMultiplier) {
     if (instance != null) {
       LOG.warn("ElasticSearchVectorService already initialized, reinitializing");
-      EntityLifecycleEventDispatcher.getInstance().unregisterHandler("VectorEmbeddingHandler");
     }
     ElasticSearchVectorService svc =
         new ElasticSearchVectorService(client, embeddingClient, knnNumCandidatesMultiplier);
@@ -93,7 +108,9 @@ public class ElasticSearchVectorService implements VectorIndexService {
   private void registerVectorEmbeddingHandler() {
     try {
       VectorEmbeddingHandler handler = new VectorEmbeddingHandler(this);
-      EntityLifecycleEventDispatcher.getInstance().registerHandler(handler);
+      // Replace, so a re-init hands over to the new service without a window in which entity
+      // writes see no vector handler at all.
+      EntityLifecycleEventDispatcher.getInstance().replaceHandler(handler);
       LOG.info("Registered VectorEmbeddingHandler for entity lifecycle events");
     } catch (Exception e) {
       LOG.error("Failed to register VectorEmbeddingHandler", e);
@@ -142,12 +159,14 @@ public class ElasticSearchVectorService implements VectorIndexService {
       overFetchSize = Math.min(overFetchSize, k);
 
       String indexName = getIndexAlias();
+      Set<String> readableAnchorIds = readableAnchors.apply(parameters);
       while (!exhausted && byParent.size() < requestedParents) {
         String queryJson =
             VectorSearchQueryBuilder.buildNativeESQuery(
                 queryVector,
                 parameters.withPagination(overFetchSize, rawOffset),
-                knnNumCandidatesMultiplier);
+                knnNumCandidatesMultiplier,
+                readableAnchorIds);
         String endpoint =
             SearchUtils.appendPreferenceParam(
                 "/" + indexName + "/_search", parameters.preference());
@@ -280,12 +299,12 @@ public class ElasticSearchVectorService implements VectorIndexService {
   }
 
   @Override
-  public Map<String, Object> generateEmbeddingFields(EntityInterface entity) {
+  public Map<String, Object> generateEmbeddingFields(EntityInterface<?> entity) {
     return VectorDocBuilder.buildEmbeddingFields(entity, embeddingClient);
   }
 
   @Override
-  public void updateEntityEmbedding(EntityInterface entity, String entityIndexName) {
+  public void updateEntityEmbedding(EntityInterface<?> entity, String entityIndexName) {
     try {
       String entityId = entity.getId().toString();
       String existingFingerprint = getExistingFingerprint(entityIndexName, entityId);

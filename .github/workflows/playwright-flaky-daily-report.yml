@@ -1,0 +1,121 @@
+#  Copyright 2026 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+# Daily merge-queue Playwright report in #pw-health: one HTML file rolling up the
+# day, next to the per-run flaky alerts that playwright-postgresql-e2e.yml posts.
+#
+# For every merge-group run of playwright-postgresql-e2e.yml in the window it reads
+# the shards' "Retry pass in merge queue" annotations (flaky tests, one GraphQL
+# query per run) and, for failed runs, the failed shards' results JSON (failed
+# tests and errors). Tests are ranked by distinct PRs (a re-queued PR counts
+# once); each test opens to list every run that hit it. A dispatched window is at
+# most 48h.
+name: Playwright Flaky Daily Report
+
+on:
+  schedule:
+    # 09:00 IST.
+    - cron: "30 3 * * *"
+  workflow_dispatch:
+    inputs:
+      since:
+        description: "Window start, UTC ISO (2026-09-30 or 2026-09-30T06:00). Empty means 24h before `until`. Max window 48h."
+        type: string
+        default: ""
+      until:
+        description: "Window end, UTC ISO. Empty means the last full hour, minus one hour, so runs in the window have finished."
+        type: string
+        default: ""
+      post_to_slack:
+        description: "Post the report to #pw-health. Off = scan only (job summary + HTML artifact)."
+        type: boolean
+        default: true
+
+permissions:
+  # Naming any permission sets every other one to none:
+  #   actions  — list merge-group runs, their jobs, and failed shards' results JSON
+  #   checks   — the shards' retry-pass and failure annotations
+  #   contents — checkout
+  actions: read
+  checks: read
+  contents: read
+
+concurrency:
+  group: playwright-flaky-daily-report
+  cancel-in-progress: false
+
+jobs:
+  report:
+    name: Summarise merge-queue failed and flaky tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPORT_DIR: ${{ github.workspace }}/flaky-report
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Build the report
+        id: report
+        env:
+          SINCE: ${{ inputs.since }}
+          UNTIL: ${{ inputs.until }}
+        run: |
+          python3 .github/scripts/playwright_flaky_report.py \
+            --owner "${GITHUB_REPOSITORY%%/*}" \
+            --repo "${GITHUB_REPOSITORY#*/}" \
+            --since "$SINCE" \
+            --until "$UNTIL" \
+            --channel C0C008ZAK0V \
+            --out-dir "$REPORT_DIR"
+
+      - name: Upload the report
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-flaky-report
+          path: |
+            ${{ env.REPORT_DIR }}/*.html
+            ${{ env.REPORT_DIR }}/report.md
+          retention-days: 14
+
+      - name: Post to Slack (pw-health)
+        id: post
+        # Scheduled runs have no inputs, and an empty input compares equal to
+        # false (both coerce to 0), so the schedule has to be named explicitly.
+        if: ${{ github.event_name == 'schedule' || inputs.post_to_slack }}
+        # A failed upload falls back to a text post below instead of failing the job.
+        continue-on-error: true
+        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
+        with:
+          method: files.uploadV2
+          token: ${{ secrets.COLLATE_BOT_SLACK_TOKEN }}
+          # Keep on — the action discards Slack API errors by default.
+          errors: true
+          payload-file-path: ${{ env.REPORT_DIR }}/slack.json
+
+      # files.uploadV2 needs the bot's files:write scope; chat.postMessage only
+      # chat:write, which the queue alerts already use. This keeps the daily post
+      # going, with the top offenders inline and a link to the report artifact.
+      - name: Post a text fallback to Slack (pw-health)
+        if: ${{ steps.post.outcome == 'failure' }}
+        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.COLLATE_BOT_SLACK_TOKEN }}
+          errors: true
+          payload-file-path: ${{ env.REPORT_DIR }}/slack-fallback.json
+
+      - name: Flag the failed HTML upload
+        if: ${{ steps.post.outcome == 'failure' }}
+        run: echo "::warning::The HTML report could not be uploaded to Slack (check the bot's files:write scope); a text summary was posted instead."

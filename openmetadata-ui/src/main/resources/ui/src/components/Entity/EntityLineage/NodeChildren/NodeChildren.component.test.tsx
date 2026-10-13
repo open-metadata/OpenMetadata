@@ -19,8 +19,8 @@ import {
 } from '@testing-library/react';
 import { EntityType } from '../../../../enums/entity.enum';
 import { LineageLayer } from '../../../../generated/configuration/lineageSettings';
+import { LineageNodeType } from '../../../../interface/lineage.interface';
 import { getTestCaseExecutionSummary } from '../../../../rest/testAPI';
-import { LineageNodeType } from '../../../Lineage/Lineage.interface';
 import NodeChildren from './NodeChildren.component';
 
 const mockUpdateColumnsInCurrentPages = jest.fn();
@@ -177,6 +177,27 @@ describe('NodeChildren Component', () => {
       );
 
       expect(screen.queryByTestId('column-container')).not.toBeInTheDocument();
+    });
+
+    it('should render a metric node with the metric itself as its endpoint', () => {
+      const metricNode = {
+        id: 'metric-id',
+        type: EntityType.METRIC,
+        entityType: EntityType.METRIC,
+        name: 'total_sales',
+        fullyQualifiedName: 'metricService.total_sales',
+      } as unknown as LineageNodeType;
+
+      render(
+        <NodeChildren
+          isChildrenListExpanded
+          isConnectable={false}
+          node={metricNode}
+        />
+      );
+
+      expect(screen.getByTestId('column-container')).toBeInTheDocument();
+      expect(screen.getByTestId('column-total_sales')).toBeInTheDocument();
     });
 
     it('should render when column layer is enabled', () => {

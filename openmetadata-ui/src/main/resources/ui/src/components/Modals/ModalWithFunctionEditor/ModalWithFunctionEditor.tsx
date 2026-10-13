@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Form, Input, Modal, Typography } from 'antd';
+import {
+  Button,
+  Dialog,
+  Modal,
+  ModalOverlay,
+} from '@openmetadata/ui-core-components';
+import { Form, Input } from 'antd';
 import { FormProps, useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { useEffect, useState } from 'react';
@@ -25,7 +31,6 @@ export const ModalWithFunctionEditor = ({
   onSave,
   onCancel,
   visible,
-  getContainer,
 }: ModalWithFunctionEditorProps) => {
   const { t } = useTranslation();
   const [form] = useForm();
@@ -51,62 +56,72 @@ export const ModalWithFunctionEditor = ({
   }, [form, visible]);
 
   return (
-    <Modal
-      centered
-      destroyOnClose
-      className="function-editor"
-      closable={false}
-      data-testid="function-editor-modal"
-      footer={[
-        <Button
-          data-testid="cancel"
-          disabled={isLoading}
-          key="cancelButton"
-          type="link"
-          onClick={onCancel}>
-          {t('label.cancel')}
-        </Button>,
-        <Button
-          data-testid="save"
-          key="saveButton"
-          type="primary"
-          onClick={() => form.submit()}>
-          {isSaving ? <Loader size="small" type="white" /> : t('label.save')}
-        </Button>,
-      ]}
-      getContainer={getContainer}
-      maskClosable={false}
-      open={visible}
-      title={<Typography.Text data-testid="header">{header}</Typography.Text>}
-      width="700px"
-      onCancel={onCancel}>
-      {isLoading ? (
-        <Loader />
-      ) : (
-        <Form form={form} layout="vertical" onFinish={onFinish}>
-          <Form.Item
-            data-testid="function-editor-container"
-            label={t('label.sql-function')}
-            name="functionValue"
-            rules={[
-              {
-                required: true,
-                message: t('label.field-required', {
-                  field: t('label.sql-function'),
-                }),
-              },
-            ]}
-            trigger="onChange">
-            <Input
-              data-testid="sql-function-input"
-              placeholder={t('label.enter-entity', {
-                entity: t('label.sql-function'),
-              })}
-            />
-          </Form.Item>
-        </Form>
-      )}
-    </Modal>
+    // Opens from the lineage edge drawer (a z-999 SlideoutMenu), so the
+    // overlay has to sit above it.
+    <ModalOverlay
+      className="tw:z-1000"
+      isDismissable={false}
+      isOpen={visible}
+      onOpenChange={(isOpen) => !isOpen && onCancel()}>
+      <Modal>
+        <Dialog
+          showCloseButton
+          data-testid="function-editor-modal"
+          title={header}
+          width={700}
+          onClose={onCancel}>
+          <Dialog.Content>
+            {isLoading ? (
+              <Loader />
+            ) : (
+              <Form form={form} layout="vertical" onFinish={onFinish}>
+                <Form.Item
+                  data-testid="function-editor-container"
+                  label={t('label.sql-function')}
+                  name="functionValue"
+                  rules={[
+                    {
+                      required: true,
+                      message: t('label.field-required', {
+                        field: t('label.sql-function'),
+                      }),
+                    },
+                  ]}
+                  trigger="onChange">
+                  <Input
+                    data-testid="sql-function-input"
+                    placeholder={t('label.enter-entity', {
+                      entity: t('label.sql-function'),
+                    })}
+                  />
+                </Form.Item>
+              </Form>
+            )}
+          </Dialog.Content>
+          <Dialog.Footer>
+            <Button
+              color="link-color"
+              data-testid="cancel"
+              isDisabled={isLoading}
+              key="cancelButton"
+              onClick={onCancel}>
+              {t('label.cancel')}
+            </Button>
+            <Button
+              color="primary"
+              data-testid="save"
+              key="saveButton"
+              onClick={() => form.submit()}>
+              {isSaving ? (
+                <Loader size="small" type="white" />
+              ) : (
+                t('label.save')
+              )}
+            </Button>
+          </Dialog.Footer>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 };
 

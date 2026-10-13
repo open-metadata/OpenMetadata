@@ -12,7 +12,7 @@
  */
 import { AxiosResponse } from 'axios';
 import { PagingResponse } from 'Models';
-import { SuggestionAction } from '../components/Suggestions/SuggestionsProvider/SuggestionsProvider.interface';
+import { SuggestionAction } from '../enums/Suggestion.enum';
 import { TagLabel } from '../generated/type/tagLabel';
 import { ListParams } from '../interface/API.interface';
 import {
@@ -21,7 +21,7 @@ import {
   SuggestionType,
 } from '../types/taskSuggestion';
 import EntityLink from '../utils/EntityLink';
-import APIClient from './index';
+import APIClient from './axiosClient';
 import {
   resolveTask,
   Task,

@@ -50,10 +50,6 @@ jest.mock('../PopOverCard/UserPopOverCard', () => ({
   ),
 }));
 
-jest.mock('antd', () => ({
-  Tooltip: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-}));
-
 describe('DescriptionSourceBadge', () => {
   it('should render nothing when changeSummaryEntry is undefined', () => {
     const { container } = render(

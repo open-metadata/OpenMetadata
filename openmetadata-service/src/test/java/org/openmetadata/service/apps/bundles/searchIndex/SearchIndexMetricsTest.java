@@ -110,6 +110,40 @@ class SearchIndexMetricsTest {
     assertEquals(initial, fallback);
   }
 
+  @Test
+  void refreshStatsLeavesATurnedOffColumnIndexOutOfExpectedAndMissing() throws IOException {
+    SimpleMeterRegistry registry = new SimpleMeterRegistry();
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    SearchClient searchClient = mock(SearchClient.class);
+    IndexMapping tableMapping = mock(IndexMapping.class);
+    IndexMapping columnMapping = mock(IndexMapping.class);
+
+    when(searchRepository.getSearchClient()).thenReturn(searchClient);
+    when(searchRepository.getClusterAlias()).thenReturn("");
+    when(searchClient.getAllIndexStats())
+        .thenReturn(List.of(indexStats("table_search_index", Set.of())));
+    when(searchRepository.getEntityIndexMap())
+        .thenReturn(Map.of("table", tableMapping, "tableColumn", columnMapping));
+    when(searchRepository.isIndexDisabled("tableColumn")).thenReturn(true);
+    when(tableMapping.getIndexName("")).thenReturn("table_search_index");
+    when(columnMapping.getIndexName("")).thenReturn("column_search_index");
+
+    try (var validatorMock =
+        mockConstruction(
+            SearchIndexClusterValidator.class,
+            (mock, context) ->
+                when(mock.getClusterCapacity(searchRepository))
+                    .thenReturn(
+                        new SearchIndexClusterValidator.ClusterCapacity(1, 100, 0.01, 99)))) {
+      SearchIndexMetrics metrics = new SearchIndexMetrics(registry, searchRepository);
+      metrics.refreshStats();
+
+      SearchIndexMetrics.IndexStats stats = metrics.getCurrentStats();
+      assertEquals(0, stats.missingIndices());
+      assertEquals(1, stats.expectedIndices());
+    }
+  }
+
   private static IndexManagementClient.IndexStats indexStats(String name, Set<String> aliases) {
     return new IndexManagementClient.IndexStats(name, 0, 0, 1, 0, 0, "GREEN", aliases);
   }

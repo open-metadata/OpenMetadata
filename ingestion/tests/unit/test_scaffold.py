@@ -159,7 +159,7 @@ class TestGenerateConnectionSchema:
         p = self._make_profile()
         schema = generate_connection_schema(p)
 
-        assert schema["$schema"] == "http://json-schema.org/draft-07/schema#"
+        assert schema["$schema"] == "https://json-schema.org/draft/2020-12/schema"
         assert schema["type"] == "object"
         assert schema["additionalProperties"] is False
         assert "definitions" in schema

@@ -17,7 +17,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import jakarta.ws.rs.client.Client;
-import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.client.WebTarget;
@@ -38,6 +37,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.sink.SinkContext;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.sink.SinkProvider;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.sink.SinkResult;
+import org.openmetadata.service.util.SubscriptionUtil;
 
 /**
  * Sink provider that sends entity data to HTTP webhook endpoints.
@@ -48,6 +48,8 @@ import org.openmetadata.service.governance.workflows.elements.nodes.automatedTas
 @Slf4j
 public class WebhookSinkProvider implements SinkProvider {
 
+  private static final int SINK_CONNECT_TIMEOUT_SECONDS = 30;
+  private static final int SINK_READ_TIMEOUT_SECONDS = 120;
   private static final int DEFAULT_MAX_RETRIES = 3;
   private static final int DEFAULT_RETRY_DELAY_SECONDS = 2;
   private static final ObjectMapper YAML_MAPPER = new ObjectMapper(new YAMLFactory());
@@ -57,7 +59,8 @@ public class WebhookSinkProvider implements SinkProvider {
 
   public WebhookSinkProvider(Object rawConfig) {
     this.config = JsonUtils.convertValue(rawConfig, WebhookSinkConfig.class);
-    this.client = ClientBuilder.newClient();
+    this.client =
+        SubscriptionUtil.getClient(SINK_CONNECT_TIMEOUT_SECONDS, SINK_READ_TIMEOUT_SECONDS);
   }
 
   @Override
@@ -66,7 +69,7 @@ public class WebhookSinkProvider implements SinkProvider {
   }
 
   @Override
-  public SinkResult write(SinkContext context, EntityInterface entity) {
+  public SinkResult write(SinkContext context, EntityInterface<?> entity) {
     try {
       String payload = serializeEntity(entity, context.getOutputFormat());
       return executeWithRetry(
@@ -110,11 +113,11 @@ public class WebhookSinkProvider implements SinkProvider {
   }
 
   @Override
-  public SinkResult writeBatch(SinkContext context, List<EntityInterface> entities) {
+  public SinkResult writeBatch(SinkContext context, List<EntityInterface<?>> entities) {
     List<String> synced = new ArrayList<>();
     List<SinkResult.SinkError> errors = new ArrayList<>();
 
-    for (EntityInterface entity : entities) {
+    for (EntityInterface<?> entity : entities) {
       try {
         String payload = serializeEntity(entity, context.getOutputFormat());
         SinkResult result =
@@ -266,7 +269,7 @@ public class WebhookSinkProvider implements SinkProvider {
     }
   }
 
-  private String serializeEntity(EntityInterface entity, String format) {
+  private String serializeEntity(EntityInterface<?> entity, String format) {
     if ("yaml".equalsIgnoreCase(format)) {
       try {
         return YAML_MAPPER.writeValueAsString(entity);

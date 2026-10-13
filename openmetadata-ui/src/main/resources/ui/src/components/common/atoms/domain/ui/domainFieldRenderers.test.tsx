@@ -13,9 +13,15 @@
 import { fireEvent, render, renderHook, screen } from '@testing-library/react';
 import { forwardRef, ReactNode } from 'react';
 import { DataProduct } from '../../../../../generated/entity/domains/dataProduct';
-import { Domain } from '../../../../../generated/entity/domains/domain';
+import {
+  Domain,
+  DomainType,
+} from '../../../../../generated/entity/domains/domain';
+import { EntityReference } from '../../../../../generated/entity/type';
+import { TagLabel, TagSource } from '../../../../../generated/type/tagLabel';
 import {
   renderDomainClassificationTagsCell,
+  renderDomainExpertsCell,
   renderDomainGlossaryTagsCell,
   renderDomainNameCell,
   renderDomainOwnersCell,
@@ -24,6 +30,26 @@ import { useDomainCardTemplates } from './useDomainCardTemplates';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   Avatar: () => <span data-testid="avatar" />,
+  BadgeWithIcon: ({ children }: { children: ReactNode }) => (
+    <span data-testid="domain-type-badge">{children}</span>
+  ),
+  Owner: ({
+    showDashPlaceholder,
+    owners,
+  }: {
+    showDashPlaceholder?: boolean;
+    owners?: { name?: string }[];
+  }) => (
+    <div data-show-dash={String(showDashPlaceholder)} data-testid="owner-label">
+      {owners?.map((owner) => (
+        <a data-testid="owner-link" href="/users/x" key={owner.name}>
+          {owner.name}
+        </a>
+      ))}
+    </div>
+  ),
+  toOwnerRef: (ref: unknown) => ref,
+  toOwnerRefs: (refs: unknown[] = []) => refs,
   Box: ({
     children,
     onClick,
@@ -61,33 +87,21 @@ jest.mock('../../../../../utils/IconUtils', () => ({
   getEntityAvatarProps: () => ({}),
 }));
 
-jest.mock('../../../OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: ({ showDashPlaceholder }: { showDashPlaceholder?: boolean }) => (
-    <div
-      data-show-dash={String(showDashPlaceholder)}
-      data-testid="owner-label"
-    />
-  ),
-}));
-
 jest.mock('../../../../Tag/TagsViewer/TagsViewer', () => ({
   __esModule: true,
   default: ({ sizeCap, tags }: { sizeCap?: number; tags?: unknown[] }) => (
     <div
       data-size-cap={sizeCap}
       data-tags-length={tags?.length}
-      data-testid="tags-viewer"
-    />
+      data-testid="tags-viewer">
+      {tags?.length ? (
+        <a data-testid="tag-link" href="/tags/x">
+          tag
+        </a>
+      ) : null}
+    </div>
   ),
 }));
-
-jest.mock('../../../RichTextEditor/RichTextEditorPreviewerV1', () =>
-  jest
-    .fn()
-    .mockImplementation(({ markdown }: { markdown: string }) => (
-      <div data-testid="rte-previewer">{markdown}</div>
-    ))
-);
 
 const DOMAIN = {
   id: 'domain-id',
@@ -137,8 +151,17 @@ describe('renderDomainNameCell', () => {
 });
 
 describe('renderDomainOwnersCell', () => {
-  it('forwards showDashPlaceholder to OwnerLabel', () => {
-    render(<>{renderDomainOwnersCell({ owners: [] }, true)}</>);
+  it('forwards showDashPlaceholder to Owner', () => {
+    render(
+      <>
+        {renderDomainOwnersCell(
+          { owners: [] },
+          {
+            showDashPlaceholder: true,
+          }
+        )}
+      </>
+    );
 
     expect(screen.getByTestId('owner-label')).toHaveAttribute(
       'data-show-dash',
@@ -146,12 +169,79 @@ describe('renderDomainOwnersCell', () => {
     );
   });
 
-  it('defaults showDashPlaceholder to undefined when the argument is omitted', () => {
+  it('defaults showDashPlaceholder to undefined when no options are passed', () => {
     render(<>{renderDomainOwnersCell({ owners: [] })}</>);
 
     expect(screen.getByTestId('owner-label')).toHaveAttribute(
       'data-show-dash',
       'undefined'
+    );
+  });
+});
+
+describe('nested control clicks inside a clickable row', () => {
+  const renderInRow = (cell: ReactNode) => {
+    const rowClick = jest.fn();
+
+    render(
+      <div role="presentation" onClick={rowClick}>
+        {cell}
+      </div>
+    );
+
+    return rowClick;
+  };
+
+  it('keeps an owner link click with the owner', () => {
+    const rowClick = renderInRow(
+      renderDomainOwnersCell({ owners: [{ name: 'alice' } as EntityReference] })
+    );
+    fireEvent.click(screen.getByTestId('owner-link'));
+
+    expect(rowClick).not.toHaveBeenCalled();
+  });
+
+  it('keeps a tag link click with the tag', () => {
+    const rowClick = renderInRow(
+      renderDomainClassificationTagsCell({
+        tags: [{ source: TagSource.Classification } as TagLabel],
+      })
+    );
+    fireEvent.click(screen.getByTestId('tag-link'));
+
+    expect(rowClick).not.toHaveBeenCalled();
+  });
+
+  it('lets a click on the cell itself reach the row', () => {
+    const rowClick = renderInRow(
+      renderDomainOwnersCell(
+        { owners: [] },
+        {
+          showDashPlaceholder: true,
+        }
+      )
+    );
+    fireEvent.click(screen.getByTestId('owner-label'));
+
+    expect(rowClick).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('renderDomainExpertsCell', () => {
+  it('renders the experts as owners', () => {
+    render(
+      <>
+        {renderDomainExpertsCell(
+          { experts: [{ name: 'bob' } as EntityReference] },
+          { showDashPlaceholder: true }
+        )}
+      </>
+    );
+
+    expect(screen.getByTestId('owner-link')).toHaveTextContent('bob');
+    expect(screen.getByTestId('owner-label')).toHaveAttribute(
+      'data-show-dash',
+      'true'
     );
   });
 });
@@ -224,12 +314,7 @@ describe('useDomainCardTemplates > renderDataProductCard', () => {
       </>
     );
 
-    // The mock renders markdown verbatim (no actual parsing) - this just
-    // confirms the raw description string reaches the previewer unmodified,
-    // i.e. nothing is stripping it before it gets there.
-    expect(screen.getByTestId('rte-previewer')).toHaveTextContent(
-      '**A short description.**'
-    );
+    expect(screen.getByText('A short description.')).toBeInTheDocument();
     expect(screen.queryByText('label.view-more')).not.toBeInTheDocument();
   });
 
@@ -290,6 +375,49 @@ describe('useDomainCardTemplates > renderDataProductCard', () => {
 
     render(<>{result.current.renderDataProductCard(DATA_PRODUCT_BASE)}</>);
 
+    expect(screen.getAllByTestId('tags-viewer')).toHaveLength(2);
+  });
+});
+
+describe('useDomainCardTemplates > renderDomainCard', () => {
+  it('renders the name and all 4 field labels', () => {
+    const { result } = renderHook(() => useDomainCardTemplates());
+
+    render(<>{result.current.renderDomainCard(DOMAIN)}</>);
+
+    expect(screen.getByText('Engineering')).toBeInTheDocument();
+
+    [
+      'label.owner',
+      'label.domain-type',
+      'label.glossary-term-plural',
+      'label.tag-plural',
+    ].forEach((key) => expect(screen.getByText(key)).toBeInTheDocument());
+  });
+
+  it('renders the domain type chip', () => {
+    const { result } = renderHook(() => useDomainCardTemplates());
+
+    render(
+      <>
+        {result.current.renderDomainCard({
+          ...DOMAIN,
+          domainType: DomainType.Aggregate,
+        })}
+      </>
+    );
+
+    expect(screen.getByTestId('domain-type-badge')).toHaveTextContent(
+      'label.aggregate'
+    );
+  });
+
+  it('renders the owners and TagsViewer for both glossary terms and tags', () => {
+    const { result } = renderHook(() => useDomainCardTemplates());
+
+    render(<>{result.current.renderDomainCard(DOMAIN)}</>);
+
+    expect(screen.getByTestId('owner-label')).toBeInTheDocument();
     expect(screen.getAllByTestId('tags-viewer')).toHaveLength(2);
   });
 });

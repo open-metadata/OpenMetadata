@@ -15,6 +15,7 @@ import static org.mockito.Mockito.when;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import jakarta.ws.rs.core.Response;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.List;
@@ -34,6 +35,7 @@ import org.openmetadata.mcp.server.auth.repository.OAuthClientRepository;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.McpPendingAuthRequest;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
@@ -196,5 +198,48 @@ class BasicAuthLoginServletTest {
         .sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Login processing failed");
     verify(response, never()).setStatus(HttpServletResponse.SC_OK);
     assertThat(responseBody.toString()).doesNotContain("Login blocked");
+  }
+
+  // ── unknown account (CustomExceptionMessage) ─────────────────────────────
+
+  @Test
+  void doPost_unknownAccount_rendersLoginFormWithInvalidCredentialsMessage() throws Exception {
+    // Neither authenticator throws AuthenticationException for an account that does not exist:
+    // both report it as CustomExceptionMessage(INVALID_USER_OR_PASSWORD). That is a rejected
+    // credential, so it must re-render the form rather than reach the generic 500 handler (which
+    // would log the whole thing as an ERROR with a stack trace).
+    doThrow(
+            new CustomExceptionMessage(
+                Response.Status.BAD_REQUEST,
+                "INVALID_USER_OR_PASSWORD",
+                "You have entered an invalid username or password."))
+        .when(authenticator)
+        .lookUserInProvider(EMAIL, PASSWORD);
+
+    servlet.doPost(request, response);
+
+    verify(response).setStatus(HttpServletResponse.SC_OK);
+    verify(response, never()).sendError(anyInt(), anyString());
+    assertThat(responseBody.toString()).contains("Invalid username or password");
+  }
+
+  @Test
+  void doPost_ldapDirectoryUnavailable_fallsThroughToGenericFailure() throws Exception {
+    // LDAP reuses CustomExceptionMessage for an unreachable directory. That is a real fault, not a
+    // rejected credential: it must keep reaching the generic handler so it is still logged.
+    doThrow(
+            new CustomExceptionMessage(
+                Response.Status.SERVICE_UNAVAILABLE,
+                "LDAP_CONNECTION_ERROR",
+                "Unable to connect to authentication server after 3 attempts."))
+        .when(authenticator)
+        .lookUserInProvider(EMAIL, PASSWORD);
+
+    servlet.doPost(request, response);
+
+    verify(response)
+        .sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Login processing failed");
+    verify(response, never()).setStatus(HttpServletResponse.SC_OK);
+    assertThat(responseBody.toString()).doesNotContain("Invalid username or password");
   }
 }

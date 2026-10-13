@@ -16,6 +16,8 @@ package org.openmetadata.service.rdf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -26,6 +28,14 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 class RdfGraphServiceTest {
+
+  @Test
+  void graphRequestSupportsRootOnlyTraversal() {
+    final RdfGraphService.GraphRequest request =
+        RdfGraphService.GraphRequest.from(UUID.randomUUID(), "table", 0, null, null);
+
+    assertEquals(0, request.depth());
+  }
 
   @Test
   void graphRequestNormalizesTypeDepthAndFilters() {
@@ -112,6 +122,23 @@ class RdfGraphServiceTest {
     assertEquals(RdfSerializationFormat.RDF_XML, RdfSerializationFormat.parse("xml"));
     assertEquals(RdfSerializationFormat.N_TRIPLES, RdfSerializationFormat.parse("nt"));
     assertThrows(IllegalArgumentException.class, () -> RdfSerializationFormat.parse("unsupported"));
+  }
+
+  @Test
+  void fullLineageAnswersFromPropertyPathsWithoutInference() {
+    final RdfRepository repository = mock(RdfRepository.class);
+    final String lineage = "{\"head\":{},\"results\":{\"bindings\":[]}}";
+    when(repository.getBaseUri()).thenReturn("https://open-metadata.org/");
+    when(repository.executeAssertedSparqlQuery(anyString(), eq("application/sparql-results+json")))
+        .thenReturn(lineage);
+
+    final String body =
+        service(repository)
+            .fullLineage(
+                new RdfGraphService.LineageRequest(
+                    UUID.randomUUID(), "table", RdfGraphService.LineageDirection.BOTH));
+
+    assertEquals(lineage, body);
   }
 
   private static RdfGraphService service(RdfRepository repository) {

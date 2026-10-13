@@ -13,8 +13,12 @@
 import { useCallback, useMemo } from 'react';
 import { INITIAL_PAGING_VALUE } from '../../../constants/constants';
 import {
+  DEFAULT_TEST_DEFINITION_SORT_FIELD,
+  DEFAULT_TEST_DEFINITION_SORT_ORDER,
+  TestDefinitionSortOrder,
   TEST_DEFINITION_DEFAULT_QUICK_FILTERS,
   TEST_DEFINITION_FILTERS,
+  TEST_DEFINITION_SORT_FIELD_BY_COLUMN,
 } from '../../../constants/TestDefinition.constants';
 import { UsePagingInterface } from '../../../hooks/paging/usePaging';
 import { useTableFilters } from '../../../hooks/useTableFilters';
@@ -24,6 +28,10 @@ import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
 export interface UseTestDefinitionFiltersProps {
   handlePageChange: UsePagingInterface['handlePageChange'];
 }
+
+const SORTABLE_SORT_FIELDS = Object.values(
+  TEST_DEFINITION_SORT_FIELD_BY_COLUMN
+);
 
 /**
  * Owns the FILTERS concern: the URL-backed quick filters (via
@@ -36,10 +44,33 @@ export interface UseTestDefinitionFiltersProps {
 export const useTestDefinitionFilters = ({
   handlePageChange,
 }: UseTestDefinitionFiltersProps) => {
-  const { filters: urlParams, setFilters: updateUrlParams } = useTableFilters({
+  const { filters: urlParams, setFilters: updateUrlParams } = useTableFilters<{
+    entityType?: string;
+    testPlatforms?: string;
+    q?: string;
+    sortField?: string;
+    sortOrder?: string;
+  }>({
     entityType: undefined,
     testPlatforms: undefined,
+    q: undefined,
+    sortField: undefined,
+    sortOrder: undefined,
   });
+
+  const searchQuery = urlParams.q ?? '';
+
+  // An unrecognised sortField in a hand-edited or stale URL falls back to the
+  // default rather than reaching the API, which would answer 400 and blank the
+  // table over what is only a bad bookmark.
+  const sortField = SORTABLE_SORT_FIELDS.includes(urlParams.sortField ?? '')
+    ? (urlParams.sortField as string)
+    : DEFAULT_TEST_DEFINITION_SORT_FIELD;
+
+  const sortOrder: TestDefinitionSortOrder =
+    urlParams.sortOrder === 'desc'
+      ? 'desc'
+      : DEFAULT_TEST_DEFINITION_SORT_ORDER;
 
   const urlFilters = useMemo(() => {
     const filters: Record<string, string[]> = {};
@@ -65,6 +96,18 @@ export const useTestDefinitionFilters = ({
     }));
   }, [urlFilters]);
 
+  const applyUrlParams = useCallback(
+    (updates: Record<string, string | null>) => {
+      updateUrlParams(updates);
+
+      handlePageChange(INITIAL_PAGING_VALUE, {
+        cursorType: null,
+        cursorValue: undefined,
+      });
+    },
+    [updateUrlParams, handlePageChange]
+  );
+
   const handleFilterChange = useCallback(
     (filters: ExploreQuickFilterField[]) => {
       const filterUpdates: Record<string, string | null> = {};
@@ -80,41 +123,81 @@ export const useTestDefinitionFilters = ({
         }
       });
 
-      updateUrlParams(filterUpdates);
-
-      handlePageChange(INITIAL_PAGING_VALUE, {
-        cursorType: null,
-        cursorValue: undefined,
-      });
+      applyUrlParams(filterUpdates);
     },
-    [updateUrlParams, handlePageChange]
+    [applyUrlParams]
   );
 
   const setSingleFilter = useCallback(
     (key: string, value?: string) => {
-      updateUrlParams({ [key]: value || null });
-      handlePageChange(INITIAL_PAGING_VALUE, {
-        cursorType: null,
-        cursorValue: undefined,
-      });
+      applyUrlParams({ [key]: value || null });
     },
-    [updateUrlParams, handlePageChange]
+    [applyUrlParams]
   );
 
+  const handleSearchChange = useCallback(
+    (value: string) => {
+      applyUrlParams({ q: value || null });
+    },
+    [applyUrlParams]
+  );
+
+  /**
+   * Re-sorting invalidates the cursor the current page was reached with — the
+   * keyset walks the sort key, so a cursor built for one ordering names no
+   * boundary in another. applyUrlParams resets paging back to the first page
+   * for exactly that reason.
+   *
+   * The default ordering is written out as explicit params rather than cleared,
+   * so the URL always states the ordering the table is showing and a shared
+   * link reproduces it.
+   */
+  const handleSortChange = useCallback(
+    (column: string, direction: TestDefinitionSortOrder) => {
+      applyUrlParams({
+        sortField: TEST_DEFINITION_SORT_FIELD_BY_COLUMN[column] ?? null,
+        sortOrder: direction,
+      });
+    },
+    [applyUrlParams]
+  );
+
+  // "Clear all" is the single exit from an empty result set, so it has to drop
+  // the search term too - leaving it behind keeps the list empty and the button
+  // reads as broken. The sort is deliberately left alone: it is a view
+  // preference that hides nothing, so resetting it would throw away a choice
+  // the empty result set was not caused by. Cleared in the same update as the
+  // quick filters:
+  // useTableFilters merges each call against the URL as it is now, so a second
+  // call in the same tick would be built from the pre-navigation search string
+  // and put the quick filters back.
   const clearAllFilters = useCallback(() => {
-    handleFilterChange([]);
-  }, [handleFilterChange]);
+    const filterUpdates: Record<string, string | null> = { q: null };
+
+    TEST_DEFINITION_DEFAULT_QUICK_FILTERS.forEach((key) => {
+      filterUpdates[key] = null;
+    });
+
+    applyUrlParams(filterUpdates);
+  }, [applyUrlParams]);
 
   const hasActiveFilters = useMemo(
-    () => Object.values(urlFilters).some((value) => value.length > 0),
-    [urlFilters]
+    () =>
+      Boolean(searchQuery.trim()) ||
+      Object.values(urlFilters).some((value) => value.length > 0),
+    [urlFilters, searchQuery]
   );
 
   return {
     urlParams,
     urlFilters,
     parsedFilters,
+    searchQuery,
+    sortField,
+    sortOrder,
+    handleSortChange,
     handleFilterChange,
+    handleSearchChange,
     setSingleFilter,
     clearAllFilters,
     hasActiveFilters,

@@ -273,7 +273,11 @@ class SocketAddressFilterTest {
     tokenConfiguration.setRsaprivateKeyFilePath(resourceFilePath("private_key.der"));
     tokenConfiguration.setRsapublicKeyFilePath(resourceFilePath("public_key.der"));
     JWTTokenGenerator.getInstance()
-        .init(AuthenticationConfiguration.TokenValidationAlgorithm.RS_256, tokenConfiguration);
+        .init(
+            new AuthenticationConfiguration()
+                .withTokenValidationAlgorithm(
+                    AuthenticationConfiguration.TokenValidationAlgorithm.RS_256),
+            tokenConfiguration);
   }
 
   private static String resourceFilePath(String resourceName) {

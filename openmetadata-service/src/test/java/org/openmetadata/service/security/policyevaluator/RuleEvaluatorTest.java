@@ -13,7 +13,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.MetadataOperation.CREATE;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_TAGS;
 import static org.openmetadata.service.security.policyevaluator.CompiledRule.parseExpression;
-import static org.openmetadata.service.security.policyevaluator.SubjectContext.TEAM_FIELDS;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -51,8 +50,10 @@ import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 import org.openmetadata.service.jdbi3.DomainRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
+import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TeamRepository;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.springframework.expression.EvaluationContext;
@@ -61,6 +62,7 @@ import org.springframework.expression.spel.support.StandardEvaluationContext;
 @Slf4j
 class RuleEvaluatorTest {
   private static final String DATA_CONSUMER_ROLE_NAME = "DataConsumer";
+  private static final String TEAM_FIELDS = "defaultRoles,parents";
   private static final Table table =
       new Table().withId(UUID.randomUUID()).withName("table").withFullyQualifiedName("test.table");
   private static User user;
@@ -126,6 +128,15 @@ class RuleEvaluatorTest {
                     EntityRepository.CACHE_WITH_ID.get(
                         new ImmutablePair<>(Entity.TEAM, i.getArgument(1))),
                     Team.class));
+
+    RoleRepository roleRepository = stubIndexingPolicy(mock(RoleRepository.class));
+    Entity.registerEntity(Role.class, Entity.ROLE, roleRepository);
+
+    // TeamHierarchyResolver reads the team graph out of entity_relationship rather than loading a
+    // Team per node, so the graph has to exist as relationship rows, not only as cached entities.
+    TeamGraphFixture.install();
+    TeamGraphFixture.stubReferences(teamRepository, Entity.TEAM);
+    TeamGraphFixture.stubReferences(roleRepository, Entity.ROLE);
 
     tableRepository = stubIndexingPolicy(mock(TableRepository.class));
     Entity.registerEntity(Table.class, Entity.TABLE, tableRepository);
@@ -791,6 +802,42 @@ class RuleEvaluatorTest {
     assertFalse(evaluateExpression("!matchAnyTag('MCP.DEMO')"));
   }
 
+  @Test
+  void test_isImpersonated() {
+    try {
+      assertFalse(evaluateExpression("isImpersonated()"));
+      assertFalse(evaluateExpression("impersonatedBy('McpApplicationBot')"));
+
+      ImpersonationContext.setImpersonatedBy("McpApplicationBot");
+      assertTrue(evaluateExpression("isImpersonated()"));
+      assertTrue(evaluateExpression("impersonatedBy('McpApplicationBot')"));
+      assertTrue(evaluateExpression("impersonatedBy('ingestion-bot', 'McpApplicationBot')"));
+      assertFalse(evaluateExpression("impersonatedBy('ingestion-bot')"));
+
+      // An application bot's entity name and its user name differ only in case, and either one can
+      // be what a policy author copies in, so a rule written with the user name must still fire.
+      assertTrue(evaluateExpression("impersonatedBy('mcpapplicationbot')"));
+    } finally {
+      ImpersonationContext.clear();
+    }
+  }
+
+  /**
+   * Policy authoring runs the same expression with no request behind it. The attribution must not
+   * leak into validation, otherwise saving a policy from an impersonated session evaluates
+   * differently than saving it from a normal one.
+   */
+  @Test
+  void test_isImpersonatedIsInertDuringValidation() {
+    try {
+      ImpersonationContext.setImpersonatedBy("McpApplicationBot");
+      CompiledRule.validateExpression("isImpersonated()", Boolean.class);
+      CompiledRule.validateExpression("!isImpersonated()", Boolean.class);
+    } finally {
+      ImpersonationContext.clear();
+    }
+  }
+
   private Boolean evaluateExpression(String condition) {
     return parseExpression(condition).getValue(evaluationContext, Boolean.class);
   }
@@ -814,6 +861,7 @@ class RuleEvaluatorTest {
     }
     EntityRepository.CACHE_WITH_ID.put(
         new ImmutablePair<>(Entity.TEAM, team.getId()), JsonUtils.pojoToJson(team));
+    TeamGraphFixture.register(team);
     return team;
   }
 
@@ -830,6 +878,7 @@ class RuleEvaluatorTest {
     }
     EntityRepository.CACHE_WITH_ID.put(
         new ImmutablePair<>(Entity.TEAM, team.getId()), JsonUtils.pojoToJson(team));
+    TeamGraphFixture.register(team);
     return team;
   }
 
