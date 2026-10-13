@@ -3880,10 +3880,9 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
       TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     MutualExclusiveGlossarySetup setup = mutualExclusiveGlossarySetup(ns, "pf_pbf");
-    // Pass-first ordering: the lone passing asset is iterated first, so the
-    // apply-while-no-failures gate writes the term's tag to it before any
-    // failure closes the gate. The status must still surface PARTIAL_SUCCESS
-    // (the bug previously reported FAILURE, hiding the real write).
+    // Each asset is saved on its own, so the lone passing asset gets the term
+    // whatever its position. The status must surface PARTIAL_SUCCESS (the bug
+    // previously reported FAILURE, hiding the real write).
     List<EntityReference> assets = new ArrayList<>();
     assets.add(setup.passTable.getEntityReference());
     assets.addAll(setup.failTables.stream().map(Table::getEntityReference).toList());
@@ -3905,33 +3904,6 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
           tableHasTag(client, t.getId(), setup.term.getFullyQualifiedName()),
           "failing assets must not be tagged");
     }
-  }
-
-  @Test
-  void test_bulkAddGlossaryToAssets_nonDryRun_failBeforePass_appliesNoTagsAndReportsPartialSuccess(
-      TestNamespace ns) throws Exception {
-    OpenMetadataClient client = SdkClients.adminClient();
-    MutualExclusiveGlossarySetup setup = mutualExclusiveGlossarySetup(ns, "pf_fbp");
-    // Fail-first ordering: failures are iterated first, so the apply gate is
-    // already closed when the lone passing asset is reached — no tags are
-    // written. The status is a *validation* summary, so it must still be
-    // PARTIAL_SUCCESS (one validation pass), not FAILURE.
-    List<EntityReference> assets = new ArrayList<>();
-    assets.addAll(setup.failTables.stream().map(Table::getEntityReference).toList());
-    assets.add(setup.passTable.getEntityReference());
-
-    AddGlossaryToAssetsRequest add =
-        new AddGlossaryToAssetsRequest().withDryRun(false).withAssets(assets);
-    String path = "/v1/glossaryTerms/" + setup.term.getId() + "/assets/add";
-    BulkOperationResult result =
-        client.getHttpClient().execute(HttpMethod.PUT, path, add, BulkOperationResult.class);
-
-    assertEquals(ApiStatus.PARTIAL_SUCCESS, result.getStatus());
-    assertEquals(1, result.getNumberOfRowsPassed());
-    assertEquals(setup.failTables.size(), result.getNumberOfRowsFailed());
-    assertFalse(
-        tableHasTag(client, setup.passTable.getId(), setup.term.getFullyQualifiedName()),
-        "fail-before-pass must not apply any tag (gate already closed)");
   }
 
   private static final class MutualExclusiveGlossarySetup {
