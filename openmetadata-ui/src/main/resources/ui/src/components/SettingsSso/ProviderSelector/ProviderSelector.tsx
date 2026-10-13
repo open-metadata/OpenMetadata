@@ -12,7 +12,7 @@
  */
 
 import { ArrowUpOutlined } from '@ant-design/icons';
-import { Button, Typography } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AuthProvider } from '../../../generated/settings/settings';
@@ -42,12 +42,12 @@ const ProviderSelector: React.FC<ProviderSelectorProps> = ({
   return (
     <div className="provider-selector-container">
       <div className="provider-selector-header">
-        <Typography.Title className="m-b-lg" level={5}>
+        <Typography as="h5" className="m-b-lg" size="text-md" weight="semibold">
           {t('label.choose-provider')}
-        </Typography.Title>
+        </Typography>
         <Button
-          disabled={!selectedProvider}
-          type="primary"
+          color="primary"
+          isDisabled={!selectedProvider}
           onClick={handleConfigureClick}>
           {t('label.configure')}
           <ArrowUpOutlined className="configure-arrow" height={12} width={12} />
@@ -83,7 +83,7 @@ const ProviderSelector: React.FC<ProviderSelectorProps> = ({
                 )}
               </div>
             </div>
-            <span className="provider-name">{provider.label}</span>
+            <Typography className="provider-name">{provider.label}</Typography>
           </div>
         ))}
       </div>

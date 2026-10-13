@@ -23,6 +23,8 @@ const createMockColors = (): LineageEdgeColors => ({
   primary: '#1890ff',
   columnHighlight: '#3F51B5',
   dqHighlight: '#F44336',
+  labelBackground: '#FFFFFF',
+  labelText: '#475467',
 });
 
 const createMockEdge = (

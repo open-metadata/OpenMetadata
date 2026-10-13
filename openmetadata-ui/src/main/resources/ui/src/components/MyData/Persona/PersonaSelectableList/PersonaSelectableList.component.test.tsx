@@ -18,7 +18,6 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { ReactNode } from 'react';
 import { EntityReference } from '../../../../generated/entity/type';
 import { PersonaSelectableList } from './PersonaSelectableList.component';
 
@@ -53,19 +52,6 @@ jest.mock('antd', () => {
 
   return {
     ...antd,
-    // Render the popover content inline so the Select mounts without a click.
-    Popover: ({
-      children,
-      content,
-    }: {
-      children?: ReactNode;
-      content?: ReactNode;
-    }) => (
-      <div>
-        {children}
-        {content}
-      </div>
-    ),
     Select: ({
       options,
       onSearch,
@@ -149,6 +135,7 @@ describe('PersonaSelectableList', () => {
 
     await waitFor(() => expect(mockGetAllPersonas).toHaveBeenCalled());
 
+    fireEvent.click(screen.getByTestId('edit-user-persona'));
     fireEvent.change(screen.getByTestId('persona-search'), {
       target: { value: 'ana' },
     });
@@ -168,6 +155,7 @@ describe('PersonaSelectableList', () => {
       />
     );
 
+    fireEvent.click(screen.getByTestId('edit-user-persona'));
     fireEvent.change(screen.getByTestId('persona-search'), {
       target: { value: 'ana' },
     });
@@ -198,6 +186,7 @@ describe('PersonaSelectableList', () => {
       />
     );
 
+    fireEvent.click(screen.getByTestId('edit-user-persona'));
     const searchInput = screen.getByTestId('persona-search');
 
     fireEvent.change(searchInput, { target: { value: 'ana' } });

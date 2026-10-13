@@ -72,13 +72,11 @@ class RdfParserHelpersTest {
   }
 
   @Test
-  void forwardEquivalentPredicateMapsBothCausationPredicatesToUpstream() throws Exception {
+  void forwardEquivalentPredicateMapsCausationPredicatesToDownstream() throws Exception {
     Method m = privateMethod("forwardEquivalentPredicate", String.class);
-    String upstream = "https://open-metadata.org/ontology/UPSTREAM";
-    assertEquals(upstream, m.invoke(repo, "http://www.w3.org/ns/prov#wasDerivedFrom"));
-    // wasInfluencedBy must also collapse to UPSTREAM (not a non-existent DOWNSTREAM URI),
-    // so dedup against an existing UPSTREAM edge still works.
-    assertEquals(upstream, m.invoke(repo, "http://www.w3.org/ns/prov#wasInfluencedBy"));
+    String downstream = "https://open-metadata.org/ontology/downstream";
+    assertEquals(downstream, m.invoke(repo, "http://www.w3.org/ns/prov#wasDerivedFrom"));
+    assertEquals(downstream, m.invoke(repo, "http://www.w3.org/ns/prov#wasInfluencedBy"));
     // Non-reverse predicates pass through unchanged so non-lineage edges aren't rewritten.
     String unrelated = "https://open-metadata.org/ontology/hasOwner";
     assertEquals(unrelated, m.invoke(repo, unrelated));

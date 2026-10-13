@@ -140,6 +140,7 @@ describe('useTestSuiteFilters', () => {
     const [arg] = mockNavigate.mock.calls[0];
 
     expect(QueryString.parse(arg.search)).toEqual({
+      currentPage: '1',
       owner: 'xyz',
       searchValue: 'hello',
     });
@@ -199,6 +200,59 @@ describe('useTestSuiteFilters', () => {
     const [arg] = mockNavigate.mock.calls[0];
 
     expect(QueryString.parse(arg.search).owner).toBeUndefined();
+  });
+
+  it('should reset the page back to the first one when the search value changes while paginated', () => {
+    mockLocation.search = '?currentPage=2&pageSize=15';
+
+    const { result } = renderFilters();
+
+    act(() => {
+      result.current.handleSearchParam('hello', 'searchValue');
+    });
+
+    const [arg] = mockNavigate.mock.calls[0];
+
+    expect(QueryString.parse(arg.search)).toEqual({
+      currentPage: '1',
+      pageSize: '15',
+      searchValue: 'hello',
+    });
+  });
+
+  it('should reset the page back to the first one when the owner changes while paginated', () => {
+    mockLocation.search = '?currentPage=3&pageSize=15';
+    const owner = {
+      id: 'user-1',
+      type: 'user',
+      name: 'user1',
+    } as EntityReference;
+
+    const { result } = renderFilters();
+
+    act(() => {
+      result.current.handleOwnerSelect([owner]);
+    });
+
+    const [arg] = mockNavigate.mock.calls[0];
+    const parsed = QueryString.parse(arg.search);
+
+    expect(parsed.owner).toBe(JSON.stringify(owner));
+    expect(parsed.currentPage).toBe('1');
+  });
+
+  it('should keep the current page when the filter value does not change', () => {
+    mockLocation.search = '?currentPage=3&pageSize=15';
+
+    const { result } = renderFilters();
+
+    act(() => {
+      result.current.handleOwnerSelect([]);
+    });
+
+    const [arg] = mockNavigate.mock.calls[0];
+
+    expect(QueryString.parse(arg.search).currentPage).toBe('3');
   });
 
   it('should resolve the sub-tab path from the injected tab and navigate on handleSubTabChange', () => {

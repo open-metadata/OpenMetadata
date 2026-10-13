@@ -2,6 +2,8 @@ package org.openmetadata.service.migration.api;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
@@ -17,6 +19,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.utils.MigrationCodeFingerprint;
 import org.openmetadata.service.migration.utils.MigrationFile;
 
 class MigrationProcessImplTest {
@@ -75,6 +78,41 @@ class MigrationProcessImplTest {
     assertEquals(
         List.of("INSERT INTO sample VALUES ('value;with-semicolon')", "UPDATE sample SET id = 2"),
         statements);
+  }
+
+  @Test
+  void reportsNoDataMigrationIdentityWhenRunDataMigrationIsNotOverridden() throws IOException {
+    MigrationFile file = createMigrationDir("1.12.3", "", "");
+
+    assertNull(new MigrationProcessImpl(file).getDataMigrationIdentity());
+  }
+
+  @Test
+  void derivesAStableIdentityForAJavaDataMigration() throws IOException {
+    MigrationFile file = createMigrationDir("1.12.3", "", "");
+
+    String identity = new DataMigration(file).getDataMigrationIdentity();
+
+    assertNotNull(identity);
+    assertEquals(identity, new DataMigration(file).getDataMigrationIdentity());
+  }
+
+  @Test
+  void identityIsTheFingerprintOfTheMigrationCode() throws IOException {
+    MigrationFile file = createMigrationDir("1.12.3", "", "");
+
+    assertEquals(
+        MigrationCodeFingerprint.of(DataMigration.class),
+        new DataMigration(file).getDataMigrationIdentity());
+  }
+
+  static class DataMigration extends MigrationProcessImpl {
+    DataMigration(MigrationFile migrationFile) {
+      super(migrationFile);
+    }
+
+    @Override
+    public void runDataMigration() {}
   }
 
   private MigrationFile createMigrationDir(

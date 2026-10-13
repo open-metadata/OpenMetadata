@@ -32,6 +32,8 @@ import {
   TestCaseIncidentStatusParams,
 } from '../../rest/incidentManagerAPI';
 import { getEntityName } from '../../utils/EntityNameUtils';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interface';
 
@@ -147,17 +149,22 @@ export const useIncidentList = ({
     [paging, currentPage, handlePagingClick, pageSize, handlePageSizeChange]
   );
 
+  // Consumer via prop (`commonTestCasePermission?: OperationPermission`, raw contract kept —
+  // this hook doesn't own the fetch; incident permissions decouple from test-case perms in an
+  // open upstream PR #26521, so the actual fetch mechanism stays untouched here). Pure rename:
+  // hasViewAccess is `ViewBasic || ViewAll` — the exact same OR, just via the named flag.
+  const hasViewAccess = getDerivedPermissionFlags(
+    commonTestCasePermission ?? DEFAULT_ENTITY_PERMISSION
+  ).hasViewAccess;
+
   useEffect(() => {
-    if (
-      commonTestCasePermission?.ViewAll ||
-      commonTestCasePermission?.ViewBasic
-    ) {
+    if (hasViewAccess) {
       fetchTestCaseIncidents(filters);
     } else {
       setTestCaseListData((prev) => ({ ...prev, isLoading: false }));
     }
   }, [
-    commonTestCasePermission,
+    hasViewAccess,
     pageSize,
     filters,
     activeDomain,

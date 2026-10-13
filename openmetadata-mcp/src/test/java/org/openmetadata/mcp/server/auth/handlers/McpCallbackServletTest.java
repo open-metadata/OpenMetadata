@@ -2,7 +2,11 @@ package org.openmetadata.mcp.server.auth.handlers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -16,9 +20,11 @@ import java.io.StringWriter;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider;
 import org.openmetadata.mcp.server.auth.repository.McpPendingAuthRequestRepository;
+import org.openmetadata.service.jdbi3.oauth.OAuthRecords.McpPendingAuthRequest;
 import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
 
 class McpCallbackServletTest {
@@ -293,6 +299,186 @@ class McpCallbackServletTest {
         .sendError(HttpServletResponse.SC_BAD_REQUEST, McpCallbackServlet.ERR_MISSING_ID_TOKEN);
   }
 
+  // ── doGet: IdP error callback is relayed to the MCP client ────────────────
+
+  /** A pending MCP request fixture with an MCP client redirect_uri and original client state. */
+  private static McpPendingAuthRequest samplePendingRequest() {
+    return new McpPendingAuthRequest(
+        "auth-req-1",
+        "client-1",
+        "codeChallenge-123456789012345678901234567890123456789012",
+        "S256",
+        "https://mcp-client.example.com/callback",
+        "mcp-client-state-xyz",
+        List.of("openid", "profile"),
+        "pac4j-state-abc",
+        "pac4j-nonce",
+        "pac4j-verifier",
+        System.currentTimeMillis() + 600_000L);
+  }
+
+  /**
+   * Builds a servlet wired with the given provider + pending repo, whose resolveSsoHandler()
+   * returns a captured mock so we can assert handleCallback is/isn't invoked.
+   */
+  private static McpCallbackServlet makeServletWithCapturedHandler(
+      UserSSOOAuthProvider provider,
+      McpPendingAuthRequestRepository pendingRepo,
+      AuthenticationCodeFlowHandler[] holder) {
+    return new McpCallbackServlet(provider, pendingRepo) {
+      @Override
+      protected AuthenticationCodeFlowHandler resolveSsoHandler() {
+        AuthenticationCodeFlowHandler ssoHandler = mock(AuthenticationCodeFlowHandler.class);
+        holder[0] = ssoHandler;
+        return ssoHandler;
+      }
+    };
+  }
+
+  private static HttpServletRequest mockCallbackRequest(
+      String pac4jState, String error, String errorDescription) {
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getParameter("state")).thenReturn(pac4jState);
+    if (error != null) {
+      when(request.getParameter("error")).thenReturn(error);
+    }
+    if (errorDescription != null) {
+      when(request.getParameter("error_description")).thenReturn(errorDescription);
+    }
+    return request;
+  }
+
+  @Test
+  void doGet_idpErrorCallback_loginRequired_relaysErrorToMcpClient() throws Exception {
+    // Silent-auth error (prompt=none, no IdP session) must reach the MCP client as an OAuth
+    // error redirect rather than being swallowed into an opaque 500.
+    UserSSOOAuthProvider provider = mock(UserSSOOAuthProvider.class);
+    McpPendingAuthRequestRepository pendingRepo = mock(McpPendingAuthRequestRepository.class);
+    when(pendingRepo.findByPac4jState("pac4j-state-abc")).thenReturn(samplePendingRequest());
+    AuthenticationCodeFlowHandler[] holder = new AuthenticationCodeFlowHandler[1];
+    McpCallbackServlet servlet = makeServletWithCapturedHandler(provider, pendingRepo, holder);
+
+    HttpServletRequest request =
+        mockCallbackRequest("pac4j-state-abc", "login_required", "The user is not logged in.");
+    HttpServletResponse response = mock(HttpServletResponse.class);
+
+    servlet.doGet(request, response);
+
+    verify(provider)
+        .handleSSOErrorCallback(
+            any(), eq("auth-req-1"), eq("login_required"), eq("The user is not logged in."));
+    verify(holder[0], never()).handleCallback(any(), any());
+  }
+
+  @Test
+  void doGet_idpErrorCallback_accessDenied_relaysErrorToMcpClient() throws Exception {
+    // Non-silent error (user clicked "Deny" at IdP consent) must also be relayed.
+    UserSSOOAuthProvider provider = mock(UserSSOOAuthProvider.class);
+    McpPendingAuthRequestRepository pendingRepo = mock(McpPendingAuthRequestRepository.class);
+    when(pendingRepo.findByPac4jState("pac4j-state-abc")).thenReturn(samplePendingRequest());
+    AuthenticationCodeFlowHandler[] holder = new AuthenticationCodeFlowHandler[1];
+    McpCallbackServlet servlet = makeServletWithCapturedHandler(provider, pendingRepo, holder);
+
+    HttpServletRequest request =
+        mockCallbackRequest("pac4j-state-abc", "access_denied", "The user denied the request.");
+    HttpServletResponse response = mock(HttpServletResponse.class);
+
+    servlet.doGet(request, response);
+
+    verify(provider)
+        .handleSSOErrorCallback(
+            any(), eq("auth-req-1"), eq("access_denied"), eq("The user denied the request."));
+    verify(holder[0], never()).handleCallback(any(), any());
+  }
+
+  @Test
+  void doGet_idpErrorCallback_nullErrorDescription_passesNull() throws Exception {
+    UserSSOOAuthProvider provider = mock(UserSSOOAuthProvider.class);
+    McpPendingAuthRequestRepository pendingRepo = mock(McpPendingAuthRequestRepository.class);
+    when(pendingRepo.findByPac4jState("pac4j-state-abc")).thenReturn(samplePendingRequest());
+    AuthenticationCodeFlowHandler[] holder = new AuthenticationCodeFlowHandler[1];
+    McpCallbackServlet servlet = makeServletWithCapturedHandler(provider, pendingRepo, holder);
+
+    HttpServletRequest request = mockCallbackRequest("pac4j-state-abc", "server_error", null);
+    HttpServletResponse response = mock(HttpServletResponse.class);
+
+    servlet.doGet(request, response);
+
+    verify(provider).handleSSOErrorCallback(any(), eq("auth-req-1"), eq("server_error"), eq(null));
+    verify(holder[0], never()).handleCallback(any(), any());
+  }
+
+  @Test
+  void doGet_idpErrorCallback_emptyErrorParam_doesNotRelayError() throws Exception {
+    // An empty error param is not a valid OAuth error response; do not short-circuit the
+    // error relay (the malformed callback falls through to handleCallback). Critically, the
+    // provider error method must not be invoked with an empty error code.
+    UserSSOOAuthProvider provider = mock(UserSSOOAuthProvider.class);
+    McpPendingAuthRequestRepository pendingRepo = mock(McpPendingAuthRequestRepository.class);
+    when(pendingRepo.findByPac4jState("pac4j-state-abc")).thenReturn(samplePendingRequest());
+    AuthenticationCodeFlowHandler[] holder = new AuthenticationCodeFlowHandler[1];
+    McpCallbackServlet servlet = makeServletWithCapturedHandler(provider, pendingRepo, holder);
+
+    HttpServletRequest request = mockCallbackRequest("pac4j-state-abc", "", null);
+    HttpServletResponse response = mock(HttpServletResponse.class);
+
+    // Empty error => falls through; the downstream handleCallback path throws because no
+    // credentials are returned, landing in the 500 catch. Either way the error relay is skipped.
+    servlet.doGet(request, response);
+
+    verify(provider, never()).handleSSOErrorCallback(any(), any(), any(), any());
+  }
+
+  @Test
+  void doGet_idpErrorCallback_pendingRequestNotFound_returns400AndDoesNotRelay() throws Exception {
+    // Without a pending request we cannot recover the MCP client redirect_uri/state, so the
+    // error cannot be relayed; preserve the existing 400 (state not found) behavior and never
+    // invoke the provider error method.
+    UserSSOOAuthProvider provider = mock(UserSSOOAuthProvider.class);
+    McpPendingAuthRequestRepository pendingRepo = mock(McpPendingAuthRequestRepository.class);
+    when(pendingRepo.findByPac4jState("unknown-state")).thenReturn(null);
+    AuthenticationCodeFlowHandler[] holder = new AuthenticationCodeFlowHandler[1];
+    McpCallbackServlet servlet = makeServletWithCapturedHandler(provider, pendingRepo, holder);
+
+    HttpServletRequest request = mockCallbackRequest("unknown-state", "login_required", null);
+    HttpServletResponse response = mock(HttpServletResponse.class);
+
+    servlet.doGet(request, response);
+
+    verify(response)
+        .sendError(HttpServletResponse.SC_BAD_REQUEST, McpCallbackServlet.ERR_STATE_NOT_FOUND);
+    verify(provider, never()).handleSSOErrorCallback(any(), any(), any(), any());
+  }
+
+  @Test
+  void doGet_noErrorParam_doesNotInvokeErrorRelay() throws Exception {
+    // Regression guard: a success callback (no error param) must never trigger the error relay.
+    UserSSOOAuthProvider provider = mock(UserSSOOAuthProvider.class);
+    McpPendingAuthRequestRepository pendingRepo = mock(McpPendingAuthRequestRepository.class);
+    when(pendingRepo.findByPac4jState("pac4j-state-abc")).thenReturn(samplePendingRequest());
+    AuthenticationCodeFlowHandler[] holder = new AuthenticationCodeFlowHandler[1];
+    McpCallbackServlet servlet = makeServletWithCapturedHandler(provider, pendingRepo, holder);
+
+    HttpServletRequest request = mockCallbackRequest("pac4j-state-abc", null, null);
+    HttpServletResponse response = mock(HttpServletResponse.class);
+
+    servlet.doGet(request, response);
+
+    verify(provider, never()).handleSSOErrorCallback(any(), any(), any(), any());
+  }
+
+  // ── BufferedServletResponseWrapper.sendRedirect records 302 ──────────────
+
+  @Test
+  void bufferedResponseSendRedirect_records302Status() throws Exception {
+    HttpServletResponse delegate = mock(HttpServletResponse.class);
+    HttpServletResponse buffered = newBufferedResponse(delegate);
+
+    assertDoesNotThrow(() -> buffered.sendRedirect("https://om.test/signin"));
+
+    assertEquals(HttpServletResponse.SC_FOUND, getStatusCode(buffered));
+  }
+
   // ── helpers ──────────────────────────────────────────────────────────────
 
   private static McpCallbackServlet makeServlet() {
@@ -362,6 +548,12 @@ class McpCallbackServletTest {
         bufferedResponse.getClass().getDeclaredMethod("commitTo", HttpServletResponse.class);
     method.setAccessible(true);
     method.invoke(bufferedResponse, response);
+  }
+
+  private static int getStatusCode(HttpServletResponse bufferedResponse) throws Exception {
+    Method method = bufferedResponse.getClass().getDeclaredMethod("getStatusCode");
+    method.setAccessible(true);
+    return (int) method.invoke(bufferedResponse);
   }
 
   private static final class CapturingServletOutputStream extends ServletOutputStream {

@@ -13,13 +13,14 @@
 
 import {
   Badge,
-  Button as CoreButton,
+  Box,
+  Button,
   SelectItemType,
   SlideoutMenu,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Col, Form, FormInstance, Row } from 'antd';
+import { Form, FormInstance } from 'antd';
 import { AxiosError } from 'axios';
 import { ReactComponent as ColumnIcon } from '../../../../assets/svg/entity/column.svg';
 
@@ -74,6 +75,13 @@ interface AddCustomPropertyProps {
   open?: boolean;
   onClose?: () => void;
 }
+
+/**
+ * Column name the earlier table-type custom property editor used as its
+ * internal row key and stripped on save. It stays reserved so a user column
+ * never takes that name and loses its data to an older client.
+ */
+const RESERVED_TABLE_COLUMN_NAMES = ['__row_id__'];
 
 const AddCustomProperty = ({
   formRef,
@@ -463,6 +471,15 @@ const AddCustomProperty = ({
                     label: t('label.column-plural'),
                   });
                 }
+                if (
+                  value.some((c: string) =>
+                    RESERVED_TABLE_COLUMN_NAMES.includes(c)
+                  )
+                ) {
+                  throw t('message.reserved-column-name', {
+                    name: RESERVED_TABLE_COLUMN_NAMES.join(', '),
+                  });
+                }
               } else {
                 throw t('label.field-required', {
                   field: t('label.column-plural'),
@@ -600,25 +617,25 @@ const AddCustomProperty = ({
       {generateFormFields(conditionalTypeFields)}
       {generateFormFields([descriptionField])}
       {isUndefined(open) && (
-        <Row justify="end">
-          <Col>
+        <Box className="layout-row" justify="end" wrap="wrap">
+          <Box className="layout-column tw:block">
             <Button
+              color="link-color"
               data-testid="back-button"
-              type="link"
               onClick={handleCancel}>
               {t('label.back')}
             </Button>
-          </Col>
-          <Col>
+          </Box>
+          <Box className="layout-column tw:block">
             <Button
+              color="primary"
               data-testid="create-button"
-              htmlType="submit"
-              loading={isCreating || loading}
-              type="primary">
+              isLoading={isCreating || loading}
+              type="submit">
               {t('label.create')}
             </Button>
-          </Col>
-        </Row>
+          </Box>
+        </Box>
       )}
     </Form>
   );
@@ -687,21 +704,21 @@ const AddCustomProperty = ({
 
             <SlideoutMenu.Footer>
               <div className="tw:flex tw:justify-end tw:gap-4">
-                <CoreButton
+                <Button
                   color="tertiary"
                   data-testid="cancel-button"
                   isDisabled={isDrawerLoading}
                   onClick={close}>
                   {t('label.cancel')}
-                </CoreButton>
-                <CoreButton
+                </Button>
+                <Button
                   color="primary"
                   data-testid="create-button"
                   isDisabled={isDrawerLoading || isFormInvalid}
                   isLoading={isDrawerLoading}
                   onClick={() => form.submit()}>
                   {t('label.create')}
-                </CoreButton>
+                </Button>
               </div>
             </SlideoutMenu.Footer>
           </>

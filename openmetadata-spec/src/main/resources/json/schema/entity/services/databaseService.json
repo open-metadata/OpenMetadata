@@ -1,12 +1,12 @@
 {
   "$id": "https://open-metadata.org/schema/entity/services/databaseService.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Database Service",
   "description": "This schema defines the `Database Service` is a service such as MySQL, BigQuery, Redshift, Postgres, or Snowflake. Alternative terms such as Database Cluster, Database Server instance are also used for database service.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.services.DatabaseService",
   "javaInterfaces": [
-    "org.openmetadata.schema.EntityInterface",
+    "org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>",
     "org.openmetadata.schema.ServiceEntityInterface"
   ],
   "definitions": {
@@ -36,7 +36,9 @@
         "Druid",
         "Db2",
         "Clickhouse",
+        "Clickzetta",
         "Databricks",
+        "Databend",
         "AzureSQL",
         "DynamoDB",
         "SingleStore",
@@ -73,6 +75,7 @@
         "Informix",
         "Iomete",
         "QuestDB",
+        "Data360",
         "SapBw4Hana"
       ],
       "javaEnums": [
@@ -141,6 +144,9 @@
         },
         {
           "name": "Databricks"
+        },
+        {
+          "name": "Databend"
         },
         {
           "name": "AzureSQL"
@@ -251,6 +257,9 @@
           "name": "QuestDB"
         },
         {
+          "name": "Data360"
+        },
+        {
           "name": "SapBw4Hana"
         }
       ]
@@ -281,7 +290,13 @@
               "$ref": "./connections/database/clickhouseConnection.json"
             },
             {
+              "$ref": "./connections/database/clickzettaConnection.json"
+            },
+            {
               "$ref": "./connections/database/databricksConnection.json"
+            },
+            {
+              "$ref": "./connections/database/databendConnection.json"
             },
             {
               "$ref": "./connections/database/db2Connection.json"
@@ -434,6 +449,9 @@
               "$ref": "./connections/database/questdbConnection.json"
             },
             {
+              "$ref": "./connections/database/data360Connection.json"
+            },
+            {
               "$ref": "./connections/database/sapBw4HanaConnection.json"
             }
           ]
@@ -485,6 +503,10 @@
         "$ref": "../../type/tagLabel.json"
       },
       "default": []
+    },
+    "serviceAttributes": {
+      "description": "Deployment attributes of this service: environment, region and deployment. Set once here rather than tagged onto every asset this service ingests.",
+      "$ref": "./serviceAttributes.json"
     },
     "style": {
       "$ref": "../../type/basic.json#/definitions/style"

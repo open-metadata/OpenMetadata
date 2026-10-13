@@ -13,6 +13,7 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PROFILER_FILTER_RANGE } from '../../../constants/profiler.constant';
+import { IncidentTimeMetricsType } from '../../../enums/DataQuality.enum';
 import { TestCaseResolutionStatusTypes } from '../../../generated/tests/testCaseResolutionStatus';
 import {
   getCurrentMillis,
@@ -22,7 +23,6 @@ import {
 } from '../../../utils/date-time/DateTimeUtils';
 import IncidentTimeChartWidget from '../../DataQuality/ChartWidgets/IncidentTimeChartWidget/IncidentTimeChartWidget.component';
 import IncidentTypeAreaChartWidget from '../../DataQuality/ChartWidgets/IncidentTypeAreaChartWidget/IncidentTypeAreaChartWidget.component';
-import { IncidentTimeMetricsType } from '../../DataQuality/DataQuality.interface';
 
 const IncidentManagerPageWidgets = () => {
   const { t } = useTranslation();
@@ -37,7 +37,7 @@ const IncidentManagerPageWidgets = () => {
   }, []);
 
   return (
-    <div className="incident-page-widgets tw:rounded-[10px] tw:border tw:border-border-secondary tw:bg-primary tw:p-6">
+    <div className="incident-page-widgets tw:rounded-[10px] tw:border tw:border-border-secondary tw:bg-primary tw:p-6 tw:dark:bg-transparent">
       <div className="tw:grid tw:grid-cols-1 tw:gap-6 tw:md:grid-cols-2 tw:xl:grid-cols-4">
         <IncidentTypeAreaChartWidget
           chartFilter={DEFAULT_RANGE_DATA}

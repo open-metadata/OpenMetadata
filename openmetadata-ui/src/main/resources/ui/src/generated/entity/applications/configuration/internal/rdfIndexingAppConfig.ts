@@ -19,39 +19,41 @@ export interface RDFIndexingAppConfig {
      */
     batchSize?: number;
     /**
-     * Number of consumer threads to use for non-distributed RDF reindexing
+     * Build the rebuild into an idle dataset and switch to it only after the run succeeds, so
+     * queries keep seeing the previous graph instead of a partially-rebuilt one. Requires
+     * roughly twice the dataset size on disk. Only applies when Recreate RDF Store is enabled.
      */
-    consumerThreads?: number;
+    blueGreenRebuild?: boolean;
     /**
      * List of entities that you need to reindex. Leave empty to index all supported entities.
      */
     entities?: Entity[];
     /**
-     * Number of entities per partition for distributed RDF indexing. Smaller values create more
-     * partitions for better distribution across servers.
+     * Fraction of records that must index successfully before a blue/green rebuild is allowed
+     * to become the served dataset. Below this the previous dataset keeps serving and the run
+     * is marked failed.
      */
-    partitionSize?: number;
+    minSuccessRatio?: number;
     /**
-     * Number of producer threads to use for non-distributed RDF reindexing
+     * Number of threads loading entities to index. Writes always go through one writer, because
+     * Fuseki accepts one write transaction at a time.
      */
     producerThreads?: number;
-    /**
-     * Queue size to use internally for non-distributed RDF reindexing.
-     */
-    queueSize?: number;
     /**
      * Recreate the RDF store before indexing.
      */
     recreateIndex?: boolean;
     /**
+     * Maximum failed per-source writes during isolation of a failed RDF relationship batch.
+     * Once this limit is reached, remaining sources are recorded as failures. Successful writes
+     * do not consume the budget; zero disables per-source isolation. This is separate from HTTP
+     * request retries.
+     */
+    relationshipIsolationMaxFailures?: number;
+    /**
      * Application Type
      */
     type?: RDFIndexingType;
-    /**
-     * Enable distributed RDF indexing across multiple servers with partition coordination and
-     * recovery.
-     */
-    useDistributedIndexing?: boolean;
 }
 
 export enum Entity {

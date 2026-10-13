@@ -27,6 +27,14 @@ ON DUPLICATE KEY UPDATE
   updatedAt = VALUES(updatedAt),
   latestRecordId = VALUES(latestRecordId);
 
+-- Existing metrics predate the approval workflow and must remain usable. Explicit
+-- workflow statuses are preserved, and this update is idempotent.
+UPDATE metric_entity
+SET json = JSON_SET(json, '$.entityStatus', 'Approved')
+WHERE JSON_EXTRACT(json, '$.entityStatus') IS NULL
+   OR JSON_TYPE(JSON_EXTRACT(json, '$.entityStatus')) = 'NULL'
+   OR JSON_UNQUOTE(JSON_EXTRACT(json, '$.entityStatus')) = 'Unprocessed';
+
 -- Invalidate pre-2.1 projection success records. RDF status remains REBUILDING until a new
 -- RdfIndexApp run succeeds, and the applications page exposes that Search indexing must be run.
 DELETE FROM apps_extension_time_series
@@ -121,3 +129,516 @@ UPDATE entity_extension
 SET json = JSON_INSERT(json, '$.appConfiguration.activityCommentsRetentionPeriod', 0)
 WHERE extension LIKE 'app.version.%'
   AND json->>'$.name' = 'DataRetentionApplication';
+
+-- Data quality dimensions became entities in 2.1.0 (issue #30362) and a test case now holds its
+-- dimension as a `relatedTo` relationship. Pre-existing test cases have no such row and need one
+-- backfilled from their test definition.
+--
+-- That backfill deliberately is NOT here. It has to join against data_quality_dimension, and the
+-- system dimensions do not exist yet at this point on an upgrading deployment -- they are seeded
+-- from JSON resources, which a SQL script cannot do. Joining anyway matches an empty table and
+-- inserts nothing, silently and permanently, since the statement is then checksummed as applied
+-- and never runs again. It is done in DataQualityDimensionMigration.backfillTestCaseDimensions(),
+-- which seeds the dimensions first.
+
+-- Data Quality failure thresholds: declare the `threshold` / `thresholdUnit` parameters on the
+-- in-scope system test definitions, plus `dimensionFailurePolicy` on the ones that support
+-- dimensional analysis. Seeding only covers fresh installs (initializeEntity returns early when the
+-- entity exists) and TestCaseRepository rejects parameters that the definition does not declare, so
+-- existing installs need this backfill. Every statement is guarded on the parameter being absent,
+-- which keeps re-runs a no-op.
+
+-- Definitions that ship without any parameter need the array before we can append to it.
+UPDATE test_definition
+SET json = JSON_SET(json, '$.parameterDefinition', JSON_ARRAY())
+WHERE name IN (
+    'columnValueMaxToBeBetween', 'columnValueMeanToBeBetween', 'columnValueMedianToBeBetween',
+    'columnValueMinToBeBetween', 'columnValueStdDevToBeBetween',
+    'columnValueToBeAtExpectedLocation', 'columnValuesLengthsToBeBetween',
+    'columnValuesMissingCountToBeEqual', 'columnValuesSumToBeBetween', 'columnValuesToBeBetween',
+    'columnValuesToBeInSet', 'columnValuesToBeNotInSet', 'columnValuesToBeNotNull',
+    'columnValuesToBeUnique', 'columnValuesToMatchRegex', 'columnValuesToNotMatchRegex',
+    'tableColumnCountToBeBetween', 'tableColumnCountToEqual', 'tableRowCountToBeBetween',
+    'tableRowCountToEqual', 'tableRowInsertedCountToBeBetween', 'tableCustomSQLQuery'
+  )
+  AND NOT JSON_CONTAINS_PATH(json, 'one', '$.parameterDefinition');
+
+-- `tableRowInsertedCountToBeBetween` cannot run without `columnName` / `rangeType` /
+-- `rangeInterval`, yet deployments still carry a definition that only declares `min` and `max`
+-- (issue #33617): the 1.4.0 script rewrote the whole parameter array to just those two, and the
+-- 1.12.0 fix that added the three back was only ever written for Postgres. These run before the
+-- `threshold` / `thresholdUnit` statements below so the resulting parameter order matches the seeded
+-- definition. Guarded on each parameter being absent, which keeps re-runs -- and every deployment
+-- that already has them -- a no-op.
+UPDATE test_definition
+SET json = JSON_ARRAY_APPEND(
+    json,
+    '$.parameterDefinition',
+    JSON_OBJECT(
+        'name', 'columnName',
+        'displayName', 'Column Name',
+        'description', 'Name of the Column. It should be a timestamp, date or datetime field.',
+        'dataType', 'STRING',
+        'required', true
+    )
+)
+WHERE name = 'tableRowInsertedCountToBeBetween'
+  AND NOT JSON_CONTAINS(
+    COALESCE(JSON_EXTRACT(json, '$.parameterDefinition[*].name'), JSON_ARRAY()),
+    '"columnName"'
+  );
+
+UPDATE test_definition
+SET json = JSON_ARRAY_APPEND(
+    json,
+    '$.parameterDefinition',
+    JSON_OBJECT(
+        'name', 'rangeType',
+        'displayName', 'Range Type',
+        'description', 'One of ''HOUR'', ''DAY'', ''MONTH'', ''YEAR''',
+        'dataType', 'STRING',
+        'required', true
+    )
+)
+WHERE name = 'tableRowInsertedCountToBeBetween'
+  AND NOT JSON_CONTAINS(
+    COALESCE(JSON_EXTRACT(json, '$.parameterDefinition[*].name'), JSON_ARRAY()),
+    '"rangeType"'
+  );
+
+UPDATE test_definition
+SET json = JSON_ARRAY_APPEND(
+    json,
+    '$.parameterDefinition',
+    JSON_OBJECT(
+        'name', 'rangeInterval',
+        'displayName', 'Interval',
+        'description', 'Interval Range. E.g. if rangeInterval=1 and rangeType=DAY, we''ll check the numbers of rows inserted where columnName=-1 DAY',
+        'dataType', 'INT',
+        'required', true
+    )
+)
+WHERE name = 'tableRowInsertedCountToBeBetween'
+  AND NOT JSON_CONTAINS(
+    COALESCE(JSON_EXTRACT(json, '$.parameterDefinition[*].name'), JSON_ARRAY()),
+    '"rangeInterval"'
+  );
+
+UPDATE test_definition
+SET json = JSON_ARRAY_APPEND(
+    json,
+    '$.parameterDefinition',
+    JSON_OBJECT(
+        'name', 'threshold',
+        'displayName', 'Failure Threshold',
+        'description', 'Number of failures tolerated before the test is marked as failed. Read as an absolute count or as a percentage depending on `thresholdUnit` (defaults to 0).',
+        'dataType', 'NUMBER',
+        'required', false
+    )
+)
+WHERE name IN (
+    'columnValueMaxToBeBetween', 'columnValueMeanToBeBetween', 'columnValueMedianToBeBetween',
+    'columnValueMinToBeBetween', 'columnValueStdDevToBeBetween',
+    'columnValueToBeAtExpectedLocation', 'columnValuesLengthsToBeBetween',
+    'columnValuesMissingCountToBeEqual', 'columnValuesSumToBeBetween', 'columnValuesToBeBetween',
+    'columnValuesToBeInSet', 'columnValuesToBeNotInSet', 'columnValuesToBeNotNull',
+    'columnValuesToBeUnique', 'columnValuesToMatchRegex', 'columnValuesToNotMatchRegex',
+    'tableColumnCountToBeBetween', 'tableColumnCountToEqual', 'tableRowCountToBeBetween',
+    'tableRowCountToEqual', 'tableRowInsertedCountToBeBetween'
+  )
+  AND NOT JSON_CONTAINS(
+    COALESCE(JSON_EXTRACT(json, '$.parameterDefinition[*].name'), JSON_ARRAY()),
+    '"threshold"'
+  );
+
+UPDATE test_definition
+SET json = JSON_ARRAY_APPEND(
+    json,
+    '$.parameterDefinition',
+    JSON_OBJECT(
+        'name', 'thresholdUnit',
+        'displayName', 'Threshold Unit',
+        'description', 'How to read `threshold`: `ABSOLUTE` for a raw count of failures, `PERCENTAGE` for a share of the evaluated rows (defaults to ABSOLUTE).',
+        'dataType', 'STRING',
+        'required', false,
+        'optionValues', JSON_ARRAY('ABSOLUTE', 'PERCENTAGE')
+    )
+)
+WHERE name IN (
+    'columnValueMaxToBeBetween', 'columnValueMeanToBeBetween', 'columnValueMedianToBeBetween',
+    'columnValueMinToBeBetween', 'columnValueStdDevToBeBetween',
+    'columnValueToBeAtExpectedLocation', 'columnValuesLengthsToBeBetween',
+    'columnValuesMissingCountToBeEqual', 'columnValuesSumToBeBetween', 'columnValuesToBeBetween',
+    'columnValuesToBeInSet', 'columnValuesToBeNotInSet', 'columnValuesToBeNotNull',
+    'columnValuesToBeUnique', 'columnValuesToMatchRegex', 'columnValuesToNotMatchRegex',
+    'tableColumnCountToBeBetween', 'tableColumnCountToEqual', 'tableRowCountToBeBetween',
+    'tableRowCountToEqual', 'tableRowInsertedCountToBeBetween', 'tableCustomSQLQuery'
+  )
+  AND NOT JSON_CONTAINS(
+    COALESCE(JSON_EXTRACT(json, '$.parameterDefinition[*].name'), JSON_ARRAY()),
+    '"thresholdUnit"'
+  );
+
+UPDATE test_definition
+SET json = JSON_ARRAY_APPEND(
+    json,
+    '$.parameterDefinition',
+    JSON_OBJECT(
+        'name', 'dimensionFailurePolicy',
+        'displayName', 'Dimension Failure Policy',
+        'description', 'How dimensional results roll up into the overall test status: `OVERALL_ONLY` only looks at the overall result, `ANY_DIMENSION` fails the test as soon as one dimension fails (defaults to OVERALL_ONLY).',
+        'dataType', 'STRING',
+        'required', false,
+        'optionValues', JSON_ARRAY('OVERALL_ONLY', 'ANY_DIMENSION')
+    )
+)
+WHERE name IN (
+    'columnValueMaxToBeBetween', 'columnValueMeanToBeBetween', 'columnValueMedianToBeBetween',
+    'columnValueMinToBeBetween', 'columnValueStdDevToBeBetween',
+    'columnValueToBeAtExpectedLocation', 'columnValuesLengthsToBeBetween',
+    'columnValuesMissingCountToBeEqual', 'columnValuesSumToBeBetween', 'columnValuesToBeBetween',
+    'columnValuesToBeInSet', 'columnValuesToBeNotInSet', 'columnValuesToBeNotNull',
+    'columnValuesToBeUnique', 'columnValuesToMatchRegex', 'columnValuesToNotMatchRegex'
+  )
+  AND NOT JSON_CONTAINS(
+    COALESCE(JSON_EXTRACT(json, '$.parameterDefinition[*].name'), JSON_ARRAY()),
+    '"dimensionFailurePolicy"'
+  );
+
+-- `minRowsPerDimension` keeps small dimension groups out of the ANY_DIMENSION roll-up under a
+-- PERCENTAGE threshold. Only the row-countable definitions declare it: a percentage of a statistic
+-- is not distorted by group size. These are the definition names, which differ from the seed file
+-- names for columnValueLengthsToBeBetween. Guarded on the parameter being absent, like the above.
+UPDATE test_definition
+SET json = JSON_ARRAY_APPEND(
+    json,
+    '$.parameterDefinition',
+    JSON_OBJECT(
+        'name', 'minRowsPerDimension',
+        'displayName', 'Minimum Rows per Dimension',
+        'description', 'Under the `ANY_DIMENSION` policy and a `PERCENTAGE` threshold, a dimension with fewer rows than this is still evaluated and reported, but does not fail the test (defaults to 0: every dimension counts).',
+        'dataType', 'INT',
+        'required', false
+    )
+)
+WHERE name IN (
+    'columnValueLengthsToBeBetween', 'columnValuesToBeBetween', 'columnValuesToBeInSet',
+    'columnValuesToBeNotInSet', 'columnValuesToBeNotNull', 'columnValuesToBeUnique',
+    'columnValuesToMatchRegex', 'columnValuesToNotMatchRegex'
+  )
+  AND NOT JSON_CONTAINS(
+    COALESCE(JSON_EXTRACT(json, '$.parameterDefinition[*].name'), JSON_ARRAY()),
+    '"minRowsPerDimension"'
+  );
+
+-- NUMERIC is a distinct member of the column dataType enum and is what BigQuery, Postgres,
+-- Snowflake and DB2 numeric columns are ingested as, but the numeric system test definitions were
+-- only ever seeded with NUMBER/DECIMAL. The "Add test case" dropdown filters on the column's exact
+-- dataType, so mean/min/max/median/stddev/sum were unreachable on any NUMERIC column. Seeding only
+-- covers fresh installs (initializeEntity returns early when the entity exists), hence this
+-- backfill. The guard on NUMERIC being absent keeps re-runs a no-op, and it also skips a definition
+-- with no supportedDataTypes at all -- that already means "every data type" (issue #27718), so
+-- appending to it would narrow it to exactly one.
+UPDATE test_definition
+SET json = JSON_ARRAY_APPEND(json, '$.supportedDataTypes', 'NUMERIC')
+WHERE name IN (
+    'columnValueMaxToBeBetween', 'columnValueMeanToBeBetween', 'columnValueMedianToBeBetween',
+    'columnValueMinToBeBetween', 'columnValueStdDevToBeBetween',
+    'columnValuesToBeAtExpectedLocation', 'columnValuesSumToBeBetween', 'columnValuesToBeBetween',
+    'columnValuesToBeInSet', 'columnValuesToBeNotInSet'
+  )
+  AND NOT JSON_CONTAINS(json, JSON_QUOTE('NUMERIC'), '$.supportedDataTypes');
+
+-- Normalize user emails to lowercase: email is the primary identity lookup key and the
+-- application always compares lowercased values. The case-insensitive unique key on email
+-- guarantees no collisions can result from lowercasing.
+UPDATE user_entity
+SET json = JSON_SET(json, '$.email', LOWER(JSON_UNQUOTE(JSON_EXTRACT(json, '$.email'))))
+WHERE BINARY JSON_UNQUOTE(JSON_EXTRACT(json, '$.email')) <> LOWER(JSON_UNQUOTE(JSON_EXTRACT(json, '$.email')));
+-- External S3 sample-data storage support was removed (collate#5995), and with it the
+-- whole sampleDataStorageConfig property: once the external branch was gone the field
+-- could only ever hold an empty object, so it carried no information and was dropped
+-- from every connection and profiler schema. Connection schemas set
+-- "additionalProperties": false, so any stored row that still carries the key -- the
+-- legacy S3 shape or the empty OpenMetadata-hosted object alike -- stops deserializing
+-- on upgrade. Remove the node outright wherever it appears. The field was optional, so
+-- removing it is the same as never having set it, and OpenMetadata-hosted sample data
+-- (stored under the table.sampleData extension) is untouched. Idempotent: JSON_REMOVE
+-- of an absent path is a no-op, and re-running finds nothing left to remove.
+--
+-- Hive nests its metastore connection, so a database service can hold the key at two
+-- depths.
+UPDATE dbservice_entity
+SET json = JSON_REMOVE(json,
+      '$.connection.config.sampleDataStorageConfig',
+      '$.connection.config.metastoreConnection.sampleDataStorageConfig')
+WHERE JSON_CONTAINS_PATH(json, 'one',
+      '$.connection.config.sampleDataStorageConfig',
+      '$.connection.config.metastoreConnection.sampleDataStorageConfig');
+
+-- Superset reaches its database through a nested connection, and a dashboard service is
+-- not stored in dbservice_entity.
+UPDATE dashboard_service_entity
+SET json = JSON_REMOVE(json, '$.connection.config.connection.sampleDataStorageConfig')
+WHERE JSON_CONTAINS_PATH(json, 'one', '$.connection.config.connection.sampleDataStorageConfig');
+
+-- Airflow nests under connection; SSIS and Wherescape under databaseConnection.
+UPDATE pipeline_service_entity
+SET json = JSON_REMOVE(json,
+      '$.connection.config.connection.sampleDataStorageConfig',
+      '$.connection.config.databaseConnection.sampleDataStorageConfig')
+WHERE JSON_CONTAINS_PATH(json, 'one',
+      '$.connection.config.connection.sampleDataStorageConfig',
+      '$.connection.config.databaseConnection.sampleDataStorageConfig');
+
+-- Alation, same nesting, metadata service table.
+UPDATE metadata_service_entity
+SET json = JSON_REMOVE(json, '$.connection.config.connection.sampleDataStorageConfig')
+WHERE JSON_CONTAINS_PATH(json, 'one', '$.connection.config.connection.sampleDataStorageConfig');
+
+-- Test Connection stores the submitted form as a workflow request. The UI deletes the
+-- row once the check finishes, but rows survive an interrupted test, and a row that no
+-- longer deserializes is also a row the retention sweep cannot delete.
+UPDATE automations_workflow
+SET json = JSON_REMOVE(json,
+      '$.request.connection.config.sampleDataStorageConfig',
+      '$.request.connection.config.connection.sampleDataStorageConfig',
+      '$.request.connection.config.metastoreConnection.sampleDataStorageConfig',
+      '$.request.connection.config.databaseConnection.sampleDataStorageConfig')
+WHERE JSON_CONTAINS_PATH(json, 'one',
+      '$.request.connection.config.sampleDataStorageConfig',
+      '$.request.connection.config.connection.sampleDataStorageConfig',
+      '$.request.connection.config.metastoreConnection.sampleDataStorageConfig',
+      '$.request.connection.config.databaseConnection.sampleDataStorageConfig');
+
+UPDATE database_entity
+SET json = JSON_REMOVE(json, '$.databaseProfilerConfig.sampleDataStorageConfig')
+WHERE JSON_CONTAINS_PATH(json, 'one', '$.databaseProfilerConfig.sampleDataStorageConfig');
+
+UPDATE database_schema_entity
+SET json = JSON_REMOVE(json, '$.databaseSchemaProfilerConfig.sampleDataStorageConfig')
+WHERE JSON_CONTAINS_PATH(json, 'one', '$.databaseSchemaProfilerConfig.sampleDataStorageConfig');
+
+-- Version history keeps a second copy of the same JSON. `EntityRepository.getVersion`
+-- deserializes an entity_extension row straight into the generated POJO, so a snapshot
+-- still carrying the key fails GET .../versions/{version} -- 400 for a service
+-- connection (the secrets-manager decrypt rejects the unrecognized field) and 500 for a
+-- profiler config (raw Jackson). The live rows above are only half the copies.
+--
+-- One statement covers every versioned entity the key can reach: the four service
+-- types, database, databaseSchema, and the automations workflow (Test Connection
+-- requests are versioned too). A path a snapshot does not have is a no-op, so the paths
+-- apply uniformly; the extension prefixes stay explicit so the scan can use
+-- `extension_index` instead of a leading wildcard.
+UPDATE entity_extension
+SET json = JSON_REMOVE(json,
+      '$.connection.config.sampleDataStorageConfig',
+      '$.connection.config.metastoreConnection.sampleDataStorageConfig',
+      '$.connection.config.connection.sampleDataStorageConfig',
+      '$.connection.config.databaseConnection.sampleDataStorageConfig',
+      '$.request.connection.config.sampleDataStorageConfig',
+      '$.request.connection.config.connection.sampleDataStorageConfig',
+      '$.request.connection.config.metastoreConnection.sampleDataStorageConfig',
+      '$.request.connection.config.databaseConnection.sampleDataStorageConfig',
+      '$.databaseProfilerConfig.sampleDataStorageConfig',
+      '$.databaseSchemaProfilerConfig.sampleDataStorageConfig')
+WHERE (extension LIKE 'databaseService.version.%'
+    OR extension LIKE 'dashboardService.version.%'
+    OR extension LIKE 'pipelineService.version.%'
+    OR extension LIKE 'metadataService.version.%'
+    OR extension LIKE 'database.version.%'
+    OR extension LIKE 'databaseSchema.version.%'
+    OR extension LIKE 'workflow.version.%')
+  AND JSON_CONTAINS_PATH(json, 'one',
+      '$.connection.config.sampleDataStorageConfig',
+      '$.connection.config.metastoreConnection.sampleDataStorageConfig',
+      '$.connection.config.connection.sampleDataStorageConfig',
+      '$.connection.config.databaseConnection.sampleDataStorageConfig',
+      '$.request.connection.config.sampleDataStorageConfig',
+      '$.request.connection.config.connection.sampleDataStorageConfig',
+      '$.request.connection.config.metastoreConnection.sampleDataStorageConfig',
+      '$.request.connection.config.databaseConnection.sampleDataStorageConfig',
+      '$.databaseProfilerConfig.sampleDataStorageConfig',
+      '$.databaseSchemaProfilerConfig.sampleDataStorageConfig');
+
+-- Profiler settings are not stored on the entity row. `addDatabaseProfilerConfig` writes
+-- the config straight to `entity_extension` under a fixed extension name, and the stored
+-- JSON is the config itself -- so the key sits at the root, not under
+-- `databaseProfilerConfig`, and the extension never matches a `*.version.%` prefix. The
+-- statement above reaches neither. These rows are the only copies that survive.
+UPDATE entity_extension
+SET json = JSON_REMOVE(json, '$.sampleDataStorageConfig')
+WHERE extension IN ('database.databaseProfilerConfig',
+                    'databaseSchema.databaseSchemaProfilerConfig')
+  AND JSON_CONTAINS_PATH(json, 'one', '$.sampleDataStorageConfig');
+
+-- Microsoft Fabric service principals now choose a client secret or a certificate under
+-- authType. Services saved before keep their client secret as the client secret option.
+UPDATE dbservice_entity
+SET json = JSON_SET(
+    JSON_REMOVE(json, '$.connection.config.clientSecret'),
+    '$.connection.config.authType',
+    JSON_OBJECT('clientSecret', JSON_EXTRACT(json, '$.connection.config.clientSecret'))
+)
+WHERE serviceType = 'MicrosoftFabric'
+  AND JSON_CONTAINS_PATH(json, 'one', '$.connection.config.clientSecret');
+
+-- Version history goes through the same connection converter on read, so its snapshots move too.
+UPDATE entity_extension
+SET json = JSON_SET(
+    JSON_REMOVE(json, '$.connection.config.clientSecret'),
+    '$.connection.config.authType',
+    JSON_OBJECT('clientSecret', JSON_EXTRACT(json, '$.connection.config.clientSecret'))
+)
+WHERE extension LIKE 'databaseService.version.%'
+  AND json->>'$.serviceType' = 'MicrosoftFabric'
+  AND JSON_CONTAINS_PATH(json, 'one', '$.connection.config.clientSecret');
+
+-- Context memories move from their own Draft/Active/Archived `status` onto `entityStatus`, the
+-- lifecycle stage every entity type shares: Active becomes Approved, and a memory with no status
+-- was documented as Active, so it becomes Approved too. Version history is rewritten as well:
+-- `status` is no longer part of the ContextMemory schema, so rows still carrying it would fail to
+-- load. Idempotent: rows without `status` are untouched.
+UPDATE context_memory
+SET json = JSON_REMOVE(
+  JSON_SET(json, '$.entityStatus',
+    CASE JSON_UNQUOTE(JSON_EXTRACT(json, '$.status'))
+      WHEN 'Draft' THEN 'Draft'
+      WHEN 'Archived' THEN 'Archived'
+      ELSE 'Approved'
+    END),
+  '$.status')
+WHERE JSON_CONTAINS_PATH(json, 'one', '$.status');
+
+UPDATE context_memory
+SET json = JSON_SET(json, '$.entityStatus', 'Approved')
+WHERE JSON_EXTRACT(json, '$.entityStatus') IS NULL
+   OR JSON_TYPE(JSON_EXTRACT(json, '$.entityStatus')) = 'NULL';
+
+UPDATE entity_extension
+SET json = JSON_REMOVE(
+  JSON_SET(json, '$.entityStatus',
+    CASE JSON_UNQUOTE(JSON_EXTRACT(json, '$.status'))
+      WHEN 'Draft' THEN 'Draft'
+      WHEN 'Archived' THEN 'Archived'
+      ELSE 'Approved'
+    END),
+  '$.status')
+WHERE jsonSchema = 'contextMemory'
+  AND JSON_CONTAINS_PATH(json, 'one', '$.status');
+
+-- Landing-page widgets: re-point the six panels whose widget was replaced, and drop the five
+-- whose widget was retired.
+--
+-- The seed loader (EntityRepository.initializeEntity) only inserts rows it cannot find -- it
+-- returns early on an existing fullyQualifiedName and never updates or deletes. So the new seed
+-- files reach a fresh install and nothing else: on an upgrade the four added panels appear, the
+-- rewritten ones keep the name and description of the widget they replaced, and the retired ones
+-- linger. KnowledgePanel.ActivityFeed renders the Team Activity card now, so without this the
+-- picker advertises it as "Activity Feed" and describes a feed that is no longer there.
+--
+-- Values mirror json/data/document/docs/*.json exactly, so an upgraded install ends up byte-equal
+-- to a fresh one. gridSizes is set on its own path rather than by replacing `data` wholesale, so
+-- the statement means the same thing as its Postgres counterpart. Re-runnable: every statement is
+-- an absolute write or a delete that matches nothing on a second pass.
+UPDATE doc_store
+SET json = JSON_SET(
+    json,
+    '$.displayName', 'Team Activity',
+    '$.description', 'Recent activity across the assets and domains the user owns, showing who changed what and when.',
+    '$.data.gridSizes', CAST('["small","medium","large"]' AS JSON)
+)
+WHERE name = 'ActivityFeed' AND entityType = 'KnowledgePanel';
+
+UPDATE doc_store
+SET json = JSON_SET(
+    json,
+    '$.description', 'A filtered list of high-impact assets. Ships with a certified Tier-1 rule and can be pointed at any saved filter from the persona editor.',
+    '$.data.gridSizes', CAST('["small","medium","large"]' AS JSON)
+)
+WHERE name = 'CuratedAssets' AND entityType = 'KnowledgePanel';
+
+UPDATE doc_store
+SET json = JSON_SET(
+    json,
+    '$.description', 'Data products across the platform with their owning domain, for quicker access to high-value products.',
+    '$.data.gridSizes', CAST('["small","medium","large"]' AS JSON)
+)
+WHERE name = 'DataProducts' AND entityType = 'KnowledgePanel';
+
+UPDATE doc_store
+SET json = JSON_SET(
+    json,
+    '$.description', 'Domain-by-domain overview of owner, description coverage, and failing tests, so a gap is visible without opening each one.',
+    '$.data.gridSizes', CAST('["small","medium","large"]' AS JSON)
+)
+WHERE name = 'Domains' AND entityType = 'KnowledgePanel';
+
+UPDATE doc_store
+SET json = JSON_SET(
+    json,
+    '$.displayName', 'KPIs',
+    '$.description', 'Progress against each active KPI: target, current pace, and whether it is on track to land by its end date.',
+    '$.data.gridSizes', CAST('["small","medium","large"]' AS JSON)
+)
+WHERE name = 'KPI' AND entityType = 'KnowledgePanel';
+
+-- Collate seeded this same fullyQualifiedName for its own Data Quality widget, which the topic
+-- card replaced. An install that came up through that build keeps the old row -- the loader skips
+-- the OSS seed -- and with it the old description and a single "small" grid size.
+UPDATE doc_store
+SET json = JSON_SET(
+    json,
+    '$.displayName', 'Data Quality',
+    '$.description', 'Overview of data quality test results (passing, failing, and aborted) with a link through to the failing tests.',
+    '$.data.gridSizes', CAST('["small","medium","large"]' AS JSON)
+)
+WHERE name = 'DataQuality' AND entityType = 'KnowledgePanel';
+
+-- The Context Center card moved into OSS from Collate, which seeded this fullyQualifiedName as
+-- "Knowledge Center" with a description of a widget that no longer exists. OSS installs get the
+-- row from the seed file; this brings an upgraded Collate row in line with it.
+UPDATE doc_store
+SET json = JSON_SET(
+    json,
+    '$.displayName', 'Context Center',
+    '$.description', 'The most recently updated Context Center pages, articles and quick links, with how many changed this week.',
+    '$.data.gridSizes', CAST('["small","medium","large"]' AS JSON)
+)
+WHERE name = 'KnowledgeCenter' AND entityType = 'KnowledgePanel';
+
+-- Retired: their seed files are gone and no component resolves their key, so the renderer would
+-- answer with a render-nothing component and leave an empty cell. The UI already filters them out
+-- of both the grid and the picker; this stops the rows accumulating.
+DELETE FROM doc_store
+WHERE entityType = 'KnowledgePanel'
+  AND name IN ('DataAssets', 'Following', 'MyData', 'MyTask', 'TotalAssets');
+
+-- transitive-lineage-closure stores every ancestor/descendant pair, which grows quadratically with
+-- lineage depth, so it now ships disabled. Turn off rows that pre-release builds seeded as enabled.
+UPDATE rdf_inference_rule
+SET json = JSON_SET(json, '$.enabled', CAST('false' AS JSON)),
+    dirty = TRUE,
+    dirtyVersion = dirtyVersion + 1
+WHERE name = 'transitive-lineage-closure'
+  AND systemRule = TRUE
+  AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.enabled')) = 'true';
+
+-- Table Diff gained the optional parallelQueries parameter. Seeding only covers fresh installs
+-- (initializeEntity returns early when the entity exists), so without this backfill an upgraded
+-- deployment would never offer it in the test case form. A no-op once the parameter is present.
+UPDATE test_definition
+SET json = JSON_ARRAY_APPEND(
+    json,
+    '$.parameterDefinition',
+    JSON_OBJECT(
+        'name', 'parallelQueries',
+        'displayName', 'Parallel queries per database',
+        'description', 'How many queries the comparison may run at once against each database (defaults to 1). Both databases are always queried at the same time. A higher value compares large tables faster, but adds load to both databases and holds more rows in memory.',
+        'dataType', 'NUMBER',
+        'required', false
+    )
+)
+WHERE name = 'tableDiff'
+  AND JSON_TYPE(JSON_EXTRACT(json, '$.parameterDefinition')) = 'ARRAY'
+  AND NOT JSON_CONTAINS(json, JSON_OBJECT('name', 'parallelQueries'), '$.parameterDefinition');

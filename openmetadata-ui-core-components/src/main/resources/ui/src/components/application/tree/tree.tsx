@@ -12,7 +12,7 @@
  */
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
-import { ChevronRight, RefreshCw01 } from '@untitledui/icons';
+import { ChevronRight, RefreshCw01 } from '../../../icons';
 import type {
   ComponentPropsWithRef,
   ComponentType,
@@ -148,8 +148,8 @@ const TreeItemComponent = <T extends object>({
           state.isDisabled && 'tw:opacity-50 tw:cursor-not-allowed',
           state.isFocusVisible &&
             'tw:outline-2 tw:-outline-offset-2 tw:outline-brand-300',
-          'data-[dragging]:tw:opacity-50 data-[dragging]:tw:outline-2 data-[dragging]:tw:-outline-offset-2 data-[dragging]:tw:outline-brand-300',
-          'data-[drop-target]:tw:bg-brand-primary_alt data-[drop-target]:tw:outline-2 data-[drop-target]:tw:-outline-offset-2 data-[drop-target]:tw:outline-brand-300',
+          'tw:data-[dragging]:opacity-50 tw:data-[dragging]:outline-2 tw:data-[dragging]:-outline-offset-2 tw:data-[dragging]:outline-brand-300',
+          'tw:data-[drop-target]:bg-brand-primary tw:data-[drop-target]:outline-2 tw:data-[drop-target]:-outline-offset-2 tw:data-[drop-target]:outline-brand-300',
           typeof className === 'function' ? className(state) : className
         )
       }>
@@ -184,6 +184,7 @@ const TreeExpandButton = ({ className, ...props }: TreeExpandButtonProps) => {
           className
         )
       }
+      data-testid="tree-expand-btn"
       slot="chevron">
       <ChevronRight
         aria-hidden="true"
@@ -207,7 +208,7 @@ export interface TreeItemContentProps {
   className?: string;
   /**
    * Optional icon component rendered between the chevron and the label.
-   * Accepts any `@untitledui/icons`-compatible component.
+   * Accepts any icon component from `@openmetadata/ui-core-components/icons`.
    */
   icon?: ComponentType<HTMLAttributes<HTMLOrSVGElement>>;
   /** Additional CSS class name applied to the icon. */
@@ -231,6 +232,17 @@ export interface TreeItemContentProps {
    * Defaults to `false`.
    */
   showGuideLines?: boolean;
+  /**
+   * Pixels of indentation added per tree level. Defaults to `22`.
+   * Increase to align nested expand icons with parent checkboxes.
+   */
+  indentPerLevel?: number;
+  /**
+   * Caps the visual indent at this tree level. Items deeper than
+   * `maxIndentLevel` render at the same indentation as that level.
+   * Useful for flat glossary views where all terms share one indent.
+   */
+  maxIndentLevel?: number;
 }
 
 const TreeItemContentComponent = ({
@@ -241,6 +253,8 @@ const TreeItemContentComponent = ({
   showExpandIcon = true,
   showGuideLines = false,
   hasChildItems: hasChildItemsProp,
+  indentPerLevel = 22,
+  maxIndentLevel,
 }: TreeItemContentProps) => {
   return (
     <AriaTreeItemContent>
@@ -254,15 +268,21 @@ const TreeItemContentComponent = ({
               'tw:relative tw:flex tw:items-center tw:gap-3 tw:py-1.5 tw:pr-1.5',
               'tw:rounded-md tw:text-sm tw:font-medium tw:text-secondary',
               'tw:hover:bg-primary_hover',
-              'tw:group-selected/tree-item:bg-brand-primary_alt tw:group-selected/tree-item:text-brand-secondary',
+              'tw:group-selected/tree-item:bg-brand-primary tw:group-selected/tree-item:text-brand-secondary',
               className
             )}
-            style={{ marginLeft: `${(level - 1) * 16 + 2}px` }}>
+            style={{
+              marginLeft: `${
+                (Math.min(level, maxIndentLevel ?? level) - 1) *
+                  indentPerLevel +
+                2
+              }px`,
+            }}>
             {showGuideLines && level >= 2 && (
               <span
                 aria-hidden="true"
-                className="tw:absolute tw:top-0 tw:bottom-0 tw:w-px tw:bg-gray-blue-100 tw:pointer-events-none"
-                style={{ left: '-10px' }}
+                className="tw:absolute tw:top-0 tw:bottom-0 tw:w-px tw:bg-gray-blue-100 tw:dark:bg-gray-blue-800 tw:pointer-events-none"
+                style={{ left: `${-Math.round(indentPerLevel / 2)}px` }}
               />
             )}
             {showExpandIcon && (

@@ -17,6 +17,7 @@ import { ReactComponent as ArchiveActiveIcon } from '../../../assets/svg/archive
 import { ReactComponent as ArchiveIcon } from '../../../assets/svg/archive-default.svg';
 import { ReactComponent as ArticleActiveIcon } from '../../../assets/svg/article-active.svg';
 import { ReactComponent as ArticleIcon } from '../../../assets/svg/article-default.svg';
+import { ReactComponent as PersonaIcon } from '../../../assets/svg/common/persona.svg';
 import { ReactComponent as ContextCenterActiveIcon } from '../../../assets/svg/context-center-active.svg';
 import { ReactComponent as ContextCenterIcon } from '../../../assets/svg/context-center-default.svg';
 import { ReactComponent as DashboardActiveIcon } from '../../../assets/svg/dashboard-active.svg';
@@ -90,6 +91,24 @@ const ContextCenterArchivePage = withSuspenseFallback(
   )
 );
 
+const ContextCenterAIContextPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../../pages/ContextCenterPage/ContextCenterAIContextPage/ContextCenterAIContextPage'
+      )
+  )
+);
+
+const ContextCenterAIContextDetailPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../../pages/ContextCenterPage/ContextCenterAIContextPage/ContextCenterAIContextDetailPage'
+      )
+  )
+);
+
 export const contextCenterModule: AppModule = {
   id: 'context-center',
   navOrder: 80,
@@ -109,6 +128,24 @@ export const contextCenterModule: AppModule = {
       element: (
         <ContextCenterLayout>
           <ContextCenterDashboardPage />
+        </ContextCenterLayout>
+      ),
+      position: RoutePosition.APP,
+    },
+    {
+      path: ROUTES.CONTEXT_CENTER_AI_CONTEXT,
+      element: (
+        <ContextCenterLayout>
+          <ContextCenterAIContextPage />
+        </ContextCenterLayout>
+      ),
+      position: RoutePosition.APP,
+    },
+    {
+      path: ROUTES.CONTEXT_CENTER_AI_CONTEXT_DETAIL,
+      element: (
+        <ContextCenterLayout>
+          <ContextCenterAIContextDetailPage />
         </ContextCenterLayout>
       ),
       position: RoutePosition.APP,
@@ -208,6 +245,13 @@ export const contextCenterModule: AppModule = {
             activeIcon: DashboardActiveIcon,
             labelKey: 'label.overview',
             path: ROUTES.CONTEXT_CENTER_OVERVIEW,
+          },
+          {
+            key: 'ai-context',
+            icon: PersonaIcon,
+            activeIcon: PersonaIcon,
+            labelKey: 'label.ai-context',
+            path: ROUTES.CONTEXT_CENTER_AI_CONTEXT,
           },
           {
             key: 'articles',

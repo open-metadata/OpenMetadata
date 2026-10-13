@@ -37,15 +37,27 @@ jest.mock('../DataProductsSelectList/DataProductsSelectList', () => ({
     .fn()
     .mockImplementation(
       ({
+        children,
         fetchOptions,
+        isOpen,
+        onOpenChange,
       }: {
+        children?: React.ReactNode;
         fetchOptions?: (searchText: string, page?: number) => void;
+        isOpen?: boolean;
+        onOpenChange?: (open: boolean) => void;
       }) => (
-        <button
-          data-testid="dps-fetch"
-          onClick={() => fetchOptions?.('term', 2)}>
-          Fetch
-        </button>
+        <>
+          {/* Like FilterSelect, the trigger toggles the picker. */}
+          <span onClickCapture={() => onOpenChange?.(!isOpen)}>{children}</span>
+          {isOpen && (
+            <button
+              data-testid="dps-fetch"
+              onClick={() => fetchOptions?.('term', 2)}>
+              Fetch
+            </button>
+          )}
+        </>
       )
     ),
 }));
@@ -79,11 +91,6 @@ jest.mock('../../common/WidgetCard/WidgetCard', () => ({
   )),
 }));
 
-jest.mock('../../Tag/TagsV1/TagsV1.component', () => ({
-  __esModule: true,
-  default: jest.fn().mockImplementation(() => <div>Tag</div>),
-}));
-
 const domains: EntityReference[] = [
   { id: 'd-1', fullyQualifiedName: 'domainA', type: 'domain' },
 ];
@@ -101,6 +108,19 @@ describe('DataProductsContainer', () => {
     jest.clearAllMocks();
   });
 
+  it('closes the picker when its button is pressed again, saving nothing', () => {
+    render(<DataProductsContainer {...defaultProps} />);
+
+    fireEvent.click(screen.getByTestId('add-data-product'));
+
+    expect(screen.getByTestId('dps-fetch')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('add-data-product'));
+
+    expect(screen.queryByTestId('dps-fetch')).not.toBeInTheDocument();
+    expect(defaultProps.onSave).not.toHaveBeenCalled();
+  });
+
   it('scopes the fetch to active domains by default (rule enabled)', async () => {
     const { fetchDataProductsElasticSearch } = jest.requireMock(
       '../../../rest/dataProductAPI'
@@ -115,7 +135,8 @@ describe('DataProductsContainer', () => {
       expect(fetchDataProductsElasticSearch).toHaveBeenCalledWith(
         'term',
         ['domainA'],
-        2
+        2,
+        50
       );
     });
   });
@@ -139,7 +160,8 @@ describe('DataProductsContainer', () => {
       expect(fetchDataProductsElasticSearch).toHaveBeenCalledWith(
         'term',
         [],
-        2
+        2,
+        50
       );
     });
   });

@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "MatillionConnection",
   "description": "Matillion Connection",
   "type": "object",
@@ -29,7 +28,6 @@
       "description": "Matillion Auth Configuration",
       "oneOf": [
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "Matillion ETL Auth Config",
           "description": "Matillion ETL Auth Config.",
           "javaType": "org.openmetadata.schema.services.connections.pipeline.matillion.MatillionETLAuth",
@@ -66,7 +64,6 @@
               "mask": true,
               "oneOf": [
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "Validate SSL Client Config",
                   "description": "OpenMetadata Client configured to validate SSL certificates.",
                   "type": "object",
@@ -81,9 +78,7 @@
                       "accept": [
                         ".pem",
                         ".crt",
-                        ".cer",
-                        ".der",
-                        ".p12"
+                        ".cer"
                       ],
                       "uiFieldType": "fileOrInput"
                     },
@@ -95,9 +90,7 @@
                       "accept": [
                         ".pem",
                         ".crt",
-                        ".cer",
-                        ".der",
-                        ".p12"
+                        ".cer"
                       ],
                       "uiFieldType": "fileOrInput"
                     },
@@ -109,9 +102,7 @@
                       "accept": [
                         ".pem",
                         ".crt",
-                        ".cer",
-                        ".der",
-                        ".p12"
+                        ".cer"
                       ],
                       "uiFieldType": "fileOrInput"
                     }
@@ -128,7 +119,6 @@
           "additionalProperties": false
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "Matillion DPC Auth Config",
           "description": "Matillion Data Productivity Cloud Auth Config.",
           "javaType": "org.openmetadata.schema.services.connections.pipeline.matillion.MatillionDPCAuth",

@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
-import { Tooltip, Typography } from 'antd';
+import { Tooltip, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FailIcon } from '../../../assets/svg/ic-fail.svg';
@@ -32,13 +31,14 @@ const ContractSemantics: React.FC<{
 }> = ({ semantics, latestContractResults, contractStatus }) => {
   const { t } = useTranslation();
 
-  const getSemanticIconPerLastExecution = (semanticName: string) => {
-    if (!latestContractResults) {
+  const getSemanticIconPerLastExecution = (semantic: SemanticsRule) => {
+    // A disabled rule is skipped by validation, so the last run did not pass it
+    if (!latestContractResults || !semantic.enabled) {
       return DefaultIcon;
     }
     const isRuleFailed =
       latestContractResults?.semanticsValidation?.failedRules?.find(
-        (rule) => rule.ruleName === semanticName
+        (rule) => rule.ruleName === semantic.name
       );
 
     if (isRuleFailed) {
@@ -54,35 +54,39 @@ const ContractSemantics: React.FC<{
         {semantics.map((item) => {
           const inheritedIcon = item.inherited ? (
             <Tooltip
+              arrow
+              excludeTriggerFromTabOrder
               title={t('label.inherited-entity', {
                 entity: t('label.semantic-plural'),
-              })}>
+              })}
+              triggerClassName="tw:inline-flex">
               <InheritIcon className="inherit-icon cursor-pointer" width={14} />
             </Tooltip>
           ) : null;
+          const RuleIcon = getSemanticIconPerLastExecution(item);
 
           return (
             <div className="rule-item" key={item.rule}>
-              <Icon
+              <RuleIcon
                 className={classNames('rule-icon', {
-                  'rule-icon-default': !latestContractResults,
+                  'rule-icon-default': !latestContractResults || !item.enabled,
                 })}
-                component={getSemanticIconPerLastExecution(item.name)}
+                fill="currentColor"
+                height="1em"
+                width="1em"
               />
               <div className="rule-item-content">
                 <div className="d-flex items-center gap-1">
-                  <Typography.Text className="rule-name">
-                    {item.name}
-                  </Typography.Text>
+                  <Typography className="rule-name">{item.name}</Typography>
                   {inheritedIcon}
                 </div>
-                <Typography.Text className="rule-description">
+                <Typography className="rule-description">
                   <RichTextEditorPreviewerNew
                     enableSeeMoreVariant
                     markdown={item.description}
                     maxLineLength="3"
                   />
-                </Typography.Text>
+                </Typography>
               </div>
             </div>
           );
@@ -90,9 +94,12 @@ const ContractSemantics: React.FC<{
       </div>
       {contractStatus && (
         <div className="contract-status-container">
-          <Typography.Text>{`${t('label.entity-status', {
-            entity: t('label.semantic-plural'),
-          })} :`}</Typography.Text>
+          <Typography className="contract-status-label">{`${t(
+            'label.entity-status',
+            {
+              entity: t('label.semantic-plural'),
+            }
+          )} :`}</Typography>
           <StatusBadgeV2
             dataTestId="contract-status-card-item-semantics-status"
             label={contractStatus}

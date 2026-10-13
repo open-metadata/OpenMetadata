@@ -11,6 +11,20 @@
  *  limitations under the License.
  */
 
+import { normalizeHexColor } from '@/colors/colorValidation';
+import {
+  ENTITY_PALETTE_HEX,
+  getEntityPalettePresentationColor,
+} from '@/colors/entityPalette';
+import { Popover } from '@/components/application/popover/popover';
+import { Tabs } from '@/components/application/tabs/tabs';
+import { Box } from '@/components/base/box/box';
+import { Button } from '@/components/base/buttons/button';
+import { Input } from '@/components/base/input/input';
+import { getTagImageSrc } from '@/components/foundations/icon/icon.utils';
+import { Typography } from '@/components/foundations/typography';
+import { cx } from '@/utils/cx';
+import { isReactComponent } from '@/utils/is-react-component';
 import type { FC, KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
 import {
   createElement,
@@ -20,15 +34,6 @@ import {
   useState,
 } from 'react';
 import type { Key } from 'react-aria-components';
-import { normalizeHexColor } from '@/colors/colorValidation';
-import { ENTITY_PALETTE_HEX } from '@/colors/entityPalette';
-import { Tabs } from '@/components/application/tabs/tabs';
-import { Box } from '@/components/base/box/box';
-import { Button } from '@/components/base/buttons/button';
-import { Input } from '@/components/base/input/input';
-import { Typography } from '@/components/foundations/typography';
-import { cx } from '@/utils/cx';
-import { isReactComponent } from '@/utils/is-react-component';
 import type {
   FormSelectItem,
   IconPickerFieldLabels,
@@ -105,12 +110,15 @@ export const IconPickerField = ({
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'icons' | 'url'>('icons');
   const selectedItem = items.find((item) => item.id === value);
-  const backgroundColor =
+  const normalizedBackgroundColor =
     (backgroundColorProp ? normalizeHexColor(backgroundColorProp) : null) ??
-    ENTITY_PALETTE_HEX[6];
+    // Index 0 (blue) is the established default when no color is picked yet
+    // (glossary terms, tags, domains pass an undefined color until selection).
+    ENTITY_PALETTE_HEX[0];
+  const backgroundColor = getEntityPalettePresentationColor(
+    normalizedBackgroundColor
+  );
   const hasCustomImage = allowUrl && value !== '' && !selectedItem;
-  const onBlurRef = useRef(onBlur);
-  onBlurRef.current = onBlur;
 
   useEffect(() => {
     if (!isOpen) {
@@ -118,36 +126,12 @@ export const IconPickerField = ({
     }
   }, [allowUrl, hasCustomImage, isOpen]);
 
-  useEffect(() => {
-    if (!isOpen) {
-      return;
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (!open) {
+      onBlur?.();
     }
-
-    const handlePointerDown = (event: PointerEvent) => {
-      if (
-        event.target instanceof Node &&
-        !wrapperRef.current?.contains(event.target)
-      ) {
-        setIsOpen(false);
-        onBlurRef.current?.();
-      }
-    };
-
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setIsOpen(false);
-        onBlurRef.current?.();
-      }
-    };
-
-    document.addEventListener('pointerdown', handlePointerDown);
-    document.addEventListener('keydown', handleEscape);
-
-    return () => {
-      document.removeEventListener('pointerdown', handlePointerDown);
-      document.removeEventListener('keydown', handleEscape);
-    };
-  }, [isOpen]);
+  };
 
   const handleIconSelection = (item: FormSelectItem) => {
     onBlur?.();
@@ -166,7 +150,7 @@ export const IconPickerField = ({
         <img
           alt=""
           className="tw:h-7 tw:w-7 tw:rounded-sm tw:object-contain"
-          src={value}
+          src={getTagImageSrc(value)}
         />
       );
     }
@@ -264,7 +248,7 @@ export const IconPickerField = ({
   );
 
   return (
-    <div className="tw:relative tw:w-fit" ref={wrapperRef}>
+    <div className="tw:w-fit" ref={wrapperRef}>
       <Button
         aria-label={
           ariaLabel ?? placeholder ?? labels?.emptyState ?? 'Select icon'
@@ -297,30 +281,35 @@ export const IconPickerField = ({
         }}
       />
 
-      {isOpen && (
-        <div className="tw:absolute tw:top-[calc(100%+8px)] tw:left-0 tw:z-50 tw:w-[22rem] tw:max-w-[calc(100vw-2rem)] tw:rounded-xl tw:bg-primary tw:shadow-lg tw:outline-1 tw:outline-secondary_alt">
-          {allowUrl ? (
-            <Tabs
-              selectedKey={activeTab}
-              onSelectionChange={(key) =>
-                setActiveTab(key === 'url' ? 'url' : 'icons')
-              }>
-              <Tabs.List
-                fullWidth
-                className="tw:border-b tw:border-secondary_alt tw:p-1"
-                size="sm"
-                type="button-minimal">
-                <Tabs.Item id="icons" label={labels?.iconsTab ?? 'Icons'} />
-                <Tabs.Item id="url" label={labels?.urlTab ?? 'URL'} />
-              </Tabs.List>
-              <Tabs.Panel id="icons">{iconGrid}</Tabs.Panel>
-              <Tabs.Panel id="url">{urlPanel}</Tabs.Panel>
-            </Tabs>
-          ) : (
-            iconGrid
-          )}
-        </div>
-      )}
+      {/* Portaled so a scrolling container (e.g. a modal body) can't clip it. */}
+      <Popover
+        className="tw:w-88 tw:max-w-[calc(100vw-2rem)]"
+        isOpen={isOpen}
+        offset={8}
+        placement="bottom start"
+        triggerRef={wrapperRef}
+        onOpenChange={handleOpenChange}>
+        {allowUrl ? (
+          <Tabs
+            selectedKey={activeTab}
+            onSelectionChange={(key) =>
+              setActiveTab(key === 'url' ? 'url' : 'icons')
+            }>
+            <Tabs.List
+              fullWidth
+              className="tw:border-b tw:border-secondary_alt tw:p-1"
+              size="sm"
+              type="button-minimal">
+              <Tabs.Item id="icons" label={labels?.iconsTab ?? 'Icons'} />
+              <Tabs.Item id="url" label={labels?.urlTab ?? 'URL'} />
+            </Tabs.List>
+            <Tabs.Panel id="icons">{iconGrid}</Tabs.Panel>
+            <Tabs.Panel id="url">{urlPanel}</Tabs.Panel>
+          </Tabs>
+        ) : (
+          iconGrid
+        )}
+      </Popover>
     </div>
   );
 };

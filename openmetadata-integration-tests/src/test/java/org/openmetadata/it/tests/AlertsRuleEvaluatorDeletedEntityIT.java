@@ -72,6 +72,9 @@ import org.springframework.expression.spel.support.SimpleEvaluationContext;
  * after the entity is gone — the re-read then threw {@code EntityNotFoundException} and aborted the
  * whole subscription instead of simply not matching. The re-read also used {@code NON_DELETED},
  * which made every soft-delete event throw as well.
+ *
+ * <p>Also covers open-metadata/OpenMetadata#31331, the same batch loss reached through a different
+ * exception: an entity type whose schema does not declare the filtered field at all.
  */
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
@@ -159,6 +162,74 @@ public class AlertsRuleEvaluatorDeletedEntityIT {
     assertFalse(
         delivered.containsKey(deletedEvent),
         "the hard-deleted entity no longer resolves a domain, so its event must not match");
+  }
+
+  /**
+   * #31331: a batch is filtered as a unit and its offset is committed either way, so an event whose
+   * entity type cannot supply the filtered field must be dropped on its own. {@code domain.json}
+   * declares no {@code domains} property, so re-reading it raised {@code IllegalArgumentException}
+   * and took every other event in the batch down with it.
+   */
+  @Test
+  void getFilteredEvents_entityTypeWithoutDomains_stillDeliversTheMatchingEvent(TestNamespace ns) {
+    Domain domain = createDomain(ns);
+    Table table = createTable(ns, createDomainAssignment(domain), null);
+
+    ChangeEvent tableEvent =
+        updateEvent(Entity.TABLE, payloadWithoutRelationships(table)).withId(UUID.randomUUID());
+    ChangeEvent domainEvent = updateEvent(Entity.DOMAIN, domain).withId(UUID.randomUUID());
+
+    Map<ChangeEvent, Set<UUID>> batch = new LinkedHashMap<>();
+    batch.put(domainEvent, Set.of(UUID.randomUUID()));
+    batch.put(tableEvent, Set.of(UUID.randomUUID()));
+
+    Map<ChangeEvent, Set<UUID>> delivered =
+        AlertUtil.getFilteredEvents(
+            subscriptionOnAllResourcesFilteringOnDomain(domain.getFullyQualifiedName()),
+            batch,
+            null);
+
+    assertTrue(
+        delivered.containsKey(tableEvent),
+        "the matching event must survive a batch holding an entity type without domains");
+    assertFalse(
+        delivered.containsKey(domainEvent),
+        "a domain declares no domains of its own, so its event must not match");
+  }
+
+  /**
+   * The same evaluation backs {@code /diagnosticInfo}, which walks unprocessed events in a parallel
+   * stream with no isolation and answered 500 while such an event sat unprocessed.
+   */
+  @Test
+  void isChangeEventAllowed_entityTypeWithoutDomains_returnsFalseInsteadOfThrowing(
+      TestNamespace ns) {
+    Domain domain = createDomain(ns);
+    ChangeEvent domainEvent = updateEvent(Entity.DOMAIN, domain).withId(UUID.randomUUID());
+
+    assertFalse(
+        AlertUtil.isChangeEventAllowed(
+            domainEvent,
+            subscriptionOnAllResourcesFilteringOnDomain(domain.getFullyQualifiedName())
+                .getFilteringRules(),
+            null,
+            AlertUtil.LOG_EVALUATION_ERROR),
+        "a domain event must evaluate to false rather than throw out of the matcher");
+  }
+
+  private EventSubscription subscriptionOnAllResourcesFilteringOnDomain(String domainFqn) {
+    EventFilterRule rule =
+        new EventFilterRule()
+            .withName("matchAnyDomain")
+            .withEffect(ArgumentsInput.Effect.INCLUDE)
+            .withCondition("matchAnyDomain({'" + domainFqn + "'})");
+    return new EventSubscription()
+        .withName("alertAllResourcesDomainSubscription")
+        .withFilteringRules(
+            new FilteringRules()
+                .withResources(List.of("all"))
+                .withRules(List.of(rule))
+                .withActions(List.of()));
   }
 
   private EventSubscription subscriptionFilteringOnDomain(String domainFqn) {

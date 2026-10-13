@@ -630,6 +630,19 @@ export const runTableParitySuite = (
   });
 
   describe(`${suiteName} — expandable`, () => {
+    it('treats an empty children array as the lazy-load placeholder', () => {
+      renderTable({
+        dataSource: [{ count: 1, name: 'lazy-parent', children: [] }],
+        expandable: { expandedRowKeys: [], onExpand: jest.fn() },
+      });
+
+      // AntD shows the expander for `children: []` (fetch on expand); only an
+      // absent key is a leaf. The adapter throws when no expander exists.
+      expect(() =>
+        act(() => adapter.toggleExpander('lazy-parent'))
+      ).not.toThrow();
+    });
+
     it('hides child rows until the parent is expanded', () => {
       renderTable({ dataSource: TREE_ROWS, expandable: {} });
 

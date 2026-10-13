@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "OpenMetadataConnection",
   "description": "OpenMetadata Connection Config",
   "type": "object",
@@ -95,7 +94,6 @@
       "mask": true,
       "oneOf": [
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "Validate SSL Client Config",
           "description": "OpenMetadata Client configured to validate SSL certificates.",
           "type": "object",
@@ -110,9 +108,7 @@
               "accept": [
                 ".pem",
                 ".crt",
-                ".cer",
-                ".der",
-                ".p12"
+                ".cer"
               ],
               "uiFieldType": "fileOrInput"
             },
@@ -124,9 +120,7 @@
               "accept": [
                 ".pem",
                 ".crt",
-                ".cer",
-                ".der",
-                ".p12"
+                ".cer"
               ],
               "uiFieldType": "fileOrInput"
             },
@@ -138,9 +132,7 @@
               "accept": [
                 ".pem",
                 ".crt",
-                ".cer",
-                ".der",
-                ".p12"
+                ".cer"
               ],
               "uiFieldType": "fileOrInput"
             }
@@ -151,7 +143,6 @@
     "securityConfig": {
       "mask": true,
       "description": "OpenMetadata Client security configuration.",
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "openMetadataJWTClientConfig",
       "type": "object",
       "javaType": "org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig",
@@ -170,7 +161,6 @@
     "secretsManagerProvider": {
       "description": "Secrets Manager Provider for OpenMetadata Server.",
       "default": "db",
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Secrets Manager Provider",
       "type": "string",
       "javaType": "org.openmetadata.schema.security.secrets.SecretsManagerProvider",
@@ -191,7 +181,6 @@
     "secretsManagerLoader": {
       "description": "Secrets Manager Loader for the Pipeline Service Client.",
       "default": "noop",
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Secrets Manager Client Loader",
       "type": "string",
       "javaType": "org.openmetadata.schema.security.secrets.SecretsManagerClientLoader",

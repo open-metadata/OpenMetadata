@@ -112,12 +112,20 @@ public final class LineagePathBuilder {
       unions.append(union("?from prov:wasDerivedFrom ?to", "prov:wasDerivedFrom"));
       unions.append(" UNION\n");
       unions.append(union("?from om:upstream ?to", "om:upstream"));
+      unions.append(" UNION\n");
+      unions.append(union("?to om:downstream ?from", "^om:downstream"));
+      unions.append(" UNION\n");
+      unions.append(union("?to om:UPSTREAM ?from", "om:upstream"));
     }
     if (direction == Direction.DOWNSTREAM || direction == Direction.BOTH) {
       if (unions.length() > 0) unions.append(" UNION\n");
       unions.append(union("?to prov:wasDerivedFrom ?from", "^prov:wasDerivedFrom"));
       unions.append(" UNION\n");
       unions.append(union("?from om:downstream ?to", "om:downstream"));
+      unions.append(" UNION\n");
+      unions.append(union("?to om:upstream ?from", "^om:upstream"));
+      unions.append(" UNION\n");
+      unions.append(union("?from om:UPSTREAM ?to", "om:downstream"));
     }
 
     return String.join(

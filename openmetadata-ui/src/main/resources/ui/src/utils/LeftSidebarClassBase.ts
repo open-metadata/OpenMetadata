@@ -17,6 +17,7 @@ import { homeModule } from '../components/discovery/home/home.module';
 import { personalSpaceModule } from '../components/discovery/personal-space/personalSpace.module';
 import { governModule } from '../components/governance/govern/govern.module';
 import { marketplaceModule } from '../components/governance/marketplace/marketplace.module';
+import { connectionsModule } from '../components/integration/connections.module';
 import { LeftSidebarItem } from '../components/MyData/LeftSidebar/LeftSidebar.interface';
 import { observabilityModule } from '../components/observability/ObservabilityModule/observability.module';
 import { AppModule } from '../components/platform/ai-shell/AppModule.types';
@@ -34,6 +35,7 @@ const APP_MODE_MODULES: Array<AppModule> = [
   homeModule,
   exploreModule,
   entityModule,
+  connectionsModule,
   observabilityModule,
   governModule,
   contextCenterModule,

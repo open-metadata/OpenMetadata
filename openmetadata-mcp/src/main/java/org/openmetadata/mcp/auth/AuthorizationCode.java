@@ -22,26 +22,7 @@ public class AuthorizationCode {
 
   private URI redirectUri;
 
-  private boolean redirectUriProvidedExplicitly;
-
   public AuthorizationCode() {}
-
-  public AuthorizationCode(
-      String code,
-      List<String> scopes,
-      long expiresAt,
-      String clientId,
-      String codeChallenge,
-      URI redirectUri,
-      boolean redirectUriProvidedExplicitly) {
-    this.code = code;
-    this.scopes = scopes;
-    this.expiresAt = expiresAt;
-    this.clientId = clientId;
-    this.codeChallenge = codeChallenge;
-    this.redirectUri = redirectUri;
-    this.redirectUriProvidedExplicitly = redirectUriProvidedExplicitly;
-  }
 
   public String getCode() {
     return code;
@@ -97,13 +78,5 @@ public class AuthorizationCode {
 
   public void setRedirectUri(URI redirectUri) {
     this.redirectUri = redirectUri;
-  }
-
-  public boolean isRedirectUriProvidedExplicitly() {
-    return redirectUriProvidedExplicitly;
-  }
-
-  public void setRedirectUriProvidedExplicitly(boolean redirectUriProvidedExplicitly) {
-    this.redirectUriProvidedExplicitly = redirectUriProvidedExplicitly;
   }
 }

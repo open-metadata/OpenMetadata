@@ -27,6 +27,15 @@ export interface User {
      */
     changeDescription?: ChangeDescription;
     /**
+     * Timestamp in Unix epoch time milliseconds corresponding to when this entity was created
+     * in OpenMetadata.
+     */
+    createdAt?: number;
+    /**
+     * User or Bot who created this entity in OpenMetadata.
+     */
+    createdBy?: string;
+    /**
      * Default Persona for the user from list of personas.
      */
     defaultPersona?: EntityReference;
@@ -51,6 +60,10 @@ export interface User {
      */
     email: string;
     /**
+     * Entity extension data with custom attributes added to the entity.
+     */
+    extension?: any;
+    /**
      * External identifier from identity provider (used for SCIM).
      */
     externalId?: string;
@@ -70,6 +83,13 @@ export interface User {
      * Unique identifier that identifies a user entity instance.
      */
     id: string;
+    /**
+     * Subject ('sub') claim recorded from the identity provider on first email-first login.
+     * Email addresses can be reassigned to a new person; binding the immutable subject lets a
+     * later login with the same address but a different subject be rejected instead of
+     * inheriting the previous owner's account. Distinct from externalId, which SCIM owns.
+     */
+    identityProviderSubject?: string;
     /**
      * Bot user that performed the action on behalf of the actual user.
      */
@@ -375,7 +395,7 @@ export interface Security {
      */
     strictMode?: boolean;
     /**
-     * Validity for the JWT Token created from SAML Response
+     * Lifetime in seconds of the OpenMetadata JWT issued after SAML authentication.
      */
     tokenValidity?: number;
     /**
@@ -569,6 +589,16 @@ export interface PersonaPreferences {
      */
     appMode?: AppMode;
     /**
+     * Route path users of this persona land on when they open the app (e.g. `/explore`). Unset
+     * means Home (My Data).
+     */
+    defaultLandingPage?: string;
+    /**
+     * Layout each page with a view toggle opens in for users of this persona. A page without an
+     * entry opens in Table view. Only Domains offers Tree.
+     */
+    defaultViewModes?: DefaultViewModes;
+    /**
      * User's personal customizations for the landing page.
      */
     landingPageSettings?: LandingPageSettings;
@@ -590,6 +620,26 @@ export interface PersonaPreferences {
 export enum AppMode {
     AI = "AI",
     Classic = "classic",
+}
+
+/**
+ * Layout each page with a view toggle opens in for users of this persona. A page without an
+ * entry opens in Table view. Only Domains offers Tree.
+ */
+export interface DefaultViewModes {
+    dataProducts?:      PageViewMode;
+    domains?:           PageViewMode;
+    learningResources?: PageViewMode;
+    subDomains?:        PageViewMode;
+}
+
+/**
+ * Layout a page with a view toggle opens in.
+ */
+export enum PageViewMode {
+    Card = "card",
+    Table = "table",
+    Tree = "tree",
 }
 
 /**

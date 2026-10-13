@@ -31,7 +31,7 @@ describe('ExpandableCard', () => {
   describe('Rendering', () => {
     it('renders with basic props', () => {
       render(
-        <ExpandableCard cardProps={mockCardProps}>
+        <ExpandableCard cardProps={mockCardProps} dataTestId="card">
           <div data-testid="test-content">Test Content</div>
         </ExpandableCard>
       );
@@ -50,28 +50,24 @@ describe('ExpandableCard', () => {
       expect(screen.getByTestId('custom-test-id')).toBeInTheDocument();
     });
 
-    it('renders with additional card props', () => {
-      const extraProps = {
-        ...mockCardProps,
-        bordered: true,
-        hoverable: true,
-      };
-
+    it('hides the body when collapsed but keeps children mounted', async () => {
       render(
-        <ExpandableCard cardProps={extraProps}>
-          <div>Test Content</div>
+        <ExpandableCard cardProps={mockCardProps} dataTestId="card">
+          <div data-testid="test-content">Test Content</div>
         </ExpandableCard>
       );
 
-      const card = screen.getByRole('button').closest('.ant-card');
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button'));
+      });
 
-      expect(card).toHaveClass('ant-card-bordered');
-      expect(card).toHaveClass('ant-card-hoverable');
+      expect(screen.getByTestId('test-content')).not.toBeVisible();
+      expect(screen.getByTestId('test-content')).toBeInTheDocument();
     });
 
     it('renders with complex nested children', () => {
       render(
-        <ExpandableCard cardProps={mockCardProps}>
+        <ExpandableCard cardProps={mockCardProps} dataTestId="card">
           <div data-testid="parent">
             <div data-testid="child-1">Child 1</div>
             <div data-testid="child-2">
@@ -91,7 +87,7 @@ describe('ExpandableCard', () => {
   describe('Expand/Collapse Functionality', () => {
     it('toggles expansion state on button click', async () => {
       render(
-        <ExpandableCard cardProps={mockCardProps}>
+        <ExpandableCard cardProps={mockCardProps} dataTestId="card">
           <div>Test Content</div>
         </ExpandableCard>
       );
@@ -99,27 +95,34 @@ describe('ExpandableCard', () => {
       const expandButton = screen.getByRole('button');
 
       // Initial state (collapsed)
-      expect(expandButton.closest('.ant-card')).toHaveClass('expanded');
+      expect(expandButton.closest('[data-testid="card"]')).toHaveClass(
+        'expanded'
+      );
 
       // Click to collapse
       await act(async () => {
         fireEvent.click(expandButton);
       });
 
-      expect(expandButton.closest('.ant-card')).not.toHaveClass('collapsed');
+      expect(expandButton.closest('[data-testid="card"]')).not.toHaveClass(
+        'collapsed'
+      );
 
       // Click to expand again
       await act(async () => {
         fireEvent.click(expandButton);
       });
 
-      expect(expandButton.closest('.ant-card')).toHaveClass('expanded');
+      expect(expandButton.closest('[data-testid="card"]')).toHaveClass(
+        'expanded'
+      );
     });
 
     it('calls onExpandStateChange when expansion state changes', async () => {
       render(
         <ExpandableCard
           cardProps={mockCardProps}
+          dataTestId="card"
           onExpandStateChange={mockOnExpandStateChange}>
           <div>Test Content</div>
         </ExpandableCard>
@@ -143,7 +146,10 @@ describe('ExpandableCard', () => {
 
     it('disables expand/collapse when isExpandDisabled is true', () => {
       render(
-        <ExpandableCard isExpandDisabled cardProps={mockCardProps}>
+        <ExpandableCard
+          isExpandDisabled
+          cardProps={mockCardProps}
+          dataTestId="card">
           <div>Test Content</div>
         </ExpandableCard>
       );
@@ -155,7 +161,10 @@ describe('ExpandableCard', () => {
 
     it('maintains expansion state when disabled', async () => {
       render(
-        <ExpandableCard isExpandDisabled cardProps={mockCardProps}>
+        <ExpandableCard
+          isExpandDisabled
+          cardProps={mockCardProps}
+          dataTestId="card">
           <div>Test Content</div>
         </ExpandableCard>
       );
@@ -163,14 +172,18 @@ describe('ExpandableCard', () => {
       const expandButton = screen.getByRole('button');
 
       // Initial state
-      expect(expandButton.closest('.ant-card')).toHaveClass('expanded');
+      expect(expandButton.closest('[data-testid="card"]')).toHaveClass(
+        'expanded'
+      );
 
       // Click should not change state
       await act(async () => {
         fireEvent.click(expandButton);
       });
 
-      expect(expandButton.closest('.ant-card')).toHaveClass('expanded');
+      expect(expandButton.closest('[data-testid="card"]')).toHaveClass(
+        'expanded'
+      );
     });
   });
 
@@ -181,37 +194,37 @@ describe('ExpandableCard', () => {
           cardProps={{
             ...mockCardProps,
             className: 'custom-class',
-          }}>
+          }}
+          dataTestId="card">
           <div>Test Content</div>
         </ExpandableCard>
       );
 
-      const card = screen.getByRole('button').closest('.ant-card');
+      const card = screen.getByRole('button').closest('[data-testid="card"]');
 
       expect(card).toHaveClass('custom-class');
     });
 
     it('applies default classes correctly', () => {
       render(
-        <ExpandableCard cardProps={mockCardProps}>
+        <ExpandableCard cardProps={mockCardProps} dataTestId="card">
           <div>Test Content</div>
         </ExpandableCard>
       );
 
-      const card = screen.getByRole('button').closest('.ant-card');
+      const card = screen.getByRole('button').closest('[data-testid="card"]');
 
-      expect(card).toHaveClass('new-header-border-card');
-      expect(card).toHaveClass('w-full');
+      expect(card).toHaveClass('tw:w-full');
     });
 
     it('applies expanded class when expanded', () => {
       render(
-        <ExpandableCard cardProps={mockCardProps}>
+        <ExpandableCard cardProps={mockCardProps} dataTestId="card">
           <div>Test Content</div>
         </ExpandableCard>
       );
 
-      const card = screen.getByRole('button').closest('.ant-card');
+      const card = screen.getByRole('button').closest('[data-testid="card"]');
 
       expect(card).toHaveClass('expanded');
     });
@@ -220,7 +233,7 @@ describe('ExpandableCard', () => {
   describe('Edge Cases', () => {
     it('works without onExpandStateChange callback', async () => {
       render(
-        <ExpandableCard cardProps={mockCardProps}>
+        <ExpandableCard cardProps={mockCardProps} dataTestId="card">
           <div>Test Content</div>
         </ExpandableCard>
       );
@@ -231,14 +244,14 @@ describe('ExpandableCard', () => {
         fireEvent.click(expandButton);
       });
 
-      const card = screen.getByRole('button').closest('.ant-card');
+      const card = screen.getByRole('button').closest('[data-testid="card"]');
 
       expect(card).not.toHaveClass('expanded');
     });
 
     it('works with minimal cardProps', () => {
       render(
-        <ExpandableCard cardProps={{}}>
+        <ExpandableCard cardProps={{}} dataTestId="card">
           <div>Test Content</div>
         </ExpandableCard>
       );
@@ -247,7 +260,11 @@ describe('ExpandableCard', () => {
     });
 
     it('handles empty children', () => {
-      render(<ExpandableCard cardProps={mockCardProps}>{null}</ExpandableCard>);
+      render(
+        <ExpandableCard cardProps={mockCardProps} dataTestId="card">
+          {null}
+        </ExpandableCard>
+      );
 
       expect(screen.getByRole('button')).toBeInTheDocument();
     });

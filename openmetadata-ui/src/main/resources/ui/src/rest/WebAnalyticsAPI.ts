@@ -13,7 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { WebAnalyticEventData } from '../generated/analytics/webAnalyticEventData';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 export const postWebAnalyticEvent = async (
   webAnalyticEventData: WebAnalyticEventData

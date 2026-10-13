@@ -94,7 +94,7 @@ public class SemanticSearchEngine {
 
   public List<SearchResult> findSimilarEntities(String entityId, String entityType, int limit) {
     try {
-      EntityInterface entity = Entity.getEntity(entityType, UUID.fromString(entityId), "", null);
+      EntityInterface<?> entity = Entity.getEntity(entityType, UUID.fromString(entityId), "", null);
       float[] entityEmbedding = getOrGenerateEmbedding(entity);
       List<SearchResult> similar = findSimilarByEmbedding(entityEmbedding, entityType, limit * 2);
       similar =
@@ -146,7 +146,8 @@ public class SemanticSearchEngine {
 
     for (String entityId : entityIds) {
       try {
-        EntityInterface entity = Entity.getEntity(entityType, UUID.fromString(entityId), "", null);
+        EntityInterface<?> entity =
+            Entity.getEntity(entityType, UUID.fromString(entityId), "", null);
         float[] entityEmbedding = getOrGenerateEmbedding(entity);
 
         double similarity = cosineSimilarity(embedding, entityEmbedding);
@@ -217,38 +218,7 @@ public class SemanticSearchEngine {
     try {
       // Use inference to find additional related entities
       for (SearchResult result : results) {
-        String sparql =
-            """
-          PREFIX om: <https://open-metadata.org/ontology/>
-          PREFIX prov: <http://www.w3.org/ns/prov#>
-          SELECT ?related ?type ?relationship
-          WHERE {
-            {
-              <%s> ?relationship ?related .
-              FILTER(?relationship IN (om:relatedTo, om:similarTo))
-            } UNION {
-              <%s> (prov:wasDerivedFrom|^om:UPSTREAM)+ ?related .
-              BIND(prov:wasDerivedFrom AS ?relationship)
-            } UNION {
-              <%s> (om:UPSTREAM|^prov:wasDerivedFrom)+ ?related .
-              BIND(om:UPSTREAM AS ?relationship)
-            } UNION {
-              <%s> (om:belongsTo/om:inDomain|om:belongsTo/om:hasGlossaryTerm) ?related .
-              BIND(om:relatedTo AS ?relationship)
-            } UNION {
-              <%s> (^om:owns|^prov:used) ?related .
-              BIND(om:relatedTo AS ?relationship)
-            }
-            ?related a ?type .
-          }
-          LIMIT 100
-          """
-                .formatted(
-                    getEntityUri(result.getEntity()),
-                    getEntityUri(result.getEntity()),
-                    getEntityUri(result.getEntity()),
-                    getEntityUri(result.getEntity()),
-                    getEntityUri(result.getEntity()));
+        String sparql = buildInferenceQuery(getEntityUri(result.getEntity()));
 
         List<Map<String, String>> inferenceResults =
             rdfRepository.executeSparqlQueryDirectAsJson(sparql);
@@ -283,6 +253,35 @@ public class SemanticSearchEngine {
     return inferredResults;
   }
 
+  static String buildInferenceQuery(final String entityUri) {
+    return """
+          PREFIX om: <https://open-metadata.org/ontology/>
+          PREFIX prov: <http://www.w3.org/ns/prov#>
+          SELECT ?related ?type ?relationship
+          WHERE {
+            {
+              <%1$s> ?relationship ?related .
+              FILTER(?relationship IN (om:relatedTo, om:similarTo))
+            } UNION {
+              <%1$s> (om:upstream|^om:downstream|prov:wasDerivedFrom|^om:UPSTREAM)+ ?related .
+              BIND(om:upstream AS ?relationship)
+            } UNION {
+              <%1$s> (om:downstream|^om:upstream|^prov:wasDerivedFrom|om:UPSTREAM)+ ?related .
+              BIND(om:downstream AS ?relationship)
+            } UNION {
+              <%1$s> (om:belongsTo/om:inDomain|om:belongsTo/om:hasGlossaryTerm) ?related .
+              BIND(om:relatedTo AS ?relationship)
+            } UNION {
+              <%1$s> (^om:owns|^prov:used) ?related .
+              BIND(om:relatedTo AS ?relationship)
+            }
+            ?related a ?type .
+          }
+          LIMIT 100
+          """
+        .formatted(entityUri);
+  }
+
   private boolean isDuplicate(List<SearchResult> results, EntityReference entity) {
     return results.stream().anyMatch(r -> r.getEntity().getId().equals(entity.getId()));
   }
@@ -304,7 +303,7 @@ public class SemanticSearchEngine {
         .collect(Collectors.toList());
   }
 
-  private float[] getOrGenerateEmbedding(EntityInterface entity) {
+  private float[] getOrGenerateEmbedding(EntityInterface<?> entity) {
     String cacheKey = entity.getId().toString();
 
     return embeddingCache.computeIfAbsent(
@@ -392,7 +391,7 @@ public class SemanticSearchEngine {
       String type = parts[parts.length - 2];
       String id = parts[parts.length - 1];
 
-      EntityInterface entity = Entity.getEntity(type, UUID.fromString(id), "", null);
+      EntityInterface<?> entity = Entity.getEntity(type, UUID.fromString(id), "", null);
       return entity.getEntityReference();
     } catch (Exception e) {
       return null;
@@ -400,7 +399,7 @@ public class SemanticSearchEngine {
   }
 
   private List<SearchResult> enhanceWithRelationships(
-      EntityInterface source, List<SearchResult> similar, int limit) {
+      EntityInterface<?> source, List<SearchResult> similar, int limit) {
     // Query for common relationships patterns
     for (SearchResult result : similar) {
       try {
