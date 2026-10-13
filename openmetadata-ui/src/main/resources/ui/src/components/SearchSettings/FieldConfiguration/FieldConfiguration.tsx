@@ -101,7 +101,6 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
   return (
     <Accordion
       allowsMultipleExpanded
-      className={'' + ' tw:outline-0 tw:divide-y-0'}
       data-field-name={field.fieldName}
       expandedKeys={new Set(activeFieldKeys[index] || [])}
       key={index}

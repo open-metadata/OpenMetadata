@@ -27,7 +27,6 @@ import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ArrowSvg } from '../../../assets/svg/ic-arrow-down.svg';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { getAgentStatusSummary } from '../../../utils/AgentsStatusWidgetPureUtils';
 import {
@@ -72,7 +71,6 @@ const renderAgentStatusExpandIcon = (
       data-testid="agent-status-widget-view-more">
       {t('label.view-more')}
     </Typography>
-    <ArrowSvg className="text-primary" height={14} width={14} />
   </div>
 );
 

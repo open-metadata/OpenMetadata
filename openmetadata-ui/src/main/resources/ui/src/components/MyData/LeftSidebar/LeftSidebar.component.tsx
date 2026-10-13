@@ -276,7 +276,6 @@ const LeftSidebar = () => {
           <nav aria-label={t('label.navigation')} className="top-menu">
             <Accordion
               allowsMultipleExpanded
-              className="tw:divide-y-0"
               expandedKeys={new Set(openKeys)}
               onExpandedChange={(keys) => setOpenKeys([...keys].map(String))}>
               <ul className="left-sidebar-menu tw:m-0 tw:list-none tw:px-3 tw:py-0">

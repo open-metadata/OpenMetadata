@@ -929,9 +929,7 @@ const EntitySearchSettings = () => {
             flex: '0 0 33.33333333333333%',
           }}>
           <Accordion
-            className={
-              'w-full entity-collapse-container' + ' tw:outline-0 tw:divide-y-0'
-            }
+            className="w-full entity-collapse-container"
             expandedKeys={new Set([activeKey].filter(Boolean))}
             onExpandedChange={(keys) =>
               handleCollapseChange([...keys].map(String))

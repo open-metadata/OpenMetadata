@@ -172,17 +172,15 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
       policy.effect === 'ALLOW' ? 'success' : nonAllowPolicyColor;
 
     return (
-      <Accordion
-        allowsMultipleExpanded
-        className={'policy-collapse' + ' tw:outline-0 tw:divide-y-0'}
-        key={index}>
+      <Accordion allowsMultipleExpanded className="policy-collapse" key={index}>
         <AccordionItem id={String(index)} key={index}>
           <Box align="center" gap={2}>
             <AccordionHeader
-              aria-label={t('label.expand')}
-              className="tw:w-auto">
-              <span className="tw:sr-only">{t('label.detail-plural')}</span>
-            </AccordionHeader>
+              aria-label={t('label.entity-detail-plural', {
+                entity: getEntityName(policy.policy),
+              })}
+              className="tw:w-auto"
+            />
             <Box className="tw:min-w-0 tw:flex-1">
               <Box
                 inline

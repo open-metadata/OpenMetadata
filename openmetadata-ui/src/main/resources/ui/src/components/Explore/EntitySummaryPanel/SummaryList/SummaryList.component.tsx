@@ -62,9 +62,7 @@ export default function SummaryList({
             ) : (
               <Accordion
                 allowsMultipleExpanded
-                className={
-                  'summary-list-collapse w-full' + ' tw:outline-0 tw:divide-y-0'
-                }
+                className="summary-list-collapse w-full"
                 key={`${item.name}-collapse`}>
                 <AccordionItem
                   data-testid={`${item.name}-collapse`}
@@ -72,12 +70,11 @@ export default function SummaryList({
                   key={`${item.name}-collapse-panel`}>
                   <Box align="center" gap={2}>
                     <AccordionHeader
-                      aria-label={t('label.expand')}
-                      className="tw:w-auto">
-                      <span className="tw:sr-only">
-                        {t('label.detail-plural')}
-                      </span>
-                    </AccordionHeader>
+                      aria-label={t('label.entity-detail-plural', {
+                        entity: item.name,
+                      })}
+                      className="tw:w-auto"
+                    />
                     <Box className="tw:min-w-0 tw:flex-1">
                       <SummaryListItems
                         entityDetails={item}

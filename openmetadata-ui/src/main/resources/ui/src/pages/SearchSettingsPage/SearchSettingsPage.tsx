@@ -104,10 +104,7 @@ const SearchBoostsSection = ({
       className="layout-row boosts-section m-t-lg"
       style={getLayoutGutter(0, 16)}
       wrap="wrap">
-      <Accordion
-        className={
-          'w-full search-settings-collapse' + ' tw:outline-0 tw:divide-y-0'
-        }>
+      <Accordion className="w-full search-settings-collapse">
         <AccordionItem className="term-boost-panel" id="1" key="1">
           <Box align="center" gap={2}>
             <AccordionHeader className="tw:flex-1">
