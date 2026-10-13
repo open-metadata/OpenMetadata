@@ -603,7 +603,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                   <Box align="center" gap={2}>
                     <TrashIcon
                       aria-hidden="true"
-                      className="ttw:shrink-0 tw:text-error-primary"
+                      className="tw:shrink-0 tw:text-error-primary"
                       height={20}
                       width={20}
                     />

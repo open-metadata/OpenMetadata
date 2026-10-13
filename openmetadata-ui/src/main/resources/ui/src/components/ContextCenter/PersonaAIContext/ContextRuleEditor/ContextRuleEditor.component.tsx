@@ -101,8 +101,11 @@ const Field = ({
   </div>
 );
 
-const SECTION_CARD_CLASS =
-  'tw:flex tw:cursor-pointer tw:select-none tw:items-center tw:justify-between tw:gap-2 tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:px-3 tw:py-[11px] tw:transition';
+const SECTION_CARD_CLASS = [
+  'tw:flex tw:cursor-pointer tw:select-none tw:items-center tw:justify-between tw:gap-2',
+  'tw:rounded-lg tw:border tw:border-secondary tw:bg-overlay-surface tw:px-3 tw:py-[11px] tw:transition',
+  'tw:aria-checked:border-brand tw:aria-checked:bg-brand-primary',
+].join(' ');
 
 const BEHAVIOR_CARD_CLASS =
   'tw:min-h-[70px] tw:rounded-lg tw:border tw:border-secondary tw:px-4 tw:py-[13px]';
