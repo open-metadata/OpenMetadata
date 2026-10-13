@@ -602,6 +602,14 @@ public interface EntityDAO<T extends EntityInterface<?>> {
   @SqlQuery("SELECT id FROM <table> WHERE id IN (<ids>)")
   List<String> findExistingIds(@Define("table") String table, @BindList("ids") List<String> ids);
 
+  /**
+   * Existence proof a writer takes inside its own transaction: the shared lock makes a concurrent
+   * hard delete of these rows wait for the writer's commit, so a reference the writer stores can
+   * never point at a row that is already gone.
+   */
+  @SqlQuery("SELECT id FROM <table> WHERE id IN (<ids>) FOR SHARE")
+  List<String> lockExistingIds(@Define("table") String table, @BindList("ids") List<String> ids);
+
   @SqlQuery("SELECT json FROM <table> WHERE <nameColumnHash> = :name <cond>")
   String findByName(
       @Define("table") String table,
@@ -709,10 +717,6 @@ public interface EntityDAO<T extends EntityInterface<?>> {
   @ConnectionAwareSqlQuery(value = "SELECT count(*) FROM <table>", connectionType = POSTGRES)
   int listTotalCount(
       @Define("table") String table, @Define("nameHashColumn") String nameHashColumn);
-
-  /** Rows written after {@code since}, as "id|updatedAt|name" (name last, as it may hold '|'). */
-  @SqlQuery("SELECT CONCAT(id, '|', updatedAt, '|', name) FROM <table> WHERE updatedAt > :since")
-  List<String> listChangedSince(@Define("table") String table, @Bind("since") long since);
 
   @ConnectionAwareSqlQuery(
       value = "SELECT count(distinct(<distinctColumn>)) FROM <table> <mysqlCond>",

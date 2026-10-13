@@ -20,6 +20,7 @@ import static org.openmetadata.schema.type.Include.NON_DELETED;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -136,11 +137,27 @@ public class SubjectCache {
 
   private SubjectCache() {}
 
+  /** User contexts live this long when Redis pub/sub evicts them on every pod after a write. */
+  static final Duration USER_CONTEXT_TTL = Duration.ofMinutes(15);
+
   /**
-   * Rebuild auth caches with configured max entries. TTLs are kept at their original values
-   * (2 min for policies, 15 min for user context) because they serve different freshness needs.
+   * Without Redis pub/sub a write evicts only the serving pod, so the TTL alone bounds how long
+   * peers serve the old context. See ADR:2026-10-13-user-auth-context-expires-after-2-minutes-without-redis
+   */
+  static final Duration USER_CONTEXT_TTL_WITHOUT_PUBSUB = Duration.ofMinutes(2);
+
+  static Duration userContextTtl(CacheInvalidationPubSub pubSub) {
+    return pubSub != null && pubSub.isRunning()
+        ? USER_CONTEXT_TTL
+        : USER_CONTEXT_TTL_WITHOUT_PUBSUB;
+  }
+
+  /**
+   * Rebuild auth caches with configured max entries. Policies expire after 2 min; user contexts
+   * after {@link #userContextTtl}, as only Redis pub/sub evicts them on peer pods.
    */
   public static void initCaches(int maxEntries) {
+    Duration userContextTtl = userContextTtl(CacheBundle.getCacheInvalidationPubSub());
     USER_POLICIES_CACHE =
         CacheBuilder.newBuilder()
             .maximumSize(maxEntries)
@@ -150,10 +167,11 @@ public class SubjectCache {
     USER_CONTEXT_CACHE =
         CacheBuilder.newBuilder()
             .maximumSize(maxEntries)
-            .expireAfterWrite(15, TimeUnit.MINUTES)
+            .expireAfterWrite(userContextTtl.toMillis(), TimeUnit.MILLISECONDS)
             .recordStats()
             .build(new UserContextLoader());
-    LOG.info("Auth caches initialized: maxEntries={}", maxEntries);
+    LOG.info(
+        "Auth caches initialized: maxEntries={}, userContextTtl={}", maxEntries, userContextTtl);
   }
 
   public static List<PolicyContext> getPolicies(String userName) {

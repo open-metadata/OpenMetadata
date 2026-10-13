@@ -294,6 +294,18 @@ public class SubjectCacheTest {
   }
 
   @Test
+  void testUserContextExpiresSoonerUnlessRedisPubSubIsRunning() {
+    CacheInvalidationPubSub running = mock(CacheInvalidationPubSub.class);
+    Mockito.when(running.isRunning()).thenReturn(true);
+    CacheInvalidationPubSub failedToStart = mock(CacheInvalidationPubSub.class);
+
+    assertEquals(SubjectCache.USER_CONTEXT_TTL, SubjectCache.userContextTtl(running));
+    assertEquals(SubjectCache.USER_CONTEXT_TTL_WITHOUT_PUBSUB, SubjectCache.userContextTtl(null));
+    assertEquals(
+        SubjectCache.USER_CONTEXT_TTL_WITHOUT_PUBSUB, SubjectCache.userContextTtl(failedToStart));
+  }
+
+  @Test
   void testRemoteTeamWriteDropsAllUserContexts() {
     // A team's defaultPersona reaches users as inheritedPersonas, and membership/hierarchy edits
     // change which teams contribute — all of which arrive as a TEAM message, not a PERSONA one.

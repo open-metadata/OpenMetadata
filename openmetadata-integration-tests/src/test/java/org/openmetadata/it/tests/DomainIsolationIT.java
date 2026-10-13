@@ -16,8 +16,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.awaitility.Awaitility;
-import org.jdbi.v3.core.Handle;
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -25,7 +23,6 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.bootstrap.SharedEntities;
-import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
@@ -66,7 +63,6 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.models.ListParams;
@@ -265,45 +261,6 @@ public class DomainIsolationIT {
   }
 
   @Test
-  void test_peerPodUserDomainChange_reachesAuthorizationWithoutRedis(TestNamespace ns) {
-    Assumptions.assumeFalse(TestSuiteBootstrap.isRedisEnabled(), "Redis pub/sub covers peers");
-    OpenMetadataClient admin = SdkClients.adminClient();
-    Deque<Runnable> cleanup = new ArrayDeque<>();
-    try {
-      String p = ns.shortPrefix();
-      Domain domain = createDomain(admin, p + "_d1", cleanup);
-      Table table = createTable(admin, p + "_t1", createSchema(ns, cleanup), domain, cleanup);
-      Role domainOnlyRole = admin.roles().getByName("DomainOnlyAccessRole");
-      String email = p + "_peer@test.openmetadata.org";
-      User user =
-          admin
-              .users()
-              .create(
-                  new CreateUser()
-                      .withName(p + "_peer")
-                      .withEmail(email)
-                      .withRoles(List.of(domainOnlyRole.getId())));
-      cleanup.push(() -> admin.users().delete(user.getId()));
-      OpenMetadataClient client = SdkClients.createClient(email, email, new String[] {});
-      String tableId = table.getId().toString();
-
-      // The denied read caches the domainless user for authorization
-      assertThrows(ForbiddenException.class, () -> client.tables().get(tableId));
-
-      addDomainAsPeerPod(user, domain);
-
-      Awaitility.await()
-          .atMost(Duration.ofSeconds(30))
-          .pollInterval(Duration.ofSeconds(1))
-          .ignoreExceptions()
-          .untilAsserted(
-              () -> assertEquals(tableId, client.tables().get(tableId).getId().toString()));
-    } finally {
-      drain(cleanup);
-    }
-  }
-
-  @Test
   void test_domainRename_keepsMemberAccess(TestNamespace ns) {
     OpenMetadataClient admin = SdkClients.adminClient();
     Deque<Runnable> cleanup = new ArrayDeque<>();
@@ -336,46 +293,6 @@ public class DomainIsolationIT {
       assertEquals(tableId, client.tables().get(tableId).getId().toString());
     } finally {
       drain(cleanup);
-    }
-  }
-
-  /** Writes the domain the way another pod would: shared rows change, this pod is not told. */
-  private void addDomainAsPeerPod(User user, Domain domain) {
-    TestSuiteBootstrap.getJdbi()
-        .useHandle(
-            handle -> {
-              handle
-                  .createUpdate(
-                      "INSERT INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation) "
-                          + "VALUES (:fromId, :toId, 'domain', 'user', :relation)")
-                  .bind("fromId", domain.getId().toString())
-                  .bind("toId", user.getId().toString())
-                  .bind("relation", Relationship.HAS.ordinal())
-                  .execute();
-              String bumpUpdatedAt =
-                  isPostgres(handle)
-                      ? "UPDATE user_entity SET json = jsonb_set(json, '{updatedAt}', "
-                          + "to_jsonb(CAST(:now AS bigint))) WHERE id = :id"
-                      : "UPDATE user_entity SET json = JSON_SET(json, '$.updatedAt', :now) "
-                          + "WHERE id = :id";
-              handle
-                  .createUpdate(bumpUpdatedAt)
-                  .bind("now", System.currentTimeMillis())
-                  .bind("id", user.getId().toString())
-                  .execute();
-            });
-  }
-
-  private boolean isPostgres(Handle handle) {
-    try {
-      return handle
-          .getConnection()
-          .getMetaData()
-          .getDatabaseProductName()
-          .toLowerCase()
-          .contains("postgres");
-    } catch (java.sql.SQLException e) {
-      throw new IllegalStateException(e);
     }
   }
 

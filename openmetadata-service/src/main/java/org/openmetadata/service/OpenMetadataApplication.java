@@ -198,7 +198,6 @@ import org.openmetadata.service.security.auth.UserActivityFilter;
 import org.openmetadata.service.security.auth.UserActivityTracker;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
-import org.openmetadata.service.security.policyevaluator.SubjectCachePeerSync;
 import org.openmetadata.service.security.saml.OMMicrometerHttpFilter;
 import org.openmetadata.service.security.saml.SamlAssertionConsumerServlet;
 import org.openmetadata.service.security.saml.SamlLoginServlet;
@@ -356,11 +355,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     CacheConfiguration cacheConfig = catalogConfig.getCacheMemoryConfiguration();
     EntityRepository.initCaches(cacheConfig);
     SubjectCache.initCaches(cacheConfig.getAuthCacheMaxEntries());
-    // Without working Redis pub/sub, auth writes served by other pods reach these caches by polling
-    if (SubjectCachePeerSync.isNeeded(
-        org.openmetadata.service.cache.CacheBundle.getCacheInvalidationPubSub())) {
-      environment.lifecycle().manage(new SubjectCachePeerSync(Entity.getCollectionDAO()));
-    }
     OpenSearchSearchManager.initRbacCache(cacheConfig.getRbacCacheMaxEntries());
     auditLogRepository = new AuditLogRepository(Entity.getCollectionDAO());
     Entity.setAuditLogRepository(auditLogRepository);
