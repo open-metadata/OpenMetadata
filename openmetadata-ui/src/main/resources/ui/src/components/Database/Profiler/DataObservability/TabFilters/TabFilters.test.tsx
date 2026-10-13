@@ -448,6 +448,7 @@ describe('TabFilters', () => {
         isTableDeleted: false,
         onSettingButtonClick: mockOnSettingButtonClick,
         onTestCaseDrawerOpen: mockOnTestCaseDrawerOpen,
+        onCustomMetricDrawerOpen: mockOnCustomMetricDrawerOpen,
         table: { columns: [] },
       });
 
@@ -467,6 +468,7 @@ describe('TabFilters', () => {
         isTableDeleted: false,
         onSettingButtonClick: mockOnSettingButtonClick,
         onTestCaseDrawerOpen: mockOnTestCaseDrawerOpen,
+        onCustomMetricDrawerOpen: mockOnCustomMetricDrawerOpen,
         table: { columns: [] },
       });
 
@@ -486,6 +488,7 @@ describe('TabFilters', () => {
         isTableDeleted: true,
         onSettingButtonClick: mockOnSettingButtonClick,
         onTestCaseDrawerOpen: mockOnTestCaseDrawerOpen,
+        onCustomMetricDrawerOpen: mockOnCustomMetricDrawerOpen,
         table: { columns: [] },
       });
 
