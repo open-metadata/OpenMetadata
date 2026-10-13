@@ -29,12 +29,18 @@ import {
   Box,
   Button,
   Card,
+  FormField,
+  HookForm,
+  Input,
+  Select,
   Tabs,
+  TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Alert, Form, Input, Select, Spin } from 'antd';
+import { Alert, Spin } from 'antd';
 import { AxiosError } from 'axios';
 import { FC, lazy, useEffect, useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -279,26 +285,22 @@ const TransitionFormsPane: FC<{
               title={transition.transitionId || `Transition ${index + 1}`}
             />
             <Card.Content>
-              <Form.Item required label="Transition Id">
-                <Input
-                  data-testid={`task-form-transition-id-${index}`}
-                  placeholder="approve"
-                  value={transition.transitionId}
-                  onChange={(event) =>
-                    syncTransitionDesigner(
-                      transitionBuilders.map(
-                        (currentTransition, currentIndex) =>
-                          currentIndex === index
-                            ? {
-                                ...currentTransition,
-                                transitionId: event.target.value,
-                              }
-                            : currentTransition
-                      )
+              <Input
+                isRequired
+                inputDataTestId={`task-form-transition-id-${index}`}
+                label="Transition Id"
+                placeholder="approve"
+                value={transition.transitionId}
+                onChange={(transitionId) =>
+                  syncTransitionDesigner(
+                    transitionBuilders.map((currentTransition, currentIndex) =>
+                      currentIndex === index
+                        ? { ...currentTransition, transitionId }
+                        : currentTransition
                     )
-                  }
-                />
-              </Form.Item>
+                  )
+                }
+              />
               <TaskFormBuilderSection
                 baseFormSchema={
                   transition.config?.formSchema as
@@ -335,6 +337,41 @@ const TransitionFormsPane: FC<{
     )}
   </div>
 );
+
+const TASK_STATUS_ITEMS = Object.values(TaskEntityStatus).map((status) => ({
+  id: status,
+  label: status,
+}));
+
+const TASK_CATEGORY_ITEMS = Object.values(TaskCategory).map((category) => ({
+  id: category,
+  label: category,
+}));
+
+type TaskFormGeneralValues = Pick<
+  TaskFormSchema,
+  | 'name'
+  | 'displayName'
+  | 'description'
+  | 'taskType'
+  | 'taskCategory'
+  | 'workflowDefinitionRef'
+>;
+
+type TaskFormTextField = Exclude<
+  keyof TaskFormGeneralValues,
+  'description' | 'taskCategory'
+>;
+
+/** Only the general fields are form-managed; the designer state holds the rest. */
+const toGeneralValues = (schema: TaskFormSchema): TaskFormGeneralValues => ({
+  name: schema.name ?? '',
+  displayName: schema.displayName ?? '',
+  description: schema.description ?? '',
+  taskType: schema.taskType ?? '',
+  taskCategory: schema.taskCategory,
+  workflowDefinitionRef: schema.workflowDefinitionRef,
+});
 
 const WorkflowStagesPane: FC<{
   stageMappings: TaskFormDesignerStageMapping[];
@@ -389,41 +426,38 @@ const WorkflowStagesPane: FC<{
             />
             <Card.Content>
               <div className="task-form-settings-form-grid">
-                <Form.Item className="m-b-0" label="Stage Id">
-                  <Input
-                    data-testid={`task-form-stage-id-${index}`}
-                    placeholder="open"
-                    value={mapping.stageId}
-                    onChange={(event) =>
-                      syncStageMappings(
-                        stageMappings.map((currentMapping, currentIndex) =>
-                          currentIndex === index
-                            ? { ...currentMapping, stageId: event.target.value }
-                            : currentMapping
-                        )
+                <Input
+                  inputDataTestId={`task-form-stage-id-${index}`}
+                  label="Stage Id"
+                  placeholder="open"
+                  value={mapping.stageId}
+                  onChange={(stageId) =>
+                    syncStageMappings(
+                      stageMappings.map((currentMapping, currentIndex) =>
+                        currentIndex === index
+                          ? { ...currentMapping, stageId }
+                          : currentMapping
                       )
-                    }
-                  />
-                </Form.Item>
-                <Form.Item className="m-b-0" label="Task Status">
-                  <Select
-                    data-testid={`task-form-stage-status-${index}`}
-                    options={Object.values(TaskEntityStatus).map((status) => ({
-                      label: status,
-                      value: status,
-                    }))}
-                    value={mapping.taskStatus || undefined}
-                    onChange={(value) =>
-                      syncStageMappings(
-                        stageMappings.map((currentMapping, currentIndex) =>
-                          currentIndex === index
-                            ? { ...currentMapping, taskStatus: value }
-                            : currentMapping
-                        )
+                    )
+                  }
+                />
+                <Select
+                  data-testid={`task-form-stage-status-${index}`}
+                  items={TASK_STATUS_ITEMS}
+                  label="Task Status"
+                  selectedKey={mapping.taskStatus || null}
+                  onSelectionChange={(key) =>
+                    key !== null &&
+                    syncStageMappings(
+                      stageMappings.map((currentMapping, currentIndex) =>
+                        currentIndex === index
+                          ? { ...currentMapping, taskStatus: String(key) }
+                          : currentMapping
                       )
-                    }
-                  />
-                </Form.Item>
+                    )
+                  }>
+                  {(item) => <Select.Item id={item.id} label={item.label} />}
+                </Select>
               </div>
             </Card.Content>
           </Card>
@@ -439,7 +473,9 @@ const WorkflowStagesPane: FC<{
 
 const TaskFormSettingsPage = () => {
   const { t } = useTranslation();
-  const [form] = Form.useForm<TaskFormSchema>();
+  const form = useForm<TaskFormGeneralValues>({
+    defaultValues: toGeneralValues(EMPTY_SCHEMA),
+  });
   const [schemas, setSchemas] = useState<TaskFormSchema[]>([]);
   const [selectedSchema, setSelectedSchema] =
     useState<TaskFormSchema>(EMPTY_SCHEMA);
@@ -480,11 +516,13 @@ const TaskFormSettingsPage = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [designerTab, setDesignerTab] = useState('create-form');
-  const watchedName = Form.useWatch('name', form);
-  const watchedDisplayName = Form.useWatch('displayName', form);
-  const watchedDescription = Form.useWatch('description', form);
-  const watchedTaskType = Form.useWatch('taskType', form);
-  const watchedTaskCategory = Form.useWatch('taskCategory', form);
+  const {
+    name: watchedName,
+    displayName: watchedDisplayName,
+    description: watchedDescription,
+    taskType: watchedTaskType,
+    taskCategory: watchedTaskCategory,
+  } = form.watch();
 
   const breadcrumbs = useMemo(
     () =>
@@ -508,10 +546,7 @@ const TaskFormSettingsPage = () => {
     const nextStageMappings = schema.defaultStageMappings ?? {};
 
     setSelectedSchema(schema);
-    form.setFieldsValue({
-      ...schema,
-      workflowDefinitionRef,
-    });
+    form.reset(toGeneralValues({ ...schema, workflowDefinitionRef }));
     setFormSchemaValue(stringifyJson(nextResolveSchema));
     setUiSchemaValue(stringifyJson(nextResolveUiSchema));
     setCreateFormSchemaValue(stringifyJson(nextCreateSchema));
@@ -561,7 +596,6 @@ const TaskFormSettingsPage = () => {
   };
 
   const handleCreateNew = () => {
-    form.resetFields();
     setSchemaEditors(EMPTY_SCHEMA);
   };
 
@@ -574,7 +608,7 @@ const TaskFormSettingsPage = () => {
   };
 
   const handleLoadTemplate = () => {
-    const currentValues = form.getFieldsValue();
+    const currentValues = form.getValues();
     const taskType = currentValues.taskType as TaskEntityType | undefined;
     const taskCategory = currentValues.taskCategory as TaskCategory | undefined;
 
@@ -664,7 +698,7 @@ const TaskFormSettingsPage = () => {
     setDefaultStageMappingsValue(stringifyJson(buildStageMappings(mappings)));
   };
 
-  const handleSave = async (values: TaskFormSchema) => {
+  const handleSave = async (values: TaskFormGeneralValues) => {
     let parsedFormSchema;
     let parsedUiSchema;
     let parsedCreateFormSchema;
@@ -1004,16 +1038,38 @@ const TaskFormSettingsPage = () => {
     },
   ];
 
+  const renderTextField = (
+    name: TaskFormTextField,
+    label: string,
+    testId: string,
+    requiredMessage?: string
+  ) => (
+    <FormField
+      control={form.control}
+      name={name}
+      rules={requiredMessage ? { required: requiredMessage } : undefined}>
+      {({ field, fieldState }) => (
+        <Input
+          hint={fieldState.error?.message}
+          inputDataTestId={testId}
+          isInvalid={fieldState.invalid}
+          isRequired={Boolean(requiredMessage)}
+          label={label}
+          value={field.value ?? ''}
+          onBlur={field.onBlur}
+          onChange={field.onChange}
+        />
+      )}
+    </FormField>
+  );
+
   return (
     <PageLayoutV1 pageTitle={t('label.task-form-plural')}>
       <div
         className="task-form-settings-page"
         data-testid="task-form-settings-page">
         <TitleBreadcrumb titleLinks={breadcrumbs} />
-        <Form<TaskFormSchema>
-          form={form}
-          layout="vertical"
-          onFinish={handleSave}>
+        <HookForm form={form} onSubmit={form.handleSubmit(handleSave)}>
           <div className="task-form-settings-shell">
             <aside className="task-form-settings-sidebar">
               <SchemaSidebarCard
@@ -1075,30 +1131,31 @@ const TaskFormSettingsPage = () => {
                   <Card.Header title="General Configuration" />
                   <Card.Content>
                     <div className="task-form-settings-form-grid">
-                      <Form.Item
-                        className="m-b-0"
-                        label="Name"
-                        name="name"
-                        rules={[
-                          { required: true, message: 'Name is required' },
-                        ]}>
-                        <Input data-testid="task-form-name-input" />
-                      </Form.Item>
-                      <Form.Item
-                        className="m-b-0"
-                        label="Display Name"
-                        name="displayName">
-                        <Input data-testid="task-form-display-name-input" />
-                      </Form.Item>
-                      <Form.Item
-                        className="m-b-0 task-form-settings-form-grid__span-2"
-                        label="Description"
-                        name="description">
-                        <Input.TextArea
-                          autoSize={{ minRows: 4, maxRows: 6 }}
-                          data-testid="task-form-description-input"
-                        />
-                      </Form.Item>
+                      {renderTextField(
+                        'name',
+                        'Name',
+                        'task-form-name-input',
+                        'Name is required'
+                      )}
+                      {renderTextField(
+                        'displayName',
+                        'Display Name',
+                        'task-form-display-name-input'
+                      )}
+                      <div className="task-form-settings-form-grid__span-2">
+                        <FormField control={form.control} name="description">
+                          {({ field }) => (
+                            <TextArea
+                              data-testid="task-form-description-input"
+                              label="Description"
+                              rows={4}
+                              value={field.value ?? ''}
+                              onBlur={field.onBlur}
+                              onChange={field.onChange}
+                            />
+                          )}
+                        </FormField>
+                      </div>
                     </div>
                   </Card.Content>
                 </Card>
@@ -1107,36 +1164,34 @@ const TaskFormSettingsPage = () => {
                   <Card.Header title="Classification" />
                   <Card.Content>
                     <div className="task-form-settings-card__stack">
-                      <Form.Item
-                        className="m-b-0"
-                        label="Task Type"
-                        name="taskType"
-                        rules={[
-                          { required: true, message: 'Task type is required' },
-                        ]}>
-                        <Input data-testid="task-form-type-input" />
-                      </Form.Item>
-                      <Form.Item
-                        className="m-b-0"
-                        label="Task Category"
-                        name="taskCategory">
-                        <Select
-                          allowClear
-                          data-testid="task-form-category-input"
-                          options={Object.values(TaskCategory).map(
-                            (category) => ({
-                              label: category,
-                              value: category,
-                            })
-                          )}
-                        />
-                      </Form.Item>
-                      <Form.Item
-                        className="m-b-0"
-                        label="Workflow Definition"
-                        name="workflowDefinitionRef">
-                        <Input data-testid="task-form-workflow-definition-input" />
-                      </Form.Item>
+                      {renderTextField(
+                        'taskType',
+                        'Task Type',
+                        'task-form-type-input',
+                        'Task type is required'
+                      )}
+                      <FormField control={form.control} name="taskCategory">
+                        {({ field }) => (
+                          <Select
+                            data-testid="task-form-category-input"
+                            items={TASK_CATEGORY_ITEMS}
+                            label="Task Category"
+                            selectedKey={field.value ?? null}
+                            onSelectionChange={(key) =>
+                              key !== null &&
+                              field.onChange(key as TaskCategory)
+                            }>
+                            {(item) => (
+                              <Select.Item id={item.id} label={item.label} />
+                            )}
+                          </Select>
+                        )}
+                      </FormField>
+                      {renderTextField(
+                        'workflowDefinitionRef',
+                        'Workflow Definition',
+                        'task-form-workflow-definition-input'
+                      )}
                       <Button
                         color="secondary"
                         data-testid="task-form-load-template-button"
@@ -1168,7 +1223,7 @@ const TaskFormSettingsPage = () => {
               </Card>
             </section>
           </div>
-        </Form>
+        </HookForm>
       </div>
     </PageLayoutV1>
   );

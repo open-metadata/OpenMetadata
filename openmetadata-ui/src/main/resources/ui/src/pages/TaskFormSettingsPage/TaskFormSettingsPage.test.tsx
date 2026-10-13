@@ -134,7 +134,9 @@ describe('TaskFormSettingsPage', () => {
     ).toBeInTheDocument();
 
     await waitFor(() =>
-      expect(screen.getByLabelText('Name')).toHaveValue('DescriptionUpdate')
+      expect(screen.getByTestId('task-form-name-input')).toHaveValue(
+        'DescriptionUpdate'
+      )
     );
 
     expect(screen.getByTestId('task-form-category-input')).toHaveTextContent(
@@ -151,7 +153,9 @@ describe('TaskFormSettingsPage', () => {
   it('updates the selected schema', async () => {
     render(<TaskFormSettingsPage />);
 
-    const displayNameInput = await screen.findByLabelText('Display Name');
+    const displayNameInput = await screen.findByTestId(
+      'task-form-display-name-input'
+    );
 
     fireEvent.change(displayNameInput, {
       target: { value: 'Description Update v2' },
@@ -194,13 +198,15 @@ describe('TaskFormSettingsPage', () => {
     render(<TaskFormSettingsPage />);
 
     await waitFor(() =>
-      expect(screen.getByLabelText('Name')).toHaveValue('DescriptionUpdate')
+      expect(screen.getByTestId('task-form-name-input')).toHaveValue(
+        'DescriptionUpdate'
+      )
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'label.add' }));
 
-    const nameInput = screen.getByLabelText('Name');
-    const taskTypeInput = screen.getByLabelText('Task Type');
+    const nameInput = screen.getByTestId('task-form-name-input');
+    const taskTypeInput = screen.getByTestId('task-form-type-input');
 
     fireEvent.change(nameInput, { target: { value: 'CustomReview' } });
     fireEvent.change(taskTypeInput, { target: { value: 'Review' } });
@@ -233,7 +239,9 @@ describe('TaskFormSettingsPage', () => {
     render(<TaskFormSettingsPage />);
 
     await waitFor(() =>
-      expect(screen.getByLabelText('Name')).toHaveValue('DescriptionUpdate')
+      expect(screen.getByTestId('task-form-name-input')).toHaveValue(
+        'DescriptionUpdate'
+      )
     );
 
     fireEvent.click(screen.getByRole('tab', { name: 'Advanced JSON' }));
