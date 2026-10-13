@@ -123,6 +123,36 @@ class AlertUtilTest {
     assertFalse(AlertUtil.shouldTriggerAlert(event, config));
   }
 
+  // ---- shouldTriggerAlert: tagCategory source for classification events ----
+
+  @Test
+  void shouldTriggerAlert_classificationEvent_tagCategoryResource_returnsTrue() {
+    ChangeEvent event = entityChangeEvent(Entity.CLASSIFICATION);
+    FilteringRules config = filteringRules("tagCategory");
+    assertTrue(AlertUtil.shouldTriggerAlert(event, config));
+  }
+
+  @Test
+  void shouldTriggerAlert_tagEvent_tagCategoryResource_returnsFalse() {
+    ChangeEvent event = entityChangeEvent(Entity.TAG);
+    FilteringRules config = filteringRules("tagCategory");
+    assertFalse(AlertUtil.shouldTriggerAlert(event, config));
+  }
+
+  @Test
+  void shouldTriggerAlert_conversationOnClassification_tagCategoryResource_returnsTrue() {
+    ChangeEvent event =
+        conversationChangeEvent(conversation(ref(Entity.CLASSIFICATION)), EventType.THREAD_CREATED);
+    FilteringRules config = filteringRules("tagCategory");
+    assertTrue(AlertUtil.shouldTriggerAlert(event, config));
+  }
+
+  @Test
+  void entityTypeOfSource_resolvesRenamedSourceOnly() {
+    assertEquals(Entity.CLASSIFICATION, AlertUtil.entityTypeOfSource("tagCategory"));
+    assertEquals(Entity.TABLE, AlertUtil.entityTypeOfSource(Entity.TABLE));
+  }
+
   // ---- shouldTriggerAlert: conversations and dedicated resources -----------
 
   @Test
