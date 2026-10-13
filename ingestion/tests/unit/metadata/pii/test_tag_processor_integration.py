@@ -143,26 +143,57 @@ def test_shipped_resource_absence_does_not_prevent_module_collection(tmp_path):
         ("pl", "PolishCreditCardRecognizer"),
     ],
 )
-def test_shipped_card_evidence_and_default_tagging(shipped_pii, language, recognizer_name):
+@pytest.mark.parametrize(
+    "card",
+    [
+        pytest.param("4111-1111-1111-1111", id="visa-dashes"),
+        pytest.param("3056 930902 5904", id="diners-spaces"),
+        pytest.param("3056-930902-5904", id="diners-dashes"),
+        pytest.param("3056  930902  5904", id="diners-repeated-spaces"),
+        pytest.param("3056  930902   5904", id="diners-uneven-spaces"),
+        pytest.param("4111  1111   1111    1111", id="visa-uneven-spaces"),
+        pytest.param("3782  822463   10005", id="amex-uneven-spaces"),
+        pytest.param("4322  7148   2639    4388  390", id="visa-19-uneven-spaces"),
+    ],
+)
+def test_shipped_card_evidence_and_default_tagging(shipped_pii, language, recognizer_name, card):
     classification = _shipped_classification(shipped_pii)
     tag = _shipped_tag(shipped_pii, classification, "Sensitive", {recognizer_name})
     column = Column(
         name="customer_card", fullyQualifiedName="db.schema.table.customer_card", dataType=DataType.VARCHAR, tags=[]
     )
-    value = "Card 4111-1111-1111-1111 issued"
+    value = f"Card {card} issued"
     language_enum = ClassificationLanguage(language)
     analyzer = TagAnalyzer(tag, column, load_nlp_engine(classification_language=language_enum), language_enum)
 
     analysis = analyzer.analyze([value])
-    assert [(value[result.start : result.end], result.score) for result in analysis.recognizer_results] == [
-        ("4111-1111-1111-1111", 1.0)
-    ]
+    assert [(value[result.start : result.end], result.score) for result in analysis.recognizer_results] == [(card, 1.0)]
 
     processor = _processor(classification, [tag], language_enum)
     labels = processor.create_column_tag_labels(column, [value])
     assert [label.tagFQN.root for label in labels] == ["PII.Sensitive"]
     assert labels[0].labelType == LabelType.Generated
     assert labels[0].state == State.Suggested
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        pytest.param("3056  930902   5905", id="diners-wrong-checksum"),
+        pytest.param("+ 3056  930902   5904", id="diners-plus-phone"),
+        pytest.param("1234  3056  930902   5904", id="diners-numeric-prefix"),
+        pytest.param("5018  000000   0009", id="maestro-14-grouping-not-expanded"),
+    ],
+)
+def test_full_shipped_recognizers_reject_invalid_card_groupings(shipped_pii, value):
+    classification = _shipped_classification(shipped_pii)
+    tags = [_shipped_tag(shipped_pii, classification, tag_name) for tag_name in ("Sensitive", "NonSensitive")]
+    column = Column(name="payload", fullyQualifiedName="db.schema.table.payload", dataType=DataType.VARCHAR, tags=[])
+    nlp_engine = load_nlp_engine(classification_language=ClassificationLanguage.en)
+    evidence = [
+        result for tag in tags for result in TagAnalyzer(tag, column, nlp_engine).analyze([value]).recognizer_results
+    ]
+    assert all(result.entity_type != "CREDIT_CARD" for result in evidence)
 
 
 @pytest.mark.parametrize(
@@ -238,6 +269,10 @@ def test_luhn_valid_operational_lookalike_receives_conservative_sensitive_tag(sh
 @pytest.mark.parametrize(
     ("value", "expected_entities", "expected_labels"),
     [
+        ("Card 3056 930902 5904 issued", {"CREDIT_CARD": "3056 930902 5904"}, ["PII.Sensitive"]),
+        ("Card 3056-930902-5904 issued", {"CREDIT_CARD": "3056-930902-5904"}, ["PII.Sensitive"]),
+        ("Card 3056  930902   5904 issued", {"CREDIT_CARD": "3056  930902   5904"}, ["PII.Sensitive"]),
+        ("Card 4111  1111   1111    1111 issued", {"CREDIT_CARD": "4111  1111   1111    1111"}, ["PII.Sensitive"]),
         ("Card 4111111111111111 issued", {"CREDIT_CARD": "4111111111111111"}, ["PII.Sensitive"]),
         ("Reference 4939323083746 recorded", {"CREDIT_CARD": "4939323083746"}, ["PII.Sensitive"]),
         ("Reference 4924867307503760 recorded", {"CREDIT_CARD": "4924867307503760"}, ["PII.Sensitive"]),
@@ -272,6 +307,10 @@ def test_luhn_valid_operational_lookalike_receives_conservative_sensitive_tag(sh
         ("http://app.internal.local/path", {}, []),
     ],
     ids=[
+        "diners-spaces",
+        "diners-dashes",
+        "diners-uneven-spaces",
+        "visa-uneven-spaces",
         "card-compact",
         "card-phone-collision-13",
         "card-phone-collision-16",
@@ -324,6 +363,11 @@ def test_full_shipped_recognizer_interactions(shipped_pii, value, expected_entit
 @pytest.mark.parametrize(
     ("column_name", "value", "expected_card", "expected_ip", "expected_labels"),
     [
+        ("description", "Card 3056  930902   5904   2025", "3056  930902   5904", None, ["PII.Sensitive"]),
+        ("description", "3056-930902 5904", None, None, []),
+        ("description", "4111  1111   1111  1111  123", None, None, []),
+        ("description", "Scores 41  12   34 56 78 90 12 38 final", None, None, []),
+        ("description", "Batch 5  312   34567 8901233 done", None, None, []),
         ("phone", "+49 1512 3456787", None, None, ["PII.NonSensitive"]),
         ("notes", "Call me on +49 1512 3456787 tomorrow", None, None, []),
         ("phone", "4991123456788", "4991123456788", None, ["PII.Sensitive"]),

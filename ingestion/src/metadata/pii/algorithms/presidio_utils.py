@@ -198,7 +198,8 @@ recognizer_factories = class_register()
 
 
 def _has_card_shape(candidate: str) -> bool:
-    return any(pattern.fullmatch(candidate) for pattern in patterns.CARD_GROUPING_PATTERNS)
+    shape = re.sub(r" +", " ", candidate)
+    return any(pattern.fullmatch(shape) for pattern in patterns.CARD_GROUPING_PATTERNS)
 
 
 def _remap_result(result: RecognizerResult, start: int, end: int) -> RecognizerResult:

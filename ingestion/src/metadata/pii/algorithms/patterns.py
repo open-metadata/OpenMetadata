@@ -6,6 +6,7 @@ CARD_GROUPING_PATTERNS = (
     re.compile(r"\d{12,19}"),
     re.compile(r"\d{4}(?P<sep>[ -])\d{4}(?P=sep)\d{4}(?P=sep)\d{4}(?:(?P=sep)\d{3})?"),
     re.compile(r"\d{4}(?P<sep>[ -])\d{6}(?P=sep)\d{5}"),
+    re.compile(r"3(?:0[0-5]|[68]\d)\d(?P<sep>[ -])\d{6}(?P=sep)\d{4}"),
 )
 
 credit_cards = [

@@ -49,6 +49,7 @@ def _registered_recognizer(recognizer_class: type[EntityRecognizer]) -> EntityRe
         ("3782 822463 10005", "3782 822463 10005"),
         ("6221 2600 0000 0000 001", "6221 2600 0000 0000 001"),
         ("4222222222222", "4222222222222"),
+        pytest.param("50180000000009", "50180000000009", id="maestro-14-compact"),
         ("4000000000000000006", "4000000000000000006"),
         ("4991123456788", "4991123456788"),
         ("4930123456786", "4930123456786"),
@@ -66,6 +67,47 @@ def test_card_results_use_original_candidate_spans(text, expected):
         result.recognition_metadata[RecognizerResult.RECOGNIZER_NAME_KEY] == recognizer.name for result in results
     )
     assert all(result.analysis_explanation.pattern_name == "Credit Card Number" for result in results)
+
+
+@pytest.mark.parametrize(
+    "card",
+    [
+        pytest.param("3056 930902 5904", id="diners-spaces"),
+        pytest.param("3000 000000 0004", id="diners-300-prefix"),
+        pytest.param("3600-000000-0008", id="diners-36-prefix"),
+        pytest.param("3800  000000   0006", id="diners-38-prefix"),
+        pytest.param("3056-930902-5904", id="diners-dashes"),
+        pytest.param("3056  930902  5904", id="diners-repeated-spaces"),
+        pytest.param("3056  930902   5904", id="diners-uneven-spaces"),
+        pytest.param("4111  1111  1111  1111", id="visa-repeated-spaces"),
+        pytest.param("4111  1111   1111    1111", id="visa-uneven-spaces"),
+        pytest.param("3782  822463   10005", id="amex-uneven-spaces"),
+        pytest.param("4322  7148   2639    4388  390", id="visa-19-uneven-spaces"),
+    ],
+)
+def test_grouped_cards_preserve_exact_original_span_and_metadata(card):
+    text = f"é Card {card} issued"
+    recognizer = _registered_recognizer(CreditCardRecognizer)
+    results = recognizer.analyze(text, ["CREDIT_CARD"])
+
+    assert [(result.start, result.end, result.score) for result in results] == [(7, 7 + len(card), 1.0)]
+    assert text[results[0].start : results[0].end] == card
+    assert results[0].recognition_metadata[RecognizerResult.RECOGNIZER_NAME_KEY] == recognizer.name
+    assert results[0].analysis_explanation.pattern_name == "Credit Card Number"
+
+
+@pytest.mark.parametrize("year", ["1999", "2025"])
+def test_grouped_card_recovers_only_separate_year_with_original_spacing(year):
+    card = "3056  930902   5904"
+    text = f"Card {card}    {year}"
+    results = _registered_recognizer(CreditCardRecognizer).analyze(text, ["CREDIT_CARD"])
+    assert [(result.start, result.end, result.score) for result in results] == [(5, 5 + len(card), 1.0)]
+
+
+def test_separate_compact_cards_keep_independent_offsets_with_repeated_spaces():
+    text = "30569309025904   4111111111111111"
+    results = _registered_recognizer(CreditCardRecognizer).analyze(text, ["CREDIT_CARD"])
+    assert [(result.start, result.end, result.score) for result in results] == [(0, 14, 1.0), (17, 33, 1.0)]
 
 
 @pytest.mark.parametrize("card", ["4939323083746", "4924867307503760", "4930582239178"])
@@ -109,6 +151,20 @@ def test_compact_card_followed_by_distant_year_within_preprocessing_limit(length
 @pytest.mark.parametrize(
     "text",
     [
+        pytest.param("5018  000000   0009", id="maestro-14-grouping-not-expanded"),
+        pytest.param("3056  930902   5905", id="diners-wrong-checksum"),
+        pytest.param("4111  1111   1111  1112", id="visa-wrong-checksum"),
+        pytest.param("3056-930902 5904", id="diners-mixed-separators"),
+        pytest.param("3056--930902--5904", id="diners-repeated-dashes"),
+        pytest.param("3056\t930902\t5904", id="diners-tabs"),
+        pytest.param("3056\n930902\n5904", id="diners-newlines"),
+        pytest.param("+ 3056  930902   5904", id="diners-plus-phone"),
+        pytest.param("1234  3056  930902   5904", id="diners-numeric-prefix"),
+        pytest.param("3056  930902   5904  123", id="diners-short-suffix"),
+        pytest.param("4111  1111   1111  1111  123", id="visa-short-suffix"),
+        pytest.param("4322  7148   2639  4388  391", id="visa-19-invalid-complete"),
+        pytest.param("Scores 41  12   34  56 78 90 12 38 final", id="uneven-score-list"),
+        pytest.param("Batch 5  312   34567  8901233 done", id="uneven-batch-groups"),
         "4111111111111112",
         "4111-1111-1111-1112",
         "x4111111111111111",
