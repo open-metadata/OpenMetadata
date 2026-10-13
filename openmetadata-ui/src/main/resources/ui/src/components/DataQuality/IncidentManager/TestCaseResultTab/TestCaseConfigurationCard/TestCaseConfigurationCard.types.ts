@@ -18,6 +18,8 @@ import {
 import { TestDefinition } from '../../../../../generated/tests/testDefinition';
 
 export interface ConfigurationParameterRow {
+  /** The parameter's own name, which keys the row; the label may be its display name. */
+  name?: string;
   /** Displayed on the left of the row; already human-readable. */
   label: string;
   /** Displayed on the right. A node covers the version page's diff markup. */

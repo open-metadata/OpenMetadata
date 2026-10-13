@@ -27,8 +27,8 @@ import {
   getThresholdTestSemantic,
   getThresholdUnitLabelParts,
   hasThresholdUnitParam,
-  isThresholdUnitOptionDisabled,
-  omitDimensionFailurePolicy,
+  isMinRowsPerDimensionApplicable,
+  omitInapplicableDimensionParams,
   ThresholdNoun,
   ThresholdSamplingKind,
   ThresholdTestSemantic,
@@ -163,39 +163,69 @@ describe('getParamOptionLabelKey', () => {
   });
 });
 
-describe('omitDimensionFailurePolicy', () => {
-  const params = { threshold: 5, dimensionFailurePolicy: 'ANY_DIMENSION' };
+describe('omitInapplicableDimensionParams', () => {
+  const params = {
+    threshold: 5,
+    thresholdUnit: 'PERCENTAGE',
+    dimensionFailurePolicy: 'ANY_DIMENSION',
+    minRowsPerDimension: 30,
+  };
 
-  it('keeps the policy on a dimensional test', () => {
-    expect(omitDimensionFailurePolicy(params, true)).toEqual(params);
+  it('keeps every roll-up param where the minimum applies', () => {
+    expect(omitInapplicableDimensionParams(params, true)).toEqual(params);
   });
 
-  it('drops only the policy on any other test', () => {
-    expect(omitDimensionFailurePolicy(params, false)).toEqual({
+  it('drops both roll-up params on a test without dimensions', () => {
+    expect(omitInapplicableDimensionParams(params, false)).toEqual({
       threshold: 5,
+      thresholdUnit: 'PERCENTAGE',
     });
   });
 
+  it.each([
+    ['under OVERALL_ONLY', { dimensionFailurePolicy: 'OVERALL_ONLY' }],
+    ['with an ABSOLUTE threshold', { thresholdUnit: 'ABSOLUTE' }],
+  ])('drops only the minimum %s', (_, override) => {
+    const { minRowsPerDimension: _minRows, ...rest } = {
+      ...params,
+      ...override,
+    };
+
+    expect(
+      omitInapplicableDimensionParams({ ...params, ...override }, true)
+    ).toEqual(rest);
+  });
+
   it('passes absent params through', () => {
-    expect(omitDimensionFailurePolicy(undefined, false)).toBeUndefined();
+    expect(omitInapplicableDimensionParams(undefined, false)).toBeUndefined();
   });
 });
 
-describe('isThresholdUnitOptionDisabled', () => {
-  it('does not let custom SQL pick a unit its validator never reads', () => {
+describe('isMinRowsPerDimensionApplicable', () => {
+  it('applies to a PERCENTAGE roll-up under ANY_DIMENSION', () => {
     expect(
-      isThresholdUnitOptionDisabled('tableCustomSQLQuery', 'PERCENTAGE')
+      isMinRowsPerDimensionApplicable(
+        true,
+        { id: 'ANY_DIMENSION', label: 'Any' },
+        'PERCENTAGE'
+      )
     ).toBe(true);
-    expect(
-      isThresholdUnitOptionDisabled('tableCustomSQLQuery', 'ABSOLUTE')
-    ).toBe(false);
   });
 
-  it('leaves both units selectable for every other test', () => {
-    expect(
-      isThresholdUnitOptionDisabled('columnValuesToBeNotNull', 'PERCENTAGE')
-    ).toBe(false);
-  });
+  it.each([
+    [false, 'ANY_DIMENSION', 'PERCENTAGE'],
+    [true, 'OVERALL_ONLY', 'PERCENTAGE'],
+    [true, undefined, 'PERCENTAGE'],
+    [true, 'ANY_DIMENSION', 'ABSOLUTE'],
+    [true, 'ANY_DIMENSION', undefined],
+  ])(
+    'does not apply when dimensional=%s, policy=%s, unit=%s',
+    (isDimensionalTest, policy, unit) => {
+      expect(
+        isMinRowsPerDimensionApplicable(isDimensionalTest, policy, unit)
+      ).toBe(false);
+    }
+  );
 });
 
 describe('hasThresholdUnitParam', () => {
@@ -342,7 +372,6 @@ describe('getThresholdPreviewData', () => {
       noun: ThresholdNoun.NonNullValues,
       target: 'email',
       isThresholdIgnored: false,
-      isUnitIgnored: false,
     });
     expect(data?.sampling).toBeUndefined();
   });
@@ -533,13 +562,12 @@ describe('getThresholdPreviewData', () => {
       operator: '<=',
       operatorLabelKey: 'label.threshold-operator-at-most',
       strategy: CustomSqlStrategy.Rows,
-      isUnitIgnored: false,
     });
   });
 
-  it('flags that custom SQL ignores a percentage unit', () => {
-    // `evaluate_threshold` compares the raw row count, so a PERCENTAGE unit
-    // changes nothing about the verdict.
+  it('reads a custom SQL percentage as a share of the table rows', () => {
+    // The validator applies the operator to the returned rows as a
+    // percentage of the table's row count.
     const data = getThresholdPreviewData({
       definition: definitionOf('tableCustomSQLQuery', [
         { name: 'operator', optionValues: ['<=', '>'] },
@@ -551,8 +579,11 @@ describe('getThresholdPreviewData', () => {
       },
     });
 
-    expect(data?.isUnitIgnored).toBe(true);
-    expect(data?.isThresholdIgnored).toBe(false);
+    expect(data).toMatchObject({
+      isPercentage: true,
+      noun: ThresholdNoun.TableRows,
+      isThresholdIgnored: false,
+    });
   });
 
   it('does not promise the in-set tolerance while Match enum is off', () => {

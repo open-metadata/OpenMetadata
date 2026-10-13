@@ -15,6 +15,7 @@ import { TestCaseStatus } from '../../generated/tests/testCase';
 import {
   applyStatusPlacements,
   formatTestSummaryYAxis,
+  getParameterBounds,
   getStatusChartStatus,
   getTestSummaryTooltipPosition,
   getThresholdReference,
@@ -680,6 +681,20 @@ describe('isSameTooltipPosition', () => {
 describe('getThresholdReference', () => {
   const params = (values: Record<string, string>) =>
     Object.entries(values).map(([name, value]) => ({ name, value }));
+
+  it('should not read minRowsPerDimension as a lower bound', () => {
+    const notNullRollUp = params({
+      threshold: '10',
+      thresholdUnit: 'PERCENTAGE',
+      dimensionFailurePolicy: 'ANY_DIMENSION',
+      minRowsPerDimension: '4',
+    });
+
+    expect(getParameterBounds(notNullRollUp).min).toBeUndefined();
+    expect(getThresholdReference(notNullRollUp)?.labelKey).not.toBe(
+      'label.allowed-min'
+    );
+  });
 
   it('should read the single assertion parameter as the expected value', () => {
     expect(

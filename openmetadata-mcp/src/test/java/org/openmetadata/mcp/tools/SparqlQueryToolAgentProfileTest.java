@@ -130,7 +130,7 @@ class SparqlQueryToolAgentProfileTest {
           assertTrue(rejected.getMessage().startsWith(code + ":"), query + " -> " + rejected);
         });
 
-    verify(repository, never()).executeSparqlQueryDirect(anyString(), anyString());
+    verify(repository, never()).executeAssertedSparqlQuery(anyString(), anyString());
     verify(repository, never()).executeSparqlQuery(anyString(), anyString());
   }
 
@@ -149,7 +149,7 @@ class SparqlQueryToolAgentProfileTest {
                         "SELECT * WHERE { SERVICE <https://x.example/sparql> { ?s ?p ?o } }")));
 
     assertTrue(blocked.getMessage().startsWith("FEDERATION_NOT_ALLOWED:"));
-    verify(repository, never()).executeSparqlQueryDirect(anyString(), anyString());
+    verify(repository, never()).executeAssertedSparqlQuery(anyString(), anyString());
   }
 
   @Test
@@ -167,7 +167,7 @@ class SparqlQueryToolAgentProfileTest {
 
     assertTrue(inference.getMessage().contains("'inferenceLevel' must be 'none'"));
     assertTrue(format.getMessage().contains("'format' must be 'json'"));
-    verify(repository, never()).executeSparqlQueryDirect(anyString(), anyString());
+    verify(repository, never()).executeAssertedSparqlQuery(anyString(), anyString());
   }
 
   @Test
@@ -233,7 +233,7 @@ class SparqlQueryToolAgentProfileTest {
                     .execute(grantedAuthorizer(), CALLER, Map.of("query", SELECT_ALL)));
 
     assertTrue(notReady.getMessage().startsWith("PROJECTION_NOT_READY:"));
-    verify(repository, never()).executeSparqlQueryDirect(anyString(), anyString());
+    verify(repository, never()).executeAssertedSparqlQuery(anyString(), anyString());
   }
 
   @Test
@@ -248,7 +248,7 @@ class SparqlQueryToolAgentProfileTest {
                     .execute(grantedAuthorizer(), CALLER, Map.of("query", SELECT_ALL)));
 
     assertTrue(degraded.getMessage().contains("an administrator must run a full RdfIndexApp"));
-    verify(repository, never()).executeSparqlQueryDirect(anyString(), anyString());
+    verify(repository, never()).executeAssertedSparqlQuery(anyString(), anyString());
   }
 
   @Test
@@ -275,7 +275,7 @@ class SparqlQueryToolAgentProfileTest {
   @Test
   void administratorsKeepConstructGraphAndInferenceOnTheExistingPath() throws IOException {
     final RdfRepository repository = enabledRepository();
-    when(repository.executeSparqlQuery(anyString(), anyString())).thenReturn("{}");
+    when(repository.executeAssertedSparqlQuery(anyString(), anyString())).thenReturn("{}");
     final Authorizer administrator = grantedAuthorizer();
     RdfToolAuthorization.resolveCallersAs(subjects, true);
 
@@ -317,7 +317,7 @@ class SparqlQueryToolAgentProfileTest {
 
   private static RdfRepository repositoryReturning(final String selectJson) {
     final RdfRepository repository = enabledRepository();
-    when(repository.executeSparqlQueryDirect(anyString(), eq(JSON))).thenReturn(selectJson);
+    when(repository.executeAssertedSparqlQuery(anyString(), eq(JSON))).thenReturn(selectJson);
     return repository;
   }
 

@@ -15,8 +15,13 @@ package org.openmetadata.service.security.auth;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.util.Objects;
+import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
+import org.openmetadata.catalog.type.SamlSecurityConfig;
+import org.openmetadata.catalog.type.ServiceProviderConfig;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.auth.LdapConfiguration;
+import org.openmetadata.schema.auth.ldapTrustStoreConfig.CustomTrustManagerConfig;
+import org.openmetadata.schema.auth.ldapTrustStoreConfig.TruststoreConfig;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -46,9 +51,69 @@ public final class TestLoginCandidates {
         live == null ? null : live.getAuthenticationConfiguration();
     if (candidateAuth != null && liveAuth != null) {
       restoreOidcSecret(candidateAuth, liveAuth);
+      // The trust store password first: the bind check compares the whole trust store setup.
+      restoreTrustStorePassword(
+          candidateAuth.getLdapConfiguration(), liveAuth.getLdapConfiguration());
       restoreLdapPassword(candidateAuth.getLdapConfiguration(), liveAuth.getLdapConfiguration());
+      restoreSamlSecrets(candidateAuth.getSamlConfiguration(), liveAuth.getSamlConfiguration());
     }
     return copy;
+  }
+
+  /** Same trust store file in the same format: the password only ever opens that file. */
+  private static void restoreTrustStorePassword(
+      LdapConfiguration candidate, LdapConfiguration live) {
+    CustomTrustManagerConfig candidateStore = customTrustStoreOf(candidate);
+    CustomTrustManagerConfig liveStore = customTrustStoreOf(live);
+    if (candidateStore != null
+        && liveStore != null
+        && isMaskedOrMissing(candidateStore.getTrustStoreFilePassword())
+        && Objects.equals(candidateStore.getTrustStoreFilePath(), liveStore.getTrustStoreFilePath())
+        && Objects.equals(
+            candidateStore.getTrustStoreFileFormat(), liveStore.getTrustStoreFileFormat())) {
+      candidateStore.setTrustStoreFilePassword(liveStore.getTrustStoreFilePassword());
+    }
+  }
+
+  private static CustomTrustManagerConfig customTrustStoreOf(LdapConfiguration ldap) {
+    TruststoreConfig trustStore = ldap == null ? null : ldap.getTrustStoreConfig();
+    return trustStore == null ? null : trustStore.getCustomTrustManagerConfig();
+  }
+
+  /**
+   * The SP private key only signs requests to the identity provider, and the key store password
+   * only opens the configured key store, so both are restored while the candidate keeps the same
+   * service provider, identity provider and key store.
+   */
+  private static void restoreSamlSecrets(SamlSSOClientConfig candidate, SamlSSOClientConfig live) {
+    if (candidate != null && live != null && isSameSamlTrust(candidate, live)) {
+      ServiceProviderConfig candidateSp = candidate.getSp();
+      if (candidateSp != null && isMaskedOrMissing(candidateSp.getSpPrivateKey())) {
+        candidateSp.setSpPrivateKey(live.getSp().getSpPrivateKey());
+      }
+      restoreKeyStorePassword(candidate.getSecurity(), live.getSecurity());
+    }
+  }
+
+  private static boolean isSameSamlTrust(SamlSSOClientConfig candidate, SamlSSOClientConfig live) {
+    return candidate.getSp() != null
+        && live.getSp() != null
+        && candidate.getIdp() != null
+        && live.getIdp() != null
+        && Objects.equals(candidate.getSp().getEntityId(), live.getSp().getEntityId())
+        && Objects.equals(candidate.getIdp().getEntityId(), live.getIdp().getEntityId())
+        && Objects.equals(candidate.getIdp().getSsoLoginUrl(), live.getIdp().getSsoLoginUrl());
+  }
+
+  private static void restoreKeyStorePassword(
+      SamlSecurityConfig candidate, SamlSecurityConfig live) {
+    if (candidate != null
+        && live != null
+        && isMaskedOrMissing(candidate.getKeyStorePassword())
+        && Objects.equals(candidate.getKeyStoreFilePath(), live.getKeyStoreFilePath())
+        && Objects.equals(candidate.getKeyStoreAlias(), live.getKeyStoreAlias())) {
+      candidate.setKeyStorePassword(live.getKeyStorePassword());
+    }
   }
 
   private static void restoreOidcSecret(

@@ -73,7 +73,7 @@ class AgentSparqlServiceTest {
 
   @Test
   void returnsTypedBindingsWithoutApplyingInference() {
-    when(repository.executeSparqlQueryDirect(anyString(), eq(SPARQL_JSON)))
+    when(repository.executeAssertedSparqlQuery(anyString(), eq(SPARQL_JSON)))
         .thenReturn(
             """
             {"head":{"vars":["s","label","count","blank","missing"]},
@@ -99,12 +99,13 @@ class AgentSparqlServiceTest {
         null);
     assertTerm(row, "blank", AgentSparqlRdfTermType.BNODE, null, null);
     assertTrue(!row.getAdditionalProperties().containsKey("missing"), "Unbound stays absent");
-    verify(repository, never()).executeSparqlQuery(anyString(), anyString());
+    verify(repository, never())
+        .executeSparqlQueryWithInferenceResult(anyString(), anyString(), anyString());
   }
 
   @Test
   void returnsRdf12TripleTermsAndDirectionalLanguageLiterals() {
-    when(repository.executeSparqlQueryDirect(anyString(), eq(SPARQL_JSON)))
+    when(repository.executeAssertedSparqlQuery(anyString(), eq(SPARQL_JSON)))
         .thenReturn(
             """
             {"head":{"vars":["statement"]},
@@ -304,7 +305,7 @@ class AgentSparqlServiceTest {
 
     assertCode(
         AgentSparqlErrorCode.PROJECTION_NOT_READY, () -> service.execute("user", SELECT_ALL));
-    verify(repository).executeSparqlQueryDirect(anyString(), eq(SPARQL_JSON));
+    verify(repository).executeAssertedSparqlQuery(anyString(), eq(SPARQL_JSON));
   }
 
   @Test
@@ -339,7 +340,7 @@ class AgentSparqlServiceTest {
 
   @Test
   void backendFailureMessagesDoNotLeakStorageDetails() {
-    when(repository.executeSparqlQueryDirect(anyString(), eq(SPARQL_JSON)))
+    when(repository.executeAssertedSparqlQuery(anyString(), eq(SPARQL_JSON)))
         .thenThrow(new RuntimeException("http://admin:secret@fuseki:3030 exploded"));
 
     AgentSparqlException failure =
@@ -350,7 +351,7 @@ class AgentSparqlServiceTest {
 
   @Test
   void oversizedBackendResultIsAStructuredError() {
-    when(repository.executeSparqlQueryDirect(anyString(), eq(SPARQL_JSON)))
+    when(repository.executeAssertedSparqlQuery(anyString(), eq(SPARQL_JSON)))
         .thenReturn("x".repeat(SparqlQueryLimits.MAX_OUTPUT_BYTES + 1));
 
     assertCode(
@@ -360,7 +361,7 @@ class AgentSparqlServiceTest {
 
   @Test
   void unreadableBackendResultIsABackendFailure() {
-    when(repository.executeSparqlQueryDirect(anyString(), eq(SPARQL_JSON))).thenReturn("<html/>");
+    when(repository.executeAssertedSparqlQuery(anyString(), eq(SPARQL_JSON))).thenReturn("<html/>");
 
     assertCode(
         AgentSparqlErrorCode.RDF_BACKEND_FAILURE, () -> readyService().execute("user", SELECT_ALL));
@@ -368,7 +369,7 @@ class AgentSparqlServiceTest {
 
   @Test
   void emptyJsonObjectIsAnUnreadableBackendResult() {
-    when(repository.executeSparqlQueryDirect(anyString(), eq(SPARQL_JSON))).thenReturn("{}");
+    when(repository.executeAssertedSparqlQuery(anyString(), eq(SPARQL_JSON))).thenReturn("{}");
 
     assertCode(
         AgentSparqlErrorCode.RDF_BACKEND_FAILURE, () -> readyService().execute("user", SELECT_ALL));
@@ -383,7 +384,7 @@ class AgentSparqlServiceTest {
             + "[{\"s\":{\"type\":\"literal\",\"value\":\"%s\"}}]}}";
     int padding = SparqlQueryLimits.MAX_OUTPUT_BYTES - 100 - template.length() + 2;
     String backend = template.formatted("v".repeat(padding));
-    when(repository.executeSparqlQueryDirect(anyString(), eq(SPARQL_JSON))).thenReturn(backend);
+    when(repository.executeAssertedSparqlQuery(anyString(), eq(SPARQL_JSON))).thenReturn(backend);
 
     assertCode(
         AgentSparqlErrorCode.RESULT_OUTPUT_LIMIT_EXCEEDED,
@@ -418,7 +419,7 @@ class AgentSparqlServiceTest {
   }
 
   private void assertStorageFailure(RuntimeException failure, AgentSparqlErrorCode expected) {
-    when(repository.executeSparqlQueryDirect(anyString(), eq(SPARQL_JSON))).thenThrow(failure);
+    when(repository.executeAssertedSparqlQuery(anyString(), eq(SPARQL_JSON))).thenThrow(failure);
 
     assertCode(expected, () -> readyService().execute("user", SELECT_ALL));
   }
@@ -433,7 +434,7 @@ class AgentSparqlServiceTest {
 
   private String executedQuery() {
     ArgumentCaptor<String> query = ArgumentCaptor.forClass(String.class);
-    verify(repository).executeSparqlQueryDirect(query.capture(), eq(SPARQL_JSON));
+    verify(repository).executeAssertedSparqlQuery(query.capture(), eq(SPARQL_JSON));
     return query.getValue();
   }
 
@@ -442,7 +443,7 @@ class AgentSparqlServiceTest {
         IntStream.range(0, rows)
             .mapToObj(index -> "{\"s\":{\"type\":\"uri\",\"value\":\"urn:row:" + index + "\"}}")
             .collect(Collectors.joining(","));
-    when(repository.executeSparqlQueryDirect(anyString(), eq(SPARQL_JSON)))
+    when(repository.executeAssertedSparqlQuery(anyString(), eq(SPARQL_JSON)))
         .thenReturn("{\"head\":{\"vars\":[\"s\"]},\"results\":{\"bindings\":[" + bindings + "]}}");
   }
 

@@ -12,8 +12,13 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import { Toggle, Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Form, Row, Select } from 'antd';
+import {
+  Button,
+  Grid,
+  Toggle,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Form, Select } from 'antd';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -27,6 +32,7 @@ import {
   getConditionalField,
   getSupportedFilterOptions,
 } from '../../../utils/Alerts/AlertsUtil';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { ObservabilityFormTriggerItemProps } from './ObservabilityFormTriggerItem.interface';
 
 function ObservabilityFormTriggerItem({
@@ -57,7 +63,11 @@ function ObservabilityFormTriggerItem({
             fields.length < (supportedTriggers?.length ?? 1) && !isViewMode;
 
           return (
-            <Row data-testid="triggers-list" gutter={[16, 16]} key="triggers">
+            <Grid
+              className="layout-row layout-grid"
+              data-testid="triggers-list"
+              key="triggers"
+              style={{ ...getLayoutGutter(16, 16) }}>
               {fields.map(({ key, name }) => {
                 const effect =
                   form.getFieldValue(['input', 'actions', name, 'effect']) ??
@@ -68,14 +78,17 @@ function ObservabilityFormTriggerItem({
                   !isEmpty(selectedTriggers[name]);
 
                 return (
-                  <Col
+                  <Grid.Item
+                    className="layout-column"
                     data-testid={`trigger-${name}`}
                     key={`observability-${key}`}
                     span={24}>
                     <div className="flex gap-4">
                       <div className="flex-1 w-min-0">
-                        <Row gutter={[8, 8]}>
-                          <Col span={12}>
+                        <Grid
+                          className="layout-row layout-grid"
+                          style={{ ...getLayoutGutter(8, 8) }}>
+                          <Grid.Item className="layout-column" span={12}>
                             <Form.Item
                               key={`trigger-${key}`}
                               name={[name, 'name']}
@@ -101,7 +114,7 @@ function ObservabilityFormTriggerItem({
                                 }}
                               />
                             </Form.Item>
-                          </Col>
+                          </Grid.Item>
                           {showConditionalFields &&
                             getConditionalField(
                               selectedTriggers[name].name ?? '',
@@ -109,12 +122,16 @@ function ObservabilityFormTriggerItem({
                               search,
                               supportedTriggers
                             )}
-                        </Row>
+                        </Grid>
                       </div>
                       {!isViewMode && (
                         <Button
+                          aria-label={t('label.remove-entity', {
+                            entity: t('label.trigger'),
+                          })}
+                          color="secondary"
                           data-testid={`remove-trigger-${name}`}
-                          icon={<CloseOutlined />}
+                          iconLeading={<CloseOutlined />}
                           onClick={() => remove(name)}
                         />
                       )}
@@ -134,15 +151,15 @@ function ObservabilityFormTriggerItem({
                         size="sm"
                       />
                     </Form.Item>
-                  </Col>
+                  </Grid.Item>
                 );
               })}
               {showAddTriggerButton && (
-                <Col span={24}>
+                <Grid.Item className="layout-column" span={24}>
                   <Button
+                    color="primary"
                     data-testid="add-trigger"
-                    disabled={isEmpty(sources)}
-                    type="primary"
+                    isDisabled={isEmpty(sources)}
                     onClick={() =>
                       add({
                         effect: Effect.Include,
@@ -152,10 +169,13 @@ function ObservabilityFormTriggerItem({
                       entity: t('label.trigger'),
                     })}
                   </Button>
-                </Col>
+                </Grid.Item>
               )}
-              <Form.ErrorList errors={errors} />
-            </Row>
+              {/* Empty error lists must not reserve a grid row and its gutter. */}
+              <Grid.Item className="layout-column tw:empty:hidden" span={24}>
+                <Form.ErrorList errors={errors} />
+              </Grid.Item>
+            </Grid>
           );
         }}
       </Form.List>

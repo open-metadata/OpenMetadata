@@ -7,7 +7,7 @@ make availability explicit:
 | Status | Meaning |
 | --- | --- |
 | `om:Stored` | The projection writes the predicate when the corresponding field or relationship is populated. Queries work with `inference=none`. Optional fields need not be present on every entity. |
-| `om:InferenceOnly` | The metadata projection does not supply this predicate. It is retained for custom inference, external ontology data, or an explicit export path described in its comment. Enabling RDFS or OWL alone does not guarantee any matching triples. |
+| `om:InferenceOnly` | The metadata projection does not supply this predicate. It is retained for custom inference, external ontology data, or an explicit export path described in its comment. Triples materialized by custom rules are returned with `inference=custom` only; `inference=none` reads asserted graphs. Enabling RDFS or OWL alone does not guarantee any matching triples. |
 
 In particular, declaring an alias as `rdfs:subPropertyOf` an external property
 does **not** infer the alias from triples using that external property. The
@@ -58,28 +58,26 @@ remove the legacy edge and repair old live PROV edges while preserving a valid
 reciprocal lineage edge. Graph exports normalize lineage predicates to match the
 exported source-to-output orientation.
 
-## Column lineage
+## Column-level lineage
 
-`RdfIndexApp` writes one node per column mapping, linked from the lineage details of its
-table edge. The projection writes the columns' fully qualified names as **plain string
-literals**, not IRIs (`RdfRepository.buildLineageModel`):
+A lineage edge's details node links each column mapping through
+`om:hasColumnLineage`. Live lineage writes and the RDF indexing app write the same
+triples, using the edge's details as currently stored:
 
 ```turtle
-<output> om:upstream <source> ; prov:wasDerivedFrom <source> .
-<source> om:downstream <output> ; om:hasLineageDetails <details> .
-<details> om:hasColumnLineage <details/columnLineage/col_0> .
-<details/columnLineage/col_0> a om:ColumnLineage ;
-    om:fromColumn "svc.db.schema.source.c1", "svc.db.schema.source.c2" ;
-    om:toColumn   "svc.db.schema.output.col" ;
-    om:transformFunction "..." .
+<details> om:hasColumnLineage <columnLineage> .
+<columnLineage> a om:ColumnLineage ;
+    om:fromColumn <https://open-metadata.org/entity/column/service.db.schema.customers.email> ;
+    om:fromColumnFqn "service.db.schema.customers.email" ;
+    om:toColumn <https://open-metadata.org/entity/column/service.db.schema.contacts.email> ;
+    om:toColumnFqn "service.db.schema.contacts.email" .
 ```
 
-One mapping can have several `om:fromColumn` values. Columns are separate resources, which is how a
-literal reaches its owning asset: `<asset> om:hasColumn <col>`, `<col> om:fullyQualifiedName "fqn"`,
-and nested columns hang off their parent with `om:hasChildColumn`. The ontology and the
-`ColumnLineageShape` SHACL shape still describe `om:fromColumn` and `om:toColumn` as column IRIs; the
-projection does not write them that way, so that shape does not match what is projected (tracked in
-#34864). Literal matching is exact: only an untyped plain literal equals `"fqn"`.
+`om:fromColumn` and `om:toColumn` reference the same column IRIs that `om:hasColumn`
+mints for the table, so queries and inference rules can join column lineage with column
+tags. Match by name with `om:fromColumnFqn` and `om:toColumnFqn`. Stores indexed before
+2.1 hold FQN literals in `om:fromColumn` and `om:toColumn` until the lineage edge is
+written again or the store is rebuilt.
 
 ### Traversal and paging
 
@@ -88,7 +86,8 @@ All columns downstream of one column, with the asset that owns each, one page at
 ```sparql
 PREFIX om: <https://open-metadata.org/ontology/>
 SELECT DISTINCT ?column ?asset WHERE {
-  "svc.db.schema.table.col" (^om:fromColumn/om:toColumn)+ ?column .
+  ?start om:fullyQualifiedName "svc.db.schema.table.col" .
+  ?start (^om:fromColumn/om:toColumn)+ ?c .
   ?c om:fullyQualifiedName ?column .
   ?c (^om:hasChildColumn)*/^om:hasColumn ?asset
 } ORDER BY ?column ?asset LIMIT 250 OFFSET 0
@@ -109,19 +108,35 @@ column in a cycle reaches itself.
   an administrator can lower it). A row of a column and an
   asset IRI is about 205 bytes with realistic names, so 400 rows overflow the default and the tool publishes 250.
   When a page comes back `truncated`, lower `LIMIT` and repeat the same `OFFSET`.
-- **Freshness.** Column mappings reach the graph only on an `RdfIndexApp` run. A live
-  `PUT /v1/lineage` projects the table edge but not its `LineageDetails`, so a new mapping appears
-  after the next reindex.
+- **Freshness.** Live lineage writes and `RdfIndexApp` both project column mappings. A rebuild refreshes older stores that still hold literal lineage endpoints.
 
 Measured on a graph of 5,006 mappings (a six-hop chain, a fan-out of one column into 450, a rename hop,
 a multi-source mapping, a cycle, a dashboard data model hop and a nested column): the 2,705 columns
 downstream of the source column take 330 ms in memory, and 11 pages of 250 rows take 49 to 230 ms each
 (about 51 KB per page) through the MCP `sparql_query` tool against Fuseki.
 
-`om:hasChildColumn` is projected for nested table columns even though the ontology labels it
-`om:InferenceOnly`: a real `RdfIndexApp` run over a table with a struct column writes it, so queries
-need no inference. The MCP description test lists it as a justified exception, and the stale label
-is tracked in #34864.
+`om:hasChildColumn` is stored for nested table columns; traversing to their owning asset needs no inference.
+
+## Domain membership
+
+An asset's `domains` are projected as `om:belongsToDomain`, the predicate already used
+for the singular `domain` field. `om:domains` is deprecated: the next projection of
+each entity removes it, and a full rebuild removes it everywhere.
+
+## Concept realizations
+
+Each entry in a glossary term's `realizedIn` links the term to the asset twice: with
+`om:mappedTo`, written from the stored realization relationship, and with a predicate
+for the asset's role:
+
+| Role | Predicate |
+|---|---|
+| `PRIMARY_STORE` (the default) | `om:hasPrimaryStore` |
+| `DERIVED` | `om:hasDerivedAsset` |
+| `REPLICA` | `om:hasReplica` |
+
+`om:realizedIn` is deprecated. Earlier releases stored realizations under it as a JSON
+literal, which the term's next projection removes.
 
 ## Custom extension values
 
@@ -141,6 +156,63 @@ Replacing, removing, or deleting an entity's extension also removes its owned
 extension entries. Unrelated entities and relationship hooks remain intact.
 User-registered glossary relationship IRIs and custom ontology axioms still use
 their configured vocabulary; they are not a finite part of the shipped core ontology.
+
+## Glossary ontology projection
+
+`GET /v1/glossaries/{id}/exportOntology`, `GET /v1/rdf/glossary/{id}/export`, and the
+glossary-scoped `POST /v1/glossaries/{id}/sparql` build one glossary's ontology from the
+database on each request; they do not read the knowledge graph. That projection is OWL 2
+DL: OWL API, configured as the reasoner worker configures it, parses it without
+placeholders or unconsumed triples, and its OWL 2 DL profile check reports nothing for
+valid input (`GlossaryOntologyModelBuilderTest`, `OntologyExpressionRdfWriterTest`).
+
+- **Declarations.** Every class, object property, data property, annotation property, and
+  named individual the projection uses is declared. SKOS terms are declared with the kind
+  the SKOS reference vocabulary gives them (`skos:broader` is an object property,
+  `skos:prefLabel` an annotation property), and `om:mappedTo`, the realization roles and
+  `om:fullyQualifiedName` with the kind `openmetadata.ttl` gives them. Built-in RDF, RDFS,
+  OWL, and XSD vocabulary is never declared. The importer ignores these declarations when an
+  export is imported again: an IRI in the SKOS, RDF, RDFS, OWL, XSD, or `om:` namespace
+  never becomes a term or an attribute.
+- **Reserved relationship types.** A relationship type whose predicate is built-in or SKOS
+  vocabulary keeps that predicate's meaning instead of becoming an `owl:ObjectProperty`
+  with the type's characteristics:
+
+  | Type | Edge is read as | Not emitted any more |
+  |---|---|---|
+  | `subClassOf` (`rdfs:subClassOf`) | Subclass axiom; both terms are declared classes | `rdfs:subClassOf a owl:TransitiveProperty` |
+  | `seeAlso` (`rdfs:seeAlso`) | Annotation | `rdfs:seeAlso a owl:SymmetricProperty` |
+  | `broader`, `narrower`, `synonym` (SKOS) | SKOS object property assertion | Transitive or symmetric declarations; SKOS does not make `skos:broader` transitive |
+  | `superClassOf` (`om:superClassOf`) | Transitive object property | `owl:inverseOf rdfs:subClassOf`; the inverse edge is stored as a `subClassOf` edge |
+
+  The characteristics stay on the relationship types for OpenMetadata's own navigation and
+  validation. A property chain or property disjointness that names reserved vocabulary
+  cannot be expressed in OWL 2 DL; the projection omits that axiom and logs a warning.
+- **Hierarchy.** Every parent link is `skos:broader`/`skos:narrower`. It is also
+  `rdfs:subClassOf` only when both terms are OWL classes, that is, neither has concept type
+  `SKOS_CONCEPT`. A thesaurus imported as SKOS no longer gains subclass axioms it never
+  stated.
+- **Class IRIs.** A term's OWL class is its `iri` when set, otherwise its entity IRI
+  (`GlossaryTermClassIri`). The live metadata projection keeps the entity IRI as the term
+  record's subject, because tags, realizations, relations and deletes address the record
+  by it; `om:iri` records the class IRI there. No `owl:sameAs` joins the two.
+- **Datatypes.** Cardinalities are `xsd:nonNegativeInteger`. A qualified restriction uses
+  `owl:onDataRange` when its value is a literal, its filler names a datatype, or its
+  property is a term attribute, and `owl:onClass` otherwise. `xsd:date` is not in the OWL 2
+  datatype map, so a `DATE` attribute without an explicit `datatypeIri` ranges over
+  `xsd:dateTime`. An explicit `datatypeIri` is kept exactly; one outside the map fails the
+  profile check instead of being rewritten.
+
+Not yet DL-checked: annex triples, which are merged unchanged, and attributes declared on a
+`SKOS_CONCEPT`-only term. Every non-deleted axiom is included regardless of lifecycle state.
+
+For ontology-scoped SPARQL with `inference=owl`, `skos:broader` is no longer transitive; use
+`skos:broader+`. With `rdfs` or `owl`, a `SKOS_CONCEPT` term no longer has its parent as a
+superclass.
+
+The projection is computed per request, so the change applies as soon as the server is
+upgraded. Nothing is stored in Fuseki, so no rebuild is needed. Annex rows recorded by
+earlier imports are unchanged.
 
 ## Upgrading an existing RDF store
 

@@ -11,12 +11,17 @@
  *  limitations under the License.
  */
 
-import { Owner } from '@openmetadata/ui-core-components';
-import { Checkbox, Col, Row } from 'antd';
-import classNames from 'classnames';
-import { isString, startCase } from 'lodash';
+import {
+  Box,
+  Card,
+  Checkbox,
+  Owner,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { AlertCircle } from '@openmetadata/ui-core-components/icons';
+import { isString } from 'lodash';
 import { ExtraInfo } from 'Models';
-import { forwardRef, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
@@ -31,16 +36,10 @@ import { useRequiredParams } from '../../../utils/useRequiredParams';
 import TableDataCardBody from '../../Database/TableDataCardBody/TableDataCardBody';
 import { EntityHeader } from '../../Entity/EntityHeader/EntityHeader.component';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
-import './TableDataCardV2.less';
 
 export interface TableDataCardPropsV2 {
   id: string;
-  className?: string;
   source: SearchedDataProps['data'][number]['_source'];
-  matches?: {
-    key: string;
-    value: number;
-  }[];
   handleSummaryPanelDisplay?: (
     details: SearchedDataProps['data'][number]['_source'],
     entityType: string
@@ -50,172 +49,162 @@ export interface TableDataCardPropsV2 {
   openEntityInNewPage?: boolean;
   showBody?: boolean;
   showName?: boolean;
-  nameClassName?: string;
-  displayNameClassName?: string;
+  errorMessage?: string;
 }
 
 /**
  * @deprecated will be removed
  */
-const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
-  HTMLDivElement,
-  TableDataCardPropsV2
->(
-  (
-    {
-      id,
-      className,
-      source,
-      matches,
-      handleSummaryPanelDisplay,
-      showCheckboxes,
-      showBody = true,
-      showName = true,
-      checked,
-      openEntityInNewPage,
-      nameClassName = '',
-      displayNameClassName = '',
-    },
-    ref
-  ) => {
-    const { theme } = useApplicationStore();
-    const { t } = useTranslation();
-    const { tab } = useRequiredParams<{ tab: string }>();
+const TableDataCardV2 = ({
+  id,
+  source,
+  handleSummaryPanelDisplay,
+  showCheckboxes,
+  showBody = true,
+  showName = true,
+  checked,
+  openEntityInNewPage,
+  errorMessage,
+}: TableDataCardPropsV2) => {
+  const { theme } = useApplicationStore();
+  const { t } = useTranslation();
+  const { tab } = useRequiredParams<{ tab: string }>();
 
-    const otherDetails = useMemo(() => {
-      const _otherDetails: ExtraInfo[] = [
-        {
-          key: 'Owner',
-          value: <Owner owners={(source.owners as EntityReference[]) ?? []} />,
-        },
-      ];
+  const otherDetails = useMemo(() => {
+    const _otherDetails: ExtraInfo[] = [
+      {
+        key: 'Owner',
+        value: <Owner owners={(source.owners as EntityReference[]) ?? []} />,
+      },
+    ];
 
-      if (
-        source.entityType !== EntityType.GLOSSARY_TERM &&
-        source.entityType !== EntityType.TAG
-      ) {
-        const tierName = isString(source.tier)
-          ? source.tier
-          : getEntityName(source.tier);
-        _otherDetails.push({
-          key: 'Tier',
-          value: source.tier ? tierName : '',
-        });
-      }
+    if (
+      source.entityType !== EntityType.GLOSSARY_TERM &&
+      source.entityType !== EntityType.TAG
+    ) {
+      const tierName = isString(source.tier)
+        ? source.tier
+        : getEntityName(source.tier);
+      _otherDetails.push({
+        key: 'Tier',
+        value: source.tier ? tierName : '',
+      });
+    }
 
-      if ('usageSummary' in source) {
-        _otherDetails.push({
-          value: getUsagePercentile(
-            source.usageSummary?.weeklyStats?.percentileRank || 0,
-            true
-          ),
-        });
-      }
+    if ('usageSummary' in source) {
+      _otherDetails.push({
+        value: getUsagePercentile(
+          source.usageSummary?.weeklyStats?.percentileRank || 0,
+          true
+        ),
+      });
+    }
 
-      if ('tableType' in source) {
-        _otherDetails.push({
-          key: 'Type',
-          value: source.tableType,
-          showLabel: true,
-        });
-      }
+    if ('tableType' in source) {
+      _otherDetails.push({
+        key: 'Type',
+        value: source.tableType,
+        showLabel: true,
+      });
+    }
 
-      return _otherDetails;
-    }, [source]);
+    return _otherDetails;
+  }, [source]);
 
-    const serviceIcon = useMemo(() => {
-      return getServiceIcon(source);
-    }, [source]);
+  const serviceIcon = useMemo(() => {
+    return getServiceIcon(source);
+  }, [source]);
 
-    const breadcrumbs = useMemo(
-      () => getEntityBreadcrumbs(source, source.entityType as EntityType),
-      [source]
+  const breadcrumbs = useMemo(
+    () => getEntityBreadcrumbs(source, source.entityType as EntityType),
+    [source]
+  );
+
+  const entityUrl = useMemo(() => {
+    if (!source.fullyQualifiedName) {
+      return undefined;
+    }
+    const entityPath = getEntityLinkFromType(
+      source.fullyQualifiedName,
+      source.entityType as EntityType,
+      source
     );
 
-    const entityUrl = useMemo(() => {
-      if (!source.fullyQualifiedName) {
-        return undefined;
-      }
-      const entityPath = getEntityLinkFromType(
-        source.fullyQualifiedName,
-        source.entityType as EntityType,
-        source
-      );
+    return entityPath
+      ? `${globalThis.location.origin}${entityPath}`
+      : undefined;
+  }, [source]);
 
-      return entityPath
-        ? `${globalThis.location.origin}${entityPath}`
-        : undefined;
-    }, [source]);
+  const handleSelect = () => handleSummaryPanelDisplay?.(source, tab);
 
-    return (
-      <div
-        className={classNames(
-          'data-asset-info-card-container',
-          'table-data-card-container',
-          className
-        )}
-        data-testid={'table-data-card_' + (source.fullyQualifiedName ?? '')}
-        id={id}
-        ref={ref}
-        role="button"
-        tabIndex={0}
-        onClick={() => {
-          handleSummaryPanelDisplay && handleSummaryPanelDisplay(source, tab);
-        }}
-        onKeyDown={handleKeyboardActivation(
-          () =>
-            handleSummaryPanelDisplay && handleSummaryPanelDisplay(source, tab),
-          true
-        )}>
-        <Row className="data-asset-info-row" wrap={false}>
-          {showCheckboxes && (
-            <Col className="flex-center" flex="20px">
-              {/* Same test id as ExploreSearchCard's checkbox, so Playwright selects
-                assets in this modal and in the asset tabs the same way. */}
-              <Checkbox checked={checked} data-testid="asset-checkbox" />
-            </Col>
-          )}
-          <Col flex="auto">
-            <EntityHeader
-              showOnlyDisplayName
-              titleIsLink
-              breadcrumb={breadcrumbs}
-              displayNameClassName={displayNameClassName}
-              entityData={source}
-              entityType={source.entityType as EntityType}
-              entityUrl={entityUrl}
-              icon={serviceIcon}
-              nameClassName={nameClassName}
-              openEntityInNewPage={openEntityInNewPage}
-              serviceName={source?.service?.name ?? ''}
-              showName={showName}
-              titleColor={theme.primaryColor}
-            />
-          </Col>
-        </Row>
-        {showBody && (
-          <div className="p-t-sm">
+  return (
+    <Card
+      color={errorMessage ? 'error' : 'default'}
+      data-testid={'table-data-card_' + (source.fullyQualifiedName ?? '')}
+      id={id}
+      isClickable={Boolean(handleSummaryPanelDisplay)}
+      isSelected={showCheckboxes && checked}
+      role="button"
+      tabIndex={0}
+      variant="elevated"
+      onClick={handleSelect}
+      onKeyDown={handleKeyboardActivation(handleSelect, true)}>
+      <Card.Content>
+        <Box direction="col" gap={3}>
+          <Box align="start" gap={4} wrap="nowrap">
+            {showCheckboxes && (
+              // Same test id as ExploreSearchCard's checkbox, so Playwright selects assets the same way.
+              // react-aria stops click propagation, so the card handler won't fire.
+              <Checkbox
+                aria-label={t('label.select-entity', {
+                  entity: t('label.asset'),
+                })}
+                data-testid="asset-checkbox"
+                isSelected={Boolean(checked)}
+                size="md"
+                onChange={handleSelect}
+              />
+            )}
+            <Box className="tw:min-w-0 tw:flex-1" direction="col">
+              <EntityHeader
+                showOnlyDisplayName
+                titleIsLink
+                breadcrumb={breadcrumbs}
+                entityData={source}
+                entityType={source.entityType as EntityType}
+                entityUrl={entityUrl}
+                icon={serviceIcon}
+                openEntityInNewPage={openEntityInNewPage}
+                serviceName={source?.service?.name ?? ''}
+                showName={showName}
+                titleColor={theme.primaryColor}
+              />
+            </Box>
+          </Box>
+          {showBody && (
             <TableDataCardBody
               description={source.description || ''}
               extraInfo={otherDetails}
               tags={source.tags}
             />
-          </div>
-        )}
-        {matches && matches.length > 0 ? (
-          <div className="p-t-xs" data-testid="matches-stats">
-            <span className="text-grey-muted">{`${t('label.matches')}:`}</span>
-            {matches.map((data, i) => (
-              <span className="m-t-xs" key={data.key}>
-                {`${data.value} ${t('label.in-lowercase')} 
-                ${startCase(data.key)}${i !== matches.length - 1 ? ',' : ''}`}
-              </span>
-            ))}
-          </div>
-        ) : null}
-      </div>
-    );
-  }
-);
+          )}
+        </Box>
+      </Card.Content>
+      {errorMessage && (
+        <Card.Footer>
+          <Box align="start" gap={3}>
+            <AlertCircle
+              aria-hidden
+              className="tw:size-5 tw:text-fg-error-primary"
+            />
+            <Typography as="span" className="tw:break-all" size="text-sm">
+              {errorMessage}
+            </Typography>
+          </Box>
+        </Card.Footer>
+      )}
+    </Card>
+  );
+};
 
 export default TableDataCardV2;

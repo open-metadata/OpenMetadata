@@ -78,11 +78,9 @@ public class SparqlQueryTool extends RdfMcpTool<SparqlQueryTool.Result> {
   }
 
   /**
-   * {@code warning} carries {@link RdfSparqlService.QueryResult#warning()} - set when the requested
-   * inference level was not actually applied because the graph exceeded {@code
-   * maxInMemoryInferenceTriples}. The REST endpoint surfaces this as the {@code OM-Inference-Warning}
-   * header; dropping it here meant an {@code inferenceLevel: "owl"} call silently returned
-   * un-inferred results that looked authoritative. Null when the query ran as asked.
+   * {@code warning} carries {@link RdfSparqlService.QueryResult#warning()}, which the REST endpoint
+   * surfaces as the {@code X-OpenMetadata-Inference-Warning} header, so a qualified answer is never
+   * presented as authoritative. Null when the query ran as asked.
    *
    * <p>{@code completeness} is set only for non-administrators, whose body is the agent JSON. It is
    * repeated here because that JSON carries it at the end, where a bounded body cuts first.

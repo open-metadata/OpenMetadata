@@ -50,7 +50,6 @@ from metadata.ingestion.source.dashboard.hex.query_fetcher import (
 )
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 
 logger = ingestion_logger()
 
@@ -169,13 +168,11 @@ class HexSource(DashboardServiceSource):
         """Create classification and tags for dashboard"""
         tags = self._extract_tags_from_project(dashboard_details)
         if tags and self.source_config.includeTags:
-            yield from get_ometa_tag_and_classification(
+            yield from self.yield_tag_definitions(
                 tags=tags,
                 classification_name=HEX_TAG_CATEGORY,
                 tag_description="Hex Tag",
                 classification_description="Tags associated with Hex projects",
-                include_tags=self.source_config.includeTags,
-                metadata=self.metadata,
             )
 
     def _extract_tags_from_project(self, dashboard_details):
@@ -200,11 +197,10 @@ class HexSource(DashboardServiceSource):
             tags = self._extract_tags_from_project(dashboard_details)
 
             if tags:
-                return get_tag_labels(
-                    metadata=self.metadata,
+                return self.get_tag_labels(
+                    entity_fqn=fqn._build(vars(self.context.get())["dashboard_service"], dashboard_details.id),
                     tags=tags,
                     classification_name=HEX_TAG_CATEGORY,
-                    include_tags=True,
                 )
 
         return None

@@ -57,20 +57,6 @@ class RdfToolDescriptionVocabularyTest {
   private static final Pattern COLUMN_LINEAGE_QUERY =
       Pattern.compile("SELECT DISTINCT \\?column.*?OFFSET 0");
 
-  /**
-   * Terms the descriptions use although the ontology does not label them {@code om:Stored}, each
-   * with the reason. A term that stops needing its exception fails {@link
-   * #exceptionsAreStillNeeded}, so this list cannot rot.
-   */
-  private static final Map<String, String> JUSTIFIED_EXCEPTIONS =
-      Map.of(
-          "hasChildColumn",
-          "Labeled InferenceOnly as 'not emitted', but RdfPropertyMapper.emitColumnChildren writes it"
-              + " for nested Table.columns: RdfColumnLineageTraversalTest pins it with the production"
-              + " writer and RdfMcpKnowledgeGraphIT finds it in the graph after a real RdfIndexApp run"
-              + " over a table with a struct column. The label is stale; nested columns cannot be"
-              + " joined to their asset without it.");
-
   private static Model ontology;
   private static Map<String, McpSchema.Tool> tools;
 
@@ -99,17 +85,6 @@ class RdfToolDescriptionVocabularyTest {
     advertisedTerms().forEach(term -> collectProblem(term, problems));
 
     assertThat(problems).isEmpty();
-  }
-
-  @Test
-  void exceptionsAreStillNeeded() {
-    JUSTIFIED_EXCEPTIONS
-        .keySet()
-        .forEach(
-            term -> {
-              assertThat(advertisedTerms()).as("%s is advertised", term).contains(term);
-              assertThat(isStored(term)).as("%s is already labeled Stored", term).isFalse();
-            });
   }
 
   @Test
@@ -150,7 +125,7 @@ class RdfToolDescriptionVocabularyTest {
         .contains("ORDER BY", "LIMIT 250", "OFFSET", "fewer rows than LIMIT")
         .contains("'truncated' is true", "completeness.status is TRUNCATED")
         .contains("SELECT only", "no FROM, GRAPH or SERVICE", "no inference")
-        .contains("plain string literals, not IRIs", "RdfIndexApp")
+        .contains("reference column IRIs", "om:fromColumnFqn", "om:toColumnFqn", "RdfIndexApp")
         .contains("?output om:upstream ?source");
   }
 
@@ -188,7 +163,7 @@ class RdfToolDescriptionVocabularyTest {
     final Resource resource = ontology.createResource(OM + term);
     if (!ontology.contains(resource, RDF.type)) {
       problems.add("om:" + term + " is not declared in the ontology");
-    } else if (isProperty(resource) && !isStored(term) && !JUSTIFIED_EXCEPTIONS.containsKey(term)) {
+    } else if (isProperty(resource) && !isStored(term)) {
       problems.add("om:" + term + " is a property that is not labeled om:Stored");
     }
   }

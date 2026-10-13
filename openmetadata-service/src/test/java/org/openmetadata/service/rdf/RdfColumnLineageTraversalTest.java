@@ -260,7 +260,8 @@ class RdfColumnLineageTraversalTest {
     return PREFIXES
         + """
         SELECT DISTINCT ?column ?asset WHERE {
-          "%s" (%s)+ ?column .
+          ?start om:fullyQualifiedName "%s" .
+          ?start (%s)+ ?c .
           ?c om:fullyQualifiedName ?column .
           ?c (^om:hasChildColumn)*/^om:hasColumn ?asset .
           %s

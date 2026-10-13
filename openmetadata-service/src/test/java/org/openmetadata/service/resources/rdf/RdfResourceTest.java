@@ -50,6 +50,7 @@ import org.openmetadata.schema.api.configuration.rdf.InferenceMaterializationRes
 import org.openmetadata.schema.api.configuration.rdf.InferenceRule;
 import org.openmetadata.schema.api.configuration.rdf.InferenceRuleList;
 import org.openmetadata.schema.api.configuration.rdf.InferenceRuleStatus;
+import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.api.data.RdfEntityDiff;
 import org.openmetadata.schema.api.rdf.AgentSparqlCompletenessStatus;
 import org.openmetadata.schema.api.rdf.AgentSparqlErrorCode;
@@ -184,7 +185,7 @@ class RdfResourceTest {
     assertEquals(Entity.RDF, resource.getValue().getResource());
     assertEquals(
         List.of(MetadataOperation.EXECUTE_SPARQL_QUERY), operation.getValue().getOperations(null));
-    verify(repository, never()).executeSparqlQueryDirect(any(), any());
+    verify(repository, never()).executeAssertedSparqlQuery(any(), any());
   }
 
   @Test
@@ -192,7 +193,7 @@ class RdfResourceTest {
     RdfRepository repository = enabledRepository();
     Principal alice = () -> "alice";
     when(securityContext.getUserPrincipal()).thenReturn(alice);
-    when(repository.executeSparqlQueryDirect(any(), eq("application/sparql-results+json")))
+    when(repository.executeAssertedSparqlQuery(any(), eq("application/sparql-results+json")))
         .thenReturn("{\"head\":{\"vars\":[\"s\"]},\"results\":{\"bindings\":[]}}");
 
     Response response = rdfResource.queryAgentSparql(securityContext, AGENT_QUERY_BODY);
@@ -212,7 +213,7 @@ class RdfResourceTest {
     CatalogSecurityContext impersonated =
         new CatalogSecurityContext(
             alice, "http", SecurityContext.DIGEST_AUTH, Set.of(), false, "bot", null);
-    when(repository.executeSparqlQueryDirect(any(), eq("application/sparql-results+json")))
+    when(repository.executeAssertedSparqlQuery(any(), eq("application/sparql-results+json")))
         .thenReturn("{\"head\":{\"vars\":[\"s\"]},\"results\":{\"bindings\":[]}}");
     Logger auditLogger = (Logger) org.slf4j.LoggerFactory.getLogger(AgentSparqlAudit.class);
     ListAppender<ILoggingEvent> appender = new ListAppender<>();
@@ -284,6 +285,48 @@ class RdfResourceTest {
     assertEquals(false, status.getAiEnabled());
     assertEquals("NONE", status.getInference().getDefaultLevel());
     verify(authorizer, never()).authorizeAdmin(securityContext);
+  }
+
+  @Test
+  void rdfStatusAdvertisesMaterializedRulesAsTheOnlyAvailableInference() {
+    final RdfStatus status =
+        statusFor(
+            fusekiConfiguration()
+                .withMaterializedInferenceEnabled(true)
+                .withInferenceEnabled(true)
+                .withDefaultInferenceLevel(RdfConfiguration.ReasoningLevel.OWL_DL));
+
+    assertEquals(true, status.getInference().getEnabled());
+    assertEquals("NONE", status.getInference().getDefaultLevel());
+    assertEquals(Set.of("NONE", "CUSTOM"), status.getInference().getAvailableLevels());
+  }
+
+  @Test
+  void rdfStatusReportsNoInferenceWithoutMaterializedRules() {
+    final RdfStatus status =
+        statusFor(
+            fusekiConfiguration()
+                .withInferenceEnabled(true)
+                .withDefaultInferenceLevel(RdfConfiguration.ReasoningLevel.RDFS));
+
+    assertEquals(false, status.getInference().getEnabled());
+    assertEquals("NONE", status.getInference().getDefaultLevel());
+    assertEquals(Set.of("NONE"), status.getInference().getAvailableLevels());
+  }
+
+  private RdfStatus statusFor(final RdfConfiguration configuration) {
+    final RdfRepository repository = Mockito.mock(RdfRepository.class);
+    when(repository.isEnabled()).thenReturn(true);
+    when(repository.getConfig()).thenReturn(configuration);
+    when(securityContext.getUserPrincipal()).thenReturn(() -> "steward");
+    rdfResource = new RdfResource(authorizer, () -> repository, null);
+    return (RdfStatus) rdfResource.getRdfStatus(securityContext).getEntity();
+  }
+
+  private static RdfConfiguration fusekiConfiguration() {
+    return new RdfConfiguration()
+        .withEnabled(true)
+        .withStorageType(RdfConfiguration.StorageType.FUSEKI);
   }
 
   @Test

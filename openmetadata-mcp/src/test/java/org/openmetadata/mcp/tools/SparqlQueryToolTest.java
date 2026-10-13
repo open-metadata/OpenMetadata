@@ -79,7 +79,7 @@ class SparqlQueryToolTest {
 
     RdfToolAuthorization.assertSparqlGrantRequested(deniedAuthorizer, SECURITY_CONTEXT);
     subjects.verify(() -> DefaultAuthorizer.getSubjectContext(any(SecurityContext.class)), never());
-    verify(repository, never()).executeSparqlQuery(anyString(), anyString());
+    verify(repository, never()).executeAssertedSparqlQuery(anyString(), anyString());
   }
 
   @Test
@@ -169,7 +169,7 @@ class SparqlQueryToolTest {
   void returnsTypedSelectResult() throws IOException {
     RdfRepository repository = enabledRepository();
     String query = "SELECT * WHERE { ?s ?p ?o } LIMIT 1";
-    when(repository.executeSparqlQuery(anyString(), eq("application/sparql-results+json")))
+    when(repository.executeAssertedSparqlQuery(anyString(), eq("application/sparql-results+json")))
         .thenReturn("{\"results\":{\"bindings\":[]}}");
 
     SparqlQueryTool.Result result =
@@ -184,7 +184,7 @@ class SparqlQueryToolTest {
   @Test
   void executesThroughTheGuardForTheCallerPrincipal() throws IOException {
     RdfRepository repository = enabledRepository();
-    when(repository.executeSparqlQuery(anyString(), eq("application/sparql-results+json")))
+    when(repository.executeAssertedSparqlQuery(anyString(), eq("application/sparql-results+json")))
         .thenReturn("{\"results\":{\"bindings\":[]}}");
     AtomicReference<String> guardedPrincipal = new AtomicReference<>();
     SparqlQueryTool.GuardedQueryExecutor guardedQueryExecutor =
@@ -203,7 +203,8 @@ class SparqlQueryToolTest {
   @Test
   void truncatesAtUtf8Boundary() throws IOException {
     RdfRepository repository = enabledRepository();
-    when(repository.executeSparqlQuery(anyString(), anyString())).thenReturn("é".repeat(4_000));
+    when(repository.executeAssertedSparqlQuery(anyString(), anyString()))
+        .thenReturn("é".repeat(4_000));
 
     SparqlQueryTool.Result result =
         tool(repository)
@@ -220,24 +221,24 @@ class SparqlQueryToolTest {
   @Test
   void routesInferenceThroughTheSharedService() throws IOException {
     RdfRepository repository = enabledRepository();
-    when(repository.executeSparqlQueryWithInferenceResult(anyString(), anyString(), eq("rdfs")))
+    when(repository.executeSparqlQueryWithInferenceResult(anyString(), anyString(), eq("custom")))
         .thenReturn(new RdfRepository.InferenceQueryResult("{}", null));
 
     tool(repository)
         .execute(
             AUTHORIZER,
             SECURITY_CONTEXT,
-            Map.of("query", "SELECT * WHERE { ?s ?p ?o }", "inferenceLevel", "rdfs"));
+            Map.of("query", "SELECT * WHERE { ?s ?p ?o }", "inferenceLevel", "custom"));
 
     verify(repository)
         .executeSparqlQueryWithInferenceResult(
-            anyString(), eq("application/sparql-results+json"), eq("rdfs"));
+            anyString(), eq("application/sparql-results+json"), eq("custom"));
   }
 
   @Test
   void defaultsGraphQueriesToTurtleAndRejectsIncompatibleFormats() throws IOException {
     RdfRepository repository = enabledRepository();
-    when(repository.executeSparqlQuery(anyString(), eq("text/turtle"))).thenReturn("");
+    when(repository.executeAssertedSparqlQuery(anyString(), eq("text/turtle"))).thenReturn("");
 
     SparqlQueryTool.Result result =
         tool(repository)
