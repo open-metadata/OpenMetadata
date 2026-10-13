@@ -22,10 +22,13 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.ResourceAccessMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
+import org.openmetadata.it.util.SharedResourceLocks;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.AddGlossaryToAssetsRequest;
 import org.openmetadata.schema.api.CreateTaskDetails;
@@ -3421,11 +3424,13 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   }
 
   @Test
+  @ResourceLock(value = SharedResourceLocks.SEARCH_SETTINGS, mode = ResourceAccessMode.READ)
   void test_hierarchySearchKeepsParentOfEveryMatchOnThePage(TestNamespace ns) throws Exception {
     assertHierarchySearchKeepsFullPath(ns, "hier_page", 1);
   }
 
   @Test
+  @ResourceLock(value = SharedResourceLocks.SEARCH_SETTINGS, mode = ResourceAccessMode.READ)
   void test_hierarchySearchKeepsFullPathOfDeeplyNestedMatches(TestNamespace ns) throws Exception {
     assertHierarchySearchKeepsFullPath(ns, "hier_deep", 4);
   }
@@ -3487,11 +3492,16 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
           node.path("children").size(),
           "Every match on the page should sit under its full path");
     } finally {
-      client
-          .glossaries()
-          .delete(
-              glossary.getId().toString(),
-              java.util.Map.of("hardDelete", "true", "recursive", "true"));
+      // Best-effort: a cleanup hiccup must not fail a test whose assertions passed
+      try {
+        client
+            .glossaries()
+            .delete(
+                glossary.getId().toString(),
+                java.util.Map.of("hardDelete", "true", "recursive", "true"));
+      } catch (Exception ignored) {
+        // the namespace-scoped glossary cannot affect other tests' assertions
+      }
     }
   }
 
