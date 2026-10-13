@@ -1373,16 +1373,6 @@
       "count": 1
     }
   },
-  "src/components/common/Form/JSONSchema/JsonSchemaWidgets/TreeSelectWidget.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 2
-    }
-  },
-  "src/components/common/FormBuilder/FormBuilder.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
-    }
-  },
   "src/components/common/InheritedRolesCard/InheritedRolesCard.component.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 1
