@@ -46,15 +46,27 @@ export const selectTestType = async (page: Page, label: string) => {
 };
 
 /**
- * Dismiss an open tag/glossary suggestion dropdown by moving focus to the form
- * heading. This is a deterministic outside-click that closes the react-aria
- * combobox popover without the ambiguity of a page-level Escape — which, when
- * the menu happens to already be closed, would bubble up and dismiss the whole
- * drawer.
+ * The test case drawer's Form Hint panel titles its doc with the active
+ * field's label. includeHidden: an open select's listbox aria-hides the rest
+ * of the page, the hint included, while it is still on screen.
+ */
+export const expectFormHint = async (page: Page, heading: string) => {
+  await expect(
+    page
+      .getByRole('note', { includeHidden: true })
+      .getByRole('heading', { name: heading, exact: true, includeHidden: true })
+  ).toBeVisible();
+};
+
+/**
+ * Escape must target an open picker: otherwise it bubbles to the parent drawer.
  */
 export const dismissTagSuggestions = async (page: Page) => {
-  await page.getByTestId('form-heading').click();
-  await expect(page.locator('[role="listbox"]')).toBeHidden();
+  const pickerSearch = page.getByTestId('search-input');
+  if (await pickerSearch.isVisible()) {
+    await pickerSearch.press('Escape');
+  }
+  await expect(pickerSearch).toBeHidden();
 };
 
 /**
@@ -222,15 +234,11 @@ export const clickEditTestCaseButton = async (
   page: Page,
   testCaseName: string
 ) => {
-  const testCaseDoc = page.waitForResponse(
-    '/locales/en-US/OpenMetadata/TestCaseForm.md'
-  );
   const testDefinitionResponse = page.waitForResponse(
     '/api/v1/dataQuality/testDefinitions/*'
   );
   await page.getByTestId(`action-dropdown-${testCaseName}`).click();
   await page.getByTestId(`edit-${testCaseName}`).click();
-  await testCaseDoc;
   await testDefinitionResponse;
 };
 
@@ -588,14 +596,13 @@ export const selectExistingBundleSuite = async (
   await dropdownInput.click();
   await dropdownInput.fill(suiteName);
 
-  // AddToBundleSuiteModal still renders an antd Select (not migrated to the
-  // react-aria stack), so scope to the visible antd dropdown and its option
-  // rows. A generic `[role="listbox"]` matches multiple listboxes on the page
-  // (e.g. the header asset search) and resolves ambiguously.
-  const dropdown = page.locator('.ant-select-dropdown:visible');
-  const option = dropdown.locator('.ant-select-item-option', {
-    hasText: suiteName,
-  });
+  // Scope to the popover owned by this combobox: a generic listbox locator
+  // also matches other listboxes on the page (e.g. the header asset search).
+  await expect(dropdownInput).toHaveAttribute('aria-controls', /.+/);
+  const listboxId = (await dropdownInput.getAttribute('aria-controls')) ?? '';
+  const option = page
+    .locator(`[role="listbox"][id="${listboxId}"]`)
+    .getByRole('option', { name: suiteName });
 
   await expect(option).toBeVisible();
   await option.click();

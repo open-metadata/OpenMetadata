@@ -66,13 +66,16 @@ import {
   clickEditContractButton,
   deleteContract,
   exportContractYaml,
+  fillContractName,
   importOdcsViaDropdown,
   importOMViaDropdown,
   navigateToContractTab,
   openContractActionsDropdown,
+  reloadContractPage,
   saveAndTriggerDataContractValidation,
   saveContractAndWait,
   saveSecurityAndSLADetails,
+  selectContractOwners,
   triggerContractValidation,
   validateDataContractInsideBundleTestSuites,
   validateSecurityAndSLADetails,
@@ -80,7 +83,6 @@ import {
 } from '../../utils/dataContracts';
 import {
   addOwner,
-  addOwnerWithoutValidation,
   assignGlossaryTerm,
   assignTag,
   assignTier,
@@ -189,24 +191,20 @@ test.describe('Data Contracts', () => {
       });
 
       await test.step('Fill Contract Details form', async () => {
-        await page.getByTestId('contract-name').fill(contractName);
+        await fillContractName(page, contractName);
         await page.fill(
           '.om-block-editor[contenteditable="true"]',
           DATA_CONTRACT_DETAILS.description
         );
 
         // Add owner using created user to verify displayName is shown in UserTag
-        await addOwnerWithoutValidation({
-          page,
-          owner: user.getUserDisplayName(),
-          type: 'Users',
-          initiatorId: 'select-owners',
-        });
+        await selectContractOwners(page, [user.getUserDisplayName()]);
 
-        // Verify the UserTag shows the user's displayName (not name)
-        await expect(page.getByTestId('user-tag')).toBeVisible();
+        // The owner tag shows the user's displayName (not name)
         await expect(
-          page.getByTestId('user-tag').getByText(user.getUserDisplayName())
+          page
+            .getByTestId('contract-owners')
+            .getByText(user.getUserDisplayName())
         ).toBeVisible();
       });
 
@@ -399,9 +397,7 @@ test.describe('Data Contracts', () => {
         await triggerContractValidation(page, contractId);
         await toastPromise;
 
-        await page.reload();
-
-        await waitForAllLoadersToDisappear(page);
+        await reloadContractPage(page);
 
         await expect(
           page.getByTestId('contract-status-card-item-semantics-status')
@@ -614,23 +610,12 @@ test.describe('Data Contracts', () => {
         await expect(page.getByTestId('save-contract-btn')).toBeDisabled();
 
         // Change the Contract Details
-        await page
-          .getByTestId('contract-name')
-          .fill(DATA_CONTRACT_DETAILS.displayName);
+        await fillContractName(page, DATA_CONTRACT_DETAILS.displayName);
         await page.click('.om-block-editor[contenteditable="true"]');
         await page.keyboard.press('Control+A');
         await page.keyboard.type(DATA_CONTRACT_DETAILS.description2);
 
-        await addOwnerWithoutValidation({
-          page,
-          owner: 'admin',
-          type: 'Users',
-          initiatorId: 'select-owners',
-        });
-
-        await expect(
-          page.getByTestId('user-tag').getByText('admin')
-        ).toBeVisible();
+        await selectContractOwners(page, ['admin']);
 
         if (entitySupportsSchema(entityType)) {
           // Move to Schema Tab
@@ -788,9 +773,7 @@ test.describe('Data Contracts', () => {
       });
 
       await test.step('Fill Contract Details form', async () => {
-        await page
-          .getByTestId('contract-name')
-          .fill(DATA_CONTRACT_DETAILS.name);
+        await fillContractName(page, DATA_CONTRACT_DETAILS.name);
       });
 
       await test.step('Fill Contract Schema form', async () => {
@@ -1048,7 +1031,7 @@ test.describe('Data Contracts', () => {
 
     await expect(page.getByTestId('add-contract-card')).toBeVisible();
 
-    await page.getByTestId('contract-name').fill(DATA_CONTRACT_DETAILS.name);
+    await fillContractName(page, DATA_CONTRACT_DETAILS.name);
 
     await page.getByRole('tab', { name: 'Semantics' }).click();
 
@@ -1200,9 +1183,7 @@ test.describe('Data Contracts', () => {
     await triggerContractValidation(page, contractId1104);
     await toastPromise;
 
-    await page.reload();
-
-    await waitForAllLoadersToDisappear(page);
+    await reloadContractPage(page);
 
     await expect(
       page.getByTestId('contract-status-card-item-semantics-status')
@@ -1242,7 +1223,7 @@ test.describe('Data Contracts', () => {
 
     await expect(page.getByTestId('add-contract-card')).toBeVisible();
 
-    await page.getByTestId('contract-name').fill(DATA_CONTRACT_DETAILS.name);
+    await fillContractName(page, DATA_CONTRACT_DETAILS.name);
 
     await page.getByRole('tab', { name: 'Semantics' }).click();
 
@@ -1394,9 +1375,7 @@ test.describe('Data Contracts', () => {
     await triggerContractValidation(page, contractId1289);
     await toastPromise;
 
-    await page.reload();
-
-    await waitForAllLoadersToDisappear(page);
+    await reloadContractPage(page);
 
     await expect(
       page.getByTestId('contract-status-card-item-semantics-status')
@@ -1426,7 +1405,7 @@ test.describe('Data Contracts', () => {
 
     await expect(page.getByTestId('add-contract-card')).toBeVisible();
 
-    await page.getByTestId('contract-name').fill(DATA_CONTRACT_DETAILS.name);
+    await fillContractName(page, DATA_CONTRACT_DETAILS.name);
 
     await page.getByRole('tab', { name: 'Schema' }).click();
 
@@ -1502,7 +1481,7 @@ test.describe('Data Contracts', () => {
 
     await expect(page.getByTestId('add-contract-card')).toBeVisible();
 
-    await page.getByTestId('contract-name').fill(DATA_CONTRACT_DETAILS.name);
+    await fillContractName(page, DATA_CONTRACT_DETAILS.name);
 
     await page.getByRole('tab', { name: 'Schema' }).click();
 
@@ -1558,9 +1537,7 @@ test.describe('Data Contracts', () => {
 
     await page.getByTestId('contract-run-now-button').click();
 
-    await page.reload();
-
-    await waitForAllLoadersToDisappear(page);
+    await reloadContractPage(page);
 
     await expect(
       page.getByTestId('contract-status-card-item-schema-status')
@@ -1959,7 +1936,7 @@ test.describe('Data Contracts', () => {
 
       await expect(page.getByTestId('add-contract-card')).toBeVisible();
 
-      await page.getByTestId('contract-name').fill(DATA_CONTRACT_DETAILS.name);
+      await fillContractName(page, DATA_CONTRACT_DETAILS.name);
 
       await saveSecurityAndSLADetails(
         page,
@@ -2397,21 +2374,13 @@ dataContractEntities.forEach((EntityClass) => {
               await expect(page.getByTestId('add-contract-card')).toBeVisible();
 
               // Fill Contract Details form
-              await page
-                .getByTestId('contract-name')
-                .fill(DATA_CONTRACT_DETAILS.name);
+              await fillContractName(page, DATA_CONTRACT_DETAILS.name);
               await page.fill(
                 '.om-block-editor[contenteditable="true"]',
                 DATA_CONTRACT_DETAILS.description
               );
 
-              await page.getByTestId('select-owners').click();
-              await page
-                .locator('.rc-virtual-list-holder-inner li')
-                .first()
-                .click();
-
-              await expect(page.getByTestId('user-tag')).toBeVisible();
+              await selectContractOwners(page, ['admin']);
 
               // Fill Contract Semantics form
               await page.getByRole('tab', { name: 'Semantics' }).click();

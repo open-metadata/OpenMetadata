@@ -170,6 +170,11 @@ components/governance/glossary/GlossaryList/
 
 - **Keep business logic out of the component.** Data shaping, filtering, and derivation go in
   `*.utils.ts` as pure functions — no React, no JSX. They are then unit-testable without rendering.
+- **A component file exports only the component.** Module-level constants (option lists, keys,
+  lookup tables) go in `[ComponentName].constants.ts` and helpers in `[ComponentName].utils.ts`
+  beside it; when another feature needs them too, move them to root `constants/[domain]/` or
+  `utils/[domain]/`. Anything that imports a value from a component file pulls in the component
+  and all of its imports, and that is how import cycles start.
 - **No `index.ts` barrel files inside a component folder.** A barrel re-export pulls every sibling
   module into the graph and defeats tree-shaking; the `no-internal-barrel-imports` lint rule reports
   it. Import the deep path instead.

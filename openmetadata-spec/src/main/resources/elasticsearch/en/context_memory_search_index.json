@@ -398,6 +398,10 @@
         "type": "long",
         "null_value": 0
       },
+      "lastReviewedAt": {
+        "type": "date",
+        "format": "epoch_millis||epoch_second||strict_date_optional_time"
+      },
       "lastUsedAt": {
         "type": "date",
         "format": "epoch_millis||epoch_second||strict_date_optional_time"

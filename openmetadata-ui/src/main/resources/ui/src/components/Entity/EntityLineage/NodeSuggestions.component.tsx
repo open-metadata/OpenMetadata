@@ -11,13 +11,15 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Select } from 'antd';
+import { Box, Button } from '@openmetadata/ui-core-components';
+import { Select } from 'antd';
 import { AxiosError } from 'axios';
 import { capitalize, debounce, get } from 'lodash';
 import {
   ComponentRef,
   FC,
   HTMLAttributes,
+  MouseEvent,
   useCallback,
   useEffect,
   useMemo,
@@ -32,6 +34,7 @@ import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { ExploreSearchIndex } from '../../../interface/discovery/explore.interface';
 import { searchQuery } from '../../../rest/searchAPI';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
@@ -106,12 +109,11 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
       value: entity.fullyQualifiedName,
       label: (
         <Button
-          block
-          className="d-flex items-center node-suggestion-option-btn"
+          className="tw:w-full"
+          color="tertiary"
           data-testid={`node-suggestion-${entity.fullyQualifiedName}`}
           key={entity.fullyQualifiedName}
-          type="text"
-          onClick={(e) => {
+          onClick={(e: MouseEvent) => {
             e.stopPropagation(); // Prevent select from closing
             onSelectHandler?.(entity as EntityReference);
           }}>
@@ -163,13 +165,13 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
   );
 
   return (
-    <Row
-      className="p-md items-center"
+    <Box
+      className="layout-row p-md items-center"
       data-testid="suggestion-node"
-      gutter={8}
-      wrap={false}>
-      <Col>{entityIcon}</Col>
-      <Col flex="1">
+      style={{ ...getLayoutGutter(8) }}
+      wrap="nowrap">
+      <Box className="layout-column tw:block">{entityIcon}</Box>
+      <Box className="layout-column tw:block" style={{ flex: '1 1 auto' }}>
         <Select
           // eslint-disable-next-line jsx-a11y/no-autofocus -- focus required for inline node search
           autoFocus
@@ -189,8 +191,8 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
           onFocus={() => setIsOpen(true)}
           onSearch={handleChange}
         />
-      </Col>
-    </Row>
+      </Box>
+    </Box>
   );
 };
 

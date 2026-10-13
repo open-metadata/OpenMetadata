@@ -13,14 +13,15 @@
 
 import {
   Box,
+  ButtonUtility,
   EmptyPlaceholder,
   Skeleton,
   Table,
   Toggle,
+  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { FileShield02 } from '@openmetadata/ui-core-components/icons';
-import { Button, Space, Tooltip } from 'antd';
 import { useCallback, useMemo } from 'react';
 import { SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
@@ -155,15 +156,13 @@ const TestDefinitionTable = ({
     }
 
     return (
-      <Tooltip title={tooltipTitle}>
-        <div className="new-form-style d-inline-flex">
-          <Toggle
-            data-testid={`enable-switch-${record.name}`}
-            isDisabled={isExternal || !hasEditPermission || isRefetching}
-            isSelected={record.enabled ?? true}
-            onChange={(isSelected) => onEnableToggle(record, isSelected)}
-          />
-        </div>
+      <Tooltip isDisabled={!tooltipTitle} title={tooltipTitle}>
+        <Toggle
+          data-testid={`enable-switch-${record.name}`}
+          isDisabled={isExternal || !hasEditPermission || isRefetching}
+          isSelected={record.enabled ?? true}
+          onChange={(isSelected) => onEnableToggle(record, isSelected)}
+        />
       </Tooltip>
     );
   };
@@ -198,28 +197,35 @@ const TestDefinitionTable = ({
       deleteTooltip = t('message.no-permission-for-action');
     }
 
+    // The Tooltip, not ButtonUtility's own, so the reason still shows while the button is disabled.
     return (
-      <Space size={0}>
+      <Box align="center">
         <Tooltip title={editTooltip}>
-          <Button
+          <ButtonUtility
+            aria-label={t('label.edit')}
+            color="tertiary"
             data-testid={`edit-test-definition-${record.name}`}
-            disabled={!hasEditPermission || isRefetching}
             icon={<IconEdit height={16} width={16} />}
-            type="text"
+            isDisabled={!hasEditPermission || isRefetching}
+            size="xs"
             onClick={() => onEdit(record)}
           />
         </Tooltip>
 
         <Tooltip title={deleteTooltip}>
-          <Button
+          <ButtonUtility
+            aria-label={t('label.delete')}
+            color="tertiary"
             data-testid={`delete-test-definition-${record.name}`}
-            disabled={isSystemProvider || !hasDeletePermission || isRefetching}
             icon={<IconDelete height={16} width={16} />}
-            type="text"
+            isDisabled={
+              isSystemProvider || !hasDeletePermission || isRefetching
+            }
+            size="xs"
             onClick={() => onDelete(record)}
           />
         </Tooltip>
-      </Space>
+      </Box>
     );
   };
 

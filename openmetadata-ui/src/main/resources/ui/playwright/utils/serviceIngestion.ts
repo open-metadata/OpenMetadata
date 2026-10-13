@@ -19,9 +19,9 @@ import { EntityClass } from '../support/entity/EntityClass';
 import { DatabaseServiceClass } from '../support/entity/service/DatabaseServiceClass';
 import { UserClass } from '../support/user/UserClass';
 import {
+  clickIgnoringToasts,
   redirectToHomePage,
   toastNotification,
-  waitForToastStackToClear,
 } from './common';
 import {
   addMultiOwner,
@@ -154,6 +154,9 @@ export const deleteService = async (
   });
 };
 
+// 3 minutes for the connection test and a 0.5 minute buffer
+const TEST_CONNECTION_TIMEOUT = 3.5 * 60 * 1000;
+
 export const testConnection = async (page: Page) => {
   const testConnectionButton = page.getByTestId('test-connection-btn');
   const readyToTestCard = page.getByTestId(
@@ -208,21 +211,22 @@ export const testConnection = async (page: Page) => {
 
   await expect(testConnectionDialog).toBeVisible();
 
-  // The toast stack renders bottom-center, over the dialog's Done/OK button; a
-  // background "…deleted successfully!" toast from a parallel worker's cleanup
-  // can otherwise swallow this click. Wait for the stack to drain first.
-  await waitForToastStackToClear(page, 30_000);
+  const doneButton = testConnectionDialog.getByRole('button', {
+    name: /Done|OK/,
+  });
 
-  await testConnectionDialog.getByRole('button', { name: /Done|OK/ }).click();
+  // The footer shows Cancel while checks run and swaps in Done only once they
+  // pass. A remote runner can spend most of the default 15s expect timeout just
+  // picking the workflow up, so the whole connection test gets this budget.
+  await expect(doneButton).toBeVisible({ timeout: TEST_CONNECTION_TIMEOUT });
+  await clickIgnoringToasts(doneButton);
 
   // Wait for the success badge or the warning badge to appear
   const statusBadge = page.locator(
     '[data-testid="test-connection-card-Successful"], [data-testid="test-connection-card-Warning"]'
   );
 
-  await expect(statusBadge).toBeVisible({
-    timeout: 3.5 * 60 * 1000, // 3 minutes for connection test and 0.5 minute buffer
-  });
+  await expect(statusBadge).toBeVisible({ timeout: TEST_CONNECTION_TIMEOUT });
 
   await expect(
     page

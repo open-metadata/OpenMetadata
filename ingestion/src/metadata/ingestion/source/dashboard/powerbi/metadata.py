@@ -55,7 +55,9 @@ from metadata.generated.schema.type.basic import (
     Markdown,
     SourceUrl,
 )
-from metadata.generated.schema.type.entityLineage import ColumnLineage
+from metadata.generated.schema.type.entityLineage import ColumnLineage, LineageDetails
+from metadata.generated.schema.type.entityLineage import Source as LineageSource
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.api.models import Either
@@ -64,6 +66,7 @@ from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.barrier import Barrier
+from metadata.ingestion.models.ometa_lineage import OMetaFQNLineageRequest
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.progress.modes import ProgressMode
@@ -83,6 +86,14 @@ from metadata.ingestion.source.dashboard.powerbi.constants import (
 from metadata.ingestion.source.dashboard.powerbi.databricks_parser import (
     parse_databricks_native_query_source,
 )
+from metadata.ingestion.source.dashboard.powerbi.metrics import (
+    build_metric_request,
+    measure_dimensions,
+    metric_measures_parents_first,
+    powerbi_metric_name,
+    referenced_columns,
+    related_measures,
+)
 from metadata.ingestion.source.dashboard.powerbi.models import (
     Dataflow,
     DataflowExportResponse,
@@ -91,6 +102,7 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     Group,
     PowerBIDashboard,
     PowerBiMeasureModel,
+    PowerBiMeasures,
     PowerBIReport,
     PowerBiTable,
     ReportPage,
@@ -149,6 +161,12 @@ class PowerbiSource(DashboardServiceSource):
         self.pagination_entity_per_page = min(100, self.service_connection.pagination_entity_per_page)
         self.datamodel_file_mappings = []
         self.state = WorkspaceState()
+        if self.source_config.includeMetrics and not self.source_config.includeDataModels:
+            logger.warning(
+                "includeMetrics is enabled but includeDataModels is disabled: measures are read "
+                "off the PowerBI datasets, so no Metric will be ingested. "
+                "Enable includeDataModels to ingest metrics."
+            )
 
     def get_org_workspace_data(self) -> Iterable[Group | None]:
         """
@@ -2263,6 +2281,122 @@ class PowerbiSource(DashboardServiceSource):
         ws_id = self.context.get().workspace.id  # pyright: ignore[reportAttributeAccessIssue]
         yield Either(right=Barrier(reason=f"powerbi_ws:{ws_id}"))  # pyright: ignore[reportCallIssue]
         yield from super().yield_dashboard_lineage(dashboard_details)
+        # Metrics come last: the Barriers above have persisted the data models they reference.
+        if self.source_config.includeMetrics and self.source_config.includeDataModels:
+            yield from self.yield_datamodel_metrics()
+
+    def yield_datamodel_metrics(self) -> Iterable[Either]:
+        """One Metric per visible measure of the workspace's datasets, plus its lineage."""
+        service = self.context.get().dashboard_service  # pyright: ignore[reportAttributeAccessIssue]
+        for dataset in self._filtered_datamodels():
+            if not isinstance(dataset, Dataset):
+                continue
+            measures = metric_measures_parents_first(dataset)
+            if not measures:
+                continue
+            datamodel_fqn = fqn.build(
+                self.metadata,
+                entity_type=DashboardDataModel,
+                service_name=service,
+                data_model_name=dataset.id,
+            )
+            data_model_entity = (
+                self.metadata.get_by_name(entity=DashboardDataModel, fqn=datamodel_fqn) if datamodel_fqn else None
+            )
+            if not data_model_entity:
+                continue
+            asset = EntityReference(id=data_model_entity.id, type="dashboardDataModel")
+            emitted: set[str] = set()
+            for table, measure in measures:
+                try:
+                    related = [
+                        name
+                        for name in (
+                            powerbi_metric_name(service, dataset.id, parent.name)  # pyright: ignore[reportArgumentType]
+                            for parent in related_measures(dataset, measure)
+                        )
+                        if name in emitted
+                    ]
+                    metric_request = build_metric_request(
+                        service,
+                        dataset,
+                        measure,
+                        measure_dimensions(dataset, table, measure),
+                        asset=asset,
+                        related_metrics=related,
+                    )
+                    yield Either(right=metric_request)  # pyright: ignore[reportCallIssue]
+                    metric_name = model_str(metric_request.name)
+                    emitted.add(metric_name)
+                    for edge in self._yield_metric_lineage(
+                        data_model_entity, dataset, table, measure, metric_name, related
+                    ):
+                        yield from self.yield_lineage_request(edge)
+                except Exception as err:
+                    yield Either(  # pyright: ignore[reportCallIssue]
+                        left=StackTraceError(
+                            name=measure.name or dataset.id,
+                            error=f"Error yielding Metric for PowerBI measure [{measure.name}]: {err}",
+                            stackTrace=traceback.format_exc(),
+                        )
+                    )
+
+    @staticmethod
+    def _yield_metric_lineage(
+        data_model_entity: DashboardDataModel,
+        dataset: Dataset,
+        table: PowerBiTable,
+        measure: PowerBiMeasures,
+        metric_name: str,
+        related: list[str],
+    ) -> Iterable[Either[OMetaFQNLineageRequest]]:
+        """Metric -> Metric and DataModel -> Metric edges, addressed by FQN (a Metric's FQN is its name).
+
+        Column lineage starts at the model columns the DAX reads, which the Table -> DataModel
+        lineage already feeds, so the path continues to the warehouse. A measure reading only
+        other measures falls back to its own column in the model.
+        """
+        for parent_name in related:
+            yield Either(  # pyright: ignore[reportCallIssue]
+                right=OMetaFQNLineageRequest(
+                    from_entity_fqn=parent_name,
+                    from_entity_type="metric",
+                    to_entity_fqn=metric_name,
+                    to_entity_type="metric",
+                    lineage_details=LineageDetails(source=LineageSource.DashboardLineage),  # pyright: ignore[reportCallIssue]
+                )
+            )
+
+        column_fqns = {
+            (model_str(table_column.name).lower(), model_str(child.name).lower()): model_str(child.fullyQualifiedName)
+            for table_column in data_model_entity.columns or []
+            for child in table_column.children or []
+        }
+        sources = referenced_columns(dataset, measure) or [(table.name, measure.name)]
+        from_columns = [
+            FullyQualifiedEntityName(column_fqns[key])
+            for key in (
+                (truncate_column_name(table_name).lower(), truncate_column_name(column_name).lower())  # pyright: ignore[reportArgumentType]
+                for table_name, column_name in sources
+            )
+            if key in column_fqns
+        ]
+        yield Either(  # pyright: ignore[reportCallIssue]
+            right=OMetaFQNLineageRequest(
+                from_entity_fqn=model_str(data_model_entity.fullyQualifiedName),
+                from_entity_type="dashboardDataModel",
+                to_entity_fqn=metric_name,
+                to_entity_type="metric",
+                lineage_details=LineageDetails(  # pyright: ignore[reportCallIssue]
+                    source=LineageSource.DashboardLineage,
+                    columnsLineage=[
+                        ColumnLineage(fromColumns=from_columns, toColumn=FullyQualifiedEntityName(metric_name))  # pyright: ignore[reportCallIssue]
+                    ]
+                    if from_columns
+                    else None,
+                ),
+            )
+        )
 
     def yield_datamodel_dashboard_lineage(
         self,

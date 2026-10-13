@@ -45,16 +45,6 @@ const buildConfig = (
     sampleConfigType: SampleConfigType.Static,
     config: { profileSample, profileSampleType },
   },
-  // Without a stored storage config RJSF defaults to the S3 option, whose
-  // required awsRegion would block every save regardless of the sample.
-  sampleDataStorageConfig: {
-    config: {
-      bucketName: '',
-      prefix: '',
-      overwriteData: true,
-      storageConfig: {},
-    },
-  },
 });
 
 const renderWithConfig = async (config: DatabaseProfilerConfig) => {

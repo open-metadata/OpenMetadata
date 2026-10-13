@@ -506,19 +506,19 @@
 @media (pointer: coarse) {
   .ql-snow.ql-toolbar button:hover:not(.ql-active),
   .ql-snow .ql-toolbar button:hover:not(.ql-active) {
-    color: var(--om-legacy-color-444444);
+    color: var(--tw-color-text-secondary);
   }
   .ql-snow.ql-toolbar button:hover:not(.ql-active) .ql-fill,
   .ql-snow .ql-toolbar button:hover:not(.ql-active) .ql-fill,
   .ql-snow.ql-toolbar button:hover:not(.ql-active) .ql-stroke.ql-fill,
   .ql-snow .ql-toolbar button:hover:not(.ql-active) .ql-stroke.ql-fill {
-    fill: var(--om-legacy-color-444444);
+    fill: var(--tw-color-text-secondary);
   }
   .ql-snow.ql-toolbar button:hover:not(.ql-active) .ql-stroke,
   .ql-snow .ql-toolbar button:hover:not(.ql-active) .ql-stroke,
   .ql-snow.ql-toolbar button:hover:not(.ql-active) .ql-stroke-miter,
   .ql-snow .ql-toolbar button:hover:not(.ql-active) .ql-stroke-miter {
-    stroke: var(--om-legacy-color-444444);
+    stroke: var(--tw-color-text-secondary);
   }
 }
 .ql-snow {
@@ -556,20 +556,20 @@
 }
 .ql-snow .ql-stroke {
   fill: none;
-  stroke: var(--om-legacy-color-444444);
+  stroke: var(--tw-color-text-secondary);
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 2;
 }
 .ql-snow .ql-stroke-miter {
   fill: none;
-  stroke: var(--om-legacy-color-444444);
+  stroke: var(--tw-color-text-secondary);
   stroke-miterlimit: 10;
   stroke-width: 2;
 }
 .ql-snow .ql-fill,
 .ql-snow .ql-stroke.ql-fill {
-  fill: var(--om-legacy-color-444444);
+  fill: var(--tw-color-text-secondary);
 }
 .ql-snow .ql-empty {
   fill: none;
@@ -643,7 +643,7 @@
   max-width: 100%;
 }
 .ql-snow .ql-picker {
-  color: var(--om-legacy-color-444444);
+  color: var(--tw-color-text-secondary);
   display: inline-block;
   font-size: var(--om-font-size-sm);
   font-weight: var(--om-font-weight-medium);
@@ -999,7 +999,7 @@
   margin: var(--om-space-6);
 }
 .ql-toolbar.ql-snow {
-  border-color: var(--om-legacy-color-dde3ea);
+  border-color: var(--tw-border-color-secondary);
   border-top-left-radius: var(--om-radius-md);
   border-top-right-radius: var(--om-radius-md);
   display: flex;
@@ -1009,7 +1009,7 @@
   width: 100%;
 }
 .ql-container.ql-snow {
-  border-color: var(--om-legacy-color-dde3ea);
+  border-color: var(--tw-border-color-secondary);
   border-bottom-left-radius: var(--om-radius-md);
   border-bottom-right-radius: var(--om-radius-md);
   width: 100%;
@@ -1138,4 +1138,12 @@ button.ql-emoji {
     display: flex;
     margin-right: 0 !important;
   }
+}
+
+// Quill 2 draws each list item's marker on its own `.ql-ui` span. The Quill 1
+// rules above still draw one on the item as well, doubling it ("1•" in a
+// bullet list, an overprinted "1." in a numbered one). Last in the file, so it
+// outranks the per-indent counters above.
+.ql-editor ol li[data-list]::before {
+  content: none;
 }

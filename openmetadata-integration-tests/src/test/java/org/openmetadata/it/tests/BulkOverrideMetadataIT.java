@@ -3,6 +3,7 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
@@ -56,6 +57,10 @@ public class BulkOverrideMetadataIT {
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
   private static final String CERTIFICATION_GOLD = "Certification.Gold";
+  private static final String BLANK_DESCRIPTIONS =
+      """
+      [{"op":"remove","path":"/description"},
+       {"op":"replace","path":"/columns/0/description","value":""}]""";
 
   @Test
   void test_botCannotOverwriteDescription_withoutOverride(TestNamespace ns) throws Exception {
@@ -259,6 +264,48 @@ public class BulkOverrideMetadataIT {
         "curated column description",
         columnDescription(getTable(fqn)),
         "overrideMetadata=true must not blank a column description when none is supplied");
+  }
+
+  /**
+   * Pre-2.0 ingestion clients still PATCH existing tables with the source's empty column comments
+   * under overrideMetadata; the PUT guard alone let that blank curated descriptions.
+   */
+  @Test
+  void test_ingestionBotPatchCannotBlankDescriptions(TestNamespace ns) throws Exception {
+    Table table = curatedDescriptions(ns, "patch_blank");
+
+    patchAs(table, BLANK_DESCRIPTIONS, BulkApi.botToken());
+
+    Table after = getTable(table.getFullyQualifiedName());
+    assertEquals("curated description", after.getDescription());
+    assertEquals("curated column", columnDescription(after));
+  }
+
+  @Test
+  void test_ingestionBotPatchStillReplacesDescriptions(TestNamespace ns) throws Exception {
+    Table table = curatedDescriptions(ns, "patch_replace");
+
+    patchAs(
+        table,
+        """
+        [{"op":"replace","path":"/description","value":"from dbt"},
+         {"op":"replace","path":"/columns/0/description","value":"column from dbt"}]""",
+        BulkApi.botToken());
+
+    Table after = getTable(table.getFullyQualifiedName());
+    assertEquals("from dbt", after.getDescription());
+    assertEquals("column from dbt", columnDescription(after));
+  }
+
+  @Test
+  void test_userPatchCanBlankDescriptions(TestNamespace ns) throws Exception {
+    Table table = curatedDescriptions(ns, "patch_user_blank");
+
+    patchAs(table, BLANK_DESCRIPTIONS, SdkClients.getAdminToken());
+
+    Table after = getTable(table.getFullyQualifiedName());
+    assertTrue(nullOrEmpty(after.getDescription()));
+    assertTrue(nullOrEmpty(columnDescription(after)));
   }
 
   @Test
@@ -528,6 +575,26 @@ public class BulkOverrideMetadataIT {
     DatabaseSchema schema =
         SdkClients.adminClient().databaseSchemas().getByName(databaseFqn + "." + curated.getName());
     assertEquals("P30D", schema.getRetentionPeriod());
+  }
+
+  private Table curatedDescriptions(TestNamespace ns, String baseName) throws Exception {
+    String schemaFqn = setupSchema(ns);
+    CreateTable curated = table(ns, schemaFqn, baseName, "curated description", "hash-v1");
+    setColumnDescription(curated, "curated column");
+    BulkApi.upsert("tables", List.of(curated), false, SdkClients.getAdminToken());
+    return getTable(schemaFqn + "." + curated.getName());
+  }
+
+  private void patchAs(Table table, String jsonPatch, String token) throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(SdkClients.getServerUrl() + "/v1/tables/" + table.getId()))
+            .header("Authorization", "Bearer " + token)
+            .header("Content-Type", "application/json-patch+json")
+            .method("PATCH", HttpRequest.BodyPublishers.ofString(jsonPatch))
+            .build();
+    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+    assertEquals(200, response.statusCode(), "patch table: " + response.body());
   }
 
   private TableConstraint primaryKey(String column) {

@@ -197,6 +197,7 @@ export const BETA_SERVICES = [
   PipelineServiceType.TableauPipeline,
   DatabaseServiceType.Iomete,
   DatabaseServiceType.Clickzetta,
+  DatabaseServiceType.Databend,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE =
@@ -219,7 +220,6 @@ export const ADVANCED_PROPERTIES = [
   'useAccessHistory',
   'accessHistoryChunkSize',
   'scheme',
-  'sampleDataStorageConfig',
   'computeTableMetrics',
   'computeColumnMetrics',
   'includeViews',

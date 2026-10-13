@@ -46,10 +46,12 @@ import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
 import org.openmetadata.schema.api.data.OntologyChangeSetCommand;
 import org.openmetadata.schema.api.data.OntologyMemoryProposalStatus;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
-import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.OntologyAttribute;
 import org.openmetadata.schema.type.OntologyAttributeDataType;
 import org.openmetadata.schema.type.OntologyChangeOperation;
@@ -132,7 +134,7 @@ public class OntologyChangeSetIT {
             memories.create(
                 new CreateContextMemory()
                     .withName(ns.prefix("revenueMemory"))
-                    .withEntityStatus(EntityStatus.APPROVED)
+                    .withEntityStatus(ContextMemoryStatus.APPROVED)
                     .withDescription("Subscription revenue definition")
                     .withQuestion("What is monthly recurring revenue?")
                     .withAnswer("Recurring subscription revenue in a month.")));
@@ -224,7 +226,7 @@ public class OntologyChangeSetIT {
             memories.create(
                 new CreateContextMemory()
                     .withName(ns.prefix("retiredSource"))
-                    .withEntityStatus(EntityStatus.APPROVED)
+                    .withEntityStatus(ContextMemoryStatus.APPROVED)
                     .withQuestion("What is the canonical orders table?")
                     .withAnswer("sales.orders is canonical.")));
     Glossary glossary = GlossaryTestFactory.createSimple(ns);
@@ -258,7 +260,8 @@ public class OntologyChangeSetIT {
     assertEquals(
         OntologyChangeSetState.DRAFT,
         client.ontologyChangeSets().get(changeSet.getId()).getState());
-    assertEquals(EntityStatus.REJECTED, memories.get(memory.getId().toString()).getEntityStatus());
+    assertEquals(
+        ContextMemoryStatus.REJECTED, memories.get(memory.getId().toString()).getEntityStatus());
   }
 
   @Test
@@ -517,6 +520,79 @@ public class OntologyChangeSetIT {
             .anyMatch(draft -> draft.getId().equals(memoryDraft.getId())));
   }
 
+  @Test
+  void attributeUpsertDoesNotWipeUnloadedRelationships(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    // A second term that the edited term is related to. `relatedTerms` is a relationship-backed
+    // collection the buggy whole-entity PUT store wiped whenever an attribute or concept-mapping
+    // was upserted/deleted: editableTerm loaded only attributes,conceptMappings, so reviewers,
+    // relatedTerms, and realizedIn reached the updater as null and were diffed to empty against
+    // the stored rows. The field-scoped fix routes the store through patchedFields so the
+    // unloaded relationship updaters never run.
+    GlossaryTerm related = createTerm(client, glossary, ns.prefix("relatedConcept"));
+    String termName = ns.prefix("conceptWithRelation");
+    GlossaryTerm term =
+        client
+            .glossaryTerms()
+            .create(
+                new CreateGlossaryTerm()
+                    .withName(termName)
+                    .withDescription("Concept carrying a term relationship")
+                    .withGlossary(glossary.getFullyQualifiedName())
+                    .withIri(URI.create("https://example.org/change-set/" + termName))
+                    .withRelatedTerms(List.of(related.getFullyQualifiedName())));
+    assertEquals(
+        1,
+        listOrEmpty(
+                client
+                    .glossaryTerms()
+                    .get(term.getId().toString(), "relatedTerms")
+                    .getRelatedTerms())
+            .size(),
+        "relatedTerms must be present before the change-set apply");
+
+    OntologyAttribute attribute = attribute();
+    OntologyChangeSet changeSet = createChangeSet(client, glossary, operation(term, attribute), ns);
+    OntologyEditLeaseToken lease = acquire(client, changeSet, ns.prefix("editorSession"));
+    OntologyChangeSet applied =
+        client
+            .ontologyChangeSets()
+            .apply(changeSet.getId(), new ApplyOntologyChangeSet().withLease(lease));
+    assertEquals(OntologyChangeSetState.APPLIED, applied.getState());
+
+    GlossaryTerm after =
+        client.glossaryTerms().get(term.getId().toString(), "attributes,relatedTerms");
+    assertTrue(
+        after.getAttributes().stream().anyMatch(value -> value.getId().equals(attribute.getId())),
+        "the upserted attribute must be applied");
+    assertEquals(
+        1,
+        listOrEmpty(after.getRelatedTerms()).size(),
+        "UPSERT_ATTRIBUTE must not wipe the term's relationship-backed relatedTerms");
+
+    // G6: the apply must record only the attributes change — no fieldDeleted entries for the
+    // relationship-backed fields the buggy whole-entity PUT store wiped.
+    GlossaryTerm versioned =
+        client.glossaryTerms().getVersion(term.getId().toString(), after.getVersion());
+    ChangeDescription change = versioned.getChangeDescription();
+    if (change != null) {
+      Set<String> deletedFields =
+          listOrEmpty(change.getFieldsDeleted()).stream()
+              .map(FieldChange::getName)
+              .collect(java.util.stream.Collectors.toSet());
+      assertFalse(
+          deletedFields.contains("relatedTerms"),
+          "UPSERT_ATTRIBUTE must not record a fieldDeleted for relatedTerms: " + deletedFields);
+      assertFalse(
+          deletedFields.contains("reviewers"),
+          "UPSERT_ATTRIBUTE must not record a fieldDeleted for reviewers: " + deletedFields);
+      assertFalse(
+          deletedFields.contains("realizedIn"),
+          "UPSERT_ATTRIBUTE must not record a fieldDeleted for realizedIn: " + deletedFields);
+    }
+  }
+
   private static Set<UUID> listedIds(OpenMetadataClient client, String query) {
     JsonNode page =
         client
@@ -531,7 +607,7 @@ public class OntologyChangeSetIT {
   private static CreateContextMemory memoryRequest(String name) {
     return new CreateContextMemory()
         .withName(name)
-        .withEntityStatus(EntityStatus.APPROVED)
+        .withEntityStatus(ContextMemoryStatus.APPROVED)
         .withDescription("Memory behind an ontology draft")
         .withQuestion("What is an active subscriber?")
         .withAnswer("A customer with a paid subscription this month.");

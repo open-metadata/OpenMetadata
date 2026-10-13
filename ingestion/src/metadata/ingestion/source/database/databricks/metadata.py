@@ -603,7 +603,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
 def get_schema_names(self, connection, **kw):  # pylint: disable=unused-argument
     # Equivalent to SHOW DATABASES
     if kw.get("database") and kw.get("is_old_version") is not True:
-        connection.execute(text(f"USE CATALOG '{kw.get('database')}'"))
+        connection.execute(text(f"USE CATALOG {self.identifier_preparer.quote_identifier(kw.get('database'))}"))
     return [row[0] for row in connection.execute(text("SHOW SCHEMAS"))]
 
 

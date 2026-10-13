@@ -126,7 +126,7 @@ public class McpServerRepository extends EntityRepository<McpServer> {
   }
 
   @Override
-  public EntityInterface getParentEntity(McpServer entity, String fields) {
+  public EntityInterface<?> getParentEntity(McpServer entity, String fields) {
     if (entity.getService() == null) {
       return null;
     }

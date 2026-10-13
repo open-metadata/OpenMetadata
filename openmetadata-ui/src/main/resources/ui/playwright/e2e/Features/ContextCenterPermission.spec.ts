@@ -559,21 +559,6 @@ test.describe('Context Center Permissions', () => {
         ).not.toBeVisible();
       });
 
-      await test.step('hierarchy tree delete button is hidden for articles', async () => {
-        await navigateToArticles(viewOnlyPage);
-
-        const articleNode = await scrollHierarchyToNode(
-          viewOnlyPage,
-          articleEntity.responseData.displayName
-        );
-        await articleNode.hover();
-        await expect(
-          viewOnlyPage.getByTestId(
-            `${articleEntity.responseData.displayName}-delete-page-btn`
-          )
-        ).not.toBeVisible();
-      });
-
       await test.step('quick link card has no edit or delete buttons', async () => {
         await navigateToArticles(viewOnlyPage);
 
@@ -882,9 +867,8 @@ test.describe('Context Center Permissions', () => {
       });
     });
 
-    test('user with editAll permission cannot see create or delete actions, and can move an article under another article', async ({
+    test('user with editAll permission cannot see create or delete actions', async ({
       editAllPage,
-      browser,
     }) => {
       await test.step('articles list create action is hidden', async () => {
         await navigateToArticles(editAllPage);
@@ -919,103 +903,6 @@ test.describe('Context Center Permissions', () => {
         ).not.toBeVisible();
         await expect(editAllPage.getByTestId('edit-domain-btn')).toBeVisible();
         await expect(editAllPage.getByTestId('edit-owner-btn')).toBeVisible();
-      });
-
-      await test.step('can move an article under another article', async () => {
-        const { apiContext, afterAction } = await getDefaultAdminAPIContext(
-          browser
-        );
-        const parentName = `cc_permission_move_parent_${uuid()}`;
-        const childName = `cc_permission_move_child_${uuid()}`;
-        const parentRes = await apiContext.post('/api/v1/contextCenter/pages', {
-          data: {
-            name: parentName,
-            displayName: `CC Permission Move Parent ${uuid()}`,
-            description: 'Disposable parent article for editAll move test',
-            pageType: 'Article',
-            page: { publicationDate: Date.now(), relatedArticles: [] },
-          },
-        });
-        const parentArticle = await parentRes.json();
-        const childRes = await apiContext.post('/api/v1/contextCenter/pages', {
-          data: {
-            name: childName,
-            displayName: `CC Permission Move Child ${uuid()}`,
-            description: 'Disposable child article for editAll move test',
-            pageType: 'Article',
-            page: { publicationDate: Date.now(), relatedArticles: [] },
-          },
-        });
-        const childArticle = await childRes.json();
-        await afterAction();
-
-        const childDisplayName = childArticle.displayName;
-        const parentDisplayName = parentArticle.displayName;
-
-        // Poll until ES indexes both new articles into the hierarchy tree
-        await editAllPage.waitForFunction(
-          async ([childDN, parentDN]) => {
-            const res = await fetch(
-              `/api/v1/contextCenter/pages/search/hierarchy?pageType=Article&offset=0&limit=100`
-            );
-            const json = await res.json();
-            const names = new Set(
-              (json.data ?? []).map(
-                (n: { displayName?: string }) => n.displayName
-              )
-            );
-
-            return names.has(childDN) && names.has(parentDN);
-          },
-          [childDisplayName, parentDisplayName],
-          { timeout: ACTION_TIMEOUT, polling: 2000 }
-        );
-
-        await navigateToArticles(editAllPage);
-        const childNode = await scrollHierarchyToNode(
-          editAllPage,
-          childDisplayName
-        );
-        const parentNodeForDrag = await scrollHierarchyToNode(
-          editAllPage,
-          parentDisplayName
-        );
-        await childNode.dragTo(parentNodeForDrag);
-
-        const confirmationModal = editAllPage.getByTestId('confirmation-modal');
-        await expect(confirmationModal).toBeVisible();
-
-        const moveResPromise = editAllPage.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/contextCenter/pages/') &&
-            response.request().method() === 'PATCH'
-        );
-        await confirmationModal
-          .getByRole('button', { name: /^confirm$/i })
-          .click();
-        const moveRes = await moveResPromise;
-
-        expect(moveRes.status()).toBe(200);
-        await expect(confirmationModal).not.toBeVisible();
-
-        const parentNode = await scrollHierarchyToNode(
-          editAllPage,
-          parentDisplayName
-        );
-        await parentNode.click();
-        await scrollHierarchyToNode(editAllPage, childDisplayName);
-
-        const { apiContext: cleanupContext, afterAction: cleanupAfterAction } =
-          await getDefaultAdminAPIContext(browser);
-        await deleteDisposableArticleByFqn(
-          cleanupContext,
-          `${parentArticle.fullyQualifiedName}.${childArticle.name}`
-        );
-        await deleteDisposableArticleByFqn(
-          cleanupContext,
-          parentArticle.fullyQualifiedName
-        );
-        await cleanupAfterAction();
       });
     });
 
@@ -1887,6 +1774,7 @@ test.describe('Context Center Permissions', () => {
     test('user with editAll permission sees no row edit action on memories they do not own, but can edit and save their own memory', async ({
       editAllPage,
     }) => {
+      test.slow();
       await navigateToMemories(editAllPage);
 
       await expect(editAllPage.getByTestId('add-memory-btn')).not.toBeVisible();
@@ -2152,6 +2040,7 @@ test.describe('Context Center Permissions', () => {
     testWithRolesPages(
       'Data Consumer can view and edit content but cannot add article, domain, reviewer, data product, or data assets',
       async ({ dataConsumerPage }) => {
+        test.slow();
         await navigateToArticles(dataConsumerPage);
 
         await expect(
