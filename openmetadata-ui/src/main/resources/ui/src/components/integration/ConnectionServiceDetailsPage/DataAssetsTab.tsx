@@ -20,7 +20,6 @@ import {
 import { Dispatch, SetStateAction, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
@@ -138,25 +137,22 @@ const DataAssetsTab = ({
                 showCommentsIcon={false}
                 onDescriptionUpdate={onDescriptionUpdate}
               />
-              {/* Classic shows these in the right panel, which this tab hides; metadata services
-                  carry no data products there either. */}
-              {entityType !== EntityType.METADATA_SERVICE && (
-                <div data-testid="service-data-products">
-                  <DataProductsSection
-                    activeDomains={domains}
-                    dataProducts={dataProducts}
-                    entityId={serviceDetails.id}
-                    entityType={entityType}
-                    hasPermission={editDataProductsPermission}
-                    // The section keeps what it shows in its own state; remount it when the
-                    // service's data products change underneath it, as the summary panel does.
-                    key={`data-products-${serviceDetails.id}-${
-                      dataProducts?.length ?? 0
-                    }`}
-                    onDataProductsUpdate={onDataProductsChange}
-                  />
-                </div>
-              )}
+              {/* Classic shows these in the right panel, which this tab hides. */}
+              <div data-testid="service-data-products">
+                <DataProductsSection
+                  activeDomains={domains}
+                  dataProducts={dataProducts}
+                  entityId={serviceDetails.id}
+                  entityType={entityType}
+                  hasPermission={editDataProductsPermission}
+                  // The section keeps what it shows in its own state; remount it when the
+                  // service's data products change underneath it, as the summary panel does.
+                  key={`data-products-${serviceDetails.id}-${
+                    dataProducts?.length ?? 0
+                  }`}
+                  onDataProductsUpdate={onDataProductsChange}
+                />
+              </div>
               <div className="glossary-terms-section">
                 <GlossaryTermsSection
                   entityId={serviceDetails.id}

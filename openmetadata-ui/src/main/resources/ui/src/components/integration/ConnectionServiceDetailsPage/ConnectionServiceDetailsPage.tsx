@@ -126,6 +126,12 @@ interface DetailsTab {
 const DATA_ASSETS_TAB_ORDER = 40;
 const CONNECTION_TAB_ORDER = 50;
 
+// As classic: these services have no child assets to list, so they get no data-assets tab.
+const SERVICES_WITHOUT_DATA_ASSETS = new Set<ServiceCategory>([
+  ServiceCategory.METADATA_SERVICES,
+  ServiceCategory.SECURITY_SERVICES,
+]);
+
 // The asset tabs classic shows beside the main one, for the categories that have them. They sit
 // between the data-assets tab and Connection, in this order.
 const SECONDARY_ASSET_TABS: Partial<
@@ -609,9 +615,15 @@ const ConnectionServiceDetailsPage: React.FC = () => {
 
   // Refetches on every input of the list — page cursor, page size, the deleted switch, a restore —
   // and yields to ServiceMainTabContent while a search is active, as classic service details does.
+  const hasDataAssetsTab = !SERVICES_WITHOUT_DATA_ASSETS.has(
+    serviceCategory as ServiceCategory
+  );
+
   useEffect(() => {
     const isListShown =
-      activeTab === 'dataAssets' && Boolean(serviceDetails.fullyQualifiedName);
+      hasDataAssetsTab &&
+      activeTab === 'dataAssets' &&
+      Boolean(serviceDetails.fullyQualifiedName);
     if (searchValue) {
       // The search owns the table now; a list request still in flight must not land on it.
       latestListRequestRef.current += 1;
@@ -627,6 +639,7 @@ const ConnectionServiceDetailsPage: React.FC = () => {
     cursorType,
     cursorValue,
     getOtherDetails,
+    hasDataAssetsTab,
   ]);
 
   const extensionContext: PluginEntityDetailsContext = useMemo(
@@ -695,15 +708,21 @@ const ConnectionServiceDetailsPage: React.FC = () => {
   // in tab but keeps its registration order relative to other order-less contributions.
   const tabs: DetailsTab[] = useMemo(() => {
     const builtIns: DetailsTab[] = [
-      {
-        key: 'dataAssets',
-        label: serviceCategory
-          ? getCountLabel(
-              serviceCategory as unknown as Parameters<typeof getCountLabel>[0]
-            )
-          : t('label.data-asset-plural'),
-        order: DATA_ASSETS_TAB_ORDER,
-      },
+      ...(hasDataAssetsTab
+        ? [
+            {
+              key: 'dataAssets',
+              label: serviceCategory
+                ? getCountLabel(
+                    serviceCategory as unknown as Parameters<
+                      typeof getCountLabel
+                    >[0]
+                  )
+                : t('label.data-asset-plural'),
+              order: DATA_ASSETS_TAB_ORDER,
+            },
+          ]
+        : []),
       ...(SECONDARY_ASSET_TABS[serviceCategory as ServiceCategory] ?? []).map(
         ({ key, labelKey }, index) => ({
           key,
@@ -733,7 +752,7 @@ const ConnectionServiceDetailsPage: React.FC = () => {
     }));
 
     return [...builtIns, ...contributed].sort((a, b) => a.order - b.order);
-  }, [t, serviceCategory, pluginTabs, canEditAll]);
+  }, [t, serviceCategory, pluginTabs, canEditAll, hasDataAssetsTab]);
 
   const allTabKeys = useMemo(
     () => tabs.map((detailsTab) => detailsTab.key),
@@ -974,7 +993,7 @@ const ConnectionServiceDetailsPage: React.FC = () => {
           // so an empty slot costs no dead space. Applies to every tab because they all render into
           // this container.
           style={{ paddingBottom: footerInset || undefined }}>
-          {activeTab === 'dataAssets' && (
+          {isOfferedTab('dataAssets') && (
             <DataAssetsTab
               currentPage={currentPage}
               data={data}

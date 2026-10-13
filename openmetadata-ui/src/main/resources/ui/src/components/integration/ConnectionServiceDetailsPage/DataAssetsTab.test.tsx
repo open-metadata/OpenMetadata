@@ -150,13 +150,4 @@ describe('DataAssetsTab — data products', () => {
       expect.objectContaining({ hasPermission: false })
     );
   });
-
-  it('is not offered for a metadata service, as in classic', () => {
-    renderTab({ serviceCategory: ServiceCategory.METADATA_SERVICES });
-
-    expect(screen.getByTestId('service-main-tab-content')).toBeInTheDocument();
-    expect(
-      screen.queryByTestId('service-data-products')
-    ).not.toBeInTheDocument();
-  });
 });
