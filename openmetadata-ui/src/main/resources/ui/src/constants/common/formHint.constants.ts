@@ -27,5 +27,13 @@ export const FORM_HINT_COLUMN_WIDTH = 380;
  */
 export const FORM_COLUMN_WIDTH = 772;
 
-/** Width of a form modal or drawer while its Form Hint column is shown. */
+/** Width of a form modal while its Form Hint column is shown. */
 export const FORM_WIDTH_WITH_HINT = FORM_COLUMN_WIDTH + FORM_HINT_COLUMN_WIDTH;
+
+/**
+ * Widths of a form drawer with its Form Hint column shown or hidden. Drawers
+ * size by viewport rather than by the form column, so every form drawer opens
+ * at the same width.
+ */
+export const FORM_DRAWER_WIDTH_WITH_HINT = '80vw';
+export const FORM_DRAWER_WIDTH_WITHOUT_HINT = '60vw';

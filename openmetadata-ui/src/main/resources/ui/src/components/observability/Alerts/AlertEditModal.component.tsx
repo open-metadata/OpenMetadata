@@ -26,8 +26,8 @@ import { ShowHintToggle } from '../../../components/common/atoms/drawer/ShowHint
 import Loader from '../../../components/common/Loader/Loader';
 import { DEFAULT_READ_TIMEOUT } from '../../../constants/Alerts.constants';
 import {
-  FORM_COLUMN_WIDTH,
-  FORM_WIDTH_WITH_HINT,
+  FORM_DRAWER_WIDTH_WITHOUT_HINT,
+  FORM_DRAWER_WIDTH_WITH_HINT,
 } from '../../../constants/common/formHint.constants';
 import {
   AlertType,
@@ -181,7 +181,9 @@ function AlertEditModal({
       }
       dialogClassName="tw:gap-0"
       isOpen={isOpen}
-      width={showHint ? FORM_WIDTH_WITH_HINT : FORM_COLUMN_WIDTH}
+      width={
+        showHint ? FORM_DRAWER_WIDTH_WITH_HINT : FORM_DRAWER_WIDTH_WITHOUT_HINT
+      }
       onOpenChange={(open) => !open && handleClose()}>
       <SlideoutMenu.Header
         className="tw:border-b tw:border-secondary tw:pb-4"
