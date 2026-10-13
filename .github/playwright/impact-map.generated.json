@@ -5825,14 +5825,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/ContextCenter/MemoryConflictCompare/MemoryConflictCompare.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/ContextCenterMemoryReview.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/ContextCenter/PersonaAIContext/ContextPreviewModal/ContextPreviewModal.component.tsx"
       ],
       "specs": [
@@ -10072,6 +10064,14 @@
       ],
       "specs": [
         "playwright/e2e/Pages/ODCSImportExport.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/context-center/MemoryConflictCompare/MemoryConflictCompare.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/ContextCenterMemoryReview.spec.ts"
       ]
     },
     {
