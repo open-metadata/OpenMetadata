@@ -14,12 +14,17 @@
 package org.openmetadata.service.notifications.recipients;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mockStatic;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import java.net.URI;
 import java.util.List;
 import java.util.Set;
@@ -36,11 +41,13 @@ import org.openmetadata.schema.type.Profile;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.type.profile.SubscriptionConfig;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.notifications.recipients.context.EmailRecipient;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.notifications.recipients.context.WebhookRecipient;
 import org.openmetadata.service.notifications.recipients.strategy.impl.TeamRecipientResolver;
 import org.openmetadata.service.notifications.recipients.strategy.impl.UserRecipientResolver;
+import org.slf4j.LoggerFactory;
 
 /**
  * Team email is optional, and so is the Slack/MsTeams/GChat webhook on a user or team profile.
@@ -155,6 +162,125 @@ class RecipientResolutionTest {
   }
 
   @Test
+  void deletedReceiverUserIsSkippedWithoutLoggingAnError() {
+    ListAppender<ILoggingEvent> logs = captureLogs(UserRecipientResolver.class);
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      stubUserByName(entityMock, "kept", user("kept", USER_EMAIL));
+      entityMock
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      eq(Entity.USER), eq("deleted"), any(), eq(Include.NON_DELETED)))
+          .thenThrow(EntityNotFoundException.byName("deleted"));
+
+      Set<Recipient> recipients =
+          new UserRecipientResolver()
+              .resolve(
+                  UUID.randomUUID(),
+                  Entity.TABLE,
+                  new Webhook().withReceivers(Set.of("deleted", "kept")),
+                  destination(SubscriptionType.EMAIL));
+
+      assertEquals(Set.of(USER_EMAIL), emailsOf(recipients));
+      assertFalse(loggedAnError(logs));
+    } finally {
+      release(logs, UserRecipientResolver.class);
+    }
+  }
+
+  @Test
+  void deletedOwnerTeamIsSkippedWithoutLoggingAnError() {
+    ListAppender<ILoggingEvent> logs = captureLogs(TeamRecipientResolver.class);
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      stubTeamById(entityMock, TEAM_WITH_CONTACT_ID, team("data-platform", TEAM_EMAIL));
+      entityMock
+          .when(
+              () ->
+                  Entity.getEntity(
+                      eq(Entity.TEAM), eq(TEAM_WITHOUT_CONTACT_ID), any(), eq(Include.NON_DELETED)))
+          .thenThrow(EntityNotFoundException.byId(TEAM_WITHOUT_CONTACT_ID.toString()));
+
+      Set<Recipient> recipients =
+          new TeamRecipientResolver()
+              .resolve(
+                  List.of(TEAM_WITHOUT_CONTACT_ID, TEAM_WITH_CONTACT_ID),
+                  destination(SubscriptionType.EMAIL));
+
+      assertEquals(Set.of(TEAM_EMAIL), emailsOf(recipients));
+      assertFalse(loggedAnError(logs));
+    } finally {
+      release(logs, TeamRecipientResolver.class);
+    }
+  }
+
+  @Test
+  void deletedOwnerUserIsSkippedWithoutLoggingAnError() {
+    ListAppender<ILoggingEvent> logs = captureLogs(UserRecipientResolver.class);
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock
+          .when(
+              () -> Entity.getEntity(eq(Entity.USER), eq(USER_ID), any(), eq(Include.NON_DELETED)))
+          .thenThrow(EntityNotFoundException.byId(USER_ID.toString()));
+
+      Set<Recipient> recipients =
+          new UserRecipientResolver()
+              .resolve(List.of(USER_ID), destination(SubscriptionType.EMAIL));
+
+      assertTrue(recipients.isEmpty());
+      assertFalse(loggedAnError(logs));
+    } finally {
+      release(logs, UserRecipientResolver.class);
+    }
+  }
+
+  @Test
+  void deletedReceiverTeamIsSkippedWithoutLoggingAnError() {
+    ListAppender<ILoggingEvent> logs = captureLogs(TeamRecipientResolver.class);
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      stubTeamByName(entityMock, "data-platform", team("data-platform", TEAM_EMAIL));
+      entityMock
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      eq(Entity.TEAM), eq("deleted-team"), any(), eq(Include.NON_DELETED)))
+          .thenThrow(EntityNotFoundException.byName("deleted-team"));
+
+      Set<Recipient> recipients =
+          new TeamRecipientResolver()
+              .resolve(
+                  UUID.randomUUID(),
+                  Entity.TABLE,
+                  new Webhook().withReceivers(Set.of("deleted-team", "data-platform")),
+                  destination(SubscriptionType.EMAIL));
+
+      assertEquals(Set.of(TEAM_EMAIL), emailsOf(recipients));
+      assertFalse(loggedAnError(logs));
+    } finally {
+      release(logs, TeamRecipientResolver.class);
+    }
+  }
+
+  @Test
+  void failedUserLookupIsStillLoggedAsAnError() {
+    ListAppender<ILoggingEvent> logs = captureLogs(UserRecipientResolver.class);
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock
+          .when(
+              () -> Entity.getEntity(eq(Entity.USER), eq(USER_ID), any(), eq(Include.NON_DELETED)))
+          .thenThrow(new IllegalStateException("database unavailable"));
+
+      Set<Recipient> recipients =
+          new UserRecipientResolver()
+              .resolve(List.of(USER_ID), destination(SubscriptionType.EMAIL));
+
+      assertTrue(recipients.isEmpty());
+      assertTrue(loggedAnError(logs));
+    } finally {
+      release(logs, UserRecipientResolver.class);
+    }
+  }
+
+  @Test
   void emailRecipientIsNullWhenTeamHasNoEmail() {
     assertNull(EmailRecipient.fromTeam(team("no-email-team", null)));
     assertNull(EmailRecipient.fromTeam(team("blank-email-team", "")));
@@ -179,6 +305,22 @@ class RecipientResolutionTest {
         .when(
             () -> Entity.getEntityByName(eq(Entity.USER), eq(name), any(), eq(Include.NON_DELETED)))
         .thenReturn(user);
+  }
+
+  private static ListAppender<ILoggingEvent> captureLogs(Class<?> type) {
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.start();
+    ((Logger) LoggerFactory.getLogger(type)).addAppender(appender);
+    return appender;
+  }
+
+  private static void release(ListAppender<ILoggingEvent> appender, Class<?> type) {
+    ((Logger) LoggerFactory.getLogger(type)).detachAppender(appender);
+    appender.stop();
+  }
+
+  private static boolean loggedAnError(ListAppender<ILoggingEvent> appender) {
+    return appender.list.stream().anyMatch(event -> event.getLevel() == Level.ERROR);
   }
 
   private static SubscriptionDestination destination(SubscriptionType type) {

@@ -369,9 +369,21 @@ class BatchModeNodesTest {
     setStatus.execute(execution);
 
     verify(repository)
-        .patch(isNull(), eq(first.getId()), eq("governance-bot"), any(JsonPatch.class));
+        .patch(
+            isNull(),
+            eq(first.getId()),
+            eq("governance-bot"),
+            any(JsonPatch.class),
+            isNull(),
+            eq("governance-bot"));
     verify(repository)
-        .patch(isNull(), eq(second.getId()), eq("governance-bot"), any(JsonPatch.class));
+        .patch(
+            isNull(),
+            eq(second.getId()),
+            eq("governance-bot"),
+            any(JsonPatch.class),
+            isNull(),
+            eq("governance-bot"));
     assertEquals(batch.subList(0, 2), variables.get(ENTITY_LIST));
     assertEquals(Boolean.TRUE, variables.get("global_failure"));
   }

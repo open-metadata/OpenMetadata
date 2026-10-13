@@ -26,6 +26,7 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.notifications.recipients.strategy.RecipientResolutionStrategy;
 
@@ -76,6 +77,10 @@ public class TeamRecipientResolver implements RecipientResolutionStrategy {
     try {
       Team team = Entity.getEntityByName(Entity.TEAM, teamName, TEAM_FIELDS, Include.NON_DELETED);
       return Recipient.fromTeam(team, notificationType);
+    } catch (EntityNotFoundException e) {
+      // A team an alert names can be deleted later; that leaves no one to notify, not a failure.
+      LOG.debug("Skipping team recipient {}: {}", teamName, e.getMessage());
+      return null;
     } catch (Exception e) {
       LOG.error("Failed to resolve team recipient for team {}", teamName, e);
       return null;
@@ -113,6 +118,9 @@ public class TeamRecipientResolver implements RecipientResolutionStrategy {
     try {
       Team team = Entity.getEntity(Entity.TEAM, teamId, TEAM_FIELDS, Include.NON_DELETED);
       return Recipient.fromTeam(team, notificationType);
+    } catch (EntityNotFoundException e) {
+      LOG.debug("Skipping team recipient {}: {}", teamId, e.getMessage());
+      return null;
     } catch (Exception e) {
       LOG.error("Failed to resolve team recipient for team {}", teamId, e);
       return null;
