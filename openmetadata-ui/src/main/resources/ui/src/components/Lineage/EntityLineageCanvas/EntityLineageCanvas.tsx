@@ -267,11 +267,14 @@ const EntityLineageCanvas = ({
     setIsDeletingNode(true);
     try {
       await removeNodeHandler(nodePendingDelete);
+    } catch {
+      // removeLineageHandler already toasted; a partial delete needs a resync.
+      refetchLineage();
     } finally {
       setIsDeletingNode(false);
       setNodePendingDelete(undefined);
     }
-  }, [nodePendingDelete, removeNodeHandler]);
+  }, [nodePendingDelete, refetchLineage, removeNodeHandler]);
 
   // Edges are drawn by CanvasLayerWrapper, not as ReactFlow DOM edges.
   const memoizedEdgeTypes = useMemo(() => ({}), []);

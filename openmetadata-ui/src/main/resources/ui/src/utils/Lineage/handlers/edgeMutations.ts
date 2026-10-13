@@ -63,7 +63,9 @@ const getExistingEdgeDetails = async (fromId: string, toId: string) => {
 /**
  * Adds (or extends) the lineage edge between two entities, merging a column
  * pair into the edge's existing column lineage. Resolves false when there is
- * nothing to save (same entity, or the column pair is already mapped).
+ * nothing to save (same entity) or the save failed; addLineageHandler has
+ * already shown that error, so callers must not toast it again. Only a failed
+ * edge-details lookup rejects.
  */
 export const saveLineageEdge = async (
   fromEntity: EdgeFromToData,
@@ -83,7 +85,11 @@ export const saveLineageEdge = async (
   if (!payload) {
     return false;
   }
-  await addLineageHandler(payload);
+  try {
+    await addLineageHandler(payload);
+  } catch {
+    return false;
+  }
 
   return true;
 };
