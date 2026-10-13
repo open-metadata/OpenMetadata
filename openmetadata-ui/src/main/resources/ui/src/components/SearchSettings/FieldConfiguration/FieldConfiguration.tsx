@@ -62,7 +62,7 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
   // Only analyzed text fields can be highlighted. The server derives this from the index mapping
   // and rejects a save that targets a flattened or non-indexed path, so offering the toggle here
   // would only produce a 400 the admin cannot act on.
-  const isHighlightAllowed = entityFieldConfig?.highlight ?? false;
+  const isHighlightAllowed = Boolean(entityFieldConfig?.highlight);
 
   useEffect(() => {
     // If initialOpen is true, open this panel automatically
@@ -80,6 +80,9 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
       [index]: Array.isArray(key) ? key : [key],
     }));
   };
+
+  const expandedKeys = activeFieldKeys[index] ?? [];
+  const isExpanded = expandedKeys.includes(String(index));
 
   const handleWeightChange = (value: number) => {
     setFieldWeight(value);
@@ -102,7 +105,7 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
     <Accordion
       allowsMultipleExpanded
       data-field-name={field.fieldName}
-      expandedKeys={new Set(activeFieldKeys[index] || [])}
+      expandedKeys={new Set(expandedKeys)}
       key={index}
       onExpandedChange={(keys) =>
         ((key) => handleCollapseChange(key, index))([...keys].map(String))
@@ -113,44 +116,46 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
         id={String(String(index))}
         key={String(index)}>
         <Box align="start" className="tw:relative" gap={2}>
-          <AccordionHeader
-            className="tw:flex-1 tw:group-data-expanded/item:bg-brand-primary_alt"
-            showChevron={false}>
-            <Box className="tw:w-full">
-              <div
-                className="field-container-header"
-                data-testid="field-container-header">
-                <div className="d-flex items-center justify-between">
-                  <div className="d-flex items-center gap-2">
-                    <Typography data-testid="field-name">
-                      {field.fieldName}
-                    </Typography>
-                    {field.fieldName.startsWith('extension.') && (
-                      <Badge
-                        className="custom-property-badge"
-                        color="brand"
-                        data-testid="custom-property-badge"
-                        size="sm">
-                        {t('label.custom')}
-                      </Badge>
-                    )}
+          <div className="tw:min-w-0 tw:flex-1">
+            <AccordionHeader
+              className="tw:group-data-expanded/item:bg-brand-primary_alt"
+              showChevron={false}>
+              <Box className="tw:w-full">
+                <div
+                  className="field-container-header"
+                  data-testid="field-container-header">
+                  <div className="d-flex items-center justify-between">
+                    <div className="d-flex items-center gap-2">
+                      <Typography data-testid="field-name">
+                        {field.fieldName}
+                      </Typography>
+                      {field.fieldName.startsWith('extension.') && (
+                        <Badge
+                          className="custom-property-badge"
+                          color="brand"
+                          data-testid="custom-property-badge"
+                          size="sm">
+                          {t('label.custom')}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="d-flex items-center justify-between gap-2 m-y-xss">
+                    <span className="text-grey-muted text-xs font-normal">
+                      {fieldDescription ?? t('label.no-description')}
+                    </span>
+                    <span
+                      className="p-x-xs font-semibold text-primary d-flex items-center field-weightage"
+                      data-testid="field-weight">
+                      <Icon className="text-md" component={FilterIcon} />
+                      {fieldWeight < 10 ? `0${fieldWeight}` : fieldWeight}
+                    </span>
                   </div>
                 </div>
-
-                <div className="d-flex items-center justify-between gap-2 m-y-xss">
-                  <span className="text-grey-muted text-xs font-normal">
-                    {fieldDescription ?? t('label.no-description')}
-                  </span>
-                  <span
-                    className="p-x-xs font-semibold text-primary d-flex items-center field-weightage"
-                    data-testid="field-weight">
-                    <Icon className="text-md" component={FilterIcon} />
-                    {fieldWeight < 10 ? `0${fieldWeight}` : fieldWeight}
-                  </span>
-                </div>
-              </div>
-            </Box>
-          </AccordionHeader>
+              </Box>
+            </AccordionHeader>
+          </div>
           <Box className="tw:absolute tw:end-3 tw:top-3">
             <Button
               aria-label={t('label.delete')}
@@ -165,77 +170,85 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
           </Box>
         </Box>
         <AccordionPanel>
-          <Divider className="m-0" />
-          <div className="m-y-sm" style={{ padding: '10px' }}>
-            {/* Highlight Fields Section */}
-            <div className="m-y-md m-b-lg d-flex items-center justify-between">
-              <Typography>{t('label.highlight-field-plural')}</Typography>
-              {isHighlightAllowed ? (
-                <Toggle
-                  className="m-l-xlg"
-                  data-testid="highlight-field-switch"
-                  isSelected={
-                    searchSettings?.highlightFields?.includes(
-                      field.fieldName
-                    ) ?? false
-                  }
-                  size="sm"
-                  onChange={() => onHighlightFieldsChange(field.fieldName)}
-                />
-              ) : (
-                <Tooltip
-                  placement="top"
-                  title={t('message.field-cannot-be-highlighted')}>
-                  <TooltipTrigger>
+          {/* Mount the field controls only while expanded: an entity lists a
+              dozen or more fields, each with a slider and three selects. */}
+          {isExpanded && (
+            <>
+              <Divider className="m-0" />
+              <div className="m-y-sm" style={{ padding: '10px' }}>
+                {/* Highlight Fields Section */}
+                <div className="m-y-md m-b-lg d-flex items-center justify-between">
+                  <Typography>{t('label.highlight-field-plural')}</Typography>
+                  {isHighlightAllowed ? (
                     <Toggle
-                      isDisabled
                       className="m-l-xlg"
                       data-testid="highlight-field-switch"
-                      isSelected={false}
+                      isSelected={
+                        searchSettings?.highlightFields?.includes(
+                          field.fieldName
+                        ) ?? false
+                      }
                       size="sm"
+                      onChange={() => onHighlightFieldsChange(field.fieldName)}
                     />
-                  </TooltipTrigger>
-                </Tooltip>
-              )}
-            </div>
-            <Divider className="tw:my-6" />
+                  ) : (
+                    <Tooltip
+                      placement="top"
+                      title={t('message.field-cannot-be-highlighted')}>
+                      <TooltipTrigger>
+                        <Toggle
+                          isDisabled
+                          className="m-l-xlg"
+                          data-testid="highlight-field-switch"
+                          isSelected={false}
+                          size="sm"
+                        />
+                      </TooltipTrigger>
+                    </Tooltip>
+                  )}
+                </div>
+                <Divider className="tw:my-6" />
 
-            {/* Weight Section */}
-            <div className="m-y-md m-b-lg d-flex items-center justify-between">
-              <Typography>{t('label.weight')}</Typography>
-              <Typography
-                className="font-semibold field-weightage-text"
-                data-testid="field-weight-value">
-                {fieldWeight}
-              </Typography>
-            </div>
-            <div data-testid="field-weight-slider">
-              <Slider
-                aria-label={t('label.value')}
-                maxValue={100}
-                minValue={0}
-                step={0.1}
-                value={fieldWeight}
-                onChange={(value) =>
-                  handleWeightChange(Array.isArray(value) ? value[0] : value)
-                }
-              />
-            </div>
-            <Divider className="tw:my-6" />
+                {/* Weight Section */}
+                <div className="m-y-md m-b-lg d-flex items-center justify-between">
+                  <Typography>{t('label.weight')}</Typography>
+                  <Typography
+                    className="font-semibold field-weightage-text"
+                    data-testid="field-weight-value">
+                    {fieldWeight}
+                  </Typography>
+                </div>
+                <div data-testid="field-weight-slider">
+                  <Slider
+                    aria-label={t('label.value')}
+                    maxValue={100}
+                    minValue={0}
+                    step={0.1}
+                    value={fieldWeight}
+                    onChange={(value) =>
+                      handleWeightChange(
+                        Array.isArray(value) ? value[0] : value
+                      )
+                    }
+                  />
+                </div>
+                <Divider className="tw:my-6" />
 
-            {/* Match Type Section */}
-            <div className="m-y-md m-b-lg d-flex items-center justify-between">
-              <Typography>{t('label.match-type')}</Typography>
-              <Select
-                className="m-l-xlg"
-                data-testid="match-type-select"
-                options={matchTypeOptions}
-                style={{ width: 150 }}
-                value={fieldMatchType}
-                onChange={handleMatchTypeChange}
-              />
-            </div>
-          </div>
+                {/* Match Type Section */}
+                <div className="m-y-md m-b-lg d-flex items-center justify-between">
+                  <Typography>{t('label.match-type')}</Typography>
+                  <Select
+                    className="m-l-xlg"
+                    data-testid="match-type-select"
+                    options={matchTypeOptions}
+                    style={{ width: 150 }}
+                    value={fieldMatchType}
+                    onChange={handleMatchTypeChange}
+                  />
+                </div>
+              </div>
+            </>
+          )}
         </AccordionPanel>
       </AccordionItem>
     </Accordion>

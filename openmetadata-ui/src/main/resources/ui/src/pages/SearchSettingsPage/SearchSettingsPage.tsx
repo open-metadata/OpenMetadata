@@ -107,20 +107,24 @@ const SearchBoostsSection = ({
       <Accordion className="w-full search-settings-collapse">
         <AccordionItem className="term-boost-panel" id="1" key="1">
           <Box align="center" className="tw:w-full" gap={2}>
-            <AccordionHeader className="tw:flex-1">
-              <Box
-                className="layout-row d-flex items-center justify-between w-full"
-                wrap="wrap">
-                <Box className="layout-column d-flex items-center gap-4">
-                  <Typography className="text-sm font-semibold m-0 tw:text-primary">
-                    {t('label.term-boost')}
-                  </Typography>
-                  <Typography className="count-label">
-                    {searchConfig?.globalSettings?.termBoosts?.length ?? 0}
-                  </Typography>
+            {/* The core header's flex child is its heading wrapper, so give
+                the wrapper the remaining width and the whole row toggles. */}
+            <div className="tw:min-w-0 tw:flex-1">
+              <AccordionHeader>
+                <Box
+                  className="layout-row d-flex items-center justify-between w-full"
+                  wrap="wrap">
+                  <Box className="layout-column d-flex items-center gap-4">
+                    <Typography className="text-sm font-semibold m-0 tw:text-primary">
+                      {t('label.term-boost')}
+                    </Typography>
+                    <Typography className="count-label">
+                      {searchConfig?.globalSettings?.termBoosts?.length ?? 0}
+                    </Typography>
+                  </Box>
                 </Box>
-              </Box>
-            </AccordionHeader>
+              </AccordionHeader>
+            </div>
             <Box className="tw:ms-auto tw:pe-4">
               <Box className="layout-column d-flex items-center gap-2">
                 <Button
@@ -155,21 +159,25 @@ const SearchBoostsSection = ({
         </AccordionItem>
         <AccordionItem className="field-value-boost-panel" id="2" key="2">
           <Box align="center" className="tw:w-full" gap={2}>
-            <AccordionHeader className="tw:flex-1">
-              <Box
-                className="layout-row d-flex items-center justify-between w-full"
-                wrap="wrap">
-                <Box className="layout-column d-flex items-center gap-4">
-                  <Typography className="text-sm font-semibold m-0 tw:text-primary">
-                    {t('label.field-value-boost')}
-                  </Typography>
-                  <Typography className="count-label">
-                    {searchConfig?.globalSettings?.fieldValueBoosts?.length ??
-                      0}
-                  </Typography>
+            {/* The core header's flex child is its heading wrapper, so give
+                the wrapper the remaining width and the whole row toggles. */}
+            <div className="tw:min-w-0 tw:flex-1">
+              <AccordionHeader>
+                <Box
+                  className="layout-row d-flex items-center justify-between w-full"
+                  wrap="wrap">
+                  <Box className="layout-column d-flex items-center gap-4">
+                    <Typography className="text-sm font-semibold m-0 tw:text-primary">
+                      {t('label.field-value-boost')}
+                    </Typography>
+                    <Typography className="count-label">
+                      {searchConfig?.globalSettings?.fieldValueBoosts?.length ??
+                        0}
+                    </Typography>
+                  </Box>
                 </Box>
-              </Box>
-            </AccordionHeader>
+              </AccordionHeader>
+            </div>
             <Box className="tw:ms-auto tw:pe-4">
               <Box className="layout-column d-flex items-center gap-2">
                 <Button
@@ -244,7 +252,7 @@ const SearchSettingsPage = () => {
         GlobalSettingsMenuCategory.PREFERENCES,
         t('label.search')
       ),
-    []
+    [t]
   );
 
   const showHybridSearchWeights = useMemo(
