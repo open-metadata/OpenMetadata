@@ -6971,16 +6971,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/Entity/EntityLineage/LineageConfigModal.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/ProfilePlatformSettings.spec.ts",
-        "playwright/e2e/Flow/LineageSettings.spec.ts",
-        "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Entity/EntityLineage/LineageControlButtons/LineageControlButtons.tsx"
       ],
       "specs": [
@@ -7647,14 +7637,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/Modals/ModalWithFunctionEditor/ModalWithFunctionEditor.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Pages/Lineage/LineageInteraction.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor.tsx"
       ],
       "specs": [
@@ -8118,14 +8100,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/SearchSettings/FieldValueBoostModal/FieldValueBoostModal.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Pages/SearchSettings.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/SearchSettings/SearchPreview/SearchPreview.tsx"
       ],
       "specs": [
@@ -8363,8 +8337,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Settings/Email/EmailConfigForm/EmailConfigForm.component.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/ProfilePlatformSettings.spec.ts",
-        "playwright/e2e/Pages/EmailConfiguration.spec.ts"
+        "playwright/e2e/Features/ProfilePlatformSettings.spec.ts"
       ]
     },
     {
@@ -8615,17 +8588,11 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Settings/Users/CreateUser/CreateUser.component.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/ContextCenterPermission.spec.ts",
-        "playwright/e2e/Features/Glossary/GlossaryDisplayNameEdit.spec.ts",
         "playwright/e2e/Features/QueryEntity.spec.ts",
         "playwright/e2e/Flow/AddRoleAndAssignToUser.spec.ts",
-        "playwright/e2e/Flow/PersonaFlow.spec.ts",
         "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts",
         "playwright/e2e/Pages/AIProfile/ProfileUser.spec.ts",
-        "playwright/e2e/Pages/BotsProfile.spec.ts",
-        "playwright/e2e/Pages/DataContracts.spec.ts",
-        "playwright/e2e/Pages/EditClassification.spec.ts",
-        "playwright/e2e/Pages/Tags.spec.ts"
+        "playwright/e2e/Pages/DataContracts.spec.ts"
       ]
     },
     {
@@ -10895,6 +10862,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/platform-settings/search/FieldValueBoostDialog.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/SearchSettings.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/platform-settings/search/FieldValueBoostTable.tsx"
       ],
       "specs": [
@@ -12466,14 +12441,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/pages/Configuration/EditUrlConfiguration/EditUrlConfigurationPage.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Pages/OmdURLConfiguration.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/pages/Configuration/LoginConfigurationDetails/LoginConfigurationPage.tsx"
       ],
       "specs": [
@@ -12715,36 +12682,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/pages/KPIPage/AddKPIPage.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/ContextCenterPermission.spec.ts",
-        "playwright/e2e/Features/DataQuality/ProfilerSettingsAfterReindex.spec.ts",
-        "playwright/e2e/Features/Glossary/GlossaryDisplayNameEdit.spec.ts",
-        "playwright/e2e/Flow/AddRoleAndAssignToUser.spec.ts",
-        "playwright/e2e/Flow/PersonaFlow.spec.ts",
-        "playwright/e2e/Pages/BotsProfile.spec.ts",
-        "playwright/e2e/Pages/EditClassification.spec.ts",
-        "playwright/e2e/Pages/Tags.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/pages/KPIPage/EditKPIPage.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/ContextCenterPermission.spec.ts",
-        "playwright/e2e/Features/DataQuality/ProfilerSettingsAfterReindex.spec.ts",
-        "playwright/e2e/Features/Glossary/GlossaryDisplayNameEdit.spec.ts",
-        "playwright/e2e/Flow/AddRoleAndAssignToUser.spec.ts",
-        "playwright/e2e/Flow/PersonaFlow.spec.ts",
-        "playwright/e2e/Pages/BotsProfile.spec.ts",
-        "playwright/e2e/Pages/EditClassification.spec.ts",
-        "playwright/e2e/Pages/Tags.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/pages/KnowledgeCenterFilterPage/KnowledgeCenterFilterPage.tsx"
       ],
       "specs": [
@@ -12756,10 +12693,6 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/LearningResourcesPage/LearningResourceForm.component.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/IncidentManager.spec.ts",
-        "playwright/e2e/Features/ProfileGovernance.spec.ts",
-        "playwright/e2e/Features/ProfilePlatformSettings.spec.ts",
-        "playwright/e2e/Pages/GlossaryTermRelationSettings.spec.ts",
         "playwright/e2e/Pages/LearningResources.spec.ts"
       ]
     },
@@ -12779,8 +12712,7 @@
       "specs": [
         "playwright/e2e/Features/MetricHierarchy.spec.ts",
         "playwright/e2e/Features/ProfilePlatformSettings.spec.ts",
-        "playwright/e2e/Flow/LineageSettings.spec.ts",
-        "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts"
+        "playwright/e2e/Flow/LineageSettings.spec.ts"
       ]
     },
     {
@@ -12858,8 +12790,7 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/PoliciesPage/AddPolicyPage/AddPolicyPage.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/AccessControlSettings.spec.ts",
-        "playwright/e2e/Pages/Policies.spec.ts"
+        "playwright/e2e/Features/AccessControlSettings.spec.ts"
       ]
     },
     {
@@ -12878,15 +12809,6 @@
       "specs": [
         "playwright/e2e/Features/AccessControlSettings.spec.ts",
         "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts",
-        "playwright/e2e/Pages/Policies.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/pages/PoliciesPage/RuleForm/RuleForm.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/AccessControlSettings.spec.ts",
         "playwright/e2e/Pages/Policies.spec.ts"
       ]
     },
@@ -12914,20 +12836,8 @@
       ],
       "specs": [
         "playwright/e2e/Features/AccessControlSettings.spec.ts",
-        "playwright/e2e/Features/EntityRenameConsolidation.spec.ts",
-        "playwright/e2e/Features/Glossary/GlossaryMiscOperations.spec.ts",
-        "playwright/e2e/Features/Glossary/GlossaryMutualExclusivityDataProductTree.spec.ts",
-        "playwright/e2e/Features/MetricCustomUnitFlow.spec.ts",
-        "playwright/e2e/Features/MetricHierarchy.spec.ts",
-        "playwright/e2e/Features/MultipleRename.spec.ts",
         "playwright/e2e/Flow/AddRoleAndAssignToUser.spec.ts",
-        "playwright/e2e/Flow/PersonaFlow.spec.ts",
-        "playwright/e2e/Pages/AIProfile/ProfileTeam.spec.ts",
-        "playwright/e2e/Pages/DataProductAndSubdomains.spec.ts",
-        "playwright/e2e/Pages/EditClassification.spec.ts",
-        "playwright/e2e/Pages/IntakeForm.spec.ts",
         "playwright/e2e/Pages/Roles.spec.ts",
-        "playwright/e2e/Pages/Tags.spec.ts",
         "playwright/e2e/Pages/Teams.spec.ts"
       ]
     },
@@ -13179,30 +13089,6 @@
       ],
       "specs": [
         "playwright/e2e/Pages/GlossaryImportExport.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/pages/TeamsPage/AddTeamForm.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/AIMode/Observability.spec.ts",
-        "playwright/e2e/Features/DataQuality/TestLibrary.spec.ts",
-        "playwright/e2e/Features/EntityRenameConsolidation.spec.ts",
-        "playwright/e2e/Features/Glossary/GlossaryMiscOperations.spec.ts",
-        "playwright/e2e/Features/Glossary/GlossaryMutualExclusivityDataProductTree.spec.ts",
-        "playwright/e2e/Features/MetricCustomUnitFlow.spec.ts",
-        "playwright/e2e/Features/MetricHierarchy.spec.ts",
-        "playwright/e2e/Features/MultipleRename.spec.ts",
-        "playwright/e2e/Flow/AddRoleAndAssignToUser.spec.ts",
-        "playwright/e2e/Flow/PersonaFlow.spec.ts",
-        "playwright/e2e/Pages/AIProfile/ProfileTeam.spec.ts",
-        "playwright/e2e/Pages/AIProfile/ProfileUser.spec.ts",
-        "playwright/e2e/Pages/BotsProfile.spec.ts",
-        "playwright/e2e/Pages/DataProductAndSubdomains.spec.ts",
-        "playwright/e2e/Pages/EditClassification.spec.ts",
-        "playwright/e2e/Pages/IntakeForm.spec.ts",
-        "playwright/e2e/Pages/Tags.spec.ts"
       ]
     },
     {
