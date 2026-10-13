@@ -14,6 +14,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -162,6 +163,22 @@ public class ContextMemoryConflictReviewIT {
   }
 
   @Test
+  void deletingAMemoryInReviewClosesItsTaskAndRestoringItReopensOne(TestNamespace ns) {
+    Conflict conflict = conflict(ns, "deleted");
+    Task task = openTask(conflict.reviewed());
+
+    admin().delete(idOf(conflict.reviewed()));
+
+    assertEquals(
+        TaskEntityStatus.Cancelled,
+        SdkClients.adminClient().tasks().get(task.getId().toString()).getStatus());
+
+    admin().restore(idOf(conflict.reviewed()));
+
+    assertNotEquals(task.getId(), openTask(conflict.reviewed()).getId(), "a fresh review");
+  }
+
+  @Test
   void approvingIsRefusedWhenTheDisputedMemoryChangedAfterTheConflictWasDetected(TestNamespace ns) {
     ContextMemory disputed = admin().create(memory(ns, "stale-five", shared().USER3_REF));
     ContextMemory reviewed = pending(ns, "stale-three", shared().USER2_REF);
@@ -238,6 +255,31 @@ public class ContextMemoryConflictReviewIT {
                         .withCategory(TaskCategory.Review)
                         .withType(TaskEntityType.MemoryConflictReview)
                         .withAbout("<#E::contextMemory::" + memory.getFullyQualifiedName() + ">")));
+  }
+
+  @Test
+  void anotherTaskCannotBePatchedIntoAConflictReview(TestNamespace ns) {
+    ContextMemory memory = pending(ns, "patched", shared().USER2_REF);
+    Task custom =
+        SdkClients.adminClient()
+            .tasks()
+            .create(
+                new CreateTask()
+                    .withName(ns.prefix("custom-review"))
+                    .withCategory(TaskCategory.Custom)
+                    .withType(TaskEntityType.CustomTask)
+                    .withAbout("<#E::contextMemory::" + memory.getFullyQualifiedName() + ">"));
+
+    assertThrows(
+        InvalidRequestException.class,
+        () ->
+            SdkClients.adminClient()
+                .tasks()
+                .patch(
+                    custom.getId(),
+                    JsonUtils.readTree(
+                        """
+                        [{"op":"replace","path":"/type","value":"MemoryConflictReview"}]""")));
   }
 
   private record Conflict(ContextMemory reviewed, ContextMemory disputed) {}

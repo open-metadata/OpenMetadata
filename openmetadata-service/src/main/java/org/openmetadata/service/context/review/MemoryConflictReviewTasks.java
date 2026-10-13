@@ -54,6 +54,7 @@ public final class MemoryConflictReviewTasks {
   static final String REJECT = "reject";
   static final String CLOSED_OUTSIDE_REVIEW =
       "Closed because the memory left its conflict review outside this task (now %s)";
+  static final String DELETED_IN_REVIEW = "Closed because the memory was deleted during its review";
 
   private static final List<TaskAvailableTransition> TRANSITIONS =
       List.of(
@@ -84,12 +85,31 @@ public final class MemoryConflictReviewTasks {
       if (isHeldForConflicts(current)) {
         openUnlessOpen(current);
       } else if (isHeldForConflicts(previous) && !EntityStatusWorkflows.isWorkflowChange(current)) {
-        closeOpenTask(current);
+        closeOpenTask(
+            current,
+            String.format(CLOSED_OUTSIDE_REVIEW, String.valueOf(current.getEntityStatus())));
       }
     } catch (RuntimeException failure) {
       LOG.error(
           "[MemoryConflictReview] could not update the review task of memory {}",
           current.getId(),
+          failure);
+    }
+  }
+
+  /**
+   * A deleted memory cannot be decided, so its review closes; a hard delete removes the task with
+   * the memory's other relationships.
+   */
+  public static void afterDelete(ContextMemory memory, boolean hardDelete) {
+    try {
+      if (!hardDelete && isHeldForConflicts(memory)) {
+        closeOpenTask(memory, DELETED_IN_REVIEW);
+      }
+    } catch (RuntimeException failure) {
+      LOG.error(
+          "[MemoryConflictReview] could not close the review task of memory {}",
+          memory.getId(),
           failure);
     }
   }
@@ -116,13 +136,11 @@ public final class MemoryConflictReviewTasks {
     }
   }
 
-  private static void closeOpenTask(ContextMemory memory) {
+  private static void closeOpenTask(ContextMemory memory, String comment) {
     Task open =
         taskRepository().findOpenTaskByEntityAndType(memory.getFullyQualifiedName(), TASK_TYPE);
     if (open != null) {
-      String stage = String.valueOf(memory.getEntityStatus());
-      taskRepository()
-          .closeTask(open, memory.getUpdatedBy(), String.format(CLOSED_OUTSIDE_REVIEW, stage));
+      taskRepository().closeTask(open, memory.getUpdatedBy(), comment);
     }
   }
 

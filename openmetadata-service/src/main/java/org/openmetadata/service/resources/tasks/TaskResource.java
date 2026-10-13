@@ -127,6 +127,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
    */
   static final String LIST_FIELDS = "assignees,about,createdBy";
 
+  static final String SERVER_OPENED_REVIEW =
+      "Memory conflict review tasks are opened by the server when a memory is disputed";
+
   private static final String TASK_SEARCH_DESCRIPTION =
       "Free-text search. Database-only (tasks are not indexed into Elasticsearch). "
           + "Matches case-insensitive against task name, displayName, the request "
@@ -997,9 +1000,8 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
    * (ADR:2026-10-13-a-memory-conflict-opens-a-review-task-and-approving-it-supersedes-the-disputed-memory).
    */
   private static void requireCreatableThroughApi(CreateTask create) {
-    if (create.getType() == TaskEntityType.MemoryConflictReview) {
-      throw BadRequestException.of(
-          "Memory conflict review tasks are opened by the server when a memory is disputed");
+    if (isServerOpenedType(create.getType())) {
+      throw BadRequestException.of(SERVER_OPENED_REVIEW);
     }
   }
 
@@ -1206,6 +1208,19 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     rejectStatusChangeToWorkflowDecision(original, patched);
     rejectAvailableTransitionsEditByNonAdmin(original, patched, callerIsAdmin);
     rejectPayloadOrAboutEditAfterOpen(original, patched);
+    rejectServerOpenedTypeChange(original, patched);
+  }
+
+  /** No task becomes, or stops being, a review only the server opens. */
+  private static void rejectServerOpenedTypeChange(Task original, Task patched) {
+    boolean wasServerOpened = isServerOpenedType(original.getType());
+    if (patched.getType() != null && wasServerOpened != isServerOpenedType(patched.getType())) {
+      throw BadRequestException.of(SERVER_OPENED_REVIEW);
+    }
+  }
+
+  private static boolean isServerOpenedType(TaskEntityType type) {
+    return type == TaskEntityType.MemoryConflictReview;
   }
 
   private void rejectForgeAttributionEdits(Task original, Task patched) {

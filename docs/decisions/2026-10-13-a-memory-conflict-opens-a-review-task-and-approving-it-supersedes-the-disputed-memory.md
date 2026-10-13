@@ -29,7 +29,7 @@ Approved — and nothing wrote it.
    memory with disputes, and a Draft memory without them is one of reconciliation's other holds.
 2. A Draft memory with disputes has exactly one open `MemoryConflictReview` task about it, in the
    Review category, opened by `governance-bot` and assigned to the owners of the memory and of every
-   disputed memory. Only the server opens one: the task API refuses the type. The task opens after the
+   disputed memory. Only the server opens one: the task API refuses to create the type or to patch a task into or out of it. The task opens after the
    write that records the dispute commits; a failure to open it is logged, and the next write to the
    memory tries again. No workflow drives it: its Approve and Reject transitions are fixed when it
    opens, and its decision applies synchronously when it is resolved.
@@ -49,7 +49,8 @@ Approved — and nothing wrote it.
    detected, or when the resolver may not supersede a disputed memory. A decision made against claims
    that no longer hold, or by someone without authority over them, is not applied.
 5. A change that takes the memory out of review outside the task — an approval or rejection in
-   Context Center, an explicit requeue to Unprocessed — closes the open task.
+   Context Center, an explicit requeue to Unprocessed, a soft delete — closes the open task.
+   Restoring a memory that is still held for conflicts opens a fresh one.
 
 ## Consequences
 

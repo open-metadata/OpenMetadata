@@ -196,6 +196,18 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     MemoryConflictReviewTasks.afterWrite(previous, updated);
   }
 
+  @Override
+  protected void postDelete(ContextMemory memory, boolean hardDelete) {
+    super.postDelete(memory, hardDelete);
+    MemoryConflictReviewTasks.afterDelete(memory, hardDelete);
+  }
+
+  @Override
+  protected void postRestore(ContextMemory memory) {
+    super.postRestore(memory);
+    MemoryConflictReviewTasks.afterWrite(null, memory);
+  }
+
   /** Whether the memory row exists, soft-deleted or not; provenance may point at either. */
   static boolean memoryExists(UUID memoryId) {
     EntityDAO<?> dao = Entity.getEntityRepository(Entity.CONTEXT_MEMORY).getDao();
