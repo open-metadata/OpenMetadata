@@ -18,10 +18,11 @@ import { Glossary } from '../../support/glossary/Glossary';
 import { LearningResourceClass } from '../../support/learning/LearningResourceClass';
 import { AdminClass } from '../../support/user/AdminClass';
 import {
-  createNewPage,
-  getApiContext,
-  redirectToHomePage,
-  uuid,
+    createNewPage,
+    getApiContext,
+    redirectToHomePage,
+    selectOptionWithRetry,
+    uuid
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { dismissLineageMapOnboarding } from '../../utils/lineage';
@@ -48,14 +49,20 @@ async function goToLearningResourcesAdmin(page: Page) {
   await expect(page.getByTestId('learning-resources-table-body')).toBeVisible();
 }
 
-async function selectDropdownOption(page: Page, optionText: string) {
-  const option = page
-    .locator('.ant-select-dropdown:visible')
-    .locator('.ant-select-item-option')
-    .filter({ hasText: new RegExp(`^${optionText}$`, 'i') });
-
-  await expect(option).toBeVisible();
-  await option.click();
+async function selectDropdownOption(
+  page: Page,
+  testId: string,
+  optionText: string
+) {
+  const field = page
+    .getByTestId('learning-resource-form-drawer')
+    .getByTestId(testId);
+  const trigger = field.getByRole('button').or(field.getByRole('combobox'));
+  await selectOptionWithRetry(
+    trigger,
+    page.getByRole('option', { name: new RegExp(`^${optionText}$`, 'i') })
+  );
+  await page.keyboard.press('Escape');
 }
 
 async function fillResourceForm(
@@ -70,52 +77,25 @@ async function fillResourceForm(
     status: string;
   }
 ) {
-  const nameInput = page.getByTestId('name-input');
+  const nameInput = page.getByTestId('name-input').getByRole('textbox');
   await expect(nameInput).toBeVisible();
   await nameInput.fill(data.resourceName);
 
-  const descriptionInput = page.getByTestId('description-input');
+  const descriptionInput = page
+    .getByTestId('description-input')
+    .getByRole('textbox');
   await expect(descriptionInput).toBeVisible();
   await descriptionInput.fill(data.description);
 
-  const typeSelector = page
-    .getByTestId('resource-type-form-item')
-    .locator('.ant-select-selector');
-  await expect(typeSelector).toBeVisible();
-  await typeSelector.click();
-  await selectDropdownOption(page, data.type);
+  await selectDropdownOption(page, 'resource-type-select', data.type);
+  await selectDropdownOption(page, 'categories-select', data.category);
+  await selectDropdownOption(page, 'contexts-select', data.context);
 
-  const categorySelector = page
-    .getByTestId('categories-form-item')
-    .locator('.ant-select-selector');
-  await expect(categorySelector).toBeVisible();
-  await categorySelector.click();
-  await selectDropdownOption(page, data.category);
-  await page.locator('.ant-drawer-header').click();
-  await expect(page.locator('.ant-select-dropdown:visible')).not.toBeVisible();
-
-  const contextSelector = page
-    .getByTestId('contexts-form-item')
-    .locator('.ant-select-selector');
-  await expect(contextSelector).toBeVisible();
-  await contextSelector.click();
-  await page
-    .locator('.ant-select-dropdown:visible')
-    .getByTitle(data.context, { exact: true })
-    .click();
-  await page.locator('.ant-drawer-header').click();
-  await expect(page.locator('.ant-select-dropdown:visible')).not.toBeVisible();
-
-  const urlInput = page.getByTestId('source-url-input');
+  const urlInput = page.getByTestId('source-url-input').getByRole('textbox');
   await expect(urlInput).toBeVisible();
   await urlInput.fill(data.url);
 
-  const statusSelector = page
-    .getByTestId('status-form-item')
-    .locator('.ant-select-selector');
-  await expect(statusSelector).toBeVisible();
-  await statusSelector.click();
-  await selectDropdownOption(page, data.status);
+  await selectDropdownOption(page, 'status-select', data.status);
 }
 
 async function scrollDrawerToShowResource(page: Page, resourceText: string) {
