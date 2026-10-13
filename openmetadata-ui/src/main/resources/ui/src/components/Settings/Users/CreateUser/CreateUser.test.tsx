@@ -258,4 +258,13 @@ describe('Test CreateUser component', () => {
 
     expect(onSave).not.toHaveBeenCalled();
   });
+
+  it('should render the token expiry field for a bot', async () => {
+    const { container } = render(<CreateUser {...propsValue} forceBot />, {
+      wrapper: MemoryRouter,
+    });
+
+    expect(await findByTestId(container, 'token-expiry')).toBeInTheDocument();
+    expect(queryByTestId(container, 'roles-dropdown')).not.toBeInTheDocument();
+  });
 });
