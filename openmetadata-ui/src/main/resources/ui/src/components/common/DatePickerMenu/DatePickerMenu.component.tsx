@@ -13,17 +13,19 @@
 
 import { CloseCircleFilled, CloseCircleOutlined } from '@ant-design/icons';
 import {
-  Button as CoreButton,
+  Button,
+  ButtonUtility,
   Dropdown,
+  Typography,
 } from '@openmetadata/ui-core-components';
+
 import { ChevronRight } from '@openmetadata/ui-core-components/icons';
-import { Button } from 'antd';
 import { SizeType } from 'antd/lib/config-provider/SizeContext';
 import classNames from 'classnames';
 import { isUndefined, pick } from 'lodash';
 import { DateTime } from 'luxon';
 import { DateFilterType, DateRangeObject } from 'Models';
-import { Key, useEffect, useMemo, useRef, useState } from 'react';
+import { Key, MouseEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DropdownIcon } from '../../../assets/svg/drop-down.svg';
 import {
@@ -248,21 +250,21 @@ const DatePickerMenu = ({
 
   const datePickerMenu = (
     <Dropdown.Root isOpen={isMenuOpen} onOpenChange={handleMenuOpenChange}>
-      <CoreButton
+      <Button
         className={getTriggerClassName(size, isCustomRangeSelected)}
         color="secondary"
         data-testid="date-picker-menu"
         iconTrailing={<DropdownIcon height={14} width={14} />}
         size={size === 'small' ? 'sm' : 'md'}>
-        <span
+        <Typography
           className={classNames(
             'tw:min-w-0',
             isCustomRangeSelected ? 'tw:whitespace-nowrap' : 'tw:truncate',
             !selectedTimeRangeKey && 'tw:text-disabled'
           )}>
           {selectedTimeRange}
-        </span>
-      </CoreButton>
+        </Typography>
+      </Button>
       <Dropdown.Popover
         className="tw:w-auto tw:min-w-44 tw:overflow-visible"
         placement="bottom start">
@@ -331,19 +333,14 @@ const DatePickerMenu = ({
       data-testid="date-picker-container">
       {datePickerMenu}
       {selectedTimeRangeKey && (
-        <Button
+        <ButtonUtility
           aria-label={t('label.clear')}
-          className={classNames(
-            'tw:absolute! tw:right-8 tw:top-1/2 tw:z-10 tw:inline-flex! tw:size-4!',
-            'tw:min-w-0 tw:-translate-y-1/2 tw:items-center tw:justify-center',
-            'tw:border-0 tw:bg-transparent tw:p-0! tw:text-disabled tw:shadow-none',
-            'tw:hover:bg-transparent tw:hover:text-secondary'
-          )}
+          className="tw:absolute tw:right-8 tw:top-1/2 tw:z-10 tw:-translate-y-1/2"
+          color="tertiary"
           data-testid="clear-date-picker"
           icon={<CloseCircleFilled />}
-          size="small"
-          type="text"
-          onClick={(event) => {
+          size="xs"
+          onClick={(event: MouseEvent) => {
             event.stopPropagation();
             handleClear();
           }}

@@ -14,13 +14,12 @@
 import Icon, { CheckCircleFilled, CloseCircleFilled } from '@ant-design/icons';
 import {
   Box,
-  Button as CoreButton,
+  Button,
   Card,
   Owner,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isEqual } from 'lodash';
@@ -197,9 +196,9 @@ const TaskFeedCardFromTask = ({
       isEntityDetailsAvailable ? (
         <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
           <Button
-            className="p-0 task-feed-header"
+            className="tw:w-[98%]"
+            color="link-color"
             data-testid="redirect-task-button-link"
-            type="link"
             onClick={handleTaskLinkClick}>
             <Typography className="m-r-xss task-details-id">{`#${taskDisplayId} `}</Typography>
 
@@ -352,15 +351,15 @@ const TaskFeedCardFromTask = ({
             onClick={showReplies}
           />
           {commentsCount > 0 ? (
-            <CoreButton
-              className="posts-length m-r-xss"
+            <Button
+              className="tw:mr-1"
               color="link-gray"
               data-testid="replies-count"
               onPress={showReplies}>
               {t(getReplyCountLabelKey(commentsCount), {
                 number: commentsCount,
               })}
-            </CoreButton>
+            </Button>
           ) : null}
         </Box>
 
@@ -381,24 +380,24 @@ const TaskFeedCardFromTask = ({
       {!isTaskTestCaseResult && hasEditAccess && !isSuggestionEmpty && (
         <Box gap={2}>
           {task.status === TaskEntityStatus.Open && (
-            <CoreButton
+            <Button
               color="tertiary"
               data-testid="approve-button"
               iconLeading={<CheckCircleFilled />}
               size="xs"
               onPress={onTaskResolve}>
               {t('label.approve')}
-            </CoreButton>
+            </Button>
           )}
           {task.status === TaskEntityStatus.Open && (
-            <CoreButton
+            <Button
               color="tertiary-destructive"
               data-testid="reject-button"
               iconLeading={<CloseCircleFilled />}
               size="xs"
               onPress={onTaskReject}>
               {t('label.reject')}
-            </CoreButton>
+            </Button>
           )}
         </Box>
       )}
@@ -448,24 +447,24 @@ const TaskFeedCardFromTask = ({
               <UserPopOverCard
                 key={task.createdBy?.name}
                 userName={task.createdBy?.name ?? ''}>
-                <span
+                <Typography
                   className="task-created-by-text p-r-xss"
                   data-testid="task-created-by">
                   {getEntityName(user)}
-                </span>
+                </Typography>
               </UserPopOverCard>
-              <span className="task-timestamp-text">
+              <Typography className="task-timestamp-text">
                 {t('message.created-this-task-lowercase')}
-              </span>
+              </Typography>
               {task.createdAt && (
                 <Tooltip
                   excludeTriggerFromTabOrder
                   title={formatDateTime(task.createdAt)}>
-                  <span
+                  <Typography
                     className="p-l-xss task-timestamp-text"
                     data-testid="timestamp">
                     {getRelativeTime(task.createdAt)}
-                  </span>
+                  </Typography>
                 </Tooltip>
               )}
             </Typography>

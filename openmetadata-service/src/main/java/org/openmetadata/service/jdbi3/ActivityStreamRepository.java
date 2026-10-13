@@ -62,6 +62,8 @@ public class ActivityStreamRepository {
   private static final UUID NO_DOMAIN_ACCESS = new UUID(0L, 0L);
   // Stands in for an empty team list, since an empty IN () is invalid SQL.
   private static final String NO_TEAM_ID = new UUID(0L, 0L).toString();
+  // 30-day window cap on `days`, plus one day for a window that starts at the start of a day.
+  public static final int MAX_START_TS_DAYS = 31;
 
   private final CollectionDAO.ActivityStreamDAO activityStreamDAO;
 
@@ -81,8 +83,9 @@ public class ActivityStreamRepository {
       String domainsParam,
       String domain,
       int days,
+      Long startTs,
       int limit) {
-    long afterTimestamp = afterTimestamp(days);
+    long afterTimestamp = afterTimestamp(days, startTs);
     List<UUID> domainIds =
         nullOrEmpty(domain)
             ? getEffectiveDomains(securityContext, domainsParam)
@@ -131,7 +134,7 @@ public class ActivityStreamRepository {
   }
 
   public ResultList<ActivityEvent> getMyFeed(
-      SecurityContext securityContext, String domain, int days, int limit) {
+      SecurityContext securityContext, String domain, int days, Long startTs, int limit) {
     String userName = securityContext.getUserPrincipal().getName();
     EntityReference user = Entity.getEntityReferenceByName(Entity.USER, userName, null);
     return result(
@@ -139,18 +142,18 @@ public class ActivityStreamRepository {
             user.getId().toString(),
             getTeamIds(userName),
             getEffectiveDomainsByFqn(securityContext, domain),
-            afterTimestamp(days),
+            afterTimestamp(days, startTs),
             limit));
   }
 
   public ResultList<ActivityEvent> getFollowingFeed(
-      SecurityContext securityContext, String domain, int days, int limit) {
+      SecurityContext securityContext, String domain, int days, Long startTs, int limit) {
     EntityReference user = currentUser(securityContext);
     return result(
         listByFollowers(
             user.getId().toString(),
             getEffectiveDomainsByFqn(securityContext, domain),
-            afterTimestamp(days),
+            afterTimestamp(days, startTs),
             limit));
   }
 
@@ -159,7 +162,12 @@ public class ActivityStreamRepository {
    * activity about one entity (the entityLink's entity, matched as {@code /activity/about} does).
    */
   public ResultList<ActivityEvent> getMentionsFeed(
-      SecurityContext securityContext, String domain, String entityLink, int days, int limit) {
+      SecurityContext securityContext,
+      String domain,
+      String entityLink,
+      int days,
+      Long startTs,
+      int limit) {
     String userName = securityContext.getUserPrincipal().getName();
     MentionScope scope =
         new MentionScope(
@@ -167,7 +175,7 @@ public class ActivityStreamRepository {
             getTeamIds(userName),
             getEffectiveDomainsByFqn(securityContext, domain),
             buildAboutFqnHash(entityLink));
-    return result(listByMentions(scope, afterTimestamp(days), limit));
+    return result(listByMentions(scope, afterTimestamp(days, startTs), limit));
   }
 
   public ResultList<ActivityEvent> getActivityByEntityLink(
@@ -729,6 +737,16 @@ public class ActivityStreamRepository {
 
   private long afterTimestamp(int days) {
     return Instant.now().minus(days, ChronoUnit.DAYS).toEpochMilli();
+  }
+
+  /**
+   * Lower bound for the activity window: {@code startTs} when set, floored at {@link
+   * #MAX_START_TS_DAYS} so it cannot reach past the {@code days} cap; else {@code now - days}.
+   */
+  private long afterTimestamp(int days, Long startTs) {
+    return startTs != null
+        ? Math.max(startTs, afterTimestamp(MAX_START_TS_DAYS))
+        : afterTimestamp(days);
   }
 
   private ResultList<ActivityEvent> result(List<ActivityEvent> events) {

@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
+import { Button, SimpleModal } from '@openmetadata/ui-core-components';
 import Form, { FormProps, IChangeEvent } from '@rjsf/core';
 import { ValidatorType } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
-import { Modal } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { FC, useEffect, useMemo, useState } from 'react';
@@ -138,26 +138,23 @@ const ProfilerSettings: FC<ProfilerSettingsProps> = ({
   }, [entityId, entityType]);
 
   return (
-    <Modal
-      centered
-      destroyOnClose
-      bodyStyle={{
-        maxHeight: 600,
-        overflowY: 'scroll',
-      }}
-      cancelButtonProps={{
-        type: 'link',
-      }}
-      closable={false}
-      confirmLoading={isUpdating}
+    <SimpleModal
       data-testid="profiler-settings-modal"
-      maskClosable={false}
-      okButtonProps={{
-        form: 'profiler-setting-form',
-        htmlType: 'submit',
-      }}
-      okText={t('label.save')}
-      open={visible}
+      footer={
+        <>
+          <Button color="secondary" onPress={() => onVisibilityChange(false)}>
+            {t('label.cancel')}
+          </Button>
+          <Button
+            form="profiler-setting-form"
+            isLoading={isUpdating}
+            type="submit">
+            {t('label.save')}
+          </Button>
+        </>
+      }
+      isDismissable={false}
+      isOpen={visible}
       title={t('label.profiler-setting-plural')}
       width={630}
       onCancel={() => onVisibilityChange(false)}>
@@ -189,7 +186,7 @@ const ProfilerSettings: FC<ProfilerSettingsProps> = ({
           onSubmit={handleUpdate}
         />
       )}
-    </Modal>
+    </SimpleModal>
   );
 };
 

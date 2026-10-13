@@ -852,6 +852,28 @@
       "sources": ["openmetadata-integration-tests/**"],
       "projects": [],
       "specs": []
+    },
+    {
+      "_comment": "The Data Contract tab: its add/edit forms, contract cards and their utils. Every contract spec drives these forms, and the ODCS specs edit imported contracts through them.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/DataContract/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/DataContract/**"
+      ],
+      "projects": ["chromium", "ImportExport"],
+      "specs": [
+        "playwright/e2e/Pages/DataContractInheritance.spec.ts",
+        "playwright/e2e/Pages/DataContractSLAValidation.spec.ts",
+        "playwright/e2e/Pages/DataContracts.spec.ts",
+        "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts",
+        "playwright/e2e/Pages/ODCSImportExport.spec.ts",
+        "playwright/e2e/Pages/ODCSImportExportPermissions.spec.ts"
+      ]
+    },
+    {
+      "_comment": "The ESLint suppressions baseline is read only by the linter: it ships in neither the server nor the UI bundle, so no change to it can alter a spec outcome. Mapped to no specs rather than left unmapped, so pruning it does not escalate to a full-suite run.",
+      "sources": ["openmetadata-ui/src/main/resources/ui/eslint-suppressions.json"],
+      "projects": [],
+      "specs": []
     }
   ]
 }

@@ -147,11 +147,9 @@ test.describe('Search Settings', () => {
       // Add and remove field value boost
       await page.getByTestId('add-field-value-boost-btn').click();
 
-      await page
-        .locator('.field-value-boost-modal:visible')
-        .waitFor({ state: 'visible' });
+      const modal = page.getByTestId('field-value-boost-modal');
 
-      const modal = page.locator('.field-value-boost-modal:visible');
+      await modal.waitFor({ state: 'visible' });
 
       await modal.locator('#field').click();
 
@@ -166,7 +164,7 @@ test.describe('Search Settings', () => {
 
       await setSliderValue(page, 'field-boost-slider', 25.6);
 
-      await modal.locator('button').filter({ hasText: 'Save' }).click();
+      await modal.getByRole('button', { name: 'Save' }).click();
 
       await toastNotification(page, /Search Settings updated successfully/);
 
