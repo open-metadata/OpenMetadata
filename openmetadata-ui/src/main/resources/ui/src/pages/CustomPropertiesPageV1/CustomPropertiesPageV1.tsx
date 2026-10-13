@@ -12,7 +12,6 @@
  */
 
 import { Box, Tabs } from '@openmetadata/ui-core-components';
-import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { isUndefined, startCase } from 'lodash';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
@@ -34,11 +33,11 @@ import { Type } from '../../generated/entity/type';
 import { CustomProperty } from '../../generated/type/customProperty';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import {
-  addPropertyToEntity,
-  CustomPropertyChanges,
-  deleteCustomPropertyByName,
-  getTypeByFQN,
-  updateCustomPropertyByName,
+    addPropertyToEntity,
+    CustomPropertyChanges,
+    deleteCustomPropertyByName,
+    getTypeByFQN,
+    updateCustomPropertyByName
 } from '../../rest/metadataTypeAPI';
 import { getCustomPropertyPageHeaderFromEntity } from '../../utils/CustomProperty.utils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
@@ -108,7 +107,6 @@ const CustomEntityDetailV1 = () => {
     setActiveTab(activeKey as EntityTabs);
   }, []);
 
-  const [form] = useForm();
 
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
@@ -116,10 +114,7 @@ const CustomEntityDetailV1 = () => {
     setIsDrawerOpen(true);
   }, []);
 
-  const handleDrawerClose = useCallback(() => {
-    setIsDrawerOpen(false);
-    form.resetFields();
-  }, [form]);
+  const handleDrawerClose = useCallback(() => setIsDrawerOpen(false), []);
 
   const handleDrawerSubmit = useCallback(
     async (data: CustomProperty) => {
@@ -312,7 +307,6 @@ const CustomEntityDetailV1 = () => {
       </Box>
       <AddCustomProperty
         entityType={selectedEntityTypeDetail.name as EntityType}
-        formRef={form}
         loading={isButtonLoading}
         open={isDrawerOpen}
         onClose={handleDrawerClose}

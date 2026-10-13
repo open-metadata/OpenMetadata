@@ -11,39 +11,39 @@
  *  limitations under the License.
  */
 import {
-  APIRequestContext,
-  expect,
-  Locator,
-  Page,
-  Response,
+    APIRequestContext,
+    expect,
+    Locator,
+    Page,
+    Response
 } from '@playwright/test';
 import {
-  CUSTOM_PROPERTY_INVALID_NAMES,
-  CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
-  ENTITY_REFERENCE_PROPERTIES,
-  NAME_SUFFIX,
+    CUSTOM_PROPERTY_INVALID_NAMES,
+    CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
+    ENTITY_REFERENCE_PROPERTIES,
+    NAME_SUFFIX
 } from '../constant/customProperty';
 import { SidebarItem } from '../constant/sidebar';
 import {
-  EntityTypeEndpoint,
-  ENTITY_PATH,
+    EntityTypeEndpoint,
+    ENTITY_PATH
 } from '../support/entity/Entity.interface';
 import { UserClass } from '../support/user/UserClass';
 import { selectOption, showAdvancedSearchDialog } from './advancedSearch';
 import { CODE_EDITOR_CONTENT, typeInCodeEditor } from './codeEditor';
 import {
-  clickIgnoringToasts,
-  descriptionBoxReadOnly,
-  fillDescriptionBox,
-  getDescriptionBox,
-  selectOptionWithRetry,
-  uuid,
+    clickIgnoringToasts,
+    descriptionBoxReadOnly,
+    fillDescriptionBox,
+    getDescriptionBox,
+    selectOptionWithRetry,
+    uuid
 } from './common';
 import { pickDateInCorePicker } from './dateTime';
 import { waitForAllLoadersToDisappear } from './entity';
 import {
-  navigateToEntityPanelTab,
-  navigateToExploreAndSelectTable,
+    navigateToEntityPanelTab,
+    navigateToExploreAndSelectTable
 } from './entityPanel';
 import { sidebarClick } from './sidebar';
 import { waitForAntOverlayToOpen } from './waitHelpers';
@@ -735,53 +735,58 @@ export const addCustomPropertiesForEntity = async ({
   // Click the switch to show service doc panel
   await page.locator('[data-testid="show-side-panel-switch"]').click();
 
-  // Validation check — name must start with a letter/number and must not contain: " * : ^ $ \ < > & ~ /
-  await page.fill(
-    '[data-testid="name"]',
-    CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_COLON
-  );
+  const form = page.getByTestId('custom-property-form');
+  const nameInput = form.getByTestId('custom-property-name').getByRole('textbox');
 
-  await expect(page.locator('#name_help')).toContainText(
-    CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
-  );
+  // Validation check — name must start with a letter/number and must not contain: " * : ^ $ \ < > & ~ /
+  await nameInput.fill(CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_COLON);
+
+  await expect(
+    form.getByText(CUSTOM_PROPERTY_NAME_VALIDATION_ERROR)
+  ).toBeVisible();
 
   // Correct name
-  await page.fill('[data-testid="name"]', propertyName);
+  await nameInput.fill(propertyName);
 
   // displayName
-  await page.fill('[data-testid="display-name"]', propertyName);
+  await form
+    .getByTestId('custom-property-display-name')
+    .getByRole('textbox')
+    .fill(propertyName);
 
   // Select custom type
   await selectOptionWithRetry(
-    page.locator('[data-testid="propertyType"]'),
+    form.getByTestId('custom-property-type').getByRole('button'),
     page.getByRole('option', { name: customType, exact: true })
   );
 
   // Enum configuration
   if (customType === 'Enum' && enumConfig) {
+    const enumInput = form
+      .getByTestId('custom-property-enum-config')
+      .locator('input');
     for (const val of enumConfig.values) {
-      const enumInput = page.locator(String.raw`#root\/enumConfig`);
-      await enumInput.clear();
-      await enumInput.pressSequentially(val, { delay: 50 });
+      await enumInput.fill(val);
       await enumInput.press('Enter');
       await expect(enumInput).toHaveValue('');
     }
+    await page.keyboard.press('Escape');
 
     if (enumConfig.multiSelect) {
-      await page.getByTestId('multiSelect').click();
+      await form.getByTestId('custom-property-multi-select').click();
     }
   }
   // Table configuration
   if (customType === 'Table' && tableConfig) {
+    const columnInput = form
+      .getByTestId('custom-property-columns')
+      .locator('input');
     for (const val of tableConfig.columns) {
-      const columnInput = page.locator(String.raw`#root\/columns`);
-      await expect(columnInput).toBeVisible();
-      await columnInput.click();
-      await columnInput.clear();
-      await columnInput.pressSequentially(val, { delay: 100 });
+      await columnInput.fill(val);
       await columnInput.press('Enter');
-      await expect(columnInput).toHaveValue(''); // Verify input is consumed
+      await expect(columnInput).toHaveValue('');
     }
+    await page.keyboard.press('Escape');
   }
 
   // Entity reference configuration
@@ -789,53 +794,30 @@ export const addCustomPropertiesForEntity = async ({
     ENTITY_REFERENCE_PROPERTIES.includes(customType) &&
     entityReferenceConfig
   ) {
+    const refInput = form
+      .getByTestId('custom-property-entity-ref-config')
+      .locator('input');
     for (const val of entityReferenceConfig) {
-      await page.click(String.raw`#root\/entityReferenceConfig`);
-      await page.keyboard.type(val);
-
-      // CRITICAL: Use :visible selector chain pattern (Rule 4 from deflake guide)
-      const option = page
-        .locator('.ant-select-dropdown:visible')
-        .locator(`[title="${val}"]`);
-      await expect(option).toBeVisible();
-      await option.click();
-
-      // Close the dropdown by pressing Escape
-      await page.keyboard.press('Escape');
-
-      // Wait for dropdown to close
-      await expect(page.locator('.ant-select-dropdown')).toBeHidden();
-
-      // Verify the selection was applied
-      await expect(
-        page.locator(String.raw`#root\/entityReferenceConfig_list`)
-      ).not.toBeVisible();
+      await refInput.click();
+      await refInput.fill(val);
+      await page.getByRole('option', { name: val, exact: true }).click();
     }
+    await page.keyboard.press('Escape');
   }
 
   // Format configuration
   if (['Date', 'Date Time', 'Time'].includes(customType) && formatConfig) {
     await selectOptionWithRetry(
-      page.getByTestId('formatConfig'),
+      form.getByTestId('custom-property-format-config').getByRole('button'),
       page.getByRole('option', { name: formatConfig, exact: true })
     );
   }
 
   // Description
-  await expect(
-    page.locator(String.raw`#root\/entityReferenceConfig_list`)
-  ).not.toBeVisible();
-
   await getDescriptionBox(page).waitFor({ state: 'visible' });
   await expect(getDescriptionBox(page)).toHaveCount(1);
   await getDescriptionBox(page).click();
   await page.keyboard.type(customPropertyData.description, { delay: 50 });
-
-  // Click on name field to blur description and trigger validation without closing modal
-  await page.click('[data-testid="name"]');
-
-  await expect(page.locator('#propertyType_help')).not.toBeVisible();
-  await expect(page.locator('#description_help')).not.toBeVisible();
 
   const createButton = page.locator('[data-testid="create-button"]');
   await expect(createButton).toBeVisible();
