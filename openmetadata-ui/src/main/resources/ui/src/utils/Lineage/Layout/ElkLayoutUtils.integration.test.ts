@@ -32,7 +32,7 @@ jest.mock('../../EntityLineageNodeUtils', () => ({
 jest.mock('./ELKUtil/ELKUtil', () => ({
   __esModule: true,
   default: {
-    layoutGraph: jest.fn(async (nodes) => ({
+    layoutGraph: jest.fn(async (nodes: ElkNode[]) => ({
       children: nodes.map((node) => ({
         ...node,
         x: 10,
@@ -42,6 +42,7 @@ jest.mock('./ELKUtil/ELKUtil', () => ({
   },
 }));
 
+import type { ElkNode } from 'elkjs/lib/elk.bundled.js';
 import type { Edge, Node } from 'reactflow';
 import ELKLayout from './ELKUtil/ELKUtil';
 import { getELKLayoutedElements } from './ElkLayoutUtils';
