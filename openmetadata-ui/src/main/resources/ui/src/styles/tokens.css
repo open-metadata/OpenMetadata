@@ -357,9 +357,7 @@
     #cb5a50
   );
 
-  /* Link + interactive states */
-  --om-color-link: var(--color-text-link, #1570ef);
-  --om-color-link-hover: var(--color-text-link-hover, #175cd3);
+  /* Interactive states */
   --om-color-interactive-hover: var(--color-bg-secondary, #fafafa);
   --om-color-interactive-active: var(--color-bg-tertiary, #f5f5f5);
   --om-color-interactive-selected: var(--color-bg-brand-primary, #eff8ff);

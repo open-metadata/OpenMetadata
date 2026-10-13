@@ -10,31 +10,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import { Toggle } from '@openmetadata/ui-core-components';
-import classNames from 'classnames';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useTheme } from '../../context/UntitledUIThemeProvider/theme-provider';
 
-interface ThemeModeSwitcherProps {
-  className?: string;
-}
-
-const ThemeModeSwitcher = ({ className }: ThemeModeSwitcherProps) => {
-  const { setTheme, theme } = useTheme();
+const DataAssetPickerLoading: FC = () => {
   const { t } = useTranslation();
 
   return (
-    <Toggle
-      className={classNames(
-        'tw:w-full tw:flex-row-reverse tw:items-center tw:justify-between',
-        className
-      )}
-      isSelected={theme === 'dark'}
-      label={t('label.dark-mode')}
-      onChange={(isDarkMode) => setTheme(isDarkMode ? 'dark' : 'light')}
-    />
+    <Box
+      align="center"
+      className="tw:py-4"
+      data-testid="data-asset-picker-loading"
+      justify="center">
+      <Typography className="tw:text-quaternary" size="text-sm">
+        {t('label.loading')}...
+      </Typography>
+    </Box>
   );
 };
 
-export default ThemeModeSwitcher;
+export default DataAssetPickerLoading;
