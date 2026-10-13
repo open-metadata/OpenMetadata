@@ -12,7 +12,7 @@
  */
 import { Badge, Button } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ChangeRequest,
@@ -77,10 +77,15 @@ const ChangeRequestsIndicator = ({
       window.removeEventListener(PENDING_CHANGE_EVENT, fetchRequests);
   }, [fetchRequests]);
 
-  const ordered = [...requests].sort(
-    (a, b) =>
-      Number(b.requestedBy === currentUser?.name) -
-      Number(a.requestedBy === currentUser?.name)
+  // Stable between reads, so the modal re-reads its tasks and votes only when the requests do.
+  const ordered = useMemo(
+    () =>
+      [...requests].sort(
+        (a, b) =>
+          Number(b.requestedBy === currentUser?.name) -
+          Number(a.requestedBy === currentUser?.name)
+      ),
+    [requests, currentUser?.name]
   );
 
   if (!isEnforced) {

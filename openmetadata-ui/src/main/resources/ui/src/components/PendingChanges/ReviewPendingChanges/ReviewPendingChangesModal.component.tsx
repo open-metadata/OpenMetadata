@@ -102,7 +102,6 @@ const useReviewTasks = (
 ) => {
   const { currentUser } = useApplicationStore();
   const [tasks, setTasks] = useState<Map<string, Task>>(new Map());
-  const taskKey = requests.map((request) => request.taskId).join(',');
   const owners = (published?.owners ?? []) as EntityReference[];
   const hasGlossaryReviewer = GLOSSARY_ENTITIES.has(requests[0]?.entityType)
     ? !isEmpty(published?.reviewers)
@@ -114,6 +113,7 @@ const useReviewTasks = (
     ] as string[];
     // A task the user cannot read is one they cannot decide; it does not hide the others.
     void Promise.allSettled(
+      // eslint-disable-next-line openmetadata-imports/no-api-calls-in-iteration -- no bulk task read
       ids.map((id) => getTaskById(id, { fields: 'assignees,createdBy' }))
     ).then((results) =>
       setTasks(
@@ -126,7 +126,7 @@ const useReviewTasks = (
         )
       )
     );
-  }, [taskKey]);
+  }, [requests]);
 
   return {
     canDecide: (taskId?: string) => {
@@ -157,13 +157,10 @@ const useMyVotes = (requests: ChangeRequest[]) => {
   const [votes, setVotes] = useState<Map<string, Map<string, Verdict>>>(
     new Map()
   );
-  const revisionKey = requests
-    .map((request) => `${request.id}:${request.activeRevisionNumber}`)
-    .join(',');
 
   useEffect(() => {
-    // One read per open request on the asset; there is no bulk decisions endpoint.
     void Promise.allSettled(
+      // eslint-disable-next-line openmetadata-imports/no-api-calls-in-iteration -- no bulk decisions endpoint
       requests.map((request) => getChangeRequestDecisions(request.id))
     ).then((results) =>
       setVotes(
@@ -181,7 +178,7 @@ const useMyVotes = (requests: ChangeRequest[]) => {
         )
       )
     );
-  }, [revisionKey, currentUser?.name]);
+  }, [requests, currentUser?.name]);
 
   return (suggestion: Suggestion) =>
     voteOn(votes.get(suggestion.request.id), suggestion);
@@ -219,7 +216,7 @@ const usePublishedEntity = (requests: ChangeRequest[]) => {
         setPublished(entity as unknown as Record<string, unknown>)
       )
       .catch(() => setPublished(undefined));
-  }, [first?.entityType, first?.entityFullyQualifiedName, fields]);
+  }, [first, fields]);
 
   return published;
 };
@@ -726,6 +723,7 @@ const ReviewPendingChangesModal = ({
     )) {
       try {
         // Requests on one asset publish to it in turn, so they are resolved one at a time.
+        // eslint-disable-next-line openmetadata-imports/no-api-calls-in-iteration -- resolves must not race
         await resolveTask(taskId, body); // NOSONAR resolving in parallel would race on the asset
         submitted.add(request.id);
       } catch (error) {
