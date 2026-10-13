@@ -706,8 +706,6 @@ before awaiting a response. A `waitForResponse` whose predicate can never match 
 it hangs until the test timeout and then reports `Target page, context or browser has been
 closed`, which points nowhere near the real cause.
 
-`playwright/utils/widgetFilters.ts` (`selectWidgetSortOption`) is the reference implementation.
-
 ### Modal and Scrollable Container Patterns
 
 ```typescript
