@@ -19,7 +19,6 @@ import {
   ShareVisibility,
 } from '../generated/entity/context/contextMemory';
 import { ExploreQuickFilterField } from '../interface/quickFilter.interface';
-import { PAGE_SIZE_BASE } from './constants';
 
 export const DOCUMENT_MAX_FILE_SIZE = 5 * 1024 * 1024;
 
@@ -74,7 +73,10 @@ export const ARTICLE_SORT_OPTIONS: ArticleSortOption[] = [
 
 export const DEFAULT_ARTICLE_SORT_OPTION = ARTICLE_SORT_OPTIONS[0];
 
-export const ARCHIVE_PAGE_SIZE = PAGE_SIZE_BASE;
+export {
+  PAGE_SIZE_BASE as ARCHIVE_PAGE_SIZE,
+  PAGE_SIZE_BASE as MEMORIES_PER_PAGE,
+} from './constants';
 export const RECENT_DASHBOARD_ARTICLES_LIMIT = 3;
 export const RECENT_DASHBOARD_DOCUMENTS_LIMIT = 3;
 export const RECENT_DASHBOARD_MEMORIES_LIMIT = 3;
@@ -134,7 +136,6 @@ export const VISIBILITY_OPTIONS = [
   },
 ];
 
-export const MEMORIES_PER_PAGE = PAGE_SIZE_BASE;
 export const MEMORY_FIELDS =
   'owners,tags,domains,primaryEntity,relatedEntities,derivedEntities,sourceEntity';
 

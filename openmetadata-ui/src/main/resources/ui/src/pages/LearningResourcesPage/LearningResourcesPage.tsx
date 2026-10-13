@@ -84,7 +84,7 @@ export const LearningResourcesPage: React.FC = () => {
     {}
   );
   const [currentPage, setCurrentPage] = useState(1);
-  const [selectedPageSize, setPageSize] = useState<number>();
+  const [selectedPageSize, setSelectedPageSize] = useState<number>();
 
   const personaView = usePersonaViewMode(VIEW_MODE_PAGE.LearningResources);
   const [selectedView, setView] = useState<PageViewMode>();
@@ -140,7 +140,7 @@ export const LearningResourcesPage: React.FC = () => {
   }, [searchText, filterState]);
 
   const handlePageSizeChange = useCallback((size: number) => {
-    setPageSize(size);
+    setSelectedPageSize(size);
     setCurrentPage(1);
   }, []);
 
