@@ -445,9 +445,11 @@ const ActivityFeedCardNew = ({
 
             {/* flex-1 + min-h-0 so the 100%-height line fills only what the
                 avatar leaves; otherwise the column overflows and the card
-                body's overflow:hidden clips the avatar. */}
+                body's overflow:hidden clips the avatar. mx-auto centres the
+                line under the avatar, as the vertical Divider's self-stretch
+                otherwise pins it to the column's left edge. */}
             <Divider
-              className="divider tw:min-h-0 tw:flex-1 tw:bg-transparent"
+              className="divider tw:mx-auto tw:min-h-0 tw:flex-1 tw:bg-transparent"
               orientation="vertical"
             />
           </Box>
