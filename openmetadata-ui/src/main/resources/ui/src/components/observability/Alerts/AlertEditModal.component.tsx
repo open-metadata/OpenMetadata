@@ -16,18 +16,19 @@ import {
   Button,
   FeaturedIcon,
   SlideoutMenu,
-  Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import {
-  AlertTriangle,
-  Lightbulb05,
-} from '@openmetadata/ui-core-components/icons';
+import { AlertTriangle } from '@openmetadata/ui-core-components/icons';
 import { isUndefined } from 'lodash';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ShowHintToggle } from '../../../components/common/atoms/drawer/ShowHintToggle';
 import Loader from '../../../components/common/Loader/Loader';
 import { DEFAULT_READ_TIMEOUT } from '../../../constants/Alerts.constants';
+import {
+  FORM_COLUMN_WIDTH,
+  FORM_WIDTH_WITH_HINT,
+} from '../../../constants/common/formHint.constants';
 import {
   AlertType,
   ProviderType,
@@ -41,8 +42,6 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import AlertAiForm from './AlertAiForm.component';
 import {
   ALERT_AI_DEFAULT_CONNECTION_TIMEOUT,
-  ALERT_AI_FORM_DRAWER_WIDTH,
-  ALERT_AI_FORM_DRAWER_WIDTH_WITH_HINT,
   ALERT_AI_FORM_MODAL_ID,
 } from './AlertAiFormFields.constants';
 import { AlertKind, OBSERVABILITY_ALERT_KIND } from './alertKinds';
@@ -182,11 +181,7 @@ function AlertEditModal({
       }
       dialogClassName="tw:gap-0"
       isOpen={isOpen}
-      width={
-        showHint
-          ? ALERT_AI_FORM_DRAWER_WIDTH_WITH_HINT
-          : ALERT_AI_FORM_DRAWER_WIDTH
-      }
+      width={showHint ? FORM_WIDTH_WITH_HINT : FORM_COLUMN_WIDTH}
       onOpenChange={(open) => !open && handleClose()}>
       <SlideoutMenu.Header
         className="tw:border-b tw:border-secondary tw:pb-4"
@@ -211,22 +206,7 @@ function AlertEditModal({
               </Typography>
             </Box>
           </Box>
-          <Box align="center" className="tw:shrink-0" gap={2}>
-            <Lightbulb05 className="tw:text-secondary" size={16} />
-            <Typography
-              className="tw:whitespace-nowrap tw:text-secondary"
-              size="text-sm"
-              weight="medium">
-              {t('label.show-hint')}
-            </Typography>
-            <Toggle
-              aria-label={t('label.show-hint')}
-              data-testid="show-hint-toggle"
-              isSelected={showHint}
-              size="sm"
-              onChange={setShowHint}
-            />
-          </Box>
+          <ShowHintToggle isSelected={showHint} onChange={setShowHint} />
         </Box>
       </SlideoutMenu.Header>
       {/* The form and the Form Hint column each scroll on their own and run to
