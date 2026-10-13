@@ -1593,11 +1593,6 @@
       "count": 2
     }
   },
-  "src/pages/LineageConfigPage/LineageConfigPage.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 3
-    }
-  },
   "src/pages/Persona/PersonaDetailsPage/PersonaDetailsPage.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 1
@@ -1650,7 +1645,7 @@
   },
   "src/pages/TableDetailsPageV1/TableConstraints/TableConstraintsModal/TableConstraintsModal.component.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 4
+      "count": 1
     }
   },
   "src/pages/TaskFormSettingsPage/TaskFormSettingsPage.tsx": {
