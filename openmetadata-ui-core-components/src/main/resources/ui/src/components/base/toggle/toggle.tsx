@@ -127,7 +127,8 @@ export const Toggle = ({
       {...ariaSwitchProps}
       className={(renderProps) =>
         cx(
-          'tw:flex tw:w-max tw:items-start',
+          // max-w-full lets a long hint wrap inside its container instead of overflowing it.
+          'tw:flex tw:w-max tw:max-w-full tw:items-start',
           renderProps.isDisabled && 'tw:cursor-not-allowed',
           sizes[size].root,
           typeof className === 'function' ? className(renderProps) : className
