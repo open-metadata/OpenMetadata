@@ -1188,16 +1188,19 @@ class TestBigqueryDeltaLakeDetection:
     """`externalDataConfiguration.sourceFormat` is the only Delta signal BigQuery gives.
 
     `tables.list` omits `externalDataConfiguration` entirely — confirmed against project
-    `modified-leaf-330420` with google-cloud-bigquery 3.42.2, where an external
+    `my-gcp-project` with google-cloud-bigquery 3.42.2, where an external
     `TableListItem` carries nothing but
     `{"creationTime", "id", "kind", "tableReference", "type": "EXTERNAL"}` — so a Delta
     table is indistinguishable from any other external table until `tables.get` runs.
 
     Every payload below is a real `tables.get` response, reduced to the keys this code path
-    reads (byte counters, `etag` and `selfLink` dropped). The non-Delta rows come from project
-    `modified-leaf-330420`; the two Delta rows come from real DELTA_LAKE external tables in
-    dataset `om_delta_test_b72213f9` of that same project, so `sourceFormat == "DELTA_LAKE"`
-    here is a live observation, not a value faked from the ICEBERG payload.
+    reads (byte counters, `etag` and `selfLink` dropped). The two Delta rows came from real
+    DELTA_LAKE external tables, so `sourceFormat == "DELTA_LAKE"` here is a live observation,
+    not a value faked from the ICEBERG payload.
+
+    Project, dataset, table and bucket names are placeholders. Everything the assertions depend
+    on -- key presence and absence, `type`, `sourceFormat`, `partitionDefinition` -- is the shape
+    the live API returned, unedited.
 
     The two Delta payloads differ on partitioning, and that difference is the whole point: an
     unpartitioned Delta table stays DeltaLake, while a partitioned one carries
@@ -1205,32 +1208,32 @@ class TestBigqueryDeltaLakeDetection:
     tableType to Partitioned downstream.
     """
 
-    # Real `test_omd.icebeag_tbl` external table; `partitionDefinition` is genuinely there.
+    # Real ICEBERG external table; `partitionDefinition` is genuinely there.
     EXTERNAL_PAYLOAD: ClassVar[dict] = {
-        "id": "modified-leaf-330420:test_omd.icebeag_tbl",
+        "id": "my-gcp-project:test_omd.iceberg_tbl",
         "kind": "bigquery#table",
         "tableReference": {
-            "projectId": "modified-leaf-330420",
+            "projectId": "my-gcp-project",
             "datasetId": "test_omd",
-            "tableId": "icebeag_tbl",
+            "tableId": "iceberg_tbl",
         },
         "type": "EXTERNAL",
         "externalDataConfiguration": {
             "autodetect": True,
             "sourceFormat": "ICEBERG",
-            "sourceUris": ["gs://test-om-bucket/iceberg_example.json"],
+            "sourceUris": ["gs://test-bucket/iceberg_example.json"],
         },
         "partitionDefinition": {"partitionedColumn": [{"field": "event_time"}]},
         "schema": {"fields": [{"mode": "NULLABLE", "name": "id", "type": "INTEGER"}]},
     }
 
-    # Real `test_omd.orders` native table: no `externalDataConfiguration` key at all.
+    # Real native table: no `externalDataConfiguration` key at all.
     # It must stay absent — `ExternalConfig.from_api_repr({})` raises KeyError('sourceFormat').
     NATIVE_PAYLOAD: ClassVar[dict] = {
-        "id": "modified-leaf-330420:test_omd.orders",
+        "id": "my-gcp-project:test_omd.orders",
         "kind": "bigquery#table",
         "tableReference": {
-            "projectId": "modified-leaf-330420",
+            "projectId": "my-gcp-project",
             "datasetId": "test_omd",
             "tableId": "orders",
         },
@@ -1238,34 +1241,34 @@ class TestBigqueryDeltaLakeDetection:
         "schema": {"fields": [{"mode": "NULLABLE", "name": "order_id", "type": "INTEGER"}]},
     }
 
-    # Real `dbt_jaffle.customers_view_copied`.
+    # Real view.
     VIEW_PAYLOAD: ClassVar[dict] = {
-        "id": "modified-leaf-330420:dbt_jaffle.customers_view_copied",
+        "id": "my-gcp-project:dbt_jaffle.customers_view",
         "kind": "bigquery#table",
         "tableReference": {
-            "projectId": "modified-leaf-330420",
+            "projectId": "my-gcp-project",
             "datasetId": "dbt_jaffle",
-            "tableId": "customers_view_copied",
+            "tableId": "customers_view",
         },
         "type": "VIEW",
         "view": {"query": "SELECT * FROM dbt_jaffle.customers LIMIT 100", "useLegacySql": False},
     }
 
-    # Real unpartitioned DELTA_LAKE external table from om_delta_test_b72213f9: no
+    # Real unpartitioned DELTA_LAKE external table: no
     # `partitionDefinition`, so it stays DeltaLake end-to-end.
     DELTA_LAKE_PAYLOAD: ClassVar[dict] = {
-        "id": "modified-leaf-330420:om_delta_test_b72213f9.delta_unpartitioned",
+        "id": "my-gcp-project:om_delta_test.delta_unpartitioned",
         "kind": "bigquery#table",
         "tableReference": {
-            "projectId": "modified-leaf-330420",
-            "datasetId": "om_delta_test_b72213f9",
+            "projectId": "my-gcp-project",
+            "datasetId": "om_delta_test",
             "tableId": "delta_unpartitioned",
         },
         "type": "EXTERNAL",
         "externalDataConfiguration": {
             "autodetect": True,
             "sourceFormat": "DELTA_LAKE",
-            "sourceUris": ["gs://test-om-bucket/delta_unpartitioned/*"],
+            "sourceUris": ["gs://test-bucket/delta_unpartitioned/*"],
         },
         "schema": {
             "fields": [
@@ -1276,21 +1279,21 @@ class TestBigqueryDeltaLakeDetection:
         },
     }
 
-    # Real partitioned DELTA_LAKE external table from the same dataset: `partitionDefinition`
+    # Real partitioned DELTA_LAKE external table: `partitionDefinition`
     # names `event_ts`, and hive/time/range partitioning are all absent.
     DELTA_LAKE_PARTITIONED_PAYLOAD: ClassVar[dict] = {
-        "id": "modified-leaf-330420:om_delta_test_b72213f9.delta_partitioned",
+        "id": "my-gcp-project:om_delta_test.delta_partitioned",
         "kind": "bigquery#table",
         "tableReference": {
-            "projectId": "modified-leaf-330420",
-            "datasetId": "om_delta_test_b72213f9",
+            "projectId": "my-gcp-project",
+            "datasetId": "om_delta_test",
             "tableId": "delta_partitioned",
         },
         "type": "EXTERNAL",
         "externalDataConfiguration": {
             "autodetect": True,
             "sourceFormat": "DELTA_LAKE",
-            "sourceUris": ["gs://test-om-bucket/delta_partitioned/*"],
+            "sourceUris": ["gs://test-bucket/delta_partitioned/*"],
         },
         "partitionDefinition": {"partitionedColumn": [{"field": "event_ts"}]},
         "schema": {
@@ -1334,10 +1337,10 @@ class TestBigqueryDeltaLakeDetection:
         return TableListItem(
             {
                 "creationTime": "1738910302030",
-                "id": f"modified-leaf-330420:{MOCK_SCHEMA_NAME}.{table_id}",
+                "id": f"my-gcp-project:{MOCK_SCHEMA_NAME}.{table_id}",
                 "kind": "bigquery#table",
                 "tableReference": {
-                    "projectId": "modified-leaf-330420",
+                    "projectId": "my-gcp-project",
                     "datasetId": MOCK_SCHEMA_NAME,
                     "tableId": table_id,
                 },
@@ -1400,9 +1403,9 @@ class TestBigqueryDeltaLakeDetection:
         self.bq_source.client.get_table.assert_not_called()
 
     def test_view_stays_view_without_a_tables_get(self):
-        self._stub_client({"customers_view_copied": ("VIEW", self.VIEW_PAYLOAD)})
+        self._stub_client({"customers_view": ("VIEW", self.VIEW_PAYLOAD)})
 
-        assert self._listed_types() == [("customers_view_copied", TableType.View)]
+        assert self._listed_types() == [("customers_view", TableType.View)]
         self.bq_source.client.get_table.assert_not_called()
 
     def test_failed_tables_get_falls_back_to_external_and_keeps_listing(self, caplog):
