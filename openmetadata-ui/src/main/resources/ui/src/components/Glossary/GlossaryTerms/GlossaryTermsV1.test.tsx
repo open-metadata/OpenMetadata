@@ -23,6 +23,7 @@ import {
 import * as FeedUtils from '../../../utils/FeedUtilsPure';
 import glossaryTermClassBase from '../../../utils/Glossary/GlossaryTermClassBase';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import GlossaryTerms from './GlossaryTermsV1.component';
 
 const mockPush = jest.fn();
@@ -134,6 +135,9 @@ jest.mock('../../../hooks/useCustomPages', () => ({
 jest.mock('../../../utils/CustomizePage/CustomizePageEntityTabUtils', () => ({
   checkIfExpandViewSupported: jest.fn().mockReturnValue(false),
   getDetailsTabWithNewLabel: jest.fn().mockImplementation((items) => items),
+  getRenderedActiveTab: jest.requireActual(
+    '../../../utils/CustomizePage/CustomizePageEntityTabUtils'
+  ).getRenderedActiveTab,
   getTabLabelMapFromTabs: jest.fn().mockReturnValue({}),
 }));
 
@@ -264,5 +268,46 @@ describe('Test Glossary-term component', () => {
 
     fetchTaskCountsSpy.mockRestore();
     fetchActivityCountSpy.mockRestore();
+  });
+});
+
+describe('GlossaryTermsV1 ViewCustomFields permission', () => {
+  const renderWithPermissions = (permissions: OperationPermission) => {
+    (useGenericContext as jest.Mock).mockReturnValue({ permissions });
+    const tabsSpy = jest.spyOn(
+      glossaryTermClassBase,
+      'getGlossaryTermDetailPageTabs'
+    );
+    render(<GlossaryTerms {...mockProps} />);
+
+    return tabsSpy;
+  };
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    (useGenericContext as jest.Mock).mockReturnValue({
+      permissions: MOCK_PERMISSIONS,
+    });
+  });
+
+  it('should grant custom properties viewing on ViewCustomFields', () => {
+    const tabsSpy = renderWithPermissions({
+      ViewCustomFields: true,
+    } as OperationPermission);
+
+    expect(tabsSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ viewCustomPropertiesPermission: true })
+    );
+  });
+
+  it('should let a denied ViewCustomFields beat ViewAll', () => {
+    const tabsSpy = renderWithPermissions({
+      ViewAll: true,
+      ViewCustomFields: false,
+    } as OperationPermission);
+
+    expect(tabsSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ viewCustomPropertiesPermission: false })
+    );
   });
 });

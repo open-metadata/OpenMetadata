@@ -12,7 +12,7 @@
  */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import type { ReactNode } from 'react';
+import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import type { Type } from '../../../../../../generated/entity/type';
 import type { CustomProperty } from '../../../../../../generated/type/customProperty';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
@@ -45,15 +45,24 @@ const mockEntityType = {
 };
 
 const mockGetTypeByFQN = jest.fn().mockResolvedValue(mockEntityType);
-const mockUpdateType = jest.fn().mockResolvedValue(mockEntityType);
+const mockDeleteCustomPropertyByName = jest
+  .fn()
+  .mockResolvedValue(mockEntityType);
 const mockGetEntityPermission = jest.fn().mockResolvedValue({
+  Create: true,
   EditAll: true,
   Delete: true,
 });
 
+jest.mock('../../../../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
+}));
+
 jest.mock('../../../../../../rest/metadataTypeAPI', () => ({
   getTypeByFQN: (fqn: string) => mockGetTypeByFQN(fqn),
-  updateType: (id: string, patches: unknown) => mockUpdateType(id, patches),
+  deleteCustomPropertyByName: (fqn: string, name: string) =>
+    mockDeleteCustomPropertyByName(fqn, name),
 }));
 
 jest.mock(
@@ -66,6 +75,7 @@ jest.mock(
 );
 
 jest.mock('../../../../../../utils/PermissionsUtils', () => ({
+  ...jest.requireActual('../../../../../../utils/PermissionsUtils'),
   DEFAULT_ENTITY_PERMISSION: {
     Create: false,
     Delete: false,
@@ -109,9 +119,51 @@ jest.mock('../../../../../../utils/EntityNameUtils', () => ({
     entity?.displayName ?? entity?.name ?? '',
 }));
 
-jest.mock('../../../../../../constants/CustomProperty.constants', () => ({
-  CUSTOM_PROPERTIES_ICON_MAP: {},
-}));
+jest.mock(
+  '../../../../../Settings/CustomProperty/CustomPropertiesListTable',
+  () => ({
+    __esModule: true,
+    default: ({
+      customProperties,
+      canEdit,
+      canDelete,
+      emptyText,
+      'data-testid': testId,
+      onEdit,
+      onDelete,
+    }: {
+      customProperties: CustomProperty[];
+      canEdit: boolean;
+      canDelete: boolean;
+      emptyText: ReactNode;
+      'data-testid'?: string;
+      onEdit: (property: CustomProperty) => void;
+      onDelete: (property: CustomProperty) => void;
+    }) => (
+      <div data-testid={testId}>
+        {customProperties.length === 0
+          ? emptyText
+          : customProperties.map((property) => (
+              <div data-testid={`row-${property.name}`} key={property.name}>
+                <span>{property.displayName ?? property.name}</span>
+                {canEdit && (
+                  <button
+                    aria-label="label.edit"
+                    onClick={() => onEdit(property)}
+                  />
+                )}
+                {canDelete && (
+                  <button
+                    aria-label="label.delete"
+                    onClick={() => onDelete(property)}
+                  />
+                )}
+              </div>
+            ))}
+      </div>
+    ),
+  })
+);
 
 jest.mock('../../../../../common/DeleteModal/DeleteModal', () => ({
   __esModule: true,
@@ -140,61 +192,6 @@ jest.mock('../../../../../common/DeleteModal/DeleteModal', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => {
-  const Table = ({
-    children,
-    'data-testid': testId,
-    'aria-label': ariaLabel,
-  }: {
-    children?: ReactNode;
-    'data-testid'?: string;
-    'aria-label'?: string;
-  }) => (
-    <table aria-label={ariaLabel} data-testid={testId}>
-      {children}
-    </table>
-  );
-  Table.Header = ({
-    children,
-    columns,
-  }: {
-    children?: ((col: { id: string; label: string }) => ReactNode) | ReactNode;
-    columns?: { id: string; label: string }[];
-  }) => (
-    <thead>
-      <tr>
-        {typeof children === 'function'
-          ? columns?.map((col) => children(col))
-          : children}
-      </tr>
-    </thead>
-  );
-  Table.Head = ({ label }: { label?: ReactNode }) => <th>{label}</th>;
-  Table.Body = ({
-    children,
-    items,
-    renderEmptyState,
-  }: {
-    children: (item: CustomProperty) => ReactNode;
-    items?: CustomProperty[];
-    renderEmptyState?: () => ReactNode;
-  }) => {
-    if (!items || items.length === 0) {
-      return (
-        <tbody>
-          <tr>
-            <td>{renderEmptyState?.()}</td>
-          </tr>
-        </tbody>
-      );
-    }
-
-    return <tbody>{items.map((item) => children(item))}</tbody>;
-  };
-  Table.Row = ({ children, id }: { children?: ReactNode; id?: string }) => (
-    <tr data-testid={`row-${id}`}>{children}</tr>
-  );
-  Table.Cell = ({ children }: { children?: ReactNode }) => <td>{children}</td>;
-
   const TableCard = ({
     children,
     className,
@@ -250,6 +247,16 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {children}
       </div>
     ),
+    ButtonUtility: ({
+      icon,
+      tooltip: _tooltip,
+      ...props
+    }: {
+      icon?: ReactNode;
+      tooltip?: ReactNode;
+    } & ButtonHTMLAttributes<HTMLButtonElement>) => (
+      <button {...props}>{icon}</button>
+    ),
     Button: ({
       children,
       onPress,
@@ -293,15 +300,12 @@ jest.mock('@openmetadata/ui-core-components', () => {
         ))}
       </div>
     ),
-    Table,
     TableCard,
     Tabs,
   };
 });
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
-  Delete: () => <span>Delete</span>,
-  Edit: () => <span>Edit</span>,
   Expand: () => <span>Expand</span>,
 }));
 
@@ -318,7 +322,11 @@ describe('CustomPropertiesDetailPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockGetTypeByFQN.mockResolvedValue(mockEntityType);
-    mockGetEntityPermission.mockResolvedValue({ EditAll: true, Delete: true });
+    mockGetEntityPermission.mockResolvedValue({
+      Create: true,
+      EditAll: true,
+      Delete: true,
+    });
   });
 
   it('renders the component with table', async () => {
@@ -404,7 +412,7 @@ describe('CustomPropertiesDetailPage', () => {
     expect(screen.getByTestId('delete-modal')).toBeInTheDocument();
   });
 
-  it('calls updateType when delete is confirmed', async () => {
+  it('deletes the selected property by name when delete is confirmed', async () => {
     render(<CustomPropertiesDetailPage {...defaultProps} />);
 
     await waitFor(() => {
@@ -416,9 +424,9 @@ describe('CustomPropertiesDetailPage', () => {
     fireEvent.click(screen.getByTestId('confirm-delete-btn'));
 
     await waitFor(() => {
-      expect(mockUpdateType).toHaveBeenCalledWith(
-        mockEntityType.id,
-        expect.any(Array)
+      expect(mockDeleteCustomPropertyByName).toHaveBeenCalledWith(
+        mockEntityType.fullyQualifiedName,
+        mockProperty1.name
       );
     });
   });
@@ -451,9 +459,28 @@ describe('CustomPropertiesDetailPage', () => {
     });
   });
 
-  it('shows error toast when updateType fails on delete', async () => {
+  it('drops the property locally when it was already removed elsewhere', async () => {
+    mockDeleteCustomPropertyByName.mockResolvedValueOnce(undefined);
+
+    render(<CustomPropertiesDetailPage {...defaultProps} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('row-stringProp')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getAllByLabelText('label.delete')[0]);
+    fireEvent.click(screen.getByTestId('confirm-delete-btn'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('row-stringProp')).not.toBeInTheDocument();
+    });
+
+    expect(showErrorToast).not.toHaveBeenCalled();
+  });
+
+  it('shows error toast when the delete fails', async () => {
     const mockError = new Error('Delete failed');
-    mockUpdateType.mockRejectedValueOnce(mockError);
+    mockDeleteCustomPropertyByName.mockRejectedValueOnce(mockError);
 
     render(<CustomPropertiesDetailPage {...defaultProps} />);
 
@@ -485,5 +512,22 @@ describe('CustomPropertiesDetailPage', () => {
     await waitFor(() => {
       expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
     });
+  });
+
+  it('passes the edit and delete permissions to the table', async () => {
+    mockGetEntityPermission.mockResolvedValueOnce({
+      Create: false,
+      EditAll: false,
+      Delete: true,
+    });
+
+    render(<CustomPropertiesDetailPage {...defaultProps} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('row-stringProp')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByLabelText('label.edit')).not.toBeInTheDocument();
+    expect(screen.getAllByLabelText('label.delete')).toHaveLength(2);
   });
 });

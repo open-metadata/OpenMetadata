@@ -23,7 +23,7 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { PRIMARY_COLOR } from '../../../../constants/Color.constants';
-import { DataQualityDimensions } from '../../../../generated/tests/testDefinition';
+import { DataQualityDimensions } from '../../../../enums/DataQuality.enum';
 import '../chart-widgets.less';
 import './status-card-widget.less';
 import { StatusCardWidgetProps } from './StatusCardWidget.interface';

@@ -1,12 +1,12 @@
 {
   "$id": "https://open-metadata.org/schema/entity/classification/classification.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Classification",
   "$comment": "@om-entity-type",
   "description": "A `Classification` entity contains hierarchical terms called tags used for categorizing and classifying data assets and other entities.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.classification.Classification",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>"],
   "properties": {
     "id": {
       "description": "Unique identifier of this entity instance.",

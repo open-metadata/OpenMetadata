@@ -19,6 +19,11 @@ public final class RdfOwnedResources {
             ?subject ?p ?o
           }
         }
+        UNION {
+          ?entity <https://open-metadata.org/ontology/hasColumn> ?topColumn .
+          ?topColumn (<https://open-metadata.org/ontology/hasChildColumn>)* ?subject .
+          ?subject ?p ?o
+        }
         """;
   }
 }

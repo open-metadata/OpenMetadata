@@ -58,29 +58,19 @@ jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
   formatDate: () => 'Jul 18, 2026',
 }));
 
-jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
-  // Mirrors the real shape: an avatar that is a link, plus inert placeholder text. A mock with
-  // no interactive child cannot tell a targeted guard from a blanket one — the blanket version
-  // passed against the old all-inert mock while the card was dead to the touch in a browser.
-  OwnerLabel: () => (
-    <span data-testid="owner-label">
-      <a data-testid="owner-link" href="/users/alice">
-        alice
-      </a>
-      <span data-testid="owner-placeholder">No Owners</span>
-    </span>
-  ),
-}));
-
 jest.mock('../../Tag/TagsContainerV2/TagsContainerV2', () => (
   <span>TagsContainerV2</span>
 ));
+
+jest.mock('../../../utils/ServicePureUtils', () => ({
+  getServiceCategoryLabel: (category: string) =>
+    category === 'databaseServices' ? 'label.database-plural' : category,
+}));
 
 jest.mock('./ConnectionsPage.constants', () => ({
   CATEGORY_CONFIGS: [
     {
       key: 'databaseServices',
-      titleKey: 'label.database-service',
     },
   ],
 }));
@@ -88,6 +78,23 @@ jest.mock('./ConnectionsPage.constants', () => ({
 jest.mock(
   '@openmetadata/ui-core-components',
   () => ({
+    // Mirrors the real shape: an avatar that is a link, plus inert placeholder text. A mock with
+    // no interactive child cannot tell a targeted guard from a blanket one — the blanket version
+    // passed against the old all-inert mock while the card was dead to the touch in a browser.
+    Owner: () => (
+      <span data-testid="owner-label">
+        <a data-testid="owner-link" href="/users/alice">
+          alice
+        </a>
+        <span data-testid="owner-placeholder">No Owners</span>
+      </span>
+    ),
+    // The card maps API refs through the real conversion helper (re-exported from
+    // core-components) before handing them to the mocked Owner, so keep the real functions.
+    toOwnerRef: jest.requireActual('@openmetadata/ui-core-components')
+      .toOwnerRef,
+    toOwnerRefs: jest.requireActual('@openmetadata/ui-core-components')
+      .toOwnerRefs,
     Badge: ({
       children,
       bordered: _bordered,
@@ -225,7 +232,7 @@ describe('ServiceConnectionCard', () => {
     // The card is too narrow for most names, so it truncates — which is only acceptable because
     // the tooltip below carries the full one.
     expect(name).toHaveAttribute('data-ellipsis', 'true');
-    expect(screen.getByText('label.database-service')).toBeInTheDocument();
+    expect(screen.getByText('label.database-plural')).toBeInTheDocument();
     expect(screen.getByText(/Jul 18, 2026/)).toBeInTheDocument();
     expect(screen.getByTestId('owner-label')).toBeInTheDocument();
   });
@@ -306,9 +313,7 @@ describe('ServiceConnectionCard', () => {
     );
 
     // Category badge gone (redundant on a specific tab), but the rest still shows.
-    expect(
-      screen.queryByText('label.database-service')
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText('label.database-plural')).not.toBeInTheDocument();
     expect(screen.getByText('My Service Display')).toBeInTheDocument();
     expect(screen.getByText('Mysql')).toBeInTheDocument();
   });

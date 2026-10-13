@@ -285,6 +285,7 @@
   top: @om-navbar-height;
   left: @sidebar-width;
   width: calc(100% - @sidebar-width);
+  z-index: var(--om-z-sticky);
 
   &.sidebar-collapsed {
     left: calc(72px + @padding-mlg);
@@ -348,27 +349,6 @@
   svg {
     color: inherit;
   }
-}
-
-.ant-tag.amber {
-  background: @yellow-5;
-  color: @yellow-6;
-  border: 1px solid @yellow-6;
-  margin: 0;
-}
-
-.ant-tag.red {
-  background: @red-6;
-  border: 1px solid @red-7;
-  color: @red-7;
-  margin: 0;
-}
-
-.ant-tag.green {
-  background: @green-6;
-  border: 1px solid @green-7;
-  color: @green-7;
-  margin: 0;
 }
 
 @keyframes blink {

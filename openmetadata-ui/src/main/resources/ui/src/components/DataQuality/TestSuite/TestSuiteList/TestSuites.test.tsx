@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { MemoryRouter, useNavigate, useParams } from 'react-router-dom';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
@@ -268,14 +274,20 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
+    Typography: jest.requireActual('@openmetadata/ui-core-components')
+      .Typography,
     Box: MockBox,
     EmptyPlaceholder: MockEmptyPlaceholder,
     Input: MockInput,
+    Owner: jest.fn().mockReturnValue(<div data-testid="owner-label" />),
     Skeleton: ({ 'data-testid': testId }: { 'data-testid'?: string }) => (
       <div data-testid={testId} />
     ),
     Tabs: MockTabs,
     Table: MockTable,
+    toOwnerRef: jest.fn().mockReturnValue({}),
+    toOwnerRefs: jest.fn().mockReturnValue([]),
   };
 });
 
@@ -377,8 +389,8 @@ jest.mock(
   })
 );
 
-jest.mock('@untitledui/icons', () => ({
-  SearchLg: () => <span data-testid="search-icon" />,
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
+  Search: () => <span data-testid="search-icon" />,
 }));
 
 jest.mock('../../SummaryPannel/PieChartSummaryPanel.component', () => ({
@@ -408,12 +420,6 @@ jest.mock(
       .mockImplementation(() => <div data-testid="filter-table-placeholder" />),
   })
 );
-
-jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest
-    .fn()
-    .mockImplementation(() => <div data-testid="owner-label" />),
-}));
 
 jest.mock(
   '../../../Database/Profiler/TableProfiler/ProfilerProgressWidget/ProfilerProgressWidget',
@@ -510,6 +516,46 @@ describe('TestSuites component', () => {
     expect(
       await screen.findByText('NextPrevious.component')
     ).toBeInTheDocument();
+  });
+
+  it('should land on the page from a shared URL without rewriting it', async () => {
+    mockLocation.search = '?currentPage=2&pageSize=15';
+    const mockGetListTestSuites = getListTestSuitesBySearch as jest.Mock;
+
+    render(<TestSuites />);
+
+    await waitFor(() => {
+      expect(mockGetListTestSuites).toHaveBeenCalledWith(
+        expect.objectContaining({ limit: 15, offset: 15 })
+      );
+    });
+
+    const mockNavigate = (useNavigate as jest.Mock).mock.results[0].value;
+
+    expect(mockGetListTestSuites).not.toHaveBeenCalledWith(
+      expect.objectContaining({ offset: 0 })
+    );
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('should keep the shared page when the shared URL also carries a search', async () => {
+    mockLocation.search = '?searchValue=sales&currentPage=2&pageSize=15';
+    const mockGetListTestSuites = getListTestSuitesBySearch as jest.Mock;
+
+    render(<TestSuites />);
+
+    await waitFor(() => {
+      expect(mockGetListTestSuites).toHaveBeenCalledWith(
+        expect.objectContaining({ q: 'sales', limit: 15, offset: 15 })
+      );
+    });
+
+    const mockNavigate = (useNavigate as jest.Mock).mock.results[0].value;
+
+    expect(mockGetListTestSuites).not.toHaveBeenCalledWith(
+      expect.objectContaining({ offset: 0 })
+    );
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 
   it('should render the sub-tab toggle with table and bundle suite options', async () => {

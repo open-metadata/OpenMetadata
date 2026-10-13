@@ -792,23 +792,6 @@ class SourceConnectionTest(TestCase):
             get_connection_url,
         )
 
-        # connection arguments without db
-        expected_url = "mssql+pytds://sa:password@localhost:1433"
-        mssql_conn_obj = MssqlConnection(
-            username="sa",
-            password="password",
-            hostPort="localhost:1433",
-            scheme=MssqlScheme.mssql_pytds,
-            database=None,
-        )
-
-        assert expected_url == get_connection_url(mssql_conn_obj)
-
-    def test_mssql_url(self):  # noqa: F811
-        from metadata.ingestion.source.database.mssql.connection import (
-            get_connection_url,
-        )
-
         # Passing @ in username and password
         expected_url = "mssql+pytds://sa%40123:password%40444@localhost:1433/master"
         mssql_conn_obj = MssqlConnection(

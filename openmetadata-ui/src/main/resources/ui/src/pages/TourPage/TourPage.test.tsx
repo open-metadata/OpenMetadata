@@ -86,6 +86,10 @@ jest.mock('../TableDetailsPageV1/TableDetailsPageV1', () => {
 jest.mock('../../utils/TourUtils', () => ({
   getTourSteps: jest.fn().mockImplementation((props) => props),
 }));
+const mockPreloadTourTableTabs = jest.fn().mockResolvedValue([]);
+jest.mock('../../utils/TableTabsUtils', () => ({
+  preloadTourTableTabs: () => mockPreloadTourTableTabs(),
+}));
 
 describe('TourPage component', () => {
   beforeEach(() => {
@@ -111,6 +115,27 @@ describe('TourPage component', () => {
     await waitForTourReadyCheck();
 
     expect(await screen.findByText('Tour.component')).toBeInTheDocument();
+  });
+
+  it('should not start the tour until the lazy tab chunks it highlights are loaded', async () => {
+    let resolvePreload: () => void = () => undefined;
+    mockPreloadTourTableTabs.mockReturnValueOnce(
+      new Promise<void>((resolve) => {
+        resolvePreload = resolve;
+      })
+    );
+
+    render(<TourPage />);
+    await waitForTourReadyCheck();
+
+    expect(screen.queryByText('Tour.component')).not.toBeInTheDocument();
+
+    await act(async () => {
+      resolvePreload();
+    });
+    await waitForTourReadyCheck();
+
+    expect(screen.getByText('Tour.component')).toBeInTheDocument();
   });
 
   it('clear search term should work correctly', async () => {

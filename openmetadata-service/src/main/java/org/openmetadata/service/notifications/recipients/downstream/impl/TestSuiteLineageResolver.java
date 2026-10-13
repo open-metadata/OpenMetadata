@@ -148,7 +148,7 @@ public class TestSuiteLineageResolver implements EntityLineageResolver {
       }
 
       // Fetch the parent entity
-      EntityInterface parentEntity = Entity.getEntity(parsedLink, "", Include.NON_DELETED);
+      EntityInterface<?> parentEntity = Entity.getEntity(parsedLink, "", Include.NON_DELETED);
 
       if (parentEntity != null) {
         EntityReference parentEntityRef =

@@ -10,13 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import { MoreOutlined } from '@ant-design/icons';
-import { Button, Dropdown } from 'antd';
-import { MenuInfo } from 'rc-menu/lib/interface';
-import { ReactNode } from 'react';
-import { getVisiblePopupContainer } from '../../../../../utils/LandingPageWidget/WidgetsUtils';
-import './widget-more-options.less';
+import { ButtonUtility, Dropdown } from '@openmetadata/ui-core-components';
+import { DotsVertical } from '@openmetadata/ui-core-components/icons';
+import { Key, ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 
 export interface MoreOption {
   key: string;
@@ -27,7 +24,7 @@ export interface MoreOption {
 
 export interface WidgetMoreOptionsProps {
   menuItems: MoreOption[];
-  onMenuClick: (e: MenuInfo) => void;
+  onMenuClick: (key: string) => void;
   className?: string;
 }
 
@@ -36,28 +33,37 @@ const WidgetMoreOptions = ({
   onMenuClick,
   className = '',
 }: WidgetMoreOptionsProps) => {
+  const { t } = useTranslation();
+
   return (
-    <div className="widget-more-options-container">
-      <Dropdown
-        destroyPopupOnHide
-        className={`widget-more-options ${className}`}
-        data-testid="widget-more-options"
-        getPopupContainer={getVisiblePopupContainer}
-        menu={{
-          items: menuItems,
-          selectable: false,
-          onClick: onMenuClick,
-          className: 'widget-more-options-menu',
-        }}
-        placement="bottomLeft"
-        trigger={['click']}>
-        <Button
-          className="widget-more-options-button"
-          data-testid="more-options-button"
-          icon={<MoreOutlined size={20} />}
-        />
-      </Dropdown>
-    </div>
+    <Dropdown.Root>
+      <ButtonUtility
+        aria-label={t('label.more-action-plural')}
+        className={className}
+        color="secondary"
+        data-testid="more-options-button"
+        icon={DotsVertical}
+        size="sm"
+      />
+      <Dropdown.Popover className="tw:w-42" placement="bottom start">
+        <Dropdown.Menu
+          aria-label={t('label.more-action-plural')}
+          disabledKeys={menuItems
+            .filter((item) => item.disabled)
+            .map((item) => item.key)}
+          selectionMode="none"
+          onAction={(key: Key) => onMenuClick?.(String(key))}>
+          {menuItems.map((item) => (
+            <Dropdown.Item id={item.key} key={item.key} textValue={item.label}>
+              <span className="tw:flex tw:items-center tw:gap-2">
+                {item.icon}
+                {item.label}
+              </span>
+            </Dropdown.Item>
+          ))}
+        </Dropdown.Menu>
+      </Dropdown.Popover>
+    </Dropdown.Root>
   );
 };
 

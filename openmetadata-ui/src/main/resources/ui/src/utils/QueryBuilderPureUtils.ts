@@ -16,7 +16,7 @@ import type {
   OldJsonItem,
   OldJsonTree,
 } from '@react-awesome-query-builder/ui';
-import { isBoolean, isUndefined } from 'lodash';
+import { isBoolean, isObject, isUndefined } from 'lodash';
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
 import type {
@@ -380,6 +380,36 @@ const matchMustNotWildcard: QueryFilterBranchHandler = (curr, parentPath) => {
   );
 };
 
+// AND-ed `must_not` terms on one field are a `Not in` rule: read them back as the
+// row the user filled, not one `!=` row per value.
+const isMustNotTermClause = (clause: QueryFieldInterface) =>
+  !isUndefined((clause?.bool?.must_not as EsTerm)?.term);
+
+const matchMustMustNotTerm: QueryFilterBranchHandler = (curr, parentPath) => {
+  const clauses = (curr.bool as EsBoolQuery)?.must as
+    | QueryFieldInterface[]
+    | undefined;
+
+  if (!Array.isArray(clauses) || clauses.length < 2) {
+    return undefined;
+  }
+
+  if (!clauses.every(isMustNotTermClause)) {
+    return undefined;
+  }
+
+  const fieldOf = (clause: QueryFieldInterface) =>
+    Object.keys((clause.bool?.must_not as EsTerm).term)[0];
+  const field = fieldOf(clauses[0]);
+
+  // Values of different fields are separate conditions, not one multiselect.
+  if (clauses.some((clause) => fieldOf(clause) !== field)) {
+    return undefined;
+  }
+
+  return getSelectNotAnyInProperties(parentPath, clauses);
+};
+
 const matchBoolMust: QueryFilterBranchHandler = (
   curr,
   parentPath,
@@ -451,7 +481,17 @@ const VALUE_CLAUSE_READERS: Array<
     (body: unknown) => Pick<CustomPropertyClause, 'value' | 'range'>
   ]
 > = [
-  ['term', (body) => ({ value: body })],
+  // A case-insensitive term states its value as `{ value, case_insensitive }`; a plain one is the
+  // bare value. Unwrap so the rule reloads with the value, not the clause body.
+  [
+    'term',
+    (body) => ({
+      value:
+        isObject(body) && 'value' in (body as UnknownRecord)
+          ? (body as UnknownRecord).value
+          : body,
+    }),
+  ],
   ['wildcard', (body) => ({ value: (body as { value?: unknown })?.value })],
   ['regexp', (body) => ({ value: (body as { value?: unknown })?.value })],
   ['match', (body) => ({ value: (body as { query?: unknown })?.query })],
@@ -818,6 +858,7 @@ const QUERY_FILTER_BRANCH_HANDLERS: QueryFilterBranchHandler[] = [
   matchMustNotTerm,
   matchShouldTerm,
   matchShouldMustNotTerm,
+  matchMustMustNotTerm,
   matchMustNotExists,
   matchExists,
   matchWildcard,

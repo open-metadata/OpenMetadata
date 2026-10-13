@@ -11,15 +11,7 @@
  *  limitations under the License.
  */
 
-export const TEST_SUMMARY_CHART_MARGIN = {
-  top: 16,
-  bottom: 100,
-  right: 40,
-  left: 16,
-} as const;
-
-export const STATUS_DOT_RADIUS = 4;
-export const STATUS_DOT_SIZE = STATUS_DOT_RADIUS * 2;
-
-export const TOOLTIP_GAP = STATUS_DOT_RADIUS;
+// Space between a point and the tooltip it opens.
+export const TOOLTIP_GAP = 4;
+// Long enough for the pointer to cross from the point into the tooltip.
 export const TOOLTIP_CLOSE_DELAY = 250;

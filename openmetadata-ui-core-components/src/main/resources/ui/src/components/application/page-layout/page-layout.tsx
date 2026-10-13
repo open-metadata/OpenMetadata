@@ -174,7 +174,10 @@ const createPanel = (side: PanelSide, defaultWidth: number) => {
       <aside
         {...props}
         className={cx(
-          'tw:min-w-0 tw:max-w-full tw:shrink-0',
+          // Dark-only raised surface so the side panels read as distinct from
+          // the page/content instead of collapsing into one black block. Light
+          // is unchanged (panels inherit the page background as before).
+          'tw:min-w-0 tw:max-w-full tw:shrink-0 tw:dark:bg-secondary',
           REGION_SCROLL_CLASS[scroll],
           bordered && PANEL_BORDER_CLASS[side],
           className

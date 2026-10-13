@@ -57,9 +57,3 @@ export interface TranslationOptions {
   version?: string;
   [key: string]: string | number | boolean | undefined;
 }
-
-export interface MockTabItem {
-  key: string;
-  label: ReactNode;
-  children?: ReactNode;
-}

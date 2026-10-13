@@ -15,18 +15,13 @@ import { Box } from '@openmetadata/ui-core-components';
 import React, { PropsWithChildren, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
-import { Operation } from '../../../../generated/entity/policies/accessControl/resourcePermission';
+import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { useAuth } from '../../../../hooks/authHooks';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedViewPermission,
-} from '../../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../common/Loader/Loader';
 import './personal-space.less';
@@ -61,8 +56,7 @@ const PersonalSpaceGate: React.FC<PropsWithChildren> = ({ children }) => {
   }, [currentUser?.id, getEntityPermission]);
 
   const canView =
-    isAdminUser ||
-    getPrioritizedViewPermission(userPermission, Operation.ViewAll);
+    isAdminUser || getDerivedPermissionFlags(userPermission).canViewAll;
 
   if (isPermissionLoading) {
     return <Loader />;

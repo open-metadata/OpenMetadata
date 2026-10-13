@@ -13,10 +13,8 @@
 
 import { render, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { getBotByName } from '../../rest/botsAPI';
 import { getUserByName } from '../../rest/userAPI';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';

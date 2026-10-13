@@ -33,13 +33,23 @@
  */
 
 import { Page } from '@playwright/test';
+import { PolicyClass } from '../../../support/access-control/PoliciesClass';
+import { RolesClass } from '../../../support/access-control/RolesClass';
 import { expect, test } from '../../../support/fixtures/base';
+import { UserClass } from '../../../support/user/UserClass';
+import { performAdminLogin } from '../../../utils/admin';
 import {
   fillDescriptionBox,
   getApiContext,
   redirectToHomePage,
+  scrollIntoViewAndSettle,
+  selectOptionWithRetry,
   uuid,
 } from '../../../utils/common';
+import {
+  recordCustomPropertySaves,
+  removeCustomPropertyViaApi,
+} from '../../../utils/customProperty';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { enableAiAppMode } from '../../Utils/appMode';
 
@@ -115,8 +125,10 @@ const chooseSelectOption = async (
   optionName: string
 ): Promise<void> => {
   // The wrapper div contains a react-aria <button aria-haspopup="listbox">.
-  await page.getByTestId(wrapperTestId).getByRole('button').click();
-  await page.getByRole('option', { exact: true, name: optionName }).click();
+  await selectOptionWithRetry(
+    page.getByTestId(wrapperTestId).getByRole('button'),
+    page.getByRole('option', { exact: true, name: optionName })
+  );
 };
 
 /**
@@ -129,43 +141,17 @@ const submitAddForm = async (page: Page): Promise<void> => {
       res.url().includes('/api/v1/metadata/types/') &&
       res.request().method() === 'PUT'
   );
+  const getResponse = page.waitForResponse(
+    (res) =>
+      res.url().includes('/api/v1/metadata/types/name/') &&
+      res.request().method() === 'GET'
+  );
   await page.getByTestId('custom-property-save').click();
   const res = await putResponse;
   expect(res.status()).toBe(200);
+  const getRes = await getResponse;
+  expect(getRes.status()).toBe(200);
   await page.getByTestId('custom-property-table').waitFor();
-};
-
-/**
- * Create a simple String custom property via the admin REST API.
- * Used for test-data setup in permission tests.
- */
-const createPropertyViaApi = async (
-  page: Page,
-  propertyName: string
-): Promise<void> => {
-  const { apiContext, afterAction } = await getApiContext(page);
-  try {
-    const typeRes = await apiContext.get(
-      `/api/v1/metadata/types/name/${TABLE_FQN}?fields=customProperties`
-    );
-    const typeData = await typeRes.json();
-
-    const stringTypeRes = await apiContext.get(
-      '/api/v1/metadata/types/name/string'
-    );
-    const stringType = await stringTypeRes.json();
-
-    await apiContext.put(`/api/v1/metadata/types/${typeData.id}`, {
-      data: {
-        name: propertyName,
-        description: 'Permission test property',
-        propertyType: { id: stringType.id, type: 'type' },
-      },
-      headers: { 'Content-Type': 'application/json' },
-    });
-  } finally {
-    await afterAction();
-  }
 };
 
 /**
@@ -178,17 +164,7 @@ const deletePropertyViaApi = async (
 ): Promise<void> => {
   const { apiContext, afterAction } = await getApiContext(page);
   try {
-    const typeRes = await apiContext.get(
-      `/api/v1/metadata/types/name/${TABLE_FQN}?fields=customProperties`
-    );
-    const typeData = await typeRes.json();
-    const remaining = (typeData.customProperties ?? []).filter(
-      (p: { name: string }) => p.name !== propertyName
-    );
-    await apiContext.patch(`/api/v1/metadata/types/${typeData.id}`, {
-      data: [{ op: 'replace', path: '/customProperties', value: remaining }],
-      headers: { 'Content-Type': 'application/json-patch+json' },
-    });
+    await removeCustomPropertyViaApi(apiContext, TABLE_FQN, propertyName);
   } finally {
     await afterAction();
   }
@@ -337,10 +313,13 @@ test.describe('Custom Properties Panel — AI Mode', () => {
     await fillDescriptionBox(page, 'Initial description');
     await submitAddForm(page);
 
-    // Find the row and click the Edit button (aria-label="Edit").
+    // Edit lives in the row's actions menu.
     const row = page.locator('tr').filter({ hasText: name });
     await expect(row).toBeVisible();
-    await row.getByRole('button', { name: 'Edit' }).click();
+    await selectOptionWithRetry(
+      row.getByTestId('property-actions'),
+      page.getByRole('menuitem', { name: 'Edit' })
+    );
 
     const editForm = page.getByTestId('custom-properties-edit-page');
     await editForm.waitFor();
@@ -354,21 +333,15 @@ test.describe('Custom Properties Panel — AI Mode', () => {
 
     await fillDescriptionBox(page, 'Updated description');
 
-    // Hoist PATCH listener before clicking Save.
-    const patchResponse = page.waitForResponse(
-      (res) =>
-        res.url().includes('/api/v1/metadata/types/') &&
-        res.request().method() === 'PATCH'
-    );
+    const saves = recordCustomPropertySaves(page);
     await page.getByTestId('edit-custom-property-save').click();
-    const res = await patchResponse;
-    expect(res.status()).toBe(200);
 
     // Back on detail page — updated display name is visible.
     await page.getByTestId('custom-property-table').waitFor();
     await expect(
       page.locator('tr').filter({ hasText: updatedDisplayName })
     ).toBeVisible();
+    await saves.expectSaved();
 
     // Cleanup (property name key is unchanged; display name is cosmetic).
     await deletePropertyViaApi(page, name);
@@ -397,25 +370,408 @@ test.describe('Custom Properties Panel — AI Mode', () => {
     const row = page.locator('tr').filter({ hasText: name });
     await expect(row).toBeVisible();
 
-    // Click the Delete button on the row (aria-label="Delete").
-    await row.getByRole('button', { name: 'Delete' }).click();
+    // Delete lives in the row's actions menu.
+    await selectOptionWithRetry(
+      row.getByTestId('property-actions'),
+      page.getByRole('menuitem', { name: 'Delete' })
+    );
 
     // Wait for the confirmation modal.
     await page.getByTestId('delete-modal').waitFor();
 
-    // Hoist PATCH listener before confirming.
-    const patchResponse = page.waitForResponse(
-      (res) =>
-        res.url().includes('/api/v1/metadata/types/') &&
-        res.request().method() === 'PATCH'
-    );
+    const saves = recordCustomPropertySaves(page);
     await page.getByTestId('confirm-button').click();
-    const res = await patchResponse;
-    expect(res.status()).toBe(200);
 
-    // The property row must no longer appear.
+    await page.getByTestId('delete-modal').waitFor({ state: 'hidden' });
+    await waitForAllLoadersToDisappear(page);
+
     await expect(
       page.locator('tr').filter({ hasText: name })
     ).not.toBeVisible();
+    await saves.expectSaved();
+  });
+});
+
+// ── Permission tests ───────────────────────────────────────────────────────────
+
+/**
+ * Users without any `type` resource permission should not see the
+ * "Custom Properties" nav item in the AI profile sidebar at all.
+ * dataConsumer has no type-resource grants in the default policy set.
+ */
+let viewOnlyUser: UserClass;
+let viewOnlyPolicy: PolicyClass;
+let viewOnlyRole: RolesClass;
+
+test.describe('Custom Properties Panel — user without type permissions', () => {
+  test.beforeAll(async ({ browser }) => {
+    viewOnlyUser = new UserClass();
+    viewOnlyPolicy = new PolicyClass();
+    viewOnlyRole = new RolesClass();
+    customPropertyName = `cp_perm_${uuid()}`;
+
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    try {
+      await viewOnlyUser.create(apiContext, false);
+
+      await viewOnlyPolicy.create(apiContext, [
+        {
+          name: 'ViewAllOnlyRule',
+          resources: ['All'],
+          operations: ['ViewAll'],
+          effect: 'allow',
+        },
+        {
+          name: 'DenyTypeView',
+          resources: ['type'],
+          operations: ['ViewAll'],
+          effect: 'deny',
+        },
+      ]);
+      await viewOnlyRole.create(apiContext, [viewOnlyPolicy.responseData.name]);
+
+      await viewOnlyUser.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/roles/0',
+            value: {
+              id: viewOnlyRole.responseData.id,
+              type: 'role',
+              name: viewOnlyRole.responseData.name,
+            },
+          },
+        ],
+      });
+    } finally {
+      await afterAction();
+    }
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    try {
+      await viewOnlyUser.delete(apiContext);
+      await viewOnlyRole.delete(apiContext);
+      await viewOnlyPolicy.delete(apiContext);
+    } finally {
+      await afterAction();
+    }
+  });
+
+  test('Custom Properties nav item is not visible in sidebar', async ({
+    browser,
+  }) => {
+    const page = await browser.newPage();
+    try {
+      await viewOnlyUser.signIn(page);
+      await enableAiAppMode(page);
+      await redirectToHomePage(page);
+      await expect(page.getByTestId('ask-ai-user-menu-trigger')).toBeVisible();
+
+      await page.getByTestId('ask-ai-user-menu-trigger').click();
+      await page.getByTestId('ai-user-menu-profile').click();
+      await page.getByTestId('ai-profile-page').waitFor();
+
+      await expect(
+        page.getByTestId('profile-nav-custom-properties')
+      ).not.toBeVisible();
+    } finally {
+      await page.close();
+    }
+  });
+});
+
+/**
+ * A non-admin user whose role grants [Create, Delete, EditAll, ViewAll] on
+ * the `type` resource must be able to see the landing page, navigate to the
+ * Table detail, and see all three action buttons (Add, Edit, Delete).
+ *
+ * Strategy: beforeAll creates policy → role → user via UserClass/PoliciesClass/
+ * RolesClass (in-memory, no JSON file written), seeds a property, then each
+ * test creates a fresh page and signs in via typeUser.signIn(page).
+ */
+
+let typeUser: UserClass;
+let typePolicy: PolicyClass;
+let typeRole: RolesClass;
+let typePropertyName: string;
+
+test.describe('Custom Properties Panel — non-admin user with type permissions', () => {
+  test.beforeAll(async ({ browser }) => {
+    typeUser = new UserClass();
+    typePolicy = new PolicyClass();
+    typeRole = new RolesClass();
+    typePropertyName = `cp_perm_${uuid()}`;
+
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    try {
+      // 1. Create user (no default role).
+      await typeUser.create(apiContext, false);
+
+      // 2. Create policy + role granting full type-resource access.
+      // GeneralViewRule is required so the user can navigate the app at all;
+      // without ViewAll on All the UI blocks every page load.
+      await typePolicy.create(apiContext, [
+        {
+          name: 'GeneralViewRule',
+          resources: ['All'],
+          operations: ['ViewAll'],
+          effect: 'allow',
+        },
+        {
+          name: 'TypeFullAccessRule',
+          resources: ['type'],
+          operations: ['ViewAll', 'EditAll', 'Create', 'Delete'],
+          effect: 'allow',
+        },
+      ]);
+      await typeRole.create(apiContext, [typePolicy.responseData.name]);
+
+      // 3. Assign the role directly to the user.
+      await typeUser.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/roles/0',
+            value: {
+              id: typeRole.responseData.id,
+              type: 'role',
+              name: typeRole.responseData.name,
+            },
+          },
+        ],
+      });
+
+      // 4. Seed a String property on the Table type so the detail page is non-empty.
+      const typeDataRes = await apiContext.get(
+        `/api/v1/metadata/types/name/${TABLE_FQN}?fields=customProperties`
+      );
+      const typeData = await typeDataRes.json();
+      const stringTypeRes = await apiContext.get(
+        '/api/v1/metadata/types/name/string'
+      );
+      const stringType = await stringTypeRes.json();
+      await apiContext.put(`/api/v1/metadata/types/${typeData.id}`, {
+        data: {
+          name: typePropertyName,
+          description: 'Permission test property',
+          propertyType: { id: stringType.id, type: 'type' },
+        },
+        headers: { 'Content-Type': 'application/json' },
+      });
+    } finally {
+      await afterAction();
+    }
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    try {
+      await removeCustomPropertyViaApi(apiContext, TABLE_FQN, typePropertyName);
+
+      // Clean up user, role, policy.
+      await typeUser.delete(apiContext);
+      await typeRole.delete(apiContext);
+      await typePolicy.delete(apiContext);
+    } finally {
+      await afterAction();
+    }
+  });
+
+  test('sidebar shows Custom Properties nav and landing page shows entity cards', async ({
+    browser,
+  }) => {
+    const page = await browser.newPage();
+    try {
+      await typeUser.signIn(page);
+      await enableAiAppMode(page);
+      await redirectToHomePage(page);
+      await expect(page.getByTestId('ask-ai-user-menu-trigger')).toBeVisible();
+
+      await page.getByTestId('ask-ai-user-menu-trigger').click();
+      await page.getByTestId('ai-user-menu-profile').click();
+      await page.getByTestId('ai-profile-page').waitFor();
+
+      await expect(
+        page.getByTestId('profile-nav-custom-properties')
+      ).toBeVisible();
+      await page.getByTestId('profile-nav-custom-properties').click();
+
+      await page.getByTestId('custom-properties-landing').waitFor();
+
+      await expect(
+        page.getByTestId(`entity-type-card-${TABLE_FQN}`)
+      ).toBeVisible();
+    } finally {
+      await page.close();
+    }
+  });
+
+  test('detail page shows Add, Edit, Delete buttons', async ({ browser }) => {
+    const page = await browser.newPage();
+    try {
+      await typeUser.signIn(page);
+      await enableAiAppMode(page);
+      await redirectToHomePage(page);
+      await expect(page.getByTestId('ask-ai-user-menu-trigger')).toBeVisible();
+
+      await page.getByTestId('ask-ai-user-menu-trigger').click();
+      await page.getByTestId('ai-user-menu-profile').click();
+      await page.getByTestId('ai-profile-page').waitFor();
+      await page.getByTestId('profile-nav-custom-properties').click();
+      await page.getByTestId('custom-properties-landing').waitFor();
+
+      const typeResponse = page.waitForResponse(
+        (res) =>
+          res.url().includes(`/api/v1/metadata/types/name/${TABLE_FQN}`) &&
+          res.request().method() === 'GET'
+      );
+      await page.getByTestId(`entity-type-card-${TABLE_FQN}`).click();
+      await typeResponse;
+      await waitForAllLoadersToDisappear(page);
+      await page.getByTestId('custom-property-table').waitFor();
+
+      // User has Create → Add button visible.
+      await expect(page.getByTestId('add-custom-property-btn')).toBeVisible();
+
+      // User has EditAll + Delete → the row menu offers Edit and Delete.
+      const row = page.locator('tr').filter({ hasText: typePropertyName });
+      await expect(row).toBeVisible();
+      const actions = row.getByTestId('property-actions');
+      await scrollIntoViewAndSettle(actions);
+      await actions.click();
+      await expect(page.getByRole('menuitem', { name: 'Edit' })).toBeVisible();
+      await expect(
+        page.getByRole('menuitem', { name: 'Delete' })
+      ).toBeVisible();
+    } finally {
+      await page.close();
+    }
+  });
+});
+
+// ── ViewAll-only permission tests ──────────────────────────────────────────────
+
+/**
+ * A user whose role grants only ViewAll on All resources has no explicit type
+ * management permission (Create / EditAll / Delete), so the Custom Properties
+ * nav item must not appear — and therefore Add / Edit / Delete action buttons
+ * inside the panel are also inaccessible.
+ */
+
+let viewAllUser: UserClass;
+let viewAllPolicy: PolicyClass;
+let viewAllRole: RolesClass;
+let customPropertyName: string;
+
+test.describe('Custom Properties Panel — user with ViewAll on All only', () => {
+  test.beforeAll(async ({ browser }) => {
+    viewAllUser = new UserClass();
+    viewAllPolicy = new PolicyClass();
+    viewAllRole = new RolesClass();
+    customPropertyName = `cp_perm_${uuid()}`;
+
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    try {
+      await viewAllUser.create(apiContext, false);
+
+      await viewAllPolicy.create(apiContext, [
+        {
+          name: 'ViewAllOnlyRule',
+          resources: ['All'],
+          operations: ['ViewAll'],
+          effect: 'allow',
+        },
+      ]);
+      await viewAllRole.create(apiContext, [viewAllPolicy.responseData.name]);
+
+      await viewAllUser.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/roles/0',
+            value: {
+              id: viewAllRole.responseData.id,
+              type: 'role',
+              name: viewAllRole.responseData.name,
+            },
+          },
+        ],
+      });
+
+      const typeDataRes = await apiContext.get(
+        `/api/v1/metadata/types/name/${TABLE_FQN}?fields=customProperties`
+      );
+      const typeData = await typeDataRes.json();
+      const stringTypeRes = await apiContext.get(
+        '/api/v1/metadata/types/name/string'
+      );
+      const stringType = await stringTypeRes.json();
+      await apiContext.put(`/api/v1/metadata/types/${typeData.id}`, {
+        data: {
+          name: customPropertyName,
+          description: 'Permission test property',
+          propertyType: { id: stringType.id, type: 'type' },
+        },
+        headers: { 'Content-Type': 'application/json' },
+      });
+    } finally {
+      await afterAction();
+    }
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    try {
+      await viewAllUser.delete(apiContext);
+      await viewAllRole.delete(apiContext);
+      await viewAllPolicy.delete(apiContext);
+    } finally {
+      await afterAction();
+    }
+  });
+
+  test('detail page does not show Add, Edit, or Delete buttons with ViewAll only', async ({
+    browser,
+  }) => {
+    const page = await browser.newPage();
+    try {
+      await viewAllUser.signIn(page);
+      await enableAiAppMode(page);
+      await redirectToHomePage(page);
+      await expect(page.getByTestId('ask-ai-user-menu-trigger')).toBeVisible();
+
+      await page.getByTestId('ask-ai-user-menu-trigger').click();
+      await page.getByTestId('ai-user-menu-profile').click();
+      await page.getByTestId('ai-profile-page').waitFor();
+      await page.getByTestId('profile-nav-custom-properties').click();
+      await page.getByTestId('custom-properties-landing').waitFor();
+
+      const typeResponse = page.waitForResponse(
+        (res) =>
+          res.url().includes(`/api/v1/metadata/types/name/${TABLE_FQN}`) &&
+          res.request().method() === 'GET'
+      );
+      await page.getByTestId(`entity-type-card-${TABLE_FQN}`).click();
+      await typeResponse;
+      await waitForAllLoadersToDisappear(page);
+      await page.getByTestId('custom-property-table').waitFor();
+
+      // User has Create → Add button visible.
+      await expect(
+        page.getByTestId('add-custom-property-btn')
+      ).not.toBeVisible();
+
+      // User has ViewAll policy only, so the row has no actions menu.
+      const row = page.locator('tr').filter({ hasText: customPropertyName });
+      await expect(row).toBeVisible();
+      await expect(row.getByTestId('property-actions')).not.toBeVisible();
+    } finally {
+      await page.close();
+    }
   });
 });

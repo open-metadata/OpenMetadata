@@ -11,8 +11,14 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import { MemoryRouter, useNavigate } from 'react-router-dom';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
 import { ServiceCategoryPlural } from '../../../enums/service.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -320,45 +326,27 @@ describe('Test EntityPopoverCard component', () => {
     expect(screen.queryByText('label.no-data-found')).toBeNull();
   });
 
-  it('EntityPopoverCard should close the popover on navigation', async () => {
-    const NavigateAway = () => {
-      const navigate = useNavigate();
-
-      return (
-        <button data-testid="navigate-away" onClick={() => navigate('/next')}>
-          navigate
-        </button>
-      );
-    };
-
+  it('EntityPopoverCard should open the preview on hover and close it on leave', async () => {
     await act(async () => {
       render(
-        <MemoryRouter initialEntries={['/current']}>
-          <EntityPopOverCard
-            defaultOpen
-            entityFQN={MOCK_TAG_ENCODED_FQN}
-            entityType={EntityType.TAG}>
-            <div data-testid="popover-container">Test_Popover</div>
-          </EntityPopOverCard>
-          <NavigateAway />
-        </MemoryRouter>
+        <EntityPopOverCard
+          entityFQN={MOCK_TAG_ENCODED_FQN}
+          entityType={EntityType.TAG}>
+          <div data-testid="popover-container">Test_Popover</div>
+        </EntityPopOverCard>
       );
     });
 
+    expect(screen.queryByText('label.no-data-found')).toBeNull();
+
+    fireEvent.mouseEnter(screen.getByTestId('popover-container'));
+
     expect(await screen.findByText('label.no-data-found')).toBeInTheDocument();
-    expect(document.querySelector('.ant-popover')).not.toHaveClass(
-      'ant-popover-hidden'
-    );
 
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('navigate-away'));
-    });
+    fireEvent.mouseLeave(screen.getByTestId('popover-container'));
 
-    // The popup is kept mounted rather than destroyed, so re-hovering the same
-    // entity does not refetch it. Hiding is what matters here: leaving it
-    // visible is what let it float over the next screen.
-    expect(document.querySelector('.ant-popover')).toHaveClass(
-      'ant-popover-hidden'
+    await waitFor(() =>
+      expect(screen.queryByText('label.no-data-found')).toBeNull()
     );
   });
 

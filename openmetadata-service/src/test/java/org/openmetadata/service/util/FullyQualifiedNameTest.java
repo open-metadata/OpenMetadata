@@ -68,6 +68,24 @@ class FullyQualifiedNameTest {
   }
 
   @Test
+  void test_escapeForUnquote() {
+    // Values unquoteName leaves alone are passed through untouched
+    assertEquals("a", FullyQualifiedName.escapeForUnquote("a"));
+    assertEquals("a.b", FullyQualifiedName.escapeForUnquote("a.b"));
+    assertEquals("a\"b", FullyQualifiedName.escapeForUnquote("a\"b"));
+    // A value unquoteName would strip is re-encoded so the strip gives it back
+    assertEquals("\"\"\"quoted\"\"\"", FullyQualifiedName.escapeForUnquote("\"quoted\""));
+
+    for (String value :
+        List.of("a", "a.b", "a\"b", "\"quoted\"", "\"a.b\"", "\"a\"\"b\"", "\"\"", "x\"")) {
+      assertEquals(
+          value,
+          FullyQualifiedName.unquoteName(FullyQualifiedName.escapeForUnquote(value)),
+          "escapeForUnquote must round-trip " + value);
+    }
+  }
+
+  @Test
   void test_quotedName_roundTrip() {
     // A name containing '"' must survive build -> split -> buildHash without bailing the parser.
     String taskName = "si_l'agent_existe_dans_la_base_\"agents\"_alors";
@@ -244,23 +262,29 @@ class FullyQualifiedNameTest {
   }
 
   @Test
-  void test_getDashboardDataModelFQN() {
+  void test_getParentEntityFQN_dashboardDataModelCases() {
+    // Kept from test_getDashboardDataModelFQN, which was deleted with the standalone
+    // getDashboardDataModelFQN helper once getParentEntityFQN became its only caller. The
+    // cases still matter, so they now run through the surviving public entry point.
     // Standard case
     assertEquals(
         "service.model.dataModel",
-        FullyQualifiedName.getDashboardDataModelFQN("service.model.dataModel.col1"));
+        FullyQualifiedName.getParentEntityFQN(
+            "service.model.dataModel.col1", "dashboardDataModel"));
     // Nested column
     assertEquals(
         "service.model.dataModel",
-        FullyQualifiedName.getDashboardDataModelFQN("service.model.dataModel.col1.child1"));
+        FullyQualifiedName.getParentEntityFQN(
+            "service.model.dataModel.col1.child1", "dashboardDataModel"));
     // Quoted names
     assertEquals(
         "service.model.\"data.model\"",
-        FullyQualifiedName.getDashboardDataModelFQN("service.model.\"data.model\".col1"));
+        FullyQualifiedName.getParentEntityFQN(
+            "service.model.\"data.model\".col1", "dashboardDataModel"));
     // Error: too few segments
     assertThrows(
         IllegalArgumentException.class,
-        () -> FullyQualifiedName.getDashboardDataModelFQN("service.model"));
+        () -> FullyQualifiedName.getParentEntityFQN("service.model", "dashboardDataModel"));
   }
 
   @Test
@@ -283,33 +307,47 @@ class FullyQualifiedNameTest {
         "service.model.dataModel",
         FullyQualifiedName.getParentEntityFQN(
             "service.model.dataModel.col1.child1", "dashboardDataModel"));
-    // Metric dimension case
+    // mlmodel used to be rejected here, as an example of an unsupported type. It is now a
+    // registered child-bearing type (mlFeatures), so it resolves. This widening is the point of
+    // the registry, not an accident: the assertion was updated in the commit that caused it.
     assertEquals(
-        "revenue", FullyQualifiedName.getParentEntityFQN("revenue.dimension.region", "metric"));
-    // Metric measure case
-    assertEquals(
-        "revenue", FullyQualifiedName.getParentEntityFQN("revenue.measure.total_amount", "metric"));
-    // Error: unsupported entity type
+        "service.model",
+        FullyQualifiedName.getParentEntityFQN("service.model.feature1", "mlmodel"));
+    // Error: a type with no child container is still rejected. chart is the standing example:
+    // a chart is a separate entity with its own RBAC and is deliberately outside this registry.
     assertThrows(
         IllegalArgumentException.class,
-        () -> FullyQualifiedName.getParentEntityFQN("service.model.dataModel.col1", "mlmodel"));
+        () -> FullyQualifiedName.getParentEntityFQN("service.dash.chart1", "chart"));
   }
 
   @Test
-  void test_getMetricFQN() {
-    // Standard dimension FQN
-    assertEquals("revenue", FullyQualifiedName.getMetricFQN("revenue.dimension.region"));
-    // Standard measure FQN
-    assertEquals("revenue", FullyQualifiedName.getMetricFQN("revenue.measure.total_amount"));
-    // Quoted metric name
-    assertEquals(
-        "\"my.metric\"", FullyQualifiedName.getMetricFQN("\"my.metric\".dimension.region"));
-    // Multi-part metric FQN (e.g. service-prefixed) keeps everything but the last two segments
-    assertEquals(
-        "service.revenue", FullyQualifiedName.getMetricFQN("service.revenue.measure.total_amount"));
-    // Error: too few segments
+  void getParentEntityFQN_parityWithResolver_tableAndDataModel() {
+    List<String[]> matrix =
+        List.of(
+            new String[] {"svc.db.schema.tbl.col", "table"},
+            new String[] {"svc.db.schema.tbl.col.child.grandchild", "table"},
+            new String[] {"svc.db.schema.tbl.\"col.with.dot\"", "table"},
+            new String[] {"svc.model.dm.col", "dashboardDataModel"},
+            new String[] {"svc.model.dm.col.child", "dashboardDataModel"});
+    for (String[] input : matrix) {
+      assertEquals(
+          FullyQualifiedName.getParentEntityFQN(input[0], input[1]),
+          ChildFieldResolver.parentFqnOf(input[0], input[1]),
+          "parity failed for " + input[0]);
+    }
+  }
+
+  @Test
+  void getParentEntityFQN_metric_isRejectedAsUnsupported() {
+    // The METRIC arm was dead code: ColumnRepository.validateEntityType, the only caller path,
+    // never admits metric. Removed as currently unreachable; a metric arm may legitimately
+    // return when the Metrics-hierarchy work relands.
     assertThrows(
-        IllegalArgumentException.class, () -> FullyQualifiedName.getMetricFQN("metric.dimension"));
+        IllegalArgumentException.class,
+        () -> FullyQualifiedName.getParentEntityFQN("revenue.dimension.region", "metric"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> FullyQualifiedName.getParentEntityFQN("revenue.measure.total_amount", "metric"));
   }
 
   @Test
@@ -328,5 +366,23 @@ class FullyQualifiedNameTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> FullyQualifiedName.getParentEntityFQN("service.db.schema", "table"));
+  }
+
+  @Test
+  void getParentEntityFQN_table_quotedDottedColumnName() {
+    // Not covered by test_getParentEntityFQN: a column whose own name contains dots is
+    // stored quoted, and the parent must be the first 4 parts, not a naive lastIndexOf('.').
+    assertEquals(
+        "svc.db.schema.tbl",
+        FullyQualifiedName.getParentEntityFQN("svc.db.schema.tbl.\"col.with.dot\"", "table"));
+  }
+
+  @Test
+  void getParentEntityFQN_table_structGrandchildColumn() {
+    // test_getParentEntityFQN covers one struct level (col1.child1); this pins two levels,
+    // which is what the resolver's recursive locate() will have to agree with in Task 9.
+    assertEquals(
+        "svc.db.schema.tbl",
+        FullyQualifiedName.getParentEntityFQN("svc.db.schema.tbl.col.child.grandchild", "table"));
   }
 }

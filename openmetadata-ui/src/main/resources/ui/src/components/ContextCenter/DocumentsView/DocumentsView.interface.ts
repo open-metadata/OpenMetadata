@@ -35,6 +35,8 @@ export interface DocumentsViewProps {
   onDownload?: (file: ContextFile) => void;
   onDeleteFile?: (file: ContextFile) => void;
   onFileMoved?: (file: ContextFile, targetFolderId: string | null) => void;
+  onFileUpdated?: (file: ContextFile) => void;
+  onOpenPreview?: (file: ContextFile) => void;
   onPreview?: (file: ContextFile | undefined) => void;
   onSelectFile?: (fileId: string) => void;
   onBulkDelete?: () => void;
@@ -73,6 +75,7 @@ export interface FileActionsProps {
   isLoadingMoreFolders?: boolean;
   onDeleteFile?: (file: ContextFile) => void;
   onFileMoved?: (file: ContextFile, targetFolderId: string | null) => void;
+  onFileUpdated?: (file: ContextFile) => void;
   onLoadMoreFolders?: () => void;
 }
 export interface ListHeaderProps {
@@ -102,6 +105,8 @@ export interface FileRowProps {
   onDownload?: (file: ContextFile) => void;
   onDeleteFile?: (file: ContextFile) => void;
   onFileMoved?: (file: ContextFile, targetFolderId: string | null) => void;
+  onFileUpdated?: (file: ContextFile) => void;
+  onOpenPreview?: (file: ContextFile) => void;
   onPreview?: (file: ContextFile) => void;
   onSelectFile?: (fileId: string) => void;
   onLoadMoreFolders?: () => void;

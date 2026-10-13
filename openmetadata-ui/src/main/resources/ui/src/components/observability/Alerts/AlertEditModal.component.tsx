@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AlertTriangle } from '@untitledui/icons';
+import { AlertTriangle } from '@openmetadata/ui-core-components/icons';
 import { isUndefined } from 'lodash';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -26,15 +26,18 @@ import {
   ModifiedCreateEventSubscription,
   ModifiedEventSubscription,
 } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
-import { useObservabilityAlertForm } from '../../../pages/AddObservabilityPage/hooks/useObservabilityAlertForm';
+import { useAlertFormData } from '../../../pages/AddObservabilityPage/hooks/useAlertFormData';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import AlertAiForm from './AlertAiForm.component';
 import {
   ALERT_AI_DEFAULT_CONNECTION_TIMEOUT,
   ALERT_AI_FORM_MODAL_ID,
 } from './AlertAiFormFields.constants';
+import { AlertKind, OBSERVABILITY_ALERT_KIND } from './alertKinds';
 
 interface AlertEditModalProps {
+  /** Which alerts this modal edits; defaults to Observability. */
+  kind?: AlertKind;
   fqn?: string;
   isOpen: boolean;
   mode?: 'add' | 'edit';
@@ -44,10 +47,11 @@ interface AlertEditModalProps {
 
 /** Converts fetched alert details into the editable AI modal form shape. */
 const getInitialValues = (
+  alertType: AlertType,
   alert?: ModifiedEventSubscription
 ): ModifiedCreateEventSubscription => ({
   ...(alert as unknown as ModifiedCreateEventSubscription),
-  alertType: alert?.alertType ?? AlertType.Observability,
+  alertType: alert?.alertType ?? alertType,
   destinations: alert?.destinations ?? [],
   displayName: getEntityName(alert),
   name: alert?.name ?? '',
@@ -58,8 +62,10 @@ const getInitialValues = (
 });
 
 /** Builds the blank create-alert payload used by the add alert modal. */
-const getEmptyInitialValues = (): ModifiedCreateEventSubscription => ({
-  alertType: AlertType.Observability,
+const getEmptyInitialValues = (
+  alertType: AlertType
+): ModifiedCreateEventSubscription => ({
+  alertType,
   destinations: [],
   displayName: '',
   input: {
@@ -75,6 +81,7 @@ const getEmptyInitialValues = (): ModifiedCreateEventSubscription => ({
 
 /** Renders the shared add/edit alert modal using OSS alert form hooks and AI fields. */
 function AlertEditModal({
+  kind = OBSERVABILITY_ALERT_KIND,
   fqn,
   isOpen,
   mode = 'edit',
@@ -82,62 +89,47 @@ function AlertEditModal({
   onSaved,
 }: Readonly<AlertEditModalProps>) {
   const { t } = useTranslation();
+  const { alertType } = kind;
   const isEditMode = mode === 'edit';
   const [formData, setFormData] = useState<ModifiedCreateEventSubscription>(
-    getEmptyInitialValues
+    () => getEmptyInitialValues(alertType)
   );
   const [showHint, setShowHint] = useState(true);
   const {
     alert,
-    containerEntities,
     extraFormButtons,
     filterResources,
-    form,
     handleSave,
     inlineAlertDetails,
     isLoading,
+    loadingState,
     saving,
+    selection,
     shouldShowActionsSection,
     shouldShowFiltersSection,
-    supportedFilters,
-    supportedTriggers,
     templateResourcePermission,
     templates,
-  } = useObservabilityAlertForm({
+  } = useAlertFormData({
     afterSaveAction: onSaved,
+    alertType,
     fqn,
     onCancel: onClose,
+    // `input` is left out, as before: this modal does not yet ask the server to warn about
+    // sources the chosen filters and triggers never match.
+    sources: formData.resources,
   });
 
   useEffect(() => {
     if (isEditMode && alert) {
-      setFormData(getInitialValues(alert));
+      setFormData(getInitialValues(alertType, alert));
     }
-  }, [alert, isEditMode]);
+  }, [alert, alertType, isEditMode]);
 
   useEffect(() => {
     if (!isEditMode && isOpen) {
-      setFormData(getEmptyInitialValues());
+      setFormData(getEmptyInitialValues(alertType));
     }
-  }, [isEditMode, isOpen]);
-
-  // Keep the minimal Ant form mirror in sync for OSS widgets/buttons that still
-  // read via Form.useWatch. Syncing the full controlled payload reintroduced
-  // ModalOverlay scroll jumps, so only mirror the watched fields.
-  useEffect(() => {
-    form.setFieldsValue({
-      customNotificationTemplateData: formData.customNotificationTemplateData,
-      destinations: formData.destinations,
-      notificationTemplate: formData.notificationTemplate,
-      resources: formData.resources,
-    });
-  }, [
-    form,
-    formData.customNotificationTemplateData,
-    formData.destinations,
-    formData.notificationTemplate,
-    formData.resources,
-  ]);
+  }, [alertType, isEditMode, isOpen]);
 
   const title = isEditMode
     ? t('label.edit-entity', { entity: t('label.alert') })
@@ -155,11 +147,11 @@ function AlertEditModal({
     ([name, ButtonComponent]) => (
       <ButtonComponent
         alertDetails={alert}
-        formRef={form}
         key={name}
         loading={saving}
         templateResourcePermission={templateResourcePermission}
         templates={templates}
+        values={formData}
       />
     )
   );
@@ -170,7 +162,6 @@ function AlertEditModal({
       footerActions={extraFooterButtons}
       hintOpen={showHint}
       icon={AlertTriangle}
-      iconColor="warning"
       isSubmitDisabled={saving || isLoading}
       isSubmitting={saving}
       open={isOpen}
@@ -188,17 +179,22 @@ function AlertEditModal({
       ) : (
         <AlertAiForm
           alert={alert}
-          containerEntities={containerEntities}
+          containerEntities={selection.support.containerEntities}
           filterResources={filterResources}
           formId={ALERT_AI_FORM_MODAL_ID}
           inlineAlert={inlineAlertDetails}
           mode={mode}
-          shouldShowActionsSection={shouldShowActionsSection}
+          recipientCategories={selection.support.recipientCategories}
+          shouldShowActionsSection={
+            kind.hasTriggers && shouldShowActionsSection
+          }
           shouldShowFiltersSection={shouldShowFiltersSection}
           showHint={showHint}
-          supportedFilters={supportedFilters}
-          supportedTriggers={supportedTriggers}
+          supportedFilters={selection.support.supportedFilters}
+          supportedTriggers={selection.support.supportedTriggers}
+          templateResourcePermission={templateResourcePermission}
           templates={templates}
+          templatesLoading={loadingState.templates}
           value={formData}
           onChange={setFormData}
           onSubmit={handleSave}

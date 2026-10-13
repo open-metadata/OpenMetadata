@@ -28,7 +28,7 @@ only to hold migrated one-off values until they can be re-expressed).
 | Interactive control border | `--om-color-border-primary`, `--om-color-border-hover` |
 | Card / panel / divider border | `--om-color-border-subtle` |
 | Error / brand border | `--om-color-border-error`, `--om-color-border-brand` |
-| Link | `--om-color-link`, `--om-color-link-hover` |
+| Link | `--color-text-link`, `--color-text-link-hover` (core; `tw:text-link`) |
 | Hover / active / selected row | `--om-color-interactive-hover` / `-active` / `-selected` |
 | Focus ring | `--om-color-focus-ring` |
 | A specific brand/gray/red/… swatch | `--om-color-{scale}-{25…950}` (palette) |
@@ -59,7 +59,7 @@ system: `brand`, `error`, `warning`, `success`, `gray`, `gray-blue`,
 Semantic tokens flip automatically: the upstream `--color-*` custom properties
 are redefined under `.dark-mode` in `globals.css`, and `--om-color-*` inherit
 that by referencing `--color-*` directly. Light-mode primitive values remain
-unchanged; the approved neutral scale is scoped to `.dark-mode`. **This is the
+unchanged; the approved blue-tinted dark scale is scoped to `.dark-mode`. **This is the
 reason to use semantic tokens** — a palette token like `--om-color-gray-900`
 does not communicate whether the caller needs the page, canvas, or surface
 role. See
@@ -69,11 +69,11 @@ role. See
 
 | Role | Dark value |
 | --- | --- |
-| `--om-color-bg-page` | Gray 950 — `#141414` |
-| `--om-color-bg-canvas` | Gray 900 — `#191919` |
-| `--om-color-bg-surface` | Gray 800 — `#222222` |
-| `--om-color-bg-raised` | Gray 700 — `#2e2e2e` |
-| `--om-color-bg-overlay-surface` | Gray 800 — `#222222` |
+| `--om-color-bg-page` | Gray 950 — `#0c0e12` |
+| `--om-color-bg-canvas` | Gray 900 — `#13161b` |
+| `--om-color-bg-surface` | Gray 800 — `#22262f` |
+| `--om-color-bg-raised` | Gray 700 — `#373a41` |
+| `--om-color-bg-overlay-surface` | Gray 800 — `#22262f` |
 
 Cards and dividers use the 8% alpha `--om-color-border-subtle`; interactive
 controls use `--om-color-border-primary` and `--om-color-border-hover`.

@@ -13,17 +13,40 @@
 import { borderAfter } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 
-// Mirrors the core `Button` `secondary`/`md` look so the owner trigger (a plain
-// element required by antd's Popover) matches the react-aria Button chips.
-export const chipTriggerClassName = classNames(
-  'tw:inline-flex tw:h-max tw:cursor-pointer tw:items-center tw:justify-center',
-  'tw:gap-1 tw:whitespace-nowrap tw:rounded-lg tw:bg-primary tw:px-3.5 tw:py-2.5',
-  'tw:text-sm tw:font-medium tw:text-secondary tw:shadow-xs-skeuomorphic',
-  'tw:relative tw:outline-brand tw:transition',
-  borderAfter,
-  'tw:after:outline-primary',
-  'tw:duration-100 tw:ease-linear tw:hover:bg-primary_hover tw:hover:text-secondary_hover'
-);
+/**
+ * The owner filter needs antd's Popover, which clones its child and attaches
+ * `onClick` — a prop react-aria's `Button` filters out — so that trigger has to
+ * stay a plain element and cannot be a `FilterSelect`. These classes reproduce
+ * what `FilterSelect` renders for a `bordered` `triggerVariant="button"` (core
+ * `Button`, `secondary`, size `md`), so the owner chip carries the same pill
+ * treatment as the FilterSelect chips beside it. The label colour and outline
+ * are either neutral or brand (once a value is picked), never both: `classNames`
+ * does not resolve Tailwind conflicts, so stacking them leaves the winner to
+ * stylesheet order.
+ */
+export const chipTriggerClassName = (hasSelection: boolean) =>
+  classNames(
+    'tw:inline-flex tw:h-max tw:cursor-pointer tw:items-center tw:justify-center',
+    'tw:gap-1 tw:whitespace-nowrap tw:rounded-lg tw:bg-surface tw:px-3.5 tw:py-2.5',
+    'tw:text-sm tw:font-medium tw:shadow-xs-skeuomorphic',
+    'tw:relative tw:outline-brand tw:transition tw:duration-100 tw:ease-linear',
+    borderAfter,
+    'tw:hover:bg-primary_hover tw:dark:hover:bg-raised',
+    hasSelection
+      ? 'tw:text-fg-brand-primary tw:after:outline-brand tw:dark:after:outline-fg-brand-primary_alt'
+      : 'tw:text-secondary tw:hover:text-secondary_hover tw:after:outline-primary'
+  );
 
-export const chipLabel = (label: string, count: number) =>
-  count > 0 ? `${label} · ${count}` : label;
+/** Chevron for a trigger built by hand, branded with it like `FilterSelect`. */
+export const chipChevronClassName = (hasSelection: boolean) =>
+  classNames(
+    'tw:size-5 tw:shrink-0',
+    hasSelection ? 'tw:text-fg-brand-primary' : 'tw:text-fg-quaternary'
+  );
+
+/** Matches the count badge `FilterSelect` renders on its own trigger. */
+export const chipCountBadgeClassName = classNames(
+  'tw:ml-1.5 tw:inline-flex tw:h-[18px] tw:min-w-[18px] tw:shrink-0',
+  'tw:items-center tw:justify-center tw:rounded-full tw:bg-utility-brand-50',
+  'tw:px-[5px] tw:text-xs tw:font-medium tw:text-utility-brand-700 tw:tabular-nums'
+);

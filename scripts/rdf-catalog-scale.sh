@@ -42,8 +42,7 @@ fi
   "-DrdfLineageEdgeBatchSize=${RDF_SCALE_LINEAGE_EDGE_BATCH_SIZE:-1000}" \
   "-DrdfAppendPayloadBytes=${RDF_SCALE_APPEND_PAYLOAD_BYTES:-16777216}" \
   "-DrdfAppendEntityBatchSize=${RDF_SCALE_APPEND_ENTITY_BATCH_SIZE:-1000}" \
-  "-DrdfScalePartitionSize=${RDF_SCALE_PARTITION_SIZE:-10000}" \
-  "-DrdfScaleProducerThreads=${RDF_SCALE_PRODUCER_THREADS:-2}" \
+  "-DrdfScaleProducerThreads=${RDF_SCALE_PRODUCER_THREADS:-4}" \
   "-DrdfScaleOutput=$rdf_scale_output" \
   "-DrdfScaleCommit=$(git rev-parse HEAD)" \
   "-DrdfContainerImage=$rdf_scale_image" -DrdfContainerTmpfs=false -DrdfContainerStablePort=true \

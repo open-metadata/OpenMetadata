@@ -14,8 +14,8 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { EntityType } from '../../../enums/entity.enum';
 import { DataType, ModelType } from '../../../generated/entity/data/table';
 import { useLineageStore } from '../../../hooks/useLineageStore';
+import { LineageNodeType } from '../../../interface/lineage.interface';
 import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
-import { LineageNodeType } from '../../Lineage/Lineage.interface';
 import LineageNodeLabelV1 from './LineageNodeLabelV1';
 
 jest.mock('../../../hooks/useLineageStore', () => ({

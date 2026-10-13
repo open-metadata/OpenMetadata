@@ -71,7 +71,18 @@ async function parseSchema(filePath, destPath, shouldDereference = false) {
     }
     const api = await parser.bundle(parsedSchema);
     const dirname = `${cwd}/${path.dirname(destPath)}`;
-    const updatedAPIWithoutID = removeObjectByKey(api, '$id');
+    // `$id` and `$schema` are stripped for the same reason: what lands here is a
+    // dereferenced bundle, not the spec document it came from. Its `$id` no longer
+    // addresses anything, and a nested `$schema` is not even a keyword position.
+    // `$schema` matters more than tidiness though -- these bundles are fed to
+    // @rjsf/validator-ajv8, whose Ajv only carries the draft-07 meta-schema, and Ajv
+    // fails closed on a dialect it does not know: one `no schema with key or ref ...`
+    // error and every field silently stops being validated. Dropping the declaration
+    // keeps Ajv on its default dialect, which is what these forms have always used.
+    const updatedAPIWithoutID = removeObjectByKey(
+      removeObjectByKey(api, '$id'),
+      '$schema'
+    );
 
     if (!fs.existsSync(dirname)) {
       try {
@@ -176,8 +187,12 @@ async function parseApplicationSchemas() {
         let parsedSchema = await parser.parse(file);
         parsedSchema = await parser.dereference(parsedSchema);
 
-        // Remove $id fields
-        const updatedSchema = removeObjectByKey(parsedSchema, '$id');
+        // Same as parseSchema above: dereferenced output, so `$id` no longer
+        // addresses anything and `$schema` would put Ajv on a dialect it cannot load.
+        const updatedSchema = removeObjectByKey(
+          removeObjectByKey(parsedSchema, '$id'),
+          '$schema'
+        );
 
         // Change back to original directory
         process.chdir(originalCwd);

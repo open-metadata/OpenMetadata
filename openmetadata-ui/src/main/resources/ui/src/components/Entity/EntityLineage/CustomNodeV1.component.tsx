@@ -25,7 +25,6 @@ import { useTranslation } from 'react-i18next';
 import { Handle, NodeProps, Position } from 'reactflow';
 import { ReactComponent as ZoomInIcon } from '../../../assets/svg/ic-zoom-in.svg';
 import { NODE_WIDTH } from '../../../constants/Lineage.constants';
-import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import {
@@ -33,6 +32,7 @@ import {
   LineageSceneNode,
 } from '../../../generated/api/lineage/lineageScene';
 import { useLineageStore } from '../../../hooks/useLineageStore';
+import { useLineageHandlers } from '../../Lineage/Lineage/LineageHandlersContext';
 import LineageNodeRemoveButton from '../../Lineage/LineageNodeRemoveButton';
 import './custom-node.less';
 import {
@@ -183,7 +183,8 @@ const SceneDrillButton = ({
     <Tooltip title={drillLabel}>
       <Button
         aria-label={drillLabel}
-        className="lineage-scene-drill-button nodrag nopan"
+        // Less paints the static light brand tint (@primary-1) in every state.
+        className="lineage-scene-drill-button nodrag nopan tw:dark:bg-brand-primary!"
         color="tertiary"
         iconLeading={ZoomInIcon}
         size="sm"
@@ -199,12 +200,9 @@ const SceneDrillButton = ({
 const CustomNodeV1 = (props: NodeProps) => {
   const { data, type, isConnectable } = props;
 
-  const {
-    onNodeCollapse,
-    removeNodeHandler,
-    loadChildNodesHandler,
-    dataQualityLineage,
-  } = useLineageProvider();
+  const { onNodeCollapse, removeNodeHandler, loadChildNodesHandler } =
+    useLineageHandlers();
+  const dataQualityLineage = useLineageStore((s) => s.dataQualityLineage);
 
   const {
     isEditMode,
@@ -276,7 +274,7 @@ const CustomNodeV1 = (props: NodeProps) => {
     return () => {
       setNodeFilterState(node.id, false);
     };
-  }, [isColumnLevelLineage]);
+  }, [isColumnLevelLineage, node.id, setNodeFilterState]);
 
   const showDqTracing = useMemo(
     () =>
@@ -295,7 +293,7 @@ const CustomNodeV1 = (props: NodeProps) => {
     }),
     {
       'lineage-scene-node': Boolean(sceneNode),
-      'lineage-scene-layer-node':
+      'lineage-scene-layer-node tw:bg-surface':
         Boolean(sceneNode) && sceneBand === LineageBand.Layer,
     }
   );
@@ -448,7 +446,7 @@ const CustomNodeV1 = (props: NodeProps) => {
       data-testid={`lineage-node-${fullyQualifiedName}`}
       style={{ width: nodeWidth }}>
       {isRootNode && (
-        <div className="lineage-node-badge-container">
+        <div className="lineage-node-badge-container tw:bg-surface">
           <div className="lineage-node-badge" />
         </div>
       )}
@@ -460,7 +458,7 @@ const CustomNodeV1 = (props: NodeProps) => {
             onDrill={onSceneDrill}
           />
         )}
-        <div className="label-container bg-white">{nodeLabel}</div>
+        <div className="label-container tw:bg-surface">{nodeLabel}</div>
         <NodeHandles
           expandCollapseHandles={handlesElement}
           id={id}

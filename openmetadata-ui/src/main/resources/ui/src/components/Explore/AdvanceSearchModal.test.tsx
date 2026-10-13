@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 import { Utils as QbUtils } from '@react-awesome-query-builder/ui';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { AdvancedSearchModal } from './AdvanceSearchModal.component';
 import { SearchOutputType } from './AdvanceSearchProvider/AdvanceSearchProvider.interface';
 
@@ -93,14 +99,19 @@ describe('AdvancedSearchModal', () => {
 
       fireEvent.click(screen.getAllByTestId('advanced-search-add-rule')[0]);
 
+      // Scoped to the modal because Playwright addresses the conjunction the
+      // same way — the builder has to stay *inside* the element carrying
+      // `advanced-search-modal`.
+      const modal = within(screen.getByTestId('advanced-search-modal'));
+
       await waitFor(() =>
         expect(
-          screen.getAllByTestId('advanced-search-conjunction-or').length
+          modal.getAllByTestId('advanced-search-conjunction-or').length
         ).toBeGreaterThan(0)
       );
 
       expect(
-        screen.getAllByTestId('advanced-search-conjunction-and').length
+        modal.getAllByTestId('advanced-search-conjunction-and').length
       ).toBeGreaterThan(0);
     });
 

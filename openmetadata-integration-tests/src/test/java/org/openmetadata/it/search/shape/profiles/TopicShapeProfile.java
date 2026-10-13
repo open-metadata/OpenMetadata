@@ -34,7 +34,7 @@ public final class TopicShapeProfile implements EntityShapeProfile {
   }
 
   @Override
-  public EntityInterface minimal(final ShapeContext ctx) {
+  public EntityInterface<?> minimal(final ShapeContext ctx) {
     return new Topic()
         .withId(ctx.id())
         .withName("topic")
@@ -49,7 +49,7 @@ public final class TopicShapeProfile implements EntityShapeProfile {
         .build();
   }
 
-  private EntityInterface fields(final EntityInterface entity, final Rung rung) {
+  private EntityInterface<?> fields(final EntityInterface<?> entity, final Rung rung) {
     final Topic topic = (Topic) entity;
     final List<Field> fields = new ArrayList<>(rung.magnitude());
     for (int i = 0; i < rung.magnitude(); i++) {

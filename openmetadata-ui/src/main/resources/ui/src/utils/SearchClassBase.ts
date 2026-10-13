@@ -13,7 +13,6 @@
 import { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import type { ComponentType } from 'react';
 import type { DataAssetSummaryPanelProps } from '../components/DataAssetSummaryPanelV1/DataAssetSummaryPanelV1.interface';
-import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
 import { ExploreTreeNode } from '../components/Explore/ExploreTree/ExploreTree.interface';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import {
@@ -37,6 +36,7 @@ import {
 import { ENTITY_ICON_MAPPER } from '../constants/Assets.constants';
 import {
   columnSortingFields,
+  DISPLAY_NAME_KEYWORD_FIELD,
   entitySortingFields,
   INITIAL_SORT_FIELD,
   tableSortingFields,
@@ -52,6 +52,7 @@ import { ExplorePageTabs } from '../enums/Explore.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { QuickLink } from '../generated/api/data/createPage';
 import { TestSuite } from '../generated/tests/testCase';
+import { ExploreSearchIndex } from '../interface/discovery/explore.interface';
 import { PageType } from '../interface/knowledge-center.interface';
 import {
   KnowledgePageSearchSource,
@@ -489,7 +490,9 @@ class SearchClassBase {
       [SearchIndex.COLUMN]: {
         label: t('label.column-plural'),
         sortingFields: columnSortingFields,
-        sortField: INITIAL_SORT_FIELD,
+        // The Columns tab has no popularity (totalVotes) option, so it defaults to
+        // name, a member of columnSortingFields, to avoid a blank sort dropdown label.
+        sortField: DISPLAY_NAME_KEYWORD_FIELD,
         path: ExplorePageTabs.COLUMNS,
         icon: ENTITY_ICON_MAPPER[EntityType.TABLE_COLUMN].icon,
         iconClassName: TEXT_QUATERNARY_CLASS,

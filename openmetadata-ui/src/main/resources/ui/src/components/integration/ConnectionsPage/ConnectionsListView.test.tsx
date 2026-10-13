@@ -56,7 +56,7 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-jest.mock('@untitledui/icons', () => {
+jest.mock('@openmetadata/ui-core-components/icons', () => {
   const Icon = () => <svg />;
 
   // A Proxy rather than a fixed list: the nav rail and the empty-state config each pull their own
@@ -150,6 +150,23 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
+    // Mirrors the real shape: an avatar that is a link, plus inert placeholder text. With an
+    // all-inert mock a blanket stopPropagation and a targeted one look identical, which is how the
+    // row shipped with a dead owners column.
+    Owner: () => (
+      <span data-testid="owner-label">
+        <a data-testid="owner-link" href="/users/alice">
+          alice
+        </a>
+        <span data-testid="owner-placeholder">No Owners</span>
+      </span>
+    ),
+    // The component maps API refs through the real conversion helper (re-exported from
+    // core-components) before handing them to the mocked Owner, so keep the real functions.
+    toOwnerRef: jest.requireActual('@openmetadata/ui-core-components')
+      .toOwnerRef,
+    toOwnerRefs: jest.requireActual('@openmetadata/ui-core-components')
+      .toOwnerRefs,
     // `onPress` is react-aria's activation handler; jsdom only fires DOM events, so it is mapped
     // onto onClick here. Without that, a button wired with onPress looks present but inert.
     Button: ({
@@ -252,6 +269,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
       <span className="tw:animate-pulse" data-testid="count-skeleton" />
     ),
     Table,
+    // Renders only its children (the wrapped name), not the `title`, so the name
+    // appears once — the row itself carries navigation via onAction.
+    Tooltip: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
     // Forwards data-testid: the page title and subtitle are Typography, and dropping it let
     // assertions naming them pass without ever finding an element.
     Typography: ({
@@ -321,20 +341,6 @@ jest.mock('./ConnectionsFilterButton', () => ({
   },
 }));
 
-jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
-  // Mirrors the real shape: an avatar that is a link, plus inert placeholder text. With an
-  // all-inert mock a blanket stopPropagation and a targeted one look identical, which is how the
-  // row shipped with a dead owners column.
-  OwnerLabel: () => (
-    <span data-testid="owner-label">
-      <a data-testid="owner-link" href="/users/alice">
-        alice
-      </a>
-      <span data-testid="owner-placeholder">No Owners</span>
-    </span>
-  ),
-}));
-
 jest.mock('./ConnectionsPageSkeleton', () => ({
   __esModule: true,
   default: ({ variant }: { variant: string }) => (
@@ -380,6 +386,8 @@ jest.mock('../../../utils/PermissionsUtils', () => ({
 // `canCreateAnyServiceCategory` mirrors the real implementation (any category is enough) so the
 // All-tab permission cases exercise the same rule through the mocked checkPermission.
 jest.mock('../../../utils/ServicePureUtils', () => ({
+  getServiceCategoryLabel: jest.requireActual('../../../utils/ServicePureUtils')
+    .getServiceCategoryLabel,
   getResourceEntityFromServiceCategory: (category: string) => category,
   canCreateAnyServiceCategory: (permissions: unknown) =>
     Object.values(
@@ -594,7 +602,7 @@ describe('ConnectionsListView', () => {
       />
     );
 
-    expect(screen.getByText('label.database-service (24)')).toBeInTheDocument();
+    expect(screen.getByText('label.database-plural (24)')).toBeInTheDocument();
     expect(
       screen.getByTestId(`connections-nav-${ServiceCategory.DATABASE_SERVICES}`)
     ).toHaveTextContent('24');
@@ -835,7 +843,7 @@ describe('ConnectionsListView', () => {
       />
     );
 
-    expect(screen.getByText('label.database-service (3)')).toBeInTheDocument();
+    expect(screen.getByText('label.database-plural (3)')).toBeInTheDocument();
     expect(
       screen.getByTestId(`connections-nav-${ServiceCategory.DATABASE_SERVICES}`)
     ).toHaveTextContent('24');

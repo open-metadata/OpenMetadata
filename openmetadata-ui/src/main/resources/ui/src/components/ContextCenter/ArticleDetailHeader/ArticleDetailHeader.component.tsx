@@ -19,6 +19,7 @@ import {
   Card,
   Dot,
   Dropdown,
+  Owner,
   PageLayout,
   Skeleton,
   Tabs,
@@ -26,7 +27,7 @@ import {
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { UploadCloud01 } from '@untitledui/icons';
+import { UploadCloud01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { cloneDeep, isUndefined, toString, uniqBy } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';
@@ -51,7 +52,6 @@ import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.sv
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import Loader from '../../../components/common/Loader/Loader';
 import TabsLabel from '../../../components/common/TabsLabel/TabsLabel.component';
-import { QueryVoteType } from '../../../components/Database/TableQueries/TableQueries.interface';
 import { EntityStatusBadge } from '../../../components/Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -63,6 +63,7 @@ import { useIsAiMode } from '../../../hooks/useAppMode';
 import { useArticleDraftStore } from '../../../hooks/useArticleDraftStore';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
+import { QueryVoteType } from '../../../interface/entity/vote.interface';
 import {
   ContentChangeState,
   RecentlyViewedQuickLinks,
@@ -79,7 +80,6 @@ import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DomainSelectableList from '../../common/DomainSelectableList/DomainSelectableList.component';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
 import { ArticleDetailHeaderProps } from './ArticleDetailHeader.interface';
@@ -237,7 +237,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   );
 
   const handleDomainSave = useCallback(
-    async (selectedDomain: EntityReference | EntityReference[]) => {
+    async (selectedDomain: EntityReference | EntityReference[] | undefined) => {
       if (!knowledgePage || !onUpdate) {
         return;
       }
@@ -398,10 +398,9 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
 
           {owners.length > 0 ? (
             <div className="article-detail-owner-label">
-              <OwnerLabel
+              <Owner
                 hasPermission={false}
                 isCompactView={false}
-                multiple={{ user: true, team: true }}
                 owners={owners}
                 showLabel={false}
               />
@@ -450,10 +449,9 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                 </TooltipTrigger>
               </Tooltip>
               <div className="article-detail-owner-label tw:flex tw:items-center tw:gap-0.5">
-                <OwnerLabel
+                <Owner
                   hasPermission={false}
                   isCompactView={false}
-                  multiple={{ user: true, team: true }}
                   owners={editors}
                   showLabel={false}
                 />

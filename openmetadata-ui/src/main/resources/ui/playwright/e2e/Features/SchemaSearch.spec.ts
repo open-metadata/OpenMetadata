@@ -22,7 +22,7 @@ const table = new TableClass();
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-test.describe('Schema search', { tag: '@ingestion' }, () => {
+test.describe('Schema search', () => {
   test.beforeAll('Prerequisite', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
 
@@ -49,8 +49,13 @@ test.describe('Schema search', { tag: '@ingestion' }, () => {
 
     await servicesResponse;
 
-    const serviceName = table.serviceResponseData?.name ?? '';
+    const serviceName = table.serviceResponseData?.name;
     const schemaName = table.schemaResponseData?.name;
+    if (!serviceName || !schemaName) {
+      throw new Error(
+        'Schema search requires the created service and schema names'
+      );
+    }
 
     const searchServiceResponse = page.waitForResponse(
       '/api/v1/search/query?q=*'
@@ -83,6 +88,14 @@ test.describe('Schema search', { tag: '@ingestion' }, () => {
     await page.fill('[data-testid="searchbar"]', schemaName);
     await searchResponse;
 
-    await expect(page.getByTestId('database-databaseSchemas')).toBeVisible();
+    await expect(
+      page
+        .getByTestId('database-databaseSchemas')
+        .getByTestId('column-display-name')
+        .getByRole('link', {
+          name: table.schemaResponseData.displayName ?? schemaName,
+          exact: true,
+        })
+    ).toBeVisible();
   });
 });

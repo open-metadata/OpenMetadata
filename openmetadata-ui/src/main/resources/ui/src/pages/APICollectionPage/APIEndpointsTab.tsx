@@ -11,9 +11,12 @@
  *  limitations under the License.
  */
 
-import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import {
+  EmptyPlaceholder,
+  Toggle,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Assets, NoSearch } from '@openmetadata/ui-core-components/icons';
-import { Switch, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
@@ -47,10 +50,12 @@ import {
 import { searchQuery } from '../../rest/searchAPI';
 import { buildSchemaQueryFilter } from '../../utils/DatabaseSchemaDetailsUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
-import { highlightSearchText } from '../../utils/EntitySearchUtils';
+import {
+  highlightSearchText,
+  renderHighlightedText,
+} from '../../utils/EntitySearchUtils';
 import { getColumnSorter } from '../../utils/EntitySortUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { stringToHTML } from '../../utils/StringUtils';
 import { descriptionTableObject } from '../../utils/TableColumn.util';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -173,7 +178,7 @@ function APIEndpointsTab({
                   EntityType.API_ENDPOINT,
                   record.fullyQualifiedName as string
                 )}>
-                {stringToHTML(
+                {renderHighlightedText(
                   highlightSearchText(getEntityName(record), searchValue)
                 )}
               </Link>
@@ -187,7 +192,11 @@ function APIEndpointsTab({
         key: TABLE_COLUMNS_KEYS.REQUEST_METHOD,
 
         render: (requestMethod: APIEndpoint['requestMethod']) => {
-          return <Typography.Text>{requestMethod ?? NO_DATA}</Typography.Text>;
+          return (
+            <Typography className="tw:text-primary">
+              {requestMethod ?? NO_DATA}
+            </Typography>
+          );
         },
       },
       ...descriptionTableObject(),
@@ -289,15 +298,13 @@ function APIEndpointsTab({
       defaultVisibleColumns={DEFAULT_API_ENDPOINT_TAB_VISIBLE_COLUMNS}
       extraTableFilters={
         !isVersionView && (
-          <span>
-            <Switch
-              checked={filters.showDeletedEndpoints}
+          <span className="tw:inline-flex tw:items-center">
+            <Toggle
               data-testid="show-deleted"
-              onClick={handleDeleteAction}
+              isSelected={filters.showDeletedEndpoints}
+              onChange={handleDeleteAction}
             />
-            <Typography.Text className="m-l-xs">
-              {t('label.deleted')}
-            </Typography.Text>{' '}
+            <Typography className="m-l-xs">{t('label.deleted')}</Typography>{' '}
           </span>
         )
       }

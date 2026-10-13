@@ -68,6 +68,10 @@ test.describe('Bulk Re-Deploy pipelines ', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
    * and verifies success confirmation.
    */
   test('Re-deploy all test-suite ingestion pipelines', async ({ page }) => {
+    // Each deploy blocks until Airflow registers the DAG (up to 60s), so the
+    // default 60s test budget cannot hold the setup plus the deploy wait.
+    test.slow();
+
     await settingClick(page, GlobalSettingOptions.DATA_OBSERVABILITY);
 
     // usePaging seeds pageSize from the URL on first render, so widening the page is a
@@ -134,7 +138,8 @@ test.describe('Bulk Re-Deploy pipelines ', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       await expect
         .poll(() => Object.keys(deployStatuses).length, {
           message: 'Wait for every selected pipeline to report a deploy result',
-          timeout: 30_000,
+          // Airflow's deploy waits up to 60s for DAG registration before it answers.
+          timeout: 90_000,
         })
         .toBe(pipelines.length);
 

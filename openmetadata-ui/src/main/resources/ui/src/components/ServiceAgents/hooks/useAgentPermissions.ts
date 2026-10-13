@@ -12,7 +12,7 @@
  */
 
 import { useMemo } from 'react';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { useBulkEntityPermissions } from '../../../hooks/useEntityPermissions/useBulkEntityPermissions';
 import { AgentActionPermissions } from '../AgentsPage.interface';

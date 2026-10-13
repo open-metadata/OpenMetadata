@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,16 +11,27 @@
  *  limitations under the License.
  */
 
-import { CloseOutlined } from '@ant-design/icons';
-import { Button, Drawer, Space, Tooltip, Typography } from 'antd';
+import {
+  Box,
+  Button,
+  FeaturedIcon,
+  SlideoutMenu,
+  Tabs,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Announcement02 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { Operation } from 'fast-json-patch';
-import { FC, useCallback, useState } from 'react';
+import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { AnnouncementStatus } from '../../../../generated/entity/feed/announcement';
 import {
   deleteAnnouncement,
   patchAnnouncement,
 } from '../../../../rest/announcementsAPI';
+import { ANNOUNCEMENT_STATUS_LABEL_KEYS } from '../../../../utils/AnnouncementsUtils';
 import { getEntityFeedLink } from '../../../../utils/EntityPureUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import AnnouncementThreadBody from '../../../Announcement/AnnouncementThreadBody.component';
@@ -34,6 +45,14 @@ interface Props {
   onClose: () => void;
 }
 
+const ALL_TAB = 'all';
+
+const STATUS_TABS = [
+  AnnouncementStatus.Active,
+  AnnouncementStatus.Expired,
+  AnnouncementStatus.Scheduled,
+];
+
 const AnnouncementDrawer: FC<Props> = ({
   open,
   onClose,
@@ -45,18 +64,12 @@ const AnnouncementDrawer: FC<Props> = ({
   const [isAddAnnouncementOpen, setIsAddAnnouncementOpen] =
     useState<boolean>(false);
   const [refetchThread, setRefetchThread] = useState<boolean>(false);
+  const [activeTab, setActiveTab] = useState<string>(ALL_TAB);
 
-  const title = (
-    <Space
-      align="start"
-      className="justify-between"
-      data-testid="title"
-      style={{ width: '100%' }}>
-      <Typography.Text className="font-medium break-all">
-        {t('label.announcement-plural')}
-      </Typography.Text>
-      <CloseOutlined data-testid="announcement-close" onClick={onClose} />
-    </Space>
+  const statusFilter = useMemo(
+    () =>
+      activeTab === ALL_TAB ? undefined : (activeTab as AnnouncementStatus),
+    [activeTab]
   );
 
   const deletePostHandler = async (announcementId: string): Promise<void> => {
@@ -94,48 +107,139 @@ const AnnouncementDrawer: FC<Props> = ({
   const handleSaveAnnouncement = useCallback(() => {
     handleCloseAnnouncementModal();
     setRefetchThread((prev) => !prev);
-  }, []);
+  }, [handleCloseAnnouncementModal]);
+
+  const title = (
+    <Box align="start" className="tw:w-full tw:gap-3" data-testid="title">
+      {/* The same framed icon the add/edit dialog puts in its header, so the
+          two headers read as one component. */}
+      <FeaturedIcon
+        color="gray"
+        icon={Announcement02}
+        size="md"
+        theme="modern"
+      />
+      <Box className="tw:min-w-0 tw:flex-1 tw:gap-0.5" direction="col">
+        <Typography
+          as="span"
+          className="tw:text-primary"
+          size="text-md"
+          weight="semibold">
+          {t('label.announcement-plural')}
+        </Typography>
+        <Typography as="span" className="tw:text-secondary" size="text-xs">
+          {t('message.view-edit-and-schedule-announcements')}
+        </Typography>
+      </Box>
+
+      {/* Suppressed via `isDisabled`, not by blanking the title: an empty
+          title still renders the bubble, which shows up as a small black dot
+          next to the button. */}
+      <Tooltip
+        isDisabled={createPermission}
+        title={t('message.no-permission-to-view')}>
+        <Button
+          data-testid="add-announcement"
+          isDisabled={!createPermission}
+          size="sm"
+          onClick={handleOpenAnnouncementModal}>
+          {t('label.add-entity', { entity: t('label.announcement') })}
+        </Button>
+      </Tooltip>
+    </Box>
+  );
 
   return (
-    <Drawer
-      closable={false}
+    <SlideoutMenu
+      isDismissable
+      /* The library's slideout overlay carries no z-index, so it paints under
+         any app chrome that has one — the fixed nav rail and the docked
+         assistant bar sat on top of the scrim. Stacked at the call site, as
+         `RunHistoryDrawer`, `TagFormDrawer` and `WorkflowsPage` each do; `50`
+         is the value core's own `Modal` overlay uses, and the dialog this
+         drawer opens dims the same chrome correctly with it. */
+      className="tw:z-50"
       data-testid="announcement-drawer"
-      open={open}
-      placement="right"
-      title={title}
+      isOpen={open}
       width={576}
-      onClose={onClose}>
-      <div className="d-flex justify-end">
-        <Tooltip
-          title={!createPermission && t('message.no-permission-to-view')}>
-          <Button
-            data-testid="add-announcement"
-            disabled={!createPermission}
-            type="primary"
-            onClick={handleOpenAnnouncementModal}>
-            {t('label.add-entity', { entity: t('label.announcement') })}
-          </Button>
-        </Tooltip>
-      </div>
+      onOpenChange={(isOpen) => {
+        if (!isOpen) {
+          onClose();
+        }
+      }}>
+      {/* The close button is absolutely positioned at `right-3` and is 40px
+          wide, so the header has to reserve ~52px. It must be reserved at the
+          `md` breakpoint too: core sets `tw:md:px-6`, and a media-query rule
+          beats an unprefixed `tw:pr-*` regardless of class order — which is
+          why an unprefixed reserve silently collapses to 24px on desktop and
+          the close button sits on top of Add Announcement. */}
+      <SlideoutMenu.Header
+        className="tw:border-b tw:border-subtle tw:pr-16 tw:pb-5 tw:md:pr-16"
+        onClose={onClose}>
+        {title}
+      </SlideoutMenu.Header>
 
-      <AnnouncementThreadBody
-        deleteAnnouncementHandler={deletePostHandler}
-        editPermission={createPermission}
-        refetchThread={refetchThread}
-        threadLink={getEntityFeedLink(entityType, entityFQN)}
-        updateAnnouncementHandler={updateThreadHandler}
-      />
+      <SlideoutMenu.Content className="tw:gap-4 tw:pb-6">
+        {/* A real tab list, not toggle buttons: these switch which
+            announcements the body below shows, which is what `role="tab"`
+            means, and core's `Tabs` brings the arrow-key navigation and
+            roving tab stop with it. `button-brand` already carries the frame's
+            selected colours — brand fill, brand label — so only the pill shape
+            and the edge are added per item, with the resting grey fill and the
+            darker resting label. The edge is a `border` rather than an
+            `outline` because a `Tab` reserves its outline for the focus ring.
+            Test ids are keyed on the status value, not the label, since
+            `Expired` is shown as "In-Active". */}
+        <Tabs
+          className="tw:w-auto"
+          data-testid="announcement-status-tabs"
+          selectedKey={activeTab}
+          onSelectionChange={(key) => setActiveTab(String(key))}>
+          <Tabs.List className="tw:flex-wrap tw:gap-2" size="sm">
+            {[ALL_TAB, ...STATUS_TABS].map((status) => (
+              <Tabs.Item
+                className={({ isHovered, isSelected }) =>
+                  classNames('tw:rounded-lg tw:border', {
+                    'tw:border-brand-subtle': isSelected || isHovered,
+                    'tw:border-secondary tw:bg-secondary tw:text-secondary':
+                      !isSelected && !isHovered,
+                  })
+                }
+                data-testid={`announcement-status-${status}`}
+                id={status}
+                key={status}>
+                {status === ALL_TAB
+                  ? t('label.all')
+                  : t(
+                      ANNOUNCEMENT_STATUS_LABEL_KEYS[
+                        status as AnnouncementStatus
+                      ]
+                    )}
+              </Tabs.Item>
+            ))}
+          </Tabs.List>
+        </Tabs>
 
-      {isAddAnnouncementOpen && (
-        <AddAnnouncementModal
-          entityFQN={entityFQN || ''}
-          entityType={entityType || ''}
-          open={isAddAnnouncementOpen}
-          onCancel={handleCloseAnnouncementModal}
-          onSave={handleSaveAnnouncement}
+        <AnnouncementThreadBody
+          deleteAnnouncementHandler={deletePostHandler}
+          editPermission={createPermission}
+          refetchThread={refetchThread}
+          statusFilter={statusFilter}
+          threadLink={getEntityFeedLink(entityType, entityFQN)}
+          updateAnnouncementHandler={updateThreadHandler}
         />
-      )}
-    </Drawer>
+
+        {isAddAnnouncementOpen && (
+          <AddAnnouncementModal
+            entityFQN={entityFQN || ''}
+            entityType={entityType || ''}
+            open={isAddAnnouncementOpen}
+            onCancel={handleCloseAnnouncementModal}
+            onSave={handleSaveAnnouncement}
+          />
+        )}
+      </SlideoutMenu.Content>
+    </SlideoutMenu>
   );
 };
 

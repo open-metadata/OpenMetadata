@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
 import {
   Accordion,
   AccordionHeader,
@@ -21,6 +20,7 @@ import {
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import React, {
   forwardRef,
@@ -34,6 +34,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactFlowProvider } from 'reactflow';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/ic-no-records.svg';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { AssetsOfEntity } from '../../../enums/Assets.enum';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
@@ -44,14 +45,14 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import { AssetSelectionDrawer } from '../../DataAssets/AssetsSelectionModal/AssetSelectionDrawer';
-import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import {
   InputOutputPortsTabProps,
   InputOutputPortsTabRef,
 } from './InputOutputPortsTab.types';
-import { PortsLineageView } from './PortsLineageView';
-import { PortsListView, PortsListViewRef } from './PortsListView';
+import PortsLineageView from './PortsLineageView/PortsLineageView.component';
+import PortsListView from './PortsListView/PortsListView.component';
+import { PortsListViewRef } from './PortsListView/PortsListView.types';
 
 interface LineageAccordionSectionProps {
   isLineageExpanded: boolean;
@@ -194,7 +195,7 @@ const InputPortsAccordionSection = ({
                 <Button
                   color="link-color"
                   data-testid="add-input-port-button"
-                  iconLeading={<PlusOutlined />}
+                  iconLeading={Plus}
                   size="sm"
                   onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                     e.stopPropagation();
@@ -228,7 +229,7 @@ const InputPortsAccordionSection = ({
                       className="tw:mt-2"
                       color="primary"
                       data-testid="add-input-port-button"
-                      iconLeading={<PlusOutlined />}
+                      iconLeading={Plus}
                       onClick={onAddInputPort}>
                       {t('label.add-entity', {
                         entity: t('label.entity-port-plural', {
@@ -318,7 +319,7 @@ const OutputPortsAccordionSection = ({
                 <Button
                   color="link-color"
                   data-testid="add-output-port-button"
-                  iconLeading={<PlusOutlined />}
+                  iconLeading={Plus}
                   size="sm"
                   onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                     e.stopPropagation();
@@ -352,7 +353,7 @@ const OutputPortsAccordionSection = ({
                       className="tw:mt-2"
                       color="primary"
                       data-testid="add-output-port-button"
-                      iconLeading={<PlusOutlined />}
+                      iconLeading={Plus}
                       onClick={onAddOutputPort}>
                       {t('label.add-entity', {
                         entity: t('label.entity-port-plural', {

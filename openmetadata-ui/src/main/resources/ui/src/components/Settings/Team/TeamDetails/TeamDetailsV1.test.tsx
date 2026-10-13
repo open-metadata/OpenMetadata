@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Team, TeamType } from '../../../../generated/entity/teams/team';
@@ -31,8 +31,11 @@ jest.mock('../../../../hooks/authHooks', () => ({
   useAuth: () => ({ isAdminUser: true }),
 }));
 
+let mockCurrentUser: { id: string; teams?: { id: string }[] } = {
+  id: 'admin-id',
+};
 jest.mock('../../../../hooks/useApplicationStore', () => ({
-  useApplicationStore: () => ({ currentUser: { id: 'admin-id' } }),
+  useApplicationStore: () => ({ currentUser: mockCurrentUser }),
 }));
 
 let mockLocationSearch = '';
@@ -115,7 +118,17 @@ jest.mock('./RolesAndPoliciesList', () =>
   jest.fn().mockImplementation(() => <div>ListEntities</div>)
 );
 jest.mock('./TeamHierarchy', () =>
-  jest.fn().mockImplementation(() => <div>TeamHierarchy</div>)
+  jest
+    .fn()
+    .mockImplementation(
+      ({ handleTeamSearch }: { handleTeamSearch?: (v: string) => void }) => (
+        <button
+          data-testid="team-search-trigger"
+          onClick={() => handleTeamSearch?.('om')}>
+          TeamHierarchy
+        </button>
+      )
+    )
 );
 jest.mock('./UserTab/UserTab.component', () => ({
   UserTab: jest.fn().mockImplementation(() => <div>UserTab</div>),
@@ -202,6 +215,31 @@ describe('TeamDetailsV1 Import/Export permission gating', () => {
 
     expect(await screen.findByTestId('export-button')).toBeInTheDocument();
     expect(screen.queryByTestId('import-button')).not.toBeInTheDocument();
+  });
+});
+
+describe('TeamDetailsV1 Teams-tab search scoping', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('scopes the Teams-tab search to the current team child teams', async () => {
+    mockGetTabs.mockReturnValue([
+      { name: 'label.team-plural', key: TeamsPageTab.TEAMS },
+    ]);
+    const { searchQuery } = jest.requireMock('../../../../rest/searchAPI');
+    renderComponent({ childTeams: [ORGANIZATION_TEAM] });
+
+    fireEvent.click(await screen.findByTestId('team-search-trigger'));
+
+    await waitFor(() => expect(searchQuery).toHaveBeenCalled());
+    const queryFilter = JSON.stringify(
+      searchQuery.mock.calls[0][0].queryFilter
+    );
+
+    // Scoped to child teams of the current team (parents.id), not a global team search.
+    expect(queryFilter).toContain('parents.id');
+    expect(queryFilter).toContain('org-id');
   });
 });
 
@@ -396,6 +434,29 @@ describe('TeamDetailsV1 rolesTabRender/policiesTabRender permission gate (ungate
 
     expect(
       await screen.findByTestId('permission-error-placeholder')
+    ).toBeInTheDocument();
+  });
+});
+
+describe('TeamDetailsV1 leave team', () => {
+  afterEach(() => {
+    mockCurrentUser = { id: 'admin-id' };
+  });
+
+  it('opens the leave confirmation before the team users have loaded', async () => {
+    const groupTeam = {
+      ...NON_ORG_TEAM,
+      teamType: TeamType.Group,
+      users: undefined,
+    } as unknown as Team;
+    mockCurrentUser = { id: 'admin-id', teams: [{ id: groupTeam.id }] };
+
+    renderComponent({ currentTeam: groupTeam });
+
+    fireEvent.click(await screen.findByTestId('leave-team-button'));
+
+    expect(
+      await screen.findByText('message.are-you-sure-want-to-text')
     ).toBeInTheDocument();
   });
 });

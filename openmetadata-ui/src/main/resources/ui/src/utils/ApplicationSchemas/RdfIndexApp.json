@@ -99,41 +99,12 @@
       "minimum": 1
     },
     "producerThreads": {
-      "title": "Producer Threads",
-      "description": "Number of producer threads to use for non-distributed RDF indexing.",
+      "title": "Number of Reader Threads",
+      "description": "Number of threads loading entities to index. Writes always go through one writer, because Fuseki accepts one write transaction at a time.",
       "type": "integer",
-      "default": 2,
+      "default": 4,
       "minimum": 1,
       "maximum": 10
-    },
-    "consumerThreads": {
-      "title": "Consumer Threads",
-      "description": "Number of consumer threads to use for non-distributed RDF indexing.",
-      "type": "integer",
-      "default": 3,
-      "minimum": 1,
-      "maximum": 5
-    },
-    "queueSize": {
-      "title": "Queue Size",
-      "description": "Internal queue size for non-distributed RDF indexing.",
-      "type": "integer",
-      "default": 5000,
-      "minimum": 1
-    },
-    "useDistributedIndexing": {
-      "title": "Use Distributed Indexing",
-      "description": "Enable distributed RDF indexing with partition coordination and recovery.",
-      "type": "boolean",
-      "default": true
-    },
-    "partitionSize": {
-      "title": "Partition Size",
-      "description": "Number of entities per partition for distributed RDF indexing.",
-      "type": "integer",
-      "default": 10000,
-      "minimum": 1000,
-      "maximum": 50000
     },
     "blueGreenRebuild": {
       "title": "Blue/Green Rebuild",

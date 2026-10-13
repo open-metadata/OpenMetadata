@@ -18,7 +18,7 @@ import {
   Divider,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { UserCheck01 } from '@untitledui/icons';
+import { UserCheck01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

@@ -798,6 +798,15 @@ class LineageSceneResolverTest {
     Map<String, Object> entity = table(ORDERS, SNOWFLAKE_SERVICE, List.of("id"));
     entity.put("owners", List.of(ref(Entity.USER, "owner", "owner")));
     entity.put("upstreamLineage", List.of(Map.of("docId", "edge-id")));
+    // Simulates an unfiltered platform-lineage document: the full dataModel carries SQL and
+    // columns that must never reach an asset-band node payload.
+    entity.put(
+        "dataModel",
+        Map.of(
+            "modelType", "DBT",
+            "resourceType", "model",
+            "sql", "select * from raw.orders",
+            "columns", List.of(Map.of("name", "id"))));
 
     Map<String, Object> assetPayload =
         LineageSceneMapper.trimSourceEntity(entity, LineageBand.ASSET);
@@ -808,7 +817,13 @@ class LineageSceneResolverTest {
     assertFalse(assetPayload.containsKey("columns"));
     assertFalse(assetPayload.containsKey("owners"));
     assertFalse(assetPayload.containsKey("upstreamLineage"));
+    // The dbt marker must survive asset-band trimming — the UI's lineage dbt icon reads it —
+    // but only the granted sub-fields, even when the source document was not ES-filtered.
+    assertEquals(
+        Map.of("modelType", "DBT", "resourceType", "model"), assetPayload.get("dataModel"));
     assertTrue(fieldPayload.containsKey("columns"));
+    // The field band grants the whole dataModel (its columns feed the field index).
+    assertEquals(entity.get("dataModel"), fieldPayload.get("dataModel"));
     assertFalse(fieldPayload.containsKey("upstreamLineage"));
   }
 

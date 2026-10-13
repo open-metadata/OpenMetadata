@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { expect, Locator, Page } from '@playwright/test';
-import { clickOutside } from './common';
 import { getEncodedFqn } from './entity';
+import { waitForAggregation } from './searchAggregation';
 
 type EntityFields = {
   id: string;
@@ -170,7 +170,7 @@ export const showAdvancedSearchDialog = async (page: Page) => {
   await page.getByRole('button', { name: 'Tools' }).click();
   await page.getByRole('menuitemradio', { name: 'Advanced Search' }).click();
 
-  await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+  await expect(page.getByTestId('advanced-search-modal')).toBeVisible();
 };
 
 export const selectOption = async (
@@ -184,7 +184,9 @@ export const selectOption = async (
     'button[aria-haspopup="listbox"]'
   );
 
-  await expect(comboboxInput.or(triggerButton).first()).toBeVisible();
+  await expect(
+    comboboxInput.or(triggerButton).filter({ visible: true })
+  ).not.toHaveCount(0);
 
   if (isSearchable) {
     if ((await triggerButton.count()) === 0) {
@@ -264,8 +266,8 @@ export const selectOption = async (
       .waitFor({ state: 'hidden', timeout: 2000 })
       .catch(async () => {
         // Blur the control — react-aria comboboxes close their popup when
-        // focus leaves. NEVER send Escape here: surrounding antd modals and
-        // forms handle Escape in the capture phase and dismiss themselves.
+        // focus leaves. NEVER send Escape here: the surrounding modals and
+        // forms handle Escape themselves and would dismiss.
         await control.blur({ timeout: 1000 }).catch(() => undefined);
         await openListbox
           .waitFor({ state: 'hidden', timeout: 1000 })
@@ -357,16 +359,14 @@ export const fillRule = async (
       await expect
         .poll(
           async () => {
+            const aggregation = waitForAggregation(
+              page,
+              { value: searchData },
+              { timeout: 5_000 }
+            ).catch(() => null);
             await dropdownInput.fill('');
             await dropdownInput.fill(searchData);
-
-            await page
-              .waitForResponse(
-                (response) =>
-                  response.url().includes('/api/v1/search/aggregate'),
-                { timeout: 5_000 }
-              )
-              .catch(() => null);
+            await aggregation;
 
             return countMatchingOptions();
           },
@@ -376,6 +376,17 @@ export const fillRule = async (
 
       const listboxId = await dropdownInput.getAttribute('aria-controls');
       const dropdown = page.locator(`[role="listbox"][id="${listboxId}"]`);
+
+      // One chip per committed value: counted before picking so the assertion
+      // below can prove this call added exactly one, and no more.
+      const multiSelect = ruleLocator.getByTestId(
+        'advanced-search-value-multiselect'
+      );
+      const selectedChips = multiSelect.getByTestId(
+        'autocomplete-selected-item'
+      );
+      const isMultiSelect = (await multiSelect.count()) > 0;
+      const chipsBefore = isMultiSelect ? await selectedChips.count() : 0;
 
       // Match on the option's value, not its label. Tag-like fields (Tier,
       // Tags, Certification) render the display name — `Tier1` — while the
@@ -405,9 +416,21 @@ export const fillRule = async (
             .click();
         }
       }
-    }
 
-    await clickOutside(page);
+      // Dismiss the popup: re-selecting the current value emits no selection
+      // change, so it can stay open and swallow the next interaction. Tab
+      // (not blur — the click left focus inside the listbox, so the input has
+      // none to lose) moves focus out and react-aria closes it. NEVER Escape:
+      // the modal handles it and would close the whole dialog.
+      await dropdownInput.press('Tab', { timeout: 5_000 });
+      await dropdown
+        .waitFor({ state: 'hidden', timeout: 5_000 })
+        .catch(() => undefined);
+
+      if (isMultiSelect) {
+        await expect(selectedChips).toHaveCount(chipsBefore + 1);
+      }
+    }
   }
 };
 

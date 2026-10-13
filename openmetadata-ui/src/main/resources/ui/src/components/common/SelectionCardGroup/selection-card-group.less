@@ -13,31 +13,8 @@
 @import (reference) '../../../styles/variables.less';
 
 .selection-card-group {
-  display: flex;
-  gap: @size-mlg;
   width: 100%;
-  // Without this the cards sit flush against their label. 6px matches every
-  // other field on the form, which gets it from the shared field wrapper's
-  // `tw:gap-[6px]` (core-components form-field.tsx). There is no 6px LESS
-  // variable — @size-xxs is 4px and @size-xs is 8px — so it is spelled out
-  // rather than rounded to a variable that would not line up.
-  margin-top: 6px;
-
-  // Icon above the text instead of beside it, so the label gets the card's full
-  // width. Opt-in via `layout="vertical"` — in a narrow column the horizontal
-  // default leaves the label ~60px and wraps it mid-phrase ("Table / Level").
-  .selection-card-vertical {
-    .selection-body {
-      flex-direction: column;
-      gap: @size-sm;
-    }
-
-    // The checkmark sits top-right against the icon rather than centred on a
-    // now-taller card.
-    .selection-content {
-      align-items: flex-start;
-    }
-  }
+  margin-top: var(--om-space-6);
 
   .selection-card {
     flex: 1;
@@ -45,8 +22,11 @@
     border-radius: @border-rad-xs;
     cursor: pointer;
     transition: all var(--om-duration-300) ease;
-    background: var(--tw-color-bg-primary);
+    background: var(--tw-color-bg-surface);
     position: relative;
+    // Core Card clips its content; the beta badge sits above the top edge.
+    overflow: visible;
+    padding: @size-md;
 
     .beta-badge {
       position: absolute;
@@ -55,83 +35,72 @@
       z-index: var(--om-z-1);
     }
 
-    .ant-card-body {
-      padding: @size-md;
+    .selection-content {
+      width: 100%;
 
-      .selection-content {
+      .selection-body {
+        min-width: 0;
+      }
+
+      .selection-icon {
         display: flex;
-        justify-content: space-between;
-        width: 100%;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background-color: @grey-100;
+        border: 6px solid @grey-50;
+        transition: all var(--om-duration-300) ease;
+        flex-shrink: 0;
 
-        // Replaces the previous `d-flex gap-3` utilities on this element so the
-        // icon/text arrangement can vary by layout. The horizontal default is
-        // byte-for-byte what those utilities produced.
-        .selection-body {
-          display: flex;
-          gap: var(--om-space-12);
-          min-width: 0;
+        svg {
+          width: @size-md;
+          height: @size-md;
+          color: @grey-600;
+        }
+      }
+
+      .selection-header {
+        flex: 1;
+      }
+
+      .selection-title {
+        color: @grey-700;
+        font-weight: @font-semibold;
+        line-height: 1.4;
+        margin-bottom: @size-xxs;
+      }
+
+      .selection-description {
+        color: @grey-600;
+        line-height: 1.4;
+      }
+
+      .custom-radio {
+        margin-left: @size-xxs;
+        flex-shrink: 0;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all var(--om-duration-300) ease;
+
+        &.unchecked {
+          border: 1px solid @grey-300;
+          background-color: var(--tw-color-bg-primary);
         }
 
-        .selection-icon {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 40px;
-          height: 40px;
-          border-radius: 50%;
-          background-color: @grey-100;
-          border: 6px solid @grey-50;
-          transition: all var(--om-duration-300) ease;
-          flex-shrink: 0;
+        &.checked {
+          background-color: @primary-color;
+          border: none;
+          color: var(--tw-color-text-white);
 
           svg {
-            width: @size-md;
-            height: @size-md;
-            color: @grey-600;
-          }
-        }
-
-        .selection-header {
-          flex: 1;
-        }
-
-        .selection-title {
-          color: @grey-700;
-          font-weight: @font-semibold;
-          line-height: 1.4;
-          margin-bottom: @size-xxs;
-        }
-
-        .selection-description {
-          color: @grey-600;
-          line-height: 1.4;
-        }
-
-        .custom-radio {
-          margin-left: @size-xxs;
-          flex-shrink: 0;
-          width: 16px;
-          height: 16px;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: all var(--om-duration-300) ease;
-
-          &.unchecked {
-            border: 1px solid @grey-300;
-            background-color: var(--tw-color-bg-primary);
-          }
-
-          &.checked {
-            background-color: @primary-color;
-            border: none;
-            color: var(--tw-color-text-white);
-
-            svg {
-              width: 10px;
-              height: 10px;
-            }
+            width: 10px;
+            height: 10px;
           }
         }
       }
@@ -140,25 +109,25 @@
     // Selected state styles
     &.selected,
     &:hover {
-      border-color: @primary-3;
-      background-color: @primary-50;
+      border-color: var(--tw-color-border-brand);
+      background-color: var(--tw-color-bg-brand-primary);
 
       .selection-content {
         .selection-icon {
-          background-color: @primary-1;
-          border: 6px solid @primary-50;
+          background-color: var(--tw-color-bg-brand-secondary);
+          border: 6px solid var(--tw-color-bg-brand-primary);
 
           svg {
-            color: @primary-6;
+            color: var(--tw-color-fg-brand-primary);
           }
         }
 
         .selection-title {
-          color: @primary-8;
+          color: var(--tw-color-text-brand-secondary);
         }
 
         .selection-description {
-          color: @primary-6;
+          color: var(--tw-color-text-brand-tertiary);
         }
 
         .custom-radio.unchecked {
