@@ -11,14 +11,16 @@
  *  limitations under the License.
  */
 
-import { Auth0 as Auth0Icon } from '@openmetadata/ui-core-components/icons';
+import {
+  Auth0 as Auth0Icon,
+  Ldap as LdapIcon,
+} from '@openmetadata/ui-core-components/icons';
 import type { FC } from 'react';
 import CognitoIcon from '../assets/img/icon-aws-cognito.png';
 import AzureIcon from '../assets/img/icon-azure.png';
 import GoogleIcon from '../assets/img/icon-google.png';
 import OktaIcon from '../assets/img/icon-okta.png';
 import CustomOIDCIcon from '../assets/svg/ic-custom-oidc.svg';
-import LdapIcon from '../assets/svg/ic-ldap.svg';
 import SamlIcon from '../assets/svg/ic-saml.svg';
 
 import { ErrorSchema } from '@rjsf/utils';

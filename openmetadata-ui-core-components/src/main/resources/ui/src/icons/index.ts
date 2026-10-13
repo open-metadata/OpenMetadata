@@ -473,6 +473,7 @@ export { Bronze } from './Bronze';
 export { ColumnCustomize } from './ColumnCustomize';
 export { DataQualityAlarmUpstream } from './DataQualityAlarmUpstream';
 export { Gold } from './Gold';
+export { Ldap } from './Ldap';
 export { LearningLink } from './LearningLink';
 export { LearningPdf } from './LearningPdf';
 export { LearningStorylane } from './LearningStorylane';
