@@ -44,7 +44,11 @@ const SettingItemCard = ({
       data-testid={data.key}
       onClick={handleOnClick}>
       <Card.Content className="tw:flex tw:items-center tw:gap-4">
-        <div className="setting-card-icon">
+        {/* tw:text-[90px] is the line box, not type: the icon used to be an
+            antd <Icon> whose inline wrapper sat in a 90px line box, and that
+            box is part of the card's height. Without it every settings card
+            loses ~19px and the grid shifts up. */}
+        <div className="setting-card-icon tw:text-[90px]">
           <SettingIcon className="tw:size-[90px] tw:shrink-0" />
           {Boolean(data?.isBeta) && (
             <Badge className="service-beta-tag" count={t('label.beta')} />
