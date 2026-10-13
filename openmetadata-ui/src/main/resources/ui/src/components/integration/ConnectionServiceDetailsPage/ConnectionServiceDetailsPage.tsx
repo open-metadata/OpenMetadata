@@ -788,21 +788,20 @@ const ConnectionServiceDetailsPage: React.FC = () => {
                       onAction={handleExportClick}
                     />
                   )}
-                  {canDelete && !isServiceDeleted && (
-                    <Dropdown.Item
-                      id="delete"
-                      label={t('label.delete')}
-                      onAction={() => setIsDeleting(true)}
-                    />
-                  )}
                   {/* A soft delete is meant to be reversible, but without this the page offers
-                        no way back — matching classic, where restore replaces delete once the
-                        service is deleted. */}
+                        no way back. */}
                   {canEditAll && isServiceDeleted && (
                     <Dropdown.Item
                       id="restore"
                       label={t('label.restore')}
                       onAction={handleRestoreService}
+                    />
+                  )}
+                  {canDelete && (
+                    <Dropdown.Item
+                      id="delete"
+                      label={t('label.delete')}
+                      onAction={() => setIsDeleting(true)}
                     />
                   )}
                 </Dropdown.Menu>
