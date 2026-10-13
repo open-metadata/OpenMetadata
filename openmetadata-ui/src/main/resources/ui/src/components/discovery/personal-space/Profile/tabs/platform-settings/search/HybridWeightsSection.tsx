@@ -14,6 +14,7 @@
 import {
   Box,
   Button,
+  Card,
   Slider,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -55,11 +56,9 @@ const HybridWeightsSection = ({
           {t('label.save')}
         </Button>
       </Box>
-      <Box
-        align="center"
-        className="tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:dark:bg-secondary tw:px-5 tw:py-4"
-        direction="row"
-        gap={6}>
+      <Card
+        className="tw:flex tw:flex-row tw:items-center tw:gap-6 tw:px-5 tw:py-4"
+        variant="secondary">
         <Typography data-testid="keyword-weight" size="text-sm">
           {`${t('label.keyword')}: ${complementWeight(weight).toFixed(1)}`}
         </Typography>
@@ -78,7 +77,7 @@ const HybridWeightsSection = ({
         <Typography data-testid="semantic-weight" size="text-sm">
           {`${t('label.semantic')}: ${weight.toFixed(1)}`}
         </Typography>
-      </Box>
+      </Card>
     </Box>
   );
 };

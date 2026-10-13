@@ -15,6 +15,7 @@ import {
   Box,
   Button,
   ButtonUtility,
+  Card,
   EmptyPlaceholder,
   Input,
   Table,
@@ -260,11 +261,10 @@ const RuleCard: FC<RuleCardProps> = ({
       : 'tw:text-error-primary';
 
   return (
-    <Box
-      className="tw:border tw:border-secondary tw:dark:bg-secondary tw:rounded-xl tw:p-4"
+    <Card
+      className="tw:flex tw:flex-col tw:gap-2 tw:p-4"
       data-testid={`rule-${rule.name}`}
-      direction="col"
-      gap={2}>
+      variant="secondary">
       <Box align="center" direction="row" justify="between">
         <Typography
           className="tw:text-primary"
@@ -351,7 +351,7 @@ const RuleCard: FC<RuleCardProps> = ({
           </Box>
         )}
       </Box>
-    </Box>
+    </Card>
   );
 };
 
@@ -962,10 +962,9 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
         )}
 
         {(isAddingRule || editingRule) && (
-          <Box
-            className="tw:border tw:border-secondary tw:dark:bg-secondary tw:rounded-xl tw:p-4"
-            direction="col"
-            gap={4}>
+          <Card
+            className="tw:flex tw:flex-col tw:gap-4 tw:p-4"
+            variant="secondary">
             <Typography
               className="tw:text-primary"
               size="text-sm"
@@ -993,7 +992,7 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
                 {t('label.save')}
               </Button>
             </Box>
-          </Box>
+          </Card>
         )}
 
         {policy?.rules?.length ? (

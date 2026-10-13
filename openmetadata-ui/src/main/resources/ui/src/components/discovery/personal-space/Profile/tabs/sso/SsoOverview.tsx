@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Box, Toggle, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Card,
+  Toggle,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 
 interface SsoOverviewProps {
@@ -28,13 +33,10 @@ const SsoOverview = ({
   const { t } = useTranslation();
 
   return (
-    <Box
-      align="center"
-      className="tw:w-full tw:rounded-[10px] tw:border tw:border-secondary tw:bg-surface tw:dark:bg-secondary tw:p-5"
+    <Card
+      className="tw:flex tw:flex-row tw:items-center tw:justify-between tw:gap-4 tw:w-full tw:p-5"
       data-testid="sso-overview"
-      direction="row"
-      gap={4}
-      justify="between">
+      variant="secondary">
       <Box direction="col" gap={1}>
         <Typography size="text-md" weight="semibold">
           {t('label.enable-sso')}
@@ -50,7 +52,7 @@ const SsoOverview = ({
         isSelected={isSelfSignupEnabled}
         onChange={onSelfSignupChange}
       />
-    </Box>
+    </Card>
   );
 };
 

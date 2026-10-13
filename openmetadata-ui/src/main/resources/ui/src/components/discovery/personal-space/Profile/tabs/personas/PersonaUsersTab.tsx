@@ -15,6 +15,7 @@ import {
   Box,
   Button,
   ButtonUtility,
+  Card,
   EmptyPlaceholder,
   FormFields,
   HookForm,
@@ -223,10 +224,9 @@ const PersonaUsersTab = ({
   return (
     <Box data-testid="persona-users-tab" direction="col" gap={4}>
       {isAdding && (
-        <Box
-          className="tw:border tw:border-secondary tw:dark:bg-secondary tw:rounded-xl tw:p-4"
-          direction="col"
-          gap={4}>
+        <Card
+          className="tw:flex tw:flex-col tw:gap-4 tw:p-4"
+          variant="secondary">
           <Typography
             className="tw:text-primary"
             size="text-sm"
@@ -249,7 +249,7 @@ const PersonaUsersTab = ({
               {t('label.save')}
             </Button>
           </Box>
-        </Box>
+        </Card>
       )}
       {canEdit && !isAdding && (
         <Box justify="end">

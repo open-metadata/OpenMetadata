@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Box, Card, Typography } from '@openmetadata/ui-core-components';
 import React from 'react';
 import FieldRow from './FieldRow';
 
@@ -57,11 +57,11 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({
       weight="medium">
       {title}
     </Typography>
-    <Box
-      className="tw:divide-y tw:divide-secondary tw:overflow-hidden tw:rounded-[10px] tw:border tw:border-secondary tw:bg-surface tw:dark:bg-secondary"
-      direction="col">
+    <Card
+      className="tw:flex tw:flex-col tw:divide-y tw:divide-secondary"
+      variant="secondary">
       {children}
-    </Box>
+    </Card>
   </Box>
 );
 

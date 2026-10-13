@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
+import { Badge, Box, Card, Typography } from '@openmetadata/ui-core-components';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -31,10 +31,7 @@ const TeamCard: React.FC<{ team: TeamPermission }> = ({ team }) => {
   const { t } = useTranslation();
 
   return (
-    <Box
-      className="tw:rounded-xl tw:border tw:border-secondary tw:dark:bg-secondary tw:p-4"
-      direction="col"
-      gap={3}>
+    <Card className="tw:flex tw:flex-col tw:gap-3 tw:p-4" variant="secondary">
       <Box align="center" className="tw:flex-wrap tw:gap-2">
         <Typography
           className="tw:text-secondary"
@@ -121,7 +118,7 @@ const TeamCard: React.FC<{ team: TeamPermission }> = ({ team }) => {
           ))}
         </Box>
       )}
-    </Box>
+    </Card>
   );
 };
 

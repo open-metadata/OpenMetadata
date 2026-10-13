@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Skeleton } from '@openmetadata/ui-core-components';
+import { Box, Card, Skeleton } from '@openmetadata/ui-core-components';
 import React from 'react';
 
 export interface PermissionSectionSkeletonProps {
@@ -28,15 +28,14 @@ const PermissionSectionSkeleton: React.FC<PermissionSectionSkeletonProps> = ({
 }) => (
   <Box direction="col" gap={4}>
     {Array.from({ length: rows }).map((_, index) => (
-      <Box
-        className="tw:rounded-xl tw:border tw:border-secondary tw:dark:bg-secondary tw:p-4"
-        direction="col"
-        gap={3}
+      <Card
+        className="tw:flex tw:flex-col tw:gap-3 tw:p-4"
         // eslint-disable-next-line react/no-array-index-key -- static skeleton, never reordered
-        key={index}>
+        key={index}
+        variant="secondary">
         <Skeleton height={16} variant="text" width={220} />
         <Skeleton height={64} variant="rounded" width="100%" />
-      </Box>
+      </Card>
     ))}
   </Box>
 );

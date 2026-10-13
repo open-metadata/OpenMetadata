@@ -53,6 +53,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
       color?: string;
     }) => <span data-color={color}>{children}</span>,
     Box: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+    Card: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
     Button: ({
       children,
       onClick,

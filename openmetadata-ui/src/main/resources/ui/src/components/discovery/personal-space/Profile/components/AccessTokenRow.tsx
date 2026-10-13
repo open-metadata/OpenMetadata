@@ -15,6 +15,7 @@ import {
   BadgeWithDot,
   Box,
   Button,
+  Card,
   FeaturedIcon,
   Select,
   Skeleton,
@@ -57,17 +58,16 @@ import {
 const AI_PROFILE_TOKEN_NAME = 'ai-profile-token';
 
 const AccessTokenLoadingSkeleton = () => (
-  <Box
-    className="ai-profile-page__edit-card tw:w-full tw:rounded-[10px] tw:border tw:border-secondary tw:bg-surface tw:dark:bg-secondary tw:px-5 tw:py-4"
+  <Card
+    className="tw:flex tw:flex-col tw:gap-3 ai-profile-page__edit-card tw:w-full tw:px-5 tw:py-4"
     data-testid="access-token-row"
-    direction="col"
-    gap={3}>
+    variant="secondary">
     <Skeleton height={16} variant="text" width="60%" />
     <Skeleton height={44} variant="rounded" width="100%" />
     <Box justify="end">
       <Skeleton height={36} variant="rounded" width={120} />
     </Box>
-  </Box>
+  </Card>
 );
 
 const AccessTokenEmptyState = ({
@@ -85,13 +85,10 @@ const AccessTokenEmptyState = ({
   isLoading: boolean;
   handleGenerate: () => void;
 }) => (
-  <Box
-    align="center"
-    className="ai-profile-page__edit-card tw:w-full tw:items-center tw:rounded-[10px] tw:border tw:border-secondary tw:bg-surface tw:dark:bg-secondary tw:px-6 tw:py-10 tw:text-center"
+  <Card
+    className="tw:flex tw:flex-col tw:items-center tw:justify-center tw:gap-3 ai-profile-page__edit-card tw:w-full tw:items-center tw:px-6 tw:py-10 tw:text-center"
     data-testid="access-token-row"
-    direction="col"
-    gap={3}
-    justify="center">
+    variant="secondary">
     <FeaturedIcon color="brand" icon={Key01} size="lg" theme="light" />
     <Typography className="tw:text-primary" weight="semibold">
       {t('message.no-access-token-title')}
@@ -133,7 +130,7 @@ const AccessTokenEmptyState = ({
         {t('label.generate-token')}
       </Button>
     </Box>
-  </Box>
+  </Card>
 );
 
 const AccessTokenDetails = ({
@@ -163,10 +160,10 @@ const AccessTokenDetails = ({
   handleRegenerate: () => void;
   handleRevoke: () => void;
 }) => (
-  <Box
-    className="ai-profile-page__edit-card tw:w-full tw:overflow-hidden tw:rounded-[10px] tw:border tw:border-secondary tw:bg-surface tw:dark:bg-secondary"
+  <Card
+    className="tw:flex tw:flex-col ai-profile-page__edit-card tw:w-full"
     data-testid="access-token-row"
-    direction="col">
+    variant="secondary">
     <Box
       align="center"
       className="tw:justify-between tw:border-b tw:border-secondary tw:px-4 tw:py-3.5"
@@ -263,7 +260,7 @@ const AccessTokenDetails = ({
         {t('label.revoke')}
       </Button>
     </Box>
-  </Box>
+  </Card>
 );
 
 const AccessTokenRow: React.FC = () => {

@@ -15,6 +15,7 @@ import {
   Autocomplete,
   Box,
   Button,
+  Card,
   EmptyPlaceholder,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -50,10 +51,9 @@ const MembersInlineEntityTab: FC<MembersInlineEntityTabProps> = ({
   return (
     <Box direction="col" gap={3}>
       {isAdding && (
-        <Box
-          className="tw:border tw:border-secondary tw:dark:bg-secondary tw:rounded-xl tw:p-4"
-          direction="col"
-          gap={4}>
+        <Card
+          className="tw:flex tw:flex-col tw:gap-4 tw:p-4"
+          variant="secondary">
           <Typography
             className="tw:text-primary"
             size="text-sm"
@@ -96,7 +96,7 @@ const MembersInlineEntityTab: FC<MembersInlineEntityTabProps> = ({
               {t('label.save')}
             </Button>
           </Box>
-        </Box>
+        </Card>
       )}
       {canEditAll && !isAdding && (
         <Box align="center" className="tw:pb-3" direction="row" justify="end">

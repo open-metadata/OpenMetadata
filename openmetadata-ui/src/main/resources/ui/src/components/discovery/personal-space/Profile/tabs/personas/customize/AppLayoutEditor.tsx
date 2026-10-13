@@ -15,6 +15,7 @@ import {
   Box,
   Button,
   ButtonUtility,
+  Card,
   Divider,
   Dropdown,
   Grid,
@@ -216,11 +217,11 @@ const AppLayoutEditor = ({
   }, [handleSave, handleReset, canSave, isSaving, onActionsChange]);
 
   return (
-    <Box
-      className="tw:w-full tw:rounded-[10px] tw:border tw:border-secondary tw:bg-surface tw:dark:bg-secondary tw:px-5 tw:divide-y-0.5 tw:divide-secondary"
+    <Card
+      className="tw:flex tw:flex-col tw:w-full tw:px-5 tw:divide-y-0.5 tw:divide-secondary"
       data-testid="app-layout-editor"
-      direction="col"
-      tabIndex={-1}>
+      tabIndex={-1}
+      variant="secondary">
       <PreferenceRow
         description={t('message.app-mode-description')}
         title={t('label.app-mode')}>
@@ -301,10 +302,10 @@ const AppLayoutEditor = ({
       <PreferenceRow
         description={t('message.view-mode-description')}
         title={t('label.view-mode')}>
-        <Box
-          className="tw:rounded-xl tw:border tw:border-secondary tw:dark:bg-secondary"
+        <Card
+          className="tw:flex tw:flex-col"
           data-testid="view-mode-pages"
-          direction="col">
+          variant="secondary">
           {configuredPages.map(({ page, labelKey, views }) => (
             <Box
               align="center"
@@ -389,9 +390,9 @@ const AppLayoutEditor = ({
               </Dropdown.Popover>
             </Dropdown.Root>
           </Box>
-        </Box>
+        </Card>
       </PreferenceRow>
-    </Box>
+    </Card>
   );
 };
 

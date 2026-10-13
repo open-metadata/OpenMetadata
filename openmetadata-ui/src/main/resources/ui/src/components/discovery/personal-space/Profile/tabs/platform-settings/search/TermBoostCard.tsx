@@ -15,6 +15,7 @@ import {
   Autocomplete,
   Box,
   ButtonUtility,
+  Card,
   Slider,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -115,11 +116,10 @@ const TermBoostCard = ({
   );
 
   return (
-    <Box
-      className="tw:w-64 tw:rounded-lg tw:border tw:border-secondary tw:bg-surface tw:dark:bg-secondary tw:p-4"
+    <Card
+      className="tw:flex tw:flex-col tw:gap-4 tw:w-64 tw:p-4"
       data-testid={`term-boost-${draft.value || 'new'}`}
-      direction="col"
-      gap={4}>
+      variant="secondary">
       <Autocomplete
         aria-label={t('label.select-tag')}
         data-testid="term-boost-select"
@@ -174,7 +174,7 @@ const TermBoostCard = ({
         tooltip={t('label.delete')}
         onPress={() => onDelete(draft.value)}
       />
-    </Box>
+    </Card>
   );
 };
 

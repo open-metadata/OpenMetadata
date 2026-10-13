@@ -15,6 +15,7 @@ import {
   Box,
   Button,
   ButtonUtility,
+  Card,
   Owner,
   Tabs,
   Typography,
@@ -523,12 +524,9 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
       />
 
       {/* Owners + event-stats summary row */}
-      <Box
-        align="center"
-        className="tw:border tw:border-secondary tw:dark:bg-secondary tw:mb-2 tw:rounded-lg tw:p-3"
-        direction="row"
-        gap={6}
-        wrap="wrap">
+      <Card
+        className="tw:flex tw:flex-row tw:items-center tw:flex-wrap tw:gap-6 tw:mb-2 tw:p-3"
+        variant="secondary">
         <Box align="center" direction="row" gap={2}>
           <Typography className="tw:text-tertiary tw:shrink-0" size="text-sm">
             {`${t('label.owner-plural')}:`}
@@ -546,7 +544,7 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
           />
         </Box>
         {eventsRecord && <DiagnosticStatsSummary eventsRecord={eventsRecord} />}
-      </Box>
+      </Card>
 
       <Tabs selectedKey={activeTab} onSelectionChange={handleTabChange}>
         <Tabs.List size="sm" type="underline">

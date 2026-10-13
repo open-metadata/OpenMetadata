@@ -14,6 +14,7 @@ import {
   Box,
   Button,
   ButtonUtility,
+  Card,
   Divider,
   Input,
   Owner,
@@ -58,7 +59,7 @@ const InfoWidget: FC<{
   action?: ReactNode;
   children: ReactNode;
 }> = ({ label, action, children }) => (
-  <Box className={WIDGET_CLASS} direction="col" gap={1}>
+  <Card className={WIDGET_CLASS} variant="secondary">
     <Box align="center" direction="row" gap={1}>
       <Typography
         className="tw:text-brand-secondary"
@@ -69,7 +70,7 @@ const InfoWidget: FC<{
       {action}
     </Box>
     {children}
-  </Box>
+  </Card>
 );
 
 const NoneText: FC = () => {

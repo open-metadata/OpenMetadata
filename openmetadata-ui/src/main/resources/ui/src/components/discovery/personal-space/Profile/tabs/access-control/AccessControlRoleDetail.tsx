@@ -16,6 +16,7 @@ import {
   Box,
   Button,
   ButtonUtility,
+  Card,
   EmptyPlaceholder,
   Input,
   SelectItemType,
@@ -822,10 +823,9 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
     () => (
       <Box className="tw:w-full" direction="col" gap={3}>
         {isAddingPolicy && (
-          <Box
-            className="tw:border tw:border-secondary tw:dark:bg-secondary tw:rounded-xl tw:p-4"
-            direction="col"
-            gap={4}>
+          <Card
+            className="tw:flex tw:flex-col tw:gap-4 tw:p-4"
+            variant="secondary">
             <Typography
               className="tw:text-primary"
               size="text-sm"
@@ -872,7 +872,7 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
                 {t('label.save')}
               </Button>
             </Box>
-          </Box>
+          </Card>
         )}
 
         <EntityTable

@@ -15,6 +15,7 @@ import {
   Badge,
   BadgeColor,
   Box,
+  Card,
   Divider,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -73,10 +74,9 @@ const StatTile: React.FC<StatTileProps> = ({
   subLabel,
   icon,
 }) => (
-  <Box
-    className="tw:flex-1 tw:rounded-lg tw:border tw:border-secondary tw:bg-surface tw:dark:bg-secondary tw:p-4"
-    direction="col"
-    gap={2}>
+  <Card
+    className="tw:flex tw:flex-col tw:gap-2 tw:flex-1 tw:p-4"
+    variant="secondary">
     <Box align="center" gap={2}>
       <Box className="tw:rounded-md tw:bg-utility-success-50 tw:h-8 tw:w-8 tw:flex tw:items-center tw:justify-center">
         {icon}
@@ -102,7 +102,7 @@ const StatTile: React.FC<StatTileProps> = ({
         {subLabel}
       </Typography>
     )}
-  </Box>
+  </Card>
 );
 
 const OperationChips: React.FC<{

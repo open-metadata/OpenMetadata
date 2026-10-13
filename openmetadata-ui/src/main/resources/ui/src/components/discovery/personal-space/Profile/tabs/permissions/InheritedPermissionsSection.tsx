@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
+import { Badge, Box, Card, Typography } from '@openmetadata/ui-core-components';
 import { ShieldTick } from '@openmetadata/ui-core-components/icons';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -43,12 +43,12 @@ const InheritedPermissionsSection: React.FC<
   ) : (
     <Box direction="col" gap={4}>
       {items.map((item) => (
-        <Box
-          className="tw:rounded-xl tw:border tw:border-secondary tw:dark:bg-secondary tw:p-4"
-          gap={3}
+        <Card
+          className="tw:flex tw:gap-3 tw:p-4"
           key={`${item.permissionType}-${
             item.source?.fullyQualifiedName ?? item.source?.name ?? ''
-          }`}>
+          }`}
+          variant="secondary">
           <Box className="tw:h-9 tw:w-9 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-md tw:bg-utility-purple-50 tw:text-utility-purple-600">
             <ShieldTick height={18} width={18} />
           </Box>
@@ -92,7 +92,7 @@ const InheritedPermissionsSection: React.FC<
               </Box>
             )}
           </Box>
-        </Box>
+        </Card>
       ))}
     </Box>
   );
