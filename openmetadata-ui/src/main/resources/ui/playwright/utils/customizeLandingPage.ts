@@ -45,12 +45,23 @@ export type NameableEntityResponse = {
 // always renders the un-suffixed key as its own testid. So the slot has to be matched by
 // prefix — the trailing `-` keeps it unambiguous, as no widget key is a `-`-suffixed
 // extension of another.
+//
+// Both locators keep to visible elements. The persona customize page opens full page over
+// the app shell, which stays mounted but hidden and renders the real home page underneath,
+// with its own slot and widget under the same keys. Unfiltered, the slot resolved to that
+// hidden copy, so `scrollIntoViewIfNeeded()` waited on it with no timeout and wedged the
+// poll, and the widget locator matched two elements, so `isVisible()` threw on strict mode
+// and the poll could only ever read `false`.
 const getLandingPageWidgetSlot = (page: Page, widgetKey: string) =>
   page
     .locator(
       `[data-testid="deferred-widget-${widgetKey}"], [data-testid^="deferred-widget-${widgetKey}-"]`
     )
+    .filter({ visible: true })
     .first();
+
+const getLandingPageWidget = (page: Page, widgetKey: string) =>
+  page.getByTestId(widgetKey).filter({ visible: true });
 
 const revealLandingPageWidget = async (page: Page, widgetKey: string) => {
   const slot = getLandingPageWidgetSlot(page, widgetKey);
@@ -69,7 +80,7 @@ const revealLandingPageWidget = async (page: Page, widgetKey: string) => {
   // The customize-page edit view renders widgets without a deferred slot. Only scroll a
   // widget that is already attached — scrolling a locator that resolves to nothing stalls
   // for the full action timeout and starves the caller's own waiting.
-  const widget = page.getByTestId(widgetKey);
+  const widget = getLandingPageWidget(page, widgetKey);
 
   if ((await widget.count()) > 0) {
     await widget.scrollIntoViewIfNeeded().catch(() => undefined);
@@ -236,8 +247,7 @@ const isLandingPageWidgetVisible = async (
 ): Promise<boolean> => {
   await revealLandingPageWidget(page, widgetKey);
 
-  return page
-    .getByTestId(widgetKey)
+  return getLandingPageWidget(page, widgetKey)
     .isVisible()
     .catch(() => false);
 };
@@ -263,7 +273,7 @@ export const waitForLandingPageWidget = async (
   page: Page,
   widgetKey: string
 ): Promise<Locator> => {
-  const widget = page.getByTestId(widgetKey);
+  const widget = getLandingPageWidget(page, widgetKey);
 
   // The reveal has to be retried, not done once. A deferred slot mounts its widget only
   // when scrolled into view, and `expect(...).toBeVisible()` cannot scroll. So when the
