@@ -100,14 +100,14 @@ describe('theme restore boot script', () => {
     expect(localStorage.getItem('ui-theme')).toBe('dark');
   });
 
-  it('follows the sibling-tab app mode hint when the tab has no mode yet', () => {
+  it('ignores the sibling-tab app mode hint, matching the app mode store', () => {
     sessionStorage.clear();
     localStorage.setItem('ui-theme', 'dark');
     localStorage.setItem('omAppModeHint', JSON.stringify({ mode: 'ai' }));
 
     executeThemeRestore();
 
-    expect(document.documentElement).toHaveClass('dark-mode');
+    expect(document.documentElement).not.toHaveClass('dark-mode');
   });
 
   it('uses light mode when the stored preference cannot be read', () => {

@@ -67,12 +67,10 @@
     <script id="theme-restore" nonce="${cspNonce}">
       let restoredTheme = 'light';
       try {
-        // Classic mode is light-only; only AI mode (this tab's mode, else a
-        // sibling tab's hint) restores a dark preference.
+        // Classic mode is light-only. Mirror useAppModeStore's first render,
+        // which reads only this tab's session tuple (never the shared hint).
         const appMode = JSON.parse(
-          sessionStorage.getItem('omAppMode') ||
-            localStorage.getItem('omAppModeHint') ||
-            '{}'
+          sessionStorage.getItem('omAppMode') || '{}'
         ).mode;
         const savedTheme = localStorage.getItem('ui-theme');
         const prefersDark =
