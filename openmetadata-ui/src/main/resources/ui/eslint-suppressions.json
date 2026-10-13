@@ -895,7 +895,7 @@
   },
   "src/components/DataAssetRules/DataAssetRules.component.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 5
+      "count": 2
     }
   },
   "src/components/DataInsight/DataInsightProgressBar.tsx": {
