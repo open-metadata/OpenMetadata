@@ -20,6 +20,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { XClose } from '@openmetadata/ui-core-components/icons';
 
+import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { SliderWithInputProps } from './SliderWithInput.interface';
 const SliderWithInput = ({
@@ -33,10 +34,10 @@ const SliderWithInput = ({
   return (
     <Box
       align="center"
-      className={className}
+      className={classNames('tw:w-full', className)}
       data-testid="percentage-input"
       gap={5}>
-      <Box className="tw:min-w-0 tw:flex-1">
+      <Box className="tw:block tw:min-w-0 tw:flex-1">
         <Slider
           showRange
           aria-label={t('label.value')}
