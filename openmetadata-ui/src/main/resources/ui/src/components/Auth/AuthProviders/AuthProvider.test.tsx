@@ -221,6 +221,7 @@ jest.mock('../../../hooks/useApplicationStore', () => {
   const setIsAuthenticating = jest.fn();
   const setApplicationLoading = jest.fn();
   const setAppPreferences = jest.fn();
+  const setTimeFormat = jest.fn();
   const useApplicationStoreMock = Object.assign(
     jest.fn().mockImplementation(() => ({
       setCurrentUser: jest.fn(),
@@ -256,9 +257,11 @@ jest.mock('../../../hooks/useApplicationStore', () => {
     // (outside the hook call) — provide it so any code path that exercises
     // that branch doesn't blow up with "getState is not a function".
     {
-      getState: jest
-        .fn()
-        .mockReturnValue({ currentUser: { name: 'test' }, setAppPreferences }),
+      getState: jest.fn().mockReturnValue({
+        currentUser: { name: 'test' },
+        setAppPreferences,
+        setTimeFormat,
+      }),
     }
   );
 
@@ -268,6 +271,7 @@ jest.mock('../../../hooks/useApplicationStore', () => {
     __mockSetIsAuthenticating: setIsAuthenticating,
     __mockSetApplicationLoading: setApplicationLoading,
     __mockSetAppPreferences: setAppPreferences,
+    __mockSetTimeFormat: setTimeFormat,
   };
 });
 
@@ -313,6 +317,7 @@ const {
   __mockSetIsAuthenticating: mockSetIsAuthenticating,
   __mockSetApplicationLoading: mockSetApplicationLoading,
   __mockSetAppPreferences: mockSetAppPreferences,
+  __mockSetTimeFormat: mockSetTimeFormat,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 } = jest.requireMock('../../../hooks/useApplicationStore') as any;
 
@@ -950,6 +955,7 @@ describe('Test AuthCoordinator wiring (auth-coordinator-refactor Task 12)', () =
     afterEach(() => {
       applicationStore.getState.mockReturnValue({
         setAppPreferences: mockSetAppPreferences,
+        setTimeFormat: mockSetTimeFormat,
         currentUser: { name: 'test' },
       });
     });
@@ -970,6 +976,7 @@ describe('Test AuthCoordinator wiring (auth-coordinator-refactor Task 12)', () =
     it('signs this tab out locally when another tab signs out', async () => {
       applicationStore.getState.mockReturnValue({
         setAppPreferences: mockSetAppPreferences,
+        setTimeFormat: mockSetTimeFormat,
         currentUser: { name: 'test' },
         isAuthenticated: true,
       });
@@ -992,6 +999,7 @@ describe('Test AuthCoordinator wiring (auth-coordinator-refactor Task 12)', () =
     it('ignores another tab signing out when this tab is not signed in', async () => {
       applicationStore.getState.mockReturnValue({
         setAppPreferences: mockSetAppPreferences,
+        setTimeFormat: mockSetTimeFormat,
         currentUser: {},
         isAuthenticated: false,
       });
