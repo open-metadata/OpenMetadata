@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -240,17 +241,11 @@ class InheritTagsTest {
             .withName("payload")
             .withFullyQualifiedName("t.payload")
             .withChildren(List.of(inner));
-    Table table = table();
-    table.setTags(
-        new ArrayList<>(List.of(glossaryTerm("Finance.Revenue"), manual("PII.Sensitive"))));
 
-    EntityRepository.inheritEntityTerms(table, List.of(payload));
+    EntityRepository.inheritEntityTerms(
+        List.of(glossaryTerm("Finance.Revenue"), manual("PII.Sensitive")), List.of(payload));
 
-    for (Column column : List.of(payload, inner)) {
-      assertEquals(1, column.getTags().size(), column.getName() + " tags: " + column.getTags());
-      assertEquals("Finance.Revenue", column.getTags().getFirst().getTagFQN());
-      assertEquals(TagLabel.LabelType.DERIVED, column.getTags().getFirst().getLabelType());
-    }
+    assertEveryColumnInheritsTheTerm(List.of(payload, inner), "Finance.Revenue");
   }
 
   /** A field that carries the entity's term itself keeps its own label. */
@@ -261,13 +256,44 @@ class InheritTagsTest {
             .withName("amount")
             .withFullyQualifiedName("t.amount")
             .withTags(new ArrayList<>(List.of(glossaryTerm("Finance.Revenue"))));
-    Table table = table();
-    table.setTags(new ArrayList<>(List.of(glossaryTerm("Finance.Revenue"))));
 
-    EntityRepository.inheritEntityTerms(table, List.of(amount));
+    EntityRepository.inheritEntityTerms(List.of(glossaryTerm("Finance.Revenue")), List.of(amount));
 
     assertEquals(1, amount.getTags().size());
     assertEquals(TagLabel.LabelType.MANUAL, amount.getTags().getFirst().getLabelType());
+  }
+
+  /**
+   * A list runs its field fetchers in no fixed order -- a table's columns are fetched before its
+   * tags -- and may not ask for tags at all, so the terms come from the table's stored tags, never
+   * from whatever the entity holds at that point. Taking them from the entity is what left a listed
+   * table's columns without the term.
+   */
+  @Test
+  void inheritEntityTermsOnFields_takesTheTermsFromTheStoredTagsNotTheEntity() {
+    Column inner =
+        new Column().withName("inner").withFullyQualifiedName("svc.db.s.t.payload.inner");
+    Column payload =
+        new Column()
+            .withName("payload")
+            .withFullyQualifiedName("svc.db.s.t.payload")
+            .withChildren(List.of(inner));
+    Table notYetTagged = table().withFullyQualifiedName("svc.db.s.t").withColumns(List.of(payload));
+
+    EntityRepository.inheritEntityTermsOnFields(
+        List.of(notYetTagged),
+        Table::getColumns,
+        Map.of("svc.db.s.t", List.of(glossaryTerm("Finance.Revenue"))));
+
+    assertEveryColumnInheritsTheTerm(List.of(payload, inner), "Finance.Revenue");
+  }
+
+  private static void assertEveryColumnInheritsTheTerm(List<Column> columns, String termFqn) {
+    for (Column column : columns) {
+      assertEquals(1, column.getTags().size(), column.getName() + " tags: " + column.getTags());
+      assertEquals(termFqn, column.getTags().getFirst().getTagFQN());
+      assertEquals(TagLabel.LabelType.DERIVED, column.getTags().getFirst().getLabelType());
+    }
   }
 
   private static Table table() {

@@ -13580,20 +13580,37 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   /**
    * Has each field inherit its entity's glossary terms, as {@link Entity#populateEntityFieldTags}
-   * does on a single read, so a list returns the same field tags as a get. Expects the entities' own
-   * tags and the fields' tags to be loaded already.
+   * does on a single read, so a list returns the same field tags as a get. Expects the fields' tags
+   * to be loaded already. The entities' own tags are read here rather than taken from the entities:
+   * the bulk field fetchers run in no fixed order, so the tags fetcher may not have run yet, and a
+   * list may not ask for {@code tags} at all.
    */
   protected <F extends FieldInterface> void inheritEntityTermsOnFields(
       List<T> entities, Function<T, List<F>> fieldExtractor) {
-    for (T entity : listOrEmpty(entities)) {
-      inheritEntityTerms(entity, fieldExtractor.apply(entity));
+    List<String> entityFqns =
+        listOrEmpty(entities).stream().map(EntityInterface::getFullyQualifiedName).toList();
+    inheritEntityTermsOnFields(entities, fieldExtractor, batchFetchTags(entityFqns));
+  }
+
+  /**
+   * {@link #inheritEntityTermsOnFields(List, Function)} for a caller that has just read the
+   * entities' own tags with {@link #batchFetchTags}, keyed by entity FQN.
+   */
+  protected static <E extends EntityInterface<?>, F extends FieldInterface>
+      void inheritEntityTermsOnFields(
+          List<E> entities,
+          Function<E, List<F>> fieldExtractor,
+          Map<String, List<TagLabel>> ownTagsByEntityFqn) {
+    for (E entity : listOrEmpty(entities)) {
+      inheritEntityTerms(
+          ownTagsByEntityFqn.get(entity.getFullyQualifiedName()), fieldExtractor.apply(entity));
     }
   }
 
   /** One entity's step of {@link #inheritEntityTermsOnFields}. Package-private for tests. */
   static <F extends FieldInterface> void inheritEntityTerms(
-      EntityInterface<?> entity, List<F> fields) {
-    List<TagLabel> inheritedTerms = Entity.inheritedParentTerms(entity.getTags());
+      List<TagLabel> entityTags, List<F> fields) {
+    List<TagLabel> inheritedTerms = Entity.inheritedParentTerms(entityTags);
     if (!inheritedTerms.isEmpty() && fields != null) {
       for (F field : EntityUtil.getFlattenedEntityField(fields)) {
         field.setTags(mergeInheritedTags(field.getTags(), inheritedTerms));

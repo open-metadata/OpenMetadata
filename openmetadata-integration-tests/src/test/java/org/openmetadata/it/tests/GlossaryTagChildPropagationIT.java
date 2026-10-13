@@ -117,7 +117,11 @@ public class GlossaryTagChildPropagationIT {
     }
   }
 
-  /** A list returns the same column tags as a get: the bulk read inherits the table's terms too. */
+  /**
+   * A list returns the same column tags as a get: the bulk read inherits the table's terms too,
+   * whether or not the list also asks for the table's own tags. The bulk field fetchers run in no
+   * fixed order, and a table's columns are fetched before its tags.
+   */
   @Test
   void termOnTable_isReturnedOnColumnsByTheListEndpoint(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
@@ -131,25 +135,35 @@ public class GlossaryTagChildPropagationIT {
 
       applyTermToTable(client, table, term);
 
-      List<Table> listed =
-          client
-              .tables()
-              .list(
-                  new ListParams()
-                      .setFields("columns,tags")
-                      .setDatabaseSchema(fixture.schema().getFullyQualifiedName())
-                      .setLimit(10))
-              .getData();
-      Table fromList =
-          listed.stream()
-              .filter(candidate -> table.getId().equals(candidate.getId()))
-              .findFirst()
-              .orElseThrow(() -> new AssertionError("table missing from the list: " + listed));
-      assertEquals(
-          TagLabel.LabelType.DERIVED, labelOn(fromList, NESTED_COLUMN, term).getLabelType());
+      for (String fields : List.of("columns,tags", "columns")) {
+        Table fromList = listedTable(client, fixture, table, fields);
+        for (String column : List.of(TOP_LEVEL_COLUMN, NESTED_COLUMN)) {
+          assertEquals(
+              TagLabel.LabelType.DERIVED,
+              labelOn(fromList, column, term).getLabelType(),
+              column + " listed with fields=" + fields);
+        }
+      }
     } finally {
       cleanUp(client, database);
     }
+  }
+
+  private static Table listedTable(
+      OpenMetadataClient client, Fixture fixture, Table table, String fields) {
+    List<Table> listed =
+        client
+            .tables()
+            .list(
+                new ListParams()
+                    .setFields(fields)
+                    .setDatabaseSchema(fixture.schema().getFullyQualifiedName())
+                    .setLimit(10))
+            .getData();
+    return listed.stream()
+        .filter(candidate -> table.getId().equals(candidate.getId()))
+        .findFirst()
+        .orElseThrow(() -> new AssertionError("table missing from the list: " + listed));
   }
 
   @Test
