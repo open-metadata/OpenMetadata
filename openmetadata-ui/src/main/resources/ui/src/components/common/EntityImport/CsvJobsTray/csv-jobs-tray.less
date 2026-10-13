@@ -51,7 +51,9 @@
   bottom: 88px;
   position: fixed;
   right: 20px;
-  z-index: var(--om-z-900);
+  // Toast tier: a background-job notification must stay visible and clickable
+  // above any open modal/dialog (which sit at the modal/overlay tiers below).
+  z-index: var(--om-z-toast);
 }
 
 .csv-jobs-tray-launcher {
@@ -109,7 +111,7 @@
   position: fixed;
   right: 20px;
   width: 340px;
-  z-index: var(--om-z-900);
+  z-index: var(--om-z-toast);
 }
 
 .csv-jobs-tray-header {

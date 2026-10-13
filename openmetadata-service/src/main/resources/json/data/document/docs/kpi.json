@@ -1,10 +1,10 @@
 {
   "name": "KPI",
-  "displayName": "KPI",
-  "description": "Visualizes key performance metrics of data assets in an intuitive graph format.",
+  "displayName": "KPIs",
+  "description": "Progress against each active KPI: target, current pace, and whether it is on track to land by its end date.",
   "entityType": "KnowledgePanel",
   "fullyQualifiedName": "KnowledgePanel.KPI",
   "data": {
-    "gridSizes": ["small", "medium"]
+    "gridSizes": ["small", "medium", "large"]
   }
 }

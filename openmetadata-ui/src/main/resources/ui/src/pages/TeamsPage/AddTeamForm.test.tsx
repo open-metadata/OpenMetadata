@@ -88,7 +88,7 @@ describe('AddTeamForm component', () => {
       />
     );
 
-    getByText('Cancel').click();
+    getByText('label.cancel').click();
 
     expect(mockCancel).toHaveBeenCalled();
   });

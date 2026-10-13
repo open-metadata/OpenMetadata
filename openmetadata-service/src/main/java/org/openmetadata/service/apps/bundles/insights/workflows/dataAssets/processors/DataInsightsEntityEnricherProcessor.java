@@ -40,7 +40,7 @@ import org.openmetadata.service.workflows.interfaces.Processor;
 
 @Slf4j
 public class DataInsightsEntityEnricherProcessor
-    implements Processor<List<Map<String, Object>>, ResultList<? extends EntityInterface>> {
+    implements Processor<List<Map<String, Object>>, ResultList<? extends EntityInterface<?>>> {
 
   /**
    * Cap on {@code LOG.warn} samples per processor lifetime for entity-level failures (i.e.
@@ -102,7 +102,7 @@ public class DataInsightsEntityEnricherProcessor
 
   @Override
   public List<Map<String, Object>> process(
-      ResultList<? extends EntityInterface> input, Map<String, Object> contextData)
+      ResultList<? extends EntityInterface<?>> input, Map<String, Object> contextData)
       throws SearchIndexException {
     try {
       EnrichmentContext context = buildAndValidateContext(contextData);
@@ -129,7 +129,7 @@ public class DataInsightsEntityEnricherProcessor
   }
 
   public List<Map<String, Object>> enrichSingle(
-      EntityInterface entity, Map<String, Object> contextData) throws SearchIndexException {
+      EntityInterface<?> entity, Map<String, Object> contextData) throws SearchIndexException {
     try {
       EnrichmentContext context = buildAndValidateContext(contextData);
       return enrichEntityToSnapshots(entity, context);
@@ -190,7 +190,7 @@ public class DataInsightsEntityEnricherProcessor
    * {@link EnrichmentPipeline}).
    */
   private List<Map<String, Object>> enrichEntityToSnapshots(
-      EntityInterface entity, EnrichmentContext context) {
+      EntityInterface<?> entity, EnrichmentContext context) {
     try {
       List<Map<String, Object>> snapshots = new ArrayList<>();
       for (VersionedWindow window : versionResolver.resolve(entity, context)) {
@@ -210,7 +210,7 @@ public class DataInsightsEntityEnricherProcessor
   }
 
   private EnrichmentTarget buildTarget(VersionedWindow window, EnrichmentContext context) {
-    EntityInterface entity = window.entity();
+    EntityInterface<?> entity = window.entity();
     Map<String, Object> entityMap = JsonUtils.getMap(entity);
     entityMap.keySet().retainAll(context.entityTypeFields());
     stripNestedColumnChildren(entityMap);

@@ -15,6 +15,7 @@ import org.flowable.bpmn.model.SubProcess;
 import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetEntityAttributeTaskDefinition;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.governance.workflows.BatchExecutionPlan.NodeMode;
 import org.openmetadata.service.governance.workflows.elements.NodeInterface;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl.SetEntityAttributeImpl;
 import org.openmetadata.service.governance.workflows.flowable.builders.EndEventBuilder;
@@ -29,6 +30,13 @@ public class SetEntityAttributeTask implements NodeInterface {
 
   public SetEntityAttributeTask(
       SetEntityAttributeTaskDefinition nodeDefinition, WorkflowConfiguration config) {
+    this(nodeDefinition, config, NodeMode.PER_ENTITY);
+  }
+
+  public SetEntityAttributeTask(
+      SetEntityAttributeTaskDefinition nodeDefinition,
+      WorkflowConfiguration config,
+      NodeMode batchMode) {
     String subProcessId = nodeDefinition.getName();
 
     SubProcess subProcess = new SubProcessBuilder().id(subProcessId).build();
@@ -45,6 +53,7 @@ public class SetEntityAttributeTask implements NodeInterface {
                 nodeDefinition.getInputNamespaceMap() != null
                     ? nodeDefinition.getInputNamespaceMap()
                     : new HashMap<>()));
+    batchMode.addTo(setEntityAttribute);
 
     EndEvent endEvent =
         new EndEventBuilder().id(getFlowableElementId(subProcessId, "endEvent")).build();

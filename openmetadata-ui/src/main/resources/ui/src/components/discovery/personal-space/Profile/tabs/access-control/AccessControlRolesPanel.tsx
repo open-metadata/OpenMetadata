@@ -24,7 +24,7 @@ import {
   TableCard,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Delete } from '@openmetadata/ui-core-components/icons';
+import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
 import React, {
@@ -51,6 +51,7 @@ import { Operation } from '../../../../../../generated/entity/policies/policy';
 import { Role } from '../../../../../../generated/entity/teams/role';
 import { EntityReference } from '../../../../../../generated/entity/type';
 import { Paging } from '../../../../../../generated/type/paging';
+import { useHashPagingParams } from '../../../../../../hooks/useSettingsHash';
 import { getRoles } from '../../../../../../rest/rolesAPIV1';
 import { hardDeleteEntity } from '../../../../../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
@@ -77,12 +78,19 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
   onNavigate,
 }) => {
   const { t } = useTranslation();
+  const {
+    page: currentPage,
+    pageSize: hashPageSize,
+    cursor: hashCursor,
+    cursorType: hashCursorType,
+    setPage: setHashPage,
+  } = useHashPagingParams();
+  const pageSize = hashPageSize || PAGE_SIZE_BASE;
+
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedRole, setSelectedRole] = useState<Role>();
   const [isDeleting, setIsDeleting] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(PAGE_SIZE_BASE);
   const [paging, setPaging] = useState<Paging>({ total: 0 });
   const [cursorCache, setCursorCache] = useState<Map<number, Paging>>(
     new Map()
@@ -167,11 +175,11 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
   };
 
   const handleAfterDeleteAction = useCallback(() => {
-    setCurrentPage(1);
+    setHashPage(1, undefined, undefined, pageSize);
     setCursorCache(new Map());
     fetchRoles(undefined, 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [setHashPage, pageSize]);
 
   const handleRoleDelete = useCallback(async () => {
     setIsDeleting(true);
@@ -236,7 +244,7 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
         if (page === newPage) {
           setRoles(data.data || []);
           setPaging(data.paging);
-          setCurrentPage(newPage);
+          setHashPage(newPage, undefined, currentPaging.after, pageSize);
         }
       }
     } catch (error) {
@@ -254,7 +262,7 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
     }
 
     if (newPage === 1) {
-      setCurrentPage(1);
+      setHashPage(1, undefined, undefined, pageSize);
       fetchRoles(undefined, 1);
 
       return;
@@ -262,7 +270,7 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
 
     const cachedCursor = cursorCache.get(newPage - 1)?.after;
     if (cachedCursor) {
-      setCurrentPage(newPage);
+      setHashPage(newPage, undefined, cachedCursor, pageSize);
       fetchRoles({ after: cachedCursor }, newPage);
 
       return;
@@ -275,13 +283,21 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
   };
 
   const handlePageSizeChange = (size: number) => {
-    setPageSize(size);
-    setCurrentPage(1);
+    setHashPage(1, undefined, undefined, size);
     setCursorCache(new Map());
   };
 
   useEffect(() => {
-    fetchRoles(undefined, 1);
+    if (currentPage <= 1 || !hashCursor) {
+      if (currentPage > 1) {
+        setHashPage(1, undefined, undefined, pageSize);
+      }
+      fetchRoles(undefined, 1);
+    } else if (hashCursorType === 'before') {
+      fetchRoles({ before: hashCursor }, currentPage);
+    } else {
+      fetchRoles({ after: hashCursor }, currentPage);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pageSize]);
 
@@ -384,7 +400,7 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
           <ButtonUtility
             color="tertiary"
             data-testid={`delete-action-${getEntityName(role)}`}
-            icon={Delete}
+            icon={Trash01}
             isDisabled={!deleteRolePermission}
             size="xs"
             tooltip={

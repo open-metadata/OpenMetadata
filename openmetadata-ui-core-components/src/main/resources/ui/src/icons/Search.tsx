@@ -29,11 +29,11 @@ export const Search: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    viewBox="0 0 20 20"
+    viewBox="0 0 24 24"
     width={size}
     {...props}>
     <path
-      d="m17.5 17.5-2.917-2.917m2.084-5a7.083 7.083 0 1 1-14.167 0 7.083 7.083 0 0 1 14.167 0"
+      d="m21 21-3.5-3.5m2.5-6a8.5 8.5 0 1 1-17 0 8.5 8.5 0 0 1 17 0"
       stroke="currentColor"
       strokeWidth={1.3}
     />

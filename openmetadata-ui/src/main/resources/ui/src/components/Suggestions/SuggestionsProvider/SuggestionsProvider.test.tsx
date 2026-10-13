@@ -35,7 +35,11 @@ const mockPagingResponse = {
 };
 
 jest.mock('../../../hooks/useFqn', () => ({
-  useFqn: jest.fn().mockReturnValue({ fqn: 'mockFQN' }),
+  useFqn: jest.fn().mockReturnValue({ fqn: 'mockFQN', entityFqn: 'mockFQN' }),
+}));
+
+jest.mock('../../../utils/useRequiredParams', () => ({
+  useRequiredParams: jest.fn().mockReturnValue({ entityType: 'table' }),
 }));
 
 jest.mock('../../../hooks/usePubSub', () => ({

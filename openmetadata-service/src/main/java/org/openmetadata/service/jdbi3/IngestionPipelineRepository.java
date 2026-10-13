@@ -378,7 +378,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       return;
     }
     try {
-      EntityInterface parent = Entity.getEntity(serviceRef, "owners,domains", ALL);
+      EntityInterface<?> parent = Entity.getEntity(serviceRef, "owners,domains", ALL);
       inheritOwners(ingestionPipeline, fields, parent);
       inheritDomains(ingestionPipeline, fields, parent);
     } catch (EntityNotFoundException e) {
@@ -500,7 +500,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       UUID pipelineId = UUID.fromString(record.getToId());
       EntityReference serviceRef =
           Entity.getEntityReferenceById(
-              record.getFromEntity(), UUID.fromString(record.getFromId()), Include.NON_DELETED);
+              record.getFromEntity(), UUID.fromString(record.getFromId()), ALL);
       serviceMap.put(pipelineId, serviceRef);
     }
 
@@ -897,7 +897,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   @Override
-  public EntityInterface getParentEntity(IngestionPipeline entity, String fields) {
+  public EntityInterface<?> getParentEntity(IngestionPipeline entity, String fields) {
     if (entity.getService() == null) {
       // Try to load the service if it's not set
       LOG.warn(
@@ -920,7 +920,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   protected ChangeEvent getChangeEvent(
-      EntityInterface updated, ChangeDescription change, String entityType, Double prevVersion) {
+      EntityInterface<?> updated, ChangeDescription change, String entityType, Double prevVersion) {
     return new ChangeEvent()
         .withId(UUID.randomUUID())
         .withEntity(updated)
@@ -960,6 +960,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
                     ingestionPipeline.getFullyQualifiedName(),
                     PIPELINE_STATUS_EXTENSION),
             PipelineStatus.class);
+    keepRecordedTriggeredBy(pipelineStatus, storedPipelineStatus);
     if (storedPipelineStatus != null) {
       daoCollection
           .entityExtensionTimeSeriesDao()
@@ -1069,7 +1070,28 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
    * history can show it without polling the orchestrator. Best effort: the run is already going, so
    * failing to record its queued state must not fail the trigger.
    */
+  /**
+   * Once a run records who triggered it, that value is final. Both upsert paths replace the whole
+   * stored record and the worker's status reports carry no principal, so without this the value is
+   * lost as soon as the run starts. A non-null incoming value can only come from {@link
+   * #recordQueuedPipelineStatus} (the status endpoint drops client-supplied ones); it still fills
+   * the gap if the worker reported the run before the queued status was written.
+   */
+  static void keepRecordedTriggeredBy(PipelineStatus incoming, PipelineStatus stored) {
+    if (stored != null && stored.getTriggeredBy() != null) {
+      incoming.withTriggeredBy(stored.getTriggeredBy());
+    }
+  }
+
   public void recordQueuedPipelineStatus(UriInfo uriInfo, String pipelineFQN, String runId) {
+    recordQueuedPipelineStatus(uriInfo, pipelineFQN, runId, null);
+  }
+
+  /**
+   * @param triggeredBy principal that requested this run, or {@code null} if unknown.
+   */
+  public void recordQueuedPipelineStatus(
+      UriInfo uriInfo, String pipelineFQN, String runId, String triggeredBy) {
     if (nullOrEmpty(runId)) {
       return;
     }
@@ -1079,7 +1101,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
             .withRunId(runId)
             .withPipelineState(PipelineStatusType.QUEUED)
             .withStartDate(now)
-            .withTimestamp(now);
+            .withTimestamp(now)
+            .withTriggeredBy(triggeredBy);
     try {
       addPipelineStatus(uriInfo, pipelineFQN, queuedStatus);
     } catch (RuntimeException e) {
@@ -1194,7 +1217,6 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   public void updatePipelineStatusByRunId(String fqn, PipelineStatus pipelineStatus) {
     IngestionPipeline ingestionPipeline = findByName(fqn, Include.NON_DELETED);
     String pipelineFqn = ingestionPipeline.getFullyQualifiedName();
-    String json = JsonUtils.pojoToJson(pipelineStatus);
     PipelineStatus storedPipelineStatus =
         JsonUtils.readValue(
             daoCollection
@@ -1205,6 +1227,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
                     pipelineFqn,
                     PIPELINE_STATUS_EXTENSION),
             PipelineStatus.class);
+    keepRecordedTriggeredBy(pipelineStatus, storedPipelineStatus);
+    String json = JsonUtils.pojoToJson(pipelineStatus);
     if (storedPipelineStatus != null) {
       daoCollection
           .entityExtensionTimeSeriesDao()

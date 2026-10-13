@@ -74,7 +74,7 @@ public class GlossaryTermRelationFixesIT {
 
     assertEquals(200, response.statusCode());
     assertNotNull(status.getProjectionState());
-    assertNotNull(status.getAskCollateEnabled());
+    assertNotNull(status.getAiEnabled());
   }
 
   @Test

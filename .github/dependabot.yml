@@ -40,6 +40,13 @@ updates:
         update-types:
           - "minor"
           - "patch"
+    ignore:
+      # Logback 1.6 removed a field Dropwizard's request logging uses, so the
+      # server fails at startup. Remove once Dropwizard supports it, see #34308.
+      - dependency-name: "ch.qos.logback:logback-core"
+        versions: [">=1.6.0"]
+      - dependency-name: "ch.qos.logback:logback-classic"
+        versions: [">=1.6.0"]
 
   - package-ecosystem: "npm"
     directory: "/openmetadata-ui/src/main/resources/ui"

@@ -19,12 +19,16 @@ import { Button as AriaButton, Link as AriaLink } from 'react-aria-components';
 
 export const styles = sortCx({
   common: {
+    // A link button drops the button box by default; `boxed` keeps it.
+    linkUnboxed: 'tw:justify-normal tw:rounded tw:p-0!',
     root: [
       'tw:group tw:relative tw:inline-flex tw:h-max tw:cursor-pointer tw:items-center tw:justify-center tw:whitespace-nowrap tw:transition tw:duration-100 tw:ease-linear tw:before:absolute',
       // When button is used within `InputGroup`
       'tw:in-data-input-wrapper:shadow-xs tw:in-data-input-wrapper:focus:!z-50 tw:in-data-input-wrapper:in-data-leading:-mr-px tw:in-data-input-wrapper:in-data-leading:rounded-r-none tw:in-data-input-wrapper:in-data-leading:before:rounded-r-none tw:in-data-input-wrapper:in-data-trailing:-ml-px tw:in-data-input-wrapper:in-data-trailing:rounded-l-none tw:in-data-input-wrapper:in-data-trailing:before:rounded-l-none',
       // Disabled styles
       'tw:disabled:cursor-not-allowed tw:disabled:text-fg-disabled',
+      // The masked highlight fades the disabled border into dark surfaces.
+      'tw:dark:disabled:before:hidden tw:dark:disabled:after:outline-disabled',
       // Icon styles
       'tw:disabled:*:data-icon:text-fg-disabled_subtle',
       // Same as `icon` but for SSR icons that cannot be passed to the client as functions.
@@ -106,7 +110,7 @@ export const styles = sortCx({
     },
     'link-gray': {
       root: [
-        'tw:justify-normal tw:rounded tw:p-0! tw:text-tertiary tw:hover:text-tertiary_hover',
+        'tw:text-tertiary tw:hover:text-tertiary_hover',
         // Inner text underline
         'tw:*:data-text:underline tw:*:data-text:decoration-transparent tw:*:data-text:underline-offset-2 tw:hover:*:data-text:decoration-current',
         // Icon styles
@@ -118,7 +122,7 @@ export const styles = sortCx({
         // Dark keeps light frozen (brand-secondary) but flips to the blue link
         // tone (blue-300) per the dark-mode palette guideline — links are blue,
         // not the gray brand-secondary text step.
-        'tw:justify-normal tw:rounded tw:p-0! tw:text-brand-secondary tw:hover:text-brand-secondary_hover tw:dark:text-link tw:dark:hover:text-link-hover',
+        'tw:text-brand-secondary tw:hover:text-brand-secondary_hover tw:dark:text-link tw:dark:hover:text-link-hover',
         // Inner text underline
         'tw:*:data-text:underline tw:*:data-text:decoration-transparent tw:*:data-text:underline-offset-2 tw:hover:*:data-text:decoration-current',
         // Icon styles
@@ -159,7 +163,7 @@ export const styles = sortCx({
     },
     'link-destructive': {
       root: [
-        'tw:justify-normal tw:rounded tw:p-0! tw:text-error-primary tw:outline-error tw:hover:text-error-primary_hover',
+        'tw:text-error-primary tw:outline-error tw:hover:text-error-primary_hover',
         // Inner text underline
         'tw:*:data-text:underline tw:*:data-text:decoration-transparent tw:*:data-text:underline-offset-2 tw:hover:*:data-text:decoration-current',
         // Icon styles
@@ -216,6 +220,12 @@ export interface CommonProps {
   noTextPadding?: boolean;
   /** When true, keeps the text visible during loading state */
   showTextWhileLoading?: boolean;
+  /**
+   * Keeps a `link-*` button's size padding, height and radius instead of
+   * collapsing it to an inline text box, so it lines up with regular buttons
+   * beside it (antd's `type="link"`).
+   */
+  boxed?: boolean;
   /** Truncates the button text with an ellipsis when it overflows */
   ellipsis?: boolean;
   /** Omits the default focus outline when the surrounding UI intentionally does not use one */
@@ -276,6 +286,7 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
       className,
       hideFocusOutline,
       noTextPadding,
+      boxed,
       ellipsis,
       iconLeading: IconLeading,
       iconTrailing: IconTrailing,
@@ -295,7 +306,8 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
     const isLinkType = ['link-gray', 'link-color', 'link-destructive'].includes(
       color
     );
-    noTextPadding = isLinkType || noTextPadding;
+    const isUnboxedLink = isLinkType && !boxed;
+    noTextPadding = isUnboxedLink || noTextPadding;
 
     let props = {};
 
@@ -333,7 +345,8 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
           hideFocusOutline ? 'tw:outline-none' : styles.common.focusOutline,
           styles.sizes[size].root,
           styles.colors[color].root,
-          isLinkType && styles.sizes[size].linkRoot,
+          isUnboxedLink && styles.common.linkUnboxed,
+          isUnboxedLink && styles.sizes[size].linkRoot,
           ellipsis && 'tw:min-w-0',
           (loading || (href && (disabled || loading))) &&
             'tw:pointer-events-none',

@@ -130,7 +130,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
     Box: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+    Toggle: jest.requireActual('@openmetadata/ui-core-components').Toggle,
     CloseButton: jest
       .fn()
       .mockImplementation(({ onPress }) => (
@@ -164,14 +166,20 @@ jest.mock('@openmetadata/ui-core-components', () => {
       .mockImplementation(({ children }) => <div>{children}</div>),
     Button: jest
       .fn()
-      .mockImplementation(({ children, onClick }) => (
-        <button onClick={onClick}>{children}</button>
+      .mockImplementation(({ children, onClick, 'data-testid': testId }) => (
+        <button data-testid={testId} onClick={onClick}>
+          {children}
+        </button>
       )),
     ButtonUtility: jest
       .fn()
       .mockImplementation(
-        ({ icon, onClick, className, 'data-testid': testId }) => (
-          <button className={className} data-testid={testId} onClick={onClick}>
+        ({ icon, onClick, className, isDisabled, 'data-testid': testId }) => (
+          <button
+            className={className}
+            data-testid={testId}
+            disabled={isDisabled}
+            onClick={onClick}>
             {icon}
           </button>
         )
@@ -699,11 +707,10 @@ describe('TestDefinitionList Component', () => {
       const initialCallCount = (patchTestDefinition as jest.Mock).mock.calls
         .length;
 
-      fireEvent.click(externalSwitch);
-
-      await waitFor(() => {
-        expect(patchTestDefinition).toHaveBeenCalledTimes(initialCallCount);
-      });
+      // The guard is the native `disabled` input: browsers drop clicks on it,
+      // but jsdom still toggles a disabled checkbox on a synthetic click.
+      expect(externalSwitch).toBeDisabled();
+      expect(patchTestDefinition).toHaveBeenCalledTimes(initialCallCount);
     });
 
     it('should allow toggling OpenMetadata test definitions', async () => {

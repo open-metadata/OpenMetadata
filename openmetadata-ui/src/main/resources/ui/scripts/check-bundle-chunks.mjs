@@ -25,7 +25,8 @@ import { brotliCompressSync, constants as zlibConstants } from 'node:zlib';
 // than Rollup's post-merge count. After narrowing the `import.meta.glob`
 // patterns in ApplicationsClassBase and useImage — which had been over-matching
 // hundreds of assets via bare `import(`../assets/...${var}`)` — the reference
-// build sits at 1237 emitted / 1079 small. Headroom of ~15 % lets a few new
+// build sits at 1341 emitted / 1164 small (ui-core now ships one module per
+// file, so its lazy-only components split per route). Headroom of ~15 % lets a few new
 // lazy routes ship without a churn PR; a big regression still fails the gate.
 const MAX_EMITTED_JS_FILES = 1400;
 const MAX_SMALL_JS_FILES = 1250;
@@ -35,19 +36,33 @@ const MAX_SMALL_JS_FILES = 1250;
 // chunk that both HTML entries reference via `<link modulepreload>`. That new
 // chunk is <1 KB and byte-neutral; only the count went up by one.
 const MAX_HTML_BOOTSTRAP_JS_FILES = 9;
-// Taking the owner hover card off the entry graph (see ownerRenderUtils) puts
-// main at 1045275 bootstrap bytes, against 1141354 before it. This branch adds
-// the AuthCoordinator subgraph (CrossTabLock + RefreshQueue + ProactiveTimer +
-// VisibilityWatcher) statically imported from AuthProvider, so the current
-// build sits a few KB above main. 1150 KiB leaves room for that coordinator
-// footprint plus the ~45 KiB still owed by `setOwnerHrefResolver`, which
-// reaches RouterUtils and drags `useMarketplaceStore`, `qs` and the service
-// constants onto the entry graph. Once those two are unpicked this should
-// come down well below where it started.
-const MAX_HTML_BOOTSTRAP_JS_BROTLI_BYTES = 1150 * 1024;
+// A ratchet, about 2 % above the reference build (902929 bytes). The old
+// 1150 KiB ceiling sat ~120 KiB above the real size, which let an ~14 KiB
+// regression (every icon moving onto the entry graph) through unnoticed. Lower
+// it when the bootstrap shrinks; raising it means something new loads on every
+// page, which scripts/bundle-boot-packages.json will also have flagged.
+const MAX_HTML_BOOTSTRAP_JS_BROTLI_BYTES = 900 * 1024;
 const MAX_SINGLE_JS_BYTES = 1.75 * 1024 * 1024;
 const SMALL_JS_BYTES = 20 * 1024;
+// First view of a route: the index.html bootstrap plus the route chunk and its
+// static imports, Brotli. The two routes every session hits first.
+const ROUTE_FIRST_VIEW_BROTLI_BYTES = {
+  'src/pages/LoginPage/SignInPage.tsx': 930 * 1024,
+  'src/pages/MyDataPage/MyDataPage.component.tsx': 1040 * 1024,
+};
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
+// Written by the `bundle-graph-report` plugin (vite/plugins.ts) during `yarn build`.
+const bundleGraphPath = path.resolve(
+  scriptDirectory,
+  '../node_modules/.cache/bundle-graph.json'
+);
+// Every npm package the index.html bootstrap may contain. Generated from a
+// build, then edited by hand: adding a package means it now loads on every
+// page, so the reviewer should see why.
+const bootPackagesPath = path.join(
+  scriptDirectory,
+  'bundle-boot-packages.json'
+);
 const distDirectory = path.resolve(scriptDirectory, '../dist');
 const assetsDirectory = path.join(distDirectory, 'assets');
 const indexPath = path.join(distDirectory, 'index.html');
@@ -134,6 +149,88 @@ if (largestJsFile.size > MAX_SINGLE_JS_BYTES) {
   failures.push(
     `${largestJsFile.fileName} is ${largestJsFile.size} bytes (maximum ${MAX_SINGLE_JS_BYTES})`
   );
+}
+
+if (!existsSync(bundleGraphPath)) {
+  throw new Error(
+    `Bundle graph report is missing (${bundleGraphPath}). Run \`yarn build\` first.`
+  );
+}
+const bundleGraph = JSON.parse(readFileSync(bundleGraphPath, 'utf8'));
+const allowedBootPackages = new Set(
+  JSON.parse(readFileSync(bootPackagesPath, 'utf8'))
+);
+const bootPackages = Object.keys(bundleGraph.bootPackages);
+for (const pkg of bootPackages.filter((p) => !allowedBootPackages.has(p))) {
+  failures.push(
+    `${pkg} is now loaded on every page, via ${bundleGraph.bootPackages[
+      pkg
+    ].join(
+      ' → '
+    )}. Import it from a lazy route instead, or add it to scripts/bundle-boot-packages.json if it belongs in the shell`
+  );
+}
+for (const pkg of [...allowedBootPackages].filter(
+  (p) => !bundleGraph.bootPackages[p]
+)) {
+  failures.push(
+    `${pkg} is no longer in the bootstrap; remove it from scripts/bundle-boot-packages.json so it cannot come back unnoticed`
+  );
+}
+
+const brotliCache = new Map();
+const brotliSizeOf = (fileName) => {
+  if (!brotliCache.has(fileName)) {
+    brotliCache.set(
+      fileName,
+      brotliCompressSync(
+        readFileSync(path.join(distDirectory, fileName)),
+        brotliBootstrapOptions
+      ).length
+    );
+  }
+
+  return brotliCache.get(fileName);
+};
+const staticImportsOf = (fileName) =>
+  [
+    ...readFileSync(path.join(distDirectory, fileName), 'utf8').matchAll(
+      /(?:import|export)\s*(?:[^'"()]*?from\s*)?["']\.\/([^"']+\.js)["']/g
+    ),
+  ].map(([, imported]) => `assets/${imported}`);
+const bootFiles = new Set(bundleGraph.bootFiles);
+for (const [route, budget] of Object.entries(ROUTE_FIRST_VIEW_BROTLI_BYTES)) {
+  const page = bundleGraph.pages.find(({ module }) => module === route);
+  if (!page) {
+    failures.push(
+      `${route} is no longer a lazy route chunk; update ROUTE_FIRST_VIEW_BROTLI_BYTES`
+    );
+    continue;
+  }
+  const files = new Set(bootFiles);
+  const pending = [page.file];
+  while (pending.length) {
+    const fileName = pending.pop();
+    if (
+      !files.has(fileName) &&
+      existsSync(path.join(distDirectory, fileName))
+    ) {
+      files.add(fileName);
+      pending.push(...staticImportsOf(fileName));
+    }
+  }
+  const bytes = [...files].reduce(
+    (total, file) => total + brotliSizeOf(file),
+    0
+  );
+  console.log(
+    `First view of ${route}: ${bytes} Brotli bytes (budget ${budget}).`
+  );
+  if (bytes > budget) {
+    failures.push(
+      `first view of ${route} is ${bytes} Brotli bytes (maximum ${budget})`
+    );
+  }
 }
 
 if (failures.length > 0) {

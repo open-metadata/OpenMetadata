@@ -10,10 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { RightOutlined } from '@ant-design/icons';
-import { EmptyPlaceholderAction } from '@openmetadata/ui-core-components';
-import { Plus } from '@untitledui/icons';
-import { Button, Col, Dropdown, Form, Row, Select, Space } from 'antd';
+import {
+  Box,
+  Button,
+  Dropdown,
+  EmptyPlaceholderAction,
+  Grid,
+} from '@openmetadata/ui-core-components';
+import { ChevronRight, Plus } from '@openmetadata/ui-core-components/icons';
+import { Form, Select } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TEST_CASE_DELETION_MODE } from '../../../constants/DataQuality.constants';
@@ -26,6 +31,7 @@ import {
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import { useDataQualityProvider } from '../../../pages/DataQuality/DataQualityProvider';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { getPopupContainer } from '../../../utils/formPureUtils';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
@@ -42,12 +48,12 @@ import { useTestCaseListPage } from './useTestCaseListPage';
 export const TestCases = () => {
   const { t } = useTranslation();
   const { createActions } = useDataQualityProvider();
+  const [form] = Form.useForm();
   const {
     testCasePermission,
     testSuitePermission,
     testCaseSummary,
     isTestCaseSummaryLoading,
-    form,
     searchValue,
     selectedFilter,
     hasActiveFilters,
@@ -78,7 +84,7 @@ export const TestCases = () => {
     showDeleted,
     handleShowDeletedChange,
     handleAfterDeleteAction,
-  } = useTestCaseListPage();
+  } = useTestCaseListPage({ form });
 
   // testCasePermission is a resource-level permission (usePermissionProvider().permissions.
   // testCase, threaded through useTestCaseListPage). Itself OperationPermission-shaped, so it
@@ -291,44 +297,66 @@ export const TestCases = () => {
   }
 
   return (
-    <Row data-testid="test-case-container" gutter={[16, 16]}>
-      <Col span={24}>
+    <Grid
+      className="layout-row layout-grid"
+      data-testid="test-case-container"
+      style={{ ...getLayoutGutter(16, 16) }}>
+      <Grid.Item className="layout-column" span={24}>
         <Form<TestCaseSearchParams>
           className="new-form-style"
           form={form}
           layout="horizontal"
           onValuesChange={handleFilterChange}>
-          <Space wrap align="center" className="w-full" size={16}>
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal w-full"
+            gap={4}
+            itemClassName="layout-space-item"
+            wrap="wrap">
             <Form.Item noStyle name="selectedFilters">
-              <Dropdown
-                menu={{
-                  items: filterMenu,
-                  selectedKeys: selectedFilter,
-                  onClick: handleMenuClick,
-                }}
-                trigger={['click']}>
+              <Dropdown.Root>
                 <Button
-                  ghost
-                  className="expand-btn"
+                  className="tw:text-brand-secondary tw:after:outline-brand"
+                  color="secondary"
                   data-testid="advanced-filter"
-                  type="primary">
+                  iconTrailing={<ChevronRight size={14} />}
+                  size="sm">
                   {t('label.advanced')}
-                  <RightOutlined />
                 </Button>
-              </Dropdown>
+                <Dropdown.Popover
+                  className="tw:w-auto"
+                  placement="bottom start">
+                  <Dropdown.Menu
+                    aria-label={t('label.advanced')}
+                    selectedKeys={selectedFilter}
+                    selectionMode="multiple"
+                    onAction={(key) => handleMenuClick({ key: String(key) })}>
+                    {filterMenu.map((item) => (
+                      <Dropdown.Item
+                        shouldCloseOnSelect
+                        data-testid={`advanced-filter-option-${item.key}`}
+                        id={item.key}
+                        key={item.key}
+                        label={item.label}
+                      />
+                    ))}
+                  </Dropdown.Menu>
+                </Dropdown.Popover>
+              </Dropdown.Root>
             </Form.Item>
             {renderPrimaryFilters()}
             {renderSecondaryFilters()}
-          </Space>
+          </Box>
         </Form>
-      </Col>
-      <Col span={24}>
+      </Grid.Item>
+      <Grid.Item className="layout-column" span={24}>
         <PieChartSummaryPanel
           isLoading={isTestCaseSummaryLoading}
           testSummary={testCaseSummary}
         />
-      </Col>
-      <Col span={24}>
+      </Grid.Item>
+      <Grid.Item className="layout-column" span={24}>
         <DataQualityTab
           afterDeleteAction={handleAfterDeleteAction}
           breadcrumbData={[
@@ -361,7 +389,7 @@ export const TestCases = () => {
           onTestCaseResultUpdate={handleStatusSubmit}
           onTestUpdate={handleTestCaseUpdate}
         />
-      </Col>
-    </Row>
+      </Grid.Item>
+    </Grid>
   );
 };

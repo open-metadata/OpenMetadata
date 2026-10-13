@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import { PipelineServiceType } from '../../../../generated/entity/data/pipeline';
 import { MetadataServiceType } from '../../../../generated/entity/services/metadataService';
@@ -179,15 +179,11 @@ describe('ServiceConnectionDetails', () => {
     );
     expect(await screen.findByText('scope:')).toBeInTheDocument();
     expect(
-      await screen
-        .queryAllByTestId('input-field')[4]
-        .querySelector('span[title=test_scope1]')
-    ).toHaveTextContent('test_scope1');
+      within(screen.queryAllByTestId('input-field')[4]).getByText('test_scope1')
+    ).toBeInTheDocument();
     expect(
-      await screen
-        .queryAllByTestId('input-field')[4]
-        .querySelector('span[title=test_scope2]')
-    ).toHaveTextContent('test_scope2');
+      within(screen.queryAllByTestId('input-field')[4]).getByText('test_scope2')
+    ).toBeInTheDocument();
   });
 
   services.map((service) => {

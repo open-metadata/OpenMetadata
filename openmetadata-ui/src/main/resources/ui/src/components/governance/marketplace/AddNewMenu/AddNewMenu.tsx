@@ -12,7 +12,7 @@
  */
 
 import { Button, Dropdown } from '@openmetadata/ui-core-components';
-import { ChevronDown } from '@untitledui/icons';
+import { ChevronDown } from '@openmetadata/ui-core-components/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDataProductCreateDrawer } from '../../../DataProduct/hooks/useDataProductCreateDrawer';

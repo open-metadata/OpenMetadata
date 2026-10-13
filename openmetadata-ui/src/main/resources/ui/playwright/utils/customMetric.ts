@@ -90,8 +90,8 @@ export const createCustomMetric = async ({
             : 'table-profiler-chart-container'
         }"]`
       )
-      .first()
-  ).toBeVisible();
+      .filter({ visible: true })
+  ).not.toHaveCount(0);
 
   await page.locator('[data-testid="cancel-button"]').click();
   await customMetricResponse;

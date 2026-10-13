@@ -46,9 +46,14 @@ import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { authenticateAdminPage, performAdminLogin } from '../../utils/admin';
-import { assignDataProduct, clickOutside } from '../../utils/common';
+import {
+  assignDataProduct,
+  clickOutside,
+  searchDataProductOptions,
+  toastNotification,
+} from '../../utils/common';
 import { DATA_ASSET_RULES } from '../../utils/dataAssetRules';
-import { assignDomainWidget } from '../../utils/domain';
+import { getDomainNode, setDomain } from '../../utils/domainPicker';
 import {
   addOwner,
   assignGlossaryTerm,
@@ -102,6 +107,7 @@ const glossaryTerm = new GlossaryTerm(glossary);
 const glossaryTerm2 = new GlossaryTerm(glossary);
 
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
+  createdDataProducts.length = 0;
   test.slow(true);
 
   const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -170,7 +176,7 @@ test.describe(
         });
 
         // Single Domain Add Check
-        await assignDomainWidget(page, domain.responseData);
+        await setDomain(page, domain.responseData);
 
         // Exclude this check at Service Level Entities
         if (!entityName.includes('Service')) {
@@ -252,7 +258,8 @@ test.describe(
         await page.goto(
           `/glossary/${encodeURIComponent(
             testGlossaryTerm.responseData.fullyQualifiedName
-          )}`
+          )}`,
+          { waitUntil: 'domcontentloaded' }
         );
 
         await page.waitForLoadState('domcontentloaded');
@@ -278,7 +285,7 @@ test.describe(
         });
 
         // Assign first domain (single-select mode)
-        await assignDomainWidget(page, testDomain1.responseData);
+        await setDomain(page, testDomain1.responseData);
 
         // Verify first domain is visible
         await expect(
@@ -288,7 +295,9 @@ test.describe(
         ).toBeVisible();
 
         // Assign second domain (should REPLACE first, not add to it)
-        await assignDomainWidget(page, testDomain2.responseData, false, true);
+        await setDomain(page, testDomain2.responseData, {
+          trigger: 'edit-domain',
+        });
 
         // Verify second domain is visible
         await expect(
@@ -335,6 +344,9 @@ test.describe(
     const pickerDataProduct = new DataProduct([productDomain]);
     const sameDomainTable = new TableClass();
     const otherDomainTable = new TableClass();
+    // In assetDomain with a Data Product from assetDomain, so moving it to
+    // productDomain is rejected by the rule.
+    const rejectedDomainTable = new TableClass();
 
     test.beforeAll('Setup cross-domain data', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -366,11 +378,33 @@ test.describe(
           },
         ],
       });
+      await rejectedDomainTable.create(apiContext);
+      await rejectedDomainTable.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/domains',
+            value: [{ id: assetDomain.responseData.id, type: 'domain' }],
+          },
+          {
+            op: 'add',
+            path: '/dataProducts',
+            value: [
+              {
+                id: sameDomainDataProduct.responseData.id,
+                type: 'dataProduct',
+              },
+            ],
+          },
+        ],
+      });
       await afterAction();
     });
 
     test.afterAll('Cleanup cross-domain data', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
+      await rejectedDomainTable.delete(apiContext);
       await otherDomainTable.delete(apiContext);
       await sameDomainTable.delete(apiContext);
       await pickerDataProduct.delete(apiContext);
@@ -391,7 +425,7 @@ test.describe(
       await authenticateAdminPage(page);
       await crossTable.visitEntityPage(page);
 
-      await assignDomainWidget(page, assetDomain.responseData);
+      await setDomain(page, assetDomain.responseData);
 
       await page
         .getByTestId('KnowledgePanel.DataProducts')
@@ -399,37 +433,66 @@ test.describe(
         .getByTestId('add-data-product')
         .click();
 
-      const selectorInput = page.locator(
-        '[data-testid="data-product-selector"] input'
-      );
       const sameDomainFqn =
         sameDomainDataProduct.responseData.fullyQualifiedName;
       const otherDomainFqn =
         otherDomainDataProduct.responseData.fullyQualifiedName;
 
-      // Positive control: a Data Product in the asset's domain is listed.
-      await expect(async () => {
-        const searchResponse = page.waitForResponse((response) =>
-          response.url().includes('/api/v1/search/query')
-        );
-        await selectorInput.clear();
-        await selectorInput.fill(sameDomainDataProduct.data.displayName);
-        await searchResponse;
-        await expect(page.getByTestId(`tag-${sameDomainFqn}`)).toBeVisible({
-          timeout: 2_000,
-        });
-      }).toPass({ timeout: 30_000, intervals: [1_000, 2_000, 5_000] });
+      const sameDomainOption = await searchDataProductOptions(page, {
+        displayName: sameDomainDataProduct.data.displayName,
+        fullyQualifiedName: sameDomainFqn,
+      });
+      await expect(sameDomainOption).toBeVisible();
 
       // Scoped to the asset's domain, so a Data Product from another domain is
       // not offered.
-      const otherSearchResponse = page.waitForResponse((response) =>
-        response.url().includes('/api/v1/search/query')
-      );
-      await selectorInput.clear();
-      await selectorInput.fill(otherDomainDataProduct.data.displayName);
-      await otherSearchResponse;
+      const otherDomainOption = await searchDataProductOptions(page, {
+        displayName: otherDomainDataProduct.data.displayName,
+        fullyQualifiedName: otherDomainFqn,
+      });
+      await expect(otherDomainOption).toBeHidden();
+    });
 
-      await expect(page.getByTestId(`tag-${otherDomainFqn}`)).not.toBeVisible();
+    // A rejected domain change must not leave the picker on the rejected
+    // domain: the header keeps the saved one, and so must the reopened picker.
+    test('should keep the saved domain selected after the rule rejects a domain change', async ({
+      page,
+    }) => {
+      await authenticateAdminPage(page);
+      await rejectedDomainTable.visitEntityPage(page);
+
+      const patchResponse = await setDomain(page, productDomain.responseData, {
+        verify: 'none',
+      });
+
+      expect(patchResponse?.status()).toBe(400);
+
+      await toastNotification(page, /Data Product Domain Validation/);
+      await expect(
+        page.getByTestId(
+          `domain-tag-${assetDomain.responseData.fullyQualifiedName}`
+        )
+      ).toBeVisible();
+
+      await page.getByTestId('add-domain').click();
+      const searchBox = page.getByTestId('domain-selectable-tree-search');
+      await expect(searchBox).toBeVisible();
+
+      // Searched one at a time: the unsearched root listing is capped, so a
+      // busy CI catalog may not have either test domain on it.
+      for (const [target, selected] of [
+        [assetDomain, 'true'],
+        [productDomain, 'false'],
+      ] as const) {
+        const node = getDomainNode(page, target.responseData);
+        await expect(async () => {
+          await searchBox.fill('');
+          await searchBox.fill(target.responseData.name);
+          await expect(node).toBeVisible({ timeout: 5_000 });
+        }).toPass({ timeout: 90_000 });
+
+        await expect(node).toHaveAttribute('data-selected', selected);
+      }
     });
 
     // With the rule enabled, the "Add Assets" picker on a Data Product stays

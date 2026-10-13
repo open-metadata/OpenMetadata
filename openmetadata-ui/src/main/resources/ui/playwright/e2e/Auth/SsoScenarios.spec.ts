@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page, Response, test } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { performAdminLogin } from '../../utils/admin';
 import { getAuthContext } from '../../utils/common';
 import { auth0ProviderFixture } from '../../utils/sso-providers/auth0';
@@ -28,6 +29,7 @@ import {
   restoreSecurityConfig,
   SecurityConfigSnapshot,
 } from '../../utils/ssoAuth';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 // Every fixture the AuthCoordinator scenario matrix runs against. Scenarios 1–6
 // covered here; commit 10 layers scenarios 7–9 (misconfig, self-signup) on top.
@@ -47,6 +49,23 @@ const FIXTURES: SsoProviderFixture[] = [
 
 const AUTH_REFRESH_PATH = '/api/v1/auth/refresh';
 const APP_BAR_HOME_TESTID = 'app-bar-item-my-data';
+// A protected page whose query string the app keeps in the URL, so landing
+// back on it proves both the path and the search survived the IdP round trip.
+const SILENT_REAUTH_DEEP_LINK = '/explore/tables?sortOrder=asc';
+const SILENT_REAUTH_DEEP_LINK_URL = /\/explore\/tables\?(.*&)?sortOrder=asc/;
+
+// Every main-frame path the page visits from here on, including client-side
+// (history API) navigations, so a scenario can prove /signin never showed.
+const trackVisitedPaths = (page: Page): string[] => {
+  const paths: string[] = [];
+  page.on('framenavigated', (frame) => {
+    if (frame === page.mainFrame()) {
+      paths.push(new URL(frame.url()).pathname);
+    }
+  });
+
+  return paths;
+};
 
 // Reads the coordinator's canonical stored token (`app_state.primary`)
 // with two independent paths: the service worker's postMessage protocol
@@ -249,7 +268,7 @@ for (const fixture of FIXTURES) {
         await fixture.performLogin(page);
 
         await expect(page.getByTestId(APP_BAR_HOME_TESTID)).toBeVisible({
-          timeout: 30_000,
+          timeout: ACTION_TIMEOUT,
         });
       });
 
@@ -470,10 +489,11 @@ for (const fixture of FIXTURES) {
           await fixture.performLogin(page);
           await fixture.forceTokenExpiry(page);
 
-          const refreshPromise = page.waitForResponse(
-            (resp) =>
-              resp.url().includes(AUTH_REFRESH_PATH) && resp.status() === 200,
-            { timeout: 30_000 }
+          const refreshPromise = waitForResponseWithStatus(
+            page,
+            (resp) => resp.url().includes(AUTH_REFRESH_PATH),
+            200,
+            { timeout: ACTION_TIMEOUT }
           );
 
           // Reload rather than a same-URL goto: reload guarantees the coordinator
@@ -484,7 +504,7 @@ for (const fixture of FIXTURES) {
           await refreshPromise;
 
           await expect(page.getByTestId(APP_BAR_HOME_TESTID)).toBeVisible({
-            timeout: 30_000,
+            timeout: ACTION_TIMEOUT,
           });
           expect(page.url()).not.toContain('/signin');
         });
@@ -696,10 +716,10 @@ for (const fixture of FIXTURES) {
 
               await Promise.all([
                 expect(tabA.getByTestId(APP_BAR_HOME_TESTID)).toBeVisible({
-                  timeout: 30_000,
+                  timeout: ACTION_TIMEOUT,
                 }),
                 expect(tabB.getByTestId(APP_BAR_HOME_TESTID)).toBeVisible({
-                  timeout: 30_000,
+                  timeout: ACTION_TIMEOUT,
                 }),
               ]);
 
@@ -769,6 +789,113 @@ for (const fixture of FIXTURES) {
         });
       }
 
+      // Scenario 11 — silent renewal fails while the IdP session is alive
+      // (blocked third-party cookies, an ended OpenMetadata session, Entra's
+      // 24h SPA refresh-token limit). The app must recover with exactly one
+      // top-level prompt=none redirect and land back on the page the user was
+      // on, never showing /signin. Fixtures without a prompt=none flow (Basic,
+      // LDAP, SAML) opt out via supportsSilentReauth.
+      const { breakSilentRenewal, killIdpSession, trackSilentReauth } = fixture;
+      if (
+        fixture.supportsSilentReauth &&
+        breakSilentRenewal &&
+        trackSilentReauth
+      ) {
+        test('silent re-auth restores the deep link without /signin', async ({
+          page,
+        }) => {
+          test.slow();
+
+          await fixture.performLogin(page);
+          await page.goto(SILENT_REAUTH_DEEP_LINK, {
+            waitUntil: 'domcontentloaded',
+          });
+          await expect(page.getByTestId(APP_BAR_HOME_TESTID)).toBeVisible({
+            timeout: ACTION_TIMEOUT,
+          });
+
+          const visitedPaths = trackVisitedPaths(page);
+          const silentReauthCount = trackSilentReauth(page);
+          await breakSilentRenewal(page);
+          await fixture.forceTokenExpiry(page);
+
+          await page.reload({ waitUntil: 'domcontentloaded' });
+
+          // The reload itself lands on the deep link, so wait for the round
+          // trip to the IdP before checking where it ended up.
+          await expect
+            .poll(silentReauthCount, { timeout: 60_000 })
+            .toBeGreaterThanOrEqual(1);
+          await expect(page).toHaveURL(SILENT_REAUTH_DEEP_LINK_URL, {
+            timeout: 60_000,
+          });
+          await expect(page.getByTestId(APP_BAR_HOME_TESTID)).toBeVisible({
+            timeout: ACTION_TIMEOUT,
+          });
+          expect(await silentReauthCount()).toBe(1);
+          expect(visitedPaths).not.toContain('/signin');
+        });
+      }
+
+      // Scenario 12 — once the IdP session itself is gone the single
+      // prompt=none redirect comes back with login_required. The user must
+      // land on /signin signed out after exactly that one attempt: a second
+      // redirect would be the start of a loop.
+      if (
+        fixture.supportsSilentReauth &&
+        breakSilentRenewal &&
+        killIdpSession &&
+        trackSilentReauth
+      ) {
+        test('dead IdP session signs out after one silent re-auth, no loop', async ({
+          page,
+        }) => {
+          test.slow();
+
+          await fixture.performLogin(page);
+          await page.goto(SILENT_REAUTH_DEEP_LINK, {
+            waitUntil: 'domcontentloaded',
+          });
+          await expect(page.getByTestId(APP_BAR_HOME_TESTID)).toBeVisible({
+            timeout: ACTION_TIMEOUT,
+          });
+
+          const silentReauthCount = trackSilentReauth(page);
+          await breakSilentRenewal(page);
+          await killIdpSession(page);
+          await fixture.forceTokenExpiry(page);
+
+          await page.reload({ waitUntil: 'domcontentloaded' });
+
+          await expect(page).toHaveURL(/\/signin$/, { timeout: 60_000 });
+
+          // Hold the count steady across 3 consecutive 2s samples: a loop
+          // would keep redirecting to the IdP and never settle.
+          let previousCount = -1;
+          let stableSamples = 0;
+          await expect
+            .poll(
+              async () => {
+                const count = await silentReauthCount();
+                if (count === previousCount) {
+                  stableSamples += 1;
+                } else {
+                  stableSamples = 0;
+                  previousCount = count;
+                }
+
+                return stableSamples;
+              },
+              { timeout: 30_000, intervals: [2_000] }
+            )
+            .toBeGreaterThanOrEqual(3);
+
+          expect(await silentReauthCount()).toBe(1);
+          await expect(page).toHaveURL(/\/signin$/);
+          expect(await readStoredPrimaryToken(page)).toBeFalsy();
+        });
+      }
+
       // Scenario 7 — the /silent-callback iframe route is a bare oidc-client
       // handoff and MUST NOT boot the full app. If AppRoot ever mounted here
       // (regression: someone re-adds it under AuthProvider), a >2 MB main
@@ -813,6 +940,10 @@ for (const fixture of FIXTURES) {
           // is the correct synchronization point (no wall-clock sleep, no
           // banned `networkidle`). oidc-client's own async work is fire-
           // and-forget inside a hidden iframe and is not asserted on.
+          // This scenario asserts what the silent-callback entry actually loads,
+          // so it has to wait for `load` rather than short-circuit at
+          // domcontentloaded.
+
           await page.goto('/silent-callback', { waitUntil: 'load' });
 
           // Full-app shell markers MUST NOT be present in the iframe DOM.

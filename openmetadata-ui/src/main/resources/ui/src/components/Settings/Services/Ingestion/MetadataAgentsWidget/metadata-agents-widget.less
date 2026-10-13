@@ -12,24 +12,11 @@
  */
 @import (reference) '../../../../../styles/variables.less';
 
-.metadata-agents-widget.ant-card {
+.metadata-agents-widget {
   height: 100%;
-  background-color: var(--tw-color-bg-primary);
-  border-color: @grey-15;
-  border-radius: @border-rad-sm;
-  padding: 0;
-
-  & > .ant-card-body {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    padding: 0;
-
-    &::before,
-    &::after {
-      display: none;
-    }
-  }
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 
   .agent-icon-container {
     display: flex;

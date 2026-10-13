@@ -18,14 +18,13 @@ import { TableClass } from '../support/entity/TableClass';
 import { TeamClass } from '../support/team/TeamClass';
 import { UserClass } from '../support/user/UserClass';
 import {
-  assignDomain,
   descriptionBox,
   fillDescriptionBox,
   getApiContext,
   redirectToHomePage,
   uuid,
-  waitForAntdPopupToSettle,
 } from './common';
+import { setDomain } from './domainPicker';
 import {
   addMultiOwner,
   addOwner,
@@ -39,7 +38,6 @@ import { waitForResponseWithStatus } from './waitHelpers';
 
 const TEAM_TYPES = ['Department', 'Division', 'Group'];
 
-const ADD_TEAM_MODAL = '[role="dialog"].ant-modal';
 // A success toast self-dismisses after 3.5s; give it a beat past that.
 const TOAST_DISMISS_TIMEOUT = 6_000;
 const MODAL_OPEN_TIMEOUT = 10_000;
@@ -51,7 +49,7 @@ export const openAddTeamModal = async (
   trigger: AddTeamTrigger = 'add-team'
 ) => {
   const addButton = page.getByTestId(trigger);
-  const addTeamModal = page.locator(ADD_TEAM_MODAL).last();
+  const addTeamModal = page.getByTestId('add-team-modal');
 
   await expect(page.getByTestId('alert-bar')).toHaveCount(0, {
     timeout: TOAST_DISMISS_TIMEOUT,
@@ -225,7 +223,7 @@ export const createTeam = async (
     ...overrides,
   };
 
-  const teamModal = page.locator('[role="dialog"].ant-modal');
+  const teamModal = page.getByTestId('add-team-modal');
 
   await teamModal.waitFor();
 
@@ -247,7 +245,7 @@ export const createTeam = async (
       response.request().method() === 'POST'
   );
 
-  await page.locator('button[type="submit"]').click();
+  await teamModal.getByRole('button', { name: 'Save' }).click();
 
   const response = await createTeamResponse;
   const createdTeam = await response.json();
@@ -445,7 +443,10 @@ export const addTeamHierarchy = async (
       response.url().includes('fields=') &&
       response.request().method() === 'GET'
   );
-  await page.click('[form="add-team-form"]');
+  await page
+    .getByTestId('add-team-modal')
+    .getByRole('button', { name: 'Save' })
+    .click();
   await saveTeamResponse;
   const teamsListResponseResult = await teamsListResponse;
 
@@ -780,7 +781,7 @@ export const executionOnOwnerTeam = async (
   await expect(page.getByTestId('edit-team-subscription')).toBeVisible();
   await expect(page.getByTestId('edit-team-type-icon')).toBeVisible();
 
-  await assignDomain(page, data.domain.responseData);
+  await setDomain(page, data.domain.responseData);
 
   await addMultiOwner({
     page,
@@ -822,7 +823,7 @@ export const executionOnOwnerGroupTeam = async (
   await expect(page.getByTestId('edit-team-subscription')).toBeVisible();
   await expect(page.getByTestId('edit-team-type-icon')).not.toBeVisible();
 
-  await assignDomain(page, data.domain.responseData);
+  await setDomain(page, data.domain.responseData);
 
   await addEmailTeam(page, data.email);
 
@@ -847,9 +848,8 @@ export const selectAssetsFilterFromDropdown = async (
   filterLabel: string
 ) => {
   await page.getByTestId('asset-filter-button').click();
-  const menuItem = page.getByRole('menuitem', { name: filterLabel });
+  const menuItem = page.getByRole('menuitemcheckbox', { name: filterLabel });
   await expect(menuItem).toBeVisible();
-  await waitForAntdPopupToSettle(page);
   await menuItem.click();
 };
 

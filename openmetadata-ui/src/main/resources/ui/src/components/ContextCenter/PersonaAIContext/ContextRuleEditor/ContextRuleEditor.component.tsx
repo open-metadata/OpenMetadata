@@ -25,7 +25,11 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { AlertCircle, InfoCircle, LinkExternal01 } from '@untitledui/icons';
+import {
+  AlertCircle,
+  InfoCircle,
+  LinkExternal01,
+} from '@openmetadata/ui-core-components/icons';
 import {
   FC,
   ReactNode,
@@ -763,7 +767,7 @@ export const ContextRuleEditor = ({
       closeOnBackdrop: false,
       form: formBody,
       header: {
-        className: 'tw:border-b tw:border-secondary tw:px-6! tw:py-5!',
+        className: 'tw:border-b tw:border-secondary tw:mt-0 tw:px-6! tw:py-5!',
       },
       hookForm: form,
       submitLabel: t('label.save-rule'),
