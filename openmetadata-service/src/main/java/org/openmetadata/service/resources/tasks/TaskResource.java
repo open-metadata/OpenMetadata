@@ -128,7 +128,8 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
   static final String LIST_FIELDS = "assignees,about,createdBy";
 
   static final String SERVER_OPENED_REVIEW =
-      "Memory conflict review tasks are opened by the server when a memory is disputed";
+      "Memory conflict reviews are opened by the server: record the conflict as disputes on the"
+          + " memory instead";
 
   private static final String TASK_SEARCH_DESCRIPTION =
       "Free-text search. Database-only (tasks are not indexed into Elasticsearch). "
@@ -999,10 +1000,10 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
   }
 
   /**
-   * Only the server opens a memory conflict review, when a write leaves a memory in Draft with
-   * disputes. Resolving one approves or rejects that memory without checking that the resolver may
-   * edit it: being assigned the task is the authorization. A client that could file one would pick
-   * the memory and the assignees, and so decide any memory it may file a task about
+   * A client raises a memory conflict by recording it as {@code disputes} on the Draft memory, which
+   * needs the right to edit that memory, and the server then opens the review. Filing the task
+   * directly would skip that check: resolving it approves or rejects the memory, and being assigned
+   * the task is the authorization
    * (ADR:2026-10-13-a-memory-conflict-opens-a-review-task-and-approving-it-supersedes-the-disputed-memory).
    */
   private static void requireCreatableThroughApi(CreateTask create) {

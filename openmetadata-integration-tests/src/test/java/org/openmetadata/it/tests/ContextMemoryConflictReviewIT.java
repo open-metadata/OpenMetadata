@@ -305,17 +305,21 @@ public class ContextMemoryConflictReviewIT {
   void aConflictReviewCannotBeFiledThroughTheApi(TestNamespace ns) {
     ContextMemory memory = pending(ns, "filed", shared().USER2_REF);
 
-    assertThrows(
-        InvalidRequestException.class,
-        () ->
-            SdkClients.adminClient()
-                .tasks()
-                .create(
-                    new CreateTask()
-                        .withName(ns.prefix("filed-review"))
-                        .withCategory(TaskCategory.Review)
-                        .withType(TaskEntityType.MemoryConflictReview)
-                        .withAbout("<#E::contextMemory::" + memory.getFullyQualifiedName() + ">")));
+    InvalidRequestException refused =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                SdkClients.adminClient()
+                    .tasks()
+                    .create(
+                        new CreateTask()
+                            .withName(ns.prefix("filed-review"))
+                            .withCategory(TaskCategory.Review)
+                            .withType(TaskEntityType.MemoryConflictReview)
+                            .withAbout(
+                                "<#E::contextMemory::" + memory.getFullyQualifiedName() + ">")));
+
+    assertTrue(refused.getMessage().contains("record the conflict as disputes on the memory"));
   }
 
   @Test
