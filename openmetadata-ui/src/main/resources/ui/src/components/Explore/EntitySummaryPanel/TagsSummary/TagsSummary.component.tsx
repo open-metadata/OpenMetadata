@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Grid, Typography } from '@openmetadata/ui-core-components';
+import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
 import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -58,18 +58,13 @@ function TagsSummary({ entityDetails, isLoading }: TagsSummaryProps) {
   }, [entityDetails.fullyQualifiedName, setSelectedData]);
 
   const usageItems = useMemo(() => {
-    return selectedData.map((entity, index) => {
-      return (
-        <>
-          <div className="mb-2">
-            <TableDataCardV2
-              id={`tabledatacardtest${index}`}
-              source={entity as SourceType}
-            />
-          </div>
-        </>
-      );
-    });
+    return selectedData.map((entity, index) => (
+      <TableDataCardV2
+        id={`tabledatacardtest${index}`}
+        key={entity.id}
+        source={entity as SourceType}
+      />
+    ));
   }, [selectedData]);
 
   useEffect(() => {
@@ -90,7 +85,9 @@ function TagsSummary({ entityDetails, isLoading }: TagsSummaryProps) {
         </Grid.Item>
         <Grid.Item className="layout-column" span={24}>
           {selectedData.length > 0 ? (
-            <div className="">{usageItems}</div>
+            <Box direction="col" gap={3}>
+              {usageItems}
+            </Box>
           ) : (
             <Typography
               className="text-grey-body"

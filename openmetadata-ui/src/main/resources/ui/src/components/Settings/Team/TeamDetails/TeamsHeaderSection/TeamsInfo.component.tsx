@@ -17,19 +17,18 @@ import {
 } from '@ant-design/icons';
 import {
   Box,
-  ButtonUtility,
+  Button,
   Divider,
   Owner,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Form, Input } from 'antd';
+import { Form, Input } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, last } from 'lodash';
 import { MouseEvent, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import {
   GRAYED_OUT_COLOR,
   NO_DATA_PLACEHOLDER,
@@ -48,6 +47,7 @@ import {
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
 import { DomainLabel } from '../../../../common/DomainLabel/DomainLabel.component';
+import { EditIconButton } from '../../../../common/IconButtons/EditIconButton';
 import TeamTypeSelect from '../../../../common/TeamTypeSelect/TeamTypeSelect.component';
 import { UserTeamSelectableList } from '../../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { PersonaSelectableList } from '../../../../MyData/Persona/PersonaSelectableList/PersonaSelectableList.component';
@@ -191,23 +191,19 @@ const TeamsInfo = ({
             'label.email'
           )}`}</Typography>
           {hasEditPermission && (
-            <Tooltip
-              arrow
+            <EditIconButton
+              newLook
+              data-testid="edit-email"
+              size="small"
               title={t('label.edit-entity', {
                 entity: t('label.email'),
-              })}>
-              <ButtonUtility
-                color="secondary"
-                data-testid="edit-email"
-                icon={EditIcon}
-                size="xs"
-                onClick={(e) => {
-                  // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
-                  e.stopPropagation();
-                  setIsEmailEdit(true);
-                }}
-              />
-            </Tooltip>
+              })}
+              onClick={(e) => {
+                // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
+                e.stopPropagation();
+                setIsEmailEdit(true);
+              }}
+            />
           )}
         </div>
         {isEmailEdit ? (
@@ -250,21 +246,19 @@ const TeamsInfo = ({
                 gap={1}
                 itemClassName="layout-space-item">
                 <Button
-                  className="h-8 p-x-xss"
+                  color="primary"
                   data-testid="cancel-edit-email"
-                  disabled={isLoading}
-                  size="small"
-                  type="primary"
+                  isDisabled={isLoading}
+                  size="xs"
                   onClick={() => setIsEmailEdit(false)}>
                   <CloseOutlined />
                 </Button>
                 <Button
-                  className="h-8 p-x-xss"
+                  color="primary"
                   data-testid="save-edit-email"
-                  htmlType="submit"
-                  loading={isLoading}
-                  size="small"
-                  type="primary">
+                  isLoading={isLoading}
+                  size="xs"
+                  type="submit">
                   <CheckOutlined />
                 </Button>
               </Box>
@@ -308,23 +302,19 @@ const TeamsInfo = ({
               {`${t('label.type')}`}
             </Typography>
             {hasEditPermission && !showTypeSelector && !isGroupType && (
-              <Tooltip
-                arrow
+              <EditIconButton
+                newLook
+                data-testid="edit-team-type-icon"
+                size="small"
                 title={t('label.edit-entity', {
                   entity: t('label.team-type'),
-                })}>
-                <ButtonUtility
-                  color="secondary"
-                  data-testid="edit-team-type-icon"
-                  icon={EditIcon}
-                  size="xs"
-                  onClick={(e: MouseEvent) => {
-                    // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
-                    e.stopPropagation();
-                    setShowTypeSelector(true);
-                  }}
-                />
-              </Tooltip>
+                })}
+                onClick={(e: MouseEvent) => {
+                  // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
+                  e.stopPropagation();
+                  setShowTypeSelector(true);
+                }}
+              />
             )}
           </div>
 

@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Grid } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import { Box, Button, Grid } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { map, startCase } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
@@ -86,7 +85,7 @@ const OmHealthPage = () => {
               />
             </Box>
             <Box className="layout-column tw:block">
-              <Button type="primary" onClick={getHealthData}>
+              <Button color="primary" onClick={getHealthData}>
                 {t('label.refresh')}
               </Button>
             </Box>

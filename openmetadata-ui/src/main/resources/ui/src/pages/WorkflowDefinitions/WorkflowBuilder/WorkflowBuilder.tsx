@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Tabs } from '@openmetadata/ui-core-components';
+import { Tabs } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare, Operation } from 'fast-json-patch';
@@ -632,25 +632,25 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
             onUpdateDisplayName={handleUpdateDisplayName}
           />
         </div>
-        <Card className="tw:mt-3">
-          <Tabs
-            className="tw:w-full tw:mt-3 tw:shrink-0 tw:pl-5"
-            data-testid="workflow-execution-tabs"
-            selectedKey={activeTab}
-            onSelectionChange={(key) =>
-              setActiveTab(key as WorkflowBuilderTab)
-            }>
-            <Tabs.List items={workflowBuilderTabs} type="underline">
-              {(tab) => (
-                <Tabs.Item
-                  data-testid={tabTestIds[tab.id as WorkflowBuilderTab]}
-                  id={tab.id}
-                  label={tab.label}
-                />
-              )}
-            </Tabs.List>
-          </Tabs>
-        </Card>
+        <Tabs
+          className="tw:mt-3"
+          data-testid="workflow-execution-tabs"
+          selectedKey={activeTab}
+          onSelectionChange={(key) => setActiveTab(key as WorkflowBuilderTab)}>
+          <Tabs.List
+            items={workflowBuilderTabs}
+            size="sm"
+            type="underline"
+            variant="card">
+            {(tab) => (
+              <Tabs.Item
+                data-testid={tabTestIds[tab.id as WorkflowBuilderTab]}
+                id={tab.id}
+                label={tab.label}
+              />
+            )}
+          </Tabs.List>
+        </Tabs>
         <div className="tw:relative tw:flex tw:flex-1 tw:min-h-0 tw:flex-col tw:pt-4">
           {renderTabPanel()}
           {renderSidebar()}

@@ -23,6 +23,7 @@ jest.mock('../../../../rest/axiosClient', () => ({
   },
 }));
 
+import { TFunction } from 'i18next';
 import {
   Task,
   TaskAvailableTransition,
@@ -35,6 +36,7 @@ import { getDefaultTaskFormSchema } from '../../../../utils/TaskFormSchemaUtils'
 import {
   applyActionLabels,
   buildResolveBody,
+  getReassignBlocker,
   getTaskActionInput,
   getTaskResolveActions,
   LEGACY_APPROVE_ACTION_ID,
@@ -560,5 +562,39 @@ describe('splitTaskActions', () => {
       secondary: undefined,
       overflow: [],
     });
+  });
+});
+
+describe('getReassignBlocker', () => {
+  const t = ((key: string, options?: { name?: string }) =>
+    options?.name ? `${key}:${options.name}` : key) as unknown as TFunction;
+  const aisha = {
+    id: 'u1',
+    type: 'user',
+    name: 'aisha.khan',
+    displayName: 'Aisha Khan',
+  };
+  const bob = { id: 'u2', type: 'user', name: 'bob', displayName: 'Bob' };
+
+  it.each([
+    ['picks the same assignee again', [aisha], [aisha]],
+    ['clears the current assignee', [aisha], []],
+  ])(
+    'names who is already assigned when the reassign %s',
+    (_, current, next) => {
+      expect(getReassignBlocker(current, next, t)).toBe(
+        'message.already-assigned-to-task:Aisha Khan'
+      );
+    }
+  );
+
+  it('lets a reassign to someone else through', () => {
+    expect(getReassignBlocker([aisha], [bob], t)).toBeUndefined();
+  });
+
+  it('asks for an assignee when a task with none gets an empty pick', () => {
+    expect(getReassignBlocker([], [], t)).toBe(
+      'message.field-text-is-required'
+    );
   });
 });
