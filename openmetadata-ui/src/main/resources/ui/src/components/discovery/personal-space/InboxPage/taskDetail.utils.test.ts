@@ -52,6 +52,16 @@ describe('getTaskTypeBadge', () => {
     ).toEqual({ label: 'label.incident', color: 'error', icon: 'incident' });
   });
 
+  it('gives a memory conflict review its own chip', () => {
+    expect(
+      getTaskTypeBadge(buildTask({ type: TaskType.MemoryConflictReview }), t)
+    ).toEqual({
+      label: 'label.memory-conflict',
+      color: 'orange',
+      icon: 'approval',
+    });
+  });
+
   it('falls back to a neutral chip for an unmapped type', () => {
     expect(
       getTaskTypeBadge(buildTask({ type: 'SomethingNew' as TaskType }), t)

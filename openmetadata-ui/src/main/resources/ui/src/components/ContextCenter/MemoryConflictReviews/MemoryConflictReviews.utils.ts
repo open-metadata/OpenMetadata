@@ -106,6 +106,14 @@ export const getConflictRecency = (
   return recency;
 };
 
-/** A memory's URL name, which Context Center opens through `?memory=`. */
-export const getMemoryLinkName = (memory?: EntityReference): string =>
-  memory?.name ?? memory?.fullyQualifiedName ?? '';
+/**
+ * The review as a task list shows it, with the memory it is about named by its
+ * title: memory names are generated, so the reference's name reads as noise.
+ */
+export const withMemoryTitle = (review: Task): Task => {
+  const title = getReviewedMemoryTitle(review);
+
+  return title && review.about
+    ? { ...review, about: { ...review.about, displayName: title } }
+    : review;
+};

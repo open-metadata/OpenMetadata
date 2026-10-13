@@ -43,8 +43,5 @@ export interface ConflictRecency {
 export interface MemoryConflictReviewsProps {
   reviews: Task[];
   isLoading: boolean;
-  currentUserName?: string;
-  isAdminUser?: boolean;
-  onViewMemory: (memoryName: string) => void;
   onResolved: () => void;
 }

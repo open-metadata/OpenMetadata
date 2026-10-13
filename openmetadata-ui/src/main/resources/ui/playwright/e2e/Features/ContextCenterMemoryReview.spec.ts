@@ -98,40 +98,35 @@ test.describe(
       const { disputed, reviewed } = await createConflict(apiContext);
       created.push(disputed, reviewed);
 
-      await test.step('the conflict summarises both claims', async () => {
+      await test.step('the conflict waits in Needs review as a task', async () => {
         await navigateToMemories(page);
         await page.getByTestId('memory-count-card-needs-review').click();
-        const review = page.getByTestId(`memory-review-${reviewed.id}`);
 
-        await expect(review).toBeVisible();
-        await expect(review.getByTestId('reviewed-memory')).toHaveText(
-          reviewed.title
-        );
-        await expect(review.getByTestId('reviewed-memory-claim')).toHaveText(
-          reviewed.answer
-        );
         await expect(
-          review.getByTestId(`disputed-memory-${disputed.id}`)
-        ).toHaveText(disputed.title);
-        await expect(
-          review.getByTestId(`disputed-memory-${disputed.id}-claim`)
-        ).toHaveText(disputed.answer);
-        await expect(review).toContainText(CONFLICT_REASON);
+          page.getByTestId(`memory-review-${reviewed.id}`)
+        ).toContainText(`Review conflicting memory: ${reviewed.title}`);
       });
 
-      await test.step('compare shows both memories in full', async () => {
-        await page
-          .getByTestId(`memory-review-${reviewed.id}`)
-          .getByTestId('compare-review')
-          .click();
+      await test.step('opening it compares both memories as a diff', async () => {
+        await page.getByTestId(`memory-review-${reviewed.id}`).click();
         const compare = page.getByTestId('memory-compare-modal');
 
-        await expect(
-          compare.getByTestId(`memory-panel-${reviewed.id}`)
-        ).toContainText(reviewed.answer);
-        await expect(
-          compare.getByTestId(`memory-panel-${disputed.id}`)
-        ).toContainText(disputed.answer);
+        await expect(compare.getByTestId('compare-current-title')).toHaveText(
+          disputed.title
+        );
+        await expect(compare.getByTestId('compare-proposed-title')).toHaveText(
+          reviewed.title
+        );
+        await expect(compare.getByTestId('diff-current-memory')).toHaveText(
+          disputed.answer
+        );
+        await expect(compare.getByTestId('diff-proposed-memory')).toHaveText(
+          reviewed.answer
+        );
+        await expect(compare.getByTestId('diff-row-memory')).toHaveAttribute(
+          'data-changed',
+          'true'
+        );
         await expect(compare.getByTestId('compare-reason')).toContainText(
           CONFLICT_REASON
         );
@@ -180,12 +175,12 @@ test.describe(
       await page.getByTestId('memory-count-card-needs-review').click();
       const review = page.getByTestId(`memory-review-${reviewed.id}`);
 
-      await review.getByTestId('compare-review').click();
+      await review.click();
       const compare = page.getByTestId('memory-compare-modal');
 
-      await expect(
-        compare.getByTestId(`memory-panel-${disputed.id}`)
-      ).toContainText(disputed.answer);
+      await expect(compare.getByTestId('diff-current-memory')).toHaveText(
+        disputed.answer
+      );
 
       await clickAndWaitFor(
         page,

@@ -5840,14 +5840,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/ContextCenter/MemoryConflictReviews/MemoryConflictReviews.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/ContextCenterMemoryReview.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/ContextCenter/PersonaAIContext/ContextPreviewModal/ContextPreviewModal.component.tsx"
       ],
       "specs": [

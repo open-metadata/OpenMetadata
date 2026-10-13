@@ -708,18 +708,6 @@ const ContextCenterMemoriesPage: FC = () => {
     [setSearchParams]
   );
 
-  const handleViewMemoryByName = useCallback(
-    (name: string) => {
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev);
-        next.set('memory', name);
-
-        return next;
-      });
-    },
-    [setSearchParams]
-  );
-
   const handleReviewResolved = useCallback(() => {
     refreshMemoryReviews();
     queryClient.invalidateQueries({
@@ -1212,12 +1200,9 @@ const ContextCenterMemoriesPage: FC = () => {
 
                 {isReviewing ? (
                   <MemoryConflictReviews
-                    currentUserName={currentUser?.name}
-                    isAdminUser={currentUser?.isAdmin}
                     isLoading={isReviewsLoading}
                     reviews={reviews}
                     onResolved={handleReviewResolved}
-                    onViewMemory={handleViewMemoryByName}
                   />
                 ) : (
                   <PaginationCardMinimal

@@ -14,7 +14,6 @@ import {
   Badge,
   Box,
   Button,
-  CloseButton,
   Dialog,
   Grid,
   Modal,
@@ -25,8 +24,10 @@ import {
 } from '@openmetadata/ui-core-components';
 import { useQueries } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { FC, ReactNode, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import {
   MEMORY_FIELDS,
   MEMORY_STATUS_LABEL_KEYS,
@@ -41,52 +42,55 @@ import { resolveTask } from '../../../rest/tasksAPI';
 import { CONTEXT_CENTER_MEMORY_DETAIL_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import CreateMemoryModal from '../CreateMemoryModal/CreateMemoryModal.component';
 import {
   CLAIM_RECENCY_LABELS,
   ReviewDecision,
   REVIEW_DECISIONS,
 } from '../MemoryConflictReviews/MemoryConflictReviews.constants';
-import { ClaimRecency } from '../MemoryConflictReviews/MemoryConflictReviews.types';
+import {
+  ClaimRecency,
+  MemoryConflictReviewDispute,
+} from '../MemoryConflictReviews/MemoryConflictReviews.types';
 import {
   getConflictRecency,
   getReviewDisputes,
   getReviewedClaim,
   getReviewedMemoryTitle,
 } from '../MemoryConflictReviews/MemoryConflictReviews.utils';
+import {
+  DiffSegment,
+  getKeepHints,
+  getMemoryByline,
+  getMemoryDiffRows,
+  KeepHint,
+  MemoryDiffRow,
+} from './MemoryConflictCompare.utils';
 
 export interface MemoryConflictCompareProps {
   review: Task;
-  currentUserName?: string;
-  isAdminUser?: boolean;
   onClose: () => void;
   onResolved: () => void;
 }
 
-interface SideHeaderProps {
-  label: string;
-  status?: string;
-  recency?: ClaimRecency;
-  children?: ReactNode;
-}
+const SEGMENT_CLASS: Record<string, string> = {
+  removed:
+    'tw:rounded-xs tw:bg-utility-error-100 tw:text-utility-error-700 tw:line-through',
+  added: 'tw:rounded-xs tw:bg-utility-success-100 tw:text-utility-success-700',
+};
 
-const SideHeader: FC<SideHeaderProps> = ({
-  label,
+const CHANGED_CELL_CLASS = {
+  current: 'tw:bg-utility-error-50',
+  proposed: 'tw:bg-utility-success-50',
+};
+
+const SideBadges: FC<{ status?: string; recency?: ClaimRecency }> = ({
   status,
   recency,
-  children,
 }) => {
   const { t } = useTranslation();
 
   return (
-    <Box
-      align="center"
-      className="tw:rounded-xl tw:bg-overlay-surface tw:px-4 tw:py-2"
-      gap={2}
-      wrap="wrap">
-      <Typography size="text-sm" weight="semibold">
-        {label}
-      </Typography>
+    <>
       {status && (
         <Badge
           color={status === ContextMemoryStatus.Approved ? 'success' : 'gray'}
@@ -105,20 +109,253 @@ const SideHeader: FC<SideHeaderProps> = ({
           {t(CLAIM_RECENCY_LABELS[recency])}
         </Badge>
       )}
-      {children}
+    </>
+  );
+};
+
+const SideTitle: FC<{ memory?: ContextMemory; testId: string }> = ({
+  memory,
+  testId,
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <Typography data-testid={testId} weight="semibold">
+      {memory
+        ? memory.title || memory.name
+        : t('message.memory-no-longer-exists')}
+    </Typography>
+  );
+};
+
+interface SideHeaderProps {
+  label: string;
+  memory?: ContextMemory;
+  status?: string;
+  recency?: ClaimRecency;
+  isLoading: boolean;
+  testId: string;
+  children?: ReactNode;
+}
+
+/** A column's head: whose side it is, where it stands and which is newer. */
+const SideHeader: FC<SideHeaderProps> = ({
+  label,
+  memory,
+  status,
+  recency,
+  isLoading,
+  testId,
+  children,
+}) => (
+  <Box className="tw:px-4 tw:py-3" direction="col" gap={1}>
+    <Box align="center" gap={2} wrap="wrap">
+      <Typography
+        className="tw:text-tertiary tw:uppercase"
+        size="text-xs"
+        weight="semibold">
+        {label}
+      </Typography>
+      <SideBadges recency={recency} status={status} />
+    </Box>
+    {isLoading ? (
+      <Skeleton height="16px" variant="rounded" width="70%" />
+    ) : (
+      <SideTitle memory={memory} testId={testId} />
+    )}
+    <Typography className="tw:text-tertiary" size="text-xs">
+      {getMemoryByline(memory)}
+    </Typography>
+    {children}
+  </Box>
+);
+
+const DiffValue: FC<{
+  segments: DiffSegment[];
+  kind: MemoryDiffRow['kind'];
+}> = ({ segments, kind }) => {
+  if (segments.every(({ value }) => !value.trim())) {
+    return (
+      <Typography className="tw:text-quaternary" size="text-sm">
+        {NO_DATA_PLACEHOLDER}
+      </Typography>
+    );
+  }
+
+  return (
+    <Typography
+      as="div"
+      className={classNames('tw:text-secondary tw:break-words', {
+        'tw:whitespace-pre-wrap': kind === 'text',
+        'tw:flex tw:flex-wrap tw:gap-1.5': kind === 'list',
+      })}
+      size="text-sm">
+      {segments.map(({ id, value, change }) => (
+        <span
+          className={classNames(change && SEGMENT_CLASS[change], {
+            'tw:rounded-md tw:border tw:border-secondary tw:px-1.5':
+              kind === 'list',
+          })}
+          data-change={change}
+          key={id}>
+          {value}
+        </span>
+      ))}
+    </Typography>
+  );
+};
+
+const DiffCell: FC<{
+  row: MemoryDiffRow;
+  side: 'current' | 'proposed';
+}> = ({ row, side }) => (
+  <Grid.Item
+    className={classNames(
+      'tw:border-l tw:border-secondary tw:px-4 tw:py-3',
+      row.sides.isChanged && CHANGED_CELL_CLASS[side]
+    )}
+    data-testid={`diff-${side}-${row.key}`}
+    role="cell"
+    span={10}>
+    <DiffValue kind={row.kind} segments={row.sides[side]} />
+  </Grid.Item>
+);
+
+const DiffRow: FC<{ row: MemoryDiffRow }> = ({ row }) => {
+  const { t } = useTranslation();
+  const { isChanged } = row.sides;
+
+  return (
+    <Grid
+      className="tw:border-b tw:border-secondary tw:last:border-b-0"
+      data-changed={isChanged}
+      data-testid={`diff-row-${row.key}`}
+      role="row">
+      <Grid.Item className="tw:px-4 tw:py-3" role="rowheader" span={4}>
+        <Typography
+          className={isChanged ? 'tw:text-primary' : 'tw:text-tertiary'}
+          size="text-sm"
+          weight={isChanged ? 'semibold' : 'medium'}>
+          {t(row.labelKey)}
+        </Typography>
+      </Grid.Item>
+      <DiffCell row={row} side="current" />
+      <DiffCell row={row} side="proposed" />
+    </Grid>
+  );
+};
+
+const ConflictContext: FC<{ question?: string; reason?: string }> = ({
+  question,
+  reason,
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <Box
+      className="tw:rounded-lg tw:bg-secondary tw:px-4 tw:py-3"
+      direction="col"
+      gap={1}>
+      {question && (
+        <Typography data-testid="compare-question" weight="semibold">
+          {question}
+        </Typography>
+      )}
+      {reason && (
+        <Typography
+          className="tw:text-tertiary"
+          data-testid="compare-reason"
+          size="text-sm">
+          {t('message.why-they-conflict', { reason })}
+        </Typography>
+      )}
     </Box>
   );
 };
 
-interface KeepFooterProps {
-  hint: string;
+interface MemorySide {
+  memory?: ContextMemory;
+  isLoading: boolean;
+  status?: string;
+  recency?: ClaimRecency;
+}
+
+interface DiffHeaderRowProps {
+  current: MemorySide;
+  proposed: MemorySide;
+  disputes: MemoryConflictReviewDispute[];
+  disputedId?: string;
+  onSelectDisputed: (id: string) => void;
+}
+
+const DiffHeaderRow: FC<DiffHeaderRowProps> = ({
+  current,
+  proposed,
+  disputes,
+  disputedId,
+  onSelectDisputed,
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <Grid
+      className="tw:border-b tw:border-secondary tw:bg-secondary"
+      role="row">
+      <Grid.Item className="tw:px-4 tw:py-3" role="columnheader" span={4}>
+        <Typography
+          className="tw:text-tertiary tw:uppercase"
+          size="text-xs"
+          weight="semibold">
+          {t('label.field')}
+        </Typography>
+      </Grid.Item>
+      <Grid.Item
+        className="tw:border-l tw:border-secondary"
+        role="columnheader"
+        span={10}>
+        <SideHeader
+          {...current}
+          label={t('label.current')}
+          testId="compare-current-title">
+          {disputes.length > 1 && (
+            <Tabs
+              selectedKey={disputedId}
+              onSelectionChange={(key) => onSelectDisputed(String(key))}>
+              <Tabs.List
+                items={disputes.map(({ memory }) => ({
+                  id: memory.id,
+                  label: getEntityName(memory),
+                }))}
+                type="button-gray">
+                {(tab) => <Tabs.Item {...tab} />}
+              </Tabs.List>
+            </Tabs>
+          )}
+        </SideHeader>
+      </Grid.Item>
+      <Grid.Item
+        className="tw:border-l tw:border-secondary"
+        role="columnheader"
+        span={10}>
+        <SideHeader
+          {...proposed}
+          label={t('label.in-review')}
+          testId="compare-proposed-title"
+        />
+      </Grid.Item>
+    </Grid>
+  );
+};
+
+interface KeepActionProps {
+  hint: KeepHint;
   testId: string;
   isDisabled: boolean;
   isLoading: boolean;
   onKeep: () => void;
 }
 
-const KeepFooter: FC<KeepFooterProps> = ({
+const KeepAction: FC<KeepActionProps> = ({
   hint,
   testId,
   isDisabled,
@@ -128,14 +365,7 @@ const KeepFooter: FC<KeepFooterProps> = ({
   const { t } = useTranslation();
 
   return (
-    <Box
-      align="center"
-      className="tw:shrink-0 tw:border-t tw:border-tertiary tw:px-6 tw:py-4"
-      gap={3}
-      justify="between">
-      <Typography className="tw:text-tertiary" size="text-xs">
-        {hint}
-      </Typography>
+    <Box align="center" gap={3}>
       <Button
         className="tw:shrink-0"
         color="primary"
@@ -143,81 +373,24 @@ const KeepFooter: FC<KeepFooterProps> = ({
         isDisabled={isDisabled}
         isLoading={isLoading}
         size="md"
-        type="button"
         onClick={onKeep}>
         {t('label.keep-this-one')}
       </Button>
-    </Box>
-  );
-};
-
-interface MemoryPanelProps {
-  memory?: ContextMemory;
-  isLoading: boolean;
-  footer: ReactNode;
-  currentUserName?: string;
-  isAdminUser?: boolean;
-  onClose: () => void;
-}
-
-/** The memory exactly as its own detail modal shows it, as one panel. */
-const MemoryPanel: FC<MemoryPanelProps> = ({
-  memory,
-  isLoading,
-  footer,
-  currentUserName,
-  isAdminUser,
-  onClose,
-}) => {
-  const { t } = useTranslation();
-
-  if (memory) {
-    return (
-      <CreateMemoryModal
-        embedded
-        isOpen
-        viewOnly
-        currentUserName={currentUserName}
-        footer={footer}
-        isAdminUser={isAdminUser}
-        memoryToEdit={memory}
-        onClose={onClose}
-        onCreated={onClose}
-      />
-    );
-  }
-
-  return (
-    <Box
-      className="tw:h-full tw:overflow-hidden tw:rounded-2xl tw:bg-overlay-surface tw:shadow-overlay"
-      direction="col"
-      justify="between">
-      <Box className="tw:p-6" direction="col" gap={3}>
-        {isLoading ? (
-          <>
-            <Skeleton height="20px" variant="rounded" width="60%" />
-            <Skeleton height="120px" variant="rounded" width="100%" />
-          </>
-        ) : (
-          <Typography className="tw:text-tertiary" size="text-sm">
-            {t('message.memory-no-longer-exists')}
-          </Typography>
-        )}
-      </Box>
-      {footer}
+      <Typography className="tw:text-tertiary" size="text-xs">
+        {t(hint.key, hint.options)}
+      </Typography>
     </Box>
   );
 };
 
 /**
- * Both sides of a memory conflict in full, each as its own detail modal shows
- * it, next to each other. Keeping the memory in review approves it and
- * supersedes the memories it contradicts; keeping those rejects it.
+ * One dialog that reads like a split diff: the Approved memory on the left,
+ * the memory in review on the right, field by field, with what the memory in
+ * review drops and adds highlighted. Keeping the memory in review approves it
+ * and supersedes the memories it contradicts; keeping those rejects it.
  */
 const MemoryConflictCompare: FC<MemoryConflictCompareProps> = ({
   review,
-  currentUserName,
-  isAdminUser,
   onClose,
   onResolved,
 }) => {
@@ -228,9 +401,10 @@ const MemoryConflictCompare: FC<MemoryConflictCompareProps> = ({
   const [disputedId, setDisputedId] = useState(disputes[0]?.memory.id);
   const [resolving, setResolving] = useState<ReviewDecision>();
   const dispute = disputes.find(({ memory }) => memory.id === disputedId);
-  const reviewedTitle =
-    getReviewedMemoryTitle(review) ?? getEntityName(review.about);
-  const isSingle = disputes.length === 1;
+  const hints = getKeepHints(
+    disputes,
+    getReviewedMemoryTitle(review) ?? getEntityName(review.about)
+  );
 
   const [reviewed, disputed] = useQueries({
     queries: [review.about?.id, disputedId].map((id) => ({
@@ -268,126 +442,69 @@ const MemoryConflictCompare: FC<MemoryConflictCompareProps> = ({
       onOpenChange={(open) => !open && onClose()}>
       <Modal>
         <Dialog
-          aria-label={t('label.compare-memories')}
+          showCloseButton
           data-testid="memory-compare-modal"
-          panelClassName="tw:bg-transparent! tw:shadow-none!"
-          width={1320}>
-          <Box direction="col" gap={3}>
-            <Box
-              align="start"
-              className="tw:rounded-2xl tw:bg-overlay-surface tw:shadow-overlay tw:px-6 tw:py-4"
-              gap={4}
-              justify="between">
-              <Box direction="col" gap={1}>
-                <Typography data-testid="compare-question" weight="semibold">
-                  {claim?.question ?? reviewedTitle}
-                </Typography>
-                {dispute?.reason && (
-                  <Typography
-                    className="tw:text-tertiary"
-                    data-testid="compare-reason"
-                    size="text-sm">
-                    {t('message.why-they-conflict', { reason: dispute.reason })}
-                  </Typography>
-                )}
-              </Box>
-              <CloseButton
-                aria-label={t('label.close')}
-                data-testid="close-compare"
-                onPress={onClose}
+          dividers="scroll"
+          title={review.displayName ?? t('label.compare-memories')}
+          width={1200}
+          onClose={onClose}>
+          <Dialog.Content>
+            <Box direction="col" gap={4}>
+              <ConflictContext
+                question={claim?.question}
+                reason={dispute?.reason}
               />
+              <div
+                aria-label={t('label.compare-memories')}
+                className="tw:overflow-hidden tw:rounded-lg tw:border tw:border-secondary"
+                role="table">
+                <DiffHeaderRow
+                  current={{
+                    memory: disputed.data,
+                    isLoading: disputed.isLoading,
+                    status:
+                      disputed.data?.entityStatus ?? dispute?.claim?.status,
+                    recency: recency.disputed[disputedId ?? ''],
+                  }}
+                  disputedId={disputedId}
+                  disputes={disputes}
+                  proposed={{
+                    memory: reviewed.data,
+                    isLoading: reviewed.isLoading,
+                    status: reviewed.data?.entityStatus ?? claim?.status,
+                    recency: recency.reviewed,
+                  }}
+                  onSelectDisputed={setDisputedId}
+                />
+                {getMemoryDiffRows(disputed.data, reviewed.data).map((row) => (
+                  <DiffRow key={row.key} row={row} />
+                ))}
+              </div>
             </Box>
-            <Grid colGap="4" rowGap="3">
-              <Grid.Item span={12}>
-                <Box direction="col" gap={2}>
-                  <SideHeader
-                    label={t('label.in-review')}
-                    recency={recency.reviewed}
-                    status={reviewed.data?.entityStatus ?? claim?.status}
-                  />
-                  <div className="tw:h-[68vh]">
-                    <MemoryPanel
-                      currentUserName={currentUserName}
-                      footer={
-                        <KeepFooter
-                          hint={
-                            isSingle
-                              ? t('message.keep-reviewed-memory-hint', {
-                                  title: getEntityName(disputes[0].memory),
-                                })
-                              : t('message.keep-reviewed-memory-hint-plural', {
-                                  count: disputes.length,
-                                })
-                          }
-                          isDisabled={Boolean(resolving)}
-                          isLoading={resolving === 'approve'}
-                          testId="keep-reviewed-memory"
-                          onKeep={() => handleKeep('approve')}
-                        />
-                      }
-                      isAdminUser={isAdminUser}
-                      isLoading={reviewed.isLoading}
-                      memory={reviewed.data}
-                      onClose={onClose}
-                    />
-                  </div>
-                </Box>
+          </Dialog.Content>
+          <Dialog.Footer>
+            <Grid className="tw:w-full" colGap="4">
+              <Grid.Item span={4} />
+              <Grid.Item span={10}>
+                <KeepAction
+                  hint={hints.approved}
+                  isDisabled={Boolean(resolving)}
+                  isLoading={resolving === 'reject'}
+                  testId="keep-approved-memories"
+                  onKeep={() => handleKeep('reject')}
+                />
               </Grid.Item>
-              <Grid.Item span={12}>
-                <Box direction="col" gap={2}>
-                  <SideHeader
-                    label={t('label.conflicts-with')}
-                    recency={
-                      disputedId ? recency.disputed[disputedId] : undefined
-                    }
-                    status={
-                      disputed.data?.entityStatus ?? dispute?.claim?.status
-                    }>
-                    {!isSingle && (
-                      <Tabs
-                        selectedKey={disputedId}
-                        onSelectionChange={(key) => setDisputedId(String(key))}>
-                        <Tabs.List
-                          items={disputes.map(({ memory }) => ({
-                            id: memory.id,
-                            label: getEntityName(memory),
-                          }))}
-                          type="button-gray">
-                          {(tab) => <Tabs.Item {...tab} />}
-                        </Tabs.List>
-                      </Tabs>
-                    )}
-                  </SideHeader>
-                  <div className="tw:h-[68vh]">
-                    <MemoryPanel
-                      currentUserName={currentUserName}
-                      footer={
-                        <KeepFooter
-                          hint={
-                            isSingle
-                              ? t('message.keep-approved-memory-hint', {
-                                  title: reviewedTitle,
-                                })
-                              : t('message.keep-approved-memories-hint', {
-                                  title: reviewedTitle,
-                                })
-                          }
-                          isDisabled={Boolean(resolving)}
-                          isLoading={resolving === 'reject'}
-                          testId="keep-approved-memories"
-                          onKeep={() => handleKeep('reject')}
-                        />
-                      }
-                      isAdminUser={isAdminUser}
-                      isLoading={disputed.isLoading}
-                      memory={disputed.data}
-                      onClose={onClose}
-                    />
-                  </div>
-                </Box>
+              <Grid.Item span={10}>
+                <KeepAction
+                  hint={hints.reviewed}
+                  isDisabled={Boolean(resolving)}
+                  isLoading={resolving === 'approve'}
+                  testId="keep-reviewed-memory"
+                  onKeep={() => handleKeep('approve')}
+                />
               </Grid.Item>
             </Grid>
-          </Box>
+          </Dialog.Footer>
         </Dialog>
       </Modal>
     </ModalOverlay>

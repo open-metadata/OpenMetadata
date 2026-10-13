@@ -13,8 +13,6 @@
 import { ResolutionType } from '../../../generated/api/tasks/resolveTask';
 import { ClaimRecency } from './MemoryConflictReviews.types';
 
-export const REVIEW_SKELETON_KEYS = ['review-skeleton-1', 'review-skeleton-2'];
-
 /** The server-opened task's transition ids and the resolution each records. */
 export const REVIEW_DECISIONS = {
   approve: ResolutionType.Approved,

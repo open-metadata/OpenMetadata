@@ -46,7 +46,6 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import { ConfigProvider } from 'antd';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import {
   Dispatch,
   FC,
@@ -311,12 +310,10 @@ const ReadOnlyBanner: FC<ReadOnlyBannerProps> = ({
   isViewOnly,
   isOwner,
   canDelete,
-  isEmbedded,
   memoryToEdit,
   t,
 }) => {
-  const isReadOnlyForViewer =
-    !isEmbedded && isViewOnly && !isOwner && !canDelete;
+  const isReadOnlyForViewer = isViewOnly && !isOwner && !canDelete;
 
   if (!isReadOnlyForViewer || !memoryToEdit) {
     return null;
@@ -408,40 +405,6 @@ const LinkedAssetsSection: FC<LinkedAssetsSectionProps> = ({
   </div>
 );
 
-/** A modal of its own, or a panel inside another dialog. */
-const MemoryModalShell: FC<MemoryModalShellProps> = ({
-  embedded,
-  isOpen,
-  memoryId,
-  onClose,
-  children,
-}) =>
-  embedded ? (
-    <div
-      className="tw:h-full tw:overflow-hidden tw:rounded-2xl tw:bg-overlay-surface tw:shadow-overlay"
-      data-testid={`memory-panel-${memoryId}`}>
-      {children}
-    </div>
-  ) : (
-    <ModalOverlay
-      isOpen={isOpen}
-      style={{ zIndex: 999 }}
-      onOpenChange={(open) => !open && onClose()}>
-      <Modal>
-        <Dialog
-          showCloseButton
-          data-testid="memory-modal"
-          title=""
-          width={600}
-          onClose={onClose}>
-          <Dialog.Content className="tw:p-0! tw:min-h-[92vh]">
-            {children}
-          </Dialog.Content>
-        </Dialog>
-      </Modal>
-    </ModalOverlay>
-  );
-
 const MemoryModalFooter: FC<MemoryModalFooterProps> = ({
   memoryToEdit,
   canDelete,
@@ -500,11 +463,6 @@ const MemoryModalFooter: FC<MemoryModalFooterProps> = ({
     </div>
   </div>
 );
-
-/** The modal's own actions, unless a host panel brings its own. */
-const MemoryModalActions: FC<
-  MemoryModalFooterProps & { footer?: ReactNode }
-> = ({ footer, ...props }) => <>{footer ?? <MemoryModalFooter {...props} />}</>;
 
 interface MemoryMetadataSectionProps {
   control: Control<MemoryFormValues>;
@@ -905,8 +863,6 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
   viewOnly = false,
   canDelete = false,
   currentUserName,
-  embedded = false,
-  footer,
 }) => {
   const { t } = useTranslation();
   const modalContainerRef = useRef<HTMLDivElement>(null);
@@ -1185,188 +1141,191 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
     );
   };
 
-  const content = (
-    <div
-      className={classNames({ 'tw:h-full': embedded })}
-      ref={modalContainerRef}>
-      <ConfigProvider
-        getPopupContainer={() => modalContainerRef.current ?? document.body}>
-        <HookForm
-          className={classNames('tw:flex tw:flex-col', {
-            'tw:h-full': embedded,
-            'tw:h-[92vh]': !embedded,
-          })}
-          form={form}
-          onSubmit={form.handleSubmit(handleSubmit)}>
-          {/* Sticky header */}
-          <MemoryModalHeader
-            memorySource={memorySource}
-            memorySourceLink={memorySourceLink}
-            memoryToEdit={memoryToEdit}
-            modalTitle={modalTitle}
-            t={t}
-          />
+  return (
+    <ModalOverlay
+      isOpen={isOpen}
+      style={{ zIndex: 999 }}
+      onOpenChange={(open) => !open && handleClose()}>
+      <Modal>
+        <Dialog
+          showCloseButton
+          data-testid="memory-modal"
+          title=""
+          width={600}
+          onClose={handleClose}>
+          <Dialog.Content className="tw:p-0! tw:min-h-[92vh]">
+            <div ref={modalContainerRef}>
+              <ConfigProvider
+                getPopupContainer={() =>
+                  modalContainerRef.current ?? document.body
+                }>
+                <HookForm
+                  className="tw:flex tw:flex-col tw:h-[92vh]"
+                  form={form}
+                  onSubmit={form.handleSubmit(handleSubmit)}>
+                  {/* Sticky header */}
+                  <MemoryModalHeader
+                    memorySource={memorySource}
+                    memorySourceLink={memorySourceLink}
+                    memoryToEdit={memoryToEdit}
+                    modalTitle={modalTitle}
+                    t={t}
+                  />
 
-          {/* Scrollable body */}
-          <div className="tw:flex tw:flex-col tw:gap-5 tw:pb-4 tw:overflow-y-auto tw:flex-1 tw:px-6">
-            {/* Read-only banner for non-owners */}
-            <ReadOnlyBanner
-              canDelete={canDelete}
-              isEmbedded={embedded}
-              isOwner={isOwner}
-              isViewOnly={isViewOnly}
-              memoryToEdit={memoryToEdit}
-              t={t}
-            />
+                  {/* Scrollable body */}
+                  <div className="tw:flex tw:flex-col tw:gap-5 tw:pb-4 tw:overflow-y-auto tw:flex-1 tw:px-6">
+                    {/* Read-only banner for non-owners */}
+                    <ReadOnlyBanner
+                      canDelete={canDelete}
+                      isOwner={isOwner}
+                      isViewOnly={isViewOnly}
+                      memoryToEdit={memoryToEdit}
+                      t={t}
+                    />
 
-            {/* Inline error alert */}
-            {modalError && (
-              <Alert
-                closable
-                title={modalError}
-                variant="error"
-                onClose={() => setModalError('')}
-              />
-            )}
-
-            {/* Section 1: Title — uses getField (TEXT) */}
-            <div className="tw:flex tw:flex-col tw:gap-1">
-              {getField(titleField)}
-            </div>
-
-            {/* Section 2: Memory content — FormField escape hatch for custom preview/edit tabs */}
-            <FormField
-              control={form.control}
-              name="memory"
-              rules={{
-                required: t('label.field-required', {
-                  field: t(MEMORY_LABEL_KEY),
-                }),
-              }}>
-              {({ field, fieldState }) => (
-                <div className="tw:flex tw:flex-col tw:gap-1">
-                  <div className="tw:flex tw:items-center tw:justify-between">
-                    <div className="tw:flex tw:items-center tw:gap-1">
-                      <FormItemLabel
-                        label={t(MEMORY_LABEL_KEY)}
-                        required={!isViewOnly}
+                    {/* Inline error alert */}
+                    {modalError && (
+                      <Alert
+                        closable
+                        title={modalError}
+                        variant="error"
+                        onClose={() => setModalError('')}
                       />
-                      <Tooltip
-                        title={t(
-                          contextCenterClassBase.getMemoryPromptTranslationKey()
-                        )}>
-                        <TooltipTrigger className="tw:leading-0">
-                          <InfoCircle
-                            className="tw:text-utility-gray-400 tw:cursor-pointer"
-                            size={14}
-                            strokeWidth={2}
-                          />
-                        </TooltipTrigger>
-                      </Tooltip>
+                    )}
+
+                    {/* Section 1: Title — uses getField (TEXT) */}
+                    <div className="tw:flex tw:flex-col tw:gap-1">
+                      {getField(titleField)}
                     </div>
-                    {!isViewOnly && (
-                      <Button
-                        color="secondary"
-                        size="sm"
-                        onClick={() =>
-                          setMemoryTab((prev) =>
-                            prev === 'edit' ? 'preview' : 'edit'
-                          )
-                        }>
-                        {memoryTab === 'edit'
-                          ? t('label.preview')
-                          : t('label.edit')}
-                      </Button>
+
+                    {/* Section 2: Memory content — FormField escape hatch for custom preview/edit tabs */}
+                    <FormField
+                      control={form.control}
+                      name="memory"
+                      rules={{
+                        required: t('label.field-required', {
+                          field: t(MEMORY_LABEL_KEY),
+                        }),
+                      }}>
+                      {({ field, fieldState }) => (
+                        <div className="tw:flex tw:flex-col tw:gap-1">
+                          <div className="tw:flex tw:items-center tw:justify-between">
+                            <div className="tw:flex tw:items-center tw:gap-1">
+                              <FormItemLabel
+                                label={t(MEMORY_LABEL_KEY)}
+                                required={!isViewOnly}
+                              />
+                              <Tooltip
+                                title={t(
+                                  contextCenterClassBase.getMemoryPromptTranslationKey()
+                                )}>
+                                <TooltipTrigger className="tw:leading-0">
+                                  <InfoCircle
+                                    className="tw:text-utility-gray-400 tw:cursor-pointer"
+                                    size={14}
+                                    strokeWidth={2}
+                                  />
+                                </TooltipTrigger>
+                              </Tooltip>
+                            </div>
+                            {!isViewOnly && (
+                              <Button
+                                color="secondary"
+                                size="sm"
+                                onClick={() =>
+                                  setMemoryTab((prev) =>
+                                    prev === 'edit' ? 'preview' : 'edit'
+                                  )
+                                }>
+                                {memoryTab === 'edit'
+                                  ? t('label.preview')
+                                  : t('label.edit')}
+                              </Button>
+                            )}
+                          </div>
+                          {renderMemoryContent(field)}
+                          {fieldState.error?.message && (
+                            <HintText isInvalid>
+                              {fieldState.error.message}
+                            </HintText>
+                          )}
+                        </div>
+                      )}
+                    </FormField>
+
+                    {/* Section 3: Type — uses getField (SELECT) */}
+                    <div className="tw:flex tw:flex-col tw:gap-1">
+                      {getField(memoryTypeField)}
+                    </div>
+
+                    {/* Section 4: Linked Data Assets */}
+                    <LinkedAssetsSection
+                      handleAssetChange={handleAssetChange}
+                      isViewOnly={isViewOnly}
+                      linkedAssets={linkedAssets}
+                      setLinkedAssets={setLinkedAssets}
+                      t={t}
+                    />
+
+                    {/* Section 5: Metadata */}
+                    <MemoryMetadataSection
+                      control={form.control}
+                      handleRemoveTag={handleRemoveTag}
+                      handleTagSave={handleTagSave}
+                      isEditingVisibility={isEditingVisibility}
+                      isOwner={isOwner}
+                      isViewOnly={isViewOnly}
+                      memoryToEdit={memoryToEdit}
+                      selectedTags={selectedTags}
+                      setIsEditingVisibility={setIsEditingVisibility}
+                      setShowTagForm={setShowTagForm}
+                      showTagForm={showTagForm}
+                      t={t}
+                    />
+
+                    {memoryToEdit && (
+                      <MemoryDerivedOntology
+                        canPropose={canProposeFromMemory(
+                          memoryToEdit,
+                          ontologyProposals.status,
+                          {
+                            isOwner,
+                            canCreateDrafts: canCreateOntologyDrafts,
+                            isViewOnly,
+                          }
+                        )}
+                        isProposing={ontologyProposals.isProposing}
+                        memory={memoryToEdit}
+                        proposeError={ontologyProposals.proposeError}
+                        status={ontologyProposals.status}
+                        onNavigate={handleClose}
+                        onPropose={ontologyProposals.propose}
+                      />
                     )}
                   </div>
-                  {renderMemoryContent(field)}
-                  {fieldState.error?.message && (
-                    <HintText isInvalid>{fieldState.error.message}</HintText>
-                  )}
-                </div>
-              )}
-            </FormField>
 
-            {/* Section 3: Type — uses getField (SELECT) */}
-            <div className="tw:flex tw:flex-col tw:gap-1">
-              {getField(memoryTypeField)}
+                  {/* Sticky footer */}
+                  <MemoryModalFooter
+                    canDelete={canDelete}
+                    handleClose={handleClose}
+                    handleDelete={handleDelete}
+                    handleSwitchToEdit={handleSwitchToEdit}
+                    isDeleting={isDeleting}
+                    isSubmitDisabled={isSubmitDisabled}
+                    isSubmitting={isSubmitting}
+                    memoryToEdit={memoryToEdit}
+                    showEditButton={showEditButton}
+                    showSubmitButton={showSubmitButton}
+                    submitLabel={submitLabel}
+                    t={t}
+                  />
+                </HookForm>
+              </ConfigProvider>
             </div>
-
-            {/* Section 4: Linked Data Assets */}
-            <LinkedAssetsSection
-              handleAssetChange={handleAssetChange}
-              isViewOnly={isViewOnly}
-              linkedAssets={linkedAssets}
-              setLinkedAssets={setLinkedAssets}
-              t={t}
-            />
-
-            {/* Section 5: Metadata */}
-            <MemoryMetadataSection
-              control={form.control}
-              handleRemoveTag={handleRemoveTag}
-              handleTagSave={handleTagSave}
-              isEditingVisibility={isEditingVisibility}
-              isOwner={isOwner}
-              isViewOnly={isViewOnly}
-              memoryToEdit={memoryToEdit}
-              selectedTags={selectedTags}
-              setIsEditingVisibility={setIsEditingVisibility}
-              setShowTagForm={setShowTagForm}
-              showTagForm={showTagForm}
-              t={t}
-            />
-
-            {memoryToEdit && (
-              <MemoryDerivedOntology
-                canPropose={canProposeFromMemory(
-                  memoryToEdit,
-                  ontologyProposals.status,
-                  {
-                    isOwner,
-                    canCreateDrafts: canCreateOntologyDrafts,
-                    isViewOnly,
-                  }
-                )}
-                isProposing={ontologyProposals.isProposing}
-                memory={memoryToEdit}
-                proposeError={ontologyProposals.proposeError}
-                status={ontologyProposals.status}
-                onNavigate={handleClose}
-                onPropose={ontologyProposals.propose}
-              />
-            )}
-          </div>
-
-          {/* Sticky footer */}
-          <MemoryModalActions
-            canDelete={canDelete}
-            footer={footer}
-            handleClose={handleClose}
-            handleDelete={handleDelete}
-            handleSwitchToEdit={handleSwitchToEdit}
-            isDeleting={isDeleting}
-            isSubmitDisabled={isSubmitDisabled}
-            isSubmitting={isSubmitting}
-            memoryToEdit={memoryToEdit}
-            showEditButton={showEditButton}
-            showSubmitButton={showSubmitButton}
-            submitLabel={submitLabel}
-            t={t}
-          />
-        </HookForm>
-      </ConfigProvider>
-    </div>
-  );
-
-  return (
-    <MemoryModalShell
-      embedded={embedded}
-      isOpen={isOpen}
-      memoryId={memoryToEdit?.id}
-      onClose={handleClose}>
-      {content}
-    </MemoryModalShell>
+          </Dialog.Content>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 };
 

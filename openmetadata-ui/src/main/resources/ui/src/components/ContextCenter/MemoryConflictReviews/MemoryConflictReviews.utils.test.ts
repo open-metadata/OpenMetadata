@@ -14,10 +14,10 @@ import { Task } from '../../../generated/entity/tasks/task';
 import { MemoryConflictReviewDispute } from './MemoryConflictReviews.types';
 import {
   getConflictRecency,
-  getMemoryLinkName,
   getReviewDisputes,
   getReviewedClaim,
   getReviewedMemoryTitle,
+  withMemoryTitle,
 } from './MemoryConflictReviews.utils';
 
 const taskWith = (payload: unknown) =>
@@ -155,12 +155,22 @@ describe('getConflictRecency', () => {
   });
 });
 
-describe('getMemoryLinkName', () => {
-  it('prefers the name, then the fully qualified name', () => {
-    expect(getMemoryLinkName({ id: '1', type: 't', name: 'a' })).toBe('a');
-    expect(
-      getMemoryLinkName({ id: '1', type: 't', fullyQualifiedName: 'b' })
-    ).toBe('b');
-    expect(getMemoryLinkName(undefined)).toBe('');
+describe('withMemoryTitle', () => {
+  it('names the memory a review is about by its title', () => {
+    const review = {
+      ...taskWith({ memoryTitle: 'Customers need three orders' }),
+      about: { id: 'm-3', type: 'contextMemory', name: 'chat-3a9c' },
+    } as Task;
+
+    expect(withMemoryTitle(review).about?.displayName).toBe(
+      'Customers need three orders'
+    );
+    expect(review.about?.displayName).toBeUndefined();
+  });
+
+  it('leaves a review without a recorded title as it is', () => {
+    const review = taskWith({});
+
+    expect(withMemoryTitle(review)).toBe(review);
   });
 });

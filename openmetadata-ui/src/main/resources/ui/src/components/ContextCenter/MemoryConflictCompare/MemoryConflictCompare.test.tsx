@@ -10,10 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, screen, waitFor } from '@testing-library/react';
-import { ReactNode } from 'react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { ResolutionType } from '../../../generated/api/tasks/resolveTask';
-import { ContextMemory } from '../../../generated/entity/context/contextMemory';
+import {
+  ContextMemory,
+  ContextMemoryStatus,
+} from '../../../generated/entity/context/contextMemory';
 import { Task } from '../../../generated/entity/tasks/task';
 import { getContextMemoryById } from '../../../rest/contextMemoryAPI';
 import { resolveTask } from '../../../rest/tasksAPI';
@@ -41,43 +43,40 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showSuccessToast: jest.fn(),
 }));
 
-const mockMemoryModal = jest.fn(
+const memory = (
+  id: string,
+  title: string,
+  answer: string,
+  entityStatus: ContextMemoryStatus
+) =>
   ({
-    memoryToEdit,
-    footer,
-  }: {
-    memoryToEdit: ContextMemory;
-    footer: ReactNode;
-  }) => (
-    <div data-testid={`memory-panel-${memoryToEdit.id}`}>
-      {memoryToEdit.title}
-      {footer}
-    </div>
-  )
-);
-
-jest.mock('../CreateMemoryModal/CreateMemoryModal.component', () => ({
-  __esModule: true,
-  default: (props: { memoryToEdit: ContextMemory; footer: ReactNode }) =>
-    mockMemoryModal(props),
-}));
+    id,
+    name: `${id}-name`,
+    title,
+    answer,
+    question: 'Who counts as a customer?',
+    entityStatus,
+  } as ContextMemory);
 
 const MEMORIES: Record<string, ContextMemory> = {
-  'memory-three': {
-    id: 'memory-three',
-    name: 'chat-3a9c',
-    title: 'Customers need three orders',
-  } as ContextMemory,
-  'memory-five': {
-    id: 'memory-five',
-    name: 'orders.pdf-5f1e',
-    title: 'Customers need five orders',
-  } as ContextMemory,
-  'memory-first': {
-    id: 'memory-first',
-    name: 'orders.pdf-1a2b',
-    title: 'First order',
-  } as ContextMemory,
+  'memory-three': memory(
+    'memory-three',
+    'Customers need three orders',
+    'A customer has at least three completed orders.',
+    ContextMemoryStatus.Draft
+  ),
+  'memory-five': memory(
+    'memory-five',
+    'Customers need five orders',
+    'A customer has at least five completed orders.',
+    ContextMemoryStatus.Approved
+  ),
+  'memory-first': memory(
+    'memory-first',
+    'First order',
+    'A customer has one completed order.',
+    ContextMemoryStatus.Approved
+  ),
 };
 
 const disputeOf = (id: string) => {
@@ -93,7 +92,8 @@ const disputeOf = (id: string) => {
 const reviewOf = (...disputed: string[]) =>
   ({
     id: 'task-1',
-    about: { id: 'memory-three', type: 'contextMemory', name: 'chat-3a9c' },
+    displayName: 'Review conflicting memory: Customers need three orders',
+    about: { id: 'memory-three', type: 'contextMemory', name: 'memory-three' },
     payload: {
       memoryTitle: 'Customers need three orders',
       claim: {
@@ -111,8 +111,6 @@ const renderCompare = (review = reviewOf('memory-five')) => {
   const onResolved = jest.fn();
   renderWithQueryClient(
     <MemoryConflictCompare
-      isAdminUser
-      currentUserName="ana"
       review={review}
       onClose={onClose}
       onResolved={onResolved}
@@ -134,23 +132,42 @@ describe('MemoryConflictCompare', () => {
     });
   });
 
-  it('shows both memories in full, side by side, as their own modal does', async () => {
+  it('shows both memories in one dialog, the approved one against the one in review', async () => {
     renderCompare();
 
     expect(
-      await screen.findByTestId('memory-panel-memory-three')
-    ).toHaveTextContent('Customers need three orders');
-    expect(
-      await screen.findByTestId('memory-panel-memory-five')
+      await screen.findByTestId('compare-current-title')
     ).toHaveTextContent('Customers need five orders');
-    expect(mockMemoryModal).toHaveBeenCalledWith(
-      expect.objectContaining({ embedded: true, viewOnly: true })
-    );
+    expect(
+      await screen.findByTestId('compare-proposed-title')
+    ).toHaveTextContent('Customers need three orders');
     expect(screen.getByTestId('compare-question')).toHaveTextContent(
       'Who counts as a customer?'
     );
     expect(screen.getByTestId('compare-reason')).toHaveTextContent(
       'Three orders against Customers need five orders'
+    );
+  });
+
+  it('highlights what the memory in review drops and adds, field by field', async () => {
+    renderCompare();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('diff-row-memory')).toHaveAttribute(
+        'data-changed',
+        'true'
+      )
+    );
+
+    expect(
+      within(screen.getByTestId('diff-current-memory')).getByText('five')
+    ).toHaveAttribute('data-change', 'removed');
+    expect(
+      within(screen.getByTestId('diff-proposed-memory')).getByText('three')
+    ).toHaveAttribute('data-change', 'added');
+    expect(screen.getByTestId('diff-row-question')).toHaveAttribute(
+      'data-changed',
+      'false'
     );
   });
 
@@ -197,43 +214,40 @@ describe('MemoryConflictCompare', () => {
 
     expect(onClose).not.toHaveBeenCalled();
     expect(onResolved).not.toHaveBeenCalled();
-    expect(screen.getByTestId('keep-reviewed-memory')).not.toBeDisabled();
   });
 
-  it('says when a contradicted memory is gone and still lets the reviewer decide', async () => {
+  it('says when the approved memory is gone and still lets the reviewer decide', async () => {
     renderCompare(reviewOf('memory-gone'));
 
-    expect(
-      await screen.findByText('message.memory-no-longer-exists')
-    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByTestId('compare-current-title')).toHaveTextContent(
+        'message.memory-no-longer-exists'
+      )
+    );
+
     expect(screen.getByTestId('keep-approved-memories')).toBeInTheDocument();
   });
 
-  it('switches between the memories the one in review contradicts', async () => {
+  it('switches between the approved memories the one in review contradicts', async () => {
     renderCompare(reviewOf('memory-five', 'memory-first'));
 
-    expect(await screen.findByTestId('memory-panel-memory-five')).toBeVisible();
+    expect(
+      await screen.findByTestId('compare-current-title')
+    ).toHaveTextContent('Customers need five orders');
 
     fireEvent.click(screen.getByRole('tab', { name: 'First order' }));
 
-    expect(
-      await screen.findByTestId('memory-panel-memory-first')
-    ).toBeVisible();
-    expect(getContextMemoryById).toHaveBeenCalledWith(
-      'memory-first',
-      expect.any(String)
+    await waitFor(() =>
+      expect(screen.getByTestId('compare-current-title')).toHaveTextContent(
+        'First order'
+      )
     );
+
     expect(screen.getByTestId('compare-reason')).toHaveTextContent(
       'Three orders against First order'
     );
-  });
-
-  it('closes without deciding', async () => {
-    const { onClose } = renderCompare();
-
-    fireEvent.click(await screen.findByTestId('close-compare'));
-
-    expect(onClose).toHaveBeenCalled();
-    expect(resolveTask).not.toHaveBeenCalled();
+    expect(
+      screen.getByText(/message\.keep-reviewed-memory-hint-plural .*"count":2/)
+    ).toBeInTheDocument();
   });
 });
