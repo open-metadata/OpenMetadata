@@ -14,11 +14,9 @@ package org.openmetadata.service.socket;
 
 import java.net.InetAddress;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -39,8 +37,9 @@ import lombok.extern.slf4j.Slf4j;
  *
  * <p>The cursor is DB-assigned {@code createdAt}, so ordering needs no cross-pod clock agreement and
  * no id-visibility assumptions. A small trailing overlap re-reads the last {@code overlapMs} to catch
- * rows that commit out of insert order (e.g. a batch committing at once); a bounded dedupe set stops
- * re-delivery. Paging to a short page drains everything, so the page size is never a delivery cap.
+ * rows that commit out of insert order (e.g. a batch committing at once); a dedupe set scoped to that
+ * same overlap window stops re-delivery. Paging to a short page drains everything, so the page size is
+ * never a delivery cap.
  */
 @Slf4j
 public class DbWebSocketRelay implements WebSocketRelay {
@@ -64,9 +63,6 @@ public class DbWebSocketRelay implements WebSocketRelay {
   private static final int MAX_PAGES = 100;
   // Offers are dropped once the queue is full; frames are transient, so shedding is acceptable.
   private static final int QUEUE_CAPACITY = 10_000;
-  // Dedupe set over the trailing overlap; sized well above the overlap's row count so an id is not
-  // evicted before it ages past the overlap. An overflow re-delivers a frame, never drops one.
-  private static final int DELIVERED_IDS_MAX = 8192;
 
   private final WsRelayDAO dao;
   private final String instanceId;
@@ -85,16 +81,12 @@ public class DbWebSocketRelay implements WebSocketRelay {
   // Highest createdAt delivered. Written on start and by the single dispatcher thread; volatile for
   // visibility between the two.
   private volatile long cursorCreatedAt = 0;
-  // Bounded LRU of delivered ids (insertion-order eviction). Accessed only from the single
-  // dispatcher thread (and directly from tests), so it needs no synchronization.
-  private final Set<Long> delivered =
-      Collections.newSetFromMap(
-          new LinkedHashMap<>(256, 0.75f, false) {
-            @Override
-            protected boolean removeEldestEntry(Map.Entry<Long, Boolean> eldest) {
-              return size() > DELIVERED_IDS_MAX;
-            }
-          });
+  // Delivered id -> its createdAt, evicted by age so the set always covers exactly the trailing
+  // overlap window (entries below floor() are dropped after each dispatch). Sizing by the window
+  // rather than a fixed count keeps dedupe exact even when a single fan-out writes more rows into
+  // the window than any count cap would hold. Accessed only from the single dispatcher thread (and
+  // directly from tests), so it needs no synchronization.
+  private final Map<Long, Long> delivered = new LinkedHashMap<>(256, 0.75f, false);
   // Reads (poll + cleanup) and writes (drain) run on separate single threads so a slow insert never
   // delays delivery and vice versa.
   private ScheduledExecutorService scheduler;
@@ -141,7 +133,7 @@ public class DbWebSocketRelay implements WebSocketRelay {
     // delivers only genuinely new frames rather than replaying history.
     try {
       cursorCreatedAt = dao.maxCreatedAt();
-      pageFrom(floor(), row -> delivered.add(row.id()));
+      pageFrom(floor(), row -> delivered.put(row.id(), row.createdAt()));
     } catch (Exception e) {
       LOG.warn("DbWebSocketRelay could not seed cursor", e);
     }
@@ -211,10 +203,14 @@ public class DbWebSocketRelay implements WebSocketRelay {
   // Visible for test/trigger. Pages peer frames newer than the cursor and delivers the unseen ones.
   void dispatchOnce() {
     cursorCreatedAt = pageFrom(floor(), this::deliverIfNew);
+    // Drop ids that have aged past the trailing overlap; the remaining set covers exactly the
+    // window the next poll re-reads, so dedupe never evicts an id that could still be re-seen.
+    long minKept = floor();
+    delivered.values().removeIf(createdAt -> createdAt < minKept);
   }
 
   private void deliverIfNew(WsRelayDAO.RelayRow row) {
-    if (!delivered.add(row.id())) {
+    if (delivered.putIfAbsent(row.id(), row.createdAt()) != null) {
       return;
     }
     try {
