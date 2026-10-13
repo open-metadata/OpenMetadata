@@ -11,20 +11,15 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
+import { Button, Dropdown } from '@openmetadata/ui-core-components';
 import {
-  Button,
-  Card,
-  Dropdown,
-  Typography,
-} from '@openmetadata/ui-core-components';
-import { ChevronDown, Plus } from '@openmetadata/ui-core-components/icons';
+  ChevronDown,
+  Plus as PlusIcon,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { toLower } from 'lodash';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as LeftOutlined } from '../../../assets/svg/left-arrow.svg';
-import { ReactComponent as RightIcon } from '../../../assets/svg/right-arrow.svg';
 import {
   DEFAULT_SORT_ORDER,
   TEST_CASE_STATUS_LABELS,
@@ -52,6 +47,7 @@ import { ColumnsType } from '../../common/Table/Table.interface';
 import Table from '../../common/Table/TableV2';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { TestLevel } from '../../DataQuality/AddDataQualityTest/components/TestCaseFormV1.interface';
+import { ContractFormStep } from '../ContractFormStep/ContractFormStep';
 
 const TestCaseFormDrawer = withSuspenseFallback(
   lazy(
@@ -214,29 +210,24 @@ export const ContractQualityFormTab: React.FC<{
   }, [testType]);
 
   return (
-    <Card className="contract-quality-form-tab-container container bg-grey p-box">
-      <div className="d-flex justify-between">
-        <div>
-          <Typography className="contract-detail-form-tab-title">
-            {t('label.quality')}
-          </Typography>
-          <Typography className="contract-detail-form-tab-description">
-            {t('message.quality-contract-description')}
-          </Typography>
-        </div>
-
+    <ContractFormStep
+      description={t('message.quality-contract-description')}
+      extra={
         <Button
           color="secondary"
           data-testid="add-test-button"
-          iconLeading={Plus}
-          onClick={handleOpenTestCaseDrawer}>
-          {t('label.add-entity', {
-            entity: t('label.test'),
-          })}
+          iconLeading={PlusIcon}
+          onPress={handleOpenTestCaseDrawer}>
+          {t('label.add-entity', { entity: t('label.test') })}
         </Button>
-      </div>
-
-      <div className="contract-form-content-container ">
+      }
+      isNextVisible={buttonProps.isNextVisible}
+      nextLabel={buttonProps.nextLabel}
+      prevLabel={buttonProps.prevLabel}
+      title={t('label.quality')}
+      onNext={onNext}
+      onPrev={onPrev}>
+      <div className="contract-form-content-container">
         <Table
           columns={columns}
           customPaginationProps={paginationProps}
@@ -288,19 +279,6 @@ export const ContractQualityFormTab: React.FC<{
         />
       </div>
 
-      <div className="d-flex justify-between m-t-md">
-        <Button
-          color="secondary"
-          iconLeading={<LeftOutlined height={22} width={20} />}
-          onClick={onPrev}>
-          {buttonProps.prevLabel ?? t('label.previous')}
-        </Button>
-        <Button color="primary" onClick={onNext}>
-          {buttonProps.nextLabel ?? t('label.next')}
-          <Icon component={RightIcon} />
-        </Button>
-      </div>
-
       <TestCaseFormDrawer
         open={isTestCaseDrawerOpen}
         table={table}
@@ -308,6 +286,6 @@ export const ContractQualityFormTab: React.FC<{
         onClose={handleCloseTestCaseDrawer}
         onFormSubmit={handleTestCaseSubmit}
       />
-    </Card>
+    </ContractFormStep>
   );
 };

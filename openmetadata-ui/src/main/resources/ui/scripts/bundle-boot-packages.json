@@ -51,7 +51,6 @@
   "jwt-decode",
   "lodash-es",
   "math-intrinsics",
-  "moment",
   "object-inspect",
   "prop-types",
   "qs",

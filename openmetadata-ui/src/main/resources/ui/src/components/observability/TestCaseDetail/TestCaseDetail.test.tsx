@@ -177,11 +177,8 @@ jest.mock(
   'components/DataQuality/AddDataQualityTest/components/TestCaseFormDrawer',
   () => ({
     __esModule: true,
-    default: ({ open, variant }: { open?: boolean; variant?: string }) => (
-      <div
-        data-open={String(open)}
-        data-testid="test-case-form-drawer"
-        data-variant={variant}>
+    default: ({ open }: { open?: boolean }) => (
+      <div data-open={String(open)} data-testid="test-case-form-drawer">
         test-case-form-drawer
       </div>
     ),
@@ -844,7 +841,7 @@ describe('TestCaseDetail', () => {
     expect(screen.queryByTestId('version-button')).not.toBeInTheDocument();
   });
 
-  it('should render the test case form drawer in modal variant while editing dimensions', () => {
+  it('should render the test case form drawer while editing dimensions', () => {
     mockUseTestCaseDetailPage.mockReturnValue({
       ...baseHookReturn,
       isDimensionEdit: true,
@@ -856,7 +853,6 @@ describe('TestCaseDetail', () => {
 
     expect(drawer).toBeInTheDocument();
     expect(drawer).toHaveAttribute('data-open', 'true');
-    expect(drawer).toHaveAttribute('data-variant', 'modal');
   });
 
   describe('ManageButton delete/restore wiring', () => {

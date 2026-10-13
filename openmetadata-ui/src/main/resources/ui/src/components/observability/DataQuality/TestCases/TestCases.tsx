@@ -135,7 +135,6 @@ const TestCases = () => {
               ),
             },
           ]}
-          editVariant="modal"
           emptyStateAction={emptyStateAction}
           enableBulkActions={Boolean(testSuitePermission?.Create)}
           entityPermissions={entityPermissions}
