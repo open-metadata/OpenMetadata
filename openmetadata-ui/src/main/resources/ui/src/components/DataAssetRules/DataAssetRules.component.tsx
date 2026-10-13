@@ -14,11 +14,13 @@
 import { PlusOutlined } from '@ant-design/icons';
 import {
   Box,
+  Button,
   Grid,
+  SimpleModal,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Form, Input, Modal, Table } from 'antd';
+import { Form, Input, Table } from 'antd';
 import { FormInstance } from 'antd/es/form/Form';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -216,9 +218,10 @@ export const AddEditSemanticsRuleModal: React.FC<{
   };
 
   return (
-    <Modal
-      open
-      okButtonProps={{ loading: isSaveLoading }}
+    <SimpleModal
+      isOpen
+      isDismissable={false}
+      isOkLoading={isSaveLoading}
       okText={t('label.save')}
       title={
         semanticsRule.name
@@ -233,7 +236,7 @@ export const AddEditSemanticsRuleModal: React.FC<{
         otherSemanticsRules={otherSemanticsRules}
         semanticsRule={semanticsRule}
       />
-    </Modal>
+    </SimpleModal>
   );
 };
 
@@ -244,9 +247,10 @@ export const DeleteSemanticsRuleConfirmationModal: React.FC<{
   isSaveLoading?: boolean;
 }> = ({ semanticsRule, onCancel, onConfirm, isSaveLoading }) => {
   return (
-    <Modal
-      open
-      okButtonProps={{ loading: isSaveLoading }}
+    <SimpleModal
+      isOpen
+      isOkLoading={isSaveLoading}
+      okButtonColor="primary-destructive"
       okText={t('label.delete')}
       title={t('label.delete-data-asset-rule')}
       onCancel={onCancel}
@@ -256,7 +260,7 @@ export const DeleteSemanticsRuleConfirmationModal: React.FC<{
           name: semanticsRule.name,
         })}
       </p>
-    </Modal>
+    </SimpleModal>
   );
 };
 
@@ -402,11 +406,9 @@ export const useSemanticsRuleList = ({
             })}
           </Typography>
           <Button
-            ghost
-            className="add-button"
+            color="secondary-brand"
             data-testid="add-widget-button"
-            icon={<PlusOutlined />}
-            type="primary"
+            iconLeading={<PlusOutlined />}
             onClick={handleAddDataAssetRule}>
             {t('label.add')}
           </Button>

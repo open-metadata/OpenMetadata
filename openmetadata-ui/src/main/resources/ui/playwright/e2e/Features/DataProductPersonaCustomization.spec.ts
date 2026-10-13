@@ -183,9 +183,8 @@ test.describe('Data Product Persona customization', () => {
 
       // Wait for "Add tab" dialog to fully close before interacting with grid
       await adminPage.getByRole('dialog').waitFor({ state: 'hidden' });
-      await adminPage.locator('.ant-modal-wrap').waitFor({ state: 'detached' });
 
-      // Closing the antd modal re-measures the grid, shifting the placeholder.
+      // Closing the modal re-measures the grid, shifting the placeholder.
       await clickUntilVisible(
         adminPage.getByTestId('add-widget-button'),
         adminPage.getByTestId('widget-info-tabs')

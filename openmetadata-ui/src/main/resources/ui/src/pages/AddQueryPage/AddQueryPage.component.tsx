@@ -13,11 +13,11 @@
 
 import {
   Box,
-  Button as CoreButton,
+  Button,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Form, FormProps } from 'antd';
+import { Form, FormProps } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { filter, isEmpty } from 'lodash';
@@ -295,8 +295,8 @@ const AddQueryPage = () => {
                     gap={4}
                     itemClassName="layout-space-item">
                     <Button
+                      color="secondary"
                       data-testid="cancel-btn"
-                      type="default"
                       onClick={handleCancelClick}>
                       {t('label.cancel')}
                     </Button>
@@ -305,7 +305,7 @@ const AddQueryPage = () => {
                       isDisabled={permissions.query?.Create}
                       placement="top"
                       title={t(NO_PERMISSION_FOR_ACTION)}>
-                      <CoreButton
+                      <Button
                         color="primary"
                         data-testid="save-btn"
                         isDisabled={!permissions.query?.Create}
@@ -313,7 +313,7 @@ const AddQueryPage = () => {
                         size="sm"
                         type="submit">
                         {t('label.save')}
-                      </CoreButton>
+                      </Button>
                     </Tooltip>
                   </Box>
                 </Form.Item>

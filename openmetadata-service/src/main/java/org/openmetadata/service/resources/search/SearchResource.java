@@ -851,7 +851,8 @@ public class SearchResource {
             .withDeleted(deleted)
             .withQueryText(queryText);
 
-    return searchRepository.aggregate(aggregationRequest);
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    return searchRepository.aggregate(aggregationRequest, subjectContext);
   }
 
   @POST
@@ -874,7 +875,8 @@ public class SearchResource {
       @Context SecurityContext securityContext,
       @Valid AggregationRequest aggregationRequest)
       throws IOException {
-    return searchRepository.aggregate(aggregationRequest);
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    return searchRepository.aggregate(aggregationRequest, subjectContext);
   }
 
   @GET

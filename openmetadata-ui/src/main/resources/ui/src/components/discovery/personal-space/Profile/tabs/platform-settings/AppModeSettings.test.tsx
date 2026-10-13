@@ -12,19 +12,26 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { ReactNode } from 'react';
 import { DefaultAppMode } from '../../../../../../generated/api/configuration/appConfiguration';
+import { SettingType } from '../../../../../../generated/system/settingsSourceResponse';
 import {
   getAppConfiguration,
+  getSettingsSource,
   patchAppConfiguration,
 } from '../../../../../../rest/settingConfigAPI';
+import { renderWithQueryClient } from '../../../../../../test/unit/test-utils';
 import AppModeSettings from './AppModeSettings';
 import AppModeSettingsForm from './AppModeSettingsForm';
+import { deploymentOwnedSource } from './PlatformSettings.mock';
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
 jest.mock('../../../../../../rest/settingConfigAPI', () => ({
+  getSettingsSource: jest.fn().mockResolvedValue({ settings: [] }),
+  adoptDeploymentConfig: jest.fn(),
   getAppConfiguration: jest.fn(),
   patchAppConfiguration: jest.fn(),
 }));
@@ -38,13 +45,16 @@ const onNavigate = jest.fn();
 const BACK_TO_VIEW = { type: 'page', page: 'app-mode', isEditing: false };
 
 const renderForm = async () => {
-  render(<AppModeSettingsForm showHint={false} onNavigate={onNavigate} />);
+  renderWithQueryClient(
+    <AppModeSettingsForm showHint={false} onNavigate={onNavigate} />
+  );
   await screen.findByTestId('app-mode-radio-group');
 };
 
 describe('Default app mode settings', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (getSettingsSource as jest.Mock).mockResolvedValue({ settings: [] });
     (patchAppConfiguration as jest.Mock).mockResolvedValue({});
   });
 
@@ -56,7 +66,7 @@ describe('Default app mode settings', () => {
     (getAppConfiguration as jest.Mock).mockResolvedValue({
       defaultAppMode: mode,
     });
-    render(
+    renderWithQueryClient(
       <AppModeSettings onNavigate={onNavigate} onSetHeaderActions={jest.fn()} />
     );
 
@@ -103,5 +113,49 @@ describe('Default app mode settings', () => {
 
     expect(onNavigate).toHaveBeenCalledWith(BACK_TO_VIEW);
     expect(patchAppConfiguration).not.toHaveBeenCalled();
+  });
+});
+
+describe('Default app mode set by the deployment', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (getAppConfiguration as jest.Mock).mockResolvedValue({
+      defaultAppMode: DefaultAppMode.AI,
+    });
+    (getSettingsSource as jest.Mock).mockResolvedValue({
+      settings: [
+        deploymentOwnedSource(SettingType.AppConfiguration, [
+          '/defaultAppMode',
+        ]),
+      ],
+    });
+  });
+
+  it('says so and offers no edit', async () => {
+    let headerActions: ReactNode;
+    renderWithQueryClient(
+      <AppModeSettings
+        onNavigate={onNavigate}
+        onSetHeaderActions={(actions) => {
+          headerActions = actions;
+        }}
+      />
+    );
+
+    expect(
+      await screen.findByTestId('settings-source-env-alert')
+    ).toBeInTheDocument();
+
+    render(<>{headerActions}</>);
+
+    expect(screen.queryByTestId('edit-button')).not.toBeInTheDocument();
+  });
+
+  it('locks the choice and Save in the form', async () => {
+    await renderForm();
+    await screen.findByTestId('settings-source-env-alert');
+
+    expect(screen.getByRole('radio', { name: 'label.classic' })).toBeDisabled();
+    expect(screen.getByTestId('save-button')).toBeDisabled();
   });
 });

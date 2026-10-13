@@ -35,7 +35,8 @@ public class CommonUtils {
    * back. Rules like a context memory's {@code shareConfig} sit outside the policy model, so the
    * {@code authorizer.authorize(...)} a tool makes cannot see them - binding the check to the fetch
    * is what stops a read path from holding an entity it is not allowed to answer with. The rule is
-   * a no-op for entity types that have none, so callers need no per-type knowledge.
+   * a no-op for entity types that have none, so callers need no per-type knowledge. Secrets the
+   * REST resource masks come back masked here too ({@link McpResponseUtils#maskSecrets}).
    */
   public static EntityInterface<?> readEntityForCaller(
       String entityType,
@@ -47,7 +48,7 @@ public class CommonUtils {
         Entity.getEntityByName(
             entityType, fqn, ContextMemoryVisibility.guardFields(entityType, fields), include);
     ContextMemoryVisibility.enforceVisibility(entity, securityContext);
-    return entity;
+    return McpResponseUtils.maskSecrets(entity);
   }
 
   /**
