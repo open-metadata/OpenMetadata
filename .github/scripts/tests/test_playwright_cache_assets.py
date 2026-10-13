@@ -560,6 +560,8 @@ def test_prune_workflow_only_cancels_runs_on_dead_queue_refs() -> None:
     # Cancelling a run whose ref is still live would kill a real queue check.
     assert 'grep -qxF "$branch" <<<"$live"' in cancel
     assert '[[ "$id" == "$SELF_RUN_ID" ]] && continue' in cancel
+    # A merged group's still-running checks are post-merge signal for main.
+    assert '[[ "${merged[$pr]}" == "true" ]]' in cancel
     assert "gh-readonly-queue/" in cancel
     listing = cancel.split("live=$(gh api", 1)[0]
     assert "set -euo pipefail" in listing

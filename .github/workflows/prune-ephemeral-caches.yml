@@ -45,7 +45,7 @@
 # starts no new entry.
 #
 # SAFETY: a cache is deleted, or a run cancelled, only when its ref no longer
-# resolves. Entries still in the queue keep their caches and runs. If the ref
+# resolves (and, for runs, its PR did not merge). Entries still in the queue keep their caches and runs. If the ref
 # listing fails the job aborts without acting — an empty list must never be
 # read as "every queue ref is dead".
 name: Prune dead merge-queue refs
@@ -186,10 +186,23 @@ jobs:
 
           cancelled=0
           kept=0
+          declare -A merged=()
           while IFS=$'\t' read -r id branch name; do
             [[ "$id" == "$SELF_RUN_ID" ]] && continue
             [[ "$branch" == gh-readonly-queue/* ]] || continue
             if grep -qxF "$branch" <<<"$live"; then
+              kept=$((kept + 1))
+              continue
+            fi
+            # A group that merged also loses its ref, but its non-required
+            # checks still running are the only post-merge signal for code now
+            # on main (several have no push trigger). Leave those alone.
+            pr=${branch#gh-readonly-queue/*/pr-}
+            pr=${pr%%-*}
+            if [[ -z "${merged[$pr]+x}" ]]; then
+              merged[$pr]=$(gh api "repos/${GH_REPO}/pulls/${pr}" --jq '.merged')
+            fi
+            if [[ "${merged[$pr]}" == "true" ]]; then
               kept=$((kept + 1))
               continue
             fi
@@ -209,6 +222,6 @@ jobs:
             echo "| | |"
             echo "|---|---|"
             echo "| dry run | \`${DRY_RUN}\` |"
-            echo "| runs on live queue refs (kept) | ${kept} |"
+            echo "| runs on live refs or merged PRs (kept) | ${kept} |"
             echo "| runs on dead queue refs (cancelled) | ${cancelled} |"
           } >> "$GITHUB_STEP_SUMMARY"
