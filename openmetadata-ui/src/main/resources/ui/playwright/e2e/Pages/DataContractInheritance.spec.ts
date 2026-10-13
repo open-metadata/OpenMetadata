@@ -1184,7 +1184,7 @@ test.describe('Data Contract Inheritance', () => {
       await page
         .locator(`[data-testid="table-data-card_${assetFqn}"]`)
         .getByTestId('asset-checkbox')
-        .check();
+        .click();
 
       // Click delete button
       const removeResponse = page.waitForResponse(
