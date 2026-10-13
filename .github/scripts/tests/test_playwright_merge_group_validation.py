@@ -349,6 +349,8 @@ def test_dequeue_report_labels_conflicts_and_evicts_main_conflicts():
         s for s in jobs["report"]["steps"] if s["name"] == "Label what the entry conflicts with"
     )
     assert label["if"] == "${{ steps.event.outputs.reason == 'MERGE_CONFLICT' }}"
+    # Labelling must never skip the dequeue comment or the Slack alert.
+    assert label["continue-on-error"] is True
     run = label["run"]
     # CONFLICTING against main means rebase; MERGEABLE means only an entry ahead.
     assert run.index("CONFLICTING)") < run.index('label="merge conflict"')
@@ -365,6 +367,9 @@ def test_dequeue_report_labels_conflicts_and_evicts_main_conflicts():
     assert 'select(.state == "QUEUED")' in run
     assert '[ "$state" = "CONFLICTING" ] || continue' in run
     assert run.index('if [ "$DRY_RUN" = "true" ]') < run.index("dequeuePullRequest")
+    # One entry's label/comment failure must not stop the remaining evictions.
+    assert '|| echo "::warning::could not label #$pr"' in run
+    assert '|| echo "::warning::could not comment on #$pr"' in run
 
     clear = jobs["clear-conflict-labels"]
     # synchronize fires on every push; skip unless a label is there to clear.

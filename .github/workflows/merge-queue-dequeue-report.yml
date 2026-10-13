@@ -107,6 +107,9 @@ jobs:
 
       - name: Label what the entry conflicts with
         if: ${{ steps.event.outputs.reason == 'MERGE_CONFLICT' }}
+        # Labelling is extra; a failure here must not skip the comment and
+        # the #ci-cleanup alert that follow.
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
@@ -364,12 +367,17 @@ jobs:
             gh api graphql -f id="$id" -f query='
               mutation($id: ID!) { dequeuePullRequest(input: {id: $id}) { clientMutationId } }' \
               --silent || { echo "::warning::could not dequeue #$pr"; continue; }
+            # The dequeue already happened; a label or comment failure must not
+            # stop the loop before the remaining entries.
             gh label create "merge conflict" --color B60205 --force \
-              --description "Conflicts with the latest main; removed from the merge queue"
-            gh pr edit "$pr" --add-label "merge conflict"
+              --description "Conflicts with the latest main; removed from the merge queue" \
+              || echo "::warning::could not create the merge conflict label"
+            gh pr edit "$pr" --add-label "merge conflict" \
+              || echo "::warning::could not label #$pr"
             gh pr comment "$pr" --body "### 🚦 Removed from the merge queue — conflicts with \`$BASE_REF\`
 
-          This PR (queue position $position) stopped merging cleanly into \`$BASE_REF\` at ${MERGED_SHA:0:7}, so it was removed before it was built. Rebase on \`$BASE_REF\`, then re-queue."
+          This PR (queue position $position) stopped merging cleanly into \`$BASE_REF\` at ${MERGED_SHA:0:7}, so it was removed before it was built. Rebase on \`$BASE_REF\`, then re-queue." \
+              || echo "::warning::could not comment on #$pr"
           done < entries.tsv
 
           {

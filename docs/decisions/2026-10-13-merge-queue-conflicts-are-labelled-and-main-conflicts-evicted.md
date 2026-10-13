@@ -23,9 +23,10 @@ conflicting with main waits its turn, then runs a full CI build that cannot merg
   the latest main. It adds `merge conflict` if the PR is `CONFLICTING`, or `queue conflict` if it is
   `MERGEABLE`, and says which in the dequeue comment. It adds no label while the state is still
   `UNKNOWN`.
-- **Evicts main conflicts on every merge:** on each push to main, it removes every queue entry
-  whose PR is `CONFLICTING` against main, whatever its position, then labels it `merge conflict`
-  and comments.
+- **Evicts main conflicts on every merge:** on each push to main, it removes every `QUEUED`
+  (not yet built) entry whose PR is `CONFLICTING` against main, then labels it `merge conflict` and
+  comments. Entries GitHub is building are left to GitHub, which reports them `UNKNOWN` while
+  building and removes them itself on a conflict.
 - **Clears the labels:** both labels are removed when the PR is pushed to or re-queued.
 
 Nothing is re-queued automatically.
