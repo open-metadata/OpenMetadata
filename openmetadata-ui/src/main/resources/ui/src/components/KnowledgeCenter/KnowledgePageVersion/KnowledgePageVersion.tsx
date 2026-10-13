@@ -11,9 +11,13 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Box, Grid, Owner, Typography } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
-import classNames from 'classnames';
+import {
+  Box,
+  Button,
+  Grid,
+  Owner,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { toString } from 'lodash';
 import { useMemo, type FC } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -166,11 +170,12 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
                         )}
                         showLabel={false}
                       />
-                      <span
-                        className="self-center text-grey-muted"
+                      <Typography
+                        className="self-center"
+                        color="secondary"
                         data-testid="updated-at">
                         {formatDate(knowledgePage.updatedAt)}
-                      </span>
+                      </Typography>
                     </Box>
                   </Box>
                 </Box>
@@ -179,18 +184,11 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
           </Box>
           <Box className="layout-column tw:block" style={{ flex: 'none' }}>
             <Button
-              className={classNames('', {
-                'text-primary border-primary': version,
-              })}
+              color={version ? 'secondary-brand' : 'secondary'}
               data-testid="version-button"
-              icon={<Icon component={VersionIcon} />}
+              iconLeading={<Icon component={VersionIcon} />}
               onClick={handleVersionClick}>
-              <Typography
-                className={classNames('', {
-                  'text-primary': version,
-                })}>
-                {toString(version)}
-              </Typography>
+              {toString(version)}
             </Button>
           </Box>
         </Box>

@@ -18,6 +18,7 @@ import { LONG_ACTION_TIMEOUT } from '../../constant/common';
 import { TableClass } from '../../support/entity/TableClass';
 import { createNewPage } from '../../utils/common';
 import { getEncodedFqn } from '../../utils/entity';
+import { enableAiAppMode } from '../Utils/appMode';
 interface GraphData {
   nodes: {
     id: string;
@@ -876,6 +877,8 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
   }) => {
     await page.setViewportSize({ width: 1000, height: 1000 });
     await page.emulateMedia({ reducedMotion: 'reduce', colorScheme: 'dark' });
+    // Classic mode is always light, so dark mode needs AI mode.
+    await enableAiAppMode(page);
     await page.addInitScript(() => localStorage.setItem('ui-theme', 'dark'));
     await mockGraph(page);
     await open(page);

@@ -193,11 +193,10 @@ describe('FailedTestCaseSampleData - observabilityRouterClassBase migration', ()
 
     render(<FailedTestCaseSampleData testCaseData={mockTestCase} />);
 
-    const exploreBtn = await screen.findByTestId('explore-with-query');
-    const link = exploreBtn.closest('a');
+    const exploreLink = await screen.findByTestId('explore-with-query');
 
-    expect(link).not.toBeNull();
-    expect(link?.dataset.to).toBe(
+    expect(exploreLink).toHaveAttribute(
+      'href',
       observabilityRouterClassBase.getTestCaseDetailPagePath(
         FQN,
         TestCasePageTabs.SQL_QUERY

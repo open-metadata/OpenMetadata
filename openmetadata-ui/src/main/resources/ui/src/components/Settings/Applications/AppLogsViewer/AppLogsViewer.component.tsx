@@ -11,19 +11,20 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
+import type { BadgeColors } from '@openmetadata/ui-core-components';
 import {
+  Badge,
   Box,
+  Button,
   Card,
   Divider,
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Badge, Button, Table } from 'antd';
 import { capitalize, isEmpty, toString } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ICON_DIMENSION, STATUS_ICON } from '../../../../constants/constants';
+import { STATUS_ICON } from '../../../../constants/constants';
 import { StepStats } from '../../../../generated/entity/applications/appRunRecord';
 import {
   formatLatencyAverage,
@@ -35,6 +36,7 @@ import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 import { formatDateTimeWithTimezone } from '../../../../utils/date-time/DateTimeUtils';
 import AppBadge from '../../../common/Badge/Badge.component';
 import LogViewerModal from '../../../common/LogViewerModal/LogViewerModal.component';
+import Table from '../../../common/Table/TableV2';
 import './app-logs-viewer.less';
 import {
   AppLogsViewerProps,
@@ -43,7 +45,40 @@ import {
 } from './AppLogsViewer.interface';
 import ReindexFailures from './ReindexFailures.component';
 
-const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
+const StatItem = ({
+  label,
+  testId,
+  children,
+}: {
+  label: string;
+  testId?: string;
+  children: ReactNode;
+}) => (
+  <Box align="center" direction="row" gap={1}>
+    <Typography className="tw:text-tertiary" size="text-sm">
+      {`${label}:`}
+    </Typography>
+    <Box align="center" data-testid={testId} direction="row" gap={2}>
+      {children}
+    </Box>
+  </Box>
+);
+
+const CountBadge = ({
+  color,
+  count,
+  title,
+}: {
+  color: BadgeColors;
+  count?: number;
+  title: string;
+}) => (
+  <Badge color={color} size="sm" tooltip={title} type="pill-color">
+    {count ?? 0}
+  </Badge>
+);
+
+const AppLogsViewer = ({ data }: AppLogsViewerProps) => {
   const { t } = useTranslation();
   const [showFailuresDrawer, setShowFailuresDrawer] = useState(false);
   const [showLogsModal, setShowLogsModal] = useState(false);
@@ -106,6 +141,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
       } = {}
     ) => {
       const { showStatus = true, effectiveTimeMs, latencyLabelKey } = options;
+      const StatusIcon = STATUS_ICON[status as keyof typeof STATUS_ICON];
 
       return (
         <Card
@@ -113,7 +149,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
             title ? `-${title.toLowerCase()}` : ''
           }`}
           size="sm">
-          <Card.Header title={title} />
+          {title && <Card.Header title={title} />}
           <Card.Content>
             <Grid
               className="layout-row layout-grid"
@@ -128,88 +164,54 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                   wrap="wrap">
                   {showStatus && (
                     <>
-                      <div className="flex">
-                        <span className="text-grey-muted">{`${t(
-                          'label.status'
-                        )}:`}</span>
-
-                        <Box
-                          inline
-                          align="center"
-                          className="layout-space layout-space-horizontal m-l-xs"
-                          gap={2}
-                          itemClassName="layout-space-item">
-                          <Icon
-                            component={
-                              STATUS_ICON[status as keyof typeof STATUS_ICON]
-                            }
-                            style={ICON_DIMENSION}
-                          />
-                          <span>{capitalize(status)}</span>
-                        </Box>
-                      </div>
+                      <StatItem label={t('label.status')}>
+                        {StatusIcon && <StatusIcon height={14} width={14} />}
+                        <Typography size="text-sm">
+                          {capitalize(status)}
+                        </Typography>
+                      </StatItem>
                       <Divider
                         className="tw:mx-2 tw:h-[0.9em] tw:self-center"
                         orientation="vertical"
                       />
                     </>
                   )}
-                  <div className="flex">
-                    <span className="text-grey-muted">{`${t(
-                      'label.index-states'
-                    )}:`}</span>
-                    <span className="m-l-xs">
-                      <Box
-                        inline
-                        align="center"
-                        className="layout-space layout-space-horizontal"
-                        gap={2}
-                        itemClassName="layout-space-item">
-                        <Badge
-                          showZero
-                          className="request-badge running"
-                          count={stepStats.totalRecords}
-                          overflowCount={99999999}
-                          title={`${t('label.total-index-sent')}: ${
-                            stepStats.totalRecords
-                          }`}
-                        />
+                  <StatItem label={t('label.index-states')}>
+                    <CountBadge
+                      color="blue"
+                      count={stepStats.totalRecords}
+                      title={`${t('label.total-index-sent')}: ${
+                        stepStats.totalRecords
+                      }`}
+                    />
 
-                        <Badge
-                          showZero
-                          className="request-badge success"
-                          count={stepStats.successRecords}
-                          overflowCount={99999999}
+                    <CountBadge
+                      color="success"
+                      count={stepStats.successRecords}
+                      title={`${t('label.entity-index', {
+                        entity: t('label.success'),
+                      })}: ${stepStats.successRecords}`}
+                    />
+
+                    <CountBadge
+                      color="error"
+                      count={stepStats.failedRecords}
+                      title={`${t('label.entity-index', {
+                        entity: t('label.failed'),
+                      })}: ${stepStats.failedRecords}`}
+                    />
+
+                    {stepStats.warningRecords !== undefined &&
+                      stepStats.warningRecords > 0 && (
+                        <CountBadge
+                          color="warning"
+                          count={stepStats.warningRecords}
                           title={`${t('label.entity-index', {
-                            entity: t('label.success'),
-                          })}: ${stepStats.successRecords}`}
+                            entity: t('label.warning-plural'),
+                          })}: ${stepStats.warningRecords}`}
                         />
-
-                        <Badge
-                          showZero
-                          className="request-badge failed"
-                          count={stepStats.failedRecords}
-                          overflowCount={99999999}
-                          title={`${t('label.entity-index', {
-                            entity: t('label.failed'),
-                          })}: ${stepStats.failedRecords}`}
-                        />
-
-                        {stepStats.warningRecords !== undefined &&
-                          stepStats.warningRecords > 0 && (
-                            <Badge
-                              showZero
-                              className="request-badge warning"
-                              count={stepStats.warningRecords}
-                              overflowCount={99999999}
-                              title={`${t('label.entity-index', {
-                                entity: t('label.warning-plural'),
-                              })}: ${stepStats.warningRecords}`}
-                            />
-                          )}
-                      </Box>
-                    </span>
-                  </div>
+                      )}
+                  </StatItem>
                   {(() => {
                     // effectiveTimeMs (e.g. wall-clock for the overall card) takes
                     // precedence over stepStats.totalTimeMs (stage-CPU time). This
@@ -231,11 +233,10 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                           className="tw:mx-2 tw:h-[0.9em] tw:self-center"
                           orientation="vertical"
                         />
-                        <div className="flex">
-                          <span className="text-grey-muted">{`${t(
-                            latencyLabelKey ?? 'label.latency'
-                          )}:`}</span>
-                          <span className="m-l-xs" data-testid="stage-latency">
+                        <StatItem
+                          label={t(latencyLabelKey ?? 'label.latency')}
+                          testId="stage-latency">
+                          <Typography size="text-sm">
                             {`${formatLatencyAverage(
                               timeMs,
                               stepStats.successRecords
@@ -243,8 +244,8 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                               timeMs,
                               stepStats.successRecords
                             )}`}
-                          </span>
-                        </div>
+                          </Typography>
+                        </StatItem>
                       </>
                     );
                   })()}
@@ -254,16 +255,13 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                         className="tw:mx-2 tw:h-[0.9em] tw:self-center"
                         orientation="vertical"
                       />
-                      <div className="flex">
-                        <span className="text-grey-muted">{`${t(
-                          'label.last-updated'
-                        )}:`}</span>
-                        <span className="m-l-xs">
+                      <StatItem label={t('label.last-updated')}>
+                        <Typography size="text-sm">
                           {timestamp
                             ? formatDateTimeWithTimezone(timestamp)
                             : '--'}
-                        </span>
-                      </div>
+                        </Typography>
+                      </StatItem>
                     </>
                   )}
                 </Box>
@@ -273,7 +271,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
         </Card>
       );
     },
-    [timestamp, formatDateTimeWithTimezone, status]
+    [timestamp, status, t]
   );
 
   const tableColumn = useMemo(() => {
@@ -290,7 +288,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
           },
           {
             title: (
-              <div className="d-flex items-center">
+              <Box align="center" direction="row" gap={2}>
                 <Typography>
                   {t('label.entity-record-plural', {
                     entity: t('label.total'),
@@ -300,7 +298,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                   className="entity-stats total m-l-sm"
                   label={entityTotalJobStatsData.totalRecords}
                 />
-              </div>
+              </Box>
             ),
             dataIndex: 'totalRecords',
             key: 'totalRecords',
@@ -310,7 +308,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
           },
           {
             title: (
-              <div className="d-flex items-center">
+              <Box align="center" direction="row" gap={2}>
                 <Typography>
                   {t('label.entity-record-plural', {
                     entity: t('label.success'),
@@ -320,7 +318,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                   className="entity-stats success m-l-sm"
                   label={entityTotalJobStatsData.successRecords}
                 />
-              </div>
+              </Box>
             ),
             dataIndex: 'successRecords',
             key: 'successRecords',
@@ -330,7 +328,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
           },
           {
             title: (
-              <div className="d-flex items-center">
+              <Box align="center" direction="row" gap={2}>
                 <Typography>
                   {t('label.entity-record-plural', {
                     entity: t('label.failed'),
@@ -340,7 +338,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                   className="entity-stats failure m-l-sm"
                   label={entityTotalJobStatsData.failedRecords}
                 />
-              </div>
+              </Box>
             ),
             dataIndex: 'failedRecords',
             key: 'failedRecords',
@@ -418,19 +416,18 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
               ]
             : []),
         ];
-  }, [successContext, failureContext]);
+  }, [successContext, failureContext, t]);
 
   const entityStatsRenderer = useCallback(
     (entityStats: { [key: string]: StepStats }) => {
       return (
         <Table
-          className="m-t-md"
           columns={tableColumn}
+          containerClassName="tw:mt-4"
           data-testid="app-entity-stats-history-table"
           dataSource={getEntityStatsData(entityStats)}
           pagination={false}
           rowKey="name"
-          scroll={scrollHeight ? { y: scrollHeight } : undefined}
           size="small"
         />
       );
@@ -488,7 +485,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
       },
       {
         title: (
-          <div className="d-flex items-center">
+          <Box align="center" direction="row" gap={2}>
             <Typography>
               {t('label.entity-record-plural', {
                 entity: t('label.processed'),
@@ -498,7 +495,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
               className="entity-stats total m-l-sm"
               label={toString(totalProcessed)}
             />
-          </div>
+          </Box>
         ),
         dataIndex: 'processedRecords',
         key: 'processedRecords',
@@ -508,7 +505,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
       },
       {
         title: (
-          <div className="d-flex items-center">
+          <Box align="center" direction="row" gap={2}>
             <Typography>
               {t('label.entity-record-plural', {
                 entity: t('label.success'),
@@ -518,7 +515,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
               className="entity-stats success m-l-sm"
               label={toString(totalSuccess)}
             />
-          </div>
+          </Box>
         ),
         dataIndex: 'successRecords',
         key: 'successRecords',
@@ -528,7 +525,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
       },
       {
         title: (
-          <div className="d-flex items-center">
+          <Box align="center" direction="row" gap={2}>
             <Typography>
               {t('label.entity-record-plural', {
                 entity: t('label.failed'),
@@ -538,7 +535,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
               className="entity-stats failure m-l-sm"
               label={toString(totalFailed)}
             />
-          </div>
+          </Box>
         ),
         dataIndex: 'failedRecords',
         key: 'failedRecords',
@@ -557,7 +554,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
         ),
       },
     ];
-  }, [serverStatsData]);
+  }, [serverStatsData, t]);
 
   const serverStatsRenderer = useCallback(() => {
     if (serverStatsData.length === 0) {
@@ -567,7 +564,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
     const serverCount = successContext?.serverCount as number | undefined;
 
     return (
-      <Card className="m-t-md" data-testid="server-stats-card" size="sm">
+      <Card className="tw:mt-4" data-testid="server-stats-card" size="sm">
         <Card.Header
           title={
             <Box
@@ -576,10 +573,12 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
               className="layout-space layout-space-horizontal"
               gap={2}
               itemClassName="layout-space-item">
-              <span>{t('label.server-stat-plural')}</span>
+              <Typography size="text-sm" weight="semibold">
+                {t('label.server-stat-plural')}
+              </Typography>
               {serverCount && (
-                <Badge
-                  className="request-badge running"
+                <CountBadge
+                  color="blue"
                   count={serverCount}
                   title={`${serverCount} ${t('label.server')}(s)`}
                 />
@@ -587,19 +586,17 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
             </Box>
           }
         />
-        <Card.Content>
-          <Table
-            columns={serverStatsColumns}
-            data-testid="server-stats-table"
-            dataSource={serverStatsData}
-            pagination={false}
-            rowKey="name"
-            size="small"
-          />
-        </Card.Content>
+        <Table
+          columns={serverStatsColumns}
+          data-testid="server-stats-table"
+          dataSource={serverStatsData}
+          pagination={false}
+          rowKey="name"
+          size="small"
+        />
       </Card>
     );
-  }, [serverStatsData, serverStatsColumns, successContext?.serverCount]);
+  }, [serverStatsData, serverStatsColumns, successContext?.serverCount, t]);
 
   const renderOverallStats = (jobStats?: StepStats) =>
     jobStats
@@ -672,25 +669,25 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
       {renderEntityStats(failureContext?.stats?.entityStats)}
 
       {failureLogs && (
-        <div className="m-t-md">
+        <Box className="tw:mt-4">
           <Button
+            color="link-color"
             data-testid="view-logs-button"
-            type="link"
-            onClick={() => setShowLogsModal(true)}>
+            onPress={() => setShowLogsModal(true)}>
             {t('label.view-entity', { entity: t('label.log-plural') })}
           </Button>
-        </div>
+        </Box>
       )}
 
       {hasFailures && (
-        <div className="m-t-md">
+        <Box className="tw:mt-4">
           <Button
+            color="link-color"
             data-testid="view-reindex-failures-button"
-            type="link"
-            onClick={() => setShowFailuresDrawer(true)}>
+            onPress={() => setShowFailuresDrawer(true)}>
             {t('label.view-reindex-failure-plural')}
           </Button>
-        </div>
+        </Box>
       )}
 
       <ReindexFailures

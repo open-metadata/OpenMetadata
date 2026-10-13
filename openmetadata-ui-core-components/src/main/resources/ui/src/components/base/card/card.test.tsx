@@ -43,4 +43,36 @@ describe('Card theme roles', () => {
       expect(screen.getByTestId('card')).toHaveClass('tw:bg-surface');
     }
   );
+
+  it('paints the secondary colour on a ghost card', () => {
+    render(
+      <Card color="secondary" data-testid="card" variant="ghost">
+        Content
+      </Card>
+    );
+
+    expect(screen.getByTestId('card')).toHaveClass('tw:bg-secondary');
+  });
+});
+
+describe('Card.Header divider', () => {
+  it('rules off the header by default', () => {
+    render(
+      <Card>
+        <Card.Header data-testid="header" title="Title" />
+      </Card>
+    );
+
+    expect(screen.getByTestId('header')).toHaveClass('tw:border-b');
+  });
+
+  it('drops the rule when hasDivider is false', () => {
+    render(
+      <Card>
+        <Card.Header data-testid="header" hasDivider={false} title="Title" />
+      </Card>
+    );
+
+    expect(screen.getByTestId('header')).not.toHaveClass('tw:border-b');
+  });
 });

@@ -59,7 +59,6 @@ import {
   removeTestCasesFromTestSuiteBulk,
   restoreTestCase,
 } from '../../../../rest/testAPI';
-import { getDefaultTestCaseFormVariant } from '../../../../utils/DataQuality/TestCaseFormVariantUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
@@ -164,7 +163,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   tableHeader,
   removeTableBorder = false,
   enableBulkActions = false,
-  editVariant = getDefaultTestCaseFormVariant(),
   hasActiveFilters = false,
   emptyStateAction,
   entityPermissions,
@@ -1029,7 +1027,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         <TestCaseFormDrawer
           open
           testCase={selectedTestCase?.data}
-          variant={editVariant}
           onClose={handleCancel}
           onUpdate={onTestUpdate}
         />
