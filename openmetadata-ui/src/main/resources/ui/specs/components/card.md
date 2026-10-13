@@ -53,11 +53,11 @@ in the [core Card implementation](../../../../../../../openmetadata-ui-core-comp
 | Prop | Values |
 | --- | --- |
 | `variant` | `default`, `elevated`, `outlined`, `ghost` |
-| `color` | `default`, `brand`, `brandOutlined`, `error`, `warning`, `success` |
+| `color` | `default`, `secondary`, `brand`, `brandOutlined`, `error`, `warning`, `success` |
 | `size` | `sm`, `md`, `lg` (drives padding) |
 | `isClickable` | boolean |
 | `isSelected` | boolean |
-| Sub-components | `Card.Header` (`title`, `subtitle`, `extra`), `Card.Content`, `Card.Footer` |
+| Sub-components | `Card.Header` (`title`, `subtitle`, `extra`, `hasDivider`), `Card.Content`, `Card.Footer` |
 
 ## States
 
