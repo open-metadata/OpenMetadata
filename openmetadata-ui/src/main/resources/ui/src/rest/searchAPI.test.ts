@@ -103,7 +103,7 @@ describe('searchAPI tests', () => {
             .fn()
             .mockResolvedValue({ data: mockTableSearchResponse });
 
-          jest.doMock('./axiosClient', () => ({ get: mockGet }));
+          jest.doMock('./index', () => ({ get: mockGet }));
 
           const searchAPI: typeof import('./searchAPI') = require('./searchAPI');
 
