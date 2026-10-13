@@ -85,7 +85,7 @@ class PipelineTaskKeyTest {
 
   @Test
   void policyAgentLogsUseTheKeyTheUiReads() {
-    // agentsDataMapper.ts maps PipelineType.PolicyAgent -> 'ingestion_task'.
+    // IngestionLogsUtils.ts maps PipelineType.PolicyAgent -> 'ingestion_task'.
     assertEquals(
         "ingestion_task",
         PipelineServiceClientInterface.taskKeyOf(PipelineType.POLICY_AGENT.toString()));
@@ -93,7 +93,7 @@ class PipelineTaskKeyTest {
 
   @Test
   void reverseMetadataLogsUseTheKeyTheUiReads() {
-    // agentsDataMapper.ts maps PipelineType.ReverseMetadata -> 'ingestion_task'.
+    // IngestionLogsUtils.ts maps PipelineType.ReverseMetadata -> 'ingestion_task'.
     assertEquals(
         "ingestion_task",
         PipelineServiceClientInterface.taskKeyOf(PipelineType.REVERSE_METADATA.toString()));

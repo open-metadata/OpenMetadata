@@ -79,7 +79,7 @@ public interface PipelineServiceClientInterface {
           Map.entry(PipelineType.ELASTIC_SEARCH_REINDEX.toString(), "elasticsearch_reindex_task"),
           Map.entry(PipelineType.APPLICATION.toString(), "application_task"),
           // The UI reads policy agent and reverse metadata logs from `ingestion_task`
-          // (see agentsDataMapper.ts PIPELINE_TYPE_TO_LOG_TASK_FIELD).
+          // (see IngestionLogsUtils.ts PIPELINE_TYPE_TO_LOG_TASK_FIELD).
           Map.entry(PipelineType.POLICY_AGENT.toString(), INGESTION_TASK_KEY),
           Map.entry(PipelineType.REVERSE_METADATA.toString(), INGESTION_TASK_KEY));
 
