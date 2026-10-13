@@ -145,6 +145,10 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
 
   public static final int DEFAULT_BATCH_SIZE = 100;
 
+  // Glossary terms are imported and exported through GlossaryCsv, so they share its documentation.
+  private static final Map<String, String> CSV_DOCUMENTATION_TYPES =
+      Map.of(Entity.GLOSSARY_TERM, Entity.GLOSSARY);
+
   private final String entityType;
   private final List<CsvHeader> csvHeaders;
   private final List<String> expectedHeaders;
@@ -333,7 +337,8 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
   }
 
   public static CsvDocumentation getCsvDocumentation(String entityType, boolean recursive) {
-    String effectiveEntityType = (recursive) ? "entity" : entityType;
+    String effectiveEntityType =
+        recursive ? "entity" : CSV_DOCUMENTATION_TYPES.getOrDefault(entityType, entityType);
     LOG.info("Initializing CSV documentation for entity {}", effectiveEntityType);
 
     String path =
@@ -343,24 +348,19 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
     try {
       List<String> jsonDataFiles = EntityUtil.getJsonDataResources(path);
       if (jsonDataFiles.isEmpty()) {
-        String message =
-            String.format(
-                "Failed to load CSV documentation for entity %s from path %s",
-                effectiveEntityType, path);
-        LOG.error("FATAL - {}", message);
-        throw new IllegalStateException(message);
+        throw EntityNotFoundException.byMessage(
+            String.format("No CSV documentation exists for entity type %s", entityType));
       }
       String json =
           CommonUtil.getResourceAsStream(
               EntityRepository.class.getClassLoader(), jsonDataFiles.get(0));
       return JsonUtils.readValue(json, CsvDocumentation.class);
     } catch (IOException | JsonParsingException e) {
-      String message =
+      throw new IllegalStateException(
           String.format(
               "Failed to load CSV documentation for entity %s from path %s",
-              effectiveEntityType, path);
-      LOG.error("FATAL - {}", message, e);
-      throw new IllegalStateException(message, e);
+              effectiveEntityType, path),
+          e);
     }
   }
 
