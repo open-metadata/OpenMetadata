@@ -793,7 +793,7 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await navigateToPersonaWithPagination(adminPage, persona.data.name, true);
       await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
       await adminPage.getByText('Data Assets').click();
-      await adminPage.getByText('Table', { exact: true }).click();
+      await adminPage.getByTestId('Table').click();
 
       await waitForAllLoadersToDisappear(adminPage);
 
@@ -902,7 +902,7 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
 
       await adminPage.getByText('Governance').click();
-      await adminPage.getByText('Domain', { exact: true }).click();
+      await adminPage.getByTestId('Domain').click();
 
       await waitForAllLoadersToDisappear(adminPage);
 
