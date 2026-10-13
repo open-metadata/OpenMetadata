@@ -140,6 +140,10 @@ describe('AppSchedule component', () => {
     fireEvent.click(screen.getByRole('button', { name: 'label.run-now' }));
 
     expect(mockOnDemandTrigger).toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'label.edit' }));
+
+    expect(screen.getByTestId('update-schedule-modal')).toBeInTheDocument();
   });
 
   it('should render necessary elements based on mockProps2', async () => {

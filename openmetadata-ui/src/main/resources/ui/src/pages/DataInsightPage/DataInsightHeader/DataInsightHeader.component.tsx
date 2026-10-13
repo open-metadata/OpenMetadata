@@ -10,8 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import {
+  Box,
+  Button,
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -98,8 +102,8 @@ const DataInsightHeader = ({ onScrollToChart }: DataInsightHeaderProps) => {
           <div className="d-flex gap-2">
             {createKPIPermission && (
               <Button
+                color="primary"
                 data-testid="add-kpi-btn"
-                type="primary"
                 onClick={handleAddKPI}>
                 {t('label.add-entity', {
                   entity: t('label.kpi-uppercase'),
