@@ -26,7 +26,10 @@ import { Task } from '../../../../generated/entity/tasks/task';
 import { getContextMemoryById } from '../../../../rest/contextMemoryAPI';
 import { resolveTask } from '../../../../rest/tasksAPI';
 import { renderWithQueryClient } from '../../../../test/unit/test-utils';
-import { CONTEXT_CENTER_MEMORY_REVIEWS_QUERY_KEY } from '../../../../utils/ContextCenterQueryKeys';
+import {
+  CONTEXT_CENTER_MEMORY_DETAIL_QUERY_KEY,
+  CONTEXT_CENTER_MEMORY_REVIEWS_QUERY_KEY,
+} from '../../../../utils/ContextCenterQueryKeys';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import MemoryConflictCompare from './MemoryConflictCompare';
 
@@ -237,6 +240,12 @@ describe('MemoryConflictCompare', () => {
     expect(resolveTask).toHaveBeenCalledWith('task-1', {
       transitionId: 'approve',
       resolutionType: ResolutionType.Approved,
+      payload: {
+        compared: [
+          { id: 'memory-three', contentUpdatedAt: 200 },
+          { id: 'memory-five', contentUpdatedAt: 100 },
+        ],
+      },
     });
     expect(onResolved).toHaveBeenCalled();
     expect(showSuccessToast).toHaveBeenCalledWith(
@@ -252,10 +261,13 @@ describe('MemoryConflictCompare', () => {
 
     await waitFor(() => expect(onClose).toHaveBeenCalled());
 
-    expect(resolveTask).toHaveBeenCalledWith('task-1', {
-      transitionId: 'reject',
-      resolutionType: ResolutionType.Rejected,
-    });
+    expect(resolveTask).toHaveBeenCalledWith(
+      'task-1',
+      expect.objectContaining({
+        transitionId: 'reject',
+        resolutionType: ResolutionType.Rejected,
+      })
+    );
   });
 
   it('a refused decision stays open, says why and refreshes the reviews', async () => {
@@ -270,6 +282,12 @@ describe('MemoryConflictCompare', () => {
 
     expect(invalidate).toHaveBeenCalledWith({
       queryKey: CONTEXT_CENTER_MEMORY_REVIEWS_QUERY_KEY,
+    });
+    expect(invalidate).toHaveBeenCalledWith({
+      queryKey: [...CONTEXT_CENTER_MEMORY_DETAIL_QUERY_KEY, 'memory-three'],
+    });
+    expect(invalidate).toHaveBeenCalledWith({
+      queryKey: [...CONTEXT_CENTER_MEMORY_DETAIL_QUERY_KEY, 'memory-five'],
     });
     expect(onClose).not.toHaveBeenCalled();
     expect(onResolved).not.toHaveBeenCalled();
@@ -318,6 +336,38 @@ describe('MemoryConflictCompare', () => {
     );
 
     expect(screen.getByTestId('keep-approved-memories')).toBeDisabled();
+    expect(screen.getByTestId('keep-reviewed-memory')).toBeDisabled();
+  });
+
+  it('waits for every contradicted memory before approving, not only the one on screen', async () => {
+    let release: (value: ContextMemory) => void = jest.fn();
+    (getContextMemoryById as jest.Mock).mockImplementation((id) =>
+      id === 'memory-first'
+        ? new Promise((resolve) => {
+            release = resolve;
+          })
+        : Promise.resolve(MEMORIES[id])
+    );
+    renderCompare(reviewOf('memory-five', 'memory-first'));
+
+    await enabledKeep('keep-approved-memories');
+
+    expect(screen.getByTestId('keep-reviewed-memory')).toBeDisabled();
+
+    await act(async () => release(MEMORIES['memory-first']));
+
+    await enabledKeep('keep-reviewed-memory');
+  });
+
+  it('says which other contradicted memory failed to load and holds the approval', async () => {
+    renderCompare(reviewOf('memory-five', 'memory-broken'));
+
+    expect(await screen.findByTestId('compare-failed-reads')).toHaveTextContent(
+      /server\.entity-fetch-error .*memory-broken/
+    );
+
+    await enabledKeep('keep-approved-memories');
+
     expect(screen.getByTestId('keep-reviewed-memory')).toBeDisabled();
   });
 

@@ -22,6 +22,7 @@ import { DiffSegment } from './MemoryConflictCompare.types';
 import {
   diffList,
   diffText,
+  getComparedMemories,
   getKeepHints,
   getMemoryByline,
   getMemoryDiffRows,
@@ -228,5 +229,23 @@ describe('getMemoryByline', () => {
     expect(byline).toMatch(/^Ana · /);
     expect(byline).toContain('2023');
     expect(getMemoryByline(undefined)).toBe('');
+  });
+});
+
+describe('getComparedMemories', () => {
+  it('stamps each memory with when its claim last changed, and an unread one with nothing', () => {
+    expect(
+      getComparedMemories([
+        {
+          id: 'reviewed',
+          memory: { lastContentUpdatedAt: 7, updatedAt: 9 } as ContextMemory,
+        },
+        { id: 'hidden', memory: undefined },
+        { id: undefined, memory: undefined },
+      ])
+    ).toEqual([
+      { id: 'reviewed', contentUpdatedAt: 7 },
+      { id: 'hidden', contentUpdatedAt: undefined },
+    ]);
   });
 });

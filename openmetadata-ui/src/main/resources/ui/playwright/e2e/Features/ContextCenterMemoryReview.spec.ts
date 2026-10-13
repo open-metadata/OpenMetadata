@@ -11,10 +11,16 @@
  *  limitations under the License.
  */
 
-import { APIRequestContext, expect } from '@playwright/test';
-import { createNewPage, uuid } from '../../utils/common';
+import { APIRequestContext, expect, Page } from '@playwright/test';
+import {
+  clickIgnoringToasts,
+  createNewPage,
+  getApiContext,
+  uuid,
+} from '../../utils/common';
 import {
   createMemoryViaApi,
+  getLoggedInUser,
   MEMORIES_API,
   navigateToMemories,
   patchMemory,
@@ -34,14 +40,25 @@ interface Memory {
 const RESOLVE_TASK = /\/api\/v1\/tasks\/[^/]+\/resolve$/;
 const CONFLICT_REASON = 'Five orders against three orders';
 
+interface Owner {
+  id: string;
+}
+
+interface ConflictOwners {
+  reviewed?: Owner;
+  disputed?: Owner;
+}
+
 /** Each memory is recorded for cleanup as soon as it exists, so a failed setup leaks none. */
 const createConflict = async (
   apiContext: APIRequestContext,
-  created: Memory[]
+  created: Memory[],
+  owners: ConflictOwners = {}
 ) => {
   const create = async (
     kind: string,
-    entityStatus: 'Approved' | 'Unprocessed'
+    entityStatus: 'Approved' | 'Unprocessed',
+    owner?: Owner
   ) => {
     const memory = (await createMemoryViaApi(apiContext, {
       name: `cc_review_${kind}_${uuid()}`,
@@ -50,13 +67,14 @@ const createConflict = async (
       answer: `A customer has at least ${kind} completed orders.`,
       entityStatus,
       shareConfig: { visibility: 'Entity' },
+      ...(owner && { owners: [{ id: owner.id, type: 'user' }] }),
     })) as Memory;
     created.push(memory);
 
     return memory;
   };
-  const disputed = await create('five', 'Approved');
-  const reviewed = await create('three', 'Unprocessed');
+  const disputed = await create('five', 'Approved', owners.disputed);
+  const reviewed = await create('three', 'Unprocessed', owners.reviewed);
   await patchMemory(apiContext, reviewed.id, [
     { op: 'replace', path: '/entityStatus', value: 'Draft' },
     {
@@ -72,6 +90,22 @@ const createConflict = async (
   ]);
 
   return { disputed, reviewed };
+};
+
+/** The role page's own session identifies its user, once the page has loaded the app. */
+const loggedInUserOf = async (page: Page) => {
+  await navigateToMemories(page);
+  const { apiContext, afterAction } = await getApiContext(page);
+  try {
+    return await getLoggedInUser(apiContext);
+  } finally {
+    await afterAction();
+  }
+};
+
+const openNeedsReview = async (page: Page) => {
+  await navigateToMemories(page);
+  await page.getByTestId('memory-count-card-needs-review').click();
 };
 
 const memoryStatus = async (apiContext: APIRequestContext, id: string) => {
@@ -220,6 +254,89 @@ test.describe(
         expect((await memoryStatus(apiContext, disputed.id)).entityStatus).toBe(
           'Approved'
         );
+      } finally {
+        await afterAction();
+      }
+    });
+
+    test('a memory owner reviews the conflict but may not retire a claim they do not own', async ({
+      browser,
+      dataConsumerPage,
+      dataStewardPage,
+      viewOnlyPage,
+    }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+      try {
+        const { disputed, reviewed } = await createConflict(
+          apiContext,
+          created,
+          {
+            reviewed: await loggedInUserOf(dataConsumerPage),
+            disputed: await loggedInUserOf(dataStewardPage),
+          }
+        );
+        const review = dataConsumerPage.getByTestId(
+          `memory-review-${reviewed.id}`
+        );
+
+        await test.step('the owner finds the review among their own', async () => {
+          await openNeedsReview(dataConsumerPage);
+
+          await expect(review).toContainText(reviewed.title);
+        });
+
+        await test.step('a user with no stake in either memory does not', async () => {
+          await openNeedsReview(viewOnlyPage);
+
+          await expect(
+            viewOnlyPage.getByTestId(`memory-review-${reviewed.id}`)
+          ).toHaveCount(0);
+        });
+
+        const compare = dataConsumerPage.getByTestId('memory-compare-modal');
+
+        await test.step("keeping their claim would retire the steward's: refused, nothing changes", async () => {
+          await review.click();
+          await expect(compare.getByTestId('diff-current-memory')).toHaveText(
+            disputed.answer
+          );
+          await clickAndWaitFor(
+            dataConsumerPage,
+            compare.getByTestId('keep-reviewed-memory'),
+            RESOLVE_TASK,
+            403
+          );
+
+          await expect(compare).toBeVisible();
+          expect(
+            (await memoryStatus(apiContext, reviewed.id)).entityStatus
+          ).toBe('Draft');
+          expect(
+            (await memoryStatus(apiContext, disputed.id)).entityStatus
+          ).toBe('Approved');
+        });
+
+        await test.step('withdrawing their own claim resolves the review', async () => {
+          const resolved = dataConsumerPage.waitForResponse(RESOLVE_TASK);
+          await clickIgnoringToasts(
+            compare.getByTestId('keep-approved-memories')
+          );
+
+          expect((await resolved).status()).toBe(200);
+          await expect(compare).toHaveCount(0);
+          await expect
+            .poll(
+              async () =>
+                (
+                  await memoryStatus(apiContext, reviewed.id)
+                ).entityStatus
+            )
+            .toBe('Rejected');
+
+          await openNeedsReview(dataConsumerPage);
+
+          await expect(review).toHaveCount(0);
+        });
       } finally {
         await afterAction();
       }

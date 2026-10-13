@@ -21,6 +21,7 @@ import {
   EntityReference,
 } from '../../../../generated/entity/context/contextMemory';
 import { DisputedMemory } from '../../../../generated/type/memoryConflictReviewPayload';
+import { ComparedMemory } from '../../../../generated/type/memoryConflictReviewResolution';
 import { formatDate } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getClaimUpdatedAt } from '../MemoryConflictReviews/MemoryConflictReviews.utils';
@@ -279,3 +280,15 @@ export const getKeepHints = (
           options: { count: disputes.length },
         },
       };
+
+/**
+ * Every memory a reviewer compared, with when its claim last changed as they
+ * read it. The server refuses the decision if the review or a claim moved on
+ * since; a memory the reviewer could not read carries no time.
+ */
+export const getComparedMemories = (
+  memories: Array<{ id?: string; memory?: ContextMemory }>
+): ComparedMemory[] =>
+  memories.flatMap(({ id, memory }) =>
+    id ? [{ id, contentUpdatedAt: getClaimUpdatedAt(memory) }] : []
+  );

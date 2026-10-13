@@ -74,6 +74,7 @@ import {
   UnavailableMemory,
 } from './MemoryConflictCompare.types';
 import {
+  getComparedMemories,
   getKeepHints,
   getMemoryByline,
   getMemoryDiffRows,
@@ -110,6 +111,23 @@ const toSide = (
  */
 const isReadyToDecide = (side: MemorySide) =>
   !side.isLoading && side.unavailable !== 'failed';
+
+/**
+ * Rejecting needs the two memories on screen; approving also supersedes every
+ * other memory the one in review contradicts, so it waits for all of them.
+ */
+const getReadiness = (
+  current: MemorySide,
+  proposed: MemorySide,
+  disputed: MemorySide[]
+) => {
+  const canReject = isReadyToDecide(current) && isReadyToDecide(proposed);
+
+  return {
+    canReject,
+    canApprove: canReject && disputed.every(isReadyToDecide),
+  };
+};
 
 const titleOf = (memory?: ContextMemory, reference?: EntityReference) =>
   memory?.title || (reference ? getEntityName(reference) : '');
@@ -294,6 +312,23 @@ const DiffRowsSkeleton: FC = () => (
   </>
 );
 
+/** Contradicted memories that failed to load, other than the one on screen. */
+const FailedReads: FC<{ names: string[] }> = ({ names }) => {
+  const { t } = useTranslation();
+
+  return names.length > 0 ? (
+    <Typography
+      className="tw:text-error-primary"
+      data-testid="compare-failed-reads"
+      role="alert"
+      size="text-sm">
+      {names
+        .map((name) => t('server.entity-fetch-error', { entity: name }))
+        .join(' · ')}
+    </Typography>
+  ) : null;
+};
+
 const ConflictContext: FC<{ question?: string; reason?: string }> = ({
   question,
   reason,
@@ -407,16 +442,19 @@ const MemoryConflictCompare: FC<MemoryConflictCompareProps> = ({
   const [resolving, setResolving] = useState<ReviewDecision>();
   const dispute = disputes.find(({ memory }) => memory.id === disputedId);
 
-  const [reviewed, ...disputed] = useQueries({
-    queries: [review.about?.id, ...disputes.map(({ memory }) => memory.id)].map(
-      (id) => ({
-        queryKey: [...CONTEXT_CENTER_MEMORY_DETAIL_QUERY_KEY, id],
-        queryFn: () => getContextMemoryById(id ?? '', MEMORY_FIELDS),
-        enabled: Boolean(id),
-        retry: false,
-      })
-    ),
+  const memoryIds = useMemo(
+    () => [review.about?.id, ...disputes.map(({ memory }) => memory.id)],
+    [review.about?.id, disputes]
+  );
+  const memories = useQueries({
+    queries: memoryIds.map((id) => ({
+      queryKey: [...CONTEXT_CENTER_MEMORY_DETAIL_QUERY_KEY, id],
+      queryFn: () => getContextMemoryById(id ?? '', MEMORY_FIELDS),
+      enabled: Boolean(id),
+      retry: false,
+    })),
   });
+  const [reviewed, ...disputed] = memories;
   const shown = disputed[disputes.indexOf(dispute ?? disputes[0])];
   const recency = getConflictRecency(
     reviewed.data,
@@ -424,8 +462,23 @@ const MemoryConflictCompare: FC<MemoryConflictCompareProps> = ({
   );
   const currentSide = toSide(shown, recency.disputed[disputedId ?? '']);
   const proposedSide = toSide(reviewed, recency.reviewed);
+  const disputedSides = disputed.map((result) => toSide(result));
   const isComparing = !currentSide.isLoading && !proposedSide.isLoading;
-  const canDecide = [currentSide, proposedSide].every(isReadyToDecide);
+  const { canReject, canApprove } = getReadiness(
+    currentSide,
+    proposedSide,
+    disputedSides
+  );
+  const failedNames = disputes
+    .filter(
+      ({ memory }, index) =>
+        memory.id !== disputedId &&
+        disputedSides[index]?.unavailable === 'failed'
+    )
+    .map(({ memory }) => getEntityName(memory));
+  const compared = getComparedMemories(
+    memoryIds.map((id, index) => ({ id, memory: memories[index]?.data }))
+  );
   const rows = useMemo(
     () => getMemoryDiffRows(shown?.data, reviewed.data, t),
     [shown?.data, reviewed.data, t]
@@ -447,12 +500,18 @@ const MemoryConflictCompare: FC<MemoryConflictCompareProps> = ({
         await resolveTask(review.id, {
           transitionId: decision,
           resolutionType: REVIEW_DECISIONS[decision],
+          payload: { compared },
         });
         showSuccessToast(t('server.task-resolved-successfully'));
         onResolved();
         onClose();
       } catch (err) {
         showErrorToast(err as AxiosError);
+        memoryIds.forEach((id) =>
+          queryClient.invalidateQueries({
+            queryKey: [...CONTEXT_CENTER_MEMORY_DETAIL_QUERY_KEY, id],
+          })
+        );
         queryClient.invalidateQueries({
           queryKey: CONTEXT_CENTER_MEMORY_REVIEWS_QUERY_KEY,
         });
@@ -460,7 +519,7 @@ const MemoryConflictCompare: FC<MemoryConflictCompareProps> = ({
         setResolving(undefined);
       }
     },
-    [review.id, onResolved, onClose, queryClient, t]
+    [review.id, compared, memoryIds, onResolved, onClose, queryClient, t]
   );
 
   return (
@@ -482,6 +541,7 @@ const MemoryConflictCompare: FC<MemoryConflictCompareProps> = ({
                 question={reviewed.data?.question}
                 reason={getDisputeReason(reviewed.data, disputedId)}
               />
+              <FailedReads names={failedNames} />
               <div
                 aria-label={t('label.compare-memories')}
                 className="tw:overflow-hidden tw:rounded-lg tw:border tw:border-secondary"
@@ -542,7 +602,7 @@ const MemoryConflictCompare: FC<MemoryConflictCompareProps> = ({
               <Grid.Item span={10}>
                 <KeepAction
                   hint={hints.approved}
-                  isDisabled={Boolean(resolving) || !canDecide}
+                  isDisabled={Boolean(resolving) || !canReject}
                   isLoading={resolving === 'reject'}
                   testId="keep-approved-memories"
                   onKeep={() => handleKeep('reject')}
@@ -551,7 +611,7 @@ const MemoryConflictCompare: FC<MemoryConflictCompareProps> = ({
               <Grid.Item span={10}>
                 <KeepAction
                   hint={hints.reviewed}
-                  isDisabled={Boolean(resolving) || !canDecide}
+                  isDisabled={Boolean(resolving) || !canApprove}
                   isLoading={resolving === 'approve'}
                   testId="keep-reviewed-memory"
                   onKeep={() => handleKeep('approve')}
