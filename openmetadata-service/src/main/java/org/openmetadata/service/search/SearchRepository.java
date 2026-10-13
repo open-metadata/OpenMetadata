@@ -1563,14 +1563,28 @@ public class SearchRepository {
   }
 
   private void syncTableColumns(Table table, ChangeDescription changeDescription) {
-    if (hasColumnsChanged(changeDescription)) {
-      // Columns were added/removed/modified - do full reindex
+    if (hasColumnsChanged(changeDescription) || changesTagsWithOtherFields(changeDescription)) {
+      // Rebuilt from the table: the column tree, the inherited fields and the inherited terms
       deleteTableColumns(table);
       indexTableColumns(table);
     } else if (!isTagsOnlyChange(changeDescription)) {
       // Only inherited fields changed - use efficient update
       updateTableColumnsInheritedFields(table);
     }
+  }
+
+  /**
+   * A tags change made together with any other field. The inherited-field update writes the
+   * table's version and updatedAt on every change, so running it next to the tag cascade puts the
+   * same two writers on the column documents that a tags-only change avoids, and conflicts=proceed
+   * drops whichever loses. Rebuilding the documents instead writes both in one go: they are built
+   * from the table, inherited terms included, so the cascade arriving afterwards changes nothing.
+   */
+  private boolean changesTagsWithOtherFields(ChangeDescription changeDescription) {
+    return changeDescription != null
+        && changedFieldNames(changeDescription)
+            .anyMatch(fieldName -> fieldName.startsWith(Entity.FIELD_TAGS))
+        && !isTagsOnlyChange(changeDescription);
   }
 
   /**

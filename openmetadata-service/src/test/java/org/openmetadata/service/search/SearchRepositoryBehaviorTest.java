@@ -1199,6 +1199,74 @@ class SearchRepositoryBehaviorTest {
     assertEquals(TagLabel.LabelType.DERIVED, inheritedTags.getFirst().getLabelType());
   }
 
+  /**
+   * A tags change made together with another field rebuilds the column documents rather than
+   * running the inherited-field update next to the tag cascade: those two would write different
+   * fields of the same documents at once, and conflicts=proceed drops whichever loses. The rebuilt
+   * documents carry the table's term already.
+   */
+  @Test
+  @SuppressWarnings("unchecked")
+  void tableTagChangeMixedWithAnotherFieldRebuildsTheColumnDocs() throws Exception {
+    SearchRepository repo =
+        newRepository(
+            Map.of(Entity.TABLE, TABLE_MAPPING, Entity.TABLE_COLUMN, COLUMN_MAPPING), "cluster");
+    UUID tableId = UUID.randomUUID();
+    TagLabel term =
+        new TagLabel()
+            .withTagFQN("Glossary.Revenue")
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+    Table table =
+        new Table()
+            .withId(tableId)
+            .withName("orders")
+            .withFullyQualifiedName("svc.db.schema.orders")
+            .withTags(List.of(term))
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("amount")
+                        .withFullyQualifiedName("svc.db.schema.orders.amount")));
+    ChangeDescription tagAndDescriptionChange =
+        changeDescription(
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_TAGS)
+                    .withNewValue(JsonUtils.pojoToJson(List.of(term)))),
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_DESCRIPTION)
+                    .withOldValue("old")
+                    .withNewValue("new")),
+            List.of());
+
+    invokePrivateMethod(
+        repo,
+        "syncTableColumns",
+        new Class<?>[] {Table.class, ChangeDescription.class},
+        table,
+        tagAndDescriptionChange);
+
+    verify(searchClient)
+        .deleteEntityByFields(
+            eq(List.of("cluster_column_search_index")),
+            eq(List.of(new ImmutablePair<>("table.id", tableId.toString()))));
+    verify(searchClient, never())
+        .updateChildren(
+            eq(List.of("cluster_column_search_index")),
+            any(Pair.class),
+            argThat(update -> SearchClient.DEFAULT_UPDATE_SCRIPT.equals(update.getKey())));
+    ArgumentCaptor<List<Map<String, String>>> docsCaptor = ArgumentCaptor.forClass(List.class);
+    verify(searchClient).createEntities(eq("cluster_column_search_index"), docsCaptor.capture());
+    JsonNode columnDoc =
+        JsonUtils.readTree(docsCaptor.getValue().getFirst().values().iterator().next());
+    assertEquals("Glossary.Revenue", columnDoc.path("tags").path(0).path("tagFQN").asText());
+    assertEquals(
+        TagLabel.LabelType.DERIVED.value(),
+        columnDoc.path("tags").path(0).path("labelType").asText());
+  }
+
   @Test
   void propagateTagChangeToChildrenQueuesTheSynthesizedDeltaForRetry() throws IOException {
     EntityInterface<?> table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
