@@ -22,7 +22,7 @@ const NAV_ITEMS = [
   'Incident Manager',
   'Alerts',
   'Insights',
-  'Marketplace',
+  'Data Marketplace',
   'Govern',
   'Glossary',
   'Classification',

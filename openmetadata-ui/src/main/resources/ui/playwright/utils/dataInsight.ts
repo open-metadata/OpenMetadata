@@ -77,7 +77,7 @@ export const addKpi = async (page: Page, data: KPIData) => {
       : currentDate.getDate();
   const endDate = `${currentDate.getFullYear()}-${nextMonth}-${nextDate}`;
 
-  await page.click('#chartType');
+  await page.getByTestId('chartType').click();
   await page.click(`.ant-select-dropdown [title="${data.dataInsightChart}"]`);
   await page.getByTestId('displayName').fill(data.displayName);
   await page.getByTestId('metricType').click();

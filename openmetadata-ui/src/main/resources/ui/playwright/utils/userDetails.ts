@@ -53,7 +53,9 @@ export const openTeamEditorAndSelect = async (page: Page, teamName: string) => {
 /**
  * Picks a team in the core TreeSelect team picker. The tree opens in its own
  * overlay (`team-select-popover`), and searching first keeps nested teams
- * reachable without expanding their parents.
+ * reachable without expanding their parents. The multi-select overlay stays
+ * open after a pick and swallows the next outside click, so close it before
+ * the caller saves.
  */
 export const selectTeamInPicker = async (page: Page, teamName: string) => {
   const popover = page.getByTestId('team-select-popover');
@@ -65,4 +67,6 @@ export const selectTeamInPicker = async (page: Page, teamName: string) => {
 
   await expect(teamOption).toBeVisible({ timeout: ACTION_TIMEOUT });
   await teamOption.click();
+  await page.keyboard.press('Escape');
+  await expect(popover).toBeHidden();
 };
