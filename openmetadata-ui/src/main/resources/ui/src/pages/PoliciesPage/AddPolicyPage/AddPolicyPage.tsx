@@ -140,6 +140,7 @@ const AddPolicyPage = () => {
                 })}
               </Typography>
               <HookForm
+                className="tw:flex tw:flex-col tw:gap-4"
                 data-testid="policy-form"
                 form={form}
                 id="policy-form"

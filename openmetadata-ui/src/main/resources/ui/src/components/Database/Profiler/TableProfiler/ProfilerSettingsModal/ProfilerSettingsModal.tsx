@@ -563,7 +563,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
           className="layout-column"
           data-testid="profile-sample-container"
           span={24}>
-          <div>
+          <div className="tw:flex tw:flex-col tw:gap-4">
             <FormField control={form.control} name="profileSampleType">
               {({ field, fieldState }) => (
                 <Box className="tw:w-full" direction="col" gap={2}>

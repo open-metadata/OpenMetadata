@@ -44,7 +44,6 @@ const UserProfileTeams = ({
   const [isTeamsEdit, setIsTeamsEdit] = useState(false);
   const [selectedTeams, setSelectedTeams] = useState<EntityReference[]>([]);
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
-  const [popoverHeight, setPopoverHeight] = useState<number>(156);
   const teamsSelectableRef = useRef<HTMLDivElement | null>(null);
 
   const handleTeamsSave = async () => {
@@ -92,29 +91,6 @@ const UserProfileTeams = ({
     setIsDropdownOpen(visible);
   };
 
-  useEffect(() => {
-    const observer = new MutationObserver(() => {
-      const dropdown = document.querySelector(
-        '.teams-custom-dropdown-class'
-      ) as HTMLElement;
-
-      if (dropdown) {
-        setPopoverHeight(dropdown.scrollHeight + 156);
-      }
-    });
-
-    const dropdown = document.querySelector('.teams-custom-dropdown-class');
-    if (dropdown) {
-      observer.observe(dropdown, {
-        attributes: true,
-        childList: true,
-        subtree: true,
-      });
-    }
-
-    return () => observer.disconnect();
-  }, [isDropdownOpen]);
-
   return (
     <div
       className="d-flex flex-col w-full  p-[20px] user-profile-card"
@@ -147,9 +123,8 @@ const UserProfileTeams = ({
                 <div
                   className="user-profile-edit-popover-card relative"
                   data-testid="profile-teams-edit-popover"
-                  style={{
-                    height: `${popoverHeight}px`,
-                  }}>
+                  // The team tree opens in its own overlay, so the card keeps a fixed height.
+                  style={{ height: '156px' }}>
                   <div className="d-flex justify-start items-center gap-2 m-b-sm">
                     <div className="d-flex flex-start items-center">
                       <IconTeamsGrey height={16} />

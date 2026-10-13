@@ -106,7 +106,7 @@ const SearchBoostsSection = ({
       wrap="wrap">
       <Accordion className="w-full search-settings-collapse">
         <AccordionItem className="term-boost-panel" id="1" key="1">
-          <Box align="center" gap={2}>
+          <Box align="center" className="tw:w-full" gap={2}>
             <AccordionHeader className="tw:flex-1">
               <Box
                 className="layout-row d-flex items-center justify-between w-full"
@@ -121,7 +121,7 @@ const SearchBoostsSection = ({
                 </Box>
               </Box>
             </AccordionHeader>
-            <Box className="tw:pe-4">
+            <Box className="tw:ms-auto tw:pe-4">
               <Box className="layout-column d-flex items-center gap-2">
                 <Button
                   color="secondary"
@@ -154,7 +154,7 @@ const SearchBoostsSection = ({
           </AccordionPanel>
         </AccordionItem>
         <AccordionItem className="field-value-boost-panel" id="2" key="2">
-          <Box align="center" gap={2}>
+          <Box align="center" className="tw:w-full" gap={2}>
             <AccordionHeader className="tw:flex-1">
               <Box
                 className="layout-row d-flex items-center justify-between w-full"
@@ -170,7 +170,7 @@ const SearchBoostsSection = ({
                 </Box>
               </Box>
             </AccordionHeader>
-            <Box className="tw:pe-4">
+            <Box className="tw:ms-auto tw:pe-4">
               <Box className="layout-column d-flex items-center gap-2">
                 <Button
                   color="secondary"

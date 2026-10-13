@@ -178,6 +178,7 @@ const AddKPIPage = () => {
               })}
             </Typography>
             <HookForm
+              className="tw:flex tw:flex-col tw:gap-4"
               data-testid="kpi-form"
               form={form}
               id="kpi-form"

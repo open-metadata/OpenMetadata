@@ -161,6 +161,7 @@ const LineageConfigPage = () => {
                     aria-label={t('label.lineage-config')}
                     onFocus={handleFieldFocus}>
                     <HookForm
+                      className="tw:flex tw:flex-col tw:gap-4"
                       form={form}
                       id="lineage-config"
                       onSubmit={form.handleSubmit(handleSave)}>

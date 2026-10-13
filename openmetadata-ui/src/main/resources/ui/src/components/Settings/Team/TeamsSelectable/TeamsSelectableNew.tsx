@@ -20,7 +20,14 @@ import {
 import { AxiosError } from 'axios';
 
 import { isEmpty } from 'lodash';
-import { forwardRef, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { TeamHierarchy } from '../../../../generated/entity/teams/teamHierarchy';
 import { getTeamsHierarchy } from '../../../../rest/teamsAPI';
@@ -47,7 +54,6 @@ const TeamsSelectableNew = forwardRef<HTMLDivElement, TeamsSelectableProps>(
     ref
   ) => {
     const [noTeam, setNoTeam] = useState<boolean>(false);
-    const [teams, setTeams] = useState<Array<TeamHierarchy>>([]);
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const { t } = useTranslation();
 
@@ -68,31 +74,30 @@ const TeamsSelectableNew = forwardRef<HTMLDivElement, TeamsSelectableProps>(
         );
     };
 
-    const loadOptions = async () => {
-      try {
-        setIsLoading(true);
-        const { data } = await getTeamsHierarchy(filterJoinable);
-        setTeams(data);
-        showTeamsAlert && setNoTeam(isEmpty(data));
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    // TreeSelect fetches once when it first opens; awaiting the shared request
+    // keeps an early open (e.g. a popover opened straight away) from caching an empty tree.
+    const teamsRequest = useRef<Promise<TeamHierarchy[]>>();
+    const loadTeams = useCallback(() => {
+      teamsRequest.current ??= getTeamsHierarchy(filterJoinable).then(
+        ({ data }) => data
+      );
+
+      return teamsRequest.current;
+    }, [filterJoinable]);
 
     useEffect(() => {
-      loadOptions();
-    }, []);
-
-    const teamsTree = useMemo(
-      () => buildTeamsSelectableTree(teams, filterJoinable),
-      [teams, filterJoinable]
-    );
+      setIsLoading(true);
+      loadTeams()
+        .then((data) => showTeamsAlert && setNoTeam(isEmpty(data)))
+        .catch((error: AxiosError) => showErrorToast(error))
+        .finally(() => setIsLoading(false));
+    }, [loadTeams, showTeamsAlert]);
 
     const fetchData = useCallback(
-      async () => ({ nodes: teamsTree }),
-      [teamsTree]
+      async () => ({
+        nodes: buildTeamsSelectableTree(await loadTeams(), filterJoinable),
+      }),
+      [loadTeams, filterJoinable]
     );
 
     const selectedTeamsInternal = useMemo(() => {
@@ -114,7 +119,6 @@ const TeamsSelectableNew = forwardRef<HTMLDivElement, TeamsSelectableProps>(
           isOpen={open}
           maxVisibleItems={maxValueCount}
           placeholder={placeholder}
-          popoverClassName="teams-custom-dropdown-class"
           showCheckbox={false}
           showIcon={false}
           value={selectedTeamsInternal}

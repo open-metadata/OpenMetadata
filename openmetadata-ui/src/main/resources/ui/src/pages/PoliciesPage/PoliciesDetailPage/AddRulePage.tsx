@@ -173,6 +173,7 @@ const AddRulePage = () => {
             {t('label.add-new-entity', { entity: t('label.rule') })}
           </Typography>
           <HookForm
+            className="tw:flex tw:flex-col tw:gap-4"
             data-testid="rule-form"
             form={form}
             id="rule-form"

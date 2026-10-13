@@ -20,7 +20,7 @@ import {
 import { AxiosError } from 'axios';
 
 import { isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TeamHierarchy } from '../../../../generated/entity/teams/teamHierarchy';
 import { EntityReference } from '../../../../generated/entity/type';
@@ -42,7 +42,6 @@ const TeamsSelectable = ({
   maxValueCount,
 }: TeamsSelectableProps) => {
   const [noTeam, setNoTeam] = useState<boolean>(false);
-  const [teams, setTeams] = useState<Array<TeamHierarchy>>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const { t } = useTranslation();
   const onChange = (value: TreeSelectNode | TreeSelectNode[] | null) => {
@@ -65,37 +64,33 @@ const TeamsSelectable = ({
       );
   };
 
-  const loadOptions = async () => {
-    try {
-      setIsLoading(true);
-      const { data } = await getTeamsHierarchy(filterJoinable);
-      const sortedData = [...data].sort((a, b) => {
-        const nameA = a.fullyQualifiedName ?? '';
-        const nameB = b.fullyQualifiedName ?? '';
+  // TreeSelect fetches once when it first opens; awaiting the shared request
+  // keeps an early open (e.g. a popover opened straight away) from caching an empty tree.
+  const teamsRequest = useRef<Promise<TeamHierarchy[]>>();
+  const loadTeams = useCallback(() => {
+    teamsRequest.current ??= getTeamsHierarchy(filterJoinable).then(
+      ({ data }) =>
+        [...data].sort((a, b) =>
+          (a.fullyQualifiedName ?? '').localeCompare(b.fullyQualifiedName ?? '')
+        )
+    );
 
-        return nameA.localeCompare(nameB);
-      });
-      setTeams(sortedData);
-      showTeamsAlert && setNoTeam(isEmpty(data));
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    return teamsRequest.current;
+  }, [filterJoinable]);
 
   useEffect(() => {
-    loadOptions();
-  }, []);
-
-  const teamsTree = useMemo(
-    () => buildTeamsSelectableTree(teams, filterJoinable),
-    [teams, filterJoinable]
-  );
+    setIsLoading(true);
+    loadTeams()
+      .then((data) => showTeamsAlert && setNoTeam(isEmpty(data)))
+      .catch((error: AxiosError) => showErrorToast(error))
+      .finally(() => setIsLoading(false));
+  }, [loadTeams, showTeamsAlert]);
 
   const fetchData = useCallback(
-    async () => ({ nodes: teamsTree }),
-    [teamsTree]
+    async () => ({
+      nodes: buildTeamsSelectableTree(await loadTeams(), filterJoinable),
+    }),
+    [loadTeams, filterJoinable]
   );
 
   const selectedTeamsInternal = useMemo(() => {
