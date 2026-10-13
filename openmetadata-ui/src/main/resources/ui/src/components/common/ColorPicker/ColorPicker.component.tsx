@@ -34,16 +34,17 @@ const ColorPicker = ({
 
   return (
     <Box align="center" gap={2}>
-      <Box className="tw:w-16 tw:shrink-0">
-        <Input
-          aria-label={t('label.select-field', { field: label })}
-          inputDataTestId={`${testId}-picker`}
-          type="color"
-          value={value}
-          onBlur={onBlur}
-          onChange={onChange}
-        />
-      </Box>
+      {/* Core has no colour swatch control; a core Input squeezes the native
+          swatch into a thin stripe, so the swatch stays a native colour input. */}
+      <input
+        aria-label={t('label.select-field', { field: label })}
+        className="tw:h-10 tw:w-16 tw:shrink-0 tw:cursor-pointer tw:rounded-lg tw:border tw:border-primary tw:bg-primary tw:p-1"
+        data-testid={`${testId}-picker`}
+        type="color"
+        value={value}
+        onBlur={onBlur}
+        onChange={(e) => onChange?.(e.target.value)}
+      />
       <Box className="tw:flex-1">
         <Input
           aria-label={label}
