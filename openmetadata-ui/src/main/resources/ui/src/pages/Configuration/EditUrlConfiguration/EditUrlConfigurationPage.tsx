@@ -10,10 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Button } from '@openmetadata/ui-core-components';
-import { Form, Input } from 'antd';
+import {
+    Box,
+    Button,
+    FormField,
+    HookForm,
+    Input
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import Loader from '../../../components/common/Loader/Loader';
@@ -21,14 +27,13 @@ import ResizablePanels from '../../../components/common/ResizablePanels/Resizabl
 import ServiceDocPanel from '../../../components/common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import SettingsSourceBanner from '../../../components/platform/settings/SettingsSourceBanner/SettingsSourceBanner';
-import { VALIDATION_MESSAGES } from '../../../constants/constants';
 import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
+    GlobalSettingOptions,
+    GlobalSettingsMenuCategory
 } from '../../../constants/GlobalSettings.constants';
 import {
-  OPENMETADATA_URL_CONFIG_SERVICE_CATEGORY,
-  OPEN_METADATA,
+    OPENMETADATA_URL_CONFIG_SERVICE_CATEGORY,
+    OPEN_METADATA
 } from '../../../constants/service-guide.constant';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { OpenMetadataBaseURLConfiguration } from '../../../generated/configuration/openMetadataBaseUrlConfiguration';
@@ -36,23 +41,24 @@ import { Settings, SettingType } from '../../../generated/settings/settings';
 import { withPageLayout } from '../../../hoc/withPageLayout';
 import { useSettingsSource } from '../../../hooks/platform/useSettingsSource';
 import {
-  getSettingsConfigFromConfigType,
-  updateSettingsConfig,
+    getSettingsConfigFromConfigType,
+    updateSettingsConfig
 } from '../../../rest/settingConfigAPI';
 import { getHyperlinkUrlValidationErrorKey } from '../../../utils/CustomProperty.utils';
 import {
-  findSettingSource,
-  isPathManaged,
+    findSettingSource,
+    isPathManaged
 } from '../../../utils/platform/settingsSource.utils';
 import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
-const { Item } = Form;
 const URL_SETTING_TYPES = [SettingType.OpenMetadataBaseURLConfiguration];
 const EditUrlConfigurationPage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const [form] = Form.useForm<OpenMetadataBaseURLConfiguration>();
+  const form = useForm<OpenMetadataBaseURLConfiguration>({
+    defaultValues: { openMetadataUrl: '' },
+  });
   const [activeField, setActiveField] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [updating, setUpdating] = useState<boolean>(false);
@@ -71,7 +77,7 @@ const EditUrlConfigurationPage = () => {
         SettingType.OpenMetadataBaseURLConfiguration
       );
 
-      form.setFieldsValue({ ...(data.config_value ?? {}) });
+      form.reset({ ...(data.config_value ?? {}) });
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -146,63 +152,72 @@ const EditUrlConfigurationPage = () => {
         onAdopted={fetchCustomLogoConfig}
         onRefetch={refetchSources}
       />
-      <Form
-        className="m-t-md"
-        data-testid="custom-login-config-form"
-        form={form}
-        layout="vertical"
-        validateMessages={VALIDATION_MESSAGES}
-        onFinish={handleSubmit}
+      {/* Tracks the focused field for the doc panel; focus events bubble. */}
+      <div
+        role="presentation"
         onFocus={(e) => {
           e.preventDefault();
           e.stopPropagation();
           setActiveField(e.target.id);
         }}>
-        <Item
-          label={t('label.brand-name-url')}
-          name="openMetadataUrl"
-          rules={[
-            { required: true },
-            {
-              validator: (_, value) => {
+        <HookForm
+          className="tw:mt-4 tw:flex tw:flex-col tw:gap-4"
+          data-testid="custom-login-config-form"
+          form={form}
+          onSubmit={form.handleSubmit(handleSubmit)}>
+          <FormField
+            control={form.control}
+            name="openMetadataUrl"
+            rules={{
+              required: t('message.field-text-is-required', {
+                fieldText: t('label.brand-name-url'),
+              }),
+              validate: (value) => {
                 const errorKey = getHyperlinkUrlValidationErrorKey(
                   typeof value === 'string' ? value : undefined
                 );
 
-                return errorKey
-                  ? Promise.reject(new Error(t(errorKey)))
-                  : Promise.resolve();
+                return errorKey ? t(errorKey) : true;
               },
-            },
-          ]}>
-          <Input
-            data-testid="open-metadata-url-input"
-            disabled={isManagedByDeployment}
-            id="root/openMetadataUrl-input"
-          />
-        </Item>
-        <Box className="layout-row" justify="end" wrap="wrap">
-          <Box className="layout-column tw:block">
-            <Button
-              color="link-color"
-              data-testid="cancel-button"
-              onClick={handleGoBack}>
-              {t('label.cancel')}
-            </Button>
-          </Box>
-          {!isManagedByDeployment && (
+            }}>
+            {({ field, fieldState }) => (
+              <Input
+                isRequired
+                hint={fieldState.error?.message}
+                id="root/openMetadataUrl-input"
+                inputDataTestId="open-metadata-url-input"
+                isDisabled={isManagedByDeployment}
+                isInvalid={fieldState.invalid}
+                label={t('label.brand-name-url')}
+                value={field.value ?? ''}
+                onBlur={field.onBlur}
+                onChange={field.onChange}
+              />
+            )}
+          </FormField>
+          <Box className="layout-row" justify="end" wrap="wrap">
             <Box className="layout-column tw:block">
               <Button
-                color="primary"
-                data-testid="save-button"
-                isLoading={updating}
-                type="submit">
-                {t('label.save')}
+                color="link-color"
+                data-testid="cancel-button"
+                onClick={handleGoBack}>
+                {t('label.cancel')}
               </Button>
             </Box>
-          )}
-        </Box>
-      </Form>
+            {!isManagedByDeployment && (
+              <Box className="layout-column tw:block">
+                <Button
+                  color="primary"
+                  data-testid="save-button"
+                  isLoading={updating}
+                  type="submit">
+                  {t('label.save')}
+                </Button>
+              </Box>
+            )}
+          </Box>
+        </HookForm>
+      </div>
     </>
   );
 
