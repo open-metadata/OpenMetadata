@@ -238,6 +238,7 @@ const ForeignKeyRow = ({
               entity: t('label.related-column'),
             })}
             selectedKey={field.value ?? null}
+            shortcut={false}
             onInputChange={(text) => {
               if (text !== field.value) {
                 onSearch(text);
@@ -439,7 +440,7 @@ const TableConstraintsModal = ({
         />
       ))}
       <Button
-        className="tw:mt-4"
+        className="tw:mt-4 tw:self-start"
         color="secondary"
         data-testid="add-constraint-button"
         iconLeading={<PlusIcon className="anticon" />}
