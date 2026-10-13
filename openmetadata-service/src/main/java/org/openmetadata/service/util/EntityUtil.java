@@ -1144,9 +1144,10 @@ public final class EntityUtil {
         supportsDomains(entityType),
         selected == null ? null : selected.getId().toString(),
         () -> domainAndSubDomainIds(selected),
-        nullOrEmpty(selectedFqn)
-            ? DomainNavFilter.ParentScope.NONE
-            : parentScope(parent.get(), selectedFqn));
+        () ->
+            nullOrEmpty(selectedFqn)
+                ? DomainNavFilter.ParentScope.NONE
+                : parentScope(parent.get(), selectedFqn));
   }
 
   // Resolved up front so list queries bind plain ids: planners estimate an id list well, but not a

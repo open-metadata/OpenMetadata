@@ -94,20 +94,34 @@ public final class DomainNavFilter {
       String selectedDomainIds,
       Supplier<String> matchedDomainIds,
       ParentScope parent) {
+    apply(filter, entityType, supportsDomains, selectedDomainIds, matchedDomainIds, () -> parent);
+  }
+
+  /** As above, with the parent resolved only when it can change the outcome. */
+  public static void apply(
+      ListFilter filter,
+      String entityType,
+      boolean supportsDomains,
+      String selectedDomainIds,
+      Supplier<String> matchedDomainIds,
+      Supplier<ParentScope> parentScope) {
     String explicitDomainIds = filter.getQueryParams().get("domainId");
     boolean hasExplicitDomain = explicitDomainIds != null;
     boolean echoesSelection =
         hasExplicitDomain
             && !nullOrEmpty(selectedDomainIds)
             && explicitDomainIds.replace("'", "").equals(selectedDomainIds);
+    boolean applies =
+        shouldApply(
+            entityType, supportsDomains, hasExplicitDomain && !echoesSelection, selectedDomainIds);
+    ParentScope parent = echoesSelection || applies ? parentScope.get() : ParentScope.NONE;
     if (parent == ParentScope.UNRESOLVED) {
       if (echoesSelection) {
         filter.removeQueryParam("domainId");
       }
       return;
     }
-    if (shouldApply(
-        entityType, supportsDomains, hasExplicitDomain && !echoesSelection, selectedDomainIds)) {
+    if (applies) {
       filter.addQueryParam("domainId", matchedDomainIds.get());
       filter.addQueryParam("domainEntityType", entityType);
       if (parent == ParentScope.IN_SELECTION) {
