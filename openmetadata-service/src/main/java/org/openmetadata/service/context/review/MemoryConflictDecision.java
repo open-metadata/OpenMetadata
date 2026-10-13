@@ -94,7 +94,8 @@ final class MemoryConflictDecision {
   }
 
   /** A memory saved before stages existed has none, and was in use: it counts as Approved. */
-  private static boolean isApproved(ContextMemory memory) {
+  /** A memory saved before stages existed has none and counts as Approved. */
+  static boolean isApproved(ContextMemory memory) {
     return memory != null
         && (memory.getEntityStatus() == null
             || memory.getEntityStatus() == ContextMemoryStatus.APPROVED);

@@ -135,6 +135,14 @@ const renderCompare = (review = reviewOf('memory-five')) => {
   return { onClose, onResolved, queryClient };
 };
 
+/** Keeping waits until both memories are read. */
+const enabledKeep = async (testId: string) => {
+  const keep = await screen.findByTestId(testId);
+  await waitFor(() => expect(keep).toBeEnabled());
+
+  return keep;
+};
+
 describe('MemoryConflictCompare', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -222,7 +230,7 @@ describe('MemoryConflictCompare', () => {
     (resolveTask as jest.Mock).mockResolvedValue({ id: 'task-1' });
     const { onClose, onResolved } = renderCompare();
 
-    fireEvent.click(await screen.findByTestId('keep-reviewed-memory'));
+    fireEvent.click(await enabledKeep('keep-reviewed-memory'));
 
     await waitFor(() => expect(onClose).toHaveBeenCalled());
 
@@ -240,7 +248,7 @@ describe('MemoryConflictCompare', () => {
     (resolveTask as jest.Mock).mockResolvedValue({ id: 'task-1' });
     const { onClose } = renderCompare();
 
-    fireEvent.click(await screen.findByTestId('keep-approved-memories'));
+    fireEvent.click(await enabledKeep('keep-approved-memories'));
 
     await waitFor(() => expect(onClose).toHaveBeenCalled());
 
@@ -256,7 +264,7 @@ describe('MemoryConflictCompare', () => {
     const { onClose, onResolved, queryClient } = renderCompare();
     const invalidate = jest.spyOn(queryClient, 'invalidateQueries');
 
-    fireEvent.click(await screen.findByTestId('keep-reviewed-memory'));
+    fireEvent.click(await enabledKeep('keep-reviewed-memory'));
 
     await waitFor(() => expect(showErrorToast).toHaveBeenCalledWith(refusal));
 
@@ -281,7 +289,6 @@ describe('MemoryConflictCompare', () => {
   it.each([
     ['memory-gone', /message\.memory-no-longer-exists/],
     ['memory-hidden', /message\.no-permission-to-view/],
-    ['memory-broken', /server\.entity-fetch-error/],
   ])(
     'says why %s cannot be shown, marks nothing and still lets the reviewer decide',
     async (id, reason) => {
@@ -300,6 +307,19 @@ describe('MemoryConflictCompare', () => {
       expect(screen.getByTestId('keep-approved-memories')).toBeEnabled();
     }
   );
+
+  it('holds the decision while a memory failed to load', async () => {
+    renderCompare(reviewOf('memory-broken'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('compare-current-title')).toHaveTextContent(
+        /server\.entity-fetch-error/
+      )
+    );
+
+    expect(screen.getByTestId('keep-approved-memories')).toBeDisabled();
+    expect(screen.getByTestId('keep-reviewed-memory')).toBeDisabled();
+  });
 
   it('switches between the approved memories the one in review contradicts', async () => {
     renderCompare(reviewOf('memory-five', 'memory-first'));

@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.governance.workflows.WorkflowEventConsumer.GOVERNANCE_BOT;
 
+import com.google.common.util.concurrent.Striped;
 import jakarta.json.Json;
 import jakarta.json.JsonPatch;
 import java.util.ArrayList;
@@ -26,6 +27,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.locks.Lock;
 import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.context.ContextMemory;
@@ -76,6 +78,7 @@ public final class MemoryConflictReviewTasks {
   static final String DELETED_IN_REVIEW = "Closed because the memory was deleted during its review";
   private static final String OWNERS = "owners";
   private static final int MAX_OPEN_REVIEWS = 10;
+  private static final Striped<Lock> OPENING = Striped.lock(64);
 
   private static final List<TaskAvailableTransition> TRANSITIONS =
       List.of(
@@ -175,7 +178,22 @@ public final class MemoryConflictReviewTasks {
         && !nullOrEmpty(memory.getDisputes());
   }
 
+  /**
+   * Looking for the open review and opening one are two steps, so on this server they run one write
+   * at a time per memory; across servers two writes landing together can still each open one, and
+   * leaving review closes them all.
+   */
   private static void openOrRefresh(ContextMemory previous, ContextMemory current) {
+    Lock opening = OPENING.get(current.getId());
+    opening.lock();
+    try {
+      openOrRefreshHeld(previous, current);
+    } finally {
+      opening.unlock();
+    }
+  }
+
+  private static void openOrRefreshHeld(ContextMemory previous, ContextMemory current) {
     Task open = openReview(current);
     if (open == null) {
       open(current);

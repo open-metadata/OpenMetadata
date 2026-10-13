@@ -21,11 +21,13 @@ import jakarta.json.JsonArrayBuilder;
 import jakarta.json.JsonException;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.BadRequestException;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Predicate;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
@@ -164,16 +166,19 @@ public final class MemoryConflictResolution {
       List<MemoryDispute> disputes, String user) {
     Map<UUID, ContextMemory> disputed = disputedMemories(disputes);
     boolean isAdmin = SubjectContext.getSubjectContext(user).isAdmin();
-    boolean hidesOne =
-        disputed.values().stream()
-            .anyMatch(
-                memory ->
-                    memory.getEntityStatus() == ContextMemoryStatus.APPROVED
-                        && !ContextMemoryVisibility.isVisibleToUser(memory, user, isAdmin));
-    if (hidesOne) {
+    if (hidesOneToSupersede(
+        disputed.values(),
+        memory -> ContextMemoryVisibility.isVisibleToUser(memory, user, isAdmin))) {
       throw new AuthorizationException(String.format(MAY_NOT_READ_DISPUTED, user));
     }
     return disputed;
+  }
+
+  /** Every memory the approval would supersede, a stage-less one included, must be readable. */
+  static boolean hidesOneToSupersede(
+      Collection<ContextMemory> disputed, Predicate<ContextMemory> isReadable) {
+    return disputed.stream()
+        .anyMatch(memory -> MemoryConflictDecision.isApproved(memory) && !isReadable.test(memory));
   }
 
   /**

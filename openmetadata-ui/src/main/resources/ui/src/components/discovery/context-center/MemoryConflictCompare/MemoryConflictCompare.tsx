@@ -104,6 +104,13 @@ const toSide = (
   recency,
 });
 
+/**
+ * A side is ready once read, or once the server said it is gone or not for
+ * this reviewer; a read that failed or is still running hides a claim.
+ */
+const isReadyToDecide = (side: MemorySide) =>
+  !side.isLoading && side.unavailable !== 'failed';
+
 const titleOf = (memory?: ContextMemory, reference?: EntityReference) =>
   memory?.title || (reference ? getEntityName(reference) : '');
 
@@ -415,7 +422,10 @@ const MemoryConflictCompare: FC<MemoryConflictCompareProps> = ({
     reviewed.data,
     disputed.flatMap(({ data }) => (data ? [data] : []))
   );
-  const isComparing = !reviewed.isLoading && !shown?.isLoading;
+  const currentSide = toSide(shown, recency.disputed[disputedId ?? '']);
+  const proposedSide = toSide(reviewed, recency.reviewed);
+  const isComparing = !currentSide.isLoading && !proposedSide.isLoading;
+  const canDecide = [currentSide, proposedSide].every(isReadyToDecide);
   const rows = useMemo(
     () => getMemoryDiffRows(shown?.data, reviewed.data, t),
     [shown?.data, reviewed.data, t]
@@ -496,7 +506,7 @@ const MemoryConflictCompare: FC<MemoryConflictCompareProps> = ({
                     span={10}>
                     <SideHeader
                       label={t('label.current')}
-                      side={toSide(shown, recency.disputed[disputedId ?? ''])}
+                      side={currentSide}
                       testId="compare-current-title">
                       {disputes.length > 1 && (
                         <DisputedPicker
@@ -513,7 +523,7 @@ const MemoryConflictCompare: FC<MemoryConflictCompareProps> = ({
                     span={10}>
                     <SideHeader
                       label={t('label.in-review')}
-                      side={toSide(reviewed, recency.reviewed)}
+                      side={proposedSide}
                       testId="compare-proposed-title"
                     />
                   </Grid.Item>
@@ -532,7 +542,7 @@ const MemoryConflictCompare: FC<MemoryConflictCompareProps> = ({
               <Grid.Item span={10}>
                 <KeepAction
                   hint={hints.approved}
-                  isDisabled={Boolean(resolving)}
+                  isDisabled={Boolean(resolving) || !canDecide}
                   isLoading={resolving === 'reject'}
                   testId="keep-approved-memories"
                   onKeep={() => handleKeep('reject')}
@@ -541,7 +551,7 @@ const MemoryConflictCompare: FC<MemoryConflictCompareProps> = ({
               <Grid.Item span={10}>
                 <KeepAction
                   hint={hints.reviewed}
-                  isDisabled={Boolean(resolving)}
+                  isDisabled={Boolean(resolving) || !canDecide}
                   isLoading={resolving === 'approve'}
                   testId="keep-reviewed-memory"
                   onKeep={() => handleKeep('approve')}

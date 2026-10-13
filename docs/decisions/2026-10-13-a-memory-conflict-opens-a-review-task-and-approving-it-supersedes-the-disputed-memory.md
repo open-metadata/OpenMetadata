@@ -86,7 +86,8 @@ Approved — and nothing wrote it.
   A retried resolution converges: an already superseded memory is skipped, an already Approved or
   Rejected reviewed memory is not written again, and the disputes, released when the memory left
   Draft, are read from the task's payload, which only the server writes.
-- Two writes landing together can each open a review; leaving review closes them all. Assignees are
+- On one server, opening a review is serialized per memory; across servers two writes landing
+  together can each open one, and leaving review closes them all. Assignees are
   recomputed only when the reviewed memory is written, so a change of owner on a disputed memory
   reaches the task with the reviewed memory's next write.
 - Decision writes impersonate `governance-bot`, so they also apply where a governance workflow owns

@@ -36,6 +36,22 @@ import org.openmetadata.service.context.review.MemoryConflictResolution.Verdict;
 
 class MemoryConflictResolutionTest {
 
+  /** A memory saved before stages existed counts as Approved, so approval would supersede it. */
+  @Test
+  void anApprovalMayNotSupersedeAStagelessMemoryTheResolverCannotRead() {
+    ContextMemory stageless = new ContextMemory().withId(UUID.randomUUID());
+    ContextMemory rejected =
+        new ContextMemory()
+            .withId(UUID.randomUUID())
+            .withEntityStatus(ContextMemoryStatus.REJECTED);
+
+    assertTrue(MemoryConflictResolution.hidesOneToSupersede(List.of(stageless), memory -> false));
+    assertFalse(MemoryConflictResolution.hidesOneToSupersede(List.of(stageless), memory -> true));
+    assertFalse(
+        MemoryConflictResolution.hidesOneToSupersede(List.of(rejected), memory -> false),
+        "a memory the approval leaves alone needs no read");
+  }
+
   /** A decision retried after its memory left Draft reads the disputes the task recorded. */
   @Test
   void aRetryReadsTheDisputesTheTaskRecorded() {

@@ -177,6 +177,15 @@ public class ContextMemoryConflictReviewIT {
             InvalidRequestException.class,
             () -> SdkClients.adminClient().tasks().close(task.getId().toString()));
 
+    assertThrows(
+        InvalidRequestException.class,
+        () ->
+            SdkClients.adminClient()
+                .tasks()
+                .resolve(
+                    task.getId().toString(),
+                    new ResolveTask().withResolutionType(TaskResolutionType.Cancelled)));
+
     assertTrue(edited.getMessage().contains("opened and kept by the server"));
     assertTrue(dismissed.getMessage().contains("Approve or reject this memory conflict review"));
     assertEquals(task.getId(), openTask(conflict.reviewed()).getId());
