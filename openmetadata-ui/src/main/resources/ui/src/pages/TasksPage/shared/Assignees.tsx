@@ -11,24 +11,26 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Select, SelectProps } from 'antd';
-import { DefaultOptionType } from 'antd/lib/select';
-
-import { debounce, groupBy, isArray, isUndefined } from 'lodash';
-import { FC, useMemo } from 'react';
+import {
+  Autocomplete,
+  AutocompleteProps,
+  Avatar,
+} from '@openmetadata/ui-core-components';
+import { Users01 } from '@openmetadata/ui-core-components/icons';
+import { debounce, uniqBy } from 'lodash';
+import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as TeamIcon } from '../../../assets/svg/teams-grey.svg';
-import { UserTag } from '../../../components/common/UserTag/UserTag.component';
-import { UserTagSize } from '../../../components/common/UserTag/UserTag.interface';
-import { OwnerType } from '../../../enums/user.enum';
 import { Option } from '../TasksPage.interface';
-import './Assignee.less';
 
 interface Props
   extends Omit<
-    SelectProps<Option[], DefaultOptionType>,
-    'onChange' | 'onSearch' | 'value' | 'options'
+    AutocompleteProps,
+    | 'children'
+    | 'items'
+    | 'selectedItems'
+    | 'onSearchChange'
+    | 'onChange'
+    | 'value'
   > {
   options: Option[];
   value: Option[];
@@ -38,7 +40,7 @@ interface Props
   isSingleSelect?: boolean;
 }
 
-const Assignees: FC<Props> = ({
+const Assignees = ({
   value: assignees = [],
   onSearch,
   onChange,
@@ -46,98 +48,58 @@ const Assignees: FC<Props> = ({
   disabled,
   isSingleSelect = false,
   ...rest
-}) => {
+}: Props) => {
   const { t } = useTranslation();
-  const handleOnChange = (
-    _values: Option[],
-    newOptions?: DefaultOptionType | DefaultOptionType[]
-  ) => {
-    if (isUndefined(newOptions)) {
-      onChange(newOptions as unknown as Option[]);
+  const search = useMemo(() => debounce(onSearch, 300), [onSearch]);
+  useEffect(() => () => search.cancel(), [search]);
 
-      return;
-    }
+  const toItem = (option: Option) => ({
+    id: option.value,
+    label: option.label,
+    supportingText: option.type === 'team' ? t('label.team') : t('label.user'),
+    icon:
+      option.type === 'team' ? (
+        <Avatar placeholderIcon={Users01} size="xs" />
+      ) : (
+        <Avatar initials={option.label?.charAt(0).toUpperCase()} size="xs" />
+      ),
+  });
+  // Selected identities must survive when a remote search replaces the option page.
+  const availableOptions = uniqBy([...options, ...assignees], 'value');
 
-    const normalizedOptions = isArray(newOptions) ? newOptions : [newOptions];
-    const newValues = normalizedOptions.map((option) => ({
-      label: option['data-label'],
-      value: option.value,
-      type: option.type,
-      name: option.name,
-      displayName: option.displayName,
-    }));
-
-    onChange(newValues as Option[]);
-  };
-
-  const updatedOption = useMemo(() => {
-    const groupByType = groupBy(options, (d) => d.type);
-    const groupOptions = [];
-    if (!isUndefined(groupByType.team)) {
-      groupOptions.push({
-        type: 'group',
-        label: 'Teams',
-        value: OwnerType.TEAM,
-        options: groupByType.team.map((team) => ({
-          ...team,
-          label: (
-            <div
-              className="d-flex items-center"
-              data-testid={team.name}
-              key={team.value}>
-              <TeamIcon
-                className="vertical-middle m-r-xs"
-                height={16}
-                width={16}
-              />
-              <Typography>{team.label}</Typography>
-            </div>
-          ),
-        })),
-      });
-    }
-    if (!isUndefined(groupByType.user)) {
-      groupOptions.push({
-        type: 'group',
-        label: 'Users',
-        value: OwnerType.USER,
-        options: groupByType.user.map((user) => ({
-          ...user,
-          label: (
-            <div data-testid={user.name}>
-              <UserTag
-                className="assignee-item"
-                id={user.name ?? ''}
-                name={user.label}
-                size={UserTagSize.small}
-              />
-            </div>
-          ),
-        })),
-      });
-    }
-
-    return groupOptions;
-  }, [options]);
-
+  // Form rules validate selected identities; the search query clears after selection.
   return (
-    <Select
-      showSearch
-      className="ant-select-custom select-assignee"
-      data-testid="select-assignee"
-      defaultActiveFirstOption={false}
-      disabled={disabled}
-      filterOption={false}
-      mode={isSingleSelect ? undefined : 'multiple'}
-      notFoundContent={null}
-      options={updatedOption}
-      placeholder={t('label.select-to-search')}
-      suffixIcon={null}
-      value={assignees.length ? assignees : undefined}
-      onChange={handleOnChange}
-      onSearch={debounce(onSearch, 300)}
+    <Autocomplete
       {...rest}
-    />
+      data-testid="select-assignee"
+      filterOption={() => true}
+      isDisabled={disabled}
+      items={availableOptions.map(toItem)}
+      multiple={!isSingleSelect}
+      placeholder={rest.placeholder ?? t('label.select-to-search')}
+      selectedItems={assignees.map(toItem)}
+      validationBehavior="aria"
+      onItemCleared={(key) =>
+        onChange(assignees.filter((option) => option.value !== key))
+      }
+      onItemInserted={(key) => {
+        const option = availableOptions.find((item) => item.value === key);
+        if (option) {
+          onChange(
+            isSingleSelect ? [option] : uniqBy([...assignees, option], 'value')
+          );
+        }
+      }}
+      onSearchChange={search}>
+      {(item) => (
+        <Autocomplete.Item
+          {...item}
+          data-testid={
+            availableOptions.find((option) => option.value === item.id)?.name
+          }
+        />
+      )}
+    </Autocomplete>
   );
 };
 

@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { Form, FormProps, Input, Modal } from 'antd';
+import { SimpleModal } from '@openmetadata/ui-core-components';
+import { Form, FormProps, Input } from 'antd';
 import { AxiosError } from 'axios';
 import { lazy, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { HTTP_STATUS_CODE } from '../../../../../constants/Auth.constants';
-import { NO_PERMISSION_FOR_ACTION } from '../../../../../constants/HelperTextUtil';
 import { usePermissionProvider } from '../../../../../context/PermissionProvider/PermissionProvider';
 import { CSMode } from '../../../../../enums/codemirror.enum';
 import { EntityType, FqnPart } from '../../../../../enums/entity.enum';
@@ -139,25 +139,18 @@ const AddSqlQueryFormModal = ({
   }, [testCase]);
 
   return (
-    <Modal
-      centered
-      destroyOnClose
-      closable={false}
-      maskClosable={false}
-      okButtonProps={{
-        disabled: !permissions.query?.Create || !table?.id || !currentUser?.id,
-        htmlType: 'submit',
-        form: 'query-form',
-        loading: isSaving,
-        title: permissions.query?.Create
-          ? undefined
-          : t(NO_PERMISSION_FOR_ACTION),
-      }}
+    <SimpleModal
+      isDismissable={false}
+      isOkDisabled={
+        !permissions.query?.Create || !table?.id || !currentUser?.id
+      }
+      isOkLoading={isSaving}
+      isOpen={open}
       okText={t('label.save')}
-      open={open}
       title={t('label.add-new-entity', { entity: t('label.query') })}
       width={750}
-      onCancel={onCancel}>
+      onCancel={onCancel}
+      onOk={form.submit}>
       {isLoading ? (
         <Loader />
       ) : (
@@ -200,7 +193,7 @@ const AddSqlQueryFormModal = ({
           </Form.Item>
         </Form>
       )}
-    </Modal>
+    </SimpleModal>
   );
 };
 

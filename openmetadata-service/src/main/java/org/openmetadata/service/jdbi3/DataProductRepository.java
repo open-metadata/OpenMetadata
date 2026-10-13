@@ -92,11 +92,13 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   private static final String DATA_PRODUCT_DOMAIN_MATCH_OPERATION =
       "validateDataProductDomainMatch";
 
-  // Max parents / descendants whose children, domains and data products are read in one batch.
+  // Max assets read in one batch while reconciling: parents whose children are discovered,
+  // descendants whose domains/data products are hydrated, or direct assets whose inherited domains
+  // are resolved.
   // Bounds peak heap to ~O(chunk * tree-depth) instead of O(widest level) — the same reason
   // bulkHardDeleteSubtree chunks each level (a database with hundreds of thousands of tables would
   // otherwise load the whole level into the heap in one shot).
-  private static final int DESCENDANT_RECONCILE_CHUNK_SIZE = 200;
+  private static final int RECONCILE_CHUNK_SIZE = 200;
 
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
 
@@ -669,9 +671,9 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     Map<UUID, EntityWithType> entitiesById = new HashMap<>();
     for (Map.Entry<String, List<EntityReference>> entry : refsByType.entrySet()) {
       String entityType = entry.getKey();
-      List<EntityInterface> entitiesOfType =
+      List<EntityInterface<?>> entitiesOfType =
           Entity.getEntities(entry.getValue(), fieldsToFetch, NON_DELETED);
-      for (EntityInterface entity : entitiesOfType) {
+      for (EntityInterface<?> entity : entitiesOfType) {
         entitiesById.put(entity.getId(), new EntityWithType(entity, entityType));
       }
     }
@@ -764,14 +766,14 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     }
 
     // Fetch all asset entities grouped by type so add-validation can still run during dryRun
-    Map<UUID, EntityInterface> assetEntitiesMap = new HashMap<>();
+    Map<UUID, EntityInterface<?>> assetEntitiesMap = new HashMap<>();
     if (isAdd && !assets.isEmpty()) {
       for (Map.Entry<String, List<EntityReference>> entry : assetsByType.entrySet()) {
-        List<EntityInterface> entitiesOfType =
+        List<EntityInterface<?>> entitiesOfType =
             Entity.getEntities(entry.getValue(), "domains,dataProducts", ALL);
         // Key by each entity's own id; getEntities may reorder or drop rows relative to the
         // request list, so request-index zipping would validate the wrong asset.
-        for (EntityInterface entity : entitiesOfType) {
+        for (EntityInterface<?> entity : entitiesOfType) {
           assetEntitiesMap.put(entity.getId(), entity);
         }
       }
@@ -782,7 +784,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
       try {
         if (isAdd) {
-          EntityInterface assetEntity = assetEntitiesMap.get(ref.getId());
+          EntityInterface<?> assetEntity = assetEntitiesMap.get(ref.getId());
           if (assetEntity == null) {
             throw new IllegalStateException("Asset entity not found for ID: " + ref.getId());
           }
@@ -840,7 +842,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
     // Create a Change Event on successful operations (skip when dryRun makes no changes)
     if (!dryRun && !success.isEmpty()) {
-      EntityInterface entityInterface = Entity.getEntity(fromEntity, entityId, "id", ALL);
+      EntityInterface<?> entityInterface = Entity.getEntity(fromEntity, entityId, "id", ALL);
       List<EntityReference> successfulAssets = new ArrayList<>();
       for (BulkResponse response : success) {
         successfulAssets.add((EntityReference) response.getRequest());
@@ -867,7 +869,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
    * @throws RuleValidationException if validation fails
    */
   private void validateAssetDataProductAssignment(
-      EntityInterface assetEntity, EntityReference dataProductRef) {
+      EntityInterface<?> assetEntity, EntityReference dataProductRef) {
     try {
 
       List<EntityReference> currentDataProducts = listOrEmpty(assetEntity.getDataProducts());
@@ -1171,11 +1173,11 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       return;
     }
     // Direct assets were just migrated to the data product's new domains. Reconcile each against
-    // its own (updated) explicit domains, and hand those domains down as the inherited set for its
+    // its own (updated) effective domains, and hand those domains down as the inherited set for its
     // subtree. Detached assets are reindexed once at the end (a single batched search write) rather
     // than one call per asset, which matters when a mass-detach touches many descendants.
     List<EntityReference> reindexQueue = new ArrayList<>();
-    Map<UUID, Set<UUID>> directDomains = batchFetchDomainIds(refIds(assets));
+    Map<UUID, Set<UUID>> directDomains = fetchEffectiveDomainIds(assets);
     reconcileConflicts(assets, directDomains, reindexQueue);
     // Roots are reconciled above; seeding them as visited stops a root reached again as another
     // root's descendant from being re-reconciled against inherited domains it doesn't use.
@@ -1206,7 +1208,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       Map<UUID, Set<UUID>> inheritedByParent,
       Set<UUID> visited,
       List<EntityReference> reindexQueue) {
-    for (List<EntityReference> chunk : Lists.partition(parents, DESCENDANT_RECONCILE_CHUNK_SIZE)) {
+    for (List<EntityReference> chunk : Lists.partition(parents, RECONCILE_CHUNK_SIZE)) {
       Map<UUID, Set<UUID>> inheritedByChild = new HashMap<>();
       List<EntityReference> children =
           fetchUnvisitedChildren(chunk, inheritedByParent, visited, inheritedByChild);
@@ -1219,7 +1221,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       Map<UUID, Set<UUID>> inheritedByChild,
       Set<UUID> visited,
       List<EntityReference> reindexQueue) {
-    for (List<EntityReference> chunk : Lists.partition(children, DESCENDANT_RECONCILE_CHUNK_SIZE)) {
+    for (List<EntityReference> chunk : Lists.partition(children, RECONCILE_CHUNK_SIZE)) {
       Map<UUID, Set<UUID>> ownDomains = batchFetchDomainIds(refIds(chunk));
       List<EntityReference> inheriting =
           chunk.stream()
@@ -1325,6 +1327,39 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
         daoCollection
             .relationshipDAO()
             .findFromBatch(assetIds, Relationship.HAS.ordinal(), DOMAIN, NON_DELETED));
+  }
+
+  /**
+   * Each direct asset's domains as the "Data Product Domain Validation" rule sees them: explicit, or
+   * inherited from its container when it has none. Clearing a data product's domains writes no new
+   * DOMAIN edge, so an asset that inherits its domain would otherwise read as domain-less and lose
+   * every data product, down its whole subtree. Inheriting assets go through the regular read path
+   * so each repository's own inheritance logic applies, in bounded chunks per entity type.
+   */
+  private Map<UUID, Set<UUID>> fetchEffectiveDomainIds(List<EntityReference> assets) {
+    Map<UUID, Set<UUID>> domainsByAsset = batchFetchDomainIds(refIds(assets));
+    assets.stream()
+        .filter(asset -> !domainsByAsset.containsKey(asset.getId()))
+        .collect(Collectors.groupingBy(EntityReference::getType))
+        .values()
+        .forEach(
+            sameType ->
+                Lists.partition(sameType, RECONCILE_CHUNK_SIZE)
+                    .forEach(chunk -> putInheritedDomainIds(chunk, domainsByAsset)));
+    return domainsByAsset;
+  }
+
+  private static void putInheritedDomainIds(
+      List<EntityReference> sameTypeAssets, Map<UUID, Set<UUID>> domainsByAsset) {
+    List<EntityInterface<?>> entities =
+        Entity.getEntities(sameTypeAssets, FIELD_DOMAINS, NON_DELETED);
+    for (EntityInterface<?> entity : entities) {
+      domainsByAsset.put(
+          entity.getId(),
+          listOrEmpty(entity.getDomains()).stream()
+              .map(EntityReference::getId)
+              .collect(Collectors.toSet()));
+    }
   }
 
   private Map<UUID, Set<UUID>> batchFetchDataProductDomainIds(List<String> dataProductIds) {

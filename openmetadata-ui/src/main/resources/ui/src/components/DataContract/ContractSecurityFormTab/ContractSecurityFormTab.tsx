@@ -11,8 +11,15 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Divider, Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Col, Form, Input, Row, Select } from 'antd';
+import {
+  Button,
+  Card,
+  Divider,
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
+import { Form, Input, Select } from 'antd';
 import { FormProps } from 'antd/lib/form/Form';
 import classNames from 'classnames';
 import { isEmpty, isNull } from 'lodash';
@@ -22,7 +29,6 @@ import { ReactComponent as CloseIcon } from '../../../assets/svg/ic-cross.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
 import { ReactComponent as LeftOutlined } from '../../../assets/svg/left-arrow.svg';
 import { ReactComponent as RightIcon } from '../../../assets/svg/right-arrow.svg';
-import { ReactComponent as PlusIcon } from '../../../assets/svg/x-colored.svg';
 import { VALIDATION_MESSAGES } from '../../../constants/constants';
 import { SUPPORTED_ROW_FILTER_ENTITIES } from '../../../constants/DataContract.constants';
 import { EntityType } from '../../../enums/entity.enum';
@@ -32,6 +38,7 @@ import {
   Policy,
 } from '../../../generated/entity/data/dataContract';
 import { Table } from '../../../generated/entity/data/table';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { filterSelectOptions } from '../../../utils/FilterQueryUtils';
 import { getPopupContainer } from '../../../utils/formPureUtils';
 import { getColumnOptionsFromTableColumn } from '../../../utils/TablePureUtils';
@@ -81,8 +88,11 @@ const ContractPolicyCard: React.FC<ContractPolicyCardProps> = ({
           <div className="contract-consumer-security-card-rule-container">
             {rowFilterFields.map((rowFilterField, rowFilterIndex) => {
               return (
-                <Row align="middle" gutter={[16, 16]} key={rowFilterField.key}>
-                  <Col span={11}>
+                <Grid
+                  className="layout-row layout-grid tw:items-center"
+                  key={rowFilterField.key}
+                  style={{ ...getLayoutGutter(16, 16) }}>
+                  <Grid.Item className="layout-column" span={11}>
                     <Form.Item
                       label={t('label.column-name')}
                       name={[rowFilterField.name, 'columnName']}>
@@ -94,9 +104,9 @@ const ContractPolicyCard: React.FC<ContractPolicyCardProps> = ({
                         })}
                       />
                     </Form.Item>
-                  </Col>
+                  </Grid.Item>
 
-                  <Col span={11}>
+                  <Grid.Item className="layout-column" span={11}>
                     <Form.Item
                       label={t('label.value-plural')}
                       name={[rowFilterField.name, 'values']}>
@@ -111,8 +121,8 @@ const ContractPolicyCard: React.FC<ContractPolicyCardProps> = ({
                         })}
                       />
                     </Form.Item>
-                  </Col>
-                </Row>
+                  </Grid.Item>
+                </Grid>
               );
             })}
           </div>
@@ -152,11 +162,13 @@ const ContractPolicyCard: React.FC<ContractPolicyCardProps> = ({
                   />
 
                   <Button
-                    danger
-                    className="delete-expand-button"
+                    aria-label={t('label.delete-entity', {
+                      entity: t('label.policy'),
+                    })}
+                    color="secondary-destructive"
                     data-testid={`delete-policy-${policyField.key}`}
-                    icon={<DeleteIcon />}
-                    size="middle"
+                    iconLeading={<DeleteIcon />}
+                    size="sm"
                     onClick={() => {
                       onDeletePolicy(policyField.key);
                     }}
@@ -170,12 +182,14 @@ const ContractPolicyCard: React.FC<ContractPolicyCardProps> = ({
       dataTestId={`contract-policy-card-${policyField.key}`}
       defaultExpanded={editingKey === policyField.name}>
       {editingKey === policyField.name ? (
-        <Row className="security-form-item-content" key={policyField.key}>
-          <Col span={24}>
-            <Row
-              className="contract-consumer-security-card-row"
-              gutter={[0, 16]}>
-              <Col span={24}>
+        <Grid
+          className="layout-row layout-grid security-form-item-content"
+          key={policyField.key}>
+          <Grid.Item className="layout-column" span={24}>
+            <Grid
+              className="layout-row layout-grid contract-consumer-security-card-row"
+              style={{ ...getLayoutGutter(0, 16) }}>
+              <Grid.Item className="layout-column" span={24}>
                 <Form.Item
                   label={t('label.access-policy')}
                   name={[policyField.name, 'accessPolicy']}>
@@ -186,9 +200,9 @@ const ContractPolicyCard: React.FC<ContractPolicyCardProps> = ({
                     })}
                   />
                 </Form.Item>
-              </Col>
+              </Grid.Item>
 
-              <Col span={24}>
+              <Grid.Item className="layout-column" span={24}>
                 <Form.Item
                   label={t('label.identities')}
                   name={[policyField.name, 'identities']}>
@@ -202,8 +216,8 @@ const ContractPolicyCard: React.FC<ContractPolicyCardProps> = ({
                     })}
                   />
                 </Form.Item>
-              </Col>
-            </Row>
+              </Grid.Item>
+            </Grid>
 
             {SUPPORTED_ROW_FILTER_ENTITIES.includes(entityType) ? (
               <>
@@ -222,10 +236,9 @@ const ContractPolicyCard: React.FC<ContractPolicyCardProps> = ({
                           </Typography>
 
                           <Button
-                            className="add-row-filter-button"
+                            color="link-color"
                             data-testid={`add-row-filter-button-${policyIndex}`}
-                            icon={<Icon component={PlusIcon} />}
-                            type="link"
+                            iconLeading={Plus}
                             onClick={() => addRowFilter()}>
                             {t('label.add-entity', {
                               entity: t('label.row-filter'),
@@ -237,11 +250,13 @@ const ContractPolicyCard: React.FC<ContractPolicyCardProps> = ({
                           {rowFilterFields.map(
                             (rowFilterField, rowFilterIndex) => {
                               return (
-                                <Row
-                                  align="middle"
-                                  gutter={[16, 16]}
-                                  key={rowFilterField.key}>
-                                  <Col span={11}>
+                                <Grid
+                                  className="layout-row layout-grid tw:items-center"
+                                  key={rowFilterField.key}
+                                  style={{ ...getLayoutGutter(16, 16) }}>
+                                  <Grid.Item
+                                    className="layout-column"
+                                    span={11}>
                                     <Form.Item
                                       label={t('label.column-name')}
                                       name={[
@@ -264,9 +279,11 @@ const ContractPolicyCard: React.FC<ContractPolicyCardProps> = ({
                                         )}
                                       />
                                     </Form.Item>
-                                  </Col>
+                                  </Grid.Item>
 
-                                  <Col span={11}>
+                                  <Grid.Item
+                                    className="layout-column"
+                                    span={11}>
                                     <Form.Item
                                       label={t('label.value-plural')}
                                       name={[rowFilterField.name, 'values']}>
@@ -283,20 +300,25 @@ const ContractPolicyCard: React.FC<ContractPolicyCardProps> = ({
                                         )}
                                       />
                                     </Form.Item>
-                                  </Col>
+                                  </Grid.Item>
 
-                                  <Col span={2}>
+                                  <Grid.Item className="layout-column" span={2}>
                                     <Button
-                                      className="contract-consumer-security-card-rule-delete-button"
-                                      icon={<Icon component={CloseIcon} />}
-                                      size="small"
-                                      type="text"
+                                      aria-label={t('label.remove-entity', {
+                                        entity: t('label.row-filter'),
+                                      })}
+                                      className="tw:mt-2.5"
+                                      color="tertiary"
+                                      iconLeading={
+                                        <Icon component={CloseIcon} />
+                                      }
+                                      size="xs"
                                       onClick={() => {
                                         removeRowFilter(rowFilterField.name);
                                       }}
                                     />
-                                  </Col>
-                                </Row>
+                                  </Grid.Item>
+                                </Grid>
                               );
                             }
                           )}
@@ -304,14 +326,15 @@ const ContractPolicyCard: React.FC<ContractPolicyCardProps> = ({
 
                         <div className="contract-consumer-security-card-form-actions-items">
                           <Button
+                            color="secondary"
                             data-testid="cancel-policy-button"
                             onClick={() => setEditingKey(null)}>
                             {t('label.cancel')}
                           </Button>
                           <Button
-                            className="m-l-md"
+                            className="tw:ml-4"
+                            color="primary"
                             data-testid="save-policy-button"
-                            type="primary"
                             onClick={() => setEditingKey(null)}>
                             {t('label.save')}
                           </Button>
@@ -324,21 +347,22 @@ const ContractPolicyCard: React.FC<ContractPolicyCardProps> = ({
             ) : (
               <div className="contract-consumer-security-card-form-actions-items">
                 <Button
+                  color="secondary"
                   data-testid="cancel-policy-button"
                   onClick={() => setEditingKey(null)}>
                   {t('label.cancel')}
                 </Button>
                 <Button
-                  className="m-l-md"
+                  className="tw:ml-4"
+                  color="primary"
                   data-testid="save-policy-button"
-                  type="primary"
                   onClick={() => setEditingKey(null)}>
                   {t('label.save')}
                 </Button>
               </div>
             )}
-          </Col>
-        </Row>
+          </Grid.Item>
+        </Grid>
       ) : (
         rowFilterContent
       )}
@@ -371,10 +395,6 @@ export const ContractSecurityFormTab: React.FC<{
   const [editingKey, setEditingKey] = useState<number | null>(null);
 
   const policiesFormData: Policy[] = Form.useWatch('policies', form);
-  const dataClassificationFormItem: string = Form.useWatch(
-    'dataClassification',
-    form
-  );
 
   const columnOptions = useMemo(() => {
     const { columns } = tableData as Table;
@@ -411,12 +431,12 @@ export const ContractSecurityFormTab: React.FC<{
       });
       onChange({
         security: {
-          dataClassification: dataClassificationFormItem,
+          dataClassification: form.getFieldValue('dataClassification'),
           policies: filteredValue,
         },
       });
     },
-    [policiesFormData]
+    [policiesFormData, form, onChange]
   );
 
   const handleFormChange: FormProps['onValuesChange'] = (_, values) => {
@@ -451,7 +471,7 @@ export const ContractSecurityFormTab: React.FC<{
         setEditingKey(0);
       }
     }
-  }, [initialValues?.security]);
+  }, [initialValues?.security, form]);
 
   return (
     <>
@@ -498,11 +518,10 @@ export const ContractSecurityFormTab: React.FC<{
               </div>
 
               <Button
-                className="add-policy-button"
+                color="link-color"
                 data-testid="add-policy-button"
-                disabled={!isNull(editingKey) || !addFunctionRef.current}
-                icon={<Icon className="anticon" component={PlusIcon} />}
-                type="link"
+                iconLeading={Plus}
+                isDisabled={!isNull(editingKey) || !addFunctionRef.current}
                 onClick={handleAddPolicy}>
                 {t('label.add-entity', { entity: t('label.policy') })}
               </Button>
@@ -535,15 +554,12 @@ export const ContractSecurityFormTab: React.FC<{
       </Card>
       <div className="d-flex justify-between m-t-md">
         <Button
-          className="contract-prev-button"
-          icon={<LeftOutlined height={22} width={20} />}
+          color="secondary"
+          iconLeading={<LeftOutlined height={22} width={20} />}
           onClick={onPrev}>
           {buttonProps.prevLabel ?? t('label.previous')}
         </Button>
-        <Button
-          className="contract-next-button"
-          type="primary"
-          onClick={onNext}>
+        <Button color="primary" onClick={onNext}>
           {buttonProps.nextLabel ?? t('label.next')}
           <Icon component={RightIcon} />
         </Button>

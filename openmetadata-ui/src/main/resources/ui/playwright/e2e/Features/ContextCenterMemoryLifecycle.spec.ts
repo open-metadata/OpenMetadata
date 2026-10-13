@@ -62,7 +62,7 @@ test.describe(
         invalidated = await createMemory('invalidated', 'Approved');
 
         await patchMemory(apiContext, superseded.id, [
-          { op: 'replace', path: '/entityStatus', value: 'Deprecated' },
+          { op: 'replace', path: '/entityStatus', value: 'Superseded' },
           {
             op: 'add',
             path: '/supersededBy',
@@ -71,7 +71,7 @@ test.describe(
           { op: 'add', path: '/statusReason', value: supersededReason },
         ]);
         await patchMemory(apiContext, invalidated.id, [
-          { op: 'replace', path: '/entityStatus', value: 'Rejected' },
+          { op: 'replace', path: '/entityStatus', value: 'Invalidated' },
           { op: 'add', path: '/statusReason', value: invalidatedReason },
         ]);
       } finally {
@@ -116,7 +116,7 @@ test.describe(
       ).not.toBeVisible();
 
       await page.getByTestId('memory-status-filter').click();
-      await page.getByRole('menuitemcheckbox', { name: 'Deprecated' }).click();
+      await page.getByRole('menuitemcheckbox', { name: 'Superseded' }).click();
       await page.keyboard.press('Escape');
       await expect(page.getByTestId('memory-status-filter')).toContainText(
         '3 Statuses'
@@ -175,7 +175,7 @@ test.describe(
       test.slow();
       await navigateToMemories(page);
       await page.getByTestId('memory-status-filter').click();
-      await page.getByRole('menuitemcheckbox', { name: 'Deprecated' }).click();
+      await page.getByRole('menuitemcheckbox', { name: 'Superseded' }).click();
       await page.keyboard.press('Escape');
 
       const supersededRow = await searchAndGetMemoryRow(
@@ -185,7 +185,7 @@ test.describe(
       );
       await expect(
         supersededRow.getByTestId(`memory-status-${superseded.id}`)
-      ).toContainText('Deprecated');
+      ).toContainText('Superseded');
       await expect(
         supersededRow.getByTestId(`memory-status-reason-${superseded.id}`)
       ).toContainText(supersededReason);
@@ -193,7 +193,7 @@ test.describe(
 
       const dialog = page.getByRole('dialog');
       await expect(dialog.getByTestId('memory-lifecycle-status')).toContainText(
-        'Deprecated'
+        'Superseded'
       );
       await expect(dialog.getByTestId('memory-lifecycle-reason')).toContainText(
         supersededReason
@@ -201,6 +201,10 @@ test.describe(
       await expect(
         dialog.getByRole('button', { name: /propose term/i })
       ).not.toBeVisible();
+      await page.screenshot({
+        path: test.info().outputPath('superseded-memory.png'),
+        animations: 'disabled',
+      });
       await dialog.getByTestId('memory-lifecycle-successor').click();
       await expect(page).toHaveURL(new RegExp(`memory=${successor.name}`));
       await expect(
@@ -210,11 +214,15 @@ test.describe(
       await page.goto(`${MEMORIES_URL}?memory=${invalidated.name}`);
       await waitForAllLoadersToDisappear(page);
       await expect(dialog.getByTestId('memory-lifecycle-status')).toContainText(
-        'Rejected'
+        'Invalidated'
       );
       await expect(dialog.getByTestId('memory-lifecycle-reason')).toContainText(
         invalidatedReason
       );
+      await page.screenshot({
+        path: test.info().outputPath('invalidated-memory.png'),
+        animations: 'disabled',
+      });
       await expect(
         dialog.getByRole('button', { name: /propose term/i })
       ).not.toBeVisible();
@@ -226,7 +234,7 @@ test.describe(
       await page.goto(`${MEMORIES_URL}?memory=${superseded.name}`);
       const dialog = page.getByRole('dialog');
       await expect(dialog.getByTestId('memory-lifecycle-status')).toContainText(
-        'Deprecated'
+        'Superseded'
       );
       await dialog.getByTestId('memory-lifecycle-successor').click();
       await expect(

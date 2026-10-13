@@ -384,8 +384,15 @@ const CustomControls: FC<{
   }, [activeTab, handleImpactAnalysisExport, onExportClick]);
 
   const handleDialogSave = (newConfig: LineageConfig) => {
-    // Implement save logic here
     setLineageConfig(newConfig);
+    if (activeTab === 'impact_analysis') {
+      updateURLParams({
+        depth:
+          lineageDirection === LineageDirection.Upstream
+            ? newConfig.upstreamDepth
+            : newConfig.downstreamDepth,
+      });
+    }
     setDialogVisible(false);
   };
 

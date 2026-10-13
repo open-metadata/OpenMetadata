@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Space } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePapaParse } from 'react-papaparse';
@@ -44,11 +44,15 @@ export const TeamImportResult = ({
         key: 'status',
         fixed: true,
         render: (status: TeamCSVRecord['status'], record) => {
+          // Limit successful status cells so they do not stretch the import table.
           return (
-            <Space
+            <Box
+              inline
               align="start"
+              className="layout-space layout-space-horizontal"
               data-testid="status-container"
-              // Added max width because in case of full success we don't want to occupied full width
+              gap={2}
+              itemClassName="layout-space-item"
               style={{ maxWidth: 200, minWidth: 100 }}>
               {status === Status.Success && (
                 <SuccessBadgeIcon
@@ -69,7 +73,7 @@ export const TeamImportResult = ({
                   {record.details}
                 </>
               )}
-            </Space>
+            </Box>
           );
         },
       },

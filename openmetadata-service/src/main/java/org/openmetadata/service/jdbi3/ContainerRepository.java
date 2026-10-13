@@ -584,7 +584,7 @@ public class ContainerRepository extends EntityRepository<Container> {
   }
 
   @Override
-  public EntityInterface getParentEntity(Container entity, String fields) {
+  public EntityInterface<?> getParentEntity(Container entity, String fields) {
     if (entity.getService() == null) {
       return null;
     }
@@ -592,7 +592,7 @@ public class ContainerRepository extends EntityRepository<Container> {
   }
 
   @Override
-  public List<TagLabel> getAllTags(EntityInterface entity) {
+  public List<TagLabel> getAllTags(EntityInterface<?> entity) {
     List<TagLabel> allTags = new ArrayList<>();
     Container container = (Container) entity;
     EntityUtil.mergeTags(allTags, container.getTags());

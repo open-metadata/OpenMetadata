@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Badge, Typography } from '@openmetadata/ui-core-components';
-import { Button, Card } from 'antd';
+import {
+  Badge,
+  Button,
+  Card,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { isEmpty, pick, uniqBy } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -569,17 +573,13 @@ export const ContractSchemaFormTab: React.FC<{
       </Card>
       <div className="d-flex justify-between m-t-md">
         <Button
-          className="contract-prev-button"
-          icon={<LeftOutlined height={22} width={20} />}
-          type="default"
+          color="secondary"
+          iconLeading={<LeftOutlined height={22} width={20} />}
           onClick={onPrev}>
           {prevLabel ?? t('label.previous')}
         </Button>
         {isNextVisible && (
-          <Button
-            className="contract-next-button"
-            type="primary"
-            onClick={onNext}>
+          <Button color="primary" onClick={onNext}>
             {nextLabel ?? t('label.next')}
             <Icon component={RightIcon} />
           </Button>
