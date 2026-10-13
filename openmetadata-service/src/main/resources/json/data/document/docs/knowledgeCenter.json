@@ -1,0 +1,10 @@
+{
+  "name": "KnowledgeCenter",
+  "displayName": "Context Center",
+  "description": "The most recently updated Context Center pages, articles and quick links, with how many changed this week.",
+  "entityType": "KnowledgePanel",
+  "fullyQualifiedName": "KnowledgePanel.KnowledgeCenter",
+  "data": {
+    "gridSizes": ["small", "medium", "large"]
+  }
+}
