@@ -12,13 +12,14 @@
  */
 import {
   Box,
+  Button,
   Card,
   Divider,
   Grid,
   SkeletonParagraph,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Form, Input } from 'antd';
+import { Form, Input } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty, isUndefined } from 'lodash';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
@@ -515,8 +516,8 @@ const AddNotificationPage = () => {
                           <Grid.Item className="layout-column" span={24}>
                             <div className="flex justify-end gap-2">
                               <Button
+                                color="tertiary"
                                 data-testid="cancel-button"
-                                type="text"
                                 onClick={() => navigate(-1)}>
                                 {t('label.cancel')}
                               </Button>
@@ -536,10 +537,10 @@ const AddNotificationPage = () => {
                                 )
                               )}
                               <Button
+                                color="primary"
                                 data-testid="save-button"
-                                htmlType="submit"
-                                loading={isButtonLoading}
-                                type="primary">
+                                isLoading={isButtonLoading}
+                                type="submit">
                                 {t('label.save')}
                               </Button>
                             </div>

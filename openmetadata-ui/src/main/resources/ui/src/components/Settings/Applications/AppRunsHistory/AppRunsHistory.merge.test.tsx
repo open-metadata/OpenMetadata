@@ -18,6 +18,7 @@ import {
   waitForElementToBeRemoved,
   within,
 } from '@testing-library/react';
+import { ReactNode } from 'react';
 import {
   AppRunRecord,
   Status,
@@ -115,15 +116,67 @@ jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest.fn().mockReturnValue(<div>ErrorPlaceHolder</div>)
 );
 
-jest.mock('../../../common/Table/TableV2', () => {
-  const { Table: AntdTable } = jest.requireActual('antd');
+type MockColumn = {
+  key?: string;
+  title?: ReactNode;
+  dataIndex?: string;
+  render?: (
+    value: unknown,
+    record: Record<string, unknown>,
+    index: number
+  ) => ReactNode;
+};
 
-  return jest.fn().mockImplementation(({ loading, ...rest }) => (
-    <div>
-      {loading ? <p>TableLoader</p> : <AntdTable {...rest} />}
-      Table
-    </div>
-  ));
+jest.mock('../../../common/Table/TableV2', () => {
+  return jest
+    .fn()
+    .mockImplementation(
+      ({
+        loading,
+        columns = [],
+        dataSource = [],
+      }: {
+        loading?: boolean;
+        columns?: MockColumn[];
+        dataSource?: Record<string, unknown>[];
+      }) => (
+        <div>
+          {loading ? (
+            <p>TableLoader</p>
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  {columns.map((column) => (
+                    <th key={column.key}>{column.title}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {dataSource.map((record, rowIndex) => (
+                  <tr key={String(record.id)}>
+                    {columns.map((column) => {
+                      const value = column.dataIndex
+                        ? record[column.dataIndex]
+                        : undefined;
+
+                      return (
+                        <td key={column.key}>
+                          {column.render
+                            ? column.render(value, record, rowIndex)
+                            : (value as ReactNode)}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          Table
+        </div>
+      )
+    );
 });
 
 jest.mock('../AppLogsViewer/AppLogsViewer.component', () =>

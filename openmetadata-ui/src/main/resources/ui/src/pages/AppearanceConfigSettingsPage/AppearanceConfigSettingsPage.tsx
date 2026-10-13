@@ -12,8 +12,14 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Box, Card, Grid, Typography } from '@openmetadata/ui-core-components';
-import { Button, Form, FormProps } from 'antd';
+import {
+  Box,
+  Button,
+  Card,
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Form, FormProps } from 'antd';
 import { AxiosError } from 'axios';
 import { startCase, toString } from 'lodash';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -447,9 +453,9 @@ const AppearanceConfigSettingsPage = () => {
                   }}
                 />
                 <Button
+                  color="primary"
                   data-testid="reset-button"
-                  loading={resetting}
-                  type="primary"
+                  isLoading={resetting}
                   onClick={handleReset}>
                   {t('label.reset')}
                 </Button>
@@ -544,50 +550,48 @@ const AppearanceConfigSettingsPage = () => {
                               style={{ placeSelf: 'center' }}>
                               <Card className="theme-preview">
                                 <Card.Content className="tw:flex tw:flex-row tw:gap-4">
-                                  <Button
+                                  {/* Colour swatches, not buttons: they preview an arbitrary
+                                      brand colour that core Button colours can't express. */}
+                                  <span
+                                    className="tw:inline-flex tw:h-9 tw:items-center tw:justify-center tw:rounded-lg tw:border tw:px-3 tw:text-sm tw:font-semibold"
                                     style={{
                                       background: currentColor,
+                                      borderColor: currentColor,
                                       color: 'white',
-                                      width: '86px',
                                     }}>
                                     {startCase(
                                       toString(field.name).replace('Color', '')
                                     )}
-                                  </Button>
-
-                                  <Button
-                                    icon={<Icon component={ShareIcon} />}
+                                  </span>
+                                  <span
+                                    className="tw:inline-flex tw:h-9 tw:items-center tw:justify-center tw:rounded-lg tw:border tw:px-3 tw:text-sm tw:font-semibold"
                                     style={{
-                                      width: '56px',
-                                      color: currentColor,
                                       borderColor: currentColor,
-                                    }}
-                                  />
-                                  <Button
+                                      color: currentColor,
+                                    }}>
+                                    <Icon component={ShareIcon} />
+                                  </span>
+                                  <span
+                                    className="tw:inline-flex tw:h-9 tw:items-center tw:justify-center tw:rounded-lg tw:border tw:px-3 tw:text-sm tw:font-semibold"
                                     style={{
-                                      color: currentColor,
                                       borderColor: currentColor,
-                                      width: '86px',
-                                    }}
-                                    type="default">
+                                      color: currentColor,
+                                    }}>
                                     {startCase(
                                       toString(field.name).replace('Color', '')
                                     )}
-                                  </Button>
+                                  </span>
                                   <DomainIcon
                                     style={{
                                       color: currentColor,
                                     }}
                                     width={32}
                                   />
-                                  <Button
-                                    style={{
-                                      color: currentColor,
-                                      padding: 0,
-                                    }}
-                                    type="link">
+                                  <span
+                                    className="tw:inline-flex tw:items-center tw:text-sm tw:font-semibold"
+                                    style={{ color: currentColor }}>
                                     {t('label.link')}
-                                  </Button>
+                                  </span>
                                 </Card.Content>
                               </Card>
                             </Box>
@@ -608,16 +612,16 @@ const AppearanceConfigSettingsPage = () => {
               gap={4}
               itemClassName="layout-space-item">
               <Button
+                color="link-color"
                 data-testid="cancel-btn"
-                type="link"
                 onClick={() => navigate(-1)}>
                 {t('label.cancel')}
               </Button>
               <Button
+                color="primary"
                 data-testid="save-btn"
-                htmlType="submit"
-                loading={loading}
-                type="primary">
+                isLoading={loading}
+                type="submit">
                 {t('label.save')}
               </Button>
             </Box>
