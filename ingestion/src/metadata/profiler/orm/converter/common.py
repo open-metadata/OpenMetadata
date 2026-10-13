@@ -46,6 +46,9 @@ class CommonMapTypes:
         DataType.STRING: sqlalchemy.String,
         DataType.MEDIUMTEXT: sqlalchemy.TEXT,
         DataType.TEXT: sqlalchemy.TEXT,
+        # An XML column is a text document in every dialect that has one, and every
+        # driver hands it back as a string.
+        DataType.XML: sqlalchemy.TEXT,
         DataType.CHAR: sqlalchemy.CHAR,
         DataType.VARCHAR: sqlalchemy.VARCHAR,
         DataType.BOOLEAN: sqlalchemy.BOOLEAN,
@@ -102,7 +105,7 @@ class CommonMapTypes:
             sqlalchemy.DATETIME: {DataType.DATETIME},
             sqlalchemy.Interval: {DataType.INTERVAL},
             sqlalchemy.String: {DataType.STRING},
-            sqlalchemy.TEXT: {DataType.TEXT, DataType.MEDIUMTEXT},
+            sqlalchemy.TEXT: {DataType.TEXT, DataType.MEDIUMTEXT, DataType.XML},
             sqlalchemy.CHAR: {DataType.CHAR},
             sqlalchemy.VARCHAR: {DataType.VARCHAR},
             sqlalchemy.BOOLEAN: {DataType.BOOLEAN},

@@ -298,3 +298,44 @@ def test_safe_orm_attr_collision_between_normal_and_remapped_dunder():
 
     # Both keys are distinct — no column was silently overwritten.
     assert real_key != dunder_key
+
+
+@patch("metadata.profiler.orm.converter.base.get_orm_schema", return_value="schema")
+@patch("metadata.profiler.orm.converter.base.get_orm_database", return_value="database")
+@mark.parametrize(
+    "service_type, table_name",
+    [
+        (DatabaseServiceType.Mssql, "mssql_xml_table"),
+        (DatabaseServiceType.Postgres, "postgres_xml_table"),
+    ],
+)
+def test_xml_columns_are_mapped(mock_schema, mock_database, service_type, table_name):
+    """An XML column holds a text document every driver returns as a string, but it had
+    no entry in the type map, so it fell back to CustomTypes.UNDETERMINED and its sample
+    data persisted as the literal "OPENMETADATA_UNDETERMIND[<root/>]" instead of the
+    document (found by the MSSQL CLI E2E v2 suite).
+    """
+    columns = [Column(name="payload", dataType=DataType.XML)]
+
+    table = Table(
+        id=UUID("1f8c1222-09a0-11ed-871b-ca4e864bb16a"),
+        name=table_name,
+        columns=columns,
+        serviceType=service_type,
+    )
+
+    orm_table = ometa_to_sqa_orm(table, None)
+
+    payload_type = orm_table.__table__.columns["payload"].type
+    assert not isinstance(payload_type, CustomTypes.UNDETERMINED.value)
+    assert isinstance(payload_type, sqlalchemy.TEXT)
+
+
+def test_xml_reverse_map_keeps_the_existing_text_types():
+    """metric_filter picks a column's metrics off the reverse map, so XML must join
+    TEXT's entry rather than replace it.
+    """
+    reverse_map = CommonMapTypes.map_sqa_to_om_types()
+
+    assert DataType.XML in reverse_map[sqlalchemy.TEXT]
+    assert {DataType.TEXT, DataType.MEDIUMTEXT} <= reverse_map[sqlalchemy.TEXT]
