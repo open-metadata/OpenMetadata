@@ -5569,3 +5569,35 @@ class TestTableLookupWithDatabaseMapping:
 
         assert [model_str(link.table_entity.fullyQualifiedName) for link in links] == [self.BQ_MODEL]
         assert source.extracted_domains == {self.BQ_MODEL: "Finance"}
+
+    @pytest.mark.parametrize(
+        "mapped_database, expected_upstreams",
+        [("my-gcp-project", ["bq_svc.my-gcp-project.analytics.stg_customers"]), (None, [])],
+    )
+    def test_metric_lineage_uses_the_semantic_model_mapping(self, mapped_database, expected_upstreams):
+        """A semantic model names its table through node_relation, so it carries its own mapping."""
+        meta = {"openmetadata": {"database": mapped_database}} if mapped_database else {}
+        semantic_model = SimpleNamespace(
+            name="customers_sm",
+            meta=meta,
+            config=SimpleNamespace(meta=meta),
+            node_relation=SimpleNamespace(database="bq_catalog", schema_name="analytics", alias="stg_customers"),
+        )
+        source = self._source(self.BQ_MODEL, search_across_databases=False)
+        tables = {model_str(table.fullyQualifiedName): table for table in source._search_tables(self.BQ_MODEL)}
+        source.metadata.get_by_name.return_value = SimpleNamespace(id=SimpleNamespace(root=uuid.uuid4()))
+        source.source_config.overrideLineage = False
+        metric_node = SimpleNamespace(name="customer_count")
+
+        with (
+            patch(
+                "metadata.ingestion.source.database.dbt.metadata.find_semantic_models_for_metric",
+                return_value=[semantic_model],
+            ),
+            patch("metadata.ingestion.source.database.dbt.metadata.find_dependent_metric_names", return_value=[]),
+            patch.object(DbtSource, "_build_table_metric_column_lineage", return_value=[]),
+        ):
+            requests = list(source.create_dbt_metric_lineage({"metric_node": metric_node, "semantic_models": {}}))
+
+        from_ids = [either.right.lineage_request.edge.fromEntity.id.root for either in requests]
+        assert from_ids == [tables[fqn].id.root for fqn in expected_upstreams]

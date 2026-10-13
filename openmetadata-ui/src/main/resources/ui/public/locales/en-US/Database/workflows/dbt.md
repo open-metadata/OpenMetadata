@@ -354,7 +354,7 @@ If this option is enabled, OpenMetadata will first search for tables within the 
 
 If the table is still not found, for example because dbt-trino writes the Trino catalog name while the table was ingested under its BigQuery project id, OpenMetadata matches on schema and table name alone. That match is used only when exactly one table in OpenMetadata has that schema and table name.
 
-To point dbt at the right database explicitly, set `meta.openmetadata.database` to the database name as ingested in OpenMetadata. It can be set once per folder in `dbt_project.yml`, for models and for sources. dbt replaces a whole `openmetadata` block that a model declares itself, so repeat `database` in such a block. The mapped database is searched in every database service, whether or not this option is enabled. If no table is found there, the lookup continues as described above.
+To point dbt at the right database explicitly, set `meta.openmetadata.database` to the database name as ingested in OpenMetadata. It can be set once per folder in `dbt_project.yml`, for models and for sources, and under `semantic-models` too when dbt metrics are ingested. dbt replaces a whole `openmetadata` block that a model declares itself, so repeat `database` in such a block. The mapped database is searched in every database service, whether or not this option is enabled. If no table is found there, the lookup continues as described above.
 
 ```yaml
 models:
