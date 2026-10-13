@@ -67,7 +67,7 @@ const TONE_TEXT_CLASS: Record<TaskTimelineTone, string> = {
 // Each event sits in a ringed circle; an alert's circle is tinted so it reads
 // at a glance.
 const TONE_ICON_CLASS: Record<TaskTimelineTone, string> = {
-  default: 'tw:border-secondary tw:bg-primary tw:text-fg-quaternary',
+  default: 'tw:border-secondary tw:bg-primary tw:text-quaternary',
   error:
     'tw:border-utility-error-200 tw:bg-utility-error-50 tw:text-utility-error-600',
   success:

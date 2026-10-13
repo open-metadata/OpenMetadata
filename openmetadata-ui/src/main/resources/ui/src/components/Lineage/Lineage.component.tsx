@@ -44,7 +44,7 @@ const Lineage = ({
 
   return (
     <Card
-      className="lineage-card card-padding-0 tw:flex tw:flex-col"
+      className="lineage-card tw:flex tw:flex-col"
       data-testid="lineage-details">
       {headerContent ? (
         <div className="tw:py-4 tw:px-6 tw:border-b tw:border-tertiary tw:shrink-0">

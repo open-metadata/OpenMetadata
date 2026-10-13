@@ -7,7 +7,7 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.Database",
   "javaInterfaces": [
-    "org.openmetadata.schema.EntityInterface",
+    "org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>",
     "org.openmetadata.schema.CreationAudited"
   ],
   "definitions": {
@@ -167,10 +167,6 @@
           "type": "integer",
           "default": 50,
           "title": "Sample Data Rows Count"
-        },
-        "sampleDataStorageConfig": {
-          "title": "Storage Config for Sample Data",
-          "$ref": "../services/connections/connectionBasicType.json#/definitions/sampleDataStorageConfig"
         },
         "randomizedSample": {
           "description": "Whether to randomize the sample data or not.",

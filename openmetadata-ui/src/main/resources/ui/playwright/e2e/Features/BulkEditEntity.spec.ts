@@ -47,6 +47,7 @@ import {
   fillRowDetails,
   fillTagDetails,
   pressKeyXTimes,
+  previewBulkImportChanges,
   saveBulkImport,
   validateImportStatus,
 } from '../../utils/importUtils';
@@ -652,14 +653,13 @@ test.describe('Bulk Edit Entity', () => {
         .press('ArrowRight', { delay: 100 });
       await fillGlossaryTermDetails(page, columnDetails1.glossary);
 
-      // Reverse traves to first cell to fill the details
-      await page.click(RDG_ACTIVE_CELL_SELECTOR);
-      await page
-        .locator(RDG_ACTIVE_CELL_SELECTOR)
-        .press('ArrowDown', { delay: 100 });
+      // Closing the picker commits the term. Clicking this cell again would
+      // reopen it, and its focus trap swallows outside clicks — Next included.
+      await expect(page.locator(RDG_ACTIVE_CELL_SELECTOR)).toHaveClass(
+        /rdg-cell-edited/
+      );
 
-      // eslint-disable-next-line playwright/no-force-option -- button obscured by data grid overlay
-      await page.click('[type="button"] >> text="Next"', { force: true });
+      await previewBulkImportChanges(page, 'tables');
       await validateImportStatus(page, {
         passed: '1',
         processed: '1',

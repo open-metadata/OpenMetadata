@@ -370,7 +370,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   }
 
   @Override
-  public EntityInterface getParentEntity(SearchIndex entity, String fields) {
+  public EntityInterface<?> getParentEntity(SearchIndex entity, String fields) {
     if (entity.getService() == null) {
       return null;
     }
@@ -378,7 +378,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   }
 
   @Override
-  public List<TagLabel> getAllTags(EntityInterface entity) {
+  public List<TagLabel> getAllTags(EntityInterface<?> entity) {
     List<TagLabel> allTags = new ArrayList<>();
     SearchIndex searchIndex = (SearchIndex) entity;
     EntityUtil.mergeTags(allTags, searchIndex.getTags());
@@ -485,7 +485,12 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
           if (nullOrEmpty(addedField.getDescription())) {
             addedField.setDescription(deleted.getDescription());
           }
-          if (nullOrEmpty(addedField.getTags()) && nullOrEmpty(deleted.getTags())) {
+          // Carry the tags forward only when the re-added field has none of its own and the
+          // deleted one actually had some. A field is re-added rather than updated whenever its
+          // dataType changes (see EntityUtil.searchIndexFieldMatch), and the
+          // deleteTagsByTarget below would otherwise drop user-applied tags from a field that
+          // still exists under the same FQN.
+          if (nullOrEmpty(addedField.getTags()) && !nullOrEmpty(deleted.getTags())) {
             addedField.setTags(deleted.getTags());
           }
         }

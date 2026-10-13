@@ -12,10 +12,15 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Modal, Row } from 'antd';
+import {
+  Button,
+  Grid,
+  SimpleModal,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 import brandClassBase from '../../../utils/BrandData/BrandClassBase';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { TourEndModalProps } from './TourEndModal.interface';
 
 const TourEndModal = ({ onSave, visible }: TourEndModalProps) => {
@@ -24,22 +29,24 @@ const TourEndModal = ({ onSave, visible }: TourEndModalProps) => {
   const { svg } = brandClassBase.getMonogram();
 
   return (
-    <Modal
-      closable={false}
+    <SimpleModal
       data-testid="modal-container"
       footer={
         <Button
+          color="primary"
           data-testid="saveButton"
-          size="large"
-          type="primary"
+          size="md"
           onClick={onSave}>
           {t('label.explore-now')}
         </Button>
       }
-      maskClosable={false}
-      open={visible}>
-      <Row className="text-center" gutter={[16, 16]}>
-        <Col className="mt-4" span={24}>
+      isDismissable={false}
+      isOpen={visible}
+      onCancel={onSave}>
+      <Grid
+        className="layout-row layout-grid text-center"
+        style={getLayoutGutter(16, 16)}>
+        <Grid.Item className="layout-column mt-4" span={24}>
           <Icon
             alt={t('label.brand-name-logo')}
             className="align-middle"
@@ -47,8 +54,8 @@ const TourEndModal = ({ onSave, visible }: TourEndModalProps) => {
             data-testid="omd-logo"
             style={{ fontSize: '70px' }}
           />
-        </Col>
-        <Col span={24}>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
           <Typography
             as="article"
             className="text-base mt-5"
@@ -57,9 +64,9 @@ const TourEndModal = ({ onSave, visible }: TourEndModalProps) => {
             <br />
             {t('message.get-started-with-open-metadata')}
           </Typography>
-        </Col>
-      </Row>
-    </Modal>
+        </Grid.Item>
+      </Grid>
+    </SimpleModal>
   );
 };
 

@@ -11,13 +11,17 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import {
   PAGE_SIZE_BASE,
   PAGE_SIZE_MEDIUM,
 } from '../../../../constants/constants';
-import { TaskEntityStatus, TaskEntityType } from '../../../../rest/tasksAPI';
+import {
+  TaskEntityStatus,
+  TaskEntityType,
+  TaskStatusGroup,
+} from '../../../../rest/tasksAPI';
 import { useActivityFeedProvider as mockUseActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { mockUserData } from '../../../Settings/Users/mocks/User.mocks';
 import MyTaskWidget from './MyTaskWidget';
@@ -41,6 +45,20 @@ jest.mock('../../../ActivityFeed/ActivityFeedPanel/FeedPanelBodyV1New', () =>
 jest.mock('../../../AppRouter/withActivityFeed', () => ({
   withActivityFeed: jest.fn().mockImplementation((Component) => Component),
 }));
+
+jest.mock(
+  '../../../ActivityFeed/TaskFeedCard/TaskFeedCardFromTask.component',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ task, onAfterClose }) => (
+        <button
+          aria-label={`close task ${task.id}`}
+          data-testid={`close-task-${task.id}`}
+          onClick={onAfterClose}
+        />
+      ))
+);
 
 const mockProps = {
   isEditView: false,
@@ -165,7 +183,10 @@ describe('MyTaskWidget', () => {
     );
   });
 
-  it('calls getFeedData on mount with correct parameters', () => {
+  it('requests only open tasks on mount', () => {
+    // The mount fetch passed `undefined` for the status group, and the backend
+    // applies no status filter at all when the param is absent — so the widget
+    // listed closed tasks. The 5th argument is the regression.
     const mockGetTaskData = jest.fn();
     (mockUseActivityFeedProvider as jest.Mock).mockReturnValue({
       loading: false,
@@ -179,7 +200,51 @@ describe('MyTaskWidget', () => {
       undefined,
       undefined,
       undefined,
+      TaskStatusGroup.Open,
+      PAGE_SIZE_MEDIUM
+    );
+  });
+
+  it('refetches after a task closes with the same arguments as the mount', async () => {
+    // The mount fetch and the post-close refetch were separate call sites and
+    // disagreed on the status group, so the list silently narrowed to open-only
+    // after the first interaction. Comparing the two calls is what pins that.
+    const mockGetTaskData = jest.fn();
+    (mockUseActivityFeedProvider as jest.Mock).mockReturnValue({
+      loading: false,
+      getTaskData: mockGetTaskData,
+      tasks: mockTasks,
+    });
+    renderMyTaskWidget();
+
+    const mountCall = mockGetTaskData.mock.calls[0];
+
+    fireEvent.click(screen.getByTestId('close-task-1'));
+
+    expect(mockGetTaskData).toHaveBeenCalledTimes(2);
+    expect(mockGetTaskData.mock.calls[1]).toEqual(mountCall);
+  });
+
+  it('keeps the status filter when the user switches to mentions', async () => {
+    // MyTaskWidget is the only caller that can route a task fetch through the
+    // provider's MENTIONS branch, which used to drop the status group.
+    const mockGetTaskData = jest.fn();
+    (mockUseActivityFeedProvider as jest.Mock).mockReturnValue({
+      loading: false,
+      getTaskData: mockGetTaskData,
+      tasks: mockTasks,
+    });
+    renderMyTaskWidget();
+
+    fireEvent.click(screen.getByTestId('widget-sort-by-dropdown'));
+    fireEvent.click(await screen.findByText('label.mention-plural'));
+
+    expect(mockGetTaskData).toHaveBeenLastCalledWith(
+      'MENTIONS',
       undefined,
+      undefined,
+      undefined,
+      TaskStatusGroup.Open,
       PAGE_SIZE_MEDIUM
     );
   });

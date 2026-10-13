@@ -273,6 +273,29 @@ WHERE name IN (
   )
   AND NOT ((json->'parameterDefinition')::jsonb @> '[{"name": "dimensionFailurePolicy"}]'::jsonb);
 
+-- `minRowsPerDimension` keeps small dimension groups out of the ANY_DIMENSION roll-up under a
+-- PERCENTAGE threshold. Only the row-countable definitions declare it: a percentage of a statistic
+-- is not distorted by group size. These are the definition names, which differ from the seed file
+-- names for columnValueLengthsToBeBetween. Guarded on the parameter being absent, like the above.
+UPDATE test_definition
+SET json = jsonb_set(
+    json::jsonb,
+    '{parameterDefinition}',
+    (json->'parameterDefinition')::jsonb || jsonb_build_object(
+        'name', 'minRowsPerDimension',
+        'displayName', 'Minimum Rows per Dimension',
+        'description', 'Under the `ANY_DIMENSION` policy and a `PERCENTAGE` threshold, a dimension with fewer rows than this is still evaluated and reported, but does not fail the test (defaults to 0: every dimension counts).',
+        'dataType', 'INT',
+        'required', false
+    )::jsonb
+)
+WHERE name IN (
+    'columnValueLengthsToBeBetween', 'columnValuesToBeBetween', 'columnValuesToBeInSet',
+    'columnValuesToBeNotInSet', 'columnValuesToBeNotNull', 'columnValuesToBeUnique',
+    'columnValuesToMatchRegex', 'columnValuesToNotMatchRegex'
+  )
+  AND NOT ((json->'parameterDefinition')::jsonb @> '[{"name": "minRowsPerDimension"}]'::jsonb);
+
 -- NUMERIC is a distinct member of the column dataType enum and is what BigQuery, Postgres,
 -- Snowflake and DB2 numeric columns are ingested as, but the numeric system test definitions were
 -- only ever seeded with NUMBER/DECIMAL. The "Add test case" dropdown filters on the column's exact
@@ -303,6 +326,142 @@ WHERE name IN (
 UPDATE user_entity
 SET json = jsonb_set(json, '{email}', to_jsonb(lower(json ->> 'email')))
 WHERE json ->> 'email' <> lower(json ->> 'email');
+-- External S3 sample-data storage support was removed (collate#5995), and with it the
+-- whole sampleDataStorageConfig property: once the external branch was gone the field
+-- could only ever hold an empty object, so it carried no information and was dropped
+-- from every connection and profiler schema. Connection schemas set
+-- "additionalProperties": false, so any stored row that still carries the key -- the
+-- legacy S3 shape or the empty OpenMetadata-hosted object alike -- stops deserializing
+-- on upgrade. Remove the node outright wherever it appears. The field was optional, so
+-- removing it is the same as never having set it, and OpenMetadata-hosted sample data
+-- (stored under the table.sampleData extension) is untouched. Idempotent: #- of an
+-- absent path is a no-op, and re-running finds nothing left to remove.
+--
+-- Hive nests its metastore connection, so a database service can hold the key at two
+-- depths.
+UPDATE dbservice_entity
+SET json = json::jsonb
+      #- '{connection,config,sampleDataStorageConfig}'
+      #- '{connection,config,metastoreConnection,sampleDataStorageConfig}'
+WHERE json::jsonb #> '{connection,config,sampleDataStorageConfig}' IS NOT NULL
+   OR json::jsonb #> '{connection,config,metastoreConnection,sampleDataStorageConfig}' IS NOT NULL;
+
+-- Superset reaches its database through a nested connection, and a dashboard service is
+-- not stored in dbservice_entity.
+UPDATE dashboard_service_entity
+SET json = json::jsonb #- '{connection,config,connection,sampleDataStorageConfig}'
+WHERE json::jsonb #> '{connection,config,connection,sampleDataStorageConfig}' IS NOT NULL;
+
+-- Airflow nests under connection; SSIS and Wherescape under databaseConnection.
+UPDATE pipeline_service_entity
+SET json = json::jsonb
+      #- '{connection,config,connection,sampleDataStorageConfig}'
+      #- '{connection,config,databaseConnection,sampleDataStorageConfig}'
+WHERE json::jsonb #> '{connection,config,connection,sampleDataStorageConfig}' IS NOT NULL
+   OR json::jsonb #> '{connection,config,databaseConnection,sampleDataStorageConfig}' IS NOT NULL;
+
+-- Alation, same nesting, metadata service table.
+UPDATE metadata_service_entity
+SET json = json::jsonb #- '{connection,config,connection,sampleDataStorageConfig}'
+WHERE json::jsonb #> '{connection,config,connection,sampleDataStorageConfig}' IS NOT NULL;
+
+-- Test Connection stores the submitted form as a workflow request. The UI deletes the
+-- row once the check finishes, but rows survive an interrupted test, and a row that no
+-- longer deserializes is also a row the retention sweep cannot delete.
+UPDATE automations_workflow
+SET json = json::jsonb
+      #- '{request,connection,config,sampleDataStorageConfig}'
+      #- '{request,connection,config,connection,sampleDataStorageConfig}'
+      #- '{request,connection,config,metastoreConnection,sampleDataStorageConfig}'
+      #- '{request,connection,config,databaseConnection,sampleDataStorageConfig}'
+WHERE json::jsonb #> '{request,connection,config,sampleDataStorageConfig}' IS NOT NULL
+   OR json::jsonb #> '{request,connection,config,connection,sampleDataStorageConfig}' IS NOT NULL
+   OR json::jsonb #> '{request,connection,config,metastoreConnection,sampleDataStorageConfig}' IS NOT NULL
+   OR json::jsonb #> '{request,connection,config,databaseConnection,sampleDataStorageConfig}' IS NOT NULL;
+
+UPDATE database_entity
+SET json = json::jsonb #- '{databaseProfilerConfig,sampleDataStorageConfig}'
+WHERE json::jsonb #> '{databaseProfilerConfig,sampleDataStorageConfig}' IS NOT NULL;
+
+UPDATE database_schema_entity
+SET json = json::jsonb #- '{databaseSchemaProfilerConfig,sampleDataStorageConfig}'
+WHERE json::jsonb #> '{databaseSchemaProfilerConfig,sampleDataStorageConfig}' IS NOT NULL;
+
+-- Version history keeps a second copy of the same JSON. `EntityRepository.getVersion`
+-- deserializes an entity_extension row straight into the generated POJO, so a snapshot
+-- still carrying the key fails GET .../versions/{version} -- 400 for a service
+-- connection (the secrets-manager decrypt rejects the unrecognized field) and 500 for a
+-- profiler config (raw Jackson). The live rows above are only half the copies.
+--
+-- One statement covers every versioned entity the key can reach: the four service
+-- types, database, databaseSchema, and the automations workflow (Test Connection
+-- requests are versioned too). A path a snapshot does not have is a no-op, so the paths
+-- apply uniformly; the extension prefixes stay explicit so the scan can use
+-- `extension_index` instead of a leading wildcard.
+UPDATE entity_extension
+SET json = json::jsonb
+      #- '{connection,config,sampleDataStorageConfig}'
+      #- '{connection,config,metastoreConnection,sampleDataStorageConfig}'
+      #- '{connection,config,connection,sampleDataStorageConfig}'
+      #- '{connection,config,databaseConnection,sampleDataStorageConfig}'
+      #- '{request,connection,config,sampleDataStorageConfig}'
+      #- '{request,connection,config,connection,sampleDataStorageConfig}'
+      #- '{request,connection,config,metastoreConnection,sampleDataStorageConfig}'
+      #- '{request,connection,config,databaseConnection,sampleDataStorageConfig}'
+      #- '{databaseProfilerConfig,sampleDataStorageConfig}'
+      #- '{databaseSchemaProfilerConfig,sampleDataStorageConfig}'
+WHERE (extension LIKE 'databaseService.version.%'
+    OR extension LIKE 'dashboardService.version.%'
+    OR extension LIKE 'pipelineService.version.%'
+    OR extension LIKE 'metadataService.version.%'
+    OR extension LIKE 'database.version.%'
+    OR extension LIKE 'databaseSchema.version.%'
+    OR extension LIKE 'workflow.version.%')
+  AND (json::jsonb #> '{connection,config,sampleDataStorageConfig}' IS NOT NULL
+    OR json::jsonb #> '{connection,config,metastoreConnection,sampleDataStorageConfig}' IS NOT NULL
+    OR json::jsonb #> '{connection,config,connection,sampleDataStorageConfig}' IS NOT NULL
+    OR json::jsonb #> '{connection,config,databaseConnection,sampleDataStorageConfig}' IS NOT NULL
+    OR json::jsonb #> '{request,connection,config,sampleDataStorageConfig}' IS NOT NULL
+    OR json::jsonb #> '{request,connection,config,connection,sampleDataStorageConfig}' IS NOT NULL
+    OR json::jsonb #> '{request,connection,config,metastoreConnection,sampleDataStorageConfig}' IS NOT NULL
+    OR json::jsonb #> '{request,connection,config,databaseConnection,sampleDataStorageConfig}' IS NOT NULL
+    OR json::jsonb #> '{databaseProfilerConfig,sampleDataStorageConfig}' IS NOT NULL
+    OR json::jsonb #> '{databaseSchemaProfilerConfig,sampleDataStorageConfig}' IS NOT NULL);
+
+-- Profiler settings are not stored on the entity row. `addDatabaseProfilerConfig` writes
+-- the config straight to `entity_extension` under a fixed extension name, and the stored
+-- JSON is the config itself -- so the key sits at the root, not under
+-- `databaseProfilerConfig`, and the extension never matches a `*.version.%` prefix. The
+-- statement above reaches neither. These rows are the only copies that survive.
+UPDATE entity_extension
+SET json = json::jsonb #- '{sampleDataStorageConfig}'
+WHERE extension IN ('database.databaseProfilerConfig',
+                    'databaseSchema.databaseSchemaProfilerConfig')
+  AND json::jsonb #> '{sampleDataStorageConfig}' IS NOT NULL;
+
+-- Microsoft Fabric service principals now choose a client secret or a certificate under
+-- authType. Services saved before keep their client secret as the client secret option.
+UPDATE dbservice_entity
+SET json = jsonb_set(
+    json #- '{connection,config,clientSecret}',
+    '{connection,config,authType}',
+    jsonb_build_object('clientSecret', json #> '{connection,config,clientSecret}'),
+    true
+)
+WHERE serviceType = 'MicrosoftFabric'
+  AND jsonb_exists(json -> 'connection' -> 'config', 'clientSecret');
+
+-- Version history goes through the same connection converter on read, so its snapshots move too.
+UPDATE entity_extension
+SET json = jsonb_set(
+    json #- '{connection,config,clientSecret}',
+    '{connection,config,authType}',
+    jsonb_build_object('clientSecret', json #> '{connection,config,clientSecret}'),
+    true
+)
+WHERE extension LIKE 'databaseService.version.%'
+  AND json ->> 'serviceType' = 'MicrosoftFabric'
+  AND jsonb_exists(json -> 'connection' -> 'config', 'clientSecret');
 
 -- Context memories move from their own Draft/Active/Archived `status` onto `entityStatus`, the
 -- lifecycle stage every entity type shares: Active becomes Approved, and a memory with no status
@@ -333,3 +492,32 @@ SET json = (json::jsonb - 'status') || jsonb_build_object(
   END)
 WHERE jsonSchema = 'contextMemory'
   AND json::jsonb -> 'status' IS NOT NULL;
+
+-- transitive-lineage-closure stores every ancestor/descendant pair, which grows quadratically with
+-- lineage depth, so it now ships disabled. Turn off rows that pre-release builds seeded as enabled.
+UPDATE rdf_inference_rule
+SET json = jsonb_set(json, '{enabled}', 'false'::jsonb),
+    dirty = TRUE,
+    dirtyVersion = dirtyVersion + 1
+WHERE name = 'transitive-lineage-closure'
+  AND systemRule = TRUE
+  AND json ->> 'enabled' = 'true';
+
+-- Table Diff gained the optional parallelQueries parameter. Seeding only covers fresh installs
+-- (initializeEntity returns early when the entity exists), so without this backfill an upgraded
+-- deployment would never offer it in the test case form. A no-op once the parameter is present.
+UPDATE test_definition
+SET json = jsonb_set(
+    json::jsonb,
+    '{parameterDefinition}',
+    (json->'parameterDefinition')::jsonb || jsonb_build_array(jsonb_build_object(
+        'name', 'parallelQueries',
+        'displayName', 'Parallel queries per database',
+        'description', 'How many queries the comparison may run at once against each database (defaults to 1). Both databases are always queried at the same time. A higher value compares large tables faster, but adds load to both databases and holds more rows in memory.',
+        'dataType', 'NUMBER',
+        'required', false
+    ))
+)
+WHERE name = 'tableDiff'
+  AND jsonb_typeof(json->'parameterDefinition') = 'array'
+  AND NOT ((json->'parameterDefinition')::jsonb @> '[{"name": "parallelQueries"}]'::jsonb);

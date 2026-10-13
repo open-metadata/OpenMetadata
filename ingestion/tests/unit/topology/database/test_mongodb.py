@@ -14,6 +14,7 @@ Test MongoDB using the topology
 """
 
 import json
+from copy import deepcopy
 from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
@@ -214,3 +215,56 @@ class MongoDBUnitTest(TestCase):
         Column.__eq__ = custom_column_compare
         with patch.object(MongodbSource, "get_table_columns_dict", return_value=MOCK_JSON_TABLE_DATA):
             assert MOCK_CREATE_TABLE == next(self.mongo_source.yield_table(EXPECTED_TABLE_NAMES[0])).right  # noqa: SIM300
+
+
+class TestNoSQLSchemaInferenceLimits:
+    """Issue #29832: NoSQL sources share the sampled-document inference, so the database metadata
+    pipeline limits bound their nested columns too, with one status warning per collection.
+    """
+
+    DOCUMENTS = (
+        {"_id": 1, "address": {"zip": "1", "city": "a", "street": {"name": "x", "number": 1}}},
+        {"_id": 2, "address": {"country": "b"}},
+    )
+
+    @staticmethod
+    def _source(**limits) -> MongodbSource:
+        config = deepcopy(mock_mongo_config)
+        config["source"]["sourceConfig"]["config"].update(limits)
+        with patch("metadata.ingestion.source.database.mongodb.metadata.MongodbSource.test_connection"):
+            source = MongodbSource.create(
+                config["source"],
+                OpenMetadata(OpenMetadataWorkflowConfig.model_validate(config).workflowConfig.openMetadataServerConfig),
+            )
+        source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+        source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+        source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
+        return source
+
+    def _address(self, source: MongodbSource) -> Column:
+        with patch.object(MongodbSource, "get_table_columns_dict", return_value=self.DOCUMENTS):
+            request = next(source.yield_table(EXPECTED_TABLE_NAMES[0])).right
+        return {col.name.root: col for col in request.columns}["address"]
+
+    def test_configured_limits_bound_the_create_request(self):
+        source = self._source(maxSchemaInferenceDepth=1, maxChildrenPerColumn=3)
+
+        address = self._address(source)
+
+        assert [child.name.root for child in address.children] == ["city", "street", "country"]
+        assert {child.name.root: child.children for child in address.children}["street"] == []
+        assert source.status.warnings == [
+            {
+                "default.random_table": "Schema inference limits dropped nested columns. "
+                "maxSchemaInferenceDepth=1 cut the children of 1 column(s): address.street. "
+                "maxChildrenPerColumn=3 cut the children of 1 column(s): address."
+            }
+        ]
+
+    def test_unset_limits_keep_every_inferred_child(self):
+        source = self._source()
+
+        address = self._address(source)
+
+        assert [child.name.root for child in address.children] == ["zip", "city", "street", "country"]
+        assert source.status.warnings == []

@@ -401,7 +401,7 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   @Override
-  public EntityInterface getParentEntity(Topic entity, String fields) {
+  public EntityInterface<?> getParentEntity(Topic entity, String fields) {
     if (entity.getService() == null) {
       return null;
     }
@@ -417,7 +417,7 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   @Override
-  public List<TagLabel> getAllTags(EntityInterface entity) {
+  public List<TagLabel> getAllTags(EntityInterface<?> entity) {
     List<TagLabel> allTags = new ArrayList<>();
     Topic topic = (Topic) entity;
     EntityUtil.mergeTags(allTags, topic.getTags());

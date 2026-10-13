@@ -31,6 +31,7 @@ import {
   visitLineageTab,
 } from '../../../utils/lineage';
 import { waitForSearchIndexed } from '../../../utils/polling';
+import { waitForAggregation } from '../../../utils/searchAggregation';
 import { test } from '../../fixtures/pages';
 
 // Alias so the existing filter-config type keeps its familiar name in the
@@ -441,16 +442,10 @@ test.describe('Lineage Filters', () => {
           ''
         );
 
-        // Match the search POST loosely; a stricter body matcher (fieldName +
-        // normalized fieldValue) silently missed the response under CI load
-        // and forced the whole test to time out at 60s. The subsequent
-        // getLineageByEntityCount wait still validates that the *right*
-        // service was applied.
-        const searchResponse = page.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/search/aggregate') &&
-            response.request().method() === 'POST'
-        );
+        const searchResponse = waitForAggregation(page, {
+          field: 'service.displayName.keyword',
+          value: serviceName,
+        });
 
         await page
           .getByTestId('drop-down-menu')
@@ -545,11 +540,10 @@ test.describe('Lineage Filters', () => {
           ''
         );
 
-        const searchResponse = page.waitForResponse(
-          (response) =>
-            response.url().includes(`/api/v1/search/aggregate`) &&
-            response.request().method() === 'POST'
-        );
+        const searchResponse = waitForAggregation(page, {
+          field: 'service.displayName.keyword',
+          value: serviceName,
+        });
 
         await page
           .getByTestId('drop-down-menu')
@@ -631,11 +625,10 @@ test.describe('Lineage Filters', () => {
           ''
         ).toLowerCase();
 
-        const searchResponse = page.waitForResponse(
-          (response) =>
-            response.url().includes(`/api/v1/search/aggregate`) &&
-            response.request().method() === 'POST'
-        );
+        const searchResponse = waitForAggregation(page, {
+          field: 'serviceType',
+          value: serviceType,
+        });
         await page
           .getByTestId('drop-down-menu')
           .getByTestId('search-input')
@@ -708,11 +701,10 @@ test.describe('Lineage Filters', () => {
           ''
         ).toLowerCase();
 
-        const searchResponse = page.waitForResponse(
-          (response) =>
-            response.url().includes(`/api/v1/search/aggregate`) &&
-            response.request().method() === 'POST'
-        );
+        const searchResponse = waitForAggregation(page, {
+          field: 'serviceType',
+          value: serviceType,
+        });
         await page
           .getByTestId('drop-down-menu')
           .getByTestId('search-input')
