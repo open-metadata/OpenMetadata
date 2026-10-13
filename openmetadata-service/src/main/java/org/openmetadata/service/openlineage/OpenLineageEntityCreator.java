@@ -18,6 +18,7 @@ import static org.openmetadata.schema.api.lineage.openlineage.UnresolvedReason.C
 import static org.openmetadata.schema.api.lineage.openlineage.UnresolvedReason.INVALID_ENTITY;
 import static org.openmetadata.schema.api.lineage.openlineage.UnresolvedReason.MISSING_COLUMNS;
 import static org.openmetadata.schema.api.lineage.openlineage.UnresolvedReason.MISSING_DATABASE;
+import static org.openmetadata.schema.api.lineage.openlineage.UnresolvedReason.MISSING_SCHEMA;
 import static org.openmetadata.schema.api.lineage.openlineage.UnresolvedReason.SERVICE_NOT_FOUND;
 import static org.openmetadata.service.openlineage.OpenLineageResolution.resolved;
 import static org.openmetadata.service.openlineage.OpenLineageResolution.unresolved;
@@ -159,11 +160,20 @@ public class OpenLineageEntityCreator {
   /**
    * Columns are validated before anything is written. Each level is authorized against its
    * persisted parent, as a REST create is, so a database is checked against its service before it
-   * exists and a schema against that database once it does. A refusal or rejection at any level
-   * takes back what this table's creation already wrote.
+   * exists and a schema against that database once it does. A refusal or rejection — or any other
+   * failure — at any level takes back what this table's creation already wrote, so no empty shell is
+   * left behind. An empty schema is rejected before any write, since there is no location to create
+   * the table under.
    */
   private OpenLineageResolution createValidated(
       EntityReference service, String databaseName, TableDraft draft) {
+    if (nullOrEmpty(draft.location().schema())) {
+      return unresolved(
+          MISSING_SCHEMA,
+          String.format(
+              "The dataset name has no schema to create the table under (service '%s', database '%s')",
+              service.getName(), databaseName));
+    }
     CreationRun run = new CreationRun(draft.createdBy());
     OpenLineageResolution result;
     try {
@@ -175,6 +185,9 @@ public class OpenLineageEntityCreator {
       run.rollBack();
       result = unresolved(CREATE_NOT_ALLOWED, e.getMessage());
     } catch (IllegalArgumentException e) {
+      run.rollBack();
+      result = unresolved(INVALID_ENTITY, e.getMessage());
+    } catch (RuntimeException e) {
       run.rollBack();
       result = unresolved(INVALID_ENTITY, e.getMessage());
     }

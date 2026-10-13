@@ -23,6 +23,7 @@ import {
   Trash01 as DeleteIcon,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ActivityFeedEditorNew from '../../../../../components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew';
@@ -41,7 +42,7 @@ import {
 } from '../../../../../utils/FeedUtilsPure';
 import { resolveCommentPermissions } from '../../../../../utils/TaskCommentUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
-import { formatInboxDateTime } from '../inbox.utils';
+import { formatInboxDateTime, INBOX_MESSAGE_CLASS } from '../inbox.utils';
 
 export interface TaskCommentRowProps {
   comment: TaskComment;
@@ -144,7 +145,10 @@ const TaskCommentBody = ({
 
   return (
     <RichTextEditorPreviewerV1
-      className="inbox-feed-message tw:text-sm tw:leading-6 tw:text-primary"
+      className={classNames(
+        INBOX_MESSAGE_CLASS,
+        'tw:text-sm tw:leading-6 tw:text-primary'
+      )}
       markdown={getFrontEndFormat(comment.message)}
     />
   );

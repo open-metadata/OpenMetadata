@@ -462,6 +462,32 @@ public class ActivityResourceIT {
   }
 
   @Test
+  void test_mentionsFeedFiltersByEntity(TestNamespace ns) throws Exception {
+    Table mentionedTable = createTestTable(ns, "mentions-entity-target");
+    Table otherTable = createTestTable(ns, "mentions-entity-other");
+    String mentionedLink = "<#E::table::" + mentionedTable.getFullyQualifiedName() + ">";
+    ActivityEvent onMentionedTable =
+        createTestActivityEventWithAbout(mentionedTable, mentionedLink);
+    ActivityEvent onOtherTable =
+        createTestActivityEventWithAbout(
+            otherTable, "<#E::table::" + otherTable.getFullyQualifiedName() + ">");
+    String mention = "<#E::user::" + SharedEntities.get().USER2.getName() + "> please review";
+    addActivityReply(SdkClients.adminClient(), onMentionedTable.getId(), mention);
+    addActivityReply(SdkClients.adminClient(), onOtherTable.getId(), mention);
+
+    List<UUID> aboutEntity = mentionedActivityIdsAbout(SdkClients.user2Client(), mentionedLink);
+
+    assertTrue(
+        aboutEntity.contains(onMentionedTable.getId()),
+        "Mentions on the requested entity are returned");
+    assertFalse(
+        aboutEntity.contains(onOtherTable.getId()), "Mentions on another entity are excluded");
+    assertTrue(
+        mentionedActivityIds(SdkClients.user2Client()).contains(onOtherTable.getId()),
+        "Without an entity the feed still has every mention");
+  }
+
+  @Test
   void test_activityRepliesRemainReadableButBecomeImmutableAfterTargetDeletion(TestNamespace ns)
       throws Exception {
     Table table = createTestTable(ns, "deleted-activity-target");
@@ -1632,6 +1658,23 @@ public class ActivityResourceIT {
                 ACTIVITY_PATH + "/mentions",
                 null,
                 buildActivityRequestOptions(200, 1, domainFqn));
+    return MAPPER.readValue(response, ActivityEventList.class).getData().stream()
+        .map(ActivityEvent::getId)
+        .toList();
+  }
+
+  private List<UUID> mentionedActivityIdsAbout(OpenMetadataClient client, String entityLink)
+      throws Exception {
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("days", "1")
+            .queryParam("limit", "200")
+            .queryParam("entityLink", entityLink)
+            .build();
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, ACTIVITY_PATH + "/mentions", null, options);
     return MAPPER.readValue(response, ActivityEventList.class).getData().stream()
         .map(ActivityEvent::getId)
         .toList();

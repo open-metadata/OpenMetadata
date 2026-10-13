@@ -53,6 +53,7 @@ import {
   addOwner,
   escapeESReservedCharacters,
   openClassificationTagPicker,
+  searchCertification,
   visitEntityPageByFqn,
   waitForAllLoadersToDisappear,
 } from './entity';
@@ -137,6 +138,7 @@ export const addCertificationWidget = async (
 
   const certificationMenu = page.getByTestId('drop-down-menu');
   await certificationMenu.waitFor({ state: 'visible' });
+  await searchCertification(page, certification.responseData.name);
 
   const patchRequest = page.waitForResponse(
     (response) =>
@@ -166,6 +168,7 @@ export const assignCertificationForWidget = async (
 
   const certificationMenu = page.getByTestId('drop-down-menu');
   await certificationMenu.waitFor({ state: 'visible' });
+  await searchCertification(page, certification.responseData.name);
 
   const patchRequest = page.waitForResponse(
     (response) =>
