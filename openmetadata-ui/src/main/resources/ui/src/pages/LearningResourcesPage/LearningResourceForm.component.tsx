@@ -113,6 +113,8 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
       closable={false}
       data-testid="learning-resource-form-drawer"
       footer={drawerFooter}
+      // A core Select closes on pointerup, so the click lands on the mask.
+      maskClosable={false}
       open={open}
       placement="right"
       title={drawerTitle}
