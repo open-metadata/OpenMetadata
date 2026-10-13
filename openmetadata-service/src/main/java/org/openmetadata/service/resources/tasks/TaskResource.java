@@ -999,8 +999,10 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
   }
 
   /**
-   * The server opens a memory conflict review when a memory enters review with disputes, and its
-   * resolution assumes that memory
+   * Only the server opens a memory conflict review, when a write leaves a memory in Draft with
+   * disputes. Resolving one approves or rejects that memory without checking that the resolver may
+   * edit it: being assigned the task is the authorization. A client that could file one would pick
+   * the memory and the assignees, and so decide any memory it may file a task about
    * (ADR:2026-10-13-a-memory-conflict-opens-a-review-task-and-approving-it-supersedes-the-disputed-memory).
    */
   private static void requireCreatableThroughApi(CreateTask create) {
@@ -1215,7 +1217,11 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     rejectServerOpenedTypeChange(original, patched);
   }
 
-  /** No task becomes, or stops being, a review only the server opens. */
+  /**
+   * No task becomes, or stops being, a memory conflict review: a task the server did not open would
+   * gain the power to decide its memory, and a review would be resolved by another type's rules
+   * instead of the conflict decision.
+   */
   private static void rejectServerOpenedTypeChange(Task original, Task patched) {
     boolean wasServerOpened = isServerOpenedType(original.getType());
     if (patched.getType() != null && wasServerOpened != isServerOpenedType(patched.getType())) {
