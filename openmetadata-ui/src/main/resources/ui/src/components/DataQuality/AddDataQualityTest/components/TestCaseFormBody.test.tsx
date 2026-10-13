@@ -279,6 +279,57 @@ describe('TestCaseFormBody', () => {
     expect(await screen.findByTestId('selectedTable')).toBeInTheDocument();
   });
 
+  it('reports the active field for a click on the table select and keyboard focus on a test level card', async () => {
+    const onActiveFieldChange = jest.fn();
+    const Wrapper = () => {
+      const form = useForm<FormValues>({
+        defaultValues: { testLevel: TestLevel.TABLE } as FormValues,
+      });
+
+      return (
+        <HookForm showFieldDocs form={form} onSubmit={jest.fn()}>
+          <TestCaseFormBody
+            form={form}
+            onActiveFieldChange={onActiveFieldChange}
+          />
+        </HookForm>
+      );
+    };
+
+    await act(async () => {
+      render(<Wrapper />);
+    });
+
+    // A select holding a value takes no focus on click.
+    await act(async () => {
+      fireEvent.pointerDown(await screen.findByTestId('selectedTable'));
+    });
+
+    expect(onActiveFieldChange).toHaveBeenLastCalledWith('root/table');
+
+    await act(async () => {
+      screen.getAllByRole('radio')[0].focus();
+    });
+
+    expect(onActiveFieldChange).toHaveBeenLastCalledWith('root/testLevel');
+  });
+
+  it('labels the table field Selected Table once a table is picked', async () => {
+    await act(async () => {
+      renderBody();
+    });
+
+    expect(screen.queryByText('label.selected-entity')).not.toBeInTheDocument();
+
+    await act(async () => {
+      formRef?.setValue('selectedTable', TABLE_FQN);
+    });
+
+    expect(
+      await screen.findByText('label.selected-entity')
+    ).toBeInTheDocument();
+  });
+
   it('does not render the column select at table level', async () => {
     await act(async () => {
       renderBody();
