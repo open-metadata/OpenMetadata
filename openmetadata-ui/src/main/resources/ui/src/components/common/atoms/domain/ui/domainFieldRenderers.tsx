@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Avatar, Box, Typography } from '@openmetadata/ui-core-components';
+import {
+  Avatar,
+  Box,
+  Owner,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { MouseEvent, ReactNode } from 'react';
 import { NO_DATA } from '../../../../../constants/constants';
 import { DataProduct } from '../../../../../generated/entity/domains/dataProduct';
@@ -20,6 +25,7 @@ import { EntityReference } from '../../../../../generated/entity/type';
 import { TagLabel } from '../../../../../generated/type/tagLabel';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getEntityAvatarProps } from '../../../../../utils/IconUtils';
+import { stopPropagationIfInteractive } from '../../../../../utils/InteractiveTargetUtils';
 import {
   getClassificationTags,
   getGlossaryTags,
@@ -27,7 +33,6 @@ import {
 import { renderBreakableTooltip } from '../../../../../utils/TooltipUtils';
 import { DomainTypeChip } from '../../../../DomainListing/components/DomainTypeChip';
 import TagsViewer from '../../../../Tag/TagsViewer/TagsViewer';
-import { OwnerLabel } from '../../../OwnerLabel/OwnerLabel.component';
 
 interface TaggedEntity {
   tags?: TagLabel[];
@@ -104,25 +109,42 @@ export const renderDomainTypeCell = (entity: Domain): ReactNode =>
     <Typography size="text-sm">{NO_DATA}</Typography>
   );
 
-export const renderDomainOwnersCell = (
-  entity: OwnedEntity,
-  showDashPlaceholder?: boolean
-): ReactNode => (
-  <OwnerLabel
-    isCompactView={false}
-    maxVisibleOwners={4}
-    owners={entity.owners}
-    showDashPlaceholder={showDashPlaceholder}
-    showLabel={false}
-  />
+// Owner links and tag chips navigate to their own entity, while the row or card underneath
+// navigates to the domain. The guard withholds only what an inner control will handle - a blanket
+// stopPropagation would also swallow clicks on the cell's padding and its "--" placeholder.
+const withNestedLinkGuard = (cell: ReactNode): ReactNode => (
+  <div role="presentation" onClick={stopPropagationIfInteractive}>
+    {cell}
+  </div>
 );
 
-export const renderDomainGlossaryTagsCell = (
-  entity: TaggedEntity
-): ReactNode => <TagsViewer sizeCap={1} tags={getGlossaryTags(entity.tags)} />;
+export const renderDomainOwnersCell = (
+  entity: OwnedEntity,
+  options?: { showDashPlaceholder?: boolean }
+): ReactNode =>
+  withNestedLinkGuard(
+    <Owner
+      isCompactView={false}
+      maxVisibleOwners={4}
+      owners={entity.owners}
+      showDashPlaceholder={options?.showDashPlaceholder}
+      showLabel={false}
+    />
+  );
+
+export const renderDomainExpertsCell = (
+  entity: { experts?: EntityReference[] },
+  options?: { showDashPlaceholder?: boolean }
+): ReactNode => renderDomainOwnersCell({ owners: entity.experts }, options);
+
+export const renderDomainGlossaryTagsCell = (entity: TaggedEntity): ReactNode =>
+  withNestedLinkGuard(
+    <TagsViewer sizeCap={1} tags={getGlossaryTags(entity.tags)} />
+  );
 
 export const renderDomainClassificationTagsCell = (
   entity: TaggedEntity
-): ReactNode => (
-  <TagsViewer sizeCap={1} tags={getClassificationTags(entity.tags)} />
-);
+): ReactNode =>
+  withNestedLinkGuard(
+    <TagsViewer sizeCap={1} tags={getClassificationTags(entity.tags)} />
+  );

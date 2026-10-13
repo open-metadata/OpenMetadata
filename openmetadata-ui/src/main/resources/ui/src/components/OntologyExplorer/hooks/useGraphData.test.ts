@@ -48,6 +48,12 @@ import {
   useGraphDataBuilder,
 } from './useGraphData';
 
+// Dark mode applies only in AI mode; classic is light-only.
+jest.mock('../../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../../hooks/useAppMode'),
+  useIsAiMode: () => true,
+}));
+
 jest.mock('../utils/textMeasure', () => ({
   getCanvasContext: jest.fn(() => null),
   measureTextWidth: jest.fn(
@@ -227,6 +233,30 @@ describe('studio edit ports', () => {
     expect(style).toMatchObject({ studioEditMode: true });
     expect(style).not.toHaveProperty('port');
     expect(style).not.toHaveProperty('ports');
+  });
+
+  it('draws a metric as a muted, dashed node without an edit handle', () => {
+    const { result } = renderGraphData({
+      clickedEdgeId: null,
+      explorationMode: 'model',
+      glossaries: [],
+      glossaryColorMap: {},
+      inputEdges: [],
+      inputNodes: [studioNode({ id: 'metric-churn-rate', type: 'metric' })],
+      isEditMode: true,
+      layoutType: LayoutEngine.Dagre,
+      selectedNodeId: null,
+      settings: { layout: LayoutType.Hierarchical, showEdgeLabels: true },
+      studioMode: true,
+    });
+
+    const style = result.current.graphData.nodes?.[0]?.style;
+
+    expect(style).toMatchObject({
+      lineDash: [4, 3],
+      studioEditMode: false,
+      studioNodeKind: 'metric',
+    });
   });
 });
 

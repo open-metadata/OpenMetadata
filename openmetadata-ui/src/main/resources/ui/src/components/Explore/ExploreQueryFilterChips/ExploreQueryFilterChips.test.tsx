@@ -105,7 +105,10 @@ describe('ExploreQueryFilterChips', () => {
       'tw:font-medium',
       'tw:text-quaternary'
     );
-    expect(emptyText.parentElement).toHaveClass('prose');
+    // `prose` sits on the element itself, not on a wrapper: core Typography
+    // renders `span`/`div` directly, since `.prose`'s descendant selectors
+    // target neither and the wrapper only contributed inherited properties.
+    expect(emptyText).toHaveClass('prose');
     expect(screen.queryByTestId('clear-all-chips')).not.toBeInTheDocument();
   });
 

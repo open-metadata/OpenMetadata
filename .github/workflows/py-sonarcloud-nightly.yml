@@ -249,5 +249,5 @@ jobs:
           payload: |
             {
               "channel": "C03EYBDDX17",
-              "text": "🔥 *SonarCloud Ingestion Nightly* failed on `${{ env.BRANCH_NAME }}` 🔥\nunit: ${{ needs.py-unit-tests.result }} · integration: ${{ needs.py-integration-tests.result }} · combine+sonar: ${{ needs.py-combine-coverage.result }}\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+              "text": "<!subteam^S0AH093PEQL> 🔥 *SonarCloud Ingestion Nightly* failed on `${{ env.BRANCH_NAME }}` 🔥\nunit: ${{ needs.py-unit-tests.result }} · integration: ${{ needs.py-integration-tests.result }} · combine+sonar: ${{ needs.py-combine-coverage.result }}\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
             }

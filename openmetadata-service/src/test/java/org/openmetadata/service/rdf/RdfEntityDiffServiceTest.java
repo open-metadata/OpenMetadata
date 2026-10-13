@@ -36,8 +36,8 @@ class RdfEntityDiffServiceTest {
   private static final Double FROM_VERSION = 0.1;
   private static final Double TO_VERSION = 0.2;
   private final UUID entityId = UUID.randomUUID();
-  private final EntityInterface fromEntity = entity();
-  private final EntityInterface toEntity = entity();
+  private final EntityInterface<?> fromEntity = entity();
+  private final EntityInterface<?> toEntity = entity();
 
   @Test
   void returnsTypedAddedAndRemovedStatementsInStableOrder() {
@@ -111,7 +111,7 @@ class RdfEntityDiffServiceTest {
     return model;
   }
 
-  private static EntityInterface entity() {
+  private static EntityInterface<?> entity() {
     return mock(EntityInterface.class);
   }
 }

@@ -1040,6 +1040,37 @@ public class SearchSourceBuilderFactoryTest {
   }
 
   @Test
+  public void testShippedRankingAllowsUiTermBoostFields() {
+    SearchSettings settings = JsonUtils.deepCopy(shippedSearchSettings, SearchSettings.class);
+    AssetTypeConfiguration table =
+        settings.getAssetTypeConfigurations().stream()
+            .filter(config -> Entity.TABLE.equals(config.getAssetType()))
+            .findFirst()
+            .orElseThrow();
+    table.setTermBoosts(
+        List.of(
+            createTermBoost("certification.tagLabel.tagFQN", "Certification.Repro26414", 100.0),
+            createTermBoost("tags.tagFQN", "PII.Sensitive", 50.0)));
+
+    String osQuery =
+        new OpenSearchSourceBuilderFactory(settings)
+            .getSearchSourceBuilderV2(Entity.TABLE, "accounts", 0, 15)
+            .query()
+            .toJsonString();
+    String esQuery =
+        new ElasticSearchSourceBuilderFactory(settings)
+            .getSearchSourceBuilderV2(Entity.TABLE, "accounts", 0, 15)
+            .query()
+            .toString();
+
+    for (String value : List.of("Certification.Repro26414", "PII.Sensitive")) {
+      assertAll(
+          () -> assertTrue(osQuery.contains(value), osQuery),
+          () -> assertTrue(esQuery.contains(value), esQuery));
+    }
+  }
+
+  @Test
   public void testConsistencyBetweenIndexes() {
     OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
 
@@ -1094,5 +1125,27 @@ public class SearchSourceBuilderFactoryTest {
     assertEquals(
         Set.copyOf(List.of(expectedFields)),
         Set.copyOf(builder.highlighter().fields().stream().map(NamedValue::name).toList()));
+  }
+
+  /**
+   * A partially typed query carries Lucene syntax but cannot be parsed, so routing it to {@code
+   * query_string} fails the whole search instead of returning results. Issue #27990.
+   */
+  @Test
+  public void testUnparseableSyntaxDoesNotReachQueryString() {
+    String osQuery = rankedTableOpenSearchQuery("revenue (draft");
+    String esQuery = rankedTableElasticSearchQuery("revenue (draft");
+
+    assertFalse(osQuery.contains("query_string"), osQuery);
+    assertFalse(esQuery.contains("query_string"), esQuery);
+  }
+
+  @Test
+  public void testWellFormedSyntaxStillReachesQueryString() {
+    String osQuery = rankedTableOpenSearchQuery("revenue (draft)");
+    String esQuery = rankedTableElasticSearchQuery("revenue (draft)");
+
+    assertTrue(osQuery.contains("query_string"), osQuery);
+    assertTrue(esQuery.contains("query_string"), esQuery);
   }
 }

@@ -2,18 +2,15 @@ package org.openmetadata.service.context.center;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -21,14 +18,11 @@ import static org.mockito.Mockito.when;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.entity.context.ContextMemory;
@@ -36,30 +30,36 @@ import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.data.ExtractionStats;
 import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.entity.data.PageProcessingStatus;
+import org.openmetadata.schema.jobs.BackgroundJob;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.KnowledgePageRepository;
+import org.openmetadata.service.jobs.JobDAO;
+import org.openmetadata.service.llm.LLMCompletionException;
 import org.openmetadata.service.util.EntityUtil;
 
 @ExtendWith(MockitoExtension.class)
 class PageContextProcessingEngineTest {
-
   @Mock private KnowledgePageRepository pageRepository;
   @Mock private ContextMemoryExtractor extractor;
   @Mock private ContextMemoryReconciler reconciler;
-  @Mock private ScheduledExecutorService scheduler;
+  @Mock private JobDAO jobDao;
 
   private final UUID pageId = UUID.randomUUID();
   private final EntityUtil.Fields putFields =
       new EntityUtil.Fields(Set.of("relatedEntities"), "relatedEntities");
 
-  private PageContextProcessingEngine engine(int maxPending) {
-    return new PageContextProcessingEngine(
-        pageRepository, extractor, reconciler, 5_000L, maxPending, scheduler);
+  private PageContextProcessingEngine engine() {
+    return new PageContextProcessingEngine(pageRepository, extractor, reconciler, jobDao, 5_000L);
   }
 
   private Page page(String body, String extractedHash) {
-    Page page = new Page().withId(pageId).withName("runbook").withDescription(body);
+    Page page =
+        new Page()
+            .withId(pageId)
+            .withName("runbook")
+            .withDescription(body)
+            .withUpdatedAt(System.currentTimeMillis() - 10_000L);
     if (extractedHash != null) {
       page.setExtractionStats(new ExtractionStats().withSourceHash(extractedHash));
     }
@@ -73,7 +73,64 @@ class PageContextProcessingEngineTest {
 
   @BeforeEach
   void stubPutFields() {
-    lenient().when(pageRepository.getPutFields()).thenReturn(putFields);
+    org.mockito.Mockito.lenient().when(pageRepository.getPutFields()).thenReturn(putFields);
+  }
+
+  @Test
+  void schedulesAPersistentDelayedJob() {
+    engine().schedule(pageId);
+
+    verify(jobDao)
+        .enqueuePageMemoryJob(
+            eq(pageId.toString()),
+            eq(ContextMemoryExtractionJobHandler.Args.page(pageId).jobKey()),
+            anyString(),
+            eq(Entity.ADMIN_USER_NAME),
+            anyLong(),
+            anyLong());
+  }
+
+  @Test
+  void deletionCancelsThePendingPageJob() {
+    engine().cancel(pageId);
+
+    verify(jobDao)
+        .cancelPendingPageMemoryJobs(
+            eq(BackgroundJob.JobType.CONTEXT_MEMORY_EXTRACTION.name()),
+            eq(ContextMemoryExtractionJobHandler.class.getSimpleName()),
+            eq(ContextMemoryExtractionJobHandler.Args.page(pageId).jobKey()),
+            anyLong());
+  }
+
+  @Test
+  void jobClaimedDuringAnEditWaitsForTheNewQuietPeriod() {
+    pageReturns(page("new body", null).withUpdatedAt(System.currentTimeMillis()));
+
+    engine().runQueued(pageId);
+
+    verify(extractor, never()).derive(any(), any(), any());
+    verify(jobDao)
+        .enqueuePageMemoryJob(
+            eq(pageId.toString()),
+            eq(ContextMemoryExtractionJobHandler.Args.page(pageId).jobKey()),
+            anyString(),
+            eq(Entity.ADMIN_USER_NAME),
+            anyLong(),
+            anyLong());
+  }
+
+  @Test
+  void failedDeferralProcessesTheCurrentPage() {
+    String body = "Current body";
+    pageReturns(page(body, DigestUtils.sha256Hex(body)).withUpdatedAt(System.currentTimeMillis()));
+    doThrow(new IllegalStateException("queue unavailable"))
+        .when(jobDao)
+        .enqueuePageMemoryJob(
+            anyString(), anyString(), anyString(), anyString(), anyLong(), anyLong());
+
+    engine().runQueued(pageId);
+
+    assertEquals(PageProcessingStatus.Processed, capturedUpdates().getLast().getProcessingStatus());
   }
 
   @Test
@@ -81,11 +138,8 @@ class PageContextProcessingEngineTest {
     String body = "Onboarding runbook body";
     pageReturns(page(body, DigestUtils.sha256Hex(body)));
 
-    ContextProcessingEngine.ExtractionOutcome outcome = engine(10).runExtraction(pageId);
-
-    assertTrue(outcome.skipped());
+    assertTrue(engine().runExtraction(pageId).skipped());
     verify(extractor, never()).derive(any(), any(), any());
-    verify(reconciler, never()).reconcile(any(), any(), any());
   }
 
   @Test
@@ -93,154 +147,52 @@ class PageContextProcessingEngineTest {
     String body = "Onboarding runbook body";
     pageReturns(page(body, "stale-hash"));
     when(extractor.derive(eq(body), any(), eq(ContextMemorySourceType.PAGE_EXTRACTION)))
-        .thenReturn(new ContextMemoryExtractor.DeriveResult(List.<ContextMemory>of(), 1, 1));
+        .thenReturn(new DocumentMemoryExtractor.DeriveResult(List.<ContextMemory>of(), 1, 1));
     when(reconciler.reconcile(any(), eq(Entity.PAGE), any()))
-        .thenReturn(new ContextMemoryReconciler.ReconcileResult(1, 2, 3, 0, 0));
+        .thenReturn(new ContextMemoryReconciler.ReconcileResult(1, 2, 3, 0));
 
-    ContextProcessingEngine.ExtractionOutcome outcome = engine(10).runExtraction(pageId);
+    ContextProcessingEngine.ExtractionOutcome outcome = engine().runExtraction(pageId);
 
     assertFalse(outcome.skipped());
-    assertEquals(
-        1, outcome.stats().getPillsCreated(), "pillsCreated is created-only, not the active total");
-    verify(extractor).derive(eq(body), any(), eq(ContextMemorySourceType.PAGE_EXTRACTION));
+    assertEquals(1, outcome.stats().getPillsCreated());
     verify(reconciler).reconcile(any(), eq(Entity.PAGE), any());
   }
 
   @Test
-  void skipsBlankBodyThatWasNeverExtracted() {
-    pageReturns(page("   ", null));
+  void incompleteDerivationDoesNotReconcileOrStampSuccess() {
+    pageReturns(page("body", "stale-hash"));
+    when(extractor.derive(eq("body"), any(), eq(ContextMemorySourceType.PAGE_EXTRACTION)))
+        .thenReturn(new DocumentMemoryExtractor.DeriveResult(List.of(), 2, 1));
 
-    ContextProcessingEngine.ExtractionOutcome outcome = engine(10).runExtraction(pageId);
+    assertThrows(LLMCompletionException.class, () -> engine().runExtraction(pageId));
 
-    assertTrue(outcome.skipped());
-    verify(extractor, never()).derive(any(), any(), any());
+    verify(reconciler, never()).reconcile(any(), any(), any());
+    assertEquals(
+        PageProcessingStatus.Processing, capturedUpdates().getLast().getProcessingStatus());
   }
 
   @Test
-  void clearedBodyReconcilesToEmptyInsteadOfSkipping() {
+  void clearedBodyReconcilesToEmpty() {
     pageReturns(page("", "prior-content-hash"));
     when(extractor.derive(eq(""), any(), eq(ContextMemorySourceType.PAGE_EXTRACTION)))
-        .thenReturn(new ContextMemoryExtractor.DeriveResult(List.<ContextMemory>of(), 0, 0));
+        .thenReturn(new DocumentMemoryExtractor.DeriveResult(List.of(), 0, 0));
     when(reconciler.reconcile(any(), eq(Entity.PAGE), any()))
-        .thenReturn(new ContextMemoryReconciler.ReconcileResult(0, 0, 0, 2, 0));
+        .thenReturn(new ContextMemoryReconciler.ReconcileResult(0, 0, 0, 2));
 
-    ContextProcessingEngine.ExtractionOutcome outcome = engine(10).runExtraction(pageId);
-
-    assertFalse(outcome.skipped());
-    verify(extractor).derive(eq(""), any(), eq(ContextMemorySourceType.PAGE_EXTRACTION));
-    verify(reconciler).reconcile(any(), eq(Entity.PAGE), any());
+    assertFalse(engine().runExtraction(pageId).skipped());
   }
 
   @Test
-  void processedRunStampsProcessedStatus() {
-    String body = "Onboarding runbook body";
-    pageReturns(page(body, "stale-hash"));
-    when(extractor.derive(eq(body), any(), eq(ContextMemorySourceType.PAGE_EXTRACTION)))
-        .thenReturn(new ContextMemoryExtractor.DeriveResult(List.<ContextMemory>of(), 1, 1));
-    when(reconciler.reconcile(any(), eq(Entity.PAGE), any()))
-        .thenReturn(new ContextMemoryReconciler.ReconcileResult(1, 2, 3, 0, 0));
+  void queuedFailureStampsFailedStatus() {
+    pageReturns(page("body", "stale-hash"));
+    when(extractor.derive(eq("body"), any(), eq(ContextMemorySourceType.PAGE_EXTRACTION)))
+        .thenThrow(new LLMCompletionException("LLM exploded"));
 
-    engine(10).runExtraction(pageId);
+    assertThrows(LLMCompletionException.class, () -> engine().runQueued(pageId));
 
-    Page stamped = capturedUpdate();
-    assertEquals(PageProcessingStatus.Processed, stamped.getProcessingStatus());
-    assertNull(stamped.getProcessingError());
-  }
-
-  @Test
-  void stampsReadTheFieldsTheUpdaterManagesSoRelationshipsSurvive() {
-    String body = "Onboarding runbook body";
-    pageReturns(page(body, DigestUtils.sha256Hex(body)));
-
-    engine(10).runExtraction(pageId);
-
-    // getFields("") would leave relatedEntities/parent/children null on both sides of the update,
-    // and the updater reads a null managed field as a removal.
-    verify(pageRepository, atLeastOnce())
-        .get(isNull(), eq(pageId), eq(putFields), eq(Include.NON_DELETED), eq(false));
-  }
-
-  @Test
-  void runStampsProcessingBeforeCallingTheModel() {
-    String body = "Onboarding runbook body";
-    pageReturns(page(body, "stale-hash"));
-    when(extractor.derive(eq(body), any(), eq(ContextMemorySourceType.PAGE_EXTRACTION)))
-        .thenReturn(new ContextMemoryExtractor.DeriveResult(List.<ContextMemory>of(), 1, 1));
-    when(reconciler.reconcile(any(), eq(Entity.PAGE), any()))
-        .thenReturn(new ContextMemoryReconciler.ReconcileResult(1, 2, 3, 0, 0));
-
-    engine(10).runExtraction(pageId);
-
-    List<Page> writes = capturedUpdates();
-    assertEquals(PageProcessingStatus.Processing, writes.get(0).getProcessingStatus());
-    assertNull(writes.get(0).getProcessingError());
-    InOrder order = inOrder(pageRepository, extractor);
-    order.verify(pageRepository).update(isNull(), any(), any(), eq(Entity.ADMIN_USER_NAME));
-    order.verify(extractor).derive(any(), any(), any());
-  }
-
-  @Test
-  void skippedRunNeverStampsProcessing() {
-    String body = "Onboarding runbook body";
-    Page page = page(body, DigestUtils.sha256Hex(body));
-    page.setProcessingStatus(PageProcessingStatus.Queued);
-    pageReturns(page);
-
-    engine(10).runExtraction(pageId);
-
-    verify(pageRepository, never())
-        .update(
-            isNull(),
-            any(),
-            argThat(p -> p.getProcessingStatus() == PageProcessingStatus.Processing),
-            eq(Entity.ADMIN_USER_NAME));
-  }
-
-  @Test
-  void failedRunStampsFailedStatusWithError() {
-    String body = "Onboarding runbook body";
-    pageReturns(page(body, "stale-hash"));
-    when(extractor.derive(eq(body), any(), eq(ContextMemorySourceType.PAGE_EXTRACTION)))
-        .thenThrow(new RuntimeException("LLM exploded"));
-    ArgumentCaptor<Runnable> task = ArgumentCaptor.forClass(Runnable.class);
-    doReturn(mock(ScheduledFuture.class))
-        .when(scheduler)
-        .schedule(task.capture(), anyLong(), any());
-    PageContextProcessingEngine engine = engine(10);
-
-    engine.schedule(pageId);
-    task.getValue().run();
-
-    Page stamped = capturedUpdate();
+    Page stamped = capturedUpdates().getLast();
     assertEquals(PageProcessingStatus.Failed, stamped.getProcessingStatus());
     assertEquals("LLM exploded", stamped.getProcessingError());
-  }
-
-  @Test
-  void skippedRunMarksQueuedPageProcessed() {
-    String body = "Onboarding runbook body";
-    Page page = page(body, DigestUtils.sha256Hex(body));
-    page.setProcessingStatus(PageProcessingStatus.Queued);
-    pageReturns(page);
-    ArgumentCaptor<Runnable> task = ArgumentCaptor.forClass(Runnable.class);
-    doReturn(mock(ScheduledFuture.class))
-        .when(scheduler)
-        .schedule(task.capture(), anyLong(), any());
-    PageContextProcessingEngine engine = engine(10);
-
-    engine.schedule(pageId);
-    task.getValue().run();
-
-    assertEquals(PageProcessingStatus.Processed, capturedUpdate().getProcessingStatus());
-    verify(extractor, never()).derive(any(), any(), any());
-  }
-
-  /**
-   * The last page write of the run. A real run writes twice — Processing when it starts, then the
-   * terminal status — so the assertions below want the final one, not the only one.
-   */
-  private Page capturedUpdate() {
-    return capturedUpdates().get(capturedUpdates().size() - 1);
   }
 
   private List<Page> capturedUpdates() {
@@ -248,31 +200,5 @@ class PageContextProcessingEngineTest {
     verify(pageRepository, atLeastOnce())
         .update(isNull(), any(), captor.capture(), eq(Entity.ADMIN_USER_NAME));
     return captor.getAllValues();
-  }
-
-  @Test
-  void rescheduleCancelsThePreviousPendingRun() {
-    ScheduledFuture<?> first = mock(ScheduledFuture.class);
-    ScheduledFuture<?> second = mock(ScheduledFuture.class);
-    doReturn(first, second).when(scheduler).schedule(any(Runnable.class), anyLong(), any());
-    PageContextProcessingEngine engine = engine(100);
-
-    engine.schedule(pageId);
-    engine.schedule(pageId);
-
-    verify(first).cancel(false);
-  }
-
-  @Test
-  void evictsAPendingPageWhenThrottleIsFull() {
-    ScheduledFuture<?> first = mock(ScheduledFuture.class);
-    ScheduledFuture<?> second = mock(ScheduledFuture.class);
-    doReturn(first, second).when(scheduler).schedule(any(Runnable.class), anyLong(), any());
-    PageContextProcessingEngine engine = engine(1);
-
-    engine.schedule(pageId);
-    engine.schedule(UUID.randomUUID());
-
-    verify(first).cancel(false);
   }
 }

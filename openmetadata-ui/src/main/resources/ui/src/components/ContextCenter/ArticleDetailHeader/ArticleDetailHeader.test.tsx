@@ -12,9 +12,9 @@
  */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { QueryVoteType } from '../../../components/Database/TableQueries/TableQueries.interface';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { useIsAiMode } from '../../../hooks/useAppMode';
+import { QueryVoteType } from '../../../interface/entity/vote.interface';
 import { ContentChangeState } from '../../../interface/knowledge-center.interface';
 import ArticleDetailHeader from './ArticleDetailHeader.component';
 
@@ -103,6 +103,15 @@ jest.mock('../../../hooks/useEntityRules', () => ({
   })),
 }));
 
+jest.mock(
+  '../../common/UserTeamSelectableList/UserTeamSelectableList.component',
+  () => ({
+    UserTeamSelectableList: jest.fn(
+      ({ children }: { children?: React.ReactNode }) => <div>{children}</div>
+    ),
+  })
+);
+
 jest.mock('../../common/HeaderBreadcrumb/HeaderBreadcrumb.component', () =>
   jest.fn(() => <nav data-testid="breadcrumb" />)
 );
@@ -110,12 +119,6 @@ jest.mock('../../common/HeaderBreadcrumb/HeaderBreadcrumb.component', () =>
 jest.mock('../../common/TabsLabel/TabsLabel.component', () =>
   jest.fn(({ name }: { name: string }) => <span>{name}</span>)
 );
-
-jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn(({ owners }: { owners: Array<{ name?: string }> }) => (
-    <span>{owners.map((o) => o.name).join(', ')}</span>
-  )),
-}));
 
 jest.mock('../../../components/common/DeleteModal/DeleteModal', () =>
   jest.fn(() => <div data-testid="delete-modal" />)
@@ -130,6 +133,19 @@ jest.mock(
   () => ({
     EntityStatusBadge: jest.fn(() => (
       <span data-testid="entity-status-badge" />
+    )),
+  })
+);
+
+// Boundary-mock the domain picker: it renders the ui-core TreeSelect, which
+// this suite's partial ui-core mock does not provide. Rendering the children
+// keeps the edit-domain trigger assertion intact.
+jest.mock(
+  '../../common/DomainSelectableList/DomainSelectableList.component',
+  () => ({
+    __esModule: true,
+    default: jest.fn(({ children }: { children: React.ReactNode }) => (
+      <div data-testid="domain-selectable-list">{children}</div>
     )),
   })
 );
@@ -268,6 +284,12 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       ),
     }
   ),
+  Owner: jest.fn(({ owners }: { owners: Array<{ name?: string }> }) => (
+    <span>{owners?.map((o) => o.name).join(', ')}</span>
+  )),
+  toOwnerRefs: jest.requireActual('@openmetadata/ui-core-components')
+    .toOwnerRefs,
+  toOwnerRef: jest.requireActual('@openmetadata/ui-core-components').toOwnerRef,
   Tooltip: jest.fn(({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   )),

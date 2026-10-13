@@ -6,17 +6,23 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
 import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
+import java.net.ProtocolException;
+import java.net.URL;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.List;
@@ -112,6 +118,71 @@ class SamlValidatorTest {
       -----END CERTIFICATE-----
       """;
 
+  /**
+   * Okta issues application signing certificates with the org short name as CN (never a domain),
+   * while the IdP Entity ID is always {@code http://www.okta.com/{appId}}. See issue #28619.
+   */
+  private static final String OKTA_ORG_CERT =
+      """
+      -----BEGIN CERTIFICATE-----
+      MIIDyzCCArOgAwIBAgIUIZV2P9D5F0TyWYkhelWTeh0aQEowDQYJKoZIhvcNAQEL
+      BQAwdTELMAkGA1UEBhMCVVMxEzARBgNVBAgMCkNhbGlmb3JuaWExFjAUBgNVBAcM
+      DVNhbiBGcmFuY2lzY28xDTALBgNVBAoMBE9rdGExFDASBgNVBAsMC1NTT1Byb3Zp
+      ZGVyMRQwEgYDVQQDDAtleGFtcGxlLW9yZzAeFw0yNjA5MTYyMDQ1MjNaFw0zNjA5
+      MTMyMDQ1MjNaMHUxCzAJBgNVBAYTAlVTMRMwEQYDVQQIDApDYWxpZm9ybmlhMRYw
+      FAYDVQQHDA1TYW4gRnJhbmNpc2NvMQ0wCwYDVQQKDARPa3RhMRQwEgYDVQQLDAtT
+      U09Qcm92aWRlcjEUMBIGA1UEAwwLZXhhbXBsZS1vcmcwggEiMA0GCSqGSIb3DQEB
+      AQUAA4IBDwAwggEKAoIBAQDVQvEms8hTsAV8LUUx8uTQhxER/Hf3+yx3LPjMD+KY
+      +4YpRHhQk3IY6r3DOQvT/PsUUWuqbRyYmGWiXkDyPsQAGUd3HW63fAcX+0TfBYEz
+      75pt9U/QYhjJQAvmBmxqrak25bImKEZln7/+65zBS8Ohs9TYFBAT1lfaCBifhh0A
+      80FkQXl8/5thnZAaNaFK3YIJfd3PBpMt2uGYOxo6xJbKS9NSGZLc3gRPRqcLhNx9
+      01n8CxwFrCwqbY3urJ2rejPIaCZ+iVaJhFzuM1i1sB3H7/9+U6Wns1Is7a+OZLY8
+      l41nDougHYvwwQaWA9xZ5lHPIiTdE9UWlHS53pfkp2qdAgMBAAGjUzBRMB0GA1Ud
+      DgQWBBT5mtJZvkkmbFeAdkQt1ka2gyfakTAfBgNVHSMEGDAWgBT5mtJZvkkmbFeA
+      dkQt1ka2gyfakTAPBgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQCI
+      /vPj2Z3lk9lvlnSsoXCpSxGfkxR3XSy/Pkm4CTPLN0XXhVKjyPTb2kdqM8AXjrID
+      qehxhNunicS3+w3bwK4XZ4gTxpXnOflkXE+B38/1+rz9QQwiIx8q0B3thspazkm3
+      aawU4aQEwSWygI8sXuxkShru5hHcwXWRA5F5s5kpiFK50FLOqWbOukLMSFoVNu1D
+      Y8or/But9KUsAfHy294vbQAOj4kI0SYqBvhhlpJxXq1vMFtBiiwKeNIxE0mW240w
+      b0/XIHowzxARt4SAZS+0jpaHqBESyanV8iVNqx8heeW+odH2cBkE0ic6t6/s3SrD
+      V7z+p03MrlFxMur28rIH
+      -----END CERTIFICATE-----
+      """;
+
+  private static final String OKTA_ENTITY_ID = "http://www.okta.com/exk1a2b3c4d5";
+
+  /**
+   * Self-signed, {@code CN=auth.example.com, O=Auth0}, valid 2026-09 to 2036-09 — the certificate an
+   * Auth0 tenant on a custom domain signs with, whose CN is that domain rather than the
+   * {@code .auth0.com} tenant host its Entity ID uses.
+   */
+  private static final String AUTH0_CUSTOM_DOMAIN_CERT =
+      """
+      -----BEGIN CERTIFICATE-----
+      MIIDyzCCArOgAwIBAgIUOT6JVV3WC/4YZo6y/nFgX2MatPYwDQYJKoZIhvcNAQEL
+      BQAwdTELMAkGA1UEBhMCVVMxEzARBgNVBAgMCldhc2hpbmd0b24xEDAOBgNVBAcM
+      B1NlYXR0bGUxDjAMBgNVBAoMBUF1dGgwMRQwEgYDVQQLDAtTU09Qcm92aWRlcjEZ
+      MBcGA1UEAwwQYXV0aC5leGFtcGxlLmNvbTAeFw0yNjA5MTgwOTM3MzFaFw0zNjA5
+      MTUwOTM3MzFaMHUxCzAJBgNVBAYTAlVTMRMwEQYDVQQIDApXYXNoaW5ndG9uMRAw
+      DgYDVQQHDAdTZWF0dGxlMQ4wDAYDVQQKDAVBdXRoMDEUMBIGA1UECwwLU1NPUHJv
+      dmlkZXIxGTAXBgNVBAMMEGF1dGguZXhhbXBsZS5jb20wggEiMA0GCSqGSIb3DQEB
+      AQUAA4IBDwAwggEKAoIBAQDM1w9Hl/70gFeFfqywrSi8I+DasQoqXJWHSmqvfBQw
+      NLrN4U8L4ud2nmfyY+qzPWHJr1V5wys0TDcmozmUxsDtZH4khcTE1JMv4abBoKcM
+      WNwYffXJfYjQ71BjnZsVnxPcq5Ixxtfq60XPy6Qfjw8cxeniHDWjUlTCaTTPK6Qq
+      rDpOPekcRE2LZQGUiNsW0UkSEZ6vGdi1WPAWgQKhiQTx/nEtnOCEiPyeWkxK0uOe
+      KCP6LMKD2avy+2VArJjiVxjZoH0GykK71rFvBSf4xJcvdLw9APGRcjJVmzV3MUo4
+      /2WRCzM8tW2/fH+8xU33i0Ub5KGkUCU1f3m2BitPu5BLAgMBAAGjUzBRMB0GA1Ud
+      DgQWBBTUpOXNCEKm3v29sDWddBeC8NTHpDAfBgNVHSMEGDAWgBTUpOXNCEKm3v29
+      sDWddBeC8NTHpDAPBgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQAm
+      CTeFF7Hgo4DvlmgEZSH2CO8OncEuLKnSwjIusb9MTkrFdcmlR9sZeQzzDy8H5RQ7
+      68PUqNWsGt9lVwZhm/A4XzXPyIZLiH20cGaZs6PqXi+ycT74LsUAq6/+zq8WLSua
+      Uj4nZnUyYJ7TDNc+lQYbAmEXENFa4OQT6sEYho18xiWafcF4mmE+3NugviSqR54J
+      UFa2CtLwbGTs/IrGJzgv0Ti5atSxF/8/gJzRCPp/rEOhmCFG8X0RKYpT2O0clf+7
+      nPq7sRFeMMIEX8GsxgvaahcgLZ2QHa075ZDSSxNXVHy3J8niKrAjnHEE4n52yXLC
+      NM3Pv29cF9tNA0rqilc7
+      -----END CERTIFICATE-----
+      """;
+
   private static final String AZURE_CERT =
       """
       -----BEGIN CERTIFICATE-----
@@ -190,18 +261,40 @@ class SamlValidatorTest {
     }
   }
 
+  /**
+   * Issue #28619: Okta signs with a cert whose CN is the org short name, never the Entity ID host,
+   * so requiring CN to equal {@code www.okta.com} rejected every legitimate Okta configuration.
+   */
   @Test
-  void validateSamlConfigurationRejectsAuth0CertificateMismatchForUrnEntityId() throws Exception {
+  void validateSamlConfigurationAcceptsOktaOrgNameCertificate() throws Exception {
     try (TestSsoServer server = TestSsoServer.start(200, "ok")) {
       SamlSSOClientConfig samlConfig = baseConfig(server.url());
-      samlConfig.getIdp().setEntityId("urn:dev-tenant.us.auth0.com");
+      samlConfig.getIdp().setEntityId(OKTA_ENTITY_ID);
+      samlConfig.getIdp().setIdpX509Certificate(OKTA_ORG_CERT);
 
       FieldError error =
           validator.validateSamlConfiguration(new AuthenticationConfiguration(), samlConfig);
 
-      assertNotNull(error);
-      assertEquals(ValidationErrorBuilder.FieldPaths.SAML_IDP_CERT, error.getField());
-      assertTrue(error.getError().contains("Auth0 certificate validation failed"));
+      assertNull(error);
+    }
+  }
+
+  /**
+   * An Auth0 tenant on a custom domain signs with that domain while its Entity ID stays on the
+   * tenant host, so CN and Entity ID host are different namespaces — the same shape as the Okta
+   * case, and what the removed exact-match rule rejected.
+   */
+  @Test
+  void validateSamlConfigurationAcceptsAuth0CustomDomainCertificate() throws Exception {
+    try (TestSsoServer server = TestSsoServer.start(200, "ok")) {
+      SamlSSOClientConfig samlConfig = baseConfig(server.url());
+      samlConfig.getIdp().setEntityId("urn:dev-tenant.us.auth0.com");
+      samlConfig.getIdp().setIdpX509Certificate(AUTH0_CUSTOM_DOMAIN_CERT);
+
+      FieldError error =
+          validator.validateSamlConfiguration(new AuthenticationConfiguration(), samlConfig);
+
+      assertNull(error);
     }
   }
 
@@ -220,7 +313,7 @@ class SamlValidatorTest {
   }
 
   @Test
-  void validateSamlConfigurationRejectsMicrosoftCertificateForNonAzureProvider() throws Exception {
+  void validateSamlConfigurationAcceptsMicrosoftCertificateForNonAzureProvider() throws Exception {
     try (TestSsoServer server = TestSsoServer.start(200, "ok")) {
       SamlSSOClientConfig samlConfig = baseConfig(server.url());
       samlConfig.getIdp().setIdpX509Certificate(AZURE_CERT);
@@ -228,9 +321,7 @@ class SamlValidatorTest {
       FieldError error =
           validator.validateSamlConfiguration(new AuthenticationConfiguration(), samlConfig);
 
-      assertNotNull(error);
-      assertEquals(ValidationErrorBuilder.FieldPaths.SAML_IDP_CERT, error.getField());
-      assertTrue(error.getError().contains("Invalid use of Microsoft Azure certificate"));
+      assertNull(error);
     }
   }
 
@@ -909,6 +1000,35 @@ class SamlValidatorTest {
   }
 
   @Test
+  void readResponseSnippetClosesReadableStreams() throws Exception {
+    TrackingInputStream inputStream = new TrackingInputStream("from-error".getBytes());
+    HttpURLConnection connection = mock(HttpURLConnection.class);
+    when(connection.getErrorStream()).thenReturn(inputStream);
+
+    String snippet = invokePrivate("readResponseSnippet", HttpURLConnection.class, connection);
+
+    assertEquals("from-error", snippet);
+    assertTrue(inputStream.isClosed());
+  }
+
+  @Test
+  void validateIdpConnectivityDisconnectsConnections() throws Exception {
+    TrackingHttpURLConnection connection = new TrackingHttpURLConnection(400, "plain client error");
+    validator = spy(validator);
+    doReturn(connection).when(validator).openConnection(any(URL.class));
+
+    FieldError error =
+        invokePrivate(
+            "validateIdpConnectivity",
+            SamlSSOClientConfig.class,
+            baseConfig("https://sso.example.com"));
+
+    assertNotNull(error);
+    assertTrue(connection.isDisconnected());
+    assertTrue(connection.getBodyStream().isClosed());
+  }
+
+  @Test
   void createTestSamlRequestFallsBackWhenConfigIsIncomplete() throws Exception {
     String request =
         invokePrivate(
@@ -975,28 +1095,40 @@ class SamlValidatorTest {
   }
 
   @Test
-  void validateIdpCertificateAgainstConfigThrowsForAuth0Mismatches() {
+  void validateIdpCertificateAgainstConfigAllowsOktaOrgNameCertificates() throws Exception {
     X509Certificate cert = mock(X509Certificate.class);
-    when(cert.getSubjectDN()).thenReturn(new X500Principal("CN=wrong.auth0.com"));
+    when(cert.getSubjectDN())
+        .thenReturn(
+            new X500Principal(
+                "CN=example-org, OU=SSOProvider, O=Okta, L=San Francisco, ST=California, C=US"));
+
+    SamlSSOClientConfig samlConfig = baseConfig("http://localhost/unused");
+    samlConfig.getIdp().setEntityId(OKTA_ENTITY_ID);
+
+    invokePrivate(
+        "validateIdpCertificateAgainstConfig",
+        new Class<?>[] {X509Certificate.class, SamlSSOClientConfig.class},
+        cert,
+        samlConfig);
+  }
+
+  @Test
+  void validateIdpCertificateAgainstConfigAllowsAuth0CustomDomains() throws Exception {
+    X509Certificate cert = mock(X509Certificate.class);
+    when(cert.getSubjectDN()).thenReturn(new X500Principal("CN=login.example.com"));
 
     SamlSSOClientConfig samlConfig = baseConfig("http://localhost/unused");
     samlConfig.getIdp().setEntityId("urn:dev-tenant.us.auth0.com");
 
-    InvocationTargetException exception =
-        assertThrows(
-            InvocationTargetException.class,
-            () ->
-                invokePrivate(
-                    "validateIdpCertificateAgainstConfig",
-                    new Class<?>[] {X509Certificate.class, SamlSSOClientConfig.class},
-                    cert,
-                    samlConfig));
-
-    assertInstanceOf(CertificateException.class, exception.getCause());
+    invokePrivate(
+        "validateIdpCertificateAgainstConfig",
+        new Class<?>[] {X509Certificate.class, SamlSSOClientConfig.class},
+        cert,
+        samlConfig);
   }
 
   @Test
-  void validateIdpCertificateAgainstConfigThrowsForAzureMismatches() {
+  void validateIdpCertificateAgainstConfigAllowsNonMicrosoftAzureCertificates() throws Exception {
     X509Certificate cert = mock(X509Certificate.class);
     when(cert.getSubjectDN()).thenReturn(new X500Principal("CN=generic.example.com"));
 
@@ -1005,17 +1137,11 @@ class SamlValidatorTest {
         .getIdp()
         .setEntityId("https://sts.windows.net/11111111-2222-3333-4444-555555555555/");
 
-    InvocationTargetException exception =
-        assertThrows(
-            InvocationTargetException.class,
-            () ->
-                invokePrivate(
-                    "validateIdpCertificateAgainstConfig",
-                    new Class<?>[] {X509Certificate.class, SamlSSOClientConfig.class},
-                    cert,
-                    samlConfig));
-
-    assertInstanceOf(CertificateException.class, exception.getCause());
+    invokePrivate(
+        "validateIdpCertificateAgainstConfig",
+        new Class<?>[] {X509Certificate.class, SamlSSOClientConfig.class},
+        cert,
+        samlConfig);
   }
 
   @Test
@@ -1133,6 +1259,97 @@ class SamlValidatorTest {
     @Override
     public void close() {
       server.stop(0);
+    }
+  }
+
+  private static final class TrackingInputStream extends InputStream {
+    private final byte[] data;
+    private int index;
+    private boolean closed;
+
+    private TrackingInputStream(byte[] data) {
+      this.data = data;
+    }
+
+    @Override
+    public int read() {
+      if (index >= data.length) {
+        return -1;
+      }
+      return data[index++];
+    }
+
+    @Override
+    public int read(byte[] buffer, int offset, int length) {
+      if (index >= data.length) {
+        return -1;
+      }
+      int bytesToRead = Math.min(length, data.length - index);
+      System.arraycopy(data, index, buffer, offset, bytesToRead);
+      index += bytesToRead;
+      return bytesToRead;
+    }
+
+    @Override
+    public void close() {
+      closed = true;
+    }
+
+    private boolean isClosed() {
+      return closed;
+    }
+  }
+
+  private static final class TrackingHttpURLConnection extends HttpURLConnection {
+    private final int responseCode;
+    private final TrackingInputStream bodyStream;
+    private boolean disconnected;
+
+    private TrackingHttpURLConnection(int responseCode, String body) throws Exception {
+      super(new URL("http://localhost"));
+      this.responseCode = responseCode;
+      bodyStream = new TrackingInputStream(body.getBytes());
+    }
+
+    @Override
+    public void disconnect() {
+      disconnected = true;
+    }
+
+    @Override
+    public boolean usingProxy() {
+      return false;
+    }
+
+    @Override
+    public void connect() {}
+
+    @Override
+    public int getResponseCode() {
+      return responseCode;
+    }
+
+    @Override
+    public InputStream getErrorStream() {
+      return bodyStream;
+    }
+
+    @Override
+    public InputStream getInputStream() throws IOException {
+      throw new IOException("not used");
+    }
+
+    @Override
+    public void setRequestMethod(String method) throws ProtocolException {
+      this.method = method;
+    }
+
+    private boolean isDisconnected() {
+      return disconnected;
+    }
+
+    private TrackingInputStream getBodyStream() {
+      return bodyStream;
     }
   }
 }

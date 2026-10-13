@@ -1,17 +1,14 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "SSL Config",
   "description": "SSL Config",
   "javaType": "org.openmetadata.schema.services.common.SSLConfig",
   "type": "object",
   "properties": {
     "certificates": {
-      "type": "object",
       "title": "SSL Certificates",
       "description": "SSL Certificates",
       "oneOf": [
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "SSL Certificates By Path",
           "description": "SSL Certificates By Path",
           "javaType": "org.openmetadata.schema.services.common.SSLCertPaths",
@@ -36,7 +33,6 @@
           "additionalProperties": false
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "SSL Certificates By Values",
           "description": "SSL Certificates By Values",
           "javaType": "org.openmetadata.schema.services.common.SSLCertValues",
@@ -46,19 +42,36 @@
               "title": "CA Certificate Value",
               "description": "CA Certificate Value",
               "type": "string",
-              "format": "password"
+              "format": "password",
+              "accept": [
+                ".pem",
+                ".crt",
+                ".cer"
+              ],
+              "uiFieldType": "fileOrInput"
             },
             "clientCertValue": {
               "title": "Client Certificate Value",
               "description": "Client Certificate Value",
               "type": "string",
-              "format": "password"
+              "format": "password",
+              "accept": [
+                ".pem",
+                ".crt",
+                ".cer"
+              ],
+              "uiFieldType": "fileOrInput"
             },
             "privateKeyValue": {
               "title": "Private Key Value",
               "description": "Private Key Value",
               "type": "string",
-              "format": "password"
+              "format": "password",
+              "accept": [
+                ".pem",
+                ".key"
+              ],
+              "uiFieldType": "fileOrInput"
             },
             "stagingDir": {
               "title": "Staging Directory Path",

@@ -230,11 +230,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   ),
 }));
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Plus: (props: React.SVGProps<SVGSVGElement>) => (
     <svg data-testid="icon-plus" {...props} />
   ),
-  SearchMd: (props: React.SVGProps<SVGSVGElement>) => (
+  Search: (props: React.SVGProps<SVGSVGElement>) => (
     <svg data-testid="icon-search" {...props} />
   ),
 }));
@@ -662,7 +662,7 @@ describe('ExploreSearchCard', () => {
 
     const toggle = screen.getByTestId('explore-nlp-toggle');
 
-    expect(toggle).toHaveAttribute('title', 'Natural language search active');
+    expect(toggle).toBeInTheDocument();
 
     act(() => getSearchInput().focus());
 

@@ -23,19 +23,31 @@ import pytest
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardConnection,
     DashboardService,
     DashboardServiceType,
 )
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseConnection,
+    DatabaseService,
+    DatabaseServiceType,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Uuid
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.source.dashboard.quicksight.metadata import QuicksightSource
-from metadata.ingestion.source.dashboard.quicksight.models import DashboardDetail
+from metadata.ingestion.source.dashboard.quicksight.models import (
+    DashboardDetail,
+    DataSourceModel,
+    DataSourceRespQuery,
+    DescribeDataSourceResponse,
+)
 
 mock_file_path = Path(__file__).parent.parent.parent / "resources/datasets/quicksight_dataset.json"
 with open(mock_file_path, encoding="UTF-8") as file:  # noqa: PTH123
@@ -140,6 +152,52 @@ EXPECTED_DASHBOARDS = [
         service="quicksight_source_test",
     ),
 ]
+
+MOCK_DATABASE_SERVICE = DatabaseService(
+    id="1e2b4b6c-8f4a-4d3e-9c1a-5f6d7e8a9b0c",
+    name="MyMSSQLService",
+    fullyQualifiedName=FullyQualifiedEntityName("MyMSSQLService"),
+    connection=DatabaseConnection(),
+    serviceType=DatabaseServiceType.Mssql,
+)
+
+MOCK_CONNECTION_DATABASE = "SalesDB"
+
+# `Orders` is 3-part and matches the connection database, `Customers` is 3-part and does not,
+# and `LocalOrders` is the 2-part control that has no database of its own to carry.
+CROSS_DATABASE_QUERY = (
+    "SELECT o.OrderId, c.Name, l.Total "
+    "FROM SalesDB.dbo.Orders o WITH(NOLOCK) "
+    "LEFT JOIN [CRM_DB].dbo.Customers c (NOLOCK) ON c.customer_id = o.customer_id "
+    "LEFT JOIN dbo.LocalOrders l (NOLOCK) ON l.OrderId = o.OrderId"
+)
+
+CROSS_DATABASE_TABLES = {
+    "mymssqlservice.salesdb.dbo.orders": "3f6e5d4c-1a2b-3c4d-5e6f-7a8b9c0d1e2f",
+    "mymssqlservice.crm_db.dbo.customers": "4a7f6e5d-2b3c-4d5e-6f7a-8b9c0d1e2f3a",
+    "mymssqlservice.salesdb.dbo.localorders": "5b8a7f6e-3c4d-5e6f-7a8b-9c0d1e2f3a4b",
+}
+
+
+def build_cross_database_catalog() -> dict[str, Table]:
+    return {
+        table_fqn: Table.model_construct(
+            id=Uuid(table_id),
+            fullyQualifiedName=FullyQualifiedEntityName(table_fqn),
+            columns=[],
+        )
+        for table_fqn, table_id in CROSS_DATABASE_TABLES.items()
+    }
+
+
+def search_cross_database_catalog(catalog: dict[str, Table]):
+    """Stand-in for the ES lookup: a table is only found under the FQN it really has."""
+
+    def search(*_args, fqn_search_string: str = "", **_kwargs):
+        match = catalog.get(fqn_search_string.lower())
+        return [match] if match else []
+
+    return search
 
 
 class QuickSightUnitTest(TestCase):
@@ -372,3 +430,94 @@ class QuickSightUnitTest(TestCase):
         assert len(self.quicksight.chart_source_state) == len(mock_data["Version"]["Sheets"])
         for fqn in self.quicksight.chart_source_state:
             assert "quicksight_source_test" in fqn
+
+
+class TestQuickSightCrossDatabaseLineage:
+    """A `database.schema.table` reference has to be looked up under the database the SQL
+    names, not the data source's connection database (issue #28444)."""
+
+    @pytest.fixture
+    def quicksight_source(self):
+        with patch("metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection"):
+            config = OpenMetadataWorkflowConfig.model_validate(mock_quicksight_config)
+            source = QuicksightSource.create(
+                mock_quicksight_config["source"],
+                config.workflowConfig.openMetadataServerConfig,
+            )
+        source.context.get().__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
+        return source
+
+    @staticmethod
+    def _lineage_sources(quicksight_source, db_service_prefix: str, databases=(MOCK_CONNECTION_DATABASE,)) -> set[str]:
+        catalog = build_cross_database_catalog()
+        data_model = DashboardDataModel.model_construct(
+            id=Uuid("6e781e63-e30f-4c6e-891a-389f1f982cab"),
+            columns=[],
+        )
+
+        def get_by_name(entity, **_):
+            return MOCK_DATABASE_SERVICE if entity is DatabaseService else data_model
+
+        quicksight_source.metadata = MagicMock()
+        quicksight_source.metadata.get_by_name = MagicMock(side_effect=get_by_name)
+        quicksight_source.metadata.search_in_any_service = MagicMock(side_effect=search_cross_database_catalog(catalog))
+        quicksight_source.data_models = [
+            DescribeDataSourceResponse(
+                dataset_id="ds-1",
+                DataSource=DataSourceModel(
+                    Name="mssql-source",
+                    Type="SQLSERVER",
+                    DataSourceId="ds-1",
+                    DataSourceParameters={
+                        f"Parameters{index}": {"Database": database} for index, database in enumerate(databases)
+                    },
+                    data_source_resp=DataSourceRespQuery(
+                        DataSourceArn="arn:aws:quicksight:us-east-2:123456789012:datasource/ds-1",
+                        SqlQuery=CROSS_DATABASE_QUERY,
+                        Name="cross db dataset",
+                        Columns=[],
+                    ),
+                ),
+            )
+        ]
+
+        results = list(
+            quicksight_source.yield_dashboard_lineage_details(
+                dashboard_details=DashboardDetail(**MOCK_DASHBOARD_DETAILS),
+                db_service_prefix=db_service_prefix,
+            )
+        )
+
+        assert [res.left for res in results if res.left] == []
+        fqn_by_id = {table_id: table_fqn for table_fqn, table_id in CROSS_DATABASE_TABLES.items()}
+        lineage_sources = [str(res.right.edge.fromEntity.id.root) for res in results if res.right]
+        # one edge per resolved table, never a duplicate per configured connection database
+        assert len(lineage_sources) == len(set(lineage_sources))
+        return {fqn_by_id[table_id] for table_id in lineage_sources}
+
+    def test_source_tables_resolve_under_the_database_the_sql_names(self, quicksight_source):
+        resolved = self._lineage_sources(quicksight_source, MOCK_DATABASE_SERVICE.name.root)
+
+        assert resolved == set(CROSS_DATABASE_TABLES)
+
+    def test_database_prefix_is_matched_against_the_database_the_sql_names(self, quicksight_source):
+        resolved = self._lineage_sources(
+            quicksight_source,
+            f"{MOCK_DATABASE_SERVICE.name.root}.{MOCK_CONNECTION_DATABASE}",
+        )
+
+        # `Customers` is qualified to CRM_DB, so the SalesDB prefix must filter it out while the
+        # SalesDB-qualified and unqualified tables still resolve.
+        assert resolved == {
+            "mymssqlservice.salesdb.dbo.orders",
+            "mymssqlservice.salesdb.dbo.localorders",
+        }
+
+    def test_a_qualified_table_is_not_searched_once_per_connection_database(self, quicksight_source):
+        resolved = self._lineage_sources(
+            quicksight_source,
+            MOCK_DATABASE_SERVICE.name.root,
+            databases=(MOCK_CONNECTION_DATABASE, "OtherDB"),
+        )
+
+        assert resolved == set(CROSS_DATABASE_TABLES)

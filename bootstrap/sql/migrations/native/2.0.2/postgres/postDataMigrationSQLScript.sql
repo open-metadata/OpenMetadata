@@ -21,3 +21,15 @@ SET json = jsonb_set(
 WHERE configtype = 'authenticationConfiguration'
   AND jsonb_typeof(json #> '{samlConfiguration,security,tokenValidity}') = 'number'
   AND (json #>> '{samlConfiguration,security,tokenValidity}')::numeric <= 0;
+
+-- Users may only be direct members of Group teams (enforced by #32208). Remove pre-existing direct
+-- memberships on non-Group hierarchy teams (BusinessUnit/Division/Department) created before the
+-- rule so those users fall back to Organization (the default). Organization is the special root
+-- fallback and is left untouched. relation 10 = HAS. Idempotent (re-runs match nothing).
+DELETE FROM entity_relationship er
+USING team_entity te
+WHERE er.fromId = te.id
+  AND er.fromEntity = 'team'
+  AND er.toEntity = 'user'
+  AND er.relation = 10
+  AND te.teamType IN ('BusinessUnit', 'Division', 'Department');

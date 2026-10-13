@@ -1,6 +1,7 @@
 import { Time } from '@internationalized/date';
-import { Clock } from '@untitledui/icons';
+import { Clock } from '../../../icons';
 import type { Ref } from 'react';
+import { forwardRef } from 'react';
 import type {
   TimeFieldProps as AriaTimeFieldProps,
   TimeValue,
@@ -24,6 +25,8 @@ const sizes = {
 export interface TimePickerValue {
   hour: number;
   minute: number;
+  /** Only emitted when `granularity="second"`. */
+  second?: number;
 }
 
 export interface TimePickerProps
@@ -49,21 +52,38 @@ export interface TimePickerProps
   ref?: Ref<HTMLDivElement>;
 }
 
-export const TimePicker = ({
-  value,
-  onChange,
-  label,
-  hint,
-  size = 'sm',
-  className,
-  wrapperClassName,
-  hourCycle = 12,
-  ...props
-}: TimePickerProps) => {
-  const ariaValue = value ? new Time(value.hour, value.minute) : null;
+export const TimePicker = forwardRef<
+  HTMLDivElement,
+  Omit<TimePickerProps, 'ref'>
+>(function TimePicker(
+  {
+    value,
+    onChange,
+    label,
+    hint,
+    size = 'sm',
+    className,
+    wrapperClassName,
+    hourCycle = 12,
+    ...props
+  },
+  ref
+) {
+  const ariaValue = value
+    ? new Time(value.hour, value.minute, value.second)
+    : null;
+  const withSeconds = props.granularity === 'second';
 
   const handleChange = (time: TimeValue | null) => {
-    onChange?.(time ? { hour: time.hour, minute: time.minute } : null);
+    onChange?.(
+      time
+        ? {
+            hour: time.hour,
+            minute: time.minute,
+            ...(withSeconds && { second: time.second }),
+          }
+        : null
+    );
   };
 
   return (
@@ -76,6 +96,7 @@ export const TimePicker = ({
           typeof className === 'function' ? className(state) : className
         )
       }
+      ref={ref}
       value={ariaValue}
       onChange={handleChange}>
       {({ isInvalid, isDisabled }) => (
@@ -124,6 +145,6 @@ export const TimePicker = ({
       )}
     </AriaTimeField>
   );
-};
+});
 
 TimePicker.displayName = 'TimePicker';

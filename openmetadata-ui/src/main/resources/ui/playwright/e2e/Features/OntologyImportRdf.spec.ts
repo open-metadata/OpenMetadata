@@ -94,7 +94,9 @@ test.describe('Ontology RDF Import', { tag: ['@ontology-rdf'] }, () => {
     await expect(page.getByTestId('upload-ontology-dragger')).not.toBeVisible();
 
     // The imported concept shows up in the glossary term tree.
-    await expect(page.getByText('Healthcare Provider').first()).toBeVisible();
+    await expect(
+      page.getByText('Healthcare Provider').filter({ visible: true })
+    ).not.toHaveCount(0);
 
     const response = await apiContext.get(
       `/api/v1/rdf/glossary/${glossary.responseData.id}/export?format=turtle`
@@ -139,7 +141,7 @@ test.describe('Ontology RDF Import', { tag: ['@ontology-rdf'] }, () => {
   test('hides Import Ontology from a user without glossary edit permission', async ({
     page,
   }) => {
-    await consumerUser.login(page);
+    await consumerUser.signIn(page);
     await redirectToHomePage(page);
 
     // A read-only data consumer can open the glossary (visitPage asserts the

@@ -71,6 +71,10 @@
   &,
   .explore-search-card {
     background-color: var(--color-bg-primary) !important;
+  }
+
+  // Container border only — asset cards keep their own hover/selected border.
+  & {
     border-color: var(--color-border-secondary) !important;
   }
 
@@ -170,8 +174,7 @@
 
 // The owned-assets card already provides its border; drop the nested
 // EntitySummaryPanel card borders so the right column isn't double-bordered.
-// The panel nests two antd cards: the outer `.summary-panel-container` and an
-// inner `.content-area.ant-card-bordered` — strip both.
+// The panel nests two cards: `.summary-panel-container` and `.content-area`.
 .ai-mydata-assets {
   .summary-panel-container,
   .summary-panel-container .content-area {

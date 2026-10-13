@@ -17,6 +17,7 @@ import type {
 } from '@react-awesome-query-builder/ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Key } from 'react-aria-components';
+import { QUERY_BUILDER_POPOVER_CLASS } from '../queryBuilder/types';
 
 const toSelectItems = (
   listValues: MultiSelectWidgetProps['listValues']
@@ -55,56 +56,75 @@ const OMMultiSelectWidget = ({
     [JSON.stringify(listValues ?? null)]
   );
 
-  // Accumulate every fetched option in a bounded, id-keyed map.
+  // Label cache for picked values, not the option list: an id the current search
+  // no longer returns still has to render as its name.
   const ASYNC_ITEM_CAP = 500;
   const [asyncItemMap, setAsyncItemMap] = useState<Map<string, SelectItemType>>(
     () => new Map()
   );
+
+  // Offer only the latest fetch: keeping every option ever fetched left the whole
+  // catalogue on screen while the search narrowed server-side.
+  const [asyncResultIds, setAsyncResultIds] = useState<string[]>([]);
   const asyncItems = useMemo(
-    () => Array.from(asyncItemMap.values()),
-    [asyncItemMap]
+    () =>
+      asyncResultIds
+        .map((id) => asyncItemMap.get(id))
+        .filter((item): item is SelectItemType => Boolean(item)),
+
+    [asyncResultIds, asyncItemMap]
   );
   const allItems = isAsync ? asyncItems : staticItems;
 
   const selectedItems = useMemo(
     () =>
       valueArray.map(
-        (id) => allItems.find((item) => item.id === id) ?? { id, label: id }
+        (id) =>
+          (isAsync
+            ? asyncItemMap.get(id)
+            : staticItems.find((item) => item.id === id)) ?? { id, label: id }
       ),
 
-    [valueArray.join(','), allItems]
+    [valueArray.join(','), isAsync, asyncItemMap, staticItems]
   );
+
+  // A slower earlier fetch must not overwrite the newest results.
+  const latestRequestRef = useRef(0);
 
   const loadAsync = useCallback(
     async (search: string) => {
       if (!asyncFetch) {
         return;
       }
+      const requestId = ++latestRequestRef.current;
       const result = await asyncFetch(search);
+      if (requestId !== latestRequestRef.current) {
+        return;
+      }
       const fetched = (result.values as ListItem[]).map((item) => ({
         id: String(item.value),
         label: String(item.title ?? item.value),
       }));
-      if (fetched.length === 0) {
-        return;
-      }
-      setAsyncItemMap((prev) => {
-        const next = new Map(prev);
-        fetched.forEach((item) => {
-          // Re-insert so the entry counts as most-recently-seen for eviction.
-          next.delete(item.id);
-          next.set(item.id, item);
-        });
-        while (next.size > ASYNC_ITEM_CAP) {
-          const oldest = next.keys().next().value;
-          if (oldest === undefined) {
-            break;
+      if (fetched.length > 0) {
+        setAsyncItemMap((prev) => {
+          const next = new Map(prev);
+          fetched.forEach((item) => {
+            // Re-insert so the entry counts as most-recently-seen for eviction.
+            next.delete(item.id);
+            next.set(item.id, item);
+          });
+          while (next.size > ASYNC_ITEM_CAP) {
+            const oldest = next.keys().next().value;
+            if (oldest === undefined) {
+              break;
+            }
+            next.delete(oldest);
           }
-          next.delete(oldest);
-        }
 
-        return next;
-      });
+          return next;
+        });
+      }
+      setAsyncResultIds(fetched.map((item) => item.id));
     },
     [asyncFetch]
   );
@@ -122,9 +142,14 @@ const OMMultiSelectWidget = ({
   const handleItemInserted = useCallback(
     (key: Key) => {
       setValue([...valueArray, String(key)]);
+      // Picking clears the input without reporting a search, so restore the
+      // unfiltered catalogue — otherwise a second value means typing again.
+      if (isAsync) {
+        loadAsync('');
+      }
     },
 
-    [valueArray.join(','), setValue]
+    [valueArray.join(','), setValue, isAsync, loadAsync]
   );
 
   const handleItemCleared = useCallback(
@@ -145,6 +170,7 @@ const OMMultiSelectWidget = ({
         isDisabled={readonly}
         items={allItems}
         placeholder={placeholder ?? 'Select'}
+        popoverClassName={QUERY_BUILDER_POPOVER_CLASS}
         selectedItems={selectedItems}
         onItemCleared={handleItemCleared}
         onItemInserted={handleItemInserted}

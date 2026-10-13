@@ -16,6 +16,7 @@ import {
   NAME_MAX_LENGTH_VALIDATION_ERROR,
   NAME_VALIDATION_ERROR,
 } from '../constant/common';
+import { clickCodeEditor } from './codeEditor';
 import { toastNotification } from './common';
 import {
   ObservabilityFeature,
@@ -89,8 +90,8 @@ export const createCustomMetric = async ({
             : 'table-profiler-chart-container'
         }"]`
       )
-      .first()
-  ).toBeVisible();
+      .filter({ visible: true })
+  ).not.toHaveCount(0);
 
   await page.locator('[data-testid="cancel-button"]').click();
   await customMetricResponse;
@@ -111,7 +112,7 @@ export const createCustomMetric = async ({
     await page.click(`[title="${metric.column}"]`);
   }
   if (metric.expression) {
-    await page.click('.CodeMirror-scroll');
+    await clickCodeEditor(page);
     await page.keyboard.type(metric.expression);
   }
   const createMetricResponse = page.waitForResponse(

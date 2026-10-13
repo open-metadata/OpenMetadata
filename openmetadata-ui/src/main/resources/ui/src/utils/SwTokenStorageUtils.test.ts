@@ -18,6 +18,7 @@ import {
   isServiceWorkerAvailable,
   resetSwTokenStorageState,
   setOidcToken,
+  setOidcTokenStrict,
   setRefreshToken,
 } from './SwTokenStorageUtils';
 
@@ -232,6 +233,106 @@ describe('SwTokenStorageUtils', () => {
       mockGetItem.mockRejectedValue(new Error('Service worker error'));
 
       await expect(setOidcToken('test-token')).resolves.toBeUndefined();
+    });
+  });
+
+  describe('setOidcTokenStrict', () => {
+    // Greptile P1 r4037800527: `setAppState` swallows every write error and
+    // falls back to a module-level in-memory store, so the earlier
+    // "strict" variant that delegated through it silently resolved on
+    // broken IndexedDB / quota / SW crash — letting the CrossTabLock
+    // leader broadcast `done` with a payload no reload could recover.
+    // The strict path bypasses `setAppState` entirely; these tests pin
+    // the propagation contract each failure mode has to honour.
+    beforeEach(() => {
+      mockNavigator.serviceWorker = {};
+      (global.window as unknown as MockWindow).indexedDB = {};
+    });
+
+    it('writes through the service worker on the happy path', async () => {
+      const existing = JSON.stringify({ secondary: 'refresh-token' });
+      mockGetItem.mockResolvedValue(existing);
+      mockSetItem.mockResolvedValue(undefined);
+
+      await setOidcTokenStrict('leader-persisted');
+
+      expect(mockSetItem).toHaveBeenCalledWith(
+        'app_state',
+        JSON.stringify({
+          secondary: 'refresh-token',
+          primary: 'leader-persisted',
+        })
+      );
+      expect(mockLocalStorage.setItem).not.toHaveBeenCalled();
+    });
+
+    it('propagates a service-worker setItem rejection but keeps the fresh token in memory for this tab', async () => {
+      // Greptile P1 (r4039793087): the earlier version threw without
+      // retaining the token, so the coordinator's `refresh-failed` path
+      // signed the user out even though the renewer produced a valid
+      // token. This tab now keeps the token in memory (getOidcToken
+      // returns it) while still throwing so the CrossTabLock's own
+      // catch broadcasts `failed` to followers.
+      const consoleSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(jest.fn());
+      mockGetItem.mockResolvedValue(null);
+      const swFailure = new Error('IndexedDB write failed');
+      mockSetItem.mockRejectedValue(swFailure);
+
+      await expect(setOidcTokenStrict('leader-persisted')).rejects.toBe(
+        swFailure
+      );
+      // Nothing may reach localStorage (SECURITY invariant preserved) and
+      // subsequent callers must see the SW as broken so they stop paying
+      // the controller-wait timeout — same side effect as the fail-silent
+      // path.
+      expect(mockLocalStorage.setItem).not.toHaveBeenCalled();
+      expect(consoleSpy).toHaveBeenCalledTimes(1);
+      // The fresh token must survive in memory for this tab's remaining
+      // session — the broken-storage verdict short-circuits getAppState
+      // to the in-memory fallback so this read never hits `swTokenStorage`.
+      expect(await getOidcToken()).toBe('leader-persisted');
+
+      consoleSpy.mockRestore();
+    });
+
+    it('throws when the service worker has already been marked broken but still stages the fresh token in memory', async () => {
+      const consoleSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(jest.fn());
+      // Trip the broken verdict via a fail-silent write so subsequent
+      // strict calls hit the swStorageBroken branch.
+      mockGetItem.mockResolvedValue(null);
+      mockSetItem.mockRejectedValueOnce(new Error('SW timeout'));
+      await setOidcToken('best-effort');
+      mockSetItem.mockClear();
+
+      await expect(setOidcTokenStrict('leader-persisted')).rejects.toThrow(
+        /service worker is unreachable/i
+      );
+      // Must not silently attempt the SW again — that's the whole point of
+      // the `swStorageBroken` short-circuit.
+      expect(mockSetItem).not.toHaveBeenCalled();
+      // Even though the write is not durable, the current tab must keep
+      // the fresh token so the coordinator's callers can drain the
+      // queue with it (Greptile P1 r4039793087).
+      expect(await getOidcToken()).toBe('leader-persisted');
+
+      consoleSpy.mockRestore();
+    });
+
+    it('propagates a localStorage throw on the no-service-worker path', async () => {
+      delete mockNavigator.serviceWorker;
+      mockLocalStorage.getItem.mockReturnValue(null);
+      const quotaError = new Error('QuotaExceededError');
+      mockLocalStorage.setItem.mockImplementationOnce(() => {
+        throw quotaError;
+      });
+
+      await expect(setOidcTokenStrict('leader-persisted')).rejects.toBe(
+        quotaError
+      );
     });
   });
 

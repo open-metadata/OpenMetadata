@@ -12,6 +12,7 @@
  */
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { getEntityLifecycleStages } from '../rest/metadataTypeAPI';
 import { JSONLogicSearchClassBase } from './JSONLogicSearchClassBase';
 
 // Define extended widget interface for testing widget properties
@@ -370,6 +371,36 @@ describe('JSONLogicSearchClassBase', () => {
         EntityReferenceFields.COLUMN_TAG
       );
     });
+
+    it.each(['Superseded', 'Invalidated'])(
+      'does not offer %s when filtering tables',
+      async (status) => {
+        const config = jsonLogicSearchClassBase.getCommonConfig([
+          SearchIndex.TABLE,
+        ]);
+        const field = config[EntityReferenceFields.ENTITY_STATUS];
+        if (!('fieldSettings' in field)) {
+          throw new Error('Status must be a selectable field');
+        }
+        const settings = field.fieldSettings;
+        const fetch =
+          settings && 'asyncFetch' in settings
+            ? settings.asyncFetch
+            : undefined;
+        if (typeof fetch !== 'function') {
+          throw new Error(
+            'Status options must resolve through lifecycle discovery'
+          );
+        }
+
+        await expect(fetch('', 0)).resolves.toMatchObject({
+          values: expect.arrayContaining([
+            expect.objectContaining({ value: 'Approved' }),
+          ]),
+        });
+        await expect(fetch(status, 0)).resolves.toMatchObject({ values: [] });
+      }
+    );
   });
 
   describe('getNegativeQueryForNotContainsReverserOperation', () => {
@@ -550,5 +581,33 @@ describe('JSONLogicSearchClassBase', () => {
       // carries a "Criteria:" prefix of its own.
       expect(props.valueLabel).toContain('label.value');
     });
+  });
+});
+
+jest.mock('../rest/metadataTypeAPI', () => ({
+  getEntityLifecycleStages: jest.fn(),
+}));
+
+beforeEach(() => {
+  (
+    getEntityLifecycleStages as jest.MockedFunction<
+      typeof getEntityLifecycleStages
+    >
+  ).mockResolvedValue({
+    stages: ['Approved', 'In Review', 'Superseded', 'Invalidated'],
+    entityTypes: [
+      {
+        entityType: 'table',
+        stages: ['Approved', 'In Review'],
+        transitions: [],
+        stageWorkflows: [],
+      },
+      {
+        entityType: 'contextMemory',
+        stages: ['Approved', 'Superseded', 'Invalidated'],
+        transitions: [],
+        stageWorkflows: [],
+      },
+    ],
   });
 });

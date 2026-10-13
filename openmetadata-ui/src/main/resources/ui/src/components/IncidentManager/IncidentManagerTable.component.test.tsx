@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Owner } from '@openmetadata/ui-core-components';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { Link } from 'react-router-dom';
@@ -17,7 +18,6 @@ import { Table as TableType } from '../../generated/entity/data/table';
 import { TestCaseResolutionStatus } from '../../generated/tests/testCaseResolutionStatus';
 import { getNameFromFQN } from '../../utils/FqnUtils';
 import { NextPreviousProps } from '../common/NextPrevious/NextPrevious.interface';
-import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import { TestCasePermission } from '../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import Severity from '../DataQuality/IncidentManager/Severity/Severity.component';
 import TestCaseIncidentManagerStatus from '../DataQuality/IncidentManager/TestCaseStatus/TestCaseIncidentManagerStatus.component';
@@ -75,9 +75,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
       Row: ({ children, id }: { children?: React.ReactNode; id?: string }) => (
         <tr data-rowid={id}>{children}</tr>
       ),
-      Cell: ({ children }: { children?: React.ReactNode }) => (
-        <td>{children}</td>
-      ),
+      Cell: ({
+        children,
+        className,
+      }: {
+        children?: React.ReactNode;
+        className?: string;
+      }) => <td className={className}>{children}</td>,
     }
   );
 
@@ -106,6 +110,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
       .mockImplementation(({ children }: React.PropsWithChildren) => (
         <button>{children}</button>
       )),
+    Owner: jest.fn(({ owners = [] }: { owners?: unknown[] }) => (
+      <div data-testid="owner-label">{owners.length}</div>
+    )),
+    toOwnerRefs: jest.requireActual('@openmetadata/ui-core-components')
+      .toOwnerRefs,
+    toOwnerRef: jest.requireActual('@openmetadata/ui-core-components')
+      .toOwnerRef,
   };
 });
 
@@ -128,10 +139,6 @@ jest.mock('../common/ErrorWithPlaceholder/FilterTablePlaceHolder', () => {
       <div data-testid="filter-table-placeholder">{placeholderText}</div>
     ));
 });
-
-jest.mock('../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn().mockImplementation(() => <div>OwnerLabel</div>),
-}));
 
 jest.mock('../DataQuality/IncidentManager/Severity/Severity.component', () => {
   return jest.fn().mockImplementation(() => <div>Severity</div>);
@@ -268,6 +275,27 @@ describe('IncidentManagerTable', () => {
     expect(screen.queryByTestId('empty-placeholder')).not.toBeInTheDocument();
   });
 
+  // Layout cannot be measured here, so these pin the classes that keep the
+  // columns sized: an unbreakable test case name used to widen its column
+  // across the table, and the Assignee column collapsed, stacking "No
+  // Assignee" one letter per line, once every row was unassigned.
+  it('should hold the name column at its width and let a long name wrap inside it', () => {
+    renderTable();
+
+    const nameLink = screen.getByTestId('test-case-test_case_1');
+
+    expect(nameLink).toHaveClass('tw:wrap-anywhere');
+    expect(nameLink.closest('td')).toHaveClass('tw:w-72', 'tw:min-w-72');
+  });
+
+  it('should keep the assignee on one line', () => {
+    renderTable();
+
+    for (const assignee of screen.getAllByTestId('assignee')) {
+      expect(assignee.closest('td')).toHaveClass('tw:whitespace-nowrap');
+    }
+  });
+
   it('should render NextPrevious when showPagination is true', () => {
     renderTable({ showPagination: true });
 
@@ -374,7 +402,7 @@ describe('IncidentManagerTable', () => {
         expect.objectContaining({ hasPermission: true }),
         expect.anything()
       );
-      expect(OwnerLabel).toHaveBeenCalledWith(
+      expect(Owner).toHaveBeenCalledWith(
         expect.objectContaining({ hasPermission: true }),
         expect.anything()
       );
@@ -398,7 +426,7 @@ describe('IncidentManagerTable', () => {
         expect.objectContaining({ hasPermission: false }),
         expect.anything()
       );
-      expect(OwnerLabel).toHaveBeenCalledWith(
+      expect(Owner).toHaveBeenCalledWith(
         expect.objectContaining({ hasPermission: false }),
         expect.anything()
       );

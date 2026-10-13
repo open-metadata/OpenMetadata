@@ -12,8 +12,10 @@
  */
 import type { QueryBuilderButtonPreset } from './QueryBuilderCanvas.types';
 
-// Figma gives the three columns 320 / 164 / 320 at a 901px modal — so not equal thirds.
-export const QUERY_BUILDER_COLUMN_RATIOS = '80fr 41fr 80fr';
+// Field / Operator / Value. Field holds short names ("Service", "Tier") while Value
+// holds whatever the user's data is called, so the space goes to Value: its widget is
+// what truncates, and its dropdown is sized from the trigger.
+export const QUERY_BUILDER_COLUMN_RATIOS = '60fr 41fr 100fr';
 
 // Narrowest a control in a drilled row may get before the row rewraps.
 const QUERY_BUILDER_DRILL_CONTROL_MIN_WIDTH = 150;

@@ -147,7 +147,7 @@ export const getGlossaryTermDetailPageTabs = (
       </div>
     ),
     key: EntityTabs.OVERVIEW,
-    children: <GenericTab type={PageType.GlossaryTerm} />,
+    children: <GenericTab type={PageType.GlossaryTerm} variant="flat" />,
   });
 
   const buildTermsTab = (): TabProps => ({

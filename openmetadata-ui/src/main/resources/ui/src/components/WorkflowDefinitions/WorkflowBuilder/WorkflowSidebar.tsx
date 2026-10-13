@@ -112,7 +112,7 @@ const WorkflowSidebar = ({ isNodeDragEnabled }: WorkflowSidebarProps) => {
     )
     .map(([subType, mapping]) => ({
       icon: getNodeIcon(subType as NodeSubType, {
-        style: { width: '16px', height: '16px' },
+        size: 'sm',
       }),
       label: mapping.label,
       type: subType as NodeSubType,
@@ -124,7 +124,7 @@ const WorkflowSidebar = ({ isNodeDragEnabled }: WorkflowSidebarProps) => {
     )
     .map(([subType, mapping]) => ({
       icon: getNodeIcon(subType as NodeSubType, {
-        style: { width: '16px', height: '16px' },
+        size: 'sm',
       }),
       isBeta: subType === NodeSubType.SinkTask,
       label: mapping.label,
@@ -135,7 +135,7 @@ const WorkflowSidebar = ({ isNodeDragEnabled }: WorkflowSidebarProps) => {
     .filter(([, mapping]) => mapping.type === NodeType.UserTask)
     .map(([subType, mapping]) => ({
       icon: getNodeIcon(subType as NodeSubType, {
-        style: { width: '16px', height: '16px' },
+        size: 'sm',
       }),
       label: mapping.label,
       type: subType as NodeSubType,
@@ -190,7 +190,7 @@ const WorkflowSidebar = ({ isNodeDragEnabled }: WorkflowSidebarProps) => {
             onDragStart(e, NodeSubType.StartEvent, 'Start');
           }}>
           {getNodeIcon(NodeSubType.StartEvent, {
-            style: { width: '16px', height: '16px' },
+            size: 'sm',
           })}
           <Typography
             as="p"
@@ -214,7 +214,7 @@ const WorkflowSidebar = ({ isNodeDragEnabled }: WorkflowSidebarProps) => {
             onDragStart(e, NodeSubType.EndEvent, 'End');
           }}>
           {getNodeIcon(NodeSubType.EndEvent, {
-            style: { width: '16px', height: '16px' },
+            size: 'sm',
           })}
           <Typography
             as="p"

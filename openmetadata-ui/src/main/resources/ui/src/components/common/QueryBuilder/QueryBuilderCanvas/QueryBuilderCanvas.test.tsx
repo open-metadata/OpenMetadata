@@ -101,7 +101,7 @@ describe('QueryBuilderCanvas – surface', () => {
     renderCanvas();
 
     expect(screen.getByTestId('query-builder-group-card')).toHaveClass(
-      'tw:bg-utility-gray-blue-50'
+      'tw:bg-secondary'
     );
   });
 
@@ -112,7 +112,7 @@ describe('QueryBuilderCanvas – surface', () => {
     // and the tint moves to its header strip.
     const card = screen.getByTestId('query-builder-group-card');
 
-    expect(card).toHaveClass('tw:bg-primary', 'tw:border', 'tw:border-primary');
+    expect(card).toHaveClass('tw:bg-surface', 'tw:border', 'tw:border-primary');
     expect(
       card.querySelector('.tw\\:bg-utility-gray-blue-50')
     ).toBeInTheDocument();
@@ -123,7 +123,7 @@ describe('QueryBuilderCanvas – surface', () => {
 
     const card = screen.getByTestId('query-builder-group-card');
 
-    expect(card).toHaveClass('tw:bg-utility-gray-blue-50');
+    expect(card).toHaveClass('tw:bg-secondary');
     expect(card).not.toHaveClass('tw:border');
   });
 
@@ -139,7 +139,7 @@ describe('QueryBuilderCanvas – surface', () => {
     // Two groups added from the same button are peers, not one inside the
     // other, so they share the ground rather than alternating.
     screen.getAllByTestId('query-builder-group-card').forEach((card) => {
-      expect(card).toHaveClass('tw:bg-utility-gray-blue-50');
+      expect(card).toHaveClass('tw:bg-secondary');
     });
   });
 });
@@ -587,8 +587,8 @@ describe('QueryBuilderCanvas – component contracts', () => {
 
     const [outer, inner] = screen.getAllByTestId('query-builder-group-card');
 
-    expect(outer).toHaveClass('tw:bg-utility-gray-blue-50');
-    expect(inner).toHaveClass('tw:bg-primary');
+    expect(outer).toHaveClass('tw:bg-secondary');
+    expect(inner).toHaveClass('tw:bg-surface');
   });
 
   it('should name a nested child card by its position when it has no id', () => {

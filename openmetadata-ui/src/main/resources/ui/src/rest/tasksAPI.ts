@@ -23,7 +23,7 @@ import { ResolveTask } from '../generated/api/tasks/resolveTask';
 import { TaskCount } from '../generated/api/tasks/taskCount';
 import { Task, TaskStatus } from '../generated/entity/tasks/task';
 import { Include } from '../generated/type/include';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 export {
   TaskCategory,
@@ -75,6 +75,8 @@ interface TaskScopedListParams {
   status?: TaskStatus;
   statusGroup?: TaskStatusGroup;
   domain?: string;
+  /** Free-text search across the task name, request reason and about-entity. */
+  q?: string;
   limit?: number;
   before?: string;
   after?: string;

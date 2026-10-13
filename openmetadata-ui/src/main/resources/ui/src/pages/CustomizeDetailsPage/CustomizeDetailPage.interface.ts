@@ -22,6 +22,7 @@ export const PageTypeToEntityTypeMap = {
   [PageType.DashboardDataModel]: EntityType.DASHBOARD_DATA_MODEL,
   [PageType.Database]: EntityType.DATABASE,
   [PageType.DatabaseSchema]: EntityType.DATABASE_SCHEMA,
+  [PageType.DataProduct]: EntityType.DATA_PRODUCT,
   [PageType.Domain]: EntityType.DOMAIN,
   [PageType.Glossary]: EntityType.GLOSSARY,
   [PageType.GlossaryTerm]: EntityType.GLOSSARY_TERM,
@@ -38,3 +39,10 @@ export const PageTypeToEntityTypeMap = {
   [PageType.Spreadsheet]: EntityType.SPREADSHEET,
   [PageType.Worksheet]: EntityType.WORKSHEET,
 };
+
+export const getEntityTypeFromPageType = (
+  pageType?: PageType | null
+): EntityType | undefined =>
+  pageType
+    ? PageTypeToEntityTypeMap[pageType as keyof typeof PageTypeToEntityTypeMap]
+    : undefined;

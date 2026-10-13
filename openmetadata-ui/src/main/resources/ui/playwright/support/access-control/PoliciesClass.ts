@@ -14,6 +14,7 @@ import { APIRequestContext } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import {
   createOrFetch,
+  deleteFixtureEntity,
   okJson,
   withNotFoundRetry,
 } from '../../utils/apiResponse';
@@ -82,7 +83,8 @@ export class PolicyClass {
   }
 
   async delete(apiContext: APIRequestContext) {
-    const response = await apiContext.delete(
+    const response = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/policies/${this.responseData.id}?hardDelete=true&recursive=true`
     );
 

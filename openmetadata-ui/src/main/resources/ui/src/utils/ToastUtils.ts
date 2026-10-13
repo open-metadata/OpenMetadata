@@ -10,66 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  ExclamationCircleOutlined,
-  InfoCircleOutlined,
-  WarningOutlined,
-} from '@ant-design/icons';
 import { toast } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { get, isString } from 'lodash';
 import React from 'react';
-import { ReactComponent as SuccessIcon } from '../assets/svg/ic-alert-success.svg';
-import { AlertBarProps } from '../components/AlertBar/AlertBar.interface';
 import { ClientErrors, ErrorTypes } from '../enums/Axios.enum';
 import i18n from './i18next/LocalUtil';
 import { getErrorText } from './StringUtils';
-
-export const getIconAndClassName = (type: AlertBarProps['type']) => {
-  switch (type) {
-    case 'info':
-      return {
-        icon: InfoCircleOutlined,
-        className: 'info',
-        type: 'info',
-      };
-
-    case 'grey-info':
-      return {
-        icon: InfoCircleOutlined,
-        className: 'grey-info',
-        type: 'info',
-      };
-
-    case 'success':
-      return {
-        icon: SuccessIcon,
-        className: 'success',
-        type: 'success',
-      };
-
-    case 'warning':
-      return {
-        icon: WarningOutlined,
-        className: 'warning',
-        type: 'warning',
-      };
-
-    case 'error':
-      return {
-        icon: ExclamationCircleOutlined,
-        className: 'error',
-        type: 'error',
-      };
-
-    default:
-      return {
-        icon: null,
-        className: '',
-        type: 'info',
-      };
-  }
-};
 
 interface AxiosErrorResolution {
   errorMessage: string | JSX.Element;

@@ -23,4 +23,5 @@ export enum AssetsOfEntity {
   LINEAGE = 'LINEAGE',
   TAG = 'TAG',
   COLUMN = 'COLUMN',
+  METRIC = 'METRIC',
 }

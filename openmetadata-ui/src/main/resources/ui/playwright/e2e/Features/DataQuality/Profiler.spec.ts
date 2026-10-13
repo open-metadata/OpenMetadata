@@ -20,6 +20,7 @@ import { TableClass } from '../../../support/entity/TableClass';
 import { ClassificationClass } from '../../../support/tag/ClassificationClass';
 import { TagClass } from '../../../support/tag/TagClass';
 import { performAdminLogin } from '../../../utils/admin';
+import { clickCodeEditor } from '../../../utils/codeEditor';
 import { redirectToHomePage, uuid } from '../../../utils/common';
 import { getCurrentMillis } from '../../../utils/dateTime';
 import { verifyTestCaseLastRunBanner } from '../../../utils/testCases';
@@ -114,7 +115,10 @@ const validateProfilerAccessForRole = async (
     '/api/v1/dataQuality/testCases/testCaseResults/*?*'
   );
 
-  await page.goto(`test-case/${testCase.fullyQualifiedName}/test-case-results`);
+  await page.goto(
+    `test-case/${testCase.fullyQualifiedName}/test-case-results`,
+    { waitUntil: 'domcontentloaded' }
+  );
 
   const getTestCaseDetailsResponse = await getTestCaseDetails;
   const getTestResultResponse = await getTestResult;
@@ -269,7 +273,7 @@ test.describe(
       await page.getByTestId('profiler').click();
       await page.getByRole('tab', { name: 'Data Quality' }).click();
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await test.step('Update profiler setting', async () => {
         await page.click('[data-testid="profiler-setting-btn"]');
@@ -287,7 +291,7 @@ test.describe(
         await page.locator('[data-testid="exclude-column-select"]').click();
         await page.keyboard.type(`${profilerSetting.excludeColumns}`);
         await page.keyboard.press('Enter');
-        await page.locator('.CodeMirror-scroll').click();
+        await clickCodeEditor(page);
         await page.keyboard.type(profilerSetting.profileQuery);
 
         await page.locator('[data-testid="include-column-select"]').click();

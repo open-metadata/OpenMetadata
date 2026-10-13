@@ -26,7 +26,7 @@ public final class DomainShapeProfile implements EntityShapeProfile {
   }
 
   @Override
-  public EntityInterface minimal(final ShapeContext ctx) {
+  public EntityInterface<?> minimal(final ShapeContext ctx) {
     return new Domain()
         .withId(ctx.id())
         .withName("domain")

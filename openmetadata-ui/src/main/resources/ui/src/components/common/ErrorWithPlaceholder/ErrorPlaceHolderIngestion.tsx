@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Space, Typography } from 'antd';
+import { Box, Card, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 
 import { useMemo } from 'react';
@@ -35,11 +35,7 @@ const ErrorPlaceHolderIngestion = ({
   const airflowSetupGuide = useMemo(() => {
     return (
       <div className="mb-5" data-testid="error-steps">
-        <Card
-          className={classNames(
-            'd-flex flex-col justify-between',
-            cardClassName
-          )}>
+        <Card className={classNames('tw:p-6', cardClassName)}>
           <AirflowMessageBanner className="m-b-xs" />
           {isAirflowPlatform ? (
             <>
@@ -63,14 +59,17 @@ const ErrorPlaceHolderIngestion = ({
               </p>
             </>
           ) : (
-            <Space
+            <Box
               align="center"
-              className="justify-center w-full"
-              direction="vertical"
-              size={16}>
+              className="tw:w-full"
+              direction="col"
+              gap={4}
+              justify="center">
               <IconCollateSupport height={100} width={100} />
-              <Typography>{t('message.pipeline-scheduler-message')}</Typography>
-            </Space>
+              <Typography as="article">
+                {t('message.pipeline-scheduler-message')}
+              </Typography>
+            </Box>
           )}
         </Card>
       </div>

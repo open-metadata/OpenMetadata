@@ -21,6 +21,8 @@
  * change. New `.less` files are reported but do NOT fail the guard while the
  * app-mode migration still ships `.less` for the AI shell. Existing usage is
  * untouched and migrates over time.
+ * Regression tests may import the legacy controls they exercise; the guard
+ * applies to application code, so tests can cover existing behavior faithfully.
  *
  * The antd check compares full before/after file contents (via `git show`)
  * rather than raw diff lines. A diff-line scan flags
@@ -61,6 +63,62 @@ const C = { red: (s) => `\x1b[31m${s}\x1b[0m`, green: (s) => `\x1b[32m${s}\x1b[0
 function newLessFiles() {
   const out = sh(`git diff ${diffArgs} --diff-filter=A --name-only -- '*.less'`);
   return out.split('\n').map((s) => s.trim()).filter(Boolean);
+}
+
+// --- raw SVG debt -----------------------------------------------------------
+
+// Raw SVGs under assets/svg are deprecated in favour of
+// @openmetadata/ui-core-components/icons. Same "no new debt" treatment as antd:
+// a newly ADDED .svg file, or a newly ADDED import from assets/svg, fails.
+const SVG_DIR = 'openmetadata-ui/src/main/resources/ui/src/assets/svg';
+
+function newSvgFiles() {
+  // `:(top)` anchors the pathspec to the repo root so this works from any CWD,
+  // not just the pre-commit hook that runs there.
+  const out = sh(`git diff ${diffArgs} --diff-filter=A --name-only -- ':(top)${SVG_DIR}/*.svg'`);
+  return out.split('\n').map((s) => s.trim()).filter(Boolean);
+}
+
+const SVG_IMPORT_RE = /from\s+(['"])([^'"]*assets\/svg\/[^'"]*\.svg)\1/g;
+
+// Compare by the stable part from `assets/svg/` onward so moving a file to a
+// different folder depth (which rewrites `../` prefixes) isn't flagged as new.
+function svgKey(spec) {
+  const i = spec.indexOf('assets/svg/');
+  return i === -1 ? spec : spec.slice(i);
+}
+
+function parseSvgImports(content) {
+  const paths = new Set();
+  if (!content) {
+    return paths;
+  }
+  let m;
+  SVG_IMPORT_RE.lastIndex = 0;
+  while ((m = SVG_IMPORT_RE.exec(content))) {
+    paths.add(m[2]);
+  }
+  return paths;
+}
+
+function newSvgImports() {
+  const hits = [];
+  for (const { before, after } of changedTsFiles()) {
+    if (/\.(?:test|spec)\.tsx?$/.test(after)) {
+      continue;
+    }
+    const afterPaths = parseSvgImports(getAfterContent(after));
+    if (afterPaths.size === 0) {
+      continue;
+    }
+    const beforeKeys = new Set([...parseSvgImports(getBeforeContent(before))].map(svgKey));
+    for (const p of afterPaths) {
+      if (!beforeKeys.has(svgKey(p))) {
+        hits.push({ file: after, path: p });
+      }
+    }
+  }
+  return hits;
 }
 
 // --- antd import comparison -------------------------------------------------
@@ -136,7 +194,13 @@ function changedTsFiles() {
 
 function gitShow(objectSpec) {
   try {
-    return execFileSync('git', ['show', objectSpec], { encoding: 'utf8', maxBuffer: 1024 * 1024 * 64 });
+    return execFileSync('git', ['show', objectSpec], {
+      encoding: 'utf8',
+      maxBuffer: 1024 * 1024 * 64,
+      // Pipe stderr so git's "path exists on disk, but not in HEAD" message for
+      // newly-added files doesn't leak to the console — the catch handles it.
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
   } catch (e) {
     // File didn't exist at that ref (e.g. newly added file) — treat as empty.
     return '';
@@ -164,6 +228,9 @@ function newAntdImports() {
   const hits = [];
   const files = changedTsFiles();
   for (const { before, after } of files) {
+    if (/\.(?:test|spec)\.tsx?$/.test(after)) {
+      continue;
+    }
     const afterContent = getAfterContent(after);
     const afterMap = parseAntdImports(afterContent);
     if (afterMap.size === 0) {
@@ -186,9 +253,11 @@ function newAntdImports() {
 function main() {
   const less = newLessFiles();
   const antd = newAntdImports();
+  const svgFiles = newSvgFiles();
+  const svgImports = newSvgImports();
   // New `.less` files are reported but do NOT fail the guard — the app-mode
-  // migration still lands `.less` for the AI shell. Only new `antd` debt blocks.
-  const problems = antd.length;
+  // migration still lands `.less` for the AI shell. New antd/svg debt blocks.
+  const problems = antd.length + svgFiles.length + svgImports.length;
 
   if (less.length) {
     process.stderr.write(C.gray(`\nⓘ New .less file(s) detected (allowed for now — prefer Tailwind (tw:) + UntitledUI):\n`));
@@ -198,18 +267,36 @@ function main() {
     process.stderr.write(C.red(`\n✖ New 'antd' import(s) are not allowed — use @openmetadata/ui-core-components (UntitledUI):\n`));
     antd.forEach((h) => process.stderr.write(`    ${h.file}:  ${h.line}\n`));
   }
+  if (svgFiles.length) {
+    process.stderr.write(C.red(`\n✖ New raw .svg file(s) under assets/svg are not allowed — add icons to @openmetadata/ui-core-components:\n`));
+    svgFiles.forEach((f) => process.stderr.write(`    ${f}\n`));
+  }
+  if (svgImports.length) {
+    process.stderr.write(C.red(`\n✖ New import(s) of raw .svg from assets/svg are not allowed — use @openmetadata/ui-core-components/icons:\n`));
+    svgImports.forEach((h) => process.stderr.write(`    ${h.file}:  ${h.path}\n`));
+  }
 
   if (problems) {
     process.stderr.write(
-      C.gray(`\nAntd + Less are deprecated. See specs/ and CLAUDE.md. Existing usage is fine; do not add more.\n`)
+      C.gray(`\nAntd, Less and raw SVG icons are deprecated. See specs/ and CLAUDE.md. Existing usage is fine; do not add more.\n`)
     );
     process.exit(1);
   }
-  process.stdout.write(C.green('✔ No new Antd imports.\n'));
+  process.stdout.write(C.green('✔ No new Antd or raw-SVG imports.\n'));
 }
 
 if (require.main === module) {
   main();
 }
 
-module.exports = { parseClause, parseAntdImports, newAntdImports, newLessFiles, main };
+module.exports = {
+  parseClause,
+  parseAntdImports,
+  newAntdImports,
+  newLessFiles,
+  newSvgFiles,
+  newSvgImports,
+  parseSvgImports,
+  svgKey,
+  main,
+};

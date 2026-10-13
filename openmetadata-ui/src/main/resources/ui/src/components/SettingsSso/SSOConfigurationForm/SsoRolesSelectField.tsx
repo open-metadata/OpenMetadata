@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
+import { Grid, Typography } from '@openmetadata/ui-core-components';
 import { FieldProps } from '@rjsf/utils';
-import { Col, Row, Select, Typography } from 'antd';
+import { Select } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { debounce, startCase } from 'lodash';
@@ -105,16 +106,20 @@ const SsoRolesSelectField = (props: FieldProps) => {
   };
 
   return (
-    <Row className={classNames('field-error', { 'has-error': hasError })}>
-      <Col span={24}>
+    <Grid
+      className={`layout-row layout-grid ${classNames('field-error', {
+        'has-error': hasError,
+      })}`}>
+      <Grid.Item className="layout-column" span={24}>
         <Typography
+          as="article"
           className={`array-field-label ${
             props.required ? 'required-field' : ''
           }`}>
           {startCase(props.name)}
         </Typography>
-      </Col>
-      <Col className="sso-select-container" span={24}>
+      </Grid.Item>
+      <Grid.Item className="layout-column sso-select-container" span={24}>
         <Select
           allowClear
           showSearch
@@ -135,8 +140,8 @@ const SsoRolesSelectField = (props: FieldProps) => {
           onFocus={handleFocus}
           onSearch={debouncedSearchRoles}
         />
-      </Col>
-    </Row>
+      </Grid.Item>
+    </Grid>
   );
 };
 

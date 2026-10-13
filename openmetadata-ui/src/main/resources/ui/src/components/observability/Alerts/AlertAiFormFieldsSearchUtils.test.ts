@@ -17,7 +17,14 @@ import { getEntityNameLabel } from '../../../utils/EntityNameUtils';
 import {
   getAlertAiFqnSearchIndexes,
   getAlertAiSourceItems,
+  searchAlertAiArgumentOptions,
 } from './AlertAiFormFieldsSearchUtils';
+
+const mockSearchContracts = jest.fn();
+
+jest.mock('../../../rest/contractAPI', () => ({
+  searchContracts: (...args: unknown[]) => mockSearchContracts(...args),
+}));
 
 describe('AlertAiFormFieldsSearchUtils', () => {
   it('builds readable source options and preserves the selected source', () => {
@@ -50,5 +57,27 @@ describe('AlertAiFormFieldsSearchUtils', () => {
       SearchIndex.DATABASE_SCHEMA,
       SearchIndex.TABLE,
     ]);
+  });
+
+  it('lists data contracts for the FQN filter of a data contract source', async () => {
+    mockSearchContracts.mockResolvedValue([
+      { fullyQualifiedName: 'db.schema.orders.contract' },
+      { fullyQualifiedName: undefined },
+    ]);
+
+    await expect(
+      searchAlertAiArgumentOptions({
+        argument: 'fqnList',
+        searchText: ' orders ',
+        selectedSource: 'dataContract',
+      })
+    ).resolves.toEqual([
+      {
+        id: 'db.schema.orders.contract',
+        label: 'db.schema.orders.contract',
+      },
+    ]);
+
+    expect(mockSearchContracts).toHaveBeenCalledWith('orders', 50);
   });
 });

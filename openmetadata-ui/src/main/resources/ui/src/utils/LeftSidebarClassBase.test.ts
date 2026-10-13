@@ -287,6 +287,14 @@ describe('LeftSidebarClassBase', () => {
     });
   });
 
+  describe('getAppModeModules', () => {
+    it('includes the connections module in the app-mode base modules', () => {
+      const ids = leftSidebarClassBase.getAppModeModules().map((m) => m.id);
+
+      expect(ids).toContain('connections');
+    });
+  });
+
   describe('Edge Cases', () => {
     let instance: LeftSidebarClassBase;
 
