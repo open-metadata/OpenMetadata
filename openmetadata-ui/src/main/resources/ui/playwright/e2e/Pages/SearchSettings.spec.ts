@@ -18,18 +18,18 @@ import { expect, test as base } from '../../support/fixtures/base';
 import { AdminClass } from '../../support/user/AdminClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-    getApiContext,
-    redirectToHomePage,
-    toastNotification,
-    uuid
+  getApiContext,
+  redirectToHomePage,
+  toastNotification,
+  uuid,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
-    mockEntitySearchSettings,
-    openMatchingFieldsPanel,
-    restoreDefaultSearchSettings,
-    selectSettingOption,
-    setSliderValue
+  mockEntitySearchSettings,
+  openMatchingFieldsPanel,
+  restoreDefaultSearchSettings,
+  selectSettingOption,
+  setSliderValue,
 } from '../../utils/searchSettingUtils';
 import { settingClick } from '../../utils/sidebar';
 

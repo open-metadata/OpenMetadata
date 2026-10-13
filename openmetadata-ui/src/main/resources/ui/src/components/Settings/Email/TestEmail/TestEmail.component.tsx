@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import {
-    FormField,
-    HookForm,
-    Input,
-    SimpleModal
+  FormField,
+  HookForm,
+  Input,
+  SimpleModal,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { useState } from 'react';

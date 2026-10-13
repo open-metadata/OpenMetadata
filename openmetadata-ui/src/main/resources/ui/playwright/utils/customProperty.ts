@@ -11,39 +11,39 @@
  *  limitations under the License.
  */
 import {
-    APIRequestContext,
-    expect,
-    Locator,
-    Page,
-    Response
+  APIRequestContext,
+  expect,
+  Locator,
+  Page,
+  Response,
 } from '@playwright/test';
 import {
-    CUSTOM_PROPERTY_INVALID_NAMES,
-    CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
-    ENTITY_REFERENCE_PROPERTIES,
-    NAME_SUFFIX
+  CUSTOM_PROPERTY_INVALID_NAMES,
+  CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
+  ENTITY_REFERENCE_PROPERTIES,
+  NAME_SUFFIX,
 } from '../constant/customProperty';
 import { SidebarItem } from '../constant/sidebar';
 import {
-    EntityTypeEndpoint,
-    ENTITY_PATH
+  EntityTypeEndpoint,
+  ENTITY_PATH,
 } from '../support/entity/Entity.interface';
 import { UserClass } from '../support/user/UserClass';
 import { selectOption, showAdvancedSearchDialog } from './advancedSearch';
 import { CODE_EDITOR_CONTENT, typeInCodeEditor } from './codeEditor';
 import {
-    clickIgnoringToasts,
-    descriptionBoxReadOnly,
-    fillDescriptionBox,
-    getDescriptionBox,
-    selectOptionWithRetry,
-    uuid
+  clickIgnoringToasts,
+  descriptionBoxReadOnly,
+  fillDescriptionBox,
+  getDescriptionBox,
+  selectOptionWithRetry,
+  uuid,
 } from './common';
 import { pickDateInCorePicker } from './dateTime';
 import { waitForAllLoadersToDisappear } from './entity';
 import {
-    navigateToEntityPanelTab,
-    navigateToExploreAndSelectTable
+  navigateToEntityPanelTab,
+  navigateToExploreAndSelectTable,
 } from './entityPanel';
 import { sidebarClick } from './sidebar';
 import { waitForAntOverlayToOpen } from './waitHelpers';
@@ -736,7 +736,9 @@ export const addCustomPropertiesForEntity = async ({
   await page.locator('[data-testid="show-side-panel-switch"]').click();
 
   const form = page.getByTestId('custom-property-form');
-  const nameInput = form.getByTestId('custom-property-name').getByRole('textbox');
+  const nameInput = form
+    .getByTestId('custom-property-name')
+    .getByRole('textbox');
 
   // Validation check — name must start with a letter/number and must not contain: " * : ^ $ \ < > & ~ /
   await nameInput.fill(CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_COLON);

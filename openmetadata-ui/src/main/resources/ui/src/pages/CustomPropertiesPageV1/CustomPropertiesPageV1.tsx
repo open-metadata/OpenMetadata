@@ -33,11 +33,11 @@ import { Type } from '../../generated/entity/type';
 import { CustomProperty } from '../../generated/type/customProperty';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import {
-    addPropertyToEntity,
-    CustomPropertyChanges,
-    deleteCustomPropertyByName,
-    getTypeByFQN,
-    updateCustomPropertyByName
+  addPropertyToEntity,
+  CustomPropertyChanges,
+  deleteCustomPropertyByName,
+  getTypeByFQN,
+  updateCustomPropertyByName,
 } from '../../rest/metadataTypeAPI';
 import { getCustomPropertyPageHeaderFromEntity } from '../../utils/CustomProperty.utils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
@@ -106,7 +106,6 @@ const CustomEntityDetailV1 = () => {
   const onTabChange = useCallback((activeKey: string) => {
     setActiveTab(activeKey as EntityTabs);
   }, []);
-
 
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 

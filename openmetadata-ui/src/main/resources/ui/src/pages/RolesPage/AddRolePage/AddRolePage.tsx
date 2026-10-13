@@ -12,16 +12,16 @@
  */
 
 import {
-    Autocomplete,
-    Box,
-    Button,
-    FormField,
-    FormItemLabel,
-    HintText,
-    HookForm,
-    Input,
-    SelectItemType,
-    Typography
+  Autocomplete,
+  Box,
+  Button,
+  FormField,
+  FormItemLabel,
+  HintText,
+  HookForm,
+  Input,
+  SelectItemType,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { trim } from 'lodash';
@@ -220,7 +220,9 @@ const AddRolePage = () => {
                         )}
                       </Autocomplete>
                       {fieldState.error && (
-                        <HintText isInvalid>{fieldState.error.message}</HintText>
+                        <HintText isInvalid>
+                          {fieldState.error.message}
+                        </HintText>
                       )}
                     </Box>
                   )}

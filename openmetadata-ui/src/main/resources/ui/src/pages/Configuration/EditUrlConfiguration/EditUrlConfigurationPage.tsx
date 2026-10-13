@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import {
-    Box,
-    Button,
-    FormField,
-    HookForm,
-    Input
+  Box,
+  Button,
+  FormField,
+  HookForm,
+  Input,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
@@ -28,12 +28,12 @@ import ServiceDocPanel from '../../../components/common/ServiceDocPanel/ServiceD
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import SettingsSourceBanner from '../../../components/platform/settings/SettingsSourceBanner/SettingsSourceBanner';
 import {
-    GlobalSettingOptions,
-    GlobalSettingsMenuCategory
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
 } from '../../../constants/GlobalSettings.constants';
 import {
-    OPENMETADATA_URL_CONFIG_SERVICE_CATEGORY,
-    OPEN_METADATA
+  OPENMETADATA_URL_CONFIG_SERVICE_CATEGORY,
+  OPEN_METADATA,
 } from '../../../constants/service-guide.constant';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { OpenMetadataBaseURLConfiguration } from '../../../generated/configuration/openMetadataBaseUrlConfiguration';
@@ -41,13 +41,13 @@ import { Settings, SettingType } from '../../../generated/settings/settings';
 import { withPageLayout } from '../../../hoc/withPageLayout';
 import { useSettingsSource } from '../../../hooks/platform/useSettingsSource';
 import {
-    getSettingsConfigFromConfigType,
-    updateSettingsConfig
+  getSettingsConfigFromConfigType,
+  updateSettingsConfig,
 } from '../../../rest/settingConfigAPI';
 import { getHyperlinkUrlValidationErrorKey } from '../../../utils/CustomProperty.utils';
 import {
-    findSettingSource,
-    isPathManaged
+  findSettingSource,
+  isPathManaged,
 } from '../../../utils/platform/settingsSource.utils';
 import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';

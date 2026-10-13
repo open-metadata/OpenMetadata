@@ -13,16 +13,16 @@
 
 import Icon from '@ant-design/icons';
 import {
-    Box,
-    Button,
-    Card,
-    FormField,
-    FormItemLabel,
-    Grid,
-    HintText,
-    HookForm,
-    Input,
-    Typography
+  Box,
+  Button,
+  Card,
+  FormField,
+  FormItemLabel,
+  Grid,
+  HintText,
+  HookForm,
+  Input,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { startCase, toString } from 'lodash';

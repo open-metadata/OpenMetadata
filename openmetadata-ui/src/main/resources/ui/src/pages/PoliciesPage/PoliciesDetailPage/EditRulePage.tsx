@@ -12,10 +12,10 @@
  */
 
 import {
-    Box,
-    Button,
-    Card,
-    Typography
+  Box,
+  Button,
+  Card,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -38,9 +38,9 @@ import { useFqn } from '../../../hooks/useFqn';
 import { getPolicyByName, patchPolicy } from '../../../rest/rolesAPIV1';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
-    getPath,
-    getPolicyWithFqnPath,
-    getSettingPath
+  getPath,
+  getPolicyWithFqnPath,
+  getSettingPath,
 } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
@@ -53,7 +53,6 @@ const EditRulePage = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [policy, setPolicy] = useState<Policy>({} as Policy);
   const ruleForm = useForm<Rule>({ defaultValues: INITIAL_RULE });
-
 
   const breadcrumb = useMemo(
     () => [
@@ -170,7 +169,11 @@ const EditRulePage = () => {
             {t('label.edit-entity', { entity: t('label.rule') })}{' '}
             {`"${ruleName}"`}
           </Typography>
-          <Box className="tw:mt-4" data-testid="rule-form" direction="col" gap={4}>
+          <Box
+            className="tw:mt-4"
+            data-testid="rule-form"
+            direction="col"
+            gap={4}>
             <AccessControlRuleForm form={ruleForm} />
             <Box
               inline

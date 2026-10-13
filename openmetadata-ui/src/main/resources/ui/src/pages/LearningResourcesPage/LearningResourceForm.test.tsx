@@ -12,12 +12,12 @@
  */
 
 import {
-    act,
-    fireEvent,
-    render,
-    screen,
-    waitFor,
-    within
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SOURCE_URL_PLACEHOLDERS } from '../../constants/Learning.constants';
@@ -228,7 +228,12 @@ describe('LearningResourceForm', () => {
       within(screen.getByTestId('resource-type-select')).getByRole('button')
     );
 
-    for (const type of ['label.video', 'label.storylane', 'label.link', 'label.pdf']) {
+    for (const type of [
+      'label.video',
+      'label.storylane',
+      'label.link',
+      'label.pdf',
+    ]) {
       expect(
         await screen.findByRole('option', { name: type })
       ).toBeInTheDocument();

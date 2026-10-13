@@ -12,10 +12,10 @@
  */
 
 import {
-    Box,
-    Button,
-    Card,
-    Typography
+  Box,
+  Button,
+  Card,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -38,9 +38,9 @@ import { useFqn } from '../../../hooks/useFqn';
 import { getPolicyByName, patchPolicy } from '../../../rest/rolesAPIV1';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
-    getPath,
-    getPolicyWithFqnPath,
-    getSettingPath
+  getPath,
+  getPolicyWithFqnPath,
+  getSettingPath,
 } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 

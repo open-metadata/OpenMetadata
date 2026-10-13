@@ -12,11 +12,11 @@
  */
 
 import {
-    fireEvent,
-    render,
-    screen,
-    waitFor,
-    within
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createInstance } from 'i18next';
@@ -26,9 +26,9 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { Category, Type } from '../../../../generated/entity/type';
 import english from '../../../../locale/languages/en-us.json';
 import {
-    addPropertyToEntity,
-    getTypeByFQN,
-    getTypeListByCategory
+  addPropertyToEntity,
+  getTypeByFQN,
+  getTypeListByCategory,
 } from '../../../../rest/metadataTypeAPI';
 import AddCustomProperty from './AddCustomProperty';
 

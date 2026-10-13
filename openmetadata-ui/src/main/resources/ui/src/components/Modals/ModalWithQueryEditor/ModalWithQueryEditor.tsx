@@ -11,15 +11,15 @@
  *  limitations under the License.
  */
 import {
-    Box,
-    Button,
-    Dialog,
-    FormField,
-    FormItemLabel,
-    HintText,
-    HookForm,
-    Modal,
-    ModalOverlay
+  Box,
+  Button,
+  Dialog,
+  FormField,
+  FormItemLabel,
+  HintText,
+  HookForm,
+  Modal,
+  ModalOverlay,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { lazy, useEffect, useState } from 'react';
@@ -110,7 +110,9 @@ export const ModalWithQueryEditor = ({
                         onChange={field.onChange}
                       />
                       {fieldState.error && (
-                        <HintText isInvalid>{fieldState.error.message}</HintText>
+                        <HintText isInvalid>
+                          {fieldState.error.message}
+                        </HintText>
                       )}
                     </Box>
                   )}

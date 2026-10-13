@@ -12,22 +12,22 @@
  */
 
 import {
-    Box,
-    FieldProp,
-    FieldTypes,
-    FormField,
-    FormItemLabel,
-    getField,
-    HintText,
-    useFieldDoc
+  Box,
+  FieldProp,
+  FieldTypes,
+  FormField,
+  FormItemLabel,
+  getField,
+  HintText,
+  useFieldDoc,
 } from '@openmetadata/ui-core-components';
 import { isArray, map, startCase } from 'lodash';
 import React, { ReactNode, useMemo } from 'react';
 import { UseFormReturn, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import {
-    CUSTOM_PROPERTIES_ICON_MAP,
-    ENTITY_REFERENCE_OPTIONS
+  CUSTOM_PROPERTIES_ICON_MAP,
+  ENTITY_REFERENCE_OPTIONS,
 } from '../../../../../../constants/CustomProperty.constants';
 import { CUSTOM_PROPERTY_NAME_REGEX } from '../../../../../../constants/regex.constants';
 import { Type } from '../../../../../../generated/entity/type';
@@ -35,10 +35,13 @@ import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { RESERVED_TABLE_COLUMN_NAMES } from './CustomPropertiesPanel.constants';
 import {
-    AddCustomPropertyFormValues,
-    DescriptionFormFieldProps
+  AddCustomPropertyFormValues,
+  DescriptionFormFieldProps,
 } from './CustomPropertiesPanel.types';
-import { getCustomPropertyTypeFlags, toId } from './CustomPropertiesPanel.utils';
+import {
+  getCustomPropertyTypeFlags,
+  toId,
+} from './CustomPropertiesPanel.utils';
 
 interface CustomPropertyFormFieldsProps {
   form: UseFormReturn<AddCustomPropertyFormValues>;

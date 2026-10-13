@@ -13,10 +13,10 @@
 
 import { CloseOutlined } from '@ant-design/icons';
 import {
-    Button,
-    getField,
-    HookForm,
-    Typography
+  Button,
+  getField,
+  HookForm,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { Drawer } from 'antd';
 import { AxiosError } from 'axios';
@@ -24,14 +24,14 @@ import React, { Fragment, useEffect, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import {
-    LearningResourceFormValues,
-    toLearningResourceFormValues,
-    toLearningResourcePayload
+  LearningResourceFormValues,
+  toLearningResourceFormValues,
+  toLearningResourcePayload,
 } from '../../components/discovery/personal-space/Profile/tabs/platform-settings/LearningResourceSettings.utils';
 import { useLearningResourceFields } from '../../components/discovery/personal-space/Profile/tabs/platform-settings/useLearningResourceFields';
 import {
-    createLearningResource,
-    updateLearningResource
+  createLearningResource,
+  updateLearningResource,
 } from '../../rest/learningResourceAPI';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './learning-resource-form.less';
@@ -47,7 +47,10 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
     defaultValues: toLearningResourceFormValues(),
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const resourceType = useWatch({ control: form.control, name: 'resourceType' });
+  const resourceType = useWatch({
+    control: form.control,
+    name: 'resourceType',
+  });
   const fields = useLearningResourceFields(Boolean(resource), resourceType);
 
   useEffect(() => {

@@ -59,8 +59,9 @@ test('the suppressions baseline matches its recorded state exactly', () => {
     // `.om-block-editor` instead of `.ProseMirror...first()` removes four, and
     // the Data Contract core-components migration removes three more. The
     // Data Quality test-type filter picks "All" from the open dropdown
-    // instead of `getByTitle('All').nth(1)`.
-    'om-playwright/no-positional-locator': 581,
+    // instead of `getByTitle('All').nth(1)`, and the settings form migration
+    // removes three more.
+    'om-playwright/no-positional-locator': 578,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 1,
     'playwright/no-wait-for-selector': 14,

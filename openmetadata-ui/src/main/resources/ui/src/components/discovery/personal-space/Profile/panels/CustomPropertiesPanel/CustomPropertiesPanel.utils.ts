@@ -14,10 +14,10 @@
 import type { TFunction } from 'i18next';
 import { isUndefined, omit, omitBy } from 'lodash';
 import {
-    PROPERTY_TYPES_WITH_ENTITY_REFERENCE,
-    PROPERTY_TYPES_WITH_FORMAT,
-    SUPPORTED_FORMAT_MAP,
-    TABLE_TYPE_CUSTOM_PROPERTY
+  PROPERTY_TYPES_WITH_ENTITY_REFERENCE,
+  PROPERTY_TYPES_WITH_FORMAT,
+  SUPPORTED_FORMAT_MAP,
+  TABLE_TYPE_CUSTOM_PROPERTY,
 } from '../../../../../../constants/CustomProperty.constants';
 import { Type } from '../../../../../../generated/entity/type';
 import { CustomProperty } from '../../../../../../generated/type/customProperty';
@@ -25,9 +25,9 @@ import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { SettingMenuItem } from '../../../../../../utils/GlobalSettingsUtils';
 import { CRUMB } from './CustomPropertiesPanel.constants';
 import {
-    AddCustomPropertyFormValues,
-    CustomPropertiesSubView,
-    FormSelectItem
+  AddCustomPropertyFormValues,
+  CustomPropertiesSubView,
+  FormSelectItem,
 } from './CustomPropertiesPanel.types';
 
 /** Extract the id string from a FormSelectItem (or return as-is if already a string). */

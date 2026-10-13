@@ -11,19 +11,19 @@
  *  limitations under the License.
  */
 import {
-    FieldProp,
-    FieldTypes,
-    FormFields,
-    HelperTextType,
-    HookForm,
-    SimpleModal
+  FieldProp,
+  FieldTypes,
+  FormFields,
+  HelperTextType,
+  HookForm,
+  SimpleModal,
 } from '@openmetadata/ui-core-components';
 import React from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import {
-    LineageConfig,
-    LineageConfigModalProps
+  LineageConfig,
+  LineageConfigModalProps,
 } from './EntityLineage.interface';
 
 type DepthField = 'upstreamDepth' | 'downstreamDepth' | 'nodesPerLayer';
