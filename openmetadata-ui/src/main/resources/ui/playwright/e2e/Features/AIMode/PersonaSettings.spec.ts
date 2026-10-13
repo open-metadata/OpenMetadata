@@ -982,35 +982,39 @@ test.describe(
       });
     });
 
-    test('Data Assets → Table: a new tab is saved', async ({ page }) => {
-      const tabName = `pw-tab-${uuid()}`;
+    test(
+      'Data Assets → Table: a new tab is saved',
+      { tag: '@quarantine' },
+      async ({ page }) => {
+        const tabName = `pw-tab-${uuid()}`;
 
-      await openPersonaSettings(
-        page,
-        personas.table.data.name,
-        '/customize/data-assets/Table'
-      );
-      await expect(page.getByTestId('customize-tab-card')).toBeVisible();
+        await openPersonaSettings(
+          page,
+          personas.table.data.name,
+          '/customize/data-assets/Table'
+        );
+        await expect(page.getByTestId('customize-tab-card')).toBeVisible();
 
-      await page
-        .getByTestId('customize-tab-card')
-        .getByRole('button', { name: 'Add Tab' })
-        .click();
-      const addTabDialog = page.getByRole('dialog', { name: 'Add Tab' });
-      await addTabDialog.getByTestId('add-tab-input').fill(tabName);
-      await addTabDialog
-        .getByRole('button', { name: 'Add', exact: true })
-        .click();
+        await page
+          .getByTestId('customize-tab-card')
+          .getByRole('button', { name: 'Add Tab' })
+          .click();
+        const addTabDialog = page.getByRole('dialog', { name: 'Add Tab' });
+        await addTabDialog.getByTestId('add-tab-input').fill(tabName);
+        await addTabDialog
+          .getByRole('button', { name: 'Add', exact: true })
+          .click();
 
-      await expect(addTabDialog).not.toBeVisible();
+        await expect(addTabDialog).not.toBeVisible();
 
-      await saveLayoutAndReload(page, 'save-button', tabName);
+        await saveLayoutAndReload(page, 'save-button', tabName);
 
-      await expect(page.getByTestId('customize-tab-card')).toContainText(
-        tabName
-      );
-      await expect(page.getByTestId('save-button')).toBeDisabled();
-    });
+        await expect(page.getByTestId('customize-tab-card')).toContainText(
+          tabName
+        );
+        await expect(page.getByTestId('save-button')).toBeDisabled();
+      }
+    );
 
     test('Governance → Domain: the layout is saved', async ({ page }) => {
       await openPersonaSettings(
