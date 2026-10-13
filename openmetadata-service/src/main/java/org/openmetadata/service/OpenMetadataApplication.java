@@ -1334,14 +1334,17 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   }
 
   // Selects the cross-pod WebSocket relay behind sendToOne: Redis pub/sub when a Redis cache is
-  // configured, otherwise the DB-poll relay; no-op only if initialization fails.
+  // configured, otherwise the DB-poll relay. A Redis relay that cannot start fails boot loudly
+  // (below) rather than leaving cross-pod delivery silently off.
   private void initializeWebSocketRelay(
       OpenMetadataApplicationConfig catalogConfig, Environment environment) {
     org.openmetadata.service.cache.CacheConfig cacheConfig = catalogConfig.getCacheConfig();
+    boolean redisConfigured =
+        cacheConfig != null
+            && cacheConfig.provider == org.openmetadata.service.cache.CacheConfig.Provider.redis;
     org.openmetadata.service.socket.WebSocketRelay relay = null;
     try {
-      if (cacheConfig != null
-          && cacheConfig.provider == org.openmetadata.service.cache.CacheConfig.Provider.redis) {
+      if (redisConfigured) {
         relay = new org.openmetadata.service.socket.RedisWebSocketRelay(cacheConfig);
       } else {
         relay =
@@ -1353,6 +1356,16 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       return; // WebSocketManager keeps its no-op relay (node-local delivery).
     }
     relay.start();
+    // RedisWebSocketRelay.start() swallows connection failures (sets running=false) rather than
+    // throwing. When Redis is the configured transport, refuse to boot with an inert relay — that
+    // would silently disable cross-pod delivery, the exact hang this change fixes. Fail loud, like
+    // the Hybrid Runner relay; a per-pod DB fallback is wrong here because pods on different
+    // transports would never hear each other (split brain).
+    if (redisConfigured && !relay.isRunning()) {
+      throw new IllegalStateException(
+          "Redis WebSocket relay failed to start; refusing to boot with cross-pod delivery disabled. "
+              + "Check the Redis cache connection.");
+    }
     WebSocketManager.getInstance().setRelay(relay);
     org.openmetadata.service.socket.WebSocketRelay startedRelay = relay;
     environment
