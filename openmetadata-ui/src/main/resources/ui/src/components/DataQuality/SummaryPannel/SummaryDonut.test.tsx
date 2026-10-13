@@ -18,6 +18,9 @@ import { render, screen } from '@testing-library/react';
 import { SummaryDonut } from './SummaryDonut.component';
 import { ChartData } from './SummaryPanel.interface';
 
+// App chart exports are mocked globally; use ECharts itself to test hover geometry.
+const { init } = jest.requireActual<typeof import('echarts')>('echarts');
+
 const mockPieChart = PieChart as unknown as jest.Mock<null, [PieChartProps]>;
 const pieProps = () =>
   mockPieChart.mock.calls[mockPieChart.mock.calls.length - 1]?.[0];
@@ -28,6 +31,80 @@ const chartData: ChartData[] = [
 ];
 
 describe('SummaryDonut component', () => {
+  it.each([100, 120])(
+    'keeps hovered slices inside the %ipx viewport while expanding them',
+    (size) => {
+      render(
+        <SummaryDonut
+          ariaLabel="Tests"
+          chartData={chartData}
+          percentage="80%"
+          size={size}
+        />
+      );
+
+      const { data, innerRadius, outerRadius } = pieProps();
+      const chart = init(null, null, {
+        renderer: 'svg',
+        ssr: true,
+        width: size,
+        height: size,
+      });
+
+      try {
+        chart.setOption({
+          animation: false,
+          series: [
+            {
+              type: 'pie',
+              radius: [innerRadius, outerRadius],
+              label: { show: false },
+              itemStyle: { borderWidth: 1 },
+              data,
+            },
+          ],
+        });
+
+        const slices = chart
+          .getZr()
+          .storage.getDisplayList()
+          .filter((element) => element.type === 'sector');
+
+        expect(slices).toHaveLength(chartData.length);
+
+        slices.forEach((slice, dataIndex) => {
+          const restingBounds = slice.getBoundingRect().clone();
+
+          chart.dispatchAction({
+            type: 'highlight',
+            seriesIndex: 0,
+            dataIndex,
+          });
+          // SSR has no frame loop to apply the hover state.
+          chart.getZr().animation.update();
+
+          const hoveredBounds = slice.getBoundingRect();
+
+          expect(hoveredBounds.width).toBeGreaterThan(restingBounds.width);
+          expect(hoveredBounds.height).toBeGreaterThan(restingBounds.height);
+          expect(hoveredBounds.x).toBeGreaterThanOrEqual(0);
+          expect(hoveredBounds.y).toBeGreaterThanOrEqual(0);
+          expect(hoveredBounds.x + hoveredBounds.width).toBeLessThanOrEqual(
+            size
+          );
+          expect(hoveredBounds.y + hoveredBounds.height).toBeLessThanOrEqual(
+            size
+          );
+
+          chart.dispatchAction({ type: 'downplay', seriesIndex: 0, dataIndex });
+          chart.getZr().animation.update();
+        });
+      } finally {
+        chart.dispose();
+      }
+    }
+  );
+
   it('renders a tracked donut sized to `size`', () => {
     render(
       <SummaryDonut ariaLabel="Tests" chartData={chartData} percentage="80%" />
@@ -38,8 +115,8 @@ describe('SummaryDonut component', () => {
         ariaLabel: 'Tests',
         data: chartData,
         track: true,
-        innerRadius: '75%',
-        outerRadius: '100%',
+        innerRadius: 40.5,
+        outerRadius: 54,
         padAngle: 0,
         height: 120,
         legend: { show: false },

@@ -16,16 +16,26 @@ import { Form } from 'antd';
 import { CreateEventSubscription } from '../../../generated/events/api/createEventSubscription';
 import { ModifiedCreateEventSubscription } from '../AddObservabilityPage.interface';
 
+// One array for "nothing selected", so what depends on the sources does not change every render.
+const NO_SOURCES: string[] = [];
+
 /**
- * The alert source picked in a classic antd alert form. Kept in this file, which already
+ * The sources and the choices so far of a classic antd alert form. Kept in this file, which already
  * imports antd Form, so the antd import does not spread to a new file.
  */
-export function useSelectedAlertTrigger(
+export function useSelectedAlertSources(
   form: FormInstance<ModifiedCreateEventSubscription>
-): string | undefined {
-  const [selectedTrigger] =
-    Form.useWatch<CreateEventSubscription['resources']>(['resources'], form) ??
-    [];
+): {
+  sources: string[];
+  input?: ModifiedCreateEventSubscription['input'];
+} {
+  // The AI alert form copies its sources into this form without a field for them, so read the store.
+  const sources =
+    Form.useWatch<CreateEventSubscription['resources']>(['resources'], {
+      form,
+      preserve: true,
+    }) ?? NO_SOURCES;
+  const input = Form.useWatch('input', form);
 
-  return selectedTrigger;
+  return { sources, input };
 }

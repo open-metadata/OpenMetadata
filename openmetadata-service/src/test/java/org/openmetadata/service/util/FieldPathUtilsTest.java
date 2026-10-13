@@ -30,6 +30,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.entity.data.Container;
+import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.data.Pipeline;
@@ -39,6 +40,7 @@ import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.type.APISchema;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ContainerDataModel;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.MessageSchema;
 import org.openmetadata.schema.type.MlFeature;
@@ -948,6 +950,74 @@ class FieldPathUtilsTest {
         FieldPathUtils.getFieldDescription(table, "columns::nope::description");
 
     assertTrue(description.isEmpty());
+  }
+
+  // ==================== Dashboard charts (EntityReference list) ====================
+  // A Dashboard's charts are a List<EntityReference> — a projection of separate Chart entities,
+  // not editable child POJOs. The reflective fallback in resolveContainerList must refuse this
+  // list so an approved per-chart DescriptionUpdate task is surfaced as a visible failure
+  // instead of a silent no-op that reports success while prepare() reverts the change.
+
+  @Test
+  void updateFieldDescription_dashboardChart_returnsFalseAndNeverPatches() {
+    // The user-facing bug: an approved "charts::<chartName>::description" task on a Dashboard
+    // returned true while prepare() reverted the only meaningful change. It must now return
+    // false so TaskWorkflowHandler logs failure instead of "Successfully applied".
+    Dashboard dashboard = dashboardWithCharts();
+    EntityRepository<?> repository = mock(EntityRepository.class);
+
+    boolean updated =
+        FieldPathUtils.updateFieldDescription(
+            dashboard, repository, "admin", "charts::revenue_chart::description", "New desc");
+
+    assertFalse(updated, "mutating a chart EntityReference through the parent is a silent no-op");
+    // The transient EntityReference must NOT be written: the previous code mutated it in memory,
+    // reported success, and let prepare() revert it. Refusing to write keeps the failure honest.
+    assertEquals("old", dashboard.getCharts().get(0).getDescription());
+    verifyNoInteractions(repository);
+  }
+
+  @Test
+  void findField_dashboardChart_isEmpty() {
+    // findField is the entry point for the tag path (TaskWorkflowHandler.patchFieldTags); an
+    // approved "charts::<chartName>::tags" task must not silently tag a transient reference.
+    Dashboard dashboard = dashboardWithCharts();
+
+    Optional<Object> found = FieldPathUtils.findField(dashboard, "charts::revenue_chart::tags");
+
+    assertTrue(found.isEmpty());
+  }
+
+  @Test
+  void updateFieldDescription_dashboardEntityLevelDescription_stillWorks() {
+    // Entity-level description ("description") must not regress: it never touches
+    // resolveContainerList.
+    Dashboard dashboard = dashboardWithCharts();
+    EntityRepository<?> repository = mock(EntityRepository.class);
+
+    boolean updated =
+        FieldPathUtils.updateFieldDescription(
+            dashboard, repository, "admin", "description", "Board-level description");
+
+    assertTrue(updated);
+    assertEquals("Board-level description", dashboard.getDescription());
+    verify(repository)
+        .patch(
+            isNull(), eq(dashboard.getId()), eq("admin"), any(JsonPatch.class), isNull(), isNull());
+  }
+
+  private Dashboard dashboardWithCharts() {
+    return new Dashboard()
+        .withId(UUID.randomUUID())
+        .withName("sales_board")
+        .withDescription("board")
+        .withCharts(
+            List.of(
+                new EntityReference()
+                    .withId(UUID.randomUUID())
+                    .withType("chart")
+                    .withName("revenue_chart")
+                    .withDescription("old")));
   }
 
   private FieldPathComponents invokeParseFieldPath(String fieldPath) throws Exception {

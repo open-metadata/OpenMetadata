@@ -20,9 +20,9 @@ import jakarta.ws.rs.BadRequestException;
 import java.util.List;
 import java.util.Objects;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryDispute;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.service.Entity;
 
 /** Lifecycle rules for status changes, supersession, and disputes. */
@@ -46,27 +46,51 @@ public final class ContextMemoryLifecycle {
 
   static void applyCreate(ContextMemory memory, MemoryResolver resolver) {
     validateSupersession(memory);
+    if (memory.getEntityStatus() == ContextMemoryStatus.APPROVED
+        && memory.getLastReviewedAt() == null) {
+      memory.setLastReviewedAt(memory.getUpdatedAt());
+    }
     resolveReferences(null, memory, resolver);
   }
 
   private static void applyStatusChange(ContextMemory original, ContextMemory updated) {
     boolean statusChanged = original.getEntityStatus() != updated.getEntityStatus();
-    if (statusChanged && original.getEntityStatus() == EntityStatus.DEPRECATED) {
+    if (statusChanged && isSuperseded(original.getEntityStatus())) {
       updated.setSupersededBy(null);
     }
-    if (statusChanged && Objects.equals(original.getStatusReason(), updated.getStatusReason())) {
+    if (statusChanged
+        && updated.getEntityStatus() != ContextMemoryStatus.DRAFT
+        && Objects.equals(original.getStatusReason(), updated.getStatusReason())) {
       updated.setStatusReason(null);
+    }
+    stampReviewOnApproval(original, updated, statusChanged);
+  }
+
+  /**
+   * Becoming Approved is a review, whoever approves: a person through the API or Memory
+   * Reconciliation. A caller that supplies its own {@code lastReviewedAt} keeps it.
+   */
+  private static void stampReviewOnApproval(
+      ContextMemory original, ContextMemory updated, boolean statusChanged) {
+    boolean approvedNow =
+        statusChanged && updated.getEntityStatus() == ContextMemoryStatus.APPROVED;
+    if (approvedNow && Objects.equals(original.getLastReviewedAt(), updated.getLastReviewedAt())) {
+      updated.setLastReviewedAt(updated.getUpdatedAt());
     }
   }
 
   private static void validateSupersession(ContextMemory memory) {
-    boolean superseded = memory.getEntityStatus() == EntityStatus.DEPRECATED;
+    boolean superseded = isSuperseded(memory.getEntityStatus());
     if (superseded != (memory.getSupersededBy() != null)) {
       throw new BadRequestException(
           superseded
-              ? "A Deprecated memory requires supersededBy"
-              : "supersededBy is only allowed on a Deprecated memory");
+              ? String.format("A %s memory requires supersededBy", memory.getEntityStatus().value())
+              : "supersededBy is only allowed on a Deprecated memory or a Superseded memory");
     }
+  }
+
+  private static boolean isSuperseded(ContextMemoryStatus status) {
+    return status == ContextMemoryStatus.SUPERSEDED || status == ContextMemoryStatus.DEPRECATED;
   }
 
   private static void resolveReferences(

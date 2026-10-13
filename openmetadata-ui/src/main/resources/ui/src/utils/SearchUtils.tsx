@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { SearchOutlined } from '@ant-design/icons';
 import { Typography } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import { Search } from '@openmetadata/ui-core-components/icons';
 import { Link } from 'react-router-dom';
 import { ENTITY_ICON_MAPPER } from '../constants/Assets.constants';
 import {
@@ -26,6 +25,7 @@ import { SearchSourceAlias } from '../interface/search.interface';
 import { getPartialNameFromTableFQN } from './FqnUtils';
 import i18n from './i18next/LocalUtil';
 import searchClassBase from './SearchClassBase';
+import { getServiceLogoThemeClass } from './ServiceIconUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 
 type SearchIndexGroupConfig = {
@@ -137,7 +137,7 @@ export const getGroupLabel = (index: string) => {
     label = i18n.t(config.labelKey);
     GroupIcon = config.entityType
       ? ENTITY_ICON_MAPPER[config.entityType].icon
-      : SearchOutlined;
+      : Search;
   } else {
     const { label: indexLabel, GroupIcon: IndexIcon } =
       searchClassBase.getIndexGroupLabel(index);
@@ -171,23 +171,19 @@ export const getSuggestionElement = (
   const fqn = `(${entitySource.fullyQualifiedName ?? ''})`;
 
   return (
-    <Button
-      block
-      className="text-left truncate p-y-0 p-x-lg"
+    <div
+      className="tw:flex tw:items-center tw:gap-2 tw:px-6 tw:py-1.5 tw:hover:bg-primary_hover"
       data-testid={dataTestId}
-      icon={
-        <img
-          alt={serviceType}
-          className="m-r-sm"
-          height="16px"
-          src={serviceUtilClassBase.getServiceTypeLogo(suggestion)}
-          width="16px"
-        />
-      }
-      key={fqdn}
-      type="text">
+      key={fqdn}>
+      <img
+        alt={serviceType}
+        className={getServiceLogoThemeClass(serviceType)}
+        height="16px"
+        src={serviceUtilClassBase.getServiceTypeLogo(suggestion)}
+        width="16px"
+      />
       <Link
-        className="text-sm no-underline"
+        className="tw:min-w-0 tw:flex-1 tw:truncate tw:text-sm tw:no-underline"
         data-testid="data-name"
         id={fqdn.replaceAll('.', '')}
         target={searchClassBase.getSearchEntityLinkTarget(entitySource)}
@@ -195,12 +191,12 @@ export const getSuggestionElement = (
         onClick={onClickHandler}>
         {displayText}
         <Typography
-          className="tw:wrap-break-word m-l-xs text-xs"
+          className="tw:wrap-break-word tw:ml-1 tw:text-xs"
           color="secondary">
           {fqn}
         </Typography>
       </Link>
-    </Button>
+    </div>
   );
 };
 

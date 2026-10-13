@@ -14,6 +14,7 @@
 package org.openmetadata.service.resources.types;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -58,7 +59,6 @@ import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.type.Category;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.type.EntityHistory;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -186,22 +186,32 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
                     mediaType = "application/json",
                     schema = @Schema(implementation = EntityLifecycleStages.class)))
       })
-  public EntityLifecycleStages getEntityLifecycleStages() {
+  public EntityLifecycleStages getEntityLifecycleStages(@QueryParam("index") String index) {
+    List<String> scopedTypes =
+        nullOrEmpty(index) ? null : Entity.getSearchRepository().getEntityTypesForIndex(index);
     List<EntityTypeLifecycle> entityTypes =
-        Entity.getEntityTypesWithLifecycleStage().stream().map(TypeResource::lifecycleOf).toList();
+        Entity.getEntityTypesWithLifecycleStage().stream()
+            .filter(type -> scopedTypes == null || scopedTypes.contains(type))
+            .map(TypeResource::lifecycleOf)
+            .toList();
     return new EntityLifecycleStages()
-        .withStages(List.of(EntityStatus.values()))
+        .withStages(
+            entityTypes.stream()
+                .flatMap(type -> type.getStages().stream())
+                .distinct()
+                .sorted()
+                .toList())
         .withEntityTypes(entityTypes);
   }
 
   private static EntityTypeLifecycle lifecycleOf(String entityType) {
     EntityRepository<?> repository = Entity.getEntityRepository(entityType);
-    EntityLifecycle lifecycle = repository.getEntityLifecycle();
+    EntityLifecycle<?> lifecycle = repository.getEntityLifecycle();
     return new EntityTypeLifecycle()
         .withEntityType(entityType)
-        .withStages(List.copyOf(lifecycle.stages()))
+        .withStages(lifecycle.stageCodes())
         .withTransitions(
-            lifecycle.transitions().entrySet().stream()
+            lifecycle.transitionCodes().entrySet().stream()
                 .map(
                     move ->
                         new StageTransition()

@@ -18,7 +18,7 @@ import {
 } from '../../../../generated/api/data/ontologyMemoryProposalStatus';
 import {
   ContextMemory,
-  EntityStatus,
+  ContextMemoryStatus,
   ShareVisibility,
 } from '../../../../generated/entity/context/contextMemory';
 import {
@@ -40,7 +40,7 @@ const memory = (visibility: ShareVisibility): ContextMemory =>
   ({
     id: 'memory-id',
     name: 'memory',
-    entityStatus: EntityStatus.Approved,
+    entityStatus: ContextMemoryStatus.Approved,
     shareConfig: { visibility },
     derivedEntities: [],
   } as unknown as ContextMemory);
@@ -81,10 +81,10 @@ describe('canProposeFromMemory', () => {
 
   it('blocks proposals from memories outside Approved', () => {
     for (const status of [
-      EntityStatus.Draft,
-      EntityStatus.Archived,
-      EntityStatus.Deprecated,
-      EntityStatus.Rejected,
+      ContextMemoryStatus.Draft,
+      ContextMemoryStatus.Archived,
+      ContextMemoryStatus.Deprecated,
+      ContextMemoryStatus.Rejected,
     ]) {
       const retired = {
         ...memory(ShareVisibility.Public),

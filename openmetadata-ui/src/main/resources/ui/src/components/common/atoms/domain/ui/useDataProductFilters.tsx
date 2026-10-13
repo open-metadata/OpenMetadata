@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { DATAPRODUCT_FILTERS } from '../../../../../constants/DataProduct.constants';
+import { useMemo } from 'react';
 import { AssetsOfEntity } from '../../../../../enums/Assets.enum';
 import { SearchIndex } from '../../../../../enums/search.enum';
 import { Aggregations } from '../../../../../interface/search.interface';
+import dataProductClassBase from '../../../../../utils/DataProduct/DataProductClassBase';
 import { ExploreQuickFilterField } from '../../../../Explore/ExplorePage.interface';
 import { useQuickFiltersWithComponent } from '../../filters/useQuickFiltersWithComponent';
 
@@ -25,8 +26,13 @@ interface UseDataProductFiltersConfig {
 }
 
 export const useDataProductFilters = (config: UseDataProductFiltersConfig) => {
+  const defaultFilters = useMemo(
+    () => dataProductClassBase.getListingFilters(),
+    []
+  );
+
   const { quickFilters, selectedFilters } = useQuickFiltersWithComponent({
-    defaultFilters: DATAPRODUCT_FILTERS,
+    defaultFilters,
     aggregations: config.aggregations,
     parsedFilters: config.parsedFilters,
     searchIndex: SearchIndex.DATA_PRODUCT,
@@ -37,6 +43,6 @@ export const useDataProductFilters = (config: UseDataProductFiltersConfig) => {
   return {
     quickFilters,
     selectedFilters,
-    defaultFilters: DATAPRODUCT_FILTERS,
+    defaultFilters,
   };
 };

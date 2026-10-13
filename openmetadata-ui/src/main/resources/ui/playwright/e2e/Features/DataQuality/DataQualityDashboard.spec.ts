@@ -750,8 +750,11 @@ test.describe(
 
       await test.step('Reopen the incident as Acknowledged from the header', async () => {
         await page.click('[data-testid="edit-resolution-icon"]');
-        await page.click('[data-testid="test-case-resolution-status-type"]');
-        await page.click('[title="Ack"]');
+        await page
+          .getByTestId('test-case-resolution-status-type')
+          .getByRole('button')
+          .click();
+        await page.getByRole('option', { name: 'Ack', exact: true }).click();
 
         const reopenResponse = page.waitForResponse(
           (response) =>
@@ -1144,7 +1147,7 @@ test.describe(
           '/api/v1/search/query?*index=dataProduct*'
         );
         await page.click('[data-testid="advanced-filter"]');
-        await page.click('[value="dataProductFqn"]');
+        await page.getByTestId('advanced-filter-option-dataProductFqn').click();
         await dataProductOptionsRes;
 
         await expect(
@@ -1181,7 +1184,7 @@ test.describe(
           '/api/v1/dataQuality/testCases/search/list?*'
         );
         await page.click('[data-testid="advanced-filter"]');
-        await page.click('[value="dataProductFqn"]');
+        await page.getByTestId('advanced-filter-option-dataProductFqn').click();
         await getTestCases;
 
         await expect(

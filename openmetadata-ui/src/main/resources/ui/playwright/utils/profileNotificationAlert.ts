@@ -24,6 +24,7 @@
 import { expect, Locator, Page } from '@playwright/test';
 import { ALERT_DESCRIPTION } from '../constant/alert';
 import { AlertDetails, EventDetails } from '../constant/alert.interface';
+import { ACTION_TIMEOUT } from '../constant/common';
 import { enableAiAppMode } from '../e2e/Utils/appMode';
 import { TableClass } from '../support/entity/TableClass';
 import {
@@ -101,7 +102,7 @@ const fillAutocompleteAndSelect = async ({
     name: new RegExp(searchText, 'i'),
   });
 
-  await expect(option).toBeVisible({ timeout: 30_000 });
+  await expect(option).toBeVisible({ timeout: ACTION_TIMEOUT });
   await option.click();
   await input.press('Tab');
 };

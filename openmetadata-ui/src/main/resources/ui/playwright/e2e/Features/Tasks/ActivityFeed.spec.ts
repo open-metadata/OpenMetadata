@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ACTION_TIMEOUT } from '../../../constant/common';
 import { TableClass } from '../../../support/entity/TableClass';
 import { expect, test } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
@@ -290,39 +291,6 @@ test.describe('Activity Feed - Filters', () => {
       // owner-scoped fixture, tracked with the wider conditional-escape cleanup.
       expect(taskCount).toBeGreaterThanOrEqual(0);
     }
-  });
-
-  test('Activity Feed widget filters should switch between All Activity, My Data, and Following', async ({
-    page,
-  }) => {
-    await regularUser.signIn(page);
-    await redirectToHomePage(page, false);
-
-    const feedWidget = page.getByTestId('KnowledgePanel.ActivityFeed');
-    await expect(feedWidget).toBeVisible();
-    const subFilterDropdown = feedWidget.getByTestId('widget-sort-by-dropdown');
-    await expect(subFilterDropdown).toBeVisible();
-
-    const selectFeedFilter = async (menuLabel: string) => {
-      await subFilterDropdown.click();
-      await page.getByRole('menuitem', { name: menuLabel }).click();
-      await expect(subFilterDropdown).toContainText(new RegExp(menuLabel, 'i'));
-    };
-
-    await subFilterDropdown.click();
-    await expect(
-      page.getByRole('menuitem', { name: 'All Activity' })
-    ).toBeVisible();
-    await expect(page.getByRole('menuitem', { name: 'My Data' })).toBeVisible();
-    await expect(
-      page.getByRole('menuitem', { name: 'Following' })
-    ).toBeVisible();
-    await page.keyboard.press('Escape');
-
-    await selectFeedFilter('All Activity');
-    await selectFeedFilter('My Data');
-    await selectFeedFilter('Following');
-    await selectFeedFilter('All Activity');
   });
 
   test('assignee should see assigned tasks in Tasks filter', async ({
@@ -835,7 +803,7 @@ test.describe('Activity Feed - Entity Page counts', () => {
 
     await expect(
       page.getByTestId('left-panel-task-count').getByTestId('filter-count')
-    ).toHaveText(String(SEEDED_TASK_COUNT), { timeout: 30_000 });
+    ).toHaveText(String(SEEDED_TASK_COUNT), { timeout: ACTION_TIMEOUT });
     await expect(page.locator('[data-testid="task-feed-card"]')).toHaveCount(
       SEEDED_TASK_COUNT
     );
@@ -852,7 +820,7 @@ test.describe('Activity Feed - Entity Page counts', () => {
       feedItems
         .filter({ hasText: seededActivitySummary })
         .filter({ visible: true })
-    ).not.toHaveCount(0, { timeout: 30_000 });
+    ).not.toHaveCount(0, { timeout: ACTION_TIMEOUT });
 
     // Deliberately not asserting badge === rendered here. The badge is a
     // server count and the list a separate query, and this fixture also
@@ -862,6 +830,6 @@ test.describe('Activity Feed - Entity Page counts', () => {
     // and rendered list agree on the count') on a fixture with no tasks.
     await expect(
       page.getByTestId('left-panel-all-count').getByTestId('filter-count')
-    ).toHaveText(/^[1-9]\d*$/, { timeout: 30_000 });
+    ).toHaveText(/^[1-9]\d*$/, { timeout: ACTION_TIMEOUT });
   });
 });

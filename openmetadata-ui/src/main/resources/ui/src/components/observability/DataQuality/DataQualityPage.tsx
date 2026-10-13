@@ -337,13 +337,11 @@ const DataQualityPage = () => {
 
       <BundleSuiteFormDrawer
         open={isBundleSuiteModalOpen}
-        variant="modal"
         onClose={handleCloseBundleSuiteModal}
         onSuccess={handleBundleSuiteSuccess}
       />
       <TestCaseFormDrawer
         open={isTestCaseModalOpen}
-        variant="modal"
         onClose={handleCloseTestCaseModal}
         onFormSubmit={handleTestCaseSubmit}
       />
