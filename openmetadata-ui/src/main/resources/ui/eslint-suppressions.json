@@ -1605,7 +1605,7 @@
   },
   "src/pages/LearningResourcesPage/LearningResourceForm.component.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 5
+      "count": 2
     }
   },
   "src/pages/LineageConfigPage/LineageConfigPage.tsx": {
