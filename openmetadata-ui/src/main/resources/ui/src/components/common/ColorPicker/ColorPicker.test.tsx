@@ -15,14 +15,14 @@ import ColorPicker from './ColorPicker.component';
 
 describe('ColorPicker component', () => {
   it('component should render', async () => {
-    render(<ColorPicker />);
+    render(<ColorPicker label="Primary Color" />);
 
     expect(await screen.findByTestId('color-picker')).toBeInTheDocument();
     expect(await screen.findByTestId('color-input')).toBeInTheDocument();
   });
 
   it('Should have same value in color picker and input box', async () => {
-    render(<ColorPicker value="#000000" />);
+    render(<ColorPicker label="Primary Color" value="#000000" />);
 
     expect(await screen.findByTestId('color-picker')).toHaveValue('#000000');
     expect(await screen.findByTestId('color-input')).toHaveValue('#000000');
@@ -30,12 +30,30 @@ describe('ColorPicker component', () => {
 
   it('reports a typed hex code as a plain string', () => {
     const onChange = jest.fn();
-    render(<ColorPicker id="primaryColor" value="" onChange={onChange} />);
+    render(
+      <ColorPicker
+        id="primaryColor"
+        label="Primary Color"
+        value=""
+        onChange={onChange}
+      />
+    );
 
     fireEvent.change(screen.getByTestId('primaryColor-color-input'), {
       target: { value: '#123456' },
     });
 
     expect(onChange).toHaveBeenCalledWith('#123456');
+  });
+
+  it('names the hex box and the swatch after the field', () => {
+    render(<ColorPicker label="Primary Color" />);
+
+    expect(screen.getByTestId('color-input')).toHaveAccessibleName(
+      'Primary Color'
+    );
+    expect(screen.getByTestId('color-picker')).toHaveAccessibleName(
+      'label.select-field'
+    );
   });
 });

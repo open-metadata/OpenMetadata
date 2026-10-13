@@ -15,6 +15,8 @@ import { useTranslation } from 'react-i18next';
 
 export interface ColorPickerProps {
   id?: string;
+  /** Names both controls, so each theme colour is distinguishable. */
+  label: string;
   value?: string;
   onBlur?: () => void;
   onChange?: (value: string) => void;
@@ -22,6 +24,7 @@ export interface ColorPickerProps {
 
 const ColorPicker = ({
   id,
+  label,
   value = '',
   onBlur,
   onChange,
@@ -33,7 +36,7 @@ const ColorPicker = ({
     <Box align="center" gap={2}>
       <Box className="tw:w-16 tw:shrink-0">
         <Input
-          aria-label={t('label.color')}
+          aria-label={t('label.select-field', { field: label })}
           inputDataTestId={`${testId}-picker`}
           type="color"
           value={value}
@@ -43,7 +46,7 @@ const ColorPicker = ({
       </Box>
       <Box className="tw:flex-1">
         <Input
-          aria-label={t('label.color')}
+          aria-label={label}
           id={id}
           inputDataTestId={`${testId}-input`}
           placeholder={t('message.hex-code-placeholder')}

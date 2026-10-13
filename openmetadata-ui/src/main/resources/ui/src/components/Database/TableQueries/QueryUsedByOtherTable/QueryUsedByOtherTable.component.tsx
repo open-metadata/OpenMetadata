@@ -18,7 +18,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { isUndefined, slice } from 'lodash';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { QUERY_USED_BY_TABLE_VIEW_CAP } from '../../../../constants/Query.constant';
@@ -121,38 +121,43 @@ const QueryUsedByOtherTable = ({
     [topThreeTable, remainingTable]
   );
 
-  const selectList = useMemo(() => {
-    const initialOptions: DataAssetOption[] = (query.queryUsedIn ?? []).map(
-      (table) => ({
+  const initialOptions = useMemo<DataAssetOption[]>(
+    () =>
+      (query.queryUsedIn ?? []).map((table) => ({
         value: table.fullyQualifiedName,
         displayName: getEntityName(table),
         reference: table,
-      })
-    );
+      })),
+    [query.queryUsedIn]
+  );
+  // The picker is controlled, so it must be fed the user's picks rather than
+  // the saved tables, or each re-render would reset the selection.
+  const [selectedOptions, setSelectedOptions] = useState(initialOptions);
 
-    return (
-      <div className="w-min-30 w-full" data-testid="edit-query-used-in">
-        <DataAssetAsyncSelectList
-          multiple
-          // eslint-disable-next-line jsx-a11y/no-autofocus -- turns autofocus off so the SQL editor keeps focus
-          autoFocus={false}
-          initialOptions={initialOptions}
-          placeholder={t('label.please-select-entity', {
-            entity: t('label.query-used-in'),
-          })}
-          searchIndex={SearchIndex.TABLE}
-          value={initialOptions.map((option) => option.value ?? '')}
-          onChange={(options) =>
-            onChange(
-              (Array.isArray(options) ? options : []).map(
-                (option) => option.reference
-              )
-            )
-          }
-        />
-      </div>
-    );
-  }, [query.queryUsedIn, onChange, t]);
+  useEffect(() => {
+    setSelectedOptions(initialOptions);
+  }, [initialOptions]);
+
+  const selectList = (
+    <div className="w-min-30 w-full" data-testid="edit-query-used-in">
+      <DataAssetAsyncSelectList
+        multiple
+        // eslint-disable-next-line jsx-a11y/no-autofocus -- turns autofocus off so the SQL editor keeps focus
+        autoFocus={false}
+        initialOptions={initialOptions}
+        placeholder={t('label.please-select-entity', {
+          entity: t('label.query-used-in'),
+        })}
+        searchIndex={SearchIndex.TABLE}
+        value={selectedOptions}
+        onChange={(options) => {
+          const next = Array.isArray(options) ? options : [];
+          setSelectedOptions(next);
+          onChange(next.map((option) => option.reference));
+        }}
+      />
+    </div>
+  );
 
   return (
     <Box className="layout-row" data-testid="para-container" wrap="wrap">
