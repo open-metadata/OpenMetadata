@@ -35,7 +35,10 @@ import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
 import { ModifiedCreateEventSubscription } from '../AddObservabilityPage.interface';
 import { ObservabilityAlertFormFieldsProps } from '../hooks/useObservabilityAlertForm';
 
-import { getAlertSourceChanges } from '../../../utils/Alerts/ClassicAlertForm.utils';
+import {
+  applyAlertValueChanges,
+  getAlertSourceChanges,
+} from '../../../utils/Alerts/ClassicAlertForm.utils';
 
 function ObservabilityAlertFormFields({
   alert,
@@ -60,10 +63,7 @@ function ObservabilityAlertFormFields({
     form.setValue('input', latest.input, { shouldDirty: true });
   };
   const onValuesChange = (changes: Partial<ModifiedCreateEventSubscription>) =>
-    form.reset(
-      { ...form.getValues(), ...changes },
-      { keepErrors: true, keepDirty: true, keepTouched: true }
-    );
+    applyAlertValueChanges(form.setValue, changes);
 
   return (
     <>

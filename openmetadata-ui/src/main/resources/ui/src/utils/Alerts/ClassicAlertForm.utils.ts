@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import type { UseFormSetValue } from 'react-hook-form';
 import {
   ModifiedCreateEventSubscription,
   ModifiedEventSubscription,
@@ -44,3 +45,16 @@ export const getAlertSourceChanges = (
     ? { destinations: [] }
     : {}),
 });
+
+/**
+ * Merges a widget's partial update into the alert form key by key. A full
+ * `reset` would also replace the form's default values on every keystroke of
+ * the template draft.
+ */
+export const applyAlertValueChanges = (
+  setValue: UseFormSetValue<ModifiedCreateEventSubscription>,
+  changes: Partial<ModifiedCreateEventSubscription>
+) =>
+  (
+    Object.keys(changes) as Array<keyof ModifiedCreateEventSubscription>
+  ).forEach((key) => setValue(key, changes[key], { shouldDirty: true }));

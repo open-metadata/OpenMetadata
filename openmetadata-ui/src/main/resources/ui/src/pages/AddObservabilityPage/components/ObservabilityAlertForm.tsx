@@ -28,7 +28,10 @@ import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBre
 import { AlertAiFormValidationErrors } from '../../../components/observability/Alerts/AlertAiFormFields.interface';
 import { validateAlertAiForm } from '../../../components/observability/Alerts/AlertAiFormFieldsValidationUtils';
 import { AlertSelectionProvider } from '../../../hooks/useAlertSelection';
-import { getClassicAlertInitialValues } from '../../../utils/Alerts/ClassicAlertForm.utils';
+import {
+  applyAlertValueChanges,
+  getClassicAlertInitialValues,
+} from '../../../utils/Alerts/ClassicAlertForm.utils';
 import { ModifiedCreateEventSubscription } from '../AddObservabilityPage.interface';
 import { ObservabilityAlertFormProps } from '../hooks/useObservabilityAlertForm';
 import ObservabilityAlertFormFields from './ObservabilityAlertFormFields';
@@ -79,10 +82,7 @@ function ObservabilityAlertForm({
     }
   };
   const onValuesChange = (changes: Partial<ModifiedCreateEventSubscription>) =>
-    form.reset(
-      { ...form.getValues(), ...changes },
-      { keepErrors: true, keepDirty: true, keepTouched: true }
-    );
+    applyAlertValueChanges(form.setValue, changes);
 
   return (
     <Grid
