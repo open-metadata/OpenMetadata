@@ -14,6 +14,7 @@
 import { PlusOutlined } from '@ant-design/icons';
 import {
   Box,
+  Button,
   Card,
   Grid,
   SkeletonParagraph,
@@ -24,7 +25,6 @@ import {
   LineChart,
   useChartPalette,
 } from '@openmetadata/ui-core-components/charts';
-import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, round } from 'lodash';
 import { FC, useEffect, useMemo, useState } from 'react';
@@ -307,9 +307,8 @@ const KPIChart: FC<Props> = ({
                 <ErrorPlaceHolder
                   button={
                     <Button
-                      ghost
-                      icon={<PlusOutlined />}
-                      type="primary"
+                      color="secondary-brand"
+                      iconLeading={<PlusOutlined />}
                       onClick={handleAddKpi}>
                       {t('label.add-entity', {
                         entity: t('label.kpi-uppercase'),

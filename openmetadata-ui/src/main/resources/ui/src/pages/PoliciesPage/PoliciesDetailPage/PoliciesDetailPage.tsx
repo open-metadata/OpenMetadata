@@ -14,15 +14,16 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Box,
+  Button,
   ButtonUtility,
   Card,
   Dropdown,
   Grid,
+  SimpleModal,
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { DotsVertical } from '@openmetadata/ui-core-components/icons';
-import { Button, Modal } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase } from 'lodash';
@@ -303,13 +304,17 @@ const PoliciesDetailPage = () => {
                 icon={EditIcon}
                 id="edit-button"
                 textValue={t('label.edit')}>
-                <span data-testid="edit-rule">{t('label.edit')}</span>
+                <Typography data-testid="edit-rule">
+                  {t('label.edit')}
+                </Typography>
               </Dropdown.Item>
               <Dropdown.Item
                 icon={IconDelete}
                 id="delete-button"
                 textValue={t('label.delete')}>
-                <span data-testid="delete-rule">{t('label.delete')}</span>
+                <Typography data-testid="delete-rule">
+                  {t('label.delete')}
+                </Typography>
               </Dropdown.Item>
             </Dropdown.Menu>
           </Dropdown.Popover>
@@ -329,8 +334,8 @@ const PoliciesDetailPage = () => {
             <>
               <div className="flex justify-end m-b-md">
                 <Button
+                  color="primary"
                   data-testid="add-rule"
-                  type="primary"
                   onClick={() => navigate(getAddPolicyRulePath(fqn))}>
                   {t('label.add-entity', {
                     entity: t('label.rule'),
@@ -528,8 +533,8 @@ const PoliciesDetailPage = () => {
                   })}
                 </p>
                 <Button
-                  size="small"
-                  type="primary"
+                  color="primary"
+                  size="xs"
                   onClick={() => navigate(policiesPath)}>
                   {t('label.go-back')}
                 </Button>
@@ -601,13 +606,11 @@ const PoliciesDetailPage = () => {
         </>
 
         {selectedEntity && (
-          <Modal
-            centered
-            closable={false}
-            confirmLoading={isloadingOnSave}
-            maskClosable={false}
+          <SimpleModal
+            isDismissable={false}
+            isOkLoading={isloadingOnSave}
+            isOpen={!isUndefined(selectedEntity.record)}
             okText={t('label.confirm')}
-            open={!isUndefined(selectedEntity.record)}
             title={`${t('label.remove-entity', {
               entity: getEntityName(selectedEntity.record),
             })} ${t('label.from-lowercase')} ${policyName}`}
@@ -625,7 +628,7 @@ const PoliciesDetailPage = () => {
                 parent: policyName,
               })}
             </Typography>
-          </Modal>
+          </SimpleModal>
         )}
       </div>
     </PageLayoutV1>

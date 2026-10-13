@@ -27,10 +27,14 @@ coverage, a retried one looks green.
 
 ## Entries
 
-No entries. The threshold for quarantining is **2 or more** failures, counted per
+The threshold for quarantining is **2 or more** failures, counted per
 generated variant rather than per source line. The 11 merge_group runs sampled
 on 2026-09-04 that seeded this list are all released now, as is the DataContracts
 entry that was tagged separately on 2026-09-11 (see *Released from quarantine*).
+
+| Spec | Test | Tagged | Status |
+|---|---|---|---|
+| `e2e/Features/AIMode/PersonaSettings.spec.ts` | all three describes (personal-space modal, management actions, customize saves) | 2026-10-12 | Not yet diagnosed. The spec landed with #34916 (persona settings moved into the AI-mode profile modal). |
 
 ### Triage, 2026-09-09
 

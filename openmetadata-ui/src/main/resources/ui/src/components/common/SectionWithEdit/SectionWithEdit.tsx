@@ -14,8 +14,6 @@ import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import React from 'react';
 import { twMerge } from 'tailwind-merge';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { t } from '../../../utils/i18next/LocalUtil';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import { SectionWithEditProps } from './SectionWithEdit.interface';
@@ -67,7 +65,6 @@ const SectionWithEdit: React.FC<SectionWithEditProps> = ({
             newLook
             data-testid="edit-button"
             disabled={false}
-            icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
             size="small"
             title={t('label.edit-entity', {
               entity: title,

@@ -18,8 +18,13 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.type.EntityReference;
 import picocli.CommandLine;
 import picocli.CommandLine.Model.CommandSpec;
 import picocli.CommandLine.ParseResult;
@@ -113,5 +118,34 @@ class OpenMetadataOperationsDeployPipelinesTest {
   void deployedRowsAreNotFailures() {
     assertFalse(
         OpenMetadataOperations.hasDeployFailures(List.of(row("DEPLOYED"), row("DEPLOYED"))));
+  }
+
+  private static IngestionPipeline pipeline(String name, boolean serviceDeleted) {
+    return new IngestionPipeline()
+        .withId(UUID.randomUUID())
+        .withName(name)
+        .withPipelineType(PipelineType.METADATA)
+        .withService(
+            new EntityReference()
+                .withId(UUID.randomUUID())
+                .withType("databaseService")
+                .withName(name + "_service")
+                .withDeleted(serviceDeleted));
+  }
+
+  @Test
+  void pipelinesOfSoftDeletedServicesAreSkippedNotFailed() {
+    IngestionPipeline live = pipeline("live", false);
+    IngestionPipeline orphaned = pipeline("orphaned", true);
+    List<List<String>> statuses = new ArrayList<>();
+
+    List<IngestionPipeline> deployable =
+        OpenMetadataOperations.skipPipelinesOfDeletedServices(List.of(live, orphaned), statuses);
+
+    assertEquals(List.of(live), deployable);
+    assertEquals(1, statuses.size());
+    assertEquals("orphaned", statuses.getFirst().getFirst());
+    assertTrue(statuses.getFirst().get(3).startsWith("SKIPPED"));
+    assertFalse(OpenMetadataOperations.hasDeployFailures(statuses));
   }
 }

@@ -14,13 +14,13 @@
 import {
   Badge,
   Box,
-  Button as CoreButton,
+  Button,
   SelectItemType,
   SlideoutMenu,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Form, FormInstance } from 'antd';
+import { Form, FormInstance } from 'antd';
 import { AxiosError } from 'axios';
 import { ReactComponent as ColumnIcon } from '../../../../assets/svg/entity/column.svg';
 
@@ -620,18 +620,18 @@ const AddCustomProperty = ({
         <Box className="layout-row" justify="end" wrap="wrap">
           <Box className="layout-column tw:block">
             <Button
+              color="link-color"
               data-testid="back-button"
-              type="link"
               onClick={handleCancel}>
               {t('label.back')}
             </Button>
           </Box>
           <Box className="layout-column tw:block">
             <Button
+              color="primary"
               data-testid="create-button"
-              htmlType="submit"
-              loading={isCreating || loading}
-              type="primary">
+              isLoading={isCreating || loading}
+              type="submit">
               {t('label.create')}
             </Button>
           </Box>
@@ -704,21 +704,21 @@ const AddCustomProperty = ({
 
             <SlideoutMenu.Footer>
               <div className="tw:flex tw:justify-end tw:gap-4">
-                <CoreButton
+                <Button
                   color="tertiary"
                   data-testid="cancel-button"
                   isDisabled={isDrawerLoading}
                   onClick={close}>
                   {t('label.cancel')}
-                </CoreButton>
-                <CoreButton
+                </Button>
+                <Button
                   color="primary"
                   data-testid="create-button"
                   isDisabled={isDrawerLoading || isFormInvalid}
                   isLoading={isDrawerLoading}
                   onClick={() => form.submit()}>
                   {t('label.create')}
-                </CoreButton>
+                </Button>
               </div>
             </SlideoutMenu.Footer>
           </>

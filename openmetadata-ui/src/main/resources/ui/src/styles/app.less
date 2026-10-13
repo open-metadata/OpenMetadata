@@ -827,7 +827,10 @@ a[href].link-text-grey,
 // .dark-mode, so referencing them here yields the dark value. Categorical ramps
 // (severity, heatmap gradients) are intentionally excluded — they belong to the
 // token foundation.
-.dark-mode {
+// `:root.dark-mode` (not `.dark-mode`): tokens.css declares the light values on
+// `:root` at equal specificity and is imported after this file, so a bare
+// `.dark-mode` lost and every bridged var stayed light in dark mode.
+:root.dark-mode {
   // Neutral surfaces / borders / muted text
   --om-grey-26: var(--color-bg-secondary_subtle);
   --om-grey-25: var(--color-bg-secondary_subtle);
@@ -873,40 +876,41 @@ a[href].link-text-grey,
   --om-warning-400: var(--tw-color-utility-warning-400);
 }
 
-// AI dark-mode brand ACCENTS -> blue-300 (#84caff).
+// AI dark-mode brand ACCENTS -> blue-400 (#53b1fd), the devrel dark palette:
+// #1570ef carries fills/borders, #53b1fd labels/icons/links (~5.4:1 on dark).
 // UntitledUIThemeProvider + AntDConfigProvider inject the configured brand
 // primary (#1570ef) as theme-agnostic inline custom properties on <html> — the
 // same element that carries `.dark-mode` — so the token layer's dark flip can't
 // override them (inline wins on that element). Re-point the brand *accent* vars
-// (text / fg / icon / border / outline / ring) to brand-300 on `body`, a
+// (text / fg / icon / border / outline / ring) to brand-400 on `body`, a
 // descendant of <html>, which wins over the html-inline value for the whole app
 // subtree (incl. antd portals). Solid-fill vars (*-solid, bg-brand-*, the raw
 // ramp) are intentionally left so buttons/badges keep the brand-600 fill. Light
 // is untouched, so a white-label custom brand still tints accents in light.
 .dark-mode body {
-  --tw-color-text-brand-secondary: var(--om-color-brand-300);
-  --tw-text-color-brand-secondary: var(--om-color-brand-300);
-  --tw-color-text-brand-tertiary: var(--om-color-brand-300);
-  --tw-text-color-brand-tertiary: var(--om-color-brand-300);
-  --tw-color-text-brand-tertiary_alt: var(--om-color-brand-300);
-  --tw-text-color-brand-tertiary_alt: var(--om-color-brand-300);
-  --tw-color-fg-brand-primary: var(--om-color-brand-300);
-  --tw-color-fg-brand-primary_alt: var(--om-color-brand-300);
-  --tw-color-fg-brand-secondary: var(--om-color-brand-300);
-  --tw-color-fg-brand-secondary_alt: var(--om-color-brand-300);
-  --tw-color-fg-brand-secondary_hover: var(--om-color-brand-300);
-  --tw-color-icon-fg-brand: var(--om-color-brand-300);
-  --tw-color-featured-icon-light-fg-brand: var(--om-color-brand-300);
-  --tw-color-border-brand: var(--om-color-brand-300);
-  --tw-color-border-brand_alt: var(--om-color-brand-300);
-  --tw-border-color-brand: var(--om-color-brand-300);
-  --tw-border-color-brand_alt: var(--om-color-brand-300);
-  --tw-background-color-border-brand: var(--om-color-brand-300);
-  --tw-background-color-border-brand_alt: var(--om-color-brand-300);
-  --tw-outline-color-brand: var(--om-color-brand-300);
-  --tw-outline-color-brand_alt: var(--om-color-brand-300);
-  --tw-ring-color-brand: var(--om-color-brand-300);
-  --tw-ring-color-brand_alt: var(--om-color-brand-300);
+  --tw-color-text-brand-secondary: var(--tw-color-brand-400);
+  --tw-text-color-brand-secondary: var(--tw-color-brand-400);
+  --tw-color-text-brand-tertiary: var(--tw-color-brand-400);
+  --tw-text-color-brand-tertiary: var(--tw-color-brand-400);
+  --tw-color-text-brand-tertiary_alt: var(--tw-color-brand-400);
+  --tw-text-color-brand-tertiary_alt: var(--tw-color-brand-400);
+  --tw-color-fg-brand-primary: var(--tw-color-brand-400);
+  --tw-color-fg-brand-primary_alt: var(--tw-color-brand-400);
+  --tw-color-fg-brand-secondary: var(--tw-color-brand-400);
+  --tw-color-fg-brand-secondary_alt: var(--tw-color-brand-400);
+  --tw-color-fg-brand-secondary_hover: var(--tw-color-brand-400);
+  --tw-color-icon-fg-brand: var(--tw-color-brand-400);
+  --tw-color-featured-icon-light-fg-brand: var(--tw-color-brand-400);
+  --tw-color-border-brand: var(--tw-color-brand-400);
+  --tw-color-border-brand_alt: var(--tw-color-brand-400);
+  --tw-border-color-brand: var(--tw-color-brand-400);
+  --tw-border-color-brand_alt: var(--tw-color-brand-400);
+  --tw-background-color-border-brand: var(--tw-color-brand-400);
+  --tw-background-color-border-brand_alt: var(--tw-color-brand-400);
+  --tw-outline-color-brand: var(--tw-color-brand-400);
+  --tw-outline-color-brand_alt: var(--tw-color-brand-400);
+  --tw-ring-color-brand: var(--tw-color-brand-400);
+  --tw-ring-color-brand_alt: var(--tw-color-brand-400);
   // Status text: the configured error / warning / success colours are injected
   // the same way, as light -600 shades, and stayed below AA on dark surfaces.
   // Text only; the solid fills keep the configured colour.
@@ -954,7 +958,7 @@ a[href].link-text-grey,
 // Carousel active dot draws with --ant-primary-color (#1570ef) via a `!important`
 // rule in temp.css; match !important to win and re-tint in dark.
 .dark-mode .slick-dots li.slick-active button:before {
-  color: var(--om-color-brand-300) !important;
+  color: var(--tw-color-brand-400) !important;
 }
 
 // Dark-mode canvas chrome for every reactflow surface (lineage, workflow,
