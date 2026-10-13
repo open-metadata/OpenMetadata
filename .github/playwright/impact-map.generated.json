@@ -6652,15 +6652,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/Database/Profiler/ProfilerSettings/CustomRangeWidget.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
-        "playwright/e2e/Features/DataQuality/ProfilerSettingsAfterReindex.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Database/Profiler/ProfilerSettings/ProfilerSettings.tsx"
       ],
       "specs": [
@@ -6969,16 +6960,6 @@
       ],
       "specs": [
         "playwright/e2e/Pages/Lineage/LineageInteraction.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/Entity/EntityLineage/LineageConfigModal.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/ProfilePlatformSettings.spec.ts",
-        "playwright/e2e/Flow/LineageSettings.spec.ts",
-        "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts"
       ]
     },
     {
@@ -8095,33 +8076,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/PaginationComponent/PaginationComponent.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/AIMode/ConnectionServiceDetails.spec.ts",
-        "playwright/e2e/Features/Container.spec.ts",
-        "playwright/e2e/Features/Dashboards.spec.ts",
-        "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
-        "playwright/e2e/Features/DataQuality/DataQualityListAfterReindex.spec.ts",
-        "playwright/e2e/Features/DataQuality/IncidentManagerAfterReindex.spec.ts",
-        "playwright/e2e/Features/DataQuality/TableTestCasePagination.spec.ts",
-        "playwright/e2e/Features/DataQuality/TestDefinitionFilters.spec.ts",
-        "playwright/e2e/Features/DataQuality/TestDefinitionSortAndSearch.spec.ts",
-        "playwright/e2e/Features/DataQuality/TestLibrary.spec.ts",
-        "playwright/e2e/Features/Glossary/LargeGlossaryPerformance.spec.ts",
-        "playwright/e2e/Features/IncidentManagerPagination.spec.ts",
-        "playwright/e2e/Features/IngestionListNameSorting.spec.ts",
-        "playwright/e2e/Features/Pagination.spec.ts",
-        "playwright/e2e/Features/QueryEntity.spec.ts",
-        "playwright/e2e/Features/Table.spec.ts",
-        "playwright/e2e/Flow/UsersPagination.spec.ts",
-        "playwright/e2e/Pages/DataContracts.spec.ts",
-        "playwright/e2e/Pages/TestSuite.spec.ts",
-        "playwright/e2e/Search/ExploreSearchCounts.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Pipeline/Execution/Execution.component.tsx"
       ],
       "specs": [
@@ -8792,8 +8746,13 @@
         "openmetadata-ui/src/main/resources/ui/src/components/SettingsSso/SSOConfigurationForm/SSOConfigurationForm.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/ContextCenterDashboard.spec.ts",
+        "playwright/e2e/Features/ContextCenterDocument.spec.ts",
+        "playwright/e2e/Features/ContextCenterPermission.spec.ts",
         "playwright/e2e/Features/ProfileSsoSettings.spec.ts",
-        "playwright/e2e/Features/SSOConfiguration.spec.ts"
+        "playwright/e2e/Features/SSOConfiguration.spec.ts",
+        "playwright/e2e/Pages/DataContracts.spec.ts",
+        "playwright/e2e/Pages/ODCSImportExport.spec.ts"
       ]
     },
     {
@@ -9861,8 +9820,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/common/SliderWithInput/SliderWithInput.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
-        "playwright/e2e/Features/DataQuality/ProfilerSettingsAfterReindex.spec.ts"
+        "playwright/e2e/Features/DataQuality/Profiler.spec.ts"
       ]
     },
     {
@@ -12781,22 +12739,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/pages/KPIPage/AddKPIPage.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/DataQuality/ProfilerSettingsAfterReindex.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/pages/KPIPage/EditKPIPage.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/DataQuality/ProfilerSettingsAfterReindex.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/pages/KnowledgeCenterFilterPage/KnowledgeCenterFilterPage.tsx"
       ],
       "specs": [
@@ -12831,8 +12773,7 @@
       "specs": [
         "playwright/e2e/Features/MetricHierarchy.spec.ts",
         "playwright/e2e/Features/ProfilePlatformSettings.spec.ts",
-        "playwright/e2e/Flow/LineageSettings.spec.ts",
-        "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts"
+        "playwright/e2e/Flow/LineageSettings.spec.ts"
       ]
     },
     {
