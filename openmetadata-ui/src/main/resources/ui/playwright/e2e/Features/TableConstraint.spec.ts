@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
+import { SearchIndex } from '../../../src/enums/search.enum';
 import {
   clickOnDistKeySelector,
   clickOnForeignKeySelector,
@@ -64,7 +65,7 @@ test.describe('Table Constraints', {}, () => {
       await waitForAllLoadersToDisappear(page);
 
       await page.click('[data-testid="table-constraints-add-button"]');
-      await page.locator('[role="dialog"].ant-modal').waitFor();
+      await page.getByTestId('table-constraint-modal').waitFor();
 
       // Add for Primary Key
 
@@ -151,18 +152,25 @@ test.describe('Table Constraints', {}, () => {
       );
       await relatedColumnSelect.click();
 
-      const querySearchResponse = page.waitForResponse(
-        `/api/v1/search/query?q=**`
-      );
+      const querySearchResponse = page.waitForResponse((response) => {
+        const url = new URL(response.url());
+        const query = (url.searchParams.get('q') ?? '').replace(/\\(.)/g, '$1');
+
+        return (
+          response.request().method() === 'GET' &&
+          url.pathname === '/api/v1/search/query' &&
+          url.searchParams.get('index') === SearchIndex.TABLE &&
+          query.includes(relatedColumnFQN)
+        );
+      });
       await relatedColumnSelect.fill(relatedColumnFQN);
 
-      await querySearchResponse;
+      expect((await querySearchResponse).status()).toBe(200);
 
       // select value from dropdown
       const dropdownValue = page.getByTestId(
         `option-label-${relatedColumnFQN}`
       );
-      await dropdownValue.hover();
       await dropdownValue.click();
       await clickOutside(page);
 
@@ -286,7 +294,7 @@ test.describe('Table Constraints', {}, () => {
       await page.click('[data-testid="save-btn"]');
       await saveResponse;
 
-      await page.locator('[role="dialog"].ant-modal').waitFor({
+      await page.getByTestId('table-constraint-modal').waitFor({
         state: 'detached',
       });
     });
@@ -352,7 +360,7 @@ test.describe('Table Constraints', {}, () => {
       await page.click('[data-testid="save-btn"]');
       await saveResponseOne;
 
-      await page.locator('[role="dialog"].ant-modal').waitFor({
+      await page.getByTestId('table-constraint-modal').waitFor({
         state: 'detached',
       });
 
@@ -368,7 +376,7 @@ test.describe('Table Constraints', {}, () => {
       // Remove the pending constraints
 
       await page.getByTestId('edit-table-constraint-button').click();
-      await page.locator('[role="dialog"].ant-modal').waitFor();
+      await page.getByTestId('table-constraint-modal').waitFor();
 
       // Clear Dist Key
       await clickOnDistKeySelector(page, true);
@@ -386,7 +394,7 @@ test.describe('Table Constraints', {}, () => {
       await page.click('[data-testid="save-btn"]');
       await saveResponse;
 
-      await page.locator('[role="dialog"].ant-modal').waitFor({
+      await page.getByTestId('table-constraint-modal').waitFor({
         state: 'detached',
       });
 

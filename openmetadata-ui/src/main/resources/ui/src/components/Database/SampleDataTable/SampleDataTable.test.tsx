@@ -174,4 +174,58 @@ describe('Test SampleDataTable Component', () => {
       global.document.createElement = originalCreateElement;
     }
   });
+
+  // Task 8 Batch 3: hasPermission's raw
+  // `permissions.EditAll || permissions.EditSampleData || isCurrentUserTableOwner` ->
+  // `canEditAll || canEditSampleData || isCurrentUserTableOwner`. This is the N-term-raw-OR-
+  // with-bare-EditAll pattern (Task 8 Batch 2 KnowledgeCard precedent): keeping canEditAll as
+  // its own explicit OR-term is required — dropping it in favor of just canEditSampleData
+  // would REGRESS the case below (EditAll=true, EditSampleData explicitly false), not fix an
+  // explicit-deny-wins gap.
+  describe('hasPermission (N-term OR with bare EditAll)', () => {
+    it('keeps the delete action available via EditAll when EditSampleData is explicitly false', async () => {
+      await act(async () => {
+        render(
+          <SampleDataTable
+            {...mockProps}
+            permissions={{
+              ...mockProps.permissions,
+              EditAll: true,
+              EditSampleData: false,
+            }}
+          />
+        );
+      });
+
+      const dropdown = screen.getByTestId('sample-data-manage-button');
+      fireEvent.click(dropdown);
+
+      expect(
+        screen.getByTestId('delete-button-details-container')
+      ).toBeInTheDocument();
+    });
+
+    it('hides the delete action when both EditAll and EditSampleData are false and the user is not an owner', async () => {
+      await act(async () => {
+        render(
+          <SampleDataTable
+            {...mockProps}
+            owners={[{ type: 'user', id: 'someone-else' }]}
+            permissions={{
+              ...mockProps.permissions,
+              EditAll: false,
+              EditSampleData: false,
+            }}
+          />
+        );
+      });
+
+      const dropdown = screen.getByTestId('sample-data-manage-button');
+      fireEvent.click(dropdown);
+
+      expect(
+        screen.queryByTestId('delete-button-details-container')
+      ).not.toBeInTheDocument();
+    });
+  });
 });

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { mockPipelineStatus } from '../../../mocks/Ingestion.mock';
 import IngestionRunDetailsModal from './IngestionRunDetailsModal';
 
@@ -21,7 +21,9 @@ describe('IngestionRunDetailsModal', () => {
   it('should show no data placeholder when no step summary is not present', () => {
     render(<IngestionRunDetailsModal handleCancel={mockHandleCancel} />);
 
-    expect(screen.getByText('No data')).toBeInTheDocument();
+    // The suite runs without i18n, so TableV2's empty state renders its raw
+    // translation key — AntD's built-in "No data" needed no translation.
+    expect(screen.getByText('label.no-data')).toBeInTheDocument();
   });
 
   it('should show proper data in the table when step summary is present', () => {
@@ -42,5 +44,17 @@ describe('IngestionRunDetailsModal', () => {
         `step-summary-name-${mockPipelineStatus.status[1].name}`
       )
     ).toBeInTheDocument();
+  });
+
+  it('should call handleCancel on cancel and on Escape', () => {
+    render(<IngestionRunDetailsModal handleCancel={mockHandleCancel} />);
+
+    fireEvent.click(screen.getByText('label.cancel'));
+
+    expect(mockHandleCancel).toHaveBeenCalledTimes(1);
+
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+
+    expect(mockHandleCancel).toHaveBeenCalledTimes(2);
   });
 });

@@ -16,6 +16,7 @@ import {
   render,
   screen,
   waitForElementToBeRemoved,
+  within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Table as AntdTable } from 'antd';
@@ -26,6 +27,7 @@ import {
   mockApplicationData,
   mockExternalApplicationData,
 } from '../../../../mocks/rests/applicationAPI.mock';
+import FormBuilderV1 from '../../../common/FormBuilderV1/FormBuilderV1';
 import AppRunsHistory from './AppRunsHistory.component';
 
 const mockHandlePagingChange = jest.fn();
@@ -56,7 +58,7 @@ jest.mock('../../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('username'),
 }));
 
-jest.mock('../../../common/FormBuilder/FormBuilder', () =>
+jest.mock('../../../common/FormBuilderV1/FormBuilderV1', () =>
   jest
     .fn()
     .mockImplementation(({ onSubmit }) => (
@@ -142,11 +144,7 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   getEndOfDayInMillis: jest.fn().mockImplementation((val) => val),
 }));
 
-jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockReturnValue(<div>ErrorPlaceHolder</div>)
-);
-
-jest.mock('../../../common/Table/Table', () => {
+jest.mock('../../../common/Table/TableV2', () => {
   return jest
     .fn()
     .mockImplementation(({ loading, customPaginationProps, ...rest }) => (
@@ -167,6 +165,14 @@ jest.mock('../../../common/Table/Table', () => {
 
 jest.mock('../AppLogsViewer/AppLogsViewer.component', () =>
   jest.fn().mockReturnValue(<div>AppLogsViewer</div>)
+);
+
+jest.mock('../../../common/PopOverCard/UserPopOverCard', () =>
+  jest
+    .fn()
+    .mockImplementation(({ userName }: { userName: string }) => (
+      <span data-testid="triggered-by-user">{userName}</span>
+    ))
 );
 
 jest.mock('react-router-dom', () => ({
@@ -248,6 +254,35 @@ describe('AppRunsHistory', () => {
     expect(stopButton).not.toBeInTheDocument();
   });
 
+  const getTriggeredByCell = () => {
+    const columnIndex = screen
+      .getAllByRole('columnheader')
+      .findIndex((header) => header.textContent === 'label.triggered-by');
+    const [, firstDataRow] = screen.getAllByRole('row');
+
+    return within(firstDataRow).getAllByRole('cell')[columnIndex];
+  };
+
+  it('should show the user who triggered an on-demand run', async () => {
+    mockGetApplicationRuns = jest.fn().mockReturnValue({
+      data: [{ ...mockApplicationData, triggeredBy: 'alice' }],
+      paging: { offset: 0, total: 1 },
+    });
+
+    render(<AppRunsHistory {...mockProps1} />);
+    await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
+
+    expect(getTriggeredByCell()).toHaveTextContent('alice');
+  });
+
+  it('should show a placeholder when no user triggered the run', async () => {
+    render(<AppRunsHistory {...mockProps1} />);
+    await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
+
+    expect(getTriggeredByCell()).toHaveTextContent('--');
+    expect(screen.queryByTestId('triggered-by-user')).not.toBeInTheDocument();
+  });
+
   it('should show the error toast if fail in fetching app history', async () => {
     mockGetApplicationRuns.mockRejectedValueOnce('fetching app history failed');
 
@@ -267,10 +302,13 @@ describe('AppRunsHistory', () => {
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
 
     expect(mockHandlePageChange).toHaveBeenCalledWith(6);
-    expect(mockGetApplicationRuns).toHaveBeenCalledWith('mockFQN', {
-      limit: 10,
-      offset: 25,
-    });
+    expect(mockGetApplicationRuns).toHaveBeenCalledWith(
+      'SearchIndexingApplication',
+      {
+        limit: 10,
+        offset: 25,
+      }
+    );
   });
 
   it('should fetch data based on startTs and endTs for external app onclick of NextPrevious', async () => {
@@ -278,21 +316,27 @@ describe('AppRunsHistory', () => {
     render(<AppRunsHistory {...mockProps2} />);
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
 
-    expect(mockGetApplicationRuns).toHaveBeenCalledWith('mockFQN', {
-      startTs: 'startDay',
-      endTs: new Date('2024-02-05').valueOf(),
-      limit: 10,
-    });
+    expect(mockGetApplicationRuns).toHaveBeenCalledWith(
+      'SearchIndexingApplication',
+      {
+        startTs: 'startDay',
+        endTs: new Date('2024-02-05').valueOf(),
+        limit: 10,
+      }
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'NextPrevious' }));
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
 
     expect(mockHandlePageChange).toHaveBeenCalledWith(6);
-    expect(mockGetApplicationRuns).toHaveBeenCalledWith('mockFQN', {
-      startTs: 'startDay',
-      endTs: new Date('2024-02-05').valueOf(),
-      limit: 10,
-    });
+    expect(mockGetApplicationRuns).toHaveBeenCalledWith(
+      'SearchIndexingApplication',
+      {
+        startTs: 'startDay',
+        endTs: new Date('2024-02-05').valueOf(),
+        limit: 10,
+      }
+    );
   });
 
   it('should expose children method to parent using ref', async () => {
@@ -314,10 +358,13 @@ describe('AppRunsHistory', () => {
     });
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
 
-    expect(mockGetApplicationRuns).toHaveBeenCalledWith('mockFQN', {
-      limit: 5,
-      offset: 0,
-    });
+    expect(mockGetApplicationRuns).toHaveBeenCalledWith(
+      'SearchIndexingApplication',
+      {
+        limit: 5,
+        offset: 0,
+      }
+    );
   });
 
   it('opens the logs modal directly for an internal run with no inline stats', async () => {
@@ -371,7 +418,8 @@ describe('AppRunsHistory', () => {
     render(<AppRunsHistory jsonSchema={{}} />);
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
 
-    expect(screen.getByText('--')).toBeInTheDocument();
+    // The mock run has neither a start time nor a triggering user.
+    expect(screen.getAllByText('--')).toHaveLength(2);
   });
 
   it('should show current configuration when internal app has no run history yet', async () => {
@@ -397,6 +445,11 @@ describe('AppRunsHistory', () => {
 
     expect(screen.getByTestId('app-run-config-close')).toBeInTheDocument();
     expect(screen.getByText('Configure Save')).toBeInTheDocument();
+    // The run config is read-only, so the form must not offer a Submit.
+    expect(FormBuilderV1).toHaveBeenLastCalledWith(
+      expect.objectContaining({ readonly: true, hideFooter: true }),
+      expect.anything()
+    );
   });
 
   it('should disable config when schema is unavailable', async () => {

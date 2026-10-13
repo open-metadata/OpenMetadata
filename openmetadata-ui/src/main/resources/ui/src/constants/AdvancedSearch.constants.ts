@@ -113,6 +113,17 @@ export const COMMON_DROPDOWN_ITEMS = [
   },
 ];
 
+export const TEAM_ASSETS_DROPDOWN_ITEMS = [
+  {
+    label: 'label.entity-type-plural',
+    labelKeyOptions: {
+      entity: 'label.entity',
+    },
+    key: EntityFields.ENTITY_TYPE,
+  },
+  ...COMMON_DROPDOWN_ITEMS,
+];
+
 export const DATA_ASSET_DROPDOWN_ITEMS = [
   {
     label: 'label.data-asset-plural',
@@ -488,8 +499,6 @@ export const NUMBER_FIELD_OPERATORS = [
 export const LIST_VALUE_OPERATORS = ['select_equals', 'select_not_equals'];
 
 export const NULL_CHECK_OPERATORS = ['is_null', 'is_not_null'];
-
-export const OWNER_QUICK_FILTER_DEFAULT_OPTIONS_KEY = 'displayName.keyword';
 
 export const NULL_OPTION_KEY = 'OM_NULL_FIELD';
 

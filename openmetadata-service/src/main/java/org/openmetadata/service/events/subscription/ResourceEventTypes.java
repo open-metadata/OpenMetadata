@@ -65,30 +65,16 @@ public final class ResourceEventTypes {
           EventType.ONTOLOGY_CHANGE_SET_APPLIED);
 
   /**
-   * Legacy thread-tasks emit these with entityType=THREAD, so they reach the thread's parent entity
-   * exactly like {@code THREAD_EVENTS}; retired with the Recognizer migration (#30559).
-   */
-  private static final List<EventType> LEGACY_TASK_EVENTS =
-      List.of(EventType.TASK_RESOLVED, EventType.TASK_CLOSED);
-
-  /**
    * Values no resource can advertise: {@code ENTITY_NO_CHANGE} is a sentinel that ChangeEventHandler
-   * never inserts, {@code USER_LOGIN}/{@code USER_LOGOUT} are written to the audit log only, {@code
-   * ENTITY_FIELDS_CHANGED} only ever reaches the X-OpenMetadata-Change header (FormatterUtil returns
-   * the pre-built ChangeEvent, whose eventType is entityUpdated, before the header is read), and the
-   * rest lost their emitter in the task redesign (#29039).
+   * never inserts, {@code USER_LOGIN}/{@code USER_LOGOUT} are written to the audit log only, and
+   * {@code ENTITY_FIELDS_CHANGED} only ever reaches the X-OpenMetadata-Change header (FormatterUtil
+   * returns the pre-built ChangeEvent, whose eventType is entityUpdated, before the header is read).
+   * Values that lost their emitter were deleted from {@link EventType} outright (#29039).
    */
   public static final Set<EventType> UNREACHABLE =
       Set.of(
           EventType.ENTITY_NO_CHANGE,
           EventType.ENTITY_FIELDS_CHANGED,
-          EventType.TASK_CREATED,
-          EventType.TASK_UPDATED,
-          EventType.SUGGESTION_CREATED,
-          EventType.SUGGESTION_UPDATED,
-          EventType.SUGGESTION_ACCEPTED,
-          EventType.SUGGESTION_REJECTED,
-          EventType.SUGGESTION_DELETED,
           EventType.USER_LOGIN,
           EventType.USER_LOGOUT);
 
@@ -100,7 +86,6 @@ public final class ResourceEventTypes {
     }
     Set<EventType> eventTypes = new LinkedHashSet<>(ENTITY_EVENTS);
     eventTypes.addAll(THREAD_EVENTS);
-    eventTypes.addAll(LEGACY_TASK_EVENTS);
     final boolean isAllResource = ALL_RESOURCE.equalsIgnoreCase(resource);
     if (Entity.GLOSSARY.equalsIgnoreCase(resource) || isAllResource) {
       eventTypes.addAll(GLOSSARY_EVENTS);

@@ -13,8 +13,11 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { DefaultColumnOrder } from '../../../generated/api/configuration/appConfiguration';
 import { Column } from '../../../generated/entity/data/container';
 import { Table } from '../../../generated/entity/data/table';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { MOCK_TABLE } from '../../../mocks/TableData.mock';
 import {
   getTableColumnsByFQN,
@@ -331,7 +334,7 @@ jest.mock('../../../rest/testAPI', () => ({
   getTestCaseExecutionSummary: jest.fn().mockResolvedValue({}),
 }));
 
-jest.mock('../../../utils/StringUtils', () => ({
+jest.mock('../../../utils/RichTextStringUtils', () => ({
   stringToHTML: jest.fn((text) => text),
 }));
 
@@ -377,6 +380,7 @@ jest.mock('../../../utils/EntityColumnUtils', () => ({
 jest.mock('../../../utils/EntitySearchUtils', () => ({
   highlightSearchArrayElement: jest.fn(),
   highlightSearchText: jest.fn().mockImplementation((value) => value),
+  renderHighlightedText: jest.fn().mockImplementation((value) => value ?? ''),
 }));
 
 jest.mock('../../../constants/Table.constants', () => ({
@@ -388,6 +392,32 @@ jest.mock('../../../constants/Table.constants', () => ({
 }));
 
 describe('Test EntityTable Component', () => {
+  it('starts in source order when that is the tenant default', async () => {
+    (getTableColumnsByFQN as jest.Mock).mockClear();
+    useApplicationStore.getState().setAppPreferences({
+      defaultColumnOrder: DefaultColumnOrder.SourceOrder,
+    });
+
+    try {
+      await act(async () => {
+        render(<SchemaTable />, { wrapper: MemoryRouter });
+      });
+
+      expect(getTableColumnsByFQN).toHaveBeenCalledWith(
+        MOCK_TABLE.fullyQualifiedName,
+        expect.objectContaining({ sortBy: 'ordinalPosition', sortOrder: 'asc' })
+      );
+      expect(getTableColumnsByFQN).not.toHaveBeenCalledWith(
+        MOCK_TABLE.fullyQualifiedName,
+        expect.objectContaining({ sortBy: 'name' })
+      );
+    } finally {
+      useApplicationStore
+        .getState()
+        .setAppPreferences({ defaultColumnOrder: undefined });
+    }
+  });
+
   it('Initially, Table should load', async () => {
     await act(async () => {
       render(<SchemaTable />, {
@@ -639,6 +669,70 @@ describe('Test EntityTable Component', () => {
       expect(mockColumnsWithNested[1].children).toBeDefined();
       expect(mockColumnsWithNested[1].children).toHaveLength(3);
       expect(mockColumnsWithNested[1].children?.[0].name).toBe('product_id');
+    });
+  });
+
+  // Task 8 Batch 3: editDisplayNamePermission's raw
+  // `(tablePermissions.EditDisplayName || tablePermissions.EditAll) && !deleted` ->
+  // canEditDisplayName (getDerivedPermissionFlags). Documented explicit-deny-wins behavior
+  // change (Task 6 Finding 1 / Task 8 Batch 2 precedent): an explicit
+  // `EditDisplayName: false` now wins over a bare `EditAll: true` grant, where the old raw OR
+  // granted regardless.
+  describe('editDisplayNamePermission (explicit-deny-wins)', () => {
+    afterEach(() => {
+      mockGenericContextProps.permissions = DEFAULT_ENTITY_PERMISSION;
+    });
+
+    it('grants the edit displayName button via EditAll when EditDisplayName is not present', async () => {
+      (getTableColumnsByFQN as jest.Mock).mockResolvedValueOnce({
+        data: columnsWithDisplayName,
+        paging: { total: columnsWithDisplayName.length },
+      });
+      mockGenericContextProps.data = {
+        ...MOCK_TABLE,
+        columns: columnsWithDisplayName,
+      } as Table;
+      // Deliberately NOT spreading DEFAULT_ENTITY_PERMISSION here: it defines every
+      // Operation key (including EditDisplayName) as an explicit `false`, which would make
+      // getPrioritizedEditPermission's "key present" check see EditDisplayName as an explicit
+      // deny rather than absent, masking the EditAll fallback this test exists to cover.
+      mockGenericContextProps.permissions = {
+        EditAll: true,
+      } as OperationPermission;
+
+      render(<SchemaTable />, {
+        wrapper: MemoryRouter,
+      });
+
+      expect(
+        await screen.findAllByTestId('edit-displayName-button')
+      ).not.toHaveLength(0);
+    });
+
+    it('denies the edit displayName button when EditDisplayName is explicitly false, even with EditAll true', async () => {
+      (getTableColumnsByFQN as jest.Mock).mockResolvedValueOnce({
+        data: columnsWithDisplayName,
+        paging: { total: columnsWithDisplayName.length },
+      });
+      mockGenericContextProps.data = {
+        ...MOCK_TABLE,
+        columns: columnsWithDisplayName,
+      } as Table;
+      mockGenericContextProps.permissions = {
+        ...DEFAULT_ENTITY_PERMISSION,
+        EditAll: true,
+        EditDisplayName: false,
+      };
+
+      render(<SchemaTable />, {
+        wrapper: MemoryRouter,
+      });
+
+      await screen.findAllByTestId('column-name');
+
+      expect(
+        screen.queryByTestId('edit-displayName-button')
+      ).not.toBeInTheDocument();
     });
   });
 });

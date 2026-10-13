@@ -49,12 +49,41 @@ test('exports every warning-tier import rule', async () => {
   );
 });
 
-test('configures every import rule as a warning', async () => {
+// A rule moves to `error` only once its backlog is genuinely zero. Listing the
+// severities explicitly means neither direction can change by accident: a
+// promotion without a cleanup, or a demotion to get a red build green.
+const EXPECTED_SEVERITY = {
+  'no-api-calls-in-iteration': 'warn',
+  'no-circular-imports': 'warn',
+  'no-cross-page-imports': 'warn',
+  'no-hook-ui-imports': 'error',
+  'no-impure-pure-utils': 'warn',
+  'no-internal-barrel-imports': 'error',
+  'no-lodash-default-import': 'error',
+  'no-lower-layer-page-imports': 'warn',
+  'no-rest-ui-imports': 'error',
+  'review-sequential-api-calls': 'warn',
+};
+
+// calculateConfigForFile normalizes every severity to 0 / 1 / 2.
+const SEVERITY_NAME = ['off', 'warn', 'error'];
+
+test('configures every import rule at its recorded severity', async () => {
   const eslint = new ESLint();
   const config = await eslint.calculateConfigForFile('src/App.tsx');
 
+  assert.deepEqual(
+    Object.keys(EXPECTED_SEVERITY).sort(),
+    EXPECTED_RULES,
+    'every import rule needs a recorded severity'
+  );
+
   for (const rule of EXPECTED_RULES) {
-    assert.equal(config.rules[`openmetadata-imports/${rule}`]?.[0], 1, rule);
+    assert.equal(
+      SEVERITY_NAME[config.rules[`openmetadata-imports/${rule}`]?.[0]],
+      EXPECTED_SEVERITY[rule],
+      rule
+    );
   }
 });
 

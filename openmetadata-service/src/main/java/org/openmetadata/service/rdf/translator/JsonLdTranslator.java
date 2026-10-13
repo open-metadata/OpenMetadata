@@ -48,8 +48,12 @@ public class JsonLdTranslator {
   private final ObjectMapper objectMapper;
   private final Map<String, Object> contextCache;
   private final String baseUri;
+  // One mapper for the translator's lifetime. A per-entity mapper made the
+  // FQN→UUID and merged-context caches die with each entity — structurally
+  // zero cross-entity hits, i.e. one DB round trip per tag FQN per entity
+  // during reindexing.
   private final RdfPropertyMapper propertyMapper;
-  private final Function<EntityInterface, String> entityTypeResolver;
+  private final Function<EntityInterface<?>, String> entityTypeResolver;
 
   public JsonLdTranslator(ObjectMapper objectMapper, String baseUri) {
     this(objectMapper, baseUri, entity -> entity.getEntityReference().getType());
@@ -58,7 +62,7 @@ public class JsonLdTranslator {
   JsonLdTranslator(
       ObjectMapper objectMapper,
       String baseUri,
-      Function<EntityInterface, String> entityTypeResolver) {
+      Function<EntityInterface<?>, String> entityTypeResolver) {
     this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper");
     this.contextCache = new HashMap<>();
     this.baseUri = Objects.requireNonNull(baseUri, "baseUri");
@@ -105,7 +109,7 @@ public class JsonLdTranslator {
     }
   }
 
-  public ObjectNode toJsonLd(EntityInterface entity) {
+  public ObjectNode toJsonLd(EntityInterface<?> entity) {
     String entityType = resolveEntityType(entity);
     ObjectNode entityJson = createEntityDocument(entity, entityType);
     Object context = selectContext(entityType);
@@ -118,7 +122,7 @@ public class JsonLdTranslator {
     }
   }
 
-  private ObjectNode createEntityDocument(EntityInterface entity, String entityType) {
+  private ObjectNode createEntityDocument(EntityInterface<?> entity, String entityType) {
     ObjectNode entityJson = objectMapper.valueToTree(entity);
     addJsonLdPropertiesToReferences(entityJson);
     assignColumnIds(entityJson);
@@ -190,7 +194,7 @@ public class JsonLdTranslator {
     }
   }
 
-  public Model toRdf(EntityInterface entity) {
+  public Model toRdf(EntityInterface<?> entity) {
     Model model = ModelFactory.createDefaultModel();
 
     model.setNsPrefix("om", "https://open-metadata.org/ontology/");
@@ -249,7 +253,7 @@ public class JsonLdTranslator {
     return model;
   }
 
-  public String toJsonLdString(EntityInterface entity, boolean prettyPrint) throws IOException {
+  public String toJsonLdString(EntityInterface<?> entity, boolean prettyPrint) throws IOException {
     ObjectNode jsonLd = toJsonLd(entity);
     return prettyPrint
         ? objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(jsonLd)
@@ -257,81 +261,11 @@ public class JsonLdTranslator {
   }
 
   private Object selectContext(String entityType) {
-    return switch (entityType.toLowerCase()) {
-      case "table",
-          "database",
-          "databaseschema",
-          "storedprocedure",
-          "query",
-          "dashboard",
-          "chart",
-          "report",
-          "pipeline",
-          "topic",
-          "mlmodel",
-          "container",
-          "metric",
-          "searchindex",
-          "apicollection",
-          "apiendpoint",
-          "directory",
-          "file",
-          "spreadsheet",
-          "worksheet" -> contextCache.get("dataAsset-complete");
-      case "databaseservice",
-          "dashboardservice",
-          "messagingservice",
-          "pipelineservice",
-          "mlmodelservice",
-          "storageservice",
-          "searchservice",
-          "metadataservice",
-          "apiservice",
-          "reportingservice",
-          "qualityservice",
-          "observabilityservice",
-          "driveservice" -> contextCache.get("service");
-      case "user", "team", "role", "bot", "policy" -> contextCache.get("team");
-      case "thread", "post" -> contextCache.get("thread");
-      case "glossary",
-          "glossaryterm",
-          "classification",
-          "tag",
-          "datacontract",
-          "dataproduct",
-          "domain",
-          "persona" -> contextCache.get("governance");
-      case "testdefinition",
-          "testsuite",
-          "testcase",
-          "testcaseresult",
-          "testcaseresolutionstatus" -> contextCache.get("quality");
-      case "ingestionpipeline",
-          "eventsubscription",
-          "kpi",
-          "datainsightchart",
-          "webanalyticevent",
-          "app",
-          "appmarketplacedefinition",
-          "document",
-          "page" -> contextCache.get("operations");
-      case "llmmodel",
-          "aiapplication",
-          "mcpserver",
-          "mcpexecution",
-          "agentexecution",
-          "prompttemplate" -> contextCache.get("ai");
-      case "workflow",
-          "workflowdefinition",
-          "workflowinstance",
-          "workflowinstancestate",
-          "automation" -> contextCache.get("automation");
-      default -> contextCache.get("base");
-    };
+    return contextCache.get(RdfContextRegistry.contextNameFor(entityType));
   }
 
-  private String resolveEntityType(EntityInterface entity) {
-    EntityInterface requiredEntity = Objects.requireNonNull(entity, "entity");
+  private String resolveEntityType(EntityInterface<?> entity) {
+    EntityInterface<?> requiredEntity = Objects.requireNonNull(entity, "entity");
     String entityType = entityTypeResolver.apply(requiredEntity);
     if (nullOrEmpty(entityType)) {
       throw new IllegalArgumentException(

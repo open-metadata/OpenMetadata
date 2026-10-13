@@ -19,6 +19,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.MockedStatic;
+import org.mockito.Mockito;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.APIEndpoint;
@@ -38,7 +40,6 @@ import org.openmetadata.schema.type.SearchIndexField;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.Task;
-import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.schema.type.UsageStats;
 import org.openmetadata.service.Entity;
@@ -367,7 +368,7 @@ class EntityUtilTest {
     assertEquals("after", change.getFieldsUpdated().get(0).getNewValue());
 
     when(createContext.getEntity()).thenReturn(null);
-    when(updateContext.getEntity()).thenReturn(new Table());
+    Mockito.<EntityInterface<?>>when(updateContext.getEntity()).thenReturn(new Table());
     assertEquals(MetadataOperation.CREATE, EntityUtil.createOrUpdateOperation(createContext));
     assertEquals(MetadataOperation.EDIT_ALL, EntityUtil.createOrUpdateOperation(updateContext));
 
@@ -769,18 +770,6 @@ class EntityUtilTest {
     assertNull(EntityUtil.getEntityField(null, "fullyQualifiedName"));
     assertNull(EntityUtil.getEntityField(table, ""));
     assertNull(EntityUtil.getEntityField(new ThrowingFieldTable(), "brokenField"));
-
-    assertTrue(EntityUtil.isDescriptionTask(TaskType.RequestDescription));
-    assertTrue(EntityUtil.isDescriptionTask(TaskType.UpdateDescription));
-    assertFalse(EntityUtil.isDescriptionTask(TaskType.RequestTag));
-    assertTrue(EntityUtil.isTagTask(TaskType.RequestTag));
-    assertTrue(EntityUtil.isTagTask(TaskType.UpdateTag));
-    assertFalse(EntityUtil.isTagTask(TaskType.RequestApproval));
-    assertTrue(EntityUtil.isApprovalTask(TaskType.RequestApproval));
-    assertFalse(EntityUtil.isApprovalTask(TaskType.RequestTag));
-    assertTrue(
-        EntityUtil.isTestCaseFailureResolutionTask(TaskType.RequestTestCaseFailureResolution));
-    assertFalse(EntityUtil.isTestCaseFailureResolutionTask(TaskType.RequestApproval));
   }
 
   @Test

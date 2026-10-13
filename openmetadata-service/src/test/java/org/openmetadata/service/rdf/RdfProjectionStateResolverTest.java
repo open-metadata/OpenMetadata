@@ -18,8 +18,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -31,12 +31,9 @@ import org.openmetadata.service.jdbi3.TimeSeriesDAOs.AppExtensionTimeSeries;
 
 class RdfProjectionStateResolverTest {
   private final AppExtensionTimeSeries runStore = mock(AppExtensionTimeSeries.class);
-  private final RdfProjectionStateResolver resolver = new RdfProjectionStateResolver(runStore);
-
-  @AfterEach
-  void resetRuntimeHealth() {
-    RdfProjectionHealth.markReady();
-  }
+  private final AtomicBoolean degraded = new AtomicBoolean();
+  private final RdfProjectionStateResolver resolver =
+      new RdfProjectionStateResolver(runStore, degraded::get);
 
   @Test
   void reportsRebuildingUntilTheFirstPostMigrationRun() {
@@ -69,7 +66,7 @@ class RdfProjectionStateResolverTest {
     final AppRunRecord run = new AppRunRecord().withStatus(AppRunRecord.Status.COMPLETED);
     when(runStore.listAppExtensionByName("RdfIndexApp", 1, 0, "status"))
         .thenReturn(List.of(JsonUtils.pojoToJson(run)));
-    RdfProjectionHealth.markDegraded();
+    degraded.set(true);
 
     assertEquals(RdfProjectionState.DEGRADED, resolver.resolve());
   }

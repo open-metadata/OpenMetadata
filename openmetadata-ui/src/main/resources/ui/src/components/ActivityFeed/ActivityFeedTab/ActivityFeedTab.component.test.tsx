@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
@@ -231,6 +237,30 @@ describe('ActivityFeedTab', () => {
     );
     mockGetFeedData.mockResolvedValue(undefined);
     mockGetTaskData.mockResolvedValue(undefined);
+  });
+
+  describe('Left panel navigation', () => {
+    it.each([
+      [ActivityFeedTabs.ALL, 'All'],
+      [ActivityFeedTabs.TASKS, 'Tasks'],
+      // Mentions lives under the Tasks entry in the left panel.
+      [ActivityFeedTabs.MENTIONS, 'Tasks'],
+    ])('marks only the %s entry as current', async (subTab, current) => {
+      renderComponent(subTab);
+
+      const nav = await screen.findByRole('navigation', {
+        name: 'label.activity-feed-plural',
+      });
+      const all = within(nav).getByTestId('activity-feed-left-panel-all');
+      const tasks = within(nav).getByTestId('activity-feed-left-panel-tasks');
+
+      expect(all.getAttribute('aria-current')).toBe(
+        current === 'All' ? 'page' : null
+      );
+      expect(tasks.getAttribute('aria-current')).toBe(
+        current === 'Tasks' ? 'page' : null
+      );
+    });
   });
 
   describe('Activity fetch is gated by tab', () => {

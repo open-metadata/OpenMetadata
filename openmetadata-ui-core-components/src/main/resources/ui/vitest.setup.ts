@@ -16,3 +16,53 @@ expect.extend(matchers);
 afterEach(() => {
   cleanup();
 });
+
+// jsdom ships no `DataTransfer`, and every component that hands a `FileList`
+// back to a callback builds one through it (see `filesToFileList` in
+// `file-upload.tsx`). Without this shim, drop-zone code paths throw
+// `DataTransfer is not defined` before any assertion runs. Only the
+// `items.add` → `files` shape used by that helper is modelled.
+if (typeof globalThis.DataTransfer === 'undefined') {
+  class DataTransferPolyfill {
+    private readonly collected: File[] = [];
+
+    readonly items = {
+      add: (file: File) => {
+        this.collected.push(file);
+      },
+    };
+
+    get files(): FileList {
+      const list = [...this.collected];
+
+      return Object.assign(list, {
+        item: (index: number) => list[index] ?? null,
+      }) as unknown as FileList;
+    }
+  }
+
+  globalThis.DataTransfer =
+    DataTransferPolyfill as unknown as typeof DataTransfer;
+}
+
+// jsdom ships no `ResizeObserver`, which the dropdown placement hook
+// (`useDropdownPlacement`) instantiates whenever an overlay opens. Without this
+// shim, any test that opens a TreeSelect/Dropdown throws `ResizeObserver is not
+// defined` during commit. A no-op observer is enough — the hook also listens to
+// `resize` and measures on open.
+if (typeof globalThis.ResizeObserver === 'undefined') {
+  class ResizeObserverPolyfill {
+    observe() {
+      // no-op
+    }
+    unobserve() {
+      // no-op
+    }
+    disconnect() {
+      // no-op
+    }
+  }
+
+  globalThis.ResizeObserver =
+    ResizeObserverPolyfill as unknown as typeof ResizeObserver;
+}

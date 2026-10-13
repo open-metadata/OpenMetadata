@@ -17,20 +17,23 @@ import {
   ButtonUtility,
   Card,
   Input,
+  SimpleModal,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { SearchLg, XClose } from '@untitledui/icons';
-import { Modal, Progress } from 'antd';
+import { Search, XClose } from '@openmetadata/ui-core-components/icons';
+import { Progress } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, isString } from 'lodash';
 import { DateTime } from 'luxon';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ExportIcon } from '../../assets/svg/ic-download.svg';
-import { AuditLogFilters, AuditLogList } from '../../components/AuditLog';
+import AuditLogFilters from '../../components/AuditLog/AuditLogFilters.component';
+import AuditLogList from '../../components/AuditLog/AuditLogList.component';
 import '../../components/common/atoms/filters/FilterSelection.less';
 import Banner from '../../components/common/Banner/Banner';
 import DatePicker from '../../components/common/DatePicker/DatePicker';
+import { getPopupContainer } from '../../components/common/DrawerPopupContainerProvider/DrawerPopupContainerProvider';
 import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
@@ -411,8 +414,9 @@ const AuditLogsPage = () => {
     }
   }, [isExporting]);
 
-  const hasActiveFilters =
-    activeFilters.length > 0 || Boolean(searchTerm.trim());
+  const hasActiveSearch = Boolean(searchTerm.trim());
+  const hasActiveFiltersOnly = activeFilters.length > 0;
+  const hasActiveFilters = hasActiveFiltersOnly || hasActiveSearch;
 
   const renderExportProgress = () =>
     exportJob?.status === 'IN_PROGRESS' ? (
@@ -486,14 +490,14 @@ const AuditLogsPage = () => {
         {/* Content Paper */}
         <Card className="tw:flex-1 tw:min-h-0 tw:flex tw:flex-col tw:overflow-hidden">
           {/* Filters */}
-          <div className="tw:shrink-0 tw:p-3">
+          <div className="tw:shrink-0 tw:p-3 tw:border-b tw:border-secondary">
             <div className="tw:flex tw:items-center tw:gap-4">
               <div
                 className="tw:shrink-0"
                 data-testid="audit-log-search-container">
                 <Input
                   className="tw:max-w-86"
-                  icon={SearchLg}
+                  icon={Search}
                   inputDataTestId="audit-log-search"
                   placeholder={t('label.search-audit-logs')}
                   value={searchInputValue}
@@ -566,8 +570,14 @@ const AuditLogsPage = () => {
           </div>
 
           {/* List */}
-          <div className="tw:flex-1 tw:min-h-0 tw:overflow-auto">
-            <AuditLogList isLoading={isLoading} logs={logs} />
+          <div className="tw:flex-1 tw:min-h-0 tw:overflow-auto tw:relative">
+            <AuditLogList
+              hasActiveFilters={hasActiveFiltersOnly}
+              hasActiveSearch={hasActiveSearch}
+              isLoading={isLoading}
+              logs={logs}
+              onClearFilters={handleClearFilters}
+            />
           </div>
 
           {/* Pagination */}
@@ -591,19 +601,14 @@ const AuditLogsPage = () => {
         </Card>
       </div>
 
-      <Modal
-        centered
-        cancelButtonProps={{ disabled: isExporting }}
+      <SimpleModal
         cancelText={t('label.cancel')}
-        closable={!isExporting}
         data-testid="export-audit-logs-modal"
-        maskClosable={!isExporting}
-        okButtonProps={{
-          disabled: isExporting || !exportDateRange,
-          loading: isExporting,
-        }}
+        isDismissable={false}
+        isOkDisabled={isExporting || !exportDateRange}
+        isOkLoading={isExporting}
+        isOpen={isExportModalOpen}
         okText={t('label.export')}
-        open={isExportModalOpen}
         title={t('label.export-entity', {
           entity: t('label.audit-log-plural'),
         })}
@@ -626,6 +631,7 @@ const AuditLogsPage = () => {
               data-testid="export-date-range-picker"
               disabled={isExporting}
               disabledDate={(current) => current > DateTime.now().endOf('day')}
+              getPopupContainer={getPopupContainer}
               value={exportDateRange}
               onChange={(dates) => {
                 if (dates?.[0] && dates?.[1]) {
@@ -639,7 +645,7 @@ const AuditLogsPage = () => {
           {renderExportProgress()}
           {renderExportResult()}
         </div>
-      </Modal>
+      </SimpleModal>
     </PageLayoutV1>
   );
 };

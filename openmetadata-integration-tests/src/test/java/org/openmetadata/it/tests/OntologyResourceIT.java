@@ -53,6 +53,23 @@ class OntologyResourceIT {
     assertThat(summary.getTotalRelations()).isEqualTo(1);
     assertThat(summary.getIsolatedTerms()).isEqualTo(TERM_COUNT - 2);
     assertThat(summary.getIsolatedPreview()).hasSize(5);
+    assertThat(summary.getIsolatedPreview())
+        .allSatisfy(
+            term -> {
+              assertThat(term.getId()).isNotNull();
+              assertThat(term.getName()).isNotBlank();
+              assertThat(term.getFullyQualifiedName()).isNotBlank();
+              assertThat(term.getName()).isNotEqualTo(term.getId().toString());
+            });
+    final GlossaryTerm displayNamedTerm = terms.get(2);
+    assertThat(summary.getIsolatedPreview())
+        .filteredOn(term -> term.getId().equals(displayNamedTerm.getId()))
+        .singleElement()
+        .satisfies(
+            term -> {
+              assertThat(term.getName()).isEqualTo(displayNamedTerm.getName());
+              assertThat(term.getDisplayName()).isEqualTo(displayNamedTerm.getDisplayName());
+            });
     assertThat(summary.getPaging().getLimit()).isEqualTo(5);
     assertThat(data.getClusters()).isEmpty();
     assertThat(data.getPaging().getLimit()).isEqualTo(12);
@@ -75,7 +92,12 @@ class OntologyResourceIT {
       final TestNamespace namespace, final Glossary glossary) {
     final List<GlossaryTerm> terms = new ArrayList<>();
     for (int index = 0; index < TERM_COUNT; index++) {
-      terms.add(GlossaryTermTestFactory.createWithName(namespace, glossary, "ontology" + index));
+      final GlossaryTerm term =
+          index == 2
+              ? GlossaryTermTestFactory.createWithDisplayName(
+                  namespace, glossary, "ontology" + index, "Ontology Display Name")
+              : GlossaryTermTestFactory.createWithName(namespace, glossary, "ontology" + index);
+      terms.add(term);
     }
     return List.copyOf(terms);
   }

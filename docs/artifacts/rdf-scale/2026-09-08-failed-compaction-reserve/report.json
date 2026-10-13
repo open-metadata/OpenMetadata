@@ -1,0 +1,33 @@
+{
+  "startedAt" : "2026-09-08T19:50:08.178244Z",
+  "productionCommit" : "bfc7e6d9a021b41b27a47eade1d8165aa79726a3",
+  "javaVersion" : "21.0.11",
+  "javaVendor" : "Microsoft",
+  "os" : "Mac OS X aarch64",
+  "appHeapLimitBytes" : 8589934592,
+  "appProcessors" : 16,
+  "hostMemoryBytes" : 137438953472,
+  "fusekiImage" : "rdf-review-minnetonka:fuseki",
+  "fusekiImageId" : "sha256:7a92a910c295f21e770b52768f2b901f01accd8fc307f7702e9cec54f435e8da",
+  "fusekiHeapOptions" : "-Xms4g -Xmx4g",
+  "fusekiMemoryLimitBytes" : 17179869184,
+  "fusekiNanoCpus" : 6000000000,
+  "databaseDurable" : true,
+  "databaseImage" : "postgres:15",
+  "databaseMemoryLimitBytes" : 8589934592,
+  "databaseNanoCpus" : 2000000000,
+  "resourceSampleSeconds" : 2,
+  "querySamplesPerType" : 100,
+  "concurrentQueryIntervalSeconds" : 5,
+  "bulkLineageEdgeBatchSize" : 10000,
+  "scheduledRdfJobsPaused" : true,
+  "schema" : "rdf_scale_61e01a0b7173f543.db_fixture.sc_fixture",
+  "workload" : {
+    "tables" : 200000,
+    "edges" : 2000000,
+    "wideEvery" : 100,
+    "wideColumns" : 500,
+    "detailedEvery" : 100
+  },
+  "seedSeconds" : 553.618023458
+}

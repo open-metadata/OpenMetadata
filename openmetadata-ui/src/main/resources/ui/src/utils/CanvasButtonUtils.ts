@@ -12,6 +12,7 @@
  */
 import { CANVAS_BUTTON_COLORS } from '../constants/Color.constants';
 import { StatusType } from '../generated/entity/data/pipeline';
+import { resolveCssColor } from './common/cssColor.utils';
 
 export enum ECanvasButtonType {
   Pipeline = 'pipeline',
@@ -46,27 +47,99 @@ export function isPointInButton(
   );
 }
 
-interface StatusColors {
+export interface CanvasButtonStatusColors {
   border: string;
   background: string;
   icon: string;
 }
 
-function getStatusColors(executionStatus?: StatusType): StatusColors {
+export type CanvasButtonColors = Record<
+  keyof typeof CANVAS_BUTTON_COLORS,
+  CanvasButtonStatusColors
+>;
+
+const CANVAS_BUTTON_COLOR_TOKENS: CanvasButtonColors = {
+  DEFAULT: {
+    background: 'var(--om-color-bg-primary)',
+    border: 'var(--om-color-border-secondary)',
+    icon: 'var(--om-color-text-primary)',
+  },
+  FAILED: {
+    background: 'var(--om-color-bg-error)',
+    border: 'var(--om-color-border-error)',
+    icon: 'var(--om-color-fg-error)',
+  },
+  HOVER: {
+    background: 'var(--om-color-bg-primary)',
+    border: 'var(--om-color-border-brand)',
+    icon: 'var(--om-color-fg-brand)',
+  },
+  PENDING: {
+    background: 'var(--om-color-bg-warning)',
+    border: 'var(--om-color-fg-warning)',
+    icon: 'var(--om-color-fg-warning)',
+  },
+  SUCCESS: {
+    background: 'var(--om-color-bg-success)',
+    border: 'var(--om-color-fg-success)',
+    icon: 'var(--om-color-fg-success)',
+  },
+};
+
+const resolveStatusColors = (
+  tokens: CanvasButtonStatusColors,
+  fallbacks: CanvasButtonStatusColors
+): CanvasButtonStatusColors => ({
+  background: resolveCssColor(tokens.background, fallbacks.background),
+  border: resolveCssColor(tokens.border, fallbacks.border),
+  icon: resolveCssColor(tokens.icon, fallbacks.icon),
+});
+
+/**
+ * Canvas APIs need concrete colors, so resolve semantic tokens at draw time
+ * after the active theme class and brand variables have reached the DOM.
+ */
+export const resolveCanvasButtonColors = (): CanvasButtonColors => ({
+  DEFAULT: resolveStatusColors(
+    CANVAS_BUTTON_COLOR_TOKENS.DEFAULT,
+    CANVAS_BUTTON_COLORS.DEFAULT
+  ),
+  FAILED: resolveStatusColors(
+    CANVAS_BUTTON_COLOR_TOKENS.FAILED,
+    CANVAS_BUTTON_COLORS.FAILED
+  ),
+  HOVER: resolveStatusColors(
+    CANVAS_BUTTON_COLOR_TOKENS.HOVER,
+    CANVAS_BUTTON_COLORS.HOVER
+  ),
+  PENDING: resolveStatusColors(
+    CANVAS_BUTTON_COLOR_TOKENS.PENDING,
+    CANVAS_BUTTON_COLORS.PENDING
+  ),
+  SUCCESS: resolveStatusColors(
+    CANVAS_BUTTON_COLOR_TOKENS.SUCCESS,
+    CANVAS_BUTTON_COLORS.SUCCESS
+  ),
+});
+
+function getStatusColors(
+  colors: CanvasButtonColors,
+  executionStatus?: StatusType
+): CanvasButtonStatusColors {
   if (!executionStatus) {
-    return CANVAS_BUTTON_COLORS.DEFAULT;
+    return colors.DEFAULT;
   }
 
   switch (executionStatus) {
     case StatusType.Successful:
-      return CANVAS_BUTTON_COLORS.SUCCESS;
+      return colors.SUCCESS;
     case StatusType.Failed:
-      return CANVAS_BUTTON_COLORS.FAILED;
+      return colors.FAILED;
     case StatusType.Pending:
     case StatusType.Skipped:
-      return CANVAS_BUTTON_COLORS.PENDING;
+      return colors.PENDING;
     default:
-      return CANVAS_BUTTON_COLORS.DEFAULT;
+      return colors.DEFAULT;
   }
 }
 
@@ -131,24 +204,19 @@ function drawFunctionIcon(
 export function drawCanvasButton(
   ctx: CanvasRenderingContext2D,
   button: CanvasButton,
+  colors: CanvasButtonColors,
   isHovered: boolean = false,
   isDQEnabled: boolean = false
 ) {
   ctx.save();
 
   const statusColors = isDQEnabled
-    ? getStatusColors(button.executionStatus)
-    : CANVAS_BUTTON_COLORS.DEFAULT;
+    ? getStatusColors(colors, button.executionStatus)
+    : colors.DEFAULT;
 
-  const borderColor = isHovered
-    ? CANVAS_BUTTON_COLORS.HOVER.border
-    : statusColors.border;
-  const bgColor = isHovered
-    ? CANVAS_BUTTON_COLORS.HOVER.background
-    : statusColors.background;
-  const iconColor = isHovered
-    ? CANVAS_BUTTON_COLORS.HOVER.icon
-    : statusColors.icon;
+  const borderColor = isHovered ? colors.HOVER.border : statusColors.border;
+  const bgColor = isHovered ? colors.HOVER.background : statusColors.background;
+  const iconColor = isHovered ? colors.HOVER.icon : statusColors.icon;
 
   ctx.fillStyle = bgColor;
   ctx.strokeStyle = borderColor;

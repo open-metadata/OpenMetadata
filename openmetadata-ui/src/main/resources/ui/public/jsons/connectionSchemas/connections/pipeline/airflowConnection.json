@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "AirflowConnection",
   "description": "Airflow Metadata Database Connection Config",
   "type": "object",
@@ -41,7 +40,6 @@
       "description": "Choose between database connection or REST API connection to fetch metadata from Airflow.",
       "oneOf": [
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "AirflowRestApiConnection",
           "description": "Airflow REST API Connection Config for connecting via REST API.",
           "type": "object",
@@ -73,7 +71,6 @@
               "description": "Choose an authentication method: Basic Auth (username/password), Access Token, GCP Service Account (for Cloud Composer), or AWS Credentials (for MWAA).",
               "oneOf": [
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "Basic Auth",
                   "description": "Username and password for Airflow API authentication.",
                   "type": "object",
@@ -98,7 +95,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "Access Token",
                   "description": "Static access token for Airflow API authentication.",
                   "type": "object",
@@ -117,7 +113,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "GCP Service Account",
                   "description": "GCP credentials for Google Cloud Composer. Supports service account values, credentials path, workload identity (external account), and ADC. Tokens are auto-refreshed at runtime.",
                   "type": "object",
@@ -126,7 +121,6 @@
                     "credentials": {
                       "title": "GCP Credentials",
                       "description": "GCP credentials configuration.",
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "type": "object",
                       "javaType": "org.openmetadata.schema.security.credentials.GCPCredentials",
                       "definitions": {
@@ -224,7 +218,6 @@
                           "description": "We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP Credentials Path",
                           "oneOf": [
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "type": "object",
                               "javaType": "org.openmetadata.schema.security.credentials.GCPValues",
                               "title": "GCP Credentials Values",
@@ -315,6 +308,12 @@
                                   "description": "Google Cloud client certificate uri.",
                                   "type": "string",
                                   "format": "uri"
+                                },
+                                "universeDomain": {
+                                  "title": "Universe Domain",
+                                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                  "type": "string",
+                                  "default": "googleapis.com"
                                 }
                               },
                               "additionalProperties": false
@@ -357,7 +356,6 @@
                               }
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "type": "object",
                               "javaType": "org.openmetadata.schema.security.credentials.GCPExternalAccount",
                               "title": "GCP External Account",
@@ -469,7 +467,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "MWAA Authentication",
                   "description": "AWS MWAA (Managed Workflows for Apache Airflow) authentication configuration.",
                   "type": "object",
@@ -489,7 +486,6 @@
                         "awsConfig": {
                           "title": "AWS Configuration",
                           "description": "AWS credentials for generating MWAA CLI token.",
-                          "$schema": "http://json-schema.org/draft-07/schema#",
                           "type": "object",
                           "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",
                           "properties": {
@@ -518,7 +514,8 @@
                             "awsSessionToken": {
                               "title": "AWS Session Token",
                               "description": "AWS Session Token.",
-                              "type": "string"
+                              "type": "string",
+                              "format": "password"
                             },
                             "endPointURL": {
                               "title": "Endpoint URL",
@@ -592,7 +589,6 @@
           "additionalProperties": false
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "BackendConnection",
           "description": "Lineage Backend Connection Config",
           "type": "object",
@@ -644,7 +640,6 @@
           "additionalProperties": false
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "MysqlConnection",
           "description": "Mysql Database Connection Config",
           "type": "object",
@@ -697,7 +692,6 @@
               "mask": true,
               "oneOf": [
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "Basic Auth",
                   "description": "Common Database Connection Config",
                   "javaType": "org.openmetadata.schema.services.connections.database.common.basicAuth",
@@ -713,7 +707,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "IAM Auth Configuration Source",
                   "description": "IAM Auth Database Connection Config",
                   "type": "object",
@@ -721,7 +714,6 @@
                   "properties": {
                     "awsConfig": {
                       "title": "AWS Credentials Configuration",
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "description": "AWS credentials configs.",
                       "type": "object",
                       "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",
@@ -751,7 +743,8 @@
                         "awsSessionToken": {
                           "title": "AWS Session Token",
                           "description": "AWS Session Token.",
-                          "type": "string"
+                          "type": "string",
+                          "format": "password"
                         },
                         "endPointURL": {
                           "title": "Endpoint URL",
@@ -790,7 +783,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "Azure Configuration Source",
                   "description": "Azure Database Connection Config",
                   "type": "object",
@@ -798,7 +790,6 @@
                   "properties": {
                     "azureConfig": {
                       "title": "Azure Credentials Configuration",
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "description": "Azure Cloud Credentials",
                       "type": "object",
                       "javaType": "org.openmetadata.schema.security.credentials.AzureCredentials",
@@ -841,7 +832,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "GCP CloudSQL Configuration Source",
                   "description": "GCP CloudSQL Database Connection Config. Uses the Google Cloud SQL Python Connector.",
                   "type": "object",
@@ -862,7 +852,6 @@
                     "gcpConfig": {
                       "title": "GCP Credentials Configuration",
                       "description": "GCP credentials to use. If not provided, Application Default Credentials will be used.",
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "type": "object",
                       "javaType": "org.openmetadata.schema.security.credentials.GCPCredentials",
                       "definitions": {
@@ -960,7 +949,6 @@
                           "description": "We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP Credentials Path",
                           "oneOf": [
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "type": "object",
                               "javaType": "org.openmetadata.schema.security.credentials.GCPValues",
                               "title": "GCP Credentials Values",
@@ -1051,6 +1039,12 @@
                                   "description": "Google Cloud client certificate uri.",
                                   "type": "string",
                                   "format": "uri"
+                                },
+                                "universeDomain": {
+                                  "title": "Universe Domain",
+                                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                  "type": "string",
+                                  "default": "googleapis.com"
                                 }
                               },
                               "additionalProperties": false
@@ -1093,7 +1087,6 @@
                               }
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "type": "object",
                               "javaType": "org.openmetadata.schema.security.credentials.GCPExternalAccount",
                               "title": "GCP External Account",
@@ -1225,7 +1218,6 @@
               "mask": true,
               "oneOf": [
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "Validate SSL Client Config",
                   "description": "OpenMetadata Client configured to validate SSL certificates.",
                   "type": "object",
@@ -1240,9 +1232,7 @@
                       "accept": [
                         ".pem",
                         ".crt",
-                        ".cer",
-                        ".der",
-                        ".p12"
+                        ".cer"
                       ],
                       "uiFieldType": "fileOrInput"
                     },
@@ -1254,9 +1244,7 @@
                       "accept": [
                         ".pem",
                         ".crt",
-                        ".cer",
-                        ".der",
-                        ".p12"
+                        ".cer"
                       ],
                       "uiFieldType": "fileOrInput"
                     },
@@ -1268,9 +1256,7 @@
                       "accept": [
                         ".pem",
                         ".crt",
-                        ".cer",
-                        ".der",
-                        ".p12"
+                        ".cer"
                       ],
                       "uiFieldType": "fileOrInput"
                     }
@@ -1420,131 +1406,6 @@
               "type": "boolean",
               "default": true
             },
-            "sampleDataStorageConfig": {
-              "title": "Storage Config for Sample Data",
-              "description": "Storage config to store sample data",
-              "type": "object",
-              "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-              "properties": {
-                "config": {
-                  "oneOf": [
-                    {
-                      "title": "No Sample Data Storage Config",
-                      "type": "object",
-                      "additionalProperties": false
-                    },
-                    {
-                      "title": "Sample Data Storage Config",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "properties": {
-                        "bucketName": {
-                          "title": "Bucket Name",
-                          "description": "Bucket Name",
-                          "type": "string",
-                          "default": ""
-                        },
-                        "prefix": {
-                          "title": "Prefix",
-                          "description": "Prefix of the data source.",
-                          "type": "string",
-                          "default": ""
-                        },
-                        "filePathPattern": {
-                          "title": "File Path Pattern",
-                          "description": "Provide the pattern of the path where the generated sample data file needs to be stored.",
-                          "type": "string",
-                          "default": "{service_name}/{database_name}/{database_schema_name}/{table_name}/sample_data.parquet"
-                        },
-                        "overwriteData": {
-                          "title": "Overwrite Sample Data",
-                          "description": "When this field enabled a single parquet file will be created to store sample data, otherwise we will create a new file per day",
-                          "type": "boolean",
-                          "default": true
-                        },
-                        "storageConfig": {
-                          "oneOf": [
-                            {
-                              "title": "AWS S3 Storage Config",
-                              "$schema": "http://json-schema.org/draft-07/schema#",
-                              "description": "AWS credentials configs.",
-                              "type": "object",
-                              "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",
-                              "properties": {
-                                "enabled": {
-                                  "title": "Enable IAM Auth",
-                                  "description": "Enable AWS IAM authentication. When enabled, uses the default credential provider chain (environment variables, instance profile, etc.). Defaults to false for backward compatibility.",
-                                  "type": "boolean",
-                                  "default": false
-                                },
-                                "awsAccessKeyId": {
-                                  "title": "AWS Access Key ID",
-                                  "description": "AWS Access key ID.",
-                                  "type": "string"
-                                },
-                                "awsSecretAccessKey": {
-                                  "title": "AWS Secret Access Key",
-                                  "description": "AWS Secret Access Key.",
-                                  "type": "string",
-                                  "format": "password"
-                                },
-                                "awsRegion": {
-                                  "title": "AWS Region",
-                                  "description": "AWS Region",
-                                  "type": "string"
-                                },
-                                "awsSessionToken": {
-                                  "title": "AWS Session Token",
-                                  "description": "AWS Session Token.",
-                                  "type": "string"
-                                },
-                                "endPointURL": {
-                                  "title": "Endpoint URL",
-                                  "description": "EndPoint URL for the AWS",
-                                  "type": "string",
-                                  "format": "uri"
-                                },
-                                "profileName": {
-                                  "title": "Profile Name",
-                                  "description": "The name of a profile to use with the boto session.",
-                                  "type": "string"
-                                },
-                                "assumeRoleArn": {
-                                  "title": "Role Arn for Assume Role",
-                                  "description": "The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume Role",
-                                  "type": "string"
-                                },
-                                "assumeRoleSessionName": {
-                                  "title": "Role Session Name for Assume Role",
-                                  "description": "An identifier for the assumed role session. Use the role session name to uniquely identify a session when the same role is assumed by different principals or for different reasons. Required Field in case of Assume Role",
-                                  "type": "string",
-                                  "default": "OpenMetadataSession"
-                                },
-                                "assumeRoleSourceIdentity": {
-                                  "title": "Source Identity for Assume Role",
-                                  "description": "The Amazon Resource Name (ARN) of the role to assume. Optional Field in case of Assume Role",
-                                  "type": "string"
-                                }
-                              },
-                              "additionalProperties": false,
-                              "required": [
-                                "awsRegion"
-                              ]
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
-                        }
-                      }
-                    }
-                  ]
-                }
-              },
-              "additionalProperties": false
-            },
             "supportsDataDiff": {
               "title": "Supports Data Diff Extraction.",
               "description": "Supports the data diff data qualty specification.",
@@ -1580,7 +1441,6 @@
           ]
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "PostgresConnection",
           "description": "Postgres Database Connection Config",
           "type": "object",
@@ -1635,7 +1495,6 @@
               "mask": true,
               "oneOf": [
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "Basic Auth",
                   "description": "Common Database Connection Config",
                   "javaType": "org.openmetadata.schema.services.connections.database.common.basicAuth",
@@ -1651,7 +1510,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "IAM Auth Configuration Source",
                   "description": "IAM Auth Database Connection Config",
                   "type": "object",
@@ -1659,7 +1517,6 @@
                   "properties": {
                     "awsConfig": {
                       "title": "AWS Credentials Configuration",
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "description": "AWS credentials configs.",
                       "type": "object",
                       "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",
@@ -1689,7 +1546,8 @@
                         "awsSessionToken": {
                           "title": "AWS Session Token",
                           "description": "AWS Session Token.",
-                          "type": "string"
+                          "type": "string",
+                          "format": "password"
                         },
                         "endPointURL": {
                           "title": "Endpoint URL",
@@ -1728,7 +1586,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "Azure Configuration Source",
                   "description": "Azure Database Connection Config",
                   "type": "object",
@@ -1736,7 +1593,6 @@
                   "properties": {
                     "azureConfig": {
                       "title": "Azure Credentials Configuration",
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "description": "Azure Cloud Credentials",
                       "type": "object",
                       "javaType": "org.openmetadata.schema.security.credentials.AzureCredentials",
@@ -1922,7 +1778,6 @@
               "mask": true,
               "oneOf": [
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "Validate SSL Client Config",
                   "description": "OpenMetadata Client configured to validate SSL certificates.",
                   "type": "object",
@@ -1937,9 +1792,7 @@
                       "accept": [
                         ".pem",
                         ".crt",
-                        ".cer",
-                        ".der",
-                        ".p12"
+                        ".cer"
                       ],
                       "uiFieldType": "fileOrInput"
                     },
@@ -1951,9 +1804,7 @@
                       "accept": [
                         ".pem",
                         ".crt",
-                        ".cer",
-                        ".der",
-                        ".p12"
+                        ".cer"
                       ],
                       "uiFieldType": "fileOrInput"
                     },
@@ -1965,9 +1816,7 @@
                       "accept": [
                         ".pem",
                         ".crt",
-                        ".cer",
-                        ".der",
-                        ".p12"
+                        ".cer"
                       ],
                       "uiFieldType": "fileOrInput"
                     }
@@ -2046,131 +1895,6 @@
               "type": "boolean",
               "default": true
             },
-            "sampleDataStorageConfig": {
-              "title": "Storage Config for Sample Data",
-              "description": "Storage config to store sample data",
-              "type": "object",
-              "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-              "properties": {
-                "config": {
-                  "oneOf": [
-                    {
-                      "title": "No Sample Data Storage Config",
-                      "type": "object",
-                      "additionalProperties": false
-                    },
-                    {
-                      "title": "Sample Data Storage Config",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "properties": {
-                        "bucketName": {
-                          "title": "Bucket Name",
-                          "description": "Bucket Name",
-                          "type": "string",
-                          "default": ""
-                        },
-                        "prefix": {
-                          "title": "Prefix",
-                          "description": "Prefix of the data source.",
-                          "type": "string",
-                          "default": ""
-                        },
-                        "filePathPattern": {
-                          "title": "File Path Pattern",
-                          "description": "Provide the pattern of the path where the generated sample data file needs to be stored.",
-                          "type": "string",
-                          "default": "{service_name}/{database_name}/{database_schema_name}/{table_name}/sample_data.parquet"
-                        },
-                        "overwriteData": {
-                          "title": "Overwrite Sample Data",
-                          "description": "When this field enabled a single parquet file will be created to store sample data, otherwise we will create a new file per day",
-                          "type": "boolean",
-                          "default": true
-                        },
-                        "storageConfig": {
-                          "oneOf": [
-                            {
-                              "title": "AWS S3 Storage Config",
-                              "$schema": "http://json-schema.org/draft-07/schema#",
-                              "description": "AWS credentials configs.",
-                              "type": "object",
-                              "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",
-                              "properties": {
-                                "enabled": {
-                                  "title": "Enable IAM Auth",
-                                  "description": "Enable AWS IAM authentication. When enabled, uses the default credential provider chain (environment variables, instance profile, etc.). Defaults to false for backward compatibility.",
-                                  "type": "boolean",
-                                  "default": false
-                                },
-                                "awsAccessKeyId": {
-                                  "title": "AWS Access Key ID",
-                                  "description": "AWS Access key ID.",
-                                  "type": "string"
-                                },
-                                "awsSecretAccessKey": {
-                                  "title": "AWS Secret Access Key",
-                                  "description": "AWS Secret Access Key.",
-                                  "type": "string",
-                                  "format": "password"
-                                },
-                                "awsRegion": {
-                                  "title": "AWS Region",
-                                  "description": "AWS Region",
-                                  "type": "string"
-                                },
-                                "awsSessionToken": {
-                                  "title": "AWS Session Token",
-                                  "description": "AWS Session Token.",
-                                  "type": "string"
-                                },
-                                "endPointURL": {
-                                  "title": "Endpoint URL",
-                                  "description": "EndPoint URL for the AWS",
-                                  "type": "string",
-                                  "format": "uri"
-                                },
-                                "profileName": {
-                                  "title": "Profile Name",
-                                  "description": "The name of a profile to use with the boto session.",
-                                  "type": "string"
-                                },
-                                "assumeRoleArn": {
-                                  "title": "Role Arn for Assume Role",
-                                  "description": "The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume Role",
-                                  "type": "string"
-                                },
-                                "assumeRoleSessionName": {
-                                  "title": "Role Session Name for Assume Role",
-                                  "description": "An identifier for the assumed role session. Use the role session name to uniquely identify a session when the same role is assumed by different principals or for different reasons. Required Field in case of Assume Role",
-                                  "type": "string",
-                                  "default": "OpenMetadataSession"
-                                },
-                                "assumeRoleSourceIdentity": {
-                                  "title": "Source Identity for Assume Role",
-                                  "description": "The Amazon Resource Name (ARN) of the role to assume. Optional Field in case of Assume Role",
-                                  "type": "string"
-                                }
-                              },
-                              "additionalProperties": false,
-                              "required": [
-                                "awsRegion"
-                              ]
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
-                        }
-                      }
-                    }
-                  ]
-                }
-              },
-              "additionalProperties": false
-            },
             "supportsDataDiff": {
               "title": "Supports Data Diff Extraction.",
               "description": "Supports the data diff data qualty specification.",
@@ -2186,7 +1910,6 @@
           ]
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "SQLiteConnection",
           "description": "SQLite Database Connection Config",
           "type": "object",
@@ -2366,131 +2089,6 @@
               "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
               "type": "boolean",
               "default": true
-            },
-            "sampleDataStorageConfig": {
-              "title": "Storage Config for Sample Data",
-              "description": "Storage config to store sample data",
-              "type": "object",
-              "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-              "properties": {
-                "config": {
-                  "oneOf": [
-                    {
-                      "title": "No Sample Data Storage Config",
-                      "type": "object",
-                      "additionalProperties": false
-                    },
-                    {
-                      "title": "Sample Data Storage Config",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "properties": {
-                        "bucketName": {
-                          "title": "Bucket Name",
-                          "description": "Bucket Name",
-                          "type": "string",
-                          "default": ""
-                        },
-                        "prefix": {
-                          "title": "Prefix",
-                          "description": "Prefix of the data source.",
-                          "type": "string",
-                          "default": ""
-                        },
-                        "filePathPattern": {
-                          "title": "File Path Pattern",
-                          "description": "Provide the pattern of the path where the generated sample data file needs to be stored.",
-                          "type": "string",
-                          "default": "{service_name}/{database_name}/{database_schema_name}/{table_name}/sample_data.parquet"
-                        },
-                        "overwriteData": {
-                          "title": "Overwrite Sample Data",
-                          "description": "When this field enabled a single parquet file will be created to store sample data, otherwise we will create a new file per day",
-                          "type": "boolean",
-                          "default": true
-                        },
-                        "storageConfig": {
-                          "oneOf": [
-                            {
-                              "title": "AWS S3 Storage Config",
-                              "$schema": "http://json-schema.org/draft-07/schema#",
-                              "description": "AWS credentials configs.",
-                              "type": "object",
-                              "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",
-                              "properties": {
-                                "enabled": {
-                                  "title": "Enable IAM Auth",
-                                  "description": "Enable AWS IAM authentication. When enabled, uses the default credential provider chain (environment variables, instance profile, etc.). Defaults to false for backward compatibility.",
-                                  "type": "boolean",
-                                  "default": false
-                                },
-                                "awsAccessKeyId": {
-                                  "title": "AWS Access Key ID",
-                                  "description": "AWS Access key ID.",
-                                  "type": "string"
-                                },
-                                "awsSecretAccessKey": {
-                                  "title": "AWS Secret Access Key",
-                                  "description": "AWS Secret Access Key.",
-                                  "type": "string",
-                                  "format": "password"
-                                },
-                                "awsRegion": {
-                                  "title": "AWS Region",
-                                  "description": "AWS Region",
-                                  "type": "string"
-                                },
-                                "awsSessionToken": {
-                                  "title": "AWS Session Token",
-                                  "description": "AWS Session Token.",
-                                  "type": "string"
-                                },
-                                "endPointURL": {
-                                  "title": "Endpoint URL",
-                                  "description": "EndPoint URL for the AWS",
-                                  "type": "string",
-                                  "format": "uri"
-                                },
-                                "profileName": {
-                                  "title": "Profile Name",
-                                  "description": "The name of a profile to use with the boto session.",
-                                  "type": "string"
-                                },
-                                "assumeRoleArn": {
-                                  "title": "Role Arn for Assume Role",
-                                  "description": "The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume Role",
-                                  "type": "string"
-                                },
-                                "assumeRoleSessionName": {
-                                  "title": "Role Session Name for Assume Role",
-                                  "description": "An identifier for the assumed role session. Use the role session name to uniquely identify a session when the same role is assumed by different principals or for different reasons. Required Field in case of Assume Role",
-                                  "type": "string",
-                                  "default": "OpenMetadataSession"
-                                },
-                                "assumeRoleSourceIdentity": {
-                                  "title": "Source Identity for Assume Role",
-                                  "description": "The Amazon Resource Name (ARN) of the role to assume. Optional Field in case of Assume Role",
-                                  "type": "string"
-                                }
-                              },
-                              "additionalProperties": false,
-                              "required": [
-                                "awsRegion"
-                              ]
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
-                        }
-                      }
-                    }
-                  ]
-                }
-              },
-              "additionalProperties": false
             },
             "supportsViewLineageExtraction": {
               "description": "Supports View Lineage Extraction.",

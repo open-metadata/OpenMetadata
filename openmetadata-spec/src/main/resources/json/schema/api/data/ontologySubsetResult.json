@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/api/data/ontologySubsetResult.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "OntologySubsetResult",
   "description": "A durable Draft change set and pinned provenance for an application ontology subset.",
   "type": "object",

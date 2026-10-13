@@ -619,6 +619,7 @@ jest.mock('../../utils/date-time/DateTimeUtils', () => ({
 }));
 
 jest.mock('../../utils/PermissionsUtils', () => ({
+  ...jest.requireActual('../../utils/PermissionsUtils'),
   DEFAULT_ENTITY_PERMISSION: { ViewAll: false, EditAll: false },
   getPrioritizedViewPermission: jest.fn().mockReturnValue(true),
 }));
@@ -1253,10 +1254,10 @@ describe('ServiceDetailsPage', () => {
       });
     };
 
-    const switchToAgentsTab = async (view: RenderResult) => {
+    const switchToTab = async (view: RenderResult, tab: string) => {
       (useRequiredParams as jest.Mock).mockReturnValue({
         serviceCategory: ServiceCategory.DASHBOARD_SERVICES,
-        tab: EntityTabs.AGENTS,
+        tab,
       });
 
       await act(async () => {
@@ -1266,6 +1267,13 @@ describe('ServiceDetailsPage', () => {
           </MemoryRouter>
         );
       });
+    };
+
+    // Only the selected tab panel is mounted, so come back to the entity tab
+    // to observe the loading state it was left with.
+    const moveOffAndBackToEntityTab = async (view: RenderResult) => {
+      await switchToTab(view, EntityTabs.AGENTS);
+      await switchToTab(view, 'databases');
     };
 
     it('should clear the loading state after moving off the entity tab', async () => {
@@ -1282,7 +1290,7 @@ describe('ServiceDetailsPage', () => {
 
       await expectEntityTabNotLoading();
 
-      await switchToAgentsTab(view);
+      await moveOffAndBackToEntityTab(view);
 
       await expectEntityTabNotLoading();
     });
@@ -1301,7 +1309,7 @@ describe('ServiceDetailsPage', () => {
         );
       });
 
-      await switchToAgentsTab(view);
+      await moveOffAndBackToEntityTab(view);
 
       await expectEntityTabNotLoading();
     });
@@ -1780,6 +1788,66 @@ describe('ServiceDetailsPage', () => {
       await waitFor(() => {
         expect(getAiAutomationsByService).toHaveBeenCalledWith('test-service');
       });
+    });
+  });
+
+  describe('Permission-gated affordances', () => {
+    it('hides the Connection tab (and its edit button) when EditAll is false', async () => {
+      (useRequiredParams as jest.Mock).mockImplementation(() => ({
+        serviceCategory: ServiceCategory.DATABASE_SERVICES,
+        tab: EntityTabs.CONNECTION,
+      }));
+      (usePermissionProvider as jest.Mock).mockImplementation(() => ({
+        getEntityPermissionByFqn: jest
+          .fn()
+          .mockImplementation(() =>
+            Promise.resolve({ ViewAll: true, EditAll: false, Create: true })
+          ),
+        permissions: {
+          database: { ViewAll: true, EditAll: true },
+          dashboard: { ViewAll: true, EditAll: true },
+          pipeline: { ViewAll: true, EditAll: true },
+        },
+      }));
+
+      await renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('service-page')).toBeInTheDocument();
+      });
+
+      // The Connection tab is filtered out of `items` entirely when EditAll is
+      // false, so neither its content nor the edit-connection button renders —
+      // contrasts with the existing "Test connection tab" describe block, which
+      // exercises the same tab with the default EditAll:true fixture.
+      expect(
+        screen.queryByTestId('edit-connection-button')
+      ).not.toBeInTheDocument();
+    });
+
+    it('renders the permission error placeholder when neither ViewAll nor ViewBasic is granted', async () => {
+      (usePermissionProvider as jest.Mock).mockImplementation(() => ({
+        getEntityPermissionByFqn: jest.fn().mockImplementation(() =>
+          Promise.resolve({
+            ViewAll: false,
+            ViewBasic: false,
+            EditAll: false,
+          })
+        ),
+        permissions: {
+          database: { ViewAll: true, EditAll: true },
+          dashboard: { ViewAll: true, EditAll: true },
+          pipeline: { ViewAll: true, EditAll: true },
+        },
+      }));
+
+      await renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByTestId('service-page')).not.toBeInTheDocument();
     });
   });
 });

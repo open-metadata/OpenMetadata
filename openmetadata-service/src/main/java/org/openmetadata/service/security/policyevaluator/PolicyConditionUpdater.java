@@ -40,11 +40,19 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 public final class PolicyConditionUpdater {
 
   public static final Set<String> TAG_FUNCTIONS =
-      Set.of("matchAnyTag", "matchAllTags", "matchAnyCertification");
+      Set.of("matchAnyTag", "matchAllTags", "matchAnyCertification", "matchAnyServiceTag");
   public static final Set<String> ROLE_FUNCTIONS = Set.of("hasAnyRole");
   public static final Set<String> TEAM_FUNCTIONS = Set.of("inAnyTeam");
+  public static final Set<String> SERVICE_FUNCTIONS = Set.of("matchAnyServiceName");
 
-  private static final Pattern SINGLE_QUOTED_ARG = Pattern.compile("'([^']*)'");
+  /**
+   * A SpEL string literal escapes a single quote by doubling it, so a service named {@code bob's-db}
+   * is written {@code matchAnyServiceName('bob''s-db')}. Matching {@code '([^']*)'} would read that
+   * as the two arguments {@code bob} and {@code s-db} and rewrite the condition into names that
+   * exist nowhere — silently disarming the rule, which for a Deny means its assets become visible.
+   * The inner {@code ''} alternative keeps an escaped quote inside the literal it belongs to.
+   */
+  private static final Pattern SINGLE_QUOTED_ARG = Pattern.compile("'((?:[^']|'')*)'");
 
   private static final int MAX_REWRITE_RETRIES = 5;
   private static final int POLICY_PAGE_SIZE = 1000;
@@ -148,6 +156,15 @@ public final class PolicyConditionUpdater {
   /**
    * Page through every non-deleted policy (no fixed cap) and rewrite each one whose conditions
    * reference the renamed/deleted entity.
+   *
+   * <p>The paging read is a plain {@code listAfter} with {@link Fields#EMPTY_FIELDS} and takes no
+   * locks. {@link #conditionsWouldChange} is an in-memory check on the already-loaded policy and
+   * gates {@link #rewriteSinglePolicy}, which holds the only locking read
+   * ({@code findJsonByIdForUpdate}). So a rename locks the policies that actually name the renamed
+   * entity -- usually none or one -- not a row per policy in the catalog. Those locks are held
+   * until the enclosing entity transaction commits, because the callers run inside it, so two
+   * writers racing on the <em>same</em> policy still serialise. That is the bound worth knowing
+   * before widening these hooks.
    */
   private static boolean rewriteMatchingPolicies(
       EntityRepository<Policy> policyRepo, UnaryOperator<String> conditionRewriter) {
@@ -274,8 +291,8 @@ public final class PolicyConditionUpdater {
       List<String> rewrittenArgs = new ArrayList<>();
       Matcher argMatcher = SINGLE_QUOTED_ARG.matcher(argsStr);
       while (argMatcher.find()) {
-        String argValue = argMatcher.group(1);
-        rewrittenArgs.add("'" + argRewriter.apply(argValue) + "'");
+        String argValue = decodeSpelLiteral(argMatcher.group(1));
+        rewrittenArgs.add(quoteSpelLiteral(argRewriter.apply(argValue)));
       }
       matcher.appendReplacement(
           result, Matcher.quoteReplacement(prefix + String.join(", ", rewrittenArgs) + suffix));
@@ -303,7 +320,10 @@ public final class PolicyConditionUpdater {
         replacement = "";
       } else {
         String argsStr =
-            args.stream().map(a -> "'" + a + "'").reduce((a, b) -> a + ", " + b).orElse("");
+            args.stream()
+                .map(PolicyConditionUpdater::quoteSpelLiteral)
+                .reduce((a, b) -> a + ", " + b)
+                .orElse("");
         replacement = functionName + "(" + argsStr + ")";
       }
       matcher.appendReplacement(result, Matcher.quoteReplacement(replacement));
@@ -330,7 +350,10 @@ public final class PolicyConditionUpdater {
         replacement = "";
       } else {
         String argsStr =
-            args.stream().map(a -> "'" + a + "'").reduce((a, b) -> a + ", " + b).orElse("");
+            args.stream()
+                .map(PolicyConditionUpdater::quoteSpelLiteral)
+                .reduce((a, b) -> a + ", " + b)
+                .orElse("");
         replacement = functionName + "(" + argsStr + ")";
       }
       matcher.appendReplacement(result, Matcher.quoteReplacement(replacement));
@@ -344,9 +367,19 @@ public final class PolicyConditionUpdater {
     List<String> args = new ArrayList<>();
     Matcher argMatcher = SINGLE_QUOTED_ARG.matcher(functionCall);
     while (argMatcher.find()) {
-      args.add(argMatcher.group(1));
+      args.add(decodeSpelLiteral(argMatcher.group(1)));
     }
     return args;
+  }
+
+  /** Turns a SpEL string literal's body into the value it denotes. */
+  private static String decodeSpelLiteral(String literal) {
+    return literal.replace("''", "'");
+  }
+
+  /** Renders a value as a SpEL string literal, re-escaping any quote it contains. */
+  private static String quoteSpelLiteral(String value) {
+    return "'" + value.replace("'", "''") + "'";
   }
 
   /**

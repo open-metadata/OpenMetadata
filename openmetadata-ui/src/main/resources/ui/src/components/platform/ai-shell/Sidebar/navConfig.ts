@@ -124,7 +124,9 @@ const getNavigationPathname = (
   const originUrl = (locationState as BreadcrumbLocationState | null)
     ?.breadcrumbData?.[0]?.url;
 
-  return typeof originUrl === 'string' ? originUrl : pathname;
+  // The origin keeps the listing's query (filters, open group) for the crumb to
+  // return to; only its path names the nav item.
+  return typeof originUrl === 'string' ? originUrl.split(/[?#]/)[0] : pathname;
 };
 
 /**

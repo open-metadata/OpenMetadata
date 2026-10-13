@@ -11,26 +11,19 @@
  *  limitations under the License.
  */
 
+import { Skeleton, Typography } from '@openmetadata/ui-core-components';
+import { isEmpty, isUndefined, reduce } from 'lodash';
+import { ReactComponent as AutoClassificationIcon } from '../assets/svg/ic-auto-classification.svg';
+import { ReactComponent as AutoTieringIcon } from '../assets/svg/ic-auto-tiering.svg';
 import { ReactComponent as CheckIcon } from '../assets/svg/ic-check-circle-new.svg';
 import { ReactComponent as ErrorIcon } from '../assets/svg/ic-close-circle.svg';
 import { ReactComponent as UsageIcon } from '../assets/svg/ic-database.svg';
+import { ReactComponent as MetadataIcon } from '../assets/svg/ic-empty-doc.svg';
 import { ReactComponent as LineageIcon } from '../assets/svg/ic-inherited-roles.svg';
 import { ReactComponent as PendingIcon } from '../assets/svg/ic-pending.svg';
 import { ReactComponent as RunningIcon } from '../assets/svg/ic-running.svg';
-import {
-  getAgentLabelFromType,
-  getAgentStatusLabelFromStatus,
-  getAutomationTemplate,
-} from './AgentsStatusWidgetPureUtils';
-
-import { ReactComponent as AutoClassificationIcon } from '../assets/svg/ic-auto-classification.svg';
-import { ReactComponent as AutoTieringIcon } from '../assets/svg/ic-auto-tiering.svg';
-import { ReactComponent as MetadataIcon } from '../assets/svg/ic-empty-doc.svg';
 import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-stack-quality.svg';
 import { ReactComponent as ProfilerIcon } from '../assets/svg/ic-stack-search.svg';
-
-import { Skeleton, Typography } from 'antd';
-import { isEmpty, isUndefined, reduce } from 'lodash';
 import type { AgentsInfo } from '../components/ServiceInsights/AgentsStatusWidget/AgentsStatusWidget.interface';
 import type {
   AgentsLiveInfo,
@@ -54,6 +47,11 @@ import {
   type WorkflowInstance,
 } from '../generated/governance/workflows/workflowInstance';
 import type { CollateAgentAutomation } from '../rest/applicationAPI';
+import {
+  getAgentLabelFromType,
+  getAgentStatusLabelFromStatus,
+  getAutomationTemplate,
+} from './AgentsStatusWidgetPureUtils';
 import { t } from './i18next/LocalUtil';
 
 const COLLATE_AGENT_ICON = 'collate-agent-icon';
@@ -163,9 +161,10 @@ export const getFormattedAgentsList = (
 export const getFormattedAgentsListFromAgentsLiveInfo = (
   agentsLiveInfo: AgentsLiveInfo[],
   collateAIagentsLiveInfo: CollateAgentLiveInfo[],
-  // Terminal frames (stream completed, or an error fetching chart data) carry no
-  // payload, so keep the agents already on screen instead of blanking them as the
-  // run finishes.
+  // The server folds a failed or partial automation lookup into an empty app status, so on a live
+  // frame an empty one cannot be told apart from "none left". Keep the Collate agents already on
+  // screen rather than wipe them for one frame. Frames that close the stream never get here — the
+  // caller drops them.
   preservedCollateAgents: AgentsInfo[] = []
 ): AgentsInfo[] => {
   const filteredAgentsList = agentsLiveInfo.filter(
@@ -252,9 +251,7 @@ export const getAgentRunningStatusMessage = (
   liveAutoPilotStatusData?: WorkflowInstance
 ) => {
   if (isLoading) {
-    return (
-      <Skeleton active paragraph={{ rows: 1, width: '100%' }} title={false} />
-    );
+    return <Skeleton height={16} width="100%" />;
   }
 
   let message = '';
@@ -292,11 +289,12 @@ export const getAgentRunningStatusMessage = (
     <div className="flex items-center gap-1">
       <Icon className={status} height={14} width={14} />
 
-      <Typography.Text
-        className="text-grey-muted text-sm"
+      <Typography
+        className="text-sm"
+        color="secondary"
         data-testid="agents-status-message">
         {message}
-      </Typography.Text>
+      </Typography>
     </div>
   );
 };

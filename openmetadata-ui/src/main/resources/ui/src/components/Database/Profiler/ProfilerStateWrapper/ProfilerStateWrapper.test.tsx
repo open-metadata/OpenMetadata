@@ -30,7 +30,6 @@ describe('ProfilerStateWrapper', () => {
       {
         title: 'Test Label',
         dataKey: 'testKey',
-        color: '#000000',
         latestValue: '100',
       },
     ],

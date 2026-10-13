@@ -11,16 +11,22 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Affix, Button, Card, Skeleton, Space, Typography } from 'antd';
-import ButtonGroup from 'antd/lib/button/button-group';
+import {
+  Box,
+  Button,
+  Card,
+  CloseButton,
+  Skeleton,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Affix } from 'antd';
+
 import { CookieStorage } from 'cookie-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CloseIcon } from '../../../assets/svg/close.svg';
 import { ReactComponent as StarGithubIcon } from '../../../assets/svg/ic-star-github.svg';
 import { ReactComponent as StarIcon } from '../../../assets/svg/ic-start-filled-github.svg';
 import {
-  BLACK_COLOR,
   STAR_OMD_USER,
   TWO_MINUTE_IN_MILLISECOND,
   VERSION,
@@ -127,48 +133,60 @@ const GithubStarCard = () => {
       }
       `}>
       <Card data-testid="github-star-popup-card">
-        <Space align="center" className="d-flex justify-between">
-          <Space>
-            <StarIcon className="github-star-icon" />
+        <Card.Content>
+          <Box
+            align="center"
+            className="layout-space layout-space-horizontal d-flex justify-between"
+            gap={2}
+            itemClassName="layout-space-item">
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal"
+              gap={2}
+              itemClassName="layout-space-item">
+              <StarIcon className="github-star-icon" />
 
-            <Typography.Text className="github-star-popup-header">
-              {t('label.star-us-on-github')}
-            </Typography.Text>
-          </Space>
-          <Button
-            className="flex-center m--t-xss"
-            data-testid="close-github-star-popup-card"
-            icon={<CloseIcon color={BLACK_COLOR} height={12} width={12} />}
-            type="text"
-            onClick={handleClosePopup}
-          />
-        </Space>
+              <Typography className="github-star-popup-header">
+                {t('label.star-us-on-github')}
+              </Typography>
+            </Box>
+            <CloseButton
+              className="tw:-mt-1"
+              data-testid="close-github-star-popup-card"
+              size="xs"
+              onPress={handleClosePopup}
+            />
+          </Box>
 
-        <Typography.Paragraph className="github-star-popup-description">
-          {t('message.star-on-github-description')}
-        </Typography.Paragraph>
+          <Typography as="p" className="github-star-popup-description">
+            {t('message.star-on-github-description')}
+          </Typography>
 
-        <ButtonGroup className="github-action-button-group">
-          <Typography.Link href={OMD_REPOSITORY_LINK} target="_blank">
+          <div className="tw:flex tw:gap-2">
             <Button
-              className="github-star-button github-modal-action-button"
-              icon={<Icon component={StarGithubIcon} size={12} />}>
+              color="secondary"
+              href={OMD_REPOSITORY_LINK}
+              iconLeading={<Icon component={StarGithubIcon} size={12} />}
+              rel="noopener noreferrer"
+              target="_blank">
               {t('label.star')}
             </Button>
-          </Typography.Link>
-
-          <Typography.Link href={OMD_REPOSITORY_LINK} target="_blank">
-            <Button className="github-modal-action-button">
+            <Button
+              color="secondary"
+              href={OMD_REPOSITORY_LINK}
+              rel="noopener noreferrer"
+              target="_blank">
               {isLoading ? (
                 <div data-testid="skeleton-loader">
-                  <Skeleton.Button active size="small" />
+                  <Skeleton height={36} variant="rounded" width={72} />
                 </div>
               ) : (
                 starredCount
               )}
             </Button>
-          </Typography.Link>
-        </ButtonGroup>
+          </div>
+        </Card.Content>
       </Card>
     </Affix>
   ) : null;

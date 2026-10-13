@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Calendar, FilterLines, SearchLg } from '@untitledui/icons';
+import { Calendar, FilterLines, Search } from '../icons';
 import type { Meta, StoryObj } from '@storybook/react';
 import { Button } from '../components/base/buttons/button';
 import { Input } from '../components/base/input/input';
@@ -40,7 +40,7 @@ export const Default: Story = {
     <div style={{ width: 720 }}>
       <FilterBar.Root>
         <FilterBar.Content>
-          <Input aria-label="Search" icon={SearchLg} placeholder="Search" />
+          <Input aria-label="Search" icon={Search} placeholder="Search" />
           <Select aria-label="Status" placeholder="Status">
             {(item) => <Select.Item {...item} />}
           </Select>

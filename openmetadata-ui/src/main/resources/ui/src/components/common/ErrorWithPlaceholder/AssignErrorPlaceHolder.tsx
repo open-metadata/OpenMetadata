@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Space, Typography } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/add-placeholder.svg';
@@ -46,23 +47,32 @@ const AssignErrorPlaceHolder = ({
         'h-full flex-center border-default border-radius-sm bg-white'
       )}
       data-testid={`assign-error-placeholder-${heading}`}>
-      <Space align="center" className="w-full" direction="vertical" size={10}>
+      <Box
+        inline
+        align="center"
+        className="layout-space w-full"
+        direction="col"
+        itemClassName="layout-space-item"
+        style={{
+          columnGap: 'var(--om-space-10)',
+          rowGap: 'var(--om-space-10)',
+        }}>
         <AddPlaceHolderIcon
           data-testid="no-data-image"
           height={size}
           width={size}
         />
         <div className="text-center text-sm font-normal">
-          <Typography.Paragraph className="w-max-600">
+          <Typography as="div" className="w-max-600 tw:mb-3.5!">
             {children ??
               t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
                 entity: heading,
               })}
-          </Typography.Paragraph>
+          </Typography>
 
           {button}
         </div>
-      </Space>
+      </Box>
     </div>
   );
 };

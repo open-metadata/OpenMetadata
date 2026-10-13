@@ -12,7 +12,6 @@
  */
 
 import { Alert, TreeSelect } from 'antd';
-import { BaseOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 
 import { isEmpty } from 'lodash';
@@ -25,6 +24,7 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import i18n from '../../../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { TeamsSelectableProps } from './TeamsSelectable.interface';
+import { buildTeamsSelectableTree } from './TeamsSelectable.utils';
 
 const TeamsSelectable = ({
   showTeamsAlert,
@@ -79,27 +79,10 @@ const TeamsSelectable = ({
 
   const showLeafIcon = false;
 
-  const getTreeNodeData = (team: TeamHierarchy): BaseOptionType => {
-    const teamName = getEntityName(team);
-    const value = team.id;
-    const disabled = filterJoinable ? !team.isJoinable : false;
-
-    return {
-      title: teamName,
-      value,
-      selectable: !team.children?.length,
-      disabled,
-      children:
-        team.children &&
-        team.children.map((n: TeamHierarchy) => getTreeNodeData(n)),
-    };
-  };
-
-  const teamsTree = useMemo(() => {
-    return teams.map((team) => {
-      return getTreeNodeData(team);
-    });
-  }, [teams]);
+  const teamsTree = useMemo(
+    () => buildTeamsSelectableTree(teams, filterJoinable),
+    [teams, filterJoinable]
+  );
 
   const selectedTeamsInternal = useMemo(() => {
     return selectedTeams?.map((selectedTeam) => ({

@@ -41,6 +41,8 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServic
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.metadataIngestion.SourceConfig;
+import org.openmetadata.schema.metadataIngestion.TestSuitePipeline;
 import org.openmetadata.schema.security.secrets.SecretsManagerClientLoader;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.security.ssl.VerifySSL;
@@ -304,6 +306,7 @@ class DataContractPipelineTokenRefreshTest {
         .withName("dq-pipeline")
         .withFullyQualifiedName("dq-pipeline")
         .withPipelineType(PipelineType.TEST_SUITE)
+        .withSourceConfig(new SourceConfig().withConfig(new TestSuitePipeline()))
         .withDeployed(deployed);
   }
 

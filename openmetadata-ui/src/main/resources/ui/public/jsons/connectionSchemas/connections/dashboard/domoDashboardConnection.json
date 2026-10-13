@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "DomoDashboardConnection",
   "description": "Domo Dashboard Connection Config",
   "type": "object",
@@ -38,7 +37,8 @@
     "accessToken": {
       "title": "Access Token",
       "description": "Access token to connect to DOMO",
-      "type": "string"
+      "type": "string",
+      "format": "password"
     },
     "apiHost": {
       "expose": true,

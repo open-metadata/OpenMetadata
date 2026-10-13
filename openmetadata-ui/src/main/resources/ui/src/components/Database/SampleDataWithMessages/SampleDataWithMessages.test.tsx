@@ -67,4 +67,20 @@ describe('Test SampleData Component', () => {
 
     expect(noDataPlaceHolder).toBeInTheDocument();
   });
+
+  it('Should render no data placeholder when sampleData has empty messages', async () => {
+    (getSampleDataByTopicId as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({ sampleData: { messages: [] } })
+    );
+
+    await act(async () => {
+      render(
+        <SampleDataWithMessages entityId="" entityType={EntityType.TOPIC} />,
+        { wrapper: MemoryRouter }
+      );
+    });
+
+    expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument();
+    expect(screen.queryAllByTestId('message-card')).toHaveLength(0);
+  });
 });

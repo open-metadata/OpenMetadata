@@ -11,18 +11,20 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Dropdown, Row, Skeleton } from 'antd';
+import { Grid, SkeletonParagraph } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../../../utils/common/layout.utils';
+
 import { AxiosError } from 'axios';
 import {
   forwardRef,
   useCallback,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
-import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { PAGE_SIZE_BASE } from '../../../../constants/constants';
 import { EntityReference } from '../../../../generated/type/entityReference';
 import { usePaging } from '../../../../hooks/paging/usePaging';
@@ -33,7 +35,9 @@ import {
   removeOutputPortsFromDataProduct,
 } from '../../../../rest/dataProductAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
+import { ManageMenu } from '../../../common/EntityPageInfos/ManageButton/ManageMenu';
 import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
@@ -52,6 +56,15 @@ const PortsListView = forwardRef<PortsListViewRef, PortsListViewProps>(
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [portToDelete, setPortToDelete] = useState<SourceType>();
     const [isDeleting, setIsDeleting] = useState(false);
+
+    // Consumer via prop (Task 8 rule 2): `permissions` is the raw OperationPermission
+    // fed straight through from InputOutputPortsTab (same DataProductUtils.tsx-owned
+    // `dataProductPermission` as the sibling file). No `deleted` argument: the old
+    // `permissions.EditAll` read was never gated on `deleted`.
+    const { canEditAll } = useMemo(
+      () => getDerivedPermissionFlags(permissions),
+      [permissions]
+    );
 
     const {
       currentPage,
@@ -173,13 +186,15 @@ const PortsListView = forwardRef<PortsListViewRef, PortsListViewProps>(
             minHeight: 0,
           }}>
           <div style={{ flex: 1, overflowY: 'auto' }}>
-            <Row gutter={[16, 16]}>
+            <Grid
+              className="layout-row layout-grid"
+              style={{ ...getLayoutGutter(16, 16) }}>
               {[1, 2, 3].map((key) => (
-                <Col key={key} span={24}>
-                  <Skeleton active paragraph={{ rows: 2 }} />
-                </Col>
+                <Grid.Item className="layout-column" key={key} span={24}>
+                  <SkeletonParagraph rows={2} />
+                </Grid.Item>
               ))}
-            </Row>
+            </Grid>
           </div>
         </div>
       );
@@ -202,44 +217,37 @@ const PortsListView = forwardRef<PortsListViewRef, PortsListViewProps>(
             overflowX: 'hidden',
             minHeight: 0,
           }}>
-          <Row gutter={[16, 16]}>
+          <Grid
+            className="layout-row layout-grid"
+            style={{ ...getLayoutGutter(16, 16) }}>
             {ports.map((port) => (
-              <Col key={port.id} span={24}>
+              <Grid.Item className="layout-column" key={port.id} span={24}>
                 <ExploreSearchCard
                   showEntityIcon
                   actionPopoverContent={
-                    permissions.EditAll ? (
-                      <Dropdown
-                        menu={{
-                          items: [
-                            {
-                              key: 'delete',
-                              label: (
-                                <ManageButtonItemLabel
-                                  description={t('label.remove-entity', {
-                                    entity: t('label.port'),
-                                  })}
-                                  icon={DeleteIcon}
-                                  id="delete-port"
-                                  name={t('label.remove')}
-                                />
-                              ),
-                              onClick: () => handleDeleteClick(port),
-                            },
-                          ],
-                        }}
-                        overlayClassName="manage-dropdown-list-container"
-                        overlayStyle={{ width: '350px' }}
-                        placement="bottomRight"
-                        trigger={['click']}>
-                        <Button
-                          className="flex-center"
-                          data-testid={`port-actions-${port.id}`}
-                          icon={<IconDropdown height={14} width={14} />}
-                          size="small"
-                          type="text"
-                        />
-                      </Dropdown>
+                    canEditAll ? (
+                      <ManageMenu
+                        data-testid={`port-actions-${port.id}`}
+                        items={[
+                          {
+                            key: 'delete',
+                            label: (
+                              <ManageButtonItemLabel
+                                description={t('label.remove-entity', {
+                                  entity: t('label.port'),
+                                })}
+                                icon={DeleteIcon}
+                                id="delete-port"
+                                name={t('label.remove')}
+                              />
+                            ),
+                            onClick: () => handleDeleteClick(port),
+                          },
+                        ]}
+                        label={t('label.manage-entity', {
+                          entity: t('label.port'),
+                        })}
+                      />
                     ) : undefined
                   }
                   className="m-b-sm"
@@ -247,9 +255,9 @@ const PortsListView = forwardRef<PortsListViewRef, PortsListViewProps>(
                   showTags={false}
                   source={port}
                 />
-              </Col>
+              </Grid.Item>
             ))}
-          </Row>
+          </Grid>
         </div>
 
         {showPagination && (

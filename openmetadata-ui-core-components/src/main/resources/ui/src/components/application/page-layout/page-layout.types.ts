@@ -39,6 +39,7 @@ export interface PageLayoutProps extends HTMLAttributes<HTMLDivElement> {
    */
   fullHeight?: boolean;
   children?: ReactNode;
+  'data-testid'?: string;
 }
 
 export interface PageLayoutHeaderProps extends HTMLAttributes<HTMLElement> {

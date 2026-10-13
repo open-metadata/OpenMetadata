@@ -26,8 +26,7 @@ import {
   uuid,
 } from '../../utils/common';
 import {
-  navigateToCustomizeLandingPage,
-  openAddCustomizeWidgetModal,
+  addCuratedAssetPlaceholder,
   selectAssetTypes,
 } from '../../utils/customizeLandingPage';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
@@ -41,6 +40,7 @@ import {
   updatePersonaDisplayName,
 } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 const PERSONA_DETAILS = {
   name: `persona-with-%-${uuid()}`,
@@ -116,11 +116,20 @@ test.describe.serial('Persona operations', () => {
     await searchUser;
 
     await page
-      .getByRole('listitem', { name: user.responseData.displayName })
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: user.responseData.displayName })
       .click();
     await page.getByTestId('selectable-list-update-btn').click();
 
+    const createPersonaResponse = waitForResponseWithStatus(
+      page,
+      (response) =>
+        response.request().method() === 'POST' &&
+        new URL(response.url()).pathname.endsWith('/api/v1/personas'),
+      201
+    );
     await page.getByRole('button', { name: 'Create' }).click();
+    await createPersonaResponse;
 
     await navigateToPersonaSettings(page);
 
@@ -299,6 +308,11 @@ test.describe.serial('Default persona setting and removal flow', () => {
         user1.delete(apiContext),
         persona1.delete(apiContext),
         persona2.delete(apiContext),
+        apiContext.delete(
+          `/api/v1/personas/name/${encodeURIComponent(
+            PERSONA_DETAILS.name
+          )}?hardDelete=true`
+        ),
       ]);
       await afterAction();
     }
@@ -311,7 +325,7 @@ test.describe.serial('Default persona setting and removal flow', () => {
     const userContext = await browser.newContext({ storageState: undefined });
     const userPage = await userContext.newPage();
 
-    await user1.login(userPage);
+    await user1.signIn(userPage);
 
     test.slow(true);
 
@@ -355,11 +369,20 @@ test.describe.serial('Default persona setting and removal flow', () => {
         await searchUser;
 
         await adminPage
-          .getByRole('listitem', { name: user1.responseData.displayName })
+          .locator('[data-testid="owner-option"]')
+          .filter({ hasText: user1.responseData.displayName })
           .click();
         await adminPage.getByTestId('selectable-list-update-btn').click();
 
+        const createPersonaResponse = waitForResponseWithStatus(
+          adminPage,
+          (response) =>
+            response.request().method() === 'POST' &&
+            new URL(response.url()).pathname.endsWith('/api/v1/personas'),
+          201
+        );
         await adminPage.getByRole('button', { name: 'Create' }).click();
+        await createPersonaResponse;
 
         await navigateToPersonaSettings(adminPage);
 
@@ -802,36 +825,15 @@ test.describe('Curated Assets – Description filter', () => {
     await afterAction();
   });
 
-  const addCuratedAssetWidget = async (
-    adminPage: import('@playwright/test').Page
-  ) => {
-    await navigateToCustomizeLandingPage(adminPage, {
-      personaName: curatedPersona.responseData.name,
-    });
-
-    await openAddCustomizeWidgetModal(adminPage);
-    await waitForAllLoadersToDisappear(adminPage);
-
-    await adminPage
-      .getByRole('dialog', { name: 'Customize Home' })
-      .getByTestId('KnowledgePanel.CuratedAssets')
-      .click();
-
-    await adminPage.locator('[data-testid="apply-btn"]').click();
-
-    await expect(
-      adminPage
-        .getByTestId('page-layout-v1')
-        .getByTestId('KnowledgePanel.CuratedAssets')
-    ).toBeVisible();
-  };
-
   test('Description Contains filter – table with matching description appears in widget', async ({
     adminPage,
   }) => {
     await test.step('Navigate to persona settings and add curated assets widget', async () => {
       await redirectToHomePage(adminPage);
-      await addCuratedAssetWidget(adminPage);
+      await addCuratedAssetPlaceholder({
+        page: adminPage,
+        personaName: curatedPersona.responseData.name,
+      });
     });
 
     await test.step('Click Create in curated assets widget and fill Description Contains filter', async () => {
@@ -847,21 +849,23 @@ test.describe('Curated Assets – Description filter', () => {
 
       await selectAssetTypes(adminPage, ['Table']);
 
-      const rule0 = adminPage.locator('.rule').nth(0);
+      const rule0 = adminPage.getByTestId('query-builder-rule-0');
 
       await selectOption(
         adminPage,
-        rule0.locator('.rule--field'),
+        rule0.getByTestId('advanced-search-field-select'),
         'Description',
         true
       );
       await selectOption(
         adminPage,
-        rule0.locator('.rule--operator'),
+        rule0.getByTestId('advanced-search-operator-select'),
         'Contains'
       );
       await rule0
-        .locator('.rule--widget--TEXT input[type="text"]')
+        .locator(
+          '[data-testid=advanced-search-value] input[type="text"]:not([role="combobox"])'
+        )
         .fill(WORD_TO_SEARCH.toLowerCase());
     });
 
@@ -885,9 +889,7 @@ test.describe('Curated Assets – Description filter', () => {
       await expect(
         adminPage
           .getByTestId('KnowledgePanel.CuratedAssets')
-          .locator('.entity-list-item-title')
-          .filter({ hasText: tableName })
-          .first()
+          .getByTestId(`curated-asset-${tableName}`)
       ).toBeVisible();
     });
   });

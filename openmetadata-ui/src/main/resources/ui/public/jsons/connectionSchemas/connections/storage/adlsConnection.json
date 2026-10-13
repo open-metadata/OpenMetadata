@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "ADLS Connection",
   "description": "ADLS Connection.",
   "type": "object",
@@ -27,7 +26,6 @@
     "credentials": {
       "title": "Azure Credentials",
       "description": "Azure Credentials",
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "type": "object",
       "javaType": "org.openmetadata.schema.security.credentials.AzureCredentials",
       "properties": {
