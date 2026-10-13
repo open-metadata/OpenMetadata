@@ -814,6 +814,46 @@ describe('ConnectionServiceDetailsPage', () => {
     );
   });
 
+  it("keeps the new service when the previous one's answers arrive after it", async () => {
+    const pendingService: Array<(value: unknown) => void> = [];
+    const pendingPermission: Array<(value: unknown) => void> = [];
+    (getServiceByFQN as jest.Mock)
+      .mockImplementationOnce(
+        () => new Promise((resolve) => pendingService.push(resolve))
+      )
+      .mockResolvedValueOnce({
+        ...MOCK_SERVICE,
+        id: 'svc-2',
+        name: 'other-service',
+        fullyQualifiedName: 'other-service',
+      });
+    mockGetEntityPermissionByFqn
+      .mockImplementationOnce(
+        () => new Promise((resolve) => pendingPermission.push(resolve))
+      )
+      .mockResolvedValueOnce({ ViewAll: true, ViewBasic: true });
+    const { rerender } = render(<ConnectionServiceDetailsPage />);
+    await waitFor(() => expect(pendingService).toHaveLength(1));
+
+    mockFqn = 'other-service';
+    rerender(<ConnectionServiceDetailsPage />);
+    const header = () => screen.getByTestId('service-header');
+    await waitFor(() => expect(header()).toHaveTextContent('other-service'));
+
+    await act(async () => {
+      pendingService[0]({ ...MOCK_SERVICE, owners: [], tags: [] });
+      pendingPermission[0](FULL_SERVICE_PERMISSION);
+    });
+
+    expect(header()).toHaveTextContent('other-service');
+    expect(header()).not.toHaveTextContent('test-service');
+    // The read-only answer for the new service stands; the old one's EditAll does not.
+    expect(screen.getByTestId('entity-meta-strip')).toHaveAttribute(
+      'data-can-edit-owners',
+      'false'
+    );
+  });
+
   describe('read-only user', () => {
     beforeEach(() => {
       mockServicePermission = { ViewAll: true, ViewBasic: true };

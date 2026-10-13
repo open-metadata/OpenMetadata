@@ -221,10 +221,18 @@ const ConnectionServiceDetailsPage: React.FC = () => {
   });
   const { showDeletedTables, schema: searchValue } = tableFilters;
 
+  // Only the latest request may write the service and its permission. The route can move to
+  // another service without a remount, and a slower answer for the previous one would otherwise
+  // land under the new URL, so edits would patch, and permissions gate, the wrong service.
+  const latestServiceRequestRef = useRef(0);
+  const latestPermissionRequestRef = useRef(0);
+
   const fetchServiceDetails = useCallback(async () => {
     if (!serviceCategory || !decodedFqn) {
       return;
     }
+    const requestId = ++latestServiceRequestRef.current;
+    const isLatest = () => requestId === latestServiceRequestRef.current;
     try {
       setIsLoading(true);
       const res = await getServiceByFQN(serviceCategory, decodedFqn, {
@@ -238,11 +246,17 @@ const ConnectionServiceDetailsPage: React.FC = () => {
         // service details does the same.
         include: Include.All,
       });
-      setServiceDetails(res);
+      if (isLatest()) {
+        setServiceDetails(res);
+      }
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      if (isLatest()) {
+        showErrorToast(error as AxiosError);
+      }
     } finally {
-      setIsLoading(false);
+      if (isLatest()) {
+        setIsLoading(false);
+      }
     }
   }, [serviceCategory, decodedFqn]);
 
@@ -250,15 +264,23 @@ const ConnectionServiceDetailsPage: React.FC = () => {
     if (!serviceCategory || !decodedFqn) {
       return;
     }
+    const requestId = ++latestPermissionRequestRef.current;
+    const isLatest = () => requestId === latestPermissionRequestRef.current;
     try {
       setIsServicePermissionLoading(true);
       const resource = getResourceEntityFromServiceCategory(serviceCategory);
       const perm = await getEntityPermissionByFqn(resource, decodedFqn);
-      setServicePermission(perm);
+      if (isLatest()) {
+        setServicePermission(perm);
+      }
     } catch {
-      setServicePermission(DEFAULT_ENTITY_PERMISSION);
+      if (isLatest()) {
+        setServicePermission(DEFAULT_ENTITY_PERMISSION);
+      }
     } finally {
-      setIsServicePermissionLoading(false);
+      if (isLatest()) {
+        setIsServicePermissionLoading(false);
+      }
     }
   }, [serviceCategory, decodedFqn, getEntityPermissionByFqn]);
 
