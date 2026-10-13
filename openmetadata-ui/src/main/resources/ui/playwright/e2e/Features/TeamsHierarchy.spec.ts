@@ -128,7 +128,7 @@ test.describe(
 
         const teamSelect = page.getByTestId('team-select');
         const teamSelectInput = teamSelect.getByRole('combobox');
-        const dropdown = page.getByRole('tree');
+        const dropdown = page.getByTestId('team-select-popover');
 
         await test.step('Non-Group team with children is visible but not selectable', async () => {
           await teamSelect.click();

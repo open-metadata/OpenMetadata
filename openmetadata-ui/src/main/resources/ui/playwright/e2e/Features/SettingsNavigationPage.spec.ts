@@ -276,9 +276,10 @@ test.describe.serial('Settings Navigation Page Tests', () => {
           x: firstItemBox.width / 2,
           y: firstItemBox.height / 2,
         },
+        // The middle of a row is a drop "on" it; its bottom edge drops after it.
         targetPosition: {
           x: secondItemBox.width / 2,
-          y: secondItemBox.height / 2 + 10,
+          y: secondItemBox.height - 2,
         },
       });
       await expect(treeItems.first()).not.toHaveText(firstItemText as string);
