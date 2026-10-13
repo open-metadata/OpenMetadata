@@ -353,9 +353,7 @@ const AppearanceConfigSettingsPage = () => {
                                       id={field.name}
                                       value={control.value ?? ''}
                                       onBlur={control.onBlur}
-                                      onChange={(e) =>
-                                        control.onChange(e.target.value)
-                                      }
+                                      onChange={control.onChange}
                                     />
                                     {fieldState.error && (
                                       <HintText isInvalid>
