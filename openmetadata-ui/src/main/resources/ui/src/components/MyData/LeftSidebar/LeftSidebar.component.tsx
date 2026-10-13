@@ -11,14 +11,9 @@
  *  limitations under the License.
  */
 import {
-  Accordion,
-  AccordionHeader,
-  AccordionItem,
-  AccordionPanel,
   Badge,
   Box,
   Button,
-  Button as CoreButton,
   ButtonUtility,
   Divider,
   Dropdown,
@@ -101,15 +96,23 @@ const LeftSidebar = () => {
     item.onClick?.();
   };
 
+  const toggleGroup = (groupKey: string, isOpen: boolean) => {
+    const otherKeys = (keys: string[]) =>
+      keys.filter((key) => key !== groupKey);
+    setOpenKeys((keys) =>
+      isOpen ? [...otherKeys(keys), groupKey] : otherKeys(keys)
+    );
+  };
+
   const renderLeaf = (item: SidebarEntry, parentKey?: string) => {
     if (!item.redirect_url) {
       return (
-        <CoreButton
+        <Button
           aria-label={t(item.title)}
           color="tertiary"
           data-testid={item.dataTestId}
           iconLeading={item.icon}
-          size="sm"
+          size="md"
           onPress={() => {
             navigateToItem(item, parentKey);
             if (item.key === SidebarItem.LOGOUT) {
@@ -117,7 +120,7 @@ const LeftSidebar = () => {
             }
           }}>
           {!isSidebarCollapsed && t(item.title)}
-        </CoreButton>
+        </Button>
       );
     }
 
@@ -150,8 +153,8 @@ const LeftSidebar = () => {
         dataTestId={item.dataTestId}
         href={item.redirect_url}
         icon={item.icon}
-        size="sm"
-        type="link"
+        truncate={false}
+        type={parentKey ? 'collapsible-child' : 'link'}
         onClick={() => navigateToItem(item, parentKey)}>
         {t(item.title)}
       </NavItemBase>
@@ -229,23 +232,29 @@ const LeftSidebar = () => {
     }
 
     return (
-      <AccordionItem id={item.key}>
-        <AccordionHeader>
-          <Box align="center" gap={2}>
-            <item.icon className="tw:size-7 tw:text-fg-quaternary" />
-            <span data-testid={item.dataTestId}>{t(item.title)}</span>
-          </Box>
-        </AccordionHeader>
-        <AccordionPanel>
-          <ul className="tw:m-0 tw:list-none tw:ps-4">
-            {item.children?.map((child) => (
-              <li data-testid={`side-bar-${child.dataTestId}`} key={child.key}>
-                {renderLeaf(child, item.key)}
-              </li>
-            ))}
-          </ul>
-        </AccordionPanel>
-      </AccordionItem>
+      <details
+        open={openKeys.includes(item.key)}
+        onToggle={(event) => toggleGroup(item.key, event.currentTarget.open)}>
+        <NavItemBase
+          current={item.children?.some((child) =>
+            selectedKeys.includes(child.key)
+          )}
+          icon={item.icon}
+          truncate={false}
+          type="collapsible">
+          <span data-testid={item.dataTestId}>{t(item.title)}</span>
+        </NavItemBase>
+        <ul className="tw:m-0 tw:list-none tw:p-0">
+          {item.children?.map((child) => (
+            <li
+              className="tw:py-0.5"
+              data-testid={`side-bar-${child.dataTestId}`}
+              key={child.key}>
+              {renderLeaf(child, item.key)}
+            </li>
+          ))}
+        </ul>
+      </details>
     );
   };
 
@@ -274,22 +283,16 @@ const LeftSidebar = () => {
       <div className="left-sidebar-layout">
         <Box className="menu-container" direction="col">
           <nav aria-label={t('label.navigation')} className="top-menu">
-            <Accordion
-              allowsMultipleExpanded
-              expandedKeys={new Set(openKeys)}
-              onExpandedChange={(keys) => setOpenKeys([...keys].map(String))}>
-              <ul className="left-sidebar-menu tw:m-0 tw:list-none tw:px-3 tw:py-0">
-                {sideBarItems.map((item) => (
-                  <li
-                    data-testid={`side-bar-${item.dataTestId}`}
-                    key={item.key}>
-                    {item.children?.length
-                      ? renderGroup(item)
-                      : renderLeaf(item)}
-                  </li>
-                ))}
-              </ul>
-            </Accordion>
+            <ul className="left-sidebar-menu tw:m-0 tw:list-none tw:px-3 tw:py-0">
+              {sideBarItems.map((item) => (
+                <li
+                  className="tw:py-0.5"
+                  data-testid={`side-bar-${item.dataTestId}`}
+                  key={item.key}>
+                  {item.children?.length ? renderGroup(item) : renderLeaf(item)}
+                </li>
+              ))}
+            </ul>
           </nav>
           <nav
             aria-label={t('label.setting-plural')}

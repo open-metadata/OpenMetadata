@@ -586,7 +586,7 @@ const NavBar = () => {
 
   return (
     <>
-      <header style={headerStyle}>
+      <header className="app-navbar-header" style={headerStyle}>
         <div className="navbar-container">
           <div className="flex-center gap-2">
             <Tooltip arrow placement="right" title={sidebarTooltipTitle}>

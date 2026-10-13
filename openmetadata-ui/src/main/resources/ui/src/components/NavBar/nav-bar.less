@@ -69,3 +69,21 @@
     transform: translate(-50%, 0);
   }
 }
+
+// Box the antd Layout.Header used to provide before the shell moved to plain elements.
+.app-navbar-header {
+  flex: 0 0 auto;
+  height: @layout-header-height;
+  padding: @layout-header-padding;
+  background: @layout-header-background;
+}
+
+// Placement only: the version alert floats above the page, bottom-centre.
+.refresh-alert {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 470px;
+  z-index: var(--om-z-9999);
+}
