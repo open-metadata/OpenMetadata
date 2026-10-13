@@ -131,7 +131,7 @@ const EntityHeaderTitle = ({
             <span className="deleted-badge-button" data-testid="deleted-badge">
               <ExclamationCircleFilled
                 className="tw:mr-1 tw:shrink-0"
-                size={14}
+                size={12}
               />
               {t('label.deleted')}
             </span>

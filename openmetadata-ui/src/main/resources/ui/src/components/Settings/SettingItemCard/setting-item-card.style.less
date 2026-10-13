@@ -27,6 +27,11 @@
   .setting-card-icon {
     position: relative;
     flex: 0 0 auto;
+    // The icon used to be an antd <Icon> whose inline `.anticon` wrapper sat in
+    // a 90px line box, and that line box is part of the card's height. The icon
+    // is now a bare <svg> sized by a class, so keep the font-size here or every
+    // settings card loses ~19px and the whole grid shifts up.
+    font-size: var(--om-font-size-90);
 
     svg {
       fill: transparent;

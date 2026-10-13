@@ -79,7 +79,7 @@ const ApplicationCard = ({
                 data-testid="deleted-badge">
                 <ExclamationCircleFilled
                   className="tw:flex tw:mr-1"
-                  size={14}
+                  size={10}
                 />
                 {t('label.disabled')}
               </div>
