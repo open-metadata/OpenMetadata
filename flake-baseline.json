@@ -1,14 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-12T03:39:27Z",
+  "generatedAt": "2026-10-13T03:32:52Z",
   "window": 10,
   "threshold": 2,
   "runs": [
-    {
-      "runId": "37091511300",
-      "sourceSha": "e9ebb310234e8e03faa8391ec17a4fddd4545e63",
-      "recordedAt": "2026-10-03T03:29:14Z"
-    },
     {
       "runId": "37174398749",
       "sourceSha": "507f5d783c6ca2ee22c76c0eb92b44ff6055cc79",
@@ -53,6 +48,11 @@
       "runId": "38198274479",
       "sourceSha": "d316054fe4808dce3e3d5c90bee2a821e5e8f39e",
       "recordedAt": "2026-10-12T03:39:27Z"
+    },
+    {
+      "runId": "38339539850",
+      "sourceSha": "29fd2650e19d9e84e2907594ab2d6a5715e99a36",
+      "recordedAt": "2026-10-13T03:32:52Z"
     }
   ],
   "entries": {
@@ -106,6 +106,16 @@
       "lastSeenSha": "39e7b3e330a5738cba17ee544660efc8730c6627",
       "hardFailure": false
     },
+    "chromium :: Features/QueryEntity.spec.ts :: Verify query duration": {
+      "observations": [
+        "38339539850"
+      ],
+      "project": "chromium",
+      "file": "Features/QueryEntity.spec.ts",
+      "title": "Verify query duration",
+      "lastSeenSha": "29fd2650e19d9e84e2907594ab2d6a5715e99a36",
+      "hardFailure": false
+    },
     "chromium :: Features/RestoreEntityInheritedFields.spec.ts :: DashboardDataModel \u203a Validate restore with Inherited domain and data products assigned": {
       "observations": [
         "37406058596"
@@ -148,13 +158,14 @@
     },
     "chromium :: Pages/DataContractsSemanticRules.spec.ts :: Data Contracts Semantics Rule Description \u203a Validate Description Rule Is_Not_Set": {
       "observations": [
-        "38106742725"
+        "38106742725",
+        "38339539850"
       ],
       "project": "chromium",
       "file": "Pages/DataContractsSemanticRules.spec.ts",
       "title": "Data Contracts Semantics Rule Description \u203a Validate Description Rule Is_Not_Set",
-      "lastSeenSha": "12f9e16ed2693af671179c81ce847438d44d3ceb",
-      "hardFailure": false
+      "lastSeenSha": "29fd2650e19d9e84e2907594ab2d6a5715e99a36",
+      "hardFailure": true
     },
     "chromium :: Pages/Domains.spec.ts :: Domains \u203a Verify redirect path on data product delete": {
       "observations": [
@@ -227,6 +238,10 @@
       "hardFailure": false
     }
   },
-  "stableIds": [],
-  "hardFailureStableIds": []
+  "stableIds": [
+    "chromium :: Pages/DataContractsSemanticRules.spec.ts :: Data Contracts Semantics Rule Description \u203a Validate Description Rule Is_Not_Set"
+  ],
+  "hardFailureStableIds": [
+    "chromium :: Pages/DataContractsSemanticRules.spec.ts :: Data Contracts Semantics Rule Description \u203a Validate Description Rule Is_Not_Set"
+  ]
 }
