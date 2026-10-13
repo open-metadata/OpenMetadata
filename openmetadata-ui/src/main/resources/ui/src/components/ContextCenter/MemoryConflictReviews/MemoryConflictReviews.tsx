@@ -23,7 +23,11 @@ import { CheckCircle } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { EntityReference } from '../../../generated/entity/context/contextMemory';
+import { MEMORY_STATUS_LABEL_KEYS } from '../../../constants/ContextCenter.constants';
+import {
+  ContextMemoryStatus,
+  EntityReference,
+} from '../../../generated/entity/context/contextMemory';
 import { Task } from '../../../generated/entity/tasks/task';
 import { resolveTask } from '../../../rest/tasksAPI';
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
@@ -58,6 +62,38 @@ interface ClaimCardProps {
   testId: string;
   onViewMemory: (memoryName: string) => void;
 }
+
+const ClaimBadges: FC<{
+  status?: string;
+  recency?: ClaimRecency;
+  testId: string;
+}> = ({ status, recency, testId }) => {
+  const { t } = useTranslation();
+
+  return (
+    <Box className="tw:shrink-0" gap={1}>
+      {status && (
+        <Badge
+          color={status === ContextMemoryStatus.Approved ? 'success' : 'gray'}
+          data-testid={`${testId}-status`}
+          size="sm"
+          type="color">
+          {MEMORY_STATUS_LABEL_KEYS[status]
+            ? t(MEMORY_STATUS_LABEL_KEYS[status])
+            : status}
+        </Badge>
+      )}
+      {recency && (
+        <Badge
+          color={recency === 'newer' ? 'brand' : 'gray'}
+          size="sm"
+          type="color">
+          {t(CLAIM_RECENCY_LABELS[recency])}
+        </Badge>
+      )}
+    </Box>
+  );
+};
 
 const ClaimCard: FC<ClaimCardProps> = ({
   claim,
@@ -96,14 +132,7 @@ const ClaimCard: FC<ClaimCardProps> = ({
             {title}
           </Typography>
         </Button>
-        {recency && (
-          <Badge
-            color={recency === 'newer' ? 'brand' : 'gray'}
-            size="sm"
-            type="color">
-            {t(CLAIM_RECENCY_LABELS[recency])}
-          </Badge>
-        )}
+        <ClaimBadges recency={recency} status={claim?.status} testId={testId} />
       </Box>
       {claim?.answer && (
         <Typography

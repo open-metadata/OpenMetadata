@@ -120,8 +120,15 @@ describe('MemoryConflictReviews', () => {
     expect(screen.getByText(/dim_customer · orders\.pdf · Ana/)).toBeVisible();
   });
 
-  it('marks which claim is newer', () => {
+  it('marks which claim is newer and where each stands', () => {
     renderReviews();
+
+    expect(screen.getByTestId('reviewed-memory-status')).toHaveTextContent(
+      'label.draft'
+    );
+    expect(
+      screen.getByTestId('disputed-memory-memory-five-status')
+    ).toHaveTextContent('label.approved');
 
     const [reviewedSide, approvedSide] = screen
       .getAllByText(/^label\.(newer|older)$/)
