@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ResolutionType } from '../../../generated/api/tasks/resolveTask';
+import { ResolutionType } from '../../../../generated/api/tasks/resolveTask';
 import { ClaimRecency } from './MemoryConflictReviews.types';
 
 /** The server-opened task's transition ids and the resolution each records. */

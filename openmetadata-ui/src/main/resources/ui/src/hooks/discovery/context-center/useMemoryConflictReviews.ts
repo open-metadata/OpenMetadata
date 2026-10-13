@@ -10,49 +10,66 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { TaskType } from '../../../generated/api/tasks/createTask';
 import { Task, TaskStatus } from '../../../generated/entity/tasks/task';
 import { listMyAssignedTasks, listTasks } from '../../../rest/tasksAPI';
 import { CONTEXT_CENTER_MEMORY_REVIEWS_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 
-const REVIEW_PAGE_SIZE = 50;
+const REVIEW_PAGE_SIZE = 20;
 
-const REVIEW_QUERY = {
+const OPEN_REVIEWS = {
   type: TaskType.MemoryConflictReview,
   status: TaskStatus.Open,
-  fields: 'about,assignees,payload',
-  limit: REVIEW_PAGE_SIZE,
 };
 
 export interface MemoryConflictReviews {
   reviews: Task[];
   total: number;
+  isCountLoading: boolean;
   isLoading: boolean;
+  isError: boolean;
   hasMore: boolean;
   isLoadingMore: boolean;
   loadMore: () => void;
+  retry: () => void;
 }
+
+const listReviews = (isAdmin: boolean) =>
+  isAdmin ? listTasks : listMyAssignedTasks;
 
 /**
  * Open memory conflict reviews: every one for an admin, otherwise the ones
- * assigned to the user or their teams. Paged by cursor, a page at a time.
+ * assigned to the user or their teams. The count is always read; the reviews
+ * themselves only while they are listed, a page at a time.
  */
 export const useMemoryConflictReviews = (
-  isAdmin: boolean
+  isAdmin: boolean,
+  isListing: boolean
 ): MemoryConflictReviews => {
-  const { data, isLoading, hasNextPage, isFetchingNextPage, fetchNextPage } =
-    useInfiniteQuery({
-      queryKey: [...CONTEXT_CENTER_MEMORY_REVIEWS_QUERY_KEY, isAdmin],
-      queryFn: ({ pageParam }) => {
-        const page = { ...REVIEW_QUERY, after: pageParam };
-
-        return isAdmin ? listTasks(page) : listMyAssignedTasks(page);
-      },
-      initialPageParam: undefined as string | undefined,
-      getNextPageParam: (lastPage) => lastPage.paging?.after,
-    });
+  const count = useQuery({
+    queryKey: [...CONTEXT_CENTER_MEMORY_REVIEWS_QUERY_KEY, 'count', isAdmin],
+    queryFn: () =>
+      listReviews(isAdmin)({ ...OPEN_REVIEWS, limit: 1 }).then(
+        (response) => response.paging?.total ?? 0
+      ),
+  });
+  const list = useInfiniteQuery({
+    queryKey: [...CONTEXT_CENTER_MEMORY_REVIEWS_QUERY_KEY, 'list', isAdmin],
+    queryFn: ({ pageParam }) =>
+      listReviews(isAdmin)({
+        ...OPEN_REVIEWS,
+        fields: 'about,createdBy,payload',
+        limit: REVIEW_PAGE_SIZE,
+        after: pageParam,
+      }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.paging?.after,
+    enabled: isListing,
+  });
+  const { data, hasNextPage, isFetchingNextPage, fetchNextPage, refetch } =
+    list;
 
   const reviews = useMemo(
     () => data?.pages.flatMap((page) => page.data) ?? [],
@@ -61,14 +78,19 @@ export const useMemoryConflictReviews = (
 
   return {
     reviews,
-    total: data?.pages[0]?.paging?.total ?? 0,
-    isLoading,
+    total: count.data ?? 0,
+    isCountLoading: count.isLoading,
+    isLoading: list.isLoading,
+    isError: list.isError,
     hasMore: Boolean(hasNextPage),
     isLoadingMore: isFetchingNextPage,
     loadMore: () => {
       if (hasNextPage && !isFetchingNextPage) {
         fetchNextPage();
       }
+    },
+    retry: () => {
+      refetch();
     },
   };
 };

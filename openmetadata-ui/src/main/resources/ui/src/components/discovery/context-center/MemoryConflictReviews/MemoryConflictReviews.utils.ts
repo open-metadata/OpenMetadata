@@ -10,37 +10,33 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityReference } from '../../../generated/entity/context/contextMemory';
-import { Task } from '../../../generated/entity/tasks/task';
+import {
+  ContextMemory,
+  EntityReference,
+} from '../../../../generated/entity/context/contextMemory';
+import { Task } from '../../../../generated/entity/tasks/task';
 import {
   ConflictRecency,
-  MemoryClaim,
   MemoryConflictReviewDispute,
 } from './MemoryConflictReviews.types';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 
-const toClaim = (value: unknown): MemoryClaim | undefined =>
-  isRecord(value) && typeof value.id === 'string'
-    ? (value as unknown as MemoryClaim)
-    : undefined;
-
 const toDispute = (value: unknown): MemoryConflictReviewDispute | undefined => {
   if (!isRecord(value) || !isRecord(value.memory)) {
     return undefined;
   }
   const memory = value.memory as unknown as EntityReference;
-  const reason = typeof value.reason === 'string' ? value.reason : '';
+  const detectedAt =
+    typeof value.detectedAt === 'number' ? value.detectedAt : undefined;
 
-  return memory.id
-    ? { memory, reason, claim: toClaim(value.claim) }
-    : undefined;
+  return memory.id ? { memory, detectedAt } : undefined;
 };
 
 /**
  * The memories a conflict review weighs the reviewed memory against, as the
- * server recorded them when it opened the task. Malformed entries are skipped.
+ * server recorded them. Malformed entries are skipped.
  */
 export const getReviewDisputes = (
   task: Task
@@ -56,40 +52,33 @@ export const getReviewDisputes = (
     : [];
 };
 
-/** What the reviewed memory claims, as recorded when the review opened. */
-export const getReviewedClaim = (task: Task): MemoryClaim | undefined =>
-  isRecord(task.payload) ? toClaim(task.payload.claim) : undefined;
-
 /**
- * The reviewed memory's title as the server recorded it on the task. Memory
- * names are generated, so a title is what a reviewer recognises; the task's
- * `about` reference carries only the name.
+ * When a memory's claim last changed. Review, lifecycle and pin writes keep
+ * `lastContentUpdatedAt`, so it dates what the memory says, where `updatedAt`
+ * dates any write.
  */
-export const getReviewedMemoryTitle = (task: Task): string | undefined => {
-  const title = isRecord(task.payload) ? task.payload.memoryTitle : undefined;
-
-  return typeof title === 'string' && title.trim() ? title : undefined;
-};
+export const getClaimUpdatedAt = (memory?: ContextMemory): number | undefined =>
+  memory?.lastContentUpdatedAt ?? memory?.updatedAt;
 
 /**
- * Which side states the more recent claim, by when each claim's content last
- * changed. The reviewed memory is newer only when it is newer than every claim
- * it contradicts, and older only when it is older than all of them.
+ * Which side states the more recent claim. The reviewed memory is newer only
+ * when it is newer than every claim it contradicts, and older only when it is
+ * older than all of them.
  */
 export const getConflictRecency = (
-  reviewed: MemoryClaim | undefined,
-  disputes: MemoryConflictReviewDispute[]
+  reviewed: ContextMemory | undefined,
+  disputed: ContextMemory[]
 ): ConflictRecency => {
-  const reviewedAt = reviewed?.contentUpdatedAt;
+  const reviewedAt = getClaimUpdatedAt(reviewed);
   const recency: ConflictRecency = { disputed: {} };
   if (reviewedAt === undefined) {
     return recency;
   }
-  const dated = disputes.filter(
-    (dispute) => dispute.claim?.contentUpdatedAt !== undefined
+  const dated = disputed.filter(
+    (memory) => getClaimUpdatedAt(memory) !== undefined
   );
-  dated.forEach(({ memory, claim }) => {
-    const disputedAt = claim?.contentUpdatedAt ?? reviewedAt;
+  dated.forEach((memory) => {
+    const disputedAt = getClaimUpdatedAt(memory) ?? reviewedAt;
     if (disputedAt !== reviewedAt) {
       recency.disputed[memory.id] = disputedAt > reviewedAt ? 'newer' : 'older';
     }
@@ -106,14 +95,18 @@ export const getConflictRecency = (
   return recency;
 };
 
+/** Why the reviewed memory contradicts a disputed one, as the memory records it. */
+export const getDisputeReason = (
+  reviewed: ContextMemory | undefined,
+  disputedId: string | undefined
+): string | undefined =>
+  reviewed?.disputes?.find(({ memory }) => memory.id === disputedId)?.reason;
+
 /**
  * The review as a task list shows it, with the memory it is about named by its
  * title: memory names are generated, so the reference's name reads as noise.
  */
-export const withMemoryTitle = (review: Task): Task => {
-  const title = getReviewedMemoryTitle(review);
-
-  return title && review.about
-    ? { ...review, about: { ...review.about, displayName: title } }
+export const withMemoryTitle = (review: Task, memory?: ContextMemory): Task =>
+  memory?.title && review.about
+    ? { ...review, about: { ...review.about, displayName: memory.title } }
     : review;
-};

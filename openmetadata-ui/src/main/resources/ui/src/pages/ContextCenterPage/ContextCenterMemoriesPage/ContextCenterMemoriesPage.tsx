@@ -51,9 +51,10 @@ import {
   MemoryFilterTab,
   MemorySortBy,
 } from '../../../components/ContextCenter/MemoriesView/MemoriesView.interface';
-import MemoryConflictReviews from '../../../components/ContextCenter/MemoryConflictReviews/MemoryConflictReviews';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import DataAssetSelectList from '../../../components/DataAssets/DataAssetSelectList/DataAssetSelectList';
+import MemoryConflictReviews from '../../../components/discovery/context-center/MemoryConflictReviews/MemoryConflictReviews';
+import { INBOX_OPEN_TASK_COUNT_QUERY_KEY } from '../../../components/discovery/personal-space/inbox.constants';
 import {
   DEFAULT_MEMORY_STATUSES,
   FILTER_TABS,
@@ -153,6 +154,12 @@ const getMemoryEmptyActions = (
 
   return actions;
 };
+
+/** A review names its memories by reference only, so memory search cannot find it. */
+const searchOutsideReview = (
+  isReviewing: boolean,
+  onSearch: (value: string) => void
+) => (isReviewing ? undefined : onSearch);
 
 const isEmptyOnceLoaded = (isLoading: boolean, count: number) =>
   !isLoading && count === 0;
@@ -345,11 +352,14 @@ const ContextCenterMemoriesPage: FC = () => {
   const {
     reviews,
     total: reviewTotal,
+    isCountLoading: isReviewCountLoading,
     isLoading: isReviewsLoading,
+    isError: isReviewsError,
     hasMore: hasMoreReviews,
     isLoadingMore: isLoadingMoreReviews,
     loadMore: loadMoreReviews,
-  } = useMemoryConflictReviews(Boolean(currentUser?.isAdmin));
+    retry: retryReviews,
+  } = useMemoryConflictReviews(Boolean(currentUser?.isAdmin), isReviewing);
 
   const SORT_OPTIONS = useMemo(
     () => [
@@ -598,7 +608,7 @@ const ContextCenterMemoriesPage: FC = () => {
     debouncedSearch,
     isMemoriesLoading,
     memoriesLength: memories.length,
-    isReviewsLoading,
+    isReviewsLoading: isReviewCountLoading,
     reviewCount: reviewTotal,
   });
 
@@ -729,6 +739,9 @@ const ContextCenterMemoriesPage: FC = () => {
     queryClient.invalidateQueries({
       queryKey: CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY,
     });
+    queryClient.invalidateQueries({
+      queryKey: INBOX_OPEN_TASK_COUNT_QUERY_KEY,
+    });
     fetchMemoryCounts();
   }, [fetchMemoryCounts]);
 
@@ -854,7 +867,7 @@ const ContextCenterMemoriesPage: FC = () => {
             searchQuery={searchValue}
             subtitle={t('message.context-center-memories-subtitle')}
             title={t('label.memory-plural')}
-            onSearch={handleSearchChange}
+            onSearch={searchOutsideReview(isReviewing, handleSearchChange)}
           />
         </PageLayout.Header>
         <PageLayout.Content
@@ -1217,11 +1230,13 @@ const ContextCenterMemoriesPage: FC = () => {
                 {isReviewing ? (
                   <MemoryConflictReviews
                     hasMore={hasMoreReviews}
+                    isError={isReviewsError}
                     isLoading={isReviewsLoading}
                     isLoadingMore={isLoadingMoreReviews}
                     reviews={reviews}
                     onLoadMore={loadMoreReviews}
                     onResolved={handleReviewResolved}
+                    onRetry={retryReviews}
                   />
                 ) : (
                   <PaginationCardMinimal

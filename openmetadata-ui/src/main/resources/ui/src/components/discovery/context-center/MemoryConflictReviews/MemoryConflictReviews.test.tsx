@@ -10,8 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
-import { Task } from '../../../generated/entity/tasks/task';
+import { fireEvent, screen } from '@testing-library/react';
+import { Task } from '../../../../generated/entity/tasks/task';
+import { getContextMemoryById } from '../../../../rest/contextMemoryAPI';
+import { renderWithQueryClient } from '../../../../test/unit/test-utils';
 import MemoryConflictReviews from './MemoryConflictReviews';
 import { MemoryConflictReviewsProps } from './MemoryConflictReviews.types';
 
@@ -29,8 +31,12 @@ jest.mock('../MemoryConflictCompare/MemoryConflictCompare', () => ({
   default: (props: { review: Task; onClose: () => void }) => mockCompare(props),
 }));
 
+jest.mock('../../../../rest/contextMemoryAPI', () => ({
+  getContextMemoryById: jest.fn(),
+}));
+
 jest.mock(
-  '../../discovery/personal-space/InboxPage/components/InboxTaskListItem',
+  '../../personal-space/InboxPage/components/InboxTaskListItem',
   () => ({
     __esModule: true,
     default: ({
@@ -48,7 +54,7 @@ jest.mock(
 );
 
 jest.mock(
-  '../../discovery/personal-space/InboxPage/components/InboxTaskListSkeleton',
+  '../../personal-space/InboxPage/components/InboxTaskListSkeleton',
   () => ({
     __esModule: true,
     default: () => <div data-testid="inbox-task-list-skeleton" />,
@@ -57,16 +63,21 @@ jest.mock(
 
 const review = {
   id: 'task-1',
-  displayName: 'Review conflicting memory: Customers need three orders',
+  displayName: 'Review conflicting memory',
   about: { id: 'memory-three', type: 'contextMemory', name: 'chat-3a9c' },
-  payload: { memoryTitle: 'Customers need three orders', disputes: [] },
+  payload: { disputes: [] },
 } as unknown as Task;
 
 const renderReviews = (props: Partial<MemoryConflictReviewsProps> = {}) => {
-  const handlers = { onResolved: jest.fn(), onLoadMore: jest.fn() };
-  render(
+  const handlers = {
+    onResolved: jest.fn(),
+    onLoadMore: jest.fn(),
+    onRetry: jest.fn(),
+  };
+  renderWithQueryClient(
     <MemoryConflictReviews
       hasMore={false}
+      isError={false}
       isLoading={false}
       isLoadingMore={false}
       reviews={[review]}
@@ -81,22 +92,40 @@ const renderReviews = (props: Partial<MemoryConflictReviewsProps> = {}) => {
 describe('MemoryConflictReviews', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (getContextMemoryById as jest.Mock).mockResolvedValue({
+      id: 'memory-three',
+      name: 'chat-3a9c',
+      title: 'Customers need three orders',
+    });
   });
 
-  it('lists each review as the task list shows tasks, naming the memory by its title', () => {
+  it('lists each review as the task list shows tasks, naming the memory by its title', async () => {
     renderReviews();
 
-    expect(screen.getByTestId('memory-review-memory-three')).toHaveTextContent(
-      'Review conflicting memory: Customers need three orders | Customers need three orders'
+    expect(
+      await screen.findByText(
+        'Review conflicting memory | Customers need three orders'
+      )
+    ).toBeInTheDocument();
+    expect(getContextMemoryById).toHaveBeenCalledWith(
+      'memory-three',
+      expect.any(String)
     );
+  });
+
+  it('names the memory by reference while its title cannot be read', async () => {
+    (getContextMemoryById as jest.Mock).mockRejectedValue(new Error('403'));
+    renderReviews();
+
+    expect(
+      await screen.findByText('Review conflicting memory |')
+    ).toBeInTheDocument();
   });
 
   it('opens the comparison for a review and returns to the list when closed', () => {
     const { onResolved } = renderReviews();
 
-    fireEvent.click(
-      screen.getByText(/Review conflicting memory: Customers need three orders/)
-    );
+    fireEvent.click(screen.getByText(/Review conflicting memory/));
 
     expect(screen.getByTestId('memory-compare-modal')).toHaveTextContent(
       'task-1'
@@ -122,6 +151,19 @@ describe('MemoryConflictReviews', () => {
     renderReviews();
 
     expect(screen.queryByText('label.load-more')).toBeNull();
+  });
+
+  it('says when the reviews failed to load and loads them again on retry', () => {
+    const { onRetry } = renderReviews({ isError: true, reviews: [] });
+
+    expect(
+      screen.getByText('message.something-went-wrong')
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('label.retry'));
+
+    expect(onRetry).toHaveBeenCalled();
+    expect(screen.queryByText('label.nothing-to-review')).toBeNull();
   });
 
   it('says when nothing is waiting for a decision', () => {

@@ -84,13 +84,14 @@ jest.mock(
   '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component',
   () => ({
     __esModule: true,
-    default: ({ onSearch }: { onSearch: (value: string) => void }) => (
-      <input
-        aria-label="Search memories"
-        data-testid="memory-search"
-        onChange={(event) => onSearch(event.target.value)}
-      />
-    ),
+    default: ({ onSearch }: { onSearch?: (value: string) => void }) =>
+      onSearch ? (
+        <input
+          aria-label="Search memories"
+          data-testid="memory-search"
+          onChange={(event) => onSearch(event.target.value)}
+        />
+      ) : null,
   })
 );
 
@@ -113,22 +114,25 @@ jest.mock(
 const mockUseMemoryConflictReviews = jest.fn().mockReturnValue({
   reviews: [],
   total: 0,
+  isCountLoading: false,
   isLoading: false,
+  isError: false,
   hasMore: false,
   isLoadingMore: false,
   loadMore: jest.fn(),
+  retry: jest.fn(),
 });
 
 jest.mock(
   '../../../hooks/discovery/context-center/useMemoryConflictReviews',
   () => ({
-    useMemoryConflictReviews: (isAdmin: boolean) =>
-      mockUseMemoryConflictReviews(isAdmin),
+    useMemoryConflictReviews: (isAdmin: boolean, isListing: boolean) =>
+      mockUseMemoryConflictReviews(isAdmin, isListing),
   })
 );
 
 jest.mock(
-  '../../../components/ContextCenter/MemoryConflictReviews/MemoryConflictReviews',
+  '../../../components/discovery/context-center/MemoryConflictReviews/MemoryConflictReviews',
   () => ({
     __esModule: true,
     default: jest
@@ -469,10 +473,13 @@ describe('ContextCenterMemoriesPage — needs review', () => {
     mockUseMemoryConflictReviews.mockReturnValue({
       reviews: [{ id: 'task-1' }, { id: 'task-2' }],
       total: 2,
+      isCountLoading: false,
       isLoading: false,
+      isError: false,
       hasMore: false,
       isLoadingMore: false,
       loadMore: jest.fn(),
+      retry: jest.fn(),
     });
   });
 
@@ -508,10 +515,13 @@ describe('ContextCenterMemoriesPage — needs review', () => {
     mockUseMemoryConflictReviews.mockReturnValue({
       reviews: [],
       total: 0,
+      isCountLoading: false,
       isLoading: false,
+      isError: false,
       hasMore: false,
       isLoadingMore: false,
       loadMore: jest.fn(),
+      retry: jest.fn(),
     });
     renderPage();
 
@@ -529,7 +539,7 @@ describe('ContextCenterMemoriesPage — needs review', () => {
     const card = await screen.findByTestId('memory-count-card-needs-review');
 
     expect(card).toHaveTextContent('2');
-    expect(mockUseMemoryConflictReviews).toHaveBeenCalledWith(false);
+    expect(mockUseMemoryConflictReviews).toHaveBeenLastCalledWith(false, false);
     expect(screen.queryByTestId('memory-reviews')).not.toBeInTheDocument();
 
     fireEvent.click(card);
@@ -538,5 +548,21 @@ describe('ContextCenterMemoriesPage — needs review', () => {
       'data-review-count',
       '2'
     );
+    expect(mockUseMemoryConflictReviews).toHaveBeenLastCalledWith(false, true);
+  });
+
+  /** Reviews name their memories by reference only, so a memory search cannot find them. */
+  it('hides the memory search while reviewing conflicts', async () => {
+    renderPage();
+
+    expect(await screen.findByTestId('memory-search')).toBeInTheDocument();
+
+    fireEvent.click(
+      await screen.findByTestId('memory-count-card-needs-review')
+    );
+
+    await screen.findByTestId('memory-reviews');
+
+    expect(screen.queryByTestId('memory-search')).not.toBeInTheDocument();
   });
 });

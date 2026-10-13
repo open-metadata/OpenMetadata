@@ -31,9 +31,15 @@ const mockListMyAssignedTasks = listMyAssignedTasks as jest.MockedFunction<
 const REVIEW = { id: 'task-1' } as Task;
 const NEXT_REVIEW = { id: 'task-2' } as Task;
 
-const OPEN_REVIEWS = expect.objectContaining({
+const OPEN_REVIEWS = {
   type: TaskType.MemoryConflictReview,
   status: TaskStatus.Open,
+};
+
+const COUNT_REQUEST = expect.objectContaining({ ...OPEN_REVIEWS, limit: 1 });
+
+const LIST_REQUEST = expect.objectContaining({
+  ...OPEN_REVIEWS,
   fields: expect.stringContaining('payload'),
 });
 
@@ -54,57 +60,54 @@ describe('useMemoryConflictReviews', () => {
     mockListMyAssignedTasks.mockReset();
   });
 
-  it('lists every open conflict review for an admin', async () => {
-    mockListTasks.mockResolvedValue({
-      data: [REVIEW],
-      paging: { total: 3 },
-    });
+  it('counts every open review for an admin without listing them', async () => {
+    mockListTasks.mockResolvedValue({ data: [REVIEW], paging: { total: 3 } });
 
-    const { result } = renderHook(() => useMemoryConflictReviews(true), {
+    const { result } = renderHook(() => useMemoryConflictReviews(true, false), {
       wrapper,
     });
 
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    await waitFor(() => expect(result.current.isCountLoading).toBe(false));
 
-    expect(mockListTasks).toHaveBeenCalledWith(OPEN_REVIEWS);
-    expect(mockListMyAssignedTasks).not.toHaveBeenCalled();
-    expect(result.current.reviews).toEqual([REVIEW]);
     expect(result.current.total).toBe(3);
-    expect(result.current.hasMore).toBe(false);
+    expect(mockListTasks).toHaveBeenCalledTimes(1);
+    expect(mockListTasks).toHaveBeenCalledWith(COUNT_REQUEST);
+    expect(result.current.reviews).toEqual([]);
   });
 
-  it('lists only the reviews assigned to anyone else', async () => {
+  it('lists the reviews assigned to anyone else while they are shown', async () => {
     mockListMyAssignedTasks.mockResolvedValue({
       data: [REVIEW],
       paging: { total: 1 },
     });
 
-    const { result } = renderHook(() => useMemoryConflictReviews(false), {
+    const { result } = renderHook(() => useMemoryConflictReviews(false, true), {
       wrapper,
     });
 
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    await waitFor(() => expect(result.current.reviews).toEqual([REVIEW]));
 
-    expect(mockListMyAssignedTasks).toHaveBeenCalledWith(OPEN_REVIEWS);
+    expect(mockListMyAssignedTasks).toHaveBeenCalledWith(LIST_REQUEST);
     expect(mockListTasks).not.toHaveBeenCalled();
-    expect(result.current.total).toBe(1);
+    expect(result.current.hasMore).toBe(false);
   });
 
   it('loads the next page of reviews after the ones already listed', async () => {
-    mockListTasks
-      .mockResolvedValueOnce({
-        data: [REVIEW],
-        paging: { total: 2, after: 'cursor-1' },
-      })
-      .mockResolvedValueOnce({ data: [NEXT_REVIEW], paging: { total: 2 } });
+    mockListTasks.mockImplementation(async (params) => {
+      if (params?.limit === 1) {
+        return { data: [REVIEW], paging: { total: 2 } };
+      }
 
-    const { result } = renderHook(() => useMemoryConflictReviews(true), {
+      return params?.after
+        ? { data: [NEXT_REVIEW], paging: { total: 2 } }
+        : { data: [REVIEW], paging: { total: 2, after: 'cursor-1' } };
+    });
+
+    const { result } = renderHook(() => useMemoryConflictReviews(true, true), {
       wrapper,
     });
 
     await waitFor(() => expect(result.current.hasMore).toBe(true));
-
-    expect(result.current.reviews).toEqual([REVIEW]);
 
     act(() => result.current.loadMore());
 
@@ -112,23 +115,37 @@ describe('useMemoryConflictReviews', () => {
       expect(result.current.reviews).toEqual([REVIEW, NEXT_REVIEW])
     );
 
-    expect(mockListTasks).toHaveBeenLastCalledWith(
+    expect(mockListTasks).toHaveBeenCalledWith(
       expect.objectContaining({ after: 'cursor-1' })
     );
     expect(result.current.hasMore).toBe(false);
     expect(result.current.total).toBe(2);
   });
 
-  it('has no reviews while the list fails to load', async () => {
-    mockListTasks.mockRejectedValue(new Error('unavailable'));
+  it('says the reviews failed to load, and loads them again on retry', async () => {
+    let listings = 0;
+    mockListTasks.mockImplementation(async (params) => {
+      if (params?.limit === 1) {
+        return { data: [], paging: { total: 1 } };
+      }
+      listings += 1;
+      if (listings === 1) {
+        throw new Error('unavailable');
+      }
 
-    const { result } = renderHook(() => useMemoryConflictReviews(true), {
+      return { data: [REVIEW], paging: { total: 1 } };
+    });
+
+    const { result } = renderHook(() => useMemoryConflictReviews(true, true), {
       wrapper,
     });
 
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    await waitFor(() => expect(result.current.isError).toBe(true));
 
-    expect(result.current.reviews).toEqual([]);
-    expect(result.current.total).toBe(0);
+    act(() => result.current.retry());
+
+    await waitFor(() => expect(result.current.reviews).toEqual([REVIEW]));
+
+    expect(result.current.isError).toBe(false);
   });
 });

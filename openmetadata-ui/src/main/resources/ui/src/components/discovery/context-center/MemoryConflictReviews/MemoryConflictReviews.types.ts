@@ -10,27 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityReference } from '../../../generated/entity/context/contextMemory';
-import { Task } from '../../../generated/entity/tasks/task';
+import { EntityReference } from '../../../../generated/entity/context/contextMemory';
+import { Task } from '../../../../generated/entity/tasks/task';
 
-/** One side of a conflict, as the server recorded it when the review opened. */
-export interface MemoryClaim {
-  id: string;
-  name?: string;
-  title?: string;
-  question?: string;
-  answer?: string;
-  status?: string;
-  contentUpdatedAt?: number;
-  anchor?: EntityReference;
-  source?: string;
-  author?: string;
-}
-
+/**
+ * A memory the reviewed one contradicts, as the task records it: by reference
+ * only. Every user may read tasks, so what a memory says is read through the
+ * memory API, which applies its visibility rules.
+ */
 export interface MemoryConflictReviewDispute {
   memory: EntityReference;
-  reason: string;
-  claim?: MemoryClaim;
+  detectedAt?: number;
 }
 
 export type ClaimRecency = 'newer' | 'older';
@@ -43,8 +33,10 @@ export interface ConflictRecency {
 export interface MemoryConflictReviewsProps {
   reviews: Task[];
   isLoading: boolean;
+  isError: boolean;
   hasMore: boolean;
   isLoadingMore: boolean;
   onLoadMore: () => void;
+  onRetry: () => void;
   onResolved: () => void;
 }

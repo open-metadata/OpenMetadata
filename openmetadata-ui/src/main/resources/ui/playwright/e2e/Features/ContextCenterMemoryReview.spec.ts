@@ -34,16 +34,27 @@ interface Memory {
 const RESOLVE_TASK = /\/api\/v1\/tasks\/[^/]+\/resolve$/;
 const CONFLICT_REASON = 'Five orders against three orders';
 
-const createConflict = async (apiContext: APIRequestContext) => {
-  const create = (kind: string, entityStatus: 'Approved' | 'Unprocessed') =>
-    createMemoryViaApi(apiContext, {
+/** Each memory is recorded for cleanup as soon as it exists, so a failed setup leaks none. */
+const createConflict = async (
+  apiContext: APIRequestContext,
+  created: Memory[]
+) => {
+  const create = async (
+    kind: string,
+    entityStatus: 'Approved' | 'Unprocessed'
+  ) => {
+    const memory = (await createMemoryViaApi(apiContext, {
       name: `cc_review_${kind}_${uuid()}`,
       title: `Customers need ${kind} orders`,
       question: 'Who qualifies as a customer?',
       answer: `A customer has at least ${kind} completed orders.`,
       entityStatus,
       shareConfig: { visibility: 'Entity' },
-    }) as Promise<Memory>;
+    })) as Memory;
+    created.push(memory);
+
+    return memory;
+  };
   const disputed = await create('five', 'Approved');
   const reviewed = await create('three', 'Unprocessed');
   await patchMemory(apiContext, reviewed.id, [
@@ -95,72 +106,76 @@ test.describe(
       browser,
     }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
-      const { disputed, reviewed } = await createConflict(apiContext);
-      created.push(disputed, reviewed);
-
-      await test.step('the conflict waits in Needs review as a task', async () => {
-        await navigateToMemories(page);
-        await page.getByTestId('memory-count-card-needs-review').click();
-
-        await expect(
-          page.getByTestId(`memory-review-${reviewed.id}`)
-        ).toContainText(`Review conflicting memory: ${reviewed.title}`);
-      });
-
-      await test.step('opening it compares both memories as a diff', async () => {
-        await page.getByTestId(`memory-review-${reviewed.id}`).click();
-        const compare = page.getByTestId('memory-compare-modal');
-
-        await expect(compare.getByTestId('compare-current-title')).toHaveText(
-          disputed.title
-        );
-        await expect(compare.getByTestId('compare-proposed-title')).toHaveText(
-          reviewed.title
-        );
-        await expect(compare.getByTestId('diff-current-memory')).toHaveText(
-          disputed.answer
-        );
-        await expect(compare.getByTestId('diff-proposed-memory')).toHaveText(
-          reviewed.answer
-        );
-        await expect(compare.getByTestId('diff-row-memory')).toHaveAttribute(
-          'data-changed',
-          'true'
-        );
-        await expect(compare.getByTestId('compare-reason')).toContainText(
-          CONFLICT_REASON
-        );
-      });
-
-      await test.step('keeping the new claim retires the old one', async () => {
-        const compare = page.getByTestId('memory-compare-modal');
-        await clickAndWaitFor(
-          page,
-          compare.getByTestId('keep-reviewed-memory'),
-          RESOLVE_TASK
+      try {
+        const { disputed, reviewed } = await createConflict(
+          apiContext,
+          created
         );
 
-        await expect(compare).toHaveCount(0);
-        await expect(
-          page.getByTestId(`memory-review-${reviewed.id}`)
-        ).toHaveCount(0);
-        await expect
-          .poll(
-            async () =>
-              (
-                await memoryStatus(apiContext, disputed.id)
-              ).entityStatus
-          )
-          .toBe('Superseded');
-        const approved = await memoryStatus(apiContext, reviewed.id);
+        await test.step('the conflict waits in Needs review as a task', async () => {
+          await navigateToMemories(page);
+          await page.getByTestId('memory-count-card-needs-review').click();
 
-        expect(approved.entityStatus).toBe('Approved');
-        expect(
-          (await memoryStatus(apiContext, disputed.id)).supersededBy.id
-        ).toBe(reviewed.id);
-      });
+          await expect(
+            page.getByTestId(`memory-review-${reviewed.id}`)
+          ).toContainText(reviewed.title);
+        });
 
-      await afterAction();
+        await test.step('opening it compares both memories as a diff', async () => {
+          await page.getByTestId(`memory-review-${reviewed.id}`).click();
+          const compare = page.getByTestId('memory-compare-modal');
+
+          await expect(compare.getByTestId('compare-current-title')).toHaveText(
+            disputed.title
+          );
+          await expect(
+            compare.getByTestId('compare-proposed-title')
+          ).toHaveText(reviewed.title);
+          await expect(compare.getByTestId('diff-current-memory')).toHaveText(
+            disputed.answer
+          );
+          await expect(compare.getByTestId('diff-proposed-memory')).toHaveText(
+            reviewed.answer
+          );
+          await expect(compare.getByTestId('diff-row-memory')).toHaveAttribute(
+            'data-changed',
+            'true'
+          );
+          await expect(compare.getByTestId('compare-reason')).toContainText(
+            CONFLICT_REASON
+          );
+        });
+
+        await test.step('keeping the new claim retires the old one', async () => {
+          const compare = page.getByTestId('memory-compare-modal');
+          await clickAndWaitFor(
+            page,
+            compare.getByTestId('keep-reviewed-memory'),
+            RESOLVE_TASK
+          );
+
+          await expect(compare).toHaveCount(0);
+          await expect(
+            page.getByTestId(`memory-review-${reviewed.id}`)
+          ).toHaveCount(0);
+          await expect
+            .poll(
+              async () =>
+                (
+                  await memoryStatus(apiContext, disputed.id)
+                ).entityStatus
+            )
+            .toBe('Superseded');
+          const approved = await memoryStatus(apiContext, reviewed.id);
+
+          expect(approved.entityStatus).toBe('Approved');
+          expect(
+            (await memoryStatus(apiContext, disputed.id)).supersededBy.id
+          ).toBe(reviewed.id);
+        });
+      } finally {
+        await afterAction();
+      }
     });
 
     test('keeping the approved memory rejects the one in review', async ({
@@ -168,39 +183,46 @@ test.describe(
       browser,
     }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
-      const { disputed, reviewed } = await createConflict(apiContext);
-      created.push(disputed, reviewed);
+      try {
+        const { disputed, reviewed } = await createConflict(
+          apiContext,
+          created
+        );
 
-      await navigateToMemories(page);
-      await page.getByTestId('memory-count-card-needs-review').click();
-      const review = page.getByTestId(`memory-review-${reviewed.id}`);
+        await navigateToMemories(page);
+        await page.getByTestId('memory-count-card-needs-review').click();
+        const review = page.getByTestId(`memory-review-${reviewed.id}`);
 
-      await review.click();
-      const compare = page.getByTestId('memory-compare-modal');
+        await review.click();
+        const compare = page.getByTestId('memory-compare-modal');
 
-      await expect(compare.getByTestId('diff-current-memory')).toHaveText(
-        disputed.answer
-      );
+        await expect(compare.getByTestId('diff-current-memory')).toHaveText(
+          disputed.answer
+        );
 
-      await clickAndWaitFor(
-        page,
-        compare.getByTestId('keep-approved-memories'),
-        RESOLVE_TASK
-      );
+        await clickAndWaitFor(
+          page,
+          compare.getByTestId('keep-approved-memories'),
+          RESOLVE_TASK
+        );
 
-      await expect(compare).toHaveCount(0);
-      await expect(review).toHaveCount(0);
-      await expect
-        .poll(
-          async () => (await memoryStatus(apiContext, reviewed.id)).entityStatus
-        )
-        .toBe('Rejected');
+        await expect(compare).toHaveCount(0);
+        await expect(review).toHaveCount(0);
+        await expect
+          .poll(
+            async () =>
+              (
+                await memoryStatus(apiContext, reviewed.id)
+              ).entityStatus
+          )
+          .toBe('Rejected');
 
-      expect((await memoryStatus(apiContext, disputed.id)).entityStatus).toBe(
-        'Approved'
-      );
-
-      await afterAction();
+        expect((await memoryStatus(apiContext, disputed.id)).entityStatus).toBe(
+          'Approved'
+        );
+      } finally {
+        await afterAction();
+      }
     });
   }
 );
