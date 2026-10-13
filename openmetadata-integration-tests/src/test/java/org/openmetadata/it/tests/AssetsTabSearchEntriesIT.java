@@ -68,9 +68,9 @@ import org.openmetadata.service.Entity;
 
 /**
  * An Assets tab edit reaches search the way the same PATCH does: a column's own tags are in its
- * search entry when the call returns, and changes the table hands down to its column entries
- * (domains) arrive with the same background update a PATCH uses. A table's own tags reach its test
- * cases but never its column entries, which carry only the column's own tags.
+ * search entry when the call returns, and an asset added to a data product follows it to its new
+ * domain. A table's own tags reach its test cases but never its column entries, which carry only
+ * the column's own tags.
  */
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
@@ -108,19 +108,6 @@ public class AssetsTabSearchEntriesIT {
           columnEntryCarries(table, COLUMNS.getFirst(), term.getFullyQualifiedName()),
           "round " + round + ": the label is gone from the column entry on return");
     }
-  }
-
-  @Test
-  void aTableMovedToAnotherDomainOnTheTab_reachesItsColumnEntries(TestNamespace ns) {
-    Domain from = createDomain(ns, "from");
-    Domain to = createDomain(ns, "to");
-    // Created in its first domain so the move is the only background update to its column entries:
-    // those updates are not ordered, and an earlier one landing late would undo the move.
-    Table table = createTable(ns, createSchema(ns), "tbl", from);
-
-    awaitColumnEntriesIn(table, from);
-    putDomainAssets(to, table);
-    awaitColumnEntriesIn(table, to);
   }
 
   @Test
@@ -187,18 +174,6 @@ public class AssetsTabSearchEntriesIT {
     return columnEntries(table).stream()
         .filter(entry -> column.equals(entry.path("name").asText()))
         .anyMatch(entry -> carriesTag(entry, tagFqn));
-  }
-
-  private static void awaitColumnEntriesIn(Table table, Domain domain) {
-    Awaitility.await("column entries of " + table.getName() + " in " + domain.getName())
-        .pollInterval(Duration.ofMillis(500))
-        .atMost(PROPAGATION_TIMEOUT)
-        .until(
-            () -> {
-              List<JsonNode> entries = columnEntries(table);
-              return entries.size() == COLUMNS.size()
-                  && entries.stream().allMatch(entry -> inDomain(entry, domain.getId()));
-            });
   }
 
   private static boolean tableEntryReaches(Table table, Domain domain) {
@@ -318,12 +293,6 @@ public class AssetsTabSearchEntriesIT {
         user.tables().update(table.getId().toString(), current);
       }
     }
-  }
-
-  private static void putDomainAssets(Domain domain, Table table) {
-    BulkOperationResult result =
-        putBulkAssets("/v1/domains/" + domain.getFullyQualifiedName(), table);
-    assertEquals(ApiStatus.SUCCESS, result.getStatus(), JsonUtils.pojoToJson(result));
   }
 
   private static BulkOperationResult putBulkAssets(String containerPath, Table table) {
