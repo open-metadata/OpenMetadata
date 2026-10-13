@@ -33,9 +33,13 @@ export const getServiceIcon = (
         ? EntityType.CLASSIFICATION
         : source.entityType;
 
-    return getEntityIcon(iconEntityType ?? '', `service-icon ${sizeClassName ?? 'w-7 h-7'}`, {
-      color: DE_ACTIVE_COLOR,
-    });
+    return getEntityIcon(
+      iconEntityType ?? '',
+      `service-icon ${sizeClassName ?? 'w-7 h-7'}`,
+      {
+        color: DE_ACTIVE_COLOR,
+      }
+    );
   }
 
   // Decorative: the service name is always rendered alongside this logo, and the data-asset
