@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import ColorPicker from './ColorPicker.component';
 
 describe('ColorPicker component', () => {
@@ -26,5 +26,16 @@ describe('ColorPicker component', () => {
 
     expect(await screen.findByTestId('color-picker')).toHaveValue('#000000');
     expect(await screen.findByTestId('color-input')).toHaveValue('#000000');
+  });
+
+  it('reports a typed hex code as a plain string', () => {
+    const onChange = jest.fn();
+    render(<ColorPicker id="primaryColor" value="" onChange={onChange} />);
+
+    fireEvent.change(screen.getByTestId('primaryColor-color-input'), {
+      target: { value: '#123456' },
+    });
+
+    expect(onChange).toHaveBeenCalledWith('#123456');
   });
 });

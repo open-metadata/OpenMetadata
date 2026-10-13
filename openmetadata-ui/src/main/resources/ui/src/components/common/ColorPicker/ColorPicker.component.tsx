@@ -10,30 +10,49 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Input, InputProps } from 'antd';
+import { Box, Input } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
-import './color-picker.style.less';
 
-const ColorPicker = (props: InputProps) => {
+export interface ColorPickerProps {
+  id?: string;
+  value?: string;
+  onBlur?: () => void;
+  onChange?: (value: string) => void;
+}
+
+const ColorPicker = ({
+  id,
+  value = '',
+  onBlur,
+  onChange,
+}: ColorPickerProps) => {
   const { t } = useTranslation();
-  const { id, ...rest } = props;
+  const testId = id ? `${id}-color` : 'color';
 
   return (
-    <Input.Group compact>
-      <Input
-        {...rest}
-        className="style-color-picker"
-        data-testid={id ? `${id}-color-picker` : 'color-picker'}
-        type="color"
-      />
-      <Input
-        {...rest}
-        className="style-color-input"
-        data-testid={id ? `${id}-color-input` : 'color-input'}
-        id={id}
-        placeholder={t('message.hex-code-placeholder')}
-      />
-    </Input.Group>
+    <Box align="center" gap={2}>
+      <Box className="tw:w-16 tw:shrink-0">
+        <Input
+          aria-label={t('label.color')}
+          inputDataTestId={`${testId}-picker`}
+          type="color"
+          value={value}
+          onBlur={onBlur}
+          onChange={onChange}
+        />
+      </Box>
+      <Box className="tw:flex-1">
+        <Input
+          aria-label={t('label.color')}
+          id={id}
+          inputDataTestId={`${testId}-input`}
+          placeholder={t('message.hex-code-placeholder')}
+          value={value}
+          onBlur={onBlur}
+          onChange={onChange}
+        />
+      </Box>
+    </Box>
   );
 };
 

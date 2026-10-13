@@ -1343,11 +1343,6 @@
       "count": 1
     }
   },
-  "src/components/common/ColorPicker/ColorPicker.component.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 2
-    }
-  },
   "src/components/common/DatePicker/DatePicker.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 2
@@ -1481,11 +1476,6 @@
   "src/components/common/TagRenderer/TagRenderer.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 1
-    }
-  },
-  "src/components/common/TeamTypeSelect/TeamTypeSelect.component.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 3
     }
   },
   "src/components/common/UserTeamSelectableListSearchInput/UserTeamSelectableListSearchInput.component.tsx": {
