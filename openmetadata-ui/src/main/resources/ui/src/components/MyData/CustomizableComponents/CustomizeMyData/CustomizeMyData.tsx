@@ -12,7 +12,7 @@
  */
 
 import { compare } from 'fast-json-patch';
-import { cloneDeep, isEmpty } from 'lodash';
+import { isEmpty } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import RGL, {
   Layout,
@@ -171,9 +171,22 @@ function CustomizeMyData({
       widget.i.startsWith('KnowledgePanel')
     );
 
+    // Compare the two sides on geometry and identity only.
+    //
+    // react-grid-layout fires `onLayoutChange` once on mount, before the user
+    // has touched anything, and `getLayoutUpdateHandler` normalises what it
+    // reports — forcing `h: 3`, constraining `w`, and setting `static: false`.
+    // The saved document was persisted without those normalisations, so a raw
+    // `compare()` of the two reports a diff for a page nobody edited and Save
+    // renders enabled until a reload happens to seed it differently. Reducing
+    // both sides to the same shape keeps real edits (a moved, resized, added
+    // or removed widget) visible while ignoring that normalisation.
+    const normalise = (widgets: WidgetConfig[]) =>
+      widgets.map(({ i, x, y, w, h }) => ({ i, x, y, w, h }));
+
     const jsonPatch = compare(
-      cloneDeep((initialPageData?.layout || []) as WidgetConfig[]),
-      cloneDeep(filteredLayout || [])
+      normalise((initialPageData?.layout || []) as WidgetConfig[]),
+      normalise(filteredLayout || [])
     );
 
     return jsonPatch.length === 0;

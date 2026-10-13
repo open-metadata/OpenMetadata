@@ -12,7 +12,7 @@
  */
 
 import {
-  Button as CoreButton,
+  Button,
   ButtonUtility,
   Dropdown,
   Popover,
@@ -20,7 +20,7 @@ import {
   Tooltip as CoreTooltip,
   Tooltip,
 } from '@openmetadata/ui-core-components';
-import { Alert, Badge, Button, InputRef } from 'antd';
+import { Alert, Badge, InputRef } from 'antd';
 import { Header } from 'antd/lib/layout/layout';
 import { AxiosError } from 'axios';
 import { CookieStorage } from 'cookie-storage';
@@ -565,8 +565,8 @@ const NavBar = () => {
           showIcon
           action={
             <Button
-              size="small"
-              type="link"
+              color="link-color"
+              size="xs"
               onClick={() => {
                 navigate(0);
               }}>
@@ -619,13 +619,13 @@ const NavBar = () => {
 
           <div className="flex-center gap-5 nav-bar-side-items">
             <Dropdown.Root>
-              <CoreButton
+              <Button
                 color="tertiary"
                 data-testid="language-selector-button"
                 iconTrailing={<DropDownIcon width={12} />}
                 size="sm">
                 {currentLanguage}
-              </CoreButton>
+              </Button>
               <Dropdown.Popover className="tw:w-auto" placement="bottom end">
                 <Dropdown.Menu
                   aria-label={t('label.language')}
@@ -638,7 +638,7 @@ const NavBar = () => {
               </Dropdown.Popover>
             </Dropdown.Root>
             <PopoverTrigger onOpenChange={handleBellClick}>
-              <CoreButton
+              <Button
                 aria-label={t('label.notification-plural')}
                 color="tertiary"
                 iconLeading={
@@ -664,7 +664,7 @@ const NavBar = () => {
               </Popover>
             </PopoverTrigger>
             <Dropdown.Root>
-              <CoreButton
+              <Button
                 aria-label={t('label.need-help')}
                 color="tertiary"
                 data-testid="help-icon"

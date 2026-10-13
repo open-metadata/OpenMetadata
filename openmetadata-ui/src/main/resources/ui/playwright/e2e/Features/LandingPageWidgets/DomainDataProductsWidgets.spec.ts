@@ -230,7 +230,7 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
     await page
       .locator(`[data-testid="table-data-card_${topicFqn}"]`)
       .getByTestId('asset-checkbox')
-      .check();
+      .click();
     // Clear so delete-all's post-flow sees the domain-wide state, not
     // a filtered subset (delete-all acts on selectedItems, but the
     // dry-run modal preview shows the visible list).
@@ -305,7 +305,7 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
     await expect(assetCard).not.toHaveCount(0);
 
     for (const card of await assetCard.all()) {
-      await card.getByTestId('asset-checkbox').check();
+      await card.getByTestId('asset-checkbox').click();
     }
 
     const removeRes = page.waitForResponse('**/assets/remove');

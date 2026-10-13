@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  EmptyPlaceholder,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { CheckCircle } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -42,9 +47,10 @@ const STATUS_TYPE_MAP: Record<string, StatusType> = {
 
 const PAGE_SIZE = 15;
 
-const AppLiveIndexing = ({ appData: _appData }: AppLiveIndexingProps) => {
+const AppLiveIndexing = ({ appData }: AppLiveIndexingProps) => {
   const { t } = useTranslation();
-  const { fqn } = useFqn();
+  const { fqn: routeFqn } = useFqn();
+  const fqn = appData?.fullyQualifiedName ?? routeFqn;
   const [isLoading, setIsLoading] = useState(true);
   const [records, setRecords] = useState<SearchIndexRetryRecord[]>([]);
 
@@ -76,7 +82,7 @@ const AppLiveIndexing = ({ appData: _appData }: AppLiveIndexingProps) => {
         setIsLoading(false);
       }
     },
-    [fqn, pageSize]
+    [fqn, handlePagingChange, pageSize]
   );
 
   const handlePageChangeHandler = useCallback(
@@ -84,14 +90,15 @@ const AppLiveIndexing = ({ appData: _appData }: AppLiveIndexingProps) => {
       handlePageChange(page);
       fetchRetryQueue((page - 1) * pageSize);
     },
-    [fetchRetryQueue, pageSize]
+    [fetchRetryQueue, handlePageChange, pageSize]
   );
 
+  // Also refetches after a page-size change, since fetchRetryQueue depends on it.
   useEffect(() => {
     if (fqn) {
       fetchRetryQueue();
     }
-  }, [fqn]);
+  }, [fetchRetryQueue, fqn]);
 
   const columns: ColumnsType<SearchIndexRetryRecord> = useMemo(
     () => [
@@ -169,11 +176,12 @@ const AppLiveIndexing = ({ appData: _appData }: AppLiveIndexingProps) => {
       loading={isLoading}
       locale={{
         emptyText: (
-          <div className="tw:py-8 tw:text-center">
-            <Typography className="tw:text-text-secondary">
-              {t('message.no-retry-queue-records')}
-            </Typography>
-          </div>
+          <Box className="tw:relative tw:min-h-60">
+            <EmptyPlaceholder
+              icon={CheckCircle}
+              title={t('message.no-retry-queue-records')}
+            />
+          </Box>
         ),
       }}
       pageSize={pageSize}
@@ -185,10 +193,7 @@ const AppLiveIndexing = ({ appData: _appData }: AppLiveIndexingProps) => {
         pageSizeOptions: ['10', '15', '25', '50'],
         onChange: (page) =>
           handlePageChangeHandler({ currentPage: page, cursorType: '' }),
-        onShowSizeChange: (_, size) => {
-          handlePageSizeChange(size);
-          fetchRetryQueue(0);
-        },
+        onShowSizeChange: (_, size) => handlePageSizeChange(size),
       }}
       paginationVisible={records.length > 0 && paging.total > pageSize}
       rowKey={(record) => `${record.entityId}-${record.entityFqn}`}

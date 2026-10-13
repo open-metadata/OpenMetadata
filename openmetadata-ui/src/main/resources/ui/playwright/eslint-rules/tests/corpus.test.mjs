@@ -55,9 +55,11 @@ test('the suppressions baseline matches its recorded state exactly', () => {
     // language switch targets the core language selector by test id, and the
     // core assignee/schema-field selectors in the task and incident specs
     // remove three more. Scoping the Policies rule description to its rule
-    // card removes one more. The landing page's FeedWidget, Data Assets and My
-    // Tasks suites went with the widgets they drove, taking six more with them.
-    'om-playwright/no-positional-locator': 585,
+    // card removes one more, and scoping the Context Center draft editor to
+    // `.om-block-editor` instead of `.ProseMirror...first()` removes four. The
+    // landing page's FeedWidget, Data Assets and My Tasks suites went with the
+    // widgets they drove, taking six more with them.
+    'om-playwright/no-positional-locator': 580,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 1,
     'playwright/no-wait-for-selector': 14,

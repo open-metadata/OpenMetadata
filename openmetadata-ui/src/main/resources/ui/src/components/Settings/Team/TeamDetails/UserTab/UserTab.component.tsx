@@ -13,12 +13,12 @@
 
 import {
   Box,
-  Button as CoreButton,
+  Button,
   ButtonUtility,
+  SimpleModal,
   Tooltip,
 } from '@openmetadata/ui-core-components';
 import { Plus } from '@openmetadata/ui-core-components/icons';
-import { Button, Modal } from 'antd';
 import { isEmpty, orderBy } from 'lodash';
 import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -400,14 +400,14 @@ export const UserTab = ({
               selectedUsers={currentTeam?.users ?? []}
               onUpdate={onAddUser}>
               <Tooltip arrow placement="top right" title={addUserButtonTitle}>
-                <CoreButton
+                <Button
                   color="secondary"
                   data-testid="add-new-user"
                   iconLeading={Plus}
                   isDisabled={!editUserPermission || isTeamDeleted}
                   size="sm">
                   {t('label.add')}
-                </CoreButton>
+                </Button>
               </Tooltip>
             </UserSelectableList>
             {!isTeamDeleted && (
@@ -452,7 +452,7 @@ export const UserTab = ({
               includeBot
               selectedUsers={currentTeam?.users ?? []}
               onUpdate={onAddUser}>
-              <Button data-testid="add-new-user" type="primary">
+              <Button color="primary" data-testid="add-new-user">
                 {t('label.add-entity', { entity: t('label.user') })}
               </Button>
             </UserSelectableList>
@@ -505,11 +505,11 @@ export const UserTab = ({
         }}
         size="small"
       />
-      <Modal
+      <SimpleModal
         cancelText={t('label.cancel')}
         data-testid="confirmation-modal"
+        isOpen={Boolean(deletingUser)}
         okText={t('label.confirm')}
-        open={Boolean(deletingUser)}
         title={t('label.removing-user')}
         onCancel={() => setDeletingUser(undefined)}
         onOk={handleRemoveUser}>
@@ -518,7 +518,7 @@ export const UserTab = ({
             entity: getEntityName(deletingUser),
           }),
         })}
-      </Modal>
+      </SimpleModal>
     </div>
   );
 };

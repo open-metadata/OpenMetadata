@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 
-import { Card, Tabs, Typography } from '@openmetadata/ui-core-components';
-import { Button, RadioChangeEvent } from 'antd';
+import {
+  Button,
+  Card,
+  Tabs,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -145,7 +149,7 @@ const AddDataContract: React.FC<{
   contract?: DataContract;
 }> = ({ onCancel, onSave, contract }) => {
   const { t } = useTranslation();
-  const [mode, setMode] = useState<DataContractMode>(DataContractMode.UI);
+  const [mode] = useState<DataContractMode>(DataContractMode.UI);
   const [yaml, setYaml] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { data: entityData } = useGenericContext<Table>();
@@ -367,7 +371,7 @@ const AddDataContract: React.FC<{
         label: (
           <div className="d-flex items-center">
             <ContractIcon className="contract-tab-icon" />
-            <span>{t('label.contract-detail-plural')}</span>
+            <Typography>{t('label.contract-detail-plural')}</Typography>
           </div>
         ),
         key: EDataContractTab.CONTRACT_DETAIL.toString(),
@@ -387,7 +391,7 @@ const AddDataContract: React.FC<{
         label: (
           <div className="d-flex items-center">
             <TermsIcon className="contract-tab-icon" />
-            <span>{t('label.terms-of-service')}</span>
+            <Typography>{t('label.terms-of-service')}</Typography>
           </div>
         ),
         key: EDataContractTab.TERMS_OF_SERVICE.toString(),
@@ -409,7 +413,7 @@ const AddDataContract: React.FC<{
         label: (
           <div className="d-flex items-center">
             <TableIcon className="contract-tab-icon" />
-            <span>{t('label.schema')}</span>
+            <Typography>{t('label.schema')}</Typography>
           </div>
         ),
         key: EDataContractTab.SCHEMA.toString(),
@@ -431,7 +435,7 @@ const AddDataContract: React.FC<{
         label: (
           <div className="d-flex items-center">
             <SemanticsIcon className="contract-tab-icon" />
-            <span>{t('label.semantic-plural')}</span>
+            <Typography>{t('label.semantic-plural')}</Typography>
           </div>
         ),
         key: EDataContractTab.SEMANTICS.toString(),
@@ -453,7 +457,7 @@ const AddDataContract: React.FC<{
         label: (
           <div className="d-flex items-center">
             <SecurityIcon className="contract-tab-icon" />
-            <span>{t('label.security')}</span>
+            <Typography>{t('label.security')}</Typography>
           </div>
         ),
         key: EDataContractTab.SECURITY.toString(),
@@ -475,7 +479,7 @@ const AddDataContract: React.FC<{
         label: (
           <div className="d-flex items-center">
             <QualityIcon className="contract-tab-icon" />
-            <span>{t('label.quality')}</span>
+            <Typography>{t('label.quality')}</Typography>
           </div>
         ),
         key: EDataContractTab.QUALITY.toString(),
@@ -501,7 +505,7 @@ const AddDataContract: React.FC<{
         label: (
           <div className="d-flex items-center">
             <SLAIcon className="contract-tab-icon" />
-            <span>{t('label.sla')}</span>
+            <Typography>{t('label.sla')}</Typography>
           </div>
         ),
         key: EDataContractTab.SLA.toString(),
@@ -530,48 +534,32 @@ const AddDataContract: React.FC<{
     currentTabInfo,
   ]);
 
-  const handleModeChange = useCallback((e: RadioChangeEvent) => {
-    setMode(e.target.value);
-  }, []);
+  const cardTitle = (
+    <div>
+      <Typography className="add-contract-card-title">
+        {t('label.add-contract-detail-plural')}
+      </Typography>
+      <Typography as="p" className="add-contract-card-description">
+        {t('message.add-contract-detail-description')}
+      </Typography>
+    </div>
+  );
 
-  const cardTitle = useMemo(() => {
-    return (
-      <div className="add-contract-card-header d-flex items-center justify-between">
-        <div>
-          <Typography className="add-contract-card-title">
-            {t('label.add-contract-detail-plural')}
-          </Typography>
-          <Typography as="p" className="add-contract-card-description">
-            {t('message.add-contract-detail-description')}
-          </Typography>
-        </div>
-        <div>
-          <Button
-            className="add-contract-cancel-button"
-            type="default"
-            onClick={onCancel}>
-            {t('label.cancel')}
-          </Button>
-          <Button
-            className="add-contract-save-button"
-            data-testid="save-contract-btn"
-            disabled={isSaveDisabled}
-            loading={isSubmitting}
-            type="primary"
-            onClick={handleSave}>
-            {t('label.save')}
-          </Button>
-        </div>
-      </div>
-    );
-  }, [
-    mode,
-    isSubmitting,
-    isSaveDisabled,
-    handleModeChange,
-    onCancel,
-    handleSave,
-  ]);
+  const cardActions = (
+    <div className="tw:flex tw:gap-2">
+      <Button color="secondary" onClick={onCancel}>
+        {t('label.cancel')}
+      </Button>
+      <Button
+        color="primary"
+        data-testid="save-contract-btn"
+        isDisabled={isSaveDisabled}
+        isLoading={isSubmitting}
+        onClick={handleSave}>
+        {t('label.save')}
+      </Button>
+    </div>
+  );
 
   const cardContent = useMemo(() => {
     if (mode === DataContractMode.YAML) {
@@ -616,7 +604,7 @@ const AddDataContract: React.FC<{
 
   return (
     <Card className="add-contract-card" data-testid="add-contract-card">
-      <Card.Header title={cardTitle} />
+      <Card.Header extra={cardActions} title={cardTitle} />
       <Card.Content>{cardContent}</Card.Content>
     </Card>
   );

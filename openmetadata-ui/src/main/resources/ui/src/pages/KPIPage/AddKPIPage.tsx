@@ -11,16 +11,13 @@
  *  limitations under the License.
  */
 
-import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
 import {
+  Box,
   Button,
-  Form,
-  FormProps,
-  Input,
-  InputNumber,
-  Select,
-  Slider,
-} from 'antd';
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Form, FormProps, Input, InputNumber, Select, Slider } from 'antd';
 import { useForm, useWatch } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { isUndefined, kebabCase } from 'lodash';
@@ -379,17 +376,17 @@ const AddKPIPage = () => {
                 gap={2}
                 itemClassName="layout-space-item">
                 <Button
+                  color="link-color"
                   data-testid="cancel-btn"
-                  type="link"
                   onClick={handleCancel}>
                   {t('label.cancel')}
                 </Button>
                 <Button
+                  color="primary"
                   data-testid="submit-btn"
                   form="kpi-form"
-                  htmlType="submit"
-                  loading={isCreatingKPI}
-                  type="primary">
+                  isLoading={isCreatingKPI}
+                  type="submit">
                   {t('label.create')}
                 </Button>
               </Box>

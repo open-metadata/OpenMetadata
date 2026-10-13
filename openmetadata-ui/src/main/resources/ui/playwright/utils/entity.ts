@@ -715,6 +715,21 @@ export const removeTier = async (page: Page, endpoint: string) => {
   await expect(page.getByTestId('Tier')).toContainText('--');
 };
 
+// The certification picker loads 50 at a time; searching reaches any certification.
+export const searchCertification = async (page: Page, name: string) => {
+  const searchResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes('index=tag&') &&
+      !response.url().includes('q=&')
+  );
+  await page
+    .getByTestId('drop-down-menu')
+    .getByTestId('search-input')
+    .fill(name);
+  expect((await searchResponse).status()).toBe(200);
+};
+
 export const assignCertification = async (
   page: Page,
   certification: TagClass,
@@ -722,8 +737,8 @@ export const assignCertification = async (
 ) => {
   const certificationResponse = page.waitForResponse(
     (response) =>
-      response.url().includes('/api/v1/tags') &&
-      response.url().includes('parent=Certification')
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes('index=tag&')
   );
   await page.getByTestId('edit-certification').click();
 
@@ -732,6 +747,7 @@ export const assignCertification = async (
 
   const certificationMenu = page.getByTestId('drop-down-menu');
   await certificationMenu.waitFor({ state: 'visible' });
+  await searchCertification(page, certification.responseData.name);
 
   const patchRequest = page.waitForResponse(
     (response) =>
