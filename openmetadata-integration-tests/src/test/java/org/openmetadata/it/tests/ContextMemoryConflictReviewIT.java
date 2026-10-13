@@ -89,27 +89,14 @@ public class ContextMemoryConflictReviewIT {
     assertEquals(TaskCategory.Review, task.getCategory());
     assertEquals(conflict.reviewed().getId(), task.getAbout().getId());
     assertEquals(Set.of("approve", "reject"), transitionIds(task));
-    assertTrue(
-        task.getDescription()
-            .contains(
-                "**Contradicts \""
-                    + conflict.disputed().getTitle()
-                    + "\":** "
-                    + conflict.disputed().getAnswer()));
-    assertTrue(task.getDescription().contains("**Why:** " + THRESHOLD_REASON));
+    Map<?, ?> payload = JsonUtils.convertValue(task.getPayload(), Map.class);
+    Map<?, ?> dispute = (Map<?, ?>) ((List<?>) payload.get("disputes")).getFirst();
+    assertEquals(
+        conflict.disputed().getId().toString(), ((Map<?, ?>) dispute.get("memory")).get("id"));
     assertEquals(
         conflict.disputed().getTitle(),
         conflict.reviewed().getDisputes().getFirst().getMemory().getDisplayName(),
         "a stored memory reference reads as the memory's title");
-    Map<?, ?> payload = JsonUtils.convertValue(task.getPayload(), Map.class);
-    assertEquals(conflict.reviewed().getTitle(), payload.get("memoryTitle"));
-    assertEquals(conflict.reviewed().getAnswer(), ((Map<?, ?>) payload.get("claim")).get("answer"));
-    Map<?, ?> dispute = (Map<?, ?>) ((List<?>) payload.get("disputes")).getFirst();
-    assertEquals(
-        conflict.disputed().getTitle(), ((Map<?, ?>) dispute.get("memory")).get("displayName"));
-    Map<?, ?> disputedClaim = (Map<?, ?>) dispute.get("claim");
-    assertEquals(conflict.disputed().getAnswer(), disputedClaim.get("answer"));
-    assertEquals(ContextMemoryStatus.APPROVED.value(), disputedClaim.get("status"));
     Set<String> assignees = names(task.getAssignees());
     assertTrue(assignees.contains(shared().USER2.getName()), "owner of the reviewed memory");
     assertTrue(assignees.contains(shared().USER3.getName()), "owner of the disputed memory");
@@ -125,9 +112,32 @@ public class ContextMemoryConflictReviewIT {
         1, openTasks(conflict.reviewed()).size(), "an edit in review opens no second task");
   }
 
+  /** Every user may read tasks, while a memory may be Private: the task holds references only. */
   @Test
-  void retitlingAMemoryInReviewRetitlesItsTask(TestNamespace ns) {
-    Conflict conflict = conflict(ns, "retitle");
+  void theTaskSaysNothingEitherMemoryHolds(TestNamespace ns) {
+    Conflict conflict = conflict(ns, "private");
+
+    Task task = openTask(conflict.reviewed());
+
+    String json = JsonUtils.pojoToJson(task);
+    assertEquals("Review conflicting memory", task.getDisplayName());
+    assertNotEquals(conflict.reviewed().getTitle(), task.getAbout().getDisplayName());
+    for (ContextMemory memory : List.of(conflict.reviewed(), conflict.disputed())) {
+      assertFalse(json.contains(memory.getAnswer()), "the task says " + memory.getAnswer());
+    }
+    assertFalse(json.contains(THRESHOLD_REASON), "the task says why they conflict");
+    Map<?, ?> dispute =
+        (Map<?, ?>)
+            ((List<?>) JsonUtils.convertValue(task.getPayload(), Map.class).get("disputes"))
+                .getFirst();
+    assertFalse(
+        ((Map<?, ?>) dispute.get("memory")).containsKey("displayName"),
+        "a stored dispute reference carries the disputed memory's title");
+  }
+
+  @Test
+  void changingWhoOwnsAMemoryInReviewReassignsItsTask(TestNamespace ns) {
+    Conflict conflict = conflict(ns, "reassign");
     Task task = openTask(conflict.reviewed());
 
     admin()
@@ -135,16 +145,41 @@ public class ContextMemoryConflictReviewIT {
             idOf(conflict.reviewed()),
             JsonUtils.readTree(
                 """
-                [{"op":"replace","path":"/title","value":"Customers need three completed orders"}]"""));
+                [{"op":"replace","path":"/owners","value":[{"id":"%s","type":"user"}]}]"""
+                    .formatted(shared().USER1.getId())));
 
-    Task retitled = openTask(conflict.reviewed());
-    assertEquals(task.getId(), retitled.getId(), "the open task is rewritten, not replaced");
-    assertEquals(
-        "Review conflicting memory: Customers need three completed orders",
-        retitled.getDisplayName());
-    assertEquals(
-        "Customers need three completed orders",
-        JsonUtils.convertValue(retitled.getPayload(), Map.class).get("memoryTitle"));
+    Task reassigned = openTask(conflict.reviewed());
+    assertEquals(task.getId(), reassigned.getId(), "the open task is rewritten, not replaced");
+    Set<String> assignees = names(reassigned.getAssignees());
+    assertTrue(assignees.contains(shared().USER1.getName()), "the memory's new owner");
+    assertFalse(assignees.contains(shared().USER2.getName()), "its previous owner");
+    assertTrue(assignees.contains(shared().USER3.getName()), "the disputed memory's owner");
+  }
+
+  @Test
+  void aConflictReviewCannotBeEditedOrDismissedWhileItsMemoryIsInReview(TestNamespace ns) {
+    Conflict conflict = conflict(ns, "locked");
+    Task task = openTask(conflict.reviewed());
+
+    InvalidRequestException edited =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                SdkClients.adminClient()
+                    .tasks()
+                    .patch(
+                        task.getId(),
+                        JsonUtils.readTree(
+                            """
+                            [{"op":"replace","path":"/description","value":"Supersede the other one"}]""")));
+    InvalidRequestException dismissed =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> SdkClients.adminClient().tasks().close(task.getId().toString()));
+
+    assertTrue(edited.getMessage().contains("opened and kept by the server"));
+    assertTrue(dismissed.getMessage().contains("Approve or reject this memory conflict review"));
+    assertEquals(task.getId(), openTask(conflict.reviewed()).getId());
   }
 
   @Test
@@ -155,6 +190,9 @@ public class ContextMemoryConflictReviewIT {
     Task resolved = resolve(SdkClients.adminClient(), task, "approve", TaskResolutionType.Approved);
 
     assertEquals(TaskEntityStatus.Approved, resolved.getStatus());
+    assertFalse(
+        statusesOf(task).contains(TaskEntityStatus.Cancelled.value()),
+        "the decision's own writes did not close the task it resolves");
     ContextMemory approved = admin().get(idOf(conflict.reviewed()));
     assertEquals(ContextMemoryStatus.APPROVED, approved.getEntityStatus());
     assertTrue(listOrEmpty(approved.getDisputes()).isEmpty(), "approval releases the disputes");
@@ -423,6 +461,17 @@ public class ContextMemoryConflictReviewIT {
     return StreamSupport.stream(JsonUtils.readTree(response).path("data").spliterator(), false)
         .collect(
             Collectors.toMap(task -> task.path("id").asText(), task -> task.path("type").asText()));
+  }
+
+  private static List<String> statusesOf(Task task) {
+    return SdkClients.adminClient().tasks().getVersionList(task.getId()).getVersions().stream()
+        .map(
+            version ->
+                JsonUtils.readTree(
+                        version instanceof String json ? json : JsonUtils.pojoToJson(version))
+                    .path("status")
+                    .asText())
+        .toList();
   }
 
   private static Set<String> transitionIds(Task task) {

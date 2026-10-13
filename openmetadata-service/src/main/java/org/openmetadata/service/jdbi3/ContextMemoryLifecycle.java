@@ -139,10 +139,16 @@ public final class ContextMemoryLifecycle {
     for (MemoryDispute dispute : addedDisputes(original, updated)) {
       validateDispute(dispute);
       dispute.setMemory(resolveMemory(updated, dispute.getMemory(), FIELD_DISPUTES, resolver));
-      if (dispute.getDetectedAt() == null) {
-        dispute.setDetectedAt(writeTime(updated));
-      }
+      dispute.setDetectedAt(detectedNoLaterThan(dispute.getDetectedAt(), writeTime(updated)));
     }
+  }
+
+  /**
+   * A conflict cannot be detected after the write that records it. A later time would let an
+   * approval supersede a memory whose content changed after the conflict was found.
+   */
+  private static long detectedNoLaterThan(Long detectedAt, long writeTime) {
+    return detectedAt == null ? writeTime : Math.min(detectedAt, writeTime);
   }
 
   private static long writeTime(ContextMemory memory) {

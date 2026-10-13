@@ -15,7 +15,6 @@ package org.openmetadata.service.context.review;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -100,12 +99,25 @@ class MemoryConflictReviewTasksTest {
   }
 
   @Test
-  void aMemoryThatWasNotHeldHasNoReviewToClose() {
-    ContextMemory draft = memory("low-confidence", ContextMemoryStatus.DRAFT, REVIEWER);
+  void anEditThatKeepsTheStageAndTheDisputesLooksForNoReview() {
+    ContextMemory approved = memory("five-orders", ContextMemoryStatus.APPROVED, REVIEWER);
 
     assertFalse(
         MemoryConflictReviewTasks.leavesReviewOutsideTheTask(
-            draft, copy(draft).withEntityStatus(ContextMemoryStatus.APPROVED)));
+            approved, copy(approved).withAnswer("Customers need five completed orders.")));
+    assertFalse(MemoryConflictReviewTasks.leavesReviewOutsideTheTask(null, approved));
+  }
+
+  /**
+   * A session that put the memory into review and took it out again consolidates into one version,
+   * whose previous state was never held; the change of stage still looks for the review.
+   */
+  @Test
+  void aConsolidatedEditThatLeftReviewStillLooksForTheReview() {
+    ContextMemory beforeSession = memory("three-orders", ContextMemoryStatus.UNPROCESSED, REVIEWER);
+    ContextMemory afterSession = copy(beforeSession).withEntityStatus(ContextMemoryStatus.DRAFT);
+
+    assertTrue(MemoryConflictReviewTasks.leavesReviewOutsideTheTask(beforeSession, afterSession));
   }
 
   @Test
@@ -122,7 +134,7 @@ class MemoryConflictReviewTasksTest {
     assertEquals(Entity.CONTEXT_MEMORY, task.getAbout().getType());
     assertEquals(BOT, task.getCreatedBy());
     assertEquals(42L, task.getCreatedAt());
-    assertEquals("Review conflicting memory: Three orders", task.getDisplayName());
+    assertEquals(MemoryConflictReviewTasks.REVIEW_TITLE, task.getDisplayName());
   }
 
   @Test
@@ -152,106 +164,60 @@ class MemoryConflictReviewTasksTest {
     assertEquals(List.of(REVIEWER, CURATOR), assignees);
   }
 
+  /** Every user may read tasks, while a memory may be Private: none of it reaches the task. */
   @Test
-  void theDescriptionStatesBothClaimsAndWhyTheyConflict() {
+  void theTaskSaysNothingEitherMemoryHolds() {
     ContextMemory disputed = memory("five-orders", ContextMemoryStatus.APPROVED, CURATOR);
 
-    String description =
-        MemoryConflictReviewTasks.reviewTask(reviewed(disputed), List.of(disputed), BOT, 1L)
-            .getDescription();
+    Task task =
+        MemoryConflictReviewTasks.reviewTask(reviewed(disputed), List.of(disputed), BOT, 1L);
 
-    assertTrue(description.contains("**In review:** Customers need three orders."));
-    assertTrue(
-        description.contains("**Contradicts \"Five orders\":** Customers need five orders."));
-    assertTrue(description.contains("**Why:** Five orders against three orders"));
+    String json = JsonUtils.pojoToJson(task);
+    assertEquals(MemoryConflictReviewTasks.REVIEW_DESCRIPTION, task.getDescription());
+    for (String content :
+        List.of("Three orders", "Five orders", "Customers need", "Who is a customer?")) {
+      assertFalse(json.contains(content), "the task leaks " + content);
+    }
   }
 
   @Test
-  void theTaskRecordsBothClaimsForTheReviewerToCompare() {
+  void theTaskRecordsEachDisputedMemoryAndWhenItWasDetected() {
     ContextMemory disputed = memory("five-orders", ContextMemoryStatus.APPROVED, CURATOR);
 
     Task task =
         MemoryConflictReviewTasks.reviewTask(reviewed(disputed), List.of(disputed), BOT, 1L);
 
     Map<?, ?> payload = JsonUtils.convertValue(task.getPayload(), Map.class);
-    Map<?, ?> claim = (Map<?, ?>) payload.get("claim");
-    assertEquals("Three orders", claim.get("title"));
-    assertEquals("Customers need three orders.", claim.get("answer"));
-    assertEquals("Draft", claim.get("status"));
     Map<?, ?> contradiction = (Map<?, ?>) ((List<?>) payload.get("disputes")).getFirst();
-    Map<?, ?> disputedClaim = (Map<?, ?>) contradiction.get("claim");
-    assertEquals("Customers need five orders.", disputedClaim.get("answer"));
-    assertEquals("Approved", disputedClaim.get("status"));
-    assertEquals("Five orders against three orders", contradiction.get("reason"));
-  }
-
-  /** Generated memory names such as {@code orders.pdf-<uuid>} label nothing for a reviewer. */
-  @Test
-  void theTaskTitlesTheReviewedMemoryAndEachDisputedOne() {
-    ContextMemory disputed = memory("five-orders", ContextMemoryStatus.APPROVED, CURATOR);
-    ContextMemory reviewed = reviewed(disputed);
-
-    Task task = MemoryConflictReviewTasks.reviewTask(reviewed, List.of(disputed), BOT, 1L);
-
-    Map<?, ?> payload = JsonUtils.convertValue(task.getPayload(), Map.class);
-    assertEquals("Three orders", payload.get("memoryTitle"));
-    Map<?, ?> disputedMemory =
-        (Map<?, ?>) ((Map<?, ?>) ((List<?>) payload.get("disputes")).getFirst()).get("memory");
-    assertEquals("Five orders", disputedMemory.get("displayName"));
+    Map<?, ?> disputedMemory = (Map<?, ?>) contradiction.get("memory");
+    assertEquals(disputed.getId().toString(), disputedMemory.get("id"));
     assertEquals("five-orders", disputedMemory.get("name"));
-    assertNull(
-        reviewed.getDisputes().getFirst().getMemory().getDisplayName(),
-        "the memory's own disputes stay as written");
+    assertFalse(disputedMemory.containsKey("displayName"), "a stored reference carries a title");
+    assertEquals(10, ((Number) contradiction.get("detectedAt")).intValue());
   }
 
   @Test
-  void aDisputedMemoryThatIsGoneKeepsItsNameAndHasNoClaim() {
+  void aDisputedMemoryThatIsGoneStaysRecordedButAssignsNobody() {
     ContextMemory disputed = memory("five-orders", ContextMemoryStatus.APPROVED, CURATOR);
 
     Task task = MemoryConflictReviewTasks.reviewTask(reviewed(disputed), List.of(), BOT, 1L);
 
-    assertTrue(
-        task.getDescription()
-            .contains("**Contradicts \"five-orders\":** " + MemoryConflictReviewTasks.MEMORY_GONE));
     Map<?, ?> payload = JsonUtils.convertValue(task.getPayload(), Map.class);
-    Map<?, ?> contradiction = (Map<?, ?>) ((List<?>) payload.get("disputes")).getFirst();
-    assertNull(contradiction.get("claim"));
+    assertEquals(1, ((List<?>) payload.get("disputes")).size());
+    assertEquals(List.of(REVIEWER), task.getAssignees());
   }
 
   @Test
-  void anEditToWhatTheReviewShowsChangesIt() {
+  void onlyChangingDisputesOrOwnersChangesTheReview() {
     ContextMemory disputed = memory("five-orders", ContextMemoryStatus.APPROVED, CURATOR);
     ContextMemory before = reviewed(disputed);
 
-    assertTrue(changes(before, copy(before).withTitle("Three completed orders")));
-    assertTrue(changes(before, copy(before).withAnswer("At least three completed orders.")));
-    assertTrue(changes(before, copy(before).withQuestion("Who is an active customer?")));
-    assertTrue(changes(before, copy(before).withPrimaryEntity(CURATOR)));
     assertTrue(changes(before, copy(before).withDisputes(List.of())));
     assertTrue(changes(before, copy(before).withOwners(List.of(CURATOR))));
     assertTrue(changes(null, before));
-    assertFalse(changes(before, copy(before).withSummary("Three orders make a customer active.")));
-  }
-
-  @Test
-  void theTaskRecordsTheRevisionItWasOpenedFor() {
-    ContextMemory disputed = memory("five-orders", ContextMemoryStatus.APPROVED, CURATOR);
-    ContextMemory reviewed = reviewed(disputed).withVersion(0.3);
-
-    Task task = MemoryConflictReviewTasks.reviewTask(reviewed, List.of(disputed), BOT, 1L);
-
-    Map<?, ?> payload = JsonUtils.convertValue(task.getPayload(), Map.class);
-    assertEquals(0.3, payload.get("memoryVersion"));
-    assertEquals(1, ((List<?>) payload.get("disputes")).size());
-  }
-
-  @Test
-  void anUntitledMemoryIsLabelledByItsName() {
-    ContextMemory blank = memory("blank", ContextMemoryStatus.DRAFT, REVIEWER).withTitle("  ");
-    ContextMemory missing = memory("missing", ContextMemoryStatus.DRAFT, REVIEWER).withTitle(null);
-
-    assertEquals("blank", MemoryConflictReviewTasks.label(blank));
-    assertEquals("missing", MemoryConflictReviewTasks.label(missing));
+    assertFalse(changes(before, copy(before).withTitle("Three completed orders")));
+    assertFalse(changes(before, copy(before).withAnswer("At least three completed orders.")));
+    assertFalse(changes(before, copy(before).withQuestion("Who is an active customer?")));
   }
 
   private static boolean changes(ContextMemory previous, ContextMemory current) {
@@ -269,7 +235,8 @@ class MemoryConflictReviewTasksTest {
                 new EntityReference()
                     .withId(disputed.getId())
                     .withType(Entity.CONTEXT_MEMORY)
-                    .withName(disputed.getName()))
+                    .withName(disputed.getName())
+                    .withDisplayName(disputed.getTitle()))
             .withReason("Five orders against three orders")
             .withDetectedAt(10L);
     return memory("three-orders", ContextMemoryStatus.DRAFT, REVIEWER)

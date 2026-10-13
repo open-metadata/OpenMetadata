@@ -262,6 +262,21 @@ class ContextMemoryLifecycleTest {
     assertEquals(150L, updated.getDisputes().getFirst().getDetectedAt());
   }
 
+  /** A detection time after the write would let an approval act on a claim that changed since. */
+  @Test
+  void aConflictCannotBeDetectedAfterTheWriteThatRecordsIt() {
+    ContextMemory original = memory(ContextMemoryStatus.UNPROCESSED).withUpdatedAt(100L);
+    ContextMemory updated =
+        copyOf(original)
+            .withEntityStatus(ContextMemoryStatus.DRAFT)
+            .withDisputes(List.of(dispute("Says Q4").withDetectedAt(4_102_444_800_000L)))
+            .withUpdatedAt(200L);
+
+    ContextMemoryLifecycle.applyUpdate(original, updated, RESOLVE);
+
+    assertEquals(200L, updated.getDisputes().getFirst().getDetectedAt());
+  }
+
   @ParameterizedTest
   @EnumSource(
       value = ContextMemoryStatus.class,

@@ -29,8 +29,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.PreconditionFailedException;
 
 /**
- * The memory writes that decide a conflict review. Approving supersedes every disputed memory that
- * is still Approved with the reviewed memory and then approves it; rejecting rejects the reviewed
+ * The memory writes that decide a conflict review. Approving approves the reviewed memory and then
+ * supersedes every disputed memory that is still Approved with it; rejecting rejects the reviewed
  * memory alone. A decision is refused while it would rest on claims that no longer hold
  * (ADR:2026-10-13-a-memory-conflict-opens-a-review-task-and-approving-it-supersedes-the-disputed-memory).
  */
@@ -46,18 +46,21 @@ final class MemoryConflictDecision {
   private MemoryConflictDecision() {}
 
   /**
-   * Superseding comes first, so a retried approval skips what an interrupted one retired. A memory
-   * that is already Approved had its approval written before the task could resolve: retrying
-   * converges on superseding what is still Approved.
+   * The reviewed memory is approved first: an approval interrupted before it supersedes everything
+   * leaves both claims Approved, as they were before the review, never a retired claim with nothing
+   * in its place. A memory that is already Approved had its approval written before the task could
+   * resolve: retrying converges on superseding what is still Approved.
    */
   static List<MemoryChange> approve(
       ContextMemory reviewed, List<MemoryDispute> disputes, Map<UUID, ContextMemory> disputedById) {
     boolean isApprovedAlready = reviewed.getEntityStatus() == ContextMemoryStatus.APPROVED;
     requireUndecided(reviewed, isApprovedAlready);
-    List<MemoryChange> changes = new ArrayList<>(supersessions(reviewed, disputes, disputedById));
+    List<MemoryChange> supersessions = supersessions(reviewed, disputes, disputedById);
+    List<MemoryChange> changes = new ArrayList<>();
     if (!isApprovedAlready) {
       changes.add(stageChange(reviewed, ContextMemoryStatus.APPROVED, null));
     }
+    changes.addAll(supersessions);
     return List.copyOf(changes);
   }
 

@@ -82,6 +82,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.ResourceRegistry;
+import org.openmetadata.service.context.review.MemoryConflictResolution;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -128,8 +129,8 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
   static final String LIST_FIELDS = "assignees,about,createdBy";
 
   static final String SERVER_OPENED_REVIEW =
-      "Memory conflict reviews are opened by the server: record the conflict as disputes on the"
-          + " memory instead";
+      "Memory conflict reviews are opened and kept by the server: record the conflict as disputes"
+          + " on the memory instead";
 
   private static final String TASK_SEARCH_DESCRIPTION =
       "Free-text search. Database-only (tasks are not indexed into Elasticsearch). "
@@ -1215,18 +1216,29 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     rejectStatusChangeToWorkflowDecision(original, patched);
     rejectAvailableTransitionsEditByNonAdmin(original, patched, callerIsAdmin);
     rejectPayloadOrAboutEditAfterOpen(original, patched);
-    rejectServerOpenedTypeChange(original, patched);
+    rejectServerOpenedTaskEdit(original, patched);
   }
 
   /**
-   * No task becomes, or stops being, a memory conflict review: a task the server did not open would
-   * gain the power to decide its memory, and a review would be resolved by another type's rules
-   * instead of the conflict decision.
+   * A memory conflict review is the server's: its payload names the memories a decision acts on
+   * and its assignees are who may decide, so no PATCH edits one, and no task becomes one.
    */
-  private static void rejectServerOpenedTypeChange(Task original, Task patched) {
-    boolean wasServerOpened = isServerOpenedType(original.getType());
-    if (patched.getType() != null && wasServerOpened != isServerOpenedType(patched.getType())) {
+  private static void rejectServerOpenedTaskEdit(Task original, Task patched) {
+    if (isServerOpenedType(original.getType()) || isServerOpenedType(patched.getType())) {
       throw BadRequestException.of(SERVER_OPENED_REVIEW);
+    }
+  }
+
+  /** Bulk edits reach a task the way PATCH does, so a memory conflict review refuses them too. */
+  private static void requireEditableThroughApi(Task task) {
+    if (isServerOpenedType(task.getType())) {
+      throw BadRequestException.of(SERVER_OPENED_REVIEW);
+    }
+  }
+
+  private static void requireClosable(Task task) {
+    if (MemoryConflictResolution.decides(task)) {
+      MemoryConflictResolution.requireReviewEnded(task);
     }
   }
 
@@ -1543,6 +1555,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
 
     repository.checkPermissionsForResolveTask(authorizer, task, true, securityContext);
     validateTaskCanBeClosed(task);
+    requireClosable(task);
 
     Task closedTask = repository.closeTask(task, userName, comment);
     return Response.ok(closedTask).build();
@@ -1768,6 +1781,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
         if (params == null || params.getAssignees() == null || params.getAssignees().isEmpty()) {
           throw new IllegalArgumentException("Assignees required for Assign operation");
         }
+        requireEditableThroughApi(task);
         repository.checkPermissionsForOwnerOnlyAction(
             authorizer, securityContext, task, "reassignTask");
         List<EntityReference> newAssignees =
@@ -1781,6 +1795,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
         if (params == null || params.getPriority() == null) {
           throw new IllegalArgumentException("Priority required for UpdatePriority operation");
         }
+        requireEditableThroughApi(task);
         repository.checkPermissionsForOwnerOnlyAction(
             authorizer, securityContext, task, "changeTaskPriority");
         task.setPriority(params.getPriority());
@@ -1791,6 +1806,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       case Cancel -> {
         repository.checkPermissionsForResolveTask(authorizer, task, true, securityContext);
         validateTaskCanBeClosed(task);
+        requireClosable(task);
         repository.closeTask(task, userName, comment);
       }
     }

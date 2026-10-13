@@ -17,16 +17,55 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
+import org.openmetadata.schema.entity.context.MemoryDispute;
 import org.openmetadata.schema.entity.tasks.Task;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskResolutionType;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.context.review.MemoryConflictResolution.Verdict;
 
 class MemoryConflictResolutionTest {
+
+  /** A decision retried after its memory left Draft reads the disputes the task recorded. */
+  @Test
+  void aRetryReadsTheDisputesTheTaskRecorded() {
+    UUID disputedId = UUID.randomUUID();
+    ContextMemory reviewed =
+        new ContextMemory()
+            .withId(UUID.randomUUID())
+            .withName("three-orders")
+            .withFullyQualifiedName("three-orders")
+            .withEntityStatus(ContextMemoryStatus.DRAFT)
+            .withDisputes(
+                List.of(
+                    new MemoryDispute()
+                        .withMemory(
+                            new EntityReference()
+                                .withId(disputedId)
+                                .withType(Entity.CONTEXT_MEMORY)
+                                .withName("five-orders"))
+                        .withReason("Five orders against three")
+                        .withDetectedAt(10L)));
+    Task opened =
+        MemoryConflictReviewTasks.reviewTask(reviewed, List.of(), new EntityReference(), 1L);
+    Task stored = JsonUtils.readValue(JsonUtils.pojoToJson(opened), Task.class);
+
+    List<MemoryDispute> recorded = MemoryConflictResolution.recordedDisputes(stored);
+
+    assertEquals(1, recorded.size());
+    assertEquals(disputedId, recorded.getFirst().getMemory().getId());
+    assertEquals(10L, recorded.getFirst().getDetectedAt());
+  }
 
   @ParameterizedTest
   @EnumSource(

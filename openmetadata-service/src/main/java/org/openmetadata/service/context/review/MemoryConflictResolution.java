@@ -18,6 +18,7 @@ import static org.openmetadata.service.governance.workflows.WorkflowEventConsume
 
 import jakarta.json.Json;
 import jakarta.json.JsonArrayBuilder;
+import jakarta.json.JsonException;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.BadRequestException;
 import java.util.HashMap;
@@ -37,23 +38,38 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.exception.PreconditionFailedException;
+import org.openmetadata.service.jdbi3.ContextMemoryRepository;
+import org.openmetadata.service.resources.context.ContextMemoryVisibility;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityETag;
+import org.openmetadata.service.util.RestUtil.PatchResponse;
 
 /**
  * Applies the decision of a memory conflict review task, as the person who decided it. Being able
  * to resolve the task authorizes the decision about the reviewed memory; superseding a disputed
- * memory additionally needs the right to supersede it directly. Any refusal throws before a memory
- * is written, so the task stays open.
+ * memory additionally needs the right to read and supersede it directly. Every check runs before
+ * the first write, so a refusal leaves both memories as they were and the task open; a write that
+ * fails later leaves the task open for a retry, which converges.
  */
 @Slf4j
 public final class MemoryConflictResolution {
 
   static final String NOT_A_MEMORY = "A memory conflict review must be about a context memory";
+  static final String DECIDE_TO_END_REVIEW =
+      "Approve or reject this memory conflict review: it closes by itself once its memory leaves"
+          + " review";
+  static final String CHANGED_WHILE_DECIDING =
+      "A memory in this review changed while it was being decided; reload it and decide again";
+  static final String MAY_NOT_READ_DISPUTED =
+      "User '%s' may not supersede a disputed memory they cannot read";
+  private static final String DISPUTED_FIELDS =
+      ContextMemoryVisibility.guardFields(Entity.CONTEXT_MEMORY, "owners");
 
   enum Verdict {
     APPROVE,
@@ -99,12 +115,32 @@ public final class MemoryConflictResolution {
   }
 
   public static void decide(Task task, TaskResolutionType resolution, String comment, String user) {
-    verdictOf(resolution).ifPresent(verdict -> apply(verdict, task, comment, user));
+    Optional<Verdict> verdict = verdictOf(resolution);
+    if (verdict.isEmpty()) {
+      requireReviewEnded(task);
+    }
+    verdict.ifPresent(decided -> apply(decided, task, comment, user));
+  }
+
+  /**
+   * While its memory is held for conflicts the review is the only way out of review, so it ends by
+   * a decision, not by closing it; the server closes it once the memory leaves review.
+   */
+  public static void requireReviewEnded(Task task) {
+    boolean isHeld = false;
+    try {
+      isHeld = MemoryConflictReviewTasks.isHeldForConflicts(reviewedMemory(task));
+    } catch (EntityNotFoundException deleted) {
+      LOG.debug("[MemoryConflictReview] the memory of task {} is gone", task.getId(), deleted);
+    }
+    if (isHeld) {
+      throw new BadRequestException(DECIDE_TO_END_REVIEW);
+    }
   }
 
   private static void apply(Verdict verdict, Task task, String comment, String user) {
     ContextMemory reviewed = reviewedMemory(task);
-    List<MemoryChange> changes = changesFor(verdict, task, reviewed, comment);
+    List<MemoryChange> changes = changesFor(verdict, task, reviewed, comment, user);
     changes.stream()
         .filter(change -> !change.before().getId().equals(reviewed.getId()))
         .forEach(change -> requireMaySupersede(change, user));
@@ -113,11 +149,31 @@ public final class MemoryConflictResolution {
   }
 
   private static List<MemoryChange> changesFor(
-      Verdict verdict, Task task, ContextMemory reviewed, String comment) {
+      Verdict verdict, Task task, ContextMemory reviewed, String comment, String user) {
     List<MemoryDispute> disputes = disputesOf(task, reviewed);
     return verdict == Verdict.APPROVE
-        ? MemoryConflictDecision.approve(reviewed, disputes, disputedMemories(disputes))
+        ? MemoryConflictDecision.approve(reviewed, disputes, readableDisputed(disputes, user))
         : MemoryConflictDecision.reject(reviewed, comment);
+  }
+
+  /**
+   * A direct PATCH checks a memory's visibility before its policy, and a refusal names the memory
+   * it refuses, so an approval reads only Approved disputed memories the resolver can read.
+   */
+  private static Map<UUID, ContextMemory> readableDisputed(
+      List<MemoryDispute> disputes, String user) {
+    Map<UUID, ContextMemory> disputed = disputedMemories(disputes);
+    boolean isAdmin = SubjectContext.getSubjectContext(user).isAdmin();
+    boolean hidesOne =
+        disputed.values().stream()
+            .anyMatch(
+                memory ->
+                    memory.getEntityStatus() == ContextMemoryStatus.APPROVED
+                        && !ContextMemoryVisibility.isVisibleToUser(memory, user, isAdmin));
+    if (hidesOne) {
+      throw new AuthorizationException(String.format(MAY_NOT_READ_DISPUTED, user));
+    }
+    return disputed;
   }
 
   /**
@@ -130,7 +186,7 @@ public final class MemoryConflictResolution {
         : recordedDisputes(task);
   }
 
-  private static List<MemoryDispute> recordedDisputes(Task task) {
+  static List<MemoryDispute> recordedDisputes(Task task) {
     MemoryConflictReviewTasks.OpenedFor openedFor =
         task.getPayload() == null
             ? null
@@ -143,7 +199,6 @@ public final class MemoryConflictResolution {
                 contradiction ->
                     new MemoryDispute()
                         .withMemory(contradiction.memory())
-                        .withReason(contradiction.reason())
                         .withDetectedAt(contradiction.detectedAt()))
             .toList();
   }
@@ -163,7 +218,8 @@ public final class MemoryConflictResolution {
           UUID id = dispute.getMemory().getId();
           try {
             disputed.put(
-                id, Entity.getEntity(Entity.CONTEXT_MEMORY, id, "owners", Include.NON_DELETED));
+                id,
+                Entity.getEntity(Entity.CONTEXT_MEMORY, id, DISPUTED_FIELDS, Include.NON_DELETED));
           } catch (EntityNotFoundException deleted) {
             LOG.debug("[MemoryConflictReview] disputed memory {} is gone", id, deleted);
           }
@@ -195,22 +251,30 @@ public final class MemoryConflictResolution {
                     .add("path", "/updatedAt")
                     .add("value", before.getUpdatedAt()));
     diff(change).toJsonArray().forEach(operations::add);
+    PatchResponse<ContextMemory> response;
+    try {
+      response =
+          memoryRepository()
+              .patch(
+                  null,
+                  before.getId(),
+                  user,
+                  Json.createPatch(operations.build()),
+                  ChangeSource.MANUAL,
+                  EntityETag.generateWeakETag(before),
+                  GOVERNANCE_BOT);
+    } catch (JsonException changedSinceRead) {
+      throw new PreconditionFailedException(CHANGED_WHILE_DECIDING);
+    }
     memoryRepository()
-        .patch(
-            null,
-            before.getId(),
-            user,
-            Json.createPatch(operations.build()),
-            ChangeSource.MANUAL,
-            EntityETag.generateWeakETag(before),
-            GOVERNANCE_BOT);
+        .storeChangeEventForAsyncOperation(response.entity(), response.changeType(), false, user);
   }
 
   private static JsonPatch diff(MemoryChange change) {
     return JsonUtils.getJsonPatch(change.before(), change.after());
   }
 
-  private static EntityRepository<?> memoryRepository() {
-    return Entity.getEntityRepository(Entity.CONTEXT_MEMORY);
+  private static ContextMemoryRepository memoryRepository() {
+    return (ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY);
   }
 }

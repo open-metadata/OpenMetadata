@@ -20,7 +20,6 @@ import static org.openmetadata.service.governance.workflows.WorkflowEventConsume
 import jakarta.json.Json;
 import jakarta.json.JsonPatch;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,9 +30,9 @@ import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
-import org.openmetadata.schema.entity.context.MemoryDispute;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TaskAvailableTransition;
 import org.openmetadata.schema.type.TaskCategory;
@@ -45,11 +44,13 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.TaskRepository;
+import org.openmetadata.service.util.RestUtil.PatchResponse;
+import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 /**
- * Keeps one open review task on every Draft memory held in review by disputes, retitles it when
- * the memory's title, disputes or owners change, and closes it when the memory leaves review
- * outside the task
+ * Keeps one open review task on every Draft memory held in review by disputes, rewrites it when
+ * the memory's disputes or owners change, and closes it when the memory leaves review outside the
+ * task
  * (ADR:2026-10-13-a-memory-conflict-opens-a-review-task-and-approving-it-supersedes-the-disputed-memory).
  */
 @Slf4j
@@ -59,11 +60,22 @@ public final class MemoryConflictReviewTasks {
 
   static final String APPROVE = "approve";
   static final String REJECT = "reject";
+  static final String REVIEW_TITLE = "Review conflicting memory";
+
+  /**
+   * Fixed text: every user may read tasks while a memory may be Private or Shared, so the task names
+   * memories by reference and never says what they hold. Context Center reads both memories through
+   * their visibility rules to compare them.
+   */
+  static final String REVIEW_DESCRIPTION =
+      "A memory in review contradicts Approved memories. Approving it supersedes them; rejecting it"
+          + " keeps them. Compare them in Context Center, under Memories → Needs review.";
+
   static final String CLOSED_OUTSIDE_REVIEW =
       "Closed because the memory left its conflict review outside this task (now %s)";
   static final String DELETED_IN_REVIEW = "Closed because the memory was deleted during its review";
-  static final String MEMORY_GONE = "this memory no longer exists";
-  private static final String CLAIM_FIELDS = "owners,primaryEntity,sourceEntity";
+  private static final String OWNERS = "owners";
+  private static final int MAX_OPEN_REVIEWS = 10;
 
   private static final List<TaskAvailableTransition> TRANSITIONS =
       List.of(
@@ -80,28 +92,17 @@ public final class MemoryConflictReviewTasks {
               .withResolutionType(TaskResolutionType.Rejected)
               .withRequiresComment(false));
 
-  private static final List<Function<ContextMemory, Object>> SHOWN_FIELDS =
-      List.of(
-          ContextMemory::getTitle,
-          ContextMemory::getQuestion,
-          ContextMemory::getAnswer,
-          ContextMemory::getPrimaryEntity,
-          ContextMemory::getDisputes,
-          ContextMemory::getOwners);
+  private static final List<Function<ContextMemory, Object>> REVIEWED_FIELDS =
+      List.of(ContextMemory::getDisputes, ContextMemory::getOwners);
+
+  /** A memory the reviewed one contradicts, and when that was detected. */
+  record Contradiction(EntityReference memory, Long detectedAt) {}
 
   /**
-   * A memory the reviewed one contradicts: its reference, titled because memory names are
-   * generated (an extracted memory is named after its source plus a UUID), why it conflicts, when
-   * that was detected, and its claim, which a memory that no longer exists does not have.
+   * Every memory the reviewed one contradicts. A decision retried after the memory left Draft,
+   * which releases its disputes, reads them from here.
    */
-  record Contradiction(EntityReference memory, String reason, Long detectedAt, MemoryClaim claim) {}
-
-  /**
-   * What the task records about the conflict: the reviewed memory's title and claim, and every
-   * memory it contradicts. A reviewer compares {@code claim} with each contradiction's claim.
-   */
-  record OpenedFor(
-      Double memoryVersion, String memoryTitle, MemoryClaim claim, List<Contradiction> disputes) {}
+  record OpenedFor(List<Contradiction> disputes) {}
 
   private MemoryConflictReviewTasks() {}
 
@@ -111,10 +112,14 @@ public final class MemoryConflictReviewTasks {
    */
   public static void afterWrite(ContextMemory previous, ContextMemory current) {
     try {
-      if (isHeldForConflicts(current)) {
+      if (Boolean.TRUE.equals(current.getDeleted())) {
+        LOG.debug(
+            "[MemoryConflictReview] memory {} is deleted; its delete closes the review",
+            current.getId());
+      } else if (isHeldForConflicts(current)) {
         openOrRefresh(previous, current);
       } else if (leavesReviewOutsideTheTask(previous, current)) {
-        closeOpenTask(
+        closeOpenTasks(
             current,
             String.format(CLOSED_OUTSIDE_REVIEW, String.valueOf(current.getEntityStatus())));
       }
@@ -133,7 +138,7 @@ public final class MemoryConflictReviewTasks {
   public static void afterDelete(ContextMemory memory, boolean hardDelete) {
     try {
       if (!hardDelete && isHeldForConflicts(memory)) {
-        closeOpenTask(memory, DELETED_IN_REVIEW);
+        closeOpenTasks(memory, DELETED_IN_REVIEW);
       }
     } catch (RuntimeException failure) {
       LOG.error(
@@ -148,7 +153,20 @@ public final class MemoryConflictReviewTasks {
    * decision: a governance workflow's write, made as {@code governance-bot}, closes it too.
    */
   static boolean leavesReviewOutsideTheTask(ContextMemory previous, ContextMemory current) {
-    return isHeldForConflicts(previous) && !MemoryConflictResolution.isDeciding(current.getId());
+    return mayLeaveReview(previous, current)
+        && !MemoryConflictResolution.isDeciding(current.getId());
+  }
+
+  /**
+   * One writer's edits within a session consolidate, and the previous version a hook then sees is
+   * the one before the session: a memory the session put into review and took out again looks held
+   * in neither. So any change to the stage or the disputes looks for an open review to close.
+   */
+  static boolean mayLeaveReview(ContextMemory previous, ContextMemory current) {
+    return previous != null
+        && (isHeldForConflicts(previous)
+            || previous.getEntityStatus() != current.getEntityStatus()
+            || !Objects.equals(previous.getDisputes(), current.getDisputes()));
   }
 
   static boolean isHeldForConflicts(ContextMemory memory) {
@@ -158,8 +176,7 @@ public final class MemoryConflictReviewTasks {
   }
 
   private static void openOrRefresh(ContextMemory previous, ContextMemory current) {
-    Task open =
-        taskRepository().findOpenTaskByEntityAndType(current.getFullyQualifiedName(), TASK_TYPE);
+    Task open = openReview(current);
     if (open == null) {
       open(current);
     } else if (changesWhatTheReviewShows(previous, current)) {
@@ -176,69 +193,66 @@ public final class MemoryConflictReviewTasks {
             .createInternal(
                 reviewTask(
                     reviewed, disputedMemories(reviewed), creator, System.currentTimeMillis()));
+    taskRepository()
+        .storeChangeEventForAsyncOperation(task, EventType.ENTITY_CREATED, false, GOVERNANCE_BOT);
+    WebsocketNotificationHandler.handleTaskNotification(task);
     LOG.info(
         "[MemoryConflictReview] opened task {} for memory {}", task.getTaskId(), memory.getId());
   }
 
-  /**
-   * Rewrites what the open task shows; its status, comments and history stay. Written as whoever
-   * changed the memory, impersonated by {@code governance-bot}: an update by a bot that may not
-   * edit display names keeps the task's old title.
-   */
+  /** Rewrites who decides and what the review weighs; its status, comments and history stay. */
   private static void refresh(Task open, ContextMemory memory) {
     ContextMemory reviewed = reviewedAsWritten(memory);
     Task current =
         reviewTask(reviewed, disputedMemories(reviewed), open.getCreatedBy(), open.getCreatedAt());
     JsonPatch patch =
         Json.createPatchBuilder()
-            .add("/displayName", current.getDisplayName())
-            .add("/description", current.getDescription())
             .add("/assignees", JsonUtils.getJsonStructure(current.getAssignees()))
             .add("/payload", JsonUtils.getJsonStructure(current.getPayload()))
             .build();
+    PatchResponse<Task> response =
+        taskRepository()
+            .patch(null, open.getId(), GOVERNANCE_BOT, patch, ChangeSource.AUTOMATED, null);
     taskRepository()
-        .patch(null, open.getId(), writerOf(memory), patch, ChangeSource.AUTOMATED, GOVERNANCE_BOT);
+        .storeChangeEventForAsyncOperation(
+            response.entity(), response.changeType(), false, GOVERNANCE_BOT);
     LOG.info(
         "[MemoryConflictReview] refreshed task {} for memory {}", open.getTaskId(), memory.getId());
   }
 
-  private static String writerOf(ContextMemory memory) {
-    String writer = memory.getUpdatedBy();
-    return nullOrEmpty(writer) ? GOVERNANCE_BOT : writer;
-  }
-
-  /** The task shows the memory's claim and disputes, and assigns the owners of every side. */
+  /** The task records the memory's disputes and assigns the owners of every side. */
   static boolean changesWhatTheReviewShows(ContextMemory previous, ContextMemory current) {
     return previous == null
-        || SHOWN_FIELDS.stream()
+        || REVIEWED_FIELDS.stream()
             .anyMatch(field -> !Objects.equals(field.apply(previous), field.apply(current)));
   }
 
   /**
    * The memory as its write left it. Reading it back within the same request can return the copy
-   * cached before the write, so only the fields the write did not carry are loaded.
+   * cached before the write, so only the owners are loaded, and only when the write did not carry
+   * them.
    */
   private static ContextMemory reviewedAsWritten(ContextMemory memory) {
     ContextMemory reviewed = JsonUtils.deepCopy(memory, ContextMemory.class);
-    if (reviewed.getOwners() == null || reviewed.getPrimaryEntity() == null) {
-      ContextMemory stored =
-          Entity.getEntity(
-              Entity.CONTEXT_MEMORY, memory.getId(), CLAIM_FIELDS, Include.NON_DELETED);
-      reviewed.setOwners(Optional.ofNullable(reviewed.getOwners()).orElse(stored.getOwners()));
-      reviewed.setPrimaryEntity(
-          Optional.ofNullable(reviewed.getPrimaryEntity()).orElse(stored.getPrimaryEntity()));
-      reviewed.setSourceEntity(
-          Optional.ofNullable(reviewed.getSourceEntity()).orElse(stored.getSourceEntity()));
+    if (reviewed.getOwners() == null) {
+      reviewed.setOwners(storedMemory(memory.getId()).map(ContextMemory::getOwners).orElse(null));
     }
     return reviewed;
   }
 
-  private static void closeOpenTask(ContextMemory memory, String comment) {
-    Task open =
-        taskRepository().findOpenTaskByEntityAndType(memory.getFullyQualifiedName(), TASK_TYPE);
-    if (open != null) {
+  /** Two writes landing together can each open a review, so every open one closes. */
+  private static void closeOpenTasks(ContextMemory memory, String comment) {
+    Task open = openReview(memory);
+    int closed = 0;
+    while (open != null && closed < MAX_OPEN_REVIEWS) {
       taskRepository().closeTask(open, memory.getUpdatedBy(), comment);
+      closed++;
+      open = openReview(memory);
     }
+  }
+
+  private static Task openReview(ContextMemory memory) {
+    return taskRepository().findOpenTaskByEntityAndType(memory.getFullyQualifiedName(), TASK_TYPE);
   }
 
   /**
@@ -247,18 +261,17 @@ public final class MemoryConflictReviewTasks {
    */
   static Task reviewTask(
       ContextMemory reviewed, List<ContextMemory> disputed, EntityReference creator, long now) {
-    OpenedFor openedFor = openedFor(reviewed, disputed);
     return new Task()
         .withId(UUID.randomUUID())
-        .withDisplayName("Review conflicting memory: " + openedFor.memoryTitle())
-        .withDescription(describe(openedFor))
+        .withDisplayName(REVIEW_TITLE)
+        .withDescription(REVIEW_DESCRIPTION)
         .withCategory(TaskCategory.Review)
         .withType(TASK_TYPE)
         .withStatus(TaskEntityStatus.Open)
-        .withAbout(reviewed.getEntityReference().withType(Entity.CONTEXT_MEMORY))
+        .withAbout(referenceTo(reviewed.getEntityReference()).withType(Entity.CONTEXT_MEMORY))
         .withAssignees(assignees(reviewed, disputed))
         .withCreatedBy(creator)
-        .withPayload(openedFor)
+        .withPayload(openedFor(reviewed))
         .withAvailableTransitions(TRANSITIONS)
         .withCreatedAt(now)
         .withUpdatedBy(GOVERNANCE_BOT)
@@ -284,45 +297,23 @@ public final class MemoryConflictReviewTasks {
     return disputed;
   }
 
-  private static OpenedFor openedFor(ContextMemory reviewed, List<ContextMemory> disputed) {
-    Map<UUID, ContextMemory> disputedById = new HashMap<>();
-    disputed.forEach(memory -> disputedById.put(memory.getId(), memory));
+  static OpenedFor openedFor(ContextMemory reviewed) {
     List<Contradiction> contradictions =
         listOrEmpty(reviewed.getDisputes()).stream()
-            .map(dispute -> contradiction(dispute, disputedById.get(dispute.getMemory().getId())))
+            .map(
+                dispute ->
+                    new Contradiction(referenceTo(dispute.getMemory()), dispute.getDetectedAt()))
             .toList();
-    return new OpenedFor(
-        reviewed.getVersion(), label(reviewed), MemoryClaim.of(reviewed), contradictions);
+    return new OpenedFor(contradictions);
   }
 
-  /** A disputed memory that no longer exists keeps its name: there is no title left to read. */
-  private static Contradiction contradiction(MemoryDispute dispute, ContextMemory disputed) {
-    EntityReference memory = JsonUtils.deepCopy(dispute.getMemory(), EntityReference.class);
-    memory.setDisplayName(disputed == null ? memory.getName() : label(disputed));
-    MemoryClaim claim = disputed == null ? null : MemoryClaim.of(disputed);
-    return new Contradiction(memory, dispute.getReason(), dispute.getDetectedAt(), claim);
-  }
-
-  private static String describe(OpenedFor openedFor) {
-    StringBuilder description =
-        new StringBuilder(
-                "This memory contradicts Approved knowledge. Approving it supersedes the memories"
-                    + " it contradicts; rejecting it keeps them.\n\n**In review:** ")
-            .append(statedClaim(openedFor.claim()));
-    for (Contradiction contradiction : openedFor.disputes()) {
-      description
-          .append("\n\n**Contradicts \"")
-          .append(contradiction.memory().getDisplayName())
-          .append("\":** ")
-          .append(statedClaim(contradiction.claim()))
-          .append("\n\n**Why:** ")
-          .append(contradiction.reason());
-    }
-    return description.toString();
-  }
-
-  private static String statedClaim(MemoryClaim claim) {
-    return claim == null ? MEMORY_GONE : Objects.toString(claim.answer(), "");
+  /** A stored memory reference reads as the memory's title, which the task must not carry. */
+  static EntityReference referenceTo(EntityReference memory) {
+    return new EntityReference()
+        .withId(memory.getId())
+        .withType(memory.getType())
+        .withName(memory.getName())
+        .withFullyQualifiedName(memory.getFullyQualifiedName());
   }
 
   private static Optional<ContextMemory> storedMemory(UUID memoryId) {
@@ -330,16 +321,11 @@ public final class MemoryConflictReviewTasks {
     try {
       memory =
           Optional.of(
-              Entity.getEntity(Entity.CONTEXT_MEMORY, memoryId, CLAIM_FIELDS, Include.NON_DELETED));
+              Entity.getEntity(Entity.CONTEXT_MEMORY, memoryId, OWNERS, Include.NON_DELETED));
     } catch (EntityNotFoundException deleted) {
       LOG.debug("[MemoryConflictReview] memory {} no longer exists", memoryId, deleted);
     }
     return memory;
-  }
-
-  static String label(ContextMemory memory) {
-    String title = memory.getTitle();
-    return nullOrEmpty(title) || title.isBlank() ? memory.getName() : title;
   }
 
   private static TaskRepository taskRepository() {

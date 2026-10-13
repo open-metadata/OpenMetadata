@@ -36,23 +36,27 @@ class MemoryConflictDecisionTest {
 
   private static final long DETECTED_AT = 200L;
 
+  /**
+   * Approving first means an approval interrupted before it supersedes leaves both claims Approved,
+   * never a retired claim with nothing in its place.
+   */
   @Test
-  void approvingSupersedesTheDisputedMemoryAndThenApprovesTheReviewedOne() {
+  void approvingApprovesTheReviewedMemoryAndThenSupersedesTheDisputedOne() {
     ContextMemory approved = memory("five-orders", ContextMemoryStatus.APPROVED, 100L);
     ContextMemory reviewed = reviewed("three-orders", approved);
 
     List<MemoryChange> changes = approve(reviewed, approved);
 
     assertEquals(2, changes.size());
-    ContextMemory superseded = changes.getFirst().after();
+    ContextMemory promoted = changes.getFirst().after();
+    assertEquals(reviewed.getId(), promoted.getId());
+    assertEquals(ContextMemoryStatus.APPROVED, promoted.getEntityStatus());
+    assertEquals(ContextMemoryStatus.DRAFT, changes.getFirst().before().getEntityStatus());
+    ContextMemory superseded = changes.getLast().after();
     assertEquals(approved.getId(), superseded.getId());
     assertEquals(ContextMemoryStatus.SUPERSEDED, superseded.getEntityStatus());
     assertEquals(reviewed.getId(), superseded.getSupersededBy().getId());
     assertTrue(superseded.getStatusReason().contains("three-orders"));
-    ContextMemory promoted = changes.getLast().after();
-    assertEquals(reviewed.getId(), promoted.getId());
-    assertEquals(ContextMemoryStatus.APPROVED, promoted.getEntityStatus());
-    assertEquals(ContextMemoryStatus.DRAFT, changes.getLast().before().getEntityStatus());
   }
 
   @Test
@@ -61,7 +65,7 @@ class MemoryConflictDecisionTest {
 
     List<MemoryChange> changes = approve(reviewed("correction", legacy), legacy);
 
-    assertEquals(ContextMemoryStatus.SUPERSEDED, changes.getFirst().after().getEntityStatus());
+    assertEquals(ContextMemoryStatus.SUPERSEDED, changes.getLast().after().getEntityStatus());
   }
 
   @ParameterizedTest
