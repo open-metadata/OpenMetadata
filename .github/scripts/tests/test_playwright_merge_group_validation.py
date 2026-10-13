@@ -355,6 +355,13 @@ def test_dequeue_report_labels_conflicts_and_evicts_main_conflicts():
     # CONFLICTING against main means rebase; MERGEABLE means only an entry ahead.
     assert run.index("CONFLICTING)") < run.index('label="merge conflict"')
     assert run.index("MERGEABLE)") < run.index('label="queue conflict"')
+    # The conflict note goes into the PR comment, never the #ci-cleanup text.
+    comment = next(
+        s for s in jobs["report"]["steps"] if s["name"] == "Comment the checks that caused the dequeue"
+    )["run"]
+    assert "{ echo; cat conflict.txt; } >> body.md" in comment
+    assert "conflict.txt > detail.txt" not in comment
+    assert "conflict.txt >> detail.txt" not in comment
     # UNKNOWN must never be guessed into a label.
     assert "still UNKNOWN; leaving the PR unlabelled" in run
 
