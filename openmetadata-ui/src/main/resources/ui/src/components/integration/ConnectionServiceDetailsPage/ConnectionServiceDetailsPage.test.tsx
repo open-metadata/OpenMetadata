@@ -547,6 +547,11 @@ const CONTRIBUTED_TAB = {
   condition: () => true,
 };
 
+const tabLabels = () =>
+  within(screen.getByRole('tablist'))
+    .getAllByRole('button')
+    .map((tab) => tab.textContent);
+
 describe('ConnectionServiceDetailsPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -645,11 +650,6 @@ describe('ConnectionServiceDetailsPage', () => {
         expect(screen.getByRole('tablist')).toBeInTheDocument()
       );
     };
-
-    const tabLabels = () =>
-      within(screen.getByRole('tablist'))
-        .getAllByRole('button')
-        .map((tab) => tab.textContent);
 
     it('offers a dashboard service its data models, between its dashboards and its connection', async () => {
       mockServiceCategory = 'dashboardServices';
@@ -868,6 +868,53 @@ describe('ConnectionServiceDetailsPage', () => {
       'data-can-edit-owners',
       'false'
     );
+  });
+
+  // As classic: metadata and security services have no child assets, so no data-assets tab.
+  describe.each(['metadataServices', 'securityServices'])('%s', (category) => {
+    beforeEach(() => {
+      mockServiceCategory = category;
+    });
+
+    it('offers no data-assets tab and opens on the connection', async () => {
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      await waitFor(() =>
+        expect(screen.getByTestId('edit-connection-button')).toBeInTheDocument()
+      );
+
+      expect(tabLabels()).toEqual(['label.connection']);
+      expect(mockDataAssetsTab).not.toHaveBeenCalled();
+      expect(getDatabases).not.toHaveBeenCalled();
+    });
+
+    it('lands a data-assets deep link on the connection instead', async () => {
+      mockTabParam = 'dataAssets';
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      await waitFor(() =>
+        expect(screen.getByTestId('edit-connection-button')).toBeInTheDocument()
+      );
+
+      expect(mockDataAssetsTab).not.toHaveBeenCalled();
+    });
+
+    // Classic also hides the connection from those who may not edit it, leaving no tab.
+    it('offers a read-only user no tab, as classic', async () => {
+      mockServicePermission = { ViewAll: true, ViewBasic: true };
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      expect(
+        within(screen.getByRole('tablist')).queryAllByRole('button')
+      ).toEqual([]);
+      expect(mockDataAssetsTab).not.toHaveBeenCalled();
+    });
   });
 
   describe('read-only user', () => {

@@ -143,6 +143,12 @@ const CONNECTION_TAB_ORDER = 50;
 // A long service name ends in an ellipsis, with the full name on hover only when it is cut off.
 const TITLE_ELLIPSIS = { tooltip: true } as const;
 
+// As classic: these services have no child assets to list, so they get no data-assets tab.
+const SERVICES_WITHOUT_DATA_ASSETS = new Set<ServiceCategory>([
+  ServiceCategory.METADATA_SERVICES,
+  ServiceCategory.SECURITY_SERVICES,
+]);
+
 const getActionButtonColor = (action: ActionContribution) => {
   if (action.danger) {
     return 'primary-destructive';
@@ -651,8 +657,13 @@ const ConnectionServiceDetailsPage: React.FC = () => {
 
   // Refetches on every input of the list — page cursor, page size, the deleted switch, a restore —
   // and yields to ServiceMainTabContent while a search is active, as classic service details does.
+  const hasDataAssetsTab = !SERVICES_WITHOUT_DATA_ASSETS.has(
+    serviceCategory as ServiceCategory
+  );
+
   useEffect(() => {
     const isListShown =
+      hasDataAssetsTab &&
       activeTab === DATA_ASSETS_TAB_KEY &&
       Boolean(serviceDetails.fullyQualifiedName);
     if (searchValue) {
@@ -670,6 +681,7 @@ const ConnectionServiceDetailsPage: React.FC = () => {
     cursorType,
     cursorValue,
     getOtherDetails,
+    hasDataAssetsTab,
   ]);
 
   const extensionContext: PluginEntityDetailsContext = useMemo(
@@ -738,16 +750,22 @@ const ConnectionServiceDetailsPage: React.FC = () => {
   // in tab but keeps its registration order relative to other order-less contributions.
   const tabs: DetailsTab[] = useMemo(() => {
     const builtIns: DetailsTab[] = [
-      {
-        key: DATA_ASSETS_TAB_KEY,
-        label: serviceCategory
-          ? getCountLabel(
-              serviceCategory as unknown as Parameters<typeof getCountLabel>[0]
-            )
-          : t('label.data-asset-plural'),
-        order: DATA_ASSETS_TAB_ORDER,
-        badge: assetCounts[DATA_ASSETS_TAB_KEY],
-      },
+      ...(hasDataAssetsTab
+        ? [
+            {
+              key: DATA_ASSETS_TAB_KEY,
+              label: serviceCategory
+                ? getCountLabel(
+                    serviceCategory as unknown as Parameters<
+                      typeof getCountLabel
+                    >[0]
+                  )
+                : t('label.data-asset-plural'),
+              order: DATA_ASSETS_TAB_ORDER,
+              badge: assetCounts[DATA_ASSETS_TAB_KEY],
+            },
+          ]
+        : []),
       ...getSecondaryAssetTabs(serviceCategory as ServiceCategory).map(
         ({ key, labelKey }, index) => ({
           key,
@@ -778,7 +796,14 @@ const ConnectionServiceDetailsPage: React.FC = () => {
     }));
 
     return [...builtIns, ...contributed].sort((a, b) => a.order - b.order);
-  }, [t, serviceCategory, pluginTabs, canEditAll, assetCounts]);
+  }, [
+    t,
+    serviceCategory,
+    pluginTabs,
+    canEditAll,
+    assetCounts,
+    hasDataAssetsTab,
+  ]);
 
   const allTabKeys = useMemo(
     () => tabs.map((detailsTab) => detailsTab.key),
@@ -1042,7 +1067,7 @@ const ConnectionServiceDetailsPage: React.FC = () => {
             testId="entity-header-announcements"
             onItemClick={handleOpenAnnouncementDrawer}
           />
-          {activeTab === DATA_ASSETS_TAB_KEY && (
+          {isOfferedTab(DATA_ASSETS_TAB_KEY) && (
             <DataAssetsTab
               currentPage={currentPage}
               data={data}

@@ -27,6 +27,9 @@
  * articles do, and, for a database service, Follow; the service's active announcement shows under
  * the header on every tab; and deleting the service lands on its list.
  *
+ * Metadata and security services, which have no child assets, get no data-assets tab, as in
+ * classic.
+ *
  * It gates what classic gates: the Connection tab, which shows the connection config, only for
  * users who may edit the service; and no domain / owner / tier edits on a soft-deleted service.
  *
@@ -502,6 +505,22 @@ test.describe(
           /\/connections\?category=databaseServices$/
         );
       });
+    });
+
+    // As classic: a metadata service has no child assets, so no data-assets tab. Every install
+    // has the `OpenMetadata` metadata service, so nothing needs seeding.
+    test('a metadata service offers no data-assets tab', async ({ page }) => {
+      await enableAiAppMode(page);
+      await visitAiModeServiceDetailsPage(page, {
+        category: 'metadataServices',
+        fqn: 'OpenMetadata',
+        tab: 'connection',
+      });
+
+      await expect(
+        page.getByRole('tab', { name: 'Connection', exact: true })
+      ).toHaveAttribute('aria-selected', 'true');
+      await expect(page.getByTestId('dataAssets-tab')).toHaveCount(0);
     });
 
     test.describe('storage service', () => {
