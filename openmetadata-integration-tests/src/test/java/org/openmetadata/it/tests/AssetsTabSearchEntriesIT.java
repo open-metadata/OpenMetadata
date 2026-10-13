@@ -22,6 +22,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
 import org.junit.jupiter.api.Test;
@@ -168,12 +169,14 @@ public class AssetsTabSearchEntriesIT {
     Awaitility.await("column entries never carry the table's label")
         .pollInterval(Duration.ofSeconds(1))
         .during(QUIET_WINDOW)
-        .atMost(QUIET_WINDOW.plusSeconds(10))
+        .atMost(QUIET_WINDOW.plus(PROPAGATION_TIMEOUT))
         .until(
-            () ->
-                tables.stream()
-                    .flatMap(table -> columnEntries(table).stream())
-                    .noneMatch(entry -> carriesTag(entry, term.getFullyQualifiedName())));
+            () -> {
+              List<JsonNode> entries = columnEntries(tables);
+              return entries.size() == tables.size() * COLUMNS.size()
+                  && entries.stream()
+                      .noneMatch(entry -> carriesTag(entry, term.getFullyQualifiedName()));
+            });
   }
 
   // ---------------------------------------------------------------------------------------------
@@ -220,6 +223,15 @@ public class AssetsTabSearchEntriesIT {
 
   private static List<JsonNode> columnEntries(Table table) {
     return hits(COLUMN_INDEX, termFilter("table.id", table.getId().toString()));
+  }
+
+  // One search for all the tables, so a poll stays short when search is slow.
+  private static List<JsonNode> columnEntries(List<Table> tables) {
+    String ids =
+        tables.stream().map(table -> "\"" + table.getId() + "\"").collect(Collectors.joining(","));
+    return hits(
+        COLUMN_INDEX,
+        "{\"query\":{\"bool\":{\"must\":[{\"terms\":{\"table.id\":[" + ids + "]}}]}}}");
   }
 
   private static boolean carriesTag(JsonNode entry, String tagFqn) {
