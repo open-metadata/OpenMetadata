@@ -47,12 +47,12 @@ import {
 import { selectDomainFromNavbar } from '../../../utils/domain';
 import { setDomain } from '../../../utils/domainPicker';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
-import { loginAsIsolatedAdmin } from '../../../utils/isolatedDomainUser';
 import {
   glossaryFieldTrigger,
   pickGlossaryTermInField,
   removeGlossaryTermChip,
 } from '../../../utils/glossaryPicker';
+import { loginAsIsolatedAdmin } from '../../../utils/isolatedDomainUser';
 import { sidebarClick } from '../../../utils/sidebar';
 import {
   deleteTestCase,

@@ -46,6 +46,7 @@ import {
   visitGlossaryPage,
   waitForAntdPopupToSettle,
 } from '../../utils/common';
+import { switchNavbarDomain } from '../../utils/domain';
 import {
   addMultiOwner,
   assignGlossaryTerm,
@@ -117,7 +118,6 @@ import {
   openGlossaryPicker,
   toggleGlossaryTermInPicker,
 } from '../../utils/glossaryPicker';
-import { switchNavbarDomain } from '../../utils/domain';
 import { loginAsIsolatedAdmin } from '../../utils/isolatedDomainUser';
 import { TaskDetails, waitForTaskResolveResponse } from '../../utils/task';
 import { performUserLogin } from '../../utils/user';
