@@ -32,12 +32,11 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Form, Input, Select } from 'antd';
+import { Button, Form, Input, Select, Spin } from 'antd';
 import { AxiosError } from 'axios';
 import { FC, lazy, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
-import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
@@ -181,7 +180,7 @@ const SchemaSidebarCard: FC<{
     <Card.Content>
       {loading ? (
         <div className="text-center p-y-lg">
-          <Loader />
+          <Spin />
         </div>
       ) : (
         <div className="task-form-settings-schema-list">

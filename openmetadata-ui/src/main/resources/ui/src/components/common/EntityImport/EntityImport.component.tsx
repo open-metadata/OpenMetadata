@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Box, Card, Grid, Typography } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import { Affix, Button } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined, startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -239,7 +239,7 @@ export const EntityImport = ({
                 onCSVUploaded={handleLoadData}
               />
 
-              <div className="bg-white p-md import-preview-footer">
+              <Affix className="bg-white p-md import-preview-footer">
                 <Box
                   inline
                   align="center"
@@ -255,7 +255,7 @@ export const EntityImport = ({
                     {t('label.cancel')}
                   </Button>
                 </Box>
-              </div>
+              </Affix>
             </Grid.Item>
           </>
         )}
@@ -311,7 +311,7 @@ export const EntityImport = ({
                     {children}
                   </Grid.Item>
                 </Grid>
-                <div className="bg-white p-md import-preview-footer">
+                <Affix className="bg-white p-md import-preview-footer">
                   <Box
                     inline
                     align="center"
@@ -336,7 +336,7 @@ export const EntityImport = ({
                       </Button>
                     )}
                   </Box>
-                </div>
+                </Affix>
               </div>
             )}
           </Grid.Item>

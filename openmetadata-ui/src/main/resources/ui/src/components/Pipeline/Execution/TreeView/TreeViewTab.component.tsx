@@ -14,12 +14,11 @@
 import {
   Box,
   Card,
-  EmptyPlaceholder,
   Grid,
   Tree,
   Typography,
 } from '@openmetadata/ui-core-components';
-
+import { Empty } from 'antd';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -105,10 +104,9 @@ const TreeViewTab = ({
         </Box>
 
         {isEmpty(viewData) ? (
-          <EmptyPlaceholder
-            className="tw:static my-4"
+          <Empty
+            className="my-4"
             description={t('message.no-execution-runs-found')}
-            width="100%"
           />
         ) : (
           <Grid className="layout-row layout-grid w-full">

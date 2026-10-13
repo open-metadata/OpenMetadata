@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import { Button, Result } from 'antd';
 
 import React from 'react';
 import { FallbackProps } from 'react-error-boundary';
@@ -52,10 +51,9 @@ const ErrorFallback: React.FC<FallbackProps> = ({
   };
 
   return (
-    <EmptyPlaceholder
-      className="tw:static error-boundary-result"
-      description={message}
-      footer={
+    <Result
+      className="error-boundary-result"
+      extra={
         <Button
           className="ant-btn-primary-custom"
           type="primary"
@@ -64,8 +62,8 @@ const ErrorFallback: React.FC<FallbackProps> = ({
         </Button>
       }
       icon={<OmUpgradeIcon />}
+      subTitle={message}
       title={title}
-      width="100%"
     />
   );
 };

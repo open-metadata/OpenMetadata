@@ -19,7 +19,7 @@ import {
   Select as CoreSelect,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Form, Input, Select } from 'antd';
+import { Button, Form, Input, Select, Spin } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -535,7 +535,7 @@ const AdminPermissionDebugger: React.FC = () => {
 
           {loadingPermissions && (
             <div className="loading-container">
-              <Loader />
+              <Spin size="large" />
             </div>
           )}
 
