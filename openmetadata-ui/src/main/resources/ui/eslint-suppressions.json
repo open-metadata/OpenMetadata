@@ -1275,12 +1275,7 @@
   },
   "src/components/Settings/Team/TeamDetails/TeamsHeaderSection/TeamsInfo.component.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 5
-    }
-  },
-  "src/components/Settings/Team/TeamDetails/TeamsHeaderSection/TeamsSubscription.component.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 4
+      "count": 3
     }
   },
   "src/components/Settings/Team/TeamsSelectable/TeamsSelectable.tsx": {
