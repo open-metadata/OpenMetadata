@@ -17,9 +17,12 @@ import { EntityType } from '../enums/entity.enum';
 import { getEntityIcon } from './EntityIconUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 
-export const getServiceIcon = (source: {
-  entityType?: EntityType | string;
-}) => {
+export const getServiceIcon = (
+  source: {
+    entityType?: EntityType | string;
+  },
+  sizeClassName?: string
+) => {
   const isDataAsset = NON_SERVICE_TYPE_ASSETS.includes(
     source.entityType as EntityType
   );
@@ -30,7 +33,7 @@ export const getServiceIcon = (source: {
         ? EntityType.CLASSIFICATION
         : source.entityType;
 
-    return getEntityIcon(iconEntityType ?? '', 'service-icon w-7 h-7', {
+    return getEntityIcon(iconEntityType ?? '', `service-icon ${sizeClassName ?? 'w-7 h-7'}`, {
       color: DE_ACTIVE_COLOR,
     });
   }
@@ -41,7 +44,7 @@ export const getServiceIcon = (source: {
     <img
       aria-hidden
       alt=""
-      className="inline service-icon h-7"
+      className={`inline service-icon ${sizeClassName ?? 'h-7'}`}
       src={serviceUtilClassBase.getServiceTypeLogo(source)}
     />
   );
