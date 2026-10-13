@@ -603,12 +603,12 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     await root.press('Enter');
     const inspector = page.getByTestId('graph-inspector');
     await expect(inspector.getByRole('heading')).toBeFocused();
-    // Each row names the other endpoint and carries the predicate with its
-    // direction, so the three distinct statements to the schema stay apart.
+    // Each row renders the full subject → predicate → object triple; the arrow
+    // glyphs are aria-hidden icons, so the accessible name is space-separated.
     for (const label of [
-      'Sales schema → Belongs to',
-      'Sales schema ← Contains',
-      'Sales schema → Custom predicate',
+      'Orders Belongs to Sales schema',
+      'Sales schema Contains Orders',
+      'Orders Custom predicate Sales schema',
     ]) {
       await expect(
         inspector.getByRole('button', { name: label, exact: true })
@@ -616,7 +616,7 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     }
     await inspector
       .getByRole('button', {
-        name: 'Sales schema → Custom predicate',
+        name: 'Orders Custom predicate Sales schema',
         exact: true,
       })
       .click();
@@ -1247,7 +1247,10 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
       .getByRole('button', { name: 'Close', exact: true })
       .click();
     await bundleInspector
-      .getByRole('button', { name: 'column_000 → Has column', exact: true })
+      .getByRole('button', {
+        name: 'Orders Has column column_000',
+        exact: true,
+      })
       .click();
     await expect(
       bundleInspector.getByTestId('relationship-predicate')
@@ -1506,10 +1509,10 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
       'owns'
     );
     await expect(
-      inspector.getByRole('button', { name: 'Finance team ← Owns' })
+      inspector.getByRole('button', { name: 'Finance team Owns Orders' })
     ).toBeVisible();
     await expect(
-      inspector.getByRole('button', { name: 'Pere Miquel Brull ← Owns' })
+      inspector.getByRole('button', { name: 'Pere Miquel Brull Owns Orders' })
     ).toBeVisible();
     await inspector
       .getByRole('button', { name: 'Expand all 2 in graph', exact: true })
