@@ -781,8 +781,6 @@ const ConnectionServiceDetailsPage: React.FC = () => {
                       onAction={handleRestoreService}
                     />
                   )}
-                  {/* Stays on a soft-deleted service, as in classic: it is the only way to
-                        permanently delete one, and the modal then offers hard delete alone. */}
                   {canDelete && (
                     <Dropdown.Item
                       id="delete"
