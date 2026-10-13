@@ -242,28 +242,28 @@ test.describe(
         // Hide Explore
         await adminPage
           .getByTestId('page-layout-v1')
-          .getByText('Explore', { exact: true })
+          .getByRole('row', { name: 'Explore', exact: true })
           .locator('[data-testid^="navigation-switch-"]')
           .click();
 
         await expect(
           adminPage
             .getByTestId('page-layout-v1')
-            .getByText('Explore', { exact: true })
+            .getByRole('row', { name: 'Explore', exact: true })
             .getByRole('switch')
         ).not.toBeChecked();
 
         // Hide Metrics
         await adminPage
           .getByTestId('page-layout-v1')
-          .getByText('Metrics')
+          .getByRole('row', { name: 'Metrics', exact: true })
           .locator('[data-testid^="navigation-switch-"]')
           .click();
 
         await expect(
           adminPage
             .getByTestId('page-layout-v1')
-            .getByText('Metrics')
+            .getByRole('row', { name: 'Metrics', exact: true })
             .getByRole('switch')
         ).not.toBeChecked();
 
@@ -304,49 +304,49 @@ test.describe(
         // Show Explore
         await adminPage
           .getByTestId('page-layout-v1')
-          .getByText('Explore', { exact: true })
+          .getByRole('row', { name: 'Explore', exact: true })
           .locator('[data-testid^="navigation-switch-"]')
           .click();
 
         await expect(
           adminPage
             .getByTestId('page-layout-v1')
-            .getByText('Explore', { exact: true })
+            .getByRole('row', { name: 'Explore', exact: true })
             .getByRole('switch')
         ).toBeChecked();
 
         // Show Metrics
         await adminPage
           .getByTestId('page-layout-v1')
-          .getByText('Metrics')
+          .getByRole('row', { name: 'Metrics', exact: true })
           .locator('[data-testid^="navigation-switch-"]')
           .click();
 
         await expect(
           adminPage
             .getByTestId('page-layout-v1')
-            .getByText('Metrics')
+            .getByRole('row', { name: 'Metrics', exact: true })
             .getByRole('switch')
         ).toBeChecked();
 
         // Hide Glossary
         await adminPage
           .getByTestId('page-layout-v1')
-          .getByText('Glossary')
+          .getByRole('row', { name: 'Glossary', exact: true })
           .locator('[data-testid^="navigation-switch-"]')
           .click();
 
         await expect(
           adminPage
             .getByTestId('page-layout-v1')
-            .getByText('Glossary')
+            .getByRole('row', { name: 'Glossary', exact: true })
             .getByRole('switch')
         ).not.toBeChecked();
 
         // Hide Incident Manager
         await adminPage
           .getByTestId('page-layout-v1')
-          .getByText('Incident Manager')
+          .getByRole('row', { name: 'Incident Manager', exact: true })
           .locator('[data-testid^="navigation-switch-"]')
           .click();
         await adminPage.getByTestId('save-button').click();

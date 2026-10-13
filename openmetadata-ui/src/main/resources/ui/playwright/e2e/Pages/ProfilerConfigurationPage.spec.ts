@@ -94,13 +94,11 @@ test.describe('Profiler Configuration Page', () => {
 
       await adminPage.click('[data-testid="add-fields"]');
       await adminPage.click('[data-testid="save-button"]');
-      await adminPage
-        .locator('#metricConfiguration_0_dataType_help')
-        .waitFor({ state: 'visible' });
-
       await expect(
-        adminPage.locator('#metricConfiguration_0_dataType_help')
-      ).toHaveText(/Data Type is required/);
+        adminPage
+          .getByTestId('profiler-config-form')
+          .getByText(/Data Type is required/)
+      ).toBeVisible();
 
       await adminPage.click('[data-testid="cancel-button"]');
       await adminPage.waitForURL('**/settings/preferences', {

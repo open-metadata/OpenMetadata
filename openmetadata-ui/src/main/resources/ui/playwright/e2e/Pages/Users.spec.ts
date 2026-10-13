@@ -814,8 +814,8 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
     ).not.toBeVisible();
 
     await expect(
-      removedDefaultPersonaLabel.locator('input[type="radio"]')
-    ).not.toBeChecked();
+      removedDefaultPersonaLabel.getByText('Selected', { exact: true })
+    ).toHaveCount(0);
   });
 
   test('Should switch personas correctly', async ({ adminPage }) => {
@@ -858,10 +858,12 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
         state: 'visible',
       });
 
-      // Verify the selected persona is checked
-      const checkedRadio = adminPage.locator('input[type="radio"]:checked');
-
-      await expect(checkedRadio).toBeVisible();
+      // Verify the selected persona is marked as selected
+      await expect(
+        adminPage
+          .getByTestId('persona-label')
+          .getByText('Selected', { exact: true })
+      ).toHaveCount(1);
     }
   });
 
@@ -923,8 +925,8 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
       personaLabels.first().locator('[data-testid="default-persona-tag"]')
     ).toBeVisible();
     await expect(
-      personaLabels.first().locator('input[type="radio"]')
-    ).toBeChecked();
+      personaLabels.first().getByText('Selected', { exact: true })
+    ).toHaveCount(1);
 
     // Get the current default persona name for later verification
     const originalDefaultPersonaText = await personaLabels
@@ -995,8 +997,8 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
         .locator('[data-testid="default-persona-tag"]')
     ).toBeVisible();
     await expect(
-      updatedPersonaLabels.first().locator('input[type="radio"]')
-    ).toBeChecked();
+      updatedPersonaLabels.first().getByText('Selected', { exact: true })
+    ).toHaveCount(1);
 
     // Close dropdown
     await adminPage.keyboard.press('Escape');
@@ -1059,8 +1061,8 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
       ).not.toBeVisible();
 
       await expect(
-        userPersonaLabel.locator('input[type="radio"]')
-      ).not.toBeChecked();
+        userPersonaLabel.getByText('Selected', { exact: true })
+      ).toHaveCount(0);
     }
   });
 });

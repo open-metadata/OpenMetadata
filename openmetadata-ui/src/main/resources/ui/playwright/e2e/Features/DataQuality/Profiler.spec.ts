@@ -312,7 +312,8 @@ test.describe(
           .click();
 
         await page
-          .locator('#includeColumnsProfiler_partitionColumnName')
+          .getByTestId('profiler-settings-modal')
+          .getByTestId('column-name')
           .click();
         await page
           .locator('.ant-select-dropdown')

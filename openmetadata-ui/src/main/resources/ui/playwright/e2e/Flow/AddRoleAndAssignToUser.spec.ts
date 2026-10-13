@@ -94,7 +94,9 @@ test.describe.serial('Add role and assign it to the user', () => {
     await page.click('[data-testid="password-generator"]');
     await generatePasswordResponse;
 
-    await expect(page.locator('#generatedPassword')).toHaveValue(/\S+/);
+    await expect(page.locator('input[name="generatedPassword"]')).toHaveValue(
+      /\S+/
+    );
 
     await page.click('[data-testid="roles-dropdown"]');
     await page.locator('.ant-select-dropdown').waitFor({
