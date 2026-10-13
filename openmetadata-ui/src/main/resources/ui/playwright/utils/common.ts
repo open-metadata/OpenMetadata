@@ -1548,11 +1548,9 @@ export const testCompletePaginationWithSearch = async (
   await waitForAllLoadersToDisappear(page);
 
   const nextButton = page.locator('[data-testid="next"]');
-  // Matches only once the page has advanced, so clickUntilVisible re-clicks
-  // Next only while the previous click had no effect.
   const page2Indicator = page
     .getByTestId('page-indicator')
-    .filter({ hasText: /\b2\s*of\s*\d+/ });
+    .filter({ hasText: /\b2 of \d+/ });
   await expect(page.getByTestId('previous')).toBeDisabled();
 
   const page2ResponsePromise = page.waitForResponse((response) =>
