@@ -20,7 +20,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { LabelType, TagSource } from '../../../generated/type/tagLabel';
+import { LabelType, State, TagSource } from '../../../generated/type/tagLabel';
 import { ASYNC_SELECT_MOCK } from '../../../mocks/AsyncSelect.mock';
 import AsyncSelectList from './AsyncSelectList';
 
@@ -105,6 +105,7 @@ describe('Test AsyncSelect List Component', () => {
           tagFQN: 'Finance.Revenue',
           source: TagSource.Glossary,
           labelType: LabelType.Derived,
+          state: State.Confirmed,
         },
       },
       {
@@ -115,6 +116,7 @@ describe('Test AsyncSelect List Component', () => {
           tagFQN: 'PII.Sensitive',
           source: TagSource.Classification,
           labelType: LabelType.Derived,
+          state: State.Confirmed,
         },
       },
       {
@@ -125,6 +127,7 @@ describe('Test AsyncSelect List Component', () => {
           tagFQN: 'Lineage.Upstream',
           source: TagSource.Classification,
           labelType: LabelType.Propagated,
+          state: State.Confirmed,
         },
       },
     ];
