@@ -318,7 +318,7 @@ const SSOConfigurationFormRJSF = ({
             data-testid="file-uploader"
             hint={t('message.upload-saml-metadata-xml-description')}
             input-data-testid="file-upload-input"
-            orDragAndDropLabel={t('label.or-drag-and-drop')}
+            orDragAndDropLabel={t('label.or-drag-and-drop-an-xml-file-here')}
             onDropFiles={handleMetadataFileUpload}
             onDropUnacceptedFiles={handleMetadataFileUpload}
           />

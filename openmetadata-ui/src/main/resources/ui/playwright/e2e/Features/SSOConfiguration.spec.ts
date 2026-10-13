@@ -854,7 +854,7 @@ test.describe('SAML Metadata XML Upload', () => {
     await enableSSOEditMode(page);
     await selectSSOProvider(page, 'saml');
 
-    const dropZone = page.getByTestId('file-upload-drop-zone');
+    const dropZone = page.getByTestId('file-uploader');
 
     await expect(dropZone).toBeVisible();
     await expect(
@@ -875,8 +875,8 @@ test.describe('SAML Metadata XML Upload', () => {
     await selectSSOProvider(page, 'saml');
 
     await test.step('Wait for drop zone and upload valid SAML metadata XML', async () => {
-      await expect(page.getByTestId('file-upload-drop-zone')).toBeVisible();
-      const fileInput = page.getByTestId('file-uploader');
+      await expect(page.getByTestId('file-uploader')).toBeVisible();
+      const fileInput = page.getByTestId('file-upload-input');
 
       await fileInput.setInputFiles(VALID_SAML_XML);
     });
@@ -914,9 +914,9 @@ test.describe('SAML Metadata XML Upload', () => {
 
     await test.step('Click change file and upload invalid SAML metadata XML', async () => {
       await page.getByTestId('change-metadata-xml-btn').click();
-      await expect(page.getByTestId('file-upload-drop-zone')).toBeVisible();
+      await expect(page.getByTestId('file-uploader')).toBeVisible();
 
-      const fileInput = page.getByTestId('file-uploader');
+      const fileInput = page.getByTestId('file-upload-input');
 
       await fileInput.setInputFiles(INVALID_SAML_XML);
     });
@@ -970,9 +970,9 @@ test.describe('SAML Metadata XML Upload', () => {
     await selectSSOProvider(page, 'saml');
 
     await test.step('Upload Okta SAML metadata XML', async () => {
-      await expect(page.getByTestId('file-upload-drop-zone')).toBeVisible();
+      await expect(page.getByTestId('file-uploader')).toBeVisible();
 
-      await page.getByTestId('file-uploader').setInputFiles(OKTA_SAML_XML);
+      await page.getByTestId('file-upload-input').setInputFiles(OKTA_SAML_XML);
 
       await expect(page.getByTestId('change-metadata-xml-btn')).toBeVisible();
       await expect(

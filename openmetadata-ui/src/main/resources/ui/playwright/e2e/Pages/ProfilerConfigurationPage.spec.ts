@@ -119,54 +119,62 @@ test.describe('Profiler Configuration Page', () => {
 
       await removeAllMetricConfigRows(adminPage);
 
-      await adminPage.click('[data-testid="add-fields"]');
-      await adminPage.click('#metricConfiguration_0_dataType');
-      await adminPage.fill('#metricConfiguration_0_dataType', 'AGG_STATE');
-      await adminPage.click(`[title="AGG_STATE"]`);
-      await adminPage.click('#metricConfiguration_0_metrics');
-      await adminPage.fill('#metricConfiguration_0_metrics', 'All');
-      await adminPage.getByRole('tree').getByText('All').click();
-      await clickOutside(adminPage);
-
-      await adminPage.click('[data-testid="add-fields"]');
-      await adminPage.click('#metricConfiguration_1_dataType');
-
-      await expect(
-        adminPage.locator(`[title="AGG_STATE"]:has(:visible)`)
-      ).toHaveClass(/ant-select-item-option-disabled/);
-
-      await adminPage.fill(
-        '#metricConfiguration_1_dataType',
-        'AGGREGATEFUNCTION'
+      const metricRow = (index: number) =>
+        adminPage.getByTestId(`metric-row-${index}`);
+      const dataTypeOption = (dataType: string) =>
+        adminPage
+          .locator('.ant-select-dropdown:visible')
+          .getByTitle(dataType, { exact: true });
+      const metricsPopover = adminPage.getByTestId(
+        'metric-type-select-popover'
       );
-      await adminPage.click(`[title="AGGREGATEFUNCTION"]:has(:visible)`);
+      const searchMetrics = async (index: number, search: string) => {
+        await metricRow(index)
+          .getByTestId('metric-type-select')
+          .getByRole('combobox')
+          .fill(search);
+        await expect(metricsPopover).toBeVisible();
+      };
 
-      await adminPage.click('#metricConfiguration_1_metrics');
-      await adminPage.fill('#metricConfiguration_1_metrics', 'column');
-      await adminPage.click(`[title="Column Count"]:has(:visible)`);
-      await adminPage.click(`[title="Column Names"]:has(:visible)`);
+      await adminPage.click('[data-testid="add-fields"]');
+      await metricRow(0).getByTestId('data-type-select').click();
+      await adminPage.keyboard.type('AGG_STATE');
+      await dataTypeOption('AGG_STATE').click();
+      await searchMetrics(0, 'All');
+      await metricsPopover.getByText('All', { exact: true }).click();
       await clickOutside(adminPage);
 
       await adminPage.click('[data-testid="add-fields"]');
-      await adminPage.click('#metricConfiguration_2_dataType');
+      await metricRow(1).getByTestId('data-type-select').click();
 
-      await expect(
-        adminPage.locator(`[title="AGG_STATE"]:has(:visible)`)
-      ).toHaveClass(/ant-select-item-option-disabled/);
-      await expect(
-        adminPage.locator(`[title="AGGREGATEFUNCTION"]:has(:visible)`)
-      ).toHaveClass(/ant-select-item-option-disabled/);
+      await expect(dataTypeOption('AGG_STATE')).toHaveClass(
+        /ant-select-item-option-disabled/
+      );
 
-      await adminPage.click(`[title="ARRAY"]:has(:visible)`);
-      await adminPage.click('#metricConfiguration_2_metrics');
-      await adminPage.fill('#metricConfiguration_2_metrics', 'All');
-      await adminPage.getByRole('tree').getByText('All').click();
+      await adminPage.keyboard.type('AGGREGATEFUNCTION');
+      await dataTypeOption('AGGREGATEFUNCTION').click();
+
+      await searchMetrics(1, 'column');
+      await metricsPopover.getByText('Column Count', { exact: true }).click();
+      await metricsPopover.getByText('Column Names', { exact: true }).click();
       await clickOutside(adminPage);
 
-      // The visible track covers the hidden switch input, so click its label.
-      await adminPage
-        .locator('label:has(#metricConfiguration_2_disabled)')
-        .click();
+      await adminPage.click('[data-testid="add-fields"]');
+      await metricRow(2).getByTestId('data-type-select').click();
+
+      await expect(dataTypeOption('AGG_STATE')).toHaveClass(
+        /ant-select-item-option-disabled/
+      );
+      await expect(dataTypeOption('AGGREGATEFUNCTION')).toHaveClass(
+        /ant-select-item-option-disabled/
+      );
+
+      await dataTypeOption('ARRAY').click();
+      await searchMetrics(2, 'All');
+      await metricsPopover.getByText('All', { exact: true }).click();
+      await clickOutside(adminPage);
+
+      await metricRow(2).getByTestId('disabled-switch').click();
 
       const settingRes = adminPage.waitForResponse('/api/v1/system/settings');
       await adminPage.click('[data-testid="save-button"]');

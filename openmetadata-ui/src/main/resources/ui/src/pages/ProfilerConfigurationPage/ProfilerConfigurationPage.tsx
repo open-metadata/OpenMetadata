@@ -29,7 +29,7 @@ import {
 import { Select } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isEqual, values } from 'lodash';
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -246,7 +246,10 @@ const ProfilerConfigurationPage = () => {
                       {t('label.disable')}
                     </Grid.Item>
                     {fields.map(({ id }, name) => (
-                      <Fragment key={id}>
+                      <div
+                        className="tw:contents"
+                        data-testid={`metric-row-${name}`}
+                        key={id}>
                         <Grid.Item className="layout-column" span={10}>
                           <FormField
                             control={form.control}
@@ -359,7 +362,7 @@ const ProfilerConfigurationPage = () => {
                             />
                           </div>
                         </Grid.Item>
-                      </Fragment>
+                      </div>
                     ))}
 
                     <Grid.Item className="layout-column" span={24}>

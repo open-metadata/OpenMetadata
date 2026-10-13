@@ -103,7 +103,10 @@ test.describe.serial('Add role and assign it to the user', () => {
       state: 'visible',
     });
     const rolesSearchResponse = page.waitForResponse('/api/v1/roles/search?*');
-    await page.fill('#roles', roleName);
+    await page
+      .getByTestId('roles-dropdown')
+      .getByRole('combobox')
+      .fill(roleName);
     await rolesSearchResponse;
     await page.click(`[title="${roleName}"]`);
 

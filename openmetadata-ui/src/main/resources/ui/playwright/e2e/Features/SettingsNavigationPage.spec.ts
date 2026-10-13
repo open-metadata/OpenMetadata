@@ -69,7 +69,7 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     await navigateToPersonaNavigation(page);
 
     // Verify page loads with expected elements
-    await expect(page.getByRole('tree')).toBeVisible();
+    await expect(page.getByRole('treegrid')).toBeVisible();
     await expect(page.getByTestId('save-button')).toBeVisible();
     await expect(page.getByTestId('reset-button')).toBeVisible();
 
