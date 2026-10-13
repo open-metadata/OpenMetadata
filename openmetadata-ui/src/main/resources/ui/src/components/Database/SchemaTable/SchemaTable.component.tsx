@@ -648,6 +648,11 @@ const SchemaTable = () => {
 
   const handleColumnClick = useCallback(
     (column: Column, event: React.MouseEvent) => {
+      // A click that ends a text-selection drag is a copy gesture, not a request to open the panel.
+      if (window.getSelection()?.toString()) {
+        return;
+      }
+
       const target = event.target as HTMLElement;
       const isExpandIcon = target.closest('.table-expand-icon') !== null;
       const isButton = target.closest('button') !== null;
