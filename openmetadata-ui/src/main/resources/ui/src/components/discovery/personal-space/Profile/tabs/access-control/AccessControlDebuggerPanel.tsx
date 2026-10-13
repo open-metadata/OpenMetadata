@@ -162,8 +162,9 @@ const AccessControlDebuggerPanel: FC = () => {
 
     return (
       <Card
-        className="tw:mt-4 tw:overflow-hidden tw:border-secondary tw:dark:bg-secondary"
-        data-testid="evaluation-result">
+        className="tw:mt-4 tw:overflow-hidden"
+        data-testid="evaluation-result"
+        variant="secondary">
         <Box
           className={`tw:px-6 tw:py-4 tw:border-b-2 ${
             evaluationInfo.allowed
@@ -363,10 +364,7 @@ const AccessControlDebuggerPanel: FC = () => {
       direction="col"
       gap={4}>
       {/* Card 1: Select a user */}
-      <Card
-        className="tw:border-secondary tw:dark:bg-secondary tw:p-6"
-        direction="col"
-        gap={4}>
+      <Card className="tw:p-6" direction="col" gap={4} variant="secondary">
         <Typography weight="semibold">
           {t('label.select-user-to-debug-permissions')}
         </Typography>
@@ -401,7 +399,7 @@ const AccessControlDebuggerPanel: FC = () => {
       </Card>
 
       {/* Card 2: Evaluate Permission */}
-      <Card className="tw:border-secondary tw:dark:bg-secondary tw:overflow-hidden">
+      <Card className="tw:overflow-hidden" variant="secondary">
         <Box className="tw:px-6 tw:py-4 tw:border-b tw:border-secondary">
           <Typography
             className="tw:text-primary"
@@ -518,7 +516,7 @@ const AccessControlDebuggerPanel: FC = () => {
 
       {/* Card 4: Permissions for {username} (only after user is selected) */}
       {selectedUsername && (
-        <Card className="tw:border-secondary tw:dark:bg-secondary tw:overflow-hidden tw:w-full">
+        <Card className="tw:overflow-hidden tw:w-full" variant="secondary">
           <Box className="tw:px-6 tw:py-4 tw:border-b tw:border-secondary">
             <Typography
               className="tw:text-primary"

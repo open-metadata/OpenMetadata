@@ -31,7 +31,6 @@ import globalSettingsClassBase from '../../../../../../utils/GlobalSettingsClass
 import { SettingMenuItem } from '../../../../../../utils/GlobalSettingsUtils';
 import { userPermissions } from '../../../../../../utils/PermissionsUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
-import { LANDING_CARD_CLASS } from '../../ProfilePage.constants';
 import {
   ENTITY_GROUP_MAP,
   GROUP_LABEL_KEYS,
@@ -145,12 +144,12 @@ const CustomPropertiesLandingPage: React.FC<
                 <Card
                   isClickable
                   aria-busy={isCurrentLoading}
-                  className={LANDING_CARD_CLASS}
                   data-testid={`entity-type-card-${entityTypeName}`}
                   key={item.key}
                   role="button"
                   size="md"
                   tabIndex={0}
+                  variant="secondary"
                   onClick={() =>
                     !isCurrentLoading &&
                     handleCardClick(entityTypeName, item.key)

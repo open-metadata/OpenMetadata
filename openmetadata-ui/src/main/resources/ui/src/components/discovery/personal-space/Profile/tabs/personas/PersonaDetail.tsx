@@ -424,7 +424,9 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
       data-testid="persona-detail-container"
       direction="col"
       gap={4}>
-      <Card className="tw:border-secondary tw:dark:bg-secondary tw:flex tw:flex-col tw:gap-2 tw:mb-2 tw:p-3">
+      <Card
+        className="tw:flex tw:flex-col tw:gap-2 tw:mb-2 tw:p-3"
+        variant="secondary">
         <Box align="center" direction="row" gap={2}>
           <Typography className="tw:text-primary" weight="medium">
             {t('label.description')}

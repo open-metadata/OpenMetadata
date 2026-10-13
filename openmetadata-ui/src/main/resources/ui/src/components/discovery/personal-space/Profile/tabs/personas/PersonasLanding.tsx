@@ -36,7 +36,6 @@ import { getAllPersonas } from '../../../../../../rest/PersonaAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
-import { LANDING_CARD_CLASS } from '../../ProfilePage.constants';
 import type { PersonaView } from './Personas.types';
 
 const MAX_CURSOR_CACHE_PAGES = 100;
@@ -191,12 +190,12 @@ const PersonasLanding = ({ onNavigate }: PersonasLandingProps) => {
           : personas.map((persona) => (
               <Card
                 isClickable
-                className={LANDING_CARD_CLASS}
                 data-testid={`persona-card-${persona.name}`}
                 key={persona.id}
                 role="button"
                 size="md"
                 tabIndex={0}
+                variant="secondary"
                 onClick={() =>
                   onNavigate({
                     type: 'detail',

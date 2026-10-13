@@ -16,7 +16,6 @@ import { useMemo } from 'react';
 import { PageTypeToEntityTypeMap } from '../../../../../../../pages/CustomizeDetailsPage/CustomizeDetailPage.interface';
 import { getEntityIconWithBg } from '../../../../../../../utils/Assets/AssetsUtils';
 import { getCustomizePageOptions } from '../../../../../../../utils/Persona/PersonaUtils';
-import { LANDING_CARD_CLASS } from '../../../ProfilePage.constants';
 
 interface SubCategoryGridProps {
   baseCategory: string;
@@ -45,12 +44,12 @@ const SubCategoryGrid = ({
         return (
           <Card
             isClickable
-            className={LANDING_CARD_CLASS}
             data-testid={`sub-category-card-${option.key}`}
             key={option.key}
             role="button"
             size="md"
             tabIndex={0}
+            variant="secondary"
             onClick={() => onSelectEntity(option.key)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {

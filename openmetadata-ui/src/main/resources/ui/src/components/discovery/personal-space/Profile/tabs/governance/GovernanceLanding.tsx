@@ -18,7 +18,6 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LANDING_CARD_CLASS } from '../../ProfilePage.constants';
 import { GovernanceView } from './Governance.types';
 
 interface LandingCard {
@@ -63,11 +62,11 @@ const GovernanceLanding: FC<GovernanceLandingProps> = ({ onNavigate }) => {
         return (
           <Card
             isClickable
-            className={LANDING_CARD_CLASS}
             key={card.id}
             role="button"
             size="md"
             tabIndex={0}
+            variant="secondary"
             onClick={() => onNavigate(card.view)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {

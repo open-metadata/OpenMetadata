@@ -19,7 +19,6 @@ import { usePermissionProvider } from '../../../../../../../context/PermissionPr
 import { useAuth } from '../../../../../../../hooks/authHooks';
 import { getEntityIconWithBg } from '../../../../../../../utils/Assets/AssetsUtils';
 import { getSearchSettingCategories } from '../../../../../../../utils/SearchSettingsUtils';
-import { LANDING_CARD_CLASS } from '../../../ProfilePage.constants';
 import type { PlatformSettingsPageProps } from '../PlatformSettings.types';
 import { SearchSectionTitle } from './SearchSection';
 
@@ -56,12 +55,12 @@ const SearchEntityCards = ({
           return (
             <Card
               isClickable
-              className={LANDING_CARD_CLASS}
               data-testid={`search-entity-card-${itemId}`}
               key={category.key}
               role="button"
               size="md"
               tabIndex={0}
+              variant="secondary"
               onClick={open}
               onKeyDown={(event) => {
                 if (event.key === 'Enter' || event.key === ' ') {

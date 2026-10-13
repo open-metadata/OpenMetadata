@@ -24,7 +24,10 @@ const meta = {
     variant: {
       control: false,
       table: {
-        type: { summary: '"default" | "elevated" | "outlined" | "ghost"' },
+        type: {
+          summary:
+            '"default" | "elevated" | "outlined" | "ghost" | "secondary"',
+        },
       },
     },
     color: {
@@ -146,7 +149,7 @@ export const WithSubComponents: StoryObj = {
 export const Variants: StoryObj = {
   render: () => (
     <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-      {(['default', 'elevated', 'outlined', 'ghost'] as const).map(
+      {(['default', 'elevated', 'outlined', 'ghost', 'secondary'] as const).map(
         (variant) => (
           <div key={variant} style={{ width: 200 }}>
             <Card variant={variant}>

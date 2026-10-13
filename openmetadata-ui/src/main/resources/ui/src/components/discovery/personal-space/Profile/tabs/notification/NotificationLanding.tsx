@@ -22,7 +22,6 @@ import {
   NotificationSectionContribution,
 } from '../../../../../../utils/ExtensionPointTypes';
 import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
-import { LANDING_CARD_CLASS } from '../../ProfilePage.constants';
 import type {
   NotificationLandingCard,
   NotificationLandingProps,
@@ -76,11 +75,11 @@ const NotificationLanding: FC<NotificationLandingProps> = ({ onNavigate }) => {
         return (
           <Card
             isClickable
-            className={LANDING_CARD_CLASS}
             key={card.id}
             role="button"
             size="md"
             tabIndex={0}
+            variant="secondary"
             onClick={() => onNavigate(card.view)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {

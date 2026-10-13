@@ -79,9 +79,9 @@ const MatchingFieldCard = ({
 
   return (
     <Card
-      className="tw:border-secondary tw:dark:bg-secondary"
       data-testid={`field-configuration-panel-${field.field}`}
-      size="sm">
+      size="sm"
+      variant="secondary">
       <Card.Content>
         <Box direction="col" gap={3}>
           <Box align="center" direction="row" gap={2} justify="between">

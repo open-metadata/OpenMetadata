@@ -13,7 +13,6 @@
 
 import { Badge, Box, Card, Typography } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
-import { LANDING_CARD_CLASS } from '../../ProfilePage.constants';
 import type {
   PlatformSettingsPage,
   PlatformSettingsView,
@@ -42,12 +41,12 @@ const PlatformSettingsLanding = ({
         return (
           <Card
             isClickable
-            className={LANDING_CARD_CLASS}
             data-testid={`platform-settings-card-${page.id}`}
             key={page.id}
             role="button"
             size="md"
             tabIndex={0}
+            variant="secondary"
             onClick={open}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {

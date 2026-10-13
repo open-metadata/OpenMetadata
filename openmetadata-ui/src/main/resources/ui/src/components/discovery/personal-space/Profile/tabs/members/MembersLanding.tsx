@@ -19,7 +19,6 @@ import { useTranslation } from 'react-i18next';
 import { EXTENSION_POINTS } from '../../../../../../utils/extensionPoints';
 import type { MembersSectionContribution } from '../../../../../../utils/ExtensionPointTypes';
 import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
-import { LANDING_CARD_CLASS } from '../../ProfilePage.constants';
 import { LANDING_CARDS } from './Members.constants';
 import type { MembersLandingCard, MembersSubPanelProps } from './Members.types';
 
@@ -53,9 +52,9 @@ const MembersLanding: FC<MembersSubPanelProps> = ({ onNavigate }) => {
         return (
           <Card
             isClickable
-            className={LANDING_CARD_CLASS}
             key={card.id}
             size="md"
+            variant="secondary"
             onClick={() => onNavigate(card.view)}>
             <Card.Content>
               <Box

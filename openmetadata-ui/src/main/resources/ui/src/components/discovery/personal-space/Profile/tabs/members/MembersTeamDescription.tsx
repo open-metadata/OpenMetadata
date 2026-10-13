@@ -38,7 +38,7 @@ const MembersTeamDescription: FC<MembersTeamDescriptionProps> = ({
   const { t } = useTranslation();
 
   return (
-    <Card className="tw:border-secondary tw:dark:bg-secondary tw:mx-8 tw:mb-6">
+    <Card className="tw:mx-8 tw:mb-6" variant="secondary">
       <Card.Content className="tw:px-3">
         <Box direction="col" gap={2}>
           <Box align="center" direction="row" gap={2}>

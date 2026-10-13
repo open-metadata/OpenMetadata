@@ -14,7 +14,6 @@
 import { Box, Card, Typography } from '@openmetadata/ui-core-components';
 import { useMemo } from 'react';
 import { getCustomizePageCategories } from '../../../../../../utils/Persona/PersonaUtils';
-import { LANDING_CARD_CLASS } from '../../ProfilePage.constants';
 import { PERSONA_CATEGORY_ICONS } from './personaCategoryIcons';
 
 interface PersonaCustomizeGridProps {
@@ -37,12 +36,12 @@ const PersonaCustomizeGrid = ({
         return (
           <Card
             isClickable
-            className={LANDING_CARD_CLASS}
             data-testid={`customize-card-${category.key}`}
             key={category.key}
             role="button"
             size="md"
             tabIndex={0}
+            variant="secondary"
             onClick={() => handler(category.key)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {

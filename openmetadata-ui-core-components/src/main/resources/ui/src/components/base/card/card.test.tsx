@@ -43,4 +43,20 @@ describe('Card theme roles', () => {
       expect(screen.getByTestId('card')).toHaveClass('tw:bg-surface');
     }
   );
+
+  it('secondary variant matches the Explore card and lifts on hover when clickable', () => {
+    render(
+      <Card isClickable data-testid="card" variant="secondary">
+        Content
+      </Card>
+    );
+
+    expect(screen.getByTestId('card')).toHaveClass(
+      'tw:border-secondary',
+      'tw:bg-surface',
+      'tw:dark:bg-secondary',
+      'tw:hover:shadow-lg',
+      'tw:motion-safe:hover:-translate-y-0.5'
+    );
+  });
 });

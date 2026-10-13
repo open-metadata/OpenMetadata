@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
+import { Card, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { Radio, RadioGroup } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
@@ -47,12 +47,9 @@ const SsoProviderGrid = ({
       <div className="tw:grid tw:grid-cols-1 tw:gap-4 tw:sm:grid-cols-2 tw:xl:grid-cols-4">
         {PROVIDER_OPTIONS.map((provider) => (
           <Radio
-            className={({ isSelected, isFocusVisible }) =>
+            className={({ isFocusVisible }) =>
               classNames(
-                'tw:flex tw:cursor-pointer tw:items-center tw:gap-4 tw:rounded-xl tw:border tw:bg-surface tw:p-4 tw:transition-colors tw:duration-100',
-                isSelected
-                  ? 'tw:border-brand tw:bg-brand-primary_alt tw:dark:bg-secondary'
-                  : 'tw:border-secondary tw:dark:bg-secondary tw:hover:bg-primary_hover',
+                'tw:cursor-pointer tw:rounded-xl',
                 isFocusVisible &&
                   'tw:outline-2 tw:outline-offset-2 tw:outline-focus-ring'
               )
@@ -60,12 +57,20 @@ const SsoProviderGrid = ({
             data-testid={`sso-provider-${provider.key}`}
             key={provider.key}
             value={provider.key}>
-            <span className="tw:flex tw:size-12 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg tw:border tw:border-secondary tw:bg-surface">
-              <SsoProviderIcon icon={provider.icon} />
-            </span>
-            <Typography size="text-md" weight="semibold">
-              {provider.label}
-            </Typography>
+            {({ isSelected }) => (
+              <Card
+                isClickable
+                className="tw:flex tw:items-center tw:gap-4 tw:p-4"
+                isSelected={isSelected}
+                variant="secondary">
+                <span className="tw:flex tw:size-12 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg tw:border tw:border-secondary tw:bg-surface">
+                  <SsoProviderIcon icon={provider.icon} />
+                </span>
+                <Typography size="text-md" weight="semibold">
+                  {provider.label}
+                </Typography>
+              </Card>
+            )}
           </Radio>
         ))}
       </div>
