@@ -131,11 +131,24 @@ const KPIFormFields = ({ form, chartItems, isEditing }: KPIFormFieldsProps) => {
         control={form.control}
         name="targetValue"
         rules={{
-          validate: (value) =>
-            value >= 0 ||
-            t('message.field-text-is-required', {
-              fieldText: t('label.metric-value'),
-            }),
+          validate: (value) => {
+            if (Number.isNaN(value) || value < 0) {
+              return t('message.field-text-is-required', {
+                fieldText: t('label.metric-value'),
+              });
+            }
+
+            // A percentage target is capped at 100, as the antd InputNumber max did.
+            return (
+              form.getValues('metricType') !== KpiTargetType.Percentage ||
+              value <= 100 ||
+              t('message.entity-size-in-between', {
+                entity: t('label.metric-value'),
+                min: 0,
+                max: 100,
+              })
+            );
+          },
         }}>
         {({ field, fieldState }) => {
           const isPercentage = metricType === KpiTargetType.Percentage;
