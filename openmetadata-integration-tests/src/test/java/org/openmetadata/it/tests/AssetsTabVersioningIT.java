@@ -20,6 +20,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.it.util.UriTestUtils.encodeURIComponent;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.net.URI;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -138,6 +140,7 @@ public class AssetsTabVersioningIT {
   private static final String TAGS_FIELD = "tags";
   private static final String COLUMN_TAGS_FIELD = "columns." + COLUMN + ".tags";
   private static final String CERTIFICATION_GOLD = "Certification.Gold";
+  private static final String APPLIED_AT = "appliedAt";
   private static final Double CREATED_VERSION = 0.1;
   private static final Double FIRST_EDIT_VERSION = 0.2;
   private static final int LARGE_SELECTION = 250;
@@ -1235,8 +1238,16 @@ public class AssetsTabVersioningIT {
         changedFields(tabEvent.getChangeDescription()));
   }
 
+  // A label's appliedAt is the second its write ran, so the two writes can differ there.
   private static String fieldJson(Table table, String field) {
-    return JsonUtils.readTree(JsonUtils.pojoToJson(table)).path(field).toString();
+    JsonNode value = JsonUtils.readTree(JsonUtils.pojoToJson(table)).path(field);
+    value.forEach(
+        item -> {
+          if (item instanceof ObjectNode label) {
+            label.remove(APPLIED_AT);
+          }
+        });
+    return value.toString();
   }
 
   private static Column column(Table table) {
