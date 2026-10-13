@@ -20,6 +20,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 
 import io.lettuce.core.RedisClient;
+import io.lettuce.core.RedisException;
 import io.lettuce.core.RedisFuture;
 import io.lettuce.core.RedisURI;
 import io.lettuce.core.api.StatefulRedisConnection;
@@ -29,6 +30,10 @@ import java.lang.reflect.Field;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -155,6 +160,89 @@ class RedisCacheProviderUnconfirmedWritesTest {
     provider.healthCheck();
     assertTrue(provider.available());
     assertEquals(0L, redis.exists(firstKey, racingKey));
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void recoversWhenAWritingRequestArrivesDuringEveryCleanup() throws Exception {
+    String key = "om-test:continuous-writes";
+    redis.set(key, "before-outage");
+    pauseRedis();
+    for (int failure = 0; failure < FAILURES_TO_OPEN_BREAKER; failure++) {
+      provider.get("om-test:probe");
+    }
+    unpauseRedisIfPaused();
+    assertFalse(provider.available());
+
+    AtomicReference<FutureTask<Boolean>> racingWrite = new AtomicReference<>();
+    RedisAsyncCommands<String, String> commands =
+        mock(RedisAsyncCommands.class, delegatesTo(connection.async()));
+    doAnswer(
+            invocation -> {
+              FutureTask<Boolean> write =
+                  new FutureTask<>(() -> provider.trySet(key, "fresh", TTL));
+              racingWrite.set(write);
+              Thread writer = new Thread(write);
+              writer.start();
+              Awaitility.await()
+                  .atMost(Duration.ofSeconds(5))
+                  .until(() -> writer.getState() == Thread.State.BLOCKED || write.isDone());
+              assertFalse(provider.available());
+              assertEquals(Optional.empty(), provider.get(key));
+              return connection.async().unlink(key);
+            })
+        .when(commands)
+        .unlink(key);
+    Field asyncCommands = RedisCacheProvider.class.getDeclaredField("asyncCommands");
+    asyncCommands.setAccessible(true);
+    asyncCommands.set(provider, commands);
+
+    for (int check = 0; check < 3; check++) {
+      provider.set(key, "during-outage", TTL);
+      provider.healthCheck();
+      boolean applied = racingWrite.get().get(5, TimeUnit.SECONDS);
+      assertEquals(check == 2, applied, "the racing write must reach Redis on recovery");
+    }
+
+    assertTrue(provider.available(), "healthy Redis must recover despite continuous writes");
+    assertEquals(Optional.of("fresh"), provider.get(key));
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void failedCleanupKeepsReadsDisabledAndRetriesTheTrackedKeys() throws Exception {
+    String key = "om-test:failed-cleanup";
+    redis.set(key, "before-outage");
+    pauseRedis();
+    for (int failure = 0; failure < FAILURES_TO_OPEN_BREAKER; failure++) {
+      provider.get("om-test:probe");
+    }
+    unpauseRedisIfPaused();
+    provider.healthCheck();
+    provider.healthCheck();
+    provider.set(key, "during-outage", TTL);
+
+    RedisAsyncCommands<String, String> commands =
+        mock(RedisAsyncCommands.class, delegatesTo(connection.async()));
+    doAnswer(
+            invocation -> {
+              throw new RedisException("cleanup failed");
+            })
+        .when(commands)
+        .unlink(key);
+    Field asyncCommands = RedisCacheProvider.class.getDeclaredField("asyncCommands");
+    asyncCommands.setAccessible(true);
+    asyncCommands.set(provider, commands);
+
+    provider.healthCheck();
+
+    assertFalse(provider.available());
+    assertEquals(Optional.empty(), provider.get(key));
+    assertEquals("before-outage", redis.get(key));
+    asyncCommands.set(provider, connection.async());
+    recover();
+    assertTrue(provider.available());
+    assertEquals(0L, redis.exists(key));
   }
 
   @Test

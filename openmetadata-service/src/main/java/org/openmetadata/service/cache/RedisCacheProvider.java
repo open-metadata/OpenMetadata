@@ -73,10 +73,11 @@ public class RedisCacheProvider implements CacheProvider {
   private volatile boolean available = false;
   private final ConcurrentLinkedDeque<Long> failureTimestamps = new ConcurrentLinkedDeque<>();
   private final AtomicInteger consecutiveSuccesses = new AtomicInteger(0);
-  // Serializes the recordSuccess / recordFailure / pruneOldFailures state transitions so a
-  // concurrent failure can't slip in between the success path's read of `available` and its
-  // write, and vice versa. The methods themselves are not on the hot path (one call per Redis
-  // op outcome), so the lock cost is negligible compared to the round-trip we're already paying.
+  // Cleanup and recovery share this lock with skipped/failed-write tracking. Otherwise steady
+  // traffic can refill the tracker during every cleanup and prevent a healthy Redis from
+  // recovering.
+  // Writers that find Redis unavailable wait through the bounded cleanup, then recheck
+  // availability.
   private final Object stateLock = new Object();
 
   // A write skipped while unavailable, or one that failed, leaves Redis holding the value from
@@ -144,8 +145,10 @@ public class RedisCacheProvider implements CacheProvider {
         recordFailure(new IllegalStateException("Unexpected PING reply: " + reply));
         return;
       }
-      deleteUnconfirmedWrites();
-      recordSuccess();
+      synchronized (stateLock) {
+        deleteUnconfirmedWrites();
+        recordSuccess();
+      }
     } catch (Exception e) {
       recordFailure(e);
     }
@@ -204,8 +207,10 @@ public class RedisCacheProvider implements CacheProvider {
   }
 
   private void recordWriteFailure(Exception e, Collection<String> writtenKeys) {
-    unconfirmedWrites.record(writtenKeys);
-    recordFailure(e);
+    synchronized (stateLock) {
+      unconfirmedWrites.record(writtenKeys);
+      recordFailure(e);
+    }
   }
 
   /**
@@ -223,9 +228,8 @@ public class RedisCacheProvider implements CacheProvider {
     synchronized (stateLock) {
       if (!available) {
         int n = consecutiveSuccesses.incrementAndGet();
-        // Skipped writes are recorded under this lock too. If a write arrived during cleanup,
-        // keep reads disabled until the next health check deletes it. Publishing availability
-        // before a second cleanup let readers cache the stale value in that gap.
+        // Late successful operations also reach this method; only recovery with no pending
+        // stale keys can enable reads.
         if (n >= RECOVERY_THRESHOLD && unconfirmedWrites.isEmpty()) {
           available = true;
           failureTimestamps.clear();
