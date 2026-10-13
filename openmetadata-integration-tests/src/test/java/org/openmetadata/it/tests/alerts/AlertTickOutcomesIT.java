@@ -1,6 +1,7 @@
 package org.openmetadata.it.tests.alerts;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -208,6 +209,67 @@ class AlertTickOutcomesIT {
       assertTrue(diagnostics.getHasProcessedAllEvents());
       assertTrue(diagnostics.getTotalUnprocessedEventsList().isEmpty());
       assertTrue(scheduler.checkIfPublisherPublishedAllEvents(alert.getId()));
+    }
+  }
+
+  // The count of relevant unprocessed events is the exact backlog, not the size of one
+  // limit-bounded page. The sibling EventsRecord counts the same way; see
+  // getEventSubscriptionEventsRecord. Covers the scheduler call and the public REST contract.
+  @Test
+  void diagnosticInfoCountsAllRelevantUnprocessedBeyondThePage(TestNamespace ns) throws Exception {
+    try (RecordingReceiver receiver = new RecordingReceiver()) {
+      EventSubscription alert = webhookAlert(ns, "diagnostic_count", null, receiver);
+      QuietAlert.settle(alert);
+      int limit = 1;
+      FixtureEvents.insert(FixtureEvents.tableEvents().subList(0, 2)); // two table events
+
+      EventSubscriptionDiagnosticInfo diagnostics =
+          EventSubscriptionScheduler.getInstance()
+              .getEventSubscriptionDiagnosticInfo(alert.getId(), limit, 0, false);
+
+      assertEquals(
+          2L,
+          diagnostics.getRelevantUnprocessedEventsCount(),
+          "relevantUnprocessedEventsCount is the exact backlog, not capped at the page limit");
+      assertEquals(2L, diagnostics.getTotalUnprocessedEventsCount());
+      assertEquals(limit, diagnostics.getRelevantUnprocessedEventsList().size());
+      assertFalse(diagnostics.getHasProcessedAllEvents());
+
+      // The public REST contract returns the same exact count, not a page-capped value.
+      String body =
+          SdkClients.adminClient()
+              .getHttpClient()
+              .executeForString(
+                  HttpMethod.GET,
+                  "/v1/events/subscriptions/id/" + alert.getId() + "/diagnosticInfo?limit=" + limit,
+                  null,
+                  RequestOptions.builder().build());
+      JsonNode answer = JsonUtils.readTree(body);
+      assertEquals(
+          2L,
+          answer.get("relevantUnprocessedEventsCount").asLong(),
+          "the REST endpoint reports the exact backlog, not the page limit");
+      assertEquals(limit, answer.path("relevantUnprocessedEventsList").size());
+
+      // listCountOnly=true returns the exact count with a null list, as the schema describes.
+      String countOnly =
+          SdkClients.adminClient()
+              .getHttpClient()
+              .executeForString(
+                  HttpMethod.GET,
+                  "/v1/events/subscriptions/id/"
+                      + alert.getId()
+                      + "/diagnosticInfo?limit="
+                      + limit
+                      + "&listCountOnly=true",
+                  null,
+                  RequestOptions.builder().build());
+      JsonNode countOnlyAnswer = JsonUtils.readTree(countOnly);
+      assertEquals(2L, countOnlyAnswer.get("relevantUnprocessedEventsCount").asLong());
+      JsonNode countOnlyList = countOnlyAnswer.path("relevantUnprocessedEventsList");
+      assertTrue(
+          countOnlyList.isMissingNode() || countOnlyList.isNull() || countOnlyList.isEmpty(),
+          "listCountOnly=true returns no list content, just the exact count");
     }
   }
 
