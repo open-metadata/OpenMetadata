@@ -715,6 +715,21 @@ export const removeTier = async (page: Page, endpoint: string) => {
   await expect(page.getByTestId('Tier')).toContainText('--');
 };
 
+// The certification picker loads 50 at a time; searching reaches any certification.
+export const searchCertification = async (page: Page, name: string) => {
+  const searchResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes('index=tag&') &&
+      !response.url().includes('q=&')
+  );
+  await page
+    .getByTestId('drop-down-menu')
+    .getByTestId('search-input')
+    .fill(name);
+  expect((await searchResponse).status()).toBe(200);
+};
+
 export const assignCertification = async (
   page: Page,
   certification: TagClass,
@@ -722,8 +737,8 @@ export const assignCertification = async (
 ) => {
   const certificationResponse = page.waitForResponse(
     (response) =>
-      response.url().includes('/api/v1/tags') &&
-      response.url().includes('parent=Certification')
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes('index=tag&')
   );
   await page.getByTestId('edit-certification').click();
 
@@ -732,6 +747,7 @@ export const assignCertification = async (
 
   const certificationMenu = page.getByTestId('drop-down-menu');
   await certificationMenu.waitFor({ state: 'visible' });
+  await searchCertification(page, certification.responseData.name);
 
   const patchRequest = page.waitForResponse(
     (response) =>
@@ -1526,9 +1542,15 @@ const expectFollowButtonState = async (page: Page, expectedText: string) => {
   }
 };
 
-const LANDING_PAGE_SCROLL_CONTAINER =
-  '.page-layout-v1-center.page-layout-v1-vertical-scroll';
-const FOLLOWING_WIDGET_KEY = 'KnowledgePanel.Following';
+// The landing page scrolls inside the core PageLayout's content region now;
+// PageLayoutV1's `.page-layout-v1-*` scroll container only wraps the welcome
+// screen. The nudge below resolves the scroller from this root at call time.
+const LANDING_PAGE_SCROLL_CONTAINER = '[data-testid="home-landing-page"]';
+// The standalone Following widget was folded into "Yours and followed", which
+// renders the owned and the followed assets as two columns of one card.
+const FOLLOWING_WIDGET_KEY = 'KnowledgePanel.YoursAndFollowed';
+const FOLLOWING_WIDGET_BODY_SKELETON = 'topic-body-skeleton-yoursAndFollowed';
+const FOLLOWED_ASSET_LIST = 'followed-assets';
 
 const revealFollowingWidget = async (page: Page): Promise<Locator> => {
   const followingWidgetPanel = page.getByTestId(FOLLOWING_WIDGET_KEY);
@@ -1547,9 +1569,10 @@ const revealFollowingWidget = async (page: Page): Promise<Locator> => {
         }
 
         await page.evaluate((scrollContainerSelector) => {
-          document
-            .querySelector(scrollContainerSelector)
-            ?.scrollBy({ top: 700, behavior: 'instant' });
+          const root = document.querySelector(scrollContainerSelector);
+          const scroller =
+            root?.querySelector('[class*="overflow-y-auto"]') ?? root;
+          scroller?.scrollBy({ top: 700, behavior: 'instant' });
         }, LANDING_PAGE_SCROLL_CONTAINER);
 
         return followingWidgetPanel.isVisible().catch(() => false);
@@ -1564,19 +1587,23 @@ const revealFollowingWidget = async (page: Page): Promise<Locator> => {
   return followingWidgetPanel;
 };
 
+// Returns the followed-assets column, not the whole card: the owned column can
+// hold the same asset (following something you own is normal), and a card-wide
+// locator would then resolve to two nodes and fail strict mode on click.
 const loadFollowingWidget = async (page: Page): Promise<Locator> => {
   await redirectToHomePage(page, false);
   await waitForAllLoadersToDisappear(page).catch(() => undefined);
 
   const followingWidgetPanel = await revealFollowingWidget(page);
 
-  const followingWidget = followingWidgetPanel.getByTestId('following-widget');
-  await expect(followingWidget).toBeVisible({ timeout: 60_000 });
-  await waitForAllLoadersToDisappear(page, 'entity-list-skeleton').catch(
-    () => undefined
-  );
+  // The list itself is absent when nothing is followed, so gate on the card's
+  // own loading state instead — otherwise the unfollow case would wait out a
+  // list that is correctly missing.
+  await expect(
+    followingWidgetPanel.getByTestId(FOLLOWING_WIDGET_BODY_SKELETON)
+  ).toBeHidden({ timeout: 60_000 });
 
-  return followingWidget;
+  return followingWidgetPanel.getByTestId(FOLLOWED_ASSET_LIST);
 };
 
 export const validateFollowedEntityToWidget = async (
@@ -1590,14 +1617,14 @@ export const validateFollowedEntityToWidget = async (
     return followingWidget;
   }
 
+  const followedEntity = followingWidget.getByTestId(
+    `${FOLLOWED_ASSET_LIST}-${entity}`
+  );
+
   if (isFollowing) {
-    await followingWidget.isVisible();
-    await followingWidget.getByTestId(`following-${entity}`).isVisible();
+    await expect(followedEntity).toBeVisible();
   } else {
-    await followingWidget.isVisible();
-    await expect(
-      followingWidget.getByTestId(`following-${entity}`)
-    ).not.toBeVisible();
+    await expect(followedEntity).not.toBeVisible();
   }
 
   return followingWidget;
@@ -2422,37 +2449,6 @@ export const hardDeleteEntity = async (
     /(deleted successfully!|Delete operation initiated)/,
     BIG_ENTITY_DELETE_TIMEOUT
   );
-};
-
-export const checkDataAssetWidget = async (page: Page, serviceType: string) => {
-  await clickOutside(page);
-  const quickFilterResponse = page.waitForResponse(
-    `/api/v1/search/query?q=&index=dataAsset*${serviceType}*`
-  );
-
-  await page
-    .locator(`[data-testid="data-asset-service-${serviceType}"]`)
-    .click();
-
-  await quickFilterResponse;
-
-  // Click on filter dropdown
-  await page.getByTestId('search-dropdown-Service Type').click();
-  // assert on dropdown item visibility
-  await page.getByRole('menuitemcheckbox', { name: serviceType }).waitFor();
-  // assert on selection state
-  await expect(page.getByTestId(serviceType)).toHaveAttribute(
-    'aria-checked',
-    'true'
-  );
-
-  await expect(
-    page
-      .getByTestId('explore-tree')
-      .getByRole('row')
-      .filter({ hasText: serviceType })
-      .first()
-  ).toHaveAttribute('aria-selected', 'true');
 };
 
 export const escapeESReservedCharacters = (text?: string) => {

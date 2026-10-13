@@ -53,6 +53,7 @@ import {
   waitForArticleInFollows,
   waitForArticleSearchResponse,
   waitForDraftPersisted,
+  waitForDraftSyncedIntoEditor,
   waitForRecentlyViewed,
 } from '../../utils/ContextCenterUtil';
 import {
@@ -1771,13 +1772,7 @@ test.describe('Context Center Articles', () => {
       await test.step('Navigate back to Article A — should show updated description', async () => {
         await navigateToArticle(page, draftArticleA.fullyQualifiedName);
         await waitForAllLoadersToDisappear(page);
-
-        const editor = page
-          .locator('.ProseMirror[contenteditable="true"]')
-          .first();
-
-        await expect(editor).toContainText(newDescription);
-        await assertArticleEditorSaved(page);
+        await waitForDraftSyncedIntoEditor(page, newDescription);
       });
 
       await test.step('Article list card should reflect updated description', async () => {
@@ -1889,12 +1884,7 @@ test.describe('Context Center Articles', () => {
       });
 
       await test.step('Content should be synced and badge shows Saved', async () => {
-        const editor = page
-          .locator('.ProseMirror[contenteditable="true"]')
-          .first();
-
-        await expect(editor).toContainText(reloadDescription);
-        await assertArticleEditorSaved(page);
+        await waitForDraftSyncedIntoEditor(page, reloadDescription);
       });
     });
 
@@ -2025,35 +2015,14 @@ test.describe('Context Center Articles', () => {
         await page.reload();
         await waitForAllLoadersToDisappear(page);
 
-        const editor = page
-          .locator('.ProseMirror[contenteditable="true"]')
-          .first();
-
-        await editor.waitFor({ state: 'visible' });
-        // Draft restore from localStorage is async after the API response renders;
-        // toPass retries until the draft content appears in the editor
-        await expect(async () => {
-          await expect(editor).toContainText(contentB);
-        }).toPass({ timeout: 20000 });
-        await assertArticleEditorSaved(page);
+        await waitForDraftSyncedIntoEditor(page, contentB);
       });
 
       await test.step('Navigate to Article A — its independent draft should also be synced', async () => {
         await navigateToArticle(page, draftArticleA.fullyQualifiedName);
         await waitForAllLoadersToDisappear(page);
 
-        const editor = page
-          .locator('.ProseMirror[contenteditable="true"]')
-          .first();
-
-        await editor.waitFor({ state: 'visible' });
-        // Same async draft restore as the Article B leg above: the draft is applied
-        // after the API response has already rendered the server's content, so the
-        // assertion has to retry rather than sample once.
-        await expect(async () => {
-          await expect(editor).toContainText(contentA);
-        }).toPass({ timeout: 20000 });
-        await assertArticleEditorSaved(page);
+        await waitForDraftSyncedIntoEditor(page, contentA);
       });
     });
   });

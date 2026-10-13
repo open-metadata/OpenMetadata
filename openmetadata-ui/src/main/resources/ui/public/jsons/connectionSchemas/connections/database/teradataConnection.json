@@ -225,6 +225,16 @@
       "description": "Supports View Lineage Extraction.",
       "type": "boolean",
       "default": true
+    },
+    "supportsLineageExtraction": {
+      "description": "Supports Lineage Extraction.",
+      "type": "boolean",
+      "default": true
+    },
+    "supportsUsageExtraction": {
+      "description": "Supports Usage Extraction.",
+      "type": "boolean",
+      "default": true
     }
   },
   "additionalProperties": false,

@@ -127,6 +127,12 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
    */
   static final String LIST_FIELDS = "assignees,about,createdBy";
 
+  private static final String TASK_SEARCH_DESCRIPTION =
+      "Free-text search. Database-only (tasks are not indexed into Elasticsearch). "
+          + "Matches case-insensitive against task name, displayName, the request "
+          + "reason in the payload, and the about-entity displayName / "
+          + "fullyQualifiedName.";
+
   private static final String COUNT_VIEW_ALL = "all";
   private static final String COUNT_VIEW_VISIBLE = "visible";
   private static final String COUNT_VIEW_ASSIGNED = "assigned";
@@ -230,6 +236,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Parameter(description = "Filter by user FQN who was mentioned in task comments")
           @QueryParam("mentionedUser")
           String mentionedUser,
+      @Parameter(description = TASK_SEARCH_DESCRIPTION) @QueryParam("q") String q,
       @Parameter(description = "Limit the number results", schema = @Schema(type = "integer"))
           @DefaultValue("10")
           @QueryParam("limit")
@@ -291,6 +298,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     if (mentionedUser != null) {
       filter.addQueryParam("mentionedUser", mentionedUser);
     }
+    applyTaskSearch(filter, q);
 
     return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -591,14 +599,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Parameter(description = "Filter by tasks created on or before this timestamp (epoch millis)")
           @QueryParam("endTs")
           Long endTs,
-      @Parameter(
-              description =
-                  "Free-text search. Database-only (tasks are not indexed into Elasticsearch). "
-                      + "Matches case-insensitive against task name, displayName, the request "
-                      + "reason in the payload, and the about-entity displayName / "
-                      + "fullyQualifiedName.")
-          @QueryParam("q")
-          String q,
+      @Parameter(description = TASK_SEARCH_DESCRIPTION) @QueryParam("q") String q,
       @Parameter(description = "Include deleted tasks")
           @QueryParam("include")
           @DefaultValue("non-deleted")
@@ -660,14 +661,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Parameter(description = "Filter by tasks created on or before this timestamp (epoch millis)")
           @QueryParam("endTs")
           Long endTs,
-      @Parameter(
-              description =
-                  "Free-text search. Database-only (tasks are not indexed into Elasticsearch). "
-                      + "Matches case-insensitive against task name, displayName, the request "
-                      + "reason in the payload, and the about-entity displayName / "
-                      + "fullyQualifiedName.")
-          @QueryParam("q")
-          String q,
+      @Parameter(description = TASK_SEARCH_DESCRIPTION) @QueryParam("q") String q,
       @Parameter(description = "Include deleted tasks")
           @QueryParam("include")
           @DefaultValue("non-deleted")
@@ -728,14 +722,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Parameter(description = "Filter by tasks created on or before this timestamp (epoch millis)")
           @QueryParam("endTs")
           Long endTs,
-      @Parameter(
-              description =
-                  "Free-text search. Database-only (tasks are not indexed into Elasticsearch). "
-                      + "Matches case-insensitive against task name, displayName, the request "
-                      + "reason in the payload, and the about-entity displayName / "
-                      + "fullyQualifiedName.")
-          @QueryParam("q")
-          String q,
+      @Parameter(description = TASK_SEARCH_DESCRIPTION) @QueryParam("q") String q,
       @Parameter(description = "Include deleted tasks")
           @QueryParam("include")
           @DefaultValue("non-deleted")
@@ -806,14 +793,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Parameter(description = "Filter by tasks created on or before this timestamp (epoch millis)")
           @QueryParam("endTs")
           Long endTs,
-      @Parameter(
-              description =
-                  "Free-text search. Database-only (tasks are not indexed into Elasticsearch). "
-                      + "Matches case-insensitive against task name, displayName, the request "
-                      + "reason in the payload, and the about-entity displayName / "
-                      + "fullyQualifiedName.")
-          @QueryParam("q")
-          String q,
+      @Parameter(description = TASK_SEARCH_DESCRIPTION) @QueryParam("q") String q,
       @Parameter(description = "Include deleted tasks")
           @QueryParam("include")
           @DefaultValue("non-deleted")

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  Button,
   Card,
   Grid,
   SkeletonParagraph,
@@ -19,7 +20,6 @@ import {
   LineChart,
   useChartPalette,
 } from '@openmetadata/ui-core-components/charts';
-import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import {
   first,
@@ -36,7 +36,6 @@ import {
 } from 'lodash';
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { ReactComponent as RightArrowIcon } from '../../assets/svg/right-arrow.svg';
 import {
   DI_STRUCTURE,
@@ -272,11 +271,12 @@ const ExploreAssetsLink = ({ type, tabsInfo, t }: ExploreAssetsLinkProps) => {
 
   return (
     <Grid.Item className="layout-column d-flex justify-end" span={24}>
-      <Link
+      <Button
+        color="tertiary"
         data-testid={`explore-asset-with-no-${
           isDescriptionType ? 'description' : 'owner'
         }`}
-        to={getExplorePath({
+        href={getExplorePath({
           tab: tabsInfo[SearchIndex.TABLE].path,
           isPersistFilters: true,
           extraParameters: {
@@ -286,19 +286,15 @@ const ExploreAssetsLink = ({ type, tabsInfo, t }: ExploreAssetsLinkProps) => {
                 : NO_OWNER_ADVANCE_SEARCH_FILTER
             ),
           },
-        })}>
-        <Button
-          className="text-primary d-flex items-center gap-1"
-          size="small"
-          type="text">
-          {t('label.explore-asset-plural-with-type', {
-            type: isDescriptionType
-              ? t('label.no-description')
-              : t('label.no-owner'),
-          })}
-          <RightArrowIcon height={12} width={12} />
-        </Button>
-      </Link>
+        })}
+        iconTrailing={<RightArrowIcon height={12} width={12} />}
+        size="xs">
+        {t('label.explore-asset-plural-with-type', {
+          type: isDescriptionType
+            ? t('label.no-description')
+            : t('label.no-owner'),
+        })}
+      </Button>
     </Grid.Item>
   );
 };
@@ -727,7 +723,7 @@ export const DataInsightChartCard = ({
               </Grid.Item>
               {activeKeys.length > 0 && (
                 <Grid.Item className="layout-column flex justify-end" span={24}>
-                  <Button type="link" onClick={() => setActiveKeys([])}>
+                  <Button color="link-color" onClick={() => setActiveKeys([])}>
                     {t('label.clear')}
                   </Button>
                 </Grid.Item>

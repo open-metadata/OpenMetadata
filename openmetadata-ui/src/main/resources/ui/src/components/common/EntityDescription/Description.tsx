@@ -11,18 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  Button,
-  Divider,
-  Tooltip,
-  Typography,
-} from '@openmetadata/ui-core-components';
-import {
-  Edit01,
-  MessageChatSquare,
-  MessagePlusSquare,
-} from '@openmetadata/ui-core-components/icons';
+import { Box, Divider, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { lazy, ReactNode, useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -42,6 +31,11 @@ import { useGenericContext } from '../../Customization/GenericProvider/GenericCo
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import SuggestionsSlider from '../../Suggestions/SuggestionsSlider/SuggestionsSlider';
 import DescriptionSourceBadge from '../DescriptionSourceBadge/DescriptionSourceBadge';
+import {
+  CommentIconButton,
+  EditIconButton,
+  RequestIconButton,
+} from '../IconButtons/EditIconButton';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import {
   WidgetCommentButton,
@@ -163,15 +157,13 @@ const Description = ({
           onClick={handleRequest}
         />
       ) : (
-        <Tooltip title={requestLabel}>
-          <Button
-            color="secondary"
-            data-testid="request-description"
-            iconLeading={MessagePlusSquare}
-            size="xs"
-            onPress={handleRequest}
-          />
-        </Tooltip>
+        <RequestIconButton
+          newLook
+          data-testid="request-description"
+          size="small"
+          title={requestLabel}
+          onClick={handleRequest}
+        />
       );
     }
 
@@ -201,16 +193,13 @@ const Description = ({
         onClick={handleEditDescription}
       />
     ) : (
-      <Tooltip title={editDescriptionLabel}>
-        <Button
-          aria-label={editDescriptionLabel}
-          color="secondary"
-          data-testid="edit-description"
-          iconLeading={Edit01}
-          size="xs"
-          onPress={handleEditDescription}
-        />
-      </Tooltip>
+      <EditIconButton
+        newLook
+        data-testid="edit-description"
+        size="small"
+        title={editDescriptionLabel}
+        onClick={handleEditDescription}
+      />
     );
     const commentButton = isWidgetHeader ? (
       <WidgetCommentButton
@@ -219,15 +208,13 @@ const Description = ({
         onClick={openThread}
       />
     ) : (
-      <Tooltip title={threadLabel}>
-        <Button
-          color="secondary"
-          data-testid="description-thread"
-          iconLeading={MessageChatSquare}
-          size="xs"
-          onPress={openThread}
-        />
-      </Tooltip>
+      <CommentIconButton
+        newLook
+        data-testid="description-thread"
+        size="small"
+        title={threadLabel}
+        onClick={openThread}
+      />
     );
 
     return (
