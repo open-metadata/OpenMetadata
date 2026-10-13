@@ -26,6 +26,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
+  AlertCircle,
   Announcement02,
   Copy01,
   Edit01,
@@ -193,6 +194,7 @@ const SystemAnnouncementsTable = ({
     announcements,
     filters,
     hasFilters,
+    isError,
     isLoading,
     page,
     pageCount,
@@ -200,6 +202,7 @@ const SystemAnnouncementsTable = ({
     total,
     clearFilters,
     goToPage,
+    refetch,
     setPageSize,
     updateFilters,
   } = list;
@@ -309,6 +312,30 @@ const SystemAnnouncementsTable = ({
             <Skeleton height={28} key={i} variant="rounded" />
           ))}
         </Box>
+      );
+    }
+
+    // A failed fetch leaves no rows too, but it must not read as "none exist"
+    // and offer Add: that invites a duplicate of a banner already live.
+    if (isError) {
+      return (
+        <div className="tw:relative tw:min-h-60">
+          <EmptyPlaceholder
+            actions={[
+              {
+                color: 'secondary' as const,
+                key: 'retry',
+                label: t('label.retry'),
+                onPress: () => refetch(),
+              },
+            ]}
+            data-testid="announcements-error"
+            icon={<AlertCircle className="tw:text-quaternary" />}
+            title={t('server.entity-fetch-error', {
+              entity: t('label.announcement-plural'),
+            })}
+          />
+        </div>
       );
     }
 

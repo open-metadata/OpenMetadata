@@ -171,6 +171,22 @@ describe('SystemAnnouncementsTable', () => {
     expect(callbacks.onAdd).toHaveBeenCalled();
   });
 
+  it('shows a failed fetch as an error with Retry, not as an empty list to add to', () => {
+    const list = makeList({ isError: true });
+
+    renderWithQueryClient(
+      <SystemAnnouncementsTable list={list} {...callbacks} />
+    );
+
+    expect(screen.getByTestId('announcements-error')).toBeInTheDocument();
+    expect(screen.queryByTestId('announcements-empty')).not.toBeInTheDocument();
+    expect(screen.queryByText('label.add-entity')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('label.retry'));
+
+    expect(list.refetch).toHaveBeenCalled();
+  });
+
   it('says nothing matched, with a way to clear, when filters exclude everything', () => {
     const list = makeList({
       filters: { search: 'zzz' },
