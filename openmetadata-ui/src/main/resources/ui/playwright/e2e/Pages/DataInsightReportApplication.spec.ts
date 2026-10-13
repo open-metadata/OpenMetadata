@@ -92,7 +92,10 @@ test.describe.serial('Data Insight Report Application', () => {
       minute: '00',
       period: 'AM',
     });
-    await page.click('.ant-modal-body [data-testid="deploy-button"]');
+    await page
+      .getByTestId('update-schedule-modal')
+      .getByTestId('deploy-button')
+      .click();
     await toastNotification(page, 'Schedule saved successfully');
 
     // Validate update config in the application

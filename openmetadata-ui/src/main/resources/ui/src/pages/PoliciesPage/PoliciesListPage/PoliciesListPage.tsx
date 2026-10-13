@@ -13,10 +13,14 @@
 
 import {
   Badge,
+  Box,
+  Button,
+  ButtonUtility,
+  Grid,
   Popover,
   PopoverTrigger,
+  Tooltip,
 } from '@openmetadata/ui-core-components';
-import { Button, Col, Row, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -49,6 +53,7 @@ import { Operation, Policy } from '../../../generated/entity/policies/policy';
 import { Paging } from '../../../generated/type/paging';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { getPolicies } from '../../../rest/rolesAPIV1';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { hardDeleteEntity } from '../../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
@@ -145,7 +150,14 @@ const PoliciesListPage = () => {
           const hasMore = listLength > LIST_CAP;
 
           return record.roles?.length ? (
-            <Space wrap data-testid="role-link" size={4}>
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal"
+              data-testid="role-link"
+              gap={1}
+              itemClassName="layout-space-item"
+              wrap="wrap">
               {record.roles.slice(0, LIST_CAP).map((role) =>
                 viewRolePermission ? (
                   <Link
@@ -154,7 +166,12 @@ const PoliciesListPage = () => {
                     {getEntityName(role)}
                   </Link>
                 ) : (
-                  <Tooltip key={uniqueId()} title={t(NO_PERMISSION_TO_VIEW)}>
+                  <Tooltip
+                    arrow
+                    excludeTriggerFromTabOrder
+                    key={uniqueId()}
+                    title={t(NO_PERMISSION_TO_VIEW)}
+                    triggerClassName="tw:inline-flex">
                     {getEntityName(role)}
                   </Tooltip>
                 )
@@ -174,7 +191,13 @@ const PoliciesListPage = () => {
                     arrow
                     containerClassName="tw:w-40 tw:px-4 tw:py-3 tw:text-center"
                     placement="bottom">
-                    <Space wrap size={4}>
+                    <Box
+                      inline
+                      align="center"
+                      className="layout-space layout-space-horizontal"
+                      gap={1}
+                      itemClassName="layout-space-item"
+                      wrap="wrap">
                       {record.roles.slice(LIST_CAP).map((role) =>
                         viewRolePermission ? (
                           <Link
@@ -186,17 +209,20 @@ const PoliciesListPage = () => {
                           </Link>
                         ) : (
                           <Tooltip
+                            arrow
+                            excludeTriggerFromTabOrder
                             key={uniqueId()}
-                            title={t(NO_PERMISSION_TO_VIEW)}>
+                            title={t(NO_PERMISSION_TO_VIEW)}
+                            triggerClassName="tw:inline-flex">
                             {getEntityName(role)}
                           </Tooltip>
                         )
                       )}
-                    </Space>
+                    </Box>
                   </Popover>
                 </PopoverTrigger>
               )}
-            </Space>
+            </Box>
           ) : (
             '-- '
           );
@@ -211,6 +237,7 @@ const PoliciesListPage = () => {
         render: (_, record) => {
           return (
             <Tooltip
+              arrow
               placement="left"
               title={
                 deletePolicyPermission
@@ -219,11 +246,12 @@ const PoliciesListPage = () => {
                     })
                   : t(NO_PERMISSION_FOR_ACTION)
               }>
-              <Button
+              <ButtonUtility
+                color="tertiary"
                 data-testid={`delete-action-${getEntityName(record)}`}
-                disabled={!deletePolicyPermission}
-                icon={<IconDelete name={t('label.delete')} width="16px" />}
-                type="text"
+                icon={IconDelete}
+                isDisabled={!deletePolicyPermission}
+                size="sm"
                 onClick={() => setSelectedPolicy(record)}
               />
             </Tooltip>
@@ -300,15 +328,20 @@ const PoliciesListPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.policy-plural')}>
-      <Row
-        className="policies-list-container"
+      <Grid
+        className="layout-row layout-grid policies-list-container"
         data-testid="policies-list-container"
-        gutter={[0, 16]}>
-        <Col span={24}>
+        style={{ ...getLayoutGutter(0, 16) }}>
+        <Grid.Item className="layout-column" span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
-        </Col>
-        <Col span={24}>
-          <Space className="w-full justify-between">
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal w-full justify-between"
+            gap={2}
+            itemClassName="layout-space-item">
             <PageHeader
               data={{
                 header: t(PAGE_HEADERS.POLICIES.header),
@@ -320,15 +353,15 @@ const PoliciesListPage = () => {
 
             {addPolicyPermission && (
               <Button
+                color="primary"
                 data-testid="add-policy"
-                type="primary"
                 onClick={handleAddPolicy}>
                 {t('label.add-entity', { entity: t('label.policy') })}
               </Button>
             )}
-          </Space>
-        </Col>
-        <Col span={24}>
+          </Box>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
           <Table
             columns={columns}
             containerClassName="policies-list-table"
@@ -374,8 +407,8 @@ const PoliciesListPage = () => {
               onDelete={handlePolicyDelete}
             />
           )}
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
     </PageLayoutV1>
   );
 };

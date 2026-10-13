@@ -13,6 +13,13 @@
 
 import { render } from '@testing-library/react';
 import {
+  LabelType,
+  State,
+  TagSource,
+  type TagLabel,
+} from '../../../../../generated/type/tagLabel';
+import TagsViewer from '../../../../Tag/TagsViewer/TagsViewer';
+import {
   mockEntityDetails,
   mockEntityDetailsWithConstraint,
   mockEntityDetailsWithoutDescription,
@@ -133,5 +140,72 @@ describe('SummaryListItems component tests', () => {
     const richTextEditorPreviewer = getByTestId('constraints');
 
     expect(richTextEditorPreviewer).toBeInTheDocument();
+  });
+
+  it('filters out Tier tags before passing them to TagsViewer', () => {
+    const entityDetailsWithTierTag = {
+      ...mockEntityDetailsWithTagsAndAlgorithm,
+      tags: [
+        {
+          tagFQN: 'Tier.Tier1',
+          labelType: LabelType.Manual,
+          source: TagSource.Classification,
+          state: State.Confirmed,
+          name: 'Tier1',
+        } as TagLabel,
+        {
+          tagFQN: 'PersonalData.SpecialCategory',
+          labelType: LabelType.Manual,
+          source: TagSource.Classification,
+          state: State.Confirmed,
+        } as TagLabel,
+      ],
+    };
+
+    render(<SummaryListItem entityDetails={entityDetailsWithTierTag} />);
+
+    const calls = (TagsViewer as jest.Mock).mock.calls;
+    const passedTags = calls[calls.length - 1][0].tags as Array<{
+      tagFQN: string;
+    }>;
+
+    expect(passedTags).toHaveLength(1);
+    expect(passedTags[0].tagFQN).toBe('PersonalData.SpecialCategory');
+    expect(passedTags.some((tag) => tag.tagFQN.startsWith('Tier.'))).toBe(
+      false
+    );
+  });
+
+  it('passes through all non-Tier tags unchanged', () => {
+    const entityDetailsWithNonTierTags = {
+      ...mockEntityDetailsWithTagsAndAlgorithm,
+      tags: [
+        {
+          tagFQN: 'PersonalData.SpecialCategory',
+          labelType: LabelType.Manual,
+          source: TagSource.Classification,
+          state: State.Confirmed,
+        } as TagLabel,
+        {
+          tagFQN: 'Tag.OtherTag',
+          labelType: LabelType.Manual,
+          source: TagSource.Classification,
+          state: State.Confirmed,
+        } as TagLabel,
+      ],
+    };
+
+    render(<SummaryListItem entityDetails={entityDetailsWithNonTierTags} />);
+
+    const calls = (TagsViewer as jest.Mock).mock.calls;
+    const passedTags = calls[calls.length - 1][0].tags as Array<{
+      tagFQN: string;
+    }>;
+
+    expect(passedTags).toHaveLength(2);
+    expect(passedTags.map((t) => t.tagFQN)).toEqual([
+      'PersonalData.SpecialCategory',
+      'Tag.OtherTag',
+    ]);
   });
 });

@@ -26,7 +26,7 @@
       "columns": [
         {"name": "id", "fullyQualifiedName": "service.db.schema.orders.id", "dataType": "BIGINT", "constraint": "PRIMARY_KEY", "ordinalPosition": 1},
         {"name": "accountId", "fullyQualifiedName": "service.db.schema.orders.accountId", "dataType": "BIGINT", "constraint": "UNIQUE"},
-        {"name": "details", "fullyQualifiedName": "service.db.schema.orders.details", "dataType": "STRUCT", "children": [{"name": "amount", "dataType": "DOUBLE"}]}
+        {"name": "details", "fullyQualifiedName": "service.db.schema.orders.details", "dataType": "STRUCT", "children": [{"name": "amount", "fullyQualifiedName": "service.db.schema.orders.details.amount", "dataType": "DOUBLE"}]}
       ],
       "tableConstraints": [
         {"constraintType": "PRIMARY_KEY", "columns": ["id"]},
@@ -48,6 +48,18 @@
         "inputs": [{"datasetFQN": "service.db.schema.source"}],
         "outputs": [{"datasetFQN": "service.db.schema.output"}]
       }
+    }
+  },
+  {
+    "type": "glossaryTerm",
+    "fields": {
+      "name": "Order",
+      "fullyQualifiedName": "Sales.Order",
+      "realizedIn": [
+        {"asset": {"id": "00000000-0000-0000-0000-0000000000d1", "type": "table"}, "role": "PRIMARY_STORE"},
+        {"asset": {"id": "00000000-0000-0000-0000-0000000000d2", "type": "table"}, "role": "DERIVED"},
+        {"asset": {"id": "00000000-0000-0000-0000-0000000000d3", "type": "table"}, "role": "REPLICA"}
+      ]
     }
   }
 ]

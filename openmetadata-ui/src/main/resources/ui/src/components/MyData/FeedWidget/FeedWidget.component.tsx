@@ -213,7 +213,9 @@ const MyFeedWidgetInternal = ({
       dataTestId="KnowledgePanel.ActivityFeed"
       header={widgetHeader}
       loading={isActivityLoading}>
-      <div className="feed-widget-container" id="feedWidgetData">
+      <div
+        className="feed-widget-container tw:[&_.feed-card-header-v2-timestamp]:text-quaternary! tw:[&_.header-link]:text-link!"
+        id="feedWidgetData">
         <div className="feed-content flex-1">
           {widgetBody}
           <WidgetFooter

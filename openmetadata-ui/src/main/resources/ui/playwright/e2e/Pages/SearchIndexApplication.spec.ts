@@ -267,18 +267,14 @@ test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     await test.step('View App Run Config', async () => {
       await page.getByTestId('app-historical-config').click();
-      await page.locator('[role="dialog"].ant-modal').waitFor();
+      const configDialog = page.getByTestId('edit-table-type-property-modal');
 
-      await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+      await expect(configDialog).toBeVisible();
+      await expect(configDialog).toContainText('Search Indexing Configuration');
 
-      await expect(page.locator('.ant-modal-title')).toContainText(
-        'Search Indexing Configuration'
-      );
+      await page.getByTestId('app-run-config-close').click();
 
-      await page.click('[data-testid="app-run-config-close"]');
-      await page.locator('[role="dialog"].ant-modal').waitFor({
-        state: 'detached',
-      });
+      await expect(configDialog).not.toBeVisible();
     });
 
     await test.step('Edit application', async () => {
@@ -291,7 +287,10 @@ test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           !response.url().includes('/status') &&
           response.request().method() !== 'GET'
       );
-      await page.click('.ant-modal-body [data-testid="deploy-button"]');
+      await page
+        .getByTestId('update-schedule-modal')
+        .getByTestId('deploy-button')
+        .click();
       await deployResponse;
 
       await toastNotification(page, 'Schedule saved successfully');

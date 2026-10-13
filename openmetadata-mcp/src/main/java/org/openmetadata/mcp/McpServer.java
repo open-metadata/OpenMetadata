@@ -37,7 +37,7 @@ import org.openmetadata.service.util.PerRequestContextCleaner;
 public class McpServer implements McpServerProvider {
   private static final String DEFAULT_MCP_BOT_NAME = McpAppConstants.MCP_APP_NAME + "Bot";
 
-  protected JwtFilter jwtFilter;
+  protected volatile JwtFilter jwtFilter;
   protected Authorizer authorizer;
   protected Limits limits;
   protected DefaultToolContext toolContext;
@@ -66,6 +66,12 @@ public class McpServer implements McpServerProvider {
         new JwtFilter(
             SecurityConfigurationManager.getCurrentAuthConfig(),
             SecurityConfigurationManager.getCurrentAuthzConfig());
+    // Tokens must be checked against the security settings in effect, which reload without a
+    // restart.
+    SecurityConfigurationManager.getInstance()
+        .addConfigurationChangeListener(
+            (authConfig, authzConfig, mcpConfig) ->
+                this.jwtFilter = new JwtFilter(authConfig, authzConfig));
     this.authorizer = authorizer;
     this.limits = limits;
     this.environment = environment;

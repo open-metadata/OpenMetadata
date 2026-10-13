@@ -46,13 +46,16 @@ import { TestSummaryProps } from '../ProfilerDashboard/profilerDashboard.interfa
 import RunSummaryTiles from './RunSummaryTiles/RunSummaryTiles';
 import './test-summary.less';
 import {
-  getResultHistoryCaption,
+  getMeasuredResult,
+  getResultHistoryCaptionText,
   hasTestCaseNeverRun,
 } from './TestSummary.utils';
 import TestSummaryGraph from './TestSummaryGraph';
+import { useSelectedRunInUrl } from './useSelectedRunInUrl';
 
 const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
   const { t } = useTranslation();
+  useSelectedRunInUrl();
   const { dimensionKey, version } = useRequiredParams<{
     dimensionKey?: string;
     version?: string;
@@ -65,7 +68,6 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
   const [dateRangeObject, setDateRangeObject] = useState<DateRangeObject>(() =>
     getPastDaysRange(PROFILER_FILTER_RANGE.last30days.days)
   );
-  const [isLoading, setIsLoading] = useState(true);
   const [isGraphLoading, setIsGraphLoading] = useState(true);
   const [hasLoadError, setHasLoadError] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
@@ -78,17 +80,10 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
     )
   );
 
-  const caption = useMemo(() => {
-    const { metric, comparison } = getResultHistoryCaption(data);
-    const metricText = t(metric.key, metric.values);
-
-    return comparison
-      ? t('message.metric-vs-comparison', {
-          metric: metricText,
-          comparison: t(comparison.key, comparison.values),
-        })
-      : metricText;
-  }, [data, t]);
+  const caption = useMemo(
+    () => getResultHistoryCaptionText(data, t),
+    [data, t]
+  );
 
   const handleDateRangeChange = (value: DateRangeObject) => {
     if (!isEqual(value, pick(dateRangeObject, ['startTs', 'endTs']))) {
@@ -142,7 +137,6 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
       } finally {
         // The fetch that replaced this one owns the loaders now.
         if (!isStale()) {
-          setIsLoading(false);
           setIsGraphLoading(false);
         }
       }
@@ -187,6 +181,14 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
     latestRunTimestamp,
     retryCount,
   ]);
+
+  const measuredResults = useMemo(
+    () =>
+      (results as (TestCaseResult | TestCaseDimensionResult)[]).map((result) =>
+        getMeasuredResult(data, result)
+      ),
+    [data, results]
+  );
 
   // Below the header: the results, or why there are none to show.
   const resultsContent = useMemo(() => {
@@ -242,12 +244,12 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
             testCaseFqn={testCaseFqn}
             testCaseName={data.name}
             testCaseParameterValue={data.parameterValues}
-            testCaseResults={results}
+            testCaseResults={measuredResults}
             testDefinitionName={data.testDefinition.name}
           />
         </div>
         <RunSummaryTiles results={results} />
-        <RunDetailsCard results={results} testCase={data} />
+        <RunDetailsCard results={measuredResults} testCase={data} />
       </>
     );
   }, [
@@ -255,26 +257,26 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
     hasLoadError,
     data,
     results,
+    measuredResults,
     version,
     selectedTimeRange,
     testCaseFqn,
     t,
   ]);
 
-  if (isLoading) {
-    return <Loader />;
-  }
-
   return (
     <Box data-testid="test-summary-container" direction="col" gap={4}>
       <Box align="start" gap={4} justify="between">
         <Box direction="col" gap={1}>
-          {/* A plain heading rather than Typography: Typography wraps an h2 in
-              .prose, whose heading style (24px, semibold, margins) outranks
-              the size classes. */}
-          <h2 className="tw:m-0 tw:text-md tw:leading-5 tw:font-bold tw:text-primary">
+          {/* not-prose: Typography wraps a heading in .prose, whose h2 style
+              (24px, margins) would otherwise outrank the size classes. */}
+          <Typography
+            as="h2"
+            className="not-prose tw:m-0 tw:text-primary"
+            size="text-md"
+            weight="bold">
             {t('label.result-history')}
-          </h2>
+          </Typography>
           <Typography
             className="tw:text-quaternary"
             data-testid="result-history-caption"
