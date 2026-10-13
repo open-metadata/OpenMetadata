@@ -18,11 +18,13 @@ export type NavItemSize = 'sm' | 'md';
 
 const sizeStyles = sortCx({
   sm: {
+    padding: 'tw:py-1',
     icon: 'tw:size-4',
     label: 'tw:text-sm tw:font-normal',
     labelCurrent: 'tw:font-semibold',
   },
   md: {
+    padding: 'tw:py-2',
     icon: 'tw:size-5',
     label: 'tw:text-md tw:font-semibold',
     labelCurrent: '',
@@ -110,7 +112,8 @@ export const NavItemBase = ({
     return (
       <summary
         className={cx(
-          'tw:px-3 tw:py-2',
+          'tw:px-3',
+          sizeStyles[size].padding,
           styles.root,
           current && styles.rootSelected
         )}
@@ -134,7 +137,8 @@ export const NavItemBase = ({
       <AriaLink
         aria-current={current ? 'page' : undefined}
         className={cx(
-          'tw:py-2 tw:pr-3 tw:pl-10',
+          'tw:pr-3 tw:pl-10',
+          sizeStyles[size].padding,
           styles.root,
           current && styles.rootSelected
         )}
@@ -154,7 +158,8 @@ export const NavItemBase = ({
     <AriaLink
       aria-current={current ? 'page' : undefined}
       className={cx(
-        'tw:px-3 tw:py-2',
+        'tw:px-3',
+        sizeStyles[size].padding,
         styles.root,
         current && styles.rootSelected
       )}

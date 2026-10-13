@@ -22,6 +22,11 @@ import {
   removeCustomPropertyViaApi,
 } from '../../utils/customProperty';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  clickUntilVisible,
+  waitForAntOverlayToOpen,
+  waitForAriaOverlayToSettle,
+} from '../../utils/waitHelpers';
 import { test } from '../fixtures/pages';
 
 interface PersonaFixture {
@@ -120,22 +125,29 @@ test.describe(
         await test.step('add a tab with a widget placeholder', async () => {
           await openTableCustomizePage(page, fixture.persona);
           await page.getByRole('button', { name: 'Add tab' }).click();
-          await page.getByTestId('add-tab-input').fill(tabName);
-          await page
-            .getByRole('dialog')
+
+          const addTabDialog = page.getByRole('dialog', { name: 'Add Tab' });
+          await waitForAntOverlayToOpen(addTabDialog);
+          await addTabDialog.getByTestId('add-tab-input').fill(tabName);
+          await addTabDialog
             .getByRole('button', { name: 'Add', exact: true })
             .click();
 
+          await expect(addTabDialog).not.toBeAttached();
           await expect(page.getByTestId(`tab-${tabName}`)).toBeVisible();
         });
 
         await test.step('pick style and properties in the Add Widget dialog', async () => {
-          await page
-            .getByTestId('ExtraWidget.EmptyWidgetPlaceholder')
-            .getByTestId('add-widget-button')
-            .click();
-
           const dialog = page.getByTestId('add-widget-modal');
+
+          // Closing the add-tab modal re-measures the grid, shifting the placeholder.
+          await clickUntilVisible(
+            page
+              .getByTestId('ExtraWidget.EmptyWidgetPlaceholder')
+              .getByTestId('add-widget-button'),
+            dialog
+          );
+          await waitForAriaOverlayToSettle(page);
           await dialog.getByTestId('Custom Properties-widget').click();
 
           await expect(dialog.getByTestId('add-widget-button')).toBeDisabled();
@@ -230,6 +242,63 @@ test.describe(
         });
 
         await test.step('keeps the arrangement after reload', async () => {
+          await openTableCustomizePage(page, fixture.persona);
+          await openTabForEditing(page, `tab-${tabName}`);
+
+          await expect(sizeTab(page, firstProperty, 'Small')).toHaveAttribute(
+            'aria-selected',
+            'true'
+          );
+          await expect(sizeTab(page, secondProperty, 'Large')).toHaveAttribute(
+            'aria-selected',
+            'true'
+          );
+        });
+
+        await test.step('keeps the small card after a style round trip in the gear modal', async () => {
+          await page.getByTestId('widget-settings-button').click();
+          const modal = page.getByTestId(
+            'custom-properties-widget-settings-modal'
+          );
+          await expect(modal).toBeVisible();
+
+          // fullWidth -> preview -> fullWidth must not flatten the half-width card.
+          await modal.getByTestId('widget-style-preview').click();
+          await modal.getByTestId('widget-style-fullWidth').click();
+          await modal.getByTestId('save-widget-settings').click();
+
+          await expect(modal).toBeHidden();
+          await expect(sizeTab(page, firstProperty, 'Small')).toHaveAttribute(
+            'aria-selected',
+            'true'
+          );
+        });
+
+        await test.step('persists the small card across a saved style round trip', async () => {
+          // Save in preview (a real change the page save can persist), reload,
+          // then switch back to full width and save again: the half-width card
+          // must survive both saves.
+          await page.getByTestId('widget-settings-button').click();
+          let modal = page.getByTestId(
+            'custom-properties-widget-settings-modal'
+          );
+          await expect(modal).toBeVisible();
+          await modal.getByTestId('widget-style-preview').click();
+          await modal.getByTestId('save-widget-settings').click();
+          await expect(modal).toBeHidden();
+          await savePageLayout(page);
+
+          await openTableCustomizePage(page, fixture.persona);
+          await openTabForEditing(page, `tab-${tabName}`);
+
+          await page.getByTestId('widget-settings-button').click();
+          modal = page.getByTestId('custom-properties-widget-settings-modal');
+          await expect(modal).toBeVisible();
+          await modal.getByTestId('widget-style-fullWidth').click();
+          await modal.getByTestId('save-widget-settings').click();
+          await expect(modal).toBeHidden();
+          await savePageLayout(page);
+
           await openTableCustomizePage(page, fixture.persona);
           await openTabForEditing(page, `tab-${tabName}`);
 

@@ -18,9 +18,12 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
+import { AxiosError } from 'axios';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { Domain } from '../../../generated/entity/domains/domain';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import TierCard from '../TierCard/TierCard';
 import TierWidget from './TierWidget';
 
@@ -80,85 +83,59 @@ const openTierCard = async () => {
   await act(async () => {
     fireEvent.click(screen.getByTestId('edit-tier'));
   });
-  await screen.findByTestId('radio-btn-Tier3');
+  await screen.findByTestId('Tier.Tier3');
 };
 
-describe('TierCard stale selectedTier', () => {
+describe('TierCard selection', () => {
   beforeEach(() => {
     mockUpdateTier.mockClear();
   });
 
-  it('resets radio to persisted tier after a cancelled change (Bug A — cancel-stale)', async () => {
+  it('saves nothing when dismissed without a pick', async () => {
     render(renderTierCard('Tier.Tier1'));
 
     await openTierCard();
-
-    // User selects Tier3 without saving, then dismisses the card.
     await act(async () => {
-      fireEvent.click(screen.getByTestId('radio-btn-Tier3'));
-    });
-    await act(async () => {
-      fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+      fireEvent.keyDown(document.body, { key: 'Escape' });
     });
     await waitFor(() =>
-      expect(screen.queryByTestId('cards')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('Tier.Tier3')).not.toBeInTheDocument()
     );
 
-    // Reopen and click Update — must commit the persisted Tier1, not cancelled Tier3.
-    await openTierCard();
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('update-tier-card'));
-    });
-
-    expect(mockUpdateTier).toHaveBeenCalledWith(
-      expect.objectContaining({ fullyQualifiedName: 'Tier.Tier1' })
-    );
-    expect(mockUpdateTier).not.toHaveBeenCalledWith(
-      expect.objectContaining({ fullyQualifiedName: 'Tier.Tier3' })
-    );
+    expect(mockUpdateTier).not.toHaveBeenCalled();
   });
 
-  it('shows the newly saved tier on reopen after a successful save (Bug B — save-stale)', async () => {
+  it('saves a pick at once and shows it selected on reopen', async () => {
     const { rerender } = render(renderTierCard('Tier.Tier1'));
 
     await openTierCard();
-
-    // User selects Tier3 and saves; the card closes while currentTier is still Tier1.
     await act(async () => {
-      fireEvent.click(screen.getByTestId('radio-btn-Tier3'));
-    });
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('update-tier-card'));
-    });
-    await waitFor(() =>
-      expect(screen.queryByTestId('cards')).not.toBeInTheDocument()
-    );
-    mockUpdateTier.mockClear();
-
-    // Entity context propagates the saved tier while the card is closed.
-    await act(async () => {
-      rerender(renderTierCard('Tier.Tier3'));
-    });
-
-    // Reopen and click Update without re-selecting — must commit Tier3, not Tier1.
-    await openTierCard();
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('update-tier-card'));
+      fireEvent.click(screen.getByTestId('Tier.Tier3'));
     });
 
     expect(mockUpdateTier).toHaveBeenCalledWith(
       expect.objectContaining({ fullyQualifiedName: 'Tier.Tier3' })
     );
-    expect(mockUpdateTier).not.toHaveBeenCalledWith(
-      expect.objectContaining({ fullyQualifiedName: 'Tier.Tier1' })
+
+    // Entity context propagates the saved tier while the picker is closed.
+    await act(async () => {
+      rerender(renderTierCard('Tier.Tier3'));
+    });
+    await openTierCard();
+
+    expect(screen.getByTestId('Tier.Tier3')).toHaveAttribute(
+      'aria-checked',
+      'true'
     );
   });
 });
 
+const mockOnUpdate = jest.fn();
+
 const mockUseGenericContextResult = {
   data: { name: 'domain', tags: [] } as unknown as Domain,
   permissions: {} as OperationPermission,
-  onUpdate: jest.fn(),
+  onUpdate: mockOnUpdate,
   isVersionView: false,
 };
 
@@ -211,5 +188,111 @@ describe('TierWidget permissions', () => {
     render(<TierWidget />);
 
     expect(screen.queryByTestId('add-tier')).not.toBeInTheDocument();
+  });
+});
+
+describe('TierWidget add', () => {
+  beforeEach(() => {
+    mockUseGenericContextResult.isVersionView = false;
+    mockUseGenericContextResult.permissions = {
+      EditTier: true,
+    } as unknown as OperationPermission;
+  });
+
+  it('opens the picker from the add button without a built-in trigger', async () => {
+    render(<TierWidget />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('add-tier'));
+    });
+
+    expect(await screen.findByTestId('Tier.Tier3')).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId('tier')).queryByRole('button', {
+        name: 'label.tier',
+      })
+    ).not.toBeInTheDocument();
+  });
+
+  it('closes the picker when the add button is pressed again', async () => {
+    render(<TierWidget />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('add-tier'));
+    });
+    await screen.findByTestId('Tier.Tier3');
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('add-tier'));
+    });
+
+    await waitFor(() =>
+      expect(screen.queryByTestId('Tier.Tier3')).not.toBeInTheDocument()
+    );
+  });
+});
+
+const axiosError = {
+  message: 'Request failed with status code 403',
+  response: { status: 403, data: { message: 'Forbidden' } },
+} as AxiosError;
+
+const saveTier = async () => {
+  await act(async () => {
+    fireEvent.click(screen.getByTestId('add-tier'));
+  });
+  await act(async () => {
+    fireEvent.click(await screen.findByTestId('Tier.Tier3'));
+  });
+};
+
+// The widget swallows a failed save without toasting, because the pages that
+// render it (Domain, DataProduct) toast in their own onUpdate before rethrowing.
+describe('TierWidget failed save', () => {
+  beforeEach(() => {
+    mockOnUpdate.mockReset();
+    mockUseGenericContextResult.isVersionView = false;
+    (showErrorToast as jest.Mock).mockClear();
+    mockUseGenericContextResult.permissions = {
+      EditTier: true,
+    } as unknown as OperationPermission;
+  });
+
+  it('should toast once when the page updater toasts and rethrows', async () => {
+    mockOnUpdate.mockImplementation(async () => {
+      showErrorToast(axiosError);
+
+      throw axiosError;
+    });
+
+    render(<TierWidget />);
+    await saveTier();
+
+    await waitFor(() => expect(mockOnUpdate).toHaveBeenCalledTimes(1));
+
+    expect(showErrorToast).toHaveBeenCalledTimes(1);
+  });
+
+  it('should toast once when the page updater toasts and swallows', async () => {
+    mockOnUpdate.mockImplementation(async () => {
+      showErrorToast(axiosError);
+    });
+
+    render(<TierWidget />);
+    await saveTier();
+
+    await waitFor(() => expect(mockOnUpdate).toHaveBeenCalledTimes(1));
+
+    expect(showErrorToast).toHaveBeenCalledTimes(1);
+  });
+
+  it('should not toast on a successful save', async () => {
+    mockOnUpdate.mockResolvedValue(undefined);
+
+    render(<TierWidget />);
+    await saveTier();
+
+    await waitFor(() => expect(mockOnUpdate).toHaveBeenCalledTimes(1));
+
+    expect(showErrorToast).not.toHaveBeenCalled();
   });
 });

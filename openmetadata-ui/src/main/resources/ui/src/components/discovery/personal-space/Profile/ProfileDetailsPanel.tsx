@@ -29,10 +29,10 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import ChangePasswordRow from './components/ChangePasswordRow';
 import DefaultPersonaRow from './components/DefaultPersonaRow';
 import DomainsRow from './components/DomainsRow';
-import FieldRow from './components/FieldRow';
 import InlineEditCard from './components/InlineEditCard';
 import PersonaRow from './components/PersonaRow';
 import RowSkeleton from './components/RowSkeleton';
+import SettingsSection, { ReadOnlyRow } from './components/SettingsSection';
 import { canUserChangePassword } from './ProfileDetailsPanel.utils';
 
 interface ProfileDetailsPanelProps {
@@ -40,54 +40,6 @@ interface ProfileDetailsPanelProps {
   isProfileLoading: boolean;
   updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
 }
-
-interface ReadOnlyRowProps {
-  title: string;
-  description: string;
-  children: React.ReactNode;
-}
-
-const ReadOnlyRow: React.FC<ReadOnlyRowProps> = ({
-  title,
-  description,
-  children,
-}) => (
-  <div className="tw:px-5 tw:py-4">
-    <FieldRow description={description} title={title}>
-      {children}
-    </FieldRow>
-  </div>
-);
-
-interface ProfileSectionProps {
-  title: string;
-  testId?: string;
-  children: React.ReactNode;
-}
-
-/**
- * A titled settings section: uppercase caption above one bordered card whose
- * rows are separated by dividers.
- */
-const ProfileSection: React.FC<ProfileSectionProps> = ({
-  title,
-  testId,
-  children,
-}) => (
-  <Box data-testid={testId} direction="col" gap={3}>
-    <Typography
-      className="tw:px-1 tw:text-primary-900 tw:uppercase"
-      size="text-xs"
-      weight="medium">
-      {title}
-    </Typography>
-    <Box
-      className="tw:divide-y tw:divide-secondary tw:overflow-hidden tw:rounded-[10px] tw:border tw:border-secondary tw:bg-primary"
-      direction="col">
-      {children}
-    </Box>
-  </Box>
-);
 
 interface PreferredNameRowProps {
   userData: User;
@@ -158,7 +110,7 @@ const ProfileDetailsPanel: React.FC<ProfileDetailsPanelProps> = ({
 
   return (
     <Box data-testid="profile-details-panel" direction="col" gap={6}>
-      <ProfileSection
+      <SettingsSection
         testId="profile-section-profile"
         title={t('label.profile')}>
         <ReadOnlyRow
@@ -198,17 +150,17 @@ const ProfileDetailsPanel: React.FC<ProfileDetailsPanelProps> = ({
             )}
           </Box>
         </ReadOnlyRow>
-      </ProfileSection>
+      </SettingsSection>
 
       {canChangePassword && (
-        <ProfileSection
+        <SettingsSection
           testId="profile-section-security"
           title={t('label.security')}>
           <ChangePasswordRow username={userData.name} />
-        </ProfileSection>
+        </SettingsSection>
       )}
 
-      <ProfileSection
+      <SettingsSection
         testId="profile-section-identity"
         title={t('label.identity-and-access')}>
         {isProfileLoading ? (
@@ -235,7 +187,7 @@ const ProfileDetailsPanel: React.FC<ProfileDetailsPanelProps> = ({
             userData={userData}
           />
         )}
-      </ProfileSection>
+      </SettingsSection>
     </Box>
   );
 };

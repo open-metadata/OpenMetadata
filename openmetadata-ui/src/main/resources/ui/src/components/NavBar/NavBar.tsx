@@ -11,14 +11,29 @@
  *  limitations under the License.
  */
 
-import { Tooltip as CoreTooltip } from '@openmetadata/ui-core-components';
-import { Alert, Badge, Button, Dropdown, InputRef, Tooltip } from 'antd';
+import {
+  Button,
+  ButtonUtility,
+  Dropdown,
+  Popover,
+  PopoverTrigger,
+  Tooltip as CoreTooltip,
+  Tooltip,
+} from '@openmetadata/ui-core-components';
+import { Alert, Badge, InputRef } from 'antd';
 import { Header } from 'antd/lib/layout/layout';
 import { AxiosError } from 'axios';
 import { CookieStorage } from 'cookie-storage';
 import { startCase, upperCase } from 'lodash';
-import { MenuInfo } from 'rc-menu/lib/interface';
-import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Key,
+  lazy,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DropDownIcon } from '../../assets/svg/drop-down.svg';
@@ -74,7 +89,6 @@ import { useEntityExportModalProvider } from '../Entity/EntityExportModalProvide
 import { CSVExportWebsocketResponse } from '../Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { GlobalSearchBar } from '../GlobalSearchBar/GlobalSearchBar';
 import NotificationBox from '../NotificationBox/NotificationBox.component';
-import { NotificationBoxProp } from '../NotificationBox/NotificationBox.interface';
 import { UserProfileIcon } from '../Settings/Users/UserProfileIcon/UserProfileIcon.component';
 import './nav-bar.less';
 import popupAlertsCardsClassBase from './PopupAlertClassBase';
@@ -83,10 +97,6 @@ const DomainSelect = withSuspenseFallback(
 );
 
 const cookieStorage = new CookieStorage();
-
-const renderNotificationBox = (props: NotificationBoxProp) => (
-  <NotificationBox {...props} />
-);
 
 const NavBar = () => {
   const { isTourOpen: isTourRoute } = useTourProvider();
@@ -337,17 +347,22 @@ const NavBar = () => {
         }
       }
 
-      const newVersion = await getVersion();
-      const cleanedVersion = newVersion.version?.replace('-SNAPSHOT', '');
+      try {
+        const newVersion = await getVersion();
+        const cleanedVersion = newVersion.version?.replace('-SNAPSHOT', '');
 
-      // Update the cache timestamp
-      cookieStorage.setItem(LAST_VERSION_FETCH_TIME_KEY, String(now), {
-        expires: new Date(Date.now() + ONE_HOUR_MS),
-      });
+        // Update the cache timestamp
+        cookieStorage.setItem(LAST_VERSION_FETCH_TIME_KEY, String(now), {
+          expires: new Date(Date.now() + ONE_HOUR_MS),
+        });
 
-      // Compare version only if version is set previously to have fair comparison
-      if (version && version !== cleanedVersion) {
-        setShowVersionMissMatchAlert(true);
+        // Compare version only if version is set previously to have fair comparison
+        if (version && version !== cleanedVersion) {
+          setShowVersionMissMatchAlert(true);
+        }
+      } catch {
+        // Best-effort background check: focus right after sleep often fires before the
+        // network is back. Timestamp stays unset, so the next focus retries.
       }
     };
 
@@ -518,11 +533,14 @@ const NavBar = () => {
     />
   );
 
-  const handleLanguageChange = useCallback(async ({ key }: MenuInfo) => {
-    await localUtilClassBase.loadLocales(key);
-    await i18n.changeLanguage(key);
-    navigate(0);
-  }, []);
+  const handleLanguageChange = useCallback(
+    async (key: Key) => {
+      await localUtilClassBase.loadLocales(String(key));
+      await i18n.changeLanguage(String(key));
+      navigate(0);
+    },
+    [navigate]
+  );
 
   const currentLanguage = i18n.language
     ? upperCase(i18n.language.split('-')[0])
@@ -553,8 +571,8 @@ const NavBar = () => {
           showIcon
           action={
             <Button
-              size="small"
-              type="link"
+              color="link-color"
+              size="xs"
               onClick={() => {
                 navigate(0);
               }}>
@@ -576,19 +594,16 @@ const NavBar = () => {
       <Header style={headerStyle}>
         <div className="navbar-container">
           <div className="flex-center gap-2">
-            <Tooltip placement="right" title={sidebarTooltipTitle}>
-              <Button
-                className="w-6 h-6 p-0 flex-center"
+            <Tooltip arrow placement="right" title={sidebarTooltipTitle}>
+              <ButtonUtility
+                color="tertiary"
                 data-testid="sidebar-toggle"
                 icon={
-                  isSidebarCollapsed ? (
-                    <SidebarCollapsedIcon height={20} width={20} />
-                  ) : (
-                    <SidebarExpandedIcon height={20} width={20} />
-                  )
+                  isSidebarCollapsed
+                    ? SidebarCollapsedIcon
+                    : SidebarExpandedIcon
                 }
-                size="middle"
-                type="text"
+                size="sm"
                 onClick={() =>
                   setPreference({ isSidebarCollapsed: !isSidebarCollapsed })
                 }
@@ -603,71 +618,72 @@ const NavBar = () => {
           </div>
 
           <div className="flex-center gap-5 nav-bar-side-items">
-            <Dropdown
-              className="cursor-pointer"
-              menu={{
-                items: languageSelectOptions,
-                onClick: handleLanguageChange,
-              }}
-              placement="bottomRight"
-              trigger={['click']}>
+            <Dropdown.Root>
               <Button
-                className="flex-center gap-2 p-x-xs font-medium"
+                color="tertiary"
                 data-testid="language-selector-button"
-                type="text">
+                iconTrailing={<DropDownIcon width={12} />}
+                size="sm">
                 {currentLanguage}
-                <DropDownIcon width={12} />
               </Button>
-            </Dropdown>
-            <Dropdown
-              destroyPopupOnHide
-              className="cursor-pointer"
-              dropdownRender={() =>
-                renderNotificationBox({
-                  activeTab,
-                  hasMentionNotification,
-                  hasTaskNotification,
-                  onMarkMentionsNotificationRead:
-                    handleMentionsNotificationRead,
-                  onMarkTaskNotificationRead: handleTaskNotificationRead,
-                  onTabChange: handleActiveTab,
-                })
-              }
-              overlayStyle={{
-                width: '425px',
-                minHeight: '375px',
-              }}
-              placement="bottomRight"
-              trigger={['click']}
-              onOpenChange={handleBellClick}>
+              <Dropdown.Popover className="tw:w-auto" placement="bottom end">
+                <Dropdown.Menu
+                  aria-label={t('label.language')}
+                  className="tw:max-h-80 tw:overflow-y-auto"
+                  items={languageSelectOptions}
+                  selectionMode="none"
+                  onAction={handleLanguageChange}>
+                  {(item) => <Dropdown.Item id={item.key} label={item.label} />}
+                </Dropdown.Menu>
+              </Dropdown.Popover>
+            </Dropdown.Root>
+            <PopoverTrigger onOpenChange={handleBellClick}>
               <Button
-                className="flex-center"
-                icon={
+                aria-label={t('label.notification-plural')}
+                color="tertiary"
+                iconLeading={
                   <Badge
                     dot={hasTaskNotification || hasMentionNotification}
                     offset={[-3, 3]}>
                     <IconBell data-testid="task-notifications" width={20} />
                   </Badge>
                 }
-                title={t('label.notification-plural')}
-                type="text"
+                size="sm"
               />
-            </Dropdown>
-            <Dropdown
-              menu={{
-                items: getHelpDropdownItems(version),
-              }}
-              overlayStyle={{ width: 175 }}
-              placement="bottomRight"
-              trigger={['click']}>
+              <Popover className="tw:w-106" placement="bottom end">
+                <NotificationBox
+                  activeTab={activeTab}
+                  hasMentionNotification={hasMentionNotification}
+                  hasTaskNotification={hasTaskNotification}
+                  onMarkMentionsNotificationRead={
+                    handleMentionsNotificationRead
+                  }
+                  onMarkTaskNotificationRead={handleTaskNotificationRead}
+                  onTabChange={handleActiveTab}
+                />
+              </Popover>
+            </PopoverTrigger>
+            <Dropdown.Root>
               <Button
-                className="flex-center"
+                aria-label={t('label.need-help')}
+                color="tertiary"
                 data-testid="help-icon"
-                icon={<Help width={20} />}
-                title={t('label.need-help')}
-                type="text"
+                iconLeading={<Help width={20} />}
+                size="sm"
               />
-            </Dropdown>
+              <Dropdown.Popover className="tw:w-44" placement="bottom end">
+                <Dropdown.Menu
+                  aria-label={t('label.need-help')}
+                  items={getHelpDropdownItems(version)}
+                  selectionMode="none">
+                  {(item) => (
+                    <Dropdown.Item id={item.key} textValue={item.key}>
+                      {item.label}
+                    </Dropdown.Item>
+                  )}
+                </Dropdown.Menu>
+              </Dropdown.Popover>
+            </Dropdown.Root>
             <UserProfileIcon />
           </div>
         </div>

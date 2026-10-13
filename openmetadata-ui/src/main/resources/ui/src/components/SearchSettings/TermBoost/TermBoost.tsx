@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Divider, Row, Slider } from 'antd';
+import {
+  Box,
+  Button,
+  Divider,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Slider } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { ComponentProps, useEffect, useState } from 'react';
@@ -132,8 +137,8 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
 
   return (
     <div className={classNames('term-boost', className)}>
-      <Row className="p-box d-flex flex-column">
-        <Col className="p-y-xs p-l-sm p-r-xss border-radius-card m-b-sm bg-white config-section-content">
+      <Box className="layout-row p-box d-flex flex-column" wrap="wrap">
+        <Box className="layout-column tw:block p-y-xs p-l-sm p-r-xss border-radius-card m-b-sm bg-white config-section-content">
           <AsyncSelect
             enableInfiniteScroll
             showSearch
@@ -149,8 +154,8 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
             value={termBoostData.value || undefined}
             onChange={handleTagChange}
           />
-        </Col>
-        <Col className="d-flex flex-column gap-1">
+        </Box>
+        <Box className="layout-column d-flex flex-column gap-1">
           <div className="d-flex items-center justify-between p-x-xss">
             <Typography data-testid="term-boost-impact-label">
               {t('label.boost')}
@@ -172,16 +177,19 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
             />
           </div>
           <Divider className="m-b-md m-t-0" />
-        </Col>
-        <Col className="d-flex items-center justify-end gap-2">
+        </Box>
+        <Box className="layout-column d-flex items-center justify-end gap-2">
           <Button
-            className="delete-term-boost"
+            aria-label={t('label.delete-entity', {
+              entity: t('label.term-boost'),
+            })}
+            color="secondary"
             data-testid="delete-term-boost"
-            icon={<Icon className="text-md" component={Delete} />}
+            iconLeading={<Icon component={Delete} />}
             onClick={() => onDeleteBoost(termBoost.value)}
           />
-        </Col>
-      </Row>
+        </Box>
+      </Box>
     </div>
   );
 };

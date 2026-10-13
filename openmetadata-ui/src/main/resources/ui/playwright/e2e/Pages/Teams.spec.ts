@@ -381,9 +381,10 @@ test.describe('Teams Page', () => {
       await scopedUserPage.locator('[data-testid="leave-team-button"]').click();
       // Click on confirm button
       await scopedUserPage
-        .locator('.ant-modal-footer')
-        .getByText('Confirm')
+        .getByTestId('remove-team-user-modal')
+        .getByRole('button', { name: 'Confirm' })
         .click();
+
       await leaveTeamResponse;
 
       // Verify that the "Join Teams" button is now visible
@@ -1070,7 +1071,7 @@ test.describe('Teams Page', () => {
       });
 
       await test.step('Toggle Show Deleted and verify include=deleted is sent', async () => {
-        const deletedToggle = page.getByRole('switch').first();
+        const deletedToggle = page.getByTestId('show-deleted');
         await expect(deletedToggle).toBeVisible();
 
         const teamsResponsePromise = page.waitForResponse(
@@ -1080,7 +1081,7 @@ test.describe('Teams Page', () => {
         );
 
         await deletedToggle.click();
-        await expect(deletedToggle).toHaveAttribute('aria-checked', 'true');
+        await expect(deletedToggle.getByRole('switch')).toBeChecked();
 
         const teamsResponse = await teamsResponsePromise;
         expect(teamsResponse.status()).toBe(200);

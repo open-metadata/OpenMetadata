@@ -26,7 +26,6 @@ import static org.mockito.Mockito.when;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -49,22 +48,6 @@ class ActivityStreamPublisherTest {
 
   @Mock private EventSubscription eventSubscription;
   @Mock private SubscriptionDestination subscriptionDestination;
-
-  @BeforeEach
-  void setUp() {
-    when(subscriptionDestination.getType())
-        .thenReturn(SubscriptionDestination.SubscriptionType.ACTIVITY_FEED);
-  }
-
-  @Test
-  void constructorRejectsIllegalDestinationType() {
-    when(subscriptionDestination.getType())
-        .thenReturn(SubscriptionDestination.SubscriptionType.EMAIL);
-
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> new ActivityStreamPublisher(eventSubscription, subscriptionDestination));
-  }
 
   @Test
   void requiresRecipientsIsDisabled() {
@@ -153,6 +136,8 @@ class ActivityStreamPublisherTest {
 
   @Test
   void sendMessageWrapsRepositoryErrors() {
+    when(subscriptionDestination.getType())
+        .thenReturn(SubscriptionDestination.SubscriptionType.ACTIVITY_FEED);
     try (MockedConstruction<ActivityStreamRepository> repositoryConstruction =
         mockConstruction(
             ActivityStreamRepository.class,

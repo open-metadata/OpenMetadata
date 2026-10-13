@@ -10,8 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Progress, Skeleton, Space } from 'antd';
+import {
+  Box,
+  SkeletonParagraph,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Progress } from 'antd';
 import classNames from 'classnames';
 import { isNumber, round } from 'lodash';
 import { useMemo } from 'react';
@@ -45,19 +49,32 @@ export const SummaryCard = ({
       <div
         className={classNames('summary-card', className)}
         data-testid="skeleton-loading">
-        <Skeleton active loading />
+        <SkeletonParagraph />
       </div>
     );
   }
 
   return (
-    <Space
-      className={classNames('summary-card', cardBackgroundClass, className)}
-      data-testid="summary-card-container">
+    <Box
+      inline
+      align="center"
+      className={`layout-space layout-space-horizontal ${classNames(
+        'summary-card',
+        cardBackgroundClass,
+        className
+      )}`}
+      data-testid="summary-card-container"
+      gap={2}
+      itemClassName="layout-space-item">
       <div
         className={classNames({ 'inverse-label': inverseLabel })}
         data-testid="summary-card-label">
-        <Space align="center" size={8}>
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal"
+          gap={2}
+          itemClassName="layout-space-item">
           {titleIcon}
           <Typography
             as="p"
@@ -65,7 +82,7 @@ export const SummaryCard = ({
             data-testid="summary-card-title">
             {title}
           </Typography>
-        </Space>
+        </Box>
         <Typography
           as="p"
           className="summary-card-description"
@@ -84,6 +101,6 @@ export const SummaryCard = ({
           width={65}
         />
       )}
-    </Space>
+    </Box>
   );
 };

@@ -377,16 +377,15 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
         )
 
     def get_stored_procedures(self) -> Iterable[MssqlStoredProcedure]:
-        """List Snowflake stored procedures"""
+        """List MSSQL stored procedures"""
         if self.source_config.includeStoredProcedures:
             with self.engine.connect() as conn:
                 results = conn.execute(
-                    text(
-                        MSSQL_GET_STORED_PROCEDURES.format(
-                            database_name=self.context.get().database,
-                            schema_name=self.context.get().database_schema,
-                        )
-                    )
+                    text(MSSQL_GET_STORED_PROCEDURES),
+                    {
+                        "database_name": self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                        "schema_name": self.context.get().database_schema,  # pyright: ignore[reportAttributeAccessIssue]
+                    },
                 ).all()
             for row in results:
                 try:

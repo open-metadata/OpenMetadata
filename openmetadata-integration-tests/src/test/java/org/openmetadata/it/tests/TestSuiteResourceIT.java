@@ -80,6 +80,7 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
 
   // Disable tests that don't apply to TestSuite
   {
+    supportsEntityStatus = false;
     supportsFollowers = false; // TestSuite doesn't support followers
     supportsDataProducts = false; // TestSuite doesn't support dataProducts
     supportsListHistoryByTimestamp = true;

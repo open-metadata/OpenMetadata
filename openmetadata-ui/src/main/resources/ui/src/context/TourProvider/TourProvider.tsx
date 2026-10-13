@@ -74,9 +74,7 @@ const TourProvider: FC<Props> = ({ children }) => {
   const [tourMockDatasetData, setTourMockDatasetData] = useState<unknown>();
 
   useEffect(() => {
-    if (isTourPage) {
-      setIsTourOpen(true);
-    }
+    setIsTourOpen(isTourPage);
   }, [isTourPage]);
 
   const handleIsTourOpen = useCallback((value: boolean) => {

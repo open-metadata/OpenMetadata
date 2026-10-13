@@ -139,6 +139,10 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   private static final String FORCED_REAUTHENTICATION_MAX_AGE = "0";
 
   private static final String MCP_CALLBACK_PATH = "/mcp/callback";
+  private static final String AUTH_CALLBACK_PATH = "/auth/callback";
+  private static final String CALLBACK_SERVLET_PATH = "/callback";
+  private static final String SIGNIN_PATH = "/signin";
+  private static final String LOGOUT_PATH = "/logout";
 
   static final String SESSION_REVOKED_DURING_REFRESH = "Session revoked during refresh";
 
@@ -215,7 +219,9 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     this.authorizerConfiguration = authorizerConfiguration;
     this.sessionService = sessionService;
     this.providerTokenRefresher =
-        new OidcProviderTokenRefresher(this::createTokenRequest, this::executeTokenHttpRequest);
+        new OidcProviderTokenRefresher(
+            grant -> createTokenRequest(client.getConfiguration(), clientAuthentication, grant),
+            request -> executeTokenHttpRequest(client.getConfiguration(), request));
     initializeFields();
     latestInstance = this;
   }
@@ -260,10 +266,11 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
 
     this.serverUrl = authenticationConfiguration.getOidcConfiguration().getServerUrl();
     this.claimsOrder = authenticationConfiguration.getJwtPrincipalClaims();
+    // The same parsing the request filter and Test Login use, so a test cannot resolve a different
+    // principal than this login does.
     this.claimsMapping =
-        listOrEmpty(authenticationConfiguration.getJwtPrincipalClaimsMapping()).stream()
-            .map(s -> s.split(":"))
-            .collect(Collectors.toMap(s -> s[0], s -> s[1]));
+        SecurityUtil.buildPrincipalClaimsMapping(
+            authenticationConfiguration.getJwtPrincipalClaimsMapping());
     validatePrincipalClaimsMapping(claimsMapping);
     this.teamClaimMapping = authenticationConfiguration.getJwtTeamClaimMapping();
     this.principalDomain =
@@ -310,7 +317,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     return nullOrEmpty(prompt) ? null : prompt;
   }
 
-  private static OidcClient buildOidcClient(OidcClientConfig clientConfig) {
+  static OidcClient buildOidcClient(OidcClientConfig clientConfig) {
     String id = clientConfig.getId();
     String secret = clientConfig.getSecret();
     if (CommonHelper.isNotBlank(id) && CommonHelper.isNotBlank(secret)) {
@@ -458,10 +465,11 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         }
       }
 
-      Map<String, String> params = buildLoginParams();
+      Map<String, String> params = buildLoginParams(client.getConfiguration());
       params.put(OidcConfiguration.REDIRECT_URI, client.getCallbackUrl());
 
-      PendingLoginContext pendingLoginContext = addStateAndNonceParameters(params);
+      PendingLoginContext pendingLoginContext =
+          addStateAndNonceParameters(client.getConfiguration(), params);
       if (isMcpFlow) {
         persistMcpPendingState(req, pendingLoginContext);
       }
@@ -483,7 +491,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         params.put(OidcConfiguration.MAX_AGE, maxAge);
       }
 
-      String location = buildLoginAuthenticationRequestUrl(params);
+      String location = buildLoginAuthenticationRequestUrl(client.getConfiguration(), params);
       LOG.debug("Authentication request url: {}", location);
       resp.sendRedirect(location);
     } catch (IllegalArgumentException e) {
@@ -552,7 +560,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         // consumed). A 500 here strands the browser in a login loop; getPendingSession has
         // already cleared the stale cookie, so route the user to interactive signin instead.
         LOG.warn("No pending session found for callback, redirecting to signin");
-        resp.sendRedirect(serverUrl + "/signin");
+        resp.sendRedirect(deploymentUrl(SIGNIN_PATH));
         return;
       }
       UserSession pendingSession = maybePendingSession.get();
@@ -572,7 +580,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         String errorCode = authenticationErrorResponse.getErrorObject().getCode();
         if (SILENT_AUTH_ERRORS.contains(errorCode)) {
           LOG.warn("Silent auth not possible (error={}), redirecting to signin", errorCode);
-          resp.sendRedirect(serverUrl + "/signin");
+          resp.sendRedirect(deploymentUrl(SIGNIN_PATH));
           return;
         }
         LOG.error(
@@ -584,11 +592,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       LOG.debug("Authentication response successful");
       AuthenticationSuccessResponse successResponse = (AuthenticationSuccessResponse) response;
 
-      OIDCProviderMetadata metadata = resolveProviderMetadata(client.getConfiguration());
-      if (metadata.supportsAuthorizationResponseIssuerParam()
-          && !metadata.getIssuer().equals(successResponse.getIssuer())) {
-        throw new TechnicalException("Issuer mismatch, possible mix-up attack.");
-      }
+      validateResponseIssuer(client.getConfiguration(), successResponse);
 
       // Optional state validation
       validateStateIfRequired(pendingSession, resp, successResponse);
@@ -699,7 +703,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         }
       }
       sessionService.revokeSession(httpServletRequest, httpServletResponse);
-      httpServletResponse.sendRedirect(serverUrl + "/logout");
+      httpServletResponse.sendRedirect(deploymentUrl(LOGOUT_PATH));
     } catch (Exception ex) {
       LOG.error("[Auth Logout] Error while performing logout", ex);
     }
@@ -855,7 +859,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     }
   }
 
-  private String buildLoginAuthenticationRequestUrl(final Map<String, String> params) {
+  static String buildLoginAuthenticationRequestUrl(
+      OidcConfiguration configuration, final Map<String, String> params) {
     // Build authentication request query string
     String queryString;
     try {
@@ -869,20 +874,18 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     } catch (Exception e) {
       throw new TechnicalException(e);
     }
-    return resolveProviderMetadata(client.getConfiguration())
-            .getAuthorizationEndpointURI()
-            .toString()
+    return resolveProviderMetadata(configuration).getAuthorizationEndpointURI().toString()
         + '?'
         + queryString;
   }
 
-  private Map<String, String> buildLoginParams() {
+  static Map<String, String> buildLoginParams(OidcConfiguration configuration) {
     Map<String, String> authParams = new HashMap<>();
-    authParams.put(OidcConfiguration.SCOPE, client.getConfiguration().getScope());
-    authParams.put(OidcConfiguration.RESPONSE_TYPE, client.getConfiguration().getResponseType());
+    authParams.put(OidcConfiguration.SCOPE, configuration.getScope());
+    authParams.put(OidcConfiguration.RESPONSE_TYPE, configuration.getResponseType());
     authParams.put(OidcConfiguration.RESPONSE_MODE, "query");
-    authParams.putAll(client.getConfiguration().getCustomParams());
-    authParams.put(OidcConfiguration.CLIENT_ID, client.getConfiguration().getClientId());
+    authParams.putAll(configuration.getCustomParams());
+    authParams.put(OidcConfiguration.CLIENT_ID, configuration.getClientId());
 
     return new HashMap<>(authParams);
   }
@@ -901,6 +904,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
               : new CodeVerifier(session.getPkceVerifier());
       TokenRequest request =
           createTokenRequest(
+              client.getConfiguration(),
+              clientAuthentication,
               new AuthorizationCodeGrant(
                   oidcCredentials.toAuthorizationCode(), new URI(computedCallbackUrl), verifier));
       executeAuthorizationCodeTokenRequest(session, request, oidcCredentials);
@@ -934,12 +939,21 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
 
   // pac4j 6 replaces provider-metadata accessors with a lazy IOidcOpMetadataResolver. OM does not
   // call client.init(), so ensure the resolver exists before loading its cached discovery document.
-  private static OIDCProviderMetadata resolveProviderMetadata(OidcConfiguration configuration) {
+  static void validateResponseIssuer(
+      OidcConfiguration configuration, AuthenticationSuccessResponse successResponse) {
+    OIDCProviderMetadata metadata = resolveProviderMetadata(configuration);
+    if (metadata.supportsAuthorizationResponseIssuerParam()
+        && !metadata.getIssuer().equals(successResponse.getIssuer())) {
+      throw new TechnicalException("Issuer mismatch, possible mix-up attack.");
+    }
+  }
+
+  static OIDCProviderMetadata resolveProviderMetadata(OidcConfiguration configuration) {
     configuration.ensuresMetadataResolverInitialized();
     return configuration.getOpMetadataResolver().load();
   }
 
-  private OidcCredentials buildCredentials(AuthenticationSuccessResponse successResponse) {
+  static OidcCredentials buildCredentials(AuthenticationSuccessResponse successResponse) {
     OidcCredentials credentials = new OidcCredentials();
     // get authorization code
     AuthorizationCode code = successResponse.getAuthorizationCode();
@@ -965,8 +979,13 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
 
   private void validateNonceIfRequired(UserSession session, JWTClaimsSet claimsSet)
       throws BadJOSEException {
-    if (client.getConfiguration().isUseNonce()) {
-      String expectedNonce = session.getNonce();
+    validateNonceIfRequired(client.getConfiguration(), session.getNonce(), claimsSet);
+  }
+
+  static void validateNonceIfRequired(
+      OidcConfiguration configuration, String expectedNonce, JWTClaimsSet claimsSet)
+      throws BadJOSEException {
+    if (configuration.isUseNonce()) {
       if (CommonHelper.isNotBlank(expectedNonce)) {
         String tokenNonce;
         try {
@@ -999,7 +1018,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     return map;
   }
 
-  private ClientAuthentication getClientAuthentication(OidcConfiguration configuration) {
+  static ClientAuthentication getClientAuthentication(OidcConfiguration configuration) {
     ClientID clientID = new ClientID(configuration.getClientId());
     ClientAuthentication clientAuthenticationMechanism = null;
     if (configuration.getSecret() != null) {
@@ -1083,7 +1102,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     return configurationMethod;
   }
 
-  private ClientAuthenticationMethod firstSupportedMethod(
+  private static ClientAuthenticationMethod firstSupportedMethod(
       final List<ClientAuthenticationMethod> metadataMethods) {
     Optional<ClientAuthenticationMethod> firstSupported =
         metadataMethods.stream().filter(SUPPORTED_METHODS::contains).findFirst();
@@ -1248,7 +1267,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   @SneakyThrows
   private void executeAuthorizationCodeTokenRequest(
       UserSession session, TokenRequest request, OidcCredentials credentials) {
-    HTTPResponse httpResponse = executeTokenHttpRequest(request);
+    HTTPResponse httpResponse = executeTokenHttpRequest(client.getConfiguration(), request);
     OIDCTokenResponse tokenSuccessResponse = parseTokenResponseFromHttpResponse(httpResponse);
     populateCredentialsFromTokenResponse(tokenSuccessResponse, credentials);
   }
@@ -1262,9 +1281,10 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     SecurityUtil.validatePrincipalClaimsMapping(mapping);
   }
 
-  private HTTPResponse executeTokenHttpRequest(TokenRequest request) throws IOException {
+  static HTTPResponse executeTokenHttpRequest(OidcConfiguration configuration, TokenRequest request)
+      throws IOException {
     HTTPRequest tokenHttpRequest = request.toHTTPRequest();
-    client.getConfiguration().configureHttpRequest(tokenHttpRequest);
+    configuration.configureHttpRequest(tokenHttpRequest);
 
     HTTPResponse httpResponse = tokenHttpRequest.send();
     LOG.debug("Token response: status={}", httpResponse.getStatusCode());
@@ -1272,37 +1292,41 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     return httpResponse;
   }
 
-  private TokenRequest createTokenRequest(final AuthorizationGrant grant) {
+  static TokenRequest createTokenRequest(
+      OidcConfiguration configuration,
+      ClientAuthentication clientAuthentication,
+      final AuthorizationGrant grant) {
     if (clientAuthentication != null) {
       return new TokenRequest(
-          resolveProviderMetadata(client.getConfiguration()).getTokenEndpointURI(),
-          this.clientAuthentication,
+          resolveProviderMetadata(configuration).getTokenEndpointURI(),
+          clientAuthentication,
           grant);
     } else {
       return new TokenRequest(
-          resolveProviderMetadata(client.getConfiguration()).getTokenEndpointURI(),
-          new ClientID(client.getConfiguration().getClientId()),
+          resolveProviderMetadata(configuration).getTokenEndpointURI(),
+          new ClientID(configuration.getClientId()),
           grant);
     }
   }
 
-  private PendingLoginContext addStateAndNonceParameters(Map<String, String> params) {
+  static PendingLoginContext addStateAndNonceParameters(
+      OidcConfiguration configuration, Map<String, String> params) {
     String state = null;
     String nonce = null;
     String pkceVerifier = null;
 
-    if (client.getConfiguration().isWithState()) {
+    if (configuration.isWithState()) {
       state = new State(CommonHelper.randomString(32)).getValue();
       params.put(OidcConfiguration.STATE, state);
     }
 
-    if (client.getConfiguration().isUseNonce()) {
+    if (configuration.isUseNonce()) {
       nonce = new Nonce().getValue();
       params.put(OidcConfiguration.NONCE, nonce);
     }
 
-    CodeChallengeMethod pkceMethod = client.getConfiguration().findPkceMethod();
-    if (pkceMethod == null && !client.getConfiguration().isDisablePkce()) {
+    CodeChallengeMethod pkceMethod = configuration.findPkceMethod();
+    if (pkceMethod == null && !configuration.isDisablePkce()) {
       pkceMethod = CodeChallengeMethod.S256;
     }
     if (pkceMethod != null) {
@@ -1316,7 +1340,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     return new PendingLoginContext(state, nonce, pkceVerifier);
   }
 
-  private void populateCredentialsFromTokenResponse(
+  static void populateCredentialsFromTokenResponse(
       OIDCTokenResponse tokenSuccessResponse, OidcCredentials credentials) {
     OIDCTokens oidcTokens = tokenSuccessResponse.getOIDCTokens();
     // pac4j 6 exposes Map-based setters plus set*Object() overloads that retain the nimbus types;
@@ -1330,7 +1354,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     }
   }
 
-  private OIDCTokenResponse parseTokenResponseFromHttpResponse(HTTPResponse httpResponse)
+  static OIDCTokenResponse parseTokenResponseFromHttpResponse(HTTPResponse httpResponse)
       throws com.nimbusds.oauth2.sdk.ParseException {
     TokenResponse response = OIDCTokenResponseParser.parse(httpResponse);
     if (response instanceof TokenErrorResponse tokenErrorResponse) {
@@ -1346,20 +1370,71 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     return (OIDCTokenResponse) response;
   }
 
-  private String requireRedirectUri(String redirectUri) {
+  /**
+   * Redirect targets a login round-trip may land on.
+   *
+   * <p>The browser asks to land on {@code <its own origin>/auth/callback}. Besides the {@code
+   * serverUrl} entries, that landing page is trusted on the host of the configured OIDC callback
+   * URL: it has to be right for login to work at all, since the identity provider rejects any other
+   * {@code redirect_uri}, while {@code serverUrl} is routinely left at its localhost default (issue
+   * #26311). Nothing is read from the request, so no header can add a trusted target.
+   */
+  private Set<String> trustedRedirectUris() {
     Set<String> trusted =
         trustedRedirects(
             authenticationConfiguration.getCallbackUrl(),
-            serverUrl + "/auth/callback",
-            serverUrl + "/mcp/callback");
+            serverUrl + AUTH_CALLBACK_PATH,
+            serverUrl + MCP_CALLBACK_PATH,
+            landingPageOnCallbackHost());
     trusted.addAll(listOrEmpty(authenticationConfiguration.getAdditionalTrustedRedirectUris()));
-    return SecurityUtil.validateRedirectUri(redirectUri, trusted);
+    return trusted;
+  }
+
+  private String landingPageOnCallbackHost() {
+    String callbackOrigin = SecurityUtil.originOf(client.getCallbackUrl());
+    return callbackOrigin == null ? null : callbackOrigin + AUTH_CALLBACK_PATH;
+  }
+
+  private String requireRedirectUri(String redirectUri) {
+    Set<String> trusted = trustedRedirectUris();
+    try {
+      return SecurityUtil.validateRedirectUri(redirectUri, trusted);
+    } catch (IllegalArgumentException e) {
+      // Without the candidate set on the wire-facing 400 this is undiagnosable from the outside.
+      LOG.warn(
+          "Rejected login redirect URI [{}] - trusted targets are {}: {}",
+          redirectUri,
+          trusted,
+          e.getMessage());
+      throw e;
+    }
   }
 
   private String requireRedirectUriOrDefault(String redirectUri) {
     String targetRedirectUri =
-        nullOrEmpty(redirectUri) ? serverUrl + "/auth/callback" : redirectUri;
+        nullOrEmpty(redirectUri) ? serverUrl + AUTH_CALLBACK_PATH : redirectUri;
     return requireRedirectUri(targetRedirectUri);
+  }
+
+  /**
+   * {@code path} under the deployment's base URL, taken from the configured OIDC callback URL minus
+   * its trailing {@code /callback} for the same reason the landing page is trusted on its host: it
+   * has to be right for login to work, while {@code serverUrl} may be stale (#26311). A base path
+   * survives, as it would in {@code serverUrl}; a callback URL that is not the callback servlet's
+   * keeps {@code serverUrl}.
+   */
+  private String deploymentUrl(String path) {
+    String callbackBaseUrl = baseUrlOf(client.getCallbackUrl());
+    return (callbackBaseUrl == null ? serverUrl : callbackBaseUrl) + path;
+  }
+
+  private static String baseUrlOf(String callbackUrl) {
+    String origin = SecurityUtil.originOf(callbackUrl);
+    String path = origin == null ? null : URI.create(callbackUrl.trim()).getPath();
+    boolean isCallbackServletUrl = path != null && path.endsWith(CALLBACK_SERVLET_PATH);
+    return isCallbackServletUrl
+        ? origin + path.substring(0, path.length() - CALLBACK_SERVLET_PATH.length())
+        : null;
   }
 
   private User getSessionUser(UserSession session) {
@@ -1465,7 +1540,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     }
   }
 
-  private record PendingLoginContext(String state, String nonce, String pkceVerifier) {}
+  record PendingLoginContext(String state, String nonce, String pkceVerifier) {}
 
   private record RefreshRotation(
       String previousRefreshToken,
@@ -1480,9 +1555,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
           "CallbackUrl", authConfig.getOidcConfiguration().getCallbackUrl());
       CommonHelper.assertNotBlank("ServerUrl", authConfig.getOidcConfiguration().getServerUrl());
       validatePrincipalClaimsMapping(
-          listOrEmpty(authConfig.getJwtPrincipalClaimsMapping()).stream()
-              .map(s -> s.split(":"))
-              .collect(Collectors.toMap(s -> s[0], s -> s[1])));
+          SecurityUtil.buildPrincipalClaimsMapping(authConfig.getJwtPrincipalClaimsMapping()));
 
       OidcClient validationClient = buildOidcClient(authConfig.getOidcConfiguration());
       validationClient.setCallbackUrl(authConfig.getOidcConfiguration().getCallbackUrl());

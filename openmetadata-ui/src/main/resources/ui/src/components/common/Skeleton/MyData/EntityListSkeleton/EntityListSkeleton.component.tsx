@@ -32,13 +32,7 @@ const EntityListSkeleton = ({
       data-testid="entity-list-skeleton"
       style={skeletonContainerStyle}>
       {getSkeletonMockData(dataLength).map(() => (
-        <LabelCountSkeleton
-          active
-          isLabel
-          isSelect
-          key={uniqueId()}
-          {...props}
-        />
+        <LabelCountSkeleton isLabel isSelect key={uniqueId()} {...props} />
       ))}
     </div>
   ) : (

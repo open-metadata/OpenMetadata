@@ -183,7 +183,7 @@ public class ContextMemoryExtractor implements DocumentMemoryExtractor {
         .withSummary(pill.summary())
         .withMemoryType(parseType(pill.memoryType()))
         .withMemoryScope(ContextMemoryScope.ENTITY_SCOPED)
-        .withStatus(ContextMemoryStatus.ACTIVE)
+        .withEntityStatus(ContextMemoryStatus.APPROVED)
         .withSourceType(sourceType)
         .withSourceEntity(sourceRef)
         .withPrimaryEntity(sourceRef)

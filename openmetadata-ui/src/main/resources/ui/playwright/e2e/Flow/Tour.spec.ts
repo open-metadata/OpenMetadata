@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { expect, test } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
@@ -19,7 +20,11 @@ import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 const user = new UserClass();
 
-const expectTourBadge = async (page: Page, step: string, timeout = 30000) => {
+const expectTourBadge = async (
+  page: Page,
+  step: string,
+  timeout = ACTION_TIMEOUT
+) => {
   // A single web-first assertion. The badge re-renders on every step transition,
   // so a separate visibility wait followed by a text poll gave the transition two
   // independent budgets to lose against; toHaveText auto-waits for the element to

@@ -41,8 +41,15 @@ PROJECT_LANES = {
     "DataAssetRulesEnabled": "data-asset-rules",
     "DataAssetRulesDisabled": "data-asset-rules",
     "SearchRBAC": "search-rbac",
-    "DomainIsolation": "domain-isolation",
-    "search-nightly": "search",
+    # DomainIsolation and search-nightly share the single-worker global-state
+    # runner: each is a few minutes of tests behind ~3 minutes of environment
+    # setup. DomainIsolation toggles enableAccessControl inside each file's own
+    # beforeAll/afterAll, and SearchSettings restores defaults in its afterAll,
+    # so with one worker no setting leaks across files. SearchRBAC stays apart
+    # because it enables RBAC in a separate setup project, leaving a window in
+    # which another file could turn it off before SearchRBAC.spec.ts runs.
+    "DomainIsolation": "global-state",
+    "search-nightly": "global-state",
     "Reindex": "reindex",
     "GlobalSettings": "global-state",
     "SystemCertificationTags": "global-state",
@@ -53,12 +60,10 @@ PROJECT_DEPENDENCIES = {
     "DataAssetRulesDisabled": {"DataAssetRulesEnabled"},
 }
 LANE_WORKERS = {
-    "domain-isolation": 1,
     "global-state": 1,
     "import-export": 2,
     "ingestion": 1,
     "reindex": 1,
-    "search": 1,
     "search-rbac": 1,
 }
 TARGET_MS = 20 * 60 * 1000
@@ -628,12 +633,10 @@ def lane_bounds(lane: str, mode: str) -> tuple[int, int]:
         return (5, COMMON_MAX_SHARDS) if mode == "full" else (1, COMMON_MAX_SHARDS)
     if lane in {
         "advanced-search",
-        "domain-isolation",
         "global-state",
         "import-export",
         "ingestion",
         "reindex",
-        "search",
         "search-rbac",
     }:
         return (1, 8) if mode == "full" else (1, 2)
@@ -879,7 +882,7 @@ def main() -> None:
             f"{details}\n\n"
             "Common fixes:\n"
             "  * If this suite belongs on a dedicated lane (import-export, "
-            "domain-isolation, ingestion, reindex), verify the top-level "
+            "global-state, ingestion, reindex), verify the top-level "
             "describe still carries the correct `{ tag: '...' }` option — a "
             "recent edit (e.g. removing `.fixme` or `.skip`) may have dropped "
             "it, landing the suite on the wrong project. See FILE_LANE_HINTS "

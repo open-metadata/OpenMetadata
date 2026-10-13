@@ -115,7 +115,7 @@ class OntologyMemoryDerivationQueueTest {
   private static ContextMemory memory(UUID id, MemoryVisibility visibility) {
     return new ContextMemory()
         .withId(id)
-        .withStatus(ContextMemoryStatus.ACTIVE)
+        .withEntityStatus(ContextMemoryStatus.APPROVED)
         .withQuestion("What is revenue churn?")
         .withAnswer("Revenue lost from existing customers over a period.")
         .withShareConfig(new MemoryShareConfig().withVisibility(visibility));

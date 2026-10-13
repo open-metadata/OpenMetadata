@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Divider, Form, Input, Space } from 'antd';
+import {
+  Box,
+  Button,
+  Divider,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Form, Input } from 'antd';
 import { AxiosError } from 'axios';
 import { trim } from 'lodash';
 import { useMemo, useState } from 'react';
@@ -162,29 +167,41 @@ const AddPolicyPage = () => {
 
                 {getField(descriptionField)}
 
-                <Divider data-testid="add-rule-divider">
-                  {t('label.add-entity', {
-                    entity: t('label.rule'),
-                  })}
-                </Divider>
+                <Divider
+                  className="tw:my-4"
+                  data-testid="add-rule-divider"
+                  label={
+                    <Typography
+                      className="tw:text-primary"
+                      size="text-md"
+                      weight="medium">
+                      {t('label.add-entity', { entity: t('label.rule') })}
+                    </Typography>
+                  }
+                />
                 <RuleForm ruleData={ruleData} setRuleData={setRuleData} />
 
-                <Space align="center" className="w-full justify-end">
+                <Box
+                  inline
+                  align="center"
+                  className="layout-space layout-space-horizontal w-full justify-end"
+                  gap={2}
+                  itemClassName="layout-space-item">
                   <Button
+                    color="link-color"
                     data-testid="cancel-btn"
-                    type="link"
                     onClick={handleCancel}>
                     {t('label.cancel')}
                   </Button>
                   <Button
+                    color="primary"
                     data-testid="submit-btn"
                     form="policy-form"
-                    htmlType="submit"
-                    loading={isSaveLoading}
-                    type="primary">
+                    isLoading={isSaveLoading}
+                    type="submit">
                     {t('label.create')}
                   </Button>
-                </Space>
+                </Box>
               </Form>
             </div>
           </div>

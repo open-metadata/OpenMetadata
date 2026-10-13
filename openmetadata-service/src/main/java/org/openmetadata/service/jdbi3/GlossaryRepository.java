@@ -251,7 +251,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
             repository.getFields(
                 "owners,reviewers,tags,relatedTerms,synonyms,extension,parent,domains"),
             glossary.getFullyQualifiedName());
-    terms.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
+    terms.sort(Comparator.comparing(EntityInterface<?>::getFullyQualifiedName));
     return new GlossaryCsv(glossary, user).exportCsv(terms, callback);
   }
 
@@ -469,9 +469,9 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       }
       String termStatus = csvRecord.get(10);
       try {
-        return nullOrEmpty(termStatus)
-            ? EntityStatus.DRAFT
-            : EntityFieldUtils.parseEntityStatus(termStatus);
+        // A blank status leaves the stage to the lifecycle: an existing term keeps its stored
+        // stage and a new one starts in the stage every new term starts in.
+        return nullOrEmpty(termStatus) ? null : EntityFieldUtils.parseEntityStatus(termStatus);
       } catch (Exception ex) {
         // List should have even numbered terms - termName and endPoint
         importFailure(

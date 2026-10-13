@@ -20,7 +20,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   Check,
-  Edit05,
+  Edit01,
   Lock01,
   Trash01,
   XClose,
@@ -243,7 +243,7 @@ const RelationshipTypeRow = ({
           <ButtonUtility
             color="tertiary"
             data-testid={`edit-${relationshipType.name}-btn`}
-            icon={Edit05}
+            icon={Edit01}
             isDisabled={!isAdminUser || relationshipType.systemDefined}
             size="sm"
             tooltip={

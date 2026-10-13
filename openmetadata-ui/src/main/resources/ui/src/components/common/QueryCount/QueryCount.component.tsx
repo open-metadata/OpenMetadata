@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Skeleton } from 'antd';
+import { Skeleton, Typography } from '@openmetadata/ui-core-components';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
@@ -55,7 +54,7 @@ const QueryCount = ({ tableId }: { tableId: string }) => {
   }, [tableId]);
 
   if (queryCount.isLoading) {
-    return <Skeleton active paragraph={{ rows: 1, width: 50 }} title={false} />;
+    return <Skeleton height={16} width={50} />;
   }
 
   if (queryCount.count === 0) {
