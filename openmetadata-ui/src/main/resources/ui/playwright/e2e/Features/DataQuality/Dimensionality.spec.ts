@@ -18,6 +18,7 @@ import {
 import { TableClass } from '../../../support/entity/TableClass';
 import { createNewPage, redirectToHomePage } from '../../../utils/common';
 import {
+  expectFormHint,
   ObservabilityFeature,
   selectAddObservabilityFeature,
 } from '../../../utils/dataQuality';
@@ -84,9 +85,7 @@ test(
       await testCaseDoc;
 
       await page.click('[id="root\\/column"]');
-      await page.locator('[data-id="column"]').waitFor({ state: 'visible' });
-
-      await expect(page.locator('[data-id="column"]')).toBeVisible();
+      await expectFormHint(page, 'Select Column');
 
       await page
         .getByRole('option')
@@ -94,9 +93,7 @@ test(
         .click();
 
       await page.locator('[id="root\\/dimensionColumns"]').click();
-      await page.locator('[data-id="dimensionColumns"]').waitFor({
-        state: 'visible',
-      });
+      await expectFormHint(page, 'Select Dimensions');
 
       await expect(
         page
@@ -151,9 +148,7 @@ test(
       );
 
       await page.locator('[id="root\\/dimensionColumns"]').click();
-      await page.locator('[data-id="dimensionColumns"]').waitFor({
-        state: 'visible',
-      });
+      await expectFormHint(page, 'Select Dimensions');
 
       await expect(
         page
