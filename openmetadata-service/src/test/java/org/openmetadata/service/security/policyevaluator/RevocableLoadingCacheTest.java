@@ -18,6 +18,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.google.common.base.Ticker;
+import com.google.common.cache.CacheStats;
+import com.google.common.util.concurrent.UncheckedExecutionException;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
@@ -70,6 +72,7 @@ class RevocableLoadingCacheTest {
     ticker.advance(TTL.plusSeconds(1));
 
     assertEquals("new-policy", cache.get("user"));
+    assertEquals(1, cache.stats().evictionCount());
   }
 
   @Test
@@ -119,7 +122,6 @@ class RevocableLoadingCacheTest {
     assertEquals("new-policy", cache.get("user"));
   }
 
-  /** The case the epoch check missed: a reader that starts mid-load must not join the old load. */
   @Test
   void readerStartedAfterInvalidationDoesNotJoinTheLoadStillRunning() throws Exception {
     PausedLoad paused = new PausedLoad();
@@ -134,6 +136,67 @@ class RevocableLoadingCacheTest {
     readerA.get(WAIT_SECONDS, TimeUnit.SECONDS);
 
     assertEquals("new-policy", readerB);
+  }
+
+  @Test
+  void statisticsSurviveTargetedGlobalInvalidationAndResize() throws ExecutionException {
+    RevocableLoadingCache<String> cache = cacheLoadingFromSource();
+    cache.get("user");
+    cache.get("user");
+    CacheStats before = cache.stats();
+
+    cache.invalidateUser("USER");
+    assertEquals(before, cache.stats());
+    cache.invalidateAll();
+    assertEquals(before, cache.stats());
+    cache.resize(10);
+    assertEquals(before, cache.stats());
+
+    cache.get("user");
+    assertEquals(1, cache.stats().hitCount());
+    assertEquals(2, cache.stats().missCount());
+    assertEquals(2, cache.stats().loadSuccessCount());
+  }
+
+  @Test
+  void statisticsIncludeALoadCompletedAfterItsShardWasRetired() throws Exception {
+    PausedLoad paused = new PausedLoad();
+    RevocableLoadingCache<String> cache = cachePausingFirstLoad(paused);
+    CompletableFuture<String> first = CompletableFuture.supplyAsync(() -> read(cache), reader);
+    paused.awaitLoadStarted();
+
+    source.set("new-policy");
+    cache.invalidateUser("user");
+    assertEquals("new-policy", readOnAnotherThread(cache));
+    paused.release();
+    assertEquals("new-policy", first.get(WAIT_SECONDS, TimeUnit.SECONDS));
+
+    assertEquals(2, cache.stats().loadSuccessCount());
+    assertEquals(2, cache.stats().missCount());
+    assertEquals(1, cache.stats().hitCount());
+    assertTrue(cache.stats().totalLoadTime() > 0);
+  }
+
+  @Test
+  void repeatedInvalidationFallsBackToAnUncachedLoadAndCountsIt() throws ExecutionException {
+    AtomicReference<RevocableLoadingCache<String>> current = new AtomicReference<>();
+    RevocableLoadingCache<String> cache =
+        new RevocableLoadingCache<>(
+            100,
+            TTL,
+            ticker,
+            key -> {
+              if (loads.incrementAndGet() <= 3) {
+                current.get().invalidateAll();
+              }
+              return source.get();
+            });
+    current.set(cache);
+
+    assertEquals(source.get(), cache.get("user"));
+    assertEquals(4, loads.get());
+    assertEquals(4, cache.stats().missCount());
+    assertEquals(4, cache.stats().loadSuccessCount());
   }
 
   @Test
@@ -245,7 +308,8 @@ class RevocableLoadingCacheTest {
               throw new IllegalStateException("user not found");
             });
 
-    assertThrows(Exception.class, () -> cache.get("missing"));
+    assertThrows(UncheckedExecutionException.class, () -> cache.get("missing"));
+    assertEquals(1, cache.stats().loadExceptionCount());
   }
 
   private String read(RevocableLoadingCache<String> cache) {

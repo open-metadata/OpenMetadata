@@ -5,17 +5,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.modelcontextprotocol.common.McpTransportContext;
 import io.modelcontextprotocol.server.McpStatelessServerFeatures;
 import io.modelcontextprotocol.spec.McpSchema;
-import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -29,24 +26,14 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.openmetadata.mcp.prompts.DefaultPromptsContext;
 import org.openmetadata.mcp.tools.DefaultToolContext;
-import org.openmetadata.mcp.tools.McpChangeEventUtil;
 import org.openmetadata.mcp.usage.McpUsageRecorder;
-import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.policies.Policy;
-import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EventType;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.limits.Limits;
-import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.security.ActivePersonaContext;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ImpersonationContext;
@@ -54,7 +41,6 @@ import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.util.PerRequestContextCleaner;
 import org.openmetadata.service.util.RequestEntityCache;
-import org.openmetadata.service.util.RestUtil;
 
 /**
  * The MCP SDK runs each tool and prompt callback on a Reactor bounded-elastic worker that outlives
@@ -278,62 +264,6 @@ class McpServerRequestContextTest {
     assertThat(onWorker(this::isPolicyCached)).isFalse();
   }
 
-  @Test
-  void createEntityToolSeesTheMcpBotAsImpersonatorAfterEntryCleanup() {
-    EntityRepository<EntityInterface<?>> repository = repositoryFor(Glossary.class);
-    Glossary saved = new Glossary().withId(UUID.randomUUID()).withName("Finance");
-    Mockito.<EntityInterface<?>>when(repository.create(isNull(), any(), anyString(), any()))
-        .thenReturn(saved);
-    McpServer server = serverFor(new DefaultToolContext(), jwtFilterFor("admin"));
-    ImpersonationContext.setImpersonatedBy("stale-bot");
-
-    try (MockedStatic<Entity> entities = mockStatic(Entity.class);
-        MockedStatic<RuleEngine> rules = mockStatic(RuleEngine.class);
-        MockedStatic<McpChangeEventUtil> events = mockStatic(McpChangeEventUtil.class)) {
-      stubGlossaryRepository(entities, repository);
-      rules.when(RuleEngine::getInstance).thenReturn(mock(RuleEngine.class));
-
-      callToolWith(server, "create_entity", glossaryParams());
-    }
-
-    ArgumentCaptor<String> impersonator = ArgumentCaptor.forClass(String.class);
-    verify(repository).create(isNull(), any(), eq("admin"), impersonator.capture());
-    assertThat(impersonator.getValue()).isEqualTo(BOT);
-    assertThat(ImpersonationContext.getImpersonatedBy()).isNull();
-  }
-
-  @Test
-  void patchEntityToolSeesTheMcpBotAsImpersonatorAfterEntryCleanup() {
-    EntityRepository<EntityInterface<?>> repository = repositoryFor(Glossary.class);
-    EntityInterface<?> patched = new Glossary().withId(UUID.randomUUID()).withName("orders");
-    RestUtil.PatchResponse<EntityInterface<?>> response =
-        new RestUtil.PatchResponse<>(Response.Status.OK, patched, EventType.ENTITY_UPDATED);
-    when(repository.patch(any(), anyString(), any(), any(), any(), any(), any()))
-        .thenReturn(response);
-    McpServer server = serverFor(new DefaultToolContext(), jwtFilterFor("admin"));
-    ImpersonationContext.setImpersonatedBy("stale-bot");
-
-    try (MockedStatic<Entity> entities = mockStatic(Entity.class);
-        MockedStatic<McpChangeEventUtil> events = mockStatic(McpChangeEventUtil.class)) {
-      entities.when(() -> Entity.getEntityRepository("table")).thenReturn(repository);
-
-      callToolWith(server, "patch_entity", patchParams());
-    }
-
-    ArgumentCaptor<String> impersonator = ArgumentCaptor.forClass(String.class);
-    verify(repository)
-        .patch(
-            isNull(),
-            eq("db.schema.orders"),
-            eq("admin"),
-            any(),
-            any(),
-            isNull(),
-            impersonator.capture());
-    assertThat(impersonator.getValue()).isEqualTo(BOT);
-    assertThat(ImpersonationContext.getImpersonatedBy()).isNull();
-  }
-
   private DefaultToolContext toolContextObservingAndCaching() {
     DefaultToolContext toolContext = mock(DefaultToolContext.class);
     doAnswer(
@@ -391,11 +321,6 @@ class McpServerRequestContextTest {
   }
 
   private McpSchema.CallToolResult callToolWith(
-      McpServer server, String toolName, Map<String, Object> arguments) {
-    return callToolWith(server, toolName, arguments, Map.of(), "token");
-  }
-
-  private McpSchema.CallToolResult callToolWith(
       McpServer server,
       String toolName,
       Map<String, Object> arguments,
@@ -436,47 +361,5 @@ class McpServerRequestContextTest {
   private boolean isPolicyCached() {
     return RequestEntityCache.getById(Entity.POLICY, policyId, null, null, false, Policy.class)
         != null;
-  }
-
-  @SuppressWarnings("unchecked")
-  private static EntityRepository<EntityInterface<?>> repositoryFor(
-      Class<? extends EntityInterface<?>> entityClass) {
-    EntityRepository<EntityInterface<?>> repository = mock(EntityRepository.class);
-    when(repository.getEntityClass()).thenReturn((Class<EntityInterface<?>>) entityClass);
-    when(repository.getParentEntity(any(), anyString()))
-        .thenThrow(new EntityNotFoundException("no parent"));
-    return repository;
-  }
-
-  private static void stubGlossaryRepository(
-      MockedStatic<Entity> entities, EntityRepository<EntityInterface<?>> repository) {
-    entities.when(() -> Entity.getEntityRepository(Entity.GLOSSARY)).thenReturn(repository);
-    entities
-        .when(() -> Entity.getEntityTypeFromClass(repository.getEntityClass()))
-        .thenReturn(Entity.GLOSSARY);
-    entities
-        .when(
-            () ->
-                Entity.getEntityReferenceByName(Entity.TEAM, Entity.ORGANIZATION_NAME, Include.ALL))
-        .thenReturn(
-            new EntityReference()
-                .withType(Entity.TEAM)
-                .withFullyQualifiedName(Entity.ORGANIZATION_NAME));
-  }
-
-  private static Map<String, Object> glossaryParams() {
-    Map<String, Object> params = new HashMap<>();
-    params.put("entityType", Entity.GLOSSARY);
-    params.put("name", "Finance");
-    params.put("description", "a glossary");
-    return params;
-  }
-
-  private static Map<String, Object> patchParams() {
-    Map<String, Object> params = new HashMap<>();
-    params.put("entityType", "table");
-    params.put("fqn", "db.schema.orders");
-    params.put("patch", "[]");
-    return params;
   }
 }

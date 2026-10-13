@@ -14,6 +14,7 @@
 package org.openmetadata.service.security.policyevaluator;
 
 import com.google.common.base.Ticker;
+import com.google.common.cache.AbstractCache.SimpleStatsCounter;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.CacheStats;
@@ -41,8 +42,9 @@ import java.util.function.Function;
  *
  * <p>The keys are spread over {@value #SHARDS} independent shards so that invalidating one user
  * retires one shard rather than every user's entry. The configured maximum is divided among the
- * shards and never exceeded; below {@value #SHARDS} entries some shards hold nothing. Keys are matched case-insensitively because a
- * principal name reaches the cache in whatever case the identity provider emitted it.
+ * shards and never exceeded; below {@value #SHARDS} entries some shards hold nothing. Shard
+ * selection is case-insensitive so invalidation covers every spelling of a principal name;
+ * keys within each shard retain Guava's case-sensitive matching.
  */
 final class RevocableLoadingCache<V> {
   static final int SHARDS = 32;
@@ -52,6 +54,8 @@ final class RevocableLoadingCache<V> {
   private final Ticker ticker;
   private final Function<String, V> loader;
   private final Object swapLock = new Object();
+  // Retired generations can still finish loads, so their counters must outlive the swap.
+  private final SimpleStatsCounter statistics = new SimpleStatsCounter();
   private final Shard<V>[] shards;
   private volatile int maxEntries;
 
@@ -79,12 +83,18 @@ final class RevocableLoadingCache<V> {
     for (int attempt = 0; value == null && attempt < MAX_LOAD_ATTEMPTS; attempt++) {
       value = loadIfStillCurrent(shard, key);
     }
-    return value != null ? value : loader.apply(key);
+    return value != null ? value : loadUncached(key);
   }
 
   private V loadIfStillCurrent(Shard<V> shard, String key) throws ExecutionException {
     LoadingCache<String, V> generation = shard.active;
-    V value = generation.get(key);
+    V value = generation.getIfPresent(key);
+    if (value == null) {
+      statistics.recordMisses(1);
+      value = generation.get(key);
+    } else {
+      statistics.recordHits(1);
+    }
     return generation == shard.active ? value : null;
   }
 
@@ -111,11 +121,29 @@ final class RevocableLoadingCache<V> {
   }
 
   CacheStats stats() {
-    CacheStats total = new CacheStats(0, 0, 0, 0, 0, 0);
-    for (Shard<V> shard : shards) {
-      total = total.plus(shard.active.stats());
+    return statistics.snapshot();
+  }
+
+  private V loadUncached(String key) {
+    statistics.recordMisses(1);
+    return loadAndRecord(key);
+  }
+
+  private V loadAndRecord(String key) {
+    long started = System.nanoTime();
+    boolean succeeded = false;
+    try {
+      V value = loader.apply(key);
+      succeeded = value != null;
+      return value;
+    } finally {
+      long elapsed = System.nanoTime() - started;
+      if (succeeded) {
+        statistics.recordLoadSuccess(elapsed);
+      } else {
+        statistics.recordLoadException(elapsed);
+      }
     }
-    return total;
   }
 
   private void replaceAllShards() {
@@ -139,12 +167,17 @@ final class RevocableLoadingCache<V> {
         .maximumSize(entries)
         .expireAfterWrite(expireAfterWrite)
         .ticker(ticker)
-        .recordStats()
+        .removalListener(
+            notification -> {
+              if (notification.wasEvicted()) {
+                statistics.recordEviction();
+              }
+            })
         .build(
             new CacheLoader<String, V>() {
               @Override
               public V load(String key) {
-                return loader.apply(key);
+                return loadAndRecord(key);
               }
             });
   }

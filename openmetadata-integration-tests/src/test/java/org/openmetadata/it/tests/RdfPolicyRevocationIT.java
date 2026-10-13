@@ -21,7 +21,6 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Isolated;
-import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.tests.mcp.McpTestBase;
 import org.openmetadata.it.tests.mcp.McpTestUtils;
 import org.openmetadata.it.util.RdfTestUtils;
@@ -38,6 +37,7 @@ import org.openmetadata.schema.type.Permission;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.rdf.RdfProjectionHealth;
@@ -64,7 +64,7 @@ public class RdfPolicyRevocationIT extends McpTestBase {
   private static final String RDF_INDEX_APP = "RdfIndexApp";
   private static final String STATUS = AppExtension.ExtensionType.STATUS.toString();
   private static final String QUERY = "SELECT ?s WHERE { ?s ?p ?o } LIMIT 1";
-  private static final long TOKEN_TTL_SECONDS = 3600;
+  private static final String RULES_FIELD = "rules";
   private static final Deque<Runnable> CLEANUP = new ArrayDeque<>();
 
   private static String suffix;
@@ -142,13 +142,14 @@ public class RdfPolicyRevocationIT extends McpTestBase {
     warmThroughMcp(token);
     assertAgentStatus(token, 200);
     OpenMetadataClient admin = SdkClients.adminClient();
-    Policy policy = admin.policies().getByName(DATA_CONSUMER_POLICY, "rules");
+    Policy policy = admin.policies().getByName(DATA_CONSUMER_POLICY, RULES_FIELD);
     int ruleCount = policy.getRules().size();
     policy.getRules().add(duplicateOf(policy.getRules().getFirst()));
 
-    assertThrows(RuntimeException.class, () -> admin.policies().update(policy.getId(), policy));
+    assertThrows(
+        InvalidRequestException.class, () -> admin.policies().update(policy.getId(), policy));
 
-    assertThat(admin.policies().getByName(DATA_CONSUMER_POLICY, "rules").getRules())
+    assertThat(admin.policies().getByName(DATA_CONSUMER_POLICY, RULES_FIELD).getRules())
         .hasSize(ruleCount);
     assertAgentStatus(token, 200);
   }
@@ -166,7 +167,7 @@ public class RdfPolicyRevocationIT extends McpTestBase {
 
   private static Rule removeGrant(EditMode mode) throws Exception {
     OpenMetadataClient admin = SdkClients.adminClient();
-    Policy policy = admin.policies().getByName(DATA_CONSUMER_POLICY, "rules");
+    Policy policy = admin.policies().getByName(DATA_CONSUMER_POLICY, RULES_FIELD);
     int index = indexOfGrant(policy);
     Rule grant = policy.getRules().get(index);
     if (mode == EditMode.PATCH) {
@@ -181,7 +182,7 @@ public class RdfPolicyRevocationIT extends McpTestBase {
 
   private static void restoreGrant(Rule grant) {
     OpenMetadataClient admin = SdkClients.adminClient();
-    Policy current = admin.policies().getByName(DATA_CONSUMER_POLICY, "rules");
+    Policy current = admin.policies().getByName(DATA_CONSUMER_POLICY, RULES_FIELD);
     if (current.getRules().stream().noneMatch(rule -> grant.getName().equals(rule.getName()))) {
       current.getRules().add(grant);
       admin.policies().update(current.getId(), current);
@@ -189,7 +190,8 @@ public class RdfPolicyRevocationIT extends McpTestBase {
   }
 
   private static boolean grantIsStored() {
-    Policy policy = SdkClients.adminClient().policies().getByName(DATA_CONSUMER_POLICY, "rules");
+    Policy policy =
+        SdkClients.adminClient().policies().getByName(DATA_CONSUMER_POLICY, RULES_FIELD);
     return policy.getRules().stream()
         .anyMatch(rule -> DATA_CONSUMER_GRANT_RULE.equals(rule.getName()));
   }
@@ -289,11 +291,6 @@ public class RdfPolicyRevocationIT extends McpTestBase {
                 new CreateUser().withName(userName).withEmail(userName + "@test.openmetadata.org"));
     CLEANUP.push(() -> admin.users().delete(user.getId()));
     return userName;
-  }
-
-  private static String tokenFor(String userName) {
-    String email = userName + "@test.openmetadata.org";
-    return JwtAuthProvider.tokenFor(email, email, new String[] {}, TOKEN_TTL_SECONDS);
   }
 
   private static void recordSuccessfulRdfIndexRun() {

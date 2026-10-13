@@ -1,8 +1,10 @@
 package org.openmetadata.it.tests;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -18,20 +20,22 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.tests.mcp.McpTestBase;
 import org.openmetadata.it.tests.mcp.McpTestUtils;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
@@ -39,6 +43,7 @@ import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ApiException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
@@ -60,11 +65,15 @@ public class PolicyRevocationConcurrencyIT extends McpTestBase {
   private static final String KEPT_RULE = "keptRule";
   private static final String REVOCABLE_RULE = "revocableRule";
   private static final String DENY_RULE = "denyViewRule";
+  private static final String CREATE_RULE = "allowGlossaryCreate";
+  private static final String RULES_FIELD = "rules";
+  private static final String MCP_BOT = "McpApplicationBot";
+  private static final String GLOSSARY_DESCRIPTION = "A glossary created through MCP";
+  private static final String PATCHED_DESCRIPTION = "Patched through MCP";
   private static final int ROUNDS = 5;
   private static final int READERS = 8;
   private static final int READS_AFTER_UPDATE = 150;
   private static final Duration WAIT = Duration.ofSeconds(60);
-  private static final long TOKEN_TTL_SECONDS = 3600;
 
   @BeforeAll
   static void setUp() throws Exception {
@@ -90,6 +99,7 @@ public class PolicyRevocationConcurrencyIT extends McpTestBase {
   @Test
   void anotherMcpToolSeesTheRemovalOfADenyRuleOnItsFirstRequest(TestNamespace ns) throws Exception {
     Table table = createServiceDatabaseSchemaTable("rev" + ns.shortPrefix());
+    ns.trackRoot(Entity.DATABASE_SERVICE, table.getService().getId());
     Policy policy = createPolicy(ns, List.of(denyViewRule(), allowGlossaryViewRule()));
     String userName = createUser(ns, List.of(createRole(ns, policy).getId()), List.of());
     String token = "Bearer " + tokenFor(userName);
@@ -98,6 +108,159 @@ public class PolicyRevocationConcurrencyIT extends McpTestBase {
     removeRule(policy, DENY_RULE);
 
     assertThat(isEntityDetailsDenied(token, table)).isFalse();
+  }
+
+  @Test
+  void removingADirectAllowRuleByPutDeniesTheNextMcpAndRestCreates(TestNamespace ns)
+      throws Exception {
+    assertNextCreatesDeniedAfterRemoval(ns, false);
+  }
+
+  @Test
+  void removingAnInheritedAllowRuleByPatchDeniesTheNextMcpAndRestCreates(TestNamespace ns)
+      throws Exception {
+    assertNextCreatesDeniedAfterRemoval(ns, true);
+  }
+
+  @Test
+  void createdEntityPersistsTheMcpBotAsImpersonator(TestNamespace ns) throws Exception {
+    Glossary glossary = createGlossaryThroughMcp(ns, authToken, ns.prefix("auditCreate"));
+
+    assertThat(glossary.getUpdatedBy()).isEqualTo("admin");
+    assertThat(glossary.getImpersonatedBy()).isEqualTo(MCP_BOT);
+  }
+
+  @Test
+  void patchedEntityPersistsTheMcpBotAsImpersonator(TestNamespace ns) throws Exception {
+    Glossary glossary =
+        ns.trackRoot(
+            Entity.GLOSSARY,
+            SdkClients.adminClient()
+                .glossaries()
+                .create(
+                    new CreateGlossary()
+                        .withName(ns.prefix("auditPatch"))
+                        .withDescription(GLOSSARY_DESCRIPTION)));
+    assertThat(glossary.getImpersonatedBy()).isNull();
+
+    JsonNode result =
+        executeMcpRequest(
+                McpTestUtils.createToolCallRequest(
+                    "patch_entity",
+                    Map.of(
+                        "entityType",
+                        Entity.GLOSSARY,
+                        "fqn",
+                        glossary.getFullyQualifiedName(),
+                        "patch",
+                        "[{\"op\":\"add\",\"path\":\"/description\",\"value\":\""
+                            + PATCHED_DESCRIPTION
+                            + "\"}]")))
+            .path("result");
+    assertThat(result.path("isError").asBoolean()).as("%s", result).isFalse();
+    Glossary patched = SdkClients.adminClient().glossaries().get(glossary.getId().toString());
+    assertThat(patched.getDescription()).isEqualTo(PATCHED_DESCRIPTION);
+    assertThat(patched.getUpdatedBy()).isEqualTo("admin");
+    assertThat(patched.getImpersonatedBy()).isEqualTo(MCP_BOT);
+  }
+
+  private void assertNextCreatesDeniedAfterRemoval(TestNamespace ns, boolean inherited)
+      throws Exception {
+    Policy policy = createPolicy(ns, List.of(allowGlossaryViewRule(), allowGlossaryCreateRule()));
+    Role role = createRole(ns, policy);
+    String userName =
+        inherited
+            ? createUserWithTeamRole(ns, role)
+            : createUser(ns, List.of(role.getId()), List.of());
+    String token = "Bearer " + tokenFor(userName);
+    createGlossaryThroughMcp(ns, token, ns.prefix("warmCreate"));
+
+    removeCreateGrant(policy, inherited);
+
+    assertNextMcpAndRestCreatesDenied(ns, token);
+  }
+
+  private void assertNextMcpAndRestCreatesDenied(TestNamespace ns, String token) throws Exception {
+    String mcpName = ns.prefix("deniedMcpCreate");
+    JsonNode denied = glossaryCreateResult(token, mcpName);
+    trackUnexpectedCreate(ns, denied.path("structuredContent"));
+    assertThat(denied.path("isError").asBoolean()).as("%s", denied).isTrue();
+    assertThat(denied.path("structuredContent").path("statusCode").asInt()).isEqualTo(403);
+    String restName = ns.prefix("deniedRestCreate");
+    HttpResponse<String> rest =
+        postResponse(
+            "glossaries",
+            new CreateGlossary().withName(restName).withDescription(GLOSSARY_DESCRIPTION),
+            token);
+    trackUnexpectedCreate(ns, OBJECT_MAPPER.readTree(rest.body()));
+    assertThat(rest.statusCode()).as("%s", rest.body()).isEqualTo(403);
+    assertGlossaryAbsent(mcpName);
+    assertGlossaryAbsent(restName);
+  }
+
+  private static void trackUnexpectedCreate(TestNamespace ns, JsonNode payload) {
+    JsonNode id = payload.path("id");
+    if (id.isTextual()) {
+      ns.trackRoot(Entity.GLOSSARY, UUID.fromString(id.asText()));
+    }
+  }
+
+  private Glossary createGlossaryThroughMcp(TestNamespace ns, String token, String name)
+      throws Exception {
+    JsonNode result = glossaryCreateResult(token, name);
+    assertThat(result.path("isError").asBoolean()).as("%s", result).isFalse();
+    return ns.trackRoot(Entity.GLOSSARY, SdkClients.adminClient().glossaries().getByName(name));
+  }
+
+  private JsonNode glossaryCreateResult(String token, String name) throws Exception {
+    return executeMcpRequest(
+            McpTestUtils.createToolCallRequest(
+                "create_entity",
+                Map.of(
+                    "entityType",
+                    Entity.GLOSSARY,
+                    "name",
+                    name,
+                    "description",
+                    GLOSSARY_DESCRIPTION)),
+            token)
+        .path("result");
+  }
+
+  private static void assertGlossaryAbsent(String name) {
+    assertThatThrownBy(() -> SdkClients.adminClient().glossaries().getByName(name))
+        .isInstanceOf(ApiException.class)
+        .satisfies(failure -> assertThat(((ApiException) failure).getStatusCode()).isEqualTo(404));
+  }
+
+  private static void removeCreateGrant(Policy policy, boolean patchRule) throws Exception {
+    if (patchRule) {
+      Policy current =
+          SdkClients.adminClient().policies().get(policy.getId().toString(), RULES_FIELD);
+      int index =
+          IntStream.range(0, current.getRules().size())
+              .filter(position -> CREATE_RULE.equals(current.getRules().get(position).getName()))
+              .findFirst()
+              .orElseThrow();
+      patch(
+          "policies/" + policy.getId(), "[{\"op\":\"remove\",\"path\":\"/rules/" + index + "\"}]");
+    } else {
+      removeRule(policy, CREATE_RULE);
+    }
+    assertThat(
+            SdkClients.adminClient()
+                .policies()
+                .get(policy.getId().toString(), RULES_FIELD)
+                .getRules())
+        .noneMatch(rule -> CREATE_RULE.equals(rule.getName()));
+  }
+
+  private static Rule allowGlossaryCreateRule() {
+    return new Rule()
+        .withName(CREATE_RULE)
+        .withOperations(List.of(MetadataOperation.CREATE))
+        .withResources(List.of(Entity.GLOSSARY))
+        .withEffect(Rule.Effect.ALLOW);
   }
 
   private void assertRevocationOutlastsRacingReaders(Fixture fixture) throws Exception {
@@ -158,6 +321,9 @@ public class PolicyRevocationConcurrencyIT extends McpTestBase {
       }
       Thread.onSpinWait();
     }
+    assertThat(readsAfterUpdate)
+        .as("every reader must exercise post-update decisions")
+        .isEqualTo(READS_AFTER_UPDATE);
   }
 
   private static boolean grantsRevocableRule(Fixture fixture) {
@@ -176,7 +342,11 @@ public class PolicyRevocationConcurrencyIT extends McpTestBase {
         executeMcpRequest(
                 McpTestUtils.createToolCallRequest("get_entity_details", arguments), token)
             .path("result");
-    return result.path("isError").asBoolean(false) && result.toString().contains("Authorization");
+    if (result.path("isError").asBoolean(false)) {
+      assertThat(result.path("structuredContent").path("statusCode").asInt()).isEqualTo(403);
+      return true;
+    }
+    return false;
   }
 
   private static Fixture fixtureWithDirectRole(TestNamespace ns) {
@@ -189,6 +359,11 @@ public class PolicyRevocationConcurrencyIT extends McpTestBase {
   private static Fixture fixtureWithTeamDefaultRole(TestNamespace ns) {
     Policy policy = createPolicy(ns, List.of(keptRule(), revocableRule()));
     Role role = createRole(ns, policy);
+    String userName = createUserWithTeamRole(ns, role);
+    return new Fixture(policy, revocableRule(), userName);
+  }
+
+  private static String createUserWithTeamRole(TestNamespace ns, Role role) {
     UUID teamId =
         ns.trackRoot(
                 Entity.TEAM,
@@ -200,8 +375,7 @@ public class PolicyRevocationConcurrencyIT extends McpTestBase {
                             .withTeamType(TeamType.GROUP)
                             .withDefaultRoles(List.of(role.getId()))))
             .getId();
-    String userName = createUser(ns, List.of(), List.of(teamId));
-    return new Fixture(policy, revocableRule(), userName);
+    return createUser(ns, List.of(), List.of(teamId));
   }
 
   private static Policy createPolicy(TestNamespace ns, List<Rule> rules) {
@@ -241,14 +415,14 @@ public class PolicyRevocationConcurrencyIT extends McpTestBase {
 
   private static void removeRule(Policy policy, String ruleName) {
     OpenMetadataClient admin = SdkClients.adminClient();
-    Policy current = admin.policies().get(policy.getId().toString(), "rules");
+    Policy current = admin.policies().get(policy.getId().toString(), RULES_FIELD);
     current.getRules().removeIf(rule -> ruleName.equals(rule.getName()));
     admin.policies().update(current.getId(), current);
   }
 
   private static void addRule(Policy policy, Rule rule) {
     OpenMetadataClient admin = SdkClients.adminClient();
-    Policy current = admin.policies().get(policy.getId().toString(), "rules");
+    Policy current = admin.policies().get(policy.getId().toString(), RULES_FIELD);
     current.getRules().add(rule);
     admin.policies().update(current.getId(), current);
   }
@@ -257,7 +431,7 @@ public class PolicyRevocationConcurrencyIT extends McpTestBase {
     return new Rule()
         .withName(KEPT_RULE)
         .withOperations(List.of(MetadataOperation.VIEW_BASIC))
-        .withResources(List.of("table"))
+        .withResources(List.of(Entity.TABLE))
         .withEffect(Rule.Effect.ALLOW);
   }
 
@@ -265,7 +439,7 @@ public class PolicyRevocationConcurrencyIT extends McpTestBase {
     return new Rule()
         .withName(REVOCABLE_RULE)
         .withOperations(List.of(MetadataOperation.EDIT_DESCRIPTION))
-        .withResources(List.of("table"))
+        .withResources(List.of(Entity.TABLE))
         .withEffect(Rule.Effect.ALLOW);
   }
 
@@ -273,7 +447,7 @@ public class PolicyRevocationConcurrencyIT extends McpTestBase {
     return new Rule()
         .withName(DENY_RULE)
         .withOperations(List.of(MetadataOperation.VIEW_BASIC, MetadataOperation.VIEW_ALL))
-        .withResources(List.of("table"))
+        .withResources(List.of(Entity.TABLE))
         .withEffect(Rule.Effect.DENY);
   }
 
@@ -281,13 +455,8 @@ public class PolicyRevocationConcurrencyIT extends McpTestBase {
     return new Rule()
         .withName("allowGlossaryView")
         .withOperations(List.of(MetadataOperation.VIEW_BASIC))
-        .withResources(List.of("glossary"))
+        .withResources(List.of(Entity.GLOSSARY))
         .withEffect(Rule.Effect.ALLOW);
-  }
-
-  private static String tokenFor(String userName) {
-    String email = userName + "@test.openmetadata.org";
-    return JwtAuthProvider.tokenFor(email, email, new String[] {}, TOKEN_TTL_SECONDS);
   }
 
   private static void awaitLatch(CountDownLatch latch) {

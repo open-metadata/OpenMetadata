@@ -291,6 +291,11 @@ public class SubjectCache {
    * Every load runs in its own fresh-read scope. The request entity cache is thread-local and
    * survives on pool threads, so a load that reuses it would read the rules cached before an edit,
    * and a retry after an invalidation would publish them into the new shared cache.
+   *
+   * <p>Bypass the entity L1 as well: inline transaction evictions can be refilled from pre-edit
+   * rows, and a Guava load can finish publishing after post-commit eviction. A new authorization
+   * generation must read the database rather than join or reuse that older entity load. See
+   * ADR:2026-10-13-authorization-caches-retire-generations-after-commit.
    */
   private static UserPoliciesContext loadPoliciesFresh(String userName) {
     try (FreshReadScope.Handle ignored = FreshReadScope.enter()) {

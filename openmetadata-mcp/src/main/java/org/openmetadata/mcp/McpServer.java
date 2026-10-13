@@ -361,7 +361,7 @@ public class McpServer implements McpServerProvider {
     McpUsageRecorder.record(toolName, userName, success, latencyMs, category, clientName);
   }
 
-  protected McpStatelessServerFeatures.SyncPromptSpecification getPrompt(McpSchema.Prompt prompt) {
+  McpStatelessServerFeatures.SyncPromptSpecification getPrompt(McpSchema.Prompt prompt) {
     return new McpStatelessServerFeatures.SyncPromptSpecification(
         prompt,
         (exchange, arguments) ->

@@ -1,8 +1,8 @@
 # Policy revocation: post-commit invalidation and MCP request cleanup
 
-- **Status:** Implemented 2026-10-08; see section 10 for deviations and verification
+- **Status:** Implemented; review follow-up 2026-10-13; see section 10 for deviations and verification
 - **Date:** 2026-10-07
-- **Last verified:** 2026-10-08
+- **Last verified:** 2026-10-13 (source review; latest executed results are recorded in PR #34940)
 - **Issue:** [OpenMetadata #34826](https://github.com/open-metadata/OpenMetadata/issues/34826)
 - **Investigated checkout:** `873fd913e7dc925fd2dc8d93d1f0c441e9b6559a` (current `origin/main` on 2026-10-08)
 - **Original investigation and request-cache experiment:** `c303634049` (2026-10-07)
@@ -27,16 +27,16 @@ the plan must not claim that an update response synchronously revokes access on 
 
 ## 2. Evidence and confidence
 
-### Revalidation against current main
+### Historical revalidation on 2026-10-08
 
-The worktree HEAD and GitHub's `main` head both resolve to `873fd913e7dc925fd2dc8d93d1f0c441e9b6559a`.
+At that time, the worktree HEAD and GitHub's `main` head both resolved to `873fd913e7dc925fd2dc8d93d1f0c441e9b6559a`.
 Between the original investigation and this revision, `PolicyRepository`, `CacheBundle`,
 `SubjectCache`, and `McpServer` have no changes. `RequestEntityCache` changed only its generic
 bounds from `EntityInterface` to `EntityInterface<?>`; its behavior is unchanged. The previously
 identified defects therefore remain applicable to this baseline.
 
-The only changes for this task are this plan and its documentation-index entry. There is no
-implementation to review in this worktree. PR #34790 concerns MCP knowledge-graph access for
+At that revision the only changes were this plan and its documentation-index entry. The
+implementation now lives in PR #34940; section 10 describes its final design. PR #34790 concerns MCP knowledge-graph access for
 #34270 and must not be treated as the policy-revocation implementation.
 
 ### Evidence reported in the issue
@@ -58,7 +58,7 @@ Fuseki, and cache provider `none`:
 These are the issue author's endpoint observations. This investigation did not independently
 repeat the full HTTP reproduction or measure the 170-second interval.
 
-### Findings verified in this checkout
+### Findings verified before implementation
 
 | Finding | Code evidence | Confidence |
 |---|---|---|
@@ -408,7 +408,8 @@ into a passing result. A longer diagnostic run can follow, but cannot substitute
 Run from the repository root with Java 21, Maven, and Docker available.
 Python tooling must run inside the required repository venv. Do not run a second Testcontainers
 stack alongside another checkout's tests. All commands below are implementation-time checks;
-the new test classes do not exist yet and these suites were not run while revising this plan.
+these commands originally preceded implementation; later executions and limitations are recorded
+in PR #34940.
 
 ### Select and run affected Java tests
 
@@ -551,22 +552,42 @@ follow the `dev-setup` skill rather than treating missing infrastructure as a pa
 - [ ] `make java_affected` selections and both explicit RDF provider runs are recorded in the PR.
 - [ ] The PR reports exact validation evidence and the local-versus-cross-node freshness contract.
 
-## 10. Implementation notes (2026-10-08)
+## 10. Implementation notes (updated 2026-10-13)
 
-- **Generation protection** lives in `RevocableLoadingCache`: global invalidation swaps in a new
-  cache and a reader that overlapped the swap retries; targeted invalidation bumps an epoch before
-  removing the key and an overlapping reader drops what it loaded and retries (bounded, then loads
-  uncached). `SubjectCache` uses it for both the policy and user-context caches.
-- **Deviation from Task 1:** MCP `sparql_query` is admin-only (`RdfMcpTool.execute` calls
-  `authorizeAdmin`), so it is not governed by the Data Consumer `ExecuteSparqlQuery` grant at this
-  baseline and cannot serve as the MCP-first probe. `RdfPolicyRevocationIT` warms the user through
-  MCP `search_metadata` and asserts REST and permission-API denial; MCP-first revocation is covered
-  by `PolicyRevocationConcurrencyIT` using `get_entity_details` and a removable deny rule.
-- `RdfPolicyRevocationIT` was not run against unmodified production code, and REST-first denial
-  already worked before this change; the red/green evidence is in `RevocableLoadingCacheTest`,
-  `SubjectCacheTest` and `McpServerRequestContextTest`, which fail with the fix disabled.
-- `PolicyRevocationConcurrencyIT` races real reader threads against an HTTP edit; it does not pause
-  a load at the database boundary (the IT module has no mocking dependency). The deterministic
-  pause-and-release test is `SubjectCacheTest.testPolicyLoadCrossingInvalidationDoesNotServeTheRemovedRule`.
-- Policy delete does not reach `CacheBundle.invalidateEntity`; unchanged by this work.
-- `make java_affected` was not run; the explicit commands in section 7 were.
+- **Generation protection** lives in `RevocableLoadingCache`: targeted invalidation retires the
+  entire shard selected by the case-folded user name; global invalidation retires all 32 shards.
+  A later reader cannot join an old load. An overlapping reader rechecks the generation and retries
+  up to three times, then loads uncached. Capacity is split exactly across shards. `SubjectCache`
+  uses this for both policy and user-context caches.
+- **Fresh reads:** all authorization loaders, retries, and uncached fallbacks run in
+  `FreshReadScope`. Its empty request cache prevents worker-local policy reuse. The L1 bypass is
+  also required: inline evictions can be refilled with pre-edit rows while a transaction is open,
+  and a Guava load can publish after post-commit eviction. The L1 loader's epoch check is not atomic
+  with publication. A new authorization generation must not reuse either stale layer.
+- **Statistics:** cumulative counters outlive generations and include late load completions.
+  Retiring a shard does not reset statistics or retain the retired cache for bookkeeping.
+- **Deviation from Task 1:** MCP `sparql_query` is admin-only at this baseline and cannot probe
+  removal of the Data Consumer `ExecuteSparqlQuery` grant. `RdfPolicyRevocationIT` warms through MCP
+  `search_metadata` and asserts REST and permission denial. `PolicyRevocationConcurrencyIT` adds
+  MCP-first allow removal using `create_entity`: a private glossary `Create` grant is removed via
+  PUT for a direct role and PATCH for a team-inherited role; the next MCP and REST writes must be
+  denied and create no entity. `EditDescription` is unsuitable because Data Consumer grants it.
+- The HTTP regression complements deterministic worker-reuse and paused-load unit tests; it does
+  not assume the same Reactor worker serves both calls or claim deterministic failure on the old
+  implementation. Existing REST-first denial already worked before this change.
+- **Audit:** real MCP create and patch operations are read back through the entity API to assert
+  `updatedBy` and `impersonatedBy`. The two mocked repository-argument tests were replaced; the
+  deterministic thread-local cleanup tests remain.
+- `PolicyRevocationConcurrencyIT` races reader threads against an HTTP edit; it does not pause at
+  the database boundary. `SubjectCacheTest` and `RevocableLoadingCacheTest` provide that
+  deterministic pause-and-release coverage.
+- **Delete correction:** current main's hard-delete cleanup calls `invalidate()` after commit;
+  that reaches `deferCacheBundleInvalidation()` and the registered `SubjectCache` invalidator.
+  The earlier claim that policy deletion bypassed that registry is obsolete.
+- `make java_affected` and its selected lanes were executed at `40330ef6c5`, and the generated
+  report plus the explicit Redis RDF regression run are in PR #34940. The report remains `FAILED`
+  because the unchanged TODO-only `McpServiceResourceIT` has no runnable class; the inert
+  `WritePathBenchmarkIT` was also skipped. Review follow-up executions are recorded separately
+  against their actual commit; historical results must not be relabeled as validating later code.
+- The durable ordering, sharding cost, alternatives, and deployment scope are recorded in
+  ADR:2026-10-13-authorization-caches-retire-generations-after-commit.
