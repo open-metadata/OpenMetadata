@@ -56,15 +56,15 @@ describe('chart themes', () => {
   it('keeps the dark chrome colours', () => {
     expect(DARK_CHART_THEME).toEqual({
       isDark: true,
-      axisText: '#94979c',
-      axisTick: '#94979c',
+      axisText: '#a8aeb9',
+      axisTick: '#a8aeb9',
       axisTitle: '#cecfd2',
       xAxisTitle: '#cecfd2',
       grid: '#373a41',
       emptyFill: '#373a41',
       segmentBorder: '#0c0e12',
       tooltipBg: '#22262f',
-      tooltipText: '#f7f7f7',
+      tooltipText: '#eef0f4',
       tooltipBorder: '#373a41',
       palette: DARK_CHART_PALETTE,
     });

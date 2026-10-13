@@ -31,9 +31,14 @@ const executeThemeRestore = () => {
 };
 
 describe('theme restore boot script', () => {
+  beforeEach(() => {
+    sessionStorage.setItem('omAppMode', JSON.stringify({ mode: 'ai' }));
+  });
+
   afterEach(() => {
     jest.restoreAllMocks();
     localStorage.clear();
+    sessionStorage.clear();
     document.documentElement.classList.remove('dark-mode');
     document.documentElement.style.removeProperty('color-scheme');
   });
@@ -84,6 +89,26 @@ describe('theme restore boot script', () => {
       expect(document.documentElement).toHaveStyle({ colorScheme: expected });
     }
   );
+
+  it('keeps classic mode light whatever the stored preference', () => {
+    sessionStorage.setItem('omAppMode', JSON.stringify({ mode: 'default' }));
+    localStorage.setItem('ui-theme', 'dark');
+
+    executeThemeRestore();
+
+    expect(document.documentElement).not.toHaveClass('dark-mode');
+    expect(localStorage.getItem('ui-theme')).toBe('dark');
+  });
+
+  it('ignores the sibling-tab app mode hint, matching the app mode store', () => {
+    sessionStorage.clear();
+    localStorage.setItem('ui-theme', 'dark');
+    localStorage.setItem('omAppModeHint', JSON.stringify({ mode: 'ai' }));
+
+    executeThemeRestore();
+
+    expect(document.documentElement).not.toHaveClass('dark-mode');
+  });
 
   it('uses light mode when the stored preference cannot be read', () => {
     jest.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
