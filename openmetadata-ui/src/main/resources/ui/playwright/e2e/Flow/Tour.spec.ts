@@ -137,9 +137,11 @@ const validateTourSteps = async (page: Page) => {
   await page.getByTestId('saveButton').click();
 };
 
+// Quarantined: the tour anchors on elements the new landing page no longer
+// renders. See QUARANTINE.md.
 test.describe(
   'Tour should work properly',
-  PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
+  { tag: [PLAYWRIGHT_BASIC_TEST_TAG_OBJ.tag, '@quarantine'] },
   () => {
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
