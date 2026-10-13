@@ -60,6 +60,7 @@ import org.openmetadata.csv.CsvExportProgressCallback;
 import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
@@ -584,13 +585,24 @@ public class UserRepository extends EntityRepository<User> {
     return daoCollection.userDAO().checkUserNameExists(username) > 0;
   }
 
+  /**
+   * Creates the admin and test users of the authorizer configuration in effect, the same one the
+   * request filters enforce, rather than the configuration file's copy, which a value saved in the
+   * UI may override.
+   */
   public void initializeUsers(OpenMetadataApplicationConfig config) {
     AuthProvider authProvider = SecurityConfigurationManager.getCurrentAuthConfig().getProvider();
+    AuthorizerConfiguration authorizer =
+        Optional.ofNullable(SecurityConfigurationManager.getCurrentAuthzConfig())
+            .orElse(config.getAuthorizerConfiguration());
 
-    UserUtil.createOrUpdateAdminUsers(authProvider, config.getAuthorizerConfiguration());
+    UserUtil.createOrUpdateAdminUsers(authProvider, authorizer);
 
-    String domain = SecurityUtil.getDomain(config);
-    Set<String> testUsers = new HashSet<>(config.getAuthorizerConfiguration().getTestPrincipals());
+    String domain = SecurityUtil.getDomain(authorizer);
+    Set<String> testUsers =
+        authorizer.getTestPrincipals() == null
+            ? new HashSet<>()
+            : new HashSet<>(authorizer.getTestPrincipals());
     UserUtil.addUsers(authProvider, testUsers, domain, null);
   }
 

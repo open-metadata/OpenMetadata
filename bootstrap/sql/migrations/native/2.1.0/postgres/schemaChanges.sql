@@ -382,6 +382,24 @@ ALTER TABLE announcement_entity
   GENERATED ALWAYS AS (COALESCE(json ->> 'type', 'Notice')) STORED;
 CREATE INDEX IF NOT EXISTS idx_announcement_type ON announcement_entity (type);
 
+-- Single source of truth for entityReference / entityReferenceList custom-property values, one row
+-- per referenced entity. columnKey is '' for entity-level values, else the column's FQN hash. A hard
+-- delete removes the rows pointing at the deleted entity through the targetId index.
+CREATE TABLE IF NOT EXISTS custom_property_reference (
+    id VARCHAR(36) NOT NULL,
+    columnKey VARCHAR(512) NOT NULL DEFAULT '',
+    propertyName VARCHAR(256) NOT NULL,
+    targetId VARCHAR(36) NOT NULL,
+    holderType VARCHAR(256) NOT NULL,
+    targetType VARCHAR(256) NOT NULL,
+    position INT NOT NULL,
+    json JSONB NOT NULL,
+    PRIMARY KEY (id, columnKey, propertyName, targetId)
+);
+CREATE INDEX IF NOT EXISTS custom_property_reference_target ON custom_property_reference (targetId);
+CREATE INDEX IF NOT EXISTS custom_property_reference_property
+  ON custom_property_reference (holderType, propertyName);
+
 -- Allow Data Consumer to run agent SPARQL queries by default (#34231). Seed data never updates a policy
 -- that already exists, so existing installs get the rule here. The rule is only added while an allow
 -- rule of the policy still lists ViewAll, since the grant is acceptable only where Data Consumers can
@@ -441,6 +459,12 @@ CREATE INDEX IF NOT EXISTS idx_sso_test_login_session_admin
     ON sso_test_login_session (admin_principal, credentials_submitted_at);
 CREATE INDEX IF NOT EXISTS idx_sso_test_login_session_expires
     ON sso_test_login_session (expires_at);
+
+-- Settings that exist both in openmetadata.yaml/environment and in this table (security, email,
+-- base URL, SCIM, MCP, app configuration) remember the deployment values they were last
+-- reconciled with. Comparing against that snapshot is how a server start tells a value changed in
+-- the deployment from a value changed in the UI (#31786). NULL until the server first reconciles.
+ALTER TABLE openmetadata_settings ADD COLUMN IF NOT EXISTS deployment_snapshot JSONB;
 
 -- #33980 shipped this column while the type enum still read Information/Warning/Issue. The enum
 -- has since been renamed so the stored value matches what the UI shows (Notice/Critical). A
@@ -551,3 +575,8 @@ ALTER TABLE rdf_projection_health
 CREATE INDEX IF NOT EXISTS idx_entity_relationship_memory_anchor
     ON entity_relationship (fromId, relation)
     WHERE toEntity = 'contextMemory';
+
+-- aboutEntity task lists match `aboutfqnhash LIKE 'hash.%'`, which a plain btree can't serve under a
+-- non-C collation (seq scan); text_pattern_ops as for the 1.13.0 *_fqnhash_pattern indexes.
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_task_about_fqn_hash_pattern
+  ON task_entity (aboutfqnhash text_pattern_ops);

@@ -10,8 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Card, Grid, Typography } from '@openmetadata/ui-core-components';
-import { Affix, Button } from 'antd';
+import {
+  Box,
+  Button,
+  Card,
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Affix } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined, startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -268,9 +274,8 @@ export const EntityImport = ({
                   gap={2}
                   itemClassName="layout-space-item">
                   <Button
-                    ghost
+                    color="secondary-brand"
                     data-testid="cancel-button"
-                    type="primary"
                     // as we need to redirect back, from where we enter import screen
                     onClick={onCancel}>
                     {t('label.cancel')}
@@ -305,9 +310,8 @@ export const EntityImport = ({
                       gap={4}
                       itemClassName="layout-space-item">
                       <Button
-                        ghost
+                        color="secondary-brand"
                         data-testid="cancel-button"
-                        type="primary"
                         onClick={handleCancel}>
                         {t('label.back')}
                       </Button>
@@ -340,18 +344,17 @@ export const EntityImport = ({
                     gap={2}
                     itemClassName="layout-space-item">
                     <Button
-                      ghost
+                      color="secondary-brand"
                       data-testid="preview-cancel-button"
-                      disabled={isImporting}
-                      type="primary"
+                      isDisabled={isImporting}
                       onClick={handleCancel}>
                       {t('label.back')}
                     </Button>
                     {!isFailure && (
                       <Button
+                        color="primary"
                         data-testid="import-button"
-                        disabled={isImporting}
-                        type="primary"
+                        isDisabled={isImporting}
                         onClick={handleImport}>
                         {t('label.import')}
                       </Button>
@@ -387,8 +390,8 @@ export const EntityImport = ({
                     gap={4}
                     itemClassName="layout-space-item">
                     <Button
+                      color="primary"
                       data-testid="preview-button"
-                      type="primary"
                       onClick={onSuccess}>
                       {t('label.view')}
                     </Button>

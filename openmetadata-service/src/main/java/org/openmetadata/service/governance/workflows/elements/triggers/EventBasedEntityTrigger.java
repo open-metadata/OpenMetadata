@@ -32,6 +32,7 @@ import org.openmetadata.schema.governance.workflows.elements.triggers.Config;
 import org.openmetadata.schema.governance.workflows.elements.triggers.Event;
 import org.openmetadata.schema.governance.workflows.elements.triggers.EventBasedEntityTriggerDefinition;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.governance.workflows.SubWorkflowFailureListener;
 import org.openmetadata.service.governance.workflows.elements.TriggerInterface;
 import org.openmetadata.service.governance.workflows.elements.triggers.impl.FilterEntityImpl;
 import org.openmetadata.service.governance.workflows.flowable.builders.CallActivityBuilder;
@@ -56,13 +57,22 @@ public class EventBasedEntityTrigger implements TriggerInterface {
       String mainWorkflowName,
       String triggerWorkflowId,
       EventBasedEntityTriggerDefinition triggerDefinition) {
+    this(mainWorkflowName, triggerWorkflowId, triggerDefinition, Set.of());
+  }
+
+  /** {@code excludedEntityTypes} are configured entity types that get no start event. */
+  public EventBasedEntityTrigger(
+      String mainWorkflowName,
+      String triggerWorkflowId,
+      EventBasedEntityTriggerDefinition triggerDefinition,
+      Set<String> excludedEntityTypes) {
     this.triggerDefinition = triggerDefinition;
     Process process = new Process();
     process.setId(triggerWorkflowId);
     process.setName(triggerWorkflowId);
     attachWorkflowInstanceListeners(process);
 
-    setStartEvents(triggerWorkflowId, triggerDefinition);
+    setStartEvents(triggerWorkflowId, triggerDefinition, excludedEntityTypes);
 
     ServiceTask filterTask = getFilterTask(triggerWorkflowId, triggerDefinition);
     process.addFlowElement(filterTask);
@@ -119,9 +129,14 @@ public class EventBasedEntityTrigger implements TriggerInterface {
   }
 
   private void setStartEvents(
-      String workflowTriggerId, EventBasedEntityTriggerDefinition triggerDefinition) {
+      String workflowTriggerId,
+      EventBasedEntityTriggerDefinition triggerDefinition,
+      Set<String> excludedEntityTypes) {
 
-    List<String> entityTypes = getEntityTypesFromConfig(triggerDefinition.getConfig());
+    List<String> entityTypes =
+        getEntityTypesFromConfig(triggerDefinition.getConfig()).stream()
+            .filter(entityType -> !excludedEntityTypes.contains(entityType))
+            .toList();
     Set<Event> events = triggerDefinition.getConfig().getEvents();
 
     for (String entityType : entityTypes) {
@@ -206,7 +221,9 @@ public class EventBasedEntityTrigger implements TriggerInterface {
     outputParameter.setTarget(getNamespacedVariableName(GLOBAL_NAMESPACE, EXCEPTION_VARIABLE));
 
     workflowTrigger.setInParameters(inputParameters);
-    workflowTrigger.setOutParameters(List.of(outputParameter));
+    workflowTrigger.setOutParameters(
+        List.of(outputParameter, SubWorkflowFailureListener.outParameter()));
+    workflowTrigger.getExecutionListeners().add(SubWorkflowFailureListener.endListener());
 
     return workflowTrigger;
   }
@@ -253,7 +270,8 @@ public class EventBasedEntityTrigger implements TriggerInterface {
     return serviceTask;
   }
 
-  private String getEntitySignalId(String entityType, String event) {
+  /** Id of the signal a change event of {@code entityType} sends to start the trigger. */
+  public static String getEntitySignalId(String entityType, String event) {
     return String.format("%s-entity%s", entityType, event);
   }
 

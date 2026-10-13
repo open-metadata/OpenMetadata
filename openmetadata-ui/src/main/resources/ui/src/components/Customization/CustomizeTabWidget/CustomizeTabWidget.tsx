@@ -27,7 +27,7 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty, isNil, isUndefined, uniqueId } from 'lodash';
-import { lazy, useCallback, useMemo, useState } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import RGL, { Layout, WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import {
@@ -136,6 +136,26 @@ export const CustomizeTabWidget = () => {
     items.find((i) => i.editable)?.id ?? null
   );
   const [editableItem, setEditableItem] = useState<Tab | null>(null);
+
+  // `useState` runs its initialiser on the first render only, and on that
+  // render `currentPage` is often still null — `items` is then `systemTabs`,
+  // which has no editable tab, so `activeKey` sticks on null (rendering the
+  // first system tab) even after the saved tabs arrive. Nothing re-synced it,
+  // so whether the customized tab opened came down to whether hydration beat
+  // the first render: the grid would mount against the wrong tab, write its
+  // computed layout into `currentPage` from `onLayoutChange`, and leave the
+  // page diffing against its own saved document with Save stuck enabled.
+  useEffect(() => {
+    if (activeKey && items.some((item) => item.id === activeKey)) {
+      return;
+    }
+
+    const nextKey = items.find((item) => item.editable)?.id ?? items[0]?.id;
+
+    if (nextKey) {
+      setActiveKey(nextKey);
+    }
+  }, [items, activeKey]);
 
   const tabLayouts = useMemo(() => {
     const layout =

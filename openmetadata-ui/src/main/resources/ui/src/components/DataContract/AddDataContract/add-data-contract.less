@@ -14,81 +14,12 @@
 @import (reference) '../../../styles/variables.less';
 
 .contract-tabs {
-  .contract-prev-button,
-  .contract-next-button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: @size-xs @size-sm;
-    border: 1px solid @grey-300;
-    border-radius: var(--om-radius-lg);
-    font-weight: var(--om-font-weight-semibold);
-    gap: var(--om-space-4);
-    box-shadow: 0px 1px 2px 0px @grey-27, 0px -2px 0px 0px @grey-27 inset,
-      0px 0px 0px 1px @grey-27 inset;
-
-    .anticon {
-      margin-top: var(--om-space-2);
-      margin-left: var(--om-space-6);
-    }
-  }
-  .contract-prev-button {
-    color: @grey-700;
-    svg {
-      color: @grey-400;
-    }
-
-    &:hover {
-      background: @grey-100;
-
-      svg {
-        color: @grey-700;
-      }
-    }
-  }
-  .ant-checkbox-checked {
-    .ant-checkbox-inner {
-      background-color: @primary-1;
-      border: 1px solid @primary-color;
-      &::after {
-        border-color: @primary-color;
-      }
-    }
-  }
-
-  .ant-checkbox-indeterminate {
-    .ant-checkbox-inner {
-      background-color: @primary-1;
-      border: 1px solid @primary-color;
-      &::after {
-        width: 7px;
-        height: 2px;
-        border-radius: var(--om-radius-lg);
-        border: 1px solid @primary-color;
-      }
-    }
-  }
   .schema-table-name {
     color: @grey-600;
     font-weight: @font-medium;
   }
 
-  // Contract detail Forms
-  .contract-detail-form-tab-title {
-    display: block;
-    font-size: var(--om-font-size-lg);
-    font-weight: var(--om-font-weight-semibold);
-    color: @grey-900;
-  }
-
-  .contract-detail-form-tab-description {
-    font-size: var(--om-font-size-sm);
-    color: @grey-600;
-    font-weight: var(--om-font-weight-regular);
-  }
-
   .contract-form-content-container {
-    margin-top: var(--om-space-20);
     background: var(--tw-color-bg-primary);
     padding: var(--om-space-20);
     border-radius: var(--om-radius-lg);
@@ -98,102 +29,6 @@
     flex-direction: column;
     gap: @size-lg;
   }
-
-  // Table styling
-
-  .ant-table-tbody > tr.ant-table-row-selected > td {
-    background: transparent;
-  }
-}
-
-// Additional styling for the contract form container
-.container.bg-grey {
-  background: @grey-50;
-  border: none;
-  height: 100%;
-
-  & > div:first-child {
-    background: transparent;
-    padding: 0 0 var(--om-space-20) 0;
-  }
-
-  // Form styling within tabs
-  .ant-form {
-    .ant-form-item {
-      margin-bottom: var(--om-space-20);
-
-      .ant-form-item-label {
-        padding-bottom: var(--om-space-8);
-        label {
-          font-size: var(--om-font-size-sm);
-          font-weight: var(--om-font-weight-medium);
-          color: @grey-700;
-
-          &.ant-form-item-required::before {
-            color: @red-21;
-          }
-        }
-      }
-    }
-
-    // input[type='text'],
-    // .ant-picker {
-    //   color: @grey-700;
-    //   font-weight: var(--om-font-weight-medium);
-    //   min-height: 40px;
-    //   border: 1px solid @grey-300;
-    //   border-radius: var(--om-radius-lg);
-    //   box-shadow: 0 1px 2px 0px @grey-27;
-    // }
-
-    .ant-input-number-input {
-      color: @grey-700;
-      font-weight: var(--om-font-weight-medium);
-      border-radius: var(--om-radius-lg);
-      min-height: 40px;
-      box-shadow: 0 1px 2px 0px @grey-27;
-    }
-
-    .ant-select-selector,
-    .ant-mentions {
-      border-radius: var(--om-radius-lg);
-      border: 1px solid @grey-300;
-      color: @grey-700;
-      min-height: 40px;
-      box-shadow: 0 1px 2px 0px @grey-27;
-
-      &:focus,
-      &:hover {
-        border-color: @primary-color;
-      }
-
-      > .ant-select-selection-search {
-        input[type='search'] {
-          height: 40px;
-          font-weight: var(--om-font-weight-medium);
-        }
-      }
-    }
-
-    .ant-select-selection-placeholder,
-    .ant-select-selection-item {
-      line-height: 40px;
-    }
-
-    .ant-select-selection-overflow {
-      .ant-select-selection-overflow-item {
-        .ant-select-selection-item {
-          line-height: 22px;
-        }
-      }
-    }
-
-    .query-builder-container {
-      .group--field {
-        align-self: baseline;
-      }
-    }
-  }
 }
 
 .contract-tab-icon {
@@ -202,63 +37,11 @@
   margin-right: var(--om-space-8);
 }
 
-.add-contract-card {
-  .add-contract-card-header {
-    .ant-btn.add-contract-cancel-button {
-      margin-right: var(--om-space-8);
-      border: 1px solid @grey-300;
-      color: @grey-700;
-      font-weight: var(--om-font-weight-semibold);
-      box-shadow: 0px 1px 2px 0px @grey-27, 0px -2px 0px 0px @grey-27 inset,
-        0px 0px 0px 1px @grey-27 inset;
-    }
-
-    .ant-btn.add-contract-save-button {
-      font-weight: var(--om-font-weight-semibold);
-    }
-  }
-
-  .add-contract-card-title {
-    font-size: var(--om-font-size-lg);
-    font-weight: var(--om-font-weight-semibold);
-    color: @grey-900;
-  }
-
-  .add-contract-card-description {
-    font-size: var(--om-font-size-sm);
-    color: @grey-600;
-    font-weight: var(--om-font-weight-regular);
-    margin-bottom: 0;
-  }
-}
-
 .semantic-rule-editor-view-only {
   input[type='text'] {
     color: @grey-700;
     box-shadow: 0px 1px 2px 0px @grey-27;
     border: 1px solid @grey-300;
     font-weight: var(--om-font-weight-medium);
-  }
-
-  .ant-select-selector,
-  .ant-mentions {
-    border: 1px solid @grey-300;
-    color: @grey-700;
-    font-weight: var(--om-font-weight-medium);
-    min-height: 40px !important;
-    box-shadow: 0 1px 2px 0px @grey-27;
-
-    .ant-select-selector,
-    .ant-mentions {
-      border: 1px solid @grey-300;
-      color: @grey-700;
-      min-height: 40px !important;
-      box-shadow: 0 1px 2px 0px @grey-27;
-
-      &:focus,
-      &:hover {
-        border-color: @primary-color;
-      }
-    }
   }
 }

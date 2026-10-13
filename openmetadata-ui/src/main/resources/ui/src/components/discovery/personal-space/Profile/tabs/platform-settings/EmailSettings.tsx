@@ -21,14 +21,17 @@ import {
 import { Edit01, Mail01, Plus } from '@openmetadata/ui-core-components/icons';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { EMAIL_CONFIG_FORM_FIELDS } from '../../../../../../constants/EmailConfig.constants';
 import { SMTPSettings } from '../../../../../../generated/email/smtpSettings';
 import { SettingType } from '../../../../../../generated/settings/settings';
 import { getSettingsConfigFromConfigType } from '../../../../../../rest/settingConfigAPI';
+import SettingsSourceBanner from '../../../../../platform/settings/SettingsSourceBanner/SettingsSourceBanner';
 import SettingsSection, { ReadOnlyRow } from '../../components/SettingsSection';
 import type { PlatformSettingsPageProps } from './PlatformSettings.types';
 import { SettingsSkeleton } from './SettingsFormLayout';
 import SettingValue from './SettingValue';
 import TestEmailModal from './TestEmailModal';
+import { useDeploymentManagedFields } from './useDeploymentManagedFields';
 import { useSettingsFetch } from './useSettingsFetch';
 
 const fetchEmailConfig = async () => {
@@ -44,11 +47,24 @@ const EmailSettings = ({
   onSetHeaderActions,
 }: PlatformSettingsPageProps) => {
   const { t } = useTranslation();
-  const { data: config, isLoading } = useSettingsFetch(fetchEmailConfig);
+  const {
+    data: config,
+    isLoading,
+    reload,
+  } = useSettingsFetch(fetchEmailConfig);
+  const {
+    sources,
+    isLoading: isSourceLoading,
+    refetch: refetchSources,
+    isFullyManaged,
+  } = useDeploymentManagedFields(
+    SettingType.EmailConfiguration,
+    EMAIL_CONFIG_FORM_FIELDS
+  );
   const [isTestEmailOpen, setIsTestEmailOpen] = useState(false);
 
   useEffect(() => {
-    if (isLoading) {
+    if (isLoading || isSourceLoading) {
       return undefined;
     }
 
@@ -63,43 +79,65 @@ const EmailSettings = ({
             {t('label.test-email')}
           </Button>
         )}
-        <Button
-          color="primary"
-          data-testid="edit-button"
-          iconLeading={config ? Edit01 : Plus}
-          size="sm"
-          onPress={() =>
-            onNavigate({ type: 'page', page: 'email', isEditing: true })
-          }>
-          {config ? t('label.edit') : t('label.add')}
-        </Button>
+        {!isFullyManaged && (
+          <Button
+            color="primary"
+            data-testid="edit-button"
+            iconLeading={config ? Edit01 : Plus}
+            size="sm"
+            onPress={() =>
+              onNavigate({ type: 'page', page: 'email', isEditing: true })
+            }>
+            {config ? t('label.edit') : t('label.add')}
+          </Button>
+        )}
       </Box>
     );
 
     return () => onSetHeaderActions(undefined);
-  }, [config, isLoading, onNavigate, onSetHeaderActions, t]);
+  }, [
+    config,
+    isFullyManaged,
+    isLoading,
+    isSourceLoading,
+    onNavigate,
+    onSetHeaderActions,
+    t,
+  ]);
 
   if (isLoading) {
     return <SettingsSkeleton rows={8} />;
   }
 
+  const sourceBanner = (
+    <SettingsSourceBanner
+      sources={sources}
+      onAdopted={reload}
+      onRefetch={refetchSources}
+    />
+  );
+
   if (!config) {
     return (
-      // The placeholder centres itself in its nearest positioned ancestor.
-      <div className="tw:relative tw:min-h-90">
-        <EmptyPlaceholder
-          data-testid="email-config-empty"
-          icon={<Mail01 className="tw:text-quaternary" />}
-          title={t('label.no-entity', {
-            entity: t('label.email-configuration'),
-          })}
-        />
-      </div>
+      <>
+        {sourceBanner}
+        {/* The placeholder centres itself in its nearest positioned ancestor. */}
+        <div className="tw:relative tw:min-h-90">
+          <EmptyPlaceholder
+            data-testid="email-config-empty"
+            icon={<Mail01 className="tw:text-quaternary" />}
+            title={t('label.no-entity', {
+              entity: t('label.email-configuration'),
+            })}
+          />
+        </div>
+      </>
     );
   }
 
   return (
     <Box data-testid="email-settings" direction="col" gap={8}>
+      {sourceBanner}
       <SettingsSection title={t('label.server')}>
         <ReadOnlyRow title={t('label.enable-smtp-server')}>
           <Toggle

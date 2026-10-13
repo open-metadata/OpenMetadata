@@ -25,7 +25,7 @@ export const setCertificationClassificationDisabled = async (
 
 export const openCertificationDropdown = async (page: Page) => {
   const certificationResponse = page.waitForResponse(
-    '/api/v1/tags?*parent=Certification*'
+    '/api/v1/search/query?*index=tag&*'
   );
   await page.getByTestId('edit-certification').click();
   await certificationResponse;
