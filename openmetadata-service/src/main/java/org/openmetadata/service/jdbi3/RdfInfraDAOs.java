@@ -168,6 +168,22 @@ public interface RdfInfraDAOs {
   }
 
   interface OntologyChangeSetDAO extends EntityDAO<OntologyChangeSet> {
+    String OPEN_MEMORY_DRAFTS =
+        "FROM ontology_change_set_entity cs JOIN entity_relationship er ON er.fromId = cs.id "
+            + "WHERE er.toId = :memoryId AND er.fromEntity = 'ontologyChangeSet' "
+            + "AND er.toEntity = 'contextMemory' AND er.relation = :relation "
+            + "AND er.deleted = FALSE "
+            + "AND cs.state IN ('DRAFT', 'SUBMITTED', 'APPLY_FAILED') "
+            + "AND (cs.deleted IS NULL OR cs.deleted = FALSE) "
+            + "ORDER BY cs.updatedAt DESC LIMIT 100";
+
+    @ConnectionAwareSqlQuery(value = "SELECT cs.json " + OPEN_MEMORY_DRAFTS, connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT cs.json::text " + OPEN_MEMORY_DRAFTS,
+        connectionType = POSTGRES)
+    List<String> findOpenBySourceMemoryId(
+        @Bind("memoryId") String memoryId, @Bind("relation") int relation);
+
     @Override
     default String getTableName() {
       return "ontology_change_set_entity";
@@ -376,7 +392,7 @@ public interface RdfInfraDAOs {
                 + "(name, json, systemRule, dirty, deleted, updatedAt) "
                 + "VALUES (:name, :json, FALSE, TRUE, FALSE, :updatedAt) "
                 + "ON DUPLICATE KEY UPDATE json = VALUES(json), dirty = TRUE, deleted = FALSE, "
-                + "updatedAt = VALUES(updatedAt), lastError = NULL",
+                + "updatedAt = VALUES(updatedAt), lastError = NULL, dirtyVersion = dirtyVersion + 1",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
@@ -384,7 +400,8 @@ public interface RdfInfraDAOs {
                 + "(name, json, systemRule, dirty, deleted, updatedAt) "
                 + "VALUES (:name, :json::jsonb, FALSE, TRUE, FALSE, :updatedAt) "
                 + "ON CONFLICT (name) DO UPDATE SET json = EXCLUDED.json, dirty = TRUE, "
-                + "deleted = FALSE, updatedAt = EXCLUDED.updatedAt, lastError = NULL",
+                + "deleted = FALSE, updatedAt = EXCLUDED.updatedAt, lastError = NULL, "
+                + "dirtyVersion = rdf_inference_rule.dirtyVersion + 1",
         connectionType = POSTGRES)
     void upsert(
         @Bind("name") String name, @Bind("json") String json, @Bind("updatedAt") long updatedAt);
@@ -394,24 +411,64 @@ public interface RdfInfraDAOs {
             + "WHERE name = :name")
     void softDelete(@Bind("name") String name, @Bind("updatedAt") long updatedAt);
 
+    /**
+     * Clears the dirty flag only when nothing invalidated the rule after a run read it at {@code
+     * dirtyVersion}, so a change that lands during the run is still pending afterwards.
+     */
     @SqlUpdate(
-        "UPDATE rdf_inference_rule SET dirty = FALSE, lastMaterializedAt = :completedAt, "
-            + "lastTripleCount = :tripleCount, lastError = NULL WHERE name = :name")
+        "UPDATE rdf_inference_rule SET "
+            + "dirty = CASE WHEN dirtyVersion = :dirtyVersion THEN FALSE ELSE TRUE END, "
+            + "lastMaterializedAt = :completedAt, lastTripleCount = :tripleCount, lastError = NULL "
+            + "WHERE name = :name")
     void markMaterialized(
         @Bind("name") String name,
         @Bind("completedAt") long completedAt,
-        @Bind("tripleCount") long tripleCount);
+        @Bind("tripleCount") long tripleCount,
+        @Bind("dirtyVersion") long dirtyVersion);
+
+    @SqlUpdate(
+        "UPDATE rdf_inference_rule SET "
+            + "dirty = CASE WHEN dirtyVersion = :dirtyVersion THEN FALSE ELSE TRUE END, "
+            + "lastMaterializedAt = :completedAt, lastTripleCount = 0 WHERE name = :name")
+    void markCleared(
+        @Bind("name") String name,
+        @Bind("completedAt") long completedAt,
+        @Bind("dirtyVersion") long dirtyVersion);
 
     @SqlUpdate(
         "UPDATE rdf_inference_rule SET dirty = TRUE, lastError = :lastError WHERE name = :name")
     void markFailed(@Bind("name") String name, @Bind("lastError") String lastError);
 
-    @SqlUpdate("UPDATE rdf_inference_rule SET dirty = TRUE WHERE deleted = FALSE")
+    @SqlUpdate(
+        "UPDATE rdf_inference_rule SET dirty = TRUE, dirtyVersion = dirtyVersion + 1 "
+            + "WHERE deleted = FALSE")
     void markAllDirty();
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE rdf_inference_rule SET json = :json, lastError = :lastError, "
+                + "updatedAt = :updatedAt, dirty = TRUE, dirtyVersion = dirtyVersion + 1 "
+                + "WHERE name = :name",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE rdf_inference_rule SET json = :json::jsonb, lastError = :lastError, "
+                + "updatedAt = :updatedAt, dirty = TRUE, dirtyVersion = dirtyVersion + 1 "
+                + "WHERE name = :name",
+        connectionType = POSTGRES)
+    void disable(
+        @Bind("name") String name,
+        @Bind("json") String json,
+        @Bind("lastError") String lastError,
+        @Bind("updatedAt") long updatedAt);
 
     @SqlQuery("SELECT * FROM rdf_inference_rule WHERE deleted = FALSE ORDER BY name")
     @RegisterRowMapper(RdfInferenceRuleRowMapper.class)
     List<RdfInferenceRuleRow> listActive();
+
+    /** Names of every rule ever stored, soft-deleted ones included. */
+    @SqlQuery("SELECT name FROM rdf_inference_rule ORDER BY name")
+    List<String> listNames();
 
     @SqlQuery("SELECT * FROM rdf_inference_rule WHERE name = :name AND deleted = FALSE")
     @RegisterRowMapper(RdfInferenceRuleRowMapper.class)
@@ -430,7 +487,8 @@ public interface RdfInfraDAOs {
             // BIGINT UNSIGNED on MySQL: a plain getObject returns BigInteger there.
             resultSet.getObject("lastMaterializedAt", Long.class),
             resultSet.getLong("lastTripleCount"),
-            resultSet.getString("lastError"));
+            resultSet.getString("lastError"),
+            resultSet.getLong("dirtyVersion"));
       }
     }
 
@@ -442,7 +500,8 @@ public interface RdfInfraDAOs {
         long updatedAt,
         Long lastMaterializedAt,
         long lastTripleCount,
-        String lastError) {}
+        String lastError,
+        long dirtyVersion) {}
   }
 
   interface RdfCustomOntologyDAO {
@@ -586,32 +645,6 @@ public interface RdfInfraDAOs {
 
     @SqlQuery("SELECT datasetName FROM rdf_active_dataset WHERE id = '" + POINTER_ID + "'")
     String getActiveDataset();
-
-    @ConnectionAwareSqlUpdate(
-        value =
-            "INSERT INTO rdf_active_dataset (id, datasetName, updatedAt, updatedBy) "
-                + "VALUES ('"
-                + POINTER_ID
-                + "', :datasetName, :updatedAt, :updatedBy) "
-                + "ON DUPLICATE KEY UPDATE datasetName = VALUES(datasetName), "
-                + "updatedAt = VALUES(updatedAt), updatedBy = VALUES(updatedBy)",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlUpdate(
-        value =
-            "INSERT INTO rdf_active_dataset (id, datasetName, updatedAt, updatedBy) "
-                + "VALUES ('"
-                + POINTER_ID
-                + "', :datasetName, :updatedAt, :updatedBy) "
-                + "ON CONFLICT (id) DO UPDATE SET datasetName = EXCLUDED.datasetName, "
-                + "updatedAt = EXCLUDED.updatedAt, updatedBy = EXCLUDED.updatedBy",
-        connectionType = POSTGRES)
-    void setActiveDataset(
-        @Bind("datasetName") String datasetName,
-        @Bind("updatedAt") long updatedAt,
-        @Bind("updatedBy") String updatedBy);
-
-    @SqlUpdate("DELETE FROM rdf_active_dataset WHERE id = '" + POINTER_ID + "'")
-    void clearActiveDataset();
   }
 
   /**

@@ -43,15 +43,6 @@ export const ALERT_AI_FORM_CLASS_NAMES = {
     'tw:[&_[role=group]>div>span]:min-w-0 tw:[&_[role=group]>div>span]:max-w-full',
   card: 'tw:rounded-lg tw:bg-secondary tw:px-4 tw:py-3',
   columnSpanFull: 'tw:col-span-2',
-  customTemplateBodyEditor: 'tw:min-h-[180px]',
-  customTemplateBodyTextArea: 'tw:min-h-[140px]',
-  customTemplateEditorFrame:
-    'tw:overflow-hidden tw:rounded-lg tw:bg-primary tw:outline-1 tw:-outline-offset-1 tw:outline-primary',
-  customTemplateFields: 'tw:flex tw:flex-col tw:gap-3',
-  customTemplateInfoBanner:
-    'tw:flex tw:items-start tw:gap-2 tw:rounded-lg tw:border tw:border-secondary tw:bg-surface tw:p-3',
-  customTemplateFieldError: 'tw:mt-1 tw:text-sm tw:text-error-primary',
-  customTemplateSubjectFooter: 'tw:mt-1 tw:text-sm tw:text-quaternary',
   descriptionTextArea: 'tw:min-h-[140px]',
   destinationAlert: 'tw:px-4',
   // Stays bg-primary: on bg-surface the core Toggle off-track (bg-tertiary) is the
@@ -65,14 +56,14 @@ export const ALERT_AI_FORM_CLASS_NAMES = {
   removeButton:
     'tw:h-9 tw:w-9 tw:min-w-[36px] tw:shrink-0 tw:p-0 tw:hover:text-error-600 tw:hover:*:data-icon:text-error-600 tw:focus:text-error-600 tw:focus:*:data-icon:text-error-600',
   ruleArgumentsField: 'tw:mr-12 tw:w-auto',
-  ruleControlField: 'tw:w-full tw:max-w-[463px]',
-  ruleControlGroup: 'tw:w-full tw:max-w-[536px]',
+  ruleControlField: 'tw:w-full',
+  ruleControlGroup: 'tw:w-full',
   ruleControlGroupFull: 'tw:w-full',
   ruleControlRow: 'tw:w-full tw:items-end',
   sectionCard: 'tw:rounded-lg tw:bg-secondary tw:px-4 tw:py-3',
   sectionHeader: 'tw:gap-0.5',
   sectionRequiredMarker: 'tw:ml-0.5 tw:text-error-primary',
-  sectionRoot: 'tw:gap-1.5',
+  sectionRoot: 'tw:w-full tw:items-stretch tw:gap-1.5',
   teamUserHint: 'tw:mt-1 tw:text-sm tw:text-fg-error-secondary',
   teamUserSelectDropdown:
     'tw:absolute tw:z-50 tw:mt-1 tw:w-full tw:rounded-xl tw:border tw:border-secondary tw:bg-overlay-surface tw:p-2 tw:shadow-lg',

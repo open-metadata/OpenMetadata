@@ -47,7 +47,10 @@ import {
   getSettingsPathWithFqn,
 } from './RouterUtils';
 import { getFilteredSchema } from './ServiceConnectionUtils';
-import { getReadableCountString } from './ServicePureUtils';
+import {
+  getReadableCountString,
+  getServiceCategoryLabel,
+} from './ServicePureUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 
 export const getIngestionHeadingName = (
@@ -110,7 +113,7 @@ export const getBreadCrumbsArray = (
     breadCrumbsArray.push(
       ...[
         {
-          name: startCase(serviceCategory),
+          name: getServiceCategoryLabel(serviceCategory),
           url: connectionsRouterClassBase.getSettingsServicesPath(
             serviceCategory
           ),

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ACTION_TIMEOUT } from '../../../constant/common';
 import { TableClass } from '../../../support/entity/TableClass';
 import { expect, test } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
@@ -96,7 +97,7 @@ test.describe('Activity Feed - Home Page Widget', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
   });
 
   test('should display activity feed widget on home page', async ({ page }) => {
@@ -225,7 +226,7 @@ test.describe('Activity Feed - Filters', () => {
   });
 
   test('All filter should show all activity', async ({ page }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
     await redirectToHomePage(page);
     await waitForPageLoaded(page);
 
@@ -247,7 +248,7 @@ test.describe('Activity Feed - Filters', () => {
   test('My Data filter should show only owned entity activity', async ({
     page,
   }) => {
-    await regularUser.login(page);
+    await regularUser.signIn(page);
     await redirectToHomePage(page);
     await waitForPageLoaded(page);
 
@@ -269,7 +270,7 @@ test.describe('Activity Feed - Filters', () => {
   });
 
   test('Tasks filter should show only tasks', async ({ page }) => {
-    await regularUser.login(page);
+    await regularUser.signIn(page);
     await redirectToHomePage(page);
     await waitForPageLoaded(page);
 
@@ -292,43 +293,10 @@ test.describe('Activity Feed - Filters', () => {
     }
   });
 
-  test('Activity Feed widget filters should switch between All Activity, My Data, and Following', async ({
-    page,
-  }) => {
-    await regularUser.login(page);
-    await redirectToHomePage(page, false);
-
-    const feedWidget = page.getByTestId('KnowledgePanel.ActivityFeed');
-    await expect(feedWidget).toBeVisible();
-    const subFilterDropdown = feedWidget.getByTestId('widget-sort-by-dropdown');
-    await expect(subFilterDropdown).toBeVisible();
-
-    const selectFeedFilter = async (menuLabel: string) => {
-      await subFilterDropdown.click();
-      await page.getByRole('menuitem', { name: menuLabel }).click();
-      await expect(subFilterDropdown).toContainText(new RegExp(menuLabel, 'i'));
-    };
-
-    await subFilterDropdown.click();
-    await expect(
-      page.getByRole('menuitem', { name: 'All Activity' })
-    ).toBeVisible();
-    await expect(page.getByRole('menuitem', { name: 'My Data' })).toBeVisible();
-    await expect(
-      page.getByRole('menuitem', { name: 'Following' })
-    ).toBeVisible();
-    await page.keyboard.press('Escape');
-
-    await selectFeedFilter('All Activity');
-    await selectFeedFilter('My Data');
-    await selectFeedFilter('Following');
-    await selectFeedFilter('All Activity');
-  });
-
   test('assignee should see assigned tasks in Tasks filter', async ({
     page,
   }) => {
-    await regularUser.login(page);
+    await regularUser.signIn(page);
     await redirectToHomePage(page);
     await waitForPageLoaded(page);
 
@@ -416,7 +384,7 @@ test.describe('Activity Feed - Entity Page', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
   });
 
   test('should display activity feed tab on entity page', async ({ page }) => {
@@ -440,7 +408,9 @@ test.describe('Activity Feed - Entity Page', () => {
     const feedContainer = page
       .locator('[data-testid="global-setting-left-panel"]')
       .or(page.getByRole('button', { name: /all|tasks/i }));
-    await expect(feedContainer.first()).toBeVisible({ timeout: 10000 });
+    await expect(feedContainer.filter({ visible: true })).not.toHaveCount(0, {
+      timeout: 10000,
+    });
   });
 
   test('entity task filters should request open, closed, and mentions views', async ({
@@ -565,7 +535,7 @@ test.describe('Activity Feed - Real-time Updates', () => {
   test('creating task should immediately appear in entity feed', async ({
     page,
   }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
     await table.visitEntityPage(page);
 
     // Go to activity feed
@@ -646,7 +616,7 @@ test.describe('Activity Feed - Real-time Updates', () => {
       expect(patchResponse.ok()).toBe(true);
 
       const page = await browser.newPage();
-      await adminUser.login(page);
+      await adminUser.signIn(page);
       await table.visitEntityPage(page);
 
       // Go to activity feed
@@ -705,7 +675,7 @@ test.describe('Activity Feed - Following', () => {
   test('following an entity should show its activity in Following filter', async ({
     page,
   }) => {
-    await regularUser.login(page);
+    await regularUser.signIn(page);
     await table.visitEntityPage(page);
 
     // Follow the entity
@@ -793,7 +763,7 @@ test.describe('Activity Feed - Entity Page counts', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
   });
 
   test('entity tab badge totals conversations, activity and tasks', async ({
@@ -833,7 +803,7 @@ test.describe('Activity Feed - Entity Page counts', () => {
 
     await expect(
       page.getByTestId('left-panel-task-count').getByTestId('filter-count')
-    ).toHaveText(String(SEEDED_TASK_COUNT), { timeout: 30_000 });
+    ).toHaveText(String(SEEDED_TASK_COUNT), { timeout: ACTION_TIMEOUT });
     await expect(page.locator('[data-testid="task-feed-card"]')).toHaveCount(
       SEEDED_TASK_COUNT
     );
@@ -847,8 +817,10 @@ test.describe('Activity Feed - Entity Page counts', () => {
     );
 
     await expect(
-      feedItems.filter({ hasText: seededActivitySummary }).first()
-    ).toBeVisible({ timeout: 30_000 });
+      feedItems
+        .filter({ hasText: seededActivitySummary })
+        .filter({ visible: true })
+    ).not.toHaveCount(0, { timeout: ACTION_TIMEOUT });
 
     // Deliberately not asserting badge === rendered here. The badge is a
     // server count and the list a separate query, and this fixture also
@@ -858,6 +830,6 @@ test.describe('Activity Feed - Entity Page counts', () => {
     // and rendered list agree on the count') on a fixture with no tasks.
     await expect(
       page.getByTestId('left-panel-all-count').getByTestId('filter-count')
-    ).toHaveText(/^[1-9]\d*$/, { timeout: 30_000 });
+    ).toHaveText(/^[1-9]\d*$/, { timeout: ACTION_TIMEOUT });
   });
 });

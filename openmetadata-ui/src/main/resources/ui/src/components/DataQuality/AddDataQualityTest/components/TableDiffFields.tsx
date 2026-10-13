@@ -20,7 +20,7 @@ import {
   getField,
   HelperTextType,
 } from '@openmetadata/ui-core-components';
-import { Plus, Trash01 } from '@untitledui/icons';
+import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { debounce } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFieldArray, UseFormReturn, useWatch } from 'react-hook-form';

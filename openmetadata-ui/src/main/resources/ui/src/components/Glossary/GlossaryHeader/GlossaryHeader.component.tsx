@@ -14,27 +14,26 @@ import { Box, Button, PageHeader } from '@openmetadata/ui-core-components';
 import { Icon as EntityStyleIcon } from '@openmetadata/ui-core-components/icon';
 import {
   ChevronDown,
+  Download01,
+  Edit01,
+  Glossary as GlossaryIcon,
+  GlossaryTerm as GlossaryTermIcon,
   RefreshCcw01,
+  Trash01,
+  Upload01,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { cloneDeep, isEmpty, toString } from 'lodash';
 import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as IconTerm } from '../../../assets/svg/book.svg';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
 import { ReactComponent as ChangeHierarchyIcon } from '../../../assets/svg/ic-change-hierarchy.svg';
-import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
-import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export.svg';
-import { ReactComponent as ImportIcon } from '../../../assets/svg/ic-import.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { useEntityExportModalProvider } from '../../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import EntityNameModal from '../../../components/Modals/EntityNameModal/EntityNameModal.component';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { ExportTypes } from '../../../constants/Export.constants';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
@@ -50,6 +49,7 @@ import { Operation } from '../../../generated/entity/policies/policy';
 import { Style } from '../../../generated/type/tagLabel';
 import { Votes } from '../../../generated/type/votes';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import { useFqn } from '../../../hooks/useFqn';
 import { QueryVoteType } from '../../../interface/entity/vote.interface';
 import {
@@ -133,7 +133,7 @@ const buildManageButtonContent = ({
               description={t('message.export-entity-help', {
                 entity: t('label.glossary-term-lowercase-plural'),
               })}
-              icon={ExportIcon}
+              icon={Upload01}
               id="export-button"
               name={t('label.export')}
             />
@@ -151,7 +151,7 @@ const buildManageButtonContent = ({
               description={t('message.import-entity-help', {
                 entity: t('label.glossary-term-lowercase'),
               })}
-              icon={ImportIcon}
+              icon={Download01}
               id="import-button"
               name={t('label.import')}
             />
@@ -167,7 +167,7 @@ const buildManageButtonContent = ({
           label: (
             <ManageButtonItemLabel
               description={t('message.import-ontology-help')}
-              icon={ImportIcon}
+              icon={Download01}
               id="import-ontology-button"
               name={t('label.import-ontology')}
             />
@@ -191,7 +191,7 @@ const buildManageButtonContent = ({
                   ? t('label.glossary')
                   : t('label.glossary-term'),
               })}
-              icon={EditIcon}
+              icon={Edit01}
               id="rename-button"
               name={t('label.rename')}
             />
@@ -258,7 +258,7 @@ const buildManageButtonContent = ({
                   ? t('label.glossary')
                   : t('label.glossary-term'),
               })}
-              icon={IconDelete}
+              icon={Trash01}
               id="delete-button"
               name={t('label.delete')}
             />
@@ -464,6 +464,7 @@ const GlossaryHeader = ({
   const navigate = useNavigate();
   const { fqn } = useFqn();
   const { currentUser } = useApplicationStore();
+  const isAiMode = useIsAiMode();
   const {
     onUpdate,
     data: selectedData,
@@ -563,13 +564,7 @@ const GlossaryHeader = ({
   const icon = useMemo(() => {
     if (isGlossary) {
       return (
-        <GlossaryIcon
-          className="align-middle"
-          color={DE_ACTIVE_COLOR}
-          height={36}
-          name="folder"
-          width={32}
-        />
+        <GlossaryIcon className="align-middle tw:text-quaternary" size={36} />
       );
     }
 
@@ -577,12 +572,9 @@ const GlossaryHeader = ({
       <EntityStyleIcon
         className="align-middle"
         fallback={
-          <IconTerm
-            className="align-middle"
-            color={DE_ACTIVE_COLOR}
-            height={36}
-            name="doc"
-            width={32}
+          <GlossaryTermIcon
+            className="align-middle tw:text-quaternary"
+            size={36}
           />
         }
         iconValue={selectedData.style?.iconURL}
@@ -796,8 +788,20 @@ const GlossaryHeader = ({
     }
   }, [id]);
 
+  // Same placement as ContextCenterHeader: classic mode shows the trail (with
+  // Home) above the card, AI mode tucks it inside the card without Home.
+  const breadcrumbEl = (
+    <HeaderBreadcrumb
+      autoCollapse
+      noMargin
+      items={breadcrumbItems}
+      showHome={!isAiMode}
+    />
+  );
+
   return (
     <>
+      {!isAiMode && <div className="tw:mb-3">{breadcrumbEl}</div>}
       <PageHeader
         actions={
           <GlossaryHeaderActions
@@ -816,15 +820,7 @@ const GlossaryHeader = ({
             votes={selectedData.votes}
           />
         }
-        breadcrumb={
-          <HeaderBreadcrumb
-            autoCollapse
-            className="tw:mb-0"
-            items={breadcrumbItems}
-            showHome={false}
-            size="xs"
-          />
-        }
+        breadcrumb={isAiMode ? breadcrumbEl : undefined}
         className="glossary-header"
         data-testid="glossary-header"
         title={
@@ -833,12 +829,15 @@ const GlossaryHeader = ({
             color={getGlossaryTitleColor(isGlossary, selectedData.style?.color)}
             deleted={selectedData.deleted}
             displayName={selectedData.displayName}
+            displayNameClassName="text-xl"
             icon={icon}
             name={selectedData.name}
+            nameClassName="text-xl"
             serviceName=""
             suffix={getGlossaryHeaderSuffix(isGlossary)}
           />
         }
+        variant={isAiMode ? 'gradient' : 'flat'}
       />
       <GlossaryHeaderModals
         handleDelete={handleDelete}

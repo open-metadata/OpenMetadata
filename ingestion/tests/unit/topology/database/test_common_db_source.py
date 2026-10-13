@@ -26,8 +26,10 @@ from sqlalchemy.pool import QueuePool
 
 from metadata.generated.schema.entity.data.table import (
     Column,
+    Constraint,
     ConstraintType,
     DataType,
+    RelationshipType,
     Table,
     TableConstraint,
 )
@@ -38,6 +40,7 @@ from metadata.ingestion.models.patch_request import (
     RESTRICT_UPDATE_LIST,
     build_patch,
 )
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.database.common_db_source import (
     ColumnAndReferredColumn,
     CommonDbSourceService,
@@ -222,6 +225,38 @@ class TestPrepareForeignConstraintsReferredSchema:
         )
         assert result is not None
 
+    @pytest.mark.parametrize("referred_database", [None, ""])
+    def test_supports_database_without_referred_database_uses_context_database(self, source, referred_database):
+        """Connectors whose FK reflection has no referred_database (BigQuery, Trino, Databricks, ...)
+        must resolve the referred table in the current database, not in `None`."""
+        mock_referred_table = MagicMock(spec=Table)
+        mock_referred_table.columns = MOCK_COLUMNS
+        source.metadata.get_by_name.return_value = mock_referred_table
+
+        with patch(
+            "metadata.ingestion.source.database.common_db_source.get_relationship_type",
+            return_value=None,
+        ):
+            result = source._prepare_foreign_constraints(
+                supports_database=True,
+                column={
+                    "referred_schema": "public",
+                    "referred_database": referred_database,
+                    "referred_table": "orders",
+                    "referred_columns": ["order_id"],
+                    "constrained_columns": ["order_id"],
+                },
+                table_name="line_items",
+                schema_name="public",
+                db_name="test_db",
+                columns=MOCK_COLUMNS,
+            )
+
+        source.metadata.get_by_name.assert_called_once_with(entity=Table, fqn="test_service.test_db.public.orders")
+        assert [model_str(column) for column in result.referredColumns] == [
+            "test_service.test_db.public.orders.order_id"
+        ]
+
     def test_referred_table_not_found_appends_to_global_foreign_tables(self, source):
         """When the referred table is not found in metadata, the FK should
         be added to global foreign_tables for deferred resolution."""
@@ -243,6 +278,113 @@ class TestPrepareForeignConstraintsReferredSchema:
 
         assert result is None
         assert len(source.context.get_global.return_value.foreign_tables) == 1
+
+
+LIMITS_COLUMNS = [
+    Column(name="Id", dataType=DataType.BIGINT, constraint=Constraint.PRIMARY_KEY),
+    Column(name="Reason", dataType=DataType.TINYINT, constraint=Constraint.NOT_NULL),
+    Column(name="RegionRef", dataType=DataType.VARCHAR, dataLength=10),
+]
+REFERRED_TABLE_FQN = "test_service.test_db.risk.limitadjustmentreasons"
+
+
+def _referred_table(*columns: Column) -> Table:
+    return Table(
+        id=uuid.uuid4(),
+        name="limitadjustmentreasons",
+        fullyQualifiedName=REFERRED_TABLE_FQN,
+        columns=list(columns),
+    )
+
+
+class TestPrepareForeignConstraintsReferredColumnCase:
+    """MySQL can keep a foreign key's referenced column as written (`id`) while the parent column
+    is `Id`. The server matches referred columns case-sensitively and rejects the whole table."""
+
+    @staticmethod
+    def _prepare(source, referred_columns, constrained_columns=("Reason",), add_to_global=True):
+        return source._prepare_foreign_constraints(
+            supports_database=False,
+            column={
+                "referred_schema": "risk",
+                "referred_table": "limitadjustmentreasons",
+                "referred_columns": referred_columns,
+                "constrained_columns": list(constrained_columns),
+            },
+            table_name="limits",
+            schema_name="risk",
+            db_name="test_db",
+            columns=LIMITS_COLUMNS,
+            add_to_global=add_to_global,
+        )
+
+    @pytest.mark.parametrize("add_to_global", [True, False], ids=["inline", "deferred-pass"])
+    def test_referred_column_differing_in_case_uses_stored_name(self, source, add_to_global):
+        source.metadata.get_by_name.return_value = _referred_table(
+            Column(name="Id", dataType=DataType.TINYINT, constraint=Constraint.PRIMARY_KEY),
+            Column(name="Name", dataType=DataType.VARCHAR, dataLength=100),
+        )
+
+        result = self._prepare(source, ["id"], add_to_global=add_to_global)
+
+        assert [model_str(column) for column in result.referredColumns] == [f"{REFERRED_TABLE_FQN}.Id"]
+
+    def test_relationship_type_sees_referred_primary_key_despite_case(self, source):
+        source.metadata.get_by_name.return_value = _referred_table(
+            Column(name="Id", dataType=DataType.TINYINT, constraint=Constraint.PRIMARY_KEY),
+        )
+
+        result = self._prepare(source, ["id"])
+
+        assert result.relationshipType == RelationshipType.MANY_TO_ONE
+
+    def test_composite_foreign_key_resolves_each_referred_column(self, source):
+        source.metadata.get_by_name.return_value = _referred_table(
+            Column(name="Region", dataType=DataType.VARCHAR, dataLength=10),
+            Column(name="Code", dataType=DataType.TINYINT),
+        )
+
+        result = self._prepare(source, ["region", "Code"], constrained_columns=("RegionRef", "Reason"))
+
+        assert [model_str(column) for column in result.referredColumns] == [
+            f"{REFERRED_TABLE_FQN}.Region",
+            f"{REFERRED_TABLE_FQN}.Code",
+        ]
+
+    def test_exact_match_wins_over_case_insensitive_match(self, source):
+        """Case-sensitive sources (e.g. quoted identifiers in Postgres) can hold both `id` and `ID`."""
+        source.metadata.get_by_name.return_value = _referred_table(
+            Column(name="id", dataType=DataType.INT),
+            Column(name="ID", dataType=DataType.INT),
+        )
+
+        result = self._prepare(source, ["ID"])
+
+        assert [model_str(column) for column in result.referredColumns] == [f"{REFERRED_TABLE_FQN}.ID"]
+
+    @pytest.mark.parametrize("referred_column", ["missing", "Id"], ids=["no-match", "ambiguous-match"])
+    def test_unresolvable_referred_column_is_deferred(self, source, referred_column):
+        """The parent may still gain the column later in the run, so retry once all tables are in."""
+        source.metadata.get_by_name.return_value = _referred_table(
+            Column(name="id", dataType=DataType.INT),
+            Column(name="ID", dataType=DataType.INT),
+        )
+
+        result = self._prepare(source, [referred_column])
+
+        assert result is None
+        assert len(source.context.get_global.return_value.foreign_tables) == 1
+
+    def test_unresolvable_referred_column_is_dropped_on_deferred_pass(self, source):
+        """Sending it would get the whole table rejected by the server."""
+        source.metadata.get_by_name.return_value = _referred_table(
+            Column(name="Id", dataType=DataType.TINYINT, constraint=Constraint.PRIMARY_KEY),
+        )
+
+        result = self._prepare(source, ["missing"], add_to_global=False)
+
+        assert result is None
+        assert source.context.get_global.return_value.foreign_tables == []
 
 
 class TestNormalizeTableConstraints:

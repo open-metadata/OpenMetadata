@@ -13,13 +13,14 @@
 import type { APIRequestContext, Page } from '@playwright/test';
 import { expect, test } from '@playwright/test';
 import { RDG_ACTIVE_CELL_SELECTOR } from '../../constant/bulkImportExport';
+import { LONG_ACTION_TIMEOUT } from '../../constant/common';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { VIEW_ONLY_RULE } from '../../constant/permission';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { uuid } from '../../utils/common';
+import { selectOptionWithRetry, uuid } from '../../utils/common';
 import { setupUserWithPolicy } from '../../utils/permission';
 import { performUserLogin } from '../../utils/user';
 
@@ -496,20 +497,29 @@ test.describe('Metric Hierarchy', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         );
       });
       // Keep the search scoped so the status filter runs on this root, not the whole seeded catalog.
-      await page.getByRole('button', { name: 'Status', exact: true }).click();
-      await page.getByRole('menuitemradio', { name: 'Approved' }).click();
+      await selectOptionWithRetry(
+        page.getByRole('button', { name: 'Status', exact: true }),
+        page.getByRole('menuitemradio', { name: 'Approved' })
+      );
       await statusResponse;
       await expect(rootRow.getByTestId('metric-status-pill')).toContainText(
         'Approved'
       );
 
-      await page.getByRole('button', { name: 'Customize' }).click();
-      await page
-        .getByRole('button', { name: 'Description', exact: true })
-        .click();
-      await expect(
-        page.getByRole('columnheader', { name: 'Description' })
-      ).toHaveCount(0);
+      const descriptionHeader = page
+        .getByRole('grid', { name: 'Metrics' })
+        .getByRole('columnheader', { name: 'Description' });
+      // Description is visible by default; prove it before hiding it so the
+      // absence check below cannot pass against an unrendered grid.
+      await expect(descriptionHeader).toBeVisible();
+
+      await selectOptionWithRetry(
+        page.getByTestId('column-dropdown'),
+        page.getByTestId('column-menu-item-description')
+      );
+
+      await expect(descriptionHeader).toHaveCount(0);
+      await expect(rootRow.getByTestId('metric-status-pill')).toBeVisible();
     } finally {
       if (root) {
         await apiContext.delete(
@@ -955,7 +965,7 @@ test.describe('Metric Hierarchy', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           },
           {
             intervals: [1_000, 2_000, 5_000],
-            timeout: 120_000,
+            timeout: LONG_ACTION_TIMEOUT,
           }
         )
         .toBe('In Review');

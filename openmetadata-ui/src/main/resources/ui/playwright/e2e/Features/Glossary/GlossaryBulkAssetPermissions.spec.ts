@@ -140,7 +140,7 @@ test.describe(
       browser,
     }) => {
       const page = await browser.newPage();
-      await viewOnlyUser.login(page);
+      await viewOnlyUser.signIn(page);
       const { apiContext, afterAction } = await getApiContext(page);
 
       try {
@@ -162,7 +162,7 @@ test.describe(
       browser,
     }) => {
       const page = await browser.newPage();
-      await viewOnlyUser.login(page);
+      await viewOnlyUser.signIn(page);
       const { apiContext, afterAction } = await getApiContext(page);
 
       try {

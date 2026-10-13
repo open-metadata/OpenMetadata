@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import {
   FieldValueBoost,
   SearchFieldMatchType as MatchType,
@@ -97,7 +97,7 @@ describe('FieldConfiguration', () => {
 
     const highlightSwitch = screen.getByTestId('highlight-field-switch');
 
-    expect(highlightSwitch).toBeDisabled();
+    expect(within(highlightSwitch).getByRole('switch')).toBeDisabled();
 
     fireEvent.click(highlightSwitch);
 

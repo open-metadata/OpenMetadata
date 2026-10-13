@@ -12,7 +12,7 @@
  */
 
 import { Button } from '@openmetadata/ui-core-components';
-import { AlertTriangle } from '@untitledui/icons';
+import { AlertTriangle } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { OntologyNode } from './OntologyExplorer.interface';

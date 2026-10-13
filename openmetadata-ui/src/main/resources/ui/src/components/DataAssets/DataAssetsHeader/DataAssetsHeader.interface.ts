@@ -141,6 +141,8 @@ export type DataAssetsHeaderProps = {
   isRecursiveDelete?: boolean;
   isDqAlertSupported?: boolean;
   badge?: React.ReactNode;
+  /** Entity-specific primary actions, rendered ahead of the manage menu. */
+  headerActions?: React.ReactNode;
   afterDomainUpdateAction?: (asset: DataAssetWithDomains) => void;
   afterDeleteAction?: (isSoftDelete?: boolean, version?: number) => void;
   onTierUpdate: (tier?: Tag) => Promise<void>;

@@ -10,7 +10,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  BadgeColors,
+  IconComponentType,
+} from '@openmetadata/ui-core-components';
+import {
+  AlertCircle,
+  AlertTriangle,
+  Announcement02,
+  InfoCircle,
+  SlashCircle01,
+} from '@openmetadata/ui-core-components/icons';
 import { EntityType } from '../enums/entity.enum';
+import {
+  AnnouncementColor,
+  AnnouncementStatus,
+  AnnouncementType,
+} from '../generated/entity/feed/announcement';
+import { AnnouncementEntity } from '../rest/announcementsAPI';
 
 export const ANNOUNCEMENT_ENTITIES = [
   EntityType.TABLE,
@@ -56,4 +73,284 @@ export const isActiveAnnouncement = (startTime: number, endTime: number) => {
   const currentTime = Date.now();
 
   return currentTime > startTime && currentTime < endTime;
+};
+
+/*
+    @param startTime: number -> Milliseconds
+    @returns boolean
+*/
+export const isScheduledAnnouncement = (startTime: number) =>
+  Date.now() < startTime;
+
+/**
+ * `AnnouncementColor` (schema) and `BadgeColors` (ui-core-components) are the same
+ * palette families. Mapping them explicitly keeps that pinned at compile time — if
+ * either list drifts, this record stops type-checking.
+ */
+export const ANNOUNCEMENT_COLORS: Record<AnnouncementColor, BadgeColors> = {
+  [AnnouncementColor.Gray]: 'gray',
+  [AnnouncementColor.Brand]: 'brand',
+  [AnnouncementColor.Error]: 'error',
+  [AnnouncementColor.Warning]: 'warning',
+  [AnnouncementColor.Success]: 'success',
+  [AnnouncementColor.GrayBlue]: 'gray-blue',
+  [AnnouncementColor.BlueLight]: 'blue-light',
+  [AnnouncementColor.Blue]: 'blue',
+  [AnnouncementColor.BlueDark]: 'blue-dark',
+  [AnnouncementColor.Indigo]: 'indigo',
+  [AnnouncementColor.Purple]: 'purple',
+  [AnnouncementColor.Pink]: 'pink',
+  [AnnouncementColor.Orange]: 'orange',
+};
+
+/**
+ * The accessible name of each colour swatch. The palette families are named for
+ * where they are used (`error`, `success`, `brand`), which is not what someone
+ * picking a colour hears — the swatch is red, green, blue. These are the names
+ * the rest of the app already uses for the same hues.
+ */
+export const ANNOUNCEMENT_COLOR_LABEL_KEYS: Record<AnnouncementColor, string> =
+  {
+    [AnnouncementColor.Gray]: 'label.color-gray',
+    [AnnouncementColor.Brand]: 'label.color-brand',
+    [AnnouncementColor.Error]: 'label.color-red',
+    [AnnouncementColor.Warning]: 'label.color-yellow',
+    [AnnouncementColor.Success]: 'label.color-green',
+    [AnnouncementColor.GrayBlue]: 'label.color-blue-gray',
+    [AnnouncementColor.BlueLight]: 'label.color-blue-light',
+    [AnnouncementColor.Blue]: 'label.color-blue',
+    [AnnouncementColor.BlueDark]: 'label.color-dark-blue',
+    [AnnouncementColor.Indigo]: 'label.color-indigo',
+    [AnnouncementColor.Purple]: 'label.color-purple',
+    [AnnouncementColor.Pink]: 'label.color-pink',
+    [AnnouncementColor.Orange]: 'label.color-orange',
+  };
+
+export interface AnnouncementTypeConfig {
+  color: BadgeColors;
+  /** A Custom announcement's own name, shown in place of `labelKey`. */
+  customLabel?: string;
+  icon: IconComponentType;
+  labelKey: string;
+}
+
+export const ANNOUNCEMENT_TYPE_CONFIG: Record<
+  AnnouncementType,
+  AnnouncementTypeConfig
+> = {
+  [AnnouncementType.Critical]: {
+    color: 'error',
+    icon: AlertCircle,
+    labelKey: 'label.critical',
+  },
+  [AnnouncementType.Notice]: {
+    color: 'blue',
+    icon: InfoCircle,
+    labelKey: 'label.notice',
+  },
+  [AnnouncementType.Warning]: {
+    color: 'warning',
+    icon: AlertTriangle,
+    labelKey: 'label.warning',
+  },
+  [AnnouncementType.Deprecation]: {
+    color: 'gray',
+    icon: SlashCircle01,
+    labelKey: 'label.deprecation',
+  },
+  [AnnouncementType.Custom]: {
+    color: 'pink',
+    icon: Announcement02,
+    labelKey: 'label.custom',
+  },
+};
+
+/** Must match the schema's own default, which the server backfills on write. */
+export const DEFAULT_ANNOUNCEMENT_TYPE = AnnouncementType.Notice;
+
+/**
+ * Severity order, as the form offers them. The generated enum is alphabetical,
+ * which would put Custom first.
+ */
+export const ANNOUNCEMENT_TYPE_ORDER: AnnouncementType[] = [
+  AnnouncementType.Critical,
+  AnnouncementType.Notice,
+  AnnouncementType.Warning,
+  AnnouncementType.Deprecation,
+  AnnouncementType.Custom,
+];
+
+/**
+ * The colours the form offers a Custom announcement. The schema accepts every
+ * palette family, so an announcement stored with another one still renders —
+ * the form just does not offer it for new ones.
+ */
+export const CUSTOM_ANNOUNCEMENT_COLORS: AnnouncementColor[] = [
+  AnnouncementColor.Pink,
+  AnnouncementColor.Success,
+  AnnouncementColor.Orange,
+  AnnouncementColor.Blue,
+  AnnouncementColor.Error,
+];
+
+/** Mirrors `customTypeName.maxLength` in the announcement schema. */
+export const CUSTOM_TYPE_NAME_MAX_LENGTH = 64;
+
+/**
+ * Resolves the icon, badge label and palette family an announcement renders with.
+ * Only `Custom` honours the stored `color`; every other type derives it from the type
+ * so the severity stays readable at a glance.
+ */
+export const getAnnouncementTypeConfig = (
+  announcement: Pick<AnnouncementEntity, 'type' | 'color' | 'customTypeName'>
+): AnnouncementTypeConfig => {
+  const type = announcement.type ?? DEFAULT_ANNOUNCEMENT_TYPE;
+  const config =
+    ANNOUNCEMENT_TYPE_CONFIG[type] ??
+    ANNOUNCEMENT_TYPE_CONFIG[DEFAULT_ANNOUNCEMENT_TYPE];
+
+  if (type !== AnnouncementType.Custom) {
+    return config;
+  }
+
+  return {
+    ...config,
+    color: announcement.color
+      ? ANNOUNCEMENT_COLORS[announcement.color]
+      : config.color,
+    customLabel: announcement.customTypeName?.trim() || undefined,
+  };
+};
+
+/** The badge text: a Custom announcement's own name, else the type's label. */
+export const getAnnouncementTypeLabel = (
+  { customLabel, labelKey }: AnnouncementTypeConfig,
+  t: (key: string) => string
+): string => customLabel ?? t(labelKey);
+
+/**
+ * Banner surface classes per palette family. Written out in full because Tailwind
+ * only emits classes it can see as literals — `tw:bg-utility-${color}-50` would
+ * compile to nothing.
+ *
+ * These are the same values core's `filledColors` holds for `Badge`, split apart:
+ * a badge paints fill, text and edge on one element, while the banner needs the
+ * fill and edge on its surface, the text colour on its title and the `500` step
+ * on its icon. `filledColors` only exposes them pre-joined into one string, so
+ * there is nothing to derive this from; keep it in step with core by hand, and
+ * note the one place it deliberately differs — core's `blue-dark` row borrows
+ * gray text and a gray-blue edge, which would read as a mistake on a surface.
+ */
+export const ANNOUNCEMENT_SURFACE_CLASSES: Record<
+  BadgeColors,
+  { surface: string; icon: string; title: string }
+> = {
+  gray: {
+    surface: 'tw:bg-utility-gray-50 tw:outline-utility-gray-200',
+    icon: 'tw:text-utility-gray-500',
+    title: 'tw:text-utility-gray-700',
+  },
+  brand: {
+    surface: 'tw:bg-utility-brand-50 tw:outline-utility-brand-200',
+    icon: 'tw:text-utility-brand-500',
+    title: 'tw:text-utility-brand-700',
+  },
+  error: {
+    surface: 'tw:bg-utility-error-50 tw:outline-utility-error-200',
+    icon: 'tw:text-utility-error-500',
+    title: 'tw:text-utility-error-700',
+  },
+  warning: {
+    surface: 'tw:bg-utility-warning-50 tw:outline-utility-warning-200',
+    icon: 'tw:text-utility-warning-500',
+    title: 'tw:text-utility-warning-700',
+  },
+  success: {
+    surface: 'tw:bg-utility-success-50 tw:outline-utility-success-200',
+    icon: 'tw:text-utility-success-500',
+    title: 'tw:text-utility-success-700',
+  },
+  'gray-blue': {
+    surface: 'tw:bg-utility-gray-blue-50 tw:outline-utility-gray-blue-200',
+    icon: 'tw:text-utility-gray-blue-500',
+    title: 'tw:text-utility-gray-blue-700',
+  },
+  'blue-light': {
+    surface: 'tw:bg-utility-blue-light-50 tw:outline-utility-blue-light-200',
+    icon: 'tw:text-utility-blue-light-500',
+    title: 'tw:text-utility-blue-light-700',
+  },
+  blue: {
+    surface: 'tw:bg-utility-blue-50 tw:outline-utility-blue-200',
+    icon: 'tw:text-utility-blue-500',
+    title: 'tw:text-utility-blue-700',
+  },
+  'blue-dark': {
+    surface: 'tw:bg-utility-blue-dark-50 tw:outline-utility-blue-dark-200',
+    icon: 'tw:text-utility-blue-dark-500',
+    title: 'tw:text-utility-blue-dark-700',
+  },
+  indigo: {
+    surface: 'tw:bg-utility-indigo-50 tw:outline-utility-indigo-200',
+    icon: 'tw:text-utility-indigo-500',
+    title: 'tw:text-utility-indigo-700',
+  },
+  purple: {
+    surface: 'tw:bg-utility-purple-50 tw:outline-utility-purple-200',
+    icon: 'tw:text-utility-purple-500',
+    title: 'tw:text-utility-purple-700',
+  },
+  pink: {
+    surface: 'tw:bg-utility-pink-50 tw:outline-utility-pink-200',
+    icon: 'tw:text-utility-pink-500',
+    title: 'tw:text-utility-pink-700',
+  },
+  orange: {
+    surface: 'tw:bg-utility-orange-50 tw:outline-utility-orange-200',
+    icon: 'tw:text-utility-orange-500',
+    title: 'tw:text-utility-orange-700',
+  },
+};
+
+/**
+ * The server stamps `status` on write, but it is a snapshot — an announcement that
+ * was Active when stored is Expired once its window closes. Recomputing from the
+ * window keeps the drawer's filters honest between writes.
+ */
+export const getAnnouncementStatus = (
+  announcement: Pick<AnnouncementEntity, 'startTime' | 'endTime'>
+): AnnouncementStatus => {
+  if (isScheduledAnnouncement(announcement.startTime)) {
+    return AnnouncementStatus.Scheduled;
+  }
+
+  return isActiveAnnouncement(announcement.startTime, announcement.endTime)
+    ? AnnouncementStatus.Active
+    : AnnouncementStatus.Expired;
+};
+
+/**
+ * The palette family the status pill on a drawer card renders in. The frame
+ * anchors that pill to the card's top-right corner, straddling the border, so it
+ * carries its own fill rather than relying on the card's — the two tints differ
+ * (a Scheduled announcement can be any type) and the pill has to stay legible
+ * over whichever surface it lands on. `Badge` already paints exactly that, so
+ * this is the colour only.
+ */
+export const ANNOUNCEMENT_STATUS_COLORS: Record<
+  AnnouncementStatus,
+  BadgeColors
+> = {
+  [AnnouncementStatus.Active]: 'success',
+  [AnnouncementStatus.Scheduled]: 'blue',
+  [AnnouncementStatus.Expired]: 'gray',
+};
+
+export const ANNOUNCEMENT_STATUS_LABEL_KEYS: Record<
+  AnnouncementStatus,
+  string
+> = {
+  [AnnouncementStatus.Active]: 'label.active',
+  [AnnouncementStatus.Scheduled]: 'label.scheduled',
+  [AnnouncementStatus.Expired]: 'label.in-active',
 };

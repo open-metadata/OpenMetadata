@@ -95,19 +95,19 @@ const test = base.extend<{
   },
   dataConsumerPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await dataConsumerUser.login(page);
+    await dataConsumerUser.signIn(page);
     await use(page);
     await page.close();
   },
   dataStewardPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await dataStewardUser.login(page);
+    await dataStewardUser.signIn(page);
     await use(page);
     await page.close();
   },
   viewOnlyPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await viewOnlyUser.login(page);
+    await viewOnlyUser.signIn(page);
     await use(page);
     await page.close();
   },
@@ -345,7 +345,7 @@ test.describe(
         `enable-switch-${stewardDefinitionName}`
       );
 
-      await expect(stewardSwitch).toBeEnabled();
+      await expect(stewardSwitch.getByRole('switch')).toBeEnabled();
 
       // Wait for API call
       const response = dataStewardPage.waitForResponse(
@@ -359,10 +359,7 @@ test.describe(
       await response;
 
       // Verify switch state changed
-      await expect(stewardSwitch).toHaveAttribute(
-        'aria-checked',
-        String('false')
-      );
+      await expect(stewardSwitch.getByRole('switch')).not.toBeChecked();
 
       const response2 = dataStewardPage.waitForResponse(
         (response) =>
@@ -373,10 +370,7 @@ test.describe(
       await stewardSwitch.click();
       await response2;
 
-      await expect(stewardSwitch).toHaveAttribute(
-        'aria-checked',
-        String('true')
-      );
+      await expect(stewardSwitch.getByRole('switch')).toBeChecked();
 
       // Data Steward should NOT see delete buttons (no Delete permission)
       await expect(
@@ -430,7 +424,7 @@ test.describe(
       );
 
       await expect(enabledSwitch).toBeVisible();
-      await expect(enabledSwitch).toBeEnabled();
+      await expect(enabledSwitch.getByRole('switch')).toBeEnabled();
     });
   }
 );

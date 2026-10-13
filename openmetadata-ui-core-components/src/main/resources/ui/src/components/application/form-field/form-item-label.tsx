@@ -12,7 +12,7 @@
  */
 
 import type { ReactNode } from 'react';
-import { HelpCircle } from '@untitledui/icons';
+import { HelpCircle } from '../../../icons';
 import { Tooltip } from '@/components/base/tooltip/tooltip';
 
 export interface FormItemLabelProps {

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { BrowserContext, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { SSO_ENV } from '../../constant/ssoAuth';
 import { expect, test } from '../../support/fixtures/base';
 import { withMaxActiveSessions } from '../../utils/sessionRenewal';
@@ -96,7 +97,7 @@ test.describe('SSO Session Limit', { tag: SESSION_LIMIT_TAGS }, () => {
     await evicted.reload({ waitUntil: 'domcontentloaded' });
     await evicted.waitForURL('**/signin', {
       waitUntil: 'domcontentloaded',
-      timeout: 30_000,
+      timeout: ACTION_TIMEOUT,
     });
     await expect(evicted.getByTestId('sso-login-button')).toBeVisible();
 

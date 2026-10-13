@@ -175,8 +175,8 @@ public class IncidentTaskNotificationIT {
                 List.of(new Argument().withName("userList").withInput(List.of(userName))));
 
     // Customer's destination shape: Email to the Mentions category. With SMTP disabled (CI default)
-    // the publisher short-circuits as a successful delivery, so the assertion stays
-    // sink-independent.
+    // nothing goes out and each event counts as failed; the assertion counts sent and failed
+    // together, so it stays sink-independent.
     SubscriptionDestination destination =
         new SubscriptionDestination()
             .withId(UUID.randomUUID())

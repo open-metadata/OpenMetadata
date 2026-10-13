@@ -357,7 +357,7 @@ public class WebsocketNotificationHandler {
   }
 
   public static void sendDeleteOperationCompleteNotification(
-      String jobId, SecurityContext securityContext, EntityInterface entity) {
+      String jobId, SecurityContext securityContext, EntityInterface<?> entity) {
     DeleteEntityMessage message =
         new DeleteEntityMessage(jobId, "COMPLETED", entity.getName(), null);
     String jsonMessage = JsonUtils.pojoToJson(message);
@@ -374,7 +374,7 @@ public class WebsocketNotificationHandler {
   }
 
   public static void sendDeleteOperationFailedNotification(
-      String jobId, SecurityContext securityContext, EntityInterface entity, String error) {
+      String jobId, SecurityContext securityContext, EntityInterface<?> entity, String error) {
     DeleteEntityMessage message = new DeleteEntityMessage(jobId, "FAILED", entity.getName(), error);
     String jsonMessage = JsonUtils.pojoToJson(message);
 
@@ -392,7 +392,7 @@ public class WebsocketNotificationHandler {
   }
 
   public static void sendRestoreOperationCompleteNotification(
-      String jobId, UUID userId, EntityInterface entity) {
+      String jobId, UUID userId, EntityInterface<?> entity) {
     RestoreEntityMessage message =
         new RestoreEntityMessage(jobId, "COMPLETED", entity.getName(), null);
     String jsonMessage = JsonUtils.pojoToJson(message);
@@ -434,7 +434,7 @@ public class WebsocketNotificationHandler {
   }
 
   public static void sendMoveOperationCompleteNotification(
-      String jobId, SecurityContext securityContext, EntityInterface entity) {
+      String jobId, SecurityContext securityContext, EntityInterface<?> entity) {
     MoveGlossaryTermMessage message =
         new MoveGlossaryTermMessage(
             jobId, "COMPLETED", entity.getName(), entity.getFullyQualifiedName(), null);
@@ -452,7 +452,7 @@ public class WebsocketNotificationHandler {
   }
 
   public static void sendMoveOperationFailedNotification(
-      String jobId, SecurityContext securityContext, EntityInterface entity, String error) {
+      String jobId, SecurityContext securityContext, EntityInterface<?> entity, String error) {
     MoveGlossaryTermMessage message =
         new MoveGlossaryTermMessage(
             jobId, "FAILED", entity.getName(), entity.getFullyQualifiedName(), error);

@@ -16,6 +16,7 @@ import org.openmetadata.mcp.util.ResponseBudget;
 import org.openmetadata.mcp.util.VectorPagingContract;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -53,6 +54,7 @@ public class CompanyContextTool implements McpTool {
 
   private static final String NOT_A_SHARED_PILL_ERROR =
       "Requested entity is not a shared Company Context knowledge pill";
+  private static final String PILL_FIELDS = "sourceFile,tags,domains";
 
   @Override
   public Map<String, Object> execute(
@@ -122,7 +124,10 @@ public class CompanyContextTool implements McpTool {
     String normalizedFqn = FullyQualifiedName.quoteName(fqn);
     LOG.debug("Getting company context pill: {} (normalized fqn: {})", fqn, normalizedFqn);
     return Entity.getEntityByName(
-        Entity.CONTEXT_MEMORY, normalizedFqn, "sourceFile,owners,tags,domains", null);
+        Entity.CONTEXT_MEMORY,
+        normalizedFqn,
+        ContextMemoryVisibility.guardFields(Entity.CONTEXT_MEMORY, PILL_FIELDS),
+        null);
   }
 
   /**
@@ -136,6 +141,7 @@ public class CompanyContextTool implements McpTool {
   private static boolean isExposablePill(
       ContextMemory memory, CatalogSecurityContext securityContext) {
     return memory.getSourceType() == ContextMemorySourceType.FILE_EXTRACTION
+        && memory.getEntityStatus() == ContextMemoryStatus.APPROVED
         && !ContextMemoryVisibility.filterByVisibility(List.of(memory), securityContext).isEmpty();
   }
 
@@ -214,6 +220,7 @@ public class CompanyContextTool implements McpTool {
     filters.put("entityType", List.of(Entity.CONTEXT_MEMORY));
     filters.put("sourceType", List.of(ContextMemorySourceType.FILE_EXTRACTION.value()));
     filters.put("visibility", List.of(MemoryVisibility.SHARED.value()));
+    filters.put("entityStatus", List.of(ContextMemoryStatus.APPROVED.value()));
     return filters;
   }
 

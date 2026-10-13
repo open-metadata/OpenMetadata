@@ -11,23 +11,28 @@
  *  limitations under the License.
  */
 
-import { Button } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Button,
+  Card,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import {
   ChevronDown,
   ChevronRight,
   ChevronUp,
   XClose,
-} from '@untitledui/icons';
-import { Card, Drawer, Space, Tooltip, Typography } from 'antd';
+} from '@openmetadata/ui-core-components/icons';
+import { Drawer } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isString } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as ColumnIcon } from '../../../assets/svg/entity/column.svg';
 import { ReactComponent as KeyIcon } from '../../../assets/svg/icon-key.svg';
-import { DE_ACTIVE_COLOR, ENTITY_PATH } from '../../../constants/constants';
+import { ENTITY_PATH } from '../../../constants/constants';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
 import { Column, TableConstraint } from '../../../generated/entity/data/table';
@@ -692,7 +697,13 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     }
 
     return (
-      <Space className="tw:w-full" direction="vertical" size="large">
+      <Box
+        inline
+        align="stretch"
+        className="layout-space tw:w-full"
+        direction="col"
+        gap={6}
+        itemClassName="layout-space-item">
         {renderDescriptionBlock()}
 
         {renderKeyProfileMetrics()}
@@ -717,7 +728,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           tags={classificationTags}
           onTagsUpdate={handleTagsUpdate}
         />
-      </Space>
+      </Box>
     );
   };
 
@@ -760,7 +771,6 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
             entityText: t('label.column-plural'),
           })}
           entityData={toEntityData(activeColumn)}
-          entityType={entityType}
           entityTypeDetail={entityTypeDetail}
           hasEditPermissions={hasEditPermission.customProperties}
           isEntityDataLoading={false}
@@ -788,7 +798,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           className="tw:inline-flex tw:items-center tw:min-w-0"
           key={breadcrumb.fullyQualifiedName}>
           <div className="tw:inline-flex tw:items-center tw:gap-0.5 tw:min-w-0">
-            <Typography.Text
+            <Typography
               className={classNames('tw:text-xs tw:truncate', {
                 'tw:max-w-48 tw:cursor-default tw:font-medium tw:text-secondary':
                   isLastItem,
@@ -800,7 +810,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                 isLastItem ? undefined : () => handleBreadcrumbClick(breadcrumb)
               }>
               {getEntityName(breadcrumb)}
-            </Typography.Text>
+            </Typography>
             {index < breadcrumbPath.length - 1 && (
               <ChevronRight
                 className="tw:text-gray-400 tw:shrink-0"
@@ -831,7 +841,6 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         className="tw:ml-2"
         data-testid="edit-displayName-button"
         disabled={false}
-        icon={<IconEdit color={DE_ACTIVE_COLOR} height={18} width={18} />}
         size="small"
         title={t('label.edit-entity', {
           entity: t('label.display-name'),
@@ -853,12 +862,12 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     }
 
     return (
-      <Typography.Text
+      <Typography
         className="tw:text-gray-400 tw:text-xs"
         data-testid="entity-name"
         ellipsis={{ tooltip: true }}>
         {renderHighlightedText(activeColumn.name || '')}
-      </Typography.Text>
+      </Typography>
     );
   }
 
@@ -869,9 +878,11 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
 
     return (
       <Tooltip
+        arrow
+        excludeTriggerFromTabOrder
         placement="bottom"
         title={getDataTypeDisplay(activeColumn)}
-        trigger="hover">
+        triggerClassName="tw:inline-flex">
         <div
           className="tw:max-w-60 tw:flex tw:items-center tw:justify-center tw:overflow-hidden
                   tw:text-ellipsis data-type-chip
@@ -916,11 +927,13 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
               <div className="tw:flex tw:flex-col tw:min-w-0 tw:overflow-hidden">
                 <div className="tw:flex tw:items-center tw:gap-2 tw:min-w-0 tw:overflow-hidden">
                   <Tooltip
-                    mouseEnterDelay={0.5}
-                    placement="topLeft"
+                    arrow
+                    excludeTriggerFromTabOrder
+                    delay={500}
+                    placement="top left"
                     title={getEntityName(activeColumn)}
-                    trigger="hover">
-                    <Typography.Text
+                    triggerClassName="tw:block tw:min-w-0">
+                    <Typography
                       ellipsis
                       className="entity-title-link"
                       data-testid="entity-link">
@@ -930,7 +943,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                           activeColumn.name ||
                           ''
                       )}
-                    </Typography.Text>
+                    </Typography>
                   </Tooltip>
 
                   {renderEditDisplayNameButton()}
@@ -940,6 +953,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
             </div>
             <div className="tw:shrink-0">
               <Button
+                aria-label={t('label.close')}
                 color="secondary"
                 data-testid="close-button"
                 iconLeading={XClose}
@@ -995,10 +1009,10 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     }
 
     return (
-      <Typography.Text className="pagination-header-text tw:font-medium">
+      <Typography className="pagination-header-text tw:font-medium">
         {actualColumnIndex + 1} {t('label.of-lowercase')}{' '}
         {flattenedColumns.length} {t('label.column-plural').toLowerCase()}
-      </Typography.Text>
+      </Typography>
     );
   }
 
@@ -1029,6 +1043,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     <div className="tw:flex tw:justify-between tw:items-center tw:w-full navigation-container">
       <div className="tw:flex tw:items-center tw:gap-1 tw:mt-2">
         <Button
+          aria-label={t('label.previous')}
           color="secondary"
           iconLeading={ChevronUp}
           isDisabled={isPreviousDisabled}
@@ -1036,6 +1051,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           onClick={handlePreviousColumn}
         />
         <Button
+          aria-label={t('label.next')}
           color="secondary"
           iconLeading={ChevronDown}
           isDisabled={isNextDisabled}
@@ -1059,7 +1075,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
       onClose={onClose}>
       <div className="column-detail-panel-container">
         <div className="tw:flex tw:gap-2 tw:h-full">
-          <Card bordered={false} className="summary-panel-container">
+          <Card className="summary-panel-container" variant="ghost">
             <Card
               className="tw:h-full tw:overflow-y-auto tw:max-h-full"
               style={{ width: '100%' }}>

@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Form, Space, Typography } from 'antd';
+import {
+  Box,
+  Button,
+  Card,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Form } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { trim } from 'lodash';
@@ -145,35 +151,46 @@ const AddRulePage = () => {
         entity: t('label.rule'),
       })}>
       <Card className="m-x-auto w-800">
-        <TitleBreadcrumb className="m-b-md" titleLinks={breadcrumb} />
+        <Card.Content>
+          <TitleBreadcrumb className="m-b-md" titleLinks={breadcrumb} />
 
-        <Typography.Paragraph
-          className="text-base"
-          data-testid="add-rule-title">
-          {t('label.add-new-entity', { entity: t('label.rule') })}
-        </Typography.Paragraph>
-        <Form
-          data-testid="rule-form"
-          id="rule-form"
-          initialValues={{
-            ruleEffect: ruleData.effect,
-          }}
-          layout="vertical"
-          onFinish={handleSubmit}>
-          <RuleForm ruleData={ruleData} setRuleData={setRuleData} />
-          <Space align="center" className="w-full justify-end">
-            <Button data-testid="cancel-btn" type="link" onClick={handleBack}>
-              {t('label.cancel')}
-            </Button>
-            <Button
-              data-testid="submit-btn"
-              form="rule-form"
-              htmlType="submit"
-              type="primary">
-              {t('label.create')}
-            </Button>
-          </Space>
-        </Form>
+          <Typography
+            as="p"
+            className="text-base tw:mb-4!"
+            data-testid="add-rule-title">
+            {t('label.add-new-entity', { entity: t('label.rule') })}
+          </Typography>
+          <Form
+            data-testid="rule-form"
+            id="rule-form"
+            initialValues={{
+              ruleEffect: ruleData.effect,
+            }}
+            layout="vertical"
+            onFinish={handleSubmit}>
+            <RuleForm ruleData={ruleData} setRuleData={setRuleData} />
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal w-full justify-end"
+              gap={2}
+              itemClassName="layout-space-item">
+              <Button
+                color="link-color"
+                data-testid="cancel-btn"
+                onClick={handleBack}>
+                {t('label.cancel')}
+              </Button>
+              <Button
+                color="primary"
+                data-testid="submit-btn"
+                form="rule-form"
+                type="submit">
+                {t('label.create')}
+              </Button>
+            </Box>
+          </Form>
+        </Card.Content>
       </Card>
     </PageLayoutV1>
   );

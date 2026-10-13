@@ -12,6 +12,7 @@
  */
 
 import { ContainerClass } from '../../../support/entity/ContainerClass';
+import { StorageServiceClass } from '../../../support/entity/service/StorageServiceClass';
 import { test } from '../../../support/fixtures/base';
 import { registerFilterSeparationSuite } from './SearchSeparationSuite';
 
@@ -20,5 +21,7 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 registerFilterSeparationSuite({
   suiteName: 'Container',
   reindexEntityType: 'container',
-  entityFactory: () => new ContainerClass(),
+  // The service facet only isolates this entity if it owns its service.
+  entityFactory: () =>
+    new ContainerClass({ service: new StorageServiceClass() }),
 });

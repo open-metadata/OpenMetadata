@@ -12,7 +12,7 @@
  */
 
 import { Box, Popover, Typography } from '@openmetadata/ui-core-components';
-import { Check, ChevronUp } from '@untitledui/icons';
+import { Check, ChevronUp } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import React, { useRef, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';

@@ -10,22 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
 import {
+  Box,
   Button,
   Checkbox,
-  Col,
   Divider,
-  List,
-  Row,
-  Space,
+  EmptyPlaceholder,
+  GridList,
+  GridListItem,
+  ListLayout,
   Typography,
-} from 'antd';
-import type { CheckboxChangeEvent } from 'antd/es/checkbox';
+  Virtualizer,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import isEmpty from 'lodash/isEmpty';
-import VirtualList from 'rc-virtual-list';
 import {
   UIEventHandler,
   useCallback,
@@ -543,8 +542,7 @@ export const AddTestCaseList = ({
   });
 
   const handlePageSelectAllCheckbox = useCallback(
-    (e: CheckboxChangeEvent) => {
-      const checked = e.target.checked;
+    (checked: boolean) => {
       if (items.length === 0) {
         return;
       }
@@ -697,98 +695,132 @@ export const AddTestCaseList = ({
     [debounceFetchTableData, debounceFetchColumnData, fetchColumnOptions]
   );
 
-  const listSource = items;
+  const listSource = useMemo(
+    () =>
+      items.map((test) => ({
+        id: test.id ?? test.fullyQualifiedName ?? test.name,
+        test,
+      })),
+    [items]
+  );
 
   const renderList = useMemo(() => {
     const source = listSource;
     if (!isLoading && isEmpty(source)) {
       return (
-        <Col span={24}>
-          <Box className="tw:relative tw:min-h-80 tw:w-full">
-            <EmptyPlaceholder
-              description={t('message.try-adjusting-filter')}
-              icon={<FilterOffIcon className="tw:text-fg-quaternary" />}
-              title={t('label.no-result-found')}
-              variant="blank"
-            />
-          </Box>
-        </Col>
+        <Box className="tw:relative tw:min-h-80 tw:w-full">
+          <EmptyPlaceholder
+            description={t('message.try-adjusting-filter')}
+            icon={<FilterOffIcon className="tw:text-fg-quaternary" />}
+            title={t('label.no-result-found')}
+            variant="blank"
+          />
+        </Box>
       );
     } else {
       return (
-        <Col span={24}>
-          <List
-            loading={{
-              spinning: isLoading,
-              indicator: <Loader />,
-            }}>
-            <VirtualList
-              data={listSource}
-              height={500}
-              itemKey="id"
+        <Box className="tw:relative" direction="col">
+          {isLoading && (
+            <Box
+              align="center"
+              className="tw:absolute tw:inset-0 tw:z-10"
+              justify="center">
+              <Loader />
+            </Box>
+          )}
+          <Virtualizer
+            layout={ListLayout}
+            layoutOptions={{ estimatedRowHeight: 128 }}>
+            <GridList
+              aria-label={t('label.test-case-plural')}
+              className="tw:h-125 tw:overflow-y-auto"
+              data-testid="add-test-case-list-scroll"
+              dependencies={[
+                selectedItems,
+                selectAll,
+                excludedIds,
+                handleCardClick,
+                t,
+              ]}
+              items={listSource}
               onScroll={onScroll}>
-              {(test) => {
+              {({ id, test }) => {
                 const tableFqn = getEntityFQN(test.entityLink);
                 const tableName = getNameFromFQN(tableFqn);
                 const isColumn = test.entityLink.includes('::columns::');
 
                 return (
-                  <Space
-                    className="m-b-md border rounded-4 p-sm cursor-pointer tw:bg-primary"
-                    direction="vertical"
-                    onClick={() => handleCardClick(test)}>
-                    <Space className="justify-between w-full">
-                      <Typography.Paragraph
-                        className="m-0 font-medium text-base w-max-500"
-                        data-testid={test.name}
-                        ellipsis={{ tooltip: true }}>
-                        {getEntityName(test)}
-                      </Typography.Paragraph>
+                  <GridListItem
+                    className="tw:pb-4"
+                    id={id}
+                    textValue={getEntityName(test)}>
+                    <Box
+                      className="border rounded-4 p-sm cursor-pointer tw:bg-primary"
+                      direction="col"
+                      gap={2}
+                      key={test.id}
+                      onClick={() => handleCardClick(test)}>
+                      <Box
+                        align="center"
+                        className="w-full"
+                        gap={2}
+                        justify="between">
+                        <Typography
+                          as="p"
+                          className="m-0 font-medium text-base w-max-500 tw:text-primary"
+                          data-testid={test.name}
+                          ellipsis={{ tooltip: true }}>
+                          {getEntityName(test)}
+                        </Typography>
 
-                      <Checkbox
-                        checked={
-                          selectAll
-                            ? !excludedIds.has(test.id ?? '')
-                            : selectedItems?.has(test.id ?? '')
-                        }
-                        data-testid={`checkbox-${test.name}`}
-                      />
-                    </Space>
-                    <Typography.Paragraph
-                      className="m-0 w-max-500"
-                      ellipsis={{ tooltip: true }}>
-                      {getEntityName(test.testDefinition)}
-                    </Typography.Paragraph>
-                    <Typography.Paragraph className="m-0">
-                      <Link
-                        data-testid="table-link"
-                        to={getEntityDetailsPath(
-                          EntityType.TABLE,
-                          tableFqn,
-                          EntityTabs.PROFILER
-                        )}
-                        onClick={(e) => e.stopPropagation()}>
-                        {tableName}
-                      </Link>
-                    </Typography.Paragraph>
-                    {isColumn && (
-                      <Space>
-                        <Typography.Text className="font-medium text-xs">{`${t(
-                          'label.column'
-                        )}:`}</Typography.Text>
-                        <Typography.Text className="text-grey-muted text-xs">
-                          {replacePlus(
-                            getColumnNameFromEntityLink(test.entityLink)
-                          ) ?? '--'}
-                        </Typography.Text>
-                      </Space>
-                    )}
-                  </Space>
+                        <Checkbox
+                          aria-label={getEntityName(test)}
+                          data-testid={`checkbox-${test.name}`}
+                          isSelected={
+                            selectAll
+                              ? !excludedIds.has(test.id ?? '')
+                              : selectedItems?.has(test.id ?? '')
+                          }
+                          onChange={() => handleCardClick(test)}
+                        />
+                      </Box>
+                      <Typography
+                        as="p"
+                        className="m-0 w-max-500 tw:text-primary"
+                        ellipsis={{ tooltip: true }}>
+                        {getEntityName(test.testDefinition)}
+                      </Typography>
+                      <Typography as="p" className="m-0 tw:text-primary">
+                        <Link
+                          data-testid="table-link"
+                          to={getEntityDetailsPath(
+                            EntityType.TABLE,
+                            tableFqn,
+                            EntityTabs.PROFILER
+                          )}
+                          onClick={(e) => e.stopPropagation()}>
+                          {tableName}
+                        </Link>
+                      </Typography>
+                      {isColumn && (
+                        <Box align="center" gap={2}>
+                          <Typography className="font-medium text-xs tw:text-primary">{`${t(
+                            'label.column'
+                          )}:`}</Typography>
+                          <Typography className="text-xs" color="secondary">
+                            {replacePlus(
+                              getColumnNameFromEntityLink(test.entityLink)
+                            ) ?? '--'}
+                          </Typography>
+                        </Box>
+                      )}
+                    </Box>
+                  </GridListItem>
                 );
               }}
-            </VirtualList>
-          </List>
-        </Col>
+            </GridList>
+          </Virtualizer>
+        </Box>
       );
     }
   }, [
@@ -868,40 +900,37 @@ export const AddTestCaseList = ({
   );
 
   return (
-    <Row gutter={[0, 8]}>
-      <Col span={24}>
-        <Searchbar
-          removeMargin
-          showClearSearch
-          showLoadingStatus
-          placeholder={t('label.search-entity', {
-            entity: t('label.test-case-plural'),
-          })}
-          searchValue={searchTerm}
-          onSearch={handleSearch}
-        />
-      </Col>
-      <Col span={24}>
-        <AddTestCaseListFilters
-          filterLoading={filterLoading}
-          filterOptions={filterOptions}
-          filterSelectedKeys={filterSelectedKeys}
-          getPopupContainer={getPopupContainer}
-          hideTableFilter={hideTableFilter}
-          onChange={handleFilterChange}
-          onSearch={handleFilterSearch}
-        />
-      </Col>
+    <Box direction="col" gap={2}>
+      <Searchbar
+        removeMargin
+        showClearSearch
+        showLoadingStatus
+        placeholder={t('label.search-entity', {
+          entity: t('label.test-case-plural'),
+        })}
+        searchValue={searchTerm}
+        onSearch={handleSearch}
+      />
+      <AddTestCaseListFilters
+        filterLoading={filterLoading}
+        filterOptions={filterOptions}
+        filterSelectedKeys={filterSelectedKeys}
+        getPopupContainer={getPopupContainer}
+        hideTableFilter={hideTableFilter}
+        onChange={handleFilterChange}
+        onSearch={handleFilterSearch}
+      />
       {items.length > 0 && (
-        <Col className="m-b-xs" span={24}>
+        <Box className="m-b-xs" direction="col">
           <Divider className="m-b-sm m-t-0" />
-          <Space wrap align="center" className="w-full">
+          <Box align="center" className="w-full" gap={2} wrap="wrap">
             <Checkbox
-              checked={allLoadedSelected}
+              aria-label={t('label.select-all')}
               data-testid="select-all-test-cases"
+              isSelected={allLoadedSelected}
               onChange={handlePageSelectAllCheckbox}
             />
-            <Typography.Text>
+            <Typography className="tw:text-primary">
               {loadedSelectedCount > 0 || selectAll
                 ? t('label.n-selected', {
                     count: selectAll
@@ -909,41 +938,38 @@ export const AddTestCaseList = ({
                       : loadedSelectedCount,
                   })
                 : `${t('label.select-all')} (${items.length})`}
-            </Typography.Text>
+            </Typography>
             {showSelectAllTotalLink && (
               <>
-                <Typography.Text className="text-grey-muted" type="secondary">
-                  |
-                </Typography.Text>
+                <Typography color="secondary">|</Typography>
                 <Button
-                  className="h-auto p-0 font-normal"
+                  color="link-color"
                   data-testid="select-all-total-test-cases"
-                  type="link"
-                  onClick={handleSelectAllMatchingTotal}>
+                  onPress={handleSelectAllMatchingTotal}>
                   {t('label.select-all-count-test-cases', {
                     count: totalCount,
                   })}
                 </Button>
               </>
             )}
-          </Space>
-        </Col>
+          </Box>
+        </Box>
       )}
       {renderList}
       {showButton && (
-        <Col className="d-flex justify-end items-center p-y-sm gap-4" span={24}>
-          <Button data-testid="cancel" type="link" onClick={onCancel}>
+        <Box align="center" className="p-y-sm" gap={4} justify="end">
+          <Button color="link-color" data-testid="cancel" onPress={onCancel}>
             {cancelText ?? t('label.cancel')}
           </Button>
           <Button
+            color="primary"
             data-testid="submit"
-            loading={isLoading}
-            type="primary"
-            onClick={handleSubmit}>
+            isLoading={isLoading}
+            onPress={handleSubmit}>
             {submitText ?? t('label.create')}
           </Button>
-        </Col>
+        </Box>
       )}
-    </Row>
+    </Box>
   );
 };

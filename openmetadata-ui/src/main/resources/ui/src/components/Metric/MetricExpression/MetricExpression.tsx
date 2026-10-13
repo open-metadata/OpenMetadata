@@ -19,7 +19,7 @@ import {
   TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Edit03 } from '@untitledui/icons';
+import { Edit03 } from '@openmetadata/ui-core-components/icons';
 import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';

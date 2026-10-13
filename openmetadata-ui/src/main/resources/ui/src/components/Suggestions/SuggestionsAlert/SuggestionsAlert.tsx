@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Card, Typography } from 'antd';
+import { Button, Card, Typography } from '@openmetadata/ui-core-components';
+import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as StarIcon } from '../../../assets/svg/ic-suggestions-coloured.svg';
@@ -42,7 +42,7 @@ const SuggestionsAlert = ({
 
   return (
     <Card
-      className={classNames('suggested-card card-padding-0', {
+      className={classNames('suggested-card', {
         'card-inline-flex': showInlineCard,
       })}
       data-testid={`suggested-${suggestion.type}-card`}>
@@ -61,9 +61,9 @@ const SuggestionsAlert = ({
           {showSuggestedBy && (
             <>
               <StarIcon width={14} />
-              <Typography.Text className="text-grey-muted font-italic">
+              <Typography className="font-italic" color="secondary">
                 {t('label.suggested-by')}
-              </Typography.Text>
+              </Typography>
               <UserPopOverCard userName={userName}>
                 <span>
                   <ProfilePicture
@@ -80,21 +80,20 @@ const SuggestionsAlert = ({
         {hasEditAccess && (
           <div className="d-flex justify-end gap-2">
             <Button
-              ghost
+              color="secondary-brand"
               data-testid="reject-suggestion"
-              icon={<CloseOutlined />}
-              size="small"
-              type="primary"
-              onClick={() =>
+              iconLeading={XClose}
+              size="xs"
+              onPress={() =>
                 acceptRejectSuggestion(suggestion, SuggestionAction.Reject)
               }
             />
             <Button
+              color="primary"
               data-testid="accept-suggestion"
-              icon={<CheckOutlined />}
-              size="small"
-              type="primary"
-              onClick={() =>
+              iconLeading={Check}
+              size="xs"
+              onPress={() =>
                 acceptRejectSuggestion(suggestion, SuggestionAction.Accept)
               }
             />

@@ -42,13 +42,7 @@ export const useIncidentManagerListPage = ({
     return isUndefined(searchData) ? {} : searchData;
   }, [location.search]);
 
-  // The grouped view shares this query string, so key the filters on a string
-  // without its `groupBy`: switching the dimension must not refetch this table,
-  // and `groupBy` must never reach the incident listing endpoint. `allParams`
-  // itself keeps the param so `updateFilters` writes the dimension back.
-  const filterSearch = QueryString.stringify(
-    omit(allParams, ['key', 'title', 'groupBy'])
-  );
+  const filterSearch = QueryString.stringify(omit(allParams, ['key', 'title']));
 
   const filters = useMemo(() => {
     const urlParams = QueryString.parse(filterSearch);
@@ -79,9 +73,6 @@ export const useIncidentManagerListPage = ({
     selectedAssignees,
     fetchUserFilterOptions,
     searchTestCases,
-    testCaseFilterOptions,
-    isTestCaseOptionsLoading,
-    fetchTestCaseFilterOptions,
   } = useIncidentFilterOptions({ filters });
 
   const { testCaseListData, setTestCaseListData, pagingData, showPagination } =
@@ -106,21 +97,12 @@ export const useIncidentManagerListPage = ({
     selectedDateFilterKey,
     selectedDateFilterOption,
     updateFilters,
+    clearFilters,
     handleAssigneeChange,
     handleDateRangeChange,
     handleDateFieldChange,
     handleDateRangeClear,
-    filterDescriptors,
-    hasActiveFilters,
-    clearAllFilters,
-  } = useIncidentFilters({
-    filters,
-    allParams,
-    testCaseListData,
-    testCaseFilterOptions,
-    isTestCaseOptionsLoading,
-    fetchTestCaseFilterOptions,
-  });
+  } = useIncidentFilters({ filters, allParams });
 
   const { handleSeveritySubmit, handleAssigneeUpdate, handleStatusSubmit } =
     useIncidentActions({ setTestCaseListData });
@@ -147,14 +129,12 @@ export const useIncidentManagerListPage = ({
     handleAssigneeUpdate,
     fetchUserFilterOptions,
     updateFilters,
+    clearFilters,
     handleAssigneeChange,
     handleDateRangeChange,
     handleDateFieldChange,
     handleDateRangeClear,
     handleStatusSubmit,
     searchTestCases,
-    filterDescriptors,
-    hasActiveFilters,
-    clearAllFilters,
   };
 };

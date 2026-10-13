@@ -18,7 +18,7 @@ import {
   PopoverTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ChevronDown, ChevronUp } from '@untitledui/icons';
+import { ChevronDown, ChevronUp } from '@openmetadata/ui-core-components/icons';
 import { FC, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {

@@ -279,7 +279,7 @@ public class TopicRepository extends EntityRepository<Topic> {
   @Override
   public EntityRepository<Topic>.EntityUpdater getUpdater(
       Topic original, Topic updated, Operation operation, ChangeSource changeSource) {
-    return new TopicUpdater(original, updated, operation);
+    return new TopicUpdater(original, updated, operation, changeSource);
   }
 
   public Topic getSampleData(UUID topicId, boolean authorizePII) {
@@ -401,7 +401,7 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   @Override
-  public EntityInterface getParentEntity(Topic entity, String fields) {
+  public EntityInterface<?> getParentEntity(Topic entity, String fields) {
     if (entity.getService() == null) {
       return null;
     }
@@ -417,7 +417,7 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   @Override
-  public List<TagLabel> getAllTags(EntityInterface entity) {
+  public List<TagLabel> getAllTags(EntityInterface<?> entity) {
     List<TagLabel> allTags = new ArrayList<>();
     Topic topic = (Topic) entity;
     EntityUtil.mergeTags(allTags, topic.getTags());
@@ -511,8 +511,9 @@ public class TopicRepository extends EntityRepository<Topic> {
   public class TopicUpdater extends EntityUpdater {
     public static final String FIELD_DATA_TYPE_DISPLAY = "dataTypeDisplay";
 
-    public TopicUpdater(Topic original, Topic updated, Operation operation) {
-      super(original, updated, operation);
+    public TopicUpdater(
+        Topic original, Topic updated, Operation operation, ChangeSource changeSource) {
+      super(original, updated, operation, changeSource);
     }
 
     @Transaction
