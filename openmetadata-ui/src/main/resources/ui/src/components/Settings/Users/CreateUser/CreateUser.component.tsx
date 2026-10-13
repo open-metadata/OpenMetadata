@@ -35,7 +35,7 @@ import { AxiosError } from 'axios';
 import { compact, debounce, isUndefined, trim } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useFilter } from 'react-aria';
-import { useForm, useFormContext } from 'react-hook-form';
+import { Control, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { AGGREGATE_PAGE_SIZE_LARGE } from '../../../../constants/constants';
@@ -84,9 +84,16 @@ interface CreateUserFormValues {
   domains?: EntityReference[];
 }
 
-const BotFields = ({ isAdminUser }: { isAdminUser: boolean }) => {
+// Takes `control` explicitly: HookForm's provider belongs to the core package's
+// react-hook-form copy, so useFormContext() here would not see it.
+const BotFields = ({
+  control,
+  isAdminUser,
+}: {
+  control: Control<CreateUserFormValues>;
+  isAdminUser: boolean;
+}) => {
   const { t } = useTranslation();
-  const { control } = useFormContext<CreateUserFormValues>();
 
   return (
     <>
@@ -469,7 +476,9 @@ const CreateUser = ({
       id="create-user-bot-form"
       onSubmit={form.handleSubmit(handleSave)}>
       <FormFields fields={nameFields} />
-      {forceBot && <BotFields isAdminUser={isAdminUser} />}
+      {forceBot && (
+        <BotFields control={form.control} isAdminUser={isAdminUser} />
+      )}
       <Box direction="col" gap={1}>
         <FormItemLabel label={t('label.description')} />
         <RichTextEditor

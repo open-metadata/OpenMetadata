@@ -53,9 +53,12 @@ test.describe.serial('Add role and assign it to the user', () => {
     await page.fill('[data-testid="name"]', roleName);
     await fillDescriptionBox(page, `description for ${roleName}`);
 
-    await page.click('[data-testid="policies"]');
-    await page.click('[title="Data Consumer Policy"]');
-    await page.click('[title="Data Steward Policy"]');
+    const policiesInput = page.getByTestId('policies').getByRole('combobox');
+    for (const policy of ['Data Consumer Policy', 'Data Steward Policy']) {
+      await policiesInput.fill('Data');
+      await page.getByRole('option', { name: policy, exact: true }).click();
+    }
+    await policiesInput.press('Escape');
 
     const policyResponse = page.waitForResponse(`/api/v1/roles`);
 
