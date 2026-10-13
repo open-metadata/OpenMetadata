@@ -75,7 +75,10 @@ const DataAssetsTab = ({
     [serviceCategory]
   );
 
-  const allTags = serviceDetails?.tags ?? [];
+  const allTags = useMemo(
+    () => serviceDetails?.tags ?? [],
+    [serviceDetails?.tags]
+  );
   // ServicesType doesn't declare the governance fields, though the service is fetched with them.
   const { domains, dataProducts } = serviceDetails as unknown as {
     domains?: EntityReference[];

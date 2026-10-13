@@ -93,7 +93,7 @@ export const useServiceDriveAssets = <T extends File | Spreadsheet>(
       // The table's search owns the rows now; a list request still in flight must not land on it.
       latestRequestRef.current += 1;
     } else {
-      fetchItems(cursorType ? { [cursorType]: cursorValue } : undefined);
+      void fetchItems(cursorType ? { [cursorType]: cursorValue } : undefined);
     }
   }, [searchValue, cursorType, cursorValue, fetchItems]);
 

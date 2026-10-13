@@ -41,9 +41,14 @@ const MOCK_SERVICE = {
 const mockNavigate = jest.fn();
 let mockTabParam: string | undefined = undefined;
 let mockServiceCategory = 'databaseServices';
+let mockFqn = 'test-service';
 const mockPermissions: { database: Record<string, boolean> } = { database: {} };
 const FULL_SERVICE_PERMISSION = { EditAll: true, Delete: true, ViewAll: true };
 let mockServicePermission: Record<string, boolean> = FULL_SERVICE_PERMISSION;
+// Stable like the real provider's memoised getter: a fresh function per render would refetch forever.
+const mockGetEntityPermissionByFqn = jest.fn(() =>
+  Promise.resolve(mockServicePermission)
+);
 const mockTableFilters: { showDeletedTables: boolean; schema?: string } = {
   showDeletedTables: false,
 };
@@ -57,7 +62,7 @@ jest.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
   useParams: () => ({
     serviceCategory: mockServiceCategory,
-    fqn: 'test-service',
+    fqn: mockFqn,
     tab: mockTabParam,
   }),
 }));
@@ -65,9 +70,7 @@ jest.mock('react-router-dom', () => ({
 jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: () => ({
     permissions: mockPermissions,
-    getEntityPermissionByFqn: jest.fn(() =>
-      Promise.resolve(mockServicePermission)
-    ),
+    getEntityPermissionByFqn: mockGetEntityPermissionByFqn,
   }),
 }));
 
@@ -462,6 +465,7 @@ describe('ConnectionServiceDetailsPage', () => {
     jest.clearAllMocks();
     mockTabParam = undefined;
     mockServiceCategory = 'databaseServices';
+    mockFqn = 'test-service';
     mockPermissions.database = {};
     mockServicePermission = FULL_SERVICE_PERMISSION;
     mockTableFilters.showDeletedTables = false;
@@ -657,6 +661,33 @@ describe('ConnectionServiceDetailsPage', () => {
       expect.objectContaining({ dataProducts: [dataProduct] })
     );
     expect(patchService).not.toHaveBeenCalled();
+  });
+
+  it('loads the other service when the route moves to it without remounting', async () => {
+    const { rerender } = render(<ConnectionServiceDetailsPage />);
+    await waitFor(() =>
+      expect(getServiceByFQN).toHaveBeenCalledWith(
+        'databaseServices',
+        'test-service',
+        expect.anything()
+      )
+    );
+
+    mockFqn = 'other-service';
+    rerender(<ConnectionServiceDetailsPage />);
+
+    await waitFor(() =>
+      expect(getServiceByFQN).toHaveBeenCalledWith(
+        'databaseServices',
+        'other-service',
+        expect.anything()
+      )
+    );
+
+    expect(mockGetEntityPermissionByFqn).toHaveBeenLastCalledWith(
+      expect.anything(),
+      'other-service'
+    );
   });
 
   describe('read-only user', () => {

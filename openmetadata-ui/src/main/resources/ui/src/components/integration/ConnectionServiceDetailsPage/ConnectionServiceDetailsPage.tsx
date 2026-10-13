@@ -161,7 +161,7 @@ const getTabItemClassName = ({
     return `${base} tw:border-fg-brand-primary tw:text-fg-brand-primary`;
   }
 
-  const hover = isHovered ? 'tw:border-gray-300 tw:text-secondary' : '';
+  const hover = isHovered ? 'tw:border-utility-gray-300 tw:text-secondary' : '';
 
   return `${base} tw:border-transparent tw:text-tertiary ${hover}`;
 };
@@ -577,10 +577,11 @@ const ConnectionServiceDetailsPage: React.FC = () => {
     navigate(-1);
   }, [navigate]);
 
+  // Both are keyed on the route's service, so moving to another service reloads it.
   useEffect(() => {
-    fetchServiceDetails();
-    fetchServicePermission();
-  }, []);
+    void fetchServiceDetails();
+    void fetchServicePermission();
+  }, [fetchServiceDetails, fetchServicePermission]);
 
   const { cursorType, cursorValue } = pagingInfo.pagingCursor;
 
@@ -593,7 +594,9 @@ const ConnectionServiceDetailsPage: React.FC = () => {
       // The search owns the table now; a list request still in flight must not land on it.
       latestListRequestRef.current += 1;
     } else if (isListShown) {
-      getOtherDetails(cursorType ? { [cursorType]: cursorValue } : undefined);
+      void getOtherDetails(
+        cursorType ? { [cursorType]: cursorValue } : undefined
+      );
     }
   }, [
     activeTab,
@@ -1036,7 +1039,7 @@ const ConnectionServiceDetailsPage: React.FC = () => {
                 />
               ) : (
                 <div className="tw:flex tw:h-48 tw:items-center tw:justify-center">
-                  <p className="tw:text-sm tw:text-gray-400">
+                  <p className="tw:text-sm tw:text-utility-gray-400">
                     {t('label.no-connection-details')}
                   </p>
                 </div>
