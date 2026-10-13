@@ -10,8 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
-import { Affix, Button, Card } from 'antd';
+import {
+  Box,
+  Button,
+  Card,
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Affix } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined, startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -247,9 +253,8 @@ export const EntityImport = ({
                   gap={2}
                   itemClassName="layout-space-item">
                   <Button
-                    ghost
+                    color="secondary-brand"
                     data-testid="cancel-button"
-                    type="primary"
                     // as we need to redirect back, from where we enter import screen
                     onClick={onCancel}>
                     {t('label.cancel')}
@@ -263,34 +268,35 @@ export const EntityImport = ({
           <Grid.Item className="layout-column" span={24}>
             {isAborted ? (
               <Card className="m-t-lg">
-                <Box
-                  inline
-                  align="center"
-                  className="layout-space w-full justify-center p-lg text-center"
-                  direction="col"
-                  gap={4}
-                  itemClassName="layout-space-item">
-                  <Typography
-                    className="text-center"
-                    data-testid="abort-reason">
-                    <strong className="d-block">{t('label.aborted')}</strong>{' '}
-                    {csvImportResult.abortReason}
-                  </Typography>
+                <Card.Content>
                   <Box
                     inline
                     align="center"
-                    className="layout-space layout-space-horizontal"
+                    className="layout-space w-full justify-center p-lg text-center"
+                    direction="col"
                     gap={4}
                     itemClassName="layout-space-item">
-                    <Button
-                      ghost
-                      data-testid="cancel-button"
-                      type="primary"
-                      onClick={handleCancel}>
-                      {t('label.back')}
-                    </Button>
+                    <Typography
+                      className="text-center"
+                      data-testid="abort-reason">
+                      <strong className="d-block">{t('label.aborted')}</strong>{' '}
+                      {csvImportResult.abortReason}
+                    </Typography>
+                    <Box
+                      inline
+                      align="center"
+                      className="layout-space layout-space-horizontal"
+                      gap={4}
+                      itemClassName="layout-space-item">
+                      <Button
+                        color="secondary-brand"
+                        data-testid="cancel-button"
+                        onClick={handleCancel}>
+                        {t('label.back')}
+                      </Button>
+                    </Box>
                   </Box>
-                </Box>
+                </Card.Content>
               </Card>
             ) : (
               // added extra margin to prevent data lost due to fixed footer at bottom
@@ -317,18 +323,17 @@ export const EntityImport = ({
                     gap={2}
                     itemClassName="layout-space-item">
                     <Button
-                      ghost
+                      color="secondary-brand"
                       data-testid="preview-cancel-button"
-                      disabled={isImporting}
-                      type="primary"
+                      isDisabled={isImporting}
                       onClick={handleCancel}>
                       {t('label.back')}
                     </Button>
                     {!isFailure && (
                       <Button
+                        color="primary"
                         data-testid="import-button"
-                        disabled={isImporting}
-                        type="primary"
+                        isDisabled={isImporting}
                         onClick={handleImport}>
                         {t('label.import')}
                       </Button>
@@ -343,33 +348,35 @@ export const EntityImport = ({
         {activeStep > 2 && (
           <Grid.Item className="layout-column" span={24}>
             <Card className="m-t-lg">
-              <Box
-                inline
-                align="center"
-                className="layout-space w-full justify-center p-lg"
-                direction="col"
-                gap={4}
-                itemClassName="layout-space-item">
-                <SuccessBadgeIcon data-testid="success-badge" width={36} />
-
-                <Typography>
-                  <strong data-testid="file-name">{fileName}</strong>{' '}
-                  {`${t('label.successfully-uploaded')}.`}
-                </Typography>
+              <Card.Content>
                 <Box
                   inline
                   align="center"
-                  className="layout-space layout-space-horizontal"
+                  className="layout-space w-full justify-center p-lg"
+                  direction="col"
                   gap={4}
                   itemClassName="layout-space-item">
-                  <Button
-                    data-testid="preview-button"
-                    type="primary"
-                    onClick={onSuccess}>
-                    {t('label.view')}
-                  </Button>
+                  <SuccessBadgeIcon data-testid="success-badge" width={36} />
+
+                  <Typography>
+                    <strong data-testid="file-name">{fileName}</strong>{' '}
+                    {`${t('label.successfully-uploaded')}.`}
+                  </Typography>
+                  <Box
+                    inline
+                    align="center"
+                    className="layout-space layout-space-horizontal"
+                    gap={4}
+                    itemClassName="layout-space-item">
+                    <Button
+                      color="primary"
+                      data-testid="preview-button"
+                      onClick={onSuccess}>
+                      {t('label.view')}
+                    </Button>
+                  </Box>
                 </Box>
-              </Box>
+              </Card.Content>
             </Card>
           </Grid.Item>
         )}

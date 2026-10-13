@@ -39,7 +39,6 @@ import { TagClass } from '../support/tag/TagClass';
 import { TeamClass } from '../support/team/TeamClass';
 import { UserClass } from '../support/user/UserClass';
 import {
-  clickOutside,
   closeFirstPopupAlert,
   fillDescriptionBox,
   getApiContext,
@@ -54,6 +53,7 @@ import {
   addOwner,
   escapeESReservedCharacters,
   openClassificationTagPicker,
+  searchCertification,
   visitEntityPageByFqn,
   waitForAllLoadersToDisappear,
 } from './entity';
@@ -101,8 +101,10 @@ export const addTierWidget = async (
 
   await waitForAllLoadersToDisappear(page);
 
-  const tierRadioButton = page.getByTestId(`radio-btn-${tier}`);
-  await tierRadioButton.waitFor({ state: 'visible' });
+  const tierRow = page
+    .getByTestId('drop-down-menu')
+    .getByTestId(`Tier.${tier}`);
+  await tierRow.waitFor({ state: 'visible' });
 
   const patchRequest = page.waitForResponse(
     (response) =>
@@ -110,17 +112,13 @@ export const addTierWidget = async (
       response.request().method() === 'PATCH'
   );
 
-  await tierRadioButton.click();
-
-  const updateButton = page.getByTestId('update-tier-card');
-  await updateButton.waitFor({ state: 'visible' });
-  await updateButton.click();
+  // Picking a tier saves it and closes the picker.
+  await tierRow.click();
 
   const response = await patchRequest;
   expect(response.status()).toBe(200);
 
   await waitForAllLoadersToDisappear(page);
-  await clickOutside(page);
 
   await expect(page.getByTestId('Tier')).toContainText(tier);
 };
@@ -140,6 +138,7 @@ export const addCertificationWidget = async (
 
   const certificationMenu = page.getByTestId('drop-down-menu');
   await certificationMenu.waitFor({ state: 'visible' });
+  await searchCertification(page, certification.responseData.name);
 
   const patchRequest = page.waitForResponse(
     (response) =>
@@ -169,6 +168,7 @@ export const assignCertificationForWidget = async (
 
   const certificationMenu = page.getByTestId('drop-down-menu');
   await certificationMenu.waitFor({ state: 'visible' });
+  await searchCertification(page, certification.responseData.name);
 
   const patchRequest = page.waitForResponse(
     (response) =>
@@ -198,13 +198,15 @@ export const removeTierFromWidget = async (page: Page, endpoint: string) => {
       response.url().includes(`/api/v1/${endpoint}`) &&
       response.request().method() === 'PATCH'
   );
-  await page.getByTestId('clear-tier').click();
+  await page
+    .getByTestId('drop-down-menu')
+    .getByTestId('clear-filter-btn')
+    .click();
 
   const response = await patchRequest;
   expect(response.status()).toBe(200);
 
   await waitForAllLoadersToDisappear(page);
-  await clickOutside(page);
 
   await expect(page.getByTestId('add-tier')).toBeVisible();
 };
@@ -896,7 +898,7 @@ export const addAssetsToDomain = async (
     await page
       .locator(`[data-testid="table-data-card_${fqn}"]`)
       .getByTestId('asset-checkbox')
-      .check();
+      .click();
 
     await expect(
       page.locator(
@@ -956,7 +958,7 @@ export const addServicesToDomain = async (
     await page
       .locator(`[data-testid="table-data-card_${fqn}"]`)
       .getByTestId('asset-checkbox')
-      .check();
+      .click();
   }
 
   const assetsAddRes = page.waitForResponse(
@@ -1017,7 +1019,7 @@ export const addAssetsToDataProduct = async (
     await page
       .locator(`[data-testid="table-data-card_${fqn}"]`)
       .getByTestId('asset-checkbox')
-      .check();
+      .click();
   }
 
   const assetsAddRes = page.waitForResponse(
@@ -1096,7 +1098,7 @@ export const removeAssetsFromDataProduct = async (
     await page
       .locator(`[data-testid="table-data-card_${fqn}"]`)
       .getByTestId('asset-checkbox')
-      .check();
+      .click();
   }
 
   // Clear the filter before delete-all so the request URL matches the
@@ -2030,7 +2032,7 @@ export const addInputPortToDataProduct = async (
   await page
     .locator(`[data-testid="table-data-card_${fqn}"]`)
     .getByTestId('asset-checkbox')
-    .check();
+    .click();
 
   const addRes = page.waitForResponse(
     (res) =>
@@ -2077,7 +2079,7 @@ export const addOutputPortToDataProduct = async (
   await page
     .locator(`[data-testid="table-data-card_${fqn}"]`)
     .getByTestId('asset-checkbox')
-    .check();
+    .click();
 
   const addRes = page.waitForResponse(
     (res) =>

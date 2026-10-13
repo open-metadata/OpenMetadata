@@ -11,14 +11,18 @@
  *  limitations under the License.
  */
 
-import { Box, Table, Typography } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import {
+  Box,
+  Button,
+  Table,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import {
   ManageMenu,
   ManageMenuItem,
@@ -235,7 +239,18 @@ const FailedTestCaseSampleData = ({
     return () => {
       cancelled = true;
     };
-  }, [testCaseData?.id, hasViewSampleDataPermission, isTestCaseFailed]);
+    // `testCaseResult.timestamp` is the run-identity signal: it changes on
+    // every run completion, so a re-run that stays `Failed` with the same id
+    // triggers a refetch instead of showing the previous run's rows. It is a
+    // primitive (required on every TestCaseResult), so unrelated `testCaseData`
+    // object replacements (e.g. owner/tag edits carrying the same result
+    // reference) do not spuriously refetch.
+  }, [
+    testCaseData?.id,
+    hasViewSampleDataPermission,
+    isTestCaseFailed,
+    testCaseData?.testCaseResult?.timestamp,
+  ]);
 
   if (!hasViewSampleDataPermission) {
     return <></>;
@@ -268,15 +283,15 @@ const FailedTestCaseSampleData = ({
         </Typography>
         <div className="d-flex gap-4">
           {testCaseData?.inspectionQuery && !isVersionPage && (
-            <Link
-              to={observabilityRouterClassBase.getTestCaseDetailPagePath(
+            <Button
+              color="primary"
+              data-testid="explore-with-query"
+              href={observabilityRouterClassBase.getTestCaseDetailPagePath(
                 testCaseData?.fullyQualifiedName ?? '',
                 TestCasePageTabs.SQL_QUERY
               )}>
-              <Button data-testid="explore-with-query" type="primary">
-                {t('label.explore-with-query')}
-              </Button>
-            </Link>
+              {t('label.explore-with-query')}
+            </Button>
           )}
           {hasEditPermission && (
             <ManageMenu

@@ -19,7 +19,8 @@ public final class McpChangeEventUtil {
     }
     try {
       ChangeEvent changeEvent =
-          ChangeEvents.createChangeEventForEntity(userName, changeType, entity);
+          ChangeEvents.createChangeEventForEntity(
+              userName, changeType, McpResponseUtils.maskSecrets(entity));
       changeEvent.setUserName(userName);
 
       if (changeEvent.getEntity() != null) {

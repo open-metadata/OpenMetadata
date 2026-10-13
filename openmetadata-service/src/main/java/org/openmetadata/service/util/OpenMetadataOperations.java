@@ -96,6 +96,11 @@ import org.openmetadata.service.apps.bundles.searchIndex.SearchIndexEntityTypes;
 import org.openmetadata.service.apps.bundles.searchIndex.SlackWebApiClient;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
+import org.openmetadata.service.config.source.ConfigSources;
+import org.openmetadata.service.config.source.ConfigTemplateKind;
+import org.openmetadata.service.config.source.DeploymentConfig;
+import org.openmetadata.service.config.source.RawConfigCapture;
+import org.openmetadata.service.config.source.SettingsSourceService;
 import org.openmetadata.service.events.AuditExcludeFilterFactory;
 import org.openmetadata.service.events.AuditOnlyFilterFactory;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -114,6 +119,7 @@ import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.SystemRepository;
+import org.openmetadata.service.jdbi3.SystemTokenDAOs.SystemDAO;
 import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.jdbi3.TypeRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
@@ -175,6 +181,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
   private static final Duration DEPLOY_CONNECT_TIMEOUT = Duration.ofSeconds(30);
   private static final Duration MIN_DEPLOY_CHUNK_TIMEOUT = Duration.ofMinutes(2);
   private static final String STATUS_FAILED = "FAILED";
+  private static final String STATUS_SKIPPED_DELETED_SERVICE = "SKIPPED - service is soft-deleted";
   private static final int STATUS_COLUMN_INDEX = 3;
 
   private OpenMetadataApplicationConfig config;
@@ -855,7 +862,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       parseConfig();
       initializeCollectionRegistry();
       WorkflowHandler.initialize(config);
-      SettingsCache.initialize(config);
+      SettingsCache.initializeWithoutDeploymentSettings(config);
       initializeSecurityConfig();
       AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
 
@@ -888,7 +895,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     try {
       parseConfig();
       initializeCollectionRegistry();
-      SettingsCache.initialize(config);
+      SettingsCache.initializeWithoutDeploymentSettings(config);
       initializeSecurityConfig();
       AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
       if (deleteApplication(appRepository, appName)) {
@@ -933,7 +940,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       }
       parseConfig();
       initializeCollectionRegistry();
-      SettingsCache.initialize(config);
+      SettingsCache.initializeWithoutDeploymentSettings(config);
       initializeSecurityConfig();
       AuthProvider authProvider = SecurityConfigurationManager.getCurrentAuthConfig().getProvider();
       if (!SecurityConfigurationManager.isNativePasswordProvider(authProvider)) {
@@ -978,26 +985,29 @@ public class OpenMetadataOperations implements Callable<Integer> {
   }
 
   private void initializeSecurityConfig() {
-    try {
-      var authConfig =
-          Entity.getSystemRepository()
-              .getConfigWithKey(SettingsType.AUTHENTICATION_CONFIGURATION.value());
-      if (authConfig != null) {
-        SecurityConfigurationManager.getInstance()
-            .setCurrentAuthConfig(
-                JsonUtils.convertValue(
-                    authConfig.getConfigValue(),
-                    org.openmetadata.schema.api.security.AuthenticationConfiguration.class));
-      } else if (config.getAuthenticationConfiguration() != null) {
-        SecurityConfigurationManager.getInstance()
-            .setCurrentAuthConfig(config.getAuthenticationConfiguration());
-      }
-    } catch (Exception e) {
-      if (config.getAuthenticationConfiguration() != null) {
-        SecurityConfigurationManager.getInstance()
-            .setCurrentAuthConfig(config.getAuthenticationConfiguration());
-      }
-    }
+    SecurityConfigurationManager manager = SecurityConfigurationManager.getInstance();
+    manager.setCurrentAuthConfig(
+        effectiveSetting(
+            SettingsType.AUTHENTICATION_CONFIGURATION,
+            AuthenticationConfiguration.class,
+            config.getAuthenticationConfiguration()));
+    manager.setCurrentAuthzConfig(
+        effectiveSetting(
+            SettingsType.AUTHORIZER_CONFIGURATION,
+            AuthorizerConfiguration.class,
+            config.getAuthorizerConfiguration()));
+  }
+
+  /**
+   * The stored value of a setting, or this process's deployment value when nothing is stored. In
+   * ENV mode the server writes its deployment value into the row at every start, so the row is the
+   * server's view even when this job lacks the server's environment.
+   */
+  private <T> T effectiveSetting(SettingsType type, Class<T> valueClass, T deploymentValue) {
+    Settings stored = Entity.getSystemRepository().getConfigWithKey(type.value());
+    return stored == null
+        ? deploymentValue
+        : JsonUtils.convertValue(stored.getConfigValue(), valueClass);
   }
 
   private boolean isAppInstalled(AppRepository appRepository, String appName) {
@@ -1147,7 +1157,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       }
       parseConfig();
       CollectionRegistry.initialize();
-      SettingsCache.initialize(config);
+      SettingsCache.initializeWithoutDeploymentSettings(config);
       initializeSecurityConfig();
 
       AuthProvider authProvider = SecurityConfigurationManager.getCurrentAuthConfig().getProvider();
@@ -1211,7 +1221,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     try {
       parseConfig();
       CollectionRegistry.initialize();
-      SettingsCache.initialize(config);
+      SettingsCache.initializeWithoutDeploymentSettings(config);
       initializeSecurityConfig();
       initOrganization();
 
@@ -1246,7 +1256,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     try {
       parseConfig();
       CollectionRegistry.initialize();
-      SettingsCache.initialize(config);
+      SettingsCache.initializeWithoutDeploymentSettings(config);
       initializeSecurityConfig();
       initOrganization();
 
@@ -1648,7 +1658,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
           autoTune);
       parseConfig();
       CollectionRegistry.initialize();
-      SettingsCache.initialize(config);
+      SettingsCache.initializeWithoutDeploymentSettings(config);
       initializeSecurityConfig();
       ApplicationHandler.initialize(config);
       SeedDataGate.getInstance().forceSeedData();
@@ -2292,7 +2302,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
           endDate);
       parseConfig();
       CollectionRegistry.initialize();
-      SettingsCache.initialize(config);
+      SettingsCache.initializeWithoutDeploymentSettings(config);
       initializeSecurityConfig();
       ApplicationHandler.initialize(config);
       SeedDataGate.getInstance().forceSeedData();
@@ -2563,8 +2573,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
             new ListFilter(Include.NON_DELETED));
     LOG.debug("Pipelines size {}", pipelines.size());
     final List<List<String>> pipelineStatuses = new ArrayList<>();
-    if (!pipelines.isEmpty()) {
-      deployPipelinesViaAPI(pipelines, pipelineStatuses, chunkSize, secondsPerPipeline);
+    final List<IngestionPipeline> deployable =
+        skipPipelinesOfDeletedServices(pipelines, pipelineStatuses);
+    if (!deployable.isEmpty()) {
+      deployPipelinesViaAPI(deployable, pipelineStatuses, chunkSize, secondsPerPipeline);
     }
     printToAsciiTable(
         Arrays.asList("Name", "Type", "Service Name", "Status"),
@@ -2778,44 +2790,78 @@ public class OpenMetadataOperations implements Callable<Integer> {
       LOG.info("Removing security configuration from database...");
       parseConfig();
 
-      SystemRepository systemRepository = Entity.getSystemRepository();
-
-      // Remove authentication configuration
-      try {
-        Settings authenticationSettings =
-            systemRepository.getConfigWithKey(SettingsType.AUTHENTICATION_CONFIGURATION.value());
-        if (authenticationSettings != null) {
-          systemRepository.deleteSettings(SettingsType.AUTHENTICATION_CONFIGURATION);
-          LOG.info("Removed authenticationConfiguration from database.");
-        } else {
-          LOG.info("No authenticationConfiguration found in database.");
-        }
-      } catch (Exception e) {
-        LOG.debug("Failed to remove authenticationConfiguration: {}", e.getMessage());
-      }
-
-      // Remove authorizer configuration
-      try {
-        Settings authorizerSettings =
-            systemRepository.getConfigWithKey(SettingsType.AUTHORIZER_CONFIGURATION.value());
-        if (authorizerSettings != null) {
-          systemRepository.deleteSettings(SettingsType.AUTHORIZER_CONFIGURATION);
-          LOG.info("Removed authorizerConfiguration from database.");
-        } else {
-          LOG.info("No authorizerConfiguration found in database.");
-        }
-      } catch (Exception e) {
-        LOG.debug("Failed to remove authorizerConfiguration: {}", e.getMessage());
-      }
+      removeStoredSetting(collectionDAO.systemDAO(), SettingsType.AUTHENTICATION_CONFIGURATION);
+      removeStoredSetting(collectionDAO.systemDAO(), SettingsType.AUTHORIZER_CONFIGURATION);
 
       LOG.info("Security configuration removal completed.");
       LOG.info(
-          "Note: You will need to restart the OpenMetadata service for changes to take effect.");
+          "Restart the OpenMetadata servers. On start they store the security configuration "
+              + "from their configuration file and environment again.");
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to remove security configuration due to ", e);
       return 1;
     }
+  }
+
+  @Command(
+      name = "adopt-deployment-config",
+      description =
+          "Replace stored values of a setting with the values from the configuration file and "
+              + "environment of this process. Run it where the server's environment is available, "
+              + "for example inside a server pod. Running servers apply the change without a "
+              + "restart.")
+  public Integer adoptDeploymentConfig(
+      @Option(
+              names = {"--type"},
+              required = true,
+              description = "Setting to change, for example authenticationConfiguration.")
+          String configType,
+      @Option(
+              names = {"--path"},
+              description =
+                  "JSON pointer of a field to take from the deployment configuration, for example "
+                      + "/maxActiveSessionsPerUser. Repeat for several. Without it, every field "
+                      + "the stored setting overrides is taken.")
+          List<String> paths) {
+    try {
+      parseConfig();
+      List<String> adopted =
+          adoptDeploymentSetting(
+              collectionDAO.systemDAO(), Entity.getSystemRepository(), configType, paths);
+      if (adopted.isEmpty()) {
+        LOG.info("{} has no stored value to replace; nothing was changed.", configType);
+      } else {
+        LOG.info(
+            "Took {} of {} from the deployment configuration. Running servers apply it within "
+                + "their settings watch interval.",
+            adopted,
+            configType);
+      }
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to adopt the deployment configuration due to ", e);
+      return 1;
+    }
+  }
+
+  /**
+   * Running servers are not refreshed from here: they pick the stored change up through their
+   * settings watch.
+   */
+  static List<String> adoptDeploymentSetting(
+      SystemDAO dao, SystemRepository repository, String configType, List<String> paths) {
+    return new SettingsSourceService(dao, repository, settingsType -> {})
+        .adopt(SettingsType.fromValue(configType), paths);
+  }
+
+  /** Deletes by key, so a stored value that no longer parses can be removed too. */
+  static boolean removeStoredSetting(SystemDAO dao, SettingsType type) {
+    boolean existed = dao.getConfigJsonWithKey(type.value()) != null;
+    dao.delete(type.value());
+    LOG.info(
+        existed ? "Removed {} from the database." : "No {} found in the database.", type.value());
+    return existed;
   }
 
   @Command(
@@ -2985,7 +3031,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     try {
       parseConfig();
       initializeCollectionRegistry();
-      SettingsCache.initialize(config);
+      SettingsCache.initializeWithoutDeploymentSettings(config);
       initializeSecurityConfig();
 
       JWTTokenGenerator.getInstance()
@@ -3082,7 +3128,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
       parseConfig();
       initializeCollectionRegistry();
-      SettingsCache.initialize(config);
+      SettingsCache.initializeWithoutDeploymentSettings(config);
       initializeSecurityConfig();
       WorkflowHandler.initialize(config);
 
@@ -3248,6 +3294,30 @@ public class OpenMetadataOperations implements Callable<Integer> {
     return timeout;
   }
 
+  // Report pipelines of soft-deleted services as skipped rather than failing the whole run
+  static List<IngestionPipeline> skipPipelinesOfDeletedServices(
+      final List<IngestionPipeline> pipelines, final List<List<String>> pipelineStatuses) {
+    final var byServiceDeleted =
+        pipelines.stream()
+            .collect(Collectors.partitioningBy(OpenMetadataOperations::isServiceDeleted));
+    byServiceDeleted
+        .get(true)
+        .forEach(
+            pipeline ->
+                pipelineStatuses.add(
+                    Arrays.asList(
+                        pipeline.getName(),
+                        pipeline.getPipelineType().value(),
+                        pipeline.getService().getName(),
+                        STATUS_SKIPPED_DELETED_SERVICE)));
+    return byServiceDeleted.get(false);
+  }
+
+  private static boolean isServiceDeleted(final IngestionPipeline pipeline) {
+    return pipeline.getService() instanceof EntityReference service
+        && Boolean.TRUE.equals(service.getDeleted());
+  }
+
   static boolean hasDeployFailures(final List<List<String>> pipelineStatuses) {
     return pipelineStatuses.stream()
         .anyMatch(status -> status.get(STATUS_COLUMN_INDEX).startsWith(STATUS_FAILED));
@@ -3403,7 +3473,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
     config =
         factory.build(
             new SubstitutingSourceProvider(
-                new FileConfigurationSourceProvider(),
+                new RawConfigCapture(
+                    new FileConfigurationSourceProvider(), ConfigTemplateKind.SERVER),
                 new EnvironmentVariableSubstitutor(false, true)),
             configFilePath);
     IndexMappingLoader.init(config.getElasticSearchConfiguration());
@@ -3437,6 +3508,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
     Entity.setCollectionDAO(collectionDAO);
     Entity.setEntityRelationshipRepository(new EntityRelationshipRepository(collectionDAO));
     Entity.setSystemRepository(new SystemRepository());
+    ConfigSources.installLazily(() -> DeploymentConfig.capture(config));
+    ConfigSources.loadPersistedModes(collectionDAO.systemDAO());
 
     searchRepository =
         SearchRepositoryFactory.createSearchRepository(

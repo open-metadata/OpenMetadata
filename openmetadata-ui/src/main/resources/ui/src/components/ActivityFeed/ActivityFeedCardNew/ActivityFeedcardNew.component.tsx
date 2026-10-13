@@ -37,6 +37,7 @@ import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import {
   formatDateTime,
   getRelativeTime,
+  useActiveTimeFormat,
 } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
@@ -146,6 +147,7 @@ const ActivityFeedCardNew = ({
   onActivityClick,
 }: ActivityFeedCardNewProps) => {
   const isActivityEvent = !isUndefined(activity);
+  const timeFormat = useActiveTimeFormat();
 
   const { entityFQN, entityType } = useMemo(() => {
     const aboutValue = feed?.about ?? activity?.about ?? '';
@@ -293,8 +295,12 @@ const ActivityFeedCardNew = ({
 
   const timestampValue =
     post?.createdAt ?? feed?.createdAt ?? activity?.timestamp;
+
   const timestamp = timestampValue ? (
-    <Tooltip excludeTriggerFromTabOrder title={formatDateTime(timestampValue)}>
+    <Tooltip
+      excludeTriggerFromTabOrder
+      containerClassName="timestamp-tooltip"
+      title={formatDateTime(timestampValue, timeFormat)}>
       <Typography
         className="feed-card-header-v2-timestamp"
         color="secondary"

@@ -19,6 +19,7 @@ import org.openmetadata.schema.type.profile.SubscriptionConfig;
 import org.openmetadata.service.alerting.channel.Channel;
 import org.openmetadata.service.alerting.channel.ComposedChannel;
 import org.openmetadata.service.alerting.channel.webhook.HttpWebhookTransport;
+import org.openmetadata.service.alerting.channel.webhook.SecretWebhookConfigRules;
 import org.openmetadata.service.alerting.channel.webhook.WebhookAddresses;
 import org.openmetadata.service.alerting.channel.webhook.WebhookConfigRules;
 
@@ -32,7 +33,7 @@ public final class TeamsChannel {
         TeamsAdaptiveCardRenderer::create,
         HttpWebhookTransport.shared(),
         new WebhookAddresses(SubscriptionConfig::getMsTeams),
-        new WebhookConfigRules(),
+        new SecretWebhookConfigRules(),
         (alert, destination, renderer) ->
             new MSTeamsPublisher(
                 alert, destination, WebhookConfigRules.stored(destination), renderer));

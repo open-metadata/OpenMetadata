@@ -25,7 +25,11 @@ test('the suppressions baseline matches its recorded state exactly', () => {
   const suppressions = JSON.parse(fs.readFileSync(SUPPRESSIONS, 'utf8'));
 
   const actual = {};
-  for (const file of Object.values(suppressions)) {
+  // src/ entries belong to the antd ratchet in eslint-rules/openmetadata-antd.test.mjs.
+  const playwrightFiles = Object.entries(suppressions)
+    .filter(([path]) => path.startsWith('playwright/'))
+    .map(([, file]) => file);
+  for (const file of playwrightFiles) {
     for (const [ruleId, entry] of Object.entries(file)) {
       actual[ruleId] = (actual[ruleId] ?? 0) + entry.count;
     }
@@ -51,8 +55,10 @@ test('the suppressions baseline matches its recorded state exactly', () => {
     // language switch targets the core language selector by test id, and the
     // core assignee/schema-field selectors in the task and incident specs
     // remove three more. The merged baseline retains independent locator
-    // fixes from both branches.
-    'om-playwright/no-positional-locator': 591,
+    // fixes from both branches. Scoping the Context Center draft editor to
+    // `.om-block-editor` instead of `.ProseMirror...first()` removes four, and
+    // the Data Contract core-components migration removes three more.
+    'om-playwright/no-positional-locator': 584,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 1,
     'playwright/no-wait-for-selector': 14,

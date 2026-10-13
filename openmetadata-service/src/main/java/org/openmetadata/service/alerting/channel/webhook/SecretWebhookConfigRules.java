@@ -24,7 +24,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.fernet.Fernet;
 
 /** A webhook whose authentication carries secrets, which are stored encrypted. */
-final class SecretWebhookConfigRules extends WebhookConfigRules {
+public final class SecretWebhookConfigRules extends WebhookConfigRules {
   private static final String AUTH_TYPE = "authType";
 
   @Override

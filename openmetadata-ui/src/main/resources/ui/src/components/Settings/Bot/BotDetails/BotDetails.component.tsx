@@ -12,8 +12,14 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Badge, Grid, Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Input } from 'antd';
+import {
+  Badge,
+  Button,
+  Card,
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Input } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, toLower, uniqBy } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -137,96 +143,100 @@ const BotDetails: FC<BotsDetailProps> = ({
         style={{ ...getLayoutGutter(0, 20) }}>
         <Grid.Item className="layout-column" span={24}>
           <Card className="page-layout-v1-left-panel mt-2">
-            <div data-testid="left-panel">
-              <div className="d-flex flex-col gap-5">
-                <IconBotProfile widths="280px" />
+            <Card.Content>
+              <div data-testid="left-panel">
+                <div className="d-flex flex-col gap-5">
+                  <IconBotProfile widths="280px" />
 
-                <div className="d-flex gap-2 items-center">
-                  {isDisplayNameEdit ? (
-                    <>
-                      <Input
-                        data-testid="displayName"
-                        id="displayName"
-                        name="displayName"
-                        placeholder={t('label.display-name')}
-                        value={displayName}
-                        onChange={onDisplayNameChange}
-                      />
-                      <div className="flex justify-end" data-testid="buttons">
-                        <Button
-                          className="text-sm mr-1"
-                          data-testid="cancel-displayName"
-                          icon={<CloseOutlined />}
-                          size="small"
-                          type="primary"
-                          onMouseDown={() => setIsDisplayNameEdit(false)}
+                  <div className="d-flex gap-2 items-center">
+                    {isDisplayNameEdit ? (
+                      <>
+                        <Input
+                          data-testid="displayName"
+                          id="displayName"
+                          name="displayName"
+                          placeholder={t('label.display-name')}
+                          value={displayName}
+                          onChange={onDisplayNameChange}
                         />
+                        <div className="flex justify-end" data-testid="buttons">
+                          <Button
+                            aria-label={t('label.cancel')}
+                            className="tw:mr-1"
+                            color="primary"
+                            data-testid="cancel-displayName"
+                            iconLeading={<CloseOutlined />}
+                            size="xs"
+                            onMouseDown={() => setIsDisplayNameEdit(false)}
+                          />
 
-                        <Button
-                          className="text-sm mr-1"
-                          data-testid="save-displayName"
-                          icon={<CheckOutlined />}
-                          size="small"
-                          type="primary"
-                          onClick={handleDisplayNameChange}
-                        />
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      {displayName ? (
-                        <Typography
-                          ellipsis
-                          as="h5"
-                          className="m-0"
-                          size="text-md"
-                          weight="semibold">
-                          {displayName}
-                        </Typography>
-                      ) : (
-                        <Typography color="secondary">
-                          {t('label.add-entity', {
-                            entity: t('label.display-name'),
-                          })}
-                        </Typography>
-                      )}
-                      {canEditDisplayName && (
-                        <div>
-                          <EditIconButton
-                            newLook
-                            data-testid="edit-displayName"
-                            size="small"
-                            title={t('label.edit-entity', {
-                              entity: t('label.display-name'),
-                            })}
-                            onClick={() => setIsDisplayNameEdit(true)}
+                          <Button
+                            aria-label={t('label.save')}
+                            className="tw:mr-1"
+                            color="primary"
+                            data-testid="save-displayName"
+                            iconLeading={<CheckOutlined />}
+                            size="xs"
+                            onClick={handleDisplayNameChange}
                           />
                         </div>
-                      )}
-                    </>
+                      </>
+                    ) : (
+                      <>
+                        {displayName ? (
+                          <Typography
+                            ellipsis
+                            as="h5"
+                            className="m-0"
+                            size="text-md"
+                            weight="semibold">
+                            {displayName}
+                          </Typography>
+                        ) : (
+                          <Typography color="secondary">
+                            {t('label.add-entity', {
+                              entity: t('label.display-name'),
+                            })}
+                          </Typography>
+                        )}
+                        {canEditDisplayName && (
+                          <div>
+                            <EditIconButton
+                              newLook
+                              data-testid="edit-displayName"
+                              size="small"
+                              title={t('label.edit-entity', {
+                                entity: t('label.display-name'),
+                              })}
+                              onClick={() => setIsDisplayNameEdit(true)}
+                            />
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                  {botUserData.allowImpersonation && (
+                    <Badge
+                      className="tw:mr-2"
+                      color="blue"
+                      data-testid="impersonation-enabled-badge"
+                      size="sm"
+                      tooltip={t('message.allow-impersonation-help')}
+                      type="color">
+                      {t('label.impersonation-enabled')}
+                    </Badge>
                   )}
+                  <Description
+                    description={botData.description}
+                    entityName={getEntityName(botData)}
+                    entityType={EntityType.BOT}
+                    hasEditAccess={canEditDescription}
+                    showCommentsIcon={false}
+                    onDescriptionUpdate={handleDescriptionChange}
+                  />
                 </div>
-                {botUserData.allowImpersonation && (
-                  <Badge
-                    className="tw:mr-2"
-                    color="blue"
-                    data-testid="impersonation-enabled-badge"
-                    size="sm"
-                    tooltip={t('message.allow-impersonation-help')}
-                    type="color">
-                    {t('label.impersonation-enabled')}
-                  </Badge>
-                )}
-                <Description
-                  description={botData.description}
-                  entityName={getEntityName(botData)}
-                  entityType={EntityType.BOT}
-                  hasEditAccess={canEditDescription}
-                  showCommentsIcon={false}
-                  onDescriptionUpdate={handleDescriptionChange}
-                />
               </div>
-            </div>
+            </Card.Content>
           </Card>
         </Grid.Item>
         <Grid.Item className="layout-column" span={24}>
@@ -287,14 +297,16 @@ const BotDetails: FC<BotsDetailProps> = ({
       pageTitle={getEntityName(botData) || t('label.bot-detail')}
       rightPanel={
         <Card className="h-full m-b-box" data-testid="right-panel">
-          <div className="d-flex flex-col">
-            <Typography className="mb-2 text-lg">
-              {t('label.token-security')}
-            </Typography>
-            <Typography className="mb-2">
-              {t('message.token-security-description')}
-            </Typography>
-          </div>
+          <Card.Content>
+            <div className="d-flex flex-col">
+              <Typography className="mb-2 text-lg">
+                {t('label.token-security')}
+              </Typography>
+              <Typography className="mb-2">
+                {t('message.token-security-description')}
+              </Typography>
+            </div>
+          </Card.Content>
         </Card>
       }
       rightPanelWidth={300}>

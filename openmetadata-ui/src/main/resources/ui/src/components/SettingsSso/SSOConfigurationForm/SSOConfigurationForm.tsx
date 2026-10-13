@@ -11,10 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Button as CoreButton,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Button, Card, Typography } from '@openmetadata/ui-core-components';
 import {
   Check,
   UploadCloud02,
@@ -23,7 +20,7 @@ import {
 import Form from '@rjsf/core';
 import { RegistryFieldsType } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
-import { Button, Card, Upload } from 'antd';
+import { Upload } from 'antd';
 import classNames from 'classnames';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -96,9 +93,9 @@ const MetadataUploadStatusCard = ({
         </Typography>
       </div>
       <Button
+        color="link-color"
         data-testid="change-metadata-xml-btn"
-        size="small"
-        type="link"
+        size="xs"
         onClick={onChangeFile}>
         {t('label.change-entity', { entity: t('label.file') })}
       </Button>
@@ -118,6 +115,8 @@ const SSOConfigurationFormRJSF = ({
   selectedProvider,
   hideBorder = false,
   securityConfig,
+  managedPaths,
+  isReadOnly = false,
 }: SSOConfigurationFormProps) => {
   const { t } = useTranslation();
   const [activeField, setActiveField] = useState<string>('');
@@ -146,6 +145,8 @@ const SSOConfigurationFormRJSF = ({
     fieldErrorsRef,
     schema,
     uiSchema,
+    canChangeProvider,
+    canUploadSamlMetadata,
     customValidate,
     canTestLogin,
     isSaveGatedOnTestLogin,
@@ -167,6 +168,8 @@ const SSOConfigurationFormRJSF = ({
     onProviderSelect,
     selectedProvider,
     securityConfig,
+    managedPaths,
+    isReadOnly,
   });
 
   const customFields: RegistryFieldsType = {
@@ -211,14 +214,14 @@ const SSOConfigurationFormRJSF = ({
             description={testLoginGateMessage}
             heading={t('label.test-login')}
             subDescription={
-              <CoreButton
+              <Button
                 color="secondary"
                 data-testid="save-anyway-sso-configuration"
                 isDisabled={isLoading}
                 size="sm"
                 onClick={handleSave}>
                 {t('label.save-anyway')}
-              </CoreButton>
+              </Button>
             }
             type="warning"
           />
@@ -227,33 +230,31 @@ const SSOConfigurationFormRJSF = ({
     ) : null;
 
   const renderFormActions = () =>
-    isEditMode ? (
+    isEditMode && !isReadOnly ? (
       <>
         {renderConfigAlerts()}
         <div className="form-actions-bottom">
           <Button
-            className="cancel-sso-configuration text-md"
+            color="link-color"
             data-testid="cancel-sso-configuration"
-            type="link"
             onClick={handleCancelClick}>
             {t('label.cancel')}
           </Button>
           {canTestLogin && (
             <Button
-              className="test-login-sso-configuration text-md"
+              color="secondary"
               data-testid="test-login-sso-configuration"
-              disabled={isLoading || isTestingLogin || !currentProvider}
-              loading={isTestingLogin}
+              isDisabled={isLoading || isTestingLogin || !currentProvider}
+              isLoading={isTestingLogin}
               onClick={handleTestLogin}>
               {t('label.test-login')}
             </Button>
           )}
           <Button
-            className="save-sso-configuration text-md"
+            color="primary"
             data-testid="save-sso-configuration"
-            disabled={isLoading || isSaveGatedOnTestLogin}
-            loading={isLoading}
-            type="primary"
+            isDisabled={isLoading || isSaveGatedOnTestLogin}
+            isLoading={isLoading}
             onClick={handleSave}>
             {t('label.save')}
           </Button>
@@ -291,9 +292,11 @@ const SSOConfigurationFormRJSF = ({
   }
 
   const isSamlProvider = currentProvider === AuthProvider.Saml;
+  const showSamlUpload =
+    isEditMode && showForm && isSamlProvider && canUploadSamlMetadata;
 
   const renderSamlUpload = () =>
-    isEditMode && showForm && isSamlProvider ? (
+    showSamlUpload ? (
       <div className="m-b-md">
         {metadataUploadStatus === null && (
           <Upload.Dragger
@@ -322,10 +325,7 @@ const SSOConfigurationFormRJSF = ({
                 style={{ maxWidth: '220px' }}>
                 <Typography className="font-medium">
                   {t('label.click-to')}{' '}
-                  <Button
-                    className="h-auto p-0 font-semibold"
-                    size="small"
-                    type="link">
+                  <Button color="link-color" size="xs">
                     {t('label.upload-lowercase')}
                   </Button>{' '}
                   {t('label.or-drag-and-drop-an-xml-file-here')}
@@ -354,6 +354,7 @@ const SSOConfigurationFormRJSF = ({
         noHtml5Validate
         className="rjsf no-header"
         customValidate={customValidate}
+        disabled={isReadOnly}
         fields={customFields}
         formContext={{
           clearFieldError: handleClearFieldError,
@@ -458,10 +459,10 @@ const SSOConfigurationFormRJSF = ({
             {getProviderDisplayName(currentProvider)} {t('label.set-up')}
           </Typography>
         </div>
-        {hasExistingConfig && onChangeProvider && (
+        {hasExistingConfig && onChangeProvider && canChangeProvider && (
           <Button
+            color="link-color"
             data-testid="change-provider-button"
-            type="link"
             onClick={onChangeProvider}>
             {t('label.change-provider')}
           </Button>

@@ -10,11 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import {
   Box,
   Divider,
   Grid,
+  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
@@ -22,7 +22,6 @@ import {
   MinusCircle,
   SuccessfulTests,
 } from '@openmetadata/ui-core-components/icons';
-import { Tooltip } from 'antd';
 import { isEmpty, lowerCase } from 'lodash';
 import { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -189,7 +188,14 @@ const ContractSLA: React.FC<{
   const renderOutcomeIcon = (key: string): ReactNode => {
     const outcomeOf = SLA_CHECK_OUTCOME[key];
     if (!slaValidation || !outcomeOf) {
-      return <Icon className="sla-icon" component={DefaultIcon} />;
+      return (
+        <DefaultIcon
+          className="sla-icon"
+          fill="currentColor"
+          height="1em"
+          width="1em"
+        />
+      );
     }
     const met = outcomeOf(slaValidation);
     if (met === true) {
@@ -232,9 +238,12 @@ const ContractSLA: React.FC<{
 
   const inheritedIcon = contract.sla?.inherited ? (
     <Tooltip
+      arrow
+      excludeTriggerFromTabOrder
       title={t('label.inherited-entity', {
         entity: t('label.service-level-agreement'),
-      })}>
+      })}
+      triggerClassName="tw:inline-flex">
       <InheritIcon className="inherit-icon cursor-pointer" width={14} />
     </Tooltip>
   ) : null;

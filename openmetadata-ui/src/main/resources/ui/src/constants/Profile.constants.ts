@@ -18,6 +18,7 @@
 export const PROFILE_NAV_ID_LIST = [
   'profile',
   'permissions',
+  'preferences',
   'access-token',
   'my-connections',
   'access-control',
@@ -27,6 +28,7 @@ export const PROFILE_NAV_ID_LIST = [
   'notification',
   'members',
   'governance',
+  'applications',
   'billing',
   'platform-settings',
   'sso',

@@ -195,11 +195,18 @@ const collectSelectableNodes = <T,>(
 ): TreeSelectNode<T>[] => {
   const result: TreeSelectNode<T>[] = [];
   for (const node of nodes) {
-    if (node.allowSelection !== false) {
+    if (node.allowSelection !== false && !hasExclusiveChildren(node)) {
       result.push(node);
     }
     if (node.children) {
-      result.push(...collectSelectableNodes(node.children));
+      result.push(
+        ...collectSelectableNodes(
+          node.children.filter(
+            (child) =>
+              !child.isParentMutuallyExclusive && !hasExclusiveChildren(child)
+          )
+        )
+      );
     }
   }
 
@@ -363,9 +370,12 @@ export const TreeSelect = <T = unknown,>({
     }
   }, [value, setSelection]);
 
-  // Resync the draft on open, including a programmatic one via `isOpen`.
+  // Resync on open, including a programmatic one via `isOpen`. Staged mode
+  // drops the draft; a controlled immediate picker drops an optimistic pick the
+  // parent never echoed back (its save failed), which `value` alone cannot
+  // signal because the rejected parent keeps passing the same reference.
   useEffect(() => {
-    if (isOpen && isStaged) {
+    if (isOpen && (isStaged || value !== undefined)) {
       setSelection(toArray(value));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -726,6 +736,7 @@ export const TreeSelect = <T = unknown,>({
       loadingNodes,
       disabled,
       multiple,
+      cascadeSelection,
       showCheckbox,
       showExpandIcon,
       showIcon,
