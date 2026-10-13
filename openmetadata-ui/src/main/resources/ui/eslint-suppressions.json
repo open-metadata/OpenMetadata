@@ -71,7 +71,7 @@
   },
   "playwright/e2e/Features/ContextCenterArticles.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 7
+      "count": 3
     },
     "playwright/no-wait-for-selector": {
       "count": 1
@@ -1213,11 +1213,6 @@
       "count": 2
     }
   },
-  "src/components/Modals/StopScheduleRun/StopScheduleRunModal.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
-    }
-  },
   "src/components/Modals/TourEndModal/TourEndModal.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 3
@@ -1363,29 +1358,9 @@
       "count": 6
     }
   },
-  "src/components/Settings/Applications/AppLogsViewer/AppLogsViewer.component.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 4
-    }
-  },
-  "src/components/Settings/Applications/AppLogsViewer/ReindexFailures.component.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 2
-    }
-  },
-  "src/components/Settings/Applications/AppRunsHistory/AppRunsHistory.component.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 2
-    }
-  },
   "src/components/Settings/Applications/AppRunsHistory/AppRunsHistory.test.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 1
-    }
-  },
-  "src/components/Settings/Applications/AppSchedule/AppSchedule.component.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 2
     }
   },
   "src/components/Settings/Applications/ApplicationCard/ApplicationCard.component.tsx": {

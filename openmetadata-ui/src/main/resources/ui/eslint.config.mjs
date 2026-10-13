@@ -564,6 +564,60 @@ export default [
     },
   },
 
+  // The Applications settings in the profile modal are core-ui only.
+  {
+    files: [
+      'src/components/discovery/personal-space/Profile/tabs/applications/**/*.{ts,tsx}',
+    ],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'antd',
+              allowTypeImports: true,
+              message:
+                'Application settings use @openmetadata/ui-core-components.',
+            },
+            {
+              name: '@ant-design/icons',
+              allowTypeImports: true,
+              message:
+                'Application settings use @openmetadata/ui-core-components/icons.',
+            },
+          ],
+          patterns: [
+            {
+              group: ['antd/*', '@ant-design/icons/*'],
+              allowTypeImports: true,
+              message:
+                'Application settings use @openmetadata/ui-core-components.',
+            },
+            // Flat config replaces a rule's options wholesale, so the repo-wide
+            // chart ban (recharts/echarts) is re-stated here; otherwise it would
+            // be dropped for these files, unlike the Metric block which is chart-free.
+            {
+              group: ['recharts', 'recharts/*'],
+              message:
+                'Use @openmetadata/ui-core-components/charts; recharts was removed.',
+            },
+            {
+              group: [
+                'echarts',
+                'echarts/*',
+                'echarts-for-react',
+                'echarts-for-react/*',
+              ],
+              message:
+                'Import charts and chart types from @openmetadata/ui-core-components/charts.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+
   // Route modules must preserve page-level code splitting. Type-only imports
   // remain allowed because they do not create a runtime bundle edge.
   {

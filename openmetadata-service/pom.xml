@@ -895,7 +895,7 @@
     <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
-      <version>33.4.8-jre</version>
+      <version>33.7.2-jre</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
