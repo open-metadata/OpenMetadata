@@ -16,9 +16,14 @@ import { ProgressBar } from './progress-indicators';
 
 describe('ProgressBar', () => {
   it('retains chart-series colors through the labeled component', () => {
-    render(<ProgressBar color="#123456" value={42} labelPosition="right" />);
-    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '42');
-    expect(screen.getByRole('progressbar').firstElementChild).toHaveStyle({ backgroundColor: '#123456' });
+    render(<ProgressBar color="#123456" labelPosition="right" value={42} />);
+    expect(screen.getByRole('progressbar')).toHaveAttribute(
+      'aria-valuenow',
+      '42'
+    );
+    expect(screen.getByRole('progressbar').firstElementChild).toHaveStyle({
+      backgroundColor: '#123456',
+    });
     expect(screen.getByText('42%')).toBeInTheDocument();
   });
 });

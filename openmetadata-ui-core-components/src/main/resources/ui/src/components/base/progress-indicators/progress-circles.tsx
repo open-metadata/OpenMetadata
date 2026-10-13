@@ -216,7 +216,10 @@ export const ProgressBarHalfCircle = ({
 
           {/* Foreground half-circle */}
           <circle
-            className="tw:origin-center tw:-scale-x-100 tw:stroke-fg-brand-primary"
+            className={clx(
+              'tw:origin-center tw:-scale-x-100',
+              colors[color].stroke
+            )}
             cx={cx}
             cy={cy}
             fill="none"
@@ -232,7 +235,7 @@ export const ProgressBarHalfCircle = ({
         {label && size !== 'xxs' ? (
           <div className={halfCircleTextPosition}>
             <div className={labelClass}>{label}</div>
-            <div className={valueClass}>
+            <div className={clx(valueClass, colors[color].text)}>
               {valueFormatter
                 ? valueFormatter(value, percentage)
                 : `${percentage}%`}
