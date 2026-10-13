@@ -154,7 +154,11 @@ public final class MemoryConflictReviewTasks {
         "[MemoryConflictReview] opened task {} for memory {}", task.getTaskId(), memory.getId());
   }
 
-  /** Rewrites what the open task shows; its status, comments and history stay. */
+  /**
+   * Rewrites what the open task shows; its status, comments and history stay. Written as whoever
+   * changed the memory, impersonated by {@code governance-bot}: an update by a bot that may not
+   * edit display names keeps the task's old title.
+   */
   private static void refresh(Task open, ContextMemory memory) {
     ContextMemory reviewed = reviewedWithOwners(memory);
     Task current =
@@ -166,9 +170,15 @@ public final class MemoryConflictReviewTasks {
             .add("/assignees", JsonUtils.getJsonStructure(current.getAssignees()))
             .add("/payload", JsonUtils.getJsonStructure(current.getPayload()))
             .build();
-    taskRepository().patch(null, open.getId(), GOVERNANCE_BOT, patch, ChangeSource.AUTOMATED);
+    taskRepository()
+        .patch(null, open.getId(), writerOf(memory), patch, ChangeSource.AUTOMATED, GOVERNANCE_BOT);
     LOG.info(
         "[MemoryConflictReview] refreshed task {} for memory {}", open.getTaskId(), memory.getId());
+  }
+
+  private static String writerOf(ContextMemory memory) {
+    String writer = memory.getUpdatedBy();
+    return nullOrEmpty(writer) ? GOVERNANCE_BOT : writer;
   }
 
   /** The task shows the memory's title and disputes, and assigns the owners of every side. */
@@ -179,8 +189,18 @@ public final class MemoryConflictReviewTasks {
         || !Objects.equals(previous.getOwners(), current.getOwners());
   }
 
+  /**
+   * The memory as its write left it. Reading it back within the same request can return the copy
+   * cached before the write, so only owners the write did not carry are loaded.
+   */
   private static ContextMemory reviewedWithOwners(ContextMemory memory) {
-    return Entity.getEntity(Entity.CONTEXT_MEMORY, memory.getId(), "owners", Include.NON_DELETED);
+    ContextMemory reviewed = JsonUtils.deepCopy(memory, ContextMemory.class);
+    if (reviewed.getOwners() == null) {
+      ContextMemory stored =
+          Entity.getEntity(Entity.CONTEXT_MEMORY, memory.getId(), "owners", Include.NON_DELETED);
+      reviewed.setOwners(stored.getOwners());
+    }
+    return reviewed;
   }
 
   private static void closeOpenTask(ContextMemory memory, String comment) {

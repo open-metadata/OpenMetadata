@@ -91,7 +91,9 @@ const ReviewRow: FC<ReviewRowProps> = ({
           data-testid="reviewed-memory"
           size="md"
           onClick={() => onViewMemory(getMemoryLinkName(review.about))}>
-          {getReviewedMemoryTitle(review) ?? getEntityName(review.about)}
+          <Typography className="tw:text-primary" weight="medium">
+            {getReviewedMemoryTitle(review) ?? getEntityName(review.about)}
+          </Typography>
         </Button>
         <Box direction="col" gap={1}>
           <Typography className="tw:text-tertiary" size="text-xs">
