@@ -14,6 +14,7 @@
 package org.openmetadata.service.migration.v210;
 
 import static org.mockito.Answers.RETURNS_DEEP_STUBS;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -37,6 +38,7 @@ import org.openmetadata.service.migration.utils.v210.AuthenticationSecretsEncryp
 import org.openmetadata.service.migration.utils.v210.ConversationMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.DataContractEntityReferenceMigration;
+import org.openmetadata.service.migration.utils.v210.DeltaLakeRetirementMigration;
 import org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
 import org.openmetadata.service.migration.utils.v210.MlFeatureTagBackfill;
@@ -75,9 +77,13 @@ class IngestionPipelineMigrationEntryPointTest {
         MockedStatic<AlertBacklogMigration> alertBacklogMigration =
             mockStatic(AlertBacklogMigration.class);
         MockedStatic<AuthenticationSecretsEncryptionMigration> authenticationSecretsMigration =
-            mockStatic(AuthenticationSecretsEncryptionMigration.class)) {
+            mockStatic(AuthenticationSecretsEncryptionMigration.class);
+        MockedStatic<DeltaLakeRetirementMigration> deltaLakeRetirement =
+            mockStatic(DeltaLakeRetirementMigration.class)) {
       migration.runDataMigration();
 
+      deltaLakeRetirement.verify(
+          () -> DeltaLakeRetirementMigration.retireDeltaLakeServices(any(), any(), any()));
       ingestionPipelineMigration.verify(
           () -> IngestionPipelineMigrationUtil.backfillSourceConfigTypes(collectionDAO));
       searchTermBoostRepair.verify(SearchTermBoostRepair::repairTermBoostSettings);
