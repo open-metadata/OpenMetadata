@@ -54,7 +54,7 @@ export const ToggleBase = ({
         // `tw:relative` anchors the slim variant's ::after border — the element's own
         // outline is reserved for the focus ring below. The knob uses translate-x, not
         // absolute positioning, so this does not affect it.
-        'tw:relative tw:cursor-pointer tw:rounded-full tw:bg-tertiary tw:outline-focus-ring tw:transition tw:duration-150 tw:ease-linear',
+        'tw:relative tw:shrink-0 tw:cursor-pointer tw:rounded-full tw:bg-tertiary tw:outline-focus-ring tw:transition tw:duration-150 tw:ease-linear',
         // Dark bg-tertiary equals bg-surface, so the off track would vanish on cards.
         !isSelected && !isDisabled && 'tw:dark:bg-quaternary',
         isSelected && 'tw:bg-brand-solid',
