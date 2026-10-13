@@ -772,7 +772,10 @@ export const addCustomPropertiesForEntity = async ({
       await enumInput.press('Enter');
       await expect(enumInput).toHaveValue('');
     }
-    await page.keyboard.press('Escape');
+    // The form is a dismissable drawer: Escape with no open list closes it.
+    if ((await enumInput.getAttribute('aria-expanded')) === 'true') {
+      await page.keyboard.press('Escape');
+    }
 
     if (enumConfig.multiSelect) {
       await form.getByTestId('custom-property-multi-select').click();
@@ -788,7 +791,9 @@ export const addCustomPropertiesForEntity = async ({
       await columnInput.press('Enter');
       await expect(columnInput).toHaveValue('');
     }
-    await page.keyboard.press('Escape');
+    if ((await columnInput.getAttribute('aria-expanded')) === 'true') {
+      await page.keyboard.press('Escape');
+    }
   }
 
   // Entity reference configuration
@@ -804,7 +809,9 @@ export const addCustomPropertiesForEntity = async ({
       await refInput.fill(val);
       await page.getByRole('option', { name: val, exact: true }).click();
     }
-    await page.keyboard.press('Escape');
+    if ((await refInput.getAttribute('aria-expanded')) === 'true') {
+      await page.keyboard.press('Escape');
+    }
   }
 
   // Format configuration
