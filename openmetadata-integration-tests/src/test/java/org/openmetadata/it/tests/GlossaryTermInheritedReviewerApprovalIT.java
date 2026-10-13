@@ -15,6 +15,7 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -38,6 +39,7 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
+import org.openmetadata.schema.api.tasks.ResolveTask;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.tasks.Task;
@@ -45,6 +47,8 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.TaskEntityStatus;
+import org.openmetadata.schema.type.TaskResolutionType;
+import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
@@ -123,6 +127,53 @@ public class GlossaryTermInheritedReviewerApprovalIT {
     Task task = awaitOpenApprovalTask(term.getId(), term.getFullyQualifiedName());
     assertAssigneeIsReviewer(task);
     waitForTermStatus(term.getId(), EntityStatus.IN_REVIEW);
+  }
+
+  /**
+   * Whoever the task policy lets resolve the approval, here an admin who is not a reviewer, must be
+   * able to apply it. The workflow used to reject the status change as "not a reviewer", leaving the
+   * term In Review behind an approved task.
+   */
+  @Test
+  void test_nonReviewerApprovingTheTask_movesTermToApproved(TestNamespace ns) throws Exception {
+    Glossary glossary = createGlossary(ns, /* withReviewer */ false);
+    GlossaryTerm term =
+        createTerm(glossary, "admin_approved_term", /* attachReviewerDirectly */ true);
+
+    Task task = awaitOpenApprovalTask(term.getId(), term.getFullyQualifiedName());
+    waitForTermStatus(term.getId(), EntityStatus.IN_REVIEW);
+
+    SdkClients.adminClient()
+        .tasks()
+        .resolve(
+            task.getId().toString(),
+            new ResolveTask().withResolutionType(TaskResolutionType.Approved));
+
+    waitForTermStatus(term.getId(), EntityStatus.APPROVED);
+  }
+
+  /** Only the workflow is exempt: a non-reviewer approving by a direct edit is still rejected. */
+  @Test
+  void test_nonReviewerApprovingByDirectEdit_isRejected(TestNamespace ns) throws Exception {
+    Glossary glossary = createGlossary(ns, /* withReviewer */ false);
+    GlossaryTerm term =
+        createTerm(glossary, "directly_approved_term", /* attachReviewerDirectly */ true);
+    awaitOpenApprovalTask(term.getId(), term.getFullyQualifiedName());
+    waitForTermStatus(term.getId(), EntityStatus.IN_REVIEW);
+
+    JsonNode approve =
+        new ObjectMapper()
+            .readTree(
+                String.format(
+                    "[{\"op\":\"replace\",\"path\":\"/entityStatus\",\"value\":\"%s\"}]",
+                    EntityStatus.APPROVED.value()));
+    ForbiddenException denied =
+        assertThrows(
+            ForbiddenException.class,
+            () -> SdkClients.adminClient().glossaryTerms().patch(term.getId().toString(), approve));
+
+    assertTrue(denied.getMessage().contains("is not a reviewer"), denied.getMessage());
+    assertEquals(EntityStatus.IN_REVIEW, safeCurrentStatus(term.getId()));
   }
 
   /**

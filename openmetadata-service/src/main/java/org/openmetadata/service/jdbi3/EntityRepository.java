@@ -60,6 +60,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.notRevi
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notTaskAssignee;
 import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.WorkflowEventConsumer.GOVERNANCE_BOT;
 import static org.openmetadata.service.monitoring.RequestLatencyContext.phase;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
@@ -9332,15 +9333,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
         if (original.getEntityStatus() == updated.getEntityStatus()) {
           return;
         }
-        // Only reviewers can change from IN_REVIEW status to APPROVED/REJECTED status
+        // Only reviewers can change from IN_REVIEW status to APPROVED/REJECTED status. A workflow's
+        // approval task already decided who may approve, so the rule only guards direct edits.
         if (!consolidatingChanges
             && original.getEntityStatus() == EntityStatus.IN_REVIEW
             && (updated.getEntityStatus() == EntityStatus.APPROVED
-                || updated.getEntityStatus() == EntityStatus.REJECTED)) {
+                || updated.getEntityStatus() == EntityStatus.REJECTED)
+            && !isWorkflowChange(updated)) {
           checkUpdatedByReviewer(original, updated.getUpdatedBy());
         }
         recordChange("entityStatus", original.getEntityStatus(), updated.getEntityStatus());
       }
+    }
+
+    // Workflows change entities as, or impersonating, the governance bot.
+    private static boolean isWorkflowChange(EntityInterface entity) {
+      return GOVERNANCE_BOT.equals(entity.getUpdatedBy())
+          || GOVERNANCE_BOT.equals(entity.getImpersonatedBy());
     }
 
     public static void checkUpdatedByReviewer(EntityInterface entity, String updatedBy) {
