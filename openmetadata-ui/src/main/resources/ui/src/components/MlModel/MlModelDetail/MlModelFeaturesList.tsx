@@ -13,11 +13,11 @@
 
 import {
   Box,
+  Card,
   Divider,
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Card } from 'antd';
 import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import {
@@ -197,156 +197,160 @@ const MlModelFeaturesList = () => {
                   className="m-b-lg shadow-none"
                   data-testid={`feature-card-${feature.name ?? ''}`}
                   key={feature.fullyQualifiedName}>
-                  <Grid
-                    className="layout-row layout-grid"
-                    style={{ ...getLayoutGutter(0, 8) }}>
-                    <Grid.Item className="layout-column" span={24}>
-                      <Typography
-                        className="font-semibold"
-                        data-testid="column-name"
-                        style={{
-                          cursor: isDeleted ? 'default' : 'pointer',
-                        }}
-                        onClick={(event) => handleColumnClick(feature, event)}>
-                        {feature.name}
-                      </Typography>
-                    </Grid.Item>
-                    <Grid.Item className="layout-column" span={24}>
-                      <Box
-                        inline
-                        align="start"
-                        className="layout-space layout-space-horizontal"
-                        gap={2}
-                        itemClassName="layout-space-item">
+                  <Card.Content>
+                    <Grid
+                      className="layout-row layout-grid"
+                      style={{ ...getLayoutGutter(0, 8) }}>
+                      <Grid.Item className="layout-column" span={24}>
+                        <Typography
+                          className="font-semibold"
+                          data-testid="column-name"
+                          style={{
+                            cursor: isDeleted ? 'default' : 'pointer',
+                          }}
+                          onClick={(event) =>
+                            handleColumnClick(feature, event)
+                          }>
+                          {feature.name}
+                        </Typography>
+                      </Grid.Item>
+                      <Grid.Item className="layout-column" span={24}>
                         <Box
                           inline
-                          align="center"
+                          align="start"
                           className="layout-space layout-space-horizontal"
                           gap={2}
                           itemClassName="layout-space-item">
-                          <Typography color="secondary">
-                            {`${t('label.type')} :`}
-                          </Typography>{' '}
-                          <Typography>{feature.dataType || '--'}</Typography>
-                        </Box>
-                        <Divider
-                          className="tw:mx-2 tw:mt-1 tw:h-[0.9em] tw:min-h-0"
-                          orientation="vertical"
-                        />
-                        <Box
-                          inline
-                          align="center"
-                          className="layout-space layout-space-horizontal"
-                          gap={2}
-                          itemClassName="layout-space-item">
-                          <Typography color="secondary">
-                            {`${t('label.algorithm')} :`}
-                          </Typography>{' '}
-                          <Typography>
-                            {feature.featureAlgorithm || '--'}
-                          </Typography>
-                        </Box>
-                      </Box>
-                    </Grid.Item>
-
-                    <Grid.Item className="layout-column" span={24}>
-                      <Box
-                        className="layout-row"
-                        style={{ ...getLayoutGutter(8) }}
-                        wrap="nowrap">
-                        <Box
-                          className="layout-column tw:block"
-                          style={{ flex: '0 0 130px' }}>
-                          <Typography color="secondary">
-                            {`${t('label.glossary-term-plural')} :`}
-                          </Typography>
-                        </Box>
-
-                        <Box
-                          className="layout-column tw:block"
-                          style={{ flex: 'auto' }}>
-                          <TableTags<MlFeature>
-                            entityFqn={entityFqn}
-                            entityType={EntityType.MLMODEL}
-                            handleTagSelection={handleTagsChange}
-                            hasTagEditAccess={canEditTags}
-                            index={index}
-                            isReadOnly={isDeleted}
-                            record={feature}
-                            tags={feature.tags ?? []}
-                            type={TagSource.Glossary}
+                          <Box
+                            inline
+                            align="center"
+                            className="layout-space layout-space-horizontal"
+                            gap={2}
+                            itemClassName="layout-space-item">
+                            <Typography color="secondary">
+                              {`${t('label.type')} :`}
+                            </Typography>{' '}
+                            <Typography>{feature.dataType || '--'}</Typography>
+                          </Box>
+                          <Divider
+                            className="tw:mx-2 tw:mt-1 tw:h-[0.9em] tw:min-h-0"
+                            orientation="vertical"
                           />
+                          <Box
+                            inline
+                            align="center"
+                            className="layout-space layout-space-horizontal"
+                            gap={2}
+                            itemClassName="layout-space-item">
+                            <Typography color="secondary">
+                              {`${t('label.algorithm')} :`}
+                            </Typography>{' '}
+                            <Typography>
+                              {feature.featureAlgorithm || '--'}
+                            </Typography>
+                          </Box>
                         </Box>
-                      </Box>
-                    </Grid.Item>
+                      </Grid.Item>
 
-                    <Grid.Item className="layout-column" span={24}>
-                      <Box
-                        className="layout-row"
-                        style={{ ...getLayoutGutter(8) }}
-                        wrap="nowrap">
+                      <Grid.Item className="layout-column" span={24}>
                         <Box
-                          className="layout-column tw:block"
-                          style={{ flex: '0 0 130px' }}>
-                          <Typography color="secondary">
-                            {`${t('label.tag-plural')} :`}
-                          </Typography>
-                        </Box>
-                        <Box
-                          className="layout-column tw:block"
-                          style={{ flex: 'auto' }}>
-                          <TableTags<MlFeature>
-                            entityFqn={entityFqn}
-                            entityType={EntityType.MLMODEL}
-                            handleTagSelection={handleTagsChange}
-                            hasTagEditAccess={canEditGlossaryTerms}
-                            index={index}
-                            isReadOnly={isDeleted}
-                            record={feature}
-                            tags={feature.tags ?? []}
-                            type={TagSource.Classification}
-                          />
-                        </Box>
-                      </Box>
-                    </Grid.Item>
+                          className="layout-row"
+                          style={{ ...getLayoutGutter(8) }}
+                          wrap="nowrap">
+                          <Box
+                            className="layout-column tw:block"
+                            style={{ flex: '0 0 130px' }}>
+                            <Typography color="secondary">
+                              {`${t('label.glossary-term-plural')} :`}
+                            </Typography>
+                          </Box>
 
-                    <Grid.Item className="layout-column m-t-xs" span={24}>
-                      <Box
-                        className="layout-row"
-                        style={{ ...getLayoutGutter(8) }}
-                        wrap="nowrap">
-                        <Box
-                          className="layout-column tw:block"
-                          style={{ flex: '0 0 130px' }}>
-                          <Typography color="secondary">
-                            {`${t('label.description')} :`}
-                          </Typography>
+                          <Box
+                            className="layout-column tw:block"
+                            style={{ flex: 'auto' }}>
+                            <TableTags<MlFeature>
+                              entityFqn={entityFqn}
+                              entityType={EntityType.MLMODEL}
+                              handleTagSelection={handleTagsChange}
+                              hasTagEditAccess={canEditGlossaryTerms}
+                              index={index}
+                              isReadOnly={isDeleted}
+                              record={feature}
+                              tags={feature.tags ?? []}
+                              type={TagSource.Glossary}
+                            />
+                          </Box>
                         </Box>
+                      </Grid.Item>
+
+                      <Grid.Item className="layout-column" span={24}>
                         <Box
-                          className="layout-column tw:block"
-                          style={{ flex: 'auto' }}>
-                          <TableDescription
-                            columnData={{
-                              fqn: feature.fullyQualifiedName ?? '',
-                              field: feature.description,
-                            }}
-                            entityFqn={entityFqn}
-                            entityType={EntityType.MLMODEL}
-                            hasEditPermission={canEditDescription}
-                            index={index}
-                            isReadOnly={isDeleted}
-                            onClick={() => {
-                              setSelectedFeature(feature);
-                              setEditDescription(true);
-                            }}
-                          />
+                          className="layout-row"
+                          style={{ ...getLayoutGutter(8) }}
+                          wrap="nowrap">
+                          <Box
+                            className="layout-column tw:block"
+                            style={{ flex: '0 0 130px' }}>
+                            <Typography color="secondary">
+                              {`${t('label.tag-plural')} :`}
+                            </Typography>
+                          </Box>
+                          <Box
+                            className="layout-column tw:block"
+                            style={{ flex: 'auto' }}>
+                            <TableTags<MlFeature>
+                              entityFqn={entityFqn}
+                              entityType={EntityType.MLMODEL}
+                              handleTagSelection={handleTagsChange}
+                              hasTagEditAccess={canEditTags}
+                              index={index}
+                              isReadOnly={isDeleted}
+                              record={feature}
+                              tags={feature.tags ?? []}
+                              type={TagSource.Classification}
+                            />
+                          </Box>
                         </Box>
-                      </Box>
-                    </Grid.Item>
-                    <Grid.Item className="layout-column" span={24}>
-                      <SourceList feature={feature} />
-                    </Grid.Item>
-                  </Grid>
+                      </Grid.Item>
+
+                      <Grid.Item className="layout-column m-t-xs" span={24}>
+                        <Box
+                          className="layout-row"
+                          style={{ ...getLayoutGutter(8) }}
+                          wrap="nowrap">
+                          <Box
+                            className="layout-column tw:block"
+                            style={{ flex: '0 0 130px' }}>
+                            <Typography color="secondary">
+                              {`${t('label.description')} :`}
+                            </Typography>
+                          </Box>
+                          <Box
+                            className="layout-column tw:block"
+                            style={{ flex: 'auto' }}>
+                            <TableDescription
+                              columnData={{
+                                fqn: feature.fullyQualifiedName ?? '',
+                                field: feature.description,
+                              }}
+                              entityFqn={entityFqn}
+                              entityType={EntityType.MLMODEL}
+                              hasEditPermission={canEditDescription}
+                              index={index}
+                              isReadOnly={isDeleted}
+                              onClick={() => {
+                                setSelectedFeature(feature);
+                                setEditDescription(true);
+                              }}
+                            />
+                          </Box>
+                        </Box>
+                      </Grid.Item>
+                      <Grid.Item className="layout-column" span={24}>
+                        <SourceList feature={feature} />
+                      </Grid.Item>
+                    </Grid>
+                  </Card.Content>
                 </Card>
               </Grid.Item>
             );

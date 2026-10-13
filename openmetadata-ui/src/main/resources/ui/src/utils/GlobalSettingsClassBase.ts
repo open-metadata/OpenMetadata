@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { GlossaryTerm } from '@openmetadata/ui-core-components/icons';
 import { ReactComponent as AdminIcon } from '../assets/svg/admin-colored.svg';
 import { ReactComponent as APICollectionIcon } from '../assets/svg/api-collection-colored.svg';
 import { ReactComponent as APIEndpointIcon } from '../assets/svg/api-endpoints-colored.svg';
@@ -67,7 +68,7 @@ import { ReactComponent as AppearanceIcon } from '../assets/svg/theme-colored-ne
 import { ReactComponent as LinkIcon } from '../assets/svg/url-link-colored.svg';
 import { ReactComponent as UsersIcon } from '../assets/svg/user-colored.svg';
 import { ReactComponent as WorksheetIcon } from '../assets/svg/worksheet-colored-new.svg';
-import { SettingMenuItem } from './GlobalSettingsUtils';
+import type { SettingMenuItem } from './GlobalSettingsUtils';
 
 import { ReactComponent as GovernanceIcon } from '../assets/svg/governance.svg';
 import { ReactComponent as WorkflowsSettingsIcon } from '../assets/svg/ic-workflow-settings.svg';
@@ -709,6 +710,13 @@ class GlobalSettingsClassBase {
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.APP_MODE}`,
             icon: AppModeIcon,
+          },
+          {
+            label: t('label.glossary'),
+            description: t('message.glossary-tag-propagation-description'),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.GLOSSARY}`,
+            icon: GlossaryTerm,
           },
         ],
       },

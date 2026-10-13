@@ -31,6 +31,7 @@ import { TabSpecificField } from '../../../../enums/entity.enum';
 import { User } from '../../../../generated/entity/teams/user';
 import { Include } from '../../../../generated/type/include';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { usePersonalSpaceStore } from '../../../../hooks/usePersonalSpaceStore';
 import { useSettingsHash } from '../../../../hooks/useSettingsHash';
 import { getUserByName, updateUserDetail } from '../../../../rest/userAPI';
 import {
@@ -291,15 +292,21 @@ const ProfilePage: React.FC = () => {
       if (id === selectedId) {
         return;
       }
-      setSelectedId(id);
-      setHeaderOverride(null);
-      setHash(
-        id,
-        // Encode so usernames containing `%`/`?` round-trip through the hash.
-        id === DEFAULT_PROFILE_NAV_ID && currentUser?.name
-          ? encodeURIComponent(currentUser.name)
-          : undefined
-      );
+      const switchTab = () => {
+        setSelectedId(id);
+        setHeaderOverride(null);
+        setHash(
+          id,
+          // Encode so usernames containing `%`/`?` round-trip through the hash.
+          id === DEFAULT_PROFILE_NAV_ID && currentUser?.name
+            ? encodeURIComponent(currentUser.name)
+            : undefined
+        );
+      };
+      // A dirty in-modal editor (e.g. persona customize) may prompt first.
+      if (!usePersonalSpaceStore.getState().exitGuard?.(switchTab)) {
+        switchTab();
+      }
     },
     [selectedId, setHash, currentUser?.name]
   );
@@ -365,6 +372,7 @@ const ProfilePage: React.FC = () => {
             description={headerDescription}
             icon={headerIcon}
             iconNode={headerOverride?.iconNode}
+            meta={headerOverride?.meta}
             title={headerTitle}
             titleInput={headerOverride?.titleInput}
             titleSuffix={headerOverride?.titleSuffix}

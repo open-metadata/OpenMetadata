@@ -11,14 +11,22 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
-import { Box, Typography } from '@openmetadata/ui-core-components';
-import { Alert, Button, Modal, Progress } from 'antd';
+import {
+  Alert,
+  Box,
+  Button,
+  Dialog,
+  FeaturedIcon,
+  Modal,
+  ModalOverlay,
+  ProgressBarCircle,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { AlertCircle } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as ExclamationIcon } from '../../../assets/svg/ic-exclamation-circle.svg';
 import { ClientErrors } from '../../../enums/Axios.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
@@ -41,13 +49,15 @@ const renderFooter = (
   onCancel: () => void,
   t: (key: string) => string
 ) => (
-  <div className="d-flex justify-between">
+  <Box align="center" className="tw:w-full" justify="between">
     <Typography color="secondary">
       {failedStatus?.numberOfRowsFailed &&
         `${failedStatus.numberOfRowsFailed} ${t('label.failed')}`}
     </Typography>
-    <Button onClick={onCancel}>{t('label.cancel')}</Button>
-  </div>
+    <Button color="secondary" onPress={onCancel}>
+      {t('label.cancel')}
+    </Button>
+  </Box>
 );
 
 const renderFailedContent = (
@@ -84,7 +94,7 @@ const renderFailedContent = (
   ];
 
   return (
-    <div className="d-flex flex-column gap-2">
+    <Box direction="col" gap={2}>
       {failedStatus && (
         <>
           <Table
@@ -97,16 +107,16 @@ const renderFailedContent = (
             rowKey={(record) => record.request?.id}
           />
           <Alert
-            className="m-t-sm"
-            message={t('message.glossary-tag-assignment-help-message')}
-            type="warning"
+            className="tw:mt-2"
+            title={t('message.glossary-tag-assignment-help-message')}
+            variant="warning"
           />
         </>
       )}
       {tagError?.code === ClientErrors.BAD_REQUEST && (
-        <Alert message={tagError.message} type="warning" />
+        <Alert title={tagError.message} variant="warning" />
       )}
-    </div>
+    </Box>
   );
 };
 
@@ -165,9 +175,9 @@ export const GlossaryUpdateConfirmationModal = ({
     const footer = renderFooter(failedStatus, onCancel, t);
 
     const progressBar = (
-      <div className="text-center">
-        <Progress percent={progress} status="normal" type="circle" />
-      </div>
+      <Box justify="center">
+        <ProgressBarCircle size="sm" value={progress} />
+      </Box>
     );
 
     switch (updateState) {
@@ -175,37 +185,32 @@ export const GlossaryUpdateConfirmationModal = ({
         return {
           footer: null,
           content: (
-            <div className="d-flex items-center flex-column gap-2">
-              <Icon
-                className="m-b-lg"
-                component={ExclamationIcon}
-                style={{ fontSize: '60px' }}
+            <Box align="center" direction="col" gap={2}>
+              <FeaturedIcon
+                className="tw:mb-4"
+                color="warning"
+                icon={AlertCircle}
+                size="xl"
+                theme="light"
               />
               <Typography as="h5" size="text-md" weight="semibold">
                 {t('message.tag-update-confirmation')}
               </Typography>
-              <Typography className="text-center">
+              <Typography className="tw:text-center">
                 {t('message.glossary-tag-update-description')}{' '}
-                <span className="font-medium">
+                <Typography as="span" weight="medium">
                   {getEntityName(glossaryTerm)}
-                </span>
+                </Typography>
               </Typography>
-              <div className="m-t-lg">
-                <Box
-                  inline
-                  align="center"
-                  className="layout-space layout-space-horizontal"
-                  gap={2}
-                  itemClassName="layout-space-item">
-                  <Button onClick={onCancel}>
-                    {t('label.no-comma-cancel')}
-                  </Button>
-                  <Button type="primary" onClick={handleUpdateConfirmation}>
-                    {t('label.yes-comma-confirm')}
-                  </Button>
-                </Box>
-              </div>
-            </div>
+              <Box align="center" className="tw:mt-6" gap={2}>
+                <Button color="secondary" onPress={onCancel}>
+                  {t('label.no-comma-cancel')}
+                </Button>
+                <Button color="primary" onPress={handleUpdateConfirmation}>
+                  {t('label.yes-comma-confirm')}
+                </Button>
+              </Box>
+            </Box>
           ),
         };
       case UpdateState.VALIDATING:
@@ -222,7 +227,11 @@ export const GlossaryUpdateConfirmationModal = ({
       case UpdateState.SUCCESS:
         return {
           content: progressBar,
-          footer: <Button onClick={onCancel}>{t('label.cancel')}</Button>,
+          footer: (
+            <Button color="secondary" onPress={onCancel}>
+              {t('label.cancel')}
+            </Button>
+          ),
         };
     }
   }, [updateState, failedStatus]);
@@ -241,16 +250,19 @@ export const GlossaryUpdateConfirmationModal = ({
   }, [updateState]);
 
   return (
-    <Modal
-      centered
-      open
-      closable={false}
-      closeIcon={null}
-      footer={data.footer}
-      title={modalTitle}
-      width={updateState === UpdateState.FAILED ? 750 : undefined}
-      onCancel={onCancel}>
-      {data.content}
-    </Modal>
+    <ModalOverlay
+      isOpen
+      isDismissable={false}
+      onOpenChange={(open) => !open && onCancel()}>
+      <Modal>
+        <Dialog
+          dividers="scroll"
+          title={modalTitle}
+          width={updateState === UpdateState.FAILED ? 750 : 520}>
+          <Dialog.Content>{data.content}</Dialog.Content>
+          {data.footer && <Dialog.Footer>{data.footer}</Dialog.Footer>}
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 };

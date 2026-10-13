@@ -20,6 +20,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -40,6 +41,33 @@ class SinkProviderRegistryTest {
   @AfterEach
   void tearDown() {
     registry.unregister(TEST_SINK_TYPE);
+  }
+
+  @Test
+  void entityTypeCapabilitiesDoNotConstructAProvider() {
+    registry.register(
+        TEST_SINK_TYPE,
+        new SinkProviderRegistry.SinkProviderFactory() {
+          @Override
+          public Set<String> excludedEntityTypes() {
+            return Set.of("query", "table");
+          }
+
+          @Override
+          public SinkProvider create(Object config) {
+            throw new AssertionError("Capability lookup must not construct the provider");
+          }
+        });
+
+    assertEquals(Set.of("query", "table"), registry.excludedEntityTypes(TEST_SINK_TYPE));
+    registry.unregister(TEST_SINK_TYPE);
+    assertTrue(registry.excludedEntityTypes(TEST_SINK_TYPE).isEmpty());
+  }
+
+  @Test
+  void existingLambdaFactoriesAllowAllEntityTypes() {
+    registry.register(TEST_SINK_TYPE, config -> createMockProvider());
+    assertTrue(registry.excludedEntityTypes(TEST_SINK_TYPE).isEmpty());
   }
 
   @Test

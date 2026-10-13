@@ -273,6 +273,29 @@ WHERE name IN (
   )
   AND NOT ((json->'parameterDefinition')::jsonb @> '[{"name": "dimensionFailurePolicy"}]'::jsonb);
 
+-- `minRowsPerDimension` keeps small dimension groups out of the ANY_DIMENSION roll-up under a
+-- PERCENTAGE threshold. Only the row-countable definitions declare it: a percentage of a statistic
+-- is not distorted by group size. These are the definition names, which differ from the seed file
+-- names for columnValueLengthsToBeBetween. Guarded on the parameter being absent, like the above.
+UPDATE test_definition
+SET json = jsonb_set(
+    json::jsonb,
+    '{parameterDefinition}',
+    (json->'parameterDefinition')::jsonb || jsonb_build_object(
+        'name', 'minRowsPerDimension',
+        'displayName', 'Minimum Rows per Dimension',
+        'description', 'Under the `ANY_DIMENSION` policy and a `PERCENTAGE` threshold, a dimension with fewer rows than this is still evaluated and reported, but does not fail the test (defaults to 0: every dimension counts).',
+        'dataType', 'INT',
+        'required', false
+    )::jsonb
+)
+WHERE name IN (
+    'columnValueLengthsToBeBetween', 'columnValuesToBeBetween', 'columnValuesToBeInSet',
+    'columnValuesToBeNotInSet', 'columnValuesToBeNotNull', 'columnValuesToBeUnique',
+    'columnValuesToMatchRegex', 'columnValuesToNotMatchRegex'
+  )
+  AND NOT ((json->'parameterDefinition')::jsonb @> '[{"name": "minRowsPerDimension"}]'::jsonb);
+
 -- NUMERIC is a distinct member of the column dataType enum and is what BigQuery, Postgres,
 -- Snowflake and DB2 numeric columns are ingested as, but the numeric system test definitions were
 -- only ever seeded with NUMBER/DECIMAL. The "Add test case" dropdown filters on the column's exact
@@ -469,3 +492,32 @@ SET json = (json::jsonb - 'status') || jsonb_build_object(
   END)
 WHERE jsonSchema = 'contextMemory'
   AND json::jsonb -> 'status' IS NOT NULL;
+
+-- transitive-lineage-closure stores every ancestor/descendant pair, which grows quadratically with
+-- lineage depth, so it now ships disabled. Turn off rows that pre-release builds seeded as enabled.
+UPDATE rdf_inference_rule
+SET json = jsonb_set(json, '{enabled}', 'false'::jsonb),
+    dirty = TRUE,
+    dirtyVersion = dirtyVersion + 1
+WHERE name = 'transitive-lineage-closure'
+  AND systemRule = TRUE
+  AND json ->> 'enabled' = 'true';
+
+-- Table Diff gained the optional parallelQueries parameter. Seeding only covers fresh installs
+-- (initializeEntity returns early when the entity exists), so without this backfill an upgraded
+-- deployment would never offer it in the test case form. A no-op once the parameter is present.
+UPDATE test_definition
+SET json = jsonb_set(
+    json::jsonb,
+    '{parameterDefinition}',
+    (json->'parameterDefinition')::jsonb || jsonb_build_array(jsonb_build_object(
+        'name', 'parallelQueries',
+        'displayName', 'Parallel queries per database',
+        'description', 'How many queries the comparison may run at once against each database (defaults to 1). Both databases are always queried at the same time. A higher value compares large tables faster, but adds load to both databases and holds more rows in memory.',
+        'dataType', 'NUMBER',
+        'required', false
+    ))
+)
+WHERE name = 'tableDiff'
+  AND jsonb_typeof(json->'parameterDefinition') = 'array'
+  AND NOT ((json->'parameterDefinition')::jsonb @> '[{"name": "parallelQueries"}]'::jsonb);

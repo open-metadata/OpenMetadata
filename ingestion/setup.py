@@ -222,7 +222,7 @@ base_requirements = {
     "packaging",  # For version parsing
     "setuptools>=78.1.1",
     "shapely",
-    "collate-data-diff>=0.11.17",  # get_stats_dict(retain_rows=...), DataDiffDuplicateKeyError
+    "collate-data-diff>=0.11.18",  # every pooled connection set to UTC, for parallelQueries above 1
     # Floor on dbt-extractor (transitive via collate-data-diff -> dbt-core).
     # Pre-0.5 versions ship no cp310-manylinux_2_17_aarch64 wheel, forcing a
     # Rust/Cargo source build on ARM runners. 0.5+ uses cp38-abi3 wheels.
@@ -300,6 +300,10 @@ plugins: dict[str, set[str]] = {
         # sqlalchemy-ibmi is pre-installed with --no-deps (SA<2 metadata conflict).
         # Its SA-1.x call sites are adapted at runtime by
         # metadata.ingestion.source.database.db2.utils.patch_ibmi_dialect
+    },
+    "databend": {
+        "databend-driver==0.33.7",
+        "databend-sqlalchemy==0.5.5",
     },
     "databricks": {
         VERSIONS["databricks-sqlalchemy"],
@@ -492,7 +496,7 @@ plugins: dict[str, set[str]] = {
 dev = {
     "ruff~=0.15.12",
     "uvloop==0.21.0",
-    "datamodel-code-generator==0.64.0",
+    "datamodel-code-generator==0.83.0",
     "boto3-stubs",
     "mypy-boto3-glue",
     "google-api-python-client-stubs",
@@ -588,6 +592,7 @@ test = {
     *plugins["datalake-gcs"],
     *plugins["pgspider"],
     *plugins["clickhouse"],
+    *plugins["databend"],
     *plugins["dagster"],
     *plugins["oracle"],
     *plugins["mssql"],

@@ -17,21 +17,20 @@ import {
 } from '@ant-design/icons';
 import {
   Box,
+  Button,
   Divider,
   Owner,
+  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Form, Input, Tooltip } from 'antd';
+import { Form, Input } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, last } from 'lodash';
-import { useCallback, useMemo, useState } from 'react';
+import { MouseEvent, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import {
-  DE_ACTIVE_COLOR,
   GRAYED_OUT_COLOR,
-  ICON_DIMENSION,
   NO_DATA_PLACEHOLDER,
 } from '../../../../../constants/constants';
 import { EMAIL_REG_EX } from '../../../../../constants/regex.constants';
@@ -48,6 +47,7 @@ import {
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
 import { DomainLabel } from '../../../../common/DomainLabel/DomainLabel.component';
+import { EditIconButton } from '../../../../common/IconButtons/EditIconButton';
 import TeamTypeSelect from '../../../../common/TeamTypeSelect/TeamTypeSelect.component';
 import { UserTeamSelectableList } from '../../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { PersonaSelectableList } from '../../../../MyData/Persona/PersonaSelectableList/PersonaSelectableList.component';
@@ -148,6 +148,7 @@ const TeamsInfo = ({
       const updatedData: Team = {
         ...currentTeam,
         profile: {
+          ...currentTeam.profile,
           subscription: isEmpty(data)
             ? undefined
             : {
@@ -190,29 +191,19 @@ const TeamsInfo = ({
             'label.email'
           )}`}</Typography>
           {hasEditPermission && (
-            <Tooltip
+            <EditIconButton
+              newLook
+              data-testid="edit-email"
+              size="small"
               title={t('label.edit-entity', {
                 entity: t('label.email'),
-              })}>
-              <Button
-                className="flex-center teams-info-email-edit-button p-0"
-                data-testid="edit-email"
-                icon={
-                  <EditIcon
-                    color={DE_ACTIVE_COLOR}
-                    {...ICON_DIMENSION}
-                    width="12px"
-                  />
-                }
-                size="small"
-                type="text"
-                onClick={(e) => {
-                  // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
-                  e.stopPropagation();
-                  setIsEmailEdit(true);
-                }}
-              />
-            </Tooltip>
+              })}
+              onClick={(e) => {
+                // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
+                e.stopPropagation();
+                setIsEmailEdit(true);
+              }}
+            />
           )}
         </div>
         {isEmailEdit ? (
@@ -255,21 +246,19 @@ const TeamsInfo = ({
                 gap={1}
                 itemClassName="layout-space-item">
                 <Button
-                  className="h-8 p-x-xss"
+                  color="primary"
                   data-testid="cancel-edit-email"
-                  disabled={isLoading}
-                  size="small"
-                  type="primary"
+                  isDisabled={isLoading}
+                  size="xs"
                   onClick={() => setIsEmailEdit(false)}>
                   <CloseOutlined />
                 </Button>
                 <Button
-                  className="h-8 p-x-xss"
+                  color="primary"
                   data-testid="save-edit-email"
-                  htmlType="submit"
-                  loading={isLoading}
-                  size="small"
-                  type="primary">
+                  isLoading={isLoading}
+                  size="xs"
+                  type="submit">
                   <CheckOutlined />
                 </Button>
               </Box>
@@ -313,29 +302,19 @@ const TeamsInfo = ({
               {`${t('label.type')}`}
             </Typography>
             {hasEditPermission && !showTypeSelector && !isGroupType && (
-              <Tooltip
+              <EditIconButton
+                newLook
+                data-testid="edit-team-type-icon"
+                size="small"
                 title={t('label.edit-entity', {
                   entity: t('label.team-type'),
-                })}>
-                <Button
-                  className="flex-center edit-team-type-icon p-0"
-                  data-testid="edit-team-type-icon"
-                  icon={
-                    <EditIcon
-                      color={DE_ACTIVE_COLOR}
-                      {...ICON_DIMENSION}
-                      width={12}
-                    />
-                  }
-                  size="small"
-                  type="text"
-                  onClick={(e) => {
-                    // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
-                    e.stopPropagation();
-                    setShowTypeSelector(true);
-                  }}
-                />
-              </Tooltip>
+                })}
+                onClick={(e: MouseEvent) => {
+                  // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
+                  e.stopPropagation();
+                  setShowTypeSelector(true);
+                }}
+              />
             )}
           </div>
 
@@ -483,8 +462,10 @@ const TeamsInfo = ({
           weight="medium">
           {t('label.total-user-plural')}
           <Tooltip
-            destroyTooltipOnHide
-            title={t('message.team-distinct-user-description')}>
+            arrow
+            excludeTriggerFromTabOrder
+            title={t('message.team-distinct-user-description')}
+            triggerClassName="tw:inline-flex">
             <InfoCircleOutlined
               className="m-x-xss"
               data-testid="helper-icon"

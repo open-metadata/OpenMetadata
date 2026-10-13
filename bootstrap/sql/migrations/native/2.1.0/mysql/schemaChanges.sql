@@ -167,6 +167,25 @@ CREATE TABLE IF NOT EXISTS rdf_inference_rule (
   KEY rdf_inference_rule_dirty_index (dirty, deleted)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+-- A materialization run clears a rule's dirty flag only if dirtyVersion still holds the value the
+-- run read, so rule edits and graph writes that land during the run stay pending.
+SET @rdf_inference_rule_dirty_version_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'rdf_inference_rule'
+        AND column_name = 'dirtyVersion'
+    ),
+    'SELECT 1',
+    'ALTER TABLE rdf_inference_rule ADD COLUMN dirtyVersion bigint unsigned NOT NULL DEFAULT 0'
+  )
+);
+PREPARE rdf_inference_rule_dirty_version_stmt FROM @rdf_inference_rule_dirty_version_ddl;
+EXECUTE rdf_inference_rule_dirty_version_stmt;
+DEALLOCATE PREPARE rdf_inference_rule_dirty_version_stmt;
+
 ALTER TABLE entity_relationship ADD COLUMN relationshipId varchar(36) DEFAULT NULL;
 
 ALTER TABLE entity_relationship ADD COLUMN relationshipTypeId varchar(36) DEFAULT NULL;
@@ -517,6 +536,27 @@ WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) = 'DataConsumerPolicy'
   AND NOT JSON_CONTAINS(json, JSON_OBJECT('name', 'DataConsumerPolicy-ExecuteSparqlQuery-Rule'), '$.rules')
   AND JSON_CONTAINS(json, JSON_OBJECT('effect', 'allow', 'operations', JSON_ARRAY('ViewAll')), '$.rules');
 
+-- Allow Data Consumer to create context memories by default (ai-platform#1580). Seed data never
+-- updates a policy that already exists, so existing installs get the rule here. A memory is knowledge
+-- about an asset, the same kind of contribution as its description, so the rule is only added while an
+-- allow rule of the policy still lists EditDescription: an install that took that away keeps its Data
+-- Consumers read-only. ADR:2026-10-09-data-consumers-create-context-memories
+UPDATE policy_entity
+SET json = JSON_ARRAY_APPEND(
+    json,
+    '$.rules',
+    JSON_OBJECT(
+        'name', 'DataConsumerPolicy-CreateContextMemory-Rule',
+        'description', 'Allow authenticated users to create context memories, including the ones the AI agent saves from their conversations. The creator owns a new memory and can edit or delete it. An Entity memory is shown to everyone who can view its asset, or to everyone when it has no asset, so remove this rule if only admins should create memories.',
+        'resources', JSON_ARRAY('contextMemory'),
+        'operations', JSON_ARRAY('Create'),
+        'effect', 'allow'
+    )
+)
+WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) = 'DataConsumerPolicy'
+  AND NOT JSON_CONTAINS(json, JSON_OBJECT('name', 'DataConsumerPolicy-CreateContextMemory-Rule'), '$.rules')
+  AND JSON_CONTAINS(json, JSON_OBJECT('effect', 'allow', 'operations', JSON_ARRAY('EditDescription')), '$.rules');
+
 -- SSO Test Login (#28784). A test spans several requests (start, the identity provider's callback,
 -- the result polls, the credentials) that can reach different servers, so its state lives here
 -- rather than in one server's memory. pending_state holds the candidate configuration with its
@@ -534,6 +574,27 @@ CREATE TABLE IF NOT EXISTS sso_test_login_session (
     INDEX idx_sso_test_login_session_admin (admin_principal, credentials_submitted_at),
     INDEX idx_sso_test_login_session_expires (expires_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Settings that exist both in openmetadata.yaml/environment and in this table (security, email,
+-- base URL, SCIM, MCP, app configuration) remember the deployment values they were last
+-- reconciled with. Comparing against that snapshot is how a server start tells a value changed in
+-- the deployment from a value changed in the UI (#31786). NULL until the server first reconciles.
+SET @settings_deployment_snapshot_column_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'openmetadata_settings'
+        AND column_name = 'deployment_snapshot'
+    ),
+    'SELECT 1',
+    'ALTER TABLE openmetadata_settings ADD COLUMN deployment_snapshot JSON NULL'
+  )
+);
+PREPARE settings_deployment_snapshot_column_stmt FROM @settings_deployment_snapshot_column_ddl;
+EXECUTE settings_deployment_snapshot_column_stmt;
+DEALLOCATE PREPARE settings_deployment_snapshot_column_stmt;
 
 -- #33980 shipped this column while the type enum still read Information/Warning/Issue. The enum
 -- has since been renamed so the stored value matches what the UI shows (Notice/Critical). A
@@ -656,6 +717,46 @@ DEALLOCATE PREPARE announcement_status_column_stmt;
 UPDATE announcement_entity
 SET json = JSON_REMOVE(json, '$.status')
 WHERE JSON_EXTRACT(json, '$.status') IS NOT NULL;
+
+-- Reasoning results record the serving dataset they read. Every promotion assigns a new generation,
+-- even when it reuses a physical dataset name, so a result computed before it never passes for
+-- current. Servers assign one on startup to a pointer row created before this column existed.
+SET @rdf_active_dataset_generation_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'rdf_active_dataset'
+        AND column_name = 'generation'
+    ),
+    'SELECT 1',
+    'ALTER TABLE rdf_active_dataset ADD COLUMN generation varchar(36) DEFAULT NULL'
+  )
+);
+PREPARE rdf_active_dataset_generation_stmt FROM @rdf_active_dataset_generation_ddl;
+EXECUTE rdf_active_dataset_generation_stmt;
+DEALLOCATE PREPARE rdf_active_dataset_generation_stmt;
+
+-- Highest live-write queue ID handed out, kept because processed rows are deleted. Writes to the
+-- serving graph made outside the queue take an ID too, so a reasoning result records how far the
+-- projection had got and is current only while no write has been given a higher ID since.
+SET @rdf_projection_health_watermark_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'rdf_projection_health'
+        AND column_name = 'enqueuedWatermark'
+    ),
+    'SELECT 1',
+    'ALTER TABLE rdf_projection_health ADD COLUMN enqueuedWatermark bigint NOT NULL DEFAULT 0'
+  )
+);
+PREPARE rdf_projection_health_watermark_stmt FROM @rdf_projection_health_watermark_ddl;
+EXECUTE rdf_projection_health_watermark_stmt;
+DEALLOCATE PREPARE rdf_projection_health_watermark_stmt;
 
 -- Flowable schema upgrades run after this migration and inherit the database default. Existing
 -- ACT_* tables are aligned to the same collation by FlowableCharsetMigration.

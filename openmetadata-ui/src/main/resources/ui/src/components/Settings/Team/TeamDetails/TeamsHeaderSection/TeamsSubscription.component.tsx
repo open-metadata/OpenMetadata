@@ -11,24 +11,22 @@
  *  limitations under the License.
  */
 
-import { Box, Typography } from '@openmetadata/ui-core-components';
-import { Button, Form, Input, Modal, Select, Tooltip } from 'antd';
+import { Box, SimpleModal, Typography } from '@openmetadata/ui-core-components';
+import { Form, Input, Select } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
-import {
-  DE_ACTIVE_COLOR,
-  ICON_DIMENSION,
-  NO_DATA_PLACEHOLDER,
-} from '../../../../../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../../../../../constants/constants';
 import {
   SUBSCRIPTION_WEBHOOK,
   SUBSCRIPTION_WEBHOOK_OPTIONS,
 } from '../../../../../constants/Teams.constants';
 import { Webhook } from '../../../../../generated/type/profile';
 import { getWebhookIcon } from '../../../../../utils/TeamUtils';
+import { DrawerPopupContainerProvider } from '../../../../common/DrawerPopupContainerProvider/DrawerPopupContainerProvider';
+import { EditIconButton } from '../../../../common/IconButtons/EditIconButton';
+
 import { SubscriptionWebhook, TeamsSubscriptionProps } from '../team.interface';
 import './teams-subscription.less';
 
@@ -147,110 +145,93 @@ const TeamsSubscription = ({
           {`${t('label.subscription')}`}
         </Typography>
         {!editSubscription && !isEmpty(subscription) && hasEditPermission && (
-          <Tooltip
+          <EditIconButton
+            newLook
+            data-testid="edit-team-subscription"
+            size="small"
             title={t('label.edit-entity', {
               entity: t('label.subscription'),
-            })}>
-            <Button
-              className="flex-center teams-info-email-edit-button p-0"
-              data-testid="edit-team-subscription"
-              icon={<EditIcon {...ICON_DIMENSION} width="12px" />}
-              {...ICON_DIMENSION}
-              onClick={(e) => {
-                // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
-                e.stopPropagation();
-                setEditSubscription(true);
-              }}
-            />
-          </Tooltip>
+            })}
+            onClick={(e) => {
+              // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
+              e.stopPropagation();
+              setEditSubscription(true);
+            }}
+          />
         )}
         {isEmpty(subscription) && hasEditPermission && (
-          <Tooltip
+          <EditIconButton
+            newLook
+            data-testid="edit-team-subscription"
+            size="small"
             title={t('label.edit-entity', {
               entity: t('label.subscription'),
-            })}>
-            <Button
-              className="flex-center teams-info-email-edit-button p-0"
-              data-testid="edit-team-subscription"
-              icon={
-                <EditIcon
-                  color={DE_ACTIVE_COLOR}
-                  {...ICON_DIMENSION}
-                  width="12px"
-                />
-              }
-              onClick={(e) => {
-                // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
-                e.stopPropagation();
-                setEditSubscription(true);
-              }}
-            />
-          </Tooltip>
+            })}
+            onClick={(e) => {
+              // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
+              e.stopPropagation();
+              setEditSubscription(true);
+            }}
+          />
         )}
       </div>
 
       {subscriptionRenderElement}
 
       {editSubscription && (
-        // Used Button to stop click propagation event anywhere in the form to parent TeamDetailV1 collapsible panel
-        <Button
-          className="remove-button-default-styling"
-          onClick={(e) => e.stopPropagation()}>
-          <Modal
-            centered
-            open
-            closable={false}
-            confirmLoading={isLoading}
-            maskClosable={false}
-            okButtonProps={{
-              form: 'subscription-form',
-              type: 'primary',
-              htmlType: 'submit',
-            }}
+        // Stops clicks in the form reaching the parent TeamDetailV1 collapsible panel
+        <div role="presentation" onClick={(e) => e.stopPropagation()}>
+          <SimpleModal
+            isOpen
+            isDismissable={false}
+            isOkLoading={isLoading}
             okText={t('label.confirm')}
             title={t('label.add-entity', {
               entity: t('label.subscription'),
             })}
-            onCancel={() => setEditSubscription(false)}>
-            <Form
-              data-testid="subscription-modal"
-              form={form}
-              id="subscription-form"
-              layout="vertical"
-              onFinish={handleSave}>
-              <Form.Item label={t('label.webhook')} name="webhook">
-                <Select
-                  options={subscriptionWebhookTranslated}
-                  placeholder={t('label.select-field', {
-                    field: t('label.condition'),
-                  })}
-                />
-              </Form.Item>
-              <Form.Item
-                label={t('label.endpoint')}
-                name="endpoint"
-                rules={[
-                  {
-                    required: !isWebhookEmpty,
-                    message: t('label.field-required-plural', {
-                      field: t('label.endpoint'),
-                    }),
-                  },
-                  {
-                    type: 'url',
-                    message: t('message.endpoint-should-be-valid'),
-                  },
-                ]}>
-                <Input
-                  disabled={isWebhookEmpty}
-                  placeholder={t('label.enter-entity-value', {
-                    entity: t('label.endpoint'),
-                  })}
-                />
-              </Form.Item>
-            </Form>
-          </Modal>
-        </Button>
+            onCancel={() => setEditSubscription(false)}
+            onOk={form.submit}>
+            <DrawerPopupContainerProvider>
+              <Form
+                data-testid="subscription-modal"
+                form={form}
+                id="subscription-form"
+                layout="vertical"
+                onFinish={handleSave}>
+                <Form.Item label={t('label.webhook')} name="webhook">
+                  <Select
+                    options={subscriptionWebhookTranslated}
+                    placeholder={t('label.select-field', {
+                      field: t('label.condition'),
+                    })}
+                  />
+                </Form.Item>
+                <Form.Item
+                  label={t('label.endpoint')}
+                  name="endpoint"
+                  rules={[
+                    {
+                      required: !isWebhookEmpty,
+                      message: t('label.field-required-plural', {
+                        field: t('label.endpoint'),
+                      }),
+                    },
+                    {
+                      type: 'url',
+                      message: t('message.endpoint-should-be-valid'),
+                    },
+                  ]}>
+                  <Input
+                    disabled={isWebhookEmpty}
+                    placeholder={t('label.enter-entity-value', {
+                      entity: t('label.endpoint'),
+                    })}
+                  />
+                </Form.Item>
+              </Form>
+            </DrawerPopupContainerProvider>
+          </SimpleModal>
+        </div>
       )}
     </Box>
   );

@@ -11,8 +11,14 @@
  *  limitations under the License.
  */
 
-import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
-import { AutoComplete, Button, Card, Form, Input, Select, Spin } from 'antd';
+import {
+  Box,
+  Button,
+  Card,
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { AutoComplete, Form, Input, Select, Spin } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -163,183 +169,196 @@ const AdminPermissionDebugger: React.FC = () => {
     return (
       <Card
         className="m-t-md"
-        headStyle={{
-          backgroundColor: evaluationInfo.allowed ? '#f6ffed' : '#fff1f0',
-          borderBottom: `2px solid ${
-            evaluationInfo.allowed ? '#52c41a' : '#f5222d'
-          }`,
-        }}
-        title={t('label.permission-evaluation-result')}>
-        <Box
-          inline
-          align="stretch"
-          className="layout-space w-full"
-          direction="col"
-          gap={2}
-          itemClassName="layout-space-item">
-          <div className="evaluation-summary">
-            <Typography as="h4">
-              {t('label.decision') + ': '}{' '}
-              <span>{evaluationInfo.finalDecision}</span>
-            </Typography>
-            <Typography>
-              {t('label.user')} <strong>{evaluationInfo.user.name}</strong>{' '}
-              {t('label.is')}{' '}
-              <strong
-                style={{
-                  color: evaluationInfo.allowed ? '#52c41a' : '#f5222d',
-                }}>
-                {evaluationInfo.allowed
-                  ? t('label.allowed')
-                  : t('label.denied')}
-              </strong>{' '}
-              {t('label.to-perform')}{' '}
-              <strong>{evaluationInfo.operation}</strong> {t('label.on')}{' '}
-              <strong>{evaluationInfo.resource}</strong>
-              {evaluationInfo.resourceId && (
-                <span>{` (${evaluationInfo.resourceId})`}</span>
-              )}
-            </Typography>
-          </div>
-
-          {evaluationInfo.summary && (
-            <div className="evaluation-stats">
-              <Box
-                inline
-                align="center"
-                className="layout-space layout-space-horizontal"
-                gap={2}
-                itemClassName="layout-space-item"
-                wrap="wrap">
-                <Typography>
-                  {t('label.policies-evaluated')}:{' '}
-                  {evaluationInfo.summary.totalPoliciesEvaluated}
-                </Typography>
-                <Typography>
-                  {t('label.rules-evaluated')}:{' '}
-                  {evaluationInfo.summary.totalRulesEvaluated}
-                </Typography>
-                <Typography>
-                  {t('label.matching-rule-plural')}:{' '}
-                  {evaluationInfo.summary.matchingRules}
-                </Typography>
-                <Typography>
-                  {t('label.allow-rule-plural')}:{' '}
-                  {evaluationInfo.summary.allowRules}
-                </Typography>
-                <Typography>
-                  {t('label.deny-rule-plural')}:{' '}
-                  {evaluationInfo.summary.denyRules}
-                </Typography>
-                <Typography>
-                  {t('label.time-ms', {
-                    milliseconds: evaluationInfo.summary.evaluationTimeMs,
-                  })}
-                </Typography>
-              </Box>
+        color={evaluationInfo.allowed ? 'success' : 'error'}>
+        <Card.Header title={t('label.permission-evaluation-result')} />
+        <Card.Content>
+          <Box
+            inline
+            align="stretch"
+            className="layout-space w-full"
+            direction="col"
+            gap={2}
+            itemClassName="layout-space-item">
+            <div className="evaluation-summary">
+              <Typography as="h4">
+                {t('label.decision') + ': '}{' '}
+                <Typography>{evaluationInfo.finalDecision}</Typography>
+              </Typography>
+              <Typography>
+                {t('label.user')} <strong>{evaluationInfo.user.name}</strong>{' '}
+                {t('label.is')}{' '}
+                <strong
+                  style={{
+                    color: evaluationInfo.allowed ? '#52c41a' : '#f5222d',
+                  }}>
+                  {evaluationInfo.allowed
+                    ? t('label.allowed')
+                    : t('label.denied')}
+                </strong>{' '}
+                {t('label.to-perform')}{' '}
+                <strong>{evaluationInfo.operation}</strong> {t('label.on')}{' '}
+                <strong>{evaluationInfo.resource}</strong>
+                {evaluationInfo.resourceId && (
+                  <Typography>{` (${evaluationInfo.resourceId})`}</Typography>
+                )}
+              </Typography>
             </div>
-          )}
 
-          <div className="evaluation-steps">
-            <Typography as="h5" size="text-md" weight="semibold">
-              {t('label.evaluation-step-plural')}:
-            </Typography>
-            {evaluationInfo.evaluationSteps.map((step) => (
-              <Card
-                className={`evaluation-step ${
-                  step.matched ? 'matched' : 'not-matched'
-                }`}
-                key={step.stepNumber}
-                size="small"
-                title={
-                  <Box
-                    inline
-                    align="center"
-                    className="layout-space layout-space-horizontal"
-                    gap={2}
-                    itemClassName="layout-space-item">
-                    <Typography>
-                      {t('label.step')} <span>{step.stepNumber}</span>
-                      {' : '}
-                    </Typography>
-                    <Typography weight="semibold">
-                      {step.policy.name}
-                    </Typography>
-                    <Typography>
-                      {' - '} {t('label.rule') + ': '} <span>{step.rule}</span>
-                    </Typography>
-                  </Box>
-                }>
+            {evaluationInfo.summary && (
+              <div className="evaluation-stats">
                 <Box
                   inline
-                  align="stretch"
-                  className="layout-space w-full"
-                  direction="col"
+                  align="center"
+                  className="layout-space layout-space-horizontal"
                   gap={2}
-                  itemClassName="layout-space-item">
+                  itemClassName="layout-space-item"
+                  wrap="wrap">
                   <Typography>
-                    {t('label.source') + ': '} <span>{step.source}</span>{' '}
-                    <span>({step.sourceEntity.name})</span>
+                    {t('label.policies-evaluated')}:{' '}
+                    {evaluationInfo.summary.totalPoliciesEvaluated}
                   </Typography>
                   <Typography>
-                    {t('label.effect')}:{' '}
-                    <strong
-                      style={{
-                        color:
-                          step.effect.toUpperCase() === 'ALLOW'
-                            ? '#52c41a'
-                            : '#f5222d',
-                      }}>
-                      {step.effect}
-                    </strong>
+                    {t('label.rules-evaluated')}:{' '}
+                    {evaluationInfo.summary.totalRulesEvaluated}
                   </Typography>
                   <Typography>
-                    {t('label.matched')}:{' '}
-                    <strong>
-                      {step.matched ? t('label.yes') : t('label.no')}
-                    </strong>
+                    {t('label.matching-rule-plural')}:{' '}
+                    {evaluationInfo.summary.matchingRules}
                   </Typography>
-                  <Typography color="secondary">{step.matchReason}</Typography>
-                  {step.conditionEvaluations.length > 0 && (
-                    <div>
-                      <Typography>{t('label.condition-plural')}:</Typography>
-                      {step.conditionEvaluations.map((cond) => (
-                        <div className="condition-eval" key={cond.condition}>
-                          <Typography>
-                            <code>{cond.condition}</code>
-                          </Typography>
-                          <Typography>
-                            {' → '}
-                            <span>
-                              {cond.result ? t('label.true') : t('label.false')}
-                            </span>
-                          </Typography>
-                          <Typography color="secondary">
-                            <span>(${cond.evaluationDetails})</span>
-                          </Typography>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  <Typography>
+                    {t('label.allow-rule-plural')}:{' '}
+                    {evaluationInfo.summary.allowRules}
+                  </Typography>
+                  <Typography>
+                    {t('label.deny-rule-plural')}:{' '}
+                    {evaluationInfo.summary.denyRules}
+                  </Typography>
+                  <Typography>
+                    {t('label.time-ms', {
+                      milliseconds: evaluationInfo.summary.evaluationTimeMs,
+                    })}
+                  </Typography>
                 </Box>
-              </Card>
-            ))}
-          </div>
+              </div>
+            )}
 
-          {evaluationInfo.summary?.reasonsForDecision && (
-            <div className="decision-reasons">
+            <div className="evaluation-steps">
               <Typography as="h5" size="text-md" weight="semibold">
-                {t('label.reasons-for-decision')}:
+                {t('label.evaluation-step-plural')}:
               </Typography>
-              {evaluationInfo.summary.reasonsForDecision.map((reason) => (
-                <Typography className="decision-reason" key={reason}>
-                  {'• '}
-                  <span>{reason}</span>
-                </Typography>
+              {evaluationInfo.evaluationSteps.map((step) => (
+                <Card
+                  className="evaluation-step"
+                  color={step.matched ? 'success' : 'default'}
+                  key={step.stepNumber}
+                  size="sm">
+                  <Card.Header
+                    title={
+                      <Box
+                        inline
+                        align="center"
+                        className="layout-space layout-space-horizontal"
+                        gap={2}
+                        itemClassName="layout-space-item">
+                        <Typography>
+                          {t('label.step')}{' '}
+                          <Typography>{step.stepNumber}</Typography>
+                          {' : '}
+                        </Typography>
+                        <Typography weight="semibold">
+                          {step.policy.name}
+                        </Typography>
+                        <Typography>
+                          {' - '} {t('label.rule') + ': '}{' '}
+                          <Typography>{step.rule}</Typography>
+                        </Typography>
+                      </Box>
+                    }
+                  />
+                  <Card.Content>
+                    <Box
+                      inline
+                      align="stretch"
+                      className="layout-space w-full"
+                      direction="col"
+                      gap={2}
+                      itemClassName="layout-space-item">
+                      <Typography>
+                        {t('label.source') + ': '}{' '}
+                        <Typography>{step.source}</Typography>{' '}
+                        <Typography>({step.sourceEntity.name})</Typography>
+                      </Typography>
+                      <Typography>
+                        {t('label.effect')}:{' '}
+                        <strong
+                          style={{
+                            color:
+                              step.effect.toUpperCase() === 'ALLOW'
+                                ? '#52c41a'
+                                : '#f5222d',
+                          }}>
+                          {step.effect}
+                        </strong>
+                      </Typography>
+                      <Typography>
+                        {t('label.matched')}:{' '}
+                        <strong>
+                          {step.matched ? t('label.yes') : t('label.no')}
+                        </strong>
+                      </Typography>
+                      <Typography color="secondary">
+                        {step.matchReason}
+                      </Typography>
+                      {step.conditionEvaluations.length > 0 && (
+                        <div>
+                          <Typography>
+                            {t('label.condition-plural')}:
+                          </Typography>
+                          {step.conditionEvaluations.map((cond) => (
+                            <div
+                              className="condition-eval"
+                              key={cond.condition}>
+                              <Typography>
+                                <code>{cond.condition}</code>
+                              </Typography>
+                              <Typography>
+                                {' → '}
+                                <Typography>
+                                  {cond.result
+                                    ? t('label.true')
+                                    : t('label.false')}
+                                </Typography>
+                              </Typography>
+                              <Typography color="secondary">
+                                <Typography>
+                                  (${cond.evaluationDetails})
+                                </Typography>
+                              </Typography>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </Box>
+                  </Card.Content>
+                </Card>
               ))}
             </div>
-          )}
-        </Box>
+
+            {evaluationInfo.summary?.reasonsForDecision && (
+              <div className="decision-reasons">
+                <Typography as="h5" size="text-md" weight="semibold">
+                  {t('label.reasons-for-decision')}:
+                </Typography>
+                {evaluationInfo.summary.reasonsForDecision.map((reason) => (
+                  <Typography className="decision-reason" key={reason}>
+                    {'• '}
+                    <Typography>{reason}</Typography>
+                  </Typography>
+                ))}
+              </div>
+            )}
+          </Box>
+        </Card.Content>
       </Card>
     );
   };
@@ -355,138 +374,145 @@ const AdminPermissionDebugger: React.FC = () => {
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Grid.Item>
         <Grid.Item className="layout-column" span={24}>
-          <Card>
-            <Box
-              inline
-              align="stretch"
-              className="layout-space w-full"
-              direction="col"
-              gap={4}
-              itemClassName="layout-space-item">
-              <div>
-                <Typography as="h5" size="text-md" weight="semibold">
-                  {t('label.select-user-to-debug-permissions')}
-                </Typography>
-              </div>
-
-              <AutoComplete
-                className="w-full"
-                notFoundContent={searchingUsers ? <Spin size="small" /> : null}
-                options={userOptions}
-                placeholder={t('label.search-entity', {
-                  entity: t('label.user'),
-                })}
-                style={{ maxWidth: 400 }}
-                onSearch={searchUsers}
-                onSelect={handleUserSelect}
-              />
-
-              {selectedUsername && (
-                <>
-                  <Typography color="secondary">
-                    {t('label.selected-entity', {
-                      entity: t('label.user-lowercase'),
-                    })}
-                    {': '}
-                    <strong>
-                      <span>{selectedUsername}</span>
-                    </strong>
+          <Card className="m-b-md">
+            <Card.Content>
+              <Box
+                inline
+                align="stretch"
+                className="layout-space w-full"
+                direction="col"
+                gap={4}
+                itemClassName="layout-space-item">
+                <div>
+                  <Typography as="h5" size="text-md" weight="semibold">
+                    {t('label.select-user-to-debug-permissions')}
                   </Typography>
-                </>
-              )}
-            </Box>
+                </div>
+
+                <AutoComplete
+                  className="w-full"
+                  notFoundContent={
+                    searchingUsers ? <Spin size="small" /> : null
+                  }
+                  options={userOptions}
+                  placeholder={t('label.search-entity', {
+                    entity: t('label.user'),
+                  })}
+                  style={{ maxWidth: 400 }}
+                  onSearch={searchUsers}
+                  onSelect={handleUserSelect}
+                />
+
+                {selectedUsername && (
+                  <>
+                    <Typography color="secondary">
+                      {t('label.selected-entity', {
+                        entity: t('label.user-lowercase'),
+                      })}
+                      {': '}
+                      <strong>
+                        <Typography>{selectedUsername}</Typography>
+                      </strong>
+                    </Typography>
+                  </>
+                )}
+              </Box>
+            </Card.Content>
           </Card>
 
-          <Card className="m-b-md" title={t('label.evaluate-permission')}>
-            {!selectedUsername ? (
-              <Typography color="secondary">
-                {t('message.select-user-first')}
-              </Typography>
-            ) : (
-              <Form form={form} layout="vertical" onFinish={handleEvaluate}>
-                <Box
-                  inline
-                  align="stretch"
-                  className="layout-space w-full"
-                  direction="col"
-                  gap={2}
-                  itemClassName="layout-space-item">
+          <Card className="m-b-md">
+            <Card.Header title={t('label.evaluate-permission')} />
+            <Card.Content>
+              {!selectedUsername ? (
+                <Typography color="secondary">
+                  {t('message.select-user-first')}
+                </Typography>
+              ) : (
+                <Form form={form} layout="vertical" onFinish={handleEvaluate}>
                   <Box
                     inline
-                    align="center"
-                    className="layout-space layout-space-horizontal"
+                    align="stretch"
+                    className="layout-space w-full"
+                    direction="col"
                     gap={2}
                     itemClassName="layout-space-item">
-                    <Form.Item
-                      label={t('label.resource')}
-                      name="resource"
-                      rules={[
-                        {
-                          required: true,
-                          message: t('label.field-required', {
-                            field: t('label.resource'),
-                          }),
-                        },
-                      ]}>
-                      <Select
-                        showSearch
-                        placeholder={t('label.select-entity', {
-                          entity: t('label.resource'),
-                        })}
-                        style={{ width: 200 }}>
-                        {PERMISSION_RESOURCES.map((resource) => (
-                          <Option key={resource} value={resource}>
-                            {resource}
-                          </Option>
-                        ))}
-                      </Select>
-                    </Form.Item>
+                    <Box
+                      inline
+                      align="center"
+                      className="layout-space layout-space-horizontal"
+                      gap={2}
+                      itemClassName="layout-space-item">
+                      <Form.Item
+                        label={t('label.resource')}
+                        name="resource"
+                        rules={[
+                          {
+                            required: true,
+                            message: t('label.field-required', {
+                              field: t('label.resource'),
+                            }),
+                          },
+                        ]}>
+                        <Select
+                          showSearch
+                          placeholder={t('label.select-entity', {
+                            entity: t('label.resource'),
+                          })}
+                          style={{ width: 200 }}>
+                          {PERMISSION_RESOURCES.map((resource) => (
+                            <Option key={resource} value={resource}>
+                              {resource}
+                            </Option>
+                          ))}
+                        </Select>
+                      </Form.Item>
 
-                    <Form.Item
-                      label={t('label.operation')}
-                      name="operation"
-                      rules={[
-                        {
-                          required: true,
-                          message: t('label.field-required', {
-                            field: t('label.operation'),
-                          }),
-                        },
-                      ]}>
-                      <Select
-                        showArrow
-                        placeholder={t('label.select-entity', {
-                          entity: t('label.operation'),
-                        })}
-                        style={{ width: 200 }}>
-                        {PERMISSION_OPERATIONS.map((operation) => (
-                          <Option key={operation} value={operation}>
-                            {operation}
-                          </Option>
-                        ))}
-                      </Select>
-                    </Form.Item>
+                      <Form.Item
+                        label={t('label.operation')}
+                        name="operation"
+                        rules={[
+                          {
+                            required: true,
+                            message: t('label.field-required', {
+                              field: t('label.operation'),
+                            }),
+                          },
+                        ]}>
+                        <Select
+                          showArrow
+                          placeholder={t('label.select-entity', {
+                            entity: t('label.operation'),
+                          })}
+                          style={{ width: 200 }}>
+                          {PERMISSION_OPERATIONS.map((operation) => (
+                            <Option key={operation} value={operation}>
+                              {operation}
+                            </Option>
+                          ))}
+                        </Select>
+                      </Form.Item>
 
-                    <Form.Item
-                      label={t('label.resource-fqn-or-id') + ' (Optional)'}
-                      name="resourceId">
-                      <Input
-                        placeholder={t('label.enter-resource-fqn-or-id')}
-                      />
+                      <Form.Item
+                        label={t('label.resource-fqn-or-id') + ' (Optional)'}
+                        name="resourceId">
+                        <Input
+                          placeholder={t('label.enter-resource-fqn-or-id')}
+                        />
+                      </Form.Item>
+                    </Box>
+
+                    <Form.Item>
+                      <Button
+                        color="primary"
+                        isLoading={loadingEvaluation}
+                        type="submit">
+                        {t('label.evaluate')}
+                      </Button>
                     </Form.Item>
                   </Box>
-
-                  <Form.Item>
-                    <Button
-                      htmlType="submit"
-                      loading={loadingEvaluation}
-                      type="primary">
-                      {t('label.evaluate')}
-                    </Button>
-                  </Form.Item>
-                </Box>
-              </Form>
-            )}
+                </Form>
+              )}
+            </Card.Content>
           </Card>
 
           {renderEvaluationResult()}
@@ -498,11 +524,16 @@ const AdminPermissionDebugger: React.FC = () => {
           )}
 
           {permissionInfo && !loadingPermissions && (
-            <Card title={`${t('label.permissions-for')} ${selectedUsername}`}>
-              <UserPermissions
-                isLoggedInUser={false}
-                username={selectedUsername}
+            <Card className="m-b-md">
+              <Card.Header
+                title={`${t('label.permissions-for')} ${selectedUsername}`}
               />
+              <Card.Content>
+                <UserPermissions
+                  isLoggedInUser={false}
+                  username={selectedUsername}
+                />
+              </Card.Content>
             </Card>
           )}
         </Grid.Item>

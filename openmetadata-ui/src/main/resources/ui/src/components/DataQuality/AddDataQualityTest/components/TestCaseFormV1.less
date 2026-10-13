@@ -56,15 +56,6 @@
     }
   }
 
-  .ant-btn-icon-only.ant-btn-sm {
-    &.list-add-btn {
-      height: 24px;
-      width: 24px;
-      padding: 0;
-      border-radius: var(--om-radius-sm);
-    }
-  }
-
   .form-switch-container {
     .ant-form-item-control-input {
       align-items: baseline;
@@ -72,14 +63,7 @@
   }
 
   .form-card-section {
-    background-color: @grey-26;
-    border-radius: @border-rad-sm;
     margin-bottom: @size-mlg;
-    border: none;
-
-    .ant-card-body {
-      padding: @size-md;
-    }
 
     .ant-form-item {
       margin-bottom: @size-lg;
@@ -99,14 +83,6 @@
       .card-title-description {
         color: @grey-600;
         margin-bottom: @margin-mlg;
-      }
-    }
-
-    .schedule-interval {
-      .cron-expression-card {
-        .ant-card-body {
-          padding: @padding-xs;
-        }
       }
     }
   }
@@ -261,18 +237,8 @@
   }
 }
 
-// RHF bodies render plain divs instead of antd <Card>, so the
-// .ant-card-body inner padding never applies — pad the section itself.
 .test-case-form-v1,
 .bundle-suite-form {
-  .form-card-section:not(.ant-card) {
-    padding: @size-md;
-
-    > * + * {
-      margin-top: @size-lg;
-    }
-  }
-
   // Overlay the Custom Query action on the Select Test Type label row for both
   // the classic drawer and the AI modal, like the legacy absolute header row.
   // In custom query mode the container holds its own Test Type label and must

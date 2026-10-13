@@ -175,7 +175,7 @@ function FilesTable({
     if (searchValue) {
       searchFiles(searchValue, paging.currentPage);
     }
-  }, [searchValue, paging?.currentPage, showDeleted]);
+  }, [searchValue, paging?.currentPage, paging?.pageSize, showDeleted]);
 
   return (
     <Table

@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Divider, SelectPopover } from '@openmetadata/ui-core-components';
-import { Button, Input, Select, Tooltip } from 'antd';
+import {
+  ButtonUtility,
+  Divider,
+  SelectPopover,
+  Tooltip,
+} from '@openmetadata/ui-core-components';
+import { Input, Select } from 'antd';
 import classNames from 'classnames';
 import { debounce, isEmpty, isString } from 'lodash';
 import Qs from 'qs';
@@ -219,24 +224,17 @@ export const GlobalSearchBar = () => {
     return (
       <>
         <Tooltip
+          arrow
           title={
             isNLPActive
               ? t('message.natural-language-search-active')
               : t('label.use-natural-language-search')
           }>
-          <Button
-            className={classNames('nav-search-button', 'w-6', 'h-6', {
-              active: isNLPActive,
-            })}
+          <ButtonUtility
+            color="tertiary"
             data-testid="nlp-suggestions-button"
-            icon={
-              <Icon
-                component={
-                  isNLPActive ? IconSuggestionsActive : IconSuggestionsBlue
-                }
-              />
-            }
-            type="text"
+            icon={isNLPActive ? IconSuggestionsActive : IconSuggestionsBlue}
+            size="xs"
             onClick={() => setNLPActive(!isNLPActive)}
           />
         </Tooltip>

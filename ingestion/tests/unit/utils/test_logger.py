@@ -16,7 +16,13 @@ from copy import deepcopy
 import pytest
 
 from metadata.cli.ingest import run_ingest
-from metadata.utils.logger import redacted_config, sanitize_url_credentials
+from metadata.utils.logger import (
+    DATA_DIFF_PROGRESS_LOGGER,
+    METADATA_LOGGER,
+    redacted_config,
+    sanitize_url_credentials,
+    set_loggers_level,
+)
 
 
 def test_redacted_config_masks_nested_credentials_without_mutating_input():
@@ -122,3 +128,23 @@ def test_ingest_debug_config_redacts_credentials_before_workflow_validation(tmp_
     assert "demo_service" in message
     assert "http://localhost:8585/api" in message
     assert json.loads(config_path.read_text(encoding="utf-8")) == config
+
+
+@pytest.fixture
+def restore_logger_levels():
+    levels = {name: logging.getLogger(name).level for name in (METADATA_LOGGER, DATA_DIFF_PROGRESS_LOGGER)}
+    yield
+    for name, level in levels.items():
+        logging.getLogger(name).setLevel(level)
+
+
+@pytest.mark.parametrize("level, shown", [("DEBUG", True), ("INFO", True), ("WARN", False)])
+def test_table_diff_progress_follows_the_workflow_log_level(restore_logger_levels, caplog, level, shown):
+    """A long Table Diff shows its progress, which collate-data-diff logs at INFO on a logger of its own"""
+    set_loggers_level(level)
+
+    logging.getLogger(DATA_DIFF_PROGRESS_LOGGER).info(
+        "Diffing a <> b: 1,000 rows compared in 0:01:00, 0 differing so far"
+    )
+
+    assert bool(caplog.records) is shown

@@ -43,6 +43,7 @@ import org.openmetadata.schema.type.PredefinedRecognizer;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Recognizer;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
@@ -50,6 +51,9 @@ import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.cache.CacheBundle;
+import org.openmetadata.service.resources.settings.SettingsCache;
 
 /**
  * Integration tests for Tag entity operations.
@@ -2155,6 +2159,14 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     OpenMetadataClient client = SdkClients.adminClient();
     Tag tag = createTagForBulk(ns, "dr_false");
     Table table = createTableTaggedWith(ns, tag, "dr_false");
+    var tagCache = CacheBundle.getCachedTagUsageDao();
+    if (tagCache != null) {
+      tagCache.putTags(
+          Entity.TABLE,
+          table.getId(),
+          JsonUtils.pojoToJson(table.getTags()),
+          SettingsCache.isGlossaryTagPropagationEnabled());
+    }
 
     AddTagToAssetsRequest realRemove =
         new AddTagToAssetsRequest()
@@ -2193,6 +2205,36 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
         .atMost(Duration.ofSeconds(45))
         .during(Duration.ofSeconds(20))
         .until(() -> !tableHasTag(client, tableId, tagFqn));
+  }
+
+  @Test
+  void test_bulkAddTagToAssets_dryRunFalse_updatesCachedTable(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Tag tag = createTagForBulk(ns, "add_cached");
+    Table table = createBareTable(ns, "add_cached");
+    var tagCache = CacheBundle.getCachedTagUsageDao();
+    if (tagCache != null) {
+      tagCache.putTags(
+          Entity.TABLE,
+          table.getId(),
+          JsonUtils.pojoToJson(List.of()),
+          SettingsCache.isGlossaryTagPropagationEnabled());
+    }
+
+    AddTagToAssetsRequest request =
+        new AddTagToAssetsRequest()
+            .withDryRun(false)
+            .withAssets(List.of(table.getEntityReference()));
+    client
+        .getHttpClient()
+        .execute(HttpMethod.PUT, "/v1/tags/" + tag.getId() + "/assets/add", request, Void.class);
+
+    Awaitility.await("Tag should be applied to asset when dryRun=false")
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .atMost(Duration.ofSeconds(45))
+        .untilAsserted(
+            () -> assertTrue(tableHasTag(client, table.getId(), tag.getFullyQualifiedName())));
   }
 
   @Test

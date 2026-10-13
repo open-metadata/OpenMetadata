@@ -11,8 +11,16 @@
  *  limitations under the License.
  */
 
-import { Box, Grid, Toggle } from '@openmetadata/ui-core-components';
-import { Button, Modal, Tooltip } from 'antd';
+import {
+  Box,
+  Button,
+  ButtonUtility,
+  Grid,
+  SimpleModal,
+  Toggle,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -330,6 +338,7 @@ const UserListPageV1 = () => {
             itemClassName="layout-space-item">
             {showRestore && (
               <Tooltip
+                arrow
                 placement={isAdminUser ? 'bottom' : 'left'}
                 title={
                   isAdminUser
@@ -338,11 +347,12 @@ const UserListPageV1 = () => {
                       })
                     : t(ADMIN_ONLY_ACTION)
                 }>
-                <Button
+                <ButtonUtility
+                  color="tertiary"
                   data-testid={`restore-user-btn-${record.name}`}
-                  disabled={!isAdminUser}
-                  icon={<IconRestore name={t('label.restore')} width="16px" />}
-                  type="text"
+                  icon={IconRestore}
+                  isDisabled={!isAdminUser}
+                  size="sm"
                   onClick={() => {
                     setSelectedUser(record);
                     setShowReactiveModal(true);
@@ -351,6 +361,7 @@ const UserListPageV1 = () => {
               </Tooltip>
             )}
             <Tooltip
+              arrow
               placement={isAdminUser ? 'bottom' : 'left'}
               title={
                 isAdminUser
@@ -359,17 +370,12 @@ const UserListPageV1 = () => {
                     })
                   : t(ADMIN_ONLY_ACTION)
               }>
-              <Button
-                disabled={!isAdminUser}
-                icon={
-                  <IconDelete
-                    data-testid={`delete-user-btn-${record.name}`}
-                    name={t('label.delete')}
-                    width="16px"
-                  />
-                }
-                size="small"
-                type="text"
+              <ButtonUtility
+                color="tertiary"
+                data-testid={`delete-user-btn-${record.name}`}
+                icon={IconDelete}
+                isDisabled={!isAdminUser}
+                size="xs"
                 onClick={() => {
                   setSelectedUser(record);
                   setShowDeleteModal(true);
@@ -518,8 +524,8 @@ const UserListPageV1 = () => {
             {isAdminUser && (
               <LimitWrapper resource="user">
                 <Button
+                  color="primary"
                   data-testid="add-user"
-                  type="primary"
                   onClick={handleAddNewUser}>
                   {t('label.add-entity', {
                     entity: t(`label.${isAdminPage ? 'admin' : 'user'}`),
@@ -553,7 +559,7 @@ const UserListPageV1 = () => {
                   isSelected={isDeleted}
                   onChange={handleShowDeletedUserChange}
                 />
-                <span className="m-l-xs">{t('label.deleted')}</span>
+                <Typography className="m-l-xs">{t('label.deleted')}</Typography>
               </span>
             }
             loading={isDataLoading}
@@ -567,16 +573,12 @@ const UserListPageV1 = () => {
           />
         </Grid.Item>
 
-        <Modal
-          cancelButtonProps={{
-            type: 'link',
-          }}
-          className="reactive-modal"
-          closable={false}
-          confirmLoading={isLoading}
-          maskClosable={false}
+        <SimpleModal
+          data-testid="restore-user-modal"
+          isDismissable={false}
+          isOkLoading={isLoading}
+          isOpen={showReactiveModal}
           okText={t('label.restore')}
-          open={showReactiveModal}
           title={t('label.restore-entity', {
             entity: t('label.user'),
           })}
@@ -590,7 +592,7 @@ const UserListPageV1 = () => {
               entity: getEntityName(selectedUser),
             })}
           </p>
-        </Modal>
+        </SimpleModal>
 
         <DeleteEntityModal
           afterDeleteAction={async () => {
