@@ -138,7 +138,9 @@ jest.mock('../../../utils/SearchClassBase', () => ({
 
 jest.mock('../../../utils/EntityUtilClassBase', () => ({
   __esModule: true,
-  default: { getEntityLink: () => '/table/service.table' },
+  default: {
+    getEntityLink: jest.fn((type: string, fqn: string) => `/${type}/${fqn}`),
+  },
 }));
 
 const conversation: Conversation = {
@@ -232,15 +234,32 @@ describe('ActivityFeedCardNew', () => {
     );
 
     // The hover reveal in activity-feed-actions.less is written as
-    // `.activity-feed-card-new:hover > .ant-card-body > .feed-actions`. antd's
-    // Card puts its children inside .ant-card-body, so that middle step is
-    // load-bearing: drop it and the selector stops matching, leaving the
-    // reply/resolve/edit/delete bar hidden from mouse users.
+    // `.activity-feed-card-new:hover > .activity-feed-card-new-body >
+    // .feed-actions`, so that middle step is load-bearing: drop it and the
+    // selector stops matching, leaving the reply/resolve/edit/delete bar
+    // hidden from mouse users.
     const actions = screen.getByTestId('feed-actions');
     const body = actions.parentElement;
 
-    expect(body).toHaveClass('ant-card-body');
+    expect(body).toHaveClass('activity-feed-card-new-body');
     expect(body?.parentElement).toHaveClass('activity-feed-card-new');
+  });
+
+  it('falls back to the activity entity when the event carries no about link', () => {
+    // `about` is optional on an activity event, and the EntityLink accessors
+    // answer '' for a missing link rather than undefined. Reading them with
+    // `??` would keep that '' and never reach `activity.entity`, leaving the
+    // header pointing at `//` with no entity name.
+    render(
+      <MemoryRouter>
+        <ActivityFeedCardNew isOpenInDrawer activity={activity} />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId('entity-link')).toHaveAttribute(
+      'href',
+      '/table/service.table'
+    );
   });
 
   it('renders activity replies in the open side panel', () => {

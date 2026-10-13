@@ -31,7 +31,6 @@ import {
   redirectToHomePage,
   toastNotification,
   uuid,
-  waitForAntdPopupToSettle,
   waitForToastToDisappear,
 } from '../../../utils/common';
 import {
@@ -270,9 +269,11 @@ test.describe(
           .click();
         await page.click(`[data-testid="edit-${NEW_TABLE_TEST_CASE.name}"]`);
 
-        await expect(page.getByTestId('form-heading')).toHaveText(
-          `Edit ${NEW_TABLE_TEST_CASE.name}`
-        );
+        await expect(
+          page
+            .getByRole('dialog')
+            .getByText(`Edit ${NEW_TABLE_TEST_CASE.name}`, { exact: true })
+        ).toBeVisible();
 
         await page.locator('#testCaseFormV1_params_columnName').clear();
         await page.fill('#testCaseFormV1_params_columnName', 'new_column_name');
@@ -410,7 +411,6 @@ test.describe(
         await page
           .getByRole('option')
           .filter({ hasText: NEW_COLUMN_TEST_CASE.column })
-          .first()
           .click();
         await testDefinitionResponse;
 
@@ -721,7 +721,9 @@ test.describe(
           '/api/v1/dataQuality/testCases/search/list?*'
         );
         await sidebarClick(page, SidebarItem.DATA_QUALITY);
-        await page.click('[data-testid="test-cases"]');
+        await page
+          .getByRole('tab', { name: 'Test Cases', exact: true })
+          .click();
         await getTestCase;
         const searchTestCaseResponse = page.waitForResponse(
           `/api/v1/dataQuality/testCases/search/list?*q=*${testCaseName}*`
@@ -737,7 +739,11 @@ test.describe(
 
         await page.click(`[data-testid="edit-${testCaseName}"]`);
 
-        await expect(page.getByTestId('form-heading')).toBeVisible();
+        await expect(
+          page
+            .getByRole('dialog')
+            .filter({ has: page.getByTestId('test-case-form-v1') })
+        ).toBeVisible();
 
         await expect(page.locator('[id="root\\/displayName"]')).toHaveValue(
           'Table test case display name'
@@ -795,7 +801,7 @@ test.describe(
           const banner = await verifyTestCaseLastRunBanner(page, 'not-run-yet');
 
           await expect(banners).toHaveCount(1);
-          await expect(banner).toContainText('Last Run Not run yet');
+          await expect(banner).toContainText('Last run Not run yet');
           await expect(banner).toContainText(
             'This test has not run yet. Add it to a pipeline to start collecting results.'
           );
@@ -844,7 +850,7 @@ test.describe(
 
             await expect(banners).toHaveCount(1);
             await expect(banner).toContainText(
-              `Last Run ${runResult.testCaseStatus}`
+              `Last run ${runResult.testCaseStatus}`
             );
             await expect(banner).toContainText(runResult.result);
 
@@ -891,9 +897,9 @@ test.describe(
         await failedRunTable.addTestCaseResult(apiContext, testCaseFqn, {
           result: failureResult,
           testCaseStatus: 'Failed',
-          testResultValue: [
-            { name: 'minValue', predictedValue: '1', value: '0' },
-          ],
+          // Named as ingestion names it, not after a parameter, so the banner
+          // must read the expectation from the test's bounds.
+          testResultValue: [{ name: 'rowCount', value: '0' }],
           timestamp: failedTimestamp,
         });
         await waitForIncidentToBeIndexed(
@@ -923,7 +929,7 @@ test.describe(
         ).toBeVisible();
         await expect(
           banner.getByTestId('test-case-last-run-prefix')
-        ).toHaveText('Last Run');
+        ).toHaveText('Last run');
         await expect(
           banner.getByTestId('test-case-last-run-status')
         ).toHaveText('Failed');
@@ -934,10 +940,13 @@ test.describe(
           banner.getByTestId('test-case-result-expected')
         ).toContainText('Result / Expected');
         await expect(banner.getByTestId('test-case-result-value')).toHaveText(
-          '0 / 1'
+          '0 / 1 – 100'
         );
         await expect(banner.getByTestId('test-case-last-run-time')).toHaveText(
-          customFormatDateTime(failedTimestamp, 'MMM d, yyyy, h:mm a')
+          customFormatDateTime(
+            failedTimestamp,
+            "MMM dd, yyyy, hh:mm a '(UTC'ZZ')'"
+          )
         );
         await expect(banner.getByTestId('test-case-next-run')).toContainText(
           'Next · in '
@@ -953,19 +962,21 @@ test.describe(
         await expect(incident.getByTestId('test-case-incident-id')).toHaveText(
           /^INC-\d+$/
         );
+        // What the test checks, and on which table, not the task's name. The
+        // generated table name clamps the title, whose "more" toggle sits in
+        // the same element.
         await expect(
           incident.getByTestId('test-case-incident-description')
-        ).toContainText('Request TestCase Failure Resolution for');
-        await expect(
-          incident.getByTestId('test-case-incident-description')
-        ).toContainText(testCase.name);
+        ).toContainText(
+          `Row count vs. allowed range 1–100 on ${failedRunTable.entity.name}`
+        );
         await expect(
           incident.getByTestId('test-case-incident-status')
         ).toHaveText('New');
 
         const viewIncidentButton = incident.getByTestId('view-incident-button');
 
-        await expect(viewIncidentButton).toHaveText('View Incident');
+        await expect(viewIncidentButton).toHaveText('View incident');
         await viewIncidentButton.click();
         await expect(page).toHaveURL(/\/issues$/);
         await expect(page.getByTestId('issue-tab-container')).toBeVisible();
@@ -1096,13 +1107,13 @@ test.describe(
 
         // get all the filters
         await page.click('[data-testid="advanced-filter"]');
-        await page.click('[value="testPlatforms"]');
+        await page.getByTestId('advanced-filter-option-testPlatforms').click();
         await page.click('[data-testid="advanced-filter"]');
-        await page.click('[value="lastRunRange"]');
+        await page.getByTestId('advanced-filter-option-lastRunRange').click();
         await page.click('[data-testid="advanced-filter"]');
-        await page.click('[value="serviceName"]');
+        await page.getByTestId('advanced-filter-option-serviceName').click();
         await page.click('[data-testid="advanced-filter"]');
-        await page.click('[value="tier"]');
+        await page.getByTestId('advanced-filter-option-tier').click();
 
         // Test case search filter
         const searchTestCaseResponse = page.waitForResponse(
@@ -1184,7 +1195,7 @@ test.describe(
         const getTestCase = page.waitForResponse(
           '/api/v1/dataQuality/testCases/search/list?*'
         );
-        await page.click('[value="serviceName"]');
+        await page.getByTestId('advanced-filter-option-serviceName').click();
         await getTestCase;
 
         // Test case filter by Tags
@@ -1218,7 +1229,7 @@ test.describe(
         const getTestCaseWithoutTag = page.waitForResponse(
           '/api/v1/dataQuality/testCases/search/list?*'
         );
-        await page.click('[value="tags"]');
+        await page.getByTestId('advanced-filter-option-tags').click();
         await getTestCaseWithoutTag;
 
         // Test case filter by Tier
@@ -1239,7 +1250,7 @@ test.describe(
         const getTestCaseWithoutTier = page.waitForResponse(
           '/api/v1/dataQuality/testCases/search/list?*'
         );
-        await page.click('[value="tier"]');
+        await page.getByTestId('advanced-filter-option-tier').click();
         await getTestCaseWithoutTier;
 
         // Test case filter by table name
@@ -1373,7 +1384,7 @@ test.describe(
         expect(page.url()).toBe(url);
 
         await page.getByTestId('advanced-filter').click();
-        await page.click('[value="testPlatforms"]');
+        await page.getByTestId('advanced-filter-option-testPlatforms').click();
 
         await expect(
           page.getByTestId('platform-select-filter')
@@ -1381,7 +1392,9 @@ test.describe(
 
         await page.reload({ waitUntil: 'domcontentloaded' });
 
-        await expect(page.locator('[value="tier"]')).not.toBeVisible();
+        await expect(
+          page.getByTestId('advanced-filter-option-tier')
+        ).not.toBeVisible();
 
         // Apply domain globally
         await page.getByTestId('domain-dropdown').click();
@@ -1573,11 +1586,8 @@ test.describe(
 
           await expect(pageSizeDropdown).toBeVisible();
 
-          // Ant Dropdown opens on hover, so a re-render that shifts the footer out
-          // from under the pointer leaves the menu closed for good.
-          await pageSizeDropdown.hover();
+          await pageSizeDropdown.click();
           await expect(pageSizeMenu).toBeVisible();
-          await waitForAntdPopupToSettle(page);
 
           await expect(pageSizeMenu.getByRole('menuitem')).toHaveCount(3);
         });

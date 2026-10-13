@@ -193,7 +193,7 @@ const AnnouncementCardV1Content = ({
 
   return (
     <div className={classNames('announcement-card-v1-content', className)}>
-      <div className="announcement-header-container">
+      <div className="announcement-header-container tw:bg-surface">
         <div
           className={classNames(
             'announcement-title-section',
@@ -225,7 +225,7 @@ const AnnouncementCardV1Content = ({
       {description && (
         <RichTextEditorPreviewerV1
           className={classNames(
-            'announcement-description',
+            'announcement-description tw:text-tertiary',
             variantConfig.description
           )}
           data-testid="announcement-description"

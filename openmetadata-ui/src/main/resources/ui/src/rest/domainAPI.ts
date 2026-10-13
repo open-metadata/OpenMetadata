@@ -130,21 +130,6 @@ export const removeAssetsFromDomain = async (
   return response.data;
 };
 
-export const listDomainHierarchy = async (
-  params?: ListParams,
-  signal?: AbortSignal
-) => {
-  const response = await APIClient.get<PagingResponse<Domain[]>>(
-    `${BASE_URL}/hierarchy`,
-    {
-      params,
-      signal,
-    }
-  );
-
-  return response.data;
-};
-
 export const getDomainChildrenPaginated = async (
   parentFQN?: string,
   pageSize = 15,

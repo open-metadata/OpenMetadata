@@ -78,6 +78,12 @@ const successfulEvent = {
   ],
 };
 
+const emptyDataFailedEvent = {
+  status: Status.Failed,
+  timestamp: 1700000000001,
+  data: [],
+};
+
 describe('AlertAiRecentEventsTab', () => {
   beforeEach(() => {
     mockGetEvents.mockReset();
@@ -208,5 +214,47 @@ describe('AlertAiRecentEventsTab', () => {
         params: { limit: 15, paginationOffset: 15 },
       })
     );
+  });
+
+  it('renders an unreadable (empty-data) row without crashing the page', async () => {
+    mockGetEvents.mockResolvedValue({
+      data: [successfulEvent, emptyDataFailedEvent],
+      paging: { total: 2 },
+    });
+
+    render(<AlertAiRecentEventsTab alertDetails={alertDetails} />);
+
+    // The readable row still renders its header.
+    expect(
+      await screen.findByTestId('event-collapse-event-1')
+    ).toBeInTheDocument();
+
+    // The unreadable row degrades gracefully: a header keyed by the
+    // fallback id `unreadable-<status>-<timestamp>`, with no detail fields.
+    expect(
+      screen.getByTestId('event-collapse-unreadable-failed-1700000000001')
+    ).toBeInTheDocument();
+
+    // The header shows a translated label, not the synthetic fallback id.
+    expect(screen.getByText('label.unreadable-event')).toBeInTheDocument();
+    expect(
+      screen.queryByText('unreadable-failed-1700000000001')
+    ).not.toBeInTheDocument();
+
+    // No global 500 fallback is rendered.
+    expect(screen.queryByText('500')).not.toBeInTheDocument();
+
+    // Expanding the unreadable row shows no event-data fields.
+    fireEvent.click(
+      await screen.findByTestId(
+        'event-collapse-unreadable-failed-1700000000001'
+      )
+    );
+
+    expect(
+      screen
+        .getByTestId('event-details-unreadable-failed-1700000000001')
+        .querySelector('[data-testid="event-data-entityId"]')
+    ).not.toBeInTheDocument();
   });
 });

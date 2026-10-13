@@ -63,24 +63,12 @@ button {
   border-color: @grey-15;
 }
 
-.ant-btn-background-ghost.ant-btn-primary.hover-button:hover {
-  background: @primary-color;
-  color: var(--tw-color-text-white);
-}
-
-.ant-btn-background-ghost.hover-button.ant-btn-primary[disabled]:hover {
-  background: initial;
-  color: initial;
-  opacity: 0.45;
-}
-
 .ant-btn-link-custom,
 .ant-btn-link-custom:hover {
   color: @primary-color;
 }
 
-.ant-dropdown-button.ant-btn-primary-dropdown > .ant-btn-primary,
-.ant-btn-primary-custom {
+.ant-dropdown-button.ant-btn-primary-dropdown > .ant-btn-primary {
   background: @primary-color;
   color: var(--om-color-white);
   border-color: @primary-color;
@@ -94,9 +82,7 @@ button {
   border-left-color: var(--om-color-white);
 }
 
-.ant-btn-primary-custom:hover,
-.ant-dropdown-button.ant-btn-primary-dropdown > .ant-btn-primary,
-.ant-btn-primary-custom span:hover {
+.ant-dropdown-button.ant-btn-primary-dropdown > .ant-btn-primary {
   background: @primary-color;
   color: var(--om-color-white);
   border-color: @primary-color;
@@ -180,6 +166,12 @@ button {
 
   svg {
     color: @grey-600;
+  }
+
+  // Antd shows focus only as a border tint, too faint to find by keyboard.
+  &:focus-visible {
+    outline: var(--om-space-2) solid var(--om-color-focus-ring);
+    outline-offset: var(--om-space-2);
   }
 }
 

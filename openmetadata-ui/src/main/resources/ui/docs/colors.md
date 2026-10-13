@@ -85,7 +85,7 @@ Use background tokens for surfaces, containers, cards, modals, and page-level ba
 
 | Tailwind Class | CSS Variable | Light | Dark | When to Use |
 |---|---|---|---|---|
-| `tw:bg-brand-primary` | `--color-bg-brand-primary` | `#eff8ff` | Brand 500 at 16% | Light brand tint surface |
+| `tw:bg-brand-primary` | `--color-bg-brand-primary` | `#eff8ff` | Brand 500 at 14% | Light brand tint surface |
 | `tw:bg-brand-primary_alt` | `--color-bg-brand-primary_alt` | `#eff8ff` | `#191919` | Alternate brand tint |
 | `tw:bg-brand-secondary` | `--color-bg-brand-secondary` | `#d1e9ff` | `#1570ef` | Stronger brand tint |
 | `tw:bg-brand-solid` | `--color-bg-brand-solid` | `#1570ef` | `#1570ef` | Primary CTA button fill |

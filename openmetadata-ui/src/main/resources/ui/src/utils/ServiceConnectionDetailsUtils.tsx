@@ -11,9 +11,14 @@
  *  limitations under the License.
  */
 
-import { InfoCircleOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Col, Input, Row, Select, Space, Tooltip } from 'antd';
+import {
+  Badge,
+  Box,
+  Input,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { InfoCircle } from '@openmetadata/ui-core-components/icons';
 import {
   get,
   isArray,
@@ -37,7 +42,22 @@ type KeyValuesProps = {
   serviceCategory: string;
 };
 
-// Renders a basic input field with label and optional tooltip
+export const renderConnectionDetailLabel = (
+  label = '',
+  description?: string
+) => (
+  <Box align="center" className="tw:w-1/3 tw:shrink-0 tw:pr-2" gap={1}>
+    <Typography className="tw:min-w-0 tw:break-all" color="secondary">
+      {label}:
+    </Typography>
+    {description && (
+      <Tooltip placement="bottom" title={description}>
+        <InfoCircle className="tw:size-3.5 tw:text-fg-quaternary" />
+      </Tooltip>
+    )}
+  </Box>
+);
+
 const renderInputField = (
   key: string,
   value: string,
@@ -45,46 +65,31 @@ const renderInputField = (
   format?: string,
   title?: string
 ) => (
-  <Col key={key} span={12}>
-    <Row>
-      <Col className="d-flex items-center" span={8}>
-        <Space size={0}>
-          <p className="text-grey-muted m-0">{key || title}:</p>
-          {description && (
-            <Tooltip placement="bottom" title={description} trigger="hover">
-              <InfoCircleOutlined
-                className="m-x-xss"
-                style={{ color: '#C4C4C4' }}
-              />
-            </Tooltip>
-          )}
-        </Space>
-      </Col>
-      <Col span={16}>
-        {isArray(value) ? (
-          <Select
-            allowClear={false}
-            bordered={false}
-            className="w-full border-none"
-            data-testid="input-field"
-            mode="multiple"
-            open={false}
-            removeIcon={null}
-            style={{ pointerEvents: 'none' }}
-            value={value}
-          />
-        ) : (
-          <Input
-            readOnly
-            className="w-full border-none"
-            data-testid="input-field"
-            type={format === 'password' ? 'password' : 'text'}
-            value={value}
-          />
-        )}
-      </Col>
-    </Row>
-  </Col>
+  <Box align="center" key={key}>
+    {renderConnectionDetailLabel(key || title, description)}
+    <Box className="tw:min-w-0 tw:flex-1">
+      {isArray(value) ? (
+        <Box data-testid="input-field" gap={1} wrap="wrap">
+          {/* Repeated values are valid in connection arrays, so value alone is not a unique key. */}
+          {value.map((item, index) => (
+            // eslint-disable-next-line react/no-array-index-key
+            <Badge color="gray" key={`${item}-${index}`} size="sm" type="color">
+              {item}
+            </Badge>
+          ))}
+        </Box>
+      ) : (
+        <Input
+          isReadOnly
+          aria-label={key || title}
+          inputDataTestId="input-field"
+          size="sm"
+          type={format === 'password' ? 'password' : 'text'}
+          value={String(value ?? '')}
+        />
+      )}
+    </Box>
+  </Box>
 );
 
 // Renders filter pattern fields
@@ -99,37 +104,25 @@ const renderFilterPattern = (
   }
 
   return (
-    <Col key={key} span={12}>
-      <Row>
-        <Col className="d-flex" span={8}>
-          <Space align="start" size={0}>
-            <p className="text-grey-muted m-0">{key || title}:</p>
-            {description && (
-              <Tooltip placement="bottom" title={description} trigger="hover">
-                <InfoCircleOutlined
-                  className="m-x-xss"
-                  style={{ color: '#C4C4C4' }}
-                />
-              </Tooltip>
-            )}
-          </Space>
-        </Col>
-        <Col className="filter-config" span={16}>
-          {Object.entries(value).map(([key, value]) => {
-            return isEmpty(value) ? null : (
-              <div
-                className="w-full flex flex-col"
-                key={`${key}-${JSON.stringify(value)}`}>
-                <Typography className="key">{`${startCase(key)}:`}</Typography>
-                <Typography className="value">
-                  {(value as string[]).join(', ')}
-                </Typography>
-              </div>
-            );
-          })}
-        </Col>
-      </Row>
-    </Col>
+    <Box align="start" key={key}>
+      {renderConnectionDetailLabel(key || title, description)}
+      <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={2}>
+        {Object.entries(value).map(([patternKey, patternValue]) =>
+          isEmpty(patternValue) ? null : (
+            <Box
+              direction="col"
+              key={`${patternKey}-${JSON.stringify(patternValue)}`}>
+              <Typography color="secondary">{`${startCase(
+                patternKey
+              )}:`}</Typography>
+              <Typography weight="semibold">
+                {(patternValue as string[]).join(', ')}
+              </Typography>
+            </Box>
+          )
+        )}
+      </Box>
+    </Box>
   );
 };
 

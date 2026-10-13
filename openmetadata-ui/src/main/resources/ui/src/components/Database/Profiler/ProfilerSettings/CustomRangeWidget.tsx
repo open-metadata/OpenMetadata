@@ -10,15 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Grid } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
-import { Col, InputNumber, Row, Slider } from 'antd';
+import { InputNumber, Slider } from 'antd';
+import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 
 export const CustomRangeWidget = (props: WidgetProps) => {
   const min = props.schema.minimum ?? 0;
 
   return (
-    <Row data-testid="percentage-input" gutter={20}>
-      <Col span={20}>
+    <Grid
+      className="layout-row layout-grid"
+      data-testid="percentage-input"
+      style={{ ...getLayoutGutter(20) }}>
+      <Grid.Item className="layout-column" span={20}>
         <Slider
           marks={{
             [min]: `${min}%`,
@@ -30,8 +35,8 @@ export const CustomRangeWidget = (props: WidgetProps) => {
           value={props.value}
           onChange={props.onChange}
         />
-      </Col>
-      <Col span={4}>
+      </Grid.Item>
+      <Grid.Item className="layout-column" span={4}>
         <InputNumber
           data-testid="slider-input"
           formatter={(value) => `${value}%`}
@@ -43,7 +48,7 @@ export const CustomRangeWidget = (props: WidgetProps) => {
           value={props.value}
           onChange={props.onChange}
         />
-      </Col>
-    </Row>
+      </Grid.Item>
+    </Grid>
   );
 };

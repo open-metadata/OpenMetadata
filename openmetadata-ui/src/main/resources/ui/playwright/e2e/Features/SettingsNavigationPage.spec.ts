@@ -251,7 +251,7 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     const treeItems = page.locator('.ant-tree-node-content-wrapper');
 
     // Wait for the tree to be fully ready
-    await expect(treeItems.first()).toBeVisible();
+    await expect(treeItems.filter({ visible: true })).not.toHaveCount(0);
 
     const homeItem = treeItems.filter({
       has: page.getByText('Home', { exact: true }),
@@ -350,7 +350,7 @@ test.describe.serial('Settings Navigation Page Tests', () => {
 
     const treeItems = page.locator('.ant-tree-node-content-wrapper');
 
-    await expect(treeItems.first()).toBeVisible();
+    await expect(treeItems.filter({ visible: true })).not.toHaveCount(0);
 
     // Data Quality and Incident Manager are adjacent children of Observability
     // near the top of the tree, which keeps the drag reliable.
@@ -412,7 +412,7 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     await redirectToHomePage(page);
     await navigateToPersonaNavigation(page);
 
-    await expect(treeItems.first()).toBeVisible();
+    await expect(treeItems.filter({ visible: true })).not.toHaveCount(0);
     await expect(dataQualityItem).toBeVisible();
     await expect(incidentManagerItem).toBeVisible();
 
@@ -455,7 +455,7 @@ test.describe.serial('Settings Navigation Page Tests', () => {
 
     const treeItems = page.locator('.ant-tree-node-content-wrapper');
 
-    await expect(treeItems.first()).toBeVisible();
+    await expect(treeItems.filter({ visible: true })).not.toHaveCount(0);
 
     const testLibraryItem = treeItems.filter({
       has: page.getByText('Test Library', { exact: true }),
@@ -532,8 +532,10 @@ test.describe.serial('Settings Navigation Page Tests', () => {
 
     // The moved item is now rendered under the Data Marketplace section
     await expect(
-      page.locator('[data-testid="app-bar-item-test-library"]').first()
-    ).toBeVisible();
+      page
+        .locator('[data-testid="app-bar-item-test-library"]')
+        .filter({ visible: true })
+    ).not.toHaveCount(0);
 
     await page.click('[data-testid="data-marketplace-section"]');
 

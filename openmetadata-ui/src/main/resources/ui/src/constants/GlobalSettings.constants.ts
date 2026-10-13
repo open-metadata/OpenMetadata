@@ -107,4 +107,6 @@ export enum GlobalSettingOptions {
   LEARNING_RESOURCES = 'learning-resources',
   COLUMN = 'column',
   APP_MODE = 'appMode',
+  GLOSSARY = 'glossary',
+  TIME_FORMAT = 'timeFormat',
 }

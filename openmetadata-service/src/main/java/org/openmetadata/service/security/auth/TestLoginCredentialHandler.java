@@ -19,7 +19,6 @@ import static org.openmetadata.service.resources.teams.UserResource.USER_PROTECT
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.unboundid.ldap.sdk.Filter;
 import com.unboundid.ldap.sdk.LDAPConnection;
-import com.unboundid.ldap.sdk.LDAPConnectionOptions;
 import com.unboundid.ldap.sdk.LDAPException;
 import com.unboundid.ldap.sdk.ResultCode;
 import com.unboundid.ldap.sdk.SearchRequest;
@@ -53,7 +52,6 @@ import org.openmetadata.service.util.EntityUtil;
  */
 @Slf4j
 final class TestLoginCredentialHandler {
-  private static final int DIRECTORY_TIMEOUT_MILLIS = 5_000;
   private static final Set<String> BASIC_USER_FIELDS =
       Set.of(USER_PROTECTED_FIELDS, "roles", "teams");
 
@@ -111,7 +109,8 @@ final class TestLoginCredentialHandler {
   private static LDAPConnection connectAsLookupAccount(LdapConfiguration ldap) {
     LDAPConnection connection = null;
     try {
-      connection = LdapAuthenticator.openConnection(ldap, boundedTimeouts());
+      connection =
+          LdapAuthenticator.openConnection(ldap, LdapAuthenticator.boundedConnectionOptions());
       connection.bind(ldap.getDnAdminPrincipal(), ldap.getDnAdminPassword());
       return connection;
     } catch (Exception e) {
@@ -172,7 +171,8 @@ final class TestLoginCredentialHandler {
   }
 
   private static void bindAsUser(LdapConfiguration ldap, DirectoryUser user, String password) {
-    try (LDAPConnection connection = LdapAuthenticator.openConnection(ldap, boundedTimeouts())) {
+    try (LDAPConnection connection =
+        LdapAuthenticator.openConnection(ldap, LdapAuthenticator.boundedConnectionOptions())) {
       connection.bind(user.dn(), password);
     } catch (LDAPException e) {
       throw credentialFailure(
@@ -281,14 +281,6 @@ final class TestLoginCredentialHandler {
 
   private static List<String> namesOf(List<EntityReference> references) {
     return listOrEmpty(references).stream().map(EntityReference::getName).toList();
-  }
-
-  private static LDAPConnectionOptions boundedTimeouts() {
-    // An unreachable candidate directory must fail the test quickly, not hold the request thread.
-    LDAPConnectionOptions options = new LDAPConnectionOptions();
-    options.setConnectTimeoutMillis(DIRECTORY_TIMEOUT_MILLIS);
-    options.setResponseTimeoutMillis(DIRECTORY_TIMEOUT_MILLIS);
-    return options;
   }
 
   private static String localPartOf(String email) {

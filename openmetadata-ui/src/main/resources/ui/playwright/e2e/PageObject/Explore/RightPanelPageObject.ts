@@ -12,6 +12,7 @@
  */
 
 import { expect, Locator, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../../constant/common';
 import { EntityClass } from '../../../support/entity/EntityClass';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { CustomPropertiesPageObject } from './CustomPropertiesPageObject';
@@ -935,7 +936,7 @@ export class RightPanelPageObject {
    * 3. Panel is ready for interaction
    * @param timeout - Optional timeout in milliseconds (default: 30000)
    */
-  async waitForPanelLoaded(timeout: number = 30000) {
+  async waitForPanelLoaded(timeout: number = ACTION_TIMEOUT) {
     // Step 1: Wait for panel to be visible
     await this.getSummaryPanel().waitFor({ state: 'visible', timeout });
 

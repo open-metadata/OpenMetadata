@@ -26,8 +26,7 @@
         },
         "idpX509Certificate": {
           "description": "X509 Certificate ",
-          "type": "string",
-          "format": "password"
+          "type": "string"
         },
         "nameId": {
           "description": "Name ID format for SAML assertions",
@@ -53,8 +52,7 @@
         },
         "spX509Certificate": {
           "description": "X509 Certificate ",
-          "type": "string",
-          "format": "password"
+          "type": "string"
         },
         "spPrivateKey": {
           "description": "Sp Private Key for Signing and Encryption Only",

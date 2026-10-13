@@ -22,11 +22,24 @@ import { disableEtagConditionalReads, uuid } from '../../utils/common';
 import { pickEntityMatrix } from '../../utils/entityMatrix';
 import { waitForSearchIndexed } from '../../utils/polling';
 import {
+  enableDisableSearchRBAC,
   exploreShouldShowEntity,
   exploreTreeCategories,
   searchForEntityShouldWork,
   searchForEntityShouldWorkShowNoResult,
 } from '../../utils/searchRBAC';
+
+// `enableAccessControl` is global and SearchSettings.spec.ts resets it, so
+// re-assert it per test rather than trusting the project setup to survive.
+test.beforeEach(async ({ browser }) => {
+  const { apiContext, afterAction } = await performAdminLogin(browser);
+
+  try {
+    await enableDisableSearchRBAC(apiContext, true);
+  } finally {
+    await afterAction();
+  }
+});
 
 const newStrippedPage = async (browser: Browser) => {
   const page = await browser.newPage();

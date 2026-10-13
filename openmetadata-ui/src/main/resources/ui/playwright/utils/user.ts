@@ -12,6 +12,7 @@
  */
 
 import { Browser, expect, Page } from '@playwright/test';
+import { LONG_ACTION_TIMEOUT } from '../constant/common';
 import {
   GLOBAL_SETTING_PERMISSIONS,
   SETTING_PAGE_ENTITY_PERMISSION,
@@ -38,6 +39,7 @@ import { customFormatDateTime, getEpochMillisForFutureDays } from './dateTime';
 import { waitForAllLoadersToDisappear } from './entity';
 import { clickUpdateButtonIfVisible } from './explore';
 import { getCellByName } from './scopedLocators';
+import { waitForAggregation } from './searchAggregation';
 import { settingClick, SettingOptionsType, sidebarClick } from './sidebar';
 
 export const visitUserListPage = async (page: Page) => {
@@ -103,8 +105,8 @@ export const nonDeletedUserChecks = async (page: Page) => {
   await expect(
     page
       .locator('[data-testid="user-profile"] [data-testid="edit-user-persona"]')
-      .first()
-  ).toBeVisible();
+      .filter({ visible: true })
+  ).not.toHaveCount(0);
 
   await expect(page.locator('[data-testid="edit-teams-button"]')).toBeVisible();
   await expect(page.locator('[data-testid="edit-roles-button"]')).toBeVisible();
@@ -180,11 +182,7 @@ export const softDeleteUserProfilePage = async (
   });
   await page.click('[data-testid="user-profile-manage-btn"]');
 
-  await page.locator('.ant-popover:not(.ant-popover-hidden)').waitFor({
-    state: 'visible',
-  });
-
-  await page.getByText('Delete Profile').click();
+  await page.getByRole('dialog').getByText('Delete Profile').click();
 
   await page.getByTestId('delete-modal').waitFor();
 
@@ -204,17 +202,19 @@ export const restoreUserProfilePage = async (page: Page, fqn: string) => {
   await page.click('[data-testid="user-profile-manage-btn"]');
   await page.getByText('Restore').click();
 
-  await page.locator('[role="dialog"].ant-modal').waitFor();
+  const restoreModal = page.getByTestId('restore-user-modal');
 
-  await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
-  await expect(page.locator('.ant-modal-title')).toContainText('Restore user');
+  await expect(restoreModal).toBeVisible();
+  await expect(restoreModal.getByTestId('dialog-title')).toContainText(
+    'Restore user'
+  );
 
   await expect(
     page.locator('[data-testid="restore-modal-body"]')
   ).toContainText(`Are you sure you want to restore ${fqn}?`);
 
   const restoreResponse = page.waitForResponse('/api/v1/users/restore');
-  await page.click('.ant-modal-footer .ant-btn-primary');
+  await restoreModal.getByRole('button', { name: 'Restore' }).click();
 
   await restoreResponse;
 
@@ -247,16 +247,18 @@ export const editDisplayName = async (page: Page, editedUserName: string) => {
   await page.click('[data-testid="user-profile-manage-btn"]');
   await page.click('[data-testid="edit-displayname"]');
 
-  await expect(page.locator('.ant-modal-wrap')).toBeVisible();
+  const profileEditModal = page.getByTestId('profile-edit-modal');
+
+  await expect(profileEditModal).toBeVisible();
 
   await page.getByTestId('displayName-input').click();
   await page.keyboard.press('Control+A');
   await page.keyboard.type(editedUserName);
   const saveResponse = page.waitForResponse('/api/v1/users/*');
-  await page.getByText('Save').click();
+  await profileEditModal.getByRole('button', { name: 'Save' }).click();
   await saveResponse;
 
-  await expect(page.locator('.ant-modal-wrap')).not.toBeVisible();
+  await expect(profileEditModal).not.toBeVisible();
 
   // Verify the updated display name
   const userName = await page.textContent('[data-testid="user-display-name"]');
@@ -407,7 +409,8 @@ export const restoreUser = async (
   await page.click(`[data-testid="restore-user-btn-${username}"]`);
 
   // Verify the modal content
-  const modalContent = page.locator('.ant-modal-body > p');
+  const restoreModal = page.getByTestId('restore-user-modal');
+  const modalContent = restoreModal.locator('p');
 
   await expect(modalContent).toContainText(
     `Are you sure you want to restore ${editedUserName}?`
@@ -415,7 +418,7 @@ export const restoreUser = async (
 
   // Click the confirm button in the modal
   const restoreUserResponse = page.waitForResponse('/api/v1/users/restore');
-  await page.click('.ant-modal-footer > .ant-btn-primary');
+  await restoreModal.getByRole('button', { name: 'Restore' }).click();
   await restoreUserResponse;
 
   await toastNotification(page, 'User restored successfully');
@@ -624,9 +627,10 @@ export const checkStewardServicesPermissions = async (page: Page) => {
 
   await waitForAllLoadersToDisappear(page.getByTestId('drop-down-menu'));
 
-  const dataAssetDropdownRequest = page.waitForResponse(
-    '/api/v1/search/aggregate?index=dataAsset&field=entityType.keyword*'
-  );
+  const dataAssetDropdownRequest = waitForAggregation(page, {
+    field: 'entityType.keyword',
+    value: 'table',
+  });
 
   await page
     .getByTestId('drop-down-menu')
@@ -734,16 +738,15 @@ export const addUser = async (
   const rolesCombobox = page
     .getByTestId('roles-dropdown')
     .getByRole('combobox');
-  await expect(rolesCombobox).toBeVisible({ timeout: 120000 });
+  await expect(rolesCombobox).toBeVisible({ timeout: LONG_ACTION_TIMEOUT });
   await rolesCombobox.click();
   const rolesSearchResponse = page.waitForResponse('/api/v1/roles/search?*');
   await rolesCombobox.fill(role);
   await rolesSearchResponse;
   const roleOption = page
     .locator('.ant-select-item-option-content')
-    .filter({ hasText: new RegExp(`^${role}$`) })
-    .first();
-  await expect(roleOption).toBeVisible({ timeout: 120000 });
+    .filter({ hasText: new RegExp(`^${role}$`) });
+  await expect(roleOption).toBeVisible({ timeout: LONG_ACTION_TIMEOUT });
   await roleOption.click();
   await clickOutside(page);
 
@@ -755,14 +758,11 @@ export const addUser = async (
       .getByTestId('personas-dropdown')
       .getByRole('combobox')
       .fill(personas[0]);
-    await page.locator('.ant-select-dropdown:visible').first().waitFor({
-      state: 'visible',
-    });
+    await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);
     const personaOption = page
       .locator('.ant-select-dropdown:visible')
       .locator('.ant-select-item-option')
-      .filter({ hasText: personas[0] })
-      .first();
+      .filter({ hasText: personas[0] });
     await personaOption.waitFor({ state: 'visible' });
     await personaOption.click();
     await clickOutside(page);
@@ -827,9 +827,10 @@ const resetPasswordModal = async (
   const saveResetPasswordResponse = page.waitForResponse(
     '/api/v1/users/changePassword'
   );
-  await page.click(
-    '.ant-modal-footer > .ant-btn-primary:has-text("Update Password")'
-  );
+  await page
+    .getByTestId('modal-container')
+    .getByRole('button', { name: 'Update Password' })
+    .click();
 
   await saveResetPasswordResponse;
 
@@ -852,7 +853,7 @@ export const resetPassword = async (
   await page.click('[data-testid="user-profile-manage-btn"]');
   await page.click('[data-testid="change-password-button"]');
 
-  await expect(page.locator('.ant-modal-wrap')).toBeVisible();
+  await expect(page.getByTestId('modal-container')).toBeVisible();
 
   // Try with the wrong old password should throw an error
   await resetPasswordModal(page, oldWrongPassword, newPassword, false);

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import test, { expect, Locator, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../../constant/common';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import {
   getApiContext,
@@ -81,7 +82,7 @@ test.describe(
       // Wait for page to load
       await page.getByTestId('test-definition-table').waitFor({
         state: 'visible',
-        timeout: 30000,
+        timeout: ACTION_TIMEOUT,
       });
 
       // Verify URL
@@ -222,11 +223,9 @@ test.describe(
           state: 'visible',
         });
 
-        // Find and click edit button on first row
-        const firstEditButton = page
+        await page
           .getByTestId(`edit-test-definition-${TEST_DEFINITION_NAME}`)
-          .first();
-        await firstEditButton.click();
+          .click();
 
         // Wait for drawer to open (form body confirms the edit drawer opened).
         await page
@@ -1221,7 +1220,7 @@ test.describe(
             response.request().method() === 'GET'
         );
         // Wait for dropdown to open and select 25
-        await page.locator('.ant-dropdown:visible').getByText('25').click();
+        await page.getByRole('menuitem', { name: /^25 \// }).click();
         await pageChangeResponse;
       });
 

@@ -18,8 +18,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import jakarta.ws.rs.BadRequestException;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
@@ -27,8 +30,66 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.type.OntologyChangeOperationType;
 import org.openmetadata.schema.type.OntologyRelationship;
+import org.openmetadata.service.exception.EntityNotFoundException;
 
 class OntologyChangePreflightTest {
+  @Test
+  void rejectsAProposalWhoseSourceMemoryWasRetired() {
+    final UUID glossaryId = UUID.randomUUID();
+    final UUID memoryId = UUID.randomUUID();
+    final OntologyChangeOperation proposal =
+        createOperation(storedTerm(glossaryId, null)).withSourceMemoryIds(Set.of(memoryId));
+
+    for (final ContextMemoryStatus status :
+        List.of(ContextMemoryStatus.DEPRECATED, ContextMemoryStatus.REJECTED)) {
+      final OntologyChangePreflight preflight =
+          new OntologyChangePreflight(
+              (entityType, id) -> new ContextMemory().withId(id).withEntityStatus(status));
+
+      assertThrows(
+          BadRequestException.class,
+          () -> preflight.validate(changeSet(glossaryId), List.of(proposal)));
+    }
+  }
+
+  @Test
+  void acceptsAnOperationThatAnotherApprovedSourceStillGrounds() {
+    final UUID glossaryId = UUID.randomUUID();
+    final UUID retired = UUID.randomUUID();
+    final UUID approved = UUID.randomUUID();
+    final OntologyChangeOperation proposal =
+        createOperation(storedTerm(glossaryId, null))
+            .withSourceMemoryIds(Set.of(retired, approved));
+    final OntologyChangePreflight preflight =
+        new OntologyChangePreflight(
+            (entityType, id) ->
+                new ContextMemory()
+                    .withId(id)
+                    .withEntityStatus(
+                        id.equals(retired)
+                            ? ContextMemoryStatus.REJECTED
+                            : ContextMemoryStatus.APPROVED));
+
+    assertDoesNotThrow(() -> preflight.validate(changeSet(glossaryId), List.of(proposal)));
+  }
+
+  @Test
+  void rejectsAProposalWhoseOnlySourceMemoryNoLongerExists() {
+    final UUID glossaryId = UUID.randomUUID();
+    final OntologyChangeOperation proposal =
+        createOperation(storedTerm(glossaryId, null))
+            .withSourceMemoryIds(Set.of(UUID.randomUUID()));
+    final OntologyChangePreflight preflight =
+        new OntologyChangePreflight(
+            (entityType, id) -> {
+              throw EntityNotFoundException.byMessage("contextMemory " + id + " not found");
+            });
+
+    assertThrows(
+        BadRequestException.class,
+        () -> preflight.validate(changeSet(glossaryId), List.of(proposal)));
+  }
+
   @Test
   void acceptsScopedTargetAtExpectedVersion() {
     final UUID glossaryId = UUID.randomUUID();

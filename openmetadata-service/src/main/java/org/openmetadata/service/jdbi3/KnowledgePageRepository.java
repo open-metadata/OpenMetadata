@@ -7,11 +7,9 @@ import static org.openmetadata.schema.type.Relationship.EDITED_BY;
 import static org.openmetadata.schema.type.Relationship.HAS;
 import static org.openmetadata.schema.type.Relationship.RELATED_TO;
 import static org.openmetadata.service.Entity.FIELD_PARENT;
-import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.Entity.getEntity;
 import static org.openmetadata.service.Entity.getEntityReferencesByIds;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
 
@@ -38,11 +36,9 @@ import org.openmetadata.schema.entity.data.PageHierarchy;
 import org.openmetadata.schema.entity.data.PageProcessingStatus;
 import org.openmetadata.schema.entity.data.PageType;
 import org.openmetadata.schema.entity.data.QuickLink;
-import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
@@ -52,13 +48,11 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.context.center.PageContextProcessingEngineHolder;
-import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.llm.LLMClientHolder;
 import org.openmetadata.service.resources.knowledge.KnowledgePageResource;
 import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.vector.PageBodyTextContributor;
-import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -96,6 +90,7 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
         KNOWLEDGE_PATCH_FIELDS,
         KNOWLEDGE_UPDATE_FIELDS);
     supportsSearch = true;
+    approvalTaskReviewsEntityStatus = true;
     // NOTE: SearchIndexFactory registration handled by OpenMetadata core
     this.daoExtension = jdbi.onDemand(CollectionDAO.class).knowledgePageDAO();
     this.assetDAO = jdbi.onDemand(CollectionDAO.class).assetDAO();
@@ -863,25 +858,6 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
   @Override
   public void postUpdate(Page original, Page updated) {
     super.postUpdate(original, updated);
-    if (EntityStatus.IN_REVIEW.equals(original.getEntityStatus())) {
-      if (EntityStatus.APPROVED.equals(updated.getEntityStatus())) {
-        closeApprovalTask(updated, "Approved the page");
-      } else if (EntityStatus.REJECTED.equals(updated.getEntityStatus())) {
-        closeApprovalTask(updated, "Rejected the page");
-      }
-    }
-
-    // TODO: It might happen that a task went from DRAFT to IN_REVIEW to DRAFT fairly quickly
-    // Due to ChangesConsolidation, the postUpdate will be called as from DRAFT to DRAFT, but there
-    // will be a Task created.
-    // This if handles this case scenario, by guaranteeing that we are any Approval Task if the
-    // Tag goes back to DRAFT.
-    if (EntityStatus.DRAFT.equals(updated.getEntityStatus())) {
-      try {
-        closeApprovalTask(updated, "Closed due to page going back to DRAFT.");
-      } catch (EntityNotFoundException ignored) {
-      } // No ApprovalTask is present, and thus we don't need to worry about this.
-    }
 
     if (isArticleBodyChanged(original, updated)) {
       schedulePillExtraction(updated.getId());
@@ -953,44 +929,5 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
   /** True when the LLM is configured and article (page) memory extraction is toggled on. */
   private boolean isExtractionEnabled() {
     return LLMClientHolder.isMemoryExtractionEnabled();
-  }
-
-  private void closeApprovalTask(Page entity, String comment) {
-    if (entity.getUpdatedBy() == null) {
-      LOG.debug(
-          "Skipping task closure for page {} - updatedBy is null", entity.getFullyQualifiedName());
-      return;
-    }
-    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-    taskRepository.closeApprovalTaskForEntity(
-        entity.getFullyQualifiedName(), entity.getUpdatedBy(), comment);
-  }
-
-  public static void checkUpdatedByReviewer(Page page, String updatedBy) {
-    // Only list of allowed reviewers can change the status from DRAFT to APPROVED
-    List<EntityReference> reviewers = page.getReviewers();
-    if (!nullOrEmpty(reviewers)) {
-      // Updating user must be one of the reviewers
-      boolean isReviewer =
-          reviewers.stream()
-              .anyMatch(
-                  e -> {
-                    if (e.getType().equals(TEAM)) {
-                      Team team =
-                          Entity.getEntityByName(TEAM, e.getName(), "users", Include.NON_DELETED);
-                      return team.getUsers().stream()
-                          .anyMatch(
-                              u ->
-                                  u.getName().equals(updatedBy)
-                                      || u.getFullyQualifiedName().equals(updatedBy));
-                    } else {
-                      return e.getName().equals(updatedBy)
-                          || e.getFullyQualifiedName().equals(updatedBy);
-                    }
-                  });
-      if (!isReviewer) {
-        throw new AuthorizationException(notReviewer(updatedBy));
-      }
-    }
   }
 }

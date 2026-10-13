@@ -27,10 +27,14 @@ coverage, a retried one looks green.
 
 ## Entries
 
-No entries. The threshold for quarantining is **2 or more** failures, counted per
+The threshold for quarantining is **2 or more** failures, counted per
 generated variant rather than per source line. The 11 merge_group runs sampled
 on 2026-09-04 that seeded this list are all released now, as is the DataContracts
 entry that was tagged separately on 2026-09-11 (see *Released from quarantine*).
+
+| Spec | Test | Tagged | Status |
+|---|---|---|---|
+| `e2e/Features/AIMode/PersonaSettings.spec.ts` | all three describes (personal-space modal, management actions, customize saves) | 2026-10-12 | Not yet diagnosed. The spec landed with #34916 (persona settings moved into the AI-mode profile modal). |
 
 ### Triage, 2026-09-09
 
@@ -84,6 +88,13 @@ they were repaired rather than parked:
 Diagnosed and fixed, so the tag came off. If any of these flakes again the fix
 was wrong — re-quarantine it with the new evidence rather than restoring the old
 entry.
+
+Kafka AutoPilot was released on 2026-10-09 after the CI broker configuration
+fix was reported complete by @ShaileshParmar11. [#34951](https://github.com/open-metadata/OpenMetadata/pull/34951)
+had quarantined the Kafka serial group because the broker advertised
+`localhost:9092`, which Airflow could not reach. Both the service creation /
+AutoPilot status test and its dependent agent-deletion test now use the normal
+`@ingestion` tag.
 
 | Spec | Test | Root cause |
 |---|---|---|

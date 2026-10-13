@@ -13,7 +13,10 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.tests.TestCaseParameter;
 import org.openmetadata.schema.tests.TestDefinition;
@@ -289,6 +292,49 @@ class TestCaseThresholdValidatorTest {
             atExpectedLocation,
             values("radius", "500", "threshold", "150", "thresholdUnit", "PERCENTAGE"));
     assertTrue(message.contains("cannot exceed 100"), message);
+  }
+
+  /**
+   * Rule-library definitions are user-authored through an API that does not accept
+   * `supportsRowLevelPassedFailed`, yet ingestion always reads their percentage as a share of the
+   * table's rows. The validator class is what classifies them.
+   */
+  @ParameterizedTest
+  @MethodSource("ruleLibraryDefinitions")
+  void capsAPercentageOnARuleLibraryDefinition(TestDefinition ruleLibrary) {
+    String message =
+        rejects(
+            ruleLibrary,
+            values("minValue", "0", "threshold", "150", "thresholdUnit", "PERCENTAGE"));
+    assertTrue(message.contains("cannot exceed 100"), message);
+  }
+
+  @ParameterizedTest
+  @MethodSource("ruleLibraryDefinitions")
+  void acceptsAPercentageUpTo100OnARuleLibraryDefinition(TestDefinition ruleLibrary) {
+    assertEquals(
+        List.of(),
+        TestCaseThresholdValidator.validate(
+            ruleLibrary,
+            values("minValue", "0", "threshold", "100", "thresholdUnit", "PERCENTAGE")));
+  }
+
+  private static Stream<TestDefinition> ruleLibraryDefinitions() {
+    return Stream.of(
+            "ColumnRuleLibrarySqlExpressionValidator", "TableRuleLibrarySqlExpressionValidator")
+        .flatMap(
+            validatorClass ->
+                Stream.of(
+                    ruleLibraryDefinition(validatorClass),
+                    ruleLibraryDefinition(validatorClass).withSupportsRowLevelPassedFailed(false)));
+  }
+
+  private static TestDefinition ruleLibraryDefinition(String validatorClass) {
+    return new TestDefinition()
+        .withName("valuesAboveMinimum")
+        .withValidatorClass(validatorClass)
+        .withSqlExpression("SELECT * FROM {{ table_name }} WHERE amount < {{ minValue }}")
+        .withParameterDefinition(List.of(numeric("minValue"), threshold(), thresholdUnit()));
   }
 
   /**

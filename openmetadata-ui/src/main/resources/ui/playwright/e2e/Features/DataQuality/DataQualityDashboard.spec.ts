@@ -561,8 +561,10 @@ test.describe(
 
         await waitForAllLoadersToDisappear(page);
         await expect(
-          page.locator('[data-testid="status-data-widget"]').first()
-        ).toBeVisible();
+          page
+            .locator('[data-testid="status-data-widget"]')
+            .filter({ visible: true })
+        ).not.toHaveCount(0);
       });
 
       await test.step('Filter by Glossary Term and verify all API responses succeed', async () => {
@@ -595,8 +597,10 @@ test.describe(
 
         await waitForAllLoadersToDisappear(page);
         await expect(
-          page.locator('[data-testid="status-data-widget"]').first()
-        ).toBeVisible();
+          page
+            .locator('[data-testid="status-data-widget"]')
+            .filter({ visible: true })
+        ).not.toHaveCount(0);
       });
 
       await test.step('Filter by Data Product and verify all API responses succeed', async () => {
@@ -629,8 +633,10 @@ test.describe(
 
         await waitForAllLoadersToDisappear(page);
         await expect(
-          page.locator('[data-testid="status-data-widget"]').first()
-        ).toBeVisible();
+          page
+            .locator('[data-testid="status-data-widget"]')
+            .filter({ visible: true })
+        ).not.toHaveCount(0);
       });
 
       // table3 is given an owner in beforeAll, so the incident raised by the
@@ -744,8 +750,11 @@ test.describe(
 
       await test.step('Reopen the incident as Acknowledged from the header', async () => {
         await page.click('[data-testid="edit-resolution-icon"]');
-        await page.click('[data-testid="test-case-resolution-status-type"]');
-        await page.click('[title="Ack"]');
+        await page
+          .getByTestId('test-case-resolution-status-type')
+          .getByRole('button')
+          .click();
+        await page.getByRole('option', { name: 'Ack', exact: true }).click();
 
         const reopenResponse = page.waitForResponse(
           (response) =>
@@ -923,8 +932,10 @@ test.describe(
       await test.step('Navigate to Data Quality dashboard', async () => {
         await goToDataQualityDashboard(page);
         await expect(
-          page.locator('[data-testid="status-data-widget"]').first()
-        ).toBeVisible();
+          page
+            .locator('[data-testid="status-data-widget"]')
+            .filter({ visible: true })
+        ).not.toHaveCount(0);
         await waitForAllLoadersToDisappear(page);
       });
 
@@ -944,8 +955,10 @@ test.describe(
           if (!page.url().includes('/data-quality/dashboard')) {
             await goToDataQualityDashboard(page);
             await expect(
-              page.locator('[data-testid="status-data-widget"]').first()
-            ).toBeVisible();
+              page
+                .locator('[data-testid="status-data-widget"]')
+                .filter({ visible: true })
+            ).not.toHaveCount(0);
             await waitForAllLoadersToDisappear(page);
           }
 
@@ -1134,7 +1147,7 @@ test.describe(
           '/api/v1/search/query?*index=dataProduct*'
         );
         await page.click('[data-testid="advanced-filter"]');
-        await page.click('[value="dataProductFqn"]');
+        await page.getByTestId('advanced-filter-option-dataProductFqn').click();
         await dataProductOptionsRes;
 
         await expect(
@@ -1171,7 +1184,7 @@ test.describe(
           '/api/v1/dataQuality/testCases/search/list?*'
         );
         await page.click('[data-testid="advanced-filter"]');
-        await page.click('[value="dataProductFqn"]');
+        await page.getByTestId('advanced-filter-option-dataProductFqn').click();
         await getTestCases;
 
         await expect(
