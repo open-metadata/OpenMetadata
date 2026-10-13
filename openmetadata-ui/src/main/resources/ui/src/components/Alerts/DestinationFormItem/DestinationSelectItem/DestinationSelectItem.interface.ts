@@ -17,7 +17,7 @@ export interface DestinationSelectItemProps {
   selectorKey: number;
   id: number;
   remove: (index: number) => void;
-  destinationsWithStatus?: Destination[];
+  destinationsWithStatus?: Array<Destination | undefined>;
   isConfigExpanded?: boolean;
   isDestinationStatusLoading: boolean;
   isViewMode?: boolean;

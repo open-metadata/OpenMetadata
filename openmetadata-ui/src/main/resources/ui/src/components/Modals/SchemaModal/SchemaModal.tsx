@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Modal } from 'antd';
+import { Button, SimpleModal } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 
 import { clone } from 'lodash';
@@ -20,7 +19,6 @@ import { FC, lazy, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { KeyDownStopPropagationWrapper } from '../../common/KeyDownStopPropagationWrapper/KeyDownStopPropagationWrapper';
-import CloseIcon from '../CloseIcon.component';
 import './schema-modal.less';
 import { SchemaModalProp } from './SchemaModal.interface';
 
@@ -29,7 +27,6 @@ const SchemaEditor = withSuspenseFallback(
 );
 
 const SchemaModal: FC<SchemaModalProp> = ({
-  className,
   onClose,
   onChange,
   editorClass,
@@ -46,44 +43,31 @@ const SchemaModal: FC<SchemaModalProp> = ({
   }, [data, visible]);
 
   return (
-    <Modal
-      centered
-      destroyOnClose
-      className={classNames('schema-modal', className)}
-      closeIcon={
-        <CloseIcon
-          dataTestId="schema-modal-close-button"
-          handleCancel={onClose}
-        />
-      }
+    <SimpleModal
       data-testid="schema-modal"
       footer={
         isFooterVisible ? (
           <KeyDownStopPropagationWrapper>
             <Button
+              color="link-color"
               data-testid="cancel"
               key="cancelButton"
-              type="link"
               onClick={onClose}>
               {t('label.cancel')}
             </Button>
             <Button
+              color="primary"
               data-testid="save"
               key="saveButton"
-              type="primary"
               onClick={onSave}>
               {t('label.save')}
             </Button>
           </KeyDownStopPropagationWrapper>
         ) : null
       }
-      maskClosable={false}
-      open={visible}
-      title={
-        <Typography data-testid="schema-modal-header" weight="semibold">
-          {t('label.json-data')}
-        </Typography>
-      }
+      isDismissable={false}
+      isOpen={visible}
+      title={t('label.json-data')}
       width={800}
       onCancel={onClose}>
       <KeyDownStopPropagationWrapper>
@@ -97,7 +81,7 @@ const SchemaModal: FC<SchemaModalProp> = ({
           />
         </div>
       </KeyDownStopPropagationWrapper>
-    </Modal>
+    </SimpleModal>
   );
 };
 

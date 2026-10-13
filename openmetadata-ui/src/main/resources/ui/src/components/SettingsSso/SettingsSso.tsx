@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Tabs, Toggle, Typography } from '@openmetadata/ui-core-components';
+import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
@@ -26,12 +27,15 @@ import { getRenderedActiveTab } from '../../utils/CustomizePage/CustomizePageEnt
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { getProviderDisplayName, getProviderIcon } from '../../utils/SSOUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import Loader from '../common/Loader/Loader';
 import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
+import SettingsSourceBanner from '../platform/settings/SettingsSourceBanner/SettingsSourceBanner';
 import ProviderSelector from './ProviderSelector/ProviderSelector';
 import './settings-sso.less';
 import SSOConfigurationForm from './SSOConfigurationForm/SSOConfigurationForm';
+import { useSecuritySettingsSource } from './useSecuritySettingsSource';
 
 const SettingsSso = () => {
   const { t } = useTranslation();
@@ -45,7 +49,16 @@ const SettingsSso = () => {
   const [ssoEnabled, setSsoEnabled] = useState<boolean>(true);
   const [securityConfig, setSecurityConfig] =
     useState<SecurityConfiguration | null>(null);
+  const [configReloadKey, setConfigReloadKey] = useState<number>(0);
   const configFetched = useRef<boolean>(false);
+  const {
+    sources,
+    refetch: refetchSources,
+    managedPaths,
+    isReadOnly,
+    isProviderManaged,
+    isSelfSignupManaged,
+  } = useSecuritySettingsSource();
 
   const handleSSOToggle = useCallback(async (checked: boolean) => {
     setSsoEnabled(checked);
@@ -62,12 +75,31 @@ const SettingsSso = () => {
       await patchSecurityConfiguration(patches);
     } catch (error) {
       setSsoEnabled(!checked);
+      showErrorToast(error as AxiosError);
     }
   }, []);
 
   const handleChangeProvider = useCallback(() => {
     setSearchParams({ provider: AuthProvider.Basic });
   }, [setSearchParams]);
+
+  // The deployment values may name a different identity provider, so the page reloads the
+  // configuration without the provider the URL pinned.
+  const handleSettingsAdopted = useCallback(() => {
+    configFetched.current = false;
+    setIsLoading(true);
+    setSearchParams({}, { replace: true });
+    setConfigReloadKey((key) => key + 1);
+  }, [setSearchParams]);
+
+  const sourceBanner = (
+    <SettingsSourceBanner
+      className="tw:my-4"
+      sources={sources}
+      onAdopted={handleSettingsAdopted}
+      onRefetch={refetchSources}
+    />
+  );
 
   const breadcrumb = useMemo(() => {
     const baseBreadcrumb = getSettingPageEntityBreadCrumb(
@@ -148,7 +180,11 @@ const SettingsSso = () => {
                   {t('message.allow-user-to-login-via-sso')}
                 </Typography>
               </div>
-              <Toggle isSelected={ssoEnabled} onChange={handleSSOToggle} />
+              <Toggle
+                isDisabled={isSelfSignupManaged}
+                isSelected={ssoEnabled}
+                onChange={handleSSOToggle}
+              />
             </div>
           </div>
         </div>
@@ -170,6 +206,8 @@ const SettingsSso = () => {
           <SSOConfigurationForm
             hideBorder
             forceEditMode={activeTab === 'configure'}
+            isReadOnly={isReadOnly}
+            managedPaths={managedPaths}
             securityConfig={securityConfig}
             onChangeProvider={handleChangeProvider}
           />
@@ -186,6 +224,9 @@ const SettingsSso = () => {
     activeTab,
     securityConfig,
     handleChangeProvider,
+    isReadOnly,
+    isSelfSignupManaged,
+    managedPaths,
   ]);
 
   // Combined effect to handle URL parameters and existing configuration
@@ -276,6 +317,7 @@ const SettingsSso = () => {
         }
       } catch (error) {
         configFetched.current = false; // Reset on error to allow retry
+        showErrorToast(error as AxiosError);
         applyNoConfigState();
       } finally {
         setIsLoading(false);
@@ -283,7 +325,7 @@ const SettingsSso = () => {
     };
 
     checkExistingConfig();
-  }, [searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams, configReloadKey]);
 
   const handleTabChange = useCallback((key: string) => {
     setActiveTab(key);
@@ -315,8 +357,9 @@ const SettingsSso = () => {
     );
   }
 
-  // If showing provider selector
-  if (showProviderSelector) {
+  // A provider the deployment configuration sets cannot be replaced from here, so there is
+  // nothing to choose and no new configuration to start.
+  if (showProviderSelector || (!hasExistingConfig && isProviderManaged)) {
     return (
       <PageLayoutV1 className="sso-settings-page" pageTitle={t('label.sso')}>
         <TitleBreadcrumb
@@ -324,13 +367,23 @@ const SettingsSso = () => {
           className="m-b-xs"
           titleLinks={breadcrumb}
         />
+        {sourceBanner}
 
-        <div className="m-t-lg sso-provider-selection">
-          <ProviderSelector
-            selectedProvider={currentProvider as AuthProvider | undefined}
-            onProviderSelect={handleProviderSelect}
-          />
-        </div>
+        {isProviderManaged ? (
+          <Typography
+            as="p"
+            className="m-t-md"
+            data-testid="sso-provider-set-by-deployment">
+            {t('message.sso-provider-set-by-deployment')}
+          </Typography>
+        ) : (
+          <div className="m-t-lg sso-provider-selection">
+            <ProviderSelector
+              selectedProvider={currentProvider as AuthProvider | undefined}
+              onProviderSelect={handleProviderSelect}
+            />
+          </div>
+        )}
       </PageLayoutV1>
     );
   }
@@ -344,8 +397,11 @@ const SettingsSso = () => {
           className="m-b-xs"
           titleLinks={breadcrumb}
         />
+        {sourceBanner}
 
         <SSOConfigurationForm
+          isReadOnly={isReadOnly}
+          managedPaths={managedPaths}
           securityConfig={securityConfig}
           selectedProvider={currentProvider}
           onChangeProvider={handleChangeProvider}
@@ -362,6 +418,7 @@ const SettingsSso = () => {
         className="m-b-xs"
         titleLinks={breadcrumb}
       />
+      {sourceBanner}
 
       <div className="settings-sso" style={{ background: 'white' }}>
         {currentProvider && currentProvider !== AuthProvider.Basic && (
