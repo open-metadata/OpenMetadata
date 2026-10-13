@@ -16,7 +16,7 @@ describe('Dropdown.DotsButton', () => {
     render(<Dropdown.DotsButton />);
 
     expect(
-      screen.getByRole('button', { name: 'label.open-menu' })
+      screen.getByRole('button', { name: 'Open menu' })
     ).toBeInTheDocument();
   });
 

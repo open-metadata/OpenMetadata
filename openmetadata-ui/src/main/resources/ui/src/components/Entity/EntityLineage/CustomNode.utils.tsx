@@ -13,9 +13,17 @@
 import { Button, Skeleton, Typography } from '@openmetadata/ui-core-components';
 import { Dataflow01, Plus } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import { memo, RefObject, useCallback, useMemo, useState } from 'react';
+import {
+  Fragment,
+  memo,
+  RefObject,
+  useCallback,
+  useMemo,
+  useState,
+} from 'react';
 import { Handle, HandleProps, HandleType, Position } from 'reactflow';
 import { ReactComponent as MinusIcon } from '../../../assets/svg/control-minus.svg';
+import { EntityLineageNodeType } from '../../../enums/entity.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import { DataType } from '../../../generated/entity/data/table';
 import { ColumnTestSummaryDefinition } from '../../../generated/tests/testCase';
@@ -45,6 +53,25 @@ export const getHandleByType = (
       position={position}
       type={type}
     />
+  );
+};
+
+// Public API: openmetadata-collate builds its column handles with this.
+export const getColumnHandle = (
+  nodeType: string,
+  isConnectable: HandleProps['isConnectable'],
+  className?: string,
+  id?: string
+) => {
+  if (nodeType === EntityLineageNodeType.NOT_CONNECTED) {
+    return null;
+  }
+
+  return (
+    <Fragment>
+      {getHandleByType(isConnectable, Position.Left, 'target', className, id)}
+      {getHandleByType(isConnectable, Position.Right, 'source', className, id)}
+    </Fragment>
   );
 };
 

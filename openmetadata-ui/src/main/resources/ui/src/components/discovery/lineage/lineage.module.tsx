@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ReactComponent as PlatformLineageIcon } from '../../../assets/svg/ic-platform-lineage.svg';
+import { Dataflow03 } from '@openmetadata/ui-core-components/icons';
 import { ROUTES } from '../../../constants/constants';
 import { AppModule } from '../../platform/ai-shell/AppModule.types';
 
@@ -23,7 +23,7 @@ export const lineageModule: AppModule = {
   id: 'lineage',
   navOrder: 12,
   labelKey: 'label.lineage',
-  icon: PlatformLineageIcon,
+  icon: Dataflow03,
   prefix: ROUTES.PLATFORM_LINEAGE,
   defaultPath: ROUTES.PLATFORM_LINEAGE,
   routes: [],
