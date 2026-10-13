@@ -134,14 +134,23 @@ test.describe.serial(
         })
         .click();
 
-      // Set start and end dates
-      const startDate = customFormatDateTime(getCurrentMillis(), 'yyyy-MM-dd');
-      const endDate = customFormatDateTime(
-        getEpochMillisForFutureDays(5),
-        'yyyy-MM-dd'
+      // Set start and end dates. They are segmented date fields, not text inputs: focus the
+      // month segment and type the digits, which advance through day and year.
+      const typeDate = async (fieldId: string, millis: number) => {
+        await page
+          .locator(`[id="${fieldId}"]`)
+          .getByRole('spinbutton', { name: /month/i })
+          .click();
+        await page.keyboard.type(customFormatDateTime(millis, 'MMddyyyy'));
+      };
+      await typeDate(
+        'root/backfillConfiguration/startDate',
+        getCurrentMillis()
       );
-      await page.fill('#root\\/backfillConfiguration\\/startDate', startDate);
-      await page.fill('#root\\/backfillConfiguration\\/endDate', endDate);
+      await typeDate(
+        'root/backfillConfiguration/endDate',
+        getEpochMillisForFutureDays(5)
+      );
 
       // Submit the form
       await page.click('[data-testid="submit-btn"]');
