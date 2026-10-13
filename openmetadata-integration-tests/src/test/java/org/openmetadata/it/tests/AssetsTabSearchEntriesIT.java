@@ -113,9 +113,10 @@ public class AssetsTabSearchEntriesIT {
   void aTableMovedToAnotherDomainOnTheTab_reachesItsColumnEntries(TestNamespace ns) {
     Domain from = createDomain(ns, "from");
     Domain to = createDomain(ns, "to");
-    Table table = createTable(ns, createSchema(ns), "tbl", null);
+    // Created in its first domain so the move is the only background update to its column entries:
+    // those updates are not ordered, and an earlier one landing late would undo the move.
+    Table table = createTable(ns, createSchema(ns), "tbl", from);
 
-    putDomainAssets(from, table);
     awaitColumnEntriesIn(table, from);
     putDomainAssets(to, table);
     awaitColumnEntriesIn(table, to);
@@ -243,11 +244,13 @@ public class AssetsTabSearchEntriesIT {
     return "{\"query\":{\"bool\":{\"must\":[{\"term\":{\"" + field + "\":\"" + value + "\"}}]}}}";
   }
 
+  // Read as a bot: with Redis on, the search API answers a user from a short-lived copy of the same
+  // query's earlier response, and these checks repeat one query right after each write.
   private static List<JsonNode> hits(String index, String filter) {
     String response;
     try {
       response =
-          SdkClients.adminClient()
+          SdkClients.botClient()
               .search()
               .query("*")
               .index(index)
