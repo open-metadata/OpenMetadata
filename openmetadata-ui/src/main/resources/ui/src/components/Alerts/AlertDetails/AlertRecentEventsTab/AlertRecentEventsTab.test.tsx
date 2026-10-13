@@ -12,7 +12,10 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { INITIAL_PAGING_VALUE } from '../../../../constants/constants';
+import { AlertRecentEventFilters } from '../../../../enums/Alerts.enum';
 import { Status } from '../../../../generated/events/api/typedEvent';
+import { usePaging } from '../../../../hooks/paging/usePaging';
 import {
   mockAlertDetails,
   MOCK_TYPED_EVENT_LIST_RESPONSE,
@@ -110,6 +113,37 @@ describe('AlertRecentEventsTab', () => {
     expect(await screen.findByTestId('applied-filter-text')).toHaveTextContent(
       ': label.successful'
     );
+
+    const { handlePageChange } = (usePaging as jest.Mock)();
+
+    expect(handlePageChange).toHaveBeenCalledWith(INITIAL_PAGING_VALUE);
+  });
+
+  it('should reset pagination to the first page when the status filter changes', async () => {
+    await act(async () => {
+      render(<AlertRecentEventsTab alertDetails={mockAlertDetails} />);
+    });
+
+    const mockHandlePageChange = (usePaging as jest.Mock)().handlePageChange;
+
+    const filterButton = screen.getByTestId('filter-button');
+    fireEvent.click(filterButton);
+
+    const filterOption = await screen.findByText('label.successful');
+    fireEvent.click(filterOption);
+
+    expect(await screen.findByTestId('applied-filter-text')).toHaveTextContent(
+      ': label.successful'
+    );
+
+    expect(mockHandlePageChange).toHaveBeenCalledTimes(1);
+    expect(mockHandlePageChange).toHaveBeenCalledWith(INITIAL_PAGING_VALUE);
+
+    const calls = (getAlertEventsFromId as jest.Mock).mock.calls;
+    const lastCallParams = calls[calls.length - 1][0].params;
+
+    expect(lastCallParams.paginationOffset).toBe(0);
+    expect(lastCallParams.status).toBe(AlertRecentEventFilters.SUCCESSFUL);
   });
 
   it('renders an unreadable (empty-data) row without crashing the page', async () => {
