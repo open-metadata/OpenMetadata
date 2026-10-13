@@ -14,9 +14,10 @@ import { APIRequestContext, Page, Response } from '@playwright/test';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { okJson } from '../../../utils/apiResponse';
 import {
+  clickIgnoringToasts,
+  fillDescriptionBox,
   getApiContext,
   redirectToHomePage,
-  resolveDescriptionBox,
   uuid,
 } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
@@ -206,16 +207,13 @@ const proposeDescription = async (
 ) => {
   await glossary.visitPage(page);
   await page.getByTestId('edit-description').click();
-  const descriptionBox = await resolveDescriptionBox(page);
-  await descriptionBox.click();
-  await descriptionBox.clear();
-  await descriptionBox.fill(description);
+  await fillDescriptionBox(page, description);
   const held = waitForResponseWithStatus(
     page,
     isDescriptionPatch(glossary),
     202
   );
-  await page.getByTestId('save').click();
+  await clickIgnoringToasts(page.getByTestId('save'));
   await held;
   await waitForAllLoadersToDisappear(page);
 };
@@ -239,7 +237,7 @@ const submitReview = async (
   const dialog = await openPendingChanges(page, glossary);
   await dialog.getByTestId(decide).click();
   const resolved = waitForResponseWithStatus(page, isResolve, 200);
-  await dialog.getByTestId('submit-review').click();
+  await clickIgnoringToasts(dialog.getByTestId('submit-review'));
   await resolved;
 };
 
@@ -308,7 +306,9 @@ test.describe(
           await proposeDescription(page, glossary, `Withdrawn ${uuid()}`);
           const dialog = await openPendingChanges(page, glossary);
           const withdrawn = waitForResponseWithStatus(page, isWithdraw, 200);
-          await dialog.locator('[data-testid^="withdraw-"]').click();
+          await clickIgnoringToasts(
+            dialog.getByRole('button', { name: 'Withdraw revision' })
+          );
           await withdrawn;
           await glossary.visitPage(page);
           await expectShownDescription(page, approved);
@@ -352,7 +352,7 @@ test.describe(
           isResolve,
           200
         );
-        await dialog.getByTestId('submit-review').click();
+        await clickIgnoringToasts(dialog.getByTestId('submit-review'));
         await resolved;
 
         await expectPublished(page, glossary, proposed);
