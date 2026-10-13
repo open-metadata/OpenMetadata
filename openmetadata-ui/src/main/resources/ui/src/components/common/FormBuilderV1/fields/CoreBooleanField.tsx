@@ -18,6 +18,7 @@ import { getFormDisplayLabel } from '../formBuilderV1LabelUtils';
 const CoreBooleanField = (props: FieldProps) => {
   return (
     <Toggle
+      id={props.idSchema.$id}
       isDisabled={props.disabled || props.readonly}
       isSelected={props.formData ?? false}
       label={props.schema.title ?? getFormDisplayLabel(props.name)}
