@@ -748,7 +748,8 @@ describe('ConnectionServiceDetailsPage', () => {
 
   it("keeps the new service when the previous one's answers arrive after it", async () => {
     const pendingService: Array<(value: unknown) => void> = [];
-    const pendingPermission: Array<(value: unknown) => void> = [];
+    const pendingPermission: Array<(value: Record<string, boolean>) => void> =
+      [];
     (getServiceByFQN as jest.Mock)
       .mockImplementationOnce(
         () => new Promise((resolve) => pendingService.push(resolve))
