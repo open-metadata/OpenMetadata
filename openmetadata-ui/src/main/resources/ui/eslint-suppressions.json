@@ -1063,6 +1063,11 @@
       "count": 1
     }
   },
+  "src/components/Entity/EntityLineage/NodeSuggestions.component.tsx": {
+    "openmetadata-antd/no-antd-import": {
+      "count": 1
+    }
+  },
   "src/components/Explore/EntitySummaryPanel/APIEndpointSummary/APIEndpointSummary.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 2
