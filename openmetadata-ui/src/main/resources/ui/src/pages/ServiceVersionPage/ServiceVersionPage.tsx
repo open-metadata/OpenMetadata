@@ -465,7 +465,7 @@ function ServiceVersionPage() {
         );
       }
     },
-    [paging, getOtherDetails, handlePageChange]
+    [paging, pageSize, getOtherDetails, handlePageChange]
   );
 
   const tabs: DetailsTabItem[] = useMemo(() => {
@@ -503,6 +503,7 @@ function ServiceVersionPage() {
     currentVersionData,
     serviceCategory,
     paging,
+    pageSize,
     data,
     isOtherDataLoading,
     getOtherDetails,

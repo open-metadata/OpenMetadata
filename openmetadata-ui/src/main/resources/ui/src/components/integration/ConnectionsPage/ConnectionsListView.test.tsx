@@ -13,6 +13,10 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
+import {
+  GRID_PAGE_SIZE_OPTIONS,
+  LIST_PAGE_SIZE_OPTIONS,
+} from '../../../constants/constants';
 import { ALL_SERVICES_CATEGORY } from '../../../constants/Services.constant';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { EXTENSION_POINTS } from '../../../utils/ExtensionPointTypes';
@@ -20,10 +24,6 @@ import ConnectionsListView, {
   NAME_COLUMN_WIDTH,
   SECONDARY_COLUMN_WIDTH,
 } from './ConnectionsListView';
-import {
-  GRID_PAGE_SIZE_OPTIONS,
-  LIST_PAGE_SIZE_OPTIONS,
-} from '../../../constants/constants';
 import { ConnectionsCategory } from './useConnectionsData';
 
 const mockNavigate = jest.fn();

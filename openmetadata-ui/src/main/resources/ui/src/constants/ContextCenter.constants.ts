@@ -13,13 +13,13 @@
 // ─── File type badge ──────────────────────────────────────────────────────────
 
 import { EntityFields } from '../enums/AdvancedSearch.enum';
-import { PAGE_SIZE_BASE } from './constants';
 import {
   ContextMemoryStatus,
   MemoryType,
   ShareVisibility,
 } from '../generated/entity/context/contextMemory';
 import { ExploreQuickFilterField } from '../interface/quickFilter.interface';
+import { PAGE_SIZE_BASE } from './constants';
 
 export const DOCUMENT_MAX_FILE_SIZE = 5 * 1024 * 1024;
 
