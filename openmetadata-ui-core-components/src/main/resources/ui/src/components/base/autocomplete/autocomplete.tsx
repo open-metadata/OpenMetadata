@@ -257,13 +257,15 @@ const InnerAutocomplete = ({
       : allSelected.length - visibleSelected.length;
 
   return (
-    <div className="tw:relative tw:flex tw:w-full tw:flex-1 tw:flex-row tw:flex-wrap tw:items-center tw:justify-start tw:gap-1.5">
+    <div className="tw:relative tw:flex tw:w-full tw:min-w-0 tw:flex-1 tw:flex-row tw:flex-wrap tw:items-center tw:justify-start tw:gap-1.5">
       {!isSelectionEmpty &&
         visibleSelected.map((item) =>
           context.renderTag ? (
             context.renderTag(item, () => context.onRemove(new Set([item.id])))
           ) : (
             <BadgeWithButton
+              // Capped at the field width so a long label ends in an ellipsis.
+              className="tw:max-w-full"
               color="gray"
               data-testid="autocomplete-selected-item"
               isDisabled={isDisabled}
